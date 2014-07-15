@@ -25,6 +25,7 @@ package com.oracle.truffle.sl.nodes.local;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.sl.nodes.*;
 
 /**
@@ -34,6 +35,10 @@ import com.oracle.truffle.sl.nodes.*;
 @NodeChild("valueNode")
 @NodeField(name = "slot", type = FrameSlot.class)
 public abstract class SLWriteLocalVariableNode extends SLExpressionNode {
+
+    public SLWriteLocalVariableNode(SourceSection src) {
+        super(src);
+    }
 
     /**
      * Returns the descriptor of the accessed local variable. The implementation of this method is

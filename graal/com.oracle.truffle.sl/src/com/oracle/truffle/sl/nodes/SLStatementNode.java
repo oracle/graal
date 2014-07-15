@@ -24,6 +24,7 @@ package com.oracle.truffle.sl.nodes;
 
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.source.*;
 
 /**
  * The base class of all Truffle nodes for SL. All nodes (even expressions) can be used as
@@ -32,6 +33,10 @@ import com.oracle.truffle.api.nodes.*;
  */
 @NodeInfo(language = "Simple Language", description = "The abstract base node for all statements")
 public abstract class SLStatementNode extends Node {
+
+    public SLStatementNode(SourceSection src) {
+        super(src);
+    }
 
     /**
      * Execute this node as as statement, where no return value is necessary.

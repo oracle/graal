@@ -26,6 +26,7 @@ import java.math.*;
 
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.sl.nodes.*;
 import com.oracle.truffle.sl.runtime.*;
 
@@ -41,6 +42,10 @@ import com.oracle.truffle.sl.runtime.*;
  */
 @NodeInfo(shortName = "==")
 public abstract class SLEqualNode extends SLBinaryNode {
+
+    public SLEqualNode(SourceSection src) {
+        super(src);
+    }
 
     @Specialization
     protected boolean equal(long left, long right) {

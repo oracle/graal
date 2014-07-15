@@ -26,6 +26,7 @@ import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.sl.nodes.*;
 import com.oracle.truffle.sl.runtime.*;
 
@@ -39,15 +40,16 @@ import com.oracle.truffle.sl.runtime.*;
 @NodeInfo(shortName = "invoke")
 public final class SLInvokeNode extends SLExpressionNode {
 
-    public static SLInvokeNode create(SLExpressionNode function, SLExpressionNode[] arguments) {
-        return new SLInvokeNode(function, arguments, new SLUninitializedDispatchNode());
+    public static SLInvokeNode create(SourceSection src, SLExpressionNode function, SLExpressionNode[] arguments) {
+        return new SLInvokeNode(src, function, arguments, new SLUninitializedDispatchNode());
     }
 
     @Child protected SLExpressionNode functionNode;
     @Children protected final SLExpressionNode[] argumentNodes;
     @Child protected SLAbstractDispatchNode dispatchNode;
 
-    private SLInvokeNode(SLExpressionNode functionNode, SLExpressionNode[] argumentNodes, SLAbstractDispatchNode dispatchNode) {
+    private SLInvokeNode(SourceSection src, SLExpressionNode functionNode, SLExpressionNode[] argumentNodes, SLAbstractDispatchNode dispatchNode) {
+        super(src);
         this.functionNode = functionNode;
         this.argumentNodes = argumentNodes;
         this.dispatchNode = dispatchNode;

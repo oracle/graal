@@ -23,6 +23,7 @@
 package com.oracle.truffle.sl.builtins;
 
 import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.sl.nodes.*;
 import com.oracle.truffle.sl.runtime.*;
 
@@ -41,6 +42,10 @@ import com.oracle.truffle.sl.runtime.*;
 @NodeChild(value = "arguments", type = SLExpressionNode[].class)
 @NodeField(name = "context", type = SLContext.class)
 public abstract class SLBuiltinNode extends SLExpressionNode {
+
+    public SLBuiltinNode(SourceSection src) {
+        super(src);
+    }
 
     /**
      * Accessor for the {@link SLContext}. The implementation of this method is generated

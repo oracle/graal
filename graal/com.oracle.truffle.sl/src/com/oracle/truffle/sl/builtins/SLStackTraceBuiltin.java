@@ -28,6 +28,7 @@ import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
 import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.source.*;
 
 /**
  * Returns a string representation of the current stack. This includes the {@link CallTarget}s and
@@ -36,6 +37,10 @@ import com.oracle.truffle.api.nodes.*;
  */
 @NodeInfo(shortName = "stacktrace")
 public abstract class SLStackTraceBuiltin extends SLBuiltinNode {
+
+    public SLStackTraceBuiltin() {
+        super(new NullSourceSection("SL builtin", "stacktrace"));
+    }
 
     @Specialization
     public String trace() {

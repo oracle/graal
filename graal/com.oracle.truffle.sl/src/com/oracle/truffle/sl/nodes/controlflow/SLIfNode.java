@@ -25,6 +25,7 @@ package com.oracle.truffle.sl.nodes.controlflow;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.api.utilities.*;
 import com.oracle.truffle.sl.nodes.*;
 
@@ -52,7 +53,8 @@ public final class SLIfNode extends SLStatementNode {
     private final BranchProfile thenTaken = new BranchProfile();
     private final BranchProfile elseTaken = new BranchProfile();
 
-    public SLIfNode(SLExpressionNode conditionNode, SLStatementNode thenPartNode, SLStatementNode elsePartNode) {
+    public SLIfNode(SourceSection src, SLExpressionNode conditionNode, SLStatementNode thenPartNode, SLStatementNode elsePartNode) {
+        super(src);
         this.conditionNode = conditionNode;
         this.thenPartNode = thenPartNode;
         this.elsePartNode = elsePartNode;

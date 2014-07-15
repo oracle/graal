@@ -27,6 +27,7 @@ import java.io.*;
 import com.oracle.truffle.api.CompilerDirectives.SlowPath;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.sl.*;
 import com.oracle.truffle.sl.runtime.*;
 
@@ -35,6 +36,10 @@ import com.oracle.truffle.sl.runtime.*;
  */
 @NodeInfo(shortName = "readln")
 public abstract class SLReadlnBuiltin extends SLBuiltinNode {
+
+    public SLReadlnBuiltin() {
+        super(new NullSourceSection("SL builtin", "readln"));
+    }
 
     @Specialization
     public String readln() {

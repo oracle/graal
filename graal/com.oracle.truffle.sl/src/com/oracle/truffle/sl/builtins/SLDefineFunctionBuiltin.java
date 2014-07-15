@@ -36,6 +36,10 @@ import com.oracle.truffle.sl.runtime.*;
 @NodeInfo(shortName = "defineFunction")
 public abstract class SLDefineFunctionBuiltin extends SLBuiltinNode {
 
+    public SLDefineFunctionBuiltin() {
+        super(new NullSourceSection("SL builtin", "defineFunction"));
+    }
+
     @Specialization
     public String defineFunction(String code) {
         doDefineFunction(getContext(), code);

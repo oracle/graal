@@ -23,6 +23,7 @@
 package com.oracle.truffle.sl.nodes.local;
 
 import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.api.utilities.*;
 import com.oracle.truffle.sl.nodes.*;
 import com.oracle.truffle.sl.parser.*;
@@ -46,7 +47,8 @@ public class SLReadArgumentNode extends SLExpressionNode {
      */
     private final BranchProfile outOfBoundsTaken = new BranchProfile();
 
-    public SLReadArgumentNode(int index) {
+    public SLReadArgumentNode(SourceSection src, int index) {
+        super(src);
         this.index = index;
     }
 

@@ -27,6 +27,7 @@ import java.math.*;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.sl.runtime.*;
 
 /**
@@ -37,6 +38,10 @@ import com.oracle.truffle.sl.runtime.*;
 @TypeSystemReference(SLTypes.class)
 @NodeInfo(description = "The abstract base node for all expressions")
 public abstract class SLExpressionNode extends SLStatementNode {
+
+    public SLExpressionNode(SourceSection src) {
+        super(src);
+    }
 
     /**
      * The execute method when no specialization is possible. This is the most general case,

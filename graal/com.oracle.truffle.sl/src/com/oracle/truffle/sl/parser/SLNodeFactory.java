@@ -95,14 +95,16 @@ public class SLNodeFactory {
          * ensures that accesses to parameters are specialized the same way as local variables are
          * specialized.
          */
-        SLReadArgumentNode readArg = assignSource(nameToken, new SLReadArgumentNode(parameterCount));
+        final SourceSection src = source.createSection(nameToken.val, nameToken.charPos, nameToken.val.length());
+        SLReadArgumentNode readArg = new SLReadArgumentNode(src, parameterCount);
         methodNodes.add(createAssignment(nameToken, readArg));
         parameterCount++;
     }
 
     public void finishFunction(SLStatementNode bodyNode) {
         methodNodes.add(bodyNode);
-        SLStatementNode methodBlock = finishBlock(methodNodes);
+        // TODO (mlvdv) testing
+        SLStatementNode methodBlock = finishBlock(methodNodes, -1, -1);
         assert lexicalScope == null : "Wrong scoping of blocks in parser";
 
         SLFunctionBodyNode functionBodyNode = new SLFunctionBodyNode(methodBlock);
@@ -120,17 +122,34 @@ public class SLNodeFactory {
         lexicalScope = new LexicalScope(lexicalScope);
     }
 
-    public SLStatementNode finishBlock(List<SLStatementNode> bodyNodes) {
+    public SLStatementNode finishBlock(List<SLStatementNode> bodyNodes, int lBracePos, int length) {
         lexicalScope = lexicalScope.outer;
 
         List<SLStatementNode> flattenedNodes = new ArrayList<>(bodyNodes.size());
         flattenBlocks(bodyNodes, flattenedNodes);
-        if (flattenedNodes.size() == 1) {
-            /* A block containing one other node is unnecessary, we can just that other node. */
-            return flattenedNodes.get(0);
-        } else {
-            return new SLBlockNode(flattenedNodes.toArray(new SLStatementNode[flattenedNodes.size()]));
+
+        if (lBracePos >= 0) {
+            final SourceSection src = source.createSection("block", lBracePos, length);
+            return new SLBlockNode(src, flattenedNodes.toArray(new SLStatementNode[flattenedNodes.size()]));
         }
+        if (flattenedNodes.size() == 0) {
+            // TODO (mlvdv) for error reporting, should have the character position, even if the
+            // block is empty.
+            return new SLBlockNode(null, new SLStatementNode[0]);
+        }
+        if (flattenedNodes.size() == 1) {
+            /*
+             * A block containing one other node, not surrounded by braces is unnecessary, we can
+             * just that other node.
+             */
+            return flattenedNodes.get(0);
+        }
+        /*
+         * A "block" not surrounded by braces.
+         */
+        final int start = flattenedNodes.get(0).getSourceSection().getCharIndex();
+        final int end = flattenedNodes.get(flattenedNodes.size() - 1).getSourceSection().getCharEndIndex();
+        return new SLBlockNode(source.createSection("block", start, end - start), flattenedNodes.toArray(new SLStatementNode[flattenedNodes.size()]));
     }
 
     private void flattenBlocks(Iterable<? extends Node> bodyNodes, List<SLStatementNode> flattenedNodes) {
@@ -144,75 +163,90 @@ public class SLNodeFactory {
     }
 
     public SLStatementNode createBreak(Token t) {
-        return assignSource(t, new SLBreakNode());
+        return new SLBreakNode(source.createSection(t.val, t.charPos, t.val.length()));
     }
 
     public SLStatementNode createContinue(Token t) {
-        return assignSource(t, new SLContinueNode());
+        return new SLContinueNode(source.createSection(t.val, t.charPos, t.val.length()));
     }
 
     public SLStatementNode createWhile(Token t, SLExpressionNode conditionNode, SLStatementNode bodyNode) {
-        return assignSource(t, new SLWhileNode(conditionNode, bodyNode));
+        final int start = t.charPos;
+        final int end = bodyNode.getSourceSection().getCharEndIndex();
+        return new SLWhileNode(source.createSection(t.val, start, end - start), conditionNode, bodyNode);
     }
 
     public SLStatementNode createIf(Token t, SLExpressionNode conditionNode, SLStatementNode thenPartNode, SLStatementNode elsePartNode) {
-        return assignSource(t, new SLIfNode(conditionNode, thenPartNode, elsePartNode));
+        final int start = t.charPos;
+        final int end = elsePartNode == null ? thenPartNode.getSourceSection().getCharEndIndex() : elsePartNode.getSourceSection().getCharEndIndex();
+        return new SLIfNode(source.createSection(t.val, start, end - start), conditionNode, thenPartNode, elsePartNode);
     }
 
     public SLStatementNode createReturn(Token t, SLExpressionNode valueNode) {
-        return assignSource(t, new SLReturnNode(valueNode));
+        final int start = t.charPos;
+        final int length = valueNode == null ? t.val.length() : valueNode.getSourceSection().getCharEndIndex() - start;
+        return new SLReturnNode(source.createSection(t.val, start, length), valueNode);
     }
 
     public SLExpressionNode createBinary(Token opToken, SLExpressionNode leftNode, SLExpressionNode rightNode) {
+        int start = leftNode.getSourceSection().getCharIndex();
+        int length = rightNode.getSourceSection().getCharEndIndex() - start;
+        final SourceSection src = source.createSection(opToken.val, start, length);
         switch (opToken.val) {
             case "+":
-                return assignSource(opToken, SLAddNodeFactory.create(leftNode, rightNode));
+                return SLAddNodeFactory.create(src, leftNode, rightNode);
             case "*":
-                return assignSource(opToken, SLMulNodeFactory.create(leftNode, rightNode));
+                return SLMulNodeFactory.create(src, leftNode, rightNode);
             case "/":
-                return assignSource(opToken, SLDivNodeFactory.create(leftNode, rightNode));
+                return SLDivNodeFactory.create(src, leftNode, rightNode);
             case "-":
-                return assignSource(opToken, SLSubNodeFactory.create(leftNode, rightNode));
+                return SLSubNodeFactory.create(src, leftNode, rightNode);
             case "<":
-                return assignSource(opToken, SLLessThanNodeFactory.create(leftNode, rightNode));
+                return SLLessThanNodeFactory.create(src, leftNode, rightNode);
             case "<=":
-                return assignSource(opToken, SLLessOrEqualNodeFactory.create(leftNode, rightNode));
+                return SLLessOrEqualNodeFactory.create(src, leftNode, rightNode);
             case ">":
-                return assignSource(opToken, SLLogicalNotNodeFactory.create(assignSource(opToken, SLLessOrEqualNodeFactory.create(leftNode, rightNode))));
+                return SLLogicalNotNodeFactory.create(src, SLLessOrEqualNodeFactory.create(null, leftNode, rightNode));
             case ">=":
-                return assignSource(opToken, SLLogicalNotNodeFactory.create(assignSource(opToken, SLLessThanNodeFactory.create(leftNode, rightNode))));
+                return SLLogicalNotNodeFactory.create(src, SLLessThanNodeFactory.create(null, leftNode, rightNode));
             case "==":
-                return assignSource(opToken, SLEqualNodeFactory.create(leftNode, rightNode));
+                return SLEqualNodeFactory.create(src, leftNode, rightNode);
             case "!=":
-                return assignSource(opToken, SLLogicalNotNodeFactory.create(assignSource(opToken, SLEqualNodeFactory.create(leftNode, rightNode))));
+                return SLLogicalNotNodeFactory.create(src, SLEqualNodeFactory.create(null, leftNode, rightNode));
             case "&&":
-                return assignSource(opToken, SLLogicalAndNodeFactory.create(leftNode, rightNode));
+                return SLLogicalAndNodeFactory.create(src, leftNode, rightNode);
             case "||":
-                return assignSource(opToken, SLLogicalOrNodeFactory.create(leftNode, rightNode));
+                return SLLogicalOrNodeFactory.create(src, leftNode, rightNode);
             default:
                 throw new RuntimeException("unexpected operation: " + opToken.val);
         }
     }
 
-    public SLExpressionNode createCall(Token nameToken, List<SLExpressionNode> parameterNodes) {
+    public SLExpressionNode createCall(Token nameToken, List<SLExpressionNode> parameterNodes, Token finalToken) {
+        final int startPos = nameToken.charPos;
+        final int endPos = finalToken.charPos + finalToken.val.length();
+        final SourceSection src = source.createSection(nameToken.val, startPos, endPos - startPos);
         SLExpressionNode functionNode = createRead(nameToken);
-        return assignSource(nameToken, SLInvokeNode.create(functionNode, parameterNodes.toArray(new SLExpressionNode[parameterNodes.size()])));
+        return SLInvokeNode.create(src, functionNode, parameterNodes.toArray(new SLExpressionNode[parameterNodes.size()]));
     }
 
     public SLExpressionNode createAssignment(Token nameToken, SLExpressionNode valueNode) {
         FrameSlot frameSlot = frameDescriptor.findOrAddFrameSlot(nameToken.val);
         lexicalScope.locals.put(nameToken.val, frameSlot);
-        return assignSource(nameToken, SLWriteLocalVariableNodeFactory.create(valueNode, frameSlot));
+        final int start = nameToken.charPos;
+        final int length = valueNode.getSourceSection().getCharEndIndex() - start;
+        return SLWriteLocalVariableNodeFactory.create(source.createSection("=", start, length), valueNode, frameSlot);
     }
 
     public SLExpressionNode createRead(Token nameToken) {
-        FrameSlot frameSlot = lexicalScope.locals.get(nameToken.val);
+        final FrameSlot frameSlot = lexicalScope.locals.get(nameToken.val);
+        final SourceSection src = source.createSection(nameToken.val, nameToken.charPos, nameToken.val.length());
         if (frameSlot != null) {
             /* Read of a local variable. */
-            return assignSource(nameToken, SLReadLocalVariableNodeFactory.create(frameSlot));
+            return SLReadLocalVariableNodeFactory.create(src, frameSlot);
         } else {
             /* Read of a global name. In our language, the only global names are functions. */
-            return assignSource(nameToken, new SLFunctionLiteralNode(context.getFunctionRegistry().lookup(nameToken.val)));
+            return new SLFunctionLiteralNode(src, context.getFunctionRegistry().lookup(nameToken.val));
         }
     }
 
@@ -220,31 +254,21 @@ public class SLNodeFactory {
         /* Remove the trailing and ending " */
         String literal = literalToken.val;
         assert literal.length() >= 2 && literal.startsWith("\"") && literal.endsWith("\"");
+        final SourceSection src = source.createSection(literalToken.val, literalToken.charPos, literalToken.val.length());
         literal = literal.substring(1, literal.length() - 1);
 
-        return assignSource(literalToken, new SLStringLiteralNode(literal));
+        return new SLStringLiteralNode(src, literal);
     }
 
     public SLExpressionNode createNumericLiteral(Token literalToken) {
+        final SourceSection src = source.createSection(literalToken.val, literalToken.charPos, literalToken.val.length());
         try {
             /* Try if the literal is small enough to fit into a long value. */
-            return assignSource(literalToken, new SLLongLiteralNode(Long.parseLong(literalToken.val)));
+            return new SLLongLiteralNode(src, Long.parseLong(literalToken.val));
         } catch (NumberFormatException ex) {
             /* Overflow of long value, so fall back to BigInteger. */
-            return assignSource(literalToken, new SLBigIntegerLiteralNode(new BigInteger(literalToken.val)));
+            return new SLBigIntegerLiteralNode(src, new BigInteger(literalToken.val));
         }
     }
 
-    private <T extends Node> T assignSource(Token t, T node) {
-        assert functionName != null;
-        assert t != null;
-
-        int startLine = t.line;
-        int startColumn = t.col;
-        int charLength = t.val.length();
-        SourceSection sourceSection = source.createSection(functionName, startLine, startColumn, 0, charLength);
-
-        node.assignSourceSection(sourceSection);
-        return node;
-    }
 }

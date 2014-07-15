@@ -27,6 +27,7 @@ import java.io.*;
 import com.oracle.truffle.api.CompilerDirectives.SlowPath;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.sl.runtime.*;
 
 /**
@@ -40,6 +41,10 @@ import com.oracle.truffle.sl.runtime.*;
  */
 @NodeInfo(shortName = "println")
 public abstract class SLPrintlnBuiltin extends SLBuiltinNode {
+
+    public SLPrintlnBuiltin() {
+        super(new NullSourceSection("SL builtin", "println"));
+    }
 
     @Specialization
     public long println(long value) {

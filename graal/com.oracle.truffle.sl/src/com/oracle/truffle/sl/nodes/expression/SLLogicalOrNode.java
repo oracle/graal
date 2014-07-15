@@ -24,6 +24,7 @@ package com.oracle.truffle.sl.nodes.expression;
 
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.sl.nodes.*;
 
 /**
@@ -32,6 +33,10 @@ import com.oracle.truffle.sl.nodes.*;
 @NodeInfo(shortName = "||")
 @SuppressWarnings("unused")
 public abstract class SLLogicalOrNode extends SLBinaryNode {
+
+    public SLLogicalOrNode(SourceSection src) {
+        super(src);
+    }
 
     @ShortCircuit("rightNode")
     protected boolean needsRightNode(boolean left) {

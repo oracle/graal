@@ -25,6 +25,7 @@ package com.oracle.truffle.sl.nodes.controlflow;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.sl.nodes.*;
 
 /**
@@ -40,7 +41,8 @@ public final class SLBlockNode extends SLStatementNode {
      */
     @Children private final SLStatementNode[] bodyNodes;
 
-    public SLBlockNode(SLStatementNode[] bodyNodes) {
+    public SLBlockNode(SourceSection src, SLStatementNode[] bodyNodes) {
+        super(src);
         this.bodyNodes = bodyNodes;
     }
 

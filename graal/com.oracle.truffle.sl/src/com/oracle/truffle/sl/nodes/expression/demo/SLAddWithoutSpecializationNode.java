@@ -42,6 +42,7 @@ public class SLAddWithoutSpecializationNode extends SLExpressionNode {
     @Child private SLExpressionNode rightNode;
 
     public SLAddWithoutSpecializationNode(SLExpressionNode leftNode, SLExpressionNode rightNode) {
+        super(null);
         this.leftNode = leftNode;
         this.rightNode = rightNode;
     }

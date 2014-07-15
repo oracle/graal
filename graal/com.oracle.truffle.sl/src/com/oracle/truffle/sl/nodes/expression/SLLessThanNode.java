@@ -26,6 +26,7 @@ import java.math.*;
 
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.sl.nodes.*;
 
 /**
@@ -34,6 +35,10 @@ import com.oracle.truffle.sl.nodes.*;
  */
 @NodeInfo(shortName = "<")
 public abstract class SLLessThanNode extends SLBinaryNode {
+
+    public SLLessThanNode(SourceSection src) {
+        super(src);
+    }
 
     @Specialization
     protected boolean lessThan(long left, long right) {

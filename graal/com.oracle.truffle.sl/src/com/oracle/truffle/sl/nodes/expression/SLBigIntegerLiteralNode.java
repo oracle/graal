@@ -26,6 +26,7 @@ import java.math.*;
 
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.sl.nodes.*;
 
 /**
@@ -37,7 +38,8 @@ public final class SLBigIntegerLiteralNode extends SLExpressionNode {
 
     private final BigInteger value;
 
-    public SLBigIntegerLiteralNode(BigInteger value) {
+    public SLBigIntegerLiteralNode(SourceSection src, BigInteger value) {
+        super(src);
         this.value = value;
     }
 

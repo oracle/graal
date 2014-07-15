@@ -24,6 +24,7 @@ package com.oracle.truffle.sl.nodes.expression;
 
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.sl.nodes.*;
 
 /**
@@ -36,7 +37,8 @@ public final class SLLongLiteralNode extends SLExpressionNode {
 
     private final long value;
 
-    public SLLongLiteralNode(long value) {
+    public SLLongLiteralNode(SourceSection src, long value) {
+        super(src);
         this.value = value;
     }
 

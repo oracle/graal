@@ -24,6 +24,7 @@ package com.oracle.truffle.sl.nodes.controlflow;
 
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.sl.nodes.*;
 
 /**
@@ -34,6 +35,10 @@ import com.oracle.truffle.sl.nodes.*;
  */
 @NodeInfo(shortName = "break", description = "The node implementing a break statement")
 public final class SLBreakNode extends SLStatementNode {
+
+    public SLBreakNode(SourceSection src) {
+        super(src);
+    }
 
     @Override
     public void executeVoid(VirtualFrame frame) {

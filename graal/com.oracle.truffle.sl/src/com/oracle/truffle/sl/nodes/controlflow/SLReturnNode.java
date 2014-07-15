@@ -24,6 +24,7 @@ package com.oracle.truffle.sl.nodes.controlflow;
 
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.sl.nodes.*;
 import com.oracle.truffle.sl.runtime.*;
 
@@ -39,7 +40,8 @@ public final class SLReturnNode extends SLStatementNode {
 
     @Child private SLExpressionNode valueNode;
 
-    public SLReturnNode(SLExpressionNode valueNode) {
+    public SLReturnNode(SourceSection src, SLExpressionNode valueNode) {
+        super(src);
         this.valueNode = valueNode;
     }
 
