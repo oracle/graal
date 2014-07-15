@@ -82,19 +82,25 @@ public abstract class LoopTransformations {
         // original loop is used as first successor
         Position firstPosition = successors.nextPosition();
         NodeClass controlSplitClass = controlSplitNode.getNodeClass();
-        controlSplitClass.set(newControlSplit, firstPosition, BeginNode.begin(originalLoop.entryPoint()));
+        BeginNode originalLoopBegin = BeginNode.begin(originalLoop.entryPoint());
+        controlSplitClass.set(newControlSplit, firstPosition, originalLoopBegin);
 
         StructuredGraph graph = controlSplitNode.graph();
         while (successors.hasNext()) {
             Position position = successors.nextPosition();
             // create a new loop duplicate, connect it and simplify it
             LoopFragmentWhole duplicateLoop = originalLoop.duplicate();
-            controlSplitClass.set(newControlSplit, position, BeginNode.begin(duplicateLoop.entryPoint()));
+            BeginNode newBegin = BeginNode.begin(duplicateLoop.entryPoint());
+            controlSplitClass.set(newControlSplit, position, newBegin);
             ControlSplitNode duplicatedControlSplit = duplicateLoop.getDuplicatedNode(controlSplitNode);
-            graph.removeSplitPropagate(duplicatedControlSplit, (BeginNode) controlSplitClass.get(duplicatedControlSplit, position));
+            BeginNode survivingSuccessor = (BeginNode) controlSplitClass.get(duplicatedControlSplit, position);
+            survivingSuccessor.replaceAtUsages(InputType.Guard, newBegin);
+            graph.removeSplitPropagate(duplicatedControlSplit, survivingSuccessor);
         }
         // original loop is simplified last to avoid deleting controlSplitNode too early
-        graph.removeSplitPropagate(controlSplitNode, (BeginNode) controlSplitClass.get(controlSplitNode, firstPosition));
+        BeginNode survivingSuccessor = (BeginNode) controlSplitClass.get(controlSplitNode, firstPosition);
+        survivingSuccessor.replaceAtUsages(InputType.Guard, originalLoopBegin);
+        graph.removeSplitPropagate(controlSplitNode, survivingSuccessor);
         // TODO (gd) probabilities need some amount of fixup.. (probably also in other transforms)
     }
 
