@@ -39,6 +39,10 @@ public class BaselineControlFlowGraph implements AbstractControlFlowGraph<BciBlo
         try (Scope ds = Debug.scope("BaselineCFG", blockMap)) {
             BaselineControlFlowGraph cfg = new BaselineControlFlowGraph(blockMap);
             cfg.computeLoopInformation(blockMap);
+            AbstractControlFlowGraph.computeDominators(cfg);
+
+            assert CFGVerifier.verify(cfg);
+
             return cfg;
         } catch (Throwable e) {
             throw Debug.handle(e);
