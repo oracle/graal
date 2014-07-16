@@ -485,24 +485,32 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             AbstractEndNode falseEnd = (AbstractEndNode) falseSuccessor().next();
             MergeNode merge = trueEnd.merge();
             if (merge == falseEnd.merge() && trueSuccessor().anchored().isEmpty() && falseSuccessor().anchored().isEmpty()) {
-                Iterator<PhiNode> phis = merge.phis().iterator();
-                if (!phis.hasNext()) {
+                PhiNode singlePhi = null;
+                int distinct = 0;
+                for (PhiNode phi : merge.phis()) {
+                    ValueNode trueValue = phi.valueAt(trueEnd);
+                    ValueNode falseValue = phi.valueAt(falseEnd);
+                    if (trueValue != falseValue) {
+                        distinct++;
+                        singlePhi = phi;
+                    }
+                }
+                if (distinct == 0) {
+                    /*
+                     * Multiple phis but merging same values for true and false, so simply delete
+                     * the path
+                     */
                     tool.addToWorkList(condition());
                     removeThroughFalseBranch(tool);
                     return true;
-                } else {
-                    PhiNode singlePhi = phis.next();
-                    if (!phis.hasNext()) {
-                        // one phi at the merge of an otherwise empty if construct: try to convert
-                        // into a MaterializeNode
-                        ValueNode trueValue = singlePhi.valueAt(trueEnd);
-                        ValueNode falseValue = singlePhi.valueAt(falseEnd);
-                        ConditionalNode conditional = canonicalizeConditionalCascade(trueValue, falseValue);
-                        if (conditional != null) {
-                            singlePhi.setValueAt(trueEnd, conditional);
-                            removeThroughFalseBranch(tool);
-                            return true;
-                        }
+                } else if (distinct == 1) {
+                    ValueNode trueValue = singlePhi.valueAt(trueEnd);
+                    ValueNode falseValue = singlePhi.valueAt(falseEnd);
+                    ConditionalNode conditional = canonicalizeConditionalCascade(trueValue, falseValue);
+                    if (conditional != null) {
+                        singlePhi.setValueAt(trueEnd, conditional);
+                        removeThroughFalseBranch(tool);
+                        return true;
                     }
                 }
             }
@@ -512,14 +520,18 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             ReturnNode falseEnd = (ReturnNode) falseSuccessor().next();
             ValueNode trueValue = trueEnd.result();
             ValueNode falseValue = falseEnd.result();
-            ConditionalNode conditional = null;
+            ValueNode value = null;
             if (trueValue != null) {
-                conditional = canonicalizeConditionalCascade(trueValue, falseValue);
-                if (conditional == null) {
-                    return false;
+                if (trueValue == falseValue) {
+                    value = trueValue;
+                } else {
+                    value = canonicalizeConditionalCascade(trueValue, falseValue);
+                    if (value == null) {
+                        return false;
+                    }
                 }
             }
-            ReturnNode newReturn = graph().add(new ReturnNode(conditional));
+            ReturnNode newReturn = graph().add(new ReturnNode(value));
             replaceAtPredecessor(newReturn);
             GraphUtil.killCFG(this);
             return true;
