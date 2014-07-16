@@ -59,8 +59,8 @@ public class SPARCMacroAssembler extends SPARCAssembler {
     @Override
     protected final void patchJumpTarget(int branch, int branchTarget) {
         final int disp = branchTarget - branch;
-        Fmt00c fmt = Fmt00c.read(this, branch);
-        fmt.setDisp19(disp);
+        Fmt00 fmt = Fmt00.read(this, branch);
+        fmt.setImm(disp);
         fmt.write(this, branch);
     }
 
@@ -286,7 +286,6 @@ public class SPARCMacroAssembler extends SPARCAssembler {
 
         public Not(Register src1, Register dst) {
             super(src1, g0, dst);
-            assert src1.encoding() != dst.encoding();
         }
 
         public Not(Register dst) {

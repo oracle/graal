@@ -395,7 +395,6 @@ public class SPARCMove {
         }
     }
 
-    @SuppressWarnings("unused")
     private static void reg2reg(SPARCAssembler masm, Value result, Value input) {
         final Register src = asRegister(input);
         final Register dst = asRegister(result);
@@ -423,7 +422,7 @@ public class SPARCMove {
                         new Fmovs(src, dst).emit(masm);
                         break;
                     case Double:
-                        new Fstod(masm, src, dst);
+                        new Fstod(src, dst).emit(masm);
                         break;
                     default:
                         throw GraalInternalError.shouldNotReachHere();
@@ -518,12 +517,13 @@ public class SPARCMove {
                 new Ldf(scratch, asFloatReg(result)).emit(masm);
                 break;
             case Double:
-                crb.asDoubleConstRef(input);
+                // before we load this from memory and do the complicated lookup,
+                // just load it directly into a scratch register
                 scratch = g5;
                 // First load the address into the scratch register
-                new Setx(0, scratch, true).emit(masm);
+                new Setx(Double.doubleToLongBits(input.asDouble()), scratch, true).emit(masm);
                 // Now load the float value
-                new Lddf(scratch, asDoubleReg(result)).emit(masm);
+                new Movxtod(scratch, asDoubleReg(result)).emit(masm);
                 break;
             case Object:
                 if (input.isNull()) {

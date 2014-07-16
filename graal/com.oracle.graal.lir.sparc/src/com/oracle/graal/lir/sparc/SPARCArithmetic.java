@@ -56,7 +56,7 @@ public enum SPARCArithmetic {
 
         @Opcode private final SPARCArithmetic opcode;
         @Def({REG}) protected AllocatableValue result;
-        @Use({REG, STACK}) protected AllocatableValue x;
+        @Use({REG}) protected AllocatableValue x;
 
         public Unary2Op(SPARCArithmetic opcode, AllocatableValue result, AllocatableValue x) {
             this.opcode = opcode;
@@ -158,13 +158,15 @@ public enum SPARCArithmetic {
         @Opcode private final SPARCArithmetic opcode;
         @Def({REG}) protected AllocatableValue result;
         @Use({REG}) protected AllocatableValue x;
+        @State protected LIRFrameState state;
         protected Constant y;
 
-        public BinaryRegConst(SPARCArithmetic opcode, AllocatableValue result, AllocatableValue x, Constant y) {
+        public BinaryRegConst(SPARCArithmetic opcode, AllocatableValue result, AllocatableValue x, Constant y, LIRFrameState state) {
             this.opcode = opcode;
             this.result = result;
             this.x = x;
             this.y = y;
+            this.state = state;
         }
 
         @Override
@@ -188,12 +190,18 @@ public enum SPARCArithmetic {
         @Def({REG, HINT}) protected AllocatableValue result;
         @Use({REG}) protected AllocatableValue x;
         @Use({REG}) protected AllocatableValue y;
+        @State protected LIRFrameState state;
 
         public BinaryCommutative(SPARCArithmetic opcode, AllocatableValue result, AllocatableValue x, AllocatableValue y) {
+            this(opcode, result, x, y, null);
+        }
+
+        public BinaryCommutative(SPARCArithmetic opcode, AllocatableValue result, AllocatableValue x, AllocatableValue y, LIRFrameState state) {
             this.opcode = opcode;
             this.result = result;
             this.x = x;
             this.y = y;
+            this.state = state;
         }
 
         @Override
@@ -274,15 +282,16 @@ public enum SPARCArithmetic {
             switch (opcode) {
                 case ISUB:
                     assert isSimm13(crb.asIntConst(src1));
-                    new Add(asIntReg(src2), -(crb.asIntConst(src1)), asIntReg(dst)).emit(masm);
+                    new Sub(SPARC.g0, asIntReg(src2), asIntReg(src2)).emit(masm);
+                    new Add(asIntReg(src2), crb.asIntConst(src1), asIntReg(dst)).emit(masm);
                     break;
                 case IAND:
                     throw GraalInternalError.unimplemented();
                 case IDIV:
-                    assert isSimm13(crb.asIntConst(src1));
-                    throw GraalInternalError.unimplemented();
-                    // new Sdivx(masm, asIntReg(src1), asIntReg(src2),
-                    // asIntReg(dst));
+                    new Setx(((PrimitiveConstant) src1).asInt(), asIntReg(dst), false).emit(masm);
+                    exceptionOffset = masm.position();
+                    new Sdivx(asIntReg(dst), asIntReg(src2), asIntReg(dst)).emit(masm);
+                    break;
                 case LDIV:
                     int c = crb.asIntConst(src1);
                     assert isSimm13(c);
@@ -297,7 +306,7 @@ public enum SPARCArithmetic {
                 default:
                     throw GraalInternalError.shouldNotReachHere();
             }
-        } else if (isConstant(src2)) {
+        } else if (!isConstant(src1) && isConstant(src2)) {
             switch (opcode) {
                 case IADD:
                     assert isSimm13(crb.asIntConst(src2));
@@ -313,7 +322,6 @@ public enum SPARCArithmetic {
                     break;
                 case IDIV:
                     assert isSimm13(crb.asIntConst(src2));
-                    new Signx(asIntReg(src1), asIntReg(src1)).emit(masm);
                     new Sdivx(asIntReg(src1), crb.asIntConst(src2), asIntReg(dst)).emit(masm);
                     break;
                 case IAND:
@@ -390,6 +398,11 @@ public enum SPARCArithmetic {
                     assert isSimm13(crb.asIntConst(src2));
                     new Srlx(asLongReg(src1), crb.asIntConst(src2), asLongReg(dst)).emit(masm);
                     break;
+                case DAND:
+                    SPARCAddress addr = (SPARCAddress) crb.recordDataReferenceInCode(asConstant(src2), 4);
+                    new Lddf(addr, asDoubleReg(dst)).emit(masm);
+                    new Fandd(asDoubleReg(src1), asDoubleReg(dst), asDoubleReg(dst)).emit(masm);
+                    break;
                 case FADD:
                 case FMUL:
                 case FDIV:
@@ -412,7 +425,7 @@ public enum SPARCArithmetic {
                     break;
                 case IDIV:
                     new Signx(asIntReg(src1), asIntReg(src1)).emit(masm);
-                    new Signx(asIntReg(src2), asIntReg(src2)).emit(masm);
+                    exceptionOffset = masm.position();
                     new Sdivx(asIntReg(src1), asIntReg(src2), asIntReg(dst)).emit(masm);
                     break;
                 case IAND:
@@ -589,7 +602,6 @@ public enum SPARCArithmetic {
         }
     }
 
-    @SuppressWarnings("unused")
     public static void emit(CompilationResultBuilder crb, SPARCAssembler masm, SPARCArithmetic opcode, Value dst, Value src, LIRFrameState info) {
         int exceptionOffset = -1;
         if (isRegister(src)) {
@@ -612,9 +624,9 @@ public enum SPARCArithmetic {
                 case L2D:
                     if (src.getPlatformKind() == Kind.Long) {
                         new Movxtod(asLongReg(src), asDoubleReg(dst)).emit(masm);
-                        new Fxtod(masm, asDoubleReg(dst), asDoubleReg(dst));
+                        new Fxtod(asDoubleReg(dst), asDoubleReg(dst)).emit(masm);
                     } else if (src.getPlatformKind() == Kind.Double) {
-                        new Fxtod(masm, asDoubleReg(src), asDoubleReg(dst));
+                        new Fxtod(asDoubleReg(src), asDoubleReg(dst)).emit(masm);
                     } else {
                         throw GraalInternalError.shouldNotReachHere("cannot handle source register " + src.getPlatformKind());
                     }
@@ -644,49 +656,49 @@ public enum SPARCArithmetic {
                 case I2F:
                     if (src.getPlatformKind() == Kind.Int) {
                         new Movwtos(asIntReg(src), asFloatReg(dst)).emit(masm);
-                        new Fitos(masm, asFloatReg(dst), asFloatReg(dst));
+                        new Fitos(asFloatReg(dst), asFloatReg(dst)).emit(masm);
                     } else if (src.getPlatformKind() == Kind.Float) {
-                        new Fitos(masm, asFloatReg(src), asFloatReg(dst));
+                        new Fitos(asFloatReg(src), asFloatReg(dst)).emit(masm);
                     } else {
                         throw GraalInternalError.shouldNotReachHere("cannot handle source register " + src.getPlatformKind());
                     }
                     break;
                 case F2D:
-                    new Fstod(masm, asFloatReg(src), asDoubleReg(dst));
+                    new Fstod(asFloatReg(src), asDoubleReg(dst)).emit(masm);
                     break;
                 case F2L:
                     new Fcmp(CC.Fcc0, Opfs.Fcmps, asFloatReg(dst), asFloatReg(dst)).emit(masm);
-                    new Fbfcc(masm, FCond.Fbo, false, 4);
-                    new Fstox(masm, asFloatReg(src), asFloatReg(dst));
-                    new Fitos(masm, asFloatReg(dst), asFloatReg(dst));
+                    new Fbe(false, 4).emit(masm);
+                    new Fstox(asFloatReg(src), asFloatReg(dst)).emit(masm);
+                    new Fitos(asFloatReg(dst), asFloatReg(dst)).emit(masm);
                     new Fsubs(asFloatReg(dst), asFloatReg(dst), asFloatReg(dst)).emit(masm);
                     break;
                 case F2I:
                     new Fcmp(CC.Fcc0, Opfs.Fcmps, asFloatReg(dst), asFloatReg(dst)).emit(masm);
-                    new Fbfcc(masm, FCond.Fbo, false, 4);
-                    new Fstoi(masm, asFloatReg(src), asFloatReg(dst));
-                    new Fitos(masm, asFloatReg(dst), asFloatReg(dst));
+                    new Fbo(false, 4).emit(masm);
+                    new Fstoi(asFloatReg(src), asFloatReg(dst)).emit(masm);
+                    new Fitos(asFloatReg(dst), asFloatReg(dst)).emit(masm);
                     new Fsubs(asFloatReg(dst), asFloatReg(dst), asFloatReg(dst)).emit(masm);
                     break;
                 case D2L:
                     new Fcmp(CC.Fcc0, Opfs.Fcmpd, asDoubleReg(dst), asDoubleReg(dst)).emit(masm);
-                    new Fbfcc(masm, FCond.Fbo, false, 4);
-                    new Fdtox(masm, asDoubleReg(src), asDoubleReg(dst));
-                    new Fxtod(masm, asDoubleReg(dst), asDoubleReg(dst));
+                    new Fbo(false, 4).emit(masm);
+                    new Fdtox(asDoubleReg(src), asDoubleReg(dst)).emit(masm);
+                    new Fxtod(asDoubleReg(dst), asDoubleReg(dst)).emit(masm);
                     new Fsubd(asDoubleReg(dst), asDoubleReg(dst), asDoubleReg(dst)).emit(masm);
                     break;
                 case D2I:
                     new Fcmp(CC.Fcc0, Opfs.Fcmpd, asDoubleReg(dst), asDoubleReg(dst)).emit(masm);
-                    new Fbfcc(masm, FCond.Fbo, false, 4);
-                    new Fdtoi(masm, asDoubleReg(src), asDoubleReg(dst));
-                    new Fitod(masm, asDoubleReg(dst), asDoubleReg(dst));
+                    new Fbo(false, 4).emit(masm);
+                    new Fdtoi(asDoubleReg(src), asDoubleReg(dst)).emit(masm);
+                    new Fitod(asDoubleReg(dst), asDoubleReg(dst)).emit(masm);
                     new Fsubd(asDoubleReg(dst), asDoubleReg(dst), asDoubleReg(dst)).emit(masm);
                     break;
                 case FNEG:
-                    new Fnegs(masm, asFloatReg(src), asFloatReg(dst));
+                    new Fnegs(asFloatReg(src), asFloatReg(dst)).emit(masm);
                     break;
                 case DNEG:
-                    new Fnegd(masm, asDoubleReg(src), asDoubleReg(dst));
+                    new Fnegd(asDoubleReg(src), asDoubleReg(dst)).emit(masm);
                     break;
                 default:
                     throw GraalInternalError.shouldNotReachHere("missing: " + opcode);
@@ -699,7 +711,7 @@ public enum SPARCArithmetic {
         } else {
             switch (opcode) {
                 default:
-                    throw GraalInternalError.shouldNotReachHere("missing: " + opcode);
+                    throw GraalInternalError.shouldNotReachHere("missing: " + opcode + " " + src);
             }
         }
 
@@ -764,6 +776,7 @@ public enum SPARCArithmetic {
                 yk = y.getKind();
                 assert rk == Kind.Float && xk == Kind.Float && yk == Kind.Float;
                 break;
+            case DAND:
             case DADD:
             case DSUB:
             case DMUL:

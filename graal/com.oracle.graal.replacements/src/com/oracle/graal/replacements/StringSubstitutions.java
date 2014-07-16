@@ -35,7 +35,7 @@ import edu.umd.cs.findbugs.annotations.*;
 /**
  * Substitutions for {@link java.lang.String} methods.
  */
-@ClassSubstitution(java.lang.String.class)
+@ClassSubstitution(value = java.lang.String.class, defaultGuard = UnsafeSubstitutions.GetAndSetGuard.class)
 public class StringSubstitutions {
 
     /**

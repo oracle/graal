@@ -33,7 +33,7 @@ import com.oracle.graal.replacements.nodes.MathIntrinsicNode.Operation;
 /**
  * Substitutions for {@link java.lang.Math} methods.
  */
-@ClassSubstitution(java.lang.Math.class)
+@ClassSubstitution(value = java.lang.Math.class, defaultGuard = UnsafeSubstitutions.GetAndSetGuard.class)
 public class MathSubstitutionsX86 {
 
     private static final double PI_4 = Math.PI / 4;

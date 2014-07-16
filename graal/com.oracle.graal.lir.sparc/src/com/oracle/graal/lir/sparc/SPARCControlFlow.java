@@ -30,26 +30,8 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Bpe;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Bpg;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Bpge;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Bpgu;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Bpl;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Bple;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Bpleu;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Bpne;
-import com.oracle.graal.asm.sparc.SPARCAssembler.CC;
-import com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag;
-import com.oracle.graal.asm.sparc.SPARCAssembler.FCond;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Fbfcc;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Movcc;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Sub;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Bpgeu;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Bplu;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Cmp;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Jmp;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Nop;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Ret;
+import com.oracle.graal.asm.sparc.SPARCAssembler.*;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.lir.*;
@@ -107,14 +89,49 @@ public class SPARCControlFlow {
                 actualTarget = trueDestination.label();
                 needJump = !crb.isSuccessorEdge(falseDestination);
             }
-            assert kind == Kind.Int || kind == Kind.Long || kind == Kind.Object;
-            CC cc = kind == Kind.Int ? CC.Icc : CC.Xcc;
-            emitCompare(masm, actualTarget, actualCondition, cc);
-            new Nop().emit(masm);  // delay slot
+            assert kind == Kind.Int || kind == Kind.Long || kind == Kind.Object || kind == Kind.Double || kind == Kind.Float : kind;
+            if (kind == Kind.Double || kind == Kind.Float) {
+                emitFloatCompare(masm, actualTarget, actualCondition);
+            } else {
+                CC cc = kind == Kind.Int ? CC.Icc : CC.Xcc;
+                emitCompare(masm, actualTarget, actualCondition, cc);
+                new Nop().emit(masm);  // delay slot
+            }
             if (needJump) {
                 masm.jmp(falseDestination.label());
             }
         }
+    }
+
+    private static void emitFloatCompare(SPARCMacroAssembler masm, Label target, Condition actualCondition) {
+        switch (actualCondition.mirror()) {
+            case EQ:
+                new Fbe(false, target).emit(masm);
+                break;
+            case NE:
+                new Fbne(false, target).emit(masm);
+                break;
+            case LT:
+                new Fbl(false, target).emit(masm);
+                break;
+            case LE:
+                new Fble(false, target).emit(masm);
+                break;
+            case GT:
+                new Fbg(false, target).emit(masm);
+                break;
+            case GE:
+                new Fbge(false, target).emit(masm);
+                break;
+            case AE:
+            case AT:
+            case BT:
+            case BE:
+                GraalInternalError.unimplemented("Should not be required for float/dobule");
+            default:
+                throw GraalInternalError.shouldNotReachHere();
+        }
+        new Nop().emit(masm);
     }
 
     private static void emitCompare(SPARCMacroAssembler masm, Label target, Condition actualCondition, CC cc) {
@@ -332,7 +349,6 @@ public class SPARCControlFlow {
         }
     }
 
-    @SuppressWarnings("unused")
     private static void cmove(CompilationResultBuilder crb, SPARCMacroAssembler masm, Kind kind, Value result, ConditionFlag cond, Value other) {
         if (!isRegister(other)) {
             SPARCMove.move(crb, masm, result, other);
@@ -349,34 +365,32 @@ public class SPARCControlFlow {
                 break;
             case Float:
             case Double:
-                FCond fc = null;
                 switch (cond) {
                     case Equal:
-                        fc = FCond.Fbne;
+                        new Fbne(true, 2 * 4).emit(masm);
                         break;
                     case Greater:
-                        fc = FCond.Fble;
+                        new Fble(true, 2 * 4).emit(masm);
                         break;
                     case GreaterEqual:
-                        fc = FCond.Fbl;
+                        new Fbl(true, 2 * 4).emit(masm);
                         break;
                     case Less:
-                        fc = FCond.Fbge;
+                        new Fbge(true, 2 * 4).emit(masm);
                         break;
                     case LessEqual:
-                        fc = FCond.Fbg;
+                        new Fbg(true, 2 * 4).emit(masm);
                         break;
                     case F_Ordered:
-                        fc = FCond.Fbo;
+                        new Fbo(true, 2 * 4).emit(masm);
                         break;
                     case F_Unordered:
-                        fc = FCond.Fbu;
+                        new Fbu(true, 2 * 4).emit(masm);
                         break;
                     default:
                         GraalInternalError.shouldNotReachHere("Unknown condition code " + cond);
                         break;
                 }
-                new Fbfcc(masm, fc, true, 2);
                 SPARCMove.move(crb, masm, result, other);
                 break;
             default:

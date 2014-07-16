@@ -30,6 +30,7 @@ import static com.oracle.graal.sparc.SPARC.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.sparc.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.HotSpotVMConfig.CompressEncoding;
@@ -39,10 +40,7 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.sparc.*;
-import com.oracle.graal.lir.sparc.SPARCMove.LoadOp;
-import com.oracle.graal.lir.sparc.SPARCMove.NullCheckOp;
-import com.oracle.graal.lir.sparc.SPARCMove.StoreConstantOp;
-import com.oracle.graal.lir.sparc.SPARCMove.StoreOp;
+import com.oracle.graal.lir.sparc.SPARCMove.*;
 
 public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSpotLIRGenerator {
 
@@ -189,14 +187,12 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
     }
 
     public Value emitCompareAndSwap(Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue) {
-        // TODO Auto-generated method stub
-        throw GraalInternalError.unimplemented();
-    }
-
-    @Override
-    public Value emitNot(Value input) {
-        GraalInternalError.shouldNotReachHere("binary negation not implemented");
-        return null;
+        LIRKind kind = newValue.getLIRKind();
+        assert kind.equals(expectedValue.getLIRKind());
+        Kind memKind = (Kind) kind.getPlatformKind();
+        SPARCAddressValue addressValue = asAddressValue(address);
+        append(new CompareAndSwapOp(asAllocatable(addressValue), asAllocatable(expectedValue), asAllocatable(newValue)));
+        return emitConditionalMove(memKind, expectedValue, newValue, Condition.EQ, true, trueValue, falseValue);
     }
 
     public StackSlot getDeoptimizationRescueSlot() {

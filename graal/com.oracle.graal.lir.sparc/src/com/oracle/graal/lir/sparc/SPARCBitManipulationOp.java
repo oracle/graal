@@ -36,7 +36,6 @@ import com.oracle.graal.asm.sparc.SPARCAssembler.Srl;
 import com.oracle.graal.asm.sparc.SPARCAssembler.Srlx;
 import com.oracle.graal.asm.sparc.SPARCAssembler.Sub;
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Mov;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
@@ -54,16 +53,14 @@ public class SPARCBitManipulationOp extends SPARCLIRInstruction {
 
     @Opcode private final IntrinsicOpcode opcode;
     @Def protected AllocatableValue result;
-    @Use({REG}) protected AllocatableValue input;
-    @Def({REG}) protected Value scratch;
+    @Alive({REG}) protected AllocatableValue input;
+    @Temp({REG}) protected Value scratch;
 
     public SPARCBitManipulationOp(IntrinsicOpcode opcode, AllocatableValue result, AllocatableValue input, LIRGeneratorTool gen) {
         this.opcode = opcode;
         this.result = result;
         this.input = input;
-        if (opcode == IntrinsicOpcode.IBSR || opcode == IntrinsicOpcode.LBSR) {
-            scratch = gen.newVariable(LIRKind.derive(input));
-        }
+        scratch = gen.newVariable(LIRKind.derive(input));
     }
 
     @Override
@@ -75,7 +72,7 @@ public class SPARCBitManipulationOp extends SPARCLIRInstruction {
                 case IPOPCNT:
                     // clear upper word for 64 bit POPC
                     new Srl(src, g0, dst).emit(masm);
-                    new Popc(src, dst).emit(masm);
+                    new Popc(dst, dst).emit(masm);
                     break;
                 case LPOPCNT:
                     new Popc(src, dst).emit(masm);
@@ -111,13 +108,12 @@ public class SPARCBitManipulationOp extends SPARCLIRInstruction {
                     new Srl(dst, 16, tmp).emit(masm);
                     new Or(dst, tmp, dst).emit(masm);
                     new Popc(dst, dst).emit(masm);
-                    new Mov(ikind.getBitCount(), tmp).emit(masm);
-                    new Sub(tmp, dst, dst).emit(masm);
+                    new Sub(dst, 1, dst).emit(masm);
                     break;
                 }
                 case LBSR: {
                     Kind lkind = input.getKind();
-                    assert lkind == Kind.Int;
+                    assert lkind == Kind.Long;
                     Register tmp = asRegister(scratch);
                     new Srlx(src, 1, tmp).emit(masm);
                     new Or(src, tmp, dst).emit(masm);
@@ -132,8 +128,7 @@ public class SPARCBitManipulationOp extends SPARCLIRInstruction {
                     new Srlx(dst, 32, tmp).emit(masm);
                     new Or(dst, tmp, dst).emit(masm);
                     new Popc(dst, dst).emit(masm);
-                    new Mov(lkind.getBitCount(), tmp).emit(masm);
-                    new Sub(tmp, dst, dst).emit(masm);
+                    new Sub(dst, 1, dst).emit(masm); // This is required to fit the given structure.
                     break;
                 }
                 default:

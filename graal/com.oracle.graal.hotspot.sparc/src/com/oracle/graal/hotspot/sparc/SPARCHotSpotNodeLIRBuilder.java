@@ -30,6 +30,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.sparc.*;
+import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
@@ -137,6 +138,15 @@ public class SPARCHotSpotNodeLIRBuilder extends SPARCNodeLIRBuilder implements H
     public void emitPrefetchAllocate(ValueNode address, ValueNode distance) {
         SPARCAddressValue addr = getGen().emitAddress(operand(address), 0, getGen().loadNonConst(operand(distance)), 1);
         append(new SPARCPrefetchOp(addr, getGen().config.allocatePrefetchInstr));
+    }
+
+    @Override
+    public void visitInfopointNode(InfopointNode i) {
+        if (i.getState() != null && i.getState().bci == BytecodeFrame.AFTER_BCI) {
+            Debug.log("Ignoring InfopointNode for AFTER_BCI");
+        } else {
+            super.visitInfopointNode(i);
+        }
     }
 
 }

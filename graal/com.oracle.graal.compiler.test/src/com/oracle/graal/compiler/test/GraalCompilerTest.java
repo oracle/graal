@@ -743,4 +743,15 @@ public abstract class GraalCompilerTest extends GraalTest {
     protected static boolean iterationCount(double i, boolean cond) {
         return cond;
     }
+
+    /**
+     * Test if the current test runs on the given platform. The name must match the name given in
+     * the {@link Architecture#getName()}.
+     *
+     * @param name The name to test
+     * @return true if we run on the architecture given by name
+     */
+    protected boolean isArchitecture(String name) {
+        return name.equals(backend.getTarget().arch.getName());
+    }
 }
