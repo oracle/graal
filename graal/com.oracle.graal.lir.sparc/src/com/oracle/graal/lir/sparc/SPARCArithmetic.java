@@ -425,6 +425,7 @@ public enum SPARCArithmetic {
                     break;
                 case IDIV:
                     new Signx(asIntReg(src1), asIntReg(src1)).emit(masm);
+                    new Signx(asIntReg(src2), asIntReg(src2)).emit(masm);
                     exceptionOffset = masm.position();
                     new Sdivx(asIntReg(src1), asIntReg(src2), asIntReg(dst)).emit(masm);
                     break;
@@ -668,28 +669,28 @@ public enum SPARCArithmetic {
                     break;
                 case F2L:
                     new Fcmp(CC.Fcc0, Opfs.Fcmps, asFloatReg(dst), asFloatReg(dst)).emit(masm);
-                    new Fbe(false, 4).emit(masm);
+                    new Fbe(false, 4 * 4).emit(masm);
                     new Fstox(asFloatReg(src), asFloatReg(dst)).emit(masm);
                     new Fitos(asFloatReg(dst), asFloatReg(dst)).emit(masm);
                     new Fsubs(asFloatReg(dst), asFloatReg(dst), asFloatReg(dst)).emit(masm);
                     break;
                 case F2I:
                     new Fcmp(CC.Fcc0, Opfs.Fcmps, asFloatReg(dst), asFloatReg(dst)).emit(masm);
-                    new Fbo(false, 4).emit(masm);
+                    new Fbo(false, 4 * 4).emit(masm);
                     new Fstoi(asFloatReg(src), asFloatReg(dst)).emit(masm);
                     new Fitos(asFloatReg(dst), asFloatReg(dst)).emit(masm);
                     new Fsubs(asFloatReg(dst), asFloatReg(dst), asFloatReg(dst)).emit(masm);
                     break;
                 case D2L:
                     new Fcmp(CC.Fcc0, Opfs.Fcmpd, asDoubleReg(dst), asDoubleReg(dst)).emit(masm);
-                    new Fbo(false, 4).emit(masm);
+                    new Fbo(false, 4 * 4).emit(masm);
                     new Fdtox(asDoubleReg(src), asDoubleReg(dst)).emit(masm);
                     new Fxtod(asDoubleReg(dst), asDoubleReg(dst)).emit(masm);
                     new Fsubd(asDoubleReg(dst), asDoubleReg(dst), asDoubleReg(dst)).emit(masm);
                     break;
                 case D2I:
                     new Fcmp(CC.Fcc0, Opfs.Fcmpd, asDoubleReg(dst), asDoubleReg(dst)).emit(masm);
-                    new Fbo(false, 4).emit(masm);
+                    new Fbo(false, 4 * 4).emit(masm);
                     new Fdtoi(asDoubleReg(src), asDoubleReg(dst)).emit(masm);
                     new Fitod(asDoubleReg(dst), asDoubleReg(dst)).emit(masm);
                     new Fsubd(asDoubleReg(dst), asDoubleReg(dst), asDoubleReg(dst)).emit(masm);
