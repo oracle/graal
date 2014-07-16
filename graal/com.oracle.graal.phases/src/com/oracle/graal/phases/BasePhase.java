@@ -112,7 +112,8 @@ public abstract class BasePhase<C> {
     }
 
     protected CharSequence createName() {
-        String s = BasePhase.this.getClass().getSimpleName();
+        String className = BasePhase.this.getClass().getName();
+        String s = className.substring(className.lastIndexOf(".") + 1); // strip the package name
         if (s.endsWith("Phase")) {
             s = s.substring(0, s.length() - "Phase".length());
         }
