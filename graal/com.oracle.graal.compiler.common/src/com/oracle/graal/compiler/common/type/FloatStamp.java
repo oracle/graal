@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.compiler.common.type;
 
+import java.util.function.*;
+
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.spi.*;
@@ -134,6 +136,16 @@ public class FloatStamp extends PrimitiveStamp {
         return str.toString();
     }
 
+    private static double meetBounds(double a, double b, DoubleBinaryOperator op) {
+        if (Double.isNaN(a)) {
+            return b;
+        } else if (Double.isNaN(b)) {
+            return a;
+        } else {
+            return op.applyAsDouble(a, b);
+        }
+    }
+
     @Override
     public Stamp meet(Stamp otherStamp) {
         if (otherStamp == this) {
@@ -144,8 +156,8 @@ public class FloatStamp extends PrimitiveStamp {
         }
         FloatStamp other = (FloatStamp) otherStamp;
         assert getBits() == other.getBits();
-        double meetUpperBound = Math.max(upperBound, other.upperBound);
-        double meetLowerBound = Math.min(lowerBound, other.lowerBound);
+        double meetUpperBound = meetBounds(upperBound, other.upperBound, Math::max);
+        double meetLowerBound = meetBounds(lowerBound, other.lowerBound, Math::min);
         boolean meetNonNaN = nonNaN && other.nonNaN;
         if (meetLowerBound == lowerBound && meetUpperBound == upperBound && meetNonNaN == nonNaN) {
             return this;
