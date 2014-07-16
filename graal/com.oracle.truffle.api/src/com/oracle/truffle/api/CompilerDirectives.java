@@ -65,6 +65,9 @@ public final class CompilerDirectives {
      * insert a transfer to the interpreter.
      */
     public static void transferToInterpreter() {
+        if (inInterpreter()) {
+            Truffle.getRuntime().notifyTransferToInterpreter();
+        }
     }
 
     /**
@@ -72,6 +75,9 @@ public final class CompilerDirectives {
      * insert a transfer to the interpreter, invalidating the currently executing machine code.
      */
     public static void transferToInterpreterAndInvalidate() {
+        if (inInterpreter()) {
+            Truffle.getRuntime().notifyTransferToInterpreter();
+        }
     }
 
     /**

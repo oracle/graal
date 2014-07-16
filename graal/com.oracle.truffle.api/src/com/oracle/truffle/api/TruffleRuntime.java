@@ -131,4 +131,8 @@ public interface TruffleRuntime {
      */
     FrameInstance getCurrentFrame();
 
+    /**
+     * Internal API method. Do not use.
+     */
+    void notifyTransferToInterpreter();
 }

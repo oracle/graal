@@ -135,4 +135,7 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
     public FrameInstance getCurrentFrame() {
         return currentFrames.get();
     }
+
+    public void notifyTransferToInterpreter() {
+    }
 }
