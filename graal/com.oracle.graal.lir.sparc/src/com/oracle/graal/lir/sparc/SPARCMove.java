@@ -422,7 +422,7 @@ public class SPARCMove {
                         new Fmovs(src, dst).emit(masm);
                         break;
                     case Double:
-                        new Fstod(masm, src, dst);
+                        new Fstod(src, dst).emit(masm);
                         break;
                     default:
                         throw GraalInternalError.shouldNotReachHere();
