@@ -24,6 +24,8 @@ package com.oracle.graal.lir.sparc;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.*;
+import static com.oracle.graal.sparc.SPARC.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
@@ -32,6 +34,7 @@ import com.oracle.graal.asm.sparc.SPARCAssembler.Ldx;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Cmp;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.sparc.*;
 
 public class SPARCTestOp extends SPARCLIRInstruction {
 
@@ -48,10 +51,10 @@ public class SPARCTestOp extends SPARCLIRInstruction {
         if (isRegister(y)) {
             switch (x.getKind()) {
                 case Int:
-                    new Cmp(asIntReg(x), asIntReg(y)).emit(masm);
+                    new Andcc(asIntReg(x), asIntReg(y), g0).emit(masm);
                     break;
                 case Long:
-                    new Cmp(asLongReg(x), asLongReg(y)).emit(masm);
+                    new Andcc(asLongReg(x), asLongReg(y), g0).emit(masm);
                     break;
                 default:
                     throw GraalInternalError.shouldNotReachHere();
@@ -59,10 +62,10 @@ public class SPARCTestOp extends SPARCLIRInstruction {
         } else if (isConstant(y)) {
             switch (x.getKind()) {
                 case Int:
-                    new Cmp(asIntReg(x), crb.asIntConst(y)).emit(masm);
+                    new Andcc(asIntReg(x), crb.asIntConst(y), g0).emit(masm);
                     break;
                 case Long:
-                    new Cmp(asLongReg(x), crb.asIntConst(y)).emit(masm);
+                    new Andcc(asLongReg(x), crb.asIntConst(y), g0).emit(masm);
                     break;
                 default:
                     throw GraalInternalError.shouldNotReachHere();
@@ -71,11 +74,11 @@ public class SPARCTestOp extends SPARCLIRInstruction {
             switch (x.getKind()) {
                 case Int:
                     new Ldsw((SPARCAddress) crb.asIntAddr(y), asIntReg(y)).emit(masm);
-                    new Cmp(asIntReg(x), asIntReg(y)).emit(masm);
+                    new Andcc(asIntReg(x), asIntReg(y), g0).emit(masm);
                     break;
                 case Long:
                     new Ldx((SPARCAddress) crb.asLongAddr(y), asLongReg(y)).emit(masm);
-                    new Cmp(asLongReg(x), asLongReg(y)).emit(masm);
+                    new Andcc(asLongReg(x), asLongReg(y), g0).emit(masm);
                     break;
                 default:
                     throw GraalInternalError.shouldNotReachHere();

@@ -110,7 +110,11 @@ public class SPARCHotSpotRegisterConfig implements RegisterConfig {
             // @formatter:off
             registers = new Register[]{
                         // TODO this is not complete
-                        o0, o1, o2, o3, o4, o5, /*o6,*/ o7,
+                        // o7 cannot be used as register because it is always overwritten on call
+                        // and the current register handler would ignore this fact if the called
+                        // method still does not modify registers, in fact o7 is modified by the Call instruction
+                        // There would be some extra handlin necessary to be able to handle the o7 properly for local usage
+                        o0, o1, o2, o3, o4, o5, /*o6, o7,*/
                         l0, l1, l2, l3, l4, l5, l6, l7,
                         i0, i1, i2, i3, i4, i5, /*i6,*/ /*i7,*/
                         f0, f1, f2, f3, f4, f5, f6, f7
@@ -120,7 +124,7 @@ public class SPARCHotSpotRegisterConfig implements RegisterConfig {
             // @formatter:off
             registers = new Register[]{
                         // TODO this is not complete
-                        o0, o1, o2, o3, o4, o5, /*o6,*/ o7,
+                        o0, o1, o2, o3, o4, o5, /*o6, o7,*/
                         l0, l1, l2, l3, l4, l5, l6, l7,
                         i0, i1, i2, i3, i4, i5, /*i6,*/ /*i7,*/
                         f0, f1, f2, f3, f4, f5, f6, f7

@@ -230,10 +230,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
             case Object:
                 append(new BranchOp(finalCondition, trueDestination, falseDestination, kind));
                 break;
-            // case Float:
-            // append(new CompareOp(FCMP, x, y));
-            // append(new BranchOp(condition, label));
-            // break;
+            case Float:
             case Double:
                 append(new BranchOp(cond, trueDestination, falseDestination, kind));
                 break;
@@ -294,7 +291,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
      * @param b the right operand of the comparison
      * @return true if the left and right operands were switched, false otherwise
      */
-    private boolean emitCompare(Value a, Value b) {
+    protected boolean emitCompare(Value a, Value b) {
         Variable left;
         Value right;
         boolean mirrored;

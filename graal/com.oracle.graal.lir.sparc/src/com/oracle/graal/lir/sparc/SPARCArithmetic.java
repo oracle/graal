@@ -56,7 +56,7 @@ public enum SPARCArithmetic {
 
         @Opcode private final SPARCArithmetic opcode;
         @Def({REG}) protected AllocatableValue result;
-        @Use({REG, STACK}) protected AllocatableValue x;
+        @Use({REG}) protected AllocatableValue x;
 
         public Unary2Op(SPARCArithmetic opcode, AllocatableValue result, AllocatableValue x) {
             this.opcode = opcode;
@@ -425,7 +425,7 @@ public enum SPARCArithmetic {
                     break;
                 case IDIV:
                     new Signx(asIntReg(src1), asIntReg(src1)).emit(masm);
-                    new Signx(asIntReg(src2), asIntReg(src2)).emit(masm);
+                    exceptionOffset = masm.position();
                     new Sdivx(asIntReg(src1), asIntReg(src2), asIntReg(dst)).emit(masm);
                     break;
                 case IAND:
@@ -712,7 +712,7 @@ public enum SPARCArithmetic {
         } else {
             switch (opcode) {
                 default:
-                    throw GraalInternalError.shouldNotReachHere("missing: " + opcode);
+                    throw GraalInternalError.shouldNotReachHere("missing: " + opcode + " " + src);
             }
         }
 
