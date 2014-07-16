@@ -82,7 +82,8 @@ public final class FloatingReadNode extends FloatingAccessNode implements Iterab
     @Override
     public boolean verify() {
         MemoryNode lla = getLastLocationAccess();
-        assert lla == null || lla.asMemoryCheckpoint() != null || lla.asMemoryPhi() != null : "lastLocationAccess of " + this + " should be a MemoryCheckpoint, but is " + lla;
+        assert lla == null || lla instanceof MemoryCheckpoint || lla instanceof MemoryProxy || lla instanceof MemoryPhiNode : "lastLocationAccess of " + this +
+                        " should be a MemoryCheckpoint, but is " + lla;
         return super.verify();
     }
 }

@@ -157,10 +157,15 @@ public class GraphUtil {
                 killWithUnusedFloatingInputs(stateAfter);
             }
         }
+        unlinkFixedNode(fixed);
+        killWithUnusedFloatingInputs(fixed);
+    }
+
+    public static void unlinkFixedNode(FixedWithNextNode fixed) {
+        assert fixed.next() != null && fixed.predecessor() != null && fixed.isAlive();
         FixedNode next = fixed.next();
         fixed.setNext(null);
         fixed.replaceAtPredecessor(next);
-        killWithUnusedFloatingInputs(fixed);
     }
 
     public static void checkRedundantPhi(PhiNode phiNode) {
@@ -169,7 +174,7 @@ public class GraphUtil {
         }
 
         ValueNode singleValue = phiNode.singleValue();
-        if (singleValue != null) {
+        if (singleValue != PhiNode.NO_VALUE) {
             Collection<PhiNode> phiUsages = phiNode.usages().filter(PhiNode.class).snapshot();
             Collection<ProxyNode> proxyUsages = phiNode.usages().filter(ProxyNode.class).snapshot();
             phiNode.graph().replaceFloating(phiNode, singleValue);
@@ -338,6 +343,9 @@ public class GraphUtil {
                 v = ((ValueProxy) v).getOriginalNode();
             } else if (v instanceof PhiNode) {
                 v = ((PhiNode) v).singleValue();
+                if (v == PhiNode.NO_VALUE) {
+                    v = null;
+                }
             } else {
                 break;
             }

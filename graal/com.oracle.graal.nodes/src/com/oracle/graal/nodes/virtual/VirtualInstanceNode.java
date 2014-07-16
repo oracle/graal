@@ -63,7 +63,7 @@ public class VirtualInstanceNode extends VirtualObjectNode {
     @Override
     public String toString(Verbosity verbosity) {
         if (verbosity == Verbosity.Name) {
-            return super.toString(Verbosity.Name) + " " + MetaUtil.toJavaName(type, false);
+            return super.toString(Verbosity.Name) + " " + type.toJavaName(false);
         } else {
             return super.toString(verbosity);
         }

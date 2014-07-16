@@ -36,12 +36,4 @@ public class StartNode extends BeginStateSplitNode implements MemoryCheckpoint.S
     public LocationIdentity getLocationIdentity() {
         return LocationIdentity.ANY_LOCATION;
     }
-
-    public MemoryCheckpoint asMemoryCheckpoint() {
-        return this;
-    }
-
-    public MemoryPhiNode asMemoryPhi() {
-        return null;
-    }
 }

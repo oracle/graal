@@ -27,6 +27,7 @@ import static com.oracle.graal.graph.util.CollectionsAccess.*;
 import java.util.*;
 
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.Virtualizable.EscapeState;
 import com.oracle.graal.nodes.virtual.*;
@@ -75,7 +76,42 @@ public abstract class PartialEscapeBlockState<T extends PartialEscapeBlockState<
         List<ValueNode> otherAllocations = new ArrayList<>(2);
         materializeWithCommit(fixed, virtual, objects, locks, values, otherAllocations, state);
 
-        materializeEffects.addMaterializationBefore(fixed, objects, locks, values, otherAllocations);
+        materializeEffects.add("materializeBefore", (graph, obsoleteNodes) -> {
+            for (ValueNode otherAllocation : otherAllocations) {
+                graph.addWithoutUnique(otherAllocation);
+                if (otherAllocation instanceof FixedWithNextNode) {
+                    graph.addBeforeFixed(fixed, (FixedWithNextNode) otherAllocation);
+                } else {
+                    assert otherAllocation instanceof FloatingNode;
+                }
+            }
+            if (!objects.isEmpty()) {
+                CommitAllocationNode commit;
+                if (fixed.predecessor() instanceof CommitAllocationNode) {
+                    commit = (CommitAllocationNode) fixed.predecessor();
+                } else {
+                    commit = graph.add(new CommitAllocationNode());
+                    graph.addBeforeFixed(fixed, commit);
+                }
+                for (AllocatedObjectNode obj : objects) {
+                    graph.addWithoutUnique(obj);
+                    commit.getVirtualObjects().add(obj.getVirtualObject());
+                    obj.setCommit(commit);
+                }
+                commit.getValues().addAll(values);
+                for (List<MonitorIdNode> monitorIds : locks) {
+                    commit.addLocks(monitorIds);
+                }
+
+                assert commit.usages().filter(AllocatedObjectNode.class).count() == commit.usages().count();
+                List<AllocatedObjectNode> materializedValues = commit.usages().filter(AllocatedObjectNode.class).snapshot();
+                for (int i = 0; i < commit.getValues().size(); i++) {
+                    if (materializedValues.contains(commit.getValues().get(i))) {
+                        commit.getValues().set(i, ((AllocatedObjectNode) commit.getValues().get(i)).getVirtualObject());
+                    }
+                }
+            }
+        });
     }
 
     private void materializeWithCommit(FixedNode fixed, VirtualObjectNode virtual, List<AllocatedObjectNode> objects, List<List<MonitorIdNode>> locks, List<ValueNode> values,

@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.api.code;
 
-import static com.oracle.graal.api.meta.MetaUtil.*;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
@@ -153,6 +152,6 @@ public class TypeCheckHints {
      * @return true if {@code type} can have subtypes
      */
     public static boolean canHaveSubtype(ResolvedJavaType type) {
-        return !getElementalType(type).isFinal();
+        return !type.getElementalType().isFinal();
     }
 }

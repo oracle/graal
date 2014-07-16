@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,25 +20,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.cfg;
+package com.oracle.graal.compiler.common.cfg;
 
 import java.util.*;
 
-import com.oracle.graal.compiler.common.cfg.*;
-
 public class CFGVerifier {
 
-    public static boolean verify(ControlFlowGraph cfg) {
-        for (Block block : cfg.getBlocks()) {
+    public static <T extends AbstractBlock<T>, C extends AbstractControlFlowGraph<T>> boolean verify(C cfg) {
+        for (T block : cfg.getBlocks()) {
             assert block.getId() >= 0;
             assert cfg.getBlocks().get(block.getId()) == block;
 
-            for (Block pred : block.getPredecessors()) {
+            for (T pred : block.getPredecessors()) {
                 assert pred.getSuccessors().contains(block);
                 assert pred.getId() < block.getId() || pred.isLoopEnd();
             }
 
-            for (Block sux : block.getSuccessors()) {
+            for (T sux : block.getSuccessors()) {
                 assert sux.getPredecessors().contains(block);
                 assert sux.getId() > block.getId() || sux.isLoopHeader();
             }
@@ -47,33 +45,33 @@ public class CFGVerifier {
                 assert block.getDominator().getId() < block.getId();
                 assert block.getDominator().getDominated().contains(block);
             }
-            for (Block dominated : block.getDominated()) {
+            for (T dominated : block.getDominated()) {
                 assert dominated.getId() > block.getId();
                 assert dominated.getDominator() == block;
             }
 
-            Block postDominatorBlock = block.getPostdominator();
+            T postDominatorBlock = block.getPostdominator();
             if (postDominatorBlock != null) {
                 assert block.getSuccessorCount() > 0 : "block has post-dominator block, but no successors";
 
                 BlockMap<Boolean> visitedBlocks = new BlockMap<>(cfg);
                 visitedBlocks.put(block, true);
 
-                Deque<Block> stack = new ArrayDeque<>();
-                for (Block sux : block.getSuccessors()) {
+                Deque<T> stack = new ArrayDeque<>();
+                for (T sux : block.getSuccessors()) {
                     visitedBlocks.put(sux, true);
                     stack.push(sux);
                 }
 
                 while (stack.size() > 0) {
-                    Block tos = stack.pop();
+                    T tos = stack.pop();
                     assert tos.getId() <= postDominatorBlock.getId();
                     if (tos == postDominatorBlock) {
                         continue; // found a valid path
                     }
                     assert tos.getSuccessorCount() > 0 : "no path found";
 
-                    for (Block sux : tos.getSuccessors()) {
+                    for (T sux : tos.getSuccessors()) {
                         if (visitedBlocks.get(sux) == null) {
                             visitedBlocks.put(sux, true);
                             stack.push(sux);
@@ -82,14 +80,14 @@ public class CFGVerifier {
                 }
             }
 
-            assert cfg.getLoops() == null || !block.isLoopHeader() || block.getLoop().getHeader() == block : block.beginNode;
+            assert cfg.getLoops() == null || !block.isLoopHeader() || block.getLoop().getHeader() == block;
         }
 
         if (cfg.getLoops() != null) {
-            for (Loop<Block> loop : cfg.getLoops()) {
+            for (Loop<T> loop : cfg.getLoops()) {
                 assert loop.getHeader().isLoopHeader();
 
-                for (Block block : loop.getBlocks()) {
+                for (T block : loop.getBlocks()) {
                     assert block.getId() >= loop.getHeader().getId();
 
                     Loop<?> blockLoop = block.getLoop();
@@ -99,7 +97,7 @@ public class CFGVerifier {
                     }
 
                     if (!(block.isLoopHeader() && block.getLoop() == loop)) {
-                        for (Block pred : block.getPredecessors()) {
+                        for (T pred : block.getPredecessors()) {
                             if (!loop.getBlocks().contains(pred)) {
                                 assert false : "Loop " + loop + " does not contain " + pred;
                                 return false;
@@ -108,7 +106,7 @@ public class CFGVerifier {
                     }
                 }
 
-                for (Block block : loop.getExits()) {
+                for (T block : loop.getExits()) {
                     assert block.getId() >= loop.getHeader().getId();
 
                     Loop<?> blockLoop = block.getLoop();

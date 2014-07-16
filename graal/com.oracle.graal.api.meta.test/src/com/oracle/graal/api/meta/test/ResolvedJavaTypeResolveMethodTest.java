@@ -156,7 +156,7 @@ public class ResolvedJavaTypeResolveMethodTest {
 
     }
 
-    private static ResolvedJavaMethod getMethod(ResolvedJavaType type, String methodName) {
+    static ResolvedJavaMethod getMethod(ResolvedJavaType type, String methodName) {
         for (ResolvedJavaMethod method : type.getDeclaredMethods()) {
             if (method.getName().equals(methodName)) {
                 return method;

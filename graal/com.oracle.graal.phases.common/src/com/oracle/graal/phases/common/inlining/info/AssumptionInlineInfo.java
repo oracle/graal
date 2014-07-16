@@ -26,7 +26,6 @@ import java.util.*;
 
 import com.oracle.graal.api.code.Assumptions;
 import com.oracle.graal.api.meta.MetaAccessProvider;
-import com.oracle.graal.api.meta.MetaUtil;
 import com.oracle.graal.api.meta.ResolvedJavaMethod;
 import com.oracle.graal.nodes.Invoke;
 import com.oracle.graal.phases.common.inlining.InliningUtil;
@@ -62,6 +61,6 @@ public class AssumptionInlineInfo extends ExactInlineInfo {
 
     @Override
     public String toString() {
-        return "assumption " + MetaUtil.format("%H.%n(%p):%r", concrete);
+        return "assumption " + concrete.format("%H.%n(%p):%r");
     }
 }

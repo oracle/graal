@@ -141,6 +141,14 @@ public interface ResolvedJavaType extends JavaType, ModifiersProvider {
     boolean isAssignableFrom(ResolvedJavaType other);
 
     /**
+     * Returns true if this type is exactly the type {@link java.lang.Object}.
+     */
+    default boolean isJavaLangObject() {
+        // Removed assertion due to https://bugs.eclipse.org/bugs/show_bug.cgi?id=434442
+        return getSuperclass() == null && !isInterface() && getKind() == Kind.Object;
+    }
+
+    /**
      * Checks whether the specified object is an instance of this type.
      *
      * @param obj the object to test
@@ -183,8 +191,8 @@ public interface ResolvedJavaType extends JavaType, ModifiersProvider {
      * Attempts to get a unique concrete subclass of this type.
      * <p>
      * For an {@linkplain #isArray() array} type A, the unique concrete subclass is A if the
-     * {@linkplain MetaUtil#getElementalType(ResolvedJavaType) elemental} type of A is final (which
-     * includes primitive types). Otherwise {@code null} is returned for A.
+     * {@linkplain #getElementalType() elemental} type of A is final (which includes primitive
+     * types). Otherwise {@code null} is returned for A.
      * <p>
      * For a non-array type T, the result is the unique concrete type in the current hierarchy of T.
      * <p>
@@ -201,6 +209,14 @@ public interface ResolvedJavaType extends JavaType, ModifiersProvider {
     ResolvedJavaType findUniqueConcreteSubtype();
 
     ResolvedJavaType getComponentType();
+
+    default ResolvedJavaType getElementalType() {
+        ResolvedJavaType t = this;
+        while (t.isArray()) {
+            t = t.getComponentType();
+        }
+        return t;
+    }
 
     ResolvedJavaType getArrayClass();
 

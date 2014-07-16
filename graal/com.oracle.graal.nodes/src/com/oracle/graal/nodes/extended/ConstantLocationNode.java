@@ -73,4 +73,9 @@ public final class ConstantLocationNode extends LocationNode {
     public Value generateAddress(NodeMappableLIRBuilder builder, LIRGeneratorTool gen, Value base) {
         return gen.emitAddress(base, getDisplacement(), Value.ILLEGAL, 0);
     }
+
+    @Override
+    public IntegerStamp getDisplacementStamp() {
+        return StampFactory.forInteger(64, displacement, displacement);
+    }
 }

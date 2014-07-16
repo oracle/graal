@@ -120,13 +120,15 @@ public class PEReadEliminationClosure extends PartialEscapeClosure<PEReadElimina
     protected void processLoopExit(LoopExitNode exitNode, PEReadEliminationBlockState initialState, PEReadEliminationBlockState exitState, GraphEffectList effects) {
         super.processLoopExit(exitNode, initialState, exitState, effects);
 
-        for (Map.Entry<ReadCacheEntry, ValueNode> entry : exitState.getReadCache().entrySet()) {
-            if (initialState.getReadCache().get(entry.getKey()) != entry.getValue()) {
-                ValueNode value = exitState.getReadCache(entry.getKey().object, entry.getKey().identity, this);
-                if (!(value instanceof ProxyNode) || ((ProxyNode) value).proxyPoint() != exitNode) {
-                    ProxyNode proxy = new ValueProxyNode(value, exitNode);
-                    effects.addFloatingNode(proxy, "readCacheProxy");
-                    entry.setValue(proxy);
+        if (exitNode.graph().hasValueProxies()) {
+            for (Map.Entry<ReadCacheEntry, ValueNode> entry : exitState.getReadCache().entrySet()) {
+                if (initialState.getReadCache().get(entry.getKey()) != entry.getValue()) {
+                    ValueNode value = exitState.getReadCache(entry.getKey().object, entry.getKey().identity, this);
+                    if (!(value instanceof ProxyNode) || ((ProxyNode) value).proxyPoint() != exitNode) {
+                        ProxyNode proxy = new ValueProxyNode(value, exitNode);
+                        effects.addFloatingNode(proxy, "readCacheProxy");
+                        entry.setValue(proxy);
+                    }
                 }
             }
         }

@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.nodes;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node.ValueNumberable;
@@ -55,10 +54,6 @@ public abstract class ProxyNode extends FloatingNode implements IterableNodeType
         assert proxyPoint != null;
         assert !(value() instanceof ProxyNode) || ((ProxyNode) value()).proxyPoint != proxyPoint;
         return super.verify();
-    }
-
-    public static MemoryProxyNode forMemory(MemoryNode value, BeginNode exit, LocationIdentity location, StructuredGraph graph) {
-        return graph.unique(new MemoryProxyNode(value, exit, location));
     }
 
     public static ValueProxyNode forValue(ValueNode value, BeginNode exit, StructuredGraph graph) {

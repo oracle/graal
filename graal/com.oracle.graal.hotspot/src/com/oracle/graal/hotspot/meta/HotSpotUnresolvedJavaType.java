@@ -35,13 +35,13 @@ public class HotSpotUnresolvedJavaType extends HotSpotJavaType {
 
     public HotSpotUnresolvedJavaType(String name) {
         super(name);
+        assert name.charAt(0) == '[' || name.charAt(name.length() - 1) == ';' : name;
     }
 
     /**
      * Creates an unresolved type for a valid {@link JavaType#getName() type name}.
      */
     public static HotSpotUnresolvedJavaType create(String name) {
-        assert name.charAt(name.length() - 1) == ';' : name;
         return new HotSpotUnresolvedJavaType(name);
     }
 

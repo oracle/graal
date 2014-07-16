@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.phases.common.inlining.walker;
 
-import com.oracle.graal.api.meta.MetaUtil;
 import com.oracle.graal.api.meta.ResolvedJavaMethod;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.graph.FixedNodeProbabilityCache;
@@ -209,6 +208,6 @@ public final class CallsiteHolderExplorable extends CallsiteHolder {
 
     @Override
     public String toString() {
-        return (graph != null ? MetaUtil.format("%H.%n(%p)", method()) : "<null method>") + remainingInvokes;
+        return (graph != null ? method().format("%H.%n(%p)") : "<null method>") + remainingInvokes;
     }
 }

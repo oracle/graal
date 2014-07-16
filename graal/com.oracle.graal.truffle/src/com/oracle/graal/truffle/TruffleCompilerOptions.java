@@ -91,6 +91,8 @@ public class TruffleCompilerOptions {
     public static final OptionValue<Boolean> TruffleCompilationDecisionTimePrintFail = new OptionValue<>(false);
     @Option(help = "")
     public static final OptionValue<Boolean> TruffleReturnTypeSpeculation = new OptionValue<>(true);
+    @Option(help = "")
+    public static final OptionValue<Boolean> TruffleArgumentTypeSpeculation = new StableOptionValue<>(true);
 
     // tracing
     @Option(help = "")

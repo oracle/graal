@@ -43,6 +43,6 @@ public class IndirectCallTargetNode extends LoweredCallTargetNode {
 
     @Override
     public String targetName() {
-        return MetaUtil.format("Indirect#%h.%n", target());
+        return target().format("Indirect#%h.%n");
     }
 }

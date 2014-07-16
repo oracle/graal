@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.hotspot.meta;
 
-import static com.oracle.graal.api.meta.MetaUtil.*;
 import static com.oracle.graal.debug.Debug.*;
 import static java.util.FormattableFlags.*;
 
@@ -56,7 +55,7 @@ public abstract class HotSpotMethod extends CompilerObject implements JavaMethod
         char h = FULLY_QUALIFIED_METHOD_NAME ? 'H' : 'h';
         String suffix = this instanceof ResolvedJavaMethod ? "" : ", unresolved";
         String fmt = String.format("HotSpotMethod<%%%c.%%n(%%p)%s>", h, suffix);
-        return format(fmt, this);
+        return format(fmt);
     }
 
     public void formatTo(Formatter formatter, int flags, int width, int precision) {

@@ -186,7 +186,7 @@ class CFGPrinter extends CompilationPrinter {
         if (!inFixedSchedule(input)) {
             Block inputBlock = block;
             if (latestScheduling.get(input) != null) {
-                inputBlock = ControlFlowGraph.commonDominator(inputBlock, latestScheduling.get(input));
+                inputBlock = AbstractControlFlowGraph.commonDominatorTyped(inputBlock, latestScheduling.get(input));
             }
             if (inputBlock != latestScheduling.get(input)) {
                 latestScheduling.set(input, inputBlock);

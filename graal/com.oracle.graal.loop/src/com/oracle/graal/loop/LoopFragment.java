@@ -332,7 +332,7 @@ public abstract class LoopFragment {
                  * VirtualState nodes contained in the old exit's state may be shared by other
                  * dominated VirtualStates. Those dominated virtual states need to see the
                  * proxy->phi update that are applied below.
-                 * 
+                 *
                  * We now update the original fragment's nodes accordingly:
                  */
                 originalExitState.applyToVirtual(node -> original.nodes.clearAndGrow(node));
@@ -357,8 +357,6 @@ public abstract class LoopFragment {
                         phi = graph.addWithoutUnique(new ValuePhiNode(vpn.stamp(), merge));
                     } else if (vpn instanceof GuardProxyNode) {
                         phi = graph.addWithoutUnique(new GuardPhiNode(merge));
-                    } else if (vpn instanceof MemoryProxyNode) {
-                        phi = graph.addWithoutUnique(new MemoryPhiNode(merge, ((MemoryProxyNode) vpn).getLocationIdentity()));
                     } else {
                         throw GraalInternalError.shouldNotReachHere();
                     }

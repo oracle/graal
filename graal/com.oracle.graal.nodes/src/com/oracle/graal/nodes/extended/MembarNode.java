@@ -62,14 +62,6 @@ public class MembarNode extends FixedWithNextNode implements LIRLowerable, Memor
         generator.getLIRGeneratorTool().emitMembar(barriers);
     }
 
-    public MemoryCheckpoint asMemoryCheckpoint() {
-        return this;
-    }
-
-    public MemoryPhiNode asMemoryPhi() {
-        return null;
-    }
-
     @SuppressWarnings("unused")
     @NodeIntrinsic
     public static void memoryBarrier(@ConstantNodeParameter int barriers) {

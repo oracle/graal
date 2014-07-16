@@ -298,6 +298,18 @@ public class StampTool {
         }
         int shiftBits = bits > 32 ? 6 : 5;
         long shiftMask = bits > 32 ? 0x3FL : 0x1FL;
+        if (shift.lowerBound() == shift.upperBound()) {
+            int shiftAmount = (int) (shift.lowerBound() & shiftMask);
+            if (shiftAmount == 0) {
+                return value;
+            }
+            // the mask of bits that will be lost or shifted into the sign bit
+            long removedBits = -1L << (bits - shiftAmount - 1);
+            if ((value.lowerBound() & removedBits) == 0 && (value.upperBound() & removedBits) == 0) {
+                // use a better stamp if neither lower nor upper bound can lose bits
+                return new IntegerStamp(bits, value.lowerBound() << shiftAmount, value.upperBound() << shiftAmount, value.downMask() << shiftAmount, value.upMask() << shiftAmount);
+            }
+        }
         if ((shift.lowerBound() >>> shiftBits) == (shift.upperBound() >>> shiftBits)) {
             long downMask = defaultMask;
             long upMask = 0;

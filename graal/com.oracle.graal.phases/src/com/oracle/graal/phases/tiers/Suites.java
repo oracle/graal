@@ -107,6 +107,12 @@ public final class Suites {
         }
     }
 
+    public Suites(PhaseSuite<HighTierContext> highTier, PhaseSuite<MidTierContext> midTier, PhaseSuite<LowTierContext> lowTier) {
+        this.highTier = highTier;
+        this.midTier = midTier;
+        this.lowTier = lowTier;
+    }
+
     private Suites(CompilerConfiguration config) {
         highTier = config.createHighTier();
         midTier = config.createMidTier();

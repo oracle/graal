@@ -356,7 +356,7 @@ public final class CompileTheWorld {
             method.reprofile();  // makes the method also not-entrant
         } catch (Throwable t) {
             // Catch everything and print a message
-            println("CompileTheWorld (%d) : Error compiling method: %s", classFileCounter, MetaUtil.format("%H.%n(%p):%r", method));
+            println("CompileTheWorld (%d) : Error compiling method: %s", classFileCounter, method.format("%H.%n(%p):%r"));
             t.printStackTrace(TTY.cachedOut);
         }
     }

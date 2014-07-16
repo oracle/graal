@@ -26,7 +26,6 @@ import java.util.*;
 
 import com.oracle.graal.api.code.Assumptions;
 import com.oracle.graal.api.meta.MetaAccessProvider;
-import com.oracle.graal.api.meta.MetaUtil;
 import com.oracle.graal.api.meta.ResolvedJavaMethod;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.Invoke;
@@ -88,7 +87,7 @@ public class ExactInlineInfo extends AbstractInlineInfo {
 
     @Override
     public String toString() {
-        return "exact " + MetaUtil.format("%H.%n(%p):%r", concrete);
+        return "exact " + concrete.format("%H.%n(%p):%r");
     }
 
     @Override

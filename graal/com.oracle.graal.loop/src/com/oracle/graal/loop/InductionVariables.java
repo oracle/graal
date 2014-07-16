@@ -51,7 +51,7 @@ public class InductionVariables {
         AbstractEndNode forwardEnd = loopBegin.forwardEnd();
         for (PhiNode phi : loopBegin.phis()) {
             ValueNode backValue = phi.singleBackValue();
-            if (backValue == null) {
+            if (backValue == PhiNode.NO_VALUE) {
                 continue;
             }
             ValueNode stride = addSub(backValue, phi);

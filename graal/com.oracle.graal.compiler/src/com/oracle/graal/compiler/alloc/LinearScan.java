@@ -25,7 +25,7 @@ package com.oracle.graal.compiler.alloc;
 import static com.oracle.graal.api.code.CodeUtil.*;
 import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.compiler.GraalDebugConfig.*;
-import static com.oracle.graal.compiler.common.cfg.AbstractBlock.*;
+import static com.oracle.graal.compiler.common.cfg.AbstractControlFlowGraph.*;
 import static com.oracle.graal.lir.LIRValueUtil.*;
 
 import java.util.*;
@@ -1720,7 +1720,7 @@ public final class LinearScan {
                 } else {
                     AbstractBlock<?> spillBlock = blockForId(spillPos);
                     if (interval.alwaysInMemory() && !interval.location().equals(interval.spillSlot())) {
-                        if ((spillBlock.equals(block) && op.id() > spillPos) || AbstractBlock.dominates(spillBlock, block)) {
+                        if ((spillBlock.equals(block) && op.id() > spillPos) || dominates(spillBlock, block)) {
                             assert spillPos > 0 : "position not set correctly";
                             assert interval.spillSlot() != null : "no spill slot assigned";
                             assert !isRegister(interval.operand) : "interval is on stack :  so stack slot is registered twice";
@@ -1956,7 +1956,7 @@ public final class LinearScan {
                                     if (spillBlock == null) {
                                         spillBlock = splitBlock;
                                     } else {
-                                        spillBlock = nearestCommonDominator(spillBlock, splitBlock);
+                                        spillBlock = commonDominator(spillBlock, splitBlock);
                                         assert spillBlock != null;
                                     }
                                 }
@@ -2084,35 +2084,6 @@ public final class LinearScan {
             }
         }
         return defBlock;
-    }
-
-    private AbstractBlock<?> nearestCommonDominator(AbstractBlock<?> a, AbstractBlock<?> b) {
-        assert a != null;
-        assert b != null;
-        try (Indent indent = Debug.logAndIndent("nearest common dominator of %s and %s", a, b)) {
-
-            if (a.equals(b)) {
-                return a;
-            }
-
-            // collect a's dominators
-            BitSet aDom = new BitSet(sortedBlocks.size());
-
-            // a != b
-            for (AbstractBlock<?> x = a; x != null; x = x.getDominator()) {
-                aDom.set(x.getId());
-            }
-
-            // walk b's dominator
-            for (AbstractBlock<?> x = b; x != null; x = x.getDominator()) {
-                if (aDom.get(x.getId())) {
-                    Debug.log("found %s", x);
-                    return x;
-                }
-            }
-        }
-        Debug.log("no common dominator found");
-        return null;
     }
 
     void printIntervals(String label) {

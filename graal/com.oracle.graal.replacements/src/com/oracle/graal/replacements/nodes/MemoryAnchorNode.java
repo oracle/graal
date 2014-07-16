@@ -44,12 +44,4 @@ public class MemoryAnchorNode extends FixedWithNextNode implements LIRLowerable,
     public Node canonical(CanonicalizerTool tool) {
         return usages().isEmpty() ? null : this;
     }
-
-    public MemoryCheckpoint asMemoryCheckpoint() {
-        return null;
-    }
-
-    public MemoryPhiNode asMemoryPhi() {
-        return null;
-    }
 }

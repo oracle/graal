@@ -96,12 +96,4 @@ public class DirectCompareAndSwapNode extends FixedWithNextNode implements LIRLo
      */
     @NodeIntrinsic
     public static native Word compareAndSwap(Object object, long offset, Word expectedValue, Word newValue, @ConstantNodeParameter LocationIdentity locationIdentity);
-
-    public MemoryCheckpoint asMemoryCheckpoint() {
-        return this;
-    }
-
-    public MemoryPhiNode asMemoryPhi() {
-        return null;
-    }
 }

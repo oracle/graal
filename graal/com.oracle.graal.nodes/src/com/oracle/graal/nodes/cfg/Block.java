@@ -37,7 +37,6 @@ public final class Block extends AbstractBlockBase<Block> {
     protected double probability;
     protected Loop<Block> loop;
 
-    protected List<Block> dominated;
     protected Block postdominator;
 
     protected Block(BeginNode node) {
@@ -96,13 +95,6 @@ public final class Block extends AbstractBlockBase<Block> {
             }
         }
         return b;
-    }
-
-    public List<Block> getDominated() {
-        if (dominated == null) {
-            return Collections.emptyList();
-        }
-        return dominated;
     }
 
     public Block getPostdominator() {

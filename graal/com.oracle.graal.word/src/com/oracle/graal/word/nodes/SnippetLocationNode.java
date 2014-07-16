@@ -113,6 +113,11 @@ public final class SnippetLocationNode extends LocationNode implements Canonical
         throw new GraalInternalError("locationIdentity must be a constant so that this node can be canonicalized: " + locationIdentity);
     }
 
+    @Override
+    public IntegerStamp getDisplacementStamp() {
+        throw GraalInternalError.shouldNotReachHere();
+    }
+
     @NodeIntrinsic
     public static native Location constantLocation(LocationIdentity identity, Kind kind, long displacement);
 

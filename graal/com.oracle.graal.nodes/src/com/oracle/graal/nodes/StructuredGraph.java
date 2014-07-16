@@ -259,9 +259,7 @@ public class StructuredGraph extends Graph {
             ((BeginNode) node).prepareDelete();
         }
         assert node.usages().isEmpty() : node + " " + node.usages();
-        FixedNode next = node.next();
-        node.setNext(null);
-        node.replaceAtPredecessor(next);
+        GraphUtil.unlinkFixedNode(node);
         node.safeDelete();
     }
 
@@ -288,9 +286,7 @@ public class StructuredGraph extends Graph {
 
     public void replaceFixedWithFloating(FixedWithNextNode node, FloatingNode replacement) {
         assert node != null && replacement != null && node.isAlive() && replacement.isAlive() : "cannot replace " + node + " with " + replacement;
-        FixedNode next = node.next();
-        node.setNext(null);
-        node.replaceAtPredecessor(next);
+        GraphUtil.unlinkFixedNode(node);
         node.replaceAtUsages(replacement);
         node.safeDelete();
     }

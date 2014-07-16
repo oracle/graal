@@ -232,12 +232,4 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Invoke,
         updateUsagesInterface(this.guard, guard);
         this.guard = guard;
     }
-
-    public MemoryCheckpoint asMemoryCheckpoint() {
-        return this;
-    }
-
-    public MemoryPhiNode asMemoryPhi() {
-        return null;
-    }
 }

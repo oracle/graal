@@ -210,7 +210,7 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
             JavaMethod method = asJavaMethod(o);
             if (method != null) {
                 if (lastMethodOrGraph == null || asJavaMethod(lastMethodOrGraph) == null || !asJavaMethod(lastMethodOrGraph).equals(method)) {
-                    result.add(MetaUtil.format("%H::%n(%p)", method));
+                    result.add(method.format("%H::%n(%p)"));
                 } else {
                     // This prevents multiple adjacent method context objects for the same method
                     // from resulting in multiple IGV tree levels. This works on the

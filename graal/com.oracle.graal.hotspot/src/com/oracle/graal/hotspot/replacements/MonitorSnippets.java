@@ -481,7 +481,7 @@ public class MonitorSnippets implements Snippets {
                 if (method == null) {
                     return false;
                 }
-                return (MetaUtil.format("%H.%n", method).contains(TRACE_METHOD_FILTER));
+                return (method.format("%H.%n").contains(TRACE_METHOD_FILTER));
             }
         }
 
@@ -506,7 +506,7 @@ public class MonitorSnippets implements Snippets {
                     List<ReturnNode> rets = graph.getNodes(ReturnNode.class).snapshot();
                     for (ReturnNode ret : rets) {
                         returnType = checkCounter.getMethod().getSignature().getReturnType(checkCounter.getMethod().getDeclaringClass());
-                        String msg = "unbalanced monitors in " + MetaUtil.format("%H.%n(%p)", graph.method()) + ", count = %d";
+                        String msg = "unbalanced monitors in " + graph.method().format("%H.%n(%p)") + ", count = %d";
                         ConstantNode errMsg = ConstantNode.forConstant(HotSpotObjectConstant.forObject(msg), providers.getMetaAccess(), graph);
                         callTarget = graph.add(new MethodCallTargetNode(InvokeKind.Static, checkCounter.getMethod(), new ValueNode[]{errMsg}, returnType));
                         invoke = graph.add(new InvokeNode(callTarget, 0));

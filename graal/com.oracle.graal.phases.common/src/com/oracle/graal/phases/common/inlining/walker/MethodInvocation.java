@@ -23,7 +23,6 @@
 package com.oracle.graal.phases.common.inlining.walker;
 
 import com.oracle.graal.api.code.Assumptions;
-import com.oracle.graal.api.meta.MetaUtil;
 import com.oracle.graal.api.meta.ResolvedJavaMethod;
 import com.oracle.graal.nodes.CallTargetNode;
 import com.oracle.graal.nodes.java.MethodCallTargetNode;
@@ -152,7 +151,7 @@ public class MethodInvocation {
         CallTargetNode callTarget = callee.invoke().callTarget();
         if (callTarget instanceof MethodCallTargetNode) {
             ResolvedJavaMethod calleeMethod = ((MethodCallTargetNode) callTarget).targetMethod();
-            return MetaUtil.format("Invoke#%H.%n(%p)", calleeMethod);
+            return calleeMethod.format("Invoke#%H.%n(%p)");
         } else {
             return "Invoke#" + callTarget.targetName();
         }

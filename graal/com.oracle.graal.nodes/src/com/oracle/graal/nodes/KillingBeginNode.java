@@ -48,12 +48,4 @@ public class KillingBeginNode extends BeginNode implements MemoryCheckpoint.Sing
     public LocationIdentity getLocationIdentity() {
         return locationIdentity;
     }
-
-    public MemoryCheckpoint asMemoryCheckpoint() {
-        return this;
-    }
-
-    public MemoryPhiNode asMemoryPhi() {
-        return null;
-    }
 }

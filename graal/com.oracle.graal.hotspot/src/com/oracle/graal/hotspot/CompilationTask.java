@@ -259,11 +259,11 @@ public class CompilationTask {
         } catch (BailoutException bailout) {
             BAILOUTS.increment();
             if (ExitVMOnBailout.getValue()) {
-                TTY.cachedOut.println(MetaUtil.format("Bailout in %H.%n(%p)", method));
+                TTY.cachedOut.println(method.format("Bailout in %H.%n(%p)"));
                 bailout.printStackTrace(TTY.cachedOut);
                 System.exit(-1);
             } else if (PrintBailout.getValue()) {
-                TTY.cachedOut.println(MetaUtil.format("Bailout in %H.%n(%p)", method));
+                TTY.cachedOut.println(method.format("Bailout in %H.%n(%p)"));
                 bailout.printStackTrace(TTY.cachedOut);
             }
         } catch (Throwable t) {
@@ -287,7 +287,7 @@ public class CompilationTask {
 
             // Log a compilation event.
             if (compilationEvent.shouldWrite()) {
-                compilationEvent.setMethod(MetaUtil.format("%H.%n(%p)", method));
+                compilationEvent.setMethod(method.format("%H.%n(%p)"));
                 compilationEvent.setCompileId(getId());
                 compilationEvent.setCompileLevel(config.compilationLevelFullOptimization);
                 compilationEvent.setSucceeded(true);
@@ -311,7 +311,7 @@ public class CompilationTask {
     }
 
     private String getMethodDescription() {
-        return String.format("%-6d Graal %-70s %-45s %-50s %s", id, method.getDeclaringClass().getName(), method.getName(), method.getSignature().getMethodDescriptor(),
+        return String.format("%-6d Graal %-70s %-45s %-50s %s", id, method.getDeclaringClass().getName(), method.getName(), method.getSignature().toMethodDescriptor(),
                         entryBCI == StructuredGraph.INVOCATION_ENTRY_BCI ? "" : "(OSR@" + entryBCI + ") ");
     }
 
@@ -328,7 +328,7 @@ public class CompilationTask {
 
     @Override
     public String toString() {
-        return "Compilation[id=" + id + ", " + MetaUtil.format("%H.%n(%p)", method) + (entryBCI == StructuredGraph.INVOCATION_ENTRY_BCI ? "" : "@" + entryBCI) + "]";
+        return "Compilation[id=" + id + ", " + method.format("%H.%n(%p)") + (entryBCI == StructuredGraph.INVOCATION_ENTRY_BCI ? "" : "@" + entryBCI) + "]";
     }
 
     /**

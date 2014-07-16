@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
-import static com.oracle.graal.api.meta.MetaUtil.*;
 import static com.oracle.graal.hotspot.HotSpotBackend.*;
 import static com.oracle.graal.hotspot.nodes.CStringNode.*;
 
@@ -62,7 +61,7 @@ public final class VMErrorNode extends DeoptimizingStubCall implements LIRLowera
             whereString = sb.toString();
         } else {
             ResolvedJavaMethod method = graph().method();
-            whereString = "in compiled code for " + (method == null ? graph().toString() : format("%H.%n(%p)", method));
+            whereString = "in compiled code for " + (method == null ? graph().toString() : method.format("%H.%n(%p)"));
         }
         Value whereArg = emitCString(gen, whereString);
         Value formatArg = emitCString(gen, format);

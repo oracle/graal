@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.hotspot.stubs;
 
-import static com.oracle.graal.api.meta.MetaUtil.*;
-
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
@@ -125,6 +123,6 @@ public abstract class SnippetStub extends Stub implements Snippets {
 
     @Override
     public String toString() {
-        return "Stub<" + format("%h.%n", getInstalledCodeOwner()) + ">";
+        return "Stub<" + getInstalledCodeOwner().format("%h.%n") + ">";
     }
 }

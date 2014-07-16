@@ -38,12 +38,11 @@ import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.graph.ReentrantBlockIterator.BlockIteratorClosure;
 import com.oracle.graal.phases.graph.ReentrantBlockIterator.LoopInfo;
 import com.oracle.graal.phases.schedule.*;
-import com.oracle.graal.virtual.phases.ea.EffectList.Effect;
 
 public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> extends EffectsPhase.Closure<BlockT> {
 
-    private final ControlFlowGraph cfg;
-    private final SchedulePhase schedule;
+    protected final ControlFlowGraph cfg;
+    protected final SchedulePhase schedule;
 
     protected final NodeMap<ValueNode> aliases;
     protected final BlockMap<GraphEffectList> blockEffects;
@@ -81,12 +80,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
             private void apply(GraphEffectList effects, Object context) {
                 if (!effects.isEmpty()) {
                     Debug.log(" ==== effects for %s", context);
-                    for (Effect effect : effects) {
-                        effect.apply(graph, obsoleteNodes);
-                        if (effect.isVisible()) {
-                            Debug.log("    %s", effect);
-                        }
-                    }
+                    effects.apply(graph, obsoleteNodes);
                     if (TraceEscapeAnalysis.getValue()) {
                         Debug.dump(graph, EffectsClosure.this.getClass().getSimpleName() + " - after processing %s", context);
                     }
@@ -227,6 +221,11 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
 
         @SuppressWarnings("unused")
         protected void commitEnds(List<BlockT> states) {
+        }
+
+        @Override
+        public String toString() {
+            return "MergeProcessor@" + merge;
         }
     }
 

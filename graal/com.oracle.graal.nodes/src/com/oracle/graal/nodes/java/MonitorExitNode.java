@@ -47,6 +47,10 @@ public final class MonitorExitNode extends AccessMonitorNode implements Virtuali
         this.escapedReturnValue = escapedReturnValue;
     }
 
+    public ValueNode getEscapedReturnValue() {
+        return escapedReturnValue;
+    }
+
     public void setEscapedReturnValue(ValueNode x) {
         updateUsages(escapedReturnValue, x);
         this.escapedReturnValue = x;

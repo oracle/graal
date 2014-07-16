@@ -287,7 +287,7 @@ public class BinaryGraphPrinter implements GraphPrinter {
         } else if (object instanceof JavaType) {
             JavaType type = (JavaType) object;
             writeByte(POOL_CLASS);
-            writeString(MetaUtil.toJavaName(type));
+            writeString(type.toJavaName());
             writeByte(KLASS);
         } else if (object instanceof NodeClass) {
             NodeClass nodeClass = (NodeClass) object;

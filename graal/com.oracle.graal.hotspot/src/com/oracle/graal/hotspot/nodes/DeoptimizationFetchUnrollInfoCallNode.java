@@ -67,12 +67,4 @@ public class DeoptimizationFetchUnrollInfoCallNode extends FixedWithNextNode imp
 
     @NodeIntrinsic
     public static native Word fetchUnrollInfo(long registerSaver);
-
-    public MemoryCheckpoint asMemoryCheckpoint() {
-        return null;
-    }
-
-    public MemoryPhiNode asMemoryPhi() {
-        return null;
-    }
 }

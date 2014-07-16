@@ -305,7 +305,7 @@ public enum Kind implements PlatformKind {
                         return "String:\"" + s + '"';
                     }
                 } else if (value instanceof JavaType) {
-                    return "JavaType:" + MetaUtil.toJavaName((JavaType) value);
+                    return "JavaType:" + ((JavaType) value).toJavaName();
                 } else if (value instanceof Enum) {
                     return MetaUtil.getSimpleName(value.getClass(), true) + ":" + ((Enum<?>) value).name();
                 } else if (value instanceof FormatWithToString) {

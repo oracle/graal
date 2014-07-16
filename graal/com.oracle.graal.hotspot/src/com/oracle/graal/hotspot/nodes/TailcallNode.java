@@ -63,7 +63,7 @@ public class TailcallNode extends FixedWithNextNode implements LIRLowerable {
         ResolvedJavaMethod method = frameState.method();
         boolean isStatic = method.isStatic();
 
-        JavaType[] signature = MetaUtil.signatureToTypes(method.getSignature(), isStatic ? null : method.getDeclaringClass());
+        JavaType[] signature = method.getSignature().toParameterTypes(isStatic ? null : method.getDeclaringClass());
         CallingConvention cc = lirGen.getResult().getFrameMap().registerConfig.getCallingConvention(CallingConvention.Type.JavaCall, null, signature, lirGen.target(), false);
         List<ValueNode> parameters = new ArrayList<>();
         for (int i = 0, slot = 0; i < cc.getArgumentCount(); i++, slot += HIRFrameStateBuilder.stackSlots(frameState.localAt(slot).getKind())) {

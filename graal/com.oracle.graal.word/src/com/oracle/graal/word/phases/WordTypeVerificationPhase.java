@@ -114,7 +114,7 @@ public class WordTypeVerificationPhase extends Phase {
                 ValueNode receiver = arguments.get(argc);
                 if (receiver == node && isWord(node)) {
                     ResolvedJavaMethod resolvedMethod = wordAccess.wordImplType.resolveMethod(method, invoke.getContextType());
-                    verify(resolvedMethod != null, node, invoke.asNode(), "cannot resolve method on Word class: " + MetaUtil.format("%H.%n(%P) %r", method));
+                    verify(resolvedMethod != null, node, invoke.asNode(), "cannot resolve method on Word class: " + method.format("%H.%n(%P) %r"));
                     Operation operation = resolvedMethod.getAnnotation(Word.Operation.class);
                     verify(operation != null, node, invoke.asNode(), "cannot dispatch on word value to non @Operation annotated method " + resolvedMethod);
                 }
@@ -165,7 +165,7 @@ public class WordTypeVerificationPhase extends Phase {
             return buf.toString();
         } else {
             String loc = GraphUtil.approxSourceLocation(n);
-            return loc == null ? MetaUtil.format("method %h.%n", ((StructuredGraph) n.graph()).method()) : loc;
+            return loc == null ? ((StructuredGraph) n.graph()).method().format("method %h.%n") : loc;
         }
     }
 }

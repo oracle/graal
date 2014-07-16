@@ -109,7 +109,7 @@ public interface CompilerToVM {
      * Converts a name to a metaspace klass.
      *
      * @param name a well formed Java type in {@linkplain JavaType#getName() internal} format
-     * @param accessingClass the context of resolution (may be null)
+     * @param accessingClass the context of resolution (must not be null)
      * @param resolve force resolution to a {@link ResolvedJavaType}. If true, this method will
      *            either return a {@link ResolvedJavaType} or throw an exception
      * @return a metaspace klass for {@code name}

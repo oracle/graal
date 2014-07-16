@@ -171,7 +171,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
         @Override
         protected String getDetailedName() {
-            return getName() + " " + MetaUtil.format("%H.%n(%p):%r", parser.getMethod());
+            return getName() + " " + parser.getMethod().format("%H.%n(%p):%r");
         }
 
         public static class ExceptionInfo {
@@ -213,8 +213,8 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             @Override
             protected void build() {
                 if (PrintProfilingInformation.getValue()) {
-                    TTY.println("Profiling info for " + MetaUtil.format("%H.%n(%p)", method));
-                    TTY.println(MetaUtil.indent(MetaUtil.profileToString(profilingInfo, method, CodeUtil.NEW_LINE), "  "));
+                    TTY.println("Profiling info for " + method.format("%H.%n(%p)"));
+                    TTY.println(MetaUtil.indent(profilingInfo.toString(method, CodeUtil.NEW_LINE), "  "));
                 }
 
                 try (Indent indent = Debug.logAndIndent("build graph for %s", method)) {

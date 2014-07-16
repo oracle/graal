@@ -24,7 +24,6 @@ package com.oracle.graal.nodes.virtual;
 
 import java.util.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
@@ -102,7 +101,7 @@ public final class CommitAllocationNode extends FixedWithNextNode implements Vir
         for (int objIndex = 0; objIndex < virtualObjects.size(); objIndex++) {
             VirtualObjectNode virtual = virtualObjects.get(objIndex);
             StringBuilder s = new StringBuilder();
-            s.append(MetaUtil.toJavaName(virtual.type(), false)).append("[");
+            s.append(virtual.type().toJavaName(false)).append("[");
             for (int i = 0; i < virtual.entryCount(); i++) {
                 ValueNode value = values.get(valuePos++);
                 s.append(i == 0 ? "" : ",").append(value == null ? "_" : value.toString(Verbosity.Id));

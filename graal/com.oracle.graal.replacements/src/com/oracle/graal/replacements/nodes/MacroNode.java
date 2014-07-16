@@ -25,6 +25,7 @@ package com.oracle.graal.replacements.nodes;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
@@ -127,6 +128,9 @@ public class MacroNode extends FixedWithNextNode implements Lowerable {
      */
     protected StructuredGraph lowerReplacement(final StructuredGraph replacementGraph, LoweringTool tool) {
         final PhaseContext c = new PhaseContext(tool.getMetaAccess(), tool.getConstantReflection(), tool.getLowerer(), tool.getReplacements(), tool.assumptions());
+        if (!graph().hasValueProxies()) {
+            new RemoveValueProxyPhase().apply(replacementGraph);
+        }
         GuardsStage guardsStage = graph().getGuardsStage();
         if (guardsStage.ordinal() >= GuardsStage.FIXED_DEOPTS.ordinal()) {
             new GuardLoweringPhase().apply(replacementGraph, null);
@@ -164,7 +168,9 @@ public class MacroNode extends FixedWithNextNode implements Lowerable {
             InliningUtil.inline(invoke, replacementGraph, false, null);
             Debug.dump(graph(), "After inlining replacement %s", replacementGraph);
         } else {
-            assert stateAfter() != null : "cannot lower to invoke without state: " + this;
+            if (stateAfter() == null) {
+                throw new GraalInternalError("cannot lower to invoke without state: %s", this);
+            }
             invoke.lower(tool);
         }
     }

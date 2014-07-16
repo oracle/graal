@@ -29,9 +29,99 @@ public interface AbstractControlFlowGraph<T extends AbstractBlock<T>> {
     static final int BLOCK_ID_INITIAL = -1;
     static final int BLOCK_ID_VISITED = -2;
 
+    /**
+     * Returns the list blocks contained in this control flow graph.
+     *
+     * It is {@linkplain CFGVerifier guaranteed} that the blocks are numbered and ordered according
+     * to a reverse post order traversal of the control flow graph.
+     *
+     * @see CFGVerifier
+     */
     List<T> getBlocks();
 
     Collection<Loop<T>> getLoops();
 
     T getStartBlock();
+
+    /**
+     * Computes the dominators of control flow graph.
+     */
+    static <T extends AbstractBlock<T>> void computeDominators(AbstractControlFlowGraph<T> cfg) {
+        List<T> reversePostOrder = cfg.getBlocks();
+        assert reversePostOrder.get(0).getPredecessorCount() == 0 : "start block has no predecessor and therefore no dominator";
+        for (int i = 1; i < reversePostOrder.size(); i++) {
+            T block = reversePostOrder.get(i);
+            assert block.getPredecessorCount() > 0;
+            T dominator = null;
+            for (T pred : block.getPredecessors()) {
+                if (!pred.isLoopEnd()) {
+                    dominator = commonDominatorTyped(dominator, pred);
+                }
+            }
+            // set dominator
+            block.setDominator(dominator);
+            if (dominator.getDominated().equals(Collections.emptyList())) {
+                dominator.setDominated(new ArrayList<>());
+            }
+            dominator.getDominated().add(block);
+        }
+    }
+
+    /**
+     * True if block {@code a} is dominated by block {@code b}.
+     */
+    static boolean isDominatedBy(AbstractBlock<?> a, AbstractBlock<?> b) {
+        assert a != null;
+        if (a == b) {
+            return true;
+        }
+        if (a.getDominator() == null) {
+            return false;
+        }
+        return isDominatedBy(a.getDominator(), b);
+    }
+
+    /**
+     * True if block {@code a} dominates block {@code b}.
+     */
+    static boolean dominates(AbstractBlock<?> a, AbstractBlock<?> b) {
+        assert a != null;
+        return isDominatedBy(b, a);
+    }
+
+    /**
+     * Calculates the common dominator of two blocks.
+     *
+     * Note that this algorithm makes use of special properties regarding the numbering of blocks.
+     *
+     * @see #getBlocks()
+     * @see CFGVerifier
+     */
+    public static AbstractBlock<?> commonDominator(AbstractBlock<?> a, AbstractBlock<?> b) {
+        if (a == null) {
+            return b;
+        }
+        if (b == null) {
+            return a;
+        }
+        AbstractBlock<?> iterA = a;
+        AbstractBlock<?> iterB = b;
+        while (iterA != iterB) {
+            if (iterA.getId() > iterB.getId()) {
+                iterA = iterA.getDominator();
+            } else {
+                assert iterB.getId() > iterA.getId();
+                iterB = iterB.getDominator();
+            }
+        }
+        return iterA;
+    }
+
+    /**
+     * @see AbstractControlFlowGraph#commonDominator(AbstractBlock, AbstractBlock)
+     */
+    @SuppressWarnings("unchecked")
+    public static <T extends AbstractBlock<T>> T commonDominatorTyped(T a, T b) {
+        return (T) commonDominator(a, b);
+    }
 }

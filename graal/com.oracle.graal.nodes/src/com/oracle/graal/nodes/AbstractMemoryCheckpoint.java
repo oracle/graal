@@ -37,12 +37,4 @@ public abstract class AbstractMemoryCheckpoint extends AbstractStateSplit implem
     protected AbstractMemoryCheckpoint(Stamp stamp, FrameState stateAfter) {
         super(stamp, stateAfter);
     }
-
-    public MemoryCheckpoint asMemoryCheckpoint() {
-        return this;
-    }
-
-    public MemoryPhiNode asMemoryPhi() {
-        return null;
-    }
 }

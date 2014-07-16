@@ -224,4 +224,53 @@ public interface ResolvedJavaMethod extends JavaMethod, InvokeTarget, ModifiersP
      * @return true is this method is present in the virtual table for subtypes of this type.
      */
     boolean isInVirtualMethodTable(ResolvedJavaType resolved);
+
+    /**
+     * Gets the annotation of a particular type for a formal parameter of this method.
+     *
+     * @param annotationClass the Class object corresponding to the annotation type
+     * @param parameterIndex the index of a formal parameter of {@code method}
+     * @return the annotation of type {@code annotationClass} for the formal parameter present, else
+     *         null
+     * @throws IndexOutOfBoundsException if {@code parameterIndex} does not denote a formal
+     *             parameter
+     */
+    default <T extends Annotation> T getParameterAnnotation(Class<T> annotationClass, int parameterIndex) {
+        if (parameterIndex >= 0) {
+            Annotation[][] parameterAnnotations = getParameterAnnotations();
+            for (Annotation a : parameterAnnotations[parameterIndex]) {
+                if (a.annotationType() == annotationClass) {
+                    return annotationClass.cast(a);
+                }
+            }
+        }
+        return null;
+    }
+
+    default JavaType[] toParameterTypes() {
+        JavaType receiver = isStatic() ? null : getDeclaringClass();
+        return getSignature().toParameterTypes(receiver);
+    }
+
+    /**
+     * Gets the annotations of a particular type for the formal parameters of this method.
+     *
+     * @param annotationClass the Class object corresponding to the annotation type
+     * @return the annotation of type {@code annotationClass} (if any) for each formal parameter
+     *         present
+     */
+    @SuppressWarnings("unchecked")
+    default <T extends Annotation> T[] getParameterAnnotations(Class<T> annotationClass) {
+        Annotation[][] parameterAnnotations = getParameterAnnotations();
+        T[] result = (T[]) Array.newInstance(annotationClass, parameterAnnotations.length);
+        for (int i = 0; i < parameterAnnotations.length; i++) {
+            for (Annotation a : parameterAnnotations[i]) {
+                if (a.annotationType() == annotationClass) {
+                    result[i] = annotationClass.cast(a);
+                }
+            }
+        }
+        return result;
+    }
+
 }

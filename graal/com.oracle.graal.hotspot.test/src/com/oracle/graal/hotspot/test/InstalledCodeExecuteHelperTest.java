@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.hotspot.test;
 
-import static com.oracle.graal.api.meta.MetaUtil.*;
 import static java.lang.reflect.Modifier.*;
 
 import java.lang.reflect.*;
@@ -85,7 +84,7 @@ public class InstalledCodeExecuteHelperTest extends GraalCompilerTest {
         if (argsToBind != null) {
             Object receiver = isStatic(m.getModifiers()) ? null : this;
             Object[] args = argsWithReceiver(receiver, argsToBind);
-            JavaType[] parameterTypes = signatureToTypes(getMetaAccess().lookupJavaMethod(m));
+            JavaType[] parameterTypes = getMetaAccess().lookupJavaMethod(m).toParameterTypes();
             assert parameterTypes.length == args.length;
             for (int i = 0; i < argsToBind.length; i++) {
                 ParameterNode param = graph.getParameter(i);

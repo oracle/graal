@@ -30,6 +30,7 @@ import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 
 /**
  * Location node that is the sum of two other location nodes. Can represent locations in the form of
@@ -110,6 +111,11 @@ public final class AddLocationNode extends LocationNode implements Canonicalizab
     public Value generateAddress(NodeMappableLIRBuilder builder, LIRGeneratorTool gen, Value base) {
         Value xAddr = getX().generateAddress(builder, gen, base);
         return getY().generateAddress(builder, gen, xAddr);
+    }
+
+    @Override
+    public IntegerStamp getDisplacementStamp() {
+        return StampTool.add(getX().getDisplacementStamp(), getY().getDisplacementStamp());
     }
 
     @NodeIntrinsic

@@ -545,7 +545,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
         builder.append(concretes.size());
         builder.append(" methods [ ");
         for (int i = 0; i < concretes.size(); i++) {
-            builder.append(MetaUtil.format("  %H.%n(%p):%r", concretes.get(i)));
+            builder.append(concretes.get(i).format("  %H.%n(%p):%r"));
         }
         builder.append(" ], ");
         builder.append(ptypes.size());

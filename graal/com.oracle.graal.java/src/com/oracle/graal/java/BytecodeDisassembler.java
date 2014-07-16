@@ -47,7 +47,7 @@ public class BytecodeDisassembler implements BytecodeDisassemblerProvider {
 
     /**
      * Disassembles the bytecode of a given method in a {@code javap}-like format.
-     * 
+     *
      * @return {@code null} if {@code method} has no bytecode (e.g., it is native or abstract)
      */
     public String disassemble(ResolvedJavaMethod method) {
@@ -73,7 +73,7 @@ public class BytecodeDisassembler implements BytecodeDisassemblerProvider {
                     case ANEWARRAY      : {
                         int cpi = stream.readCPI();
                         JavaType type = cp.lookupType(cpi, opcode);
-                        buf.append(String.format("#%-10d // %s", cpi, MetaUtil.toJavaName(type)));
+                        buf.append(String.format("#%-10d // %s", cpi, type.toJavaName()));
                         break;
                     }
                     case GETSTATIC      :
@@ -82,7 +82,7 @@ public class BytecodeDisassembler implements BytecodeDisassemblerProvider {
                     case PUTFIELD       : {
                         int cpi = stream.readCPI();
                         JavaField field = cp.lookupField(cpi, opcode);
-                        String fieldDesc = field.getDeclaringClass().getName().equals(method.getDeclaringClass().getName()) ? MetaUtil.format("%n:%T", field) : MetaUtil.format("%H.%n:%T", field);
+                        String fieldDesc = field.getDeclaringClass().getName().equals(method.getDeclaringClass().getName()) ? field.format("%n:%T") : field.format("%H.%n:%T");
                         buf.append(String.format("#%-10d // %s", cpi, fieldDesc));
                         break;
                     }
@@ -91,21 +91,21 @@ public class BytecodeDisassembler implements BytecodeDisassemblerProvider {
                     case INVOKESTATIC   : {
                         int cpi = stream.readCPI();
                         JavaMethod callee = cp.lookupMethod(cpi, opcode);
-                        String calleeDesc = callee.getDeclaringClass().getName().equals(method.getDeclaringClass().getName()) ? MetaUtil.format("%n:(%P)%R", callee) : MetaUtil.format("%H.%n:(%P)%R", callee);
+                        String calleeDesc = callee.getDeclaringClass().getName().equals(method.getDeclaringClass().getName()) ? callee.format("%n:(%P)%R") : callee.format("%H.%n:(%P)%R");
                         buf.append(String.format("#%-10d // %s", cpi, calleeDesc));
                         break;
                     }
                     case INVOKEINTERFACE: {
                         int cpi = stream.readCPI();
                         JavaMethod callee = cp.lookupMethod(cpi, opcode);
-                        String calleeDesc = callee.getDeclaringClass().getName().equals(method.getDeclaringClass().getName()) ? MetaUtil.format("%n:(%P)%R", callee) : MetaUtil.format("%H.%n:(%P)%R", callee);
+                        String calleeDesc = callee.getDeclaringClass().getName().equals(method.getDeclaringClass().getName()) ? callee.format("%n:(%P)%R") : callee.format("%H.%n:(%P)%R");
                         buf.append(String.format("#%-10s // %s", cpi + ", " + stream.readUByte(bci + 3), calleeDesc));
                         break;
                     }
                     case INVOKEDYNAMIC: {
                         int cpi = stream.readCPI4();
                         JavaMethod callee = cp.lookupMethod(cpi, opcode);
-                        String calleeDesc = callee.getDeclaringClass().getName().equals(method.getDeclaringClass().getName()) ? MetaUtil.format("%n:(%P)%R", callee) : MetaUtil.format("%H.%n:(%P)%R", callee);
+                        String calleeDesc = callee.getDeclaringClass().getName().equals(method.getDeclaringClass().getName()) ? callee.format("%n:(%P)%R") : callee.format("%H.%n:(%P)%R");
                         buf.append(String.format("#%-10d // %s", cpi, calleeDesc));
                         break;
                     }
@@ -206,7 +206,7 @@ public class BytecodeDisassembler implements BytecodeDisassemblerProvider {
                     case MULTIANEWARRAY : {
                         int cpi = stream.readCPI();
                         JavaType type = cp.lookupType(cpi, opcode);
-                        buf.append(String.format("#%-10s // %s", cpi + ", " + stream.readUByte(bci + 3), MetaUtil.toJavaName(type)));
+                        buf.append(String.format("#%-10s // %s", cpi + ", " + stream.readUByte(bci + 3), type.toJavaName()));
                         break;
                     }
                 }

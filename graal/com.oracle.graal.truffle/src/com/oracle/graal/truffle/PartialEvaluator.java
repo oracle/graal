@@ -124,7 +124,7 @@ public class PartialEvaluator {
             if (TraceTruffleCompilationHistogram.getValue() && constantReceivers != null) {
                 DebugHistogram histogram = Debug.createHistogram("Expanded Truffle Nodes");
                 for (Constant c : constantReceivers) {
-                    String javaName = MetaUtil.toJavaName(providers.getMetaAccess().lookupJavaType(c), false);
+                    String javaName = providers.getMetaAccess().lookupJavaType(c).toJavaName(false);
 
                     // The DSL uses nested classes with redundant names - only show the inner class
                     int index = javaName.indexOf('$');

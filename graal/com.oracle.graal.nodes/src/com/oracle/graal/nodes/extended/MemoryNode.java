@@ -31,8 +31,4 @@ import com.oracle.graal.nodes.*;
 public interface MemoryNode extends NodeInterface {
 
     ValueNode asNode();
-
-    MemoryCheckpoint asMemoryCheckpoint();
-
-    MemoryPhiNode asMemoryPhi();
 }

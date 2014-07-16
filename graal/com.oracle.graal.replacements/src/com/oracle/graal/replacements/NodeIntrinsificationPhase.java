@@ -83,7 +83,7 @@ public class NodeIntrinsificationPhase extends Phase {
             assert target.getAnnotation(Fold.class) == null;
             assert target.isStatic() : "node intrinsic must be static: " + target;
 
-            ResolvedJavaType[] parameterTypes = resolveJavaTypes(signatureToTypes(target), declaringClass);
+            ResolvedJavaType[] parameterTypes = resolveJavaTypes(target.toParameterTypes(), declaringClass);
 
             // Prepare the arguments for the reflective constructor call on the node class.
             Constant[] nodeConstructorArguments = prepareArguments(methodCallTargetNode, parameterTypes, target, false);
@@ -102,7 +102,7 @@ public class NodeIntrinsificationPhase extends Phase {
             // Clean up checkcast instructions inserted by javac if the return type is generic.
             cleanUpReturnList.add(newInstance);
         } else if (isFoldable(target)) {
-            ResolvedJavaType[] parameterTypes = resolveJavaTypes(signatureToTypes(target), declaringClass);
+            ResolvedJavaType[] parameterTypes = resolveJavaTypes(target.toParameterTypes(), declaringClass);
 
             // Prepare the arguments for the reflective method call
             Constant[] arguments = prepareArguments(methodCallTargetNode, parameterTypes, target, true);
@@ -165,7 +165,7 @@ public class NodeIntrinsificationPhase extends Phase {
                 parameterIndex--;
             }
             ValueNode argument = arguments.get(i);
-            if (folding || getParameterAnnotation(ConstantNodeParameter.class, parameterIndex, target) != null) {
+            if (folding || target.getParameterAnnotation(ConstantNodeParameter.class, parameterIndex) != null) {
                 if (!(argument instanceof ConstantNode)) {
                     return null;
                 }
@@ -203,8 +203,8 @@ public class NodeIntrinsificationPhase extends Phase {
         } else {
             result = providers.getMetaAccess().lookupJavaType(intrinsic.value());
         }
-        assert providers.getMetaAccess().lookupJavaType(ValueNode.class).isAssignableFrom(result) : "Node intrinsic class " + toJavaName(result, false) + " derived from @" +
-                        NodeIntrinsic.class.getSimpleName() + " annotation on " + format("%H.%n(%p)", target) + " is not a subclass of " + ValueNode.class;
+        assert providers.getMetaAccess().lookupJavaType(ValueNode.class).isAssignableFrom(result) : "Node intrinsic class " + result.toJavaName(false) + " derived from @" +
+                        NodeIntrinsic.class.getSimpleName() + " annotation on " + target.format("%H.%n(%p)") + " is not a subclass of " + ValueNode.class;
         return result;
     }
 
@@ -221,12 +221,12 @@ public class NodeIntrinsificationPhase extends Phase {
                     constructor = c;
                     arguments = match;
                 } else {
-                    throw new GraalInternalError("Found multiple constructors in %s compatible with signature %s: %s, %s", toJavaName(nodeClass), sigString(parameterTypes), constructor, c);
+                    throw new GraalInternalError("Found multiple constructors in %s compatible with signature %s: %s, %s", nodeClass.toJavaName(), sigString(parameterTypes), constructor, c);
                 }
             }
         }
         if (constructor == null) {
-            throw new GraalInternalError("Could not find constructor in %s compatible with signature %s", toJavaName(nodeClass), sigString(parameterTypes));
+            throw new GraalInternalError("Could not find constructor in %s compatible with signature %s", nodeClass.toJavaName(), sigString(parameterTypes));
         }
 
         try {
@@ -247,14 +247,14 @@ public class NodeIntrinsificationPhase extends Phase {
             if (i != 0) {
                 sb.append(", ");
             }
-            sb.append(toJavaName(types[i]));
+            sb.append(types[i].toJavaName());
         }
         return sb.append(")").toString();
     }
 
     private static boolean containsInjected(ResolvedJavaMethod c, int start, int end) {
         for (int i = start; i < end; i++) {
-            if (getParameterAnnotation(InjectedNodeParameter.class, i, c) != null) {
+            if (c.getParameterAnnotation(InjectedNodeParameter.class, i) != null) {
                 return true;
             }
         }
@@ -265,10 +265,10 @@ public class NodeIntrinsificationPhase extends Phase {
         Constant[] arguments = null;
         Constant[] injected = null;
 
-        ResolvedJavaType[] signature = resolveJavaTypes(signatureToTypes(c.getSignature(), null), c.getDeclaringClass());
+        ResolvedJavaType[] signature = resolveJavaTypes(c.getSignature().toParameterTypes(null), c.getDeclaringClass());
         MetaAccessProvider metaAccess = providers.getMetaAccess();
         for (int i = 0; i < signature.length; i++) {
-            if (getParameterAnnotation(InjectedNodeParameter.class, i, c) != null) {
+            if (c.getParameterAnnotation(InjectedNodeParameter.class, i) != null) {
                 injected = injected == null ? new Constant[1] : Arrays.copyOf(injected, injected.length + 1);
                 if (signature[i].equals(metaAccess.lookupJavaType(MetaAccessProvider.class))) {
                     injected[injected.length - 1] = snippetReflection.forObject(metaAccess);
@@ -279,7 +279,7 @@ public class NodeIntrinsificationPhase extends Phase {
                 } else if (signature[i].equals(metaAccess.lookupJavaType(SnippetReflectionProvider.class))) {
                     injected[injected.length - 1] = snippetReflection.forObject(snippetReflection);
                 } else {
-                    throw new GraalInternalError("Cannot handle injected argument of type %s in %s", toJavaName(signature[i]), format("%H.%n(%p)", c));
+                    throw new GraalInternalError("Cannot handle injected argument of type %s in %s", signature[i].toJavaName(), c.format("%H.%n(%p)"));
                 }
             } else {
                 if (i > 0) {
@@ -347,9 +347,7 @@ public class NodeIntrinsificationPhase extends Phase {
                 for (Node checkCastUsage : checkCastNode.usages().snapshot()) {
                     checkCheckCastUsage(graph, newInstance, checkCastNode, checkCastUsage);
                 }
-                FixedNode next = checkCastNode.next();
-                checkCastNode.setNext(null);
-                checkCastNode.replaceAtPredecessor(next);
+                GraphUtil.unlinkFixedNode(checkCastNode);
                 GraphUtil.killCFG(checkCastNode);
             }
         }

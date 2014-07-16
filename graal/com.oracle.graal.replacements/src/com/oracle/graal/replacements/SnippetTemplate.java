@@ -23,7 +23,6 @@
 package com.oracle.graal.replacements;
 
 import static com.oracle.graal.api.meta.LocationIdentity.*;
-import static com.oracle.graal.api.meta.MetaUtil.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.debug.Debug.*;
 import static com.oracle.graal.graph.util.CollectionsAccess.*;
@@ -91,8 +90,8 @@ public class SnippetTemplate {
                 constantParameters = new boolean[count];
                 varargsParameters = new boolean[count];
                 for (int i = 0; i < count; i++) {
-                    constantParameters[i] = MetaUtil.getParameterAnnotation(ConstantParameter.class, i, method) != null;
-                    varargsParameters[i] = MetaUtil.getParameterAnnotation(VarargsParameter.class, i, method) != null;
+                    constantParameters[i] = method.getParameterAnnotation(ConstantParameter.class, i) != null;
+                    varargsParameters[i] = method.getParameterAnnotation(VarargsParameter.class, i) != null;
 
                     assert !constantParameters[i] || !varargsParameters[i] : "Parameter cannot be annotated with both @" + ConstantParameter.class.getSimpleName() + " and @" +
                                     VarargsParameter.class.getSimpleName();
@@ -152,7 +151,7 @@ public class SnippetTemplate {
             this.method = method;
             instantiationCounter = Debug.metric("SnippetInstantiationCount[%s]", method);
             instantiationTimer = Debug.timer("SnippetInstantiationTime[%s]", method);
-            assert method.isStatic() : "snippet method must be static: " + MetaUtil.format("%H.%n", method);
+            assert method.isStatic() : "snippet method must be static: " + method.format("%H.%n");
         }
 
         private int templateCount;
@@ -161,7 +160,7 @@ public class SnippetTemplate {
             templateCount++;
             if (UseSnippetTemplateCache && templateCount > MaxTemplatesPerSnippet) {
                 PrintStream err = System.err;
-                err.printf("WARNING: Exceeded %d templates for snippet %s%n" + "         Adjust maximum with %s system property%n", MaxTemplatesPerSnippet, format("%h.%n(%p)", method),
+                err.printf("WARNING: Exceeded %d templates for snippet %s%n" + "         Adjust maximum with %s system property%n", MaxTemplatesPerSnippet, method.format("%h.%n(%p)"),
                                 MAX_TEMPLATES_PER_SNIPPET_PROPERTY_NAME);
             }
         }
@@ -260,7 +259,7 @@ public class SnippetTemplate {
         @Override
         public String toString() {
             StringBuilder result = new StringBuilder();
-            result.append("Parameters<").append(MetaUtil.format("%h.%n", info.method)).append(" [");
+            result.append("Parameters<").append(info.method.format("%h.%n")).append(" [");
             String sep = "";
             for (int i = 0; i < info.getParameterCount(); i++) {
                 result.append(sep);
@@ -497,7 +496,7 @@ public class SnippetTemplate {
      * Determines if any parameter of a given method is annotated with {@link ConstantParameter}.
      */
     public static boolean hasConstantParameter(ResolvedJavaMethod method) {
-        for (ConstantParameter p : MetaUtil.getParameterAnnotations(ConstantParameter.class, method)) {
+        for (ConstantParameter p : method.getParameterAnnotations(ConstantParameter.class)) {
             if (p != null) {
                 return true;
             }
@@ -669,7 +668,7 @@ public class SnippetTemplate {
 
         assert checkAllVarargPlaceholdersAreDeleted(parameterCount, placeholders);
 
-        new FloatingReadPhase(FloatingReadPhase.ExecutionMode.ANALYSIS_ONLY).apply(snippetCopy);
+        new FloatingReadPhase(false, true, false).apply(snippetCopy);
 
         MemoryAnchorNode memoryAnchor = snippetCopy.add(new MemoryAnchorNode());
         snippetCopy.start().replaceAtUsages(InputType.Memory, memoryAnchor);
@@ -694,7 +693,7 @@ public class SnippetTemplate {
             List<MemoryMapNode> memMaps = returnNodes.stream().map(n -> n.getMemoryMap()).collect(Collectors.toList());
             ValueNode returnValue = InliningUtil.mergeReturns(merge, returnNodes, null);
             this.returnNode = snippet.add(new ReturnNode(returnValue));
-            MemoryMapImpl mmap = FloatingReadPhase.mergeMemoryMaps(merge, memMaps);
+            MemoryMapImpl mmap = FloatingReadPhase.mergeMemoryMaps(merge, memMaps, false);
             MemoryMapNode memoryMap = snippet.unique(new MemoryMapNode(mmap.getMap()));
             this.returnNode.setMemoryMap(memoryMap);
             for (MemoryMapNode mm : memMaps) {
@@ -747,7 +746,7 @@ public class SnippetTemplate {
     private static boolean checkVarargs(MetaAccessProvider metaAccess, final ResolvedJavaMethod method, Signature signature, int i, String name, Varargs varargs) {
         ResolvedJavaType type = (ResolvedJavaType) signature.getParameterType(i, method.getDeclaringClass());
         assert type.isArray() : "varargs parameter must be an array type";
-        assert type.getComponentType().isAssignableFrom(metaAccess.lookupJavaType(varargs.componentType)) : "componentType for " + name + " not matching " + MetaUtil.toJavaName(type) + " instance: " +
+        assert type.getComponentType().isAssignableFrom(metaAccess.lookupJavaType(varargs.componentType)) : "componentType for " + name + " not matching " + type.toJavaName() + " instance: " +
                         varargs.componentType;
         return true;
     }

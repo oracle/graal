@@ -32,6 +32,7 @@ public abstract class AbstractBlockBase<T extends AbstractBlock<T>> implements A
     protected List<T> successors;
 
     private T dominator;
+    private List<T> dominated;
 
     private boolean align;
     private int linearScanNumber;
@@ -71,6 +72,17 @@ public abstract class AbstractBlockBase<T extends AbstractBlock<T>> implements A
 
     public void setDominator(T dominator) {
         this.dominator = dominator;
+    }
+
+    public List<T> getDominated() {
+        if (dominated == null) {
+            return Collections.emptyList();
+        }
+        return dominated;
+    }
+
+    public void setDominated(List<T> blocks) {
+        dominated = blocks;
     }
 
     @Override

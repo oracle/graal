@@ -183,7 +183,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
                 receiverNullCheck = createNullCheck(receiver, invoke.asNode(), tool);
                 invoke.setGuard(receiverNullCheck);
             }
-            JavaType[] signature = MetaUtil.signatureToTypes(callTarget.targetMethod().getSignature(), callTarget.isStatic() ? null : callTarget.targetMethod().getDeclaringClass());
+            JavaType[] signature = callTarget.targetMethod().getSignature().toParameterTypes(callTarget.isStatic() ? null : callTarget.targetMethod().getDeclaringClass());
 
             LoweredCallTargetNode loweredCallTarget = null;
             boolean isVirtualOrInterface = callTarget.invokeKind() == InvokeKind.Virtual || callTarget.invokeKind() == InvokeKind.Interface;

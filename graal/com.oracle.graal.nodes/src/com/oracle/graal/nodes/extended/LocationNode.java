@@ -64,4 +64,9 @@ public abstract class LocationNode extends FloatingNode implements LIRLowerable,
     }
 
     public abstract Value generateAddress(NodeMappableLIRBuilder builder, LIRGeneratorTool gen, Value base);
+
+    /**
+     * @return the range of the displacement as a 64-bit integer stamp
+     */
+    public abstract IntegerStamp getDisplacementStamp();
 }

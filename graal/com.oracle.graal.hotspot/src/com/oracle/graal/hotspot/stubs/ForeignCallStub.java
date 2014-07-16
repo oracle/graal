@@ -23,7 +23,6 @@
 package com.oracle.graal.hotspot.stubs;
 
 import static com.oracle.graal.api.code.CallingConvention.Type.*;
-import static com.oracle.graal.api.meta.MetaUtil.*;
 import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.RegisterEffect.*;
 
 import com.oracle.graal.api.meta.*;
@@ -115,7 +114,7 @@ public class ForeignCallStub extends Stub {
                 ForeignCallDescriptor d = linkage.getDescriptor();
                 MetaAccessProvider metaAccess = providers.getMetaAccess();
                 Class<?>[] arguments = d.getArgumentTypes();
-                JavaType[] parameters = new JavaType[arguments.length];
+                ResolvedJavaType[] parameters = new ResolvedJavaType[arguments.length];
                 for (int i = 0; i < arguments.length; i++) {
                     parameters[i] = metaAccess.lookupJavaType(arguments[i]);
                 }
@@ -132,7 +131,7 @@ public class ForeignCallStub extends Stub {
 
             @Override
             public String toString() {
-                return format("ForeignCallStub<%n(%p)>", this);
+                return format("ForeignCallStub<%n(%p)>");
             }
         };
     }

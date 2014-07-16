@@ -84,6 +84,6 @@ public class LocalImpl implements Local {
 
     @Override
     public String toString() {
-        return "LocalImpl<name=" + name + ", resolvedType=" + type + ", startBci=" + startBci + ", endBci=" + endBci + ", slot=" + slot + ">";
+        return "LocalImpl<name=" + name + ", type=" + type + ", startBci=" + startBci + ", endBci=" + endBci + ", slot=" + slot + ">";
     }
 }

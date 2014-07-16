@@ -146,9 +146,9 @@ public class InliningUtil {
 
     private static String methodName(ResolvedJavaMethod method, Invoke invoke) {
         if (invoke != null && invoke.stateAfter() != null) {
-            return methodName(invoke.stateAfter(), invoke.bci()) + ": " + MetaUtil.format("%H.%n(%p):%r", method) + " (" + method.getCodeSize() + " bytes)";
+            return methodName(invoke.stateAfter(), invoke.bci()) + ": " + method.format("%H.%n(%p):%r") + " (" + method.getCodeSize() + " bytes)";
         } else {
-            return MetaUtil.format("%H.%n(%p):%r", method) + " (" + method.getCodeSize() + " bytes)";
+            return method.format("%H.%n(%p):%r") + " (" + method.getCodeSize() + " bytes)";
         }
     }
 
@@ -168,7 +168,7 @@ public class InliningUtil {
             sb.append(methodName(frameState.outerFrameState(), frameState.outerFrameState().bci));
             sb.append("->");
         }
-        sb.append(MetaUtil.format("%h.%n", frameState.method()));
+        sb.append(frameState.method().format("%h.%n"));
         sb.append("@").append(bci);
         return sb.toString();
     }

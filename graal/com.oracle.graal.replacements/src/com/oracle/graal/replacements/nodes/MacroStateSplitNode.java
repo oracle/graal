@@ -62,14 +62,6 @@ public class MacroStateSplitNode extends MacroNode implements StateSplit, Memory
         return LocationIdentity.ANY_LOCATION;
     }
 
-    public MemoryCheckpoint asMemoryCheckpoint() {
-        return this;
-    }
-
-    public MemoryPhiNode asMemoryPhi() {
-        return null;
-    }
-
     protected void replaceSnippetInvokes(StructuredGraph snippetGraph) {
         for (MethodCallTargetNode call : snippetGraph.getNodes(MethodCallTargetNode.class)) {
             Invoke invoke = call.invoke();

@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.api.code;
 
-import static com.oracle.graal.api.meta.MetaUtil.*;
-
 import java.io.*;
 import java.lang.invoke.*;
 import java.util.*;
@@ -71,7 +69,7 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
 
         @Override
         public String toString() {
-            return "NoFinalizableSubclass[receiverType=" + toJavaName(receiverType) + "]";
+            return "NoFinalizableSubclass[receiverType=" + receiverType.toJavaName() + "]";
         }
 
     }
@@ -97,7 +95,7 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
             this.context = context;
             this.subtype = subtype;
             assert !subtype.isAbstract() : subtype.toString() + " : " + context.toString();
-            assert !subtype.isArray() || getElementalType(subtype).isFinal() : subtype.toString() + " : " + context.toString();
+            assert !subtype.isArray() || subtype.getElementalType().isFinal() : subtype.toString() + " : " + context.toString();
         }
 
         @Override
@@ -120,7 +118,7 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
 
         @Override
         public String toString() {
-            return "ConcreteSubtype[context=" + toJavaName(context) + ", subtype=" + toJavaName(subtype) + "]";
+            return "ConcreteSubtype[context=" + context.toJavaName() + ", subtype=" + subtype.toJavaName() + "]";
         }
     }
 
@@ -174,7 +172,7 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
 
         @Override
         public String toString() {
-            return "ConcreteMethod[method=" + format("%H.%n(%p)", method) + ", context=" + toJavaName(context) + ", impl=" + format("%H.%n(%p)", impl) + "]";
+            return "ConcreteMethod[method=" + method.format("%H.%n(%p)") + ", context=" + context.toJavaName() + ", impl=" + impl.format("%H.%n(%p)") + "]";
         }
     }
 
@@ -207,7 +205,7 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
 
         @Override
         public String toString() {
-            return "MethodContents[method=" + format("%H.%n(%p)", method) + "]";
+            return "MethodContents[method=" + method.format("%H.%n(%p)") + "]";
         }
     }
 
