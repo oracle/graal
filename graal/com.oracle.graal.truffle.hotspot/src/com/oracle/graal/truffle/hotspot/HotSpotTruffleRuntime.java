@@ -29,6 +29,7 @@ import static com.oracle.graal.truffle.TruffleCompilerOptions.*;
 
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.stream.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CallingConvention.Type;
@@ -41,6 +42,7 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.*;
@@ -52,6 +54,7 @@ import com.oracle.graal.phases.util.*;
 import com.oracle.graal.printer.*;
 import com.oracle.graal.runtime.*;
 import com.oracle.graal.truffle.*;
+import com.oracle.graal.word.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.CompilerDirectives.SlowPath;
 import com.oracle.truffle.api.frame.*;
@@ -341,5 +344,26 @@ public final class HotSpotTruffleRuntime implements GraalTruffleRuntime {
 
     public void reinstallStubs() {
         installOptimizedCallTargetCallMethod();
+    }
+
+    public void notifyTransferToInterpreter() {
+        CompilerAsserts.neverPartOfCompilation();
+        if (TraceTruffleTransferToInterpreter.getValue()) {
+            Word thread = CurrentJavaThreadNode.get(HotSpotGraalRuntime.runtime().getTarget().wordKind);
+            boolean deoptimized = thread.readByte(HotSpotGraalRuntime.runtime().getConfig().pendingTransferToInterpreterOffset) != 0;
+            if (deoptimized) {
+                thread.writeByte(HotSpotGraalRuntime.runtime().getConfig().pendingTransferToInterpreterOffset, (byte) 0);
+
+                logTransferToInterpreter();
+            }
+        }
+    }
+
+    private static void logTransferToInterpreter() {
+        final int skip = 2;
+        final int limit = 20;
+        StackTraceElement[] stackTrace = new Throwable().getStackTrace();
+        String suffix = stackTrace.length > skip + limit ? "\n  ..." : "";
+        TTY.out().out().println(Arrays.stream(stackTrace).skip(skip).limit(limit).map(StackTraceElement::toString).collect(Collectors.joining("\n  ", "", suffix)));
     }
 }

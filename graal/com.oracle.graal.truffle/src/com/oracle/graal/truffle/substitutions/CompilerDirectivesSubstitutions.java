@@ -41,12 +41,12 @@ public class CompilerDirectivesSubstitutions {
 
     @MethodSubstitution
     public static void transferToInterpreter() {
-        DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.UnreachedCode);
+        DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.TransferToInterpreter);
     }
 
     @MethodSubstitution
     public static void transferToInterpreterAndInvalidate() {
-        DeoptimizeNode.deopt(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.UnreachedCode);
+        DeoptimizeNode.deopt(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.TransferToInterpreter);
     }
 
     @MethodSubstitution

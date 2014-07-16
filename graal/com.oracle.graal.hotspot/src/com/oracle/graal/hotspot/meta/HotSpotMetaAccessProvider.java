@@ -230,6 +230,8 @@ public class HotSpotMetaAccessProvider implements MetaAccessProvider {
                 return config.deoptReasonLoopLimitCheck;
             case Aliasing:
                 return config.deoptReasonAliasing;
+            case TransferToInterpreter:
+                return config.deoptReasonTransferToInterpreter;
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }
@@ -281,6 +283,9 @@ public class HotSpotMetaAccessProvider implements MetaAccessProvider {
         }
         if (reason == config.deoptReasonAliasing) {
             return DeoptimizationReason.Aliasing;
+        }
+        if (reason == config.deoptReasonTransferToInterpreter) {
+            return DeoptimizationReason.TransferToInterpreter;
         }
         throw GraalInternalError.shouldNotReachHere(Integer.toHexString(reason));
     }

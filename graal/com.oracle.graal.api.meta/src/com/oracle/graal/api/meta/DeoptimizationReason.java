@@ -41,4 +41,5 @@ public enum DeoptimizationReason {
     RuntimeConstraint,
     LoopLimitCheck,
     Aliasing,
+    TransferToInterpreter,
 }

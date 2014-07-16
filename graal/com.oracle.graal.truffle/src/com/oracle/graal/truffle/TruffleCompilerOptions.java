@@ -119,6 +119,8 @@ public class TruffleCompilerOptions {
     public static final OptionValue<Boolean> TraceTruffleInlining = new OptionValue<>(false);
     @Option(help = "")
     public static final OptionValue<Boolean> TraceTruffleSplitting = new OptionValue<>(false);
+    @Option(help = "Print stack trace on transfer to interpreter")
+    public static final OptionValue<Boolean> TraceTruffleTransferToInterpreter = new StableOptionValue<>(false);
     @Option(help = "")
     public static final OptionValue<Boolean> TruffleCallTargetProfiling = new StableOptionValue<>(false);
     // @formatter:on

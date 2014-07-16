@@ -1014,6 +1014,7 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMField(name = "ThreadShadow::_pending_exception", type = "oop", get = HotSpotVMField.Type.OFFSET) @Stable public int pendingExceptionOffset;
     @HotSpotVMField(name = "ThreadShadow::_pending_deoptimization", type = "int", get = HotSpotVMField.Type.OFFSET) @Stable public int pendingDeoptimizationOffset;
     @HotSpotVMField(name = "ThreadShadow::_pending_failed_speculation", type = "oop", get = HotSpotVMField.Type.OFFSET) @Stable public int pendingFailedSpeculationOffset;
+    @HotSpotVMField(name = "ThreadShadow::_pending_transfer_to_interpreter", type = "bool", get = HotSpotVMField.Type.OFFSET) @Stable public int pendingTransferToInterpreterOffset;
 
     @HotSpotVMFlag(name = "UseHSAILDeoptimization") @Stable public boolean useHSAILDeoptimization;
     @HotSpotVMFlag(name = "UseHSAILSafepoints") @Stable public boolean useHSAILSafepoints;
@@ -1460,6 +1461,7 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMConstant(name = "Deoptimization::Reason_constraint") @Stable public int deoptReasonConstraint;
     @HotSpotVMConstant(name = "Deoptimization::Reason_loop_limit_check") @Stable public int deoptReasonLoopLimitCheck;
     @HotSpotVMConstant(name = "Deoptimization::Reason_aliasing") @Stable public int deoptReasonAliasing;
+    @HotSpotVMConstant(name = "Deoptimization::Reason_transfer_to_interpreter") @Stable public int deoptReasonTransferToInterpreter;
     @HotSpotVMConstant(name = "Deoptimization::Reason_LIMIT") @Stable public int deoptReasonOSROffset;
 
     @HotSpotVMConstant(name = "Deoptimization::Action_none") @Stable public int deoptActionNone;
