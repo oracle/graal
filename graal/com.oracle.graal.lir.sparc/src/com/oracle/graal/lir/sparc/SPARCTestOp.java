@@ -31,10 +31,8 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.asm.sparc.SPARCAssembler.Ldsw;
 import com.oracle.graal.asm.sparc.SPARCAssembler.Ldx;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Cmp;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.lir.asm.*;
-import com.oracle.graal.sparc.*;
 
 public class SPARCTestOp extends SPARCLIRInstruction {
 

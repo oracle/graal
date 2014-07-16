@@ -36,7 +36,6 @@ import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.*;
 import com.oracle.graal.lir.asm.*;
-import com.oracle.graal.sparc.*;
 
 public class SPARCMove {
 
@@ -396,7 +395,6 @@ public class SPARCMove {
         }
     }
 
-    @SuppressWarnings("unused")
     private static void reg2reg(SPARCAssembler masm, Value result, Value input) {
         final Register src = asRegister(input);
         final Register dst = asRegister(result);

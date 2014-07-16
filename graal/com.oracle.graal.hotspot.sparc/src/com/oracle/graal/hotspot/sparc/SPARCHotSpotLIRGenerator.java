@@ -29,7 +29,6 @@ import static com.oracle.graal.sparc.SPARC.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.sparc.*;
@@ -41,9 +40,7 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.sparc.*;
-import com.oracle.graal.lir.sparc.SPARCCompare.CompareOp;
 import com.oracle.graal.lir.sparc.SPARCMove.*;
-import com.sun.nio.file.*;
 
 public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSpotLIRGenerator {
 
