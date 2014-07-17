@@ -43,27 +43,35 @@ final class PartialEvaluatorCanonicalizer implements CanonicalizerPhase.CustomCa
     @Override
     public Node canonicalize(Node node) {
         if (node instanceof LoadFieldNode) {
-            LoadFieldNode loadFieldNode = (LoadFieldNode) node;
-            if (!loadFieldNode.isStatic() && loadFieldNode.object().isConstant() && !loadFieldNode.object().isNullConstant()) {
-                if (loadFieldNode.field().isFinal() || (loadFieldNode.getKind() == Kind.Object && loadFieldNode.field().getAnnotation(Child.class) != null) ||
-                                loadFieldNode.field().getAnnotation(CompilerDirectives.CompilationFinal.class) != null) {
-                    Constant constant = loadFieldNode.field().readValue(loadFieldNode.object().asConstant());
-                    assert verifyFieldValue(loadFieldNode.field(), constant);
-                    return ConstantNode.forConstant(constant, metaAccess);
-                }
-            }
+            return canonicalizeLoadField((LoadFieldNode) node);
         } else if (node instanceof LoadIndexedNode) {
-            LoadIndexedNode loadIndexedNode = (LoadIndexedNode) node;
-            if (loadIndexedNode.array().isConstant() && loadIndexedNode.index().isConstant()) {
-                int index = loadIndexedNode.index().asConstant().asInt();
-
-                Constant constant = constantReflection.readArrayElement(loadIndexedNode.array().asConstant(), index);
-                if (constant != null) {
-                    return ConstantNode.forConstant(constant, metaAccess);
-                }
-            }
+            return canonicalizeLoadIndex((LoadIndexedNode) node);
         }
         return node;
+    }
+
+    private Node canonicalizeLoadField(LoadFieldNode loadFieldNode) {
+        if (!loadFieldNode.isStatic() && loadFieldNode.object().isConstant() && !loadFieldNode.object().isNullConstant()) {
+            if (loadFieldNode.field().isFinal() || (loadFieldNode.getKind() == Kind.Object && loadFieldNode.field().getAnnotation(Child.class) != null) ||
+                            loadFieldNode.field().getAnnotation(CompilerDirectives.CompilationFinal.class) != null) {
+                Constant constant = loadFieldNode.field().readValue(loadFieldNode.object().asConstant());
+                assert verifyFieldValue(loadFieldNode.field(), constant);
+                return ConstantNode.forConstant(constant, metaAccess);
+            }
+        }
+        return loadFieldNode;
+    }
+
+    private Node canonicalizeLoadIndex(LoadIndexedNode loadIndexedNode) {
+        if (loadIndexedNode.array().isConstant() && loadIndexedNode.index().isConstant()) {
+            int index = loadIndexedNode.index().asConstant().asInt();
+
+            Constant constant = constantReflection.readArrayElement(loadIndexedNode.array().asConstant(), index);
+            if (constant != null) {
+                return ConstantNode.forConstant(constant, metaAccess);
+            }
+        }
+        return loadIndexedNode;
     }
 
     private boolean verifyFieldValue(ResolvedJavaField field, Constant constant) {
