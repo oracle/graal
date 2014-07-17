@@ -29,6 +29,7 @@ import java.util.Map.Entry;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.Graph.Mark;
@@ -97,7 +98,6 @@ public final class TruffleCacheImpl implements TruffleCache {
         return graph;
     }
 
-    @SuppressWarnings("unused")
     public StructuredGraph lookup(final ResolvedJavaMethod method, final NodeInputList<ValueNode> arguments, final Assumptions assumptions, final CanonicalizerPhase finalCanonicalizer,
                     boolean ignoreSlowPath) {
 
@@ -124,24 +124,7 @@ public final class TruffleCacheImpl implements TruffleCache {
         }
 
         if (lastUsed.values().size() >= TruffleCompilerOptions.TruffleMaxCompilationCacheSize.getValue()) {
-            List<Long> lastUsedList = new ArrayList<>();
-            for (long l : lastUsed.values()) {
-                lastUsedList.add(l);
-            }
-            Collections.sort(lastUsedList);
-            long mid = lastUsedList.get(lastUsedList.size() / 2);
-
-            List<List<Object>> toRemoveList = new ArrayList<>();
-            for (Entry<List<Object>, Long> entry : lastUsed.entrySet()) {
-                if (entry.getValue() < mid) {
-                    toRemoveList.add(entry.getKey());
-                }
-            }
-
-            for (List<Object> entry : toRemoveList) {
-                cache.remove(entry);
-                lastUsed.remove(entry);
-            }
+            lookupExceedsMaxSize();
         }
 
         lastUsed.put(key, counter++);
@@ -183,42 +166,11 @@ public final class TruffleCacheImpl implements TruffleCache {
                 boolean inliningProgress = false;
                 for (MethodCallTargetNode methodCallTarget : graph.getNodes(MethodCallTargetNode.class)) {
                     if (!graph.getMark().equals(mark)) {
-                        // Make sure macro substitutions such as
-                        // CompilerDirectives.transferToInterpreter get processed first.
-                        for (Node newNode : graph.getNewNodes(mark)) {
-                            if (newNode instanceof MethodCallTargetNode) {
-                                MethodCallTargetNode methodCallTargetNode = (MethodCallTargetNode) newNode;
-                                Class<? extends FixedWithNextNode> macroSubstitution = providers.getReplacements().getMacroSubstitution(methodCallTargetNode.targetMethod());
-                                if (macroSubstitution != null) {
-                                    InliningUtil.inlineMacroNode(methodCallTargetNode.invoke(), methodCallTargetNode.targetMethod(), macroSubstitution);
-                                } else {
-                                    tryCutOffRuntimeExceptionsAndErrors(methodCallTargetNode);
-                                }
-                            }
-                        }
-                        mark = graph.getMark();
+                        mark = lookupProcessMacroSubstitutions(graph, mark);
                     }
                     if (methodCallTarget.isAlive() && methodCallTarget.invoke() != null && shouldInline(methodCallTarget)) {
                         inliningProgress = true;
-                        List<Node> canonicalizerUsages = new ArrayList<Node>();
-                        for (Node n : methodCallTarget.invoke().asNode().usages()) {
-                            if (n instanceof Canonicalizable) {
-                                canonicalizerUsages.add(n);
-                            }
-                        }
-                        List<ValueNode> argumentSnapshot = methodCallTarget.arguments().snapshot();
-                        Mark beforeInvokeMark = graph.getMark();
-                        expandInvoke(methodCallTarget);
-                        for (Node arg : argumentSnapshot) {
-                            if (arg != null && arg.recordsUsages()) {
-                                for (Node argUsage : arg.usages()) {
-                                    if (graph.isNew(beforeInvokeMark, argUsage) && argUsage instanceof Canonicalizable) {
-                                        canonicalizerUsages.add(argUsage);
-                                    }
-                                }
-                            }
-                        }
-                        canonicalizerPhase.applyIncremental(graph, phaseContext, canonicalizerUsages);
+                        lookupDoInline(graph, phaseContext, canonicalizerPhase, methodCallTarget);
                     }
                 }
 
@@ -240,7 +192,66 @@ public final class TruffleCacheImpl implements TruffleCache {
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
+    }
 
+    private void lookupExceedsMaxSize() {
+        List<Long> lastUsedList = new ArrayList<>();
+        for (long l : lastUsed.values()) {
+            lastUsedList.add(l);
+        }
+        Collections.sort(lastUsedList);
+        long mid = lastUsedList.get(lastUsedList.size() / 2);
+
+        List<List<Object>> toRemoveList = new ArrayList<>();
+        for (Entry<List<Object>, Long> entry : lastUsed.entrySet()) {
+            if (entry.getValue() < mid) {
+                toRemoveList.add(entry.getKey());
+            }
+        }
+
+        for (List<Object> entry : toRemoveList) {
+            cache.remove(entry);
+            lastUsed.remove(entry);
+        }
+    }
+
+    private Mark lookupProcessMacroSubstitutions(final StructuredGraph graph, Mark mark) throws GraalInternalError {
+        // Make sure macro substitutions such as
+        // CompilerDirectives.transferToInterpreter get processed first.
+        for (Node newNode : graph.getNewNodes(mark)) {
+            if (newNode instanceof MethodCallTargetNode) {
+                MethodCallTargetNode methodCallTargetNode = (MethodCallTargetNode) newNode;
+                Class<? extends FixedWithNextNode> macroSubstitution = providers.getReplacements().getMacroSubstitution(methodCallTargetNode.targetMethod());
+                if (macroSubstitution != null) {
+                    InliningUtil.inlineMacroNode(methodCallTargetNode.invoke(), methodCallTargetNode.targetMethod(), macroSubstitution);
+                } else {
+                    tryCutOffRuntimeExceptionsAndErrors(methodCallTargetNode);
+                }
+            }
+        }
+        return graph.getMark();
+    }
+
+    private void lookupDoInline(final StructuredGraph graph, final PhaseContext phaseContext, CanonicalizerPhase canonicalizerPhase, MethodCallTargetNode methodCallTarget) {
+        List<Node> canonicalizerUsages = new ArrayList<>();
+        for (Node n : methodCallTarget.invoke().asNode().usages()) {
+            if (n instanceof Canonicalizable) {
+                canonicalizerUsages.add(n);
+            }
+        }
+        List<ValueNode> argumentSnapshot = methodCallTarget.arguments().snapshot();
+        Mark beforeInvokeMark = graph.getMark();
+        expandInvoke(methodCallTarget);
+        for (Node arg : argumentSnapshot) {
+            if (arg != null && arg.recordsUsages()) {
+                for (Node argUsage : arg.usages()) {
+                    if (graph.isNew(beforeInvokeMark, argUsage) && argUsage instanceof Canonicalizable) {
+                        canonicalizerUsages.add(argUsage);
+                    }
+                }
+            }
+        }
+        canonicalizerPhase.applyIncremental(graph, phaseContext, canonicalizerUsages);
     }
 
     private void expandInvoke(MethodCallTargetNode methodCallTargetNode) {
