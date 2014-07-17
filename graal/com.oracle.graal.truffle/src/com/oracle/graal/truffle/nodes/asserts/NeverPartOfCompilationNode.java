@@ -24,11 +24,9 @@ package com.oracle.graal.truffle.nodes.asserts;
 
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.replacements.nodes.*;
 
-public class NeverPartOfCompilationNode extends MacroNode implements IterableNodeType {
+public class NeverPartOfCompilationNode extends MacroStateSplitNode implements IterableNodeType {
 
     private final String message;
 
@@ -43,10 +41,5 @@ public class NeverPartOfCompilationNode extends MacroNode implements IterableNod
 
     public final String getMessage() {
         return message + " " + arguments.toString();
-    }
-
-    @Override
-    public void lower(LoweringTool tool) {
-        throw GraphUtil.approxSourceException(this, new VerificationError(getMessage()));
     }
 }
