@@ -88,19 +88,19 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
      * @param workingSet the initial working set of nodes on which the canonicalizer works, should
      *            be an auto-grow node bitmap
      */
-    public void applyIncremental(StructuredGraph graph, PhaseContext context, Iterable<Node> workingSet) {
+    public void applyIncremental(StructuredGraph graph, PhaseContext context, Iterable<? extends Node> workingSet) {
         applyIncremental(graph, context, workingSet, true);
     }
 
-    public void applyIncremental(StructuredGraph graph, PhaseContext context, Iterable<Node> workingSet, boolean dumpGraph) {
+    public void applyIncremental(StructuredGraph graph, PhaseContext context, Iterable<? extends Node> workingSet, boolean dumpGraph) {
         new Instance(context, canonicalizeReads, workingSet, customCanonicalizer).apply(graph, dumpGraph);
     }
 
-    public void applyIncremental(StructuredGraph graph, PhaseContext context, Iterable<Node> workingSet, Mark newNodesMark) {
+    public void applyIncremental(StructuredGraph graph, PhaseContext context, Iterable<? extends Node> workingSet, Mark newNodesMark) {
         applyIncremental(graph, context, workingSet, newNodesMark, true);
     }
 
-    public void applyIncremental(StructuredGraph graph, PhaseContext context, Iterable<Node> workingSet, Mark newNodesMark, boolean dumpGraph) {
+    public void applyIncremental(StructuredGraph graph, PhaseContext context, Iterable<? extends Node> workingSet, Mark newNodesMark, boolean dumpGraph) {
         new Instance(context, canonicalizeReads, workingSet, newNodesMark, customCanonicalizer).apply(graph, dumpGraph);
     }
 
@@ -109,7 +109,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
         private final Mark newNodesMark;
         private final PhaseContext context;
         private final CustomCanonicalizer customCanonicalizer;
-        private final Iterable<Node> initWorkingSet;
+        private final Iterable<? extends Node> initWorkingSet;
         private final boolean canonicalizeReads;
 
         private NodeWorkList workList;
@@ -119,7 +119,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
             this(context, canonicalizeReads, null, null, customCanonicalizer);
         }
 
-        private Instance(PhaseContext context, boolean canonicalizeReads, Iterable<Node> workingSet, CustomCanonicalizer customCanonicalizer) {
+        private Instance(PhaseContext context, boolean canonicalizeReads, Iterable<? extends Node> workingSet, CustomCanonicalizer customCanonicalizer) {
             this(context, canonicalizeReads, workingSet, null, customCanonicalizer);
         }
 
@@ -127,7 +127,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
             this(context, canonicalizeReads, null, newNodesMark, customCanonicalizer);
         }
 
-        private Instance(PhaseContext context, boolean canonicalizeReads, Iterable<Node> workingSet, Mark newNodesMark, CustomCanonicalizer customCanonicalizer) {
+        private Instance(PhaseContext context, boolean canonicalizeReads, Iterable<? extends Node> workingSet, Mark newNodesMark, CustomCanonicalizer customCanonicalizer) {
             super("Canonicalizer");
             this.newNodesMark = newNodesMark;
             this.context = context;
