@@ -38,7 +38,8 @@ public class GraphEffectList extends EffectList {
     }
 
     public void addCounterAfter(final String group, final String name, final int increment, final boolean addContext, final FixedWithNextNode position) {
-        add("add counter after", graph -> DynamicCounterNode.addCounterBefore(group, name, increment, addContext, position.next()));
+        FixedNode nextPosition = position.next();
+        add("add counter after", graph -> DynamicCounterNode.addCounterBefore(group, name, increment, addContext, nextPosition));
     }
 
     public void addWeakCounterCounterBefore(final String group, final String name, final int increment, final boolean addContext, final ValueNode checkedValue, final FixedNode position) {
