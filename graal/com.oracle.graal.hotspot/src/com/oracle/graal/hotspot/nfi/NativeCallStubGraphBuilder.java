@@ -56,7 +56,7 @@ public class NativeCallStubGraphBuilder {
             ParameterNode arg0 = g.unique(new ParameterNode(0, StampFactory.forKind(Kind.Object)));
             ParameterNode arg1 = g.unique(new ParameterNode(1, StampFactory.forKind(Kind.Object)));
             ParameterNode arg2 = g.unique(new ParameterNode(2, StampFactory.forKind(Kind.Object)));
-            FrameState frameState = g.add(new FrameState(method, 0, Arrays.asList(new ValueNode[]{arg0, arg1, arg2}), 3, 0, false, false, new ArrayList<MonitorIdNode>(),
+            FrameState frameState = g.add(new FrameState(null, method, 0, Arrays.asList(new ValueNode[]{arg0, arg1, arg2}), 3, 0, false, false, new ArrayList<MonitorIdNode>(),
                             new ArrayList<EscapeObjectState>()));
             g.start().setStateAfter(frameState);
             List<ValueNode> parameters = new ArrayList<>();
