@@ -115,32 +115,36 @@ public final class PostOrderSerializer {
                 } else if (fieldClass == boolean.class) {
                     cpi = cp.putInt(unsafe.getBoolean(node, offset) ? 1 : 0);
                 } else {
-                    Object value = unsafe.getObject(node, offset);
-                    if (value == null) {
-                        cpi = VariableLengthIntBuffer.NULL;
-                    } else if (fieldClass == Integer.class) {
-                        cpi = cp.putInt((Integer) value);
-                    } else if (fieldClass == Long.class) {
-                        cpi = cp.putLong((Long) value);
-                    } else if (fieldClass == Float.class) {
-                        cpi = cp.putFloat((Float) value);
-                    } else if (fieldClass == Double.class) {
-                        cpi = cp.putDouble((Double) value);
-                    } else if (fieldClass == Byte.class) {
-                        cpi = cp.putInt((Byte) value);
-                    } else if (fieldClass == Short.class) {
-                        cpi = cp.putInt((Short) value);
-                    } else if (fieldClass == Character.class) {
-                        cpi = cp.putInt((Character) value);
-                    } else if (fieldClass == Boolean.class) {
-                        cpi = cp.putInt((Boolean) value ? 1 : 0);
-                    } else {
-                        cpi = cp.putObject(fieldClass, value);
-                    }
+                    cpi = serializeDataFieldsObject(node, fieldClass, offset);
                 }
 
                 buffer.put(cpi);
             }
+        }
+    }
+
+    private int serializeDataFieldsObject(Node node, Class<?> fieldClass, long offset) {
+        Object value = unsafe.getObject(node, offset);
+        if (value == null) {
+            return VariableLengthIntBuffer.NULL;
+        } else if (fieldClass == Integer.class) {
+            return cp.putInt((Integer) value);
+        } else if (fieldClass == Long.class) {
+            return cp.putLong((Long) value);
+        } else if (fieldClass == Float.class) {
+            return cp.putFloat((Float) value);
+        } else if (fieldClass == Double.class) {
+            return cp.putDouble((Double) value);
+        } else if (fieldClass == Byte.class) {
+            return cp.putInt((Byte) value);
+        } else if (fieldClass == Short.class) {
+            return cp.putInt((Short) value);
+        } else if (fieldClass == Character.class) {
+            return cp.putInt((Character) value);
+        } else if (fieldClass == Boolean.class) {
+            return cp.putInt((Boolean) value ? 1 : 0);
+        } else {
+            return cp.putObject(fieldClass, value);
         }
     }
 
