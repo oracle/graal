@@ -795,20 +795,25 @@ public final class NodeUtil {
                     p.print(" = ");
                     printTree(p, (Node) value, level + 1);
                 } else if (field.getKind() == NodeFieldKind.CHILDREN) {
-                    Node[] children = (Node[]) value;
-                    p.print(" = [");
-                    sep = "";
-                    for (Node child : children) {
-                        p.print(sep);
-                        sep = ", ";
-                        printTree(p, child, level + 1);
-                    }
-                    p.print("]");
+                    printChildren(p, level, value);
                 }
             }
             printNewLine(p, level - 1);
             p.print("}");
         }
+    }
+
+    private static void printChildren(PrintWriter p, int level, Object value) {
+        String sep;
+        Node[] children = (Node[]) value;
+        p.print(" = [");
+        sep = "";
+        for (Node child : children) {
+            p.print(sep);
+            sep = ", ";
+            printTree(p, child, level + 1);
+        }
+        p.print("]");
     }
 
     private static void printNewLine(PrintWriter p, int level) {
