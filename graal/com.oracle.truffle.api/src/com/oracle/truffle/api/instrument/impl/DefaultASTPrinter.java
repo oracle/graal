@@ -66,7 +66,6 @@ public class DefaultASTPrinter implements ASTPrinter {
 
         p.print(nodeName(node));
 
-        String sep = "";
         p.print("(");
 
         final SourceSection src = node.getSourceSection();
@@ -76,15 +75,7 @@ public class DefaultASTPrinter implements ASTPrinter {
             }
         }
         if (node instanceof SyntaxTagged) {
-            final SyntaxTagged taggedNode = (SyntaxTagged) node;
-            p.print("[");
-            String prefix = "";
-            for (SyntaxTag tag : taggedNode.getSyntaxTags()) {
-                p.print(prefix);
-                prefix = ",";
-                p.print(tag.toString());
-            }
-            p.print("]");
+            printSyntaxTagged(p, (SyntaxTagged) node);
         }
 
         ArrayList<NodeField> childFields = new ArrayList<>();
@@ -119,23 +110,9 @@ public class DefaultASTPrinter implements ASTPrinter {
                         p.print(field.getName());
                         p.print(" = null ");
                     } else if (field.getKind() == NodeFieldKind.CHILD) {
-                        final Node valueNode = (Node) value;
-                        printNewLine(p, level, valueNode == markNode);
-                        p.print(field.getName());
-                        p.print(" = ");
-                        printTree(p, valueNode, maxDepth, markNode, level + 1);
+                        printChild(p, maxDepth, markNode, level, field, value);
                     } else if (field.getKind() == NodeFieldKind.CHILDREN) {
-                        printNewLine(p, level);
-                        p.print(field.getName());
-                        Node[] children = (Node[]) value;
-                        p.print(" = [");
-                        sep = "";
-                        for (Node child : children) {
-                            p.print(sep);
-                            sep = ", ";
-                            printTree(p, child, maxDepth, markNode, level + 1);
-                        }
-                        p.print("]");
+                        printChildren(p, maxDepth, markNode, level, field, value);
                     } else {
                         printNewLine(p, level);
                         p.print(field.getName());
@@ -145,6 +122,39 @@ public class DefaultASTPrinter implements ASTPrinter {
                 p.print("}");
             }
         }
+    }
+
+    private static void printSyntaxTagged(PrintWriter p, final SyntaxTagged taggedNode) {
+        p.print("[");
+        String prefix = "";
+        for (SyntaxTag tag : taggedNode.getSyntaxTags()) {
+            p.print(prefix);
+            prefix = ",";
+            p.print(tag.toString());
+        }
+        p.print("]");
+    }
+
+    private static void printChildren(PrintWriter p, int maxDepth, Node markNode, int level, NodeField field, Object value) {
+        printNewLine(p, level);
+        p.print(field.getName());
+        Node[] children = (Node[]) value;
+        p.print(" = [");
+        String sep = "";
+        for (Node child : children) {
+            p.print(sep);
+            sep = ", ";
+            printTree(p, child, maxDepth, markNode, level + 1);
+        }
+        p.print("]");
+    }
+
+    private static void printChild(PrintWriter p, int maxDepth, Node markNode, int level, NodeField field, Object value) {
+        final Node valueNode = (Node) value;
+        printNewLine(p, level, valueNode == markNode);
+        p.print(field.getName());
+        p.print(" = ");
+        printTree(p, valueNode, maxDepth, markNode, level + 1);
     }
 
     private static void printNewLine(PrintWriter p, int level, boolean mark) {
