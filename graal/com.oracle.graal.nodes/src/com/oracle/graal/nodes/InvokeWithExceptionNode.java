@@ -201,12 +201,6 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Invoke,
     }
 
     @Override
-    public void setProbability(BeginNode successor, double value) {
-        assert successor == next || successor == exceptionEdge;
-        this.exceptionProbability = successor == next ? 1 - value : value;
-    }
-
-    @Override
     public boolean canDeoptimize() {
         return true;
     }
