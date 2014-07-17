@@ -42,6 +42,10 @@ public final class WriteNode extends AbstractWriteNode implements LIRLowerable, 
         super(object, value, location, barrierType, initialization);
     }
 
+    public WriteNode(ValueNode object, ValueNode value, ValueNode location, BarrierType barrierType, GuardingNode guard, boolean initialization) {
+        super(object, value, location, barrierType, guard, initialization);
+    }
+
     @Override
     public void generate(NodeLIRBuilderTool gen) {
         Value address = location().generateAddress(gen, gen.getLIRGeneratorTool(), gen.operand(object()));

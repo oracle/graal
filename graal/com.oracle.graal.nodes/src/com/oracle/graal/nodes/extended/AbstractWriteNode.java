@@ -73,6 +73,12 @@ public abstract class AbstractWriteNode extends FixedAccessNode implements State
         this.initialization = initialization;
     }
 
+    public AbstractWriteNode(ValueNode object, ValueNode value, ValueNode location, BarrierType barrierType, GuardingNode guard, boolean initialization) {
+        super(object, location, StampFactory.forVoid(), guard, barrierType, false, null);
+        this.value = value;
+        this.initialization = initialization;
+    }
+
     @Override
     public boolean isAllowedUsageType(InputType type) {
         return (type == InputType.Guard && getNullCheck()) ? true : super.isAllowedUsageType(type);
