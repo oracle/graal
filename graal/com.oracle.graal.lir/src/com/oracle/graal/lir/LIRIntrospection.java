@@ -258,12 +258,51 @@ abstract class LIRIntrospection extends FieldIntrospection {
             } else if (type == double[].class) {
                 return Arrays.toString((double[]) value);
             } else if (type == byte[].class) {
-                return Arrays.toString((byte[]) value);
+                byte[] byteValue = (byte[]) value;
+                if (isPrintableAsciiString(byteValue)) {
+                    return toString(byteValue);
+                } else {
+                    return Arrays.toString(byteValue);
+                }
             } else if (!type.getComponentType().isPrimitive()) {
                 return Arrays.toString((Object[]) value);
             }
         }
         assert false : "unhandled field type: " + type;
         return "";
+    }
+
+    /**
+     * Tests if all values in this string are printable ASCII characters or value \0 (b in
+     * [0x20,0x7F]) or b == 0
+     *
+     * @param array
+     * @return true if there are only printable ASCII characters and \0, false otherwise
+     */
+    private static boolean isPrintableAsciiString(byte[] array) {
+        for (byte b : array) {
+            if (b != 0 && b < 0x20 && b > 0x7F) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static String toString(byte[] bytes) {
+        StringBuilder sb = new StringBuilder();
+        sb.append('"');
+        for (byte b : bytes) {
+            if (b == 0) {
+                sb.append("\\0");
+            } else if (b == '"') {
+                sb.append("\\\"");
+            } else if (b == '\n') {
+                sb.append("\\n");
+            } else {
+                sb.append((char) b);
+            }
+        }
+        sb.append('"');
+        return sb.toString();
     }
 }
