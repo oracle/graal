@@ -59,10 +59,4 @@ public abstract class HSAILNodeLIRBuilder extends NodeLIRBuilder {
     public void visitBreakpointNode(BreakpointNode node) {
         throw GraalInternalError.unimplemented();
     }
-
-    @Override
-    public void visitInfopointNode(InfopointNode i) {
-        // TODO Auto-generated method stub
-        throw GraalInternalError.unimplemented();
-    }
 }

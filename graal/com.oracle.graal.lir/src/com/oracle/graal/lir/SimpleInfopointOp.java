@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,27 +20,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.api.code;
+package com.oracle.graal.lir;
 
-/**
- * A reason for infopoint insertion.
- */
-public enum InfopointReason {
-    UNKNOWN(false),
-    SAFEPOINT(false),
-    CALL(false),
-    IMPLICIT_EXCEPTION(false),
-    METHOD_START(true),
-    METHOD_END(true),
-    LINE_NUMBER(true);
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.lir.asm.*;
 
-    private InfopointReason(boolean canBeOmited) {
-        this.canBeOmited = canBeOmited;
+@Opcode("SIMPLE_INFOPOINT")
+public class SimpleInfopointOp extends LIRInstruction {
+    private final InfopointReason reason;
+    private final BytecodePosition position;
+
+    public SimpleInfopointOp(InfopointReason reason, BytecodePosition position) {
+        this.reason = reason;
+        this.position = position;
     }
 
-    private final boolean canBeOmited;
-
-    public boolean canBeOmited() {
-        return canBeOmited;
+    @Override
+    public void emitCode(CompilationResultBuilder crb) {
+        crb.recordInfopoint(crb.asm.position(), new DebugInfo(position, null), reason);
     }
 }

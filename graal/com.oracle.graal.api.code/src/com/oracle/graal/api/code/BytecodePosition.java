@@ -32,7 +32,7 @@ import com.oracle.graal.api.meta.*;
  * system to reconstruct a source-level stack trace for exceptions and to create
  * {@linkplain BytecodeFrame frames} for deoptimization.
  */
-public abstract class BytecodePosition implements Serializable {
+public class BytecodePosition implements Serializable {
 
     private static final long serialVersionUID = 8633885274526033515L;
 
@@ -42,7 +42,7 @@ public abstract class BytecodePosition implements Serializable {
 
     /**
      * Constructs a new object representing a given parent/caller, a given method, and a given BCI.
-     * 
+     *
      * @param caller the parent position
      * @param method the method
      * @param bci a BCI within the method
@@ -56,7 +56,7 @@ public abstract class BytecodePosition implements Serializable {
 
     /**
      * Converts this code position to a string representation.
-     * 
+     *
      * @return a string representation of this code position
      */
     @Override

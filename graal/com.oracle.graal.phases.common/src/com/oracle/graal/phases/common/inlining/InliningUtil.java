@@ -314,6 +314,7 @@ public class InliningUtil {
             }
         }
 
+        processSimpleInfopoints(invoke, inlineGraph, duplicates);
         if (stateAfter != null) {
             processFrameStates(invoke, inlineGraph, duplicates, stateAtExceptionEdge);
             int callerLockDepth = stateAfter.nestedLockDepth();
@@ -351,6 +352,24 @@ public class InliningUtil {
         GraphUtil.killCFG(invokeNode);
 
         return duplicates;
+    }
+
+    private static void processSimpleInfopoints(Invoke invoke, StructuredGraph inlineGraph, Map<Node, Node> duplicates) {
+        if (inlineGraph.getNodes(SimpleInfopointNode.class).isEmpty()) {
+            return;
+        }
+        BytecodePosition pos = new BytecodePosition(toBytecodePosition(invoke.stateAfter()), invoke.asNode().graph().method(), invoke.bci());
+        for (SimpleInfopointNode original : inlineGraph.getNodes(SimpleInfopointNode.class)) {
+            SimpleInfopointNode duplicate = (SimpleInfopointNode) duplicates.get(original);
+            duplicate.addCaller(pos);
+        }
+    }
+
+    private static BytecodePosition toBytecodePosition(FrameState fs) {
+        if (fs == null) {
+            return null;
+        }
+        return new BytecodePosition(toBytecodePosition(fs.outerFrameState()), fs.method(), fs.bci);
     }
 
     protected static void processFrameStates(Invoke invoke, StructuredGraph inlineGraph, Map<Node, Node> duplicates, FrameState stateAtExceptionEdge) {

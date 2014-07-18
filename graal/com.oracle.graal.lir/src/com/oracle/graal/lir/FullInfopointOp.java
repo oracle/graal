@@ -20,27 +20,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.api.code;
+package com.oracle.graal.lir;
+
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.lir.asm.*;
 
 /**
- * A reason for infopoint insertion.
+ * Emits an infopoint (only mark the position).
  */
-public enum InfopointReason {
-    UNKNOWN(false),
-    SAFEPOINT(false),
-    CALL(false),
-    IMPLICIT_EXCEPTION(false),
-    METHOD_START(true),
-    METHOD_END(true),
-    LINE_NUMBER(true);
+@Opcode("INFOPOINT")
+public class FullInfopointOp extends LIRInstruction {
 
-    private InfopointReason(boolean canBeOmited) {
-        this.canBeOmited = canBeOmited;
+    @State protected LIRFrameState state;
+
+    private final InfopointReason reason;
+
+    public FullInfopointOp(LIRFrameState state, InfopointReason reason) {
+        this.state = state;
+        this.reason = reason;
     }
 
-    private final boolean canBeOmited;
-
-    public boolean canBeOmited() {
-        return canBeOmited;
+    @Override
+    public void emitCode(CompilationResultBuilder crb) {
+        crb.recordInfopoint(crb.asm.position(), state, reason);
     }
 }

@@ -20,28 +20,35 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir;
+package com.oracle.graal.nodes;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.nodes.spi.*;
 
 /**
- * Emits an infopoint (only mark the position).
+ * Nodes of this type are inserted into the graph to denote points of interest to debugging.
  */
-@Opcode("INFOPOINT")
-public class InfopointOp extends LIRInstruction {
+public class FullInfopointNode extends InfopointNode implements LIRLowerable, NodeWithState {
+    @Input(InputType.State) private FrameState state;
 
-    @State protected LIRFrameState state;
-
-    private final InfopointReason reason;
-
-    public InfopointOp(LIRFrameState state, InfopointReason reason) {
+    public FullInfopointNode(InfopointReason reason, FrameState state) {
+        super(reason);
         this.state = state;
-        this.reason = reason;
     }
 
     @Override
-    public void emitCode(CompilationResultBuilder crb) {
-        crb.recordInfopoint(crb.asm.position(), state, reason);
+    public void generate(NodeLIRBuilderTool generator) {
+        generator.visitFullInfopointNode(this);
     }
+
+    public FrameState getState() {
+        return state;
+    }
+
+    @Override
+    public boolean verify() {
+        return state != null && super.verify();
+    }
+
 }

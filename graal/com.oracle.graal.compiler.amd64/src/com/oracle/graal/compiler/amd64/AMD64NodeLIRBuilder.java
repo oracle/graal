@@ -473,11 +473,6 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
     }
 
     @Override
-    public void visitInfopointNode(InfopointNode i) {
-        append(new InfopointOp(stateFor(i.getState()), i.reason));
-    }
-
-    @Override
     public AMD64LIRGenerator getLIRGeneratorTool() {
         return (AMD64LIRGenerator) gen;
     }

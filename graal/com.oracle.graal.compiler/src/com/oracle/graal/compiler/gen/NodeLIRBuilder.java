@@ -602,6 +602,16 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
     }
 
     @Override
+    public void visitFullInfopointNode(FullInfopointNode i) {
+        append(new FullInfopointOp(stateFor(i.getState()), i.getReason()));
+    }
+
+    @Override
+    public void visitSimpleInfopointNode(SimpleInfopointNode i) {
+        append(new SimpleInfopointOp(i.getReason(), i.getPosition()));
+    }
+
+    @Override
     public LIRGeneratorTool getLIRGeneratorTool() {
         return gen;
     }

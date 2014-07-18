@@ -78,10 +78,8 @@ public class TruffleCompilerImpl {
         this.suites = backend.getSuites().getDefaultSuites();
 
         ResolvedJavaType[] skippedExceptionTypes = getSkippedExceptionTypes(providers.getMetaAccess());
-        GraphBuilderConfiguration eagerConfig = GraphBuilderConfiguration.getEagerDefault();
-        eagerConfig.setSkippedExceptionTypes(skippedExceptionTypes);
-        this.config = GraphBuilderConfiguration.getDefault();
-        this.config.setSkippedExceptionTypes(skippedExceptionTypes);
+        GraphBuilderConfiguration eagerConfig = GraphBuilderConfiguration.getEagerDefault().withSkippedExceptionTypes(skippedExceptionTypes);
+        this.config = GraphBuilderConfiguration.getDefault().withSkippedExceptionTypes(skippedExceptionTypes);
 
         this.truffleCache = new TruffleCacheImpl(providers, eagerConfig, config, TruffleCompilerImpl.Optimizations);
 

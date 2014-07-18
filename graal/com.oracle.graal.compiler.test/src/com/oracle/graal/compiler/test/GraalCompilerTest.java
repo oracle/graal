@@ -693,7 +693,7 @@ public abstract class GraalCompilerTest extends GraalTest {
      * Parses a Java method in debug mode to produce a graph with extra infopoints.
      */
     protected StructuredGraph parseDebug(Method m) {
-        return parse0(m, getCustomGraphBuilderSuite(GraphBuilderConfiguration.getEagerInfopointDefault()));
+        return parse0(m, getCustomGraphBuilderSuite(GraphBuilderConfiguration.getFullDebugDefault()));
     }
 
     private StructuredGraph parse0(Method m, PhaseSuite<HighTierContext> graphBuilderSuite) {

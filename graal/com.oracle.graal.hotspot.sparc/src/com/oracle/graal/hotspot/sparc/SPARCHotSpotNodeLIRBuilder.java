@@ -141,12 +141,11 @@ public class SPARCHotSpotNodeLIRBuilder extends SPARCNodeLIRBuilder implements H
     }
 
     @Override
-    public void visitInfopointNode(InfopointNode i) {
+    public void visitFullInfopointNode(FullInfopointNode i) {
         if (i.getState() != null && i.getState().bci == BytecodeFrame.AFTER_BCI) {
             Debug.log("Ignoring InfopointNode for AFTER_BCI");
         } else {
-            super.visitInfopointNode(i);
+            super.visitFullInfopointNode(i);
         }
     }
-
 }
