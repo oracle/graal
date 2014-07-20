@@ -712,13 +712,13 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
     }
 
     /**
-     * Determines if this type is resolved in the context of a given accessing class. This is a
-     * conservative check based on this type's class loader being identical to
-     * {@code accessingClass}'s loader. This type may still be the correct resolved type in the
-     * context of {@code accessingClass} if its loader is an ancestor of {@code accessingClass}'s
-     * loader.
+     * Performs a fast-path check that this type is resolved in the context of a given accessing
+     * class. A negative result does not mean this type is not resolved with respect to
+     * {@code accessingClass}. That can only be determined by
+     * {@linkplain HotSpotGraalRuntime#lookupType(String, HotSpotResolvedObjectType, boolean)
+     * re-resolving} the type.
      */
-    public boolean isResolvedWithRespectTo(ResolvedJavaType accessingClass) {
+    public boolean isDefinitelyResolvedWithRespectTo(ResolvedJavaType accessingClass) {
         assert accessingClass != null;
         ResolvedJavaType elementType = getElementalType();
         if (elementType.isPrimitive()) {
@@ -738,7 +738,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
 
     @Override
     public ResolvedJavaType resolve(ResolvedJavaType accessingClass) {
-        if (isResolvedWithRespectTo(requireNonNull(accessingClass))) {
+        if (isDefinitelyResolvedWithRespectTo(requireNonNull(accessingClass))) {
             return this;
         }
         HotSpotResolvedObjectType accessingType = (HotSpotResolvedObjectType) accessingClass;
