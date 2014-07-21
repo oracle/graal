@@ -26,6 +26,7 @@ import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 import static com.oracle.graal.sparc.SPARC.*;
 import static com.oracle.graal.api.code.ValueUtil.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.*;
@@ -50,17 +51,18 @@ final class SPARCHotSpotPatchReturnAddressOp extends SPARCLIRInstruction {
     public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
         // FIXME This is non-trivial. On SPARC we need to flush all register windows first before we
         // can patch the return address (see: frame::patch_pc).
-        new Flushw().emit(masm);
+        // new Flushw().emit(masm);
         // int frameSize = crb.frameMap.frameSize();
         // new SPARCAssembler.Ldx(new SPARCAddress(o7, 1), g3).emit(masm);
         // new Setx(8 * 15 - 1, g4, false).emit(masm);
-        new Mov(asLongReg(address), g4).emit(masm);
-        new Save(sp, -2000, sp).emit(masm);
-
-        new Sub(g4, 0, i7).emit(masm);
-        new Stx(i7, new SPARCAddress(fp, 8 * 15)).emit(masm);
-        new Restore(g0, g0, g0).emit(masm);
-        new Flushw().emit(masm);
+        Register addrRegister = asLongReg(address);
+        // new SPARCAssembler.Ldx(new SPARCAddress(o7, 1), g3).emit(masm);
+        new Sub(addrRegister, Return.PC_RETURN_OFFSET, i7).emit(masm);
+        // new Save(sp, -2047, sp).emit(masm);
+        // new Flushw().emit(masm);
+        // new Stx(g4, new SPARCAddress(fp, o7.number * crb.target.wordSize)).emit(masm);
+        // new Restore(g0, g0, g0).emit(masm);
+// new Flushw().emit(masm);
         // new Ldx(new SPARCAddress(g0, 0x123), g0).emit(masm);
     }
 }

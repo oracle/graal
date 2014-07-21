@@ -3687,6 +3687,8 @@ public abstract class SPARCAssembler extends Assembler {
         public Return(Register src1, Register src2) {
             super(Op3s.Rett, src1, src2, r0);
         }
+
+        public static int PC_RETURN_OFFSET = 8;
     }
 
     public static class Save extends Fmt10 {

@@ -90,6 +90,15 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
     }
 
     @Override
+    public void beforeRegisterAllocation() {
+        super.beforeRegisterAllocation();
+        boolean hasDebugInfo = getResult().getLIR().hasDebugInfo();
+        if (hasDebugInfo) {
+            ((SPARCHotSpotLIRGenerationResult) getResult()).setDeoptimizationRescueSlot(getResult().getFrameMap().allocateSpillSlot(LIRKind.value(Kind.Long)));
+        }
+    }
+
+    @Override
     public Variable emitForeignCall(ForeignCallLinkage linkage, LIRFrameState state, Value... args) {
         HotSpotForeignCallLinkage hotspotLinkage = (HotSpotForeignCallLinkage) linkage;
         Variable result;
