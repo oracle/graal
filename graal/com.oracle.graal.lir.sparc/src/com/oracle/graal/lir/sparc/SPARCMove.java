@@ -481,7 +481,11 @@ public class SPARCMove {
                 new Ldx(src, dst).emit(masm);
                 break;
             case Float:
+                new Ldf(src, dst).emit(masm);
+                break;
             case Double:
+                new Lddf(src, dst).emit(masm);
+                break;
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }
