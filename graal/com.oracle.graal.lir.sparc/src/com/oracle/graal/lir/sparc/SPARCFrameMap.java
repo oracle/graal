@@ -34,11 +34,15 @@ import com.oracle.graal.lir.*;
  *
  * <pre>
  *   Base       Contents
- *
+ * 
  *            :                                :  -----
  *   caller   | incoming overflow argument n   |    ^
  *   frame    :     ...                        :    | positive
  *            | incoming overflow argument 0   |    | offsets
+ *            +--------------------------------+    |
+ *            |                                |    |
+ *            : register save area             :    |
+ *            |                                |    |
  *   ---------+--------------------------------+---------------------------
  *            | spill slot 0                   |    | negative   ^      ^
  *            :     ...                        :    v offsets    |      |
@@ -100,5 +104,17 @@ public final class SPARCFrameMap extends FrameMap {
     @Override
     protected StackSlot allocateNewSpillSlot(LIRKind kind, int additionalOffset) {
         return StackSlot.get(kind, -spillSize + additionalOffset, true);
+    }
+
+    /**
+     * We must add the calleSaveAreaSize() when it is a in or out parameter
+     */
+    @Override
+    public int offsetForStackSlot(StackSlot slot) {
+        int offset = super.offsetForStackSlot(slot);
+        if (slot.getRawOffset() >= 0) { // If In or Out parameter
+            offset += calleeSaveAreaSize();
+        }
+        return offset;
     }
 }
