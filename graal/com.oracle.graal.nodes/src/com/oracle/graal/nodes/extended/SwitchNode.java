@@ -35,6 +35,8 @@ public abstract class SwitchNode extends ControlSplitNode {
 
     @Successor private final NodeSuccessorList<BeginNode> successors;
     @Input private ValueNode value;
+
+    // do not change the contents of these arrays:
     private final double[] keyProbabilities;
     private final int[] keySuccessors;
 
