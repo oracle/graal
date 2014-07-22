@@ -95,4 +95,50 @@ public class ChildrenNodesTest {
             return 21;
         }
     }
+
+    @Test
+    public void testMultipleChildrenFields() {
+        TruffleRuntime runtime = Truffle.getRuntime();
+        TestChildNode firstChild = new TestChildNode();
+        TestChildNode secondChild = new TestChildNode();
+        TestChildNode thirdChild = new TestChildNode();
+        TestChildNode forthChild = new TestChildNode();
+        TestRootNode rootNode = new TestRoot2Node(new TestChildNode[]{firstChild, secondChild}, new TestChildNode[]{thirdChild, forthChild});
+        CallTarget target = runtime.createCallTarget(rootNode);
+        Assert.assertEquals(rootNode, firstChild.getParent());
+        Assert.assertEquals(rootNode, secondChild.getParent());
+        Assert.assertEquals(rootNode, thirdChild.getParent());
+        Assert.assertEquals(rootNode, forthChild.getParent());
+        Iterator<Node> iterator = rootNode.getChildren().iterator();
+        Assert.assertEquals(firstChild, iterator.next());
+        Assert.assertEquals(secondChild, iterator.next());
+        Assert.assertEquals(thirdChild, iterator.next());
+        Assert.assertEquals(forthChild, iterator.next());
+        Assert.assertFalse(iterator.hasNext());
+        Object result = target.call();
+        Assert.assertEquals(2 * 42, result);
+    }
+
+    class TestRoot2Node extends TestRootNode {
+        @Children private final TestChildNode[] children1;
+        @Children private final TestChildNode[] children2;
+
+        public TestRoot2Node(TestChildNode[] children1, TestChildNode[] children2) {
+            super(new TestChildNode[0]);
+            this.children1 = children1;
+            this.children2 = children2;
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            int sum = 0;
+            for (int i = 0; i < children1.length; ++i) {
+                sum += children1[i].execute();
+            }
+            for (int i = 0; i < children2.length; ++i) {
+                sum += children2[i].execute();
+            }
+            return sum;
+        }
+    }
 }
