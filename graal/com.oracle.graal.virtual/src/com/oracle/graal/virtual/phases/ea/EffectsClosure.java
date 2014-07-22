@@ -82,7 +82,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
                     Debug.log(" ==== effects for %s", context);
                     effects.apply(graph, obsoleteNodes);
                     if (TraceEscapeAnalysis.getValue()) {
-                        Debug.dump(graph, EffectsClosure.this.getClass().getSimpleName() + " - after processing %s", context);
+                        Debug.dump(5, graph, "After processing EffectsList for %s", context);
                     }
                 }
             }
