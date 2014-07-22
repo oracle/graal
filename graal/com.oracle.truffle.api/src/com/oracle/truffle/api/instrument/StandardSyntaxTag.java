@@ -56,7 +56,24 @@ public enum StandardSyntaxTag implements SyntaxTag {
     /**
      * Marker for a location where ordinary "stepping" should halt.
      */
-    STATEMENT("statement", "basic unit of the language, suitable for \"stepping\" in a debugger");
+    STATEMENT("statement", "basic unit of the language, suitable for \"stepping\" in a debugger"),
+
+    /**
+     * Marker for the start of the body of a method.
+     */
+    START_METHOD("start-method", "start of the body of a method"),
+
+    /**
+     * Marker for the start of the body of a loop.
+     */
+    START_LOOP("start-loop", "start of the body of a loop"),
+
+    /**
+     * Marker that is attached to some arbitrary locations that appear often-enough in an AST so
+     * that a location with this tag is regularly executed. Could be the start of method and loop
+     * bodies. May be used to implement some kind of safepoint functionality.
+     */
+    PERIODIC("periodic", "arbitrary locations that appear often-enough in an AST so that a location with this tag is regularly executed");
 
     private final String name;
     private final String description;
