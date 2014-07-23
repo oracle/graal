@@ -137,10 +137,15 @@ public abstract class PhiNode extends FloatingNode implements Simplifiable {
         values().remove(index);
     }
 
-    public static final ValueNode NO_VALUE = new ValueNode(null) {
+    public static final ValueNode MULTIPLE_VALUES = new ValueNode(null) {
         // empty dummy class
     };
 
+    /**
+     * If all inputs are the same value, this value is returned, otherwise {@link #MULTIPLE_VALUES}.
+     * Note that {@code null} is a valid return value, since {@link GuardPhiNode}s can have
+     * {@code null} inputs.
+     */
     public ValueNode singleValue() {
         Iterator<ValueNode> iterator = values().iterator();
         ValueNode singleValue = iterator.next();
@@ -148,13 +153,18 @@ public abstract class PhiNode extends FloatingNode implements Simplifiable {
             ValueNode value = iterator.next();
             if (value != this) {
                 if (value != singleValue) {
-                    return NO_VALUE;
+                    return MULTIPLE_VALUES;
                 }
             }
         }
         return singleValue;
     }
 
+    /**
+     * If all inputs (but the first one) are the same value, this value is returned, otherwise
+     * {@link #MULTIPLE_VALUES}. Note that {@code null} is a valid return value, since
+     * {@link GuardPhiNode}s can have {@code null} inputs.
+     */
     public ValueNode singleBackValue() {
         assert merge() instanceof LoopBeginNode;
         Iterator<ValueNode> iterator = values().iterator();
@@ -162,7 +172,7 @@ public abstract class PhiNode extends FloatingNode implements Simplifiable {
         ValueNode singleValue = iterator.next();
         while (iterator.hasNext()) {
             if (iterator.next() != singleValue) {
-                return NO_VALUE;
+                return MULTIPLE_VALUES;
             }
         }
         return singleValue;
@@ -172,7 +182,7 @@ public abstract class PhiNode extends FloatingNode implements Simplifiable {
     public void simplify(SimplifierTool tool) {
         ValueNode singleValue = singleValue();
 
-        if (singleValue != NO_VALUE) {
+        if (singleValue != MULTIPLE_VALUES) {
             for (Node node : usages().snapshot()) {
                 if (node instanceof ProxyNode && ((ProxyNode) node).proxyPoint() instanceof LoopExitNode && ((LoopExitNode) ((ProxyNode) node).proxyPoint()).loopBegin() == merge) {
                     tool.addToWorkList(node.usages());
