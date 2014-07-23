@@ -30,7 +30,7 @@ import com.oracle.graal.phases.common.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.nodes.Node.Child;
 
-final class PartialEvaluatorCanonicalizer implements CanonicalizerPhase.CustomCanonicalizer {
+final class PartialEvaluatorCanonicalizer extends CanonicalizerPhase.CustomCanonicalizer {
 
     private final MetaAccessProvider metaAccess;
     private final ConstantReflectionProvider constantReflection;

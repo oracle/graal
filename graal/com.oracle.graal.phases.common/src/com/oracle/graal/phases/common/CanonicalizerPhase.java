@@ -49,9 +49,15 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
     private final boolean canonicalizeReads;
     private final CustomCanonicalizer customCanonicalizer;
 
-    public interface CustomCanonicalizer {
+    public static abstract class CustomCanonicalizer {
 
-        Node canonicalize(Node node);
+        public Node canonicalize(Node node) {
+            return node;
+        }
+
+        @SuppressWarnings("unused")
+        public void simplify(Node node, SimplifierTool tool) {
+        }
     }
 
     public CanonicalizerPhase(boolean canonicalizeReads) {
@@ -225,6 +231,9 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
             if (!result && customCanonicalizer != null) {
                 Node canonical = customCanonicalizer.canonicalize(node);
                 result = performReplacement(node, canonical);
+                if (!result) {
+                    customCanonicalizer.simplify(node, tool);
+                }
             }
             return result;
         }
