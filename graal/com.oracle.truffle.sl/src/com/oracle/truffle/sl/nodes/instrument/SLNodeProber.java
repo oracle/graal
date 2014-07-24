@@ -20,30 +20,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.sl.nodes;
+package com.oracle.truffle.sl.nodes.instrument;
 
-import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.nodes.*;
-import com.oracle.truffle.api.source.*;
+import com.oracle.truffle.api.instrument.*;
+import com.oracle.truffle.sl.nodes.*;
 
-/**
- * The base class of all Truffle nodes for SL. All nodes (even expressions) can be used as
- * statements, i.e., without returning a value. The {@link VirtualFrame} provides access to the
- * local variables.
- */
-@NodeInfo(language = "Simple Language", description = "The abstract base node for all statements")
-public abstract class SLStatementNode extends Node {
+public interface SLNodeProber extends ASTNodeProber {
 
-    public SLStatementNode(SourceSection src) {
-        super(src);
-    }
+    SLStatementNode probeAsStatement(SLStatementNode result);
 
-    /**
-     * Execute this node as as statement, where no return value is necessary.
-     */
-    public abstract void executeVoid(VirtualFrame frame);
+    SLExpressionNode probeAsCall(SLExpressionNode node, String callName);
 
-    public SLStatementNode getNonWrapperNode() {
-        return this;
-    }
+    SLExpressionNode probeAsLocalAssignment(SLExpressionNode node, String localName);
 }

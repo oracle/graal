@@ -152,7 +152,7 @@ public class SLMain {
         if (sourceCallback != null) {
             sourceCallback.startLoading(source);
         }
-        Parser.parseSL(context, source);
+        Parser.parseSL(context, source, null);
         if (sourceCallback != null) {
             sourceCallback.endLoading(source);
         }

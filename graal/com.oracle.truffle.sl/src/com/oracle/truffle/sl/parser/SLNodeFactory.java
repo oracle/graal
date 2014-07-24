@@ -32,6 +32,7 @@ import com.oracle.truffle.sl.nodes.*;
 import com.oracle.truffle.sl.nodes.call.*;
 import com.oracle.truffle.sl.nodes.controlflow.*;
 import com.oracle.truffle.sl.nodes.expression.*;
+import com.oracle.truffle.sl.nodes.instrument.*;
 import com.oracle.truffle.sl.nodes.local.*;
 import com.oracle.truffle.sl.runtime.*;
 
@@ -72,9 +73,12 @@ public class SLNodeFactory {
     /* State while parsing a block. */
     private LexicalScope lexicalScope;
 
-    public SLNodeFactory(SLContext context, Source source) {
+    private final SLNodeProber prober;
+
+    public SLNodeFactory(SLContext context, Source source, SLNodeProber prober) {
         this.context = context;
         this.source = source;
+        this.prober = prober;
     }
 
     public void startFunction(Token nameToken) {
@@ -179,6 +183,14 @@ public class SLNodeFactory {
     public SLStatementNode createIf(Token t, SLExpressionNode conditionNode, SLStatementNode thenPartNode, SLStatementNode elsePartNode) {
         final int start = t.charPos;
         final int end = elsePartNode == null ? thenPartNode.getSourceSection().getCharEndIndex() : elsePartNode.getSourceSection().getCharEndIndex();
+
+        // if (prober != null) {
+        // SLStatementNode wrappedThenNode = prober.probeAsStatement(thenPartNode);
+        // // SLStatementNode wrappedElseNode = prober.probeAsStatement(elsePartNode);
+        // return new SLIfNode(source.createSection(t.val, start, end - start), conditionNode,
+        // wrappedThenNode, elsePartNode);
+        // }
+
         return new SLIfNode(source.createSection(t.val, start, end - start), conditionNode, thenPartNode, elsePartNode);
     }
 
@@ -227,6 +239,10 @@ public class SLNodeFactory {
         final int endPos = finalToken.charPos + finalToken.val.length();
         final SourceSection src = source.createSection(nameToken.val, startPos, endPos - startPos);
         SLExpressionNode functionNode = createRead(nameToken);
+        if (prober != null) {
+            SLExpressionNode wrappedNode = prober.probeAsCall(functionNode, nameToken.val);
+            return SLInvokeNode.create(src, wrappedNode, parameterNodes.toArray(new SLExpressionNode[parameterNodes.size()]));
+        }
         return SLInvokeNode.create(src, functionNode, parameterNodes.toArray(new SLExpressionNode[parameterNodes.size()]));
     }
 
@@ -235,6 +251,10 @@ public class SLNodeFactory {
         lexicalScope.locals.put(nameToken.val, frameSlot);
         final int start = nameToken.charPos;
         final int length = valueNode.getSourceSection().getCharEndIndex() - start;
+        if (prober != null) {
+            final SLExpressionNode wrappedNode = prober.probeAsLocalAssignment(valueNode, nameToken.val);
+            return SLWriteLocalVariableNodeFactory.create(source.createSection("=", start, length), wrappedNode, frameSlot);
+        }
         return SLWriteLocalVariableNodeFactory.create(source.createSection("=", start, length), valueNode, frameSlot);
     }
 
