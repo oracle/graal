@@ -61,34 +61,50 @@ public class BitScanReverseNode extends UnaryNode implements LIRLowerable {
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
         if (forValue.isConstant()) {
             Constant c = forValue.asConstant();
-            return ConstantNode.forInt(forValue.getKind() == Kind.Int ? scan(c.asInt()) : scan(c.asLong()));
+            if (c.asLong() != 0) {
+                return ConstantNode.forInt(forValue.getKind() == Kind.Int ? scan(c.asInt()) : scan(c.asLong()));
+            }
         }
         return this;
     }
 
-    @NodeIntrinsic
-    public static int scan(int v) {
-        if (v == 0) {
-            return -1;
-        }
-        int index = 31;
-        while (((1 << index) & v) == 0) {
-            --index;
-        }
-        return index;
+    /**
+     * Utility method with defined return value for 0.
+     *
+     * @param v
+     * @return index of first set bit or -1 if {@code v} == 0.
+     */
+    public static int scan(long v) {
+        return 63 - Long.numberOfLeadingZeros(v);
     }
 
-    @NodeIntrinsic
-    public static int scan(long v) {
-        if (v == 0) {
-            return -1;
-        }
-        int index = 63;
-        while (((1L << index) & v) == 0) {
-            --index;
-        }
-        return index;
+    /**
+     * Utility method with defined return value for 0.
+     *
+     * @param v
+     * @return index of first set bit or -1 if {@code v} == 0.
+     */
+    public static int scan(int v) {
+        return 31 - Integer.numberOfLeadingZeros(v);
     }
+
+    /**
+     * Raw intrinsic for bsr instruction.
+     *
+     * @param v
+     * @return index of first set bit or an undefined value if {@code v} == 0.
+     */
+    @NodeIntrinsic
+    public static native int unsafeScan(int v);
+
+    /**
+     * Raw intrinsic for bsr instruction.
+     *
+     * @param v
+     * @return index of first set bit or an undefined value if {@code v} == 0.
+     */
+    @NodeIntrinsic
+    public static native int unsafeScan(long v);
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
