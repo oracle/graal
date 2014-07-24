@@ -410,7 +410,11 @@ public class BinaryGraphPrinter implements GraphPrinter {
             NodeClass nodeClass = node.getNodeClass();
             node.getDebugProperties(props);
             if (probabilities != null && node instanceof FixedNode) {
-                props.put("probability", probabilities.applyAsDouble((FixedNode) node));
+                try {
+                    props.put("probability", probabilities.applyAsDouble((FixedNode) node));
+                } catch (Throwable t) {
+                    props.put("probability", t);
+                }
             }
             writeInt(getNodeId(node));
             writePoolObject(nodeClass);

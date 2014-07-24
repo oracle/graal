@@ -114,6 +114,7 @@ public class FixedNodeProbabilityCache implements ToDoubleFunction<FixedNode> {
             ControlSplitNode split = (ControlSplitNode) current.predecessor();
             probability = split.probability((BeginNode) current) * applyAsDouble(split);
         }
+        assert !Double.isNaN(probability) && !Double.isInfinite(probability) : current + " " + probability;
         cache.put(current, probability);
         return probability;
     }
