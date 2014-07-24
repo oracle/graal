@@ -57,10 +57,10 @@ final class SPARCHotSpotPatchReturnAddressOp extends SPARCLIRInstruction {
         Register addrRegister = asLongReg(address);
         // new SPARCAssembler.Ldx(new SPARCAddress(o7, 1), g3).emit(masm);
         new Sub(addrRegister, Return.PC_RETURN_OFFSET, i7).emit(masm);
-        // new Save(sp, -2047, sp).emit(masm);
-        // new Flushw().emit(masm);
+// new Save(sp, -3000, sp).emit(masm);
+// new Flushw().emit(masm);
         // new Stx(g4, new SPARCAddress(fp, o7.number * crb.target.wordSize)).emit(masm);
-        // new Restore(g0, g0, g0).emit(masm);
+// new Restore(g0, g0, g0).emit(masm);
 // new Flushw().emit(masm);
         // new Ldx(new SPARCAddress(g0, 0x123), g0).emit(masm);
     }
