@@ -316,7 +316,7 @@ public class InliningUtil {
 
         processSimpleInfopoints(invoke, inlineGraph, duplicates);
         if (stateAfter != null) {
-            processFrameStates(invoke, inlineGraph, duplicates, stateAtExceptionEdge);
+            processFrameStates(invoke, inlineGraph, duplicates, stateAtExceptionEdge, returnNodes.size() > 1);
             int callerLockDepth = stateAfter.nestedLockDepth();
             if (callerLockDepth != 0) {
                 for (MonitorIdNode original : inlineGraph.getNodes(MonitorIdNode.class)) {
@@ -372,7 +372,7 @@ public class InliningUtil {
         return new BytecodePosition(toBytecodePosition(fs.outerFrameState()), fs.method(), fs.bci);
     }
 
-    protected static void processFrameStates(Invoke invoke, StructuredGraph inlineGraph, Map<Node, Node> duplicates, FrameState stateAtExceptionEdge) {
+    protected static void processFrameStates(Invoke invoke, StructuredGraph inlineGraph, Map<Node, Node> duplicates, FrameState stateAtExceptionEdge, boolean alwaysDuplicateStateAfter) {
         FrameState stateAtReturn = invoke.stateAfter();
         FrameState outerFrameState = null;
         Kind invokeReturnKind = invoke.asNode().getKind();
@@ -385,7 +385,7 @@ public class InliningUtil {
                      * return value (top of stack)
                      */
                     FrameState stateAfterReturn = stateAtReturn;
-                    if (invokeReturnKind != Kind.Void && frameState.stackSize() > 0 && stateAfterReturn.stackAt(0) != frameState.stackAt(0)) {
+                    if (invokeReturnKind != Kind.Void && (alwaysDuplicateStateAfter || frameState.stackSize() > 0 && stateAfterReturn.stackAt(0) != frameState.stackAt(0))) {
                         stateAfterReturn = stateAtReturn.duplicateModified(invokeReturnKind, frameState.stackAt(0));
                     }
                     frameState.replaceAndDelete(stateAfterReturn);
