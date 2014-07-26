@@ -253,8 +253,8 @@ public class MonitorSnippets implements Snippets {
             // assuming both the stack pointer and page_size have their least
             // significant 2 bits cleared and page_size is a power of 2
             final Word alignedMask = Word.unsigned(wordSize() - 1);
-            final Word stackPointer = registerAsWord(stackPointerRegister);
-            if (probability(VERY_SLOW_PATH_PROBABILITY, currentMark.subtract(stackPointer.add(config().stackBias)).and(alignedMask.subtract(pageSize())).notEqual(0))) {
+            final Word stackPointer = registerAsWord(stackPointerRegister).add(config().stackBias);
+            if (probability(VERY_SLOW_PATH_PROBABILITY, currentMark.subtract(stackPointer).and(alignedMask.subtract(pageSize())).notEqual(0))) {
                 // Most likely not a recursive lock, go into a slow runtime call
                 traceObject(trace, "+lock{stub:failed-cas}", object, true);
                 monitorenterStubC(MONITORENTER, object, lock);
