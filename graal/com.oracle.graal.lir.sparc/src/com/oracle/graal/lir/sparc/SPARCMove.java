@@ -389,11 +389,11 @@ public class SPARCMove {
                 const2reg(crb, masm, result, (Constant) input);
             } else if (isStackSlot(result)) {
                 // Move a Constant to a stack slot (Probably a 7th output parameter)
-                Value scratch = input.getKind() == Kind.Float || input.getKind() == Kind.Double ? f30.asValue() : g5.asValue();
+                Value scratch = input.getKind() == Kind.Float || input.getKind() == Kind.Double ? f30.asValue(input.getLIRKind()) : g5.asValue(input.getLIRKind());
                 const2reg(crb, masm, scratch, (Constant) input);
                 reg2stack(crb, masm, result, scratch);
             } else {
-                throw GraalInternalError.shouldNotReachHere("Result is a : " + result);
+                throw GraalInternalError.shouldNotReachHere("Result is a: " + result);
             }
         } else {
             throw GraalInternalError.shouldNotReachHere();
@@ -443,7 +443,7 @@ public class SPARCMove {
                 }
                 break;
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw GraalInternalError.shouldNotReachHere("Input is a: " + input.getKind());
         }
     }
 
@@ -451,6 +451,9 @@ public class SPARCMove {
         SPARCAddress dst = (SPARCAddress) crb.asAddress(result);
         Register src = asRegister(input);
         switch (input.getKind()) {
+            case Char:
+            case Byte:
+            case Boolean:
             case Int:
                 new Stw(src, dst).emit(masm);
                 break;
@@ -465,7 +468,7 @@ public class SPARCMove {
                 new Stdf(src, dst).emit(masm);
                 break;
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw GraalInternalError.shouldNotReachHere("Input is a: " + input.getKind() + "(" + input + ")");
         }
     }
 
@@ -487,7 +490,7 @@ public class SPARCMove {
                 new Lddf(src, dst).emit(masm);
                 break;
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw GraalInternalError.shouldNotReachHere("Input is a: " + input.getKind());
         }
     }
 
