@@ -250,8 +250,8 @@ public enum SPARCArithmetic {
         @Def({REG}) protected Value result;
         @Use({REG, CONST}) protected Value x;
         @Alive({REG, CONST}) protected Value y;
-        @Def({REG}) protected Value scratch1;
-        @Def({REG}) protected Value scratch2;
+        @Temp({REG}) protected Value scratch1;
+        @Temp({REG}) protected Value scratch2;
         @State protected LIRFrameState state;
 
         public RemOp(SPARCArithmetic opcode, Value result, Value x, Value y, LIRFrameState state, LIRGeneratorTool gen) {
@@ -549,11 +549,6 @@ public enum SPARCArithmetic {
                 default:
                     throw GraalInternalError.shouldNotReachHere("not implemented");
             }
-        } else if (isConstant(src1)) {
-            switch (opcode) {
-                default:
-                    throw GraalInternalError.shouldNotReachHere();
-            }
         } else if (isConstant(src2)) {
             switch (opcode) {
                 case IREM:
@@ -577,18 +572,27 @@ public enum SPARCArithmetic {
                     throw GraalInternalError.shouldNotReachHere();
             }
         } else {
+            Value srcLeft = src1;
             switch (opcode) {
                 case LREM:
+                    if (isConstant(src1)) {
+                        new Setx(crb.asLongConst(src1), asLongReg(scratch2), false).emit(masm);
+                        srcLeft = scratch2;
+                    }
                     exceptionOffset = masm.position();
-                    new Sdivx(asLongReg(src1), asLongReg(src2), asLongReg(scratch1)).emit(masm);
-                    new Mulx(asLongReg(scratch1), asLongReg(src2), asLongReg(scratch2)).emit(masm);
-                    new Sub(asLongReg(src1), asLongReg(scratch2), asLongReg(dst)).emit(masm);
+                    new Sdivx(asLongReg(srcLeft), asLongReg(src2), asLongReg(scratch1)).emit(masm);
+                    new Mulx(asLongReg(scratch1), asLongReg(src2), asLongReg(scratch1)).emit(masm);
+                    new Sub(asLongReg(srcLeft), asLongReg(scratch1), asLongReg(dst)).emit(masm);
                     break;
                 case IREM:
+                    if (isConstant(src1)) {
+                        new Setx(crb.asIntConst(src1), asIntReg(scratch2), false).emit(masm);
+                        srcLeft = scratch2;
+                    }
                     exceptionOffset = masm.position();
-                    new Sdivx(asIntReg(src1), asIntReg(src2), asIntReg(scratch1)).emit(masm);
-                    new Mulx(asIntReg(scratch1), asIntReg(src2), asIntReg(scratch2)).emit(masm);
-                    new Sub(asIntReg(src1), asIntReg(scratch2), asIntReg(dst)).emit(masm);
+                    new Sdivx(asIntReg(srcLeft), asIntReg(src2), asIntReg(scratch1)).emit(masm);
+                    new Mulx(asIntReg(scratch1), asIntReg(src2), asIntReg(scratch1)).emit(masm);
+                    new Sub(asIntReg(srcLeft), asIntReg(scratch1), asIntReg(dst)).emit(masm);
                     break;
                 case LUREM:
                     throw GraalInternalError.unimplemented();
