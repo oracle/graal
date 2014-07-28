@@ -259,14 +259,14 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                     IntegerLessThanNode lessThan2 = (IntegerLessThanNode) ifNode2.condition();
                     BeginNode falseSucc = ifNode2.falseSuccessor();
                     BeginNode trueSucc = ifNode2.trueSuccessor();
-                    IntegerBelowThanNode below = null;
+                    IntegerBelowNode below = null;
                     /*
                      * Convert x >= 0 && x < positive which is represented as !(x < 0) && x <
                      * <positive> into an unsigned compare.
                      */
                     if (lessThan2.getX() == lessThan.getX() && lessThan2.getY().stamp() instanceof IntegerStamp && ((IntegerStamp) lessThan2.getY().stamp()).isPositive() &&
                                     sameDestination(trueSuccessor(), ifNode2.falseSuccessor)) {
-                        below = graph().unique(new IntegerBelowThanNode(lessThan2.getX(), lessThan2.getY()));
+                        below = graph().unique(new IntegerBelowNode(lessThan2.getX(), lessThan2.getY()));
                         // swap direction
                         BeginNode tmp = falseSucc;
                         falseSucc = trueSucc;
@@ -281,7 +281,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                         Constant positive = lessThan2.getX().asConstant();
                         if (positive != null && positive.asLong() > 0 && positive.asLong() < positive.getKind().getMaxValue()) {
                             ConstantNode newLimit = ConstantNode.forIntegerKind(positive.getKind(), positive.asLong() + 1, graph());
-                            below = graph().unique(new IntegerBelowThanNode(lessThan.getX(), newLimit));
+                            below = graph().unique(new IntegerBelowNode(lessThan.getX(), newLimit));
                         }
                     }
                     if (below != null) {

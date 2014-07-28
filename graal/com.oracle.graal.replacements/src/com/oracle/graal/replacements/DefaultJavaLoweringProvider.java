@@ -646,7 +646,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             }
         }
 
-        return tool.createGuard(n, graph.unique(new IntegerBelowThanNode(n.index(), arrayLength)), BoundsCheckException, InvalidateReprofile);
+        return tool.createGuard(n, graph.unique(new IntegerBelowNode(n.index(), arrayLength)), BoundsCheckException, InvalidateReprofile);
     }
 
     protected GuardingNode createNullCheck(ValueNode object, FixedNode before, LoweringTool tool) {

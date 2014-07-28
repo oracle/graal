@@ -91,7 +91,7 @@ public final class IntegerLessThanNode extends CompareNode {
         }
         if (forX.stamp() instanceof IntegerStamp && forY.stamp() instanceof IntegerStamp) {
             if (IntegerStamp.sameSign((IntegerStamp) forX.stamp(), (IntegerStamp) forY.stamp())) {
-                return new IntegerBelowThanNode(forX, forY);
+                return new IntegerBelowNode(forX, forY);
             }
         }
         return this;

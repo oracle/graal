@@ -355,7 +355,7 @@ public class WordTypeRewriterPhase extends Phase {
         if (condition == Condition.EQ || condition == Condition.NE) {
             comparison = new IntegerEqualsNode(a, b);
         } else if (condition.isUnsigned()) {
-            comparison = new IntegerBelowThanNode(a, b);
+            comparison = new IntegerBelowNode(a, b);
         } else {
             comparison = new IntegerLessThanNode(a, b);
         }

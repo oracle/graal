@@ -243,12 +243,12 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
 
     @MatchRule("(If (IntegerEquals=compare value (FloatingRead=access (Compression=compress object) ConstantLocation=location)))")
     @MatchRule("(If (IntegerLessThan=compare value (FloatingRead=access (Compression=compress object) ConstantLocation=location)))")
-    @MatchRule("(If (IntegerBelowThan=compare value (FloatingRead=access (Compression=compress object) ConstantLocation=location)))")
+    @MatchRule("(If (IntegerBelow=compare value (FloatingRead=access (Compression=compress object) ConstantLocation=location)))")
     @MatchRule("(If (FloatEquals=compare value (FloatingRead=access (Compression=compress object) ConstantLocation=location)))")
     @MatchRule("(If (FloatLessThan=compare value (FloatingRead=access (Compression=compress object) ConstantLocation=location)))")
     @MatchRule("(If (IntegerEquals=compare value (Read=access (Compression=compress object) ConstantLocation=location)))")
     @MatchRule("(If (IntegerLessThan=compare value (Read=access (Compression=compress object) ConstantLocation=location)))")
-    @MatchRule("(If (IntegerBelowThan=compare value (Read=access (Compression=compress object) ConstantLocation=location)))")
+    @MatchRule("(If (IntegerBelow=compare value (Read=access (Compression=compress object) ConstantLocation=location)))")
     @MatchRule("(If (FloatEquals=compare value (Read=access (Compression=compress object) ConstantLocation=location)))")
     @MatchRule("(If (FloatLessThan=compare value (Read=access (Compression=compress object) ConstantLocation=location)))")
     public ComplexMatchResult ifCompareCompressedMemory(IfNode root, CompareNode compare, CompressionNode compress, ValueNode value, ConstantLocationNode location, Access access) {

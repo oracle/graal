@@ -74,7 +74,7 @@ import com.oracle.graal.nodes.virtual.*;
 @MatchableNode(nodeClass = FloatLessThanNode.class, inputs = {"x", "y"}, commutative = true)
 @MatchableNode(nodeClass = FloatMulNode.class, inputs = {"x", "y"}, commutative = true)
 @MatchableNode(nodeClass = IntegerAddNode.class, inputs = {"x", "y"}, commutative = true)
-@MatchableNode(nodeClass = IntegerBelowThanNode.class, inputs = {"x", "y"}, commutative = true)
+@MatchableNode(nodeClass = IntegerBelowNode.class, inputs = {"x", "y"}, commutative = true)
 @MatchableNode(nodeClass = IntegerEqualsNode.class, inputs = {"x", "y"}, commutative = true)
 @MatchableNode(nodeClass = IntegerLessThanNode.class, inputs = {"x", "y"}, commutative = true)
 @MatchableNode(nodeClass = IntegerMulNode.class, inputs = {"x", "y"}, commutative = true)

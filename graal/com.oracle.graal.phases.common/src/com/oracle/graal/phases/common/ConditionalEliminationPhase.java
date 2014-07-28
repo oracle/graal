@@ -446,12 +446,12 @@ public class ConditionalEliminationPhase extends Phase {
         }
 
         private GuardedStamp computeGuardedStamp(GuardNode guard) {
-            if (guard.condition() instanceof IntegerBelowThanNode) {
+            if (guard.condition() instanceof IntegerBelowNode) {
                 if (guard.negated()) {
                     // Not sure how to reason about negated guards
                     return null;
                 }
-                IntegerBelowThanNode below = (IntegerBelowThanNode) guard.condition();
+                IntegerBelowNode below = (IntegerBelowNode) guard.condition();
                 if (below.getX().getKind() == Kind.Int && below.getX().isConstant() && !below.getY().isConstant()) {
                     Stamp stamp = StampTool.unsignedCompare(below.getX().stamp(), below.getY().stamp());
                     if (stamp != null) {
@@ -520,8 +520,8 @@ public class ConditionalEliminationPhase extends Phase {
             }
 
             GuardNode existingGuard = null;
-            if (guard.condition() instanceof IntegerBelowThanNode) {
-                IntegerBelowThanNode below = (IntegerBelowThanNode) guard.condition();
+            if (guard.condition() instanceof IntegerBelowNode) {
+                IntegerBelowNode below = (IntegerBelowNode) guard.condition();
                 IntegerStamp xStamp = (IntegerStamp) below.getX().stamp();
                 IntegerStamp yStamp = (IntegerStamp) below.getY().stamp();
                 GuardedStamp cstamp = state.valueConstraints.get(below.getX());

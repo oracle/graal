@@ -166,7 +166,7 @@ public abstract class CompareNode extends BinaryOpLogicNode {
         } else {
             assert condition == Condition.BT;
             assert x.getKind().isNumericInteger();
-            comparison = new IntegerBelowThanNode(x, y);
+            comparison = new IntegerBelowNode(x, y);
         }
 
         return comparison;

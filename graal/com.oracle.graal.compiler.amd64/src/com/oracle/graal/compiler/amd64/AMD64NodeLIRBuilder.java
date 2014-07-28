@@ -350,10 +350,10 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
 
     @MatchRule("(If (IntegerEquals=compare value Read=access))")
     @MatchRule("(If (IntegerLessThan=compare value Read=access))")
-    @MatchRule("(If (IntegerBelowThan=compare value Read=access))")
+    @MatchRule("(If (IntegerBelow=compare value Read=access))")
     @MatchRule("(If (IntegerEquals=compare value FloatingRead=access))")
     @MatchRule("(If (IntegerLessThan=compare value FloatingRead=access))")
-    @MatchRule("(If (IntegerBelowThan=compare value FloatingRead=access))")
+    @MatchRule("(If (IntegerBelow=compare value FloatingRead=access))")
     @MatchRule("(If (FloatEquals=compare value Read=access))")
     @MatchRule("(If (FloatEquals=compare value FloatingRead=access))")
     @MatchRule("(If (FloatLessThan=compare value Read=access))")

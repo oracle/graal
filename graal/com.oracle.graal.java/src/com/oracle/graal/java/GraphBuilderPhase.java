@@ -666,7 +666,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             protected void emitBoundsCheck(ValueNode index, ValueNode length) {
                 BlockPlaceholderNode trueSucc = currentGraph.add(new BlockPlaceholderNode(this));
                 BlockPlaceholderNode falseSucc = currentGraph.add(new BlockPlaceholderNode(this));
-                append(new IfNode(currentGraph.unique(new IntegerBelowThanNode(index, length)), trueSucc, falseSucc, 0.99));
+                append(new IfNode(currentGraph.unique(new IntegerBelowNode(index, length)), trueSucc, falseSucc, 0.99));
                 lastInstr = trueSucc;
 
                 BytecodeExceptionNode exception = currentGraph.add(new BytecodeExceptionNode(metaAccess, ArrayIndexOutOfBoundsException.class, index));
