@@ -319,6 +319,11 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
         Variable result = super.emitForeignCall(linkage, null, threadRegister.asValue(LIRKind.value(Kind.Long)));
         append(new SPARCHotSpotCRuntimeCallEpilogueOp(config.threadLastJavaSpOffset(), config.threadLastJavaPcOffset(), config.threadJavaFrameAnchorFlagsOffset(), threadRegister));
 
+        Map<LIRFrameState, SaveRegistersOp> calleeSaveInfo = ((SPARCHotSpotLIRGenerationResult) getResult()).getCalleeSaveInfo();
+        assert currentRuntimeCallInfo != null;
+        assert !calleeSaveInfo.containsKey(currentRuntimeCallInfo);
+        calleeSaveInfo.put(currentRuntimeCallInfo, saveRegisterOp);
+
         return result;
     }
 
