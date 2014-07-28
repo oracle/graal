@@ -404,20 +404,20 @@ public class SPARCControlFlow {
                 return ConditionFlag.Equal;
             case NE:
                 return ConditionFlag.NotEqual;
+            case BT:
             case LT:
                 return ConditionFlag.Less;
+            case BE:
             case LE:
                 return ConditionFlag.LessEqual;
+            case AE:
             case GE:
                 return ConditionFlag.GreaterEqual;
+            case AT:
             case GT:
                 return ConditionFlag.Greater;
-            case BE:
-            case AE:
-            case AT:
-            case BT:
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw GraalInternalError.shouldNotReachHere("Unimplemented for: " + cond);
         }
     }
 
