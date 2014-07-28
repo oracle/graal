@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.printer;
 
+import static com.oracle.graal.compiler.common.GraalOptions.*;
+
 import java.io.*;
 import java.util.*;
 import java.util.Map.Entry;
@@ -87,10 +89,12 @@ public class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPr
         Set<Node> noBlockNodes = new HashSet<>();
         SchedulePhase schedule = predefinedSchedule;
         if (schedule == null && tryToSchedule) {
-            try {
-                schedule = new SchedulePhase();
-                schedule.apply((StructuredGraph) graph);
-            } catch (Throwable t) {
+            if (PrintIdealGraphSchedule.getValue()) {
+                try {
+                    schedule = new SchedulePhase();
+                    schedule.apply((StructuredGraph) graph);
+                } catch (Throwable t) {
+                }
             }
         }
         ControlFlowGraph cfg = schedule == null ? null : schedule.getCFG();

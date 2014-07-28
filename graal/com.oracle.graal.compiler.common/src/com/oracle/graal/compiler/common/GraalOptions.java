@@ -150,6 +150,8 @@ public final class GraalOptions {
     public static final OptionValue<Integer> PrintIdealGraphPort = new OptionValue<>(4444);
     @Option(help = "")
     public static final OptionValue<Integer> PrintBinaryGraphPort = new OptionValue<>(4445);
+    @Option(help = "")
+    public static final OptionValue<Boolean> PrintIdealGraphSchedule = new OptionValue<>(false);
 
     // Other printing settings
     @Option(help = "")
