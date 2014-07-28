@@ -410,6 +410,10 @@ public class SPARCMove {
             return;
         }
         switch (input.getKind()) {
+            case Boolean:
+            case Byte:
+            case Short:
+            case Char:
             case Int:
             case Long:
             case Object:
@@ -451,9 +455,14 @@ public class SPARCMove {
         SPARCAddress dst = (SPARCAddress) crb.asAddress(result);
         Register src = asRegister(input);
         switch (input.getKind()) {
-            case Char:
             case Byte:
             case Boolean:
+                new Stb(src, dst).emit(masm);
+                break;
+            case Char:
+            case Short:
+                new Sth(src, dst).emit(masm);
+                break;
             case Int:
                 new Stw(src, dst).emit(masm);
                 break;
@@ -476,6 +485,16 @@ public class SPARCMove {
         SPARCAddress src = (SPARCAddress) crb.asAddress(input);
         Register dst = asRegister(result);
         switch (input.getKind()) {
+            case Boolean:
+            case Byte:
+                new Ldsb(src, dst).emit(masm);
+                break;
+            case Short:
+                new Ldsh(src, dst).emit(masm);
+                break;
+            case Char:
+                new Lduh(src, dst).emit(masm);
+                break;
             case Int:
                 new Ldsw(src, dst).emit(masm);
                 break;
