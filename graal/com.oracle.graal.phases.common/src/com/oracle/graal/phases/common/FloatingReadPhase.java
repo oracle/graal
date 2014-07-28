@@ -209,7 +209,7 @@ public class FloatingReadPhase extends Phase {
 
     }
 
-    private static class CollectMemoryCheckpointsClosure extends NodeIteratorClosure<Set<LocationIdentity>> {
+    public static class CollectMemoryCheckpointsClosure extends NodeIteratorClosure<Set<LocationIdentity>> {
 
         private final Map<LoopBeginNode, Set<LocationIdentity>> modifiedInLoops;
 
@@ -261,7 +261,7 @@ public class FloatingReadPhase extends Phase {
 
     }
 
-    private static class FloatingReadClosure extends NodeIteratorClosure<MemoryMapImpl> {
+    public static class FloatingReadClosure extends NodeIteratorClosure<MemoryMapImpl> {
 
         private final Map<LoopBeginNode, Set<LocationIdentity>> modifiedInLoops;
         private boolean createFloatingReads;
@@ -372,7 +372,7 @@ public class FloatingReadPhase extends Phase {
             Map<LocationIdentity, MemoryPhiNode> phis = new HashMap<>();
 
             if (updateExistingPhis) {
-                for (MemoryPhiNode phi : loop.phis().filter(MemoryPhiNode.class)) {
+                for (MemoryPhiNode phi : loop.phis().filter(MemoryPhiNode.class).snapshot()) {
                     if (modifiedLocations.contains(phi.getLocationIdentity())) {
                         phi.values().clear();
                         phi.addInput(ValueNodeUtil.asNode(initialState.getLastLocationAccess(phi.getLocationIdentity())));
