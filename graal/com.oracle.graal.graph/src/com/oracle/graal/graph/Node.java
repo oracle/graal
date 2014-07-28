@@ -578,7 +578,7 @@ public abstract class Node implements Cloneable, Formattable {
                 }
             }
             if (oldInput != null && oldInput.recordsUsages() && oldInput.usages().isEmpty()) {
-                maybeNotifyZeroInputs(oldInput);
+                maybeNotifyZeroUsages(oldInput);
             }
         }
     }
@@ -707,7 +707,7 @@ public abstract class Node implements Cloneable, Formattable {
         }
     }
 
-    private void maybeNotifyZeroInputs(Node node) {
+    private void maybeNotifyZeroUsages(Node node) {
         if (graph != null) {
             assert !graph.isFrozen();
             NodeEventListener listener = graph.nodeEventListener;
@@ -753,7 +753,7 @@ public abstract class Node implements Cloneable, Formattable {
             if (input.recordsUsages()) {
                 removeThisFromUsages(input);
                 if (input.usages().isEmpty()) {
-                    maybeNotifyZeroInputs(input);
+                    maybeNotifyZeroUsages(input);
                 }
             }
         }
