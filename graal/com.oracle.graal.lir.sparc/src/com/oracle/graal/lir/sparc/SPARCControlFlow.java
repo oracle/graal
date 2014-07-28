@@ -252,18 +252,18 @@ public class SPARCControlFlow {
             Register scratchReg = asLongReg(scratch);
 
             // Compare index against jump table bounds
-            // int highKey = lowKey + targets.length - 1;
+            int highKey = lowKey + targets.length - 1;
             if (lowKey != 0) {
                 // subtract the low value from the switch value
-                new Subcc(value, lowKey, value).emit(masm);
-                // masm.setp_gt_s32(value, highKey - lowKey);
+                new Sub(value, lowKey, value).emit(masm);
+                new Cmp(value, highKey - lowKey).emit(masm);
             } else {
-                // masm.setp_gt_s32(value, highKey);
+                new Cmp(value, highKey).emit(masm);
             }
 
             // Jump to default target if index is not within the jump table
             if (defaultTarget != null) {
-                new Bpl(CC.Icc, defaultTarget.label()).emit(masm);
+                new Bpgu(CC.Icc, defaultTarget.label()).emit(masm);
                 new Nop().emit(masm);  // delay slot
             }
 
@@ -271,7 +271,7 @@ public class SPARCControlFlow {
             new Sll(value, 3, value).emit(masm); // Multiply by 8
             new Rdpc(scratchReg).emit(masm);
 
-            // The jump table follows three instructions after rdpc
+            // The jump table follows four instructions after rdpc
             new Add(scratchReg, 4 * 4, scratchReg).emit(masm);
             new Jmpl(value, scratchReg, g0).emit(masm);
             new Sra(value, 3, value).emit(masm); // delay slot, correct the value (division by 8)
@@ -279,17 +279,10 @@ public class SPARCControlFlow {
             // Emit jump table entries
             for (LabelRef target : targets) {
                 Label label = target.label();
-                if (label.isBound()) {
-                    int disp19 = label.position() - masm.position();
-                    new Bpa(disp19).emit(masm);
-                    new Nop().emit(masm); // delay slot
-                } else {
-                    label.addPatchAt(masm.position());
-                    new Bpa(0).emit(masm);
-                    new Nop().emit(masm); // delay slot
-                }
+                label.addPatchAt(masm.position());
+                new Bpa(0).emit(masm);
+                new Nop().emit(masm); // delay slot
             }
-            // crb.compilationResult.addAnnotation(jt);
         }
     }
 
