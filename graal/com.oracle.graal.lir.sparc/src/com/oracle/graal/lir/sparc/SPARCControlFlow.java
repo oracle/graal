@@ -24,8 +24,8 @@ package com.oracle.graal.lir.sparc;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
+import static com.oracle.graal.sparc.SPARC.*;
 
-import com.oracle.graal.api.code.CompilationResult.JumpTable;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
@@ -252,10 +252,10 @@ public class SPARCControlFlow {
             Register scratchReg = asLongReg(scratch);
 
             // Compare index against jump table bounds
-            int highKey = lowKey + targets.length - 1;
+            // int highKey = lowKey + targets.length - 1;
             if (lowKey != 0) {
                 // subtract the low value from the switch value
-                new Sub(value, lowKey, value).emit(masm);
+                new Subcc(value, lowKey, value).emit(masm);
                 // masm.setp_gt_s32(value, highKey - lowKey);
             } else {
                 // masm.setp_gt_s32(value, highKey);
@@ -263,24 +263,33 @@ public class SPARCControlFlow {
 
             // Jump to default target if index is not within the jump table
             if (defaultTarget != null) {
-                new Bpgu(CC.Icc, defaultTarget.label()).emit(masm);
+                new Bpl(CC.Icc, defaultTarget.label()).emit(masm);
                 new Nop().emit(masm);  // delay slot
             }
 
             // Load jump table entry into scratch and jump to it
-            // masm.movslq(value, new AMD64Address(scratch, value, Scale.Times4, 0));
-            // masm.addq(scratch, value);
-            new Jmp(new SPARCAddress(scratchReg, 0)).emit(masm);
-            new Nop().emit(masm);  // delay slot
+            new Sll(value, 3, value).emit(masm); // Multiply by 8
+            new Rdpc(scratchReg).emit(masm);
 
-            // address of jump table
-            int tablePos = masm.position();
+            // The jump table follows three instructions after rdpc
+            new Add(scratchReg, 4 * 4, scratchReg).emit(masm);
+            new Jmpl(value, scratchReg, g0).emit(masm);
+            new Sra(value, 3, value).emit(masm); // delay slot, correct the value (division by 8)
 
-            JumpTable jt = new JumpTable(tablePos, lowKey, highKey, 4);
-            crb.compilationResult.addAnnotation(jt);
-
-            // SPARC: unimp: tableswitch extract
-            throw GraalInternalError.unimplemented();
+            // Emit jump table entries
+            for (LabelRef target : targets) {
+                Label label = target.label();
+                if (label.isBound()) {
+                    int disp19 = label.position() - masm.position();
+                    new Bpa(disp19).emit(masm);
+                    new Nop().emit(masm); // delay slot
+                } else {
+                    label.addPatchAt(masm.position());
+                    new Bpa(0).emit(masm);
+                    new Nop().emit(masm); // delay slot
+                }
+            }
+            // crb.compilationResult.addAnnotation(jt);
         }
     }
 

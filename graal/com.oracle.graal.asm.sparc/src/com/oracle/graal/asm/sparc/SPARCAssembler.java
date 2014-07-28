@@ -63,8 +63,8 @@ public abstract class SPARCAssembler extends Assembler {
         protected static final int OP2_SHIFT = 22;
 
         // @formatter:off
-        protected static final int OP_MASK  = 0b11000000000000000000000000000000;
-        protected static final int OP2_MASK = 0b00000001110000000000000000000000;
+        protected static final int OP_MASK  = 0b1100_0000_0000_0000_0000_0000_0000_0000;
+        protected static final int OP2_MASK = 0b0000_0001_1100_0000_0000_0000_0000_0000;
         // @formatter:off
 
         private int op2;
@@ -3404,6 +3404,10 @@ public abstract class SPARCAssembler extends Assembler {
 
         public Jmpl(Register src, int simm13, Register dst) {
             super(Op3s.Jmpl, src, simm13, dst);
+        }
+
+        public Jmpl(Register src1, Register src2, Register dst) {
+            super(Op3s.Jmpl, src1, src2, dst);
         }
     }
 
