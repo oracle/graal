@@ -22,13 +22,14 @@
  */
 package com.oracle.graal.hotspot.sparc;
 
+import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 import static com.oracle.graal.sparc.SPARC.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.asm.sparc.SPARCAssembler.Stw;
 import com.oracle.graal.asm.sparc.SPARCAssembler.Stx;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Mov;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.sparc.*;
@@ -40,19 +41,21 @@ final class SPARCHotSpotCRuntimeCallEpilogueOp extends SPARCLIRInstruction {
     private final int threadLastJavaPcOffset;
     private final int threadJavaFrameAnchorFlagsOffset;
     private final Register thread;
+    @Use({REG, STACK}) protected Value threadTemp;
 
-    public SPARCHotSpotCRuntimeCallEpilogueOp(int threadLastJavaSpOffset, int threadLastJavaPcOffset, int threadJavaFrameAnchorFlagsOffset, Register thread) {
+    public SPARCHotSpotCRuntimeCallEpilogueOp(int threadLastJavaSpOffset, int threadLastJavaPcOffset, int threadJavaFrameAnchorFlagsOffset, Register thread, Value threadTemp) {
         this.threadLastJavaSpOffset = threadLastJavaSpOffset;
         this.threadLastJavaPcOffset = threadLastJavaPcOffset;
         this.threadJavaFrameAnchorFlagsOffset = threadJavaFrameAnchorFlagsOffset;
         this.thread = thread;
+        this.threadTemp = threadTemp;
     }
 
     @Override
     public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
 
         // Restore the thread register when coming back from the runtime.
-        new Mov(l7, thread).emit(masm);
+        SPARCMove.move(crb, masm, thread.asValue(LIRKind.value(Kind.Long)), threadTemp);
 
         // Reset last Java frame, last Java PC and flags.
         new Stx(g0, new SPARCAddress(thread, threadLastJavaSpOffset)).emit(masm);
