@@ -235,8 +235,8 @@ public class SPARCHotSpotRegisterConfig implements RegisterConfig {
             }
 
             if (locations[i] == null) {
-                // Stack slot is always aligned to its size in bytes
-                int typeSize = target.getSizeInBytes(kind);
+                // Stack slot is always aligned to its size in bytes but minimum wordsize
+                int typeSize = SPARC.spillSlotSize(target, kind);
                 int modulus = currentStackOffset % typeSize;
                 if (modulus != 0) {
                     currentStackOffset += typeSize - modulus;
