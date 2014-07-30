@@ -195,7 +195,6 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     private Object callBoundary(Object[] args) {
         if (CompilerDirectives.inInterpreter()) {
             // We are called and we are still in Truffle interpreter mode.
-            CompilerDirectives.transferToInterpreter();
             interpreterCall();
         } else {
             // We come here from compiled code (i.e., we have been inlined).

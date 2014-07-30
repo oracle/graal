@@ -44,10 +44,10 @@ import com.oracle.graal.java.BciBlockMapping.BciBlock;
 import com.oracle.graal.java.BciBlockMapping.ExceptionDispatchBlock;
 import com.oracle.graal.java.BciBlockMapping.LocalLiveness;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
@@ -67,6 +67,10 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
     @Override
     protected void run(StructuredGraph graph, HighTierContext context) {
         new Instance(context.getMetaAccess(), graphBuilderConfig, context.getOptimisticOptimizations()).run(graph);
+    }
+
+    public GraphBuilderConfiguration getGraphBuilderConfig() {
+        return graphBuilderConfig;
     }
 
     public static class Instance extends Phase {
@@ -139,7 +143,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
         @Override
         protected void run(StructuredGraph graph) {
             ResolvedJavaMethod method = graph.method();
-            if (graphBuilderConfig.eagerInfopointMode()) {
+            if (graphBuilderConfig.insertNonSafepointDebugInfo()) {
                 lnt = method.getLineNumberTable();
                 previousLineNumber = -1;
             }
@@ -232,11 +236,12 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                         lastInstr = genMonitorEnter(methodSynchronizedObject);
                     }
                     frameState.clearNonLiveLocals(blockMap.startBlock, liveness, true);
-                    ((StateSplit) lastInstr).setStateAfter(frameState.create(0));
+                    assert bci() == 0;
+                    ((StateSplit) lastInstr).setStateAfter(frameState.create(bci()));
                     finishPrepare(lastInstr);
 
-                    if (graphBuilderConfig.eagerInfopointMode()) {
-                        InfopointNode ipn = currentGraph.add(new InfopointNode(InfopointReason.METHOD_START, frameState.create(0)));
+                    if (graphBuilderConfig.insertNonSafepointDebugInfo()) {
+                        InfopointNode ipn = currentGraph.add(createInfoPointNode(InfopointReason.METHOD_START));
                         lastInstr.setNext(ipn);
                         lastInstr = ipn;
                     }
@@ -661,7 +666,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             protected void emitBoundsCheck(ValueNode index, ValueNode length) {
                 BlockPlaceholderNode trueSucc = currentGraph.add(new BlockPlaceholderNode(this));
                 BlockPlaceholderNode falseSucc = currentGraph.add(new BlockPlaceholderNode(this));
-                append(new IfNode(currentGraph.unique(new IntegerBelowThanNode(index, length)), trueSucc, falseSucc, 0.99));
+                append(new IfNode(currentGraph.unique(new IntegerBelowNode(index, length)), trueSucc, falseSucc, 0.99));
                 lastInstr = trueSucc;
 
                 BytecodeExceptionNode exception = currentGraph.add(new BytecodeExceptionNode(metaAccess, ArrayIndexOutOfBoundsException.class, index));
@@ -835,8 +840,8 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             protected void genReturn(ValueNode x) {
                 frameState.setRethrowException(false);
                 frameState.clearStack();
-                if (graphBuilderConfig.eagerInfopointMode()) {
-                    append(new InfopointNode(InfopointReason.METHOD_END, frameState.create(bci())));
+                if (graphBuilderConfig.insertNonSafepointDebugInfo()) {
+                    append(createInfoPointNode(InfopointReason.METHOD_END));
                 }
 
                 synchronizedEpilogue(BytecodeFrame.AFTER_BCI, x);
@@ -1290,10 +1295,10 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 BytecodesParsed.add(block.endBci - bci);
 
                 while (bci < endBCI) {
-                    if (graphBuilderConfig.eagerInfopointMode() && lnt != null) {
+                    if (graphBuilderConfig.insertNonSafepointDebugInfo() && lnt != null) {
                         currentLineNumber = lnt.getLineNumber(bci);
                         if (currentLineNumber != previousLineNumber) {
-                            append(new InfopointNode(InfopointReason.LINE_NUMBER, frameState.create(bci)));
+                            append(createInfoPointNode(InfopointReason.LINE_NUMBER));
                             previousLineNumber = currentLineNumber;
                         }
                     }
@@ -1354,6 +1359,14 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
              */
             protected FixedWithNextNode finishInstruction(FixedWithNextNode instr, HIRFrameStateBuilder state) {
                 return instr;
+            }
+
+            private InfopointNode createInfoPointNode(InfopointReason reason) {
+                if (graphBuilderConfig.insertFullDebugInfo()) {
+                    return new FullInfopointNode(reason, frameState.create(bci()));
+                } else {
+                    return new SimpleInfopointNode(reason, new BytecodePosition(null, method, bci()));
+                }
             }
 
             private void traceState() {

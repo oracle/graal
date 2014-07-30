@@ -47,19 +47,7 @@ public class IntegerMulExactNode extends IntegerMulNode implements IntegerExactA
             return new IntegerMulExactNode(forY, forX);
         }
         if (forX.isConstant()) {
-            Constant xConst = forX.asConstant();
-            Constant yConst = forY.asConstant();
-            assert xConst.getKind() == yConst.getKind();
-            try {
-                if (xConst.getKind() == Kind.Int) {
-                    return ConstantNode.forInt(ExactMath.multiplyExact(xConst.asInt(), yConst.asInt()));
-                } else {
-                    assert xConst.getKind() == Kind.Long;
-                    return ConstantNode.forLong(ExactMath.multiplyExact(xConst.asLong(), yConst.asLong()));
-                }
-            } catch (ArithmeticException ex) {
-                // The operation will result in an overflow exception, so do not canonicalize.
-            }
+            return canonicalXconstant(forX, forY);
         } else if (forY.isConstant()) {
             long c = forY.asConstant().asLong();
             if (c == 1) {
@@ -68,6 +56,23 @@ public class IntegerMulExactNode extends IntegerMulNode implements IntegerExactA
             if (c == 0) {
                 return ConstantNode.forIntegerStamp(stamp(), 0);
             }
+        }
+        return this;
+    }
+
+    private ValueNode canonicalXconstant(ValueNode forX, ValueNode forY) {
+        Constant xConst = forX.asConstant();
+        Constant yConst = forY.asConstant();
+        assert xConst.getKind() == yConst.getKind();
+        try {
+            if (xConst.getKind() == Kind.Int) {
+                return ConstantNode.forInt(ExactMath.multiplyExact(xConst.asInt(), yConst.asInt()));
+            } else {
+                assert xConst.getKind() == Kind.Long;
+                return ConstantNode.forLong(ExactMath.multiplyExact(xConst.asLong(), yConst.asLong()));
+            }
+        } catch (ArithmeticException ex) {
+            // The operation will result in an overflow exception, so do not canonicalize.
         }
         return this;
     }

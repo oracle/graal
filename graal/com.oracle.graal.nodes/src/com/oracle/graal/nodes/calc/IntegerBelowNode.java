@@ -30,7 +30,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.util.*;
 
 @NodeInfo(shortName = "|<|")
-public final class IntegerBelowThanNode extends CompareNode {
+public final class IntegerBelowNode extends CompareNode {
 
     /**
      * Constructs a new unsigned integer comparison node.
@@ -38,7 +38,7 @@ public final class IntegerBelowThanNode extends CompareNode {
      * @param x the instruction producing the first input to the instruction
      * @param y the instruction that produces the second input to this instruction
      */
-    public IntegerBelowThanNode(ValueNode x, ValueNode y) {
+    public IntegerBelowNode(ValueNode x, ValueNode y) {
         super(x, y);
         assert x.stamp() instanceof IntegerStamp;
         assert y.stamp() instanceof IntegerStamp;
@@ -82,6 +82,6 @@ public final class IntegerBelowThanNode extends CompareNode {
 
     @Override
     protected CompareNode duplicateModified(ValueNode newX, ValueNode newY) {
-        return new IntegerBelowThanNode(newX, newY);
+        return new IntegerBelowNode(newX, newY);
     }
 }

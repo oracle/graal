@@ -33,6 +33,7 @@ import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.common.inlining.*;
 import com.oracle.graal.phases.tiers.*;
+import com.oracle.graal.replacements.nodes.*;
 
 public class BitOpNodesTest extends GraalCompilerTest {
 
@@ -186,8 +187,11 @@ public class BitOpNodesTest extends GraalCompilerTest {
 
     @Test
     public void testScanReverseInt() {
-        ValueNode result = parseAndInline("scanReverseIntSnippet");
-        Assert.assertEquals(StampFactory.forInteger(Kind.Int, 16, 20), result.stamp());
+        /* This test isn't valid unless the BitScanReverseNode intrinsic is used. */
+        ValueNode result = parseAndInline("scanReverseIntSnippet", BitScanReverseNode.class);
+        if (result != null) {
+            Assert.assertEquals(StampFactory.forInteger(Kind.Int, 16, 20), result.stamp());
+        }
     }
 
     public static int scanReverseLongConstantSnippet() {
@@ -208,8 +212,11 @@ public class BitOpNodesTest extends GraalCompilerTest {
 
     @Test
     public void testScanReverseLong() {
-        ValueNode result = parseAndInline("scanReverseLongSnippet");
-        Assert.assertEquals(StampFactory.forInteger(Kind.Int, 48, 64), result.stamp());
+        /* This test isn't valid unless the BitScanReverseNode intrinsic is used. */
+        ValueNode result = parseAndInline("scanReverseLongSnippet", BitScanReverseNode.class);
+        if (result != null) {
+            Assert.assertEquals(StampFactory.forInteger(Kind.Int, 48, 64), result.stamp());
+        }
     }
 
     public static int scanReverseLongEmptySnippet(long v) {
@@ -220,11 +227,26 @@ public class BitOpNodesTest extends GraalCompilerTest {
 
     @Test
     public void testScanReverseLongEmpty() {
-        ValueNode result = parseAndInline("scanReverseLongEmptySnippet");
-        Assert.assertEquals(StampFactory.forInteger(Kind.Int, 24, 64), result.stamp());
+        /* This test isn't valid unless the BitScanReverseNode intrinsic is used. */
+        ValueNode result = parseAndInline("scanReverseLongEmptySnippet", BitScanReverseNode.class);
+        if (result != null) {
+            Assert.assertEquals(StampFactory.forInteger(Kind.Int, 24, 64), result.stamp());
+        }
     }
 
     private ValueNode parseAndInline(String name) {
+        return parseAndInline(name, null);
+    }
+
+    /**
+     * Parse and optimize {@code name}. If {@code expectedClass} is non-null and a node of that type
+     * isn't found simply return null. Otherwise return the node returned by the graph.
+     *
+     * @param name
+     * @param expectedClass
+     * @return the returned value or null if {@code expectedClass} is not found in the graph.
+     */
+    private ValueNode parseAndInline(String name, Class<? extends ValueNode> expectedClass) {
         StructuredGraph graph = parse(name);
         HighTierContext context = new HighTierContext(getProviders(), new Assumptions(false), null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.NONE);
         CanonicalizerPhase canonicalizer = new CanonicalizerPhase(true);
@@ -232,6 +254,11 @@ public class BitOpNodesTest extends GraalCompilerTest {
         new InliningPhase(canonicalizer).apply(graph, context);
         canonicalizer.apply(graph, context);
         Assert.assertEquals(1, graph.getNodes(ReturnNode.class).count());
+        if (expectedClass != null) {
+            if (graph.getNodes().filter(expectedClass).count() == 0) {
+                return null;
+            }
+        }
         return graph.getNodes(ReturnNode.class).first().result();
     }
 }

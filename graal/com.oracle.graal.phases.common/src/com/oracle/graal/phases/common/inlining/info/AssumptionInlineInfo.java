@@ -27,12 +27,12 @@ import java.util.*;
 import com.oracle.graal.api.code.Assumptions;
 import com.oracle.graal.api.meta.MetaAccessProvider;
 import com.oracle.graal.api.meta.ResolvedJavaMethod;
-import com.oracle.graal.nodes.Invoke;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 import com.oracle.graal.phases.common.inlining.InliningUtil;
 import com.oracle.graal.phases.util.Providers;
 import com.oracle.graal.api.code.Assumptions.Assumption;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 
 /**
  * Represents an inlining opportunity where the current class hierarchy leads to a monomorphic

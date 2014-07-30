@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.java;
 
+import static com.oracle.graal.nodes.cfg.ControlFlowGraph.*;
+
 import java.util.*;
 import java.util.stream.*;
 
@@ -30,7 +32,6 @@ import com.oracle.graal.phases.graph.*;
 
 public class ComputeLoopFrequenciesClosure extends ReentrantNodeIterator.NodeIteratorClosure<Double> {
 
-    private static final double EPSILON = Double.MIN_NORMAL;
     private static final ComputeLoopFrequenciesClosure INSTANCE = new ComputeLoopFrequenciesClosure();
 
     private ComputeLoopFrequenciesClosure() {
@@ -62,8 +63,8 @@ public class ComputeLoopFrequenciesClosure extends ReentrantNodeIterator.NodeIte
 
         double exitProbability = exitStates.values().stream().mapToDouble(d -> d).sum();
         assert exitProbability <= 1D && exitProbability >= 0D;
-        if (exitProbability < EPSILON) {
-            exitProbability = EPSILON;
+        if (exitProbability < MIN_PROBABILITY) {
+            exitProbability = MIN_PROBABILITY;
         }
         double loopFrequency = 1D / exitProbability;
         loop.setLoopFrequency(loopFrequency);
@@ -75,14 +76,14 @@ public class ComputeLoopFrequenciesClosure extends ReentrantNodeIterator.NodeIte
     }
 
     /**
-     * Multiplies a and b and saturates the result to 1/{@link Double#MIN_NORMAL}.
+     * Multiplies a and b and saturates the result to 1/{@link #MIN_PROBABILITY}.
      *
-     * @return a times b saturated to 1/{@link Double#MIN_NORMAL}
+     * @return a times b saturated to 1/{@link #MIN_PROBABILITY}
      */
     public static double multiplySaturate(double a, double b) {
         double r = a * b;
-        if (r > 1 / Double.MIN_NORMAL) {
-            return 1 / Double.MIN_NORMAL;
+        if (r > 1 / MIN_PROBABILITY) {
+            return 1 / MIN_PROBABILITY;
         }
         return r;
     }

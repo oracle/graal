@@ -63,27 +63,53 @@ public class BitScanForwardNode extends UnaryNode implements LIRLowerable {
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
         if (forValue.isConstant()) {
             Constant c = forValue.asConstant();
-            return ConstantNode.forInt(forValue.getKind() == Kind.Int ? scan(c.asInt()) : scan(c.asLong()));
+            if (c.asLong() != 0) {
+                return ConstantNode.forInt(forValue.getKind() == Kind.Int ? scan(c.asInt()) : scan(c.asLong()));
+            }
         }
         return this;
     }
 
-    @NodeIntrinsic
+    /**
+     * Utility method with defined return value for 0.
+     *
+     * @param v
+     * @return number of trailing zeros or -1 if {@code v} == 0.
+     */
     public static int scan(long v) {
         if (v == 0) {
             return -1;
         }
-        int index = 0;
-        while (((1L << index) & v) == 0) {
-            ++index;
-        }
-        return index;
+        return Long.numberOfTrailingZeros(v);
     }
 
-    @NodeIntrinsic
+    /**
+     * Utility method with defined return value for 0.
+     *
+     * @param v
+     * @return number of trailing zeros or -1 if {@code v} == 0.
+     */
     public static int scan(int v) {
-        return scan(v & 0xFFFFFFFFL);
+        return scan(0xffffffffL & v);
     }
+
+    /**
+     * Raw intrinsic for bsf instruction.
+     *
+     * @param v
+     * @return number of trailing zeros or an undefined value if {@code v} == 0.
+     */
+    @NodeIntrinsic
+    public static native int unsafeScan(long v);
+
+    /**
+     * Raw intrinsic for bsf instruction.
+     *
+     * @param v
+     * @return number of trailing zeros or an undefined value if {@code v} == 0.
+     */
+    @NodeIntrinsic
+    public static native int unsafeScan(int v);
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {

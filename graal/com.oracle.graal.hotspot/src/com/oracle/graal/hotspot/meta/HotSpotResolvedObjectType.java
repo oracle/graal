@@ -436,6 +436,17 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
         return method;
     }
 
+    public int getVtableLength() {
+        HotSpotVMConfig config = runtime().getConfig();
+        if (isInterface() || isArray()) {
+            /* Everything has the core vtable of java.lang.Object */
+            return config.baseVtableLength;
+        }
+        int result = unsafe.getInt(getMetaspaceKlass() + config.instanceKlassVtableLengthOffset) / (config.vtableEntrySize / config.heapWordSize);
+        assert result >= config.baseVtableLength : unsafe.getInt(getMetaspaceKlass() + config.instanceKlassVtableLengthOffset) + " " + config.vtableEntrySize;
+        return result;
+    }
+
     /**
      * Gets the mask used to filter out HotSpot internal flags for fields when a {@link Field}
      * object is created. This is the value of {@code JVM_RECOGNIZED_FIELD_MODIFIERS} in
@@ -712,13 +723,13 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
     }
 
     /**
-     * Determines if this type is resolved in the context of a given accessing class. This is a
-     * conservative check based on this type's class loader being identical to
-     * {@code accessingClass}'s loader. This type may still be the correct resolved type in the
-     * context of {@code accessingClass} if its loader is an ancestor of {@code accessingClass}'s
-     * loader.
+     * Performs a fast-path check that this type is resolved in the context of a given accessing
+     * class. A negative result does not mean this type is not resolved with respect to
+     * {@code accessingClass}. That can only be determined by
+     * {@linkplain HotSpotGraalRuntime#lookupType(String, HotSpotResolvedObjectType, boolean)
+     * re-resolving} the type.
      */
-    public boolean isResolvedWithRespectTo(ResolvedJavaType accessingClass) {
+    public boolean isDefinitelyResolvedWithRespectTo(ResolvedJavaType accessingClass) {
         assert accessingClass != null;
         ResolvedJavaType elementType = getElementalType();
         if (elementType.isPrimitive()) {
@@ -738,7 +749,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
 
     @Override
     public ResolvedJavaType resolve(ResolvedJavaType accessingClass) {
-        if (isResolvedWithRespectTo(requireNonNull(accessingClass))) {
+        if (isDefinitelyResolvedWithRespectTo(requireNonNull(accessingClass))) {
             return this;
         }
         HotSpotResolvedObjectType accessingType = (HotSpotResolvedObjectType) accessingClass;

@@ -252,6 +252,29 @@ public class StampTool {
         return stampForMask(stamp1.getBits(), newDownMask, newUpMask);
     }
 
+    public static Stamp rightShift(Stamp value, Stamp shift) {
+        if (value instanceof IntegerStamp && shift instanceof IntegerStamp) {
+            return rightShift((IntegerStamp) value, (IntegerStamp) shift);
+        }
+        return value.illegal();
+    }
+
+    public static Stamp rightShift(IntegerStamp value, IntegerStamp shift) {
+        int bits = value.getBits();
+        if (shift.lowerBound() == shift.upperBound()) {
+            int extraBits = 64 - bits;
+            long shiftMask = bits > 32 ? 0x3FL : 0x1FL;
+            long shiftCount = shift.lowerBound() & shiftMask;
+            long defaultMask = IntegerStamp.defaultMask(bits);
+            // shifting back and forth performs sign extension
+            long downMask = (value.downMask() << extraBits) >> (shiftCount + extraBits) & defaultMask;
+            long upMask = (value.upMask() << extraBits) >> (shiftCount + extraBits) & defaultMask;
+            return new IntegerStamp(bits, value.lowerBound() >> shiftCount, value.upperBound() >> shiftCount, downMask, upMask);
+        }
+        long mask = IntegerStamp.upMaskFor(bits, value.lowerBound(), value.upperBound());
+        return stampForMask(bits, 0, mask);
+    }
+
     public static Stamp unsignedRightShift(Stamp value, Stamp shift) {
         if (value instanceof IntegerStamp && shift instanceof IntegerStamp) {
             return unsignedRightShift((IntegerStamp) value, (IntegerStamp) shift);
@@ -264,19 +287,12 @@ public class StampTool {
         if (shift.lowerBound() == shift.upperBound()) {
             long shiftMask = bits > 32 ? 0x3FL : 0x1FL;
             long shiftCount = shift.lowerBound() & shiftMask;
-            if (shiftCount != 0) {
-                long lowerBound;
-                long upperBound;
-                long downMask = value.downMask() >>> shiftCount;
-                long upMask = value.upMask() >>> shiftCount;
-                if (value.lowerBound() < 0) {
-                    lowerBound = downMask;
-                    upperBound = upMask;
-                } else {
-                    lowerBound = value.lowerBound() >>> shiftCount;
-                    upperBound = value.upperBound() >>> shiftCount;
-                }
-                return new IntegerStamp(bits, lowerBound, upperBound, downMask, upMask);
+            long downMask = value.downMask() >>> shiftCount;
+            long upMask = value.upMask() >>> shiftCount;
+            if (value.lowerBound() < 0) {
+                return new IntegerStamp(bits, downMask, upMask, downMask, upMask);
+            } else {
+                return new IntegerStamp(bits, value.lowerBound() >>> shiftCount, value.upperBound() >>> shiftCount, downMask, upMask);
             }
         }
         long mask = IntegerStamp.upMaskFor(bits, value.lowerBound(), value.upperBound());

@@ -397,7 +397,7 @@ public final class NodeClass extends FieldIntrospection {
             node.getNodeClass().set(node, this, value);
         }
 
-        void initialize(Node node, Node value) {
+        public void initialize(Node node, Node value) {
             node.getNodeClass().initializePosition(node, this, value);
         }
 

@@ -146,6 +146,10 @@ public class CompilationResultBuilder {
     public void recordInfopoint(int pos, LIRFrameState info, InfopointReason reason) {
         // infopoints always need debug info
         DebugInfo debugInfo = info.debugInfo();
+        recordInfopoint(pos, debugInfo, reason);
+    }
+
+    public void recordInfopoint(int pos, DebugInfo debugInfo, InfopointReason reason) {
         compilationResult.recordInfopoint(pos, debugInfo, reason);
     }
 

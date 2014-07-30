@@ -51,26 +51,37 @@ public class HotSpotStackFrameReference implements InspectedFrame {
         return frameNumber;
     }
 
+    @Override
     public Object getLocal(int index) {
         return locals[index];
     }
 
+    @Override
     public boolean isVirtual(int index) {
         return localIsVirtual == null ? false : localIsVirtual[index];
     }
 
+    @Override
     public void materializeVirtualObjects(boolean invalidateCode) {
         compilerToVM.materializeVirtualObjects(this, invalidateCode);
     }
 
+    @Override
     public int getBytecodeIndex() {
         return bci;
     }
 
+    @Override
     public ResolvedJavaMethod getMethod() {
         return HotSpotResolvedJavaMethod.fromMetaspace(metaspaceMethod);
     }
 
+    @Override
+    public boolean isMethod(ResolvedJavaMethod method) {
+        return metaspaceMethod == ((HotSpotResolvedJavaMethod) method).getMetaspaceMethod();
+    }
+
+    @Override
     public boolean hasVirtualObjects() {
         return localIsVirtual != null;
     }

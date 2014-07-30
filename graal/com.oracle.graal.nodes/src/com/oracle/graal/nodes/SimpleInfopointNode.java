@@ -23,17 +23,35 @@
 package com.oracle.graal.nodes;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.nodes.spi.*;
 
-public abstract class InfopointNode extends FixedWithNextNode {
-    private final InfopointReason reason;
+public class SimpleInfopointNode extends InfopointNode implements LIRLowerable, IterableNodeType {
+    private BytecodePosition position;
 
-    public InfopointNode(InfopointReason reason) {
-        super(StampFactory.forVoid());
-        this.reason = reason;
+    public SimpleInfopointNode(InfopointReason reason, BytecodePosition position) {
+        super(reason);
+        this.position = position;
     }
 
-    public InfopointReason getReason() {
-        return reason;
+    @Override
+    public void generate(NodeLIRBuilderTool generator) {
+        generator.visitSimpleInfopointNode(this);
+    }
+
+    public BytecodePosition getPosition() {
+        return position;
+    }
+
+    public void addCaller(BytecodePosition caller) {
+        this.position = relink(this.position, caller);
+    }
+
+    private static BytecodePosition relink(BytecodePosition position, BytecodePosition link) {
+        if (position.getCaller() == null) {
+            return new BytecodePosition(link, position.getMethod(), position.getBCI());
+        } else {
+            return new BytecodePosition(relink(position.getCaller(), link), position.getMethod(), position.getBCI());
+        }
     }
 }

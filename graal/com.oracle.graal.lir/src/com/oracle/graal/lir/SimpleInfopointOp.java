@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,26 +20,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.nodes;
+package com.oracle.graal.lir;
 
-import java.util.*;
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.lir.asm.*;
 
-import com.oracle.graal.api.code.CallingConvention.Type;
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.nodes.*;
+@Opcode("SIMPLE_INFOPOINT")
+public class SimpleInfopointOp extends LIRInstruction {
+    private final InfopointReason reason;
+    private final BytecodePosition position;
 
-public class HotSpotIndirectCallTargetNode extends IndirectCallTargetNode {
-
-    @Input private ValueNode metaspaceMethod;
-
-    public HotSpotIndirectCallTargetNode(ValueNode metaspaceMethod, ValueNode computedAddress, List<ValueNode> arguments, Stamp returnStamp, JavaType[] signature, ResolvedJavaMethod target,
-                    Type callType, InvokeKind invokeKind) {
-        super(computedAddress, arguments, returnStamp, signature, target, callType, invokeKind);
-        this.metaspaceMethod = metaspaceMethod;
+    public SimpleInfopointOp(InfopointReason reason, BytecodePosition position) {
+        this.reason = reason;
+        this.position = position;
     }
 
-    public ValueNode metaspaceMethod() {
-        return metaspaceMethod;
+    @Override
+    public void emitCode(CompilationResultBuilder crb) {
+        crb.recordInfopoint(crb.asm.position(), new DebugInfo(position, null), reason);
     }
 }

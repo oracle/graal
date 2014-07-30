@@ -89,11 +89,11 @@ public class DebugInfoBuilder {
                             assert currentField != null;
                             int pos = 0;
                             for (int i = 0; i < vobj.entryCount(); i++) {
-                                if (!currentField.fieldValues().get(i).isConstant() || currentField.fieldValues().get(i).asConstant().getKind() != Kind.Illegal) {
-                                    values[pos++] = toValue(currentField.fieldValues().get(i));
+                                if (!currentField.values().get(i).isConstant() || currentField.values().get(i).asConstant().getKind() != Kind.Illegal) {
+                                    values[pos++] = toValue(currentField.values().get(i));
                                 } else {
-                                    assert currentField.fieldValues().get(i - 1).getKind() == Kind.Double || currentField.fieldValues().get(i - 1).getKind() == Kind.Long : vobj + " " + i + " " +
-                                                    currentField.fieldValues().get(i - 1);
+                                    assert currentField.values().get(i - 1).getKind() == Kind.Double || currentField.values().get(i - 1).getKind() == Kind.Long : vobj + " " + i + " " +
+                                                    currentField.values().get(i - 1);
                                 }
                             }
                             if (pos != vobj.entryCount()) {

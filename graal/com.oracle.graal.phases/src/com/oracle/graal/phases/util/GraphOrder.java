@@ -160,8 +160,8 @@ public final class GraphOrder {
                     FrameState pendingStateAfter = null;
                     for (final ScheduledNode node : list) {
                         FrameState stateAfter = node instanceof StateSplit ? ((StateSplit) node).stateAfter() : null;
-                        if (node instanceof InfopointNode) {
-                            stateAfter = ((InfopointNode) node).getState();
+                        if (node instanceof FullInfopointNode) {
+                            stateAfter = ((FullInfopointNode) node).getState();
                         }
 
                         if (pendingStateAfter != null && node instanceof FixedNode) {

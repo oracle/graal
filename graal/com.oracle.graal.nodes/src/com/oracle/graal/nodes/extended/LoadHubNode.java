@@ -33,7 +33,7 @@ import com.oracle.graal.nodes.spi.*;
  * Loads an object's {@linkplain Representation#ObjectHub hub}. The object is not null-checked by
  * this operation.
  */
-public final class LoadHubNode extends FloatingGuardedNode implements Lowerable, Canonicalizable.Unary<ValueNode>, Virtualizable {
+public final class LoadHubNode extends FloatingGuardedNode implements Lowerable, Canonicalizable, Virtualizable {
 
     @Input private ValueNode value;
 
@@ -62,10 +62,10 @@ public final class LoadHubNode extends FloatingGuardedNode implements Lowerable,
     }
 
     @Override
-    public ValueNode canonical(CanonicalizerTool tool, ValueNode forObject) {
+    public ValueNode canonical(CanonicalizerTool tool) {
         MetaAccessProvider metaAccess = tool.getMetaAccess();
-        if (metaAccess != null && forObject.stamp() instanceof ObjectStamp) {
-            ObjectStamp stamp = (ObjectStamp) forObject.stamp();
+        if (metaAccess != null && getValue().stamp() instanceof ObjectStamp) {
+            ObjectStamp stamp = (ObjectStamp) getValue().stamp();
 
             ResolvedJavaType exactType;
             if (stamp.isExactType()) {

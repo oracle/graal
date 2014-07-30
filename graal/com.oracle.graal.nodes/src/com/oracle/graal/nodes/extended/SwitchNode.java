@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.nodes.extended;
 
-import java.util.*;
-
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
@@ -37,12 +35,14 @@ public abstract class SwitchNode extends ControlSplitNode {
 
     @Successor private final NodeSuccessorList<BeginNode> successors;
     @Input private ValueNode value;
-    private double[] keyProbabilities;
-    private int[] keySuccessors;
+
+    // do not change the contents of these arrays:
+    private final double[] keyProbabilities;
+    private final int[] keySuccessors;
 
     /**
      * Constructs a new Switch.
-     * 
+     *
      * @param value the instruction that provides the value to be switched over
      * @param successors the list of successors of this switch
      */
@@ -87,33 +87,6 @@ public abstract class SwitchNode extends ControlSplitNode {
         return sum;
     }
 
-    @Override
-    public void setProbability(BeginNode successor, double value) {
-        double changeInProbability = 0;
-        int nonZeroProbabilityCases = 0;
-        for (int i = 0; i < keySuccessors.length; i++) {
-            if (successors.get(keySuccessors[i]) == successor) {
-                changeInProbability += keyProbabilities[i] - value;
-                keyProbabilities[i] = value;
-            } else if (keyProbabilities[i] > 0) {
-                nonZeroProbabilityCases++;
-            }
-        }
-
-        if (nonZeroProbabilityCases > 0) {
-            double changePerEntry = changeInProbability / nonZeroProbabilityCases;
-            if (changePerEntry != 0) {
-                for (int i = 0; i < keyProbabilities.length; i++) {
-                    if (keyProbabilities[i] > 0) {
-                        keyProbabilities[i] = keyProbabilities[i] + changePerEntry;
-                    }
-                }
-            }
-        }
-
-        assertProbabilities();
-    }
-
     public ValueNode value() {
         return value;
     }
@@ -129,6 +102,11 @@ public abstract class SwitchNode extends ControlSplitNode {
      * The key at the specified position, encoded in a Constant.
      */
     public abstract Constant keyAt(int i);
+
+    /**
+     * Returns true if the switch has the same keys in the same order as this switch.
+     */
+    public abstract boolean equalKeys(SwitchNode switchNode);
 
     /**
      * Returns the index of the successor belonging to the key at the specified index.
@@ -172,7 +150,7 @@ public abstract class SwitchNode extends ControlSplitNode {
 
     /**
      * Gets the successor corresponding to the default (fall through) case.
-     * 
+     *
      * @return the default successor
      */
     public BeginNode defaultSuccessor() {
@@ -180,12 +158,5 @@ public abstract class SwitchNode extends ControlSplitNode {
             throw new GraalInternalError("unexpected");
         }
         return defaultSuccessorIndex() == -1 ? null : successors.get(defaultSuccessorIndex());
-    }
-
-    @Override
-    public void afterClone(Node other) {
-        SwitchNode oldSwitch = (SwitchNode) other;
-        keyProbabilities = Arrays.copyOf(oldSwitch.keyProbabilities, oldSwitch.keyProbabilities.length);
-        keySuccessors = Arrays.copyOf(oldSwitch.keySuccessors, oldSwitch.keySuccessors.length);
     }
 }

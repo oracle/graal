@@ -34,9 +34,11 @@ public class NonNullParametersPhase extends Phase {
 
     @Override
     protected void run(StructuredGraph graph) {
+        Stamp nonNull = StampFactory.objectNonNull();
         for (ParameterNode param : graph.getNodes(ParameterNode.class)) {
             if (param.stamp() instanceof ObjectStamp) {
-                param.setStamp(StampFactory.declaredNonNull(((ObjectStamp) param.stamp()).type()));
+                ObjectStamp paramStamp = (ObjectStamp) param.stamp();
+                param.setStamp(paramStamp.join(nonNull));
             }
         }
     }

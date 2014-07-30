@@ -29,6 +29,7 @@ import static com.oracle.graal.truffle.TruffleCompilerOptions.*;
 
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.stream.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CallingConvention.Type;
@@ -41,6 +42,7 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.*;
@@ -52,6 +54,7 @@ import com.oracle.graal.phases.util.*;
 import com.oracle.graal.printer.*;
 import com.oracle.graal.runtime.*;
 import com.oracle.graal.truffle.*;
+import com.oracle.graal.word.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.CompilerDirectives.SlowPath;
 import com.oracle.truffle.api.frame.*;
@@ -245,33 +248,31 @@ public final class HotSpotTruffleRuntime implements GraalTruffleRuntime {
     }
 
     @SlowPath
-    public Iterable<FrameInstance> getStackTrace() {
+    @Override
+    public <T> T iterateFrames(FrameInstanceVisitor<T> visitor) {
         initStackIntrospection();
-        final Iterator<InspectedFrame> frames = stackIntrospection.getStackTrace(anyFrameMethod, anyFrameMethod, 1).iterator();
-        class FrameIterator implements Iterator<FrameInstance> {
 
-            public boolean hasNext() {
-                return frames.hasNext();
-            }
+        InspectedFrameVisitor<T> inspectedFrameVisitor = new InspectedFrameVisitor<T>() {
+            private boolean skipNext = false;
 
-            public FrameInstance next() {
-                InspectedFrame frame = frames.next();
-                if (frame.getMethod().equals(callNodeMethod[0])) {
-                    assert frames.hasNext();
-                    InspectedFrame calltarget2 = frames.next();
-                    assert calltarget2.getMethod().equals(callTargetMethod[0]);
-                    return new HotSpotFrameInstance.CallNodeFrame(frame);
-                } else {
-                    assert frame.getMethod().equals(callTargetMethod[0]);
-                    return new HotSpotFrameInstance.CallTargetFrame(frame, false);
+            public T visitFrame(InspectedFrame frame) {
+                if (skipNext) {
+                    assert frame.isMethod(callTargetMethod[0]);
+                    skipNext = false;
+                    return null;
                 }
-            }
-        }
-        return new Iterable<FrameInstance>() {
-            public Iterator<FrameInstance> iterator() {
-                return new FrameIterator();
+
+                if (frame.isMethod(callNodeMethod[0])) {
+                    skipNext = true;
+                    return visitor.visitFrame(new HotSpotFrameInstance.CallNodeFrame(frame));
+                } else {
+                    assert frame.isMethod(callTargetMethod[0]);
+                    return visitor.visitFrame(new HotSpotFrameInstance.CallTargetFrame(frame, false));
+                }
+
             }
         };
+        return stackIntrospection.iterateFrames(anyFrameMethod, anyFrameMethod, 1, inspectedFrameVisitor);
     }
 
     private void initStackIntrospection() {
@@ -280,15 +281,17 @@ public final class HotSpotTruffleRuntime implements GraalTruffleRuntime {
         }
     }
 
+    @Override
+    public FrameInstance getCallerFrame() {
+        return iterateFrames(frame -> frame);
+    }
+
     @SlowPath
+    @Override
     public FrameInstance getCurrentFrame() {
         initStackIntrospection();
-        Iterator<InspectedFrame> frames = stackIntrospection.getStackTrace(callTargetMethod, callTargetMethod, 0).iterator();
-        if (frames.hasNext()) {
-            return new HotSpotFrameInstance.CallTargetFrame(frames.next(), true);
-        } else {
-            return null;
-        }
+
+        return stackIntrospection.iterateFrames(callTargetMethod, callTargetMethod, 0, frame -> new HotSpotFrameInstance.CallTargetFrame(frame, true));
     }
 
     public void compile(OptimizedCallTarget optimizedCallTarget, boolean mayBeAsynchronous) {
@@ -341,5 +344,26 @@ public final class HotSpotTruffleRuntime implements GraalTruffleRuntime {
 
     public void reinstallStubs() {
         installOptimizedCallTargetCallMethod();
+    }
+
+    public void notifyTransferToInterpreter() {
+        CompilerAsserts.neverPartOfCompilation();
+        if (TraceTruffleTransferToInterpreter.getValue()) {
+            Word thread = CurrentJavaThreadNode.get(HotSpotGraalRuntime.runtime().getTarget().wordKind);
+            boolean deoptimized = thread.readByte(HotSpotGraalRuntime.runtime().getConfig().pendingTransferToInterpreterOffset) != 0;
+            if (deoptimized) {
+                thread.writeByte(HotSpotGraalRuntime.runtime().getConfig().pendingTransferToInterpreterOffset, (byte) 0);
+
+                logTransferToInterpreter();
+            }
+        }
+    }
+
+    private static void logTransferToInterpreter() {
+        final int skip = 2;
+        final int limit = 20;
+        StackTraceElement[] stackTrace = new Throwable().getStackTrace();
+        String suffix = stackTrace.length > skip + limit ? "\n  ..." : "";
+        TTY.out().out().println(Arrays.stream(stackTrace).skip(skip).limit(limit).map(StackTraceElement::toString).collect(Collectors.joining("\n  ", "", suffix)));
     }
 }

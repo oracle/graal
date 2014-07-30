@@ -185,7 +185,7 @@ public class WordTypeRewriterPhase extends Phase {
 
         Invoke invoke = callTargetNode.invoke();
         if (!callTargetNode.isStatic()) {
-            assert callTargetNode.receiver().getKind() == wordKind : "changeToWord() missed the receiver";
+            assert callTargetNode.receiver().getKind() == wordKind : "changeToWord() missed the receiver " + callTargetNode.receiver();
             targetMethod = wordImplType.resolveMethod(targetMethod, invoke.getContextType());
         }
         Operation operation = targetMethod.getAnnotation(Word.Operation.class);
@@ -355,7 +355,7 @@ public class WordTypeRewriterPhase extends Phase {
         if (condition == Condition.EQ || condition == Condition.NE) {
             comparison = new IntegerEqualsNode(a, b);
         } else if (condition.isUnsigned()) {
-            comparison = new IntegerBelowThanNode(a, b);
+            comparison = new IntegerBelowNode(a, b);
         } else {
             comparison = new IntegerLessThanNode(a, b);
         }

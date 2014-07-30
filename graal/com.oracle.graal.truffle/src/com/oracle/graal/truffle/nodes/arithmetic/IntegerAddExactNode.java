@@ -54,24 +54,29 @@ public class IntegerAddExactNode extends IntegerAddNode implements IntegerExactA
             return new IntegerAddExactNode(forY, forX);
         }
         if (forX.isConstant()) {
-            Constant xConst = forX.asConstant();
-            Constant yConst = forY.asConstant();
-            assert xConst.getKind() == yConst.getKind();
-            try {
-                if (xConst.getKind() == Kind.Int) {
-                    return ConstantNode.forInt(ExactMath.addExact(xConst.asInt(), yConst.asInt()));
-                } else {
-                    assert xConst.getKind() == Kind.Long;
-                    return ConstantNode.forLong(ExactMath.addExact(xConst.asLong(), yConst.asLong()));
-                }
-            } catch (ArithmeticException ex) {
-                // The operation will result in an overflow exception, so do not canonicalize.
-            }
+            return canonicalXconstant(forX, forY);
         } else if (forY.isConstant()) {
             long c = forY.asConstant().asLong();
             if (c == 0) {
                 return forX;
             }
+        }
+        return this;
+    }
+
+    private ValueNode canonicalXconstant(ValueNode forX, ValueNode forY) {
+        Constant xConst = forX.asConstant();
+        Constant yConst = forY.asConstant();
+        assert xConst.getKind() == yConst.getKind();
+        try {
+            if (xConst.getKind() == Kind.Int) {
+                return ConstantNode.forInt(ExactMath.addExact(xConst.asInt(), yConst.asInt()));
+            } else {
+                assert xConst.getKind() == Kind.Long;
+                return ConstantNode.forLong(ExactMath.addExact(xConst.asLong(), yConst.asLong()));
+            }
+        } catch (ArithmeticException ex) {
+            // The operation will result in an overflow exception, so do not canonicalize.
         }
         return this;
     }

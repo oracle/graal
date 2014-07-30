@@ -248,6 +248,10 @@ public class StampFactory {
     }
 
     public static Stamp exact(ResolvedJavaType type) {
-        return new ObjectStamp(type, true, false, false);
+        if (ObjectStamp.isConcreteType(type)) {
+            return new ObjectStamp(type, true, false, false);
+        } else {
+            return illegal(Kind.Object);
+        }
     }
 }

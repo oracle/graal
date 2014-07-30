@@ -56,6 +56,11 @@ public final class CompressionNode extends ConvertNode implements LIRLowerable {
         this.encoding = encoding;
     }
 
+    @Override
+    public boolean inferStamp() {
+        return updateStamp(mkStamp(op, getValue().stamp(), encoding));
+    }
+
     public static CompressionNode compress(ValueNode input, CompressEncoding encoding) {
         return input.graph().unique(new CompressionNode(CompressionOp.Compress, input, encoding));
     }

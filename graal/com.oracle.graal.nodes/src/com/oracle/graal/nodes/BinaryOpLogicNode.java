@@ -38,16 +38,6 @@ public abstract class BinaryOpLogicNode extends LogicNode implements LIRLowerabl
         return y;
     }
 
-    protected void setX(ValueNode x) {
-        updateUsages(this.x, x);
-        this.x = x;
-    }
-
-    protected void setY(ValueNode y) {
-        updateUsages(this.y, y);
-        this.y = y;
-    }
-
     public BinaryOpLogicNode(ValueNode x, ValueNode y) {
         assert x != null && y != null && x.getKind() == y.getKind();
         this.x = x;

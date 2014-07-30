@@ -332,7 +332,7 @@ public abstract class LoopFragment {
                  * VirtualState nodes contained in the old exit's state may be shared by other
                  * dominated VirtualStates. Those dominated virtual states need to see the
                  * proxy->phi update that are applied below.
-                 *
+                 * 
                  * We now update the original fragment's nodes accordingly:
                  */
                 originalExitState.applyToVirtual(node -> original.nodes.clearAndGrow(node));
@@ -345,7 +345,7 @@ public abstract class LoopFragment {
             }
 
             boolean newEarlyExitIsLoopExit = newEarlyExit instanceof LoopExitNode;
-            for (final ProxyNode vpn : loopEarlyExit.proxies().snapshot()) {
+            for (ProxyNode vpn : loopEarlyExit.proxies().snapshot()) {
                 if (vpn.usages().isEmpty()) {
                     continue;
                 }

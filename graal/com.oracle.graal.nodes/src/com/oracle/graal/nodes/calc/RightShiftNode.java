@@ -29,12 +29,18 @@ import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 
 @NodeInfo(shortName = ">>")
 public final class RightShiftNode extends ShiftNode {
 
     public RightShiftNode(ValueNode x, ValueNode y) {
         super(x, y);
+    }
+
+    @Override
+    public boolean inferStamp() {
+        return updateStamp(StampTool.rightShift(getX().stamp(), getY().stamp()));
     }
 
     @Override

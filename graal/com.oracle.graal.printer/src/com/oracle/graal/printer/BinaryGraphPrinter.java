@@ -129,10 +129,12 @@ public class BinaryGraphPrinter implements GraphPrinter {
     private void writeGraph(Graph graph, SchedulePhase predefinedSchedule) throws IOException {
         SchedulePhase schedule = predefinedSchedule;
         if (schedule == null) {
-            try {
-                schedule = new SchedulePhase();
-                schedule.apply((StructuredGraph) graph);
-            } catch (Throwable t) {
+            if (PrintIdealGraphSchedule.getValue()) {
+                try {
+                    schedule = new SchedulePhase();
+                    schedule.apply((StructuredGraph) graph);
+                } catch (Throwable t) {
+                }
             }
         }
         ControlFlowGraph cfg = schedule == null ? null : schedule.getCFG();
@@ -410,7 +412,11 @@ public class BinaryGraphPrinter implements GraphPrinter {
             NodeClass nodeClass = node.getNodeClass();
             node.getDebugProperties(props);
             if (probabilities != null && node instanceof FixedNode) {
-                props.put("probability", probabilities.applyAsDouble((FixedNode) node));
+                try {
+                    props.put("probability", probabilities.applyAsDouble((FixedNode) node));
+                } catch (Throwable t) {
+                    props.put("probability", t);
+                }
             }
             writeInt(getNodeId(node));
             writePoolObject(nodeClass);

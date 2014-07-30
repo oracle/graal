@@ -70,7 +70,7 @@ public class HighTier extends PhaseSuite<HighTierContext> {
             }
         }
 
-        appendPhase(new CleanTypeProfileProxyPhase());
+        appendPhase(new CleanTypeProfileProxyPhase(canonicalizer));
 
         if (FullUnroll.getValue()) {
             appendPhase(new LoopFullUnrollPhase(canonicalizer));

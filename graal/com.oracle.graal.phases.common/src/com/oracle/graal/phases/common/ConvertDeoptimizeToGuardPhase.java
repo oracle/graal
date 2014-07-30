@@ -47,6 +47,7 @@ import com.oracle.graal.phases.*;
  *
  */
 public class ConvertDeoptimizeToGuardPhase extends Phase {
+    private SimplifierTool simplifierTool = GraphUtil.getDefaultSimplifier(null, null, null, false);
 
     private static BeginNode findBeginNode(FixedNode startNode) {
         return GraphUtil.predecessorIterable(startNode).filter(BeginNode.class).first();
@@ -58,10 +59,9 @@ public class ConvertDeoptimizeToGuardPhase extends Phase {
         if (graph.getNodes(DeoptimizeNode.class).isEmpty()) {
             return;
         }
-        SimplifierTool simplifierTool = GraphUtil.getDefaultSimplifier(null, null, null, false);
         for (DeoptimizeNode d : graph.getNodes(DeoptimizeNode.class)) {
             assert d.isAlive();
-            visitDeoptBegin(BeginNode.prevBegin(d), d.action(), d.reason(), graph, simplifierTool);
+            visitDeoptBegin(BeginNode.prevBegin(d), d.action(), d.reason(), graph);
         }
 
         for (FixedGuardNode fixedGuard : graph.getNodes(FixedGuardNode.class)) {
@@ -94,7 +94,7 @@ public class ConvertDeoptimizeToGuardPhase extends Phase {
                         }
                         if (xs[i].getKind() != Kind.Object && ys[i].getKind() != Kind.Object &&
                                         compare.condition().foldCondition(xs[i], ys[i], null, compare.unorderedIsTrue()) == fixedGuard.isNegated()) {
-                            visitDeoptBegin(BeginNode.prevBegin(mergePredecessor), fixedGuard.getAction(), fixedGuard.getReason(), graph, simplifierTool);
+                            visitDeoptBegin(BeginNode.prevBegin(mergePredecessor), fixedGuard.getAction(), fixedGuard.getReason(), graph);
                         }
                     }
                 }
@@ -104,7 +104,7 @@ public class ConvertDeoptimizeToGuardPhase extends Phase {
         new DeadCodeEliminationPhase().apply(graph);
     }
 
-    private void visitDeoptBegin(BeginNode deoptBegin, DeoptimizationAction deoptAction, DeoptimizationReason deoptReason, StructuredGraph graph, SimplifierTool simplifierTool) {
+    private void visitDeoptBegin(BeginNode deoptBegin, DeoptimizationAction deoptAction, DeoptimizationReason deoptReason, StructuredGraph graph) {
         if (deoptBegin instanceof MergeNode) {
             MergeNode mergeNode = (MergeNode) deoptBegin;
             Debug.log("Visiting %s", mergeNode);
@@ -112,11 +112,11 @@ public class ConvertDeoptimizeToGuardPhase extends Phase {
             while (mergeNode.isAlive()) {
                 AbstractEndNode end = mergeNode.forwardEnds().first();
                 BeginNode newBeginNode = findBeginNode(end);
-                visitDeoptBegin(newBeginNode, deoptAction, deoptReason, graph, simplifierTool);
+                visitDeoptBegin(newBeginNode, deoptAction, deoptReason, graph);
             }
             assert next.isAlive();
             BeginNode newBeginNode = findBeginNode(next);
-            visitDeoptBegin(newBeginNode, deoptAction, deoptReason, graph, simplifierTool);
+            visitDeoptBegin(newBeginNode, deoptAction, deoptReason, graph);
             return;
         } else if (deoptBegin.predecessor() instanceof IfNode) {
             IfNode ifNode = (IfNode) deoptBegin.predecessor();

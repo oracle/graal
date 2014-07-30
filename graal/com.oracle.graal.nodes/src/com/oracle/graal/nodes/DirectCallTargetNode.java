@@ -30,12 +30,12 @@ import com.oracle.graal.compiler.common.type.*;
 
 public class DirectCallTargetNode extends LoweredCallTargetNode {
 
-    public DirectCallTargetNode(List<ValueNode> arguments, Stamp returnStamp, JavaType[] signature, ResolvedJavaMethod target, CallingConvention.Type callType) {
-        super(arguments, returnStamp, signature, target, callType);
+    public DirectCallTargetNode(List<ValueNode> arguments, Stamp returnStamp, JavaType[] signature, ResolvedJavaMethod target, CallingConvention.Type callType, InvokeKind invokeKind) {
+        super(arguments, returnStamp, signature, target, callType, invokeKind);
     }
 
     @Override
     public String targetName() {
-        return target().format("Direct#%h.%n");
+        return targetMethod().format("Direct#%h.%n");
     }
 }

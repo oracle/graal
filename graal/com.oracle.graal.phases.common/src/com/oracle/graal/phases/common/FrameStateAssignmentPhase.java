@@ -89,7 +89,8 @@ public class FrameStateAssignmentPhase extends Phase {
 
         @Override
         protected FrameState merge(MergeNode merge, List<FrameState> states) {
-            return merge.stateAfter() != null ? merge.stateAfter() : singleFrameState(merge, states);
+            FrameState singleFrameState = singleFrameState(states);
+            return singleFrameState == null ? merge.stateAfter() : singleFrameState;
         }
 
         @Override
@@ -123,7 +124,7 @@ public class FrameStateAssignmentPhase extends Phase {
         return true;
     }
 
-    private static FrameState singleFrameState(@SuppressWarnings("unused") MergeNode merge, List<FrameState> states) {
+    private static FrameState singleFrameState(List<FrameState> states) {
         FrameState singleState = states.get(0);
         for (int i = 1; i < states.size(); ++i) {
             if (states.get(i) != singleState) {

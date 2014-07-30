@@ -30,6 +30,7 @@ import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodes.calc.ObjectEqualsNode;
 import com.oracle.graal.nodes.util.GraphUtil;
 import com.oracle.graal.phases.common.cfs.FlowSensitiveReductionPhase;
+
 import org.junit.*;
 
 import com.oracle.graal.nodes.*;

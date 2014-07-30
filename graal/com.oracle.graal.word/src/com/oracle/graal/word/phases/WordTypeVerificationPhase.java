@@ -73,9 +73,7 @@ public class WordTypeVerificationPhase extends Phase {
                 } else if (usage instanceof StoreFieldNode) {
                     verify(!isWord(node) || ((StoreFieldNode) usage).object() != node, node, usage, "cannot store to word value");
                 } else if (usage instanceof CheckCastNode) {
-                    boolean expectWord = isWord(node);
-                    verify(isWord(node) == expectWord, node, usage, "word cannot be cast to object, and vice versa");
-                    verify(isWord(((CheckCastNode) usage).type()) == expectWord, node, usage, "word cannot be cast to object, and vice versa");
+                    verify(isWord(((CheckCastNode) usage).type()) == isWord(node), node, usage, "word cannot be cast to object, and vice versa");
                 } else if (usage instanceof LoadIndexedNode) {
                     verify(!isWord(node) || ((LoadIndexedNode) usage).array() != node, node, usage, "cannot load from word value");
                     verify(!isWord(node) || ((LoadIndexedNode) usage).index() != node, node, usage, "cannot use word value as index");

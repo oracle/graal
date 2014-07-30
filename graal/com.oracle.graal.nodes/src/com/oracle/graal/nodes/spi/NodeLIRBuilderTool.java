@@ -60,7 +60,9 @@ public interface NodeLIRBuilderTool extends NodeMappableLIRBuilder {
 
     void visitBreakpointNode(BreakpointNode i);
 
-    void visitInfopointNode(InfopointNode i);
+    void visitFullInfopointNode(FullInfopointNode i);
+
+    void visitSimpleInfopointNode(SimpleInfopointNode i);
 
     LIRGeneratorTool getLIRGeneratorTool();
 

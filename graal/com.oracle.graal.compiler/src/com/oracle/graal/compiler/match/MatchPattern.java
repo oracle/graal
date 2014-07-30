@@ -68,35 +68,41 @@ public class MatchPattern {
         private static final DebugMetric MatchResult_ALREADY_USED = Debug.metric("MatchResult_ALREADY_USED");
 
         static final Result OK = new Result(MatchResultCode.OK, null, null);
+        private static final Result CACHED_WRONG_CLASS = new Result(MatchResultCode.WRONG_CLASS, null, null);
+        private static final Result CACHED_NAMED_VALUE_MISMATCH = new Result(MatchResultCode.NAMED_VALUE_MISMATCH, null, null);
+        private static final Result CACHED_TOO_MANY_USERS = new Result(MatchResultCode.TOO_MANY_USERS, null, null);
+        private static final Result CACHED_NOT_IN_BLOCK = new Result(MatchResultCode.NOT_IN_BLOCK, null, null);
+        private static final Result CACHED_NOT_SAFE = new Result(MatchResultCode.NOT_SAFE, null, null);
+        private static final Result CACHED_ALREADY_USED = new Result(MatchResultCode.ALREADY_USED, null, null);
 
         static Result WRONG_CLASS(ValueNode node, MatchPattern matcher) {
             MatchResult_WRONG_CLASS.increment();
-            return new Result(MatchResultCode.WRONG_CLASS, node, matcher);
+            return Debug.isEnabled() ? new Result(MatchResultCode.WRONG_CLASS, node, matcher) : CACHED_WRONG_CLASS;
         }
 
         static Result NAMED_VALUE_MISMATCH(ValueNode node, MatchPattern matcher) {
             MatchResult_NAMED_VALUE_MISMATCH.increment();
-            return new Result(MatchResultCode.NAMED_VALUE_MISMATCH, node, matcher);
+            return Debug.isEnabled() ? new Result(MatchResultCode.NAMED_VALUE_MISMATCH, node, matcher) : CACHED_NAMED_VALUE_MISMATCH;
         }
 
         static Result TOO_MANY_USERS(ValueNode node, MatchPattern matcher) {
             MatchResult_TOO_MANY_USERS.increment();
-            return new Result(MatchResultCode.TOO_MANY_USERS, node, matcher);
+            return Debug.isEnabled() ? new Result(MatchResultCode.TOO_MANY_USERS, node, matcher) : CACHED_TOO_MANY_USERS;
         }
 
         static Result NOT_IN_BLOCK(ScheduledNode node, MatchPattern matcher) {
             MatchResult_NOT_IN_BLOCK.increment();
-            return new Result(MatchResultCode.NOT_IN_BLOCK, node, matcher);
+            return Debug.isEnabled() ? new Result(MatchResultCode.NOT_IN_BLOCK, node, matcher) : CACHED_NOT_IN_BLOCK;
         }
 
         static Result NOT_SAFE(ScheduledNode node, MatchPattern matcher) {
             MatchResult_NOT_SAFE.increment();
-            return new Result(MatchResultCode.NOT_SAFE, node, matcher);
+            return Debug.isEnabled() ? new Result(MatchResultCode.NOT_SAFE, node, matcher) : CACHED_NOT_SAFE;
         }
 
         static Result ALREADY_USED(ValueNode node, MatchPattern matcher) {
             MatchResult_ALREADY_USED.increment();
-            return new Result(MatchResultCode.ALREADY_USED, node, matcher);
+            return Debug.isEnabled() ? new Result(MatchResultCode.ALREADY_USED, node, matcher) : CACHED_ALREADY_USED;
         }
 
         @Override
@@ -104,7 +110,11 @@ public class MatchPattern {
             if (code == MatchResultCode.OK) {
                 return "OK";
             }
-            return code + " " + node.toString(Verbosity.Id) + "|" + node.getClass().getSimpleName() + " " + matcher;
+            if (node == null) {
+                return code.toString();
+            } else {
+                return code + " " + node.toString(Verbosity.Id) + "|" + node.getClass().getSimpleName() + " " + matcher;
+            }
         }
     }
 

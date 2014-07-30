@@ -32,6 +32,7 @@ import sun.misc.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.debug.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.meta.*;
@@ -342,7 +343,7 @@ public class BenchmarkCounters {
         if (Options.TimedDynamicCounters.getValue() > 0) {
             Thread thread = new Thread() {
                 long lastTime = System.nanoTime();
-                PrintStream out = System.out;
+                PrintStream out = TTY.cachedOut;
 
                 @Override
                 public void run() {
@@ -369,7 +370,7 @@ public class BenchmarkCounters {
 
     public static void shutdown(CompilerToVM compilerToVM, long compilerStartTime) {
         if (Options.GenericDynamicCounters.getValue()) {
-            dump(System.out, (System.nanoTime() - compilerStartTime) / 1000000000d, compilerToVM.collectCounters(), 100);
+            dump(TTY.cachedOut, (System.nanoTime() - compilerStartTime) / 1000000000d, compilerToVM.collectCounters(), 100);
         }
     }
 

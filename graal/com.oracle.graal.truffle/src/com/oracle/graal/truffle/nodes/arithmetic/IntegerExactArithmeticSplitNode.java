@@ -48,11 +48,6 @@ public abstract class IntegerExactArithmeticSplitNode extends ControlSplitNode i
         return successor == next ? 1 : 0;
     }
 
-    @Override
-    public void setProbability(BeginNode successor, double value) {
-        assert probability(successor) == value;
-    }
-
     public BeginNode getNext() {
         return next;
     }

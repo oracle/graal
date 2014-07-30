@@ -42,7 +42,7 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
     /**
      * Constructs a integer switch instruction. The keyProbabilities and keySuccessors array contain
      * key.length + 1 entries, the last entry describes the default (fall through) case.
-     * 
+     *
      * @param value the instruction producing the value being switched on
      * @param successors the list of successors
      * @param keys the sorted list of keys
@@ -68,7 +68,7 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
     /**
      * Constructs a integer switch instruction. The keyProbabilities and keySuccessors array contain
      * key.length + 1 entries, the last entry describes the default (fall through) case.
-     * 
+     *
      * @param value the instruction producing the value being switched on
      * @param successorCount the number of successors
      * @param keys the sorted list of keys
@@ -86,7 +86,7 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
 
     /**
      * Gets the key at the specified index.
-     * 
+     *
      * @param i the index
      * @return the key at that index
      */
@@ -98,6 +98,15 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
     @Override
     public int keyCount() {
         return keys.length;
+    }
+
+    @Override
+    public boolean equalKeys(SwitchNode switchNode) {
+        if (!(switchNode instanceof IntegerSwitchNode)) {
+            return false;
+        }
+        IntegerSwitchNode other = (IntegerSwitchNode) switchNode;
+        return Arrays.equals(keys, other.keys);
     }
 
     @Override

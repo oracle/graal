@@ -173,7 +173,7 @@ public class LoopEx {
             }
             LogicNode ifTest = ifNode.condition();
             if (!(ifTest instanceof IntegerLessThanNode)) {
-                if (ifTest instanceof IntegerBelowThanNode) {
+                if (ifTest instanceof IntegerBelowNode) {
                     Debug.log("Ignored potential Counted loop at %s with |<|", loopBegin);
                 }
                 return false;

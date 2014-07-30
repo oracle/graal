@@ -123,9 +123,4 @@ public class PTXNodeLIRBuilder extends NodeLIRBuilder {
         // append(new PTXSafepointOp(info, runtime().config, this));
         Debug.log("visitSafePointNode unimplemented");
     }
-
-    @Override
-    public void visitInfopointNode(InfopointNode i) {
-        throw GraalInternalError.unimplemented("PTXLIRGenerator.visitInfopointNode()");
-    }
 }

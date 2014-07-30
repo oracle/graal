@@ -74,7 +74,7 @@ import com.oracle.graal.nodes.virtual.*;
 @MatchableNode(nodeClass = FloatLessThanNode.class, inputs = {"x", "y"}, commutative = true)
 @MatchableNode(nodeClass = FloatMulNode.class, inputs = {"x", "y"}, commutative = true)
 @MatchableNode(nodeClass = IntegerAddNode.class, inputs = {"x", "y"}, commutative = true)
-@MatchableNode(nodeClass = IntegerBelowThanNode.class, inputs = {"x", "y"}, commutative = true)
+@MatchableNode(nodeClass = IntegerBelowNode.class, inputs = {"x", "y"}, commutative = true)
 @MatchableNode(nodeClass = IntegerEqualsNode.class, inputs = {"x", "y"}, commutative = true)
 @MatchableNode(nodeClass = IntegerLessThanNode.class, inputs = {"x", "y"}, commutative = true)
 @MatchableNode(nodeClass = IntegerMulNode.class, inputs = {"x", "y"}, commutative = true)
@@ -599,6 +599,16 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
 
     public void emitOverflowCheckBranch(BeginNode overflowSuccessor, BeginNode next, double probability) {
         gen.emitOverflowCheckBranch(getLIRBlock(overflowSuccessor), getLIRBlock(next), probability);
+    }
+
+    @Override
+    public void visitFullInfopointNode(FullInfopointNode i) {
+        append(new FullInfopointOp(stateFor(i.getState()), i.getReason()));
+    }
+
+    @Override
+    public void visitSimpleInfopointNode(SimpleInfopointNode i) {
+        append(new SimpleInfopointOp(i.getReason(), i.getPosition()));
     }
 
     @Override

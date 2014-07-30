@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.compiler.common.type;
 
+import java.util.function.*;
+
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.spi.*;
@@ -134,6 +136,16 @@ public class FloatStamp extends PrimitiveStamp {
         return str.toString();
     }
 
+    private static double meetBounds(double a, double b, DoubleBinaryOperator op) {
+        if (Double.isNaN(a)) {
+            return b;
+        } else if (Double.isNaN(b)) {
+            return a;
+        } else {
+            return op.applyAsDouble(a, b);
+        }
+    }
+
     @Override
     public Stamp meet(Stamp otherStamp) {
         if (otherStamp == this) {
@@ -144,12 +156,12 @@ public class FloatStamp extends PrimitiveStamp {
         }
         FloatStamp other = (FloatStamp) otherStamp;
         assert getBits() == other.getBits();
-        double meetUpperBound = Math.max(upperBound, other.upperBound);
-        double meetLowerBound = Math.min(lowerBound, other.lowerBound);
+        double meetUpperBound = meetBounds(upperBound, other.upperBound, Math::max);
+        double meetLowerBound = meetBounds(lowerBound, other.lowerBound, Math::min);
         boolean meetNonNaN = nonNaN && other.nonNaN;
-        if (meetLowerBound == lowerBound && meetUpperBound == upperBound && meetNonNaN == nonNaN) {
+        if (Double.compare(meetLowerBound, lowerBound) == 0 && Double.compare(meetUpperBound, upperBound) == 0 && meetNonNaN == nonNaN) {
             return this;
-        } else if (meetLowerBound == other.lowerBound && meetUpperBound == other.upperBound && meetNonNaN == other.nonNaN) {
+        } else if (Double.compare(meetLowerBound, other.lowerBound) == 0 && Double.compare(meetUpperBound, other.upperBound) == 0 && meetNonNaN == other.nonNaN) {
             return other;
         } else {
             return new FloatStamp(getBits(), meetLowerBound, meetUpperBound, meetNonNaN);
@@ -169,9 +181,9 @@ public class FloatStamp extends PrimitiveStamp {
         double joinUpperBound = Math.min(upperBound, other.upperBound);
         double joinLowerBound = Math.max(lowerBound, other.lowerBound);
         boolean joinNonNaN = nonNaN || other.nonNaN;
-        if (joinLowerBound == lowerBound && joinUpperBound == upperBound && joinNonNaN == nonNaN) {
+        if (Double.compare(joinLowerBound, lowerBound) == 0 && Double.compare(joinUpperBound, upperBound) == 0 && joinNonNaN == nonNaN) {
             return this;
-        } else if (joinLowerBound == other.lowerBound && joinUpperBound == other.upperBound && joinNonNaN == other.nonNaN) {
+        } else if (Double.compare(joinLowerBound, other.lowerBound) == 0 && Double.compare(joinUpperBound, other.upperBound) == 0 && joinNonNaN == other.nonNaN) {
             return other;
         } else {
             return new FloatStamp(getBits(), joinLowerBound, joinUpperBound, joinNonNaN);
@@ -227,7 +239,7 @@ public class FloatStamp extends PrimitiveStamp {
 
     @Override
     public Constant asConstant() {
-        if (nonNaN && lowerBound == upperBound) {
+        if (nonNaN && Double.compare(lowerBound, upperBound) == 0) {
             switch (getBits()) {
                 case 32:
                     return Constant.forFloat((float) lowerBound);

@@ -620,9 +620,24 @@ public class CompilationResult implements Serializable {
      */
     public void addInfopoint(Infopoint infopoint) {
         // The infopoints list must always be sorted
-        if (!infopoints.isEmpty() && infopoints.get(infopoints.size() - 1).pcOffset >= infopoint.pcOffset) {
-            // This re-sorting should be very rare
-            Collections.sort(infopoints);
+        if (!infopoints.isEmpty()) {
+            Infopoint previousInfopoint = infopoints.get(infopoints.size() - 1);
+            if (previousInfopoint.pcOffset > infopoint.pcOffset) {
+                // This re-sorting should be very rare
+                Collections.sort(infopoints);
+                previousInfopoint = infopoints.get(infopoints.size() - 1);
+            }
+            if (previousInfopoint.pcOffset == infopoint.pcOffset) {
+                if (infopoint.reason.canBeOmited()) {
+                    return;
+                }
+                if (previousInfopoint.reason.canBeOmited()) {
+                    Infopoint removed = infopoints.remove(infopoints.size() - 1);
+                    assert removed == previousInfopoint;
+                } else {
+                    throw new RuntimeException("Infopoints that can not be omited should have distinct PCs");
+                }
+            }
         }
         infopoints.add(infopoint);
     }

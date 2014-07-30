@@ -60,4 +60,10 @@ public interface InspectedFrame {
      * @return the current method
      */
     ResolvedJavaMethod getMethod();
+
+    /**
+     * Checks if the current method is equal to the given method. This is semantically equivalent to
+     * {@code method.equals(getMethod())}, but can be implemented more efficiently.
+     */
+    boolean isMethod(ResolvedJavaMethod method);
 }
