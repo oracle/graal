@@ -78,6 +78,15 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
         this.methodProbabilities = computeMethodProbabilities();
         this.maximumMethodProbability = maximumMethodProbability();
         assert maximumMethodProbability > 0;
+        assert assertUniqueTypes(ptypes);
+    }
+
+    private static boolean assertUniqueTypes(ArrayList<ProfiledType> ptypes) {
+        Set<ResolvedJavaType> set = new HashSet<>();
+        for (ProfiledType ptype : ptypes) {
+            set.add(ptype.getType());
+        }
+        return set.size() == ptypes.size();
     }
 
     private double[] computeMethodProbabilities() {
@@ -383,14 +392,21 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
         ResolvedJavaType[] keys = new ResolvedJavaType[ptypes.size()];
         double[] keyProbabilities = new double[ptypes.size() + 1];
         int[] keySuccessors = new int[ptypes.size() + 1];
+        double totalProbability = notRecordedTypeProbability;
         for (int i = 0; i < ptypes.size(); i++) {
             keys[i] = ptypes.get(i).getType();
             keyProbabilities[i] = ptypes.get(i).getProbability();
+            totalProbability += keyProbabilities[i];
             keySuccessors[i] = invokeIsOnlySuccessor ? 0 : typesToConcretes.get(i);
             assert keySuccessors[i] < successors.length - 1 : "last successor is the unknownTypeSux";
         }
         keyProbabilities[keyProbabilities.length - 1] = notRecordedTypeProbability;
         keySuccessors[keySuccessors.length - 1] = successors.length - 1;
+
+        // Normalize the probabilities.
+        for (int i = 0; i < keyProbabilities.length; i++) {
+            keyProbabilities[i] /= totalProbability;
+        }
 
         TypeSwitchNode typeSwitch = graph.add(new TypeSwitchNode(hub, successors, keys, keyProbabilities, keySuccessors));
         FixedWithNextNode pred = (FixedWithNextNode) invoke.asNode().predecessor();
