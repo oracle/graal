@@ -104,6 +104,11 @@ public abstract class SwitchNode extends ControlSplitNode {
     public abstract Constant keyAt(int i);
 
     /**
+     * Returns true if the switch has the same keys in the same order as this switch.
+     */
+    public abstract boolean equalKeys(SwitchNode switchNode);
+
+    /**
      * Returns the index of the successor belonging to the key at the specified index.
      */
     public int keySuccessorIndex(int i) {
