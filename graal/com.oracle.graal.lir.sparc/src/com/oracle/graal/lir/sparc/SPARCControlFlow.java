@@ -407,15 +407,19 @@ public class SPARCControlFlow {
             case NE:
                 return ConditionFlag.NotEqual;
             case BT:
+                return ConditionFlag.LessUnsigned;
             case LT:
                 return ConditionFlag.Less;
             case BE:
+                return ConditionFlag.LessEqualUnsigned;
             case LE:
                 return ConditionFlag.LessEqual;
             case AE:
+                return ConditionFlag.GreaterEqualUnsigned;
             case GE:
                 return ConditionFlag.GreaterEqual;
             case AT:
+                return ConditionFlag.GreaterUnsigned;
             case GT:
                 return ConditionFlag.Greater;
             default:
