@@ -35,7 +35,7 @@ import com.oracle.graal.sparc.*;
  *
  * <pre>
  *   Base       Contents
- *
+ * 
  *            :                                :  -----
  *   caller   | incoming overflow argument n   |    ^
  *   frame    :     ...                        :    | positive
@@ -125,5 +125,10 @@ public final class SPARCFrameMap extends FrameMap {
             offset += calleeSaveAreaSize();
         }
         return offset;
+    }
+
+    @Override
+    public boolean frameNeedsAllocating() {
+        return super.frameNeedsAllocating() || spillSize > 0;
     }
 }

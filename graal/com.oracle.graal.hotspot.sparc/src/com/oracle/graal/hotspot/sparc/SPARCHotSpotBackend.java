@@ -173,7 +173,7 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
         SPARCHotSpotLIRGenerationResult gen = (SPARCHotSpotLIRGenerationResult) lirGenRes;
         FrameMap frameMap = gen.getFrameMap();
         LIR lir = gen.getLIR();
-        assert gen.getDeoptimizationRescueSlot() != null || frameMap.frameNeedsAllocating() : "method that can deoptimize must have a frame";
+        assert gen.getDeoptimizationRescueSlot() == null || frameMap.frameNeedsAllocating() : "method that can deoptimize must have a frame";
 
         Stub stub = gen.getStub();
         Assembler masm = createAssembler(frameMap);
