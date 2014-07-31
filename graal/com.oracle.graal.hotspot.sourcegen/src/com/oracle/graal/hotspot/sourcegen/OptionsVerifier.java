@@ -27,11 +27,11 @@ import static java.lang.String.*;
 import java.io.*;
 import java.lang.reflect.*;
 import java.util.*;
-import java.util.zip.*;
 
 import jdk.internal.org.objectweb.asm.*;
 import jdk.internal.org.objectweb.asm.Type;
 
+import com.oracle.graal.hotspot.sourcegen.GenGraalRuntimeInlineHpp.GraalJars;
 import com.oracle.graal.options.*;
 
 /**
@@ -42,17 +42,16 @@ import com.oracle.graal.options.*;
  */
 final class OptionsVerifier extends ClassVisitor {
 
-    public static void checkClass(Class<?> cls, OptionDescriptor option, Set<Class<?>> checked, ZipFile graalJar) throws IOException {
+    public static void checkClass(Class<?> cls, OptionDescriptor option, Set<Class<?>> checked, GraalJars graalJars) throws IOException {
         if (!checked.contains(cls)) {
             checked.add(cls);
             Class<?> superclass = cls.getSuperclass();
             if (superclass != null && !superclass.equals(Object.class)) {
-                checkClass(superclass, option, checked, graalJar);
+                checkClass(superclass, option, checked, graalJars);
             }
 
             String classFilePath = cls.getName().replace('.', '/') + ".class";
-            ZipEntry entry = Objects.requireNonNull(graalJar.getEntry(classFilePath), "Could not find class file for " + cls.getName());
-            ClassReader cr = new ClassReader(graalJar.getInputStream(entry));
+            ClassReader cr = new ClassReader(Objects.requireNonNull(graalJars.getInputStream(classFilePath), "Could not find class file for " + cls.getName()));
 
             ClassVisitor cv = new OptionsVerifier(cls, option);
             cr.accept(cv, 0);
