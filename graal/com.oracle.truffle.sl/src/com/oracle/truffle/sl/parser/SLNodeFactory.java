@@ -99,7 +99,7 @@ public class SLNodeFactory {
          * ensures that accesses to parameters are specialized the same way as local variables are
          * specialized.
          */
-        final SourceSection src = source.createSection(nameToken.val, nameToken.charPos, nameToken.val.length());
+        final SourceSection src = srcFromToken(nameToken);
         SLReadArgumentNode readArg = new SLReadArgumentNode(src, parameterCount);
         methodNodes.add(createAssignment(nameToken, readArg));
         parameterCount++;
@@ -166,22 +166,22 @@ public class SLNodeFactory {
         }
     }
 
-    public SLStatementNode createBreak(Token t) {
-        return new SLBreakNode(source.createSection(t.val, t.charPos, t.val.length()));
+    public SLStatementNode createBreak(Token breakToken) {
+        return new SLBreakNode(srcFromToken(breakToken));
     }
 
-    public SLStatementNode createContinue(Token t) {
-        return new SLContinueNode(source.createSection(t.val, t.charPos, t.val.length()));
+    public SLStatementNode createContinue(Token continueToken) {
+        return new SLContinueNode(srcFromToken(continueToken));
     }
 
-    public SLStatementNode createWhile(Token t, SLExpressionNode conditionNode, SLStatementNode bodyNode) {
-        final int start = t.charPos;
+    public SLStatementNode createWhile(Token whileToken, SLExpressionNode conditionNode, SLStatementNode bodyNode) {
+        final int start = whileToken.charPos;
         final int end = bodyNode.getSourceSection().getCharEndIndex();
-        return new SLWhileNode(source.createSection(t.val, start, end - start), conditionNode, bodyNode);
+        return new SLWhileNode(source.createSection(whileToken.val, start, end - start), conditionNode, bodyNode);
     }
 
-    public SLStatementNode createIf(Token t, SLExpressionNode conditionNode, SLStatementNode thenPartNode, SLStatementNode elsePartNode) {
-        final int start = t.charPos;
+    public SLStatementNode createIf(Token ifToken, SLExpressionNode conditionNode, SLStatementNode thenPartNode, SLStatementNode elsePartNode) {
+        final int start = ifToken.charPos;
         final int end = elsePartNode == null ? thenPartNode.getSourceSection().getCharEndIndex() : elsePartNode.getSourceSection().getCharEndIndex();
 
         // if (prober != null) {
@@ -191,7 +191,7 @@ public class SLNodeFactory {
         // wrappedThenNode, elsePartNode);
         // }
 
-        return new SLIfNode(source.createSection(t.val, start, end - start), conditionNode, thenPartNode, elsePartNode);
+        return new SLIfNode(source.createSection(ifToken.val, start, end - start), conditionNode, thenPartNode, elsePartNode);
     }
 
     public SLStatementNode createReturn(Token t, SLExpressionNode valueNode) {
@@ -260,7 +260,7 @@ public class SLNodeFactory {
 
     public SLExpressionNode createRead(Token nameToken) {
         final FrameSlot frameSlot = lexicalScope.locals.get(nameToken.val);
-        final SourceSection src = source.createSection(nameToken.val, nameToken.charPos, nameToken.val.length());
+        final SourceSection src = srcFromToken(nameToken);
         if (frameSlot != null) {
             /* Read of a local variable. */
             return SLReadLocalVariableNodeFactory.create(src, frameSlot);
@@ -274,14 +274,14 @@ public class SLNodeFactory {
         /* Remove the trailing and ending " */
         String literal = literalToken.val;
         assert literal.length() >= 2 && literal.startsWith("\"") && literal.endsWith("\"");
-        final SourceSection src = source.createSection(literalToken.val, literalToken.charPos, literalToken.val.length());
+        final SourceSection src = srcFromToken(literalToken);
         literal = literal.substring(1, literal.length() - 1);
 
         return new SLStringLiteralNode(src, literal);
     }
 
     public SLExpressionNode createNumericLiteral(Token literalToken) {
-        final SourceSection src = source.createSection(literalToken.val, literalToken.charPos, literalToken.val.length());
+        final SourceSection src = srcFromToken(literalToken);
         try {
             /* Try if the literal is small enough to fit into a long value. */
             return new SLLongLiteralNode(src, Long.parseLong(literalToken.val));
@@ -289,6 +289,18 @@ public class SLNodeFactory {
             /* Overflow of long value, so fall back to BigInteger. */
             return new SLBigIntegerLiteralNode(src, new BigInteger(literalToken.val));
         }
+    }
+
+    public SLExpressionNode createParenExpression(SLExpressionNode expressionNode, int start, int length) {
+        final SourceSection src = source.createSection("()", start, length);
+        return new SLParenExpressionNode(src, expressionNode);
+    }
+
+    /**
+     * Creates source description of a single token.
+     */
+    private SourceSection srcFromToken(Token token) {
+        return source.createSection(token.val, token.charPos, token.val.length());
     }
 
 }

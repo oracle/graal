@@ -153,6 +153,9 @@ public class SLMain {
             sourceCallback.startLoading(source);
         }
         Parser.parseSL(context, source, null);
+        System.out.println(source.getName() + "========================");
+        System.out.println(source.getCode());
+        System.out.println(source.getName() + "========================");
         if (sourceCallback != null) {
             sourceCallback.endLoading(source);
         }
@@ -165,7 +168,7 @@ public class SLMain {
         /* Change to true if you want to see the AST on the console. */
         boolean printASTToLog = false;
         /* Change to true if you want to see source attribution for the AST to the console */
-        boolean printSourceAttributionToLog = false;
+        boolean printSourceAttributionToLog = true;
         /* Change to dump the AST to IGV over the network. */
         boolean dumpASTToIGV = false;
 
@@ -192,6 +195,7 @@ public class SLMain {
         } finally {
             printScript("after execution", context, logOutput, printASTToLog, printSourceAttributionToLog, dumpASTToIGV);
         }
+        return;
     }
 
     /**

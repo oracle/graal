@@ -84,12 +84,12 @@ Block<out SLStatementNode body, false>          (. factory.finishFunction(body);
 Block<out SLStatementNode result, boolean inLoop>
 =                                               (. factory.startBlock();
                                                    List<SLStatementNode> body = new ArrayList<>(); .)
-"{"    											(. int lBracePos = t.charPos; .)
+"{"    											(. int start = t.charPos; .)
 {
     Statement<out SLStatementNode s, inLoop>    (. body.add(s); .)
 }
-"}"                                             (. int length = (t.charPos + t.val.length()) - lBracePos; .)
-												(. result = factory.finishBlock(body, lBracePos, length); .)
+"}"                                             (. int length = (t.charPos + t.val.length()) - start; .)
+												(. result = factory.finishBlock(body, start, length); .)
 .
 
 
@@ -115,8 +115,8 @@ Statement<out SLStatementNode result, boolean inLoop>
 
 WhileStatement<out SLStatementNode result>
 =
-"while"
-"("                                             (. Token whileToken = t; .)
+"while"											(. Token whileToken = t; .)
+"("                                             
 Expression<out SLExpressionNode condition>
 ")" 
 Block<out SLStatementNode body, true>           (. result = factory.createWhile(whileToken, condition, body); .)
@@ -225,7 +225,10 @@ Factor<out SLExpressionNode result>
 |
     numericLiteral                              (. result = factory.createNumericLiteral(t); .)
 |
-    "(" Expression<out result> ")"
+    "(" 										(. int start = t.charPos; .)
+    Expression<out result> 						(. SLExpressionNode expr = result; .)
+    ")"											(. int length = (t.charPos + t.val.length()) - start; .)
+    											(. result = factory.createParenExpression(expr, start, length); .)
 ) 
 .
 

@@ -1,1 +1,1 @@
-Type error at TypeError04.sl line 2 col 4: operation "||" not defined for Boolean false, Number 4
+Type error at TypeError04.sl line 2 col 3: operation "||" not defined for Boolean false, Number 4
