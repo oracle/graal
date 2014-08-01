@@ -840,9 +840,10 @@ public final class NodeUtil {
         if (section != null) {
             final String srcText = section.getCode();
             final StringBuilder sb = new StringBuilder();
-            sb.append("source:  len=" + srcText.length());
+            sb.append("source:");
             sb.append(" (" + section.getCharIndex() + "," + (section.getCharEndIndex() - 1) + ")");
-            sb.append(" ___" + srcText + "___");
+            sb.append(" len=" + srcText.length());
+            sb.append(" text=\"" + srcText + "\"");
             return sb.toString();
         }
         return "";
