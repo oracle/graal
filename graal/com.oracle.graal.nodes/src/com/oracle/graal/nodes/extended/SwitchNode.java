@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.nodes.extended;
 
+import java.util.*;
+
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
@@ -102,6 +104,10 @@ public abstract class SwitchNode extends ControlSplitNode {
      * The key at the specified position, encoded in a Constant.
      */
     public abstract Constant keyAt(int i);
+
+    public boolean structureEquals(SwitchNode switchNode) {
+        return Arrays.equals(keySuccessors, switchNode.keySuccessors) && equalKeys(switchNode);
+    }
 
     /**
      * Returns true if the switch has the same keys in the same order as this switch.
