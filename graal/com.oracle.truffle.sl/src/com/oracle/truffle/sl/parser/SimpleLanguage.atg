@@ -66,9 +66,8 @@ Function
 Function
 =
 "function"                                      
-identifier										(. Token identifierToken = t; .)                                      	
-"("												(. int bodyStartPos = t.charPos; .)
-												(. factory.startFunction(identifierToken, bodyStartPos); .)
+identifier                                      (. factory.startFunction(t); .)
+"("
 [
     identifier                                  (. factory.addFormalParameter(t); .)
     {
@@ -126,8 +125,8 @@ Block<out SLStatementNode body, true>           (. result = factory.createWhile(
 
 IfStatement<out SLStatementNode result, boolean inLoop>
 =
-"if" 											(. Token ifToken = t; .)
-"("                                             
+"if" 
+"("                                             (. Token ifToken = t; .)
 Expression<out SLExpressionNode condition> 
 ")"
 Block<out SLStatementNode thenPart, inLoop>     (. SLStatementNode elsePart = null; .)                             

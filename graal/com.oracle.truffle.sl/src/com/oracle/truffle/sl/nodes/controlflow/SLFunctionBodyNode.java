@@ -24,7 +24,6 @@ package com.oracle.truffle.sl.nodes.controlflow;
 
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
-import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.api.utilities.*;
 import com.oracle.truffle.sl.nodes.*;
 import com.oracle.truffle.sl.runtime.*;
@@ -50,8 +49,8 @@ public final class SLFunctionBodyNode extends SLExpressionNode {
     private final BranchProfile exceptionTaken = new BranchProfile();
     private final BranchProfile nullTaken = new BranchProfile();
 
-    public SLFunctionBodyNode(SourceSection src, SLStatementNode bodyNode) {
-        super(src);
+    public SLFunctionBodyNode(SLStatementNode bodyNode) {
+        super(null);
         this.bodyNode = bodyNode;
     }
 
