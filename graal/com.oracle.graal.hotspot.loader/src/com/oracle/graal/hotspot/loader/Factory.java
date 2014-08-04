@@ -40,7 +40,8 @@ public class Factory {
     @SuppressWarnings("unused")
     private static ClassLoader newClassLoader() throws MalformedURLException {
         URL[] urls = {getGraalJarUrl("graal"), getGraalJarUrl("graal-truffle")};
-        return URLClassLoader.newInstance(urls);
+        ClassLoader parent = null;
+        return URLClassLoader.newInstance(urls, parent);
     }
 
     /**
