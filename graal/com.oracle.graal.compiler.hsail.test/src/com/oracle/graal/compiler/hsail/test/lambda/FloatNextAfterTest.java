@@ -39,6 +39,11 @@ public class FloatNextAfterTest extends FloatMathLargeBase {
         });
     }
 
+    @Override
+    protected boolean supportsRequiredCapabilities() {
+        return (runningOnSimulator() || runningCQETests());
+    }
+
     @Test
     public void testUsingLambdaMethod() {
         testGeneratedHsailUsingLambdaMethod();

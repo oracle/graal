@@ -324,7 +324,11 @@ public abstract class HSAILAssembler extends AbstractHSAILAssembler {
     }
 
     public static String mapAddress(HSAILAddress addr) {
-        return "[$d" + addr.getBase().encoding() + " + " + addr.getDisplacement() + "]";
+        if (addr.getBase().encoding() < 0) {
+            return "[0x" + Long.toHexString(addr.getDisplacement()) + "]";
+        } else {
+            return "[$d" + addr.getBase().encoding() + " + " + addr.getDisplacement() + "]";
+        }
     }
 
     private static String doubleToString(double dval) {
