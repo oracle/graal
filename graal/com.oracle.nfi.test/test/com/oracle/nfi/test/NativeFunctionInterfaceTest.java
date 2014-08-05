@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.test.nfi;
+package com.oracle.nfi.test;
 
 import static com.oracle.graal.compiler.common.UnsafeAccess.*;
 import static java.io.File.*;
@@ -33,10 +33,8 @@ import java.util.*;
 
 import org.junit.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.runtime.*;
-import com.oracle.graal.compiler.target.*;
-import com.oracle.graal.runtime.*;
+import com.oracle.nfi.*;
+import com.oracle.nfi.api.*;
 
 @Ignore
 public class NativeFunctionInterfaceTest {
@@ -44,9 +42,7 @@ public class NativeFunctionInterfaceTest {
     public final NativeFunctionInterface nfi;
 
     public NativeFunctionInterfaceTest() {
-        RuntimeProvider runtimeProvider = Graal.getRequiredCapability(RuntimeProvider.class);
-        Assume.assumeTrue(runtimeProvider.getHostBackend() instanceof HostBackend);
-        nfi = ((HostBackend) runtimeProvider.getHostBackend()).getNativeFunctionInterface();
+        nfi = NativeFunctionInterfaceRuntime.getNativeFunctionInterface();
     }
 
     private List<Long> allocations = new ArrayList<>();

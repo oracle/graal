@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,13 +20,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.target;
-
-import com.oracle.graal.api.code.*;
+package com.oracle.nfi.api;
 
 /**
- * Common functionality of host backends.
+ * An opaque representation of a native library handle. A handle is obtained via
+ * {@link NativeFunctionInterface#getLibraryHandle(String)}. A handle is used to resolve a string to
+ * a {@linkplain NativeFunctionInterface#getFunctionHandle(String, Class, Class...) handle} or
+ * {@linkplain NativeFunctionInterface#getFunctionPointer(NativeLibraryHandle[], String) pointer}.
  */
-public interface HostBackend {
-    NativeFunctionInterface getNativeFunctionInterface();
+public interface NativeLibraryHandle {
+    /**
+     * Gets a name for this library. This may be the path for the file from which the library was
+     * loaded.
+     */
+    String getName();
 }

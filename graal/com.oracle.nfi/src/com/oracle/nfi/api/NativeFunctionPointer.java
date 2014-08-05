@@ -20,18 +20,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.api.code;
+package com.oracle.nfi.api;
 
 /**
- * An opaque representation of a native library handle. A handle is obtained via
- * {@link NativeFunctionInterface#getLibraryHandle(String)}. A handle is used to resolve a string to
- * a {@linkplain NativeFunctionInterface#getFunctionHandle(String, Class, Class...) handle} or
- * {@linkplain NativeFunctionInterface#getFunctionPointer(NativeLibraryHandle[], String) pointer}.
+ * An opaque representation of a native function pointer.
+ * <p>
+ * Use {@code NativeFunctionInterface#getFunctionHandle(NativeFunctionPointer, Class, Class...)} to
+ * get a handle enabling the native function to be {@linkplain NativeFunctionHandle#call(Object...)
+ * called}.
  */
-public interface NativeLibraryHandle {
+public interface NativeFunctionPointer {
+
     /**
-     * Gets a name for this library. This may be the path for the file from which the library was
-     * loaded.
+     * Returns the name of the function.
+     *
+     * @return name of the function
      */
     String getName();
+
+    /**
+     * Returns the raw function pointer value.
+     * 
+     * @return raw function pointer value
+     */
+    long getRawValue();
+
 }

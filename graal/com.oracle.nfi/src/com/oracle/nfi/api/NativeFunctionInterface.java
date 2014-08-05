@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.api.code;
+package com.oracle.nfi.api;
 
 /**
  * Interface to get a {@linkplain NativeFunctionHandle handle} or {@linkplain NativeFunctionPointer

@@ -44,7 +44,6 @@ import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Cmp;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Nop;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.RestoreWindow;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Setx;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.HotSpotCodeCacheProvider.MarkId;
 import com.oracle.graal.hotspot.meta.*;
@@ -245,11 +244,6 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
             Register scratch = g3;
             SPARCCall.indirectJmp(crb, masm, scratch, foreignCalls.lookupForeignCall(IC_MISS_HANDLER));
         }
-    }
-
-    @Override
-    public NativeFunctionInterface getNativeFunctionInterface() {
-        throw GraalInternalError.unimplemented("No NativeFunctionInterface of SPARC");
     }
 
 }
