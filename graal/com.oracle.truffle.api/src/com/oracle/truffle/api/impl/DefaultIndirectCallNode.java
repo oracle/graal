@@ -32,10 +32,32 @@ import com.oracle.truffle.api.nodes.*;
  * This is runtime specific API. Do not use in a guest language.
  */
 final class DefaultIndirectCallNode extends IndirectCallNode {
-
     @Override
-    public Object call(VirtualFrame frame, CallTarget target, Object[] arguments) {
-        return target.call(arguments);
-    }
+    public Object call(final VirtualFrame frame, final CallTarget target, Object[] arguments) {
+        DefaultTruffleRuntime truffleRuntime = (DefaultTruffleRuntime) Truffle.getRuntime();
+        final CallTarget currentCallTarget = truffleRuntime.getCurrentFrame().getCallTarget();
+        FrameInstance frameInstance = new FrameInstance() {
+            public Frame getFrame(FrameAccess access, boolean slowPath) {
+                return frame;
+            }
 
+            public boolean isVirtualFrame() {
+                return false;
+            }
+
+            public Node getCallNode() {
+                return DefaultIndirectCallNode.this;
+            }
+
+            public CallTarget getCallTarget() {
+                return currentCallTarget;
+            }
+        };
+        truffleRuntime.pushFrame(frameInstance);
+        try {
+            return target.call(arguments);
+        } finally {
+            truffleRuntime.popFrame();
+        }
+    }
 }
