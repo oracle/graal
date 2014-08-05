@@ -52,11 +52,6 @@ public final class ReturnNode extends ControlSinkNode implements LIRLowerable, I
     }
 
     @Override
-    public boolean verify() {
-        return super.verify();
-    }
-
-    @Override
     public void generate(NodeLIRBuilderTool gen) {
         if (this.result() == null) {
             gen.getLIRGeneratorTool().emitReturn(null);

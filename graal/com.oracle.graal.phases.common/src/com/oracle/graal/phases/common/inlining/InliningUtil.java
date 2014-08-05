@@ -385,7 +385,7 @@ public class InliningUtil {
                      * return value (top of stack)
                      */
                     FrameState stateAfterReturn = stateAtReturn;
-                    if (invokeReturnKind != Kind.Void && (alwaysDuplicateStateAfter || frameState.stackSize() > 0 && stateAfterReturn.stackAt(0) != frameState.stackAt(0))) {
+                    if (invokeReturnKind != Kind.Void && (alwaysDuplicateStateAfter || (frameState.stackSize() > 0 && stateAfterReturn.stackAt(0) != frameState.stackAt(0)))) {
                         stateAfterReturn = stateAtReturn.duplicateModified(invokeReturnKind, frameState.stackAt(0));
                     }
                     frameState.replaceAndDelete(stateAfterReturn);
