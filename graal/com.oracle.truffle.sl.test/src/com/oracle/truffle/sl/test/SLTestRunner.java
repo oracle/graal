@@ -43,7 +43,7 @@ import com.oracle.truffle.sl.test.SLTestRunner.TestCase;
 
 public final class SLTestRunner extends ParentRunner<TestCase> {
 
-    private static final int REPEATS = 1;
+    private static final int REPEATS = 10;
 
     private static final String SOURCE_SUFFIX = ".sl";
     private static final String INPUT_SUFFIX = ".input";
@@ -156,7 +156,7 @@ public final class SLTestRunner extends ParentRunner<TestCase> {
         try {
             SLContext context = new SLContext(new BufferedReader(new StringReader(repeat(testCase.testInput, REPEATS))), printer);
             final Source source = Source.fromText(readAllLines(testCase.path), testCase.sourceName);
-            SLMain.run(context, source, System.out, REPEATS);
+            SLMain.run(context, source, null, REPEATS);
 
             String actualOutput = new String(out.toByteArray());
             Assert.assertEquals(repeat(testCase.expectedOutput, REPEATS), actualOutput);

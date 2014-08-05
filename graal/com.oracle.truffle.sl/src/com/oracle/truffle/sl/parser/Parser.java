@@ -134,8 +134,10 @@ public class Parser {
 	void Function() {
 		Expect(4);
 		Expect(1);
-		factory.startFunction(t); 
+		Token identifierToken = t; 
 		Expect(5);
+		int bodyStartPos = t.charPos; 
+		factory.startFunction(identifierToken, bodyStartPos); 
 		if (la.kind == 1) {
 			Get();
 			factory.addFormalParameter(t); 
@@ -219,8 +221,8 @@ public class Parser {
 	SLStatementNode  IfStatement(boolean inLoop) {
 		SLStatementNode  result;
 		Expect(14);
-		Expect(5);
 		Token ifToken = t; 
+		Expect(5);
 		SLExpressionNode condition = Expression();
 		Expect(7);
 		SLStatementNode thenPart = Block(inLoop);

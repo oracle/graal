@@ -65,7 +65,9 @@ public class SLNodeFactory {
     private final Source source;
 
     /* State while parsing a function. */
+    private int functionStartPos;
     private String functionName;
+    private int functionBodyStartPos; // includes parameter list
     private int parameterCount;
     private FrameDescriptor frameDescriptor;
     private List<SLStatementNode> methodNodes;
@@ -81,13 +83,17 @@ public class SLNodeFactory {
         this.prober = prober;
     }
 
-    public void startFunction(Token nameToken) {
+    public void startFunction(Token nameToken, int bodyStartPos) {
+        assert functionStartPos == 0;
         assert functionName == null;
+        assert functionBodyStartPos == 0;
         assert parameterCount == 0;
         assert frameDescriptor == null;
         assert lexicalScope == null;
 
+        functionStartPos = nameToken.charPos;
         functionName = nameToken.val;
+        functionBodyStartPos = bodyStartPos;
         frameDescriptor = new FrameDescriptor();
         methodNodes = new ArrayList<>();
         startBlock();
@@ -100,23 +106,26 @@ public class SLNodeFactory {
          * specialized.
          */
         final SourceSection src = srcFromToken(nameToken);
-        SLReadArgumentNode readArg = new SLReadArgumentNode(src, parameterCount);
+        final SLReadArgumentNode readArg = new SLReadArgumentNode(src, parameterCount);
         methodNodes.add(createAssignment(nameToken, readArg));
         parameterCount++;
     }
 
     public void finishFunction(SLStatementNode bodyNode) {
         methodNodes.add(bodyNode);
-        // TODO (mlvdv) testing
-        SLStatementNode methodBlock = finishBlock(methodNodes, -1, -1);
+        final int bodyEndPos = bodyNode.getSourceSection().getCharEndIndex();
+        final SourceSection functionSrc = source.createSection(functionName, functionStartPos, bodyEndPos - functionStartPos);
+        final SLStatementNode methodBlock = finishBlock(methodNodes, functionBodyStartPos, bodyEndPos - functionBodyStartPos);
         assert lexicalScope == null : "Wrong scoping of blocks in parser";
 
-        SLFunctionBodyNode functionBodyNode = new SLFunctionBodyNode(methodBlock);
-        SLRootNode rootNode = new SLRootNode(frameDescriptor, functionBodyNode, functionName);
+        final SLFunctionBodyNode functionBodyNode = new SLFunctionBodyNode(functionSrc, methodBlock);
+        final SLRootNode rootNode = new SLRootNode(frameDescriptor, functionBodyNode, functionName);
 
         context.getFunctionRegistry().register(functionName, rootNode);
 
+        functionStartPos = 0;
         functionName = null;
+        functionBodyStartPos = 0;
         parameterCount = 0;
         frameDescriptor = null;
         lexicalScope = null;
@@ -126,34 +135,14 @@ public class SLNodeFactory {
         lexicalScope = new LexicalScope(lexicalScope);
     }
 
-    public SLStatementNode finishBlock(List<SLStatementNode> bodyNodes, int lBracePos, int length) {
+    public SLStatementNode finishBlock(List<SLStatementNode> bodyNodes, int startPos, int length) {
         lexicalScope = lexicalScope.outer;
 
         List<SLStatementNode> flattenedNodes = new ArrayList<>(bodyNodes.size());
         flattenBlocks(bodyNodes, flattenedNodes);
 
-        if (lBracePos >= 0) {
-            final SourceSection src = source.createSection("block", lBracePos, length);
-            return new SLBlockNode(src, flattenedNodes.toArray(new SLStatementNode[flattenedNodes.size()]));
-        }
-        if (flattenedNodes.size() == 0) {
-            // TODO (mlvdv) for error reporting, should have the character position, even if the
-            // block is empty.
-            return new SLBlockNode(null, new SLStatementNode[0]);
-        }
-        if (flattenedNodes.size() == 1) {
-            /*
-             * A block containing one other node, not surrounded by braces is unnecessary, we can
-             * just that other node.
-             */
-            return flattenedNodes.get(0);
-        }
-        /*
-         * A "block" not surrounded by braces.
-         */
-        final int start = flattenedNodes.get(0).getSourceSection().getCharIndex();
-        final int end = flattenedNodes.get(flattenedNodes.size() - 1).getSourceSection().getCharEndIndex();
-        return new SLBlockNode(source.createSection("block", start, end - start), flattenedNodes.toArray(new SLStatementNode[flattenedNodes.size()]));
+        final SourceSection src = source.createSection("block", startPos, length);
+        return new SLBlockNode(src, flattenedNodes.toArray(new SLStatementNode[flattenedNodes.size()]));
     }
 
     private void flattenBlocks(Iterable<? extends Node> bodyNodes, List<SLStatementNode> flattenedNodes) {
