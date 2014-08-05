@@ -38,7 +38,7 @@ public final class MemUseTrackerImpl extends DebugValue implements DebugMemUseTr
      */
     private static final long threadMXBeanOverhead = -getCurrentThreadAllocatedBytes() + getCurrentThreadAllocatedBytes();
 
-    private static long getCurrentThreadAllocatedBytes() {
+    public static long getCurrentThreadAllocatedBytes() {
         return threadMXBean.getThreadAllocatedBytes(currentThread().getId()) - threadMXBeanOverhead;
     }
 
