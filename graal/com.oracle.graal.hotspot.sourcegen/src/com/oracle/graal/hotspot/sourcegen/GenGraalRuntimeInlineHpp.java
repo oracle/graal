@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot.sourcegen;
 import java.io.*;
 import java.lang.reflect.*;
 import java.util.*;
+import java.util.stream.*;
 import java.util.zip.*;
 
 import com.oracle.graal.api.runtime.*;
@@ -57,10 +58,7 @@ public class GenGraalRuntimeInlineHpp {
         }
 
         public Iterator<ZipEntry> iterator() {
-            List<ZipEntry> entries = new ArrayList<>();
-            for (ZipFile jar : jars) {
-                entries.addAll(Collections.list(jar.entries()));
-            }
+            Stream<ZipEntry> entries = jars.stream().flatMap(ZipFile::stream);
             return entries.iterator();
         }
 
