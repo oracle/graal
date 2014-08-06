@@ -26,6 +26,7 @@ import static com.oracle.graal.debug.internal.MemUseTrackerImpl.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.nodes.StructuredGraph.*;
 
+import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.internal.*;
@@ -46,7 +47,7 @@ public class MemoryUsageBenchmark extends GraalCompilerTest {
         return a + b;
     }
 
-    public static int complex(CharSequence cs) {
+    public static synchronized int complex(CharSequence cs) {
         if (cs instanceof String) {
             return cs.hashCode();
         }
@@ -70,6 +71,18 @@ public class MemoryUsageBenchmark extends GraalCompilerTest {
         for (int i = 0; i < cs.length(); i++) {
             res *= cs.charAt(i);
         }
+
+        // A fixed length loop with some canonicalizable arithmetics will
+        // activate loop unrolling and more canonicalization
+        int sum = 0;
+        for (int i = 0; i < 5; i++) {
+            sum += i * 2;
+        }
+        res += sum;
+
+        // Activates escape-analysis
+        res += new String("asdf").length();
+
         return res;
     }
 
@@ -92,6 +105,10 @@ public class MemoryUsageBenchmark extends GraalCompilerTest {
     }
 
     public static void main(String[] args) {
+        // Ensure a Graal runtime is initialized prior to Debug being initialized as the former
+        // may include processing command line options used by the latter.
+        Graal.getRuntime();
+
         // Ensure a debug configuration for this thread is initialized
         if (Debug.isEnabled() && DebugScope.getConfig() == null) {
             DebugEnvironment.initialize(System.out);
@@ -102,18 +119,23 @@ public class MemoryUsageBenchmark extends GraalCompilerTest {
     private void doCompilation(String methodName) {
         HotSpotResolvedJavaMethod method = (HotSpotResolvedJavaMethod) getMetaAccess().lookupJavaMethod(getMethod(methodName));
         HotSpotBackend backend = runtime().getHostBackend();
+
+        // invalidate any existing compiled code
+        method.reprofile();
+
         int id = method.allocateCompileId(INVOCATION_ENTRY_BCI);
         long ctask = 0L;
         CompilationTask task = new CompilationTask(backend, method, INVOCATION_ENTRY_BCI, ctask, id);
         task.runCompilation();
-
-        // invalidate the compiled code
-        method.reprofile();
     }
 
     private static final boolean verbose = Boolean.getBoolean("verbose");
 
     private void compileAndTime(String methodName) {
+
+        // Parse in eager mode to resolve methods/fields/classes
+        parseEager(methodName);
+
         // Warm up and initialize compiler phases used by this compilation
         for (int i = 0; i < 10; i++) {
             try (MemoryUsageCloseable c = verbose ? new MemoryUsageCloseable(methodName + "[" + i + "]") : null) {
