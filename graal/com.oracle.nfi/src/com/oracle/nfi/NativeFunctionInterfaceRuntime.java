@@ -25,22 +25,26 @@ package com.oracle.nfi;
 import com.oracle.nfi.api.*;
 
 /**
- * Class for obtaining the Native Function Interface runtime singleton object of this virtual
- * machine.
+ * Class for obtaining the {@link NativeFunctionInterface} (if any) provided by the VM.
  */
 public final class NativeFunctionInterfaceRuntime {
-    private static final NativeFunctionInterface INTERFACE;
+    private static final NativeFunctionInterface INSTANCE;
 
     /**
-     * Creates a new {@link NativeFunctionInterface} instance if running on top of Graal.
+     * Creates a new {@link NativeFunctionInterface}.
      *
-     * @throws UnsatisfiedLinkError if not running on top of Graal and initialize the
-     *             {@link NativeFunctionInterface} instance with <code>null</code>.
+     * @throws UnsatisfiedLinkError if not running on a VM that provides a
+     *             {@link NativeFunctionInterface}
      */
     private static native NativeFunctionInterface createInterface();
 
+    /**
+     * Gets the {@link NativeFunctionInterface} (if any) provided by the VM.
+     *
+     * @return null if the VM does not provide a {@link NativeFunctionInterface}
+     */
     public static NativeFunctionInterface getNativeFunctionInterface() {
-        return INTERFACE;
+        return INSTANCE;
     }
 
     static {
@@ -50,6 +54,6 @@ public final class NativeFunctionInterfaceRuntime {
         } catch (UnsatisfiedLinkError e) {
             instance = null;
         }
-        INTERFACE = instance;
+        INSTANCE = instance;
     }
 }
