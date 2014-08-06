@@ -699,9 +699,11 @@ public abstract class GraalCompilerTest extends GraalTest {
     private StructuredGraph parse0(Method m, PhaseSuite<HighTierContext> graphBuilderSuite) {
         assert m.getAnnotation(Test.class) == null : "shouldn't parse method with @Test annotation: " + m;
         ResolvedJavaMethod javaMethod = getMetaAccess().lookupJavaMethod(m);
-        StructuredGraph graph = new StructuredGraph(javaMethod);
-        graphBuilderSuite.apply(graph, new HighTierContext(providers, null, null, graphBuilderSuite, OptimisticOptimizations.ALL));
-        return graph;
+        try (Scope ds = Debug.scope("Parsing", javaMethod)) {
+            StructuredGraph graph = new StructuredGraph(javaMethod);
+            graphBuilderSuite.apply(graph, new HighTierContext(providers, null, null, graphBuilderSuite, OptimisticOptimizations.ALL));
+            return graph;
+        }
     }
 
     protected PhaseSuite<HighTierContext> getDefaultGraphBuilderSuite() {
