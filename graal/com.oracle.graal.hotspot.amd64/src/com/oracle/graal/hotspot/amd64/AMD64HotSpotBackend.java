@@ -322,7 +322,9 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
         }
     }
 
-    // used by native code, don't remove!
+    /**
+     * Called from the VM.
+     */
     public static NativeFunctionInterface createNativeFunctionInterface() {
         HotSpotVMConfig config = HotSpotGraalRuntime.runtime().getConfig();
         RawNativeCallNodeFactory factory = new RawNativeCallNodeFactory() {
