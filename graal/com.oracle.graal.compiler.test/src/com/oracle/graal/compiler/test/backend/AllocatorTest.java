@@ -48,7 +48,7 @@ import com.oracle.graal.phases.schedule.*;
 public class AllocatorTest extends GraalCompilerTest {
 
     protected void test(String snippet, final int expectedRegisters, final int expectedRegRegMoves, final int expectedSpillMoves) {
-        final StructuredGraph graph = parse(snippet);
+        final StructuredGraph graph = parseEager(snippet);
         try (Scope s = Debug.scope("AllocatorTest", graph, graph.method(), getCodeCache())) {
             final RegisterStats stats = getRegisterStats(graph);
             try (Scope s2 = Debug.scope("Assertions", stats.lir)) {

@@ -305,7 +305,7 @@ public class BoxingEliminationTest extends GraalCompilerTest {
     }
 
     private void processMethod(final String snippet) {
-        graph = parse(snippet);
+        graph = parseEager(snippet);
         Assumptions assumptions = new Assumptions(false);
         HighTierContext context = new HighTierContext(getProviders(), assumptions, null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
         new InliningPhase(new CanonicalizerPhase(true)).apply(graph, context);
@@ -317,7 +317,7 @@ public class BoxingEliminationTest extends GraalCompilerTest {
     }
 
     private void compareGraphs(final String snippet, final String referenceSnippet, final boolean loopPeeling, final boolean excludeVirtual) {
-        graph = parse(snippet);
+        graph = parseEager(snippet);
 
         Assumptions assumptions = new Assumptions(false);
         HighTierContext context = new HighTierContext(getProviders(), assumptions, null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
@@ -334,7 +334,7 @@ public class BoxingEliminationTest extends GraalCompilerTest {
         new DeadCodeEliminationPhase().apply(graph);
         canonicalizer.apply(graph, context);
 
-        StructuredGraph referenceGraph = parse(referenceSnippet);
+        StructuredGraph referenceGraph = parseEager(referenceSnippet);
         new InliningPhase(new CanonicalizerPhase(true)).apply(referenceGraph, context);
         new DeadCodeEliminationPhase().apply(referenceGraph);
         new CanonicalizerPhase(true).apply(referenceGraph, context);

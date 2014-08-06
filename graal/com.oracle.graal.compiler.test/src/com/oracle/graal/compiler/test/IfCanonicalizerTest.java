@@ -180,7 +180,7 @@ public class IfCanonicalizerTest extends GraalCompilerTest {
     }
 
     private void testCombinedIf(String snippet, int count) {
-        StructuredGraph graph = parse(snippet);
+        StructuredGraph graph = parseEager(snippet);
         PhaseContext context = new PhaseContext(getProviders(), new Assumptions(false));
         new LoweringPhase(new CanonicalizerPhase(true), LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
         new FloatingReadPhase().apply(graph);
@@ -193,7 +193,7 @@ public class IfCanonicalizerTest extends GraalCompilerTest {
     }
 
     private void test(String snippet) {
-        StructuredGraph graph = parse(snippet);
+        StructuredGraph graph = parseEager(snippet);
         ParameterNode param = graph.getNodes(ParameterNode.class).iterator().next();
         ConstantNode constant = ConstantNode.forInt(0, graph);
         for (Node n : param.usages().filter(isNotA(FrameState.class)).snapshot()) {
@@ -205,7 +205,7 @@ public class IfCanonicalizerTest extends GraalCompilerTest {
             fs.replaceFirstInput(param, null);
             param.safeDelete();
         }
-        StructuredGraph referenceGraph = parse(REFERENCE_SNIPPET);
+        StructuredGraph referenceGraph = parseEager(REFERENCE_SNIPPET);
         assertEquals(referenceGraph, graph);
     }
 }

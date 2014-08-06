@@ -40,7 +40,7 @@ public class EarlyReadEliminationTest extends PEAReadEliminationTest {
 
     @Override
     protected void processMethod(final String snippet) {
-        graph = parse(snippet);
+        graph = parseEager(snippet);
         Assumptions assumptions = new Assumptions(false);
         HighTierContext context = new HighTierContext(getProviders(), assumptions, null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
         new InliningPhase(new CanonicalizerPhase(true)).apply(graph, context);

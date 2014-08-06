@@ -53,7 +53,7 @@ public class CompiledMethodTest extends GraalCompilerTest {
     @Test
     public void test1() {
         Method method = getMethod("testMethod");
-        final StructuredGraph graph = parse(method);
+        final StructuredGraph graph = parseEager(method);
         new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders(), new Assumptions(false)));
         new DeadCodeEliminationPhase().apply(graph);
 
@@ -76,7 +76,7 @@ public class CompiledMethodTest extends GraalCompilerTest {
     @Test
     public void test3() {
         Method method = getMethod("testMethod");
-        final StructuredGraph graph = parse(method);
+        final StructuredGraph graph = parseEager(method);
         final ResolvedJavaMethod javaMethod = getMetaAccess().lookupJavaMethod(method);
         InstalledCode compiledMethod = getCode(javaMethod, graph);
         try {
@@ -90,7 +90,7 @@ public class CompiledMethodTest extends GraalCompilerTest {
     @Test
     public void test4() {
         Method method = getMethod("testMethodVirtual");
-        final StructuredGraph graph = parse(method);
+        final StructuredGraph graph = parseEager(method);
         final ResolvedJavaMethod javaMethod = getMetaAccess().lookupJavaMethod(method);
         InstalledCode compiledMethod = getCode(javaMethod, graph);
         try {

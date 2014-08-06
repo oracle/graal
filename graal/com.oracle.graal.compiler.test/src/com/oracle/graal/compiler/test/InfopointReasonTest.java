@@ -59,7 +59,7 @@ public class InfopointReasonTest extends GraalCompilerTest {
     @Test
     public void callInfopoints() {
         final Method method = getMethod("testMethod");
-        final StructuredGraph graph = parse(method);
+        final StructuredGraph graph = parseEager(method);
         CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graph.method(), false);
         final CompilationResult cr = compileGraph(graph, null, cc, graph.method(), getProviders(), getBackend(), getCodeCache().getTarget(), null, getDefaultGraphBuilderSuite(),
                         OptimisticOptimizations.ALL, getProfilingInfo(graph), null, getSuites(), new CompilationResult(), CompilationResultBuilderFactory.Default);

@@ -59,7 +59,7 @@ public class PointerTest extends GraalCompilerTest implements Snippets {
     private static final ThreadLocal<SnippetInliningPolicy> inliningPolicy = new ThreadLocal<>();
 
     @Override
-    protected StructuredGraph parse(Method m) {
+    protected StructuredGraph parseEager(Method m) {
         ResolvedJavaMethod resolvedMethod = getMetaAccess().lookupJavaMethod(m);
         return installer.makeGraph(resolvedMethod, null, inliningPolicy.get(), FrameStateProcessing.CollapseFrameForSingleSideEffect);
     }
@@ -67,42 +67,42 @@ public class PointerTest extends GraalCompilerTest implements Snippets {
     @Test
     public void testRead1() {
         for (Kind kind : KINDS) {
-            assertRead(parse("read" + kind.name() + "1"), kind, true, ID);
+            assertRead(parseEager("read" + kind.name() + "1"), kind, true, ID);
         }
     }
 
     @Test
     public void testRead2() {
         for (Kind kind : KINDS) {
-            assertRead(parse("read" + kind.name() + "2"), kind, true, ID);
+            assertRead(parseEager("read" + kind.name() + "2"), kind, true, ID);
         }
     }
 
     @Test
     public void testRead3() {
         for (Kind kind : KINDS) {
-            assertRead(parse("read" + kind.name() + "3"), kind, true, LocationIdentity.ANY_LOCATION);
+            assertRead(parseEager("read" + kind.name() + "3"), kind, true, LocationIdentity.ANY_LOCATION);
         }
     }
 
     @Test
     public void testWrite1() {
         for (Kind kind : KINDS) {
-            assertWrite(parse("write" + kind.name() + "1"), kind, true, ID);
+            assertWrite(parseEager("write" + kind.name() + "1"), kind, true, ID);
         }
     }
 
     @Test
     public void testWrite2() {
         for (Kind kind : KINDS) {
-            assertWrite(parse("write" + kind.name() + "2"), kind, true, ID);
+            assertWrite(parseEager("write" + kind.name() + "2"), kind, true, ID);
         }
     }
 
     @Test
     public void testWrite3() {
         for (Kind kind : KINDS) {
-            assertWrite(parse("write" + kind.name() + "3"), kind, true, LocationIdentity.ANY_LOCATION);
+            assertWrite(parseEager("write" + kind.name() + "3"), kind, true, LocationIdentity.ANY_LOCATION);
         }
     }
 
@@ -407,7 +407,7 @@ public class PointerTest extends GraalCompilerTest implements Snippets {
         Assumptions assumptions = new Assumptions(true);
         HighTierContext context = new HighTierContext(getProviders(), assumptions, null, null, OptimisticOptimizations.ALL);
 
-        StructuredGraph graph = parse(snippetName);
+        StructuredGraph graph = parseEager(snippetName);
         new CanonicalizerPhase(false).apply(graph, context);
         Assert.assertEquals(expectedWordCasts, graph.getNodes().filter(WordCastNode.class).count());
     }

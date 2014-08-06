@@ -67,7 +67,7 @@ import com.oracle.graal.test.*;
  * <p>
  * White box tests for Graal compiler transformations use this pattern:
  * <ol>
- * <li>Create a graph by {@linkplain #parse(String) parsing} a method.</li>
+ * <li>Create a graph by {@linkplain #parseEager(String) parsing} a method.</li>
  * <li>Manually modify the graph (e.g. replace a parameter node with a constant).</li>
  * <li>Apply a transformation to the graph.</li>
  * <li>Assert that the transformed graph is equal to an expected graph.</li>
@@ -323,15 +323,6 @@ public abstract class GraalCompilerTest extends GraalTest {
         return getProviders().getLowerer();
     }
 
-    /**
-     * Parses a Java method to produce a graph.
-     *
-     * @param methodName the name of the method in {@code this.getClass()} to be parsed
-     */
-    protected StructuredGraph parse(String methodName) {
-        return parse(getMethod(methodName));
-    }
-
     private static AtomicInteger compilationId = new AtomicInteger();
 
     protected void testN(int n, final String name, final Object... args) {
@@ -422,7 +413,7 @@ public abstract class GraalCompilerTest extends GraalTest {
         if (UseBaselineCompiler.getValue()) {
             compiledMethod = getCodeBaseline(javaMethod, method);
         } else {
-            compiledMethod = getCode(javaMethod, parse(method));
+            compiledMethod = getCode(javaMethod, parseEager(method));
         }
         try {
             return new Result(compiledMethod.executeVarargs(executeArgs), null);
@@ -667,7 +658,8 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     /**
-     * Parses a Java method to produce a graph.
+     * Parses a Java method in {@linkplain GraphBuilderConfiguration#getDefault() default} mode to
+     * produce a graph.
      *
      * @param methodName the name of the method in {@code this.getClass()} to be parsed
      */
@@ -676,21 +668,34 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     /**
-     * Parses a Java method to produce a graph.
-     */
-    protected StructuredGraph parse(Method m) {
-        return parse0(m, getCustomGraphBuilderSuite(GraphBuilderConfiguration.getEagerDefault()));
-    }
-
-    /**
-     * Parses a Java method to produce a graph.
+     * Parses a Java method in {@linkplain GraphBuilderConfiguration#getDefault() default} mode to
+     * produce a graph.
      */
     protected StructuredGraph parseProfiled(Method m) {
         return parse0(m, getDefaultGraphBuilderSuite());
     }
 
     /**
-     * Parses a Java method in debug mode to produce a graph with extra infopoints.
+     * Parses a Java method in {@linkplain GraphBuilderConfiguration#getEagerDefault() eager} mode
+     * to produce a graph.
+     *
+     * @param methodName the name of the method in {@code this.getClass()} to be parsed
+     */
+    protected StructuredGraph parseEager(String methodName) {
+        return parseEager(getMethod(methodName));
+    }
+
+    /**
+     * Parses a Java method in {@linkplain GraphBuilderConfiguration#getEagerDefault() eager} mode
+     * to produce a graph.
+     */
+    protected StructuredGraph parseEager(Method m) {
+        return parse0(m, getCustomGraphBuilderSuite(GraphBuilderConfiguration.getEagerDefault()));
+    }
+
+    /**
+     * Parses a Java method in {@linkplain GraphBuilderConfiguration#getFullDebugDefault() full
+     * debug} mode to produce a graph.
      */
     protected StructuredGraph parseDebug(Method m) {
         return parse0(m, getCustomGraphBuilderSuite(GraphBuilderConfiguration.getFullDebugDefault()));

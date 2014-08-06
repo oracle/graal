@@ -197,7 +197,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
     }
 
     private StructuredGraph compile(String test, boolean compileAOT) {
-        StructuredGraph graph = parse(test);
+        StructuredGraph graph = parseEager(test);
         ResolvedJavaMethod method = graph.method();
 
         try (OverrideScope s = OptionValue.override(ImmutableCode, compileAOT)) {

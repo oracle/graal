@@ -62,7 +62,7 @@ public class UnsafeSubstitutionsTest extends MethodSubstitutionTest {
         Method testMethod = getMethod(testMethodName);
 
         // Force compilation
-        InstalledCode code = getCode(getMetaAccess().lookupJavaMethod(testMethod), parse(testMethod));
+        InstalledCode code = getCode(getMetaAccess().lookupJavaMethod(testMethod), parseEager(testMethod));
         assert code != null;
 
         // Verify that the original method and the substitution produce the same value

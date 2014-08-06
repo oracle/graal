@@ -37,7 +37,7 @@ public class HotSpotNmethodTest extends GraalCompilerTest {
     @Test
     public void testInstallCodeInvalidation() {
         final ResolvedJavaMethod testJavaMethod = getMetaAccess().lookupJavaMethod(getMethod("foo"));
-        final StructuredGraph graph = parse("otherFoo");
+        final StructuredGraph graph = parseEager("otherFoo");
         final HotSpotNmethod nmethod = (HotSpotNmethod) getCode(testJavaMethod, graph);
         Assert.assertTrue(nmethod.isValid());
         Object result;
@@ -61,7 +61,7 @@ public class HotSpotNmethodTest extends GraalCompilerTest {
     @Test
     public void testInstallCodeInvalidationWhileRunning() {
         final ResolvedJavaMethod testJavaMethod = getMetaAccess().lookupJavaMethod(getMethod("foo"));
-        final StructuredGraph graph = parse("otherFoo");
+        final StructuredGraph graph = parseEager("otherFoo");
         final HotSpotNmethod nmethod = (HotSpotNmethod) getCode(testJavaMethod, graph);
         Object result;
         try {
@@ -76,7 +76,7 @@ public class HotSpotNmethodTest extends GraalCompilerTest {
     @Test
     public void testInstalledCodeCalledFromCompiledCode() {
         final ResolvedJavaMethod testJavaMethod = getMetaAccess().lookupJavaMethod(getMethod("foo"));
-        final StructuredGraph graph = parse("otherFoo");
+        final StructuredGraph graph = parseEager("otherFoo");
         final HotSpotNmethod nmethod = (HotSpotNmethod) getCode(testJavaMethod, graph);
         Assert.assertTrue(nmethod.isValid());
         try {

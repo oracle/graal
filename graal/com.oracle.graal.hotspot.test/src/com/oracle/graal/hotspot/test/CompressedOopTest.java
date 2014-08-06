@@ -50,7 +50,7 @@ public class CompressedOopTest extends GraalCompilerTest {
     private HotSpotInstalledCode getInstalledCode(String name, Class<?>... parameterTypes) throws Exception {
         final Method method = CompressedOopTest.class.getMethod(name, parameterTypes);
         final HotSpotResolvedJavaMethod javaMethod = (HotSpotResolvedJavaMethod) metaAccess.lookupJavaMethod(method);
-        final HotSpotInstalledCode installedBenchmarkCode = (HotSpotInstalledCode) getCode(javaMethod, parse(method));
+        final HotSpotInstalledCode installedBenchmarkCode = (HotSpotInstalledCode) getCode(javaMethod, parseEager(method));
         return installedBenchmarkCode;
     }
 

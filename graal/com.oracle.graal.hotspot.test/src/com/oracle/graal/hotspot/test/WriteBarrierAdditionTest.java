@@ -244,13 +244,13 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
     private HotSpotInstalledCode getInstalledCode(String name) throws Exception {
         final Method method = WriteBarrierAdditionTest.class.getMethod(name, Object.class, Object.class, Object.class);
         final HotSpotResolvedJavaMethod javaMethod = (HotSpotResolvedJavaMethod) metaAccess.lookupJavaMethod(method);
-        final HotSpotInstalledCode installedBenchmarkCode = (HotSpotInstalledCode) getCode(javaMethod, parse(method));
+        final HotSpotInstalledCode installedBenchmarkCode = (HotSpotInstalledCode) getCode(javaMethod, parseEager(method));
         return installedBenchmarkCode;
     }
 
     private void test(final String snippet, final int expectedBarriers) throws Exception, SecurityException {
         try (Scope s = Debug.scope("WriteBarrierAdditionTest", new DebugDumpScope(snippet))) {
-            StructuredGraph graph = parse(snippet);
+            StructuredGraph graph = parseEager(snippet);
             HighTierContext highContext = new HighTierContext(getProviders(), new Assumptions(false), null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
             MidTierContext midContext = new MidTierContext(getProviders(), new Assumptions(false), getCodeCache().getTarget(), OptimisticOptimizations.ALL, graph.method().getProfilingInfo(), null);
             new InliningPhase(new InlineEverythingPolicy(), new CanonicalizerPhase(true)).apply(graph, highContext);
