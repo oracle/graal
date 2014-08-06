@@ -23,7 +23,6 @@
 package com.oracle.graal.api.meta;
 
 import java.io.*;
-import java.lang.annotation.*;
 import java.util.*;
 
 /**
@@ -332,79 +331,5 @@ public class MetaUtil {
             return indentation + (lines.substring(0, lines.length() - 1)).replace(newLine, newLine + indentation) + newLine;
         }
         return indentation + lines.replace(newLine, newLine + indentation);
-    }
-
-    // The methods below here will be soon removed. They exist to simplify updating
-    // clients of the old API to switch to using the default methods that replace
-    // these utility methods. In Eclipse will show calls to these methods as warnings.
-
-    @Deprecated
-    public static boolean isJavaLangObject(ResolvedJavaType type) {
-        return type.isJavaLangObject();
-    }
-
-    @Deprecated
-    public static ResolvedJavaType[] lookupJavaTypes(MetaAccessProvider metaAccess, Class<?>[] classes) {
-        return metaAccess.lookupJavaTypes(classes);
-    }
-
-    @Deprecated
-    public static ResolvedJavaType getElementalType(ResolvedJavaType type) {
-        return type.getElementalType();
-    }
-
-    @Deprecated
-    public static String toJavaName(JavaType type, boolean qualified) {
-        return type.toJavaName(qualified);
-    }
-
-    @Deprecated
-    public static String toJavaName(JavaType type) {
-        return type.toJavaName();
-    }
-
-    @Deprecated
-    public static String toClassName(JavaType type) {
-        return type.toClassName();
-    }
-
-    @Deprecated
-    public static String format(String format, JavaMethod method) throws IllegalFormatException {
-        return method.format(format);
-    }
-
-    @Deprecated
-    public static String format(String format, JavaField field) throws IllegalFormatException {
-        return field.format(format);
-    }
-
-    @Deprecated
-    public static <T extends Annotation> T[] getParameterAnnotations(Class<T> annotationClass, ResolvedJavaMethod method) {
-        return method.getParameterAnnotations(annotationClass);
-    }
-
-    @Deprecated
-    public static <T extends Annotation> T getParameterAnnotation(Class<T> annotationClass, int parameterIndex, ResolvedJavaMethod method) {
-        return method.getParameterAnnotation(annotationClass, parameterIndex);
-    }
-
-    @Deprecated
-    public static JavaType[] signatureToTypes(Signature signature, JavaType receiverType) {
-        return signature.toParameterTypes(receiverType);
-    }
-
-    @Deprecated
-    public static JavaType[] signatureToTypes(ResolvedJavaMethod method) {
-        return method.toParameterTypes();
-    }
-
-    @Deprecated
-    public static String signatureToMethodDescriptor(Signature sig) {
-        return sig.toMethodDescriptor();
-    }
-
-    @Deprecated
-    public static String profileToString(ProfilingInfo info, ResolvedJavaMethod method, String sep) {
-        return info.toString(method, sep);
     }
 }
