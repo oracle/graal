@@ -120,31 +120,68 @@ abstract class LIRIntrospection extends FieldIntrospection {
         }
     }
 
-    protected static void forEach(LIRInstruction inst, Object obj, int directCount, long[] offsets, OperandMode mode, EnumSet<OperandFlag>[] flags, InstructionValueProcedure proc) {
+    protected static void forEach(LIRInstruction inst, int directCount, long[] offsets, OperandMode mode, EnumSet<OperandFlag>[] flags, InstructionValueProcedure proc) {
+        for (int i = 0; i < offsets.length; i++) {
+            assert LIRInstruction.ALLOWED_FLAGS.get(mode).containsAll(flags[i]);
+
+            if (i < directCount) {
+                Value value = getValue(inst, offsets[i]);
+                Value newValue;
+                if (value instanceof CompositeValue) {
+                    CompositeValue composite = (CompositeValue) value;
+                    newValue = composite.forEachComponent(inst, mode, proc);
+                } else {
+                    newValue = proc.doValue(inst, value, mode, flags[i]);
+                }
+                setValue(inst, offsets[i], newValue);
+            } else {
+                Value[] values = getValueArray(inst, offsets[i]);
+                for (int j = 0; j < values.length; j++) {
+                    Value value = values[j];
+                    Value newValue;
+                    if (value instanceof CompositeValue) {
+                        CompositeValue composite = (CompositeValue) value;
+                        newValue = composite.forEachComponent(inst, mode, proc);
+                    } else {
+                        newValue = proc.doValue(inst, value, mode, flags[i]);
+                    }
+                    values[j] = newValue;
+                }
+            }
+        }
+    }
+
+    protected static CompositeValue forEachComponent(LIRInstruction inst, CompositeValue obj, int directCount, long[] offsets, OperandMode mode, EnumSet<OperandFlag>[] flags,
+                    InstructionValueProcedure proc) {
         for (int i = 0; i < offsets.length; i++) {
             assert LIRInstruction.ALLOWED_FLAGS.get(mode).containsAll(flags[i]);
 
             if (i < directCount) {
                 Value value = getValue(obj, offsets[i]);
+                Value newValue;
                 if (value instanceof CompositeValue) {
                     CompositeValue composite = (CompositeValue) value;
-                    composite.forEachComponent(inst, mode, proc);
+                    newValue = composite.forEachComponent(inst, mode, proc);
                 } else {
-                    setValue(obj, offsets[i], proc.doValue(inst, value, mode, flags[i]));
+                    newValue = proc.doValue(inst, value, mode, flags[i]);
                 }
+                setValue(obj, offsets[i], newValue);
             } else {
                 Value[] values = getValueArray(obj, offsets[i]);
                 for (int j = 0; j < values.length; j++) {
                     Value value = values[j];
+                    Value newValue;
                     if (value instanceof CompositeValue) {
                         CompositeValue composite = (CompositeValue) value;
-                        composite.forEachComponent(inst, mode, proc);
+                        newValue = composite.forEachComponent(inst, mode, proc);
                     } else {
-                        values[j] = proc.doValue(inst, value, mode, flags[i]);
+                        newValue = proc.doValue(inst, value, mode, flags[i]);
                     }
+                    values[j] = newValue;
                 }
             }
         }
+        return obj;
     }
 
     protected static void forEach(LIRInstruction inst, Object obj, int directCount, long[] offsets, OperandMode mode, EnumSet<OperandFlag>[] flags, ValuePositionProcedure proc,
