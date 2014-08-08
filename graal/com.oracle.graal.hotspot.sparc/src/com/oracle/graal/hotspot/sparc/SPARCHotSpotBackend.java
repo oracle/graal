@@ -26,10 +26,9 @@ import static com.oracle.graal.api.code.CallingConvention.Type.*;
 import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.sparc.SPARC.*;
+import static com.oracle.graal.compiler.common.UnsafeAccess.*;
 
 import java.util.*;
-
-import sun.misc.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
@@ -61,8 +60,6 @@ import com.oracle.graal.nodes.spi.*;
  * HotSpot SPARC specific backend.
  */
 public class SPARCHotSpotBackend extends HotSpotHostBackend {
-
-    private static final Unsafe unsafe = Unsafe.getUnsafe();
 
     public SPARCHotSpotBackend(HotSpotGraalRuntime runtime, HotSpotProviders providers) {
         super(runtime, providers);

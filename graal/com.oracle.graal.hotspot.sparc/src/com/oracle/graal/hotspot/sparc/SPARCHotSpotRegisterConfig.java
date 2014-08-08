@@ -85,8 +85,14 @@ public class SPARCHotSpotRegisterConfig implements RegisterConfig {
     private final Register[] cpuCalleeParameterRegisters = {i0, i1, i2, i3, i4, i5};
 
     private final Register[] fpuParameterRegisters = {f0, f1, f2, f3, f4, f5, f6, f7};
-
-    private final Register[] callerSaveRegisters = {g1, g3, g4, g5, o0, o1, o2, o3, o4, o5, o7};
+    // @formatter:off
+    private final Register[] callerSaveRegisters =
+                   {g1, g3, g4, g5, o0, o1, o2, o3, o4, o5, o7,
+                    f0,  f1,  f2,  f3,  f4,  f5,  f6,  f7,
+                    f8,  f9,  f10, f11, f12, f13, f14, f15,
+                    f16, f17, f18, f19, f20, f21, f22, f23,
+                    f24, f25, f26, f27, f28, f29, f30, f31};
+    // @formatter:on
 
     /**
      * Registers saved by the callee. This lists all L and I registers which are saved in the
