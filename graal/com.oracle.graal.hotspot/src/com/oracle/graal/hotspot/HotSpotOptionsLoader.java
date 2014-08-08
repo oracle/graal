@@ -24,6 +24,7 @@ package com.oracle.graal.hotspot;
 
 import java.util.*;
 
+import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.options.*;
 
 /**
@@ -36,8 +37,7 @@ class HotSpotOptionsLoader {
      * Initializes {@link #options} from {@link Options} services.
      */
     static {
-        ServiceLoader<Options> sl = ServiceLoader.load(Options.class);
-        for (Options opts : sl) {
+        for (Options opts : Services.load(Options.class)) {
             for (OptionDescriptor desc : opts) {
                 if (isHotSpotOption(desc)) {
                     String name = desc.getName();
