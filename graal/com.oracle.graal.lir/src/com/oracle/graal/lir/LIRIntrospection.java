@@ -133,7 +133,9 @@ abstract class LIRIntrospection extends FieldIntrospection {
                 } else {
                     newValue = proc.doValue(inst, value, mode, flags[i]);
                 }
-                setValue(inst, offsets[i], newValue);
+                if (!value.identityEquals(newValue)) {
+                    setValue(inst, offsets[i], newValue);
+                }
             } else {
                 Value[] values = getValueArray(inst, offsets[i]);
                 for (int j = 0; j < values.length; j++) {
@@ -145,7 +147,9 @@ abstract class LIRIntrospection extends FieldIntrospection {
                     } else {
                         newValue = proc.doValue(inst, value, mode, flags[i]);
                     }
-                    values[j] = newValue;
+                    if (!value.identityEquals(newValue)) {
+                        values[j] = newValue;
+                    }
                 }
             }
         }
