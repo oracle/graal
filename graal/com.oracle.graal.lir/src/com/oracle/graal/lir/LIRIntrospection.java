@@ -153,6 +153,7 @@ abstract class LIRIntrospection extends FieldIntrospection {
 
     protected static CompositeValue forEachComponent(LIRInstruction inst, CompositeValue obj, int directCount, long[] offsets, OperandMode mode, EnumSet<OperandFlag>[] flags,
                     InstructionValueProcedure proc) {
+        CompositeValue newCompValue = null;
         for (int i = 0; i < offsets.length; i++) {
             assert LIRInstruction.ALLOWED_FLAGS.get(mode).containsAll(flags[i]);
 
@@ -165,9 +166,16 @@ abstract class LIRIntrospection extends FieldIntrospection {
                 } else {
                     newValue = proc.doValue(inst, value, mode, flags[i]);
                 }
-                setValue(obj, offsets[i], newValue);
+                if (!value.identityEquals(newValue)) {
+                    // lazy initialize
+                    if (newCompValue == null) {
+                        newCompValue = obj.clone();
+                    }
+                    setValue(newCompValue, offsets[i], newValue);
+                }
             } else {
                 Value[] values = getValueArray(obj, offsets[i]);
+                Value[] newValues = null;
                 for (int j = 0; j < values.length; j++) {
                     Value value = values[j];
                     Value newValue;
@@ -177,11 +185,20 @@ abstract class LIRIntrospection extends FieldIntrospection {
                     } else {
                         newValue = proc.doValue(inst, value, mode, flags[i]);
                     }
-                    values[j] = newValue;
+                    if (!value.identityEquals(newValue)) {
+                        // lazy initialize
+                        if (newValues == null) {
+                            if (newCompValue == null) {
+                                newCompValue = obj.clone();
+                            }
+                            newValues = getValueArray(newCompValue, offsets[i]);
+                        }
+                        newValues[j] = newValue;
+                    }
                 }
             }
         }
-        return obj;
+        return newCompValue != null ? newCompValue : obj;
     }
 
     protected static void forEach(LIRInstruction inst, Object obj, int directCount, long[] offsets, OperandMode mode, EnumSet<OperandFlag>[] flags, ValuePositionProcedure proc,
