@@ -77,6 +77,7 @@ public abstract class SPARCAssembler extends Assembler {
             final int inst = masm.getInt(pos);
             Op2s op2 = Op2s.byValue((inst&OP2_MASK) >> OP2_SHIFT);
             switch(op2) {
+                case Br:
                 case Fb:
                     return Fmt00b.read(masm, op2, pos);
                 case Sethi:
@@ -212,6 +213,10 @@ public abstract class SPARCAssembler extends Assembler {
         private static final int COND_MASK   = 0b00011110000000000000000000000000;
         private static final int DISP22_MASK = 0b00000000001111111111111111111111;
         // @formatter:on
+
+        public Fmt00b(boolean annul, ConditionFlag cond, Op2s op2, Label label) {
+            this(annul ? 1 : 0, cond.getValue(), op2.getValue(), 0, label);
+        }
 
         public Fmt00b(boolean annul, FCond cond, Op2s op2, Label label) {
             this(annul ? 1 : 0, cond.getValue(), op2.getValue(), 0, label);
@@ -1432,7 +1437,8 @@ public abstract class SPARCAssembler extends Assembler {
         Movstouw(0x111, "movstouw"),
         Movstosw(0x113, "movstosw"),
         Movxtod(0x118, "movxtod"),
-        Movwtos(0x119, "movwtos"),
+        Movwtos(0b1_0001_1001, "movwtos"),
+        UMulxhi(0b0_0001_0110, "umulxhi"),
         // end VIS3
 
         // start CAMMELLIA
@@ -1681,6 +1687,18 @@ public abstract class SPARCAssembler extends Assembler {
 
         public String getOperator() {
             return operator;
+        }
+
+        public ConditionFlag negate() {
+            switch (this) {
+                case CarrySet:
+                    return CarryClear;
+                case CarryClear:
+                    return CarrySet;
+                default:
+                    GraalInternalError.unimplemented();
+            }
+            return null;
         }
     }
 
@@ -1975,6 +1993,13 @@ public abstract class SPARCAssembler extends Assembler {
         public Movwtos(Register src, Register dst) {
             /* VIS3 only */
             super(Ops.ArithOp, Op3s.Impdep1, Opfs.Movwtos, g0, src, dst);
+        }
+    }
+
+    public static class Umulxhi extends Fmt3p {
+        public Umulxhi(Register src1, Register src2, Register dst) {
+            /* VIS3 only */
+            super(Ops.ArithOp, Op3s.Impdep1, Opfs.UMulxhi, src1, src2, dst);
         }
     }
 
