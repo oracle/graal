@@ -72,7 +72,11 @@ public class ExactMathTest extends GraalCompilerTest {
     public void testMulHighUnsigned() {
         test("mulHighUnsigned", 7, 15);
         test("mulHighUnsigned", Integer.MAX_VALUE, 15);
+        test("mulHighUnsigned", 15, Integer.MAX_VALUE);
+        test("mulHighUnsigned", Integer.MAX_VALUE, Integer.MAX_VALUE);
+        test("mulHighUnsigned", 15, Integer.MIN_VALUE);
         test("mulHighUnsigned", Integer.MIN_VALUE, 15);
+        test("mulHighUnsigned", Integer.MIN_VALUE, Integer.MIN_VALUE);
     }
 
     @Test
@@ -98,7 +102,11 @@ public class ExactMathTest extends GraalCompilerTest {
     public void testLongMulHigh() {
         test("longMulHigh", 7L, 15L);
         test("longMulHigh", Long.MAX_VALUE, 15L);
+        test("longMulHigh", 15L, Long.MAX_VALUE);
+        test("longMulHigh", Long.MAX_VALUE, Long.MAX_VALUE);
         test("longMulHigh", Long.MIN_VALUE, 15L);
+        test("longMulHigh", 15L, Long.MIN_VALUE);
+        test("longMulHigh", Long.MIN_VALUE, Long.MIN_VALUE);
     }
 
     @Test

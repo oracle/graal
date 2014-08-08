@@ -27,18 +27,20 @@ import static com.oracle.graal.asm.sparc.SPARCAssembler.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.LIRInstruction.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.sparc.*;
 
 public enum SPARCArithmetic {
     // @formatter:off
-    IADD, ISUB, IMUL, IDIV, IREM, IUDIV, IUREM, IAND, IOR, IXOR, ISHL, ISHR, IUSHR,
-    LADD, LSUB, LMUL, LDIV, LREM, LUDIV, LUREM, LAND, LOR, LXOR, LSHL, LSHR, LUSHR,
+    IADD, ISUB, IMUL, IUMUL, IDIV, IREM, IUDIV, IUREM, IAND, IOR, IXOR, ISHL, ISHR, IUSHR,
+    LADD, LSUB, LMUL, LUMUL, LDIV, LREM, LUDIV, LUREM, LAND, LOR, LXOR, LSHL, LSHR, LUSHR,
     FADD, FSUB, FMUL, FDIV, FREM, FAND, FOR, FXOR,
     DADD, DSUB, DMUL, DDIV, DREM, DAND, DOR, DXOR,
     INEG, LNEG, FNEG, DNEG, INOT, LNOT,
@@ -161,6 +163,10 @@ public enum SPARCArithmetic {
         @State protected LIRFrameState state;
         protected Constant y;
 
+        public BinaryRegConst(SPARCArithmetic opcode, AllocatableValue result, AllocatableValue x, Constant y) {
+            this(opcode, result, x, y, null);
+        }
+
         public BinaryRegConst(SPARCArithmetic opcode, AllocatableValue result, AllocatableValue x, Constant y, LIRFrameState state) {
             this.opcode = opcode;
             this.result = result;
@@ -282,9 +288,16 @@ public enum SPARCArithmetic {
             switch (opcode) {
                 case ISUB:
                     assert isSimm13(crb.asIntConst(src1));
-                    new Sub(SPARC.g0, asIntReg(src2), asIntReg(src2)).emit(masm);
-                    new Add(asIntReg(src2), crb.asIntConst(src1), asIntReg(dst)).emit(masm);
+                    new Sub(SPARC.g0, asIntReg(src2), asIntReg(dst)).emit(masm);
+                    new Add(asIntReg(dst), crb.asIntConst(src1), asIntReg(dst)).emit(masm);
                     break;
+                case LSUB: {
+                    long c = crb.asLongConst(src1);
+                    assert isSimm13(c);
+                    new Sub(SPARC.g0, asLongReg(src2), asLongReg(dst)).emit(masm);
+                    new Add(asLongReg(dst), (int) c, asLongReg(dst)).emit(masm);
+                    break;
+                }
                 case IAND:
                     throw GraalInternalError.unimplemented();
                 case IDIV:
@@ -292,13 +305,14 @@ public enum SPARCArithmetic {
                     exceptionOffset = masm.position();
                     new Sdivx(asIntReg(dst), asIntReg(src2), asIntReg(dst)).emit(masm);
                     break;
-                case LDIV:
+                case LDIV: {
                     int c = crb.asIntConst(src1);
                     assert isSimm13(c);
                     exceptionOffset = masm.position();
                     new Sdivx(asLongReg(src2), c, asLongReg(dst)).emit(masm);
                     new Mulx(asLongReg(src1), asLongReg(dst), asLongReg(dst)).emit(masm);
                     break;
+                }
                 case FSUB:
                 case FDIV:
                 case DSUB:
@@ -440,7 +454,6 @@ public enum SPARCArithmetic {
                     new Sdivx(asIntReg(src1), asIntReg(src2), asIntReg(dst)).emit(masm);
                     break;
                 case IUDIV:
-                    new Srl(asIntReg(src1), 0, asIntReg(src1)).emit(masm);
                     exceptionOffset = masm.position();
                     new Udivx(asIntReg(src1), asIntReg(src2), asIntReg(dst)).emit(masm);
                     break;
@@ -570,18 +583,13 @@ public enum SPARCArithmetic {
             switch (opcode) {
                 case IREM:
                     assert isSimm13(crb.asIntConst(src2));
-                    new Sra(asIntReg(src1), 0, asIntReg(src1)).emit(masm);
                     exceptionOffset = masm.position();
                     new Sdivx(asIntReg(src1), crb.asIntConst(src2), asIntReg(scratch1)).emit(masm);
                     new Mulx(asIntReg(scratch1), crb.asIntConst(src2), asIntReg(scratch2)).emit(masm);
                     new Sub(asIntReg(src1), asIntReg(scratch2), asIntReg(dst)).emit(masm);
                     break;
                 case IUREM:
-                    new Sra(asIntReg(src1), 0, asIntReg(scratch1)).emit(masm);
-                    exceptionOffset = masm.position();
-                    new Udivx(asIntReg(scratch1), crb.asIntConst(src2), asIntReg(scratch1)).emit(masm);
-                    new Mulx(asIntReg(scratch1), crb.asIntConst(src2), asIntReg(scratch1)).emit(masm);
-                    new Sub(asIntReg(src1), asIntReg(scratch1), asIntReg(dst)).emit(masm);
+                    GraalInternalError.unimplemented();
                     break;
                 case LREM:
                     assert isSimm13(crb.asIntConst(src2));
@@ -634,11 +642,12 @@ public enum SPARCArithmetic {
                     new Sub(asIntReg(srcLeft), asIntReg(scratch1), asIntReg(dst)).emit(masm);
                     break;
                 case IUREM:
-                    new Sra(asIntReg(src1), 0, asIntReg(scratch1)).emit(masm);
+                    new Srl(asIntReg(src1), 0, asIntReg(scratch1)).emit(masm);
+                    new Srl(asIntReg(src2), 0, asIntReg(dst)).emit(masm);
                     exceptionOffset = masm.position();
-                    new Udivx(asIntReg(scratch1), asIntReg(src2), asIntReg(scratch1)).emit(masm);
-                    new Mulx(asIntReg(scratch1), asIntReg(src2), asIntReg(scratch1)).emit(masm);
-                    new Sub(asIntReg(src1), asIntReg(scratch1), asIntReg(dst)).emit(masm);
+                    new Udivx(asIntReg(scratch1), asIntReg(dst), asIntReg(scratch2)).emit(masm);
+                    new Mulx(asIntReg(scratch2), asIntReg(dst), asIntReg(dst)).emit(masm);
+                    new Sub(asIntReg(scratch1), asIntReg(dst), asIntReg(dst)).emit(masm);
                     break;
                 default:
                     throw GraalInternalError.shouldNotReachHere();
@@ -653,6 +662,7 @@ public enum SPARCArithmetic {
 
     public static void emit(CompilationResultBuilder crb, SPARCAssembler masm, SPARCArithmetic opcode, Value dst, Value src, LIRFrameState info) {
         int exceptionOffset = -1;
+        Label notOrdered = new Label();
         if (isRegister(src)) {
             switch (opcode) {
                 case INEG:
@@ -716,18 +726,20 @@ public enum SPARCArithmetic {
                     new Fstod(asFloatReg(src), asDoubleReg(dst)).emit(masm);
                     break;
                 case F2L:
-                    new Fcmp(CC.Fcc0, Opfs.Fcmps, asFloatReg(dst), asFloatReg(dst)).emit(masm);
-                    new Fbe(false, 4 * 4).emit(masm);
+                    new Fcmp(CC.Fcc0, Opfs.Fcmps, asFloatReg(src), asFloatReg(src)).emit(masm);
+                    new Fbo(false, notOrdered).emit(masm);
                     new Fstox(asFloatReg(src), asFloatReg(dst)).emit(masm);
                     new Fitos(asFloatReg(dst), asFloatReg(dst)).emit(masm);
                     new Fsubs(asFloatReg(dst), asFloatReg(dst), asFloatReg(dst)).emit(masm);
+                    masm.bind(notOrdered);
                     break;
                 case F2I:
-                    new Fcmp(CC.Fcc0, Opfs.Fcmps, asFloatReg(dst), asFloatReg(dst)).emit(masm);
-                    new Fbo(false, 4 * 4).emit(masm);
+                    new Fcmp(CC.Fcc0, Opfs.Fcmps, asFloatReg(src), asFloatReg(src)).emit(masm);
+                    new Fbo(false, notOrdered).emit(masm);
                     new Fstoi(asFloatReg(src), asFloatReg(dst)).emit(masm);
                     new Fitos(asFloatReg(dst), asFloatReg(dst)).emit(masm);
                     new Fsubs(asFloatReg(dst), asFloatReg(dst), asFloatReg(dst)).emit(masm);
+                    masm.bind(notOrdered);
                     break;
                 case MOV_D2L:
                     new Movdtox(asDoubleReg(src), asLongReg(dst)).emit(masm);
@@ -742,18 +754,20 @@ public enum SPARCArithmetic {
                     new Movwtos(asIntReg(src), asFloatReg(dst)).emit(masm);
                     break;
                 case D2L:
-                    new Fcmp(CC.Fcc0, Opfs.Fcmpd, asDoubleReg(dst), asDoubleReg(dst)).emit(masm);
-                    new Fbo(false, 4 * 4).emit(masm);
+                    new Fcmp(CC.Fcc0, Opfs.Fcmpd, asDoubleReg(src), asDoubleReg(src)).emit(masm);
+                    new Fbo(false, notOrdered).emit(masm);
                     new Fdtox(asDoubleReg(src), asDoubleReg(dst)).emit(masm);
                     new Fxtod(asDoubleReg(dst), asDoubleReg(dst)).emit(masm);
                     new Fsubd(asDoubleReg(dst), asDoubleReg(dst), asDoubleReg(dst)).emit(masm);
+                    masm.bind(notOrdered);
                     break;
                 case D2I:
-                    new Fcmp(CC.Fcc0, Opfs.Fcmpd, asDoubleReg(dst), asDoubleReg(dst)).emit(masm);
-                    new Fbo(false, 4 * 4).emit(masm);
+                    new Fcmp(CC.Fcc0, Opfs.Fcmpd, asDoubleReg(src), asDoubleReg(src)).emit(masm);
+                    new Fbo(false, notOrdered).emit(masm);
                     new Fdtoi(asDoubleReg(src), asDoubleReg(dst)).emit(masm);
                     new Fitod(asDoubleReg(dst), asDoubleReg(dst)).emit(masm);
                     new Fsubd(asDoubleReg(dst), asDoubleReg(dst), asDoubleReg(dst)).emit(masm);
+                    masm.bind(notOrdered);
                     break;
                 case FNEG:
                     new Fnegs(asFloatReg(src), asFloatReg(dst)).emit(masm);
@@ -806,7 +820,11 @@ public enum SPARCArithmetic {
                 rk = result.getKind();
                 xsk = x.getKind().getStackKind();
                 ysk = y.getKind().getStackKind();
-                assert rk == Kind.Int && xsk == Kind.Int && ysk == Kind.Int;
+                boolean valid = false;
+                for (Kind k : new Kind[]{Kind.Int, Kind.Short, Kind.Byte, Kind.Char}) {
+                    valid |= rk == k && xsk == k && ysk == k;
+                }
+                assert valid : "rk: " + rk + " xsk: " + xsk + " ysk: " + ysk;
                 break;
             case LADD:
             case LSUB:
@@ -854,6 +872,56 @@ public enum SPARCArithmetic {
                 break;
             default:
                 throw GraalInternalError.shouldNotReachHere("missing: " + opcode);
+        }
+    }
+
+    public static class MulHighOp extends SPARCLIRInstruction {
+
+        @Opcode private final SPARCArithmetic opcode;
+        @Def({REG}) public AllocatableValue result;
+        @Alive({REG}) public AllocatableValue x;
+        @Alive({REG}) public AllocatableValue y;
+        @Temp({REG}) public AllocatableValue scratch;
+
+        public MulHighOp(SPARCArithmetic opcode, AllocatableValue x, AllocatableValue y, AllocatableValue result, AllocatableValue scratch) {
+            this.opcode = opcode;
+            this.x = x;
+            this.y = y;
+            this.scratch = scratch;
+            this.result = result;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
+            assert isRegister(x) && isRegister(y) && isRegister(result) && isRegister(scratch);
+            switch (opcode) {
+                case IMUL:
+                    new Mulx(asIntReg(x), asIntReg(y), asIntReg(result)).emit(masm);
+                    new Srax(asIntReg(result), 32, asIntReg(result)).emit(masm);
+                    break;
+                case IUMUL:
+                    new Srl(asIntReg(x), 0, asIntReg(scratch)).emit(masm);
+                    new Srl(asIntReg(y), 0, asIntReg(result)).emit(masm);
+                    new Mulx(asIntReg(result), asIntReg(scratch), asIntReg(result)).emit(masm);
+                    new Srlx(asIntReg(result), 32, asIntReg(result)).emit(masm);
+                    break;
+                case LMUL:
+                    new Umulxhi(asLongReg(x), asLongReg(y), asLongReg(result)).emit(masm);
+
+                    new Srlx(asLongReg(x), 63, asLongReg(scratch)).emit(masm);
+                    new Mulx(asLongReg(scratch), asLongReg(y), asLongReg(scratch)).emit(masm);
+                    new Sub(asLongReg(result), asLongReg(scratch), asLongReg(result)).emit(masm);
+
+                    new Srlx(asLongReg(y), 63, asLongReg(scratch)).emit(masm);
+                    new Mulx(asLongReg(scratch), asLongReg(x), asLongReg(scratch)).emit(masm);
+                    new Sub(asLongReg(result), asLongReg(scratch), asLongReg(result)).emit(masm);
+                    break;
+                case LUMUL:
+                    new Umulxhi(asLongReg(x), asLongReg(y), asLongReg(result)).emit(masm);
+                    break;
+                default:
+                    throw GraalInternalError.shouldNotReachHere();
+            }
         }
     }
 }
