@@ -23,6 +23,8 @@
 package com.oracle.graal.hotspot.test;
 
 import static com.oracle.graal.debug.internal.MemUseTrackerImpl.*;
+import static com.oracle.graal.hotspot.CompileTheWorld.*;
+import static com.oracle.graal.hotspot.CompileTheWorld.Options.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.nodes.StructuredGraph.*;
 
@@ -31,14 +33,23 @@ import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.CompileTheWorld.Config;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.printer.*;
 
 /**
- * Used to benchmark memory usage during Graal compilation. Run with:
+ * Used to benchmark memory usage during Graal compilation.
+ *
+ * To benchmark:
  *
  * <pre>
  *     mx vm -XX:-UseGraalClassLoader -cp @com.oracle.graal.hotspot.test com.oracle.graal.hotspot.test.MemoryUsageBenchmark
+ * </pre>
+ *
+ * Memory analysis for a {@link CompileTheWorld} execution can also be performed. For example:
+ *
+ * <pre>
+ *     mx --vm server vm -XX:-UseGraalClassLoader -G:CompileTheWorldClasspath=$HOME/SPECjvm2008/SPECjvm2008.jar -cp @com.oracle.graal.hotspot.test com.oracle.graal.hotspot.test.MemoryUsageBenchmark
  * </pre>
  */
 public class MemoryUsageBenchmark extends GraalCompilerTest {
@@ -149,7 +160,16 @@ public class MemoryUsageBenchmark extends GraalCompilerTest {
     }
 
     public void run() {
-        compileAndTime("complex");
         compileAndTime("simple");
+        compileAndTime("complex");
+        if (CompileTheWorldClasspath.getValue() != SUN_BOOT_CLASS_PATH) {
+            CompileTheWorld ctw = new CompileTheWorld(CompileTheWorldClasspath.getValue(), new Config(CompileTheWorldConfig.getValue()), CompileTheWorldStartAt.getValue(),
+                            CompileTheWorldStopAt.getValue(), CompileTheWorldVerbose.getValue());
+            try {
+                ctw.compile();
+            } catch (Throwable e) {
+                e.printStackTrace();
+            }
+        }
     }
 }
