@@ -288,34 +288,28 @@ public class MetaUtil {
             base = base.substring(base.length() - 2);
         }
 
-        if (className.equals("boolean")) {
-            return prefix + "Z";
+        switch (className) {
+            case "boolean":
+                return prefix + "Z";
+            case "byte":
+                return prefix + "B";
+            case "short":
+                return prefix + "S";
+            case "char":
+                return prefix + "C";
+            case "int":
+                return prefix + "I";
+            case "float":
+                return prefix + "F";
+            case "long":
+                return prefix + "J";
+            case "double":
+                return prefix + "D";
+            case "void":
+                return prefix + "V";
+            default:
+                return prefix + "L" + className.replace('.', '/') + ";";
         }
-        if (className.equals("byte")) {
-            return prefix + "B";
-        }
-        if (className.equals("short")) {
-            return prefix + "S";
-        }
-        if (className.equals("char")) {
-            return prefix + "C";
-        }
-        if (className.equals("int")) {
-            return prefix + "I";
-        }
-        if (className.equals("float")) {
-            return prefix + "F";
-        }
-        if (className.equals("long")) {
-            return prefix + "J";
-        }
-        if (className.equals("double")) {
-            return prefix + "D";
-        }
-        if (className.equals("void")) {
-            return prefix + "V";
-        }
-        return prefix + "L" + className.replace('.', '/') + ";";
     }
 
     /**
