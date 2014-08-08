@@ -53,13 +53,17 @@ public final class FrameDescriptor implements Cloneable {
     }
 
     public FrameSlot addFrameSlot(Object identifier) {
-        return addFrameSlot(identifier, FrameSlotKind.Illegal);
+        return addFrameSlot(identifier, null, FrameSlotKind.Illegal);
     }
 
     public FrameSlot addFrameSlot(Object identifier, FrameSlotKind kind) {
+        return addFrameSlot(identifier, null, kind);
+    }
+
+    public FrameSlot addFrameSlot(Object identifier, Object info, FrameSlotKind kind) {
         CompilerAsserts.neverPartOfCompilation("interpreter-only.  includes hashmap operations.");
         assert !identifierToSlotMap.containsKey(identifier);
-        FrameSlot slot = new FrameSlot(this, identifier, slots.size(), kind);
+        FrameSlot slot = new FrameSlot(this, identifier, info, slots.size(), kind);
         slots.add(slot);
         identifierToSlotMap.put(identifier, slot);
         updateVersion();

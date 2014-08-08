@@ -34,18 +34,24 @@ public final class FrameSlot implements Cloneable {
 
     private final FrameDescriptor descriptor;
     private final Object identifier;
+    private final Object info;
     private final int index;
     @CompilationFinal private FrameSlotKind kind;
 
-    public FrameSlot(FrameDescriptor descriptor, Object identifier, int index, FrameSlotKind kind) {
+    public FrameSlot(FrameDescriptor descriptor, Object identifier, Object info, int index, FrameSlotKind kind) {
         this.descriptor = descriptor;
         this.identifier = identifier;
+        this.info = info;
         this.index = index;
         this.kind = kind;
     }
 
     public Object getIdentifier() {
         return identifier;
+    }
+
+    public Object getInfo() {
+        return info;
     }
 
     public int getIndex() {
