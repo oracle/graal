@@ -96,4 +96,14 @@ public abstract class Value implements Serializable, KindProvider {
         }
         return false;
     }
+
+    /**
+     * Checks if this value is identical to {@code other}.
+     *
+     * Warning: Use with caution! Usually equivalence {@link #equals(Object)} is sufficient and
+     * should be used.
+     */
+    public final boolean identityEquals(Value other) {
+        return this == other;
+    }
 }
