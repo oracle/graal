@@ -149,12 +149,12 @@ public class MemoryUsageBenchmark extends GraalCompilerTest {
 
         // Warm up and initialize compiler phases used by this compilation
         for (int i = 0; i < 10; i++) {
-            try (MemoryUsageCloseable c = verbose ? new MemoryUsageCloseable(methodName + "[" + i + "]") : null) {
+            try (MemoryUsageCloseable c = verbose ? new MemoryUsageCloseable(methodName + "[warmup-" + i + "]") : null) {
                 doCompilation(methodName);
             }
         }
 
-        try (MemoryUsageCloseable c = new MemoryUsageCloseable(methodName + "[warm]")) {
+        try (MemoryUsageCloseable c = new MemoryUsageCloseable(methodName)) {
             doCompilation(methodName);
         }
     }
