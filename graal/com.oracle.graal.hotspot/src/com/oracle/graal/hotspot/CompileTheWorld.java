@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot;
 
 import static com.oracle.graal.compiler.common.GraalOptions.*;
+import static com.oracle.graal.debug.internal.MemUseTrackerImpl.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.nodes.StructuredGraph.*;
 
@@ -158,6 +159,7 @@ public final class CompileTheWorld {
     private int classFileCounter = 0;
     private int compiledMethodsCounter = 0;
     private long compileTime = 0;
+    private long memoryUsed = 0;
 
     private boolean verbose;
     private final Config config;
@@ -311,7 +313,7 @@ public final class CompileTheWorld {
         }
 
         println();
-        println("CompileTheWorld : Done (%d classes, %d methods, %d ms)", classFileCounter, compiledMethodsCounter, compileTime);
+        println("CompileTheWorld : Done (%d classes, %d methods, %d ms, %d bytes of memory used)", classFileCounter, compiledMethodsCounter, compileTime, memoryUsed);
     }
 
     class CTWCompilationTask extends CompilationTask {
@@ -346,11 +348,13 @@ public final class CompileTheWorld {
     private void compileMethod(HotSpotResolvedJavaMethod method) {
         try {
             long start = System.currentTimeMillis();
+            long allocatedAtStart = getCurrentThreadAllocatedBytes();
 
             HotSpotBackend backend = runtime.getHostBackend();
             CompilationTask task = new CTWCompilationTask(backend, method);
             task.runCompilation();
 
+            memoryUsed += getCurrentThreadAllocatedBytes() - allocatedAtStart;
             compileTime += (System.currentTimeMillis() - start);
             compiledMethodsCounter++;
             method.reprofile();  // makes the method also not-entrant
