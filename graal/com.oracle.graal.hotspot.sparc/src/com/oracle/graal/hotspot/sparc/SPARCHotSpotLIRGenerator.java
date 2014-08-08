@@ -206,12 +206,15 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
     }
 
     public Value emitCompareAndSwap(Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue) {
+        Variable newValueTemp = newVariable(newValue.getLIRKind());
+        emitMove(newValueTemp, newValue);
+
         LIRKind kind = newValue.getLIRKind();
         assert kind.equals(expectedValue.getLIRKind());
         Kind memKind = (Kind) kind.getPlatformKind();
         SPARCAddressValue addressValue = asAddressValue(address);
-        append(new CompareAndSwapOp(asAllocatable(addressValue), asAllocatable(expectedValue), asAllocatable(newValue)));
-        return emitConditionalMove(memKind, expectedValue, newValue, Condition.EQ, true, trueValue, falseValue);
+        append(new CompareAndSwapOp(asAllocatable(addressValue), asAllocatable(expectedValue), asAllocatable(newValueTemp)));
+        return emitConditionalMove(memKind, expectedValue, newValueTemp, Condition.EQ, true, trueValue, falseValue);
     }
 
     public StackSlot getDeoptimizationRescueSlot() {

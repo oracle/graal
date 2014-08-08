@@ -62,30 +62,44 @@ public class SPARCControlFlow {
     }
 
     public static class BranchOp extends SPARCLIRInstruction implements StandardOp.BranchOp {
-
+        // TODO: Conditioncode/flag handling needs to be improved;
         protected final Condition condition;
+        protected final ConditionFlag conditionFlag;
         protected final LabelRef trueDestination;
         protected final LabelRef falseDestination;
         protected final Kind kind;
+
+        public BranchOp(ConditionFlag condition, LabelRef trueDestination, LabelRef falseDestination, Kind kind) {
+            this.conditionFlag = condition;
+            this.trueDestination = trueDestination;
+            this.falseDestination = falseDestination;
+            this.kind = kind;
+            this.condition = null;
+        }
 
         public BranchOp(Condition condition, LabelRef trueDestination, LabelRef falseDestination, Kind kind) {
             this.condition = condition;
             this.trueDestination = trueDestination;
             this.falseDestination = falseDestination;
             this.kind = kind;
+            this.conditionFlag = null;
         }
 
         @Override
         public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
+            assert condition == null && conditionFlag != null || condition != null && conditionFlag == null;
             Label actualTarget;
             Condition actualCondition;
+            ConditionFlag actualConditionFlag;
             boolean needJump;
             if (crb.isSuccessorEdge(trueDestination)) {
-                actualCondition = condition.negate();
+                actualCondition = condition != null ? condition.negate() : null;
+                actualConditionFlag = conditionFlag != null ? conditionFlag.negate() : null;
                 actualTarget = falseDestination.label();
                 needJump = false;
             } else {
                 actualCondition = condition;
+                actualConditionFlag = conditionFlag;
                 actualTarget = trueDestination.label();
                 needJump = !crb.isSuccessorEdge(falseDestination);
             }
@@ -94,7 +108,13 @@ public class SPARCControlFlow {
                 emitFloatCompare(masm, actualTarget, actualCondition);
             } else {
                 CC cc = kind == Kind.Int ? CC.Icc : CC.Xcc;
-                emitCompare(masm, actualTarget, actualCondition, cc);
+                if (actualCondition != null) {
+                    emitCompare(masm, actualTarget, actualCondition, cc);
+                } else if (actualConditionFlag != null) {
+                    emitCompare(masm, actualTarget, actualConditionFlag, cc);
+                } else {
+                    GraalInternalError.shouldNotReachHere();
+                }
                 new Nop().emit(masm);  // delay slot
             }
             if (needJump) {
@@ -104,7 +124,7 @@ public class SPARCControlFlow {
     }
 
     private static void emitFloatCompare(SPARCMacroAssembler masm, Label target, Condition actualCondition) {
-        switch (actualCondition.mirror()) {
+        switch (actualCondition) {
             case EQ:
                 new Fbe(false, target).emit(masm);
                 break;
@@ -132,6 +152,10 @@ public class SPARCControlFlow {
                 throw GraalInternalError.shouldNotReachHere();
         }
         new Nop().emit(masm);
+    }
+
+    private static void emitCompare(SPARCMacroAssembler masm, Label target, ConditionFlag actualCondition, CC cc) {
+        new Fmt00b(false, actualCondition, Op2s.Br, target).emit(masm);
     }
 
     private static void emitCompare(SPARCMacroAssembler masm, Label target, Condition actualCondition, CC cc) {
