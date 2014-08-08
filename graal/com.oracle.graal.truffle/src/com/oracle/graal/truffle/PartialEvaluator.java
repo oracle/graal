@@ -138,7 +138,11 @@ public class PartialEvaluator {
             }
 
             // EA frame and clean up.
-            new PartialEscapePhase(true, canonicalizer).apply(graph, tierContext);
+            try (Scope pe = Debug.scope("TrufflePartialEscape", graph)) {
+                new PartialEscapePhase(true, canonicalizer).apply(graph, tierContext);
+            } catch (Throwable t) {
+                Debug.handle(t);
+            }
             new VerifyNoIntrinsicsLeftPhase().apply(graph, false);
             for (MaterializeFrameNode materializeNode : graph.getNodes(MaterializeFrameNode.class).snapshot()) {
                 materializeNode.replaceAtUsages(materializeNode.getFrame());

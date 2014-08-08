@@ -38,17 +38,17 @@ import com.oracle.graal.options.*;
 public class GraalDebugConfig implements DebugConfig {
 
     // @formatter:off
-    @Option(help = "Pattern for scope(s) to in which dumping is enabled (see DebugFilter and Debug.dump)")
+    @Option(help = "Pattern for scope(s) in which dumping is enabled (see DebugFilter and Debug.dump)")
     public static final OptionValue<String> Dump = new OptionValue<>(null);
-    @Option(help = "Pattern for scope(s) to in which metering is enabled (see DebugFilter and Debug.metric)")
+    @Option(help = "Pattern for scope(s) in which metering is enabled (see DebugFilter and Debug.metric)")
     public static final OptionValue<String> Meter = new OptionValue<>(null);
-    @Option(help = "Pattern for scope(s) to in which verification is enabled (see DebugFilter and Debug.verify)")
+    @Option(help = "Pattern for scope(s) in which verification is enabled (see DebugFilter and Debug.verify)")
     public static final OptionValue<String> Verify = new OptionValue<>(null);
-    @Option(help = "Pattern for scope(s) to in which memory use tracking is enabled (see DebugFilter and Debug.metric)")
+    @Option(help = "Pattern for scope(s) in which memory use tracking is enabled (see DebugFilter and Debug.metric)")
     public static final OptionValue<String> TrackMemUse = new OptionValue<>(null);
-    @Option(help = "Pattern for scope(s) to in which timing is enabled (see DebugFilter and Debug.timer)")
+    @Option(help = "Pattern for scope(s) in which timing is enabled (see DebugFilter and Debug.timer)")
     public static final OptionValue<String> Time = new OptionValue<>(null);
-    @Option(help = "Pattern for scope(s) to in which logging is enabled (see DebugFilter and Debug.log)")
+    @Option(help = "Pattern for scope(s) in which logging is enabled (see DebugFilter and Debug.log)")
     public static final OptionValue<String> Log = new OptionValue<>(null);
     @Option(help = "Pattern for filtering debug scope output based on method context (see MethodFilter)")
     public static final OptionValue<String> MethodFilter = new OptionValue<>(null);
