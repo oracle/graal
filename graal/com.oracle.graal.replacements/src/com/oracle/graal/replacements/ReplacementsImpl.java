@@ -36,6 +36,7 @@ import sun.misc.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
+import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
@@ -428,6 +429,20 @@ public class ReplacementsImpl implements Replacements {
     }
 
     /**
+     * Calls in snippets to methods matching one of these filters are elided. Only void methods are
+     * considered for elision.
+     */
+    private static final MethodFilter[] MethodsElidedInSnippets = getMethodsElidedInSnippets();
+
+    private static MethodFilter[] getMethodsElidedInSnippets() {
+        String commaSeparatedPatterns = System.getProperty("graal.MethodsElidedInSnippets");
+        if (commaSeparatedPatterns != null) {
+            return MethodFilter.parse(commaSeparatedPatterns);
+        }
+        return null;
+    }
+
+    /**
      * Creates and preprocesses a graph for a replacement.
      */
     protected class GraphMaker {
@@ -554,7 +569,12 @@ public class ReplacementsImpl implements Replacements {
             final StructuredGraph graph = new StructuredGraph(methodToParse);
             try (Scope s = Debug.scope("buildInitialGraph", graph)) {
                 MetaAccessProvider metaAccess = providers.getMetaAccess();
-                createGraphBuilder(metaAccess, GraphBuilderConfiguration.getSnippetDefault(), OptimisticOptimizations.NONE).apply(graph);
+
+                if (MethodsElidedInSnippets != null && methodToParse.getSignature().getReturnKind() == Kind.Void && MethodFilter.matches(MethodsElidedInSnippets, methodToParse)) {
+                    graph.addAfterFixed(graph.start(), graph.add(new ReturnNode(null)));
+                } else {
+                    createGraphBuilder(metaAccess, GraphBuilderConfiguration.getSnippetDefault(), OptimisticOptimizations.NONE).apply(graph);
+                }
                 new WordTypeVerificationPhase(metaAccess, snippetReflection, target.wordKind).apply(graph);
                 new WordTypeRewriterPhase(metaAccess, snippetReflection, target.wordKind).apply(graph);
 
