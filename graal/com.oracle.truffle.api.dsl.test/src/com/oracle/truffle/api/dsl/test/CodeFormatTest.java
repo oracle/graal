@@ -28,6 +28,9 @@ import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.dsl.test.CodeFormatTestFactory.LineWrappingTestFactory;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 
+/**
+ * Tests the generated code compiles without warnings for unusual large guard names.
+ */
 public class CodeFormatTest {
 
     @Test

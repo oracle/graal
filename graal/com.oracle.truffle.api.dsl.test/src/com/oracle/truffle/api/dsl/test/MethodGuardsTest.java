@@ -28,16 +28,15 @@ import static org.junit.Assert.*;
 import org.junit.*;
 
 import com.oracle.truffle.api.dsl.*;
-import com.oracle.truffle.api.dsl.test.GuardsTestFactory.GlobalFlagGuardFactory;
-import com.oracle.truffle.api.dsl.test.GuardsTestFactory.GuardWithBaseClassFactory;
-import com.oracle.truffle.api.dsl.test.GuardsTestFactory.GuardWithBaseInterfaceFactory;
-import com.oracle.truffle.api.dsl.test.GuardsTestFactory.GuardWithBoxedPrimitiveFactory;
-import com.oracle.truffle.api.dsl.test.GuardsTestFactory.GuardWithObjectFactory;
-import com.oracle.truffle.api.dsl.test.GuardsTestFactory.InvocationGuardFactory;
-import com.oracle.truffle.api.dsl.test.GuardsTestFactory.TestAbstractGuard1Factory;
-import com.oracle.truffle.api.dsl.test.GuardsTestFactory.TestGuardResolve1Factory;
-import com.oracle.truffle.api.dsl.test.GuardsTestFactory.TestGuardResolve2Factory;
-import com.oracle.truffle.api.dsl.test.GuardsTestFactory.TestGuardResolve3Factory;
+import com.oracle.truffle.api.dsl.test.MethodGuardsTestFactory.GlobalFlagGuardFactory;
+import com.oracle.truffle.api.dsl.test.MethodGuardsTestFactory.GuardWithBaseClassFactory;
+import com.oracle.truffle.api.dsl.test.MethodGuardsTestFactory.GuardWithBoxedPrimitiveFactory;
+import com.oracle.truffle.api.dsl.test.MethodGuardsTestFactory.GuardWithObjectFactory;
+import com.oracle.truffle.api.dsl.test.MethodGuardsTestFactory.InvocationGuardFactory;
+import com.oracle.truffle.api.dsl.test.MethodGuardsTestFactory.TestAbstractGuard1Factory;
+import com.oracle.truffle.api.dsl.test.MethodGuardsTestFactory.TestGuardResolve1Factory;
+import com.oracle.truffle.api.dsl.test.MethodGuardsTestFactory.TestGuardResolve2Factory;
+import com.oracle.truffle.api.dsl.test.MethodGuardsTestFactory.TestGuardResolve3Factory;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.Abstract;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.BExtendsAbstract;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.CExtendsAbstract;
@@ -45,7 +44,7 @@ import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 
 @SuppressWarnings("unused")
-public class GuardsTest {
+public class MethodGuardsTest {
 
     private static final Object NULL = new Object();
 
@@ -138,13 +137,6 @@ public class GuardsTest {
         }
     }
 
-    @Test
-    public void testGuardWithBaseInterface() {
-        TestRootNode<?> root = createRoot(GuardWithBaseInterfaceFactory.getInstance());
-
-        assertEquals(42, executeWith(root, "anything"));
-    }
-
     @NodeChild("expression")
     public abstract static class GuardWithBaseInterface extends ValueNode {
 
@@ -153,6 +145,7 @@ public class GuardsTest {
         }
 
         @Specialization(guards = "baseGuard")
+        @ExpectError("No compatible guard with method name 'baseGuard' found. Please note that all signature types of the method guard must be declared in the type system.")
         int doSpecialized(String value0) {
             return 42;
         }
@@ -301,13 +294,13 @@ public class GuardsTest {
             return true;
         }
 
-        @Specialization(order = 1, guards = "guard")
-        BExtendsAbstract doSpecialized1(BExtendsAbstract value0) {
+        @Specialization(guards = "guard")
+        BExtendsAbstract do1(BExtendsAbstract value0) {
             return value0;
         }
 
-        @Specialization(order = 2, guards = "guard")
-        CExtendsAbstract doSpecialized2(CExtendsAbstract value0) {
+        @Specialization(guards = "guard")
+        CExtendsAbstract do2(CExtendsAbstract value0) {
             return value0;
         }
     }

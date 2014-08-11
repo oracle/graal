@@ -25,11 +25,15 @@ package com.oracle.truffle.api.dsl.test;
 import static com.oracle.truffle.api.dsl.test.TestHelper.*;
 import static org.junit.Assert.*;
 
+import java.util.*;
+
 import org.junit.*;
 
 import com.oracle.truffle.api.dsl.*;
-import com.oracle.truffle.api.dsl.test.BinaryNodeTest.BinaryNode;
-import com.oracle.truffle.api.dsl.test.PolymorphicTestFactory.Node1Factory;
+import com.oracle.truffle.api.dsl.test.PolymorphicTestFactory.Polymorphic1Factory;
+import com.oracle.truffle.api.dsl.test.PolymorphicTestFactory.Polymorphic2Factory;
+import com.oracle.truffle.api.dsl.test.PolymorphicTestFactory.Polymorphic3Factory;
+import com.oracle.truffle.api.dsl.test.TestHelper.ExecutionListener;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 import com.oracle.truffle.api.nodes.*;
@@ -47,103 +51,155 @@ public class PolymorphicTest {
         }
     }
 
+    public static void assertNoDuplicates(Node node, Node... ignored) {
+        assertNoDuplicatesRec(new HashSet<>(Arrays.asList(ignored)), new HashSet<Class<?>>(), node);
+    }
+
+    private static void assertNoDuplicatesRec(Set<Node> ignored, Set<Class<?>> seenClasses, Node current) {
+        if (!ignored.contains(current)) {
+            if (seenClasses.contains(current.getClass())) {
+                Assert.fail(String.format("Multiple occurences of the same class %s. %nTree: %s", current.getClass().getSimpleName(), NodeUtil.printCompactTreeToString(current.getRootNode())));
+            } else {
+                seenClasses.add(current.getClass());
+            }
+        }
+
+        for (Node child : current.getChildren()) {
+            if (child != null) {
+                assertNoDuplicatesRec(ignored, seenClasses, child);
+            }
+        }
+    }
+
     @Test
-    public void testJustSpecialize() {
-        TestRootNode<Node1> node = TestHelper.createRoot(Node1Factory.getInstance());
-        assertEquals("(int,int)", executeWith(node, 42, 42));
-        assertEquals("(boolean,boolean)", executeWith(node, false, false));
-        assertEquals("(int,boolean)", executeWith(node, 42, false));
-        assertEquals("(boolean,int)", executeWith(node, false, 42));
-        assertEquals(NodeCost.MONOMORPHIC, node.getNode().getCost());
-        assertParent(node.getNode(), node.getNode().getLeft());
-        assertParent(node.getNode(), node.getNode().getRight());
+    public void testPolymorphic1() {
+        assertRuns(Polymorphic1Factory.getInstance(), //
+                        array(42, 43, true, false, "a", "b"), //
+                        array(42, 43, true, false, "a", "b"),//
+                        new ExecutionListener() {
+                            public void afterExecution(TestRootNode<? extends ValueNode> node, int index, Object value, Object expectedResult, Object actualResult, boolean last) {
+                                Polymorphic1 polymorphic = ((Polymorphic1) node.getNode());
+                                assertParent(node.getNode(), polymorphic.getA());
+                                assertNoDuplicates(polymorphic, polymorphic.getA());
+                                if (index == 0) {
+                                    assertEquals(NodeCost.MONOMORPHIC, node.getNode().getCost());
+                                }
+                            }
+                        });
+    }
+
+    @NodeChild("a")
+    abstract static class Polymorphic1 extends ValueNode {
+
+        public abstract ValueNode getA();
+
+        @Specialization
+        int add(int a) {
+            return a;
+        }
+
+        @Specialization
+        boolean add(boolean a) {
+            return a;
+        }
+
+        @Specialization
+        String add(String a) {
+            return a;
+        }
+
+        @Generic
+        String add(Object left) {
+            throw new AssertionError(left.toString());
+        }
+
     }
 
     @Test
     public void testPolymorphic2() {
-        TestRootNode<Node1> node = TestHelper.createRoot(Node1Factory.getInstance());
-        assertEquals("(int,boolean)", executeWith(node, 42, false));
-        assertEquals("(int,int)", executeWith(node, 42, 42));
-        assertEquals(NodeCost.POLYMORPHIC, node.getNode().getCost());
-        assertParent(node.getNode(), node.getNode().getLeft());
-        assertParent(node.getNode(), node.getNode().getRight());
+        assertRuns(Polymorphic2Factory.getInstance(), //
+                        array(0, 1, 1, "1", "2", 2, 3), //
+                        array(0, 1, 1, "1", "2", 2, 3),//
+                        new ExecutionListener() {
+                            public void afterExecution(TestRootNode<? extends ValueNode> node, int index, Object value, Object expectedResult, Object actualResult, boolean last) {
+                                Polymorphic2 polymorphic = ((Polymorphic2) node.getNode());
+                                assertParent(node.getNode(), polymorphic.getA());
+                                assertNoDuplicates(polymorphic, polymorphic.getA());
+                                if (index == 0) {
+                                    assertEquals(NodeCost.MONOMORPHIC, node.getNode().getCost());
+                                }
+                            }
+                        });
+    }
+
+    @NodeChild("a")
+    abstract static class Polymorphic2 extends ValueNode {
+
+        public abstract ValueNode getA();
+
+        @Specialization
+        String s2(String a) {
+            return a;
+        }
+
+        @Specialization(rewriteOn = RuntimeException.class)
+        int s0(int a) {
+            if (a == 1) {
+                throw new RuntimeException();
+            }
+            return a;
+        }
+
+        @Specialization
+        int s1(int a) {
+            return a;
+        }
+
     }
 
     @Test
     public void testPolymorphic3() {
-        TestRootNode<Node1> node = TestHelper.createRoot(Node1Factory.getInstance());
-        assertEquals("(int,boolean)", executeWith(node, 42, false));
-        assertEquals("(boolean,boolean)", executeWith(node, true, false));
-        assertEquals("(int,int)", executeWith(node, 42, 42));
-        assertEquals(NodeCost.POLYMORPHIC, node.getNode().getCost());
-        assertParent(node.getNode(), node.getNode().getLeft());
-        assertParent(node.getNode(), node.getNode().getRight());
+        assertRuns(Polymorphic3Factory.getInstance(), //
+                        array("0", "1", 1, 1, 2, 2, 3, 3), //
+                        array("0", "1", 1, 1, 2, 2, 3, 3),//
+                        new ExecutionListener() {
+                            public void afterExecution(TestRootNode<? extends ValueNode> node, int index, Object value, Object expectedResult, Object actualResult, boolean last) {
+                                Polymorphic3 polymorphic = ((Polymorphic3) node.getNode());
+                                assertParent(node.getNode(), polymorphic.getA());
+                                assertNoDuplicates(polymorphic, polymorphic.getA());
+                            }
+                        });
     }
 
-    @Test
-    public void testGenericLimitReached() {
-        TestRootNode<Node1> node = TestHelper.createRoot(Node1Factory.getInstance());
-        assertEquals("(boolean,int)", executeWith(node, false, 42));
-        assertEquals("(int,boolean)", executeWith(node, 42, false));
-        assertEquals("(boolean,boolean)", executeWith(node, true, false));
-        assertEquals("(int,int)", executeWith(node, 42, 42));
-        assertEquals(NodeCost.MEGAMORPHIC, node.getNode().getCost());
-        assertParent(node.getNode(), node.getNode().getLeft());
-        assertParent(node.getNode(), node.getNode().getRight());
-    }
+    @NodeChild("a")
+    abstract static class Polymorphic3 extends ValueNode {
 
-    @Test
-    public void testGenericInitial() {
-        TestRootNode<Node1> node = TestHelper.createRoot(Node1Factory.getInstance());
-        assertEquals("(generic,generic)", executeWith(node, "1", "1"));
-        assertEquals(NodeCost.MEGAMORPHIC, node.getNode().getCost());
-        assertParent(node.getNode(), node.getNode().getLeft());
-        assertParent(node.getNode(), node.getNode().getRight());
-    }
+        public abstract ValueNode getA();
 
-    @Test
-    public void testGenericPolymorphic1() {
-        TestRootNode<Node1> node = TestHelper.createRoot(Node1Factory.getInstance());
-        assertEquals("(boolean,int)", executeWith(node, false, 42));
-        assertEquals("(boolean,boolean)", executeWith(node, false, false));
-        assertEquals("(generic,generic)", executeWith(node, "", ""));
-        assertEquals(NodeCost.MEGAMORPHIC, node.getNode().getCost());
-        /* Assertions for bug GRAAL-425 */
-        assertParent(node.getNode(), node.getNode().getLeft());
-        assertParent(node.getNode(), node.getNode().getRight());
-    }
-
-    @SuppressWarnings("unused")
-    @PolymorphicLimit(3)
-    abstract static class Node1 extends BinaryNode {
-
-        public abstract ValueNode getLeft();
-
-        public abstract ValueNode getRight();
-
-        @Specialization(order = 1)
-        String add(int left, int right) {
-            return "(int,int)";
+        @Specialization
+        String s2(String a) {
+            return a;
         }
 
-        @Specialization(order = 2)
-        String add(boolean left, boolean right) {
-            return "(boolean,boolean)";
+        @Specialization(rewriteOn = RuntimeException.class)
+        int s0(int a) {
+            if (a == 1) {
+                throw new RuntimeException();
+            }
+            return a;
         }
 
-        @Specialization(order = 3)
-        String add(int left, boolean right) {
-            return "(int,boolean)";
+        @Specialization(rewriteOn = RuntimeException.class)
+        int s1(int a) {
+            if (a == 1) {
+                throw new RuntimeException();
+            }
+            return a;
         }
 
-        @Specialization(order = 4)
-        String add(boolean left, int right) {
-            return "(boolean,int)";
-        }
-
-        @Generic
-        String add(Object left, Object right) {
-            return "(generic,generic)";
+        @Specialization
+        int s2(int a) {
+            return a;
         }
 
     }
