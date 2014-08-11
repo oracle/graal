@@ -21,6 +21,7 @@
 * New flag -G:+TruffleSplittingClassInstanceStamps to enable splitting for Java object instances except TypedObject.
 * New flag -G:TruffleSplittingStartCallCount=3 which sets the number of minimal calls until splitting is performed.
 * New flag -G:-TruffleSplittingAggressive if enabled splits every function call.
+* Added isVisited method for BranchProfile.
 * ...
 
 ## Version 0.3

@@ -25,8 +25,8 @@ package com.oracle.graal.api.meta;
 import java.lang.annotation.*;
 
 /**
- * This annotation can be use to mark methods which are allowed to use identity checks (==/!=) on
- * restricted types.
+ * This annotation denotes methods which are allowed to use identity checks (==/!=) on restricted
+ * types.
  *
  * @see CheckGraalInvariants
  */
