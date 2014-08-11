@@ -70,7 +70,8 @@ public final class ValuePosition {
     public void set(LIRInstruction inst, Value value) {
         if (isCompositePosition()) {
             CompositeValue compValue = (CompositeValue) outerPosition.get(inst);
-            compValue.getValueClass().setValue(compValue, this, value);
+            CompositeValue newCompValue = compValue.getValueClass().createUpdatedValue(compValue, this, value);
+            outerPosition.set(inst, newCompValue);
         } else {
             inst.getLIRInstructionClass().setValue(inst, this, value);
         }
