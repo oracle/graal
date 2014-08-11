@@ -127,7 +127,7 @@ public class MemoryUsageBenchmark extends GraalCompilerTest {
         new MemoryUsageBenchmark().run();
     }
 
-    private void doCompilation(String methodName) {
+    private void doCompilation(String methodName, String label) {
         HotSpotResolvedJavaMethod method = (HotSpotResolvedJavaMethod) getMetaAccess().lookupJavaMethod(getMethod(methodName));
         HotSpotBackend backend = runtime().getHostBackend();
 
@@ -136,8 +136,28 @@ public class MemoryUsageBenchmark extends GraalCompilerTest {
 
         int id = method.allocateCompileId(INVOCATION_ENTRY_BCI);
         long ctask = 0L;
-        CompilationTask task = new CompilationTask(backend, method, INVOCATION_ENTRY_BCI, ctask, id);
-        task.runCompilation();
+
+        try (MemoryUsageCloseable c = label == null ? null : new MemoryUsageCloseable(label)) {
+            CompilationTask task = new CompilationTask(backend, method, INVOCATION_ENTRY_BCI, ctask, id);
+            task.runCompilation();
+        }
+    }
+
+    private void allocSpyCompilation(String methodName) {
+        if (AllocSpy.isEnabled()) {
+            HotSpotResolvedJavaMethod method = (HotSpotResolvedJavaMethod) getMetaAccess().lookupJavaMethod(getMethod(methodName));
+            HotSpotBackend backend = runtime().getHostBackend();
+
+            // invalidate any existing compiled code
+            method.reprofile();
+
+            int id = method.allocateCompileId(INVOCATION_ENTRY_BCI);
+            long ctask = 0L;
+            try (AllocSpy as = AllocSpy.open(methodName)) {
+                CompilationTask task = new CompilationTask(backend, method, INVOCATION_ENTRY_BCI, ctask, id);
+                task.runCompilation();
+            }
+        }
     }
 
     private static final boolean verbose = Boolean.getBoolean("verbose");
@@ -149,14 +169,10 @@ public class MemoryUsageBenchmark extends GraalCompilerTest {
 
         // Warm up and initialize compiler phases used by this compilation
         for (int i = 0; i < 10; i++) {
-            try (MemoryUsageCloseable c = verbose ? new MemoryUsageCloseable(methodName + "[warmup-" + i + "]") : null) {
-                doCompilation(methodName);
-            }
+            doCompilation(methodName, verbose ? methodName + "[warmup-" + i + "]" : null);
         }
 
-        try (MemoryUsageCloseable c = new MemoryUsageCloseable(methodName)) {
-            doCompilation(methodName);
-        }
+        doCompilation(methodName, methodName);
     }
 
     public void run() {
@@ -171,5 +187,7 @@ public class MemoryUsageBenchmark extends GraalCompilerTest {
                 e.printStackTrace();
             }
         }
+        allocSpyCompilation("simple");
+        allocSpyCompilation("complex");
     }
 }
