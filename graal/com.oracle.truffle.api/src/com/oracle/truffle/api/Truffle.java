@@ -24,6 +24,8 @@
  */
 package com.oracle.truffle.api;
 
+import java.security.*;
+
 import com.oracle.truffle.api.impl.*;
 
 /**
@@ -31,7 +33,7 @@ import com.oracle.truffle.api.impl.*;
  */
 public class Truffle {
 
-    private static final TruffleRuntime RUNTIME;
+    private static final TruffleRuntime RUNTIME = initRuntime();
 
     /**
      * Creates a new {@link TruffleRuntime} instance if the runtime has a specialized
@@ -46,13 +48,15 @@ public class Truffle {
         return RUNTIME;
     }
 
-    static {
-        TruffleRuntime runtime;
+    private static TruffleRuntime initRuntime() {
         try {
-            runtime = createRuntime();
+            return AccessController.doPrivileged(new PrivilegedAction<TruffleRuntime>() {
+                public TruffleRuntime run() {
+                    return createRuntime();
+                }
+            });
         } catch (UnsatisfiedLinkError e) {
-            runtime = new DefaultTruffleRuntime();
+            return new DefaultTruffleRuntime();
         }
-        RUNTIME = runtime;
     }
 }
