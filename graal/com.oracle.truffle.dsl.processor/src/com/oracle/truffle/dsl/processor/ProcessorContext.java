@@ -22,8 +22,6 @@
  */
 package com.oracle.truffle.dsl.processor;
 
-import static com.oracle.truffle.dsl.processor.Utils.*;
-
 import java.util.*;
 
 import javax.annotation.processing.*;
@@ -31,9 +29,9 @@ import javax.lang.model.element.*;
 import javax.lang.model.type.*;
 import javax.lang.model.util.*;
 
-import com.oracle.truffle.dsl.processor.ast.*;
-import com.oracle.truffle.dsl.processor.ast.CodeTypeMirror.ArrayCodeTypeMirror;
-import com.oracle.truffle.dsl.processor.template.*;
+import com.oracle.truffle.dsl.processor.java.*;
+import com.oracle.truffle.dsl.processor.java.model.*;
+import com.oracle.truffle.dsl.processor.model.*;
 
 /**
  * THIS IS NOT PUBLIC API.
@@ -43,13 +41,12 @@ public class ProcessorContext {
     private final ProcessingEnvironment environment;
 
     private final Map<String, Template> models = new HashMap<>();
-    private final Map<String, Map<String, TypeMirror>> generatedClasses = new HashMap<>();
 
     private final ProcessCallback callback;
     private final Log log;
     private final TruffleTypes truffleTypes;
 
-    public ProcessorContext(ProcessingEnvironment env, ProcessCallback callback) {
+    ProcessorContext(ProcessingEnvironment env, ProcessCallback callback) {
         this.environment = env;
         this.callback = callback;
         this.log = new Log(environment);
@@ -69,84 +66,21 @@ public class ProcessorContext {
     }
 
     public boolean containsTemplate(TypeElement element) {
-        return models.containsKey(Utils.getQualifiedName(element));
+        return models.containsKey(ElementUtils.getQualifiedName(element));
     }
 
     public void registerTemplate(TypeElement element, Template model) {
-        models.put(Utils.getQualifiedName(element), model);
-    }
-
-    public void registerType(TypeElement templateType, TypeMirror generatedTypeMirror) {
-        String templateQualifiedName = getQualifiedName(templateType);
-        Map<String, TypeMirror> simpleNameToType = generatedClasses.get(templateQualifiedName);
-        if (simpleNameToType == null) {
-            simpleNameToType = new HashMap<>();
-            generatedClasses.put(templateQualifiedName, simpleNameToType);
-        }
-        String generatedSimpleName = getSimpleName(generatedTypeMirror);
-        simpleNameToType.put(generatedSimpleName, generatedTypeMirror);
+        models.put(ElementUtils.getQualifiedName(element), model);
     }
 
     public Template getTemplate(TypeMirror templateTypeMirror, boolean invokeCallback) {
-        String qualifiedName = Utils.getQualifiedName(templateTypeMirror);
+        String qualifiedName = ElementUtils.getQualifiedName(templateTypeMirror);
         Template model = models.get(qualifiedName);
         if (model == null && invokeCallback) {
-            callback.callback(Utils.fromTypeMirror(templateTypeMirror));
+            callback.callback(ElementUtils.fromTypeMirror(templateTypeMirror));
             model = models.get(qualifiedName);
         }
         return model;
-    }
-
-    public TypeMirror resolveNotYetCompiledType(TypeMirror mirror, Template templateHint) {
-        TypeMirror resolvedType = null;
-        if (mirror.getKind() == TypeKind.ARRAY) {
-            TypeMirror originalComponentType = ((ArrayType) mirror).getComponentType();
-            TypeMirror resolvedComponent = resolveNotYetCompiledType(originalComponentType, templateHint);
-            if (resolvedComponent != originalComponentType) {
-                return new ArrayCodeTypeMirror(resolvedComponent);
-            }
-        }
-
-        if (mirror.getKind() == TypeKind.ERROR) {
-            Element element = ((ErrorType) mirror).asElement();
-            ElementKind kind = element.getKind();
-            if (kind == ElementKind.CLASS || kind == ElementKind.PARAMETER || kind == ElementKind.ENUM) {
-                String simpleName = element.getSimpleName().toString();
-                resolvedType = findGeneratedClassBySimpleName(simpleName, templateHint);
-            }
-        } else {
-            resolvedType = mirror;
-        }
-
-        return resolvedType;
-    }
-
-    public TypeMirror findGeneratedClassBySimpleName(String simpleName, Template templateHint) {
-        if (templateHint == null) {
-            // search all
-            for (String qualifiedTemplateName : generatedClasses.keySet()) {
-                Map<String, TypeMirror> mirrors = generatedClasses.get(qualifiedTemplateName);
-                if (mirrors.get(simpleName) != null) {
-                    return mirrors.get(simpleName);
-                }
-            }
-            return null;
-        } else {
-            String templateQualifiedName = getQualifiedName(templateHint.getTemplateType());
-            Map<String, TypeMirror> simpleNameToType = generatedClasses.get(templateQualifiedName);
-            if (simpleNameToType == null) {
-                return null;
-            }
-            return simpleNameToType.get(simpleName);
-        }
-    }
-
-    public TypeMirror getType(String className) {
-        TypeElement element = environment.getElementUtils().getTypeElement(className);
-        if (element != null) {
-            return element.asType();
-        }
-        return null;
     }
 
     public TypeMirror getType(Class<?> element) {
@@ -189,6 +123,14 @@ public class ProcessorContext {
 
     public TypeMirror reloadTypeElement(TypeElement type) {
         return getType(type.getQualifiedName().toString());
+    }
+
+    private TypeMirror getType(String className) {
+        TypeElement element = environment.getElementUtils().getTypeElement(className);
+        if (element != null) {
+            return element.asType();
+        }
+        return null;
     }
 
     public TypeMirror reloadType(TypeMirror type) {

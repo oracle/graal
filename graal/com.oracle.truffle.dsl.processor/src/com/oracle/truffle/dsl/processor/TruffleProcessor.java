@@ -31,8 +31,9 @@ import javax.lang.model.element.*;
 import javax.tools.Diagnostic.Kind;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext.ProcessCallback;
-import com.oracle.truffle.dsl.processor.node.*;
-import com.oracle.truffle.dsl.processor.typesystem.*;
+import com.oracle.truffle.dsl.processor.generator.*;
+import com.oracle.truffle.dsl.processor.java.*;
+import com.oracle.truffle.dsl.processor.parser.*;
 
 /**
  * THIS IS NOT PUBLIC API.
@@ -44,8 +45,6 @@ public class TruffleProcessor extends AbstractProcessor implements ProcessCallba
 
     private List<AnnotationProcessor<?>> generators;
 
-    private RoundEnvironment round;
-
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
         if (!roundEnv.processingOver()) {
@@ -55,7 +54,6 @@ public class TruffleProcessor extends AbstractProcessor implements ProcessCallba
     }
 
     private void processImpl(RoundEnvironment env) {
-        this.round = env;
         // TODO run verifications that other annotations are not processed out of scope of the
         // operation or typelattice.
         try {
@@ -64,7 +62,7 @@ public class TruffleProcessor extends AbstractProcessor implements ProcessCallba
                 AbstractParser<?> parser = generator.getParser();
                 if (parser.getAnnotationType() != null) {
                     for (Element e : env.getElementsAnnotatedWith(parser.getAnnotationType())) {
-                        processElement(env, generator, e, false);
+                        processElement(generator, e, false);
                     }
                 }
 
@@ -72,24 +70,23 @@ public class TruffleProcessor extends AbstractProcessor implements ProcessCallba
                     for (Element e : env.getElementsAnnotatedWith(annotationType)) {
                         TypeElement processedType;
                         if (parser.isDelegateToRootDeclaredType()) {
-                            processedType = Utils.findRootEnclosingType(e);
+                            processedType = ElementUtils.findRootEnclosingType(e);
                         } else {
-                            processedType = Utils.findNearestEnclosingType(e);
+                            processedType = ElementUtils.findNearestEnclosingType(e);
                         }
-                        processElement(env, generator, processedType, false);
+                        processElement(generator, processedType, false);
                     }
                 }
 
             }
         } finally {
             ProcessorContext.setThreadLocalInstance(null);
-            this.round = null;
         }
     }
 
-    private static void processElement(RoundEnvironment env, AnnotationProcessor<?> generator, Element e, boolean callback) {
+    private static void processElement(AnnotationProcessor<?> generator, Element e, boolean callback) {
         try {
-            generator.process(env, e, callback);
+            generator.process(e, callback);
         } catch (Throwable e1) {
             handleThrowable(generator, e1, e);
         }
@@ -97,7 +94,7 @@ public class TruffleProcessor extends AbstractProcessor implements ProcessCallba
 
     private static void handleThrowable(AnnotationProcessor<?> generator, Throwable t, Element e) {
         String message = "Uncaught error in " + generator.getClass().getSimpleName() + " while processing " + e;
-        ProcessorContext.getInstance().getEnvironment().getMessager().printMessage(Kind.ERROR, message + ": " + Utils.printException(t), e);
+        ProcessorContext.getInstance().getEnvironment().getMessager().printMessage(Kind.ERROR, message + ": " + ElementUtils.printException(t), e);
     }
 
     @Override
@@ -107,7 +104,7 @@ public class TruffleProcessor extends AbstractProcessor implements ProcessCallba
             if (annotationType != null) {
                 Annotation annotation = template.getAnnotation(annotationType);
                 if (annotation != null) {
-                    processElement(round, generator, template, true);
+                    processElement(generator, template, true);
                 }
             }
         }

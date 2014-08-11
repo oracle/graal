@@ -30,11 +30,13 @@ import javax.lang.model.element.*;
 import javax.lang.model.type.*;
 import javax.tools.*;
 
-import com.oracle.truffle.dsl.processor.ast.*;
-import com.oracle.truffle.dsl.processor.codewriter.*;
-import com.oracle.truffle.dsl.processor.compiler.*;
-import com.oracle.truffle.dsl.processor.node.*;
-import com.oracle.truffle.dsl.processor.template.*;
+import com.oracle.truffle.dsl.processor.generator.*;
+import com.oracle.truffle.dsl.processor.java.*;
+import com.oracle.truffle.dsl.processor.java.compiler.*;
+import com.oracle.truffle.dsl.processor.java.model.*;
+import com.oracle.truffle.dsl.processor.java.transform.*;
+import com.oracle.truffle.dsl.processor.model.*;
+import com.oracle.truffle.dsl.processor.parser.*;
 
 /**
  * THIS IS NOT PUBLIC API.
@@ -42,11 +44,11 @@ import com.oracle.truffle.dsl.processor.template.*;
 class AnnotationProcessor<M extends Template> {
 
     private final AbstractParser<M> parser;
-    private final CompilationUnitFactory<M> factory;
+    private final AbstractCompilationUnitFactory<M> factory;
 
     private final Set<String> processedElements = new HashSet<>();
 
-    public AnnotationProcessor(AbstractParser<M> parser, CompilationUnitFactory<M> factory) {
+    public AnnotationProcessor(AbstractParser<M> parser, AbstractCompilationUnitFactory<M> factory) {
         this.parser = parser;
         this.factory = factory;
     }
@@ -56,11 +58,11 @@ class AnnotationProcessor<M extends Template> {
     }
 
     @SuppressWarnings({"unchecked"})
-    public void process(RoundEnvironment env, Element element, boolean callback) {
+    public void process(Element element, boolean callback) {
         // since it is not guaranteed to be called only once by the compiler
         // we check for already processed elements to avoid errors when writing files.
         if (!callback && element instanceof TypeElement) {
-            String qualifiedName = Utils.getQualifiedName((TypeElement) element);
+            String qualifiedName = ElementUtils.getQualifiedName((TypeElement) element);
             if (processedElements.contains(qualifiedName)) {
                 return;
             }
@@ -75,12 +77,11 @@ class AnnotationProcessor<M extends Template> {
 
         if (firstRun || !callback) {
             context.registerTemplate(type, null);
-            model = parser.parse(env, element);
+            model = parser.parse(element);
             context.registerTemplate(type, model);
 
             if (model != null) {
                 CodeCompilationUnit unit = factory.process(null, model);
-                patchGeneratedTypes(unit);
                 unit.setGeneratorAnnotationMirror(model.getTemplateTypeAnnotation());
                 unit.setGeneratorElement(model.getTemplateType());
 
@@ -94,55 +95,6 @@ class AnnotationProcessor<M extends Template> {
                 }
             }
         }
-    }
-
-    private static void patchGeneratedTypes(CodeCompilationUnit unit) {
-        final Map<String, CodeTypeElement> classes = new HashMap<>();
-
-        unit.accept(new CodeElementScanner<Void, Void>() {
-            @Override
-            public Void visitType(CodeTypeElement e, Void p) {
-                classes.put(e.getSimpleName().toString(), e);
-                return super.visitType(e, p);
-            }
-
-        }, null);
-
-        unit.accept(new CodeElementScanner<Void, Void>() {
-            @Override
-            public Void visitExecutable(CodeExecutableElement e, Void p) {
-                if (e.getReturnType() instanceof GeneratedTypeMirror) {
-                    e.setReturnType(patchType(e.getReturnType()));
-                }
-                for (VariableElement element : e.getParameters()) {
-                    if (element instanceof CodeVariableElement) {
-                        CodeVariableElement var = ((CodeVariableElement) element);
-                        if (var.getType() instanceof GeneratedTypeMirror) {
-                            var.setType(patchType(var.getType()));
-                        }
-                    }
-                }
-                return super.visitExecutable(e, p);
-            }
-
-            @Override
-            public void visitTree(CodeTree e, Void p) {
-                if (e.getType() instanceof GeneratedTypeMirror) {
-                    e.setType(patchType(e.asType()));
-                }
-            }
-
-            private TypeMirror patchType(TypeMirror typeMirror) {
-                assert typeMirror instanceof GeneratedTypeMirror;
-                GeneratedTypeMirror type = (GeneratedTypeMirror) typeMirror;
-                CodeTypeElement generatedType = classes.get(Utils.fromTypeMirror(type).getSimpleName().toString());
-                if (generatedType == null) {
-                    return type;
-                }
-                return generatedType.asType();
-            }
-        }, null);
-
     }
 
     private static class CodeWriter extends AbstractCodeWriter {

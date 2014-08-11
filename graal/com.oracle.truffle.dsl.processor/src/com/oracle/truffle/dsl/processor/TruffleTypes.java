@@ -73,7 +73,7 @@ public final class TruffleTypes {
 
     private final List<String> errors = new ArrayList<>();
 
-    public TruffleTypes(ProcessorContext context) {
+    TruffleTypes(ProcessorContext context) {
         node = getRequired(context, Node.class);
         nodeArray = context.getEnvironment().getTypeUtils().getArrayType(node);
         unexpectedValueException = getRequired(context, UnexpectedResultException.class);
