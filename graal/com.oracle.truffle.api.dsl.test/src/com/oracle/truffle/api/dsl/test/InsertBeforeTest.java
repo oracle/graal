@@ -120,6 +120,34 @@ public class InsertBeforeTest {
     }
 
     @NodeChild("a")
+    static class InsertBefore1T6_1 extends InsertBefore1Base {
+
+        boolean g0(int a) {
+            return a == 0;
+        }
+
+        @Specialization(insertBefore = "f1", guards = "g0")
+        int f0(int a) {
+            return a;
+        }
+
+    }
+
+    @NodeChild("a")
+    static class InsertBefore1T6_2 extends InsertBefore1T6_1 {
+
+        boolean g(int a) {
+            return a == 0;
+        }
+
+        @Specialization(insertBefore = "f0", guards = "g")
+        int f(int a) {
+            return a;
+        }
+
+    }
+
+    @NodeChild("a")
     static class InsertBefore1Error1 extends InsertBefore1Base {
 
         @ExpectError("Specializations can only be inserted before specializations in superclasses.")

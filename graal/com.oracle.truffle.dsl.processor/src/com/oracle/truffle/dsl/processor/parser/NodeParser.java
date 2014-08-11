@@ -580,21 +580,14 @@ public class NodeParser extends AbstractParser<NodeData> {
             specialization.setInsertBefore(found);
         }
 
-        int endIndex = specializations.size() - 1;
-        for (int i = endIndex; i >= 0; i--) {
+        for (int i = 0; i < specializations.size(); i++) {
             SpecializationData specialization = specializations.get(i);
-            if (specialization.isGeneric() || specialization.isPolymorphic()) {
-                endIndex--;
-                continue;
-            }
-
             SpecializationData insertBefore = specialization.getInsertBefore();
             if (insertBefore != null) {
                 int insertIndex = specializations.indexOf(insertBefore);
                 if (insertIndex < i) {
-                    List<SpecializationData> range = new ArrayList<>(specializations.subList(i, endIndex + 1));
-                    specializations.removeAll(range);
-                    specializations.addAll(insertIndex, range);
+                    specializations.remove(i);
+                    specializations.add(insertIndex, specialization);
                 }
             }
         }
