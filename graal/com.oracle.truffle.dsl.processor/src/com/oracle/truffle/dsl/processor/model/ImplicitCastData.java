@@ -22,7 +22,6 @@
  */
 package com.oracle.truffle.dsl.processor.model;
 
-
 public class ImplicitCastData extends TemplateMethod {
 
     private final TypeData sourceType;

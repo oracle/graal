@@ -57,17 +57,17 @@ import java.lang.annotation.*;
  *
  * {@literal @}TypeSystem(types = {int.class, BigInteger.class, String.class}, nodeBaseClass = TypedNode.class)
  * public abstract class Types {
- *
+ * 
  *     {@literal @}TypeCheck
  *     public boolean isBigInteger(Object value) {
  *         return value instanceof Integer || value instanceof BigInteger;
  *     }
- *
+ * 
  *     {@literal @}TypeCheck
  *     public boolean isBigInteger(int value) {
  *         return true;
  *     }
- *
+ * 
  * }
  * </pre>
  *

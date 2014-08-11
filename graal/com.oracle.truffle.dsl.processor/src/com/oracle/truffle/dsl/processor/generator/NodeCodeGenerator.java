@@ -322,12 +322,12 @@ public class NodeCodeGenerator extends AbstractCompilationUnitFactory<NodeData> 
     /**
      * <pre>
      * variant1 $condition != null
-     * 
+     *
      * $type $name = defaultValue($type);
      * if ($condition) {
      *     $name = $value;
      * }
-     * 
+     *
      * variant2 $condition != null
      * $type $name = $value;
      * </pre>
@@ -545,9 +545,6 @@ public class NodeCodeGenerator extends AbstractCompilationUnitFactory<NodeData> 
                 clazz.setSuperClass(nodeFactory);
                 clazz.add(createNodeFactoryConstructor(node));
                 clazz.add(createCreateNodeMethod(node));
-// clazz.add(createGetNodeClassMethod(node));
-// clazz.add(createGetNodeSignaturesMethod());
-// clazz.add(createGetChildrenSignatureMethod(node));
                 clazz.add(createGetInstanceMethod(node, createVisibility));
                 clazz.add(createInstanceConstant(node, clazz.asType()));
             }

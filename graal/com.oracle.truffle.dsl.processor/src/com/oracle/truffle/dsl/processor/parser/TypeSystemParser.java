@@ -209,7 +209,8 @@ public class TypeSystemParser extends AbstractParser<TypeSystemData> {
             TypeData typeData = types.get(i);
             TypeMirror type = typeData.getBoxedType();
             if (invalidTypes.containsKey(ElementUtils.getQualifiedName(type))) {
-                typeData.addError("Invalid type order. The type(s) %s are inherited from a earlier defined type %s.", invalidTypes.get(ElementUtils.getQualifiedName(type)), ElementUtils.getQualifiedName(type));
+                typeData.addError("Invalid type order. The type(s) %s are inherited from a earlier defined type %s.", invalidTypes.get(ElementUtils.getQualifiedName(type)),
+                                ElementUtils.getQualifiedName(type));
             }
             List<String> nextInvalidTypes = ElementUtils.getQualifiedSuperTypeNames(ElementUtils.fromTypeMirror(type));
             nextInvalidTypes.add(getQualifiedName(type));
