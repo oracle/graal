@@ -173,7 +173,6 @@ public class CheckGraalInvariants extends GraalTest {
      */
     private static void checkGraph(HighTierContext context, StructuredGraph graph, boolean verifyEquals) {
         if (verifyEquals) {
-            System.out.println("test");
             new VerifyUsageWithEquals(Value.class).apply(graph, context);
             new VerifyUsageWithEquals(Register.class).apply(graph, context);
             new VerifyUsageWithEquals(JavaType.class).apply(graph, context);
