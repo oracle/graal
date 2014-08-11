@@ -32,7 +32,7 @@ public class CodeTree extends CodeElement<CodeTree> {
     private TypeMirror type;
     private final String string;
 
-    public CodeTree(CodeTreeKind kind, TypeMirror type, String string) {
+    CodeTree(CodeTreeKind kind, TypeMirror type, String string) {
         this.kind = kind;
         this.type = type;
         this.string = string;

@@ -29,9 +29,8 @@ import javax.lang.model.element.*;
 import javax.lang.model.type.*;
 
 import com.oracle.truffle.dsl.processor.*;
-import com.oracle.truffle.dsl.processor.api.element.*;
 
-public class CodeExecutableElement extends CodeElement<Element> implements WritableExecutableElement {
+public class CodeExecutableElement extends CodeElement<Element> implements ExecutableElement {
 
     private final List<TypeMirror> throwables = new ArrayList<>();
     private final List<VariableElement> parameters = parentableList(this, new ArrayList<VariableElement>());
@@ -88,7 +87,6 @@ public class CodeExecutableElement extends CodeElement<Element> implements Writa
         return Collections.emptyList();
     }
 
-    @Override
     public void setVarArgs(boolean varargs) {
         this.varArgs = varargs;
     }
@@ -98,7 +96,6 @@ public class CodeExecutableElement extends CodeElement<Element> implements Writa
         return varArgs;
     }
 
-    @Override
     public void setDefaultValue(AnnotationValue defaultValue) {
         this.defaultValue = defaultValue;
     }
@@ -151,55 +148,34 @@ public class CodeExecutableElement extends CodeElement<Element> implements Writa
         return types;
     }
 
-    @Override
     public void setReturnType(TypeMirror type) {
         returnType = type;
     }
 
-    @Override
     public void addParameter(VariableElement parameter) {
         parameters.add(parameter);
     }
 
-    @Override
     public void removeParameter(VariableElement parameter) {
         parameters.remove(parameter);
     }
 
-    public void removeParameter(String varName) {
-        VariableElement remove = null;
-        for (VariableElement var : getParameters()) {
-            if (var.getSimpleName().toString().equals(varName)) {
-                remove = var;
-                break;
-            }
-        }
-        if (remove != null) {
-            parameters.remove(remove);
-        }
-    }
-
-    @Override
     public void addThrownType(TypeMirror thrownType) {
         throwables.add(thrownType);
     }
 
-    @Override
     public void removeThrownType(TypeMirror thrownType) {
         throwables.remove(thrownType);
     }
 
-    @Override
     public void setSimpleName(Name name) {
         this.name = name;
     }
 
-    @Override
     public void setBody(String body) {
         this.body = body;
     }
 
-    @Override
     public String getBody() {
         return body;
     }

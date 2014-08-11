@@ -28,9 +28,8 @@ import javax.lang.model.element.*;
 import javax.lang.model.type.*;
 
 import com.oracle.truffle.dsl.processor.*;
-import com.oracle.truffle.dsl.processor.api.element.*;
 
-public final class CodeVariableElement extends CodeElement<Element> implements WritableVariableElement {
+public final class CodeVariableElement extends CodeElement<Element> implements VariableElement {
 
     private Name name;
     private TypeMirror type;
@@ -109,7 +108,6 @@ public final class CodeVariableElement extends CodeElement<Element> implements W
         return getSimpleName().toString();
     }
 
-    @Override
     public void setSimpleName(Name name) {
         this.name = name;
     }
@@ -118,7 +116,6 @@ public final class CodeVariableElement extends CodeElement<Element> implements W
         this.name = CodeNames.of(name);
     }
 
-    @Override
     public void setType(TypeMirror type) {
         this.type = type;
     }

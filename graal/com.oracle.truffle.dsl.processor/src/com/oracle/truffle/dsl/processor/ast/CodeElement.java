@@ -28,10 +28,9 @@ import java.util.*;
 
 import javax.lang.model.element.*;
 
-import com.oracle.truffle.dsl.processor.api.element.*;
 import com.oracle.truffle.dsl.processor.codewriter.*;
 
-public abstract class CodeElement<E extends Element> implements WritableElement, GeneratedElement {
+public abstract class CodeElement<E extends Element> implements Element, GeneratedElement {
 
     private final Set<Modifier> modifiers;
     private List<AnnotationMirror> annotations;
@@ -44,6 +43,10 @@ public abstract class CodeElement<E extends Element> implements WritableElement,
 
     public CodeElement() {
         this.modifiers = new LinkedHashSet<>();
+    }
+
+    public CodeElement(Set<Modifier> modifiers) {
+        this.modifiers = new LinkedHashSet<>(modifiers);
     }
 
     @Override
@@ -64,10 +67,6 @@ public abstract class CodeElement<E extends Element> implements WritableElement,
     @Override
     public Element getGeneratorElement() {
         return generatorElement;
-    }
-
-    public CodeElement(Set<Modifier> modifiers) {
-        this.modifiers = new LinkedHashSet<>(modifiers);
     }
 
     public E add(E element) {
@@ -137,7 +136,6 @@ public abstract class CodeElement<E extends Element> implements WritableElement,
         throw new UnsupportedOperationException();
     }
 
-    @Override
     public void addAnnotationMirror(AnnotationMirror annotationMirror) {
         getAnnotationMirrors().add(annotationMirror);
     }

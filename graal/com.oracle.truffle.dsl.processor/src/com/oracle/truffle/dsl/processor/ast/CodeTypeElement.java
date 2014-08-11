@@ -111,15 +111,6 @@ public class CodeTypeElement extends CodeElement<Element> implements TypeElement
         return super.getEnclosingElement() instanceof CodeCompilationUnit;
     }
 
-    public CodeVariableElement getField(String name) {
-        for (VariableElement field : ElementFilter.fieldsIn(getEnclosedElements())) {
-            if (field.getSimpleName().toString().equals(name)) {
-                return (CodeVariableElement) field;
-            }
-        }
-        return null;
-    }
-
     private Name createQualifiedName() {
         TypeElement enclosingType = getEnclosingClass();
         if (enclosingType == null) {

@@ -28,9 +28,8 @@ import javax.lang.model.element.*;
 import javax.lang.model.type.*;
 
 import com.oracle.truffle.dsl.processor.*;
-import com.oracle.truffle.dsl.processor.api.element.*;
 
-public class CodeAnnotationMirror implements WritableAnnotationMirror {
+public class CodeAnnotationMirror implements AnnotationMirror {
 
     private final DeclaredType annotationType;
     private final Map<ExecutableElement, AnnotationValue> values = new LinkedHashMap<>();
@@ -49,26 +48,16 @@ public class CodeAnnotationMirror implements WritableAnnotationMirror {
         return values;
     }
 
-    @Override
     public AnnotationValue getElementValue(ExecutableElement method) {
         return values.get(method);
     }
 
-    @Override
     public void setElementValue(ExecutableElement method, AnnotationValue value) {
         values.put(method, value);
     }
 
     public ExecutableElement findExecutableElement(String name) {
         return Utils.findExecutableElement(annotationType, name);
-    }
-
-    public static CodeAnnotationMirror clone(AnnotationMirror mirror) {
-        CodeAnnotationMirror copy = new CodeAnnotationMirror(mirror.getAnnotationType());
-        for (ExecutableElement key : mirror.getElementValues().keySet()) {
-            copy.setElementValue(key, mirror.getElementValues().get(key));
-        }
-        return copy;
     }
 
 }
