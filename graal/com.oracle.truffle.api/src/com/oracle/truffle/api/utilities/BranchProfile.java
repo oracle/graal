@@ -44,6 +44,10 @@ public final class BranchProfile {
         }
     }
 
+    public boolean isVisited() {
+        return visited;
+    }
+
     @Override
     public String toString() {
         return String.format("%s(%s)@%x", getClass().getSimpleName(), visited ? "visited" : "not-visited", hashCode());
