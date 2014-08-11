@@ -1262,7 +1262,8 @@ public class NodeCodeGenerator extends AbstractCompilationUnitFactory<NodeData> 
                 builder.tree(createGenericInvoke(builder, generic, generic));
                 builder.end();
                 builder.startElseBlock();
-                builder.startStatement().startStaticCall(context.getTruffleTypes().getCompilerDirectives(), "transferToInterpreterAndInvalidate").end().end();
+                builder.tree(createDeoptimize(builder));
+                builder.end();
             }
 
             builder.startReturn();
@@ -1386,7 +1387,7 @@ public class NodeCodeGenerator extends AbstractCompilationUnitFactory<NodeData> 
                 }
 
                 if (current.getNode().getGenericSpecialization().isReachable()) {
-                    builder.startStatement().startStaticCall(context.getTruffleTypes().getCompilerDirectives(), "transferToInterpreterAndInvalidate").end().end();
+                    builder.tree(createDeoptimize(builder));
                 }
                 builder.startReturn();
                 builder.cast(baseClassName(getModel().getNode()));
@@ -2651,13 +2652,7 @@ public class NodeCodeGenerator extends AbstractCompilationUnitFactory<NodeData> 
                 addInternalValueParameterNames(builder, polymorphic, polymorphic, null, true, null);
                 builder.end().end();
             } else if (specialization.isUninitialized()) {
-                if (node.getGenericSpecialization().isReachable()) {
-                    builder.startIf().string("!containsFallback").end().startBlock();
-                    builder.startStatement().startStaticCall(context.getTruffleTypes().getCompilerDirectives(), "transferToInterpreterAndInvalidate").end().end();
-                    builder.end();
-                } else {
-                    builder.startStatement().startStaticCall(context.getTruffleTypes().getCompilerDirectives(), "transferToInterpreterAndInvalidate").end().end();
-                }
+                builder.tree(createDeoptimizeUninitialized(node, builder));
                 builder.startReturn().startCall("this", EXECUTE_UNINITIALIZED);
                 addInternalValueParameterNames(builder, polymorphic, polymorphic, null, true, null);
                 builder.end().end();
@@ -2675,6 +2670,18 @@ public class NodeCodeGenerator extends AbstractCompilationUnitFactory<NodeData> 
                 }, elseBuilder.getRoot(), false, true, true, false));
             }
             clazz.add(executeMethod);
+        }
+
+        private CodeTree createDeoptimizeUninitialized(NodeData node, CodeTreeBuilder parent) {
+            CodeTreeBuilder builder = parent.create();
+            if (node.getGenericSpecialization().isReachable()) {
+                builder.startIf().string("!containsFallback").end().startBlock();
+                builder.tree(createDeoptimize(builder));
+                builder.end();
+            } else {
+                builder.tree(createDeoptimize(builder));
+            }
+            return builder.getRoot();
         }
 
         private CodeTree createExecuteBody(CodeTreeBuilder parent, SpecializationData specialization, ExecutableTypeData execType) {
@@ -2799,8 +2806,9 @@ public class NodeCodeGenerator extends AbstractCompilationUnitFactory<NodeData> 
 
         private CodeTree createFunctionalExecute(CodeTreeBuilder parent, final SpecializationData specialization, final ExecutableTypeData executable) {
             CodeTreeBuilder builder = new CodeTreeBuilder(parent);
+
             if (specialization.isUninitialized()) {
-                builder.tree(createDeoptimize(builder));
+                builder.tree(createDeoptimizeUninitialized(specialization.getNode(), builder));
             }
 
             builder.tree(createExecuteChildren(builder, executable, specialization, specialization.getParameters(), null));
