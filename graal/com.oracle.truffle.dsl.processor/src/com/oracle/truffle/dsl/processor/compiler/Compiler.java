@@ -33,6 +33,8 @@ public interface Compiler {
 
     String getHeaderComment(ProcessingEnvironment env, Element type);
 
-    List<? extends Element> getEnclosedElementsDeclarationOrder(TypeElement type);
+    List<? extends Element> getEnclosedElementsInDeclarationOrder(TypeElement type);
+
+    List<? extends Element> getAllMembersInDeclarationOrder(ProcessingEnvironment environment, TypeElement type);
 
 }

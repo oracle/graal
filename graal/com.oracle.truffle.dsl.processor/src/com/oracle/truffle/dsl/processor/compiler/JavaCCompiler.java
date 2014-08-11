@@ -40,8 +40,12 @@ public class JavaCCompiler extends AbstractCompiler {
         }
     }
 
-    public List<? extends Element> getEnclosedElementsDeclarationOrder(TypeElement type) {
+    public List<? extends Element> getEnclosedElementsInDeclarationOrder(TypeElement type) {
         return type.getEnclosedElements();
+    }
+
+    public List<? extends Element> getAllMembersInDeclarationOrder(ProcessingEnvironment environment, TypeElement type) {
+        return environment.getElementUtils().getAllMembers(type);
     }
 
     private static final Class<?>[] getTreeAndTopLevelSignature = new Class[]{Element.class, AnnotationMirror.class, AnnotationValue.class};

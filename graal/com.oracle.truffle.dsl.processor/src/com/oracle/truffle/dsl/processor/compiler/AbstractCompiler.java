@@ -42,7 +42,23 @@ public abstract class AbstractCompiler implements Compiler {
         if (o == null) {
             return null;
         }
-        Field field = o.getClass().getField(fieldName);
+        Class<?> clazz = o.getClass();
+        Field field = null;
+        try {
+            field = clazz.getField(fieldName);
+        } catch (NoSuchFieldException e) {
+            while (clazz != null) {
+                try {
+                    field = clazz.getDeclaredField(fieldName);
+                    break;
+                } catch (NoSuchFieldException e1) {
+                    clazz = clazz.getSuperclass();
+                }
+            }
+            if (field == null) {
+                throw e;
+            }
+        }
         field.setAccessible(true);
         return field.get(o);
     }
