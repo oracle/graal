@@ -26,27 +26,30 @@ import java.io.*;
 import java.net.*;
 
 /**
- * Utility to create a separate class loader for loading classes in {@code graal.jar}.
+ * Utility to create a separate class loader for loading classes in {@code graal.jar} and
+ * {@code graal-truffle.jar}.
  */
 public class Factory {
 
     /**
-     * Creates a new class loader for loading classes in {@code graal.jar}.
+     * Creates a new class loader for loading classes in {@code graal.jar} and
+     * {@code graal-truffle.jar}
      *
      * Called from the VM.
      */
     @SuppressWarnings("unused")
     private static ClassLoader newClassLoader() throws MalformedURLException {
-        URL[] urls = {getGraalJarUrl()};
-        return URLClassLoader.newInstance(urls);
+        URL[] urls = {getGraalJarUrl("graal"), getGraalJarUrl("graal-truffle")};
+        ClassLoader parent = null;
+        return URLClassLoader.newInstance(urls, parent);
     }
 
     /**
-     * Gets the URL for {@code graal.jar}.
+     * Gets the URL for {@code base.jar}.
      */
-    private static URL getGraalJarUrl() throws MalformedURLException {
+    private static URL getGraalJarUrl(String base) throws MalformedURLException {
         File file = new File(System.getProperty("java.home"));
-        for (String name : new String[]{"lib", "graal.jar"}) {
+        for (String name : new String[]{"lib", base + ".jar"}) {
             file = new File(file, name);
         }
 

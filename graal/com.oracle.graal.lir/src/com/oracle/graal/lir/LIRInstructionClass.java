@@ -347,19 +347,19 @@ public class LIRInstructionClass extends LIRIntrospection {
     }
 
     public final void forEachUse(LIRInstruction obj, InstructionValueProcedure proc) {
-        forEach(obj, obj, directUseCount, useOffsets, OperandMode.USE, useFlags, proc);
+        forEach(obj, directUseCount, useOffsets, OperandMode.USE, useFlags, proc);
     }
 
     public final void forEachAlive(LIRInstruction obj, InstructionValueProcedure proc) {
-        forEach(obj, obj, directAliveCount, aliveOffsets, OperandMode.ALIVE, aliveFlags, proc);
+        forEach(obj, directAliveCount, aliveOffsets, OperandMode.ALIVE, aliveFlags, proc);
     }
 
     public final void forEachTemp(LIRInstruction obj, InstructionValueProcedure proc) {
-        forEach(obj, obj, directTempCount, tempOffsets, OperandMode.TEMP, tempFlags, proc);
+        forEach(obj, directTempCount, tempOffsets, OperandMode.TEMP, tempFlags, proc);
     }
 
     public final void forEachDef(LIRInstruction obj, InstructionValueProcedure proc) {
-        forEach(obj, obj, directDefCount, defOffsets, OperandMode.DEF, defFlags, proc);
+        forEach(obj, directDefCount, defOffsets, OperandMode.DEF, defFlags, proc);
     }
 
     public final void forEachState(LIRInstruction obj, InstructionValueProcedure proc) {

@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.hotspot.nfi;
 
-import com.oracle.graal.api.code.*;
+import com.oracle.nfi.api.*;
 
 public class HotSpotNativeLibraryHandle implements NativeLibraryHandle {
 

@@ -217,7 +217,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
             logOptimizedInvalidated(this, oldNode, newNode, reason);
         }
         cancelInstalledTask(oldNode, newNode, reason);
-        invalidateInlining();
+        // invalidateInlining();
     }
 
     public void invalidateInlining() {

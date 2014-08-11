@@ -72,7 +72,7 @@ public class ArraysSubstitutionsTest extends MethodSubstitutionTest {
         }
 
         // Force compilation
-        InstalledCode code = getCode(getMetaAccess().lookupJavaMethod(testMethod), parse(testMethod));
+        InstalledCode code = getCode(getMetaAccess().lookupJavaMethod(testMethod), parseEager(testMethod));
         assert optional || code != null;
 
         for (int i = 0; i < args1.length; i++) {
@@ -374,7 +374,7 @@ public class ArraysSubstitutionsTest extends MethodSubstitutionTest {
 
     @Test
     public void testCanonicalLength() {
-        StructuredGraph graph = parse("testCanonicalLengthSnippet");
+        StructuredGraph graph = parseEager("testCanonicalLengthSnippet");
         Assumptions assumptions = new Assumptions(false);
         HighTierContext context = new HighTierContext(getProviders(), assumptions, null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
         new InliningPhase(new CanonicalizerPhase(true)).apply(graph, context);
@@ -391,7 +391,7 @@ public class ArraysSubstitutionsTest extends MethodSubstitutionTest {
 
     @Test
     public void testCanonicalEqual() {
-        StructuredGraph graph = parse("testCanonicalEqualSnippet");
+        StructuredGraph graph = parseEager("testCanonicalEqualSnippet");
         Assumptions assumptions = new Assumptions(false);
         HighTierContext context = new HighTierContext(getProviders(), assumptions, null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
         new InliningPhase(new CanonicalizerPhase(true)).apply(graph, context);
@@ -406,7 +406,7 @@ public class ArraysSubstitutionsTest extends MethodSubstitutionTest {
 
     @Test
     public void testVirtualEqual() {
-        StructuredGraph graph = parse("testVirtualEqualSnippet");
+        StructuredGraph graph = parseEager("testVirtualEqualSnippet");
         Assumptions assumptions = new Assumptions(false);
         HighTierContext context = new HighTierContext(getProviders(), assumptions, null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
         new InliningPhase(new CanonicalizerPhase(true)).apply(graph, context);
@@ -425,7 +425,7 @@ public class ArraysSubstitutionsTest extends MethodSubstitutionTest {
 
     @Test
     public void testVirtualNotEqual() {
-        StructuredGraph graph = parse("testVirtualNotEqualSnippet");
+        StructuredGraph graph = parseEager("testVirtualNotEqualSnippet");
         Assumptions assumptions = new Assumptions(false);
         HighTierContext context = new HighTierContext(getProviders(), assumptions, null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
         new InliningPhase(new CanonicalizerPhase(true)).apply(graph, context);

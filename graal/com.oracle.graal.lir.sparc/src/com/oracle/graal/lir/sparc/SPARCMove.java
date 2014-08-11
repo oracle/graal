@@ -387,8 +387,13 @@ public class SPARCMove {
         } else if (isConstant(input)) {
             if (isRegister(result)) {
                 const2reg(crb, masm, result, (Constant) input);
+            } else if (isStackSlot(result)) {
+                // Move a Constant to a stack slot (Probably a 7th output parameter)
+                Value scratch = input.getKind() == Kind.Float || input.getKind() == Kind.Double ? f30.asValue(input.getLIRKind()) : g5.asValue(input.getLIRKind());
+                const2reg(crb, masm, scratch, (Constant) input);
+                reg2stack(crb, masm, result, scratch);
             } else {
-                throw GraalInternalError.shouldNotReachHere();
+                throw GraalInternalError.shouldNotReachHere("Result is a: " + result);
             }
         } else {
             throw GraalInternalError.shouldNotReachHere();
@@ -405,6 +410,10 @@ public class SPARCMove {
             return;
         }
         switch (input.getKind()) {
+            case Boolean:
+            case Byte:
+            case Short:
+            case Char:
             case Int:
             case Long:
             case Object:
@@ -438,7 +447,7 @@ public class SPARCMove {
                 }
                 break;
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw GraalInternalError.shouldNotReachHere("Input is a: " + input.getKind());
         }
     }
 
@@ -446,6 +455,14 @@ public class SPARCMove {
         SPARCAddress dst = (SPARCAddress) crb.asAddress(result);
         Register src = asRegister(input);
         switch (input.getKind()) {
+            case Byte:
+            case Boolean:
+                new Stb(src, dst).emit(masm);
+                break;
+            case Char:
+            case Short:
+                new Sth(src, dst).emit(masm);
+                break;
             case Int:
                 new Stw(src, dst).emit(masm);
                 break;
@@ -460,7 +477,7 @@ public class SPARCMove {
                 new Stdf(src, dst).emit(masm);
                 break;
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw GraalInternalError.shouldNotReachHere("Input is a: " + input.getKind() + "(" + input + ")");
         }
     }
 
@@ -468,6 +485,16 @@ public class SPARCMove {
         SPARCAddress src = (SPARCAddress) crb.asAddress(input);
         Register dst = asRegister(result);
         switch (input.getKind()) {
+            case Boolean:
+            case Byte:
+                new Ldsb(src, dst).emit(masm);
+                break;
+            case Short:
+                new Ldsh(src, dst).emit(masm);
+                break;
+            case Char:
+                new Lduh(src, dst).emit(masm);
+                break;
             case Int:
                 new Ldsw(src, dst).emit(masm);
                 break;
@@ -476,9 +503,13 @@ public class SPARCMove {
                 new Ldx(src, dst).emit(masm);
                 break;
             case Float:
+                new Ldf(src, dst).emit(masm);
+                break;
             case Double:
+                new Lddf(src, dst).emit(masm);
+                break;
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw GraalInternalError.shouldNotReachHere("Input is a: " + input.getKind());
         }
     }
 
@@ -510,6 +541,7 @@ public class SPARCMove {
                 }
                 break;
             case Float:
+                // TODO: Handle it the same way, as in the double case with Movwtos
                 crb.asFloatConstRef(input);
                 // First load the address into the scratch register
                 new Setx(0, scratch, true).emit(masm);
@@ -517,9 +549,8 @@ public class SPARCMove {
                 new Ldf(scratch, asFloatReg(result)).emit(masm);
                 break;
             case Double:
-                // before we load this from memory and do the complicated lookup,
+                // instead loading this from memory and do the complicated lookup,
                 // just load it directly into a scratch register
-                scratch = g5;
                 // First load the address into the scratch register
                 new Setx(Double.doubleToLongBits(input.asDouble()), scratch, true).emit(masm);
                 // Now load the float value

@@ -189,9 +189,19 @@ public class SPARC extends Architecture {
      * Stack bias for stack and frame pointer loads.
      */
     public static final int STACK_BIAS = 0x7ff;
+    /**
+     * In fact there are 64 single floating point registers, 32 of them could be accessed. TODO:
+     * Improve handling of these float registers
+     */
+    public static final int FLOAT_REGISTER_COUNT = 64;
+
+    /**
+     * Alignment for valid memory access
+     */
+    public static final int MEMORY_ACCESS_ALIGN = 4;
 
     public SPARC() {
-        super("SPARC", 8, ByteOrder.BIG_ENDIAN, false, allRegisters, LOAD_STORE | STORE_STORE, 1, r31.encoding + 1, 8);
+        super("SPARC", 8, ByteOrder.BIG_ENDIAN, false, allRegisters, LOAD_STORE | STORE_STORE, 1, r31.encoding + FLOAT_REGISTER_COUNT + 1, 8);
     }
 
     @Override
@@ -231,5 +241,9 @@ public class SPARC extends Architecture {
         } else {
             return Kind.Illegal;
         }
+    }
+
+    public static int spillSlotSize(TargetDescription td, PlatformKind kind) {
+        return Math.max(td.getSizeInBytes(kind), MEMORY_ACCESS_ALIGN);
     }
 }

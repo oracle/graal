@@ -118,12 +118,15 @@ public class CheckGraalInvariants extends GraalTest {
                         // ignore
                     } else {
                         String methodName = className + "." + m.getName();
+                        boolean verifyEquals = !m.isAnnotationPresent(ExcludeFromIdentityComparisonVerification.class);
                         if (matches(filters, methodName)) {
                             executor.execute(() -> {
                                 StructuredGraph graph = new StructuredGraph(metaAccess.lookupJavaMethod(m));
                                 try (DebugConfigScope s = Debug.setConfig(new DelegatingDebugConfig().disable(INTERCEPT))) {
                                     graphBuilderSuite.apply(graph, context);
-                                    checkGraph(context, graph);
+                                    // update phi stamps
+                                    graph.getNodes().filter(PhiNode.class).forEach(PhiNode::inferStamp);
+                                    checkGraph(context, graph, verifyEquals);
                                 } catch (VerificationError e) {
                                     errors.add(e.getMessage());
                                 } catch (LinkageError e) {
@@ -168,13 +171,15 @@ public class CheckGraalInvariants extends GraalTest {
     /**
      * Checks the invariants for a single graph.
      */
-    private static void checkGraph(HighTierContext context, StructuredGraph graph) {
-        new VerifyUsageWithEquals(Value.class).apply(graph, context);
-        new VerifyUsageWithEquals(Register.class).apply(graph, context);
-        new VerifyUsageWithEquals(JavaType.class).apply(graph, context);
-        new VerifyUsageWithEquals(JavaMethod.class).apply(graph, context);
-        new VerifyUsageWithEquals(JavaField.class).apply(graph, context);
-        new VerifyUsageWithEquals(LIRKind.class).apply(graph, context);
+    private static void checkGraph(HighTierContext context, StructuredGraph graph, boolean verifyEquals) {
+        if (verifyEquals) {
+            new VerifyUsageWithEquals(Value.class).apply(graph, context);
+            new VerifyUsageWithEquals(Register.class).apply(graph, context);
+            new VerifyUsageWithEquals(JavaType.class).apply(graph, context);
+            new VerifyUsageWithEquals(JavaMethod.class).apply(graph, context);
+            new VerifyUsageWithEquals(JavaField.class).apply(graph, context);
+            new VerifyUsageWithEquals(LIRKind.class).apply(graph, context);
+        }
         new VerifyDebugUsage().apply(graph, context);
     }
 

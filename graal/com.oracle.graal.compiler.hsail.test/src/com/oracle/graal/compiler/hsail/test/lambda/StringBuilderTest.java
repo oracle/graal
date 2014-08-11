@@ -47,7 +47,7 @@ public class StringBuilderTest extends GraalKernelTester {
 
     @Override
     protected boolean supportsRequiredCapabilities() {
-        return (canHandleObjectAllocation());
+        return (canHandleObjectAllocation() && (runningOnSimulator() || runningCQETests()));
     }
 
     @Test

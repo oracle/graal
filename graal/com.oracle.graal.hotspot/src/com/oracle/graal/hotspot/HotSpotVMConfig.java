@@ -848,6 +848,8 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMType(name = "vtableEntry", get = HotSpotVMType.Type.SIZE) @Stable public int vtableEntrySize;
     @HotSpotVMField(name = "vtableEntry::_method", type = "Method*", get = HotSpotVMField.Type.OFFSET) @Stable public int vtableEntryMethodOffset;
     @HotSpotVMValue(expression = "InstanceKlass::vtable_start_offset() * HeapWordSize") @Stable public int instanceKlassVtableStartOffset;
+    @HotSpotVMValue(expression = "InstanceKlass::vtable_length_offset() * HeapWordSize") @Stable public int instanceKlassVtableLengthOffset;
+    @HotSpotVMValue(expression = "Universe::base_vtable_size() / vtableEntry::size()") @Stable public int baseVtableLength;
 
     /**
      * The offset of the array length word in an array object's header.

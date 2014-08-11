@@ -24,6 +24,7 @@ package com.oracle.graal.loop;
 
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 
+import java.util.*;
 import java.util.function.*;
 
 import com.oracle.graal.debug.*;
@@ -63,25 +64,27 @@ public abstract class LoopPolicies {
         return loop.loopBegin().unswitches() <= LoopMaxUnswitch.getValue();
     }
 
-    public static boolean shouldUnswitch(LoopEx loop, ControlSplitNode controlSplit) {
-        Block postDomBlock = loop.loopsData().controlFlowGraph().blockFor(controlSplit).getPostdominator();
-        BeginNode postDom = postDomBlock != null ? postDomBlock.getBeginNode() : null;
+    public static boolean shouldUnswitch(LoopEx loop, List<ControlSplitNode> controlSplits) {
         int loopTotal = loop.size();
         int inBranchTotal = 0;
         double maxProbability = 0;
-        for (Node successor : controlSplit.successors()) {
-            BeginNode branch = (BeginNode) successor;
-            // this may count twice because of fall-through in switches
-            inBranchTotal += loop.nodesInLoopFrom(branch, postDom).count();
-            double probability = controlSplit.probability(branch);
-            if (probability > maxProbability) {
-                maxProbability = probability;
+        for (ControlSplitNode controlSplit : controlSplits) {
+            Block postDomBlock = loop.loopsData().controlFlowGraph().blockFor(controlSplit).getPostdominator();
+            BeginNode postDom = postDomBlock != null ? postDomBlock.getBeginNode() : null;
+            for (Node successor : controlSplit.successors()) {
+                BeginNode branch = (BeginNode) successor;
+                // this may count twice because of fall-through in switches
+                inBranchTotal += loop.nodesInLoopFrom(branch, postDom).count();
+                double probability = controlSplit.probability(branch);
+                if (probability > maxProbability) {
+                    maxProbability = probability;
+                }
             }
         }
         int netDiff = loopTotal - (inBranchTotal);
         double uncertainty = 1 - maxProbability;
         int maxDiff = LoopUnswitchMaxIncrease.getValue() + (int) (LoopUnswitchUncertaintyBoost.getValue() * loop.loopBegin().loopFrequency() * uncertainty);
-        Debug.log("shouldUnswitch(%s, %s) : delta=%d, max=%d, %.2f%% inside of branches", loop, controlSplit, netDiff, maxDiff, (double) (inBranchTotal) / loopTotal * 100);
+        Debug.log("shouldUnswitch(%s, %s) : delta=%d, max=%d, %.2f%% inside of branches", loop, controlSplits, netDiff, maxDiff, (double) (inBranchTotal) / loopTotal * 100);
         return netDiff <= maxDiff;
     }
 

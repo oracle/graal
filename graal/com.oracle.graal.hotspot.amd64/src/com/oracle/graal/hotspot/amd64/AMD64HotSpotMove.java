@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot.amd64;
 import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
+import com.oracle.graal.amd64.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
@@ -254,4 +255,24 @@ public class AMD64HotSpotMove {
         }
     }
 
+    public static class CompressedNullCheckOp extends AMD64LIRInstruction {
+
+        @Use({COMPOSITE}) protected AMD64AddressValue address;
+        @State protected LIRFrameState state;
+
+        public CompressedNullCheckOp(AMD64AddressValue address, LIRFrameState state) {
+            this.address = address;
+            this.state = state;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+            crb.recordImplicitException(masm.position(), state);
+            masm.testl(AMD64.rax, address.toAddress());
+        }
+
+        public LIRFrameState getState() {
+            return state;
+        }
+    }
 }

@@ -22,13 +22,14 @@
  */
 package com.oracle.graal.hotspot.sparc;
 
+import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 import static com.oracle.graal.sparc.SPARC.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.asm.sparc.SPARCAssembler.Add;
 import com.oracle.graal.asm.sparc.SPARCAssembler.Stx;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Mov;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.sparc.*;
@@ -39,11 +40,13 @@ final class SPARCHotSpotCRuntimeCallPrologueOp extends SPARCLIRInstruction {
     private final int threadLastJavaSpOffset;
     private final Register thread;
     private final Register stackPointer;
+    @Def({REG, STACK}) protected Value threadTemp;
 
-    public SPARCHotSpotCRuntimeCallPrologueOp(int threadLastJavaSpOffset, Register thread, Register stackPointer) {
+    public SPARCHotSpotCRuntimeCallPrologueOp(int threadLastJavaSpOffset, Register thread, Register stackPointer, Value threadTemp) {
         this.threadLastJavaSpOffset = threadLastJavaSpOffset;
         this.thread = thread;
         this.stackPointer = stackPointer;
+        this.threadTemp = threadTemp;
     }
 
     @Override
@@ -53,6 +56,6 @@ final class SPARCHotSpotCRuntimeCallPrologueOp extends SPARCLIRInstruction {
         new Stx(g4, new SPARCAddress(thread, threadLastJavaSpOffset)).emit(masm);
 
         // Save the thread register when calling out to the runtime.
-        new Mov(thread, l7).emit(masm);
+        SPARCMove.move(crb, masm, threadTemp, thread.asValue(LIRKind.value(Kind.Long)));
     }
 }

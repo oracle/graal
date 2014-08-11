@@ -141,8 +141,8 @@ public class CompositeValueClass extends LIRIntrospection {
         return str.toString();
     }
 
-    public final void forEachComponent(LIRInstruction inst, CompositeValue obj, OperandMode mode, InstructionValueProcedure proc) {
-        forEach(inst, obj, directComponentCount, componentOffsets, mode, componentFlags, proc);
+    public final CompositeValue forEachComponent(LIRInstruction inst, CompositeValue obj, OperandMode mode, InstructionValueProcedure proc) {
+        return forEachComponent(inst, obj, directComponentCount, componentOffsets, mode, componentFlags, proc);
     }
 
     public final void forEachComponent(LIRInstruction inst, CompositeValue obj, OperandMode mode, ValuePositionProcedure proc, ValuePosition outerPosition) {
@@ -171,5 +171,13 @@ public class CompositeValueClass extends LIRIntrospection {
 
     EnumSet<OperandFlag> getFlags(ValuePosition pos) {
         return componentFlags[pos.getIndex()];
+    }
+
+    void copyValueArrays(CompositeValue compositeValue) {
+        for (int i = directComponentCount; i < componentOffsets.length; i++) {
+            Value[] valueArray = getValueArray(compositeValue, componentOffsets[i]);
+            Value[] newValueArray = Arrays.copyOf(valueArray, valueArray.length);
+            setValueArray(compositeValue, componentOffsets[i], newValueArray);
+        }
     }
 }

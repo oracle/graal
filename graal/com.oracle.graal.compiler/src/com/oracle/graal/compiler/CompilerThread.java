@@ -44,6 +44,7 @@ public class CompilerThread extends Thread {
     @Override
     public void run() {
         GraalDebugConfig debugConfig = debugConfigAccess.getDebugConfig();
+        setContextClassLoader(getClass().getClassLoader());
         try {
             super.run();
         } finally {

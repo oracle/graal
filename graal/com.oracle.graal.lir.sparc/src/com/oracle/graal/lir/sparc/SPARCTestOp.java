@@ -29,15 +29,13 @@ import static com.oracle.graal.sparc.SPARC.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Ldsw;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Ldx;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.lir.asm.*;
 
 public class SPARCTestOp extends SPARCLIRInstruction {
 
     @Use({REG}) protected Value x;
-    @Use({REG, STACK, CONST}) protected Value y;
+    @Use({REG, CONST}) protected Value y;
 
     public SPARCTestOp(Value x, Value y) {
         this.x = x;
@@ -48,6 +46,10 @@ public class SPARCTestOp extends SPARCLIRInstruction {
     public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
         if (isRegister(y)) {
             switch (x.getKind()) {
+                case Short:
+                case Byte:
+                case Char:
+                case Boolean:
                 case Int:
                     new Andcc(asIntReg(x), asIntReg(y), g0).emit(masm);
                     break;
@@ -59,6 +61,10 @@ public class SPARCTestOp extends SPARCLIRInstruction {
             }
         } else if (isConstant(y)) {
             switch (x.getKind()) {
+                case Short:
+                case Byte:
+                case Char:
+                case Boolean:
                 case Int:
                     new Andcc(asIntReg(x), crb.asIntConst(y), g0).emit(masm);
                     break;
@@ -69,18 +75,7 @@ public class SPARCTestOp extends SPARCLIRInstruction {
                     throw GraalInternalError.shouldNotReachHere();
             }
         } else {
-            switch (x.getKind()) {
-                case Int:
-                    new Ldsw((SPARCAddress) crb.asIntAddr(y), asIntReg(y)).emit(masm);
-                    new Andcc(asIntReg(x), asIntReg(y), g0).emit(masm);
-                    break;
-                case Long:
-                    new Ldx((SPARCAddress) crb.asLongAddr(y), asLongReg(y)).emit(masm);
-                    new Andcc(asLongReg(x), asLongReg(y), g0).emit(masm);
-                    break;
-                default:
-                    throw GraalInternalError.shouldNotReachHere();
-            }
+            throw GraalInternalError.shouldNotReachHere();
         }
     }
 

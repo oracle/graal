@@ -26,6 +26,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.sparc.*;
 
 /**
  * SPARC specific frame map.
@@ -34,11 +35,15 @@ import com.oracle.graal.lir.*;
  *
  * <pre>
  *   Base       Contents
- *
+ * 
  *            :                                :  -----
  *   caller   | incoming overflow argument n   |    ^
  *   frame    :     ...                        :    | positive
  *            | incoming overflow argument 0   |    | offsets
+ *            +--------------------------------+    |
+ *            |                                |    |
+ *            : register save area             :    |
+ *            |                                |    |
  *   ---------+--------------------------------+---------------------------
  *            | spill slot 0                   |    | negative   ^      ^
  *            :     ...                        :    v offsets    |      |
@@ -100,5 +105,30 @@ public final class SPARCFrameMap extends FrameMap {
     @Override
     protected StackSlot allocateNewSpillSlot(LIRKind kind, int additionalOffset) {
         return StackSlot.get(kind, -spillSize + additionalOffset, true);
+    }
+
+    /**
+     * In SPARC we have spill slots word aligned
+     */
+    @Override
+    public int spillSlotSize(LIRKind kind) {
+        return SPARC.spillSlotSize(target, kind.getPlatformKind());
+    }
+
+    /**
+     * We must add the calleSaveAreaSize() when it is a in or out parameter
+     */
+    @Override
+    public int offsetForStackSlot(StackSlot slot) {
+        int offset = super.offsetForStackSlot(slot);
+        if (slot.getRawOffset() >= 0) { // If In or Out parameter
+            offset += calleeSaveAreaSize();
+        }
+        return offset;
+    }
+
+    @Override
+    public boolean frameNeedsAllocating() {
+        return super.frameNeedsAllocating() || spillSize > 0;
     }
 }

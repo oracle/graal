@@ -136,7 +136,7 @@ public final class MonitorDeoptTest extends GraalCompilerTest {
     public void run0() throws Throwable {
         Method method = getMethod("test");
 
-        StructuredGraph graph = parse(method);
+        StructuredGraph graph = parseEager(method);
         removeLoopSafepoint(graph);
 
         ResolvedJavaMethod javaMethod = getMetaAccess().lookupJavaMethod(method);

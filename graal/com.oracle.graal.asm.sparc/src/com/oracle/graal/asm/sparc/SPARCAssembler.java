@@ -63,8 +63,8 @@ public abstract class SPARCAssembler extends Assembler {
         protected static final int OP2_SHIFT = 22;
 
         // @formatter:off
-        protected static final int OP_MASK  = 0b11000000000000000000000000000000;
-        protected static final int OP2_MASK = 0b00000001110000000000000000000000;
+        protected static final int OP_MASK  = 0b1100_0000_0000_0000_0000_0000_0000_0000;
+        protected static final int OP2_MASK = 0b0000_0001_1100_0000_0000_0000_0000_0000;
         // @formatter:off
 
         private int op2;
@@ -1264,31 +1264,31 @@ public abstract class SPARCAssembler extends Assembler {
         Prefetch(0b101101, "prefetch"),
         Prefetcha(0b111101, "prefetcha"),
 
-        Lduw(0b00000, "lduw"),
-        Ldub(0b00001, "ldub"),
-        Lduh(0b00010, "lduh"),
-        Stw(0b000100, "stw"),
-        Stb(0b000101, "stb"),
-        Sth(0b000110, "sth"),
-        Ldsw(0b001000, "ldsw"),
-        Ldsb(0b001001, "ldsb"),
-        Ldsh(0b001010, "ldsh"),
-        Ldx(0b001011, "ldx"),
-        Stx(0b001110, "stx"),
+        Lduw  (0b00_0000, "lduw"),
+        Ldub  (0b00_0001, "ldub"),
+        Lduh  (0b00_0010, "lduh"),
+        Stw   (0b00_0100, "stw"),
+        Stb   (0b00_0101, "stb"),
+        Sth   (0b00_0110, "sth"),
+        Ldsw  (0b00_1000, "ldsw"),
+        Ldsb  (0b00_1001, "ldsb"),
+        Ldsh  (0b00_1010, "ldsh"),
+        Ldx   (0b00_1011, "ldx"),
+        Stx   (0b00_1110, "stx"),
 
-        Ldf(0b100000, "ldf"),
-        Ldfsr(0x21, "ldfsr"),
-        Ldaf(0x22, "ldaf"),
-        Lddf(0b100011, "lddf"),
-        Stf(0b100100, "stf"),
-        Stfsr(0x25, "stfsr"),
-        Staf(0x26, "staf"),
-        Stdf(0b100111, "stdf"),
+        Ldf   (0b10_0000, "ldf"),
+        Ldfsr (0b10_0001, "ldfsr"),
+        Ldaf  (0b10_0010, "ldaf"),
+        Lddf  (0b10_0011, "lddf"),
+        Stf   (0b10_0100, "stf"),
+        Stfsr (0b10_0101, "stfsr"),
+        Staf  (0x10_0110, "staf"),
+        Stdf  (0b10_0111, "stdf"),
 
-        Fcmp(0b110101, "fcmp"),
+        Fcmp  (0b11_0101, "fcmp"),
 
-        Ldxa (0b01_1011, "ldxa"),
-        Lduwa(0b01_0000, "lduwa");
+        Ldxa  (0b01_1011, "ldxa"),
+        Lduwa (0b01_0000, "lduwa");
 
         // @formatter:on
 
@@ -3405,6 +3405,10 @@ public abstract class SPARCAssembler extends Assembler {
         public Jmpl(Register src, int simm13, Register dst) {
             super(Op3s.Jmpl, src, simm13, dst);
         }
+
+        public Jmpl(Register src1, Register src2, Register dst) {
+            super(Op3s.Jmpl, src1, src2, dst);
+        }
     }
 
     public static class Lddf extends Fmt11 {
@@ -3687,6 +3691,8 @@ public abstract class SPARCAssembler extends Assembler {
         public Return(Register src1, Register src2) {
             super(Op3s.Rett, src1, src2, r0);
         }
+
+        public static int PC_RETURN_OFFSET = 8;
     }
 
     public static class Save extends Fmt10 {

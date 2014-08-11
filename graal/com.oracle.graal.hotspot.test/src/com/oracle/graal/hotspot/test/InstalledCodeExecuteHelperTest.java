@@ -50,13 +50,13 @@ public class InstalledCodeExecuteHelperTest extends GraalCompilerTest {
     public void test1() throws NoSuchMethodException, SecurityException, InvalidInstalledCodeException {
         final Method fooMethod = InstalledCodeExecuteHelperTest.class.getMethod("foo");
         final HotSpotResolvedJavaMethod fooJavaMethod = (HotSpotResolvedJavaMethod) metaAccess.lookupJavaMethod(fooMethod);
-        final HotSpotInstalledCode fooCode = (HotSpotInstalledCode) getCode(fooJavaMethod, parse(fooMethod));
+        final HotSpotInstalledCode fooCode = (HotSpotInstalledCode) getCode(fooJavaMethod, parseEager(fooMethod));
 
         argsToBind = new Object[]{fooCode};
 
         final Method benchmarkMethod = InstalledCodeExecuteHelperTest.class.getMethod("benchmark", HotSpotInstalledCode.class);
         final ResolvedJavaMethod benchmarkJavaMethod = metaAccess.lookupJavaMethod(benchmarkMethod);
-        final HotSpotInstalledCode installedBenchmarkCode = (HotSpotInstalledCode) getCode(benchmarkJavaMethod, parse(benchmarkMethod));
+        final HotSpotInstalledCode installedBenchmarkCode = (HotSpotInstalledCode) getCode(benchmarkJavaMethod, parseEager(benchmarkMethod));
 
         Assert.assertEquals(Integer.valueOf(42), benchmark(fooCode));
 
@@ -79,8 +79,8 @@ public class InstalledCodeExecuteHelperTest extends GraalCompilerTest {
     }
 
     @Override
-    protected StructuredGraph parse(Method m) {
-        StructuredGraph graph = super.parse(m);
+    protected StructuredGraph parseEager(Method m) {
+        StructuredGraph graph = super.parseEager(m);
         if (argsToBind != null) {
             Object receiver = isStatic(m.getModifiers()) ? null : this;
             Object[] args = argsWithReceiver(receiver, argsToBind);

@@ -59,7 +59,8 @@ public class SPARCHotSpotRegisterConfig implements RegisterConfig {
         for (Register reg : getAllocatableRegisters()) {
             if (architecture.canStoreValue(reg.getRegisterCategory(), kind)) {
                 // Special treatment for double precision
-                if (kind == Kind.Double) {
+                // TODO: This is wasteful it uses only half of the registers as float.
+                if (kind == Kind.Double || kind == Kind.Float) {
                     // Only even register numbers are valid double precision regs
                     if (reg.number % 2 == 0) {
                         list.add(reg);
@@ -235,8 +236,14 @@ public class SPARCHotSpotRegisterConfig implements RegisterConfig {
             }
 
             if (locations[i] == null) {
+                // Stack slot is always aligned to its size in bytes but minimum wordsize
+                int typeSize = SPARC.spillSlotSize(target, kind);
+                int modulus = currentStackOffset % typeSize;
+                if (modulus != 0) {
+                    currentStackOffset += typeSize - modulus;
+                }
                 locations[i] = StackSlot.get(target.getLIRKind(kind.getStackKind()), currentStackOffset, !type.out);
-                currentStackOffset += Math.max(target.getSizeInBytes(kind), target.wordSize);
+                currentStackOffset += typeSize;
             }
         }
 

@@ -71,7 +71,7 @@ public class InvokeHintsTest extends GraalCompilerTest {
     }
 
     private void test(String snippet) {
-        StructuredGraph graph = parse(snippet);
+        StructuredGraph graph = parseEager(snippet);
         Map<Invoke, Double> hints = new HashMap<>();
         for (Invoke invoke : graph.getInvokes()) {
             hints.put(invoke, 1000d);
@@ -82,7 +82,7 @@ public class InvokeHintsTest extends GraalCompilerTest {
         new InliningPhase(hints, new CanonicalizerPhase(true)).apply(graph, context);
         new CanonicalizerPhase(true).apply(graph, context);
         new DeadCodeEliminationPhase().apply(graph);
-        StructuredGraph referenceGraph = parse(REFERENCE_SNIPPET);
+        StructuredGraph referenceGraph = parseEager(REFERENCE_SNIPPET);
         assertEquals(referenceGraph, graph);
     }
 }

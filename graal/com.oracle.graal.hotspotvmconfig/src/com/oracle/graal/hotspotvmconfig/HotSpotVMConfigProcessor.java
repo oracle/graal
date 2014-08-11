@@ -26,6 +26,7 @@ import java.io.*;
 import java.lang.annotation.*;
 import java.util.*;
 import java.util.Map.Entry;
+import java.util.function.*;
 
 import javax.annotation.processing.*;
 import javax.lang.model.*;
@@ -142,7 +143,6 @@ public class HotSpotVMConfigProcessor extends AbstractProcessor {
         "void VMStructs::initHotSpotVMConfig(oop vmconfig_oop) {",
         "  InstanceKlass* vmconfig_klass = InstanceKlass::cast(vmconfig_oop->klass());",
         "",
-        "  for (JavaFieldStream fs(vmconfig_klass); !fs.done(); fs.next()) {",
     };
     //@formatter:on
 
@@ -158,7 +158,29 @@ public class HotSpotVMConfigProcessor extends AbstractProcessor {
                 out.println(line);
             }
 
-            out.println();
+            Map<String, Integer> expectedValues = new HashMap<>();
+            for (VMConfigField value : annotations.values()) {
+                if (!value.optional) {
+                    String key = value.define != null ? value.define : "";
+                    if (expectedValues.get(key) == null) {
+                        expectedValues.put(key, 1);
+                    } else {
+                        expectedValues.put(key, expectedValues.get(key) + 1);
+                    }
+                }
+            }
+
+            out.printf("  int expected = %s;%n", expectedValues.get(""));
+            for (Entry<String, Integer> entry : expectedValues.entrySet()) {
+                if (entry.getKey().equals("")) {
+                    continue;
+                }
+                out.printf("#if %s%n", entry.getKey());
+                out.printf("  expected += %s;%n", entry.getValue());
+                out.printf("#endif%n");
+            }
+            out.println("  int assigned = 0;");
+            out.println("  for (JavaFieldStream fs(vmconfig_klass); !fs.done(); fs.next()) {");
 
             Set<String> fieldTypes = new HashSet<>();
             for (VMConfigField key : annotations.values()) {
@@ -194,6 +216,7 @@ public class HotSpotVMConfigProcessor extends AbstractProcessor {
                 out.println("    } // if");
             }
             out.println("  } // for");
+            out.println("  guarantee(assigned == expected, \"Didn't find all fields during init of HotSpotVMConfig.  Maybe recompile?\");");
             out.println("}");
         }
     }
@@ -215,21 +238,84 @@ public class HotSpotVMConfigProcessor extends AbstractProcessor {
         }
     }
 
-    class VMConfigField {
+    static class VMConfigField {
+        final String setter;
+        final String define;
+        private boolean optional;
         final VariableElement field;
-        final Annotation annotation;
 
-        public VMConfigField(VariableElement field, Annotation value) {
-            super();
+        public VMConfigField(VariableElement field, HotSpotVMField value) {
             this.field = field;
-            this.annotation = value;
+            define = archDefines(value.archs());
+            String type = field.asType().toString();
+            String name = value.name();
+            int i = name.lastIndexOf("::");
+            switch (value.get()) {
+                case OFFSET:
+                    setter = String.format("set_%s(\"%s\", offset_of(%s, %s));", type, field.getSimpleName(), name.substring(0, i), name.substring(i + 2));
+                    break;
+                case ADDRESS:
+                    setter = String.format("set_address(\"%s\", &%s);", field.getSimpleName(), name);
+                    break;
+                case VALUE:
+                    setter = String.format("set_%s(\"%s\", (%s) (intptr_t) %s);", type, field.getSimpleName(), type, name);
+                    break;
+                default:
+                    throw new GraalInternalError("unexpected type: " + value.get());
+            }
+        }
+
+        public VMConfigField(VariableElement field, HotSpotVMType value) {
+            this.field = field;
+            define = null; // ((HotSpotVMType) annotation).archs();
+            String type = field.asType().toString();
+            setter = String.format("set_%s(\"%s\", sizeof(%s));", type, field.getSimpleName(), value.name());
+        }
+
+        public VMConfigField(VariableElement field, HotSpotVMValue value) {
+            this.field = field;
+            String[] defines = value.defines();
+            int length = defines.length;
+            if (length != 0) {
+                for (int i = 0; i < length; i++) {
+                    defines[i] = "defined(" + defines[i] + ")";
+                }
+                define = String.join(" || ", defines);
+            } else {
+                define = null; // ((HotSpotVMValue) annotation).archs();
+            }
+            String type = field.asType().toString();
+            if (value.get() == HotSpotVMValue.Type.ADDRESS) {
+                setter = String.format("set_address(\"%s\", %s);", field.getSimpleName(), value.expression());
+            } else {
+                setter = String.format("set_%s(\"%s\", %s);", type, field.getSimpleName(), value.expression());
+            }
+        }
+
+        public VMConfigField(VariableElement field, HotSpotVMConstant value) {
+            this.field = field;
+            define = archDefines(value.archs());
+            String type = field.asType().toString();
+            setter = String.format("set_%s(\"%s\", %s);", type, field.getSimpleName(), value.name());
+        }
+
+        public VMConfigField(VariableElement field, HotSpotVMFlag value) {
+            this.field = field;
+            define = archDefines(value.archs());
+            optional = value.optional();
+            String type = field.asType().toString();
+            if (value.optional()) {
+                setter = String.format("set_optional_%s_flag(\"%s\",  \"%s\");", type, field.getSimpleName(), value.name());
+            } else {
+                setter = String.format("set_%s(\"%s\", %s);", type, field.getSimpleName(), value.name());
+            }
         }
 
         public String getType() {
             return field.asType().toString();
         }
 
-        private String archDefine(String arch) {
+        private static String archDefine(String arch) {
             switch (arch) {
                 case "amd64":
                     return "defined(AMD64)";
@@ -242,8 +328,8 @@ public class HotSpotVMConfigProcessor extends AbstractProcessor {
             }
         }
 
-        private String archDefines(String[] archs) {
-            if (archs.length == 0) {
+        private static String archDefines(String[] archs) {
+            if (archs == null || archs.length == 0) {
                 return null;
             }
             if (archs.length == 1) {
@@ -254,102 +340,16 @@ public class HotSpotVMConfigProcessor extends AbstractProcessor {
             for (String arch : archs) {
                 defs[i++] = archDefine(arch);
             }
-            return String.join(" ||", defs);
+            return String.join(" || ", defs);
         }
 
         public void emit(PrintWriter out) {
-            if (annotation instanceof HotSpotVMField) {
-                emitField(out, (HotSpotVMField) annotation);
-            } else if (annotation instanceof HotSpotVMType) {
-                emitType(out, (HotSpotVMType) annotation);
-            } else if (annotation instanceof HotSpotVMFlag) {
-                emitFlag(out, (HotSpotVMFlag) annotation);
-            } else if (annotation instanceof HotSpotVMConstant) {
-                emitConstant(out, (HotSpotVMConstant) annotation);
-            } else if (annotation instanceof HotSpotVMValue) {
-                emitValue(out, (HotSpotVMValue) annotation);
-            } else {
-                throw new InternalError(annotation.toString());
-            }
-
-        }
-
-        private void emitField(PrintWriter out, HotSpotVMField value) {
-            String type = field.asType().toString();
-            String define = archDefines(value.archs());
             if (define != null) {
                 out.printf("#if %s\n", define);
             }
-
-            String name = value.name();
-            int i = name.lastIndexOf("::");
-            switch (value.get()) {
-                case OFFSET:
-                    out.printf("            set_%s(\"%s\", offset_of(%s, %s));\n", type, field.getSimpleName(), name.substring(0, i), name.substring(i + 2));
-                    break;
-                case ADDRESS:
-                    out.printf("            set_address(\"%s\", &%s);\n", field.getSimpleName(), name);
-                    break;
-                case VALUE:
-                    out.printf("            set_%s(\"%s\", (%s) (intptr_t) %s);\n", type, field.getSimpleName(), type, name);
-                    break;
-            }
-            if (define != null) {
-                out.printf("#endif\n");
-            }
-        }
-
-        private void emitType(PrintWriter out, HotSpotVMType value) {
-            String type = field.asType().toString();
-            out.printf("            set_%s(\"%s\", sizeof(%s));\n", type, field.getSimpleName(), value.name());
-        }
-
-        private void emitValue(PrintWriter out, HotSpotVMValue value) {
-            String type = field.asType().toString();
-            int length = value.defines().length;
-            if (length != 0) {
-                out.printf("#if ");
-                for (int i = 0; i < length; i++) {
-                    out.printf("defined(%s)", value.defines()[i]);
-                    if (i + 1 < length) {
-                        out.printf(" || ");
-                    }
-                }
-                out.println();
-            }
-            if (value.get() == HotSpotVMValue.Type.ADDRESS) {
-                out.printf("            set_address(\"%s\", %s);\n", field.getSimpleName(), value.expression());
-            } else {
-                out.printf("            set_%s(\"%s\", %s);\n", type, field.getSimpleName(), value.expression());
-            }
-            if (length != 0) {
-                out.println("#endif");
-            }
-        }
-
-        private void emitConstant(PrintWriter out, HotSpotVMConstant value) {
-            String define = archDefines(value.archs());
-            if (define != null) {
-                out.printf("#if %s\n", define);
-            }
-            String type = field.asType().toString();
-            out.printf("            set_%s(\"%s\", %s);\n", type, field.getSimpleName(), value.name());
-            if (define != null) {
-                out.printf("#endif\n");
-            }
-        }
-
-        private void emitFlag(PrintWriter out, HotSpotVMFlag value) {
-            String type = field.asType().toString();
-
-            String define = archDefines(value.archs());
-            if (define != null) {
-                out.printf("#if %s\n", define);
-            }
-            if (value.optional()) {
-                out.printf("            set_optional_%s_flag(\"%s\",  \"%s\");\n", type, field.getSimpleName(), value.name());
-            } else {
-                out.printf("            set_%s(\"%s\", %s);\n", type, field.getSimpleName(), value.name());
+            out.printf("            %s%n", setter);
+            if (!optional) {
+                out.printf("            assigned++;%n");
             }
             if (define != null) {
                 out.printf("#endif\n");
@@ -358,7 +358,9 @@ public class HotSpotVMConfigProcessor extends AbstractProcessor {
 
     }
 
-    private void collectAnnotations(RoundEnvironment roundEnv, Map<String, VMConfigField> annotationMap, Class<? extends Annotation> annotationClass) {
+    @SuppressWarnings("unchecked")
+    private <T extends Annotation> void collectAnnotations(RoundEnvironment roundEnv, Map<String, VMConfigField> annotationMap, Class<T> annotationClass,
+                    BiFunction<VariableElement, T, VMConfigField> builder) {
         for (Element element : roundEnv.getElementsAnnotatedWith(annotationClass)) {
             Annotation constant = element.getAnnotation(annotationClass);
             if (element.getKind() != ElementKind.FIELD) {
@@ -377,7 +379,7 @@ public class HotSpotVMConfigProcessor extends AbstractProcessor {
                     errorMessage(element, "Multiple types encountered.  Only HotSpotVMConfig is supported");
                 }
             }
-            annotationMap.put(element.getSimpleName().toString(), new VMConfigField((VariableElement) element, constant));
+            annotationMap.put(element.getSimpleName().toString(), builder.apply((VariableElement) element, (T) constant));
         }
     }
 
@@ -399,11 +401,11 @@ public class HotSpotVMConfigProcessor extends AbstractProcessor {
 
             // First collect all the annotations.
             Map<String, VMConfigField> annotationMap = new HashMap<>();
-            collectAnnotations(roundEnv, annotationMap, HotSpotVMConstant.class);
-            collectAnnotations(roundEnv, annotationMap, HotSpotVMFlag.class);
-            collectAnnotations(roundEnv, annotationMap, HotSpotVMField.class);
-            collectAnnotations(roundEnv, annotationMap, HotSpotVMType.class);
-            collectAnnotations(roundEnv, annotationMap, HotSpotVMValue.class);
+            collectAnnotations(roundEnv, annotationMap, HotSpotVMConstant.class, (e, v) -> new VMConfigField(e, v));
+            collectAnnotations(roundEnv, annotationMap, HotSpotVMFlag.class, (e, v) -> new VMConfigField(e, v));
+            collectAnnotations(roundEnv, annotationMap, HotSpotVMField.class, (e, v) -> new VMConfigField(e, v));
+            collectAnnotations(roundEnv, annotationMap, HotSpotVMType.class, (e, v) -> new VMConfigField(e, v));
+            collectAnnotations(roundEnv, annotationMap, HotSpotVMValue.class, (e, v) -> new VMConfigField(e, v));
 
             if (annotationMap.isEmpty()) {
                 return true;

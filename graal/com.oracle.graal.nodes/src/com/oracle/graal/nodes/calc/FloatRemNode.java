@@ -50,7 +50,7 @@ public class FloatRemNode extends FloatArithmeticNode implements Lowerable {
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
         if (forX.isConstant() && forY.isConstant()) {
-            return ConstantNode.forPrimitive(evalConst(getX().asConstant(), getY().asConstant()));
+            return ConstantNode.forPrimitive(evalConst(forX.asConstant(), forY.asConstant()));
         }
         return this;
     }

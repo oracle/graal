@@ -686,7 +686,9 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
             String iterationObjArgReg = HSAIL.mapRegister(cc.getArgument(nonConstantParamCount - 1));
             /*
              * iterationObjArgReg will be the highest $d register in use (it is the last parameter)
-             * so tempReg can be the next higher $d register
+             * so tempReg can be the next higher $d register. As of 1.0 spec, we cannot use
+             * ld_global_u32 $dxx, [addr]; so we need a temporary $s register. We can use
+             * workItemReg+1;
              */
             String tmpReg = "$d" + (asRegister(cc.getArgument(nonConstantParamCount - 1)).encoding() + 1);
             // Convert gid to long.
@@ -699,9 +701,13 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
             asm.emitString("add_u64 " + tmpReg + ", " + tmpReg + ", " + iterationObjArgReg + "; // Add to array ref ptr");
             // Load the object into the parameter reg.
             if (useCompressedOops) {
+                int workItemRegEncoding = asRegister(cc.getArgument(nonConstantParamCount)).encoding();
+                String tmpReg32 = "$s" + Integer.toString(workItemRegEncoding + 1);
 
-                // Load u32 into the d 64 reg since it will become an object address
-                asm.emitString("ld_global_u32 " + tmpReg + ", " + "[" + tmpReg + "]" + "; // Load compressed ptr from array");
+                // Load u32 into the temporary $s reg since it will become an object address
+
+                asm.emitString("ld_global_u32 " + tmpReg32 + ", " + "[" + tmpReg + "]" + "; // Load compressed ptr from array");
+                asm.emitString("cvt_u64_u32 " + tmpReg + ", " + tmpReg32 + ";      // cvt to 64 bits");
 
                 long narrowOopBase = config.narrowOopBase;
                 long narrowOopShift = config.narrowOopShift;

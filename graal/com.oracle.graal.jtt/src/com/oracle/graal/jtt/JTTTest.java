@@ -57,8 +57,8 @@ public class JTTTest extends GraalCompilerTest {
     }
 
     @Override
-    protected StructuredGraph parse(Method m) {
-        StructuredGraph graph = super.parse(m);
+    protected StructuredGraph parseEager(Method m) {
+        StructuredGraph graph = super.parseEager(m);
         if (argsToBind != null) {
             Object receiver = isStatic(m.getModifiers()) ? null : this;
             Object[] args = argsWithReceiver(receiver, argsToBind);

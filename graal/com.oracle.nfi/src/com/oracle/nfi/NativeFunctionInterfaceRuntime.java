@@ -20,18 +20,40 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.api.code;
+package com.oracle.nfi;
+
+import com.oracle.nfi.api.*;
 
 /**
- * An opaque representation of a native library handle. A handle is obtained via
- * {@link NativeFunctionInterface#getLibraryHandle(String)}. A handle is used to resolve a string to
- * a {@linkplain NativeFunctionInterface#getFunctionHandle(String, Class, Class...) handle} or
- * {@linkplain NativeFunctionInterface#getFunctionPointer(NativeLibraryHandle[], String) pointer}.
+ * Class for obtaining the {@link NativeFunctionInterface} (if any) provided by the VM.
  */
-public interface NativeLibraryHandle {
+public final class NativeFunctionInterfaceRuntime {
+    private static final NativeFunctionInterface INSTANCE;
+
     /**
-     * Gets a name for this library. This may be the path for the file from which the library was
-     * loaded.
+     * Creates a new {@link NativeFunctionInterface}.
+     *
+     * @throws UnsatisfiedLinkError if not running on a VM that provides a
+     *             {@link NativeFunctionInterface}
      */
-    String getName();
+    private static native NativeFunctionInterface createInterface();
+
+    /**
+     * Gets the {@link NativeFunctionInterface} (if any) provided by the VM.
+     *
+     * @return null if the VM does not provide a {@link NativeFunctionInterface}
+     */
+    public static NativeFunctionInterface getNativeFunctionInterface() {
+        return INSTANCE;
+    }
+
+    static {
+        NativeFunctionInterface instance;
+        try {
+            instance = createInterface();
+        } catch (UnsatisfiedLinkError e) {
+            instance = null;
+        }
+        INSTANCE = instance;
+    }
 }

@@ -39,6 +39,11 @@ public class DoubleNextAfterTest extends DoubleMathLargeBase {
         });
     }
 
+    @Override
+    protected boolean supportsRequiredCapabilities() {
+        return (runningOnSimulator() || runningCQETests());
+    }
+
     @Test
     public void testUsingLambdaMethod() {
         testGeneratedHsailUsingLambdaMethod();

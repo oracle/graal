@@ -160,10 +160,10 @@ public class SPARCCall {
         } else {
             new Call(0).emit(masm);
         }
+        new Nop().emit(masm);  // delay slot
         int after = masm.position();
         crb.recordDirectCall(before, after, callTarget, info);
         crb.recordExceptionHandlers(after, info);
-        new Nop().emit(masm);  // delay slot
         masm.ensureUniquePC();
     }
 
@@ -171,19 +171,19 @@ public class SPARCCall {
         int before = masm.position();
         new Sethix(0L, dst, true).emit(masm);
         new Jmp(new SPARCAddress(dst, 0)).emit(masm);
+        new Nop().emit(masm);  // delay slot
         int after = masm.position();
         crb.recordIndirectCall(before, after, target, null);
-        new Nop().emit(masm);  // delay slot
         masm.ensureUniquePC();
     }
 
     public static void indirectCall(CompilationResultBuilder crb, SPARCMacroAssembler masm, Register dst, InvokeTarget callTarget, LIRFrameState info) {
         int before = masm.position();
         new Jmpl(dst, 0, o7).emit(masm);
+        new Nop().emit(masm);  // delay slot
         int after = masm.position();
         crb.recordIndirectCall(before, after, callTarget, info);
         crb.recordExceptionHandlers(after, info);
-        new Nop().emit(masm);  // delay slot
         masm.ensureUniquePC();
     }
 }

@@ -44,7 +44,7 @@ public final class TypeSwitchNode extends SwitchNode implements LIRLowerable, Si
     /**
      * Constructs a type switch instruction. The keyProbabilities array contain key.length + 1
      * entries. The last entry in every array describes the default case.
-     * 
+     *
      * @param value the instruction producing the value being switched on, the object hub
      * @param successors the list of successors
      * @param keys the list of types
@@ -57,6 +57,21 @@ public final class TypeSwitchNode extends SwitchNode implements LIRLowerable, Si
         assert keySuccessors.length == keyProbabilities.length;
         this.keys = keys;
         assert assertValues();
+        assert assertKeys();
+    }
+
+    /**
+     * Don't allow duplicate keys
+     */
+    private boolean assertKeys() {
+        for (int i = 0; i < keys.length; i++) {
+            for (int j = 0; j < keys.length; j++) {
+                if (i == j)
+                    continue;
+                assert !keys[i].equals(keys[j]);
+            }
+        }
+        return true;
     }
 
     @Override
@@ -85,6 +100,15 @@ public final class TypeSwitchNode extends SwitchNode implements LIRLowerable, Si
     @Override
     public Constant keyAt(int index) {
         return keys[index].getEncoding(Representation.ObjectHub);
+    }
+
+    @Override
+    public boolean equalKeys(SwitchNode switchNode) {
+        if (!(switchNode instanceof TypeSwitchNode)) {
+            return false;
+        }
+        TypeSwitchNode other = (TypeSwitchNode) switchNode;
+        return Arrays.equals(keys, other.keys);
     }
 
     public ResolvedJavaType typeAt(int index) {

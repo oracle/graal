@@ -66,7 +66,7 @@ public final class OptimizedDirectCallNode extends DirectCallNode implements Mat
 
     private void afterInterpreterCall(Object result) {
         splittingStrategy.afterCall(result);
-        propagateInliningInvalidations();
+        // propagateInliningInvalidations();
     }
 
     public static Object callProxy(MaterializedFrameNotify notify, CallTarget callTarget, VirtualFrame frame, Object[] arguments, boolean inlined, boolean direct) {
@@ -149,7 +149,7 @@ public final class OptimizedDirectCallNode extends DirectCallNode implements Mat
             getCurrentCallTarget().incrementKnownCallSites();
         }
         splittingStrategy.beforeCall(arguments);
-        propagateInliningInvalidations();
+        // propagateInliningInvalidations();
     }
 
     /** Used by the splitting strategy to install new targets. */
@@ -176,6 +176,7 @@ public final class OptimizedDirectCallNode extends DirectCallNode implements Mat
         }
     }
 
+    @SuppressWarnings("unused")
     private void propagateInliningInvalidations() {
         if (isInlined() && !getCurrentCallTarget().inliningPerformed) {
             replace(this, "Propagate invalid inlining from " + getCurrentCallTarget().toString());

@@ -376,7 +376,7 @@ public class FlowSenReduTest extends GraalCompilerTest {
     }
 
     public StructuredGraph afterFlowSensitiveReduce(String snippet) {
-        StructuredGraph before = canonicalize(parse(snippet));
+        StructuredGraph before = canonicalize(parseEager(snippet));
         // visualize(before, snippet + "-before");
         StructuredGraph result = flowSensitiveReduce(before);
         // visualize(result, snippet + "-after");

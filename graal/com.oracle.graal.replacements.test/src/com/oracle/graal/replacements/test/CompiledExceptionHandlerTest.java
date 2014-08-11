@@ -41,8 +41,8 @@ public class CompiledExceptionHandlerTest extends GraalCompilerTest {
     }
 
     @Override
-    protected StructuredGraph parse(Method m) {
-        StructuredGraph graph = super.parse(m);
+    protected StructuredGraph parseEager(Method m) {
+        StructuredGraph graph = super.parseEager(m);
         int handlers = graph.getNodes().filter(ExceptionObjectNode.class).count();
         Assert.assertEquals(1, handlers);
         return graph;

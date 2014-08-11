@@ -27,13 +27,14 @@ import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.util.*;
 
 /**
  * Compares two arrays with the same length.
  */
-public class ArrayEqualsNode extends FixedWithNextNode implements LIRLowerable, Canonicalizable, Virtualizable {
+public class ArrayEqualsNode extends FixedWithNextNode implements LIRLowerable, Canonicalizable, Virtualizable, MemoryAccess {
 
     /** {@link Kind} of the arrays to compare. */
     private final Kind kind;
@@ -131,5 +132,9 @@ public class ArrayEqualsNode extends FixedWithNextNode implements LIRLowerable, 
     public void generate(NodeLIRBuilderTool gen) {
         Value result = gen.getLIRGeneratorTool().emitArrayEquals(kind, gen.operand(array1), gen.operand(array2), gen.operand(length));
         gen.setResult(this, result);
+    }
+
+    public LocationIdentity getLocationIdentity() {
+        return NamedLocationIdentity.getArrayLocation(kind);
     }
 }

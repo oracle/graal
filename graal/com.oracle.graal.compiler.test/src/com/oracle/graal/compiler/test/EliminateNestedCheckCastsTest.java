@@ -106,7 +106,7 @@ public class EliminateNestedCheckCastsTest extends GraalCompilerTest {
     }
 
     private StructuredGraph compileSnippet(final String snippet, final int checkcasts, final int afterCanon) {
-        final StructuredGraph graph = parse(snippet);
+        final StructuredGraph graph = parseEager(snippet);
         try (Scope s = Debug.scope("NestedCheckCastsTest", graph)) {
             Debug.dump(graph, "After parsing: " + snippet);
             Assert.assertEquals(checkcasts, graph.getNodes().filter(CheckCastNode.class).count());

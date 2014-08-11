@@ -120,31 +120,89 @@ abstract class LIRIntrospection extends FieldIntrospection {
         }
     }
 
-    protected static void forEach(LIRInstruction inst, Object obj, int directCount, long[] offsets, OperandMode mode, EnumSet<OperandFlag>[] flags, InstructionValueProcedure proc) {
+    protected static void forEach(LIRInstruction inst, int directCount, long[] offsets, OperandMode mode, EnumSet<OperandFlag>[] flags, InstructionValueProcedure proc) {
+        for (int i = 0; i < offsets.length; i++) {
+            assert LIRInstruction.ALLOWED_FLAGS.get(mode).containsAll(flags[i]);
+
+            if (i < directCount) {
+                Value value = getValue(inst, offsets[i]);
+                Value newValue;
+                if (value instanceof CompositeValue) {
+                    CompositeValue composite = (CompositeValue) value;
+                    newValue = composite.forEachComponent(inst, mode, proc);
+                } else {
+                    newValue = proc.doValue(inst, value, mode, flags[i]);
+                }
+                if (!value.identityEquals(newValue)) {
+                    setValue(inst, offsets[i], newValue);
+                }
+            } else {
+                Value[] values = getValueArray(inst, offsets[i]);
+                for (int j = 0; j < values.length; j++) {
+                    Value value = values[j];
+                    Value newValue;
+                    if (value instanceof CompositeValue) {
+                        CompositeValue composite = (CompositeValue) value;
+                        newValue = composite.forEachComponent(inst, mode, proc);
+                    } else {
+                        newValue = proc.doValue(inst, value, mode, flags[i]);
+                    }
+                    if (!value.identityEquals(newValue)) {
+                        values[j] = newValue;
+                    }
+                }
+            }
+        }
+    }
+
+    protected static CompositeValue forEachComponent(LIRInstruction inst, CompositeValue obj, int directCount, long[] offsets, OperandMode mode, EnumSet<OperandFlag>[] flags,
+                    InstructionValueProcedure proc) {
+        CompositeValue newCompValue = null;
         for (int i = 0; i < offsets.length; i++) {
             assert LIRInstruction.ALLOWED_FLAGS.get(mode).containsAll(flags[i]);
 
             if (i < directCount) {
                 Value value = getValue(obj, offsets[i]);
+                Value newValue;
                 if (value instanceof CompositeValue) {
                     CompositeValue composite = (CompositeValue) value;
-                    composite.forEachComponent(inst, mode, proc);
+                    newValue = composite.forEachComponent(inst, mode, proc);
                 } else {
-                    setValue(obj, offsets[i], proc.doValue(inst, value, mode, flags[i]));
+                    newValue = proc.doValue(inst, value, mode, flags[i]);
+                }
+                if (!value.identityEquals(newValue)) {
+                    // lazy initialize
+                    if (newCompValue == null) {
+                        newCompValue = obj.clone();
+                    }
+                    setValue(newCompValue, offsets[i], newValue);
                 }
             } else {
                 Value[] values = getValueArray(obj, offsets[i]);
+                Value[] newValues = null;
                 for (int j = 0; j < values.length; j++) {
                     Value value = values[j];
+                    Value newValue;
                     if (value instanceof CompositeValue) {
                         CompositeValue composite = (CompositeValue) value;
-                        composite.forEachComponent(inst, mode, proc);
+                        newValue = composite.forEachComponent(inst, mode, proc);
                     } else {
-                        values[j] = proc.doValue(inst, value, mode, flags[i]);
+                        newValue = proc.doValue(inst, value, mode, flags[i]);
+                    }
+                    if (!value.identityEquals(newValue)) {
+                        // lazy initialize
+                        if (newValues == null) {
+                            if (newCompValue == null) {
+                                newCompValue = obj.clone();
+                            }
+                            newValues = getValueArray(newCompValue, offsets[i]);
+                        }
+                        newValues[j] = newValue;
                     }
                 }
             }
         }
+        return newCompValue != null ? newCompValue : obj;
     }
 
     protected static void forEach(LIRInstruction inst, Object obj, int directCount, long[] offsets, OperandMode mode, EnumSet<OperandFlag>[] flags, ValuePositionProcedure proc,
@@ -200,6 +258,10 @@ abstract class LIRIntrospection extends FieldIntrospection {
 
     protected static Value[] getValueArray(Object obj, long offset) {
         return (Value[]) unsafe.getObject(obj, offset);
+    }
+
+    protected static void setValueArray(Object obj, long offset, Value[] valueArray) {
+        unsafe.putObject(obj, offset, valueArray);
     }
 
     protected void appendValues(StringBuilder result, Object obj, String start, String end, String startMultiple, String endMultiple, String[] prefix, long[]... moffsets) {
@@ -258,12 +320,52 @@ abstract class LIRIntrospection extends FieldIntrospection {
             } else if (type == double[].class) {
                 return Arrays.toString((double[]) value);
             } else if (type == byte[].class) {
-                return Arrays.toString((byte[]) value);
+                byte[] byteValue = (byte[]) value;
+                if (isPrintableAsciiString(byteValue)) {
+                    return toString(byteValue);
+                } else {
+                    return Arrays.toString(byteValue);
+                }
             } else if (!type.getComponentType().isPrimitive()) {
                 return Arrays.toString((Object[]) value);
             }
         }
         assert false : "unhandled field type: " + type;
         return "";
+    }
+
+    /**
+     * Tests if all values in this string are printable ASCII characters or value \0 (b in
+     * [0x20,0x7F]) or b == 0
+     *
+     * @param array
+     * @return true if there are only printable ASCII characters and \0, false otherwise
+     */
+    private static boolean isPrintableAsciiString(byte[] array) {
+        for (byte b : array) {
+            char c = (char) b;
+            if (c != 0 && c < 0x20 && c > 0x7F) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static String toString(byte[] bytes) {
+        StringBuilder sb = new StringBuilder();
+        sb.append('"');
+        for (byte b : bytes) {
+            if (b == 0) {
+                sb.append("\\0");
+            } else if (b == '"') {
+                sb.append("\\\"");
+            } else if (b == '\n') {
+                sb.append("\\n");
+            } else {
+                sb.append((char) b);
+            }
+        }
+        sb.append('"');
+        return sb.toString();
     }
 }

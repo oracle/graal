@@ -24,8 +24,8 @@ package com.oracle.graal.lir.sparc;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
+import static com.oracle.graal.sparc.SPARC.*;
 
-import com.oracle.graal.api.code.CompilationResult.JumpTable;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
@@ -256,9 +256,9 @@ public class SPARCControlFlow {
             if (lowKey != 0) {
                 // subtract the low value from the switch value
                 new Sub(value, lowKey, value).emit(masm);
-                // masm.setp_gt_s32(value, highKey - lowKey);
+                new Cmp(value, highKey - lowKey).emit(masm);
             } else {
-                // masm.setp_gt_s32(value, highKey);
+                new Cmp(value, highKey).emit(masm);
             }
 
             // Jump to default target if index is not within the jump table
@@ -268,19 +268,21 @@ public class SPARCControlFlow {
             }
 
             // Load jump table entry into scratch and jump to it
-            // masm.movslq(value, new AMD64Address(scratch, value, Scale.Times4, 0));
-            // masm.addq(scratch, value);
-            new Jmp(new SPARCAddress(scratchReg, 0)).emit(masm);
-            new Nop().emit(masm);  // delay slot
+            new Sll(value, 3, value).emit(masm); // Multiply by 8
+            new Rdpc(scratchReg).emit(masm);
 
-            // address of jump table
-            int tablePos = masm.position();
+            // The jump table follows four instructions after rdpc
+            new Add(scratchReg, 4 * 4, scratchReg).emit(masm);
+            new Jmpl(value, scratchReg, g0).emit(masm);
+            new Sra(value, 3, value).emit(masm); // delay slot, correct the value (division by 8)
 
-            JumpTable jt = new JumpTable(tablePos, lowKey, highKey, 4);
-            crb.compilationResult.addAnnotation(jt);
-
-            // SPARC: unimp: tableswitch extract
-            throw GraalInternalError.unimplemented();
+            // Emit jump table entries
+            for (LabelRef target : targets) {
+                Label label = target.label();
+                label.addPatchAt(masm.position());
+                new Bpa(0).emit(masm);
+                new Nop().emit(masm); // delay slot
+            }
         }
     }
 
@@ -404,20 +406,24 @@ public class SPARCControlFlow {
                 return ConditionFlag.Equal;
             case NE:
                 return ConditionFlag.NotEqual;
+            case BT:
+                return ConditionFlag.LessUnsigned;
             case LT:
                 return ConditionFlag.Less;
+            case BE:
+                return ConditionFlag.LessEqualUnsigned;
             case LE:
                 return ConditionFlag.LessEqual;
+            case AE:
+                return ConditionFlag.GreaterEqualUnsigned;
             case GE:
                 return ConditionFlag.GreaterEqual;
+            case AT:
+                return ConditionFlag.GreaterUnsigned;
             case GT:
                 return ConditionFlag.Greater;
-            case BE:
-            case AE:
-            case AT:
-            case BT:
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw GraalInternalError.shouldNotReachHere("Unimplemented for: " + cond);
         }
     }
 

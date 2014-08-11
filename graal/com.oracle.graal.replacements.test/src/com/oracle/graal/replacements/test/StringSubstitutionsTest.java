@@ -66,7 +66,7 @@ public class StringSubstitutionsTest extends MethodSubstitutionTest {
         }
 
         // Force compilation
-        InstalledCode code = getCode(getMetaAccess().lookupJavaMethod(testMethod), parse(testMethod));
+        InstalledCode code = getCode(getMetaAccess().lookupJavaMethod(testMethod), parseEager(testMethod));
         assert optional || code != null;
 
         for (int i = 0; i < args1.length; i++) {

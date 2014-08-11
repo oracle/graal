@@ -600,7 +600,7 @@ public class MemoryScheduleTest extends GraphScheduleTest {
     }
 
     private SchedulePhase getFinalSchedule(final String snippet, final TestMode mode, final MemoryScheduling memsched, final SchedulingStrategy schedulingStrategy) {
-        final StructuredGraph graph = parse(snippet);
+        final StructuredGraph graph = parseEager(snippet);
         try (Scope d = Debug.scope("FloatingReadTest", graph)) {
             try (OverrideScope s = OptionValue.override(OptScheduleOutOfLoops, schedulingStrategy == SchedulingStrategy.LATEST_OUT_OF_LOOPS, OptImplicitNullChecks, false)) {
                 Assumptions assumptions = new Assumptions(false);

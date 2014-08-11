@@ -436,6 +436,17 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
         return method;
     }
 
+    public int getVtableLength() {
+        HotSpotVMConfig config = runtime().getConfig();
+        if (isInterface() || isArray()) {
+            /* Everything has the core vtable of java.lang.Object */
+            return config.baseVtableLength;
+        }
+        int result = unsafe.getInt(getMetaspaceKlass() + config.instanceKlassVtableLengthOffset) / (config.vtableEntrySize / config.heapWordSize);
+        assert result >= config.baseVtableLength : unsafe.getInt(getMetaspaceKlass() + config.instanceKlassVtableLengthOffset) + " " + config.vtableEntrySize;
+        return result;
+    }
+
     /**
      * Gets the mask used to filter out HotSpot internal flags for fields when a {@link Field}
      * object is created. This is the value of {@code JVM_RECOGNIZED_FIELD_MODIFIERS} in

@@ -612,21 +612,26 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     public int vtableEntryOffset(ResolvedJavaType resolved) {
         guarantee(isInVirtualMethodTable(resolved), "%s does not have a vtable entry", this);
         HotSpotVMConfig config = runtime().getConfig();
-        final int vtableIndex = getVtableIndex(resolved);
+        final int vtableIndex = getVtableIndex((HotSpotResolvedObjectType) resolved);
         return config.instanceKlassVtableStartOffset + vtableIndex * config.vtableEntrySize + config.vtableEntryMethodOffset;
     }
 
     @Override
     public boolean isInVirtualMethodTable(ResolvedJavaType resolved) {
-        return getVtableIndex(resolved) >= 0;
+        if (resolved instanceof HotSpotResolvedObjectType) {
+            HotSpotResolvedObjectType hotspotResolved = (HotSpotResolvedObjectType) resolved;
+            int vtableIndex = getVtableIndex(hotspotResolved);
+            return vtableIndex >= 0 && vtableIndex < hotspotResolved.getVtableLength();
+        }
+        return false;
     }
 
-    private int getVtableIndex(ResolvedJavaType resolved) {
+    private int getVtableIndex(HotSpotResolvedObjectType resolved) {
         if (!holder.isLinked()) {
             return runtime().getConfig().invalidVtableIndex;
         }
         if (holder.isInterface()) {
-            if (resolved.isArray() || resolved.isInterface()) {
+            if (resolved.isInterface()) {
                 return runtime().getConfig().invalidVtableIndex;
             }
             return getVtableIndexForInterface(resolved);

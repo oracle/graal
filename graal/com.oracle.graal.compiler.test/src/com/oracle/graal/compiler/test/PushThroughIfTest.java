@@ -57,7 +57,7 @@ public class PushThroughIfTest extends GraalCompilerTest {
     }
 
     private void test(String snippet, String reference) {
-        StructuredGraph graph = parse(snippet);
+        StructuredGraph graph = parseEager(snippet);
         Debug.dump(graph, "Graph");
         for (FrameState fs : graph.getNodes(FrameState.class).snapshot()) {
             fs.replaceAtUsages(null);
@@ -66,7 +66,7 @@ public class PushThroughIfTest extends GraalCompilerTest {
         new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders(), new Assumptions(false)));
         new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders(), new Assumptions(false)));
 
-        StructuredGraph referenceGraph = parse(reference);
+        StructuredGraph referenceGraph = parseEager(reference);
         for (FrameState fs : referenceGraph.getNodes(FrameState.class).snapshot()) {
             fs.replaceAtUsages(null);
             GraphUtil.killWithUnusedFloatingInputs(fs);
