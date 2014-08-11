@@ -607,14 +607,13 @@ public class NodeParser extends AbstractParser<NodeData> {
             SpecializationData next = i + 1 < specializations.size() ? specializations.get(i + 1) : null;
 
             if (!cur.isContainedBy(next)) {
-                // error should be able to contain
                 next.addError("This specialiation is not a valid exceptional rewrite target for %s. To fix this make %s compatible to %s or remove the exceptional rewrite.",
-                                cur.createReferenceName(), next.createReferenceName(), cur.createReferenceName());
+                                cur.createReferenceName(), next != null ? next.createReferenceName() : "-", cur.createReferenceName());
                 continue;
             }
-            if (!next.getContains().contains(cur)) {
-                next.getContains().add(cur);
-                // TODO resolve transitive contains
+            Set<SpecializationData> nextContains = next != null ? next.getContains() : Collections.<SpecializationData> emptySet();
+            if (!nextContains.contains(cur)) {
+                nextContains.add(cur);
             }
         }
 
