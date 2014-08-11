@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.test.instrument;
+package com.oracle.truffle.api.test;
 
 import java.util.*;
 
@@ -33,19 +33,24 @@ import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.source.*;
 
 /**
- * This test does the following:
+ * <h3>AST Instrumentation</h3>
+ *
+ * Instrumentation allows the insertion into Truffle ASTs language-specific instances of
+ * {@link Wrapper} that propagate {@link ExecutionEvents} through a {@link Probe} to any instances
+ * of {@link Instrument} that might be attached to the particular probe by tools.
  * <ol>
  * <li>Creates a simple add AST</li>
  * <li>Verifies its structure</li>
- * <li>Instruments the add node</li>
- * <li>Attaches a simple probe to the instrumented node</li>
- * <li>Verifies the structure of the instrumented AST</li>
- * <li>Verifies the execution of the instrumented AST</li>
+ * <li>"Probes" the add node by adding a {@link Wrapper} and associated {@link Probe}</li>
+ * <li>Attaches a simple {@link Instrument} to the node via its {@link Probe}</li>
+ * <li>Verifies the structure of the probed AST</li>
+ * <li>Verifies the execution of the probed AST</li>
+ * <li>Verifies the results observed by the instrument.</li>
  * </ol>
  * To do these tests, several required classes have been implemented in their most basic form, only
  * implementing the methods necessary for the tests to pass, with stubs elsewhere.
  */
-public class WrapperTest {
+public class InstrumentationTest {
 
     @Test
     public void test() {
@@ -74,7 +79,7 @@ public class WrapperTest {
         Object result = target.call();
         Assert.assertEquals(42, result);
 
-        // Add a wrapper
+        // Create another call target, this time with the "probed" add node
         TestExecutionContext context = new TestExecutionContext();
         TestWrapper wrapper = new TestWrapper(addNode, context);
         rootNode = new TestRootNode(wrapper);
@@ -98,13 +103,35 @@ public class WrapperTest {
         result = target.call();
         Assert.assertEquals(42, result);
 
-        // Add an instrument
-        wrapper.getProbe().addInstrument(new TestInstrument());
+        // Create some instruments
+        final TestInstrument instrumentA = new TestInstrument();
+        final TestInstrument instrumentB = new TestInstrument();
 
-        // Check instrument and result
+        wrapper.getProbe().addInstrument(instrumentA);
+
         result = target.call();
-        Assert.assertEquals(Counter.numInstrumentEnter, 1);
-        Assert.assertEquals(Counter.numInstrumentLeave, 1);
+        Assert.assertEquals(instrumentA.numInstrumentEnter, 1);
+        Assert.assertEquals(instrumentA.numInstrumentLeave, 1);
+        Assert.assertEquals(instrumentB.numInstrumentEnter, 0);
+        Assert.assertEquals(instrumentB.numInstrumentLeave, 0);
+        Assert.assertEquals(42, result);
+
+        wrapper.getProbe().addInstrument(instrumentB);
+
+        result = target.call();
+        Assert.assertEquals(instrumentA.numInstrumentEnter, 2);
+        Assert.assertEquals(instrumentA.numInstrumentLeave, 2);
+        Assert.assertEquals(instrumentB.numInstrumentEnter, 1);
+        Assert.assertEquals(instrumentB.numInstrumentLeave, 1);
+        Assert.assertEquals(42, result);
+
+        wrapper.getProbe().removeInstrument(instrumentA);
+
+        result = target.call();
+        Assert.assertEquals(instrumentA.numInstrumentEnter, 2);
+        Assert.assertEquals(instrumentA.numInstrumentLeave, 2);
+        Assert.assertEquals(instrumentB.numInstrumentEnter, 2);
+        Assert.assertEquals(instrumentB.numInstrumentLeave, 2);
         Assert.assertEquals(42, result);
 
     }
@@ -151,6 +178,10 @@ public class WrapperTest {
         }
     }
 
+    /**
+     * The wrapper node class is usually language-specific and inherits from the language-specific
+     * subclass of {@link Node}, not {@RootNode}.
+     */
     private class TestWrapper extends RootNode implements Wrapper {
         @Child private RootNode child;
         private Probe probe;
@@ -192,6 +223,11 @@ public class WrapperTest {
         }
     }
 
+    /**
+     * An "empty" description of the source code that might correspond to a particular AST node. The
+     * instrumentation framework tracks probes that have been inserted by their source location,
+     * using this as a key.
+     */
     private class TestSourceSection implements SourceSection {
 
         public Source getSource() {
@@ -245,26 +281,24 @@ public class WrapperTest {
 
         @Override
         protected void setSourceCallback(SourceCallback sourceCallback) {
-
         }
 
     }
 
     private class TestInstrument extends Instrument {
+
+        public int numInstrumentEnter = 0;
+        public int numInstrumentLeave = 0;
+
         @Override
         public void enter(Node astNode, VirtualFrame frame) {
-            Counter.numInstrumentEnter++;
+            numInstrumentEnter++;
         }
 
         @Override
         public void leave(Node astNode, VirtualFrame frame, Object result) {
-            Counter.numInstrumentLeave++;
+            numInstrumentLeave++;
         }
     }
 
-    public static class Counter {
-
-        public static int numInstrumentEnter = 0;
-        public static int numInstrumentLeave = 0;
-    }
 }
