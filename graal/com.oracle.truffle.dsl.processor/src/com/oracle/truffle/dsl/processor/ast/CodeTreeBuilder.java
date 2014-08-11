@@ -651,6 +651,10 @@ public class CodeTreeBuilder {
         return found;
     }
 
+    public CodeTreeBuilder returnNull() {
+        return startReturn().string("null").end();
+    }
+
     public CodeTreeBuilder returnTrue() {
         return startReturn().string("true").end();
     }

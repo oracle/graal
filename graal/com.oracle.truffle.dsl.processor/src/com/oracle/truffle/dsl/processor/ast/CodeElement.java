@@ -146,7 +146,7 @@ public abstract class CodeElement<E extends Element> implements WritableElement,
         getAnnotationMirrors().remove(annotationMirror);
     }
 
-    void setEnclosingElement(Element parent) {
+    protected void setEnclosingElement(Element parent) {
         this.enclosingElement = parent;
     }
 

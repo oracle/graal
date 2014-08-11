@@ -130,7 +130,7 @@ public class CodeTypeElement extends CodeElement<Element> implements TypeElement
     }
 
     @Override
-    void setEnclosingElement(Element element) {
+    protected void setEnclosingElement(Element element) {
         super.setEnclosingElement(element);
 
         // update qualified name on container change

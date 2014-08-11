@@ -29,7 +29,7 @@ public class CodeTree extends CodeElement<CodeTree> {
 
     private final CodeTreeKind kind;
 
-    private final TypeMirror type;
+    private TypeMirror type;
     private final String string;
 
     public CodeTree(CodeTreeKind kind, TypeMirror type, String string) {
@@ -52,6 +52,10 @@ public class CodeTree extends CodeElement<CodeTree> {
 
     public <P> void acceptCodeElementScanner(CodeElementScanner<?, P> s, P p) {
         s.visitTree(this, p);
+    }
+
+    public void setType(TypeMirror type) {
+        this.type = type;
     }
 
     @Override
