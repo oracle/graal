@@ -106,10 +106,14 @@ public abstract class AbstractParser<M extends Template> {
     private static String wrapText(Element element, AnnotationMirror mirror, String text) {
         StringBuilder b = new StringBuilder();
         if (element != null) {
-            b.append("Element " + element.toString());
+            if (element.getKind() == ElementKind.METHOD) {
+                b.append("Method " + ElementUtils.createReferenceName((ExecutableElement) element));
+            } else {
+                b.append("Element " + element.getSimpleName());
+            }
         }
         if (mirror != null) {
-            b.append(" at annotation @" + ElementUtils.getSimpleName(mirror.getAnnotationType()));
+            b.append(" at annotation @" + ElementUtils.getSimpleName(mirror.getAnnotationType()).trim());
         }
 
         if (b.length() > 0) {

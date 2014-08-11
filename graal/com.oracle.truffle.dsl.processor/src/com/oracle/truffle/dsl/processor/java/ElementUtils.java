@@ -63,6 +63,23 @@ public class ElementUtils {
         return true;
     }
 
+    public static String createReferenceName(ExecutableElement method) {
+        StringBuilder b = new StringBuilder();
+
+        b.append(method.getSimpleName().toString());
+        b.append("(");
+
+        String sep = "";
+        for (VariableElement parameter : method.getParameters()) {
+            b.append(sep);
+            b.append(ElementUtils.getSimpleName(parameter.asType()));
+            sep = ", ";
+        }
+
+        b.append(")");
+        return b.toString();
+    }
+
     public static VariableElement findVariableElement(DeclaredType type, String name) {
         List<? extends VariableElement> elements = ElementFilter.fieldsIn(type.asElement().getEnclosedElements());
         for (VariableElement variableElement : elements) {

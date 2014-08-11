@@ -89,8 +89,8 @@ public class InsertBeforeTest {
     }
 
     @NodeChild("a")
-    @ExpectError({"Element int f3(int)  at annotation @Specialization is erroneous: Specialization is not reachable. It is shadowed by f0(int).",
-                    "Element int f1(int)  at annotation @Specialization is erroneous: Specialization is not reachable. It is shadowed by f0(int)."})
+    @ExpectError({"Method f3(int) at annotation @Specialization is erroneous: Specialization is not reachable. It is shadowed by f0(int).",
+                    "Method f1(int) at annotation @Specialization is erroneous: Specialization is not reachable. It is shadowed by f0(int)."})
     static class InsertBefore1T4 extends InsertBefore1Base {
 
         boolean g0(int a) {
@@ -105,7 +105,7 @@ public class InsertBeforeTest {
     }
 
     @NodeChild("a")
-    @ExpectError({"Element int f3(int)  at annotation @Specialization is erroneous: Specialization is not reachable. It is shadowed by f0(int)."})
+    @ExpectError({"Method f3(int) at annotation @Specialization is erroneous: Specialization is not reachable. It is shadowed by f0(int)."})
     static class InsertBefore1T5 extends InsertBefore1Base {
 
         boolean g0(int a) {

@@ -222,20 +222,10 @@ public final class SpecializationData extends TemplateMethod {
     }
 
     public String createReferenceName() {
-        StringBuilder b = new StringBuilder();
-
-        b.append(getMethodName());
-        b.append("(");
-
-        String sep = "";
-        for (Parameter parameter : getParameters()) {
-            b.append(sep);
-            b.append(ElementUtils.getSimpleName(parameter.getType()));
-            sep = ", ";
+        if (getMethod() == null) {
+            return "-";
         }
-
-        b.append(")");
-        return b.toString();
+        return ElementUtils.createReferenceName(getMethod());
     }
 
     public NodeData getNode() {
