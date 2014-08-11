@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -65,11 +65,11 @@ public final class SLInstrumentTestNodeProber implements SLNodeProber {
         SLStatementWrapper wrapper = null;
         if (node instanceof SLStatementWrapper) {
             wrapper = (SLStatementWrapper) node;
-            tagStatementNode(wrapper);
+            wrapper.tagAs(STATEMENT);
             return wrapper;
         } else if (node instanceof SLReturnNode) {
             wrapper = new SLStatementWrapper(slContext, node);
-            tagStatementNode(wrapper);
+            wrapper.tagAs(STATEMENT);
             return wrapper;
         }
         return node;
@@ -94,26 +94,14 @@ public final class SLInstrumentTestNodeProber implements SLNodeProber {
         SLExpressionWrapper wrapper = null;
         if (node instanceof SLExpressionWrapper) {
             wrapper = (SLExpressionWrapper) node;
-            tagAssignmentNode(wrapper);
+            wrapper.tagAs(ASSIGNMENT);
             return wrapper;
         } else if (node instanceof SLWriteLocalVariableNode) {
             wrapper = new SLExpressionWrapper(slContext, node);
-            tagAssignmentNode(wrapper);
+            wrapper.tagAs(ASSIGNMENT);
             return wrapper;
         }
         return node;
-    }
-
-    private static void tagAssignmentNode(SLExpressionWrapper wrapper) {
-        if (!wrapper.isTaggedAs(ASSIGNMENT)) {
-            wrapper.tagAs(ASSIGNMENT);
-        }
-    }
-
-    private static void tagStatementNode(SLStatementWrapper wrapper) {
-        if (!wrapper.isTaggedAs(STATEMENT)) {
-            wrapper.tagAs(STATEMENT);
-        }
     }
 
 }

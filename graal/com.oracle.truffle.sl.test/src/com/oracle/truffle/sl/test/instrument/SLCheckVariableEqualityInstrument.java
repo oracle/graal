@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,7 +33,7 @@ import com.oracle.truffle.sl.runtime.*;
 /**
  * This sample instrument provides an example of a naive way to check if two numbers in SL are
  * equivalent using their variable names. This instrument is designed to be attached to an
- * {@link SLReturnNode}, but provides no guards against this.
+ * {@link SLReturnNode}, but provides no guards ensuring this.
  */
 public class SLCheckVariableEqualityInstrument extends Instrument {
 
