@@ -260,6 +260,10 @@ abstract class LIRIntrospection extends FieldIntrospection {
         return (Value[]) unsafe.getObject(obj, offset);
     }
 
+    protected static void setValueArray(Object obj, long offset, Value[] valueArray) {
+        unsafe.putObject(obj, offset, valueArray);
+    }
+
     protected void appendValues(StringBuilder result, Object obj, String start, String end, String startMultiple, String endMultiple, String[] prefix, long[]... moffsets) {
         int total = 0;
         for (long[] offsets : moffsets) {
