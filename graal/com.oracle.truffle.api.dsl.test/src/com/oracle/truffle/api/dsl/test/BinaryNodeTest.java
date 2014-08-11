@@ -60,7 +60,7 @@ public class BinaryNodeTest {
             return left + right;
         }
 
-        @Generic
+        @Fallback
         Object add(Object left, Object right) {
             return convertDouble(left) + convertDouble(right);
         }

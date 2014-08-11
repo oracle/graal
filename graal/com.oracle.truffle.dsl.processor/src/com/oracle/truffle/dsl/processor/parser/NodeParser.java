@@ -42,7 +42,7 @@ import com.oracle.truffle.dsl.processor.model.TemplateMethod.TypeSignature;
 
 public class NodeParser extends AbstractParser<NodeData> {
 
-    public static final List<Class<? extends Annotation>> ANNOTATIONS = Arrays.asList(Generic.class, TypeSystemReference.class, ShortCircuit.class, Specialization.class, NodeChild.class,
+    public static final List<Class<? extends Annotation>> ANNOTATIONS = Arrays.asList(Fallback.class, TypeSystemReference.class, ShortCircuit.class, Specialization.class, NodeChild.class,
                     NodeChildren.class);
 
     private Map<String, NodeData> parsedNodes;
@@ -923,7 +923,7 @@ public class NodeParser extends AbstractParser<NodeData> {
         if (generics.size() == 1 && node.getSpecializations().size() == 1) {
             // TODO this limitation should be lifted
             for (SpecializationData generic : generics) {
-                generic.addError("@%s defined but no @%s.", Generic.class.getSimpleName(), Specialization.class.getSimpleName());
+                generic.addError("@%s defined but no @%s.", Fallback.class.getSimpleName(), Specialization.class.getSimpleName());
             }
         }
 
@@ -932,7 +932,7 @@ public class NodeParser extends AbstractParser<NodeData> {
         } else {
             if (generics.size() > 1) {
                 for (SpecializationData generic : generics) {
-                    generic.addError("Only @%s is allowed per operation.", Generic.class.getSimpleName());
+                    generic.addError("Only one @%s is allowed per operation.", Fallback.class.getSimpleName());
                 }
             }
         }

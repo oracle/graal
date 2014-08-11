@@ -77,7 +77,7 @@ public class MethodGuardsTest {
             return value0 + value1;
         }
 
-        @Generic
+        @Fallback
         int doGeneric(Object value0, Object value1) {
             genericInvocations++;
             return 42; // the generic answer to all questions
@@ -111,7 +111,7 @@ public class MethodGuardsTest {
             return 41;
         }
 
-        @Generic
+        @Fallback
         int doGeneric(Object value0) {
             return 42; // the generic answer to all questions
         }

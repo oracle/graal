@@ -58,7 +58,7 @@ public class FallbackTest {
             return "(int)";
         }
 
-        @Generic
+        @Fallback
         String f2(Object a) {
             return "(fallback)";
         }

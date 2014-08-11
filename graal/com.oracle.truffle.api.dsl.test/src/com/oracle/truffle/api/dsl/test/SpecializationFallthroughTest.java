@@ -52,7 +52,7 @@ public class SpecializationFallthroughTest {
             return a;
         }
 
-        @Generic
+        @Fallback
         Object doFallback(Object a) {
             return a;
         }

@@ -63,7 +63,7 @@ public class GenericParser extends NodeMethodParser<SpecializationData> {
 
     @Override
     public Class<? extends Annotation> getAnnotationType() {
-        return Generic.class;
+        return Fallback.class;
     }
 
 }

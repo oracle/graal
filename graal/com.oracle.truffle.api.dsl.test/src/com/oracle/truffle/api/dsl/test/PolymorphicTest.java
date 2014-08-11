@@ -108,7 +108,7 @@ public class PolymorphicTest {
             return a;
         }
 
-        @Generic
+        @Fallback
         String add(Object left) {
             throw new AssertionError(left.toString());
         }

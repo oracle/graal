@@ -53,7 +53,7 @@ public class AssumptionsTest {
             return 42;
         }
 
-        @Generic
+        @Fallback
         Object doFallBack() {
             return "42";
         }
@@ -86,7 +86,7 @@ public class AssumptionsTest {
             return "41";
         }
 
-        @Generic
+        @Fallback
         Object doFallBack() {
             return "42";
         }
