@@ -45,12 +45,12 @@ public class NegatedGuardsTest {
             return true;
         }
 
-        @Specialization(order = 1, guards = "!guard")
+        @Specialization(guards = "!guard")
         int do1() {
             throw new AssertionError();
         }
 
-        @Specialization(order = 2)
+        @Specialization()
         int do2() {
             return 42; // the generic answer to all questions
         }

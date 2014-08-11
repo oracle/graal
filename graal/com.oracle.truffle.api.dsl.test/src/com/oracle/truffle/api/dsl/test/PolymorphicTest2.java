@@ -29,7 +29,7 @@ import org.junit.*;
 
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.dsl.test.BinaryNodeTest.BinaryNode;
-import com.oracle.truffle.api.dsl.test.PolymorphicTest2Factory.Node1Factory;
+import com.oracle.truffle.api.dsl.test.PolymorphicTest2Factory.Polymorphic1Factory;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.nodes.*;
 
@@ -38,7 +38,7 @@ public class PolymorphicTest2 {
     @Test
     public void testMultipleTypes() {
         /* Tests the unexpected polymorphic case. */
-        TestRootNode<Node1> node = TestHelper.createRoot(Node1Factory.getInstance());
+        TestRootNode<Polymorphic1> node = TestHelper.createRoot(Polymorphic1Factory.getInstance());
         assertEquals(21, executeWith(node, false, false));
         assertEquals(42, executeWith(node, 21, 21));
         assertEquals("(boolean,int)", executeWith(node, false, 42));
@@ -46,8 +46,7 @@ public class PolymorphicTest2 {
     }
 
     @SuppressWarnings("unused")
-    @PolymorphicLimit(3)
-    abstract static class Node1 extends BinaryNode {
+    abstract static class Polymorphic1 extends BinaryNode {
 
         @Specialization(order = 1)
         int add(int left, int right) {

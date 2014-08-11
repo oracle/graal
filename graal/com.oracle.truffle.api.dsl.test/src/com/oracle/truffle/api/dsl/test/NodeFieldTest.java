@@ -117,12 +117,12 @@ public class NodeFieldTest {
 
         public abstract String getField();
 
-        @Specialization(order = 1, rewriteOn = RuntimeException.class)
+        @Specialization(rewriteOn = RuntimeException.class)
         String alwaysRewrite() {
             throw new RuntimeException();
         }
 
-        @Specialization(order = 2)
+        @Specialization(contains = "alwaysRewrite")
         String returnField() {
             return getField();
         }

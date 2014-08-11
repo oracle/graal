@@ -48,15 +48,16 @@ public class AssumptionsTest {
     @NodeAssumptions("assumption")
     abstract static class SingleAssumptionNode extends ValueNode {
 
-        @Specialization(order = 0, assumptions = "assumption")
-        int doInt() {
+        @Specialization(assumptions = "assumption")
+        int do2() {
             return 42;
         }
 
-        @Specialization
-        Object doObject() {
+        @Fallback
+        Object doFallBack() {
             return "42";
         }
+
     }
 
     @Test
@@ -67,9 +68,9 @@ public class AssumptionsTest {
 
         Assert.assertEquals(42, TestHelper.executeWith(root));
         assumption2.invalidate();
-        Assert.assertEquals("42", TestHelper.executeWith(root));
+        Assert.assertEquals("41", TestHelper.executeWith(root));
         assumption1.invalidate();
-        Assert.assertEquals("43", TestHelper.executeWith(root));
+        Assert.assertEquals("42", TestHelper.executeWith(root));
     }
 
     @NodeAssumptions({"assumption1", "assumption2"})
@@ -82,12 +83,12 @@ public class AssumptionsTest {
 
         @Specialization(assumptions = "assumption1")
         Object doObject() {
-            return "42";
+            return "41";
         }
 
-        @Generic
-        Object doGeneric() {
-            return "43";
+        @Fallback
+        Object doFallBack() {
+            return "42";
         }
     }
 
@@ -107,10 +108,11 @@ public class AssumptionsTest {
     @NodeAssumptions({"additionalAssumption"})
     abstract static class DerivedAssumptionNode extends SingleAssumptionNode {
 
-        @Specialization(order = 1, assumptions = "additionalAssumption")
+        @Specialization(assumptions = "additionalAssumption")
         int doIntDerived() {
             return 43;
         }
+
     }
 
     @Test
@@ -129,7 +131,7 @@ public class AssumptionsTest {
     @NodeAssumptions({"additionalAssumption", "assumption"})
     abstract static class DerivedAssumptionRedeclaredNode extends SingleAssumptionNode {
 
-        @Specialization(order = 1, assumptions = "additionalAssumption")
+        @Specialization(assumptions = "additionalAssumption")
         int doIntDerived() {
             return 43;
         }

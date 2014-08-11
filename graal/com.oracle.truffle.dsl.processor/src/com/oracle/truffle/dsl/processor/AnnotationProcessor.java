@@ -30,10 +30,13 @@ import javax.lang.model.element.*;
 import javax.lang.model.type.*;
 import javax.tools.*;
 
-import com.oracle.truffle.dsl.processor.ast.*;
-import com.oracle.truffle.dsl.processor.codewriter.*;
-import com.oracle.truffle.dsl.processor.compiler.*;
-import com.oracle.truffle.dsl.processor.template.*;
+import com.oracle.truffle.dsl.processor.generator.*;
+import com.oracle.truffle.dsl.processor.java.*;
+import com.oracle.truffle.dsl.processor.java.compiler.*;
+import com.oracle.truffle.dsl.processor.java.model.*;
+import com.oracle.truffle.dsl.processor.java.transform.*;
+import com.oracle.truffle.dsl.processor.model.*;
+import com.oracle.truffle.dsl.processor.parser.*;
 
 /**
  * THIS IS NOT PUBLIC API.
@@ -41,13 +44,11 @@ import com.oracle.truffle.dsl.processor.template.*;
 class AnnotationProcessor<M extends Template> {
 
     private final AbstractParser<M> parser;
-    private final CompilationUnitFactory<M> factory;
-    private final ProcessorContext context;
+    private final AbstractCompilationUnitFactory<M> factory;
 
     private final Set<String> processedElements = new HashSet<>();
 
-    public AnnotationProcessor(ProcessorContext context, AbstractParser<M> parser, CompilationUnitFactory<M> factory) {
-        this.context = context;
+    public AnnotationProcessor(AbstractParser<M> parser, AbstractCompilationUnitFactory<M> factory) {
         this.parser = parser;
         this.factory = factory;
     }
@@ -56,23 +57,19 @@ class AnnotationProcessor<M extends Template> {
         return parser;
     }
 
-    public ProcessorContext getContext() {
-        return context;
-    }
-
     @SuppressWarnings({"unchecked"})
-    public void process(RoundEnvironment env, Element element, boolean callback) {
-
+    public void process(Element element, boolean callback) {
         // since it is not guaranteed to be called only once by the compiler
         // we check for already processed elements to avoid errors when writing files.
         if (!callback && element instanceof TypeElement) {
-            String qualifiedName = Utils.getQualifiedName((TypeElement) element);
+            String qualifiedName = ElementUtils.getQualifiedName((TypeElement) element);
             if (processedElements.contains(qualifiedName)) {
                 return;
             }
             processedElements.add(qualifiedName);
         }
 
+        ProcessorContext context = ProcessorContext.getInstance();
         TypeElement type = (TypeElement) element;
 
         M model = (M) context.getTemplate(type.asType(), false);
@@ -80,7 +77,7 @@ class AnnotationProcessor<M extends Template> {
 
         if (firstRun || !callback) {
             context.registerTemplate(type, null);
-            model = parser.parse(env, element);
+            model = parser.parse(element);
             context.registerTemplate(type, model);
 
             if (model != null) {

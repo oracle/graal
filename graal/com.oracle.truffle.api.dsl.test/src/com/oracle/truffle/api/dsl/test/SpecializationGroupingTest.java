@@ -48,7 +48,7 @@ public class SpecializationGroupingTest {
         MockAssumption a2 = new MockAssumption(false);
         MockAssumption a3 = new MockAssumption(true);
 
-        TestRootNode<TestGrouping> root = TestHelper.createGenericRoot(TestGroupingFactory.getInstance(), a1, a2, a3);
+        TestRootNode<TestGrouping> root = TestHelper.createRoot(TestGroupingFactory.getInstance(), a1, a2, a3);
 
         SimpleTypes.intCast = 0;
         SimpleTypes.intCheck = 0;
@@ -59,29 +59,29 @@ public class SpecializationGroupingTest {
         TestGrouping.true3 = 0;
 
         Assert.assertEquals(42, TestHelper.executeWith(root, 21, 21));
-        Assert.assertEquals(1, TestGrouping.true1);
-        Assert.assertEquals(1, TestGrouping.false1);
-        Assert.assertEquals(1, TestGrouping.true2);
-        Assert.assertEquals(1, TestGrouping.false2);
-        Assert.assertEquals(1, TestGrouping.true3);
-        Assert.assertEquals(2, SimpleTypes.intCheck);
-        Assert.assertEquals(2, SimpleTypes.intCast);
-        Assert.assertEquals(1, a1.checked);
-        Assert.assertEquals(1, a2.checked);
-        Assert.assertEquals(1, a3.checked);
+        Assert.assertEquals(4, TestGrouping.true1);
+        Assert.assertEquals(0, TestGrouping.false1);
+        Assert.assertEquals(4, TestGrouping.true2);
+        Assert.assertEquals(5, TestGrouping.false2);
+        Assert.assertEquals(5, TestGrouping.true3);
+        Assert.assertEquals(8, SimpleTypes.intCheck);
+        Assert.assertEquals(8, SimpleTypes.intCast);
+        Assert.assertEquals(4, a1.checked);
+        Assert.assertEquals(0, a2.checked);
+        Assert.assertEquals(4, a3.checked);
 
         Assert.assertEquals(42, TestHelper.executeWith(root, 21, 21));
-        Assert.assertEquals(2, TestGrouping.true1);
-        Assert.assertEquals(2, TestGrouping.false1);
-        Assert.assertEquals(2, TestGrouping.true2);
-        Assert.assertEquals(2, TestGrouping.false2);
-        Assert.assertEquals(2, TestGrouping.true3);
+        Assert.assertEquals(5, TestGrouping.true1);
+        Assert.assertEquals(0, TestGrouping.false1);
+        Assert.assertEquals(5, TestGrouping.true2);
+        Assert.assertEquals(6, TestGrouping.false2);
+        Assert.assertEquals(6, TestGrouping.true3);
 
-        Assert.assertEquals(2, a1.checked);
-        Assert.assertEquals(2, a2.checked);
-        Assert.assertEquals(2, a3.checked);
-        Assert.assertEquals(4, SimpleTypes.intCheck);
-        Assert.assertEquals(4, SimpleTypes.intCast);
+        Assert.assertEquals(5, a1.checked);
+        Assert.assertEquals(0, a2.checked);
+        Assert.assertEquals(5, a3.checked);
+        Assert.assertEquals(8, SimpleTypes.intCheck);
+        Assert.assertEquals(8, SimpleTypes.intCast);
 
     }
 
@@ -121,39 +121,39 @@ public class SpecializationGroupingTest {
             return true;
         }
 
-        @Specialization(order = 1)
+        @Specialization
         public int fail(int value1, String value2) {
             throw new AssertionError();
         }
 
-        @Specialization(order = 2, guards = {"true1", "false1"})
-        public int fail1(int value1, int value2) {
-            throw new AssertionError();
-        }
-
-        @Specialization(order = 3, guards = {"true1", "true2"}, assumptions = {"a1", "a2"})
-        public int fail2(int value1, int value2) {
-            throw new AssertionError();
-        }
-
-        @Specialization(order = 4, guards = {"true1", "true2"}, assumptions = {"a1", "a3"}, rewriteOn = RuntimeException.class)
+        @Specialization(guards = {"true1", "true2", "!false2", "true3"}, assumptions = {"a1", "a3"}, rewriteOn = RuntimeException.class)
         public int throwRewrite(int value1, int value2) {
             throw new RuntimeException();
         }
 
-        @Specialization(order = 5, guards = {"true1", "true2", "false2"}, assumptions = {"a1", "a3"})
-        public int fail4(int value1, int value2) {
-            throw new AssertionError();
+        @Specialization(guards = {"true1", "true2", "!false2", "true3"}, contains = "throwRewrite", assumptions = {"a1", "a3"})
+        public int success(int value1, int value2) {
+            return value1 + value2;
         }
 
-        @Specialization(order = 6, guards = {"true1", "true2", "!false2", "!true3"}, assumptions = {"a1", "a3"})
+        @Specialization(guards = {"true1", "true2", "!false2", "!true3"}, assumptions = {"a1", "a3"})
         public int fail5(int value1, int value2) {
             throw new AssertionError();
         }
 
-        @Specialization(order = 7, guards = {"true1", "true2", "!false2", "true3"}, assumptions = {"a1", "a3"})
-        public int success(int value1, int value2) {
-            return value1 + value2;
+        @Specialization(guards = {"true1", "true2", "false2"}, assumptions = {"a1", "a3"})
+        public int fail4(int value1, int value2) {
+            throw new AssertionError();
+        }
+
+        @Specialization(guards = {"true1", "true2"}, assumptions = {"a1", "a3"})
+        public int fail2break(int value1, int value2) {
+            throw new AssertionError();
+        }
+
+        @Specialization(guards = {"true1", "false1"})
+        public int fail1(int value1, int value2) {
+            throw new AssertionError();
         }
 
     }
@@ -168,18 +168,18 @@ public class SpecializationGroupingTest {
     @NodeChild(value = "genericChild", type = GenericInt.class)
     public abstract static class TestElseConnectionBug1 extends ValueNode {
 
-        @Specialization(order = 1, rewriteOn = {SlowPathException.class}, guards = "isInitialized")
-        public int doInteger(int value) throws SlowPathException {
+        @Specialization(rewriteOn = {SlowPathException.class}, guards = "isInitialized")
+        public int do1(int value) throws SlowPathException {
             throw new SlowPathException();
         }
 
-        @Specialization(order = 3, guards = "isInitialized")
-        public int doObject(int value) {
+        @Specialization(contains = "do1", guards = "isInitialized")
+        public int do2(int value) {
             return value == 42 ? value : 0;
         }
 
-        @Specialization(order = 4, guards = "!isInitialized")
-        public Object doUninitialized(int value) {
+        @Specialization(guards = "!isInitialized")
+        public Object do3(int value) {
             throw new AssertionError();
         }
 
@@ -204,25 +204,25 @@ public class SpecializationGroupingTest {
 
     @Test
     public void testElseConnectionBug2() {
-        TestHelper.assertRuns(TestElseConnectionBug2Factory.getInstance(), 42, 42);
+        TestHelper.assertRuns(TestElseConnectionBug2Factory.getInstance(), new Object[]{42}, new Object[]{42});
     }
 
     @SuppressWarnings("unused")
     @NodeChild
     public abstract static class TestElseConnectionBug2 extends ValueNode {
 
-        @Specialization(order = 2, guards = "guard0")
-        public int doGuard0(int value) {
+        @Specialization(guards = "guard0")
+        public int do1(int value) {
             throw new AssertionError();
         }
 
-        @Specialization(order = 3, guards = "guard1")
-        public int doGuard1(int value) {
+        @Specialization(guards = "guard1")
+        public int do2(int value) {
             throw new AssertionError();
         }
 
-        @Specialization(order = 4, guards = "!guard0")
-        public int doUninitialized(int value) {
+        @Specialization(guards = "!guard0")
+        public int do3(int value) {
             return value;
         }
 
