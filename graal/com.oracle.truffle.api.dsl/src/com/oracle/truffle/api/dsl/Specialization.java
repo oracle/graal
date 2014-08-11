@@ -32,9 +32,14 @@ public @interface Specialization {
 
     int DEFAULT_ORDER = -1;
 
+    @Deprecated
     int order() default DEFAULT_ORDER;
 
+    String insertBefore() default "";
+
     Class<? extends Throwable>[] rewriteOn() default {};
+
+    String[] contains() default {};
 
     String[] guards() default {};
 
