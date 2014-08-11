@@ -39,10 +39,6 @@ public class TypeSystemParser extends AbstractParser<TypeSystemData> {
 
     public static final List<Class<? extends Annotation>> ANNOTATIONS = Arrays.asList(TypeSystem.class, ExpectError.class);
 
-    public TypeSystemParser(ProcessorContext c) {
-        super(c);
-    }
-
     @Override
     public Class<? extends Annotation> getAnnotationType() {
         return TypeSystem.class;
@@ -52,7 +48,7 @@ public class TypeSystemParser extends AbstractParser<TypeSystemData> {
     protected TypeSystemData parse(Element element, AnnotationMirror mirror) {
         TypeElement templateType = (TypeElement) element;
         AnnotationMirror templateTypeAnnotation = mirror;
-        TypeSystemData typeSystem = new TypeSystemData(templateType, templateTypeAnnotation);
+        TypeSystemData typeSystem = new TypeSystemData(context, templateType, templateTypeAnnotation);
 
         // annotation type on class path!?
         TypeElement annotationTypeElement = processingEnv.getElementUtils().getTypeElement(getAnnotationType().getCanonicalName());

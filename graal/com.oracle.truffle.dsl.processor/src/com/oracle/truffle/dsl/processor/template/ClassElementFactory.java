@@ -32,14 +32,9 @@ import javax.lang.model.type.*;
 import javax.lang.model.util.*;
 
 import com.oracle.truffle.api.dsl.*;
-import com.oracle.truffle.dsl.processor.*;
 import com.oracle.truffle.dsl.processor.ast.*;
 
 public abstract class ClassElementFactory<M> extends CodeElementFactory<M> {
-
-    public ClassElementFactory(ProcessorContext context) {
-        super(context);
-    }
 
     @Override
     protected abstract CodeTypeElement create(M m);
@@ -75,7 +70,7 @@ public abstract class ClassElementFactory<M> extends CodeElementFactory<M> {
             builder.string("this.");
             builder.string(fieldName);
             builder.string(" = ");
-            if (isAssignable(getContext(), field.asType(), getContext().getTruffleTypes().getNode())) {
+            if (isAssignable(field.asType(), getContext().getTruffleTypes().getNode())) {
                 builder.string("adoptChild(").string(fieldName).string(")");
             } else {
                 builder.string(fieldName);

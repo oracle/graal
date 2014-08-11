@@ -32,6 +32,7 @@ import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.dsl.processor.*;
 import com.oracle.truffle.dsl.processor.node.SpecializationData.SpecializationKind;
 import com.oracle.truffle.dsl.processor.template.*;
+import com.oracle.truffle.dsl.processor.typesystem.*;
 
 public class SpecializationMethodParser extends NodeMethodParser<SpecializationData> {
 
@@ -55,11 +56,6 @@ public class SpecializationMethodParser extends NodeMethodParser<SpecializationD
     }
 
     private SpecializationData parseSpecialization(TemplateMethod method) {
-        int order = Utils.getAnnotationValue(Integer.class, method.getMarkerAnnotation(), "order");
-        if (order < 0 && order != Specialization.DEFAULT_ORDER) {
-            method.addError("Invalid order attribute %d. The value must be >= 0 or the default value.");
-        }
-
         AnnotationValue rewriteValue = Utils.getAnnotationValue(method.getMarkerAnnotation(), "rewriteOn");
         List<TypeMirror> exceptionTypes = Utils.getAnnotationValueList(TypeMirror.class, method.getMarkerAnnotation(), "rewriteOn");
         List<SpecializationThrowsData> exceptionData = new ArrayList<>();
@@ -78,9 +74,34 @@ public class SpecializationMethodParser extends NodeMethodParser<SpecializationD
                 return Utils.compareByTypeHierarchy(o1.getJavaClass(), o2.getJavaClass());
             }
         });
-        SpecializationData specialization = new SpecializationData(getNode(), method, SpecializationKind.SPECIALIZED, order, exceptionData);
+        SpecializationData specialization = new SpecializationData(getNode(), method, SpecializationKind.SPECIALIZED, exceptionData);
+
+        String insertBeforeName = Utils.getAnnotationValue(String.class, method.getMarkerAnnotation(), "insertBefore");
+        if (!insertBeforeName.equals("")) {
+            specialization.setInsertBeforeName(insertBeforeName);
+        }
+
         List<String> guardDefs = Utils.getAnnotationValueList(String.class, specialization.getMarkerAnnotation(), "guards");
-        specialization.setGuardDefinitions(guardDefs);
+        List<GuardExpression> guardExpressions = new ArrayList<>();
+        for (String guardDef : guardDefs) {
+            guardExpressions.add(new GuardExpression(guardDef));
+        }
+        specialization.setGuards(guardExpressions);
+
+        List<String> containsDefs = Utils.getAnnotationValueList(String.class, specialization.getMarkerAnnotation(), "contains");
+        Set<String> containsNames = specialization.getContainsNames();
+        containsNames.clear();
+        if (containsDefs != null) {
+            for (String include : containsDefs) {
+                if (!containsNames.contains(include)) {
+                    specialization.getContainsNames().add(include);
+                } else {
+                    AnnotationValue value = Utils.getAnnotationValue(specialization.getMarkerAnnotation(), "contains");
+                    specialization.addError(value, "Duplicate contains declaration '%s'.", include);
+                }
+            }
+
+        }
 
         List<String> assumptionDefs = Utils.getAnnotationValueList(String.class, specialization.getMarkerAnnotation(), "assumptions");
         specialization.setAssumptions(assumptionDefs);

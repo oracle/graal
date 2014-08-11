@@ -30,6 +30,7 @@ import javax.lang.model.element.*;
 import javax.tools.Diagnostic.Kind;
 
 import com.oracle.truffle.dsl.processor.template.*;
+import com.oracle.truffle.dsl.processor.template.MessageContainer.*;
 
 /**
  * THIS IS NOT PUBLIC API.
@@ -42,10 +43,10 @@ public abstract class AbstractParser<M extends Template> {
 
     protected final Log log;
 
-    public AbstractParser(ProcessorContext c) {
-        this.context = c;
-        this.processingEnv = c.getEnvironment();
-        this.log = c.getLog();
+    public AbstractParser() {
+        this.context = ProcessorContext.getInstance();
+        this.processingEnv = context.getEnvironment();
+        this.log = context.getLog();
     }
 
     public final M parse(RoundEnvironment env, Element element) {
@@ -65,13 +66,59 @@ public abstract class AbstractParser<M extends Template> {
                 return null;
             }
 
-            model.emitMessages(context, (TypeElement) element, log);
+            redirectMessages(new HashSet<MessageContainer>(), model, model);
+            model.emitMessages(context, log);
             return filterErrorElements(model);
         } catch (CompileErrorException e) {
             log.message(Kind.WARNING, element, null, null, "The truffle processor could not parse class due to error: %s", e.getMessage());
             return null;
         } finally {
             this.roundEnv = null;
+        }
+    }
+
+    private void redirectMessages(Set<MessageContainer> visitedSinks, MessageContainer model, MessageContainer baseContainer) {
+        List<Message> messages = model.getMessages();
+        for (int i = messages.size() - 1; i >= 0; i--) {
+            Message message = messages.get(i);
+            if (!Utils.isEnclosedIn(baseContainer.getMessageElement(), message.getOriginalContainer().getMessageElement())) {
+                // redirect message
+                MessageContainer original = message.getOriginalContainer();
+                String text = wrapText(original.getMessageElement(), original.getMessageAnnotation(), message.getText());
+                Message redirectedMessage = new Message(null, baseContainer, text, message.getKind());
+                model.getMessages().remove(i);
+                baseContainer.getMessages().add(redirectedMessage);
+            }
+        }
+
+        for (MessageContainer childContainer : model) {
+            if (visitedSinks.contains(childContainer)) {
+                continue;
+            }
+            visitedSinks.add(childContainer);
+
+            MessageContainer newBase = baseContainer;
+            if (childContainer.getBaseContainer() != null) {
+                newBase = childContainer.getBaseContainer();
+            }
+            redirectMessages(visitedSinks, childContainer, newBase);
+        }
+    }
+
+    private static String wrapText(Element element, AnnotationMirror mirror, String text) {
+        StringBuilder b = new StringBuilder();
+        if (element != null) {
+            b.append("Element " + element.toString());
+        }
+        if (mirror != null) {
+            b.append(" at annotation @" + Utils.getSimpleName(mirror.getAnnotationType()));
+        }
+
+        if (b.length() > 0) {
+            b.append(" is erroneous: ").append(text);
+            return b.toString();
+        } else {
+            return text;
         }
     }
 

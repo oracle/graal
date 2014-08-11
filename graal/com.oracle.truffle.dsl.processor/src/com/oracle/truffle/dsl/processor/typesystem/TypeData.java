@@ -111,6 +111,20 @@ public class TypeData extends MessageContainer implements Comparable<TypeData> {
     }
 
     @Override
+    public int hashCode() {
+        return Objects.hash(index, primitiveType);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (!(obj instanceof TypeData)) {
+            return false;
+        }
+        TypeData otherType = (TypeData) obj;
+        return index == otherType.index && Utils.typeEquals(primitiveType, otherType.primitiveType);
+    }
+
+    @Override
     public String toString() {
         return getClass().getSimpleName() + "[" + Utils.getSimpleName(primitiveType) + "]";
     }
@@ -119,12 +133,39 @@ public class TypeData extends MessageContainer implements Comparable<TypeData> {
         return Utils.typeEquals(boxedType, actualTypeData.boxedType);
     }
 
-    public boolean needsCastTo(ProcessorContext context, TypeData targetType) {
-        return Utils.needsCastTo(context, getPrimitiveType(), targetType.getPrimitiveType());
+    public boolean needsCastTo(TypeData targetType) {
+        return Utils.needsCastTo(getPrimitiveType(), targetType.getPrimitiveType());
+    }
+
+    public boolean needsCastTo(TypeMirror targetType) {
+        return Utils.needsCastTo(getPrimitiveType(), targetType);
     }
 
     public boolean isPrimitive() {
         return Utils.isPrimitive(getPrimitiveType());
     }
 
+    public boolean isImplicitSubtypeOf(TypeData other) {
+        List<ImplicitCastData> casts = other.getTypeSystem().lookupByTargetType(other);
+        for (ImplicitCastData cast : casts) {
+            if (isSubtypeOf(cast.getSourceType())) {
+                return true;
+            }
+        }
+        return isSubtypeOf(other);
+    }
+
+    public boolean isSubtypeOf(TypeData other) {
+        return Utils.isSubtype(boxedType, other.boxedType);
+    }
+
+    public boolean intersects(TypeData type) {
+        if (this.equals(type)) {
+            return true;
+        }
+        if (type.isGeneric() || isGeneric()) {
+            return true;
+        }
+        return isSubtypeOf(type) || type.isSubtypeOf(this);
+    }
 }

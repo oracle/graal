@@ -58,7 +58,7 @@ public class CreateCastParser extends NodeMethodParser<CreateCastData> {
             baseType = foundChild.getOriginalType();
         }
 
-        MethodSpec spec = new MethodSpec(new InheritsParameterSpec(getContext(), "child", baseType));
+        MethodSpec spec = new MethodSpec(new InheritsParameterSpec("child", baseType));
         addDefaultFieldMethodSpec(spec);
         ParameterSpec childSpec = new ParameterSpec("castedChild", baseType);
         childSpec.setSignature(true);
@@ -97,18 +97,15 @@ public class CreateCastParser extends NodeMethodParser<CreateCastData> {
 
     private static class InheritsParameterSpec extends ParameterSpec {
 
-        private final ProcessorContext context;
-
-        public InheritsParameterSpec(ProcessorContext context, String name, TypeMirror... allowedTypes) {
+        public InheritsParameterSpec(String name, TypeMirror... allowedTypes) {
             super(name, Arrays.asList(allowedTypes));
-            this.context = context;
         }
 
         @Override
         public boolean matches(TypeMirror actualType) {
             boolean found = false;
             for (TypeMirror specType : getAllowedTypes()) {
-                if (Utils.isAssignable(context, actualType, specType)) {
+                if (Utils.isAssignable(actualType, specType)) {
                     found = true;
                     break;
                 }

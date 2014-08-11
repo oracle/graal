@@ -50,14 +50,14 @@ public class Utils {
         return null;
     }
 
-    public static boolean needsCastTo(ProcessorContext context, TypeMirror sourceType, TypeMirror targetType) {
+    public static boolean needsCastTo(TypeMirror sourceType, TypeMirror targetType) {
         if (typeEquals(sourceType, targetType)) {
             return false;
         } else if (isObject(targetType)) {
             return false;
         } else if (isVoid(targetType)) {
             return false;
-        } else if (isAssignable(context, sourceType, targetType)) {
+        } else if (isAssignable(sourceType, targetType)) {
             return false;
         }
         return true;
@@ -125,7 +125,7 @@ public class Utils {
         return prev;
     }
 
-    public static TypeMirror getCommonSuperType(ProcessorContext context, TypeMirror type1, TypeMirror type2) {
+    private static TypeMirror getCommonSuperType(ProcessorContext context, TypeMirror type1, TypeMirror type2) {
         if (typeEquals(type1, type2)) {
             return type1;
         }
@@ -178,15 +178,24 @@ public class Utils {
         }
     }
 
-    public static boolean isAssignable(ProcessorContext context, TypeMirror from, TypeMirror to) {
+    public static boolean isSubtype(TypeMirror type1, TypeMirror type2) {
+        if (type1 instanceof CodeTypeMirror && type2 instanceof CodeTypeMirror) {
+            throw new UnsupportedOperationException();
+        }
+        return ProcessorContext.getInstance().getEnvironment().getTypeUtils().isSubtype(type1, type2);
+    }
+
+    public static boolean isAssignable(TypeMirror from, TypeMirror to) {
+        ProcessorContext context = ProcessorContext.getInstance();
+
         if (!(from instanceof CodeTypeMirror) && !(to instanceof CodeTypeMirror)) {
             return context.getEnvironment().getTypeUtils().isAssignable(context.reloadType(from), context.reloadType(to));
         } else {
-            return isAssignableImpl(context, from, to);
+            return isAssignableImpl(from, to);
         }
     }
 
-    private static boolean isAssignableImpl(ProcessorContext context, TypeMirror from, TypeMirror to) {
+    private static boolean isAssignableImpl(TypeMirror from, TypeMirror to) {
         // JLS 5.1.1 identity conversion
         if (Utils.typeEquals(from, to)) {
             return true;
@@ -258,7 +267,7 @@ public class Utils {
         }
 
         if (from instanceof ArrayType && to instanceof ArrayType) {
-            return isAssignable(context, ((ArrayType) from).getComponentType(), ((ArrayType) to).getComponentType());
+            return isAssignable(((ArrayType) from).getComponentType(), ((ArrayType) to).getComponentType());
         }
 
         if (from instanceof ArrayType || to instanceof ArrayType) {
@@ -461,11 +470,11 @@ public class Utils {
     }
 
     public static boolean isVoid(TypeMirror mirror) {
-        return mirror.getKind() == TypeKind.VOID;
+        return mirror != null && mirror.getKind() == TypeKind.VOID;
     }
 
     public static boolean isPrimitive(TypeMirror mirror) {
-        return mirror.getKind().isPrimitive();
+        return mirror != null && mirror.getKind().isPrimitive();
     }
 
     public static boolean isPrimitiveOrVoid(TypeMirror mirror) {
@@ -493,6 +502,16 @@ public class Utils {
             }
         }
         return null;
+    }
+
+    public static boolean isEnclosedIn(Element enclosedIn, Element element) {
+        if (element == null) {
+            return false;
+        } else if (enclosedIn.equals(element)) {
+            return true;
+        } else {
+            return isEnclosedIn(enclosedIn, element.getEnclosingElement());
+        }
     }
 
     public static TypeElement findRootEnclosingType(Element element) {
@@ -765,10 +784,6 @@ public class Utils {
             return vals;
         }
 
-    }
-
-    public static boolean getAnnotationValueBoolean(AnnotationMirror mirror, String name) {
-        return (Boolean) getAnnotationValue(mirror, name).getValue();
     }
 
     public static String printException(Throwable e) {

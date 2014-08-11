@@ -33,6 +33,7 @@ import javax.tools.Diagnostic.Kind;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.dsl.processor.*;
+import com.oracle.truffle.dsl.processor.compiler.*;
 import com.oracle.truffle.dsl.processor.node.NodeChildData.Cardinality;
 import com.oracle.truffle.dsl.processor.node.SpecializationData.SpecializationKind;
 import com.oracle.truffle.dsl.processor.template.*;
@@ -45,10 +46,6 @@ public class NodeParser extends AbstractParser<NodeData> {
                     NodeChildren.class);
 
     private Map<String, NodeData> parsedNodes;
-
-    public NodeParser(ProcessorContext c) {
-        super(c);
-    }
 
     @Override
     protected NodeData parse(Element element, AnnotationMirror mirror) {
@@ -115,7 +112,7 @@ public class NodeParser extends AbstractParser<NodeData> {
 
         NodeData node = parseNode(rootType);
         if (node == null && !enclosedNodes.isEmpty()) {
-            node = new NodeData(rootType);
+            node = new NodeData(context, rootType);
         }
 
         if (node != null) {
@@ -138,11 +135,10 @@ public class NodeParser extends AbstractParser<NodeData> {
         }
 
         List<TypeElement> lookupTypes = collectSuperClasses(new ArrayList<TypeElement>(), templateType);
-        if (!Utils.isAssignable(context, templateType.asType(), context.getTruffleTypes().getNode())) {
+        if (!Utils.isAssignable(templateType.asType(), context.getTruffleTypes().getNode())) {
             return null;
         }
-
-        List<? extends Element> elements = context.getEnvironment().getElementUtils().getAllMembers(templateType);
+        List<? extends Element> elements = CompilerFactory.getCompiler(templateType).getAllMembersInDeclarationOrder(context.getEnvironment(), templateType);
 
         NodeData node = parseNodeData(templateType, elements, lookupTypes);
         if (node.hasErrors()) {
@@ -165,7 +161,6 @@ public class NodeParser extends AbstractParser<NodeData> {
         initializeShortCircuits(node); // requires specializations and polymorphic specializations
 
         verifyVisibilities(node);
-        verifySpecializationOrder(node);
         verifyMissingAbstractMethods(node, elements);
         verifyConstructors(node);
         verifyNamingConvention(node.getShortCircuits(), "needs");
@@ -176,7 +171,7 @@ public class NodeParser extends AbstractParser<NodeData> {
     private NodeData parseNodeData(TypeElement templateType, List<? extends Element> elements, List<TypeElement> typeHierarchy) {
         AnnotationMirror typeSystemMirror = findFirstAnnotation(typeHierarchy, TypeSystemReference.class);
         if (typeSystemMirror == null) {
-            NodeData nodeData = new NodeData(templateType);
+            NodeData nodeData = new NodeData(context, templateType);
             nodeData.addError("No @%s annotation found in type hierarchy of %s.", TypeSystemReference.class.getSimpleName(), Utils.getQualifiedName(templateType));
             return nodeData;
         }
@@ -184,22 +179,9 @@ public class NodeParser extends AbstractParser<NodeData> {
         TypeMirror typeSystemType = Utils.getAnnotationValue(TypeMirror.class, typeSystemMirror, "value");
         final TypeSystemData typeSystem = (TypeSystemData) context.getTemplate(typeSystemType, true);
         if (typeSystem == null) {
-            NodeData nodeData = new NodeData(templateType);
+            NodeData nodeData = new NodeData(context, templateType);
             nodeData.addError("The used type system '%s' is invalid or not a Node.", Utils.getQualifiedName(typeSystemType));
             return nodeData;
-        }
-
-        AnnotationMirror polymorphicMirror = findFirstAnnotation(typeHierarchy, PolymorphicLimit.class);
-        int polymorphicLimit = -1;
-        if (polymorphicMirror != null) {
-            AnnotationValue limitValue = Utils.getAnnotationValue(polymorphicMirror, "value");
-            int customPolymorphicLimit = Utils.getAnnotationValue(Integer.class, polymorphicMirror, "value");
-            if (customPolymorphicLimit < 1) {
-                NodeData nodeData = new NodeData(templateType);
-                nodeData.addError(limitValue, "Invalid polymorphic limit %s.", polymorphicLimit);
-                return nodeData;
-            }
-            polymorphicLimit = customPolymorphicLimit;
         }
 
         List<String> assumptionsList = new ArrayList<>();
@@ -223,10 +205,10 @@ public class NodeParser extends AbstractParser<NodeData> {
         }
 
         List<NodeFieldData> fields = parseFields(typeHierarchy, elements);
-        List<NodeChildData> children = parseChildren(elements, typeHierarchy);
+        List<NodeChildData> children = parseChildren(typeHierarchy, elements);
         List<NodeExecutionData> executions = parseExecutions(children, elements);
 
-        NodeData nodeData = new NodeData(templateType, shortName, typeSystem, children, executions, fields, assumptionsList, polymorphicLimit);
+        NodeData nodeData = new NodeData(context, templateType, shortName, typeSystem, children, executions, fields, assumptionsList);
         nodeData.setExecutableTypes(groupExecutableTypes(new ExecutableTypeMethodParser(context, nodeData).parse(elements)));
 
         parsedNodes.put(Utils.getQualifiedName(templateType), nodeData);
@@ -278,7 +260,7 @@ public class NodeParser extends AbstractParser<NodeData> {
         return fields;
     }
 
-    private List<NodeChildData> parseChildren(List<? extends Element> elements, final List<TypeElement> typeHierarchy) {
+    private List<NodeChildData> parseChildren(final List<TypeElement> typeHierarchy, List<? extends Element> elements) {
         Set<String> shortCircuits = new HashSet<>();
         for (ExecutableElement method : ElementFilter.methodsIn(elements)) {
             AnnotationMirror mirror = Utils.findAnnotationMirror(processingEnv, method, ShortCircuit.class);
@@ -306,7 +288,7 @@ public class NodeParser extends AbstractParser<NodeData> {
             AnnotationMirror nodeChildrenMirror = Utils.findAnnotationMirror(processingEnv, type, NodeChildren.class);
 
             TypeMirror nodeClassType = type.getSuperclass();
-            if (!Utils.isAssignable(context, nodeClassType, context.getTruffleTypes().getNode())) {
+            if (!Utils.isAssignable(nodeClassType, context.getTruffleTypes().getNode())) {
                 nodeClassType = null;
             }
 
@@ -530,24 +512,18 @@ public class NodeParser extends AbstractParser<NodeData> {
             return;
         }
 
-        for (SpecializationData specialization : node.getSpecializations()) {
-            if (!specialization.isSpecialized()) {
-                continue;
-            }
-            initializeGuards(elements, specialization);
-        }
-
+        initializeGuards(elements, node);
         initializeGeneric(node);
         initializeUninitialized(node);
+        initializeOrder(node);
         initializePolymorphism(node); // requires specializations
-        Collections.sort(node.getSpecializations());
         initializeReachability(node);
+        initializeContains(node);
 
-        // reduce polymorphicness if generic is not reachable
-        if (node.getGenericSpecialization() != null && !node.getGenericSpecialization().isReachable()) {
-            node.setPolymorphicDepth(1);
-            node.getSpecializations().remove(node.getPolymorphicSpecialization());
+        if (!node.hasErrors()) {
+            initializeExceptions(node);
         }
+        resolveContains(node);
 
         List<SpecializationData> needsId = new ArrayList<>();
         for (SpecializationData specialization : node.getSpecializations()) {
@@ -572,24 +548,195 @@ public class NodeParser extends AbstractParser<NodeData> {
 
     }
 
-    private void initializeReachability(final NodeData node) {
-        SpecializationData prev = null;
-        boolean reachable = true;
-        for (SpecializationData specialization : node.getSpecializations()) {
-            if (specialization.isUninitialized() || specialization.isPolymorphic()) {
-                specialization.setReachable(true);
+    private static void initializeOrder(NodeData node) {
+        List<SpecializationData> specializations = node.getSpecializations();
+        Collections.sort(specializations);
+
+        for (SpecializationData specialization : specializations) {
+            String searchName = specialization.getInsertBeforeName();
+            if (searchName == null || specialization.getMethod() == null) {
                 continue;
             }
-            if (prev != null && prev.equalsGuards(specialization) && prev.getExceptions().isEmpty()) {
-                specialization.addError("%s is not reachable.", specialization.isGeneric() ? "Generic" : "Specialization");
-            } else if (!reachable && specialization.getMethod() != null) {
-                specialization.addError("%s is not reachable.", specialization.isGeneric() ? "Generic" : "Specialization");
+            SpecializationData found = lookupSpecialization(node, searchName);
+            if (found == null || found.getMethod() == null) {
+                AnnotationValue value = Utils.getAnnotationValue(specialization.getMarkerAnnotation(), "insertBefore");
+                specialization.addError(value, "The referenced specialization '%s' could not be found.", searchName);
+                continue;
             }
-            specialization.setReachable(reachable);
-            if (!specialization.hasRewrite(context)) {
-                reachable = false;
+
+            ExecutableElement currentMethod = specialization.getMethod();
+            ExecutableElement insertBeforeMethod = found.getMethod();
+
+            TypeMirror currentEnclosedType = currentMethod.getEnclosingElement().asType();
+            TypeMirror insertBeforeEnclosedType = insertBeforeMethod.getEnclosingElement().asType();
+
+            if (Utils.typeEquals(currentEnclosedType, insertBeforeEnclosedType) || !Utils.isSubtype(currentEnclosedType, insertBeforeEnclosedType)) {
+                AnnotationValue value = Utils.getAnnotationValue(specialization.getMarkerAnnotation(), "insertBefore");
+                specialization.addError(value, "Specializations can only be inserted before specializations in superclasses.", searchName);
+                continue;
             }
-            prev = specialization;
+
+            specialization.setInsertBefore(found);
+        }
+
+        int endIndex = specializations.size() - 1;
+        for (int i = endIndex; i >= 0; i--) {
+            SpecializationData specialization = specializations.get(i);
+            if (specialization.isGeneric() || specialization.isPolymorphic()) {
+                endIndex--;
+                continue;
+            }
+
+            SpecializationData insertBefore = specialization.getInsertBefore();
+            if (insertBefore != null) {
+                int insertIndex = specializations.indexOf(insertBefore);
+                if (insertIndex < i) {
+                    List<SpecializationData> range = new ArrayList<>(specializations.subList(i, endIndex + 1));
+                    specializations.removeAll(range);
+                    specializations.addAll(insertIndex, range);
+                }
+            }
+        }
+
+        for (int i = 0; i < specializations.size(); i++) {
+            specializations.get(i).setIndex(i);
+        }
+    }
+
+    private static void initializeExceptions(NodeData node) {
+        List<SpecializationData> specializations = node.getSpecializations();
+        for (int i = 0; i < specializations.size(); i++) {
+            SpecializationData cur = specializations.get(i);
+            if (cur.getExceptions().isEmpty()) {
+                continue;
+            }
+            SpecializationData next = i + 1 < specializations.size() ? specializations.get(i + 1) : null;
+
+            if (!cur.isContainedBy(next)) {
+                // error should be able to contain
+                next.addError("This specialiation is not a valid exceptional rewrite target for %s. To fix this make %s compatible to %s or remove the exceptional rewrite.",
+                                cur.createReferenceName(), next.createReferenceName(), cur.createReferenceName());
+                continue;
+            }
+            if (!next.getContains().contains(cur)) {
+                next.getContains().add(cur);
+                // TODO resolve transitive contains
+            }
+        }
+
+        for (SpecializationData cur : specializations) {
+            if (cur.getExceptions().isEmpty()) {
+                continue;
+            }
+            for (SpecializationData child : specializations) {
+                if (child != null && child != cur && child.getContains().contains(cur)) {
+                    cur.getExcludedBy().add(child);
+                }
+            }
+        }
+    }
+
+    private static void initializeContains(NodeData node) {
+        for (SpecializationData specialization : node.getSpecializations()) {
+            Set<SpecializationData> resolvedSpecializations = specialization.getContains();
+            resolvedSpecializations.clear();
+            Set<String> includeNames = specialization.getContainsNames();
+            for (String includeName : includeNames) {
+                // TODO reduce complexity of this lookup.
+                SpecializationData foundSpecialization = lookupSpecialization(node, includeName);
+
+                if (foundSpecialization == null) {
+                    AnnotationValue value = Utils.getAnnotationValue(specialization.getMarkerAnnotation(), "contains");
+                    specialization.addError(value, "The referenced specialization '%s' could not be found.", includeName);
+                } else {
+                    if (!foundSpecialization.isContainedBy(specialization)) {
+                        AnnotationValue value = Utils.getAnnotationValue(specialization.getMarkerAnnotation(), "contains");
+                        if (foundSpecialization.compareTo(specialization) > 0) {
+                            specialization.addError(value, "The contained specialization '%s' must be declared before the containing specialization.", includeName);
+                        } else {
+                            specialization.addError(value,
+                                            "The contained specialization '%s' is not fully compatible. The contained specialization must be strictly more generic than the containing one.",
+                                            includeName);
+                        }
+
+                    }
+                    resolvedSpecializations.add(foundSpecialization);
+                }
+            }
+        }
+    }
+
+    private void resolveContains(NodeData node) {
+        // flatten transitive includes
+        for (SpecializationData specialization : node.getSpecializations()) {
+            if (specialization.getContains().isEmpty()) {
+                continue;
+            }
+            Set<SpecializationData> foundSpecializations = new HashSet<>();
+            collectIncludes(specialization, foundSpecializations, new HashSet<SpecializationData>());
+            specialization.getContains().addAll(foundSpecializations);
+        }
+    }
+
+    private static SpecializationData lookupSpecialization(NodeData node, String includeName) {
+        SpecializationData foundSpecialization = null;
+        for (SpecializationData searchSpecialization : node.getSpecializations()) {
+            if (searchSpecialization.getMethodName().equals(includeName)) {
+                foundSpecialization = searchSpecialization;
+                break;
+            }
+        }
+        return foundSpecialization;
+    }
+
+    private void collectIncludes(SpecializationData specialization, Set<SpecializationData> found, Set<SpecializationData> visited) {
+        if (visited.contains(specialization)) {
+            // circle found
+            specialization.addError("Circular contained specialization '%s' found.", specialization.createReferenceName());
+            return;
+        }
+        visited.add(specialization);
+
+        for (SpecializationData included : specialization.getContains()) {
+            collectIncludes(included, found, new HashSet<>(visited));
+            found.add(included);
+        }
+    }
+
+    private static void initializeReachability(final NodeData node) {
+        List<SpecializationData> specializations = node.getSpecializations();
+        for (int i = specializations.size() - 1; i >= 0; i--) {
+            SpecializationData current = specializations.get(i);
+            if (current.isPolymorphic()) {
+                current.setReachable(true);
+                continue;
+            }
+
+            List<SpecializationData> shadowedBy = null;
+            for (int j = i - 1; j >= 0; j--) {
+                SpecializationData prev = specializations.get(j);
+                if (prev.isPolymorphic()) {
+                    continue;
+                }
+                if (!current.isReachableAfter(prev)) {
+                    if (shadowedBy == null) {
+                        shadowedBy = new ArrayList<>();
+                    }
+                    shadowedBy.add(prev);
+                }
+            }
+
+            if (shadowedBy != null) {
+                StringBuilder name = new StringBuilder();
+                String sep = "";
+                for (SpecializationData shadowSpecialization : shadowedBy) {
+                    name.append(sep);
+                    name.append(shadowSpecialization.createReferenceName());
+                    sep = ", ";
+                }
+                current.addError("%s is not reachable. It is shadowed by %s.", current.isGeneric() ? "Generic" : "Specialization", name);
+            }
+            current.setReachable(shadowedBy == null);
         }
     }
 
@@ -705,29 +852,59 @@ public class NodeParser extends AbstractParser<NodeData> {
         return signatures;
     }
 
-    private void initializeGuards(List<? extends Element> elements, SpecializationData specialization) {
-        if (specialization.getGuardDefinitions().isEmpty()) {
-            specialization.setGuards(Collections.<GuardData> emptyList());
-            return;
-        }
-
-        List<GuardData> foundGuards = new ArrayList<>();
-        List<ExecutableElement> methods = ElementFilter.methodsIn(elements);
-        for (String guardDefinition : specialization.getGuardDefinitions()) {
-            GuardParser parser = new GuardParser(context, specialization, guardDefinition);
-            List<GuardData> guards = parser.parse(methods);
-            if (!guards.isEmpty()) {
-                foundGuards.add(guards.get(0));
-            } else {
-                // error no guard found
-                MethodSpec spec = parser.createSpecification(specialization.getMethod(), null);
-                spec.applyTypeDefinitions("types");
-                specialization.addError("Guard with method name '%s' not found. Expected signature: %n%s", guardDefinition, spec.toSignatureString("guard"));
+    private void initializeGuards(List<? extends Element> elements, NodeData node) {
+        Map<String, List<GuardData>> guards = new HashMap<>();
+        for (SpecializationData specialization : node.getSpecializations()) {
+            for (GuardExpression exp : specialization.getGuards()) {
+                guards.put(exp.getGuardName(), null);
             }
         }
 
-        specialization.setGuards(foundGuards);
+        GuardParser parser = new GuardParser(context, node, null, guards.keySet());
+        List<GuardData> resolvedGuards = parser.parse(elements);
+        for (GuardData guard : resolvedGuards) {
+            List<GuardData> groupedGuards = guards.get(guard.getMethodName());
+            if (groupedGuards == null) {
+                groupedGuards = new ArrayList<>();
+                guards.put(guard.getMethodName(), groupedGuards);
+            }
+            groupedGuards.add(guard);
+        }
 
+        for (SpecializationData specialization : node.getSpecializations()) {
+            for (GuardExpression exp : specialization.getGuards()) {
+                resolveGuardExpression(node, specialization, guards, exp);
+            }
+        }
+    }
+
+    private void resolveGuardExpression(NodeData node, TemplateMethod source, Map<String, List<GuardData>> guards, GuardExpression expression) {
+        List<GuardData> availableGuards = guards.get(expression.getGuardName());
+        if (availableGuards == null) {
+            source.addError("No compatible guard with method name '%s' found. Please note that all signature types of the method guard must be declared in the type system.", expression.getGuardName());
+            return;
+        }
+        List<ExecutableElement> guardMethods = new ArrayList<>();
+        for (GuardData guard : availableGuards) {
+            guardMethods.add(guard.getMethod());
+        }
+        GuardParser parser = new GuardParser(context, node, source, new HashSet<>(Arrays.asList(expression.getGuardName())));
+        List<GuardData> matchingGuards = parser.parse(guardMethods);
+        if (!matchingGuards.isEmpty()) {
+            GuardData guard = matchingGuards.get(0);
+            // use the shared instance of the guard data
+            for (GuardData guardData : availableGuards) {
+                if (guardData.getMethod() == guard.getMethod()) {
+                    expression.setGuard(guardData);
+                    return;
+                }
+            }
+            throw new AssertionError("Should not reach here.");
+        } else {
+            MethodSpec spec = parser.createSpecification(source.getMethod(), source.getMarkerAnnotation());
+            spec.applyTypeDefinitions("types");
+            source.addError("No guard with name '%s' matched the required signature. Expected signature: %n%s", expression.getGuardName(), spec.toSignatureString("guard"));
+        }
     }
 
     private void initializeGeneric(final NodeData node) {
@@ -774,7 +951,7 @@ public class NodeParser extends AbstractParser<NodeData> {
         }
 
         TypeMirror returnType = createGenericType(specification.getReturnType(), node.getSpecializations(), 0);
-        SpecializationData generic = parser.create("Generic", null, null, returnType, parameterTypes);
+        SpecializationData generic = parser.create("Generic", TemplateMethod.NO_NATURAL_ORDER, null, null, returnType, parameterTypes);
         if (generic == null) {
             throw new RuntimeException("Unable to create generic signature for node " + node.getNodeId() + " with " + parameterTypes + ". Specification " + specification + ".");
         }
@@ -831,16 +1008,14 @@ public class NodeParser extends AbstractParser<NodeData> {
                 generic.replaceParameter(parameter.getLocalName(), new ActualParameter(parameter, node.getTypeSystem().getGenericTypeData()));
             }
         }
-        TemplateMethod uninializedMethod = new TemplateMethod("Uninitialized", node, generic.getSpecification(), null, null, generic.getReturnType(), generic.getParameters());
+        TemplateMethod uninializedMethod = new TemplateMethod("Uninitialized", -1, node, generic.getSpecification(), null, null, generic.getReturnType(), generic.getParameters());
         // should not use messages from generic specialization
         uninializedMethod.getMessages().clear();
         node.getSpecializations().add(new SpecializationData(node, uninializedMethod, SpecializationKind.UNINITIALIZED));
     }
 
     private void initializePolymorphism(NodeData node) {
-        initializePolymorphicDepth(node);
-
-        if (!node.needsRewrites(context) || !node.isPolymorphic()) {
+        if (!node.needsRewrites(context)) {
             return;
         }
 
@@ -877,27 +1052,6 @@ public class NodeParser extends AbstractParser<NodeData> {
         SpecializationData polymorphic = new SpecializationData(node, generic, SpecializationKind.POLYMORPHIC);
         polymorphic.updateSignature(new TypeSignature(polymorphicSignature));
         node.getSpecializations().add(polymorphic);
-    }
-
-    private static void initializePolymorphicDepth(final NodeData node) {
-        int polymorphicCombinations = 0;
-        for (SpecializationData specialization : node.getSpecializations()) {
-            if (specialization.isGeneric()) {
-                continue;
-            }
-
-            int combinations = 1;
-            for (ActualParameter parameter : specialization.getSignatureParameters()) {
-                combinations *= node.getTypeSystem().lookupSourceTypes(parameter.getTypeSystemType()).size();
-            }
-            polymorphicCombinations += combinations;
-        }
-
-        // initialize polymorphic depth
-        if (node.getPolymorphicDepth() < 0) {
-            node.setPolymorphicDepth(polymorphicCombinations - 1);
-        }
-
     }
 
     private void initializeShortCircuits(NodeData node) {
@@ -1046,34 +1200,6 @@ public class NodeParser extends AbstractParser<NodeData> {
         }
     }
 
-    private static void verifySpecializationOrder(NodeData node) {
-        List<SpecializationData> specializations = node.getSpecializations();
-        for (int i = 0; i < specializations.size(); i++) {
-            SpecializationData m1 = specializations.get(i);
-            for (int j = i + 1; j < specializations.size(); j++) {
-                SpecializationData m2 = specializations.get(j);
-                int inferredOrder = m1.compareBySignature(m2);
-
-                if (m1.getOrder() != Specialization.DEFAULT_ORDER && m2.getOrder() != Specialization.DEFAULT_ORDER) {
-                    int specOrder = m1.getOrder() - m2.getOrder();
-                    if (specOrder == 0) {
-                        m1.addError("Order value %d used multiple times", m1.getOrder());
-                        m2.addError("Order value %d used multiple times", m1.getOrder());
-                        return;
-                    } else if ((specOrder < 0 && inferredOrder > 0) || (specOrder > 0 && inferredOrder < 0)) {
-                        m1.addError("Explicit order values %d and %d are inconsistent with type lattice ordering.", m1.getOrder(), m2.getOrder());
-                        m2.addError("Explicit order values %d and %d are inconsistent with type lattice ordering.", m1.getOrder(), m2.getOrder());
-                        return;
-                    }
-                } else if (inferredOrder == 0) {
-                    SpecializationData m = (m1.getOrder() == Specialization.DEFAULT_ORDER ? m1 : m2);
-                    m.addError("Cannot calculate a consistent order for this specialization. Define the order attribute to resolve this.");
-                    return;
-                }
-            }
-        }
-    }
-
     private static void verifyMissingAbstractMethods(NodeData nodeData, List<? extends Element> originalElements) {
         if (!nodeData.needsFactory()) {
             // missing abstract methods only needs to be implemented
@@ -1205,7 +1331,7 @@ public class NodeParser extends AbstractParser<NodeData> {
         }
 
         for (ExecutableElement method : ElementFilter.methodsIn(elements)) {
-            if (method.getSimpleName().toString().equals(methodName) && method.getParameters().size() == 0 && Utils.isAssignable(context, type, method.getReturnType())) {
+            if (method.getSimpleName().toString().equals(methodName) && method.getParameters().size() == 0 && Utils.isAssignable(type, method.getReturnType())) {
                 return method;
             }
         }

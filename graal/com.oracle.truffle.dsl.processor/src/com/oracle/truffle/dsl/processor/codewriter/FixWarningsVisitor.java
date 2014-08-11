@@ -76,9 +76,6 @@ public class FixWarningsVisitor extends CodeElementScanner<Void, Void> {
 
         symbolsUsed.clear();
         super.visitExecutable(e, p);
-        if (e.getBodyTree() == null && e.getBody() != null) {
-            computeSymbols(e.getBody());
-        }
 
         for (VariableElement parameter : e.getParameters()) {
             if (!symbolsUsed.contains(parameter.getSimpleName().toString())) {

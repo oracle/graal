@@ -54,11 +54,9 @@ public class NodeData extends Template implements Comparable<NodeData> {
 
     private final NodeExecutionData thisExecution;
 
-    private int polymorphicDepth = -1;
-
-    public NodeData(TypeElement type, String shortName, TypeSystemData typeSystem, List<NodeChildData> children, List<NodeExecutionData> executions, List<NodeFieldData> fields,
-                    List<String> assumptions, int polymorphicDepth) {
-        super(type, null, null);
+    public NodeData(ProcessorContext context, TypeElement type, String shortName, TypeSystemData typeSystem, List<NodeChildData> children, List<NodeExecutionData> executions,
+                    List<NodeFieldData> fields, List<String> assumptions) {
+        super(context, type, null, null);
         this.nodeId = type.getSimpleName().toString();
         this.shortName = shortName;
         this.typeSystem = typeSystem;
@@ -66,7 +64,6 @@ public class NodeData extends Template implements Comparable<NodeData> {
         this.children = children;
         this.childExecutions = executions;
         this.assumptions = assumptions;
-        this.polymorphicDepth = polymorphicDepth;
         this.thisExecution = new NodeExecutionData(new NodeChildData(null, null, "this", getNodeType(), getNodeType(), null, Cardinality.ONE), -1, false);
         this.thisExecution.getChild().setNode(this);
         if (children != null) {
@@ -76,12 +73,20 @@ public class NodeData extends Template implements Comparable<NodeData> {
         }
     }
 
-    public NodeData(TypeElement type) {
-        this(type, null, null, null, null, null, null, -1);
+    public NodeData(ProcessorContext context, TypeElement type) {
+        this(context, type, null, null, null, null, null, null);
     }
 
     public NodeExecutionData getThisExecution() {
         return thisExecution;
+    }
+
+    public boolean isFallbackReachable() {
+        SpecializationData generic = getGenericSpecialization();
+        if (generic != null) {
+            return generic.isReachable();
+        }
+        return false;
     }
 
     public void addEnclosedNode(NodeData node) {
@@ -121,16 +126,8 @@ public class NodeData extends Template implements Comparable<NodeData> {
         return false;
     }
 
-    public int getPolymorphicDepth() {
-        return polymorphicDepth;
-    }
-
-    public boolean isPolymorphic() {
-        return polymorphicDepth > 1;
-    }
-
-    public void setPolymorphicDepth(int polymorphicDepth) {
-        this.polymorphicDepth = polymorphicDepth;
+    public boolean isPolymorphic(ProcessorContext context) {
+        return needsRewrites(context);
     }
 
     public List<CreateCastData> getCasts() {
@@ -404,7 +401,6 @@ public class NodeData extends Template implements Comparable<NodeData> {
         dumpProperty(builder, indent, "fields", getChildren());
         dumpProperty(builder, indent, "executableTypes", getExecutableTypes());
         dumpProperty(builder, indent, "specializations", getSpecializations());
-        dumpProperty(builder, indent, "polymorphicDepth", getPolymorphicDepth());
         dumpProperty(builder, indent, "assumptions", getAssumptions());
         dumpProperty(builder, indent, "casts", getCasts());
         dumpProperty(builder, indent, "messages", collectMessages());

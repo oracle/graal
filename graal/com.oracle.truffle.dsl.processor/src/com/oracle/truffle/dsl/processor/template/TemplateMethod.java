@@ -36,18 +36,22 @@ import com.oracle.truffle.dsl.processor.util.*;
  */
 public class TemplateMethod extends MessageContainer implements Comparable<TemplateMethod> {
 
+    public static final int NO_NATURAL_ORDER = -1;
+
     private String id;
     private final Template template;
+    private final int naturalOrder;
     private final MethodSpec specification;
     private final ExecutableElement method;
     private final AnnotationMirror markerAnnotation;
     private ActualParameter returnType;
     private List<ActualParameter> parameters;
 
-    public TemplateMethod(String id, Template template, MethodSpec specification, ExecutableElement method, AnnotationMirror markerAnnotation, ActualParameter returnType,
+    public TemplateMethod(String id, int naturalOrder, Template template, MethodSpec specification, ExecutableElement method, AnnotationMirror markerAnnotation, ActualParameter returnType,
                     List<ActualParameter> parameters) {
         this.template = template;
         this.specification = specification;
+        this.naturalOrder = naturalOrder;
         this.method = method;
         this.markerAnnotation = markerAnnotation;
         this.returnType = returnType;
@@ -60,13 +64,17 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
         this.id = id;
     }
 
+    public int getNaturalOrder() {
+        return naturalOrder;
+    }
+
     public TemplateMethod(TemplateMethod method) {
-        this(method.id, method.template, method.specification, method.method, method.markerAnnotation, method.returnType, method.parameters);
+        this(method.id, method.naturalOrder, method.template, method.specification, method.method, method.markerAnnotation, method.returnType, method.parameters);
         getMessages().addAll(method.getMessages());
     }
 
     public TemplateMethod(TemplateMethod method, ExecutableElement executable) {
-        this(method.id, method.template, method.specification, executable, method.markerAnnotation, method.returnType, method.parameters);
+        this(method.id, method.naturalOrder, method.template, method.specification, executable, method.markerAnnotation, method.returnType, method.parameters);
         getMessages().addAll(method.getMessages());
     }
 
@@ -174,9 +182,9 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
         return Collections.unmodifiableList(allParameters);
     }
 
-    public boolean canBeAccessedByInstanceOf(ProcessorContext context, TypeMirror type) {
+    public boolean canBeAccessedByInstanceOf(TypeMirror type) {
         TypeMirror methodType = Utils.findNearestEnclosingType(getMethod()).asType();
-        return Utils.isAssignable(context, type, methodType) || Utils.isAssignable(context, methodType, type);
+        return Utils.isAssignable(type, methodType) || Utils.isAssignable(methodType, type);
     }
 
     public ExecutableElement getMethod() {
@@ -306,31 +314,27 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
 
         List<TypeMirror> signature1 = getSignatureTypes(this);
         List<TypeMirror> signature2 = getSignatureTypes(compareMethod);
-        if (signature1.size() != signature2.size()) {
-            return signature2.size() - signature1.size();
-        }
 
         int result = 0;
-        for (int i = 1; i < signature1.size(); i++) {
-            TypeMirror t1 = signature1.get(i);
-            TypeMirror t2 = signature2.get(i);
-
-            int typeResult = compareParameter(typeSystem, t1, t2);
-            if (result == 0) {
-                result = typeResult;
-            } else if (typeResult != 0 && Math.signum(result) != Math.signum(typeResult)) {
-                // We cannot define an order.
-                return 0;
+        for (int i = 0; i < Math.max(signature1.size(), signature2.size()); i++) {
+            TypeMirror t1 = i < signature1.size() ? signature1.get(i) : null;
+            TypeMirror t2 = i < signature2.size() ? signature2.get(i) : null;
+            result = compareParameter(typeSystem, t1, t2);
+            if (result != 0) {
+                break;
             }
-        }
-        if (result == 0 && signature1.size() > 0) {
-            result = compareParameter(typeSystem, signature1.get(0), signature2.get(0));
         }
 
         return result;
     }
 
-    private static int compareParameter(TypeSystemData data, TypeMirror signature1, TypeMirror signature2) {
+    protected static int compareParameter(TypeSystemData data, TypeMirror signature1, TypeMirror signature2) {
+        if (signature1 == null) {
+            return 1;
+        } else if (signature2 == null) {
+            return -1;
+        }
+
         if (Utils.typeEquals(signature1, signature2)) {
             return 0;
         }
@@ -341,6 +345,7 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
             return index1 - index2;
         }
 
+        // TODO this version if subclass of should be improved.
         if (signature1.getKind() == TypeKind.DECLARED && signature2.getKind() == TypeKind.DECLARED) {
             TypeElement element1 = Utils.fromTypeMirror(signature1);
             TypeElement element2 = Utils.fromTypeMirror(signature2);
@@ -356,7 +361,6 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
 
     public static List<TypeMirror> getSignatureTypes(TemplateMethod method) {
         List<TypeMirror> types = new ArrayList<>();
-        types.add(method.getReturnType().getType());
         for (ActualParameter param : method.getSignatureParameters()) {
             types.add(param.getType());
         }

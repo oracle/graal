@@ -36,10 +36,6 @@ import com.oracle.truffle.dsl.processor.template.*;
 
 public class TypeSystemCodeGenerator extends CompilationUnitFactory<TypeSystemData> {
 
-    public TypeSystemCodeGenerator(ProcessorContext context) {
-        super(context);
-    }
-
     public static String isTypeMethodName(TypeData type) {
         return "is" + Utils.getTypeId(type.getBoxedType());
     }
@@ -64,27 +60,32 @@ public class TypeSystemCodeGenerator extends CompilationUnitFactory<TypeSystemDa
         return "expect" + Utils.getTypeId(type.getBoxedType());
     }
 
+    public static String typeName(TypeSystemData typeSystem) {
+        String name = getSimpleName(typeSystem.getTemplateType());
+        return name + "Gen";
+    }
+
+    public static String singletonName(TypeSystemData type) {
+        return createConstantName(getSimpleName(type.getTemplateType().asType()));
+    }
+
     /**
      * Finds the generated singleton field for a TypeSytemData instance. TypeSystemCodeGenerator
      * must be applied to the TypeSystemData model before use.
      */
     public static VariableElement findSingleton(ProcessorContext context, TypeSystemData typeSystem) {
-        TypeMirror type = context.findGeneratedClassBySimpleName(TypeClassFactory.typeName(typeSystem), typeSystem);
-        return Utils.findDeclaredField(type, TypeClassFactory.singletonName(typeSystem.getTemplateType().asType()));
+        TypeMirror type = context.findGeneratedClassBySimpleName(typeName(typeSystem), typeSystem);
+        return Utils.findDeclaredField(type, singletonName(typeSystem));
     }
 
     @Override
     protected void createChildren(TypeSystemData m) {
-        add(new TypeClassFactory(context), m);
+        add(new TypeClassFactory(), m);
     }
 
     protected static class TypeClassFactory extends ClassElementFactory<TypeSystemData> {
 
         private static final String LOCAL_VALUE = "value";
-
-        public TypeClassFactory(ProcessorContext context) {
-            super(context);
-        }
 
         @Override
         public CodeTypeElement create(TypeSystemData typeSystem) {
@@ -127,17 +128,8 @@ public class TypeSystemCodeGenerator extends CompilationUnitFactory<TypeSystemDa
             return new ArrayList<>(sourceTypes);
         }
 
-        private static String typeName(TypeSystemData typeSystem) {
-            String name = getSimpleName(typeSystem.getTemplateType());
-            return name + "Gen";
-        }
-
-        private static String singletonName(TypeMirror type) {
-            return createConstantName(getSimpleName(type));
-        }
-
         private CodeVariableElement createSingleton(CodeTypeElement clazz) {
-            CodeVariableElement field = new CodeVariableElement(modifiers(PUBLIC, STATIC, FINAL), clazz.asType(), singletonName(getModel().getTemplateType().asType()));
+            CodeVariableElement field = new CodeVariableElement(modifiers(PUBLIC, STATIC, FINAL), clazz.asType(), singletonName(getModel()));
             field.createInitBuilder().startNew(clazz.asType()).end();
             return field;
         }

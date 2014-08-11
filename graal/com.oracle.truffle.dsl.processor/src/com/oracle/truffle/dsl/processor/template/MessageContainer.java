@@ -29,12 +29,16 @@ import javax.tools.Diagnostic.Kind;
 
 import com.oracle.truffle.dsl.processor.*;
 
-public abstract class MessageContainer {
+public abstract class MessageContainer implements Iterable<MessageContainer> {
 
     private final List<Message> messages = new ArrayList<>();
 
     public final void addWarning(String text, Object... params) {
         getMessages().add(new Message(null, this, String.format(text, params), Kind.WARNING));
+    }
+
+    public final void addWarning(AnnotationValue value, String text, Object... params) {
+        getMessages().add(new Message(value, this, String.format(text, params), Kind.WARNING));
     }
 
     public final void addError(String text, Object... params) {
@@ -51,11 +55,19 @@ public abstract class MessageContainer {
 
     public abstract Element getMessageElement();
 
-    public final void emitMessages(ProcessorContext context, TypeElement baseElement, Log log) {
-        emitMessagesImpl(context, baseElement, log, new HashSet<MessageContainer>(), null);
+    public MessageContainer getBaseContainer() {
+        return null;
     }
 
-    private void emitMessagesImpl(ProcessorContext context, TypeElement baseElement, Log log, Set<MessageContainer> visitedSinks, List<Message> verifiedMessages) {
+    public Iterator<MessageContainer> iterator() {
+        return findChildContainers().iterator();
+    }
+
+    public final void emitMessages(ProcessorContext context, Log log) {
+        emitMessagesImpl(context, log, new HashSet<MessageContainer>(), null);
+    }
+
+    private void emitMessagesImpl(ProcessorContext context, Log log, Set<MessageContainer> visitedSinks, List<Message> verifiedMessages) {
         List<Message> childMessages;
         if (verifiedMessages == null) {
             childMessages = collectMessagesWithElementChildren(new HashSet<MessageContainer>(), getMessageElement());
@@ -65,7 +77,7 @@ public abstract class MessageContainer {
         verifyExpectedMessages(context, log, childMessages);
 
         for (int i = getMessages().size() - 1; i >= 0; i--) {
-            emitDefault(context, baseElement, log, getMessages().get(i));
+            emitDefault(context, log, getMessages().get(i));
         }
 
         for (MessageContainer sink : findChildContainers()) {
@@ -75,9 +87,9 @@ public abstract class MessageContainer {
 
             visitedSinks.add(sink);
             if (sink.getMessageElement() == this.getMessageElement()) {
-                sink.emitMessagesImpl(context, baseElement, log, visitedSinks, childMessages);
+                sink.emitMessagesImpl(context, log, visitedSinks, childMessages);
             } else {
-                sink.emitMessagesImpl(context, baseElement, log, visitedSinks, null);
+                sink.emitMessagesImpl(context, log, visitedSinks, null);
             }
         }
     }
@@ -115,7 +127,7 @@ public abstract class MessageContainer {
         }
     }
 
-    private void emitDefault(ProcessorContext context, TypeElement baseType, Log log, Message message) {
+    private void emitDefault(ProcessorContext context, Log log, Message message) {
         Kind kind = message.getKind();
 
         Element messageElement = getMessageElement();
@@ -126,17 +138,6 @@ public abstract class MessageContainer {
         }
 
         String text = message.getText();
-
-        TypeElement rootEnclosing = Utils.findRootEnclosingType(getMessageElement());
-        TypeElement baseEnclosing = Utils.findRootEnclosingType(baseType);
-        if (rootEnclosing == null || !Utils.typeEquals(baseEnclosing.asType(), rootEnclosing.asType())) {
-            // redirect message
-            MessageContainer original = message.getOriginalContainer();
-            messageElement = baseType;
-            messageAnnotation = null;
-            messageValue = null;
-            text = wrapText(original.getMessageElement(), original.getMessageAnnotation(), message.getText());
-        }
 
         TypeElement expectError = context.getTruffleTypes().getExpectError();
         if (expectError != null) {
@@ -163,23 +164,6 @@ public abstract class MessageContainer {
         }
 
         log.message(kind, messageElement, messageAnnotation, messageValue, text);
-    }
-
-    private static String wrapText(Element element, AnnotationMirror mirror, String text) {
-        StringBuilder b = new StringBuilder();
-        if (element != null) {
-            b.append("Element " + element.toString());
-        }
-        if (mirror != null) {
-            b.append(" at annotation @" + Utils.getSimpleName(mirror.getAnnotationType()));
-        }
-
-        if (b.length() > 0) {
-            b.append(" is erroneous: ").append(text);
-            return b.toString();
-        } else {
-            return text;
-        }
     }
 
     public AnnotationMirror getMessageAnnotation() {

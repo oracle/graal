@@ -97,6 +97,7 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
 
         List<E> parsedMethods = new ArrayList<>();
         boolean valid = true;
+        int naturalOrder = 0;
         for (ExecutableElement method : methods) {
             if (!isParsable(method)) {
                 continue;
@@ -108,7 +109,7 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
                 mirror = Utils.findAnnotationMirror(getContext().getEnvironment(), method, annotationType);
             }
 
-            E parsedMethod = parse(method, mirror);
+            E parsedMethod = parse(naturalOrder, method, mirror);
 
             if (method.getModifiers().contains(Modifier.PRIVATE) && emitErrors) {
                 parsedMethod.addError("Method annotated with @%s must not be private.", getAnnotationType().getSimpleName());
@@ -122,6 +123,7 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
             } else {
                 valid = false;
             }
+            naturalOrder++;
         }
         Collections.sort(parsedMethods);
 
@@ -131,7 +133,7 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
         return parsedMethods;
     }
 
-    private E parse(ExecutableElement method, AnnotationMirror annotation) {
+    private E parse(int naturalOrder, ExecutableElement method, AnnotationMirror annotation) {
         MethodSpec methodSpecification = createSpecification(method, annotation);
         if (methodSpecification == null) {
             return null;
@@ -146,15 +148,15 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
             parameterTypes.add(var.asType());
         }
 
-        return parseImpl(methodSpecification, id, method, annotation, returnType, parameterTypes);
+        return parseImpl(methodSpecification, naturalOrder, id, method, annotation, returnType, parameterTypes);
     }
 
-    private E parseImpl(MethodSpec methodSpecification, String id, ExecutableElement method, AnnotationMirror annotation, TypeMirror returnType, List<TypeMirror> parameterTypes) {
+    private E parseImpl(MethodSpec methodSpecification, int naturalOrder, String id, ExecutableElement method, AnnotationMirror annotation, TypeMirror returnType, List<TypeMirror> parameterTypes) {
         ParameterSpec returnTypeSpec = methodSpecification.getReturnType();
         ActualParameter returnTypeMirror = matchParameter(returnTypeSpec, returnType, template, -1, -1);
         if (returnTypeMirror == null) {
             if (emitErrors) {
-                E invalidMethod = create(new TemplateMethod(id, template, methodSpecification, method, annotation, returnTypeMirror, Collections.<ActualParameter> emptyList()), true);
+                E invalidMethod = create(new TemplateMethod(id, naturalOrder, template, methodSpecification, method, annotation, returnTypeMirror, Collections.<ActualParameter> emptyList()), true);
                 String expectedReturnType = returnTypeSpec.toSignatureString(true);
                 String actualReturnType = Utils.getSimpleName(returnType);
 
@@ -170,7 +172,7 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
         List<ActualParameter> parameters = parseParameters(methodSpecification, parameterTypes, isUseVarArgs() && method != null ? method.isVarArgs() : false);
         if (parameters == null) {
             if (isEmitErrors() && method != null) {
-                E invalidMethod = create(new TemplateMethod(id, template, methodSpecification, method, annotation, returnTypeMirror, Collections.<ActualParameter> emptyList()), true);
+                E invalidMethod = create(new TemplateMethod(id, naturalOrder, template, methodSpecification, method, annotation, returnTypeMirror, Collections.<ActualParameter> emptyList()), true);
                 String message = String.format("Method signature %s does not match to the expected signature: \n%s", createActualSignature(method),
                                 methodSpecification.toSignatureString(method.getSimpleName().toString()));
                 invalidMethod.addError(message);
@@ -180,7 +182,7 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
             }
         }
 
-        return create(new TemplateMethod(id, template, methodSpecification, method, annotation, returnTypeMirror, parameters), false);
+        return create(new TemplateMethod(id, naturalOrder, template, methodSpecification, method, annotation, returnTypeMirror, parameters), false);
     }
 
     private static String createActualSignature(ExecutableElement method) {
@@ -349,7 +351,7 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
         }
     }
 
-    public final E create(String id, ExecutableElement methodMetadata, AnnotationMirror mirror, TypeMirror returnType, List<TypeMirror> parameterTypes) {
-        return parseImpl(createSpecification(methodMetadata, mirror), id, methodMetadata, mirror, returnType, parameterTypes);
+    public final E create(String id, int naturalOrder, ExecutableElement methodMetadata, AnnotationMirror mirror, TypeMirror returnType, List<TypeMirror> parameterTypes) {
+        return parseImpl(createSpecification(methodMetadata, mirror), naturalOrder, id, methodMetadata, mirror, returnType, parameterTypes);
     }
 }

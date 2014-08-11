@@ -31,14 +31,25 @@ import com.oracle.truffle.dsl.processor.typesystem.*;
 
 public abstract class Template extends MessageContainer {
 
+    private final ProcessorContext context;
     private final TypeElement templateType;
     private final String templateMethodName;
     private final AnnotationMirror annotation;
 
-    public Template(TypeElement templateType, String templateMethodName, AnnotationMirror annotation) {
+    public Template(ProcessorContext context, TypeElement templateType, String templateMethodName, AnnotationMirror annotation) {
+        this.context = context;
         this.templateType = templateType;
         this.templateMethodName = templateMethodName;
         this.annotation = annotation;
+    }
+
+    public ProcessorContext getContext() {
+        return context;
+    }
+
+    @Override
+    public MessageContainer getBaseContainer() {
+        return this;
     }
 
     public abstract TypeSystemData getTypeSystem();

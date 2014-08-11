@@ -22,14 +22,9 @@
  */
 package com.oracle.truffle.dsl.processor.template;
 
-import com.oracle.truffle.dsl.processor.*;
 import com.oracle.truffle.dsl.processor.ast.*;
 
 public abstract class CompilationUnitFactory<M> extends CodeElementFactory<M> {
-
-    public CompilationUnitFactory(ProcessorContext context) {
-        super(context);
-    }
 
     @Override
     public final CodeCompilationUnit create(M m) {

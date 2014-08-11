@@ -43,8 +43,8 @@ public class TypeSystemData extends Template {
     private TypeMirror genericType;
     private TypeData voidType;
 
-    public TypeSystemData(TypeElement templateType, AnnotationMirror annotation) {
-        super(templateType, null, annotation);
+    public TypeSystemData(ProcessorContext context, TypeElement templateType, AnnotationMirror annotation) {
+        super(context, templateType, null, annotation);
     }
 
     @Override

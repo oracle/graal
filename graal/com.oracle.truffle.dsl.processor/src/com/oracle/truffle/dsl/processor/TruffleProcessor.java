@@ -42,7 +42,6 @@ import com.oracle.truffle.dsl.processor.typesystem.*;
 @SupportedSourceVersion(SourceVersion.RELEASE_7)
 public class TruffleProcessor extends AbstractProcessor implements ProcessCallback {
 
-    private ProcessorContext context;
     private List<AnnotationProcessor<?>> generators;
 
     private RoundEnvironment round;
@@ -60,6 +59,7 @@ public class TruffleProcessor extends AbstractProcessor implements ProcessCallba
         // TODO run verifications that other annotations are not processed out of scope of the
         // operation or typelattice.
         try {
+            ProcessorContext.setThreadLocalInstance(new ProcessorContext(processingEnv, this));
             for (AnnotationProcessor<?> generator : getGenerators()) {
                 AbstractParser<?> parser = generator.getParser();
                 if (parser.getAnnotationType() != null) {
@@ -82,6 +82,7 @@ public class TruffleProcessor extends AbstractProcessor implements ProcessCallba
 
             }
         } finally {
+            ProcessorContext.setThreadLocalInstance(null);
             this.round = null;
         }
     }
@@ -96,7 +97,7 @@ public class TruffleProcessor extends AbstractProcessor implements ProcessCallba
 
     private static void handleThrowable(AnnotationProcessor<?> generator, Throwable t, Element e) {
         String message = "Uncaught error in " + generator.getClass().getSimpleName() + " while processing " + e;
-        generator.getContext().getEnvironment().getMessager().printMessage(Kind.ERROR, message + ": " + Utils.printException(t), e);
+        ProcessorContext.getInstance().getEnvironment().getMessager().printMessage(Kind.ERROR, message + ": " + Utils.printException(t), e);
     }
 
     @Override
@@ -127,17 +128,10 @@ public class TruffleProcessor extends AbstractProcessor implements ProcessCallba
     private List<AnnotationProcessor<?>> getGenerators() {
         if (generators == null && processingEnv != null) {
             generators = new ArrayList<>();
-            generators.add(new AnnotationProcessor<>(getContext(), new TypeSystemParser(getContext()), new TypeSystemCodeGenerator(getContext())));
-            generators.add(new AnnotationProcessor<>(getContext(), new NodeParser(getContext()), new NodeCodeGenerator(getContext())));
+            generators.add(new AnnotationProcessor<>(new TypeSystemParser(), new TypeSystemCodeGenerator()));
+            generators.add(new AnnotationProcessor<>(new NodeParser(), new NodeCodeGenerator()));
         }
         return generators;
-    }
-
-    private ProcessorContext getContext() {
-        if (context == null) {
-            context = new ProcessorContext(processingEnv, this);
-        }
-        return context;
     }
 
     @Override

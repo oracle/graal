@@ -39,7 +39,7 @@ public final class SpecializationGroup {
 
     private final List<String> assumptions;
     private final List<TypeGuard> typeGuards;
-    private final List<GuardData> guards;
+    private final List<GuardExpression> guards;
 
     private final NodeData node;
     private final SpecializationData specialization;
@@ -62,7 +62,7 @@ public final class SpecializationGroup {
         this.guards.addAll(data.getGuards());
     }
 
-    public SpecializationGroup(List<SpecializationGroup> children, List<String> assumptionMatches, List<TypeGuard> typeGuardsMatches, List<GuardData> guardMatches) {
+    public SpecializationGroup(List<SpecializationGroup> children, List<String> assumptionMatches, List<TypeGuard> typeGuardsMatches, List<GuardExpression> guardMatches) {
         assert !children.isEmpty() : "children must not be empty";
         this.assumptions = assumptionMatches;
         this.typeGuards = typeGuardsMatches;
@@ -90,14 +90,7 @@ public final class SpecializationGroup {
         return null;
     }
 
-    public List<GuardData> findElseConnectableGuards(boolean minimumStateCheck) {
-        if (minimumStateCheck) {
-            /*
-             * TODO investigate further if we really cannot else connect guards if minimum state is
-             * required
-             */
-            return Collections.emptyList();
-        }
+    public List<GuardExpression> findElseConnectableGuards() {
         if (!getTypeGuards().isEmpty() || !getAssumptions().isEmpty()) {
             return Collections.emptyList();
         }
@@ -106,9 +99,9 @@ public final class SpecializationGroup {
             return Collections.emptyList();
         }
 
-        List<GuardData> elseConnectableGuards = new ArrayList<>();
+        List<GuardExpression> elseConnectableGuards = new ArrayList<>();
         int guardIndex = 0;
-        while (guardIndex < getGuards().size() && findNegatedGuardInPrevious(getGuards().get(guardIndex), minimumStateCheck) != null) {
+        while (guardIndex < getGuards().size() && findNegatedGuardInPrevious(getGuards().get(guardIndex)) != null) {
             elseConnectableGuards.add(getGuards().get(guardIndex));
             guardIndex++;
         }
@@ -116,12 +109,12 @@ public final class SpecializationGroup {
         return elseConnectableGuards;
     }
 
-    private GuardData findNegatedGuardInPrevious(GuardData guard, boolean minimumStateCheck) {
+    private GuardExpression findNegatedGuardInPrevious(GuardExpression guard) {
         SpecializationGroup previous = this.getPreviousGroup();
         if (previous == null) {
             return null;
         }
-        List<GuardData> elseConnectedGuards = previous.findElseConnectableGuards(minimumStateCheck);
+        List<GuardExpression> elseConnectedGuards = previous.findElseConnectableGuards();
 
         if (previous == null || previous.getGuards().size() != elseConnectedGuards.size() + 1) {
             return null;
@@ -132,8 +125,8 @@ public final class SpecializationGroup {
             return guard;
         }
 
-        GuardData previousGuard = previous.getGuards().get(elseConnectedGuards.size());
-        if (guard.getMethod().equals(previousGuard.getMethod()) && guard.isNegated() != previousGuard.isNegated()) {
+        GuardExpression previousGuard = previous.getGuards().get(elseConnectedGuards.size());
+        if (guard.getResolvedGuard().getMethod().equals(previousGuard.getResolvedGuard().getMethod()) && guard.isNegated() != previousGuard.isNegated()) {
             return guard;
         }
         return null;
@@ -161,7 +154,7 @@ public final class SpecializationGroup {
         return typeGuards;
     }
 
-    public List<GuardData> getGuards() {
+    public List<GuardExpression> getGuards() {
         return guards;
     }
 
@@ -183,7 +176,7 @@ public final class SpecializationGroup {
 
         List<String> assumptionMatches = new ArrayList<>();
         List<TypeGuard> typeGuardsMatches = new ArrayList<>();
-        List<GuardData> guardMatches = new ArrayList<>();
+        List<GuardExpression> guardMatches = new ArrayList<>();
 
         SpecializationGroup first = groups.get(0);
         List<SpecializationGroup> others = groups.subList(1, groups.size());
@@ -208,7 +201,7 @@ public final class SpecializationGroup {
             typeGuardsMatches.add(typeGuard);
         }
 
-        outer: for (GuardData guard : first.guards) {
+        outer: for (GuardExpression guard : first.guards) {
             for (SpecializationGroup other : others) {
                 if (!other.guards.contains(guard)) {
                     // we must break here. One guard may depend on the other.
@@ -219,11 +212,11 @@ public final class SpecializationGroup {
         }
 
         // check for guards for required type casts
-        for (Iterator<GuardData> iterator = guardMatches.iterator(); iterator.hasNext();) {
-            GuardData guardMatch = iterator.next();
+        for (Iterator<GuardExpression> iterator = guardMatches.iterator(); iterator.hasNext();) {
+            GuardExpression guardMatch = iterator.next();
 
             int signatureIndex = 0;
-            for (ActualParameter parameter : guardMatch.getParameters()) {
+            for (ActualParameter parameter : guardMatch.getResolvedGuard().getParameters()) {
                 signatureIndex++;
                 if (!parameter.getSpecification().isSignature()) {
                     continue;
@@ -297,7 +290,7 @@ public final class SpecializationGroup {
         for (SpecializationData specialization : specializations) {
             groups.add(new SpecializationGroup(specialization));
         }
-        return new SpecializationGroup(createCombinationalGroups(groups), Collections.<String> emptyList(), Collections.<TypeGuard> emptyList(), Collections.<GuardData> emptyList());
+        return new SpecializationGroup(createCombinationalGroups(groups), Collections.<String> emptyList(), Collections.<TypeGuard> emptyList(), Collections.<GuardExpression> emptyList());
     }
 
     @Override
@@ -428,5 +421,28 @@ public final class SpecializationGroup {
         public TypeData getType() {
             return type;
         }
+    }
+
+    public boolean isTypeGuardUsedInAnyGuardBelow(ProcessorContext context, SpecializationData source, TypeGuard typeGuard) {
+
+        for (GuardExpression guard : guards) {
+            ActualParameter guardParameter = guard.getResolvedGuard().getSignatureParameter(typeGuard.getSignatureIndex());
+            if (guardParameter == null) {
+                // guardParameters are optional
+                continue;
+            }
+            ActualParameter sourceParameter = source.getSignatureParameter(typeGuard.getSignatureIndex());
+            if (sourceParameter.getTypeSystemType().needsCastTo(guardParameter.getType())) {
+                return true;
+            }
+        }
+
+        for (SpecializationGroup group : getChildren()) {
+            if (group.isTypeGuardUsedInAnyGuardBelow(context, source, typeGuard)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

@@ -104,19 +104,16 @@ public final class OrganizedImports {
     }
 
     public String createStaticFieldReference(Element enclosedElement, TypeMirror type, String fieldName) {
-        return createStaticReference(enclosedElement, type, fieldName, ambiguousStaticFields, declaredStaticFields);
+        return createStaticReference(enclosedElement, type, fieldName, ambiguousStaticFields);
     }
 
     public String createStaticMethodReference(Element enclosedElement, TypeMirror type, String methodName) {
-        return createStaticReference(enclosedElement, type, methodName, ambiguousStaticMethods, declaredStaticMethods);
+        return createStaticReference(enclosedElement, type, methodName, ambiguousStaticMethods);
     }
 
-    private String createStaticReference(Element enclosedElement, TypeMirror type, String name, Set<String> ambiguousSymbols, Set<String> declaredSymbols) {
+    private String createStaticReference(Element enclosedElement, TypeMirror type, String name, Set<String> ambiguousSymbols) {
         if (ambiguousSymbols.contains(name)) {
             // ambiguous import
-            return createTypeReference(enclosedElement, type) + "." + name;
-        } else if (!declaredSymbols.contains(name)) {
-            // not imported at all
             return createTypeReference(enclosedElement, type) + "." + name;
         } else {
             // import declared and not ambiguous
@@ -135,7 +132,8 @@ public final class OrganizedImports {
     }
 
     private String createDeclaredTypeName(Element enclosedElement, DeclaredType type) {
-        String name = Utils.fixECJBinaryNameIssue(type.asElement().getSimpleName().toString());
+        String name;
+        name = Utils.fixECJBinaryNameIssue(type.asElement().getSimpleName().toString());
 
         if (needsImport(enclosedElement, type)) {
             TypeMirror usedByType = simpleNamesUsed.get(name);

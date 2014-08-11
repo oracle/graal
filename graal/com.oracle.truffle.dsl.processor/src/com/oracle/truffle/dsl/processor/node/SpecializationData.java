@@ -24,14 +24,11 @@ package com.oracle.truffle.dsl.processor.node;
 
 import java.util.*;
 
-import javax.lang.model.type.*;
-
-import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.dsl.processor.*;
 import com.oracle.truffle.dsl.processor.template.*;
 import com.oracle.truffle.dsl.processor.typesystem.*;
 
-public class SpecializationData extends TemplateMethod {
+public final class SpecializationData extends TemplateMethod {
 
     public enum SpecializationKind {
         UNINITIALIZED,
@@ -41,29 +38,61 @@ public class SpecializationData extends TemplateMethod {
     }
 
     private final NodeData node;
-    private final int order;
     private final SpecializationKind kind;
     private final List<SpecializationThrowsData> exceptions;
-    private List<String> guardDefinitions = Collections.emptyList();
-    private List<GuardData> guards = Collections.emptyList();
+    private List<GuardExpression> guards = Collections.emptyList();
     private List<ShortCircuitData> shortCircuits;
     private List<String> assumptions = Collections.emptyList();
+    private final Set<SpecializationData> contains = new TreeSet<>();
+    private final Set<String> containsNames = new TreeSet<>();
+    private final Set<SpecializationData> excludedBy = new TreeSet<>();
+    private String insertBeforeName;
+    private SpecializationData insertBefore;
     private boolean reachable;
+    private int index;
 
-    public SpecializationData(NodeData node, TemplateMethod template, SpecializationKind kind, int order, List<SpecializationThrowsData> exceptions) {
+    public SpecializationData(NodeData node, TemplateMethod template, SpecializationKind kind, List<SpecializationThrowsData> exceptions) {
         super(template);
         this.node = node;
-        this.order = order;
         this.kind = kind;
         this.exceptions = exceptions;
+        this.index = template.getNaturalOrder();
 
         for (SpecializationThrowsData exception : exceptions) {
             exception.setSpecialization(this);
         }
     }
 
+    public void setInsertBefore(SpecializationData insertBefore) {
+        this.insertBefore = insertBefore;
+    }
+
+    public void setInsertBeforeName(String insertBeforeName) {
+        this.insertBeforeName = insertBeforeName;
+    }
+
+    public SpecializationData getInsertBefore() {
+        return insertBefore;
+    }
+
+    public String getInsertBeforeName() {
+        return insertBeforeName;
+    }
+
+    public Set<String> getContainsNames() {
+        return containsNames;
+    }
+
     public SpecializationData(NodeData node, TemplateMethod template, SpecializationKind kind) {
-        this(node, template, kind, Specialization.DEFAULT_ORDER, new ArrayList<SpecializationThrowsData>());
+        this(node, template, kind, new ArrayList<SpecializationThrowsData>());
+    }
+
+    public Set<SpecializationData> getContains() {
+        return contains;
+    }
+
+    public Set<SpecializationData> getExcludedBy() {
+        return excludedBy;
     }
 
     public void setReachable(boolean reachable) {
@@ -85,26 +114,13 @@ public class SpecializationData extends TemplateMethod {
             sinks.addAll(exceptions);
         }
         if (guards != null) {
-            sinks.addAll(guards);
-        }
-        return sinks;
-    }
-
-    public boolean isGenericSpecialization(ProcessorContext context) {
-        if (isGeneric()) {
-            return true;
-        }
-        if (hasRewrite(context)) {
-            return false;
-        }
-
-        for (ActualParameter parameter : getSignatureParameters()) {
-            ActualParameter genericParameter = getNode().getGenericSpecialization().findParameter(parameter.getLocalName());
-            if (!parameter.getTypeSystemType().equals(genericParameter.getTypeSystemType())) {
-                return false;
+            for (GuardExpression guard : guards) {
+                if (guard.isResolved()) {
+                    sinks.add(guard.getResolvedGuard());
+                }
             }
         }
-        return true;
+        return sinks;
     }
 
     public boolean hasRewrite(ProcessorContext context) {
@@ -122,7 +138,7 @@ public class SpecializationData extends TemplateMethod {
             if (type.hasUnexpectedValue(context)) {
                 return true;
             }
-            if (type.getReturnType().getTypeSystemType().needsCastTo(context, parameter.getTypeSystemType())) {
+            if (type.getReturnType().getTypeSystemType().needsCastTo(parameter.getTypeSystemType())) {
                 return true;
             }
 
@@ -131,44 +147,244 @@ public class SpecializationData extends TemplateMethod {
     }
 
     @Override
-    public int compareBySignature(TemplateMethod other) {
+    public int compareTo(TemplateMethod other) {
         if (this == other) {
             return 0;
         } else if (!(other instanceof SpecializationData)) {
-            return super.compareBySignature(other);
+            return super.compareTo(other);
         }
-
         SpecializationData m2 = (SpecializationData) other;
-
         int kindOrder = kind.compareTo(m2.kind);
         if (kindOrder != 0) {
             return kindOrder;
         }
-        if (getOrder() != Specialization.DEFAULT_ORDER && m2.getOrder() != Specialization.DEFAULT_ORDER) {
-            return getOrder() - m2.getOrder();
+
+        int compare = 0;
+        int order1 = index;
+        int order2 = m2.index;
+        if (order1 != NO_NATURAL_ORDER && order2 != NO_NATURAL_ORDER) {
+            compare = Integer.compare(order1, order2);
+            if (compare != 0) {
+                return compare;
+            }
+        }
+
+        return super.compareTo(other);
+    }
+
+    public void setIndex(int order) {
+        this.index = order;
+    }
+
+    public int getIndex() {
+        return index;
+    }
+
+    public int compareByConcreteness(SpecializationData m2) {
+        int kindOrder = kind.compareTo(m2.kind);
+        if (kindOrder != 0) {
+            return kindOrder;
         }
 
         if (getTemplate() != m2.getTemplate()) {
             throw new UnsupportedOperationException("Cannot compare two specializations with different templates.");
         }
+        boolean intersects = intersects(m2);
+        int result = 0;
+        if (intersects) {
+            if (this.contains(m2)) {
+                return 1;
+            } else if (m2.contains(this)) {
+                return -1;
+            }
+        }
 
-        return super.compareBySignature(m2);
+        result = compareBySignature(m2);
+        if (result != 0) {
+            return result;
+        }
+
+        result = compareGuards(getGuards(), m2.getGuards());
+        if (result != 0) {
+            return result;
+        }
+
+        result = compareAssumptions(getAssumptions(), m2.getAssumptions());
+        if (result != 0) {
+            return result;
+        }
+
+        result = compareParameter(node.getTypeSystem(), getReturnType().getType(), m2.getReturnType().getType());
+        if (result != 0) {
+            return result;
+        }
+
+        result = m2.getExceptions().size() - getExceptions().size();
+        if (result != 0) {
+            return result;
+        }
+
+        return result;
+    }
+
+    public boolean contains(SpecializationData other) {
+        return getContains().contains(other);
+    }
+
+    private int compareAssumptions(List<String> assumptions1, List<String> assumptions2) {
+        Iterator<String> iterator1 = assumptions1.iterator();
+        Iterator<String> iterator2 = assumptions2.iterator();
+        while (iterator1.hasNext() && iterator2.hasNext()) {
+            String a1 = iterator1.next();
+            String a2 = iterator2.next();
+
+            int index1 = getNode().getAssumptions().indexOf(a1);
+            int index2 = getNode().getAssumptions().indexOf(a2);
+            int result = index1 - index2;
+            if (result != 0) {
+                return result;
+            }
+        }
+        if (iterator1.hasNext()) {
+            return -1;
+        } else if (iterator2.hasNext()) {
+            return 1;
+        }
+        return 0;
+    }
+
+    public boolean isContainedBy(SpecializationData next) {
+        if (compareTo(next) > 0) {
+            // must be declared after the current specialization
+            return false;
+        }
+
+        Iterator<ActualParameter> currentSignature = getSignatureParameters().iterator();
+        Iterator<ActualParameter> nextSignature = next.getSignatureParameters().iterator();
+
+        while (currentSignature.hasNext() && nextSignature.hasNext()) {
+            TypeData currentType = currentSignature.next().getTypeSystemType();
+            TypeData prevType = nextSignature.next().getTypeSystemType();
+
+            if (!currentType.isImplicitSubtypeOf(prevType)) {
+                return false;
+            }
+        }
+
+        for (String nextAssumption : next.getAssumptions()) {
+            if (!getAssumptions().contains(nextAssumption)) {
+                return false;
+            }
+        }
+
+        Iterator<GuardExpression> nextGuards = next.getGuards().iterator();
+        while (nextGuards.hasNext()) {
+            GuardExpression nextGuard = nextGuards.next();
+            boolean implied = false;
+            for (GuardExpression currentGuard : getGuards()) {
+                if (currentGuard.implies(nextGuard)) {
+                    implied = true;
+                    break;
+                }
+            }
+            if (!implied) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    public boolean intersects(SpecializationData other) {
+        return intersectsTypeGuards(other) || intersectsMethodGuards(other);
+    }
+
+    private boolean intersectsTypeGuards(SpecializationData other) {
+        final TypeSystemData typeSystem = getTemplate().getTypeSystem();
+        if (typeSystem != other.getTemplate().getTypeSystem()) {
+            throw new IllegalStateException("Cannot compare two methods with different type systems.");
+        }
+
+        Iterator<ActualParameter> signature1 = getSignatureParameters().iterator();
+        Iterator<ActualParameter> signature2 = other.getSignatureParameters().iterator();
+        while (signature1.hasNext() && signature2.hasNext()) {
+            TypeData parameter1 = signature1.next().getTypeSystemType();
+            TypeData parameter2 = signature2.next().getTypeSystemType();
+            if (parameter1 == null || parameter2 == null) {
+                continue;
+            }
+            if (!parameter1.intersects(parameter2)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean intersectsMethodGuards(SpecializationData other) {
+        for (GuardExpression guard1 : getGuards()) {
+            for (GuardExpression guard2 : other.getGuards()) {
+                if (guard1.impliesNot(guard2) || guard2.impliesNot(guard1)) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    private static int compareGuards(List<GuardExpression> guards1, List<GuardExpression> guards2) {
+        Iterator<GuardExpression> signature1 = guards1.iterator();
+        Iterator<GuardExpression> signature2 = guards2.iterator();
+        boolean allSame = true;
+        while (signature1.hasNext() && signature2.hasNext()) {
+            GuardExpression guard1 = signature1.next();
+            GuardExpression guard2 = signature2.next();
+            boolean g1impliesg2 = guard1.implies(guard2);
+            boolean g2impliesg1 = guard2.implies(guard1);
+            if (g1impliesg2 && g2impliesg1) {
+                continue;
+            } else if (g1impliesg2) {
+                return -1;
+            } else if (g2impliesg1) {
+                return 1;
+            } else {
+                allSame = false;
+            }
+        }
+
+        if (allSame) {
+            if (signature1.hasNext()) {
+                return -1;
+            } else if (signature2.hasNext()) {
+                return 1;
+            }
+        }
+
+        return 0;
+    }
+
+    public String createReferenceName() {
+        StringBuilder b = new StringBuilder();
+
+        b.append(getMethodName());
+        b.append("(");
+
+        String sep = "";
+        for (ActualParameter parameter : getParameters()) {
+            b.append(sep);
+            b.append(Utils.getSimpleName(parameter.getType()));
+            sep = ", ";
+        }
+
+        b.append(")");
+        return b.toString();
     }
 
     public NodeData getNode() {
         return node;
     }
 
-    public void setGuards(List<GuardData> guards) {
+    public void setGuards(List<GuardExpression> guards) {
         this.guards = guards;
-    }
-
-    public void setGuardDefinitions(List<String> guardDefinitions) {
-        this.guardDefinitions = guardDefinitions;
-    }
-
-    public int getOrder() {
-        return order;
     }
 
     public boolean isSpecialized() {
@@ -187,11 +403,7 @@ public class SpecializationData extends TemplateMethod {
         return exceptions;
     }
 
-    public List<String> getGuardDefinitions() {
-        return guardDefinitions;
-    }
-
-    public List<GuardData> getGuards() {
+    public List<GuardExpression> getGuards() {
         return guards;
     }
 
@@ -211,16 +423,6 @@ public class SpecializationData extends TemplateMethod {
         this.assumptions = assumptions;
     }
 
-    public SpecializationData findPreviousSpecialization() {
-        List<SpecializationData> specializations = node.getSpecializations();
-        for (int i = 0; i < specializations.size() - 1; i++) {
-            if (specializations.get(i) == this && i > 0) {
-                return specializations.get(i - 1);
-            }
-        }
-        return null;
-    }
-
     public SpecializationData findNextSpecialization() {
         List<SpecializationData> specializations = node.getSpecializations();
         for (int i = 0; i < specializations.size() - 1; i++) {
@@ -231,22 +433,9 @@ public class SpecializationData extends TemplateMethod {
         return null;
     }
 
-    public boolean hasDynamicGuards() {
-        return !getGuards().isEmpty();
-    }
-
     @Override
     public String toString() {
         return String.format("%s [id = %s, method = %s, guards = %s, signature = %s]", getClass().getSimpleName(), getId(), getMethod(), getGuards(), getTypeSignature());
-    }
-
-    public void forceFrame(TypeMirror frameType) {
-        if (getParameters().isEmpty() || !Utils.typeEquals(getParameters().get(0).getType(), frameType)) {
-            ParameterSpec frameSpec = getSpecification().findParameterSpec("frame");
-            if (frameSpec != null) {
-                getParameters().add(0, new ActualParameter(frameSpec, frameType, -1, -1));
-            }
-        }
     }
 
     public boolean equalsGuards(SpecializationData specialization) {
@@ -265,4 +454,43 @@ public class SpecializationData extends TemplateMethod {
         return false;
     }
 
+    public boolean isReachableAfter(SpecializationData prev) {
+        if (!prev.isSpecialized()) {
+            return true;
+        }
+
+        if (!prev.getExceptions().isEmpty()) {
+            return true;
+        }
+
+        Iterator<ActualParameter> currentSignature = getSignatureParameters().iterator();
+        Iterator<ActualParameter> prevSignature = prev.getSignatureParameters().iterator();
+
+        while (currentSignature.hasNext() && prevSignature.hasNext()) {
+            TypeData currentType = currentSignature.next().getTypeSystemType();
+            TypeData prevType = prevSignature.next().getTypeSystemType();
+
+            if (!currentType.isImplicitSubtypeOf(prevType)) {
+                return true;
+            }
+        }
+
+        for (String prevAssumption : prev.getAssumptions()) {
+            if (!getAssumptions().contains(prevAssumption)) {
+                return true;
+            }
+        }
+
+        Iterator<GuardExpression> prevGuards = prev.getGuards().iterator();
+        Iterator<GuardExpression> currentGuards = getGuards().iterator();
+        while (prevGuards.hasNext()) {
+            GuardExpression prevGuard = prevGuards.next();
+            GuardExpression currentGuard = currentGuards.hasNext() ? currentGuards.next() : null;
+            if (currentGuard == null || !currentGuard.implies(prevGuard)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
 }

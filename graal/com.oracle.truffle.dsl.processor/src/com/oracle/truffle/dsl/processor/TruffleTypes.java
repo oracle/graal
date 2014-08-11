@@ -32,6 +32,7 @@ import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.SlowPath;
 import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.api.dsl.internal.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.nodes.Node.Child;
@@ -61,6 +62,13 @@ public final class TruffleTypes {
     private final DeclaredType sourceSection;
     private final DeclaredType truffleOptions;
     private final DeclaredType compilationFinal;
+    private final DeclaredType nodeUtil;
+    private final DeclaredType dslNode;
+    private final DeclaredType dslShare;
+    private final DeclaredType nodeFactory;
+    private final DeclaredType nodeFactoryBase;
+    private final DeclaredType dslMetadata;
+    private final DeclaredType implies;
     private final TypeElement expectError;
 
     private final List<String> errors = new ArrayList<>();
@@ -82,7 +90,38 @@ public final class TruffleTypes {
         sourceSection = getRequired(context, SourceSection.class);
         truffleOptions = getRequired(context, TruffleOptions.class);
         compilationFinal = getRequired(context, CompilationFinal.class);
+        nodeUtil = getRequired(context, NodeUtil.class);
+        dslNode = getRequired(context, DSLNode.class);
+        dslShare = getRequired(context, DSLShare.class);
+        nodeFactory = getRequired(context, NodeFactory.class);
+        nodeFactoryBase = getRequired(context, NodeFactoryBase.class);
+        dslMetadata = getRequired(context, DSLMetadata.class);
+        implies = getRequired(context, Implies.class);
         expectError = (TypeElement) getRequired(context, ExpectError.class).asElement();
+    }
+
+    public DeclaredType getImplies() {
+        return implies;
+    }
+
+    public DeclaredType getDslMetadata() {
+        return dslMetadata;
+    }
+
+    public DeclaredType getNodeFactory() {
+        return nodeFactory;
+    }
+
+    public DeclaredType getNodeFactoryBase() {
+        return nodeFactoryBase;
+    }
+
+    public DeclaredType getDslNode() {
+        return dslNode;
+    }
+
+    public DeclaredType getDslShare() {
+        return dslShare;
     }
 
     public DeclaredType getCompilationFinal() {
@@ -171,5 +210,9 @@ public final class TruffleTypes {
 
     public DeclaredType getSourceSection() {
         return sourceSection;
+    }
+
+    public DeclaredType getNodeUtil() {
+        return nodeUtil;
     }
 }

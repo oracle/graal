@@ -34,8 +34,8 @@ public abstract class CodeElementFactory<M> {
 
     private CodeElement<? super Element> element;
 
-    public CodeElementFactory(ProcessorContext context) {
-        this.context = context;
+    public CodeElementFactory() {
+        this.context = ProcessorContext.getInstance();
     }
 
     protected abstract CodeElement<?> create(M m);

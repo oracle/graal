@@ -209,4 +209,14 @@ public class ProcessorContext {
         }
         return type;
     }
+
+    private static final ThreadLocal<ProcessorContext> instance = new ThreadLocal<>();
+
+    public static void setThreadLocalInstance(ProcessorContext context) {
+        instance.set(context);
+    }
+
+    public static ProcessorContext getInstance() {
+        return instance.get();
+    }
 }

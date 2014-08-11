@@ -22,29 +22,28 @@
  */
 package com.oracle.truffle.dsl.processor.typesystem;
 
-import com.oracle.truffle.dsl.processor.node.*;
+import java.util.*;
+
 import com.oracle.truffle.dsl.processor.template.*;
 
 public class GuardData extends TemplateMethod {
 
-    private final SpecializationData specialization;
-    private final boolean negated;
+    private List<GuardExpression> impliesExpressions;
 
-    public GuardData(TemplateMethod method, SpecializationData specialization, boolean negated) {
+    public GuardData(TemplateMethod method, List<GuardExpression> impliesExpressions) {
         super(method);
-        this.negated = negated;
-        this.specialization = specialization;
+        this.impliesExpressions = impliesExpressions;
     }
 
-    public boolean isNegated() {
-        return negated;
+    public List<GuardExpression> getImpliesExpressions() {
+        return impliesExpressions;
     }
 
     @Override
     public boolean equals(Object obj) {
         if (obj instanceof GuardData) {
             GuardData other = (GuardData) obj;
-            return getMethod().equals(other.getMethod()) && negated == other.negated;
+            return getMethod().equals(other.getMethod());
         }
         return false;
     }
@@ -52,15 +51,6 @@ public class GuardData extends TemplateMethod {
     @Override
     public int hashCode() {
         return getMethod().hashCode();
-    }
-
-    public SpecializationData getSpecialization() {
-        return specialization;
-    }
-
-    @Override
-    public String toString() {
-        return (negated ? "!" : "") + getMethodName() + getParameters().toString();
     }
 
 }

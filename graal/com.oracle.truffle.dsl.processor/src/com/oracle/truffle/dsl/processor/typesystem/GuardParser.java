@@ -23,29 +23,25 @@
 package com.oracle.truffle.dsl.processor.typesystem;
 
 import java.lang.annotation.*;
+import java.util.*;
 
 import javax.lang.model.element.*;
+import javax.lang.model.type.*;
 
+import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.dsl.processor.*;
 import com.oracle.truffle.dsl.processor.node.*;
 import com.oracle.truffle.dsl.processor.template.*;
 
 public class GuardParser extends NodeMethodParser<GuardData> {
 
-    private final SpecializationData specialization;
-    private final String guardName;
-    private final boolean negated;
+    private final Set<String> guardNames;
+    private final TemplateMethod compatibleSource;
 
-    public GuardParser(ProcessorContext context, SpecializationData specialization, String guardDefinition) {
-        super(context, specialization.getNode());
-        this.specialization = specialization;
-        if (guardDefinition.startsWith("!")) {
-            this.guardName = guardDefinition.substring(1, guardDefinition.length());
-            this.negated = true;
-        } else {
-            this.guardName = guardDefinition;
-            this.negated = false;
-        }
+    public GuardParser(ProcessorContext context, NodeData node, TemplateMethod compatibleSource, Set<String> guardNames) {
+        super(context, node);
+        this.guardNames = guardNames;
+        this.compatibleSource = compatibleSource;
         setEmitErrors(false);
         setParseNullOnError(false);
     }
@@ -59,13 +55,21 @@ public class GuardParser extends NodeMethodParser<GuardData> {
     public MethodSpec createSpecification(ExecutableElement method, AnnotationMirror mirror) {
         MethodSpec spec = createDefaultMethodSpec(method, mirror, true, null);
         spec.setIgnoreAdditionalSpecifications(true);
-        spec.getRequired().clear();
-
-        for (ActualParameter parameter : specialization.getRequiredParameters()) {
-            spec.addRequired(new ParameterSpec(parameter.getSpecification(), Utils.getAssignableTypes(getContext(), parameter.getType())));
+        if (compatibleSource != null) {
+            spec.getRequired().clear();
+            for (ActualParameter parameter : compatibleSource.getRequiredParameters()) {
+                spec.addRequired(new ParameterSpec(parameter.getSpecification(), Utils.getAssignableTypes(getContext(), parameter.getType())));
+            }
         }
-
         return spec;
+    }
+
+    @Override
+    protected List<TypeMirror> nodeTypeMirrors(NodeData nodeData) {
+        Set<TypeMirror> typeMirrors = new LinkedHashSet<>();
+        typeMirrors.addAll(nodeData.getTypeSystem().getPrimitiveTypeMirrors());
+        typeMirrors.addAll(nodeData.getTypeSystem().getBoxedTypeMirrors());
+        return new ArrayList<>(typeMirrors);
     }
 
     @Override
@@ -75,12 +79,21 @@ public class GuardParser extends NodeMethodParser<GuardData> {
 
     @Override
     public boolean isParsable(ExecutableElement method) {
-        return method.getSimpleName().toString().equals(guardName);
+        return guardNames.contains(method.getSimpleName().toString());
     }
 
     @Override
     public GuardData create(TemplateMethod method, boolean invalid) {
-        return new GuardData(method, specialization, negated);
+        Implies impliesAnnotation = method.getMethod().getAnnotation(Implies.class);
+        String[] impliesExpressions = new String[0];
+        if (impliesAnnotation != null) {
+            impliesExpressions = impliesAnnotation.value();
+        }
+        List<GuardExpression> guardExpressions = new ArrayList<>();
+        for (String string : impliesExpressions) {
+            guardExpressions.add(new GuardExpression(string));
+        }
+        return new GuardData(method, guardExpressions);
     }
 
     @Override
