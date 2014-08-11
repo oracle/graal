@@ -30,15 +30,34 @@ import java.lang.annotation.*;
 @Target({ElementType.METHOD})
 public @interface Specialization {
 
-    int DEFAULT_ORDER = -1;
+    /**
+     * @deprecated do not use anymore. Will get removed in the next release.
+     */
+    @Deprecated int DEFAULT_ORDER = -1;
 
+    /**
+     * The order has no effect anymore. The declaration order specialization methods is used
+     * instead.
+     *
+     * @deprecated use declaration order instead. Will get removed in the next release.
+     */
     @Deprecated
     int order() default DEFAULT_ORDER;
 
+    /**
+     * Inserts this and all specializations that are declared after this specialization before a
+     * specialization in the superclass. By default all specializations of the subclass are appended
+     * to the specializations of the superclass.
+     */
     String insertBefore() default "";
 
     Class<? extends Throwable>[] rewriteOn() default {};
 
+    /**
+     * The contains attribute declares all specializations that are contained by this
+     * specialization. A containing specialization must be strictly generic as the contained
+     * specialization.
+     */
     String[] contains() default {};
 
     String[] guards() default {};
