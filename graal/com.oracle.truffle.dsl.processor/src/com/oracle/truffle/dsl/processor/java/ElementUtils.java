@@ -43,6 +43,9 @@ public class ElementUtils {
     public static TypeMirror getType(ProcessingEnvironment processingEnv, Class<?> element) {
         TypeMirror mirror;
         if (element.isPrimitive()) {
+            if (element == void.class) {
+                return processingEnv.getTypeUtils().getNoType(TypeKind.VOID);
+            }
             TypeKind typeKind;
             if (element == boolean.class) {
                 typeKind = TypeKind.BOOLEAN;
@@ -60,8 +63,6 @@ public class ElementUtils {
                 typeKind = TypeKind.FLOAT;
             } else if (element == double.class) {
                 typeKind = TypeKind.DOUBLE;
-            } else if (element == void.class) {
-                typeKind = TypeKind.VOID;
             } else {
                 assert false;
                 return null;
