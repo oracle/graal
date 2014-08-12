@@ -25,27 +25,17 @@ package com.oracle.graal.lir;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.lir.LIRInstruction.*;
 
 /**
- * Iterator for iterating over a list of values. Subclasses must overwrite one of the doValue
- * methods. Clients should not use this class directly but call
- * {@link InstructionValueProcedureBase#processValue} instead.
+ * Common base class for modifying and non-modifying {@link Value value} iterators.
+ *
+ * This type should not be sub-classed directly. Use {@link InstructionValueProcedureBase} or
+ * {@link InstructionValueConsumer} instead.
+ *
+ * @see InstructionValueProcedure
  */
-public abstract class InstructionValueProcedure extends InstructionValueProcedureBase {
-
-    /**
-     * Iterator method to be overwritten. This version of the iterator does not take additional
-     * parameters to keep the signature short.
-     *
-     * @param instruction The current instruction.
-     * @param value The value that is iterated.
-     * @return The new value to replace the value that was passed in.
-     */
-    protected Value doValue(LIRInstruction instruction, Value value) {
-        throw GraalInternalError.shouldNotReachHere("One of the doValue() methods must be overwritten");
-    }
+public abstract class InstructionValueProcedureBase {
 
     /**
      * Iterator method to be overwritten. This version of the iterator gets additional parameters
@@ -57,12 +47,5 @@ public abstract class InstructionValueProcedure extends InstructionValueProcedur
      * @param flags A set of flags for the value.
      * @return The new value to replace the value that was passed in.
      */
-    protected Value doValue(LIRInstruction instruction, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
-        return doValue(instruction, value);
-    }
-
-    @Override
-    public final Value processValue(LIRInstruction instruction, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
-        return doValue(instruction, value, mode, flags);
-    }
+    abstract public Value processValue(LIRInstruction instruction, Value value, OperandMode mode, EnumSet<OperandFlag> flags);
 }

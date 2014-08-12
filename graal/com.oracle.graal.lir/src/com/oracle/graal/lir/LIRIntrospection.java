@@ -118,7 +118,7 @@ abstract class LIRIntrospection extends FieldIntrospection {
         }
     }
 
-    protected static void forEach(LIRInstruction inst, int directCount, long[] offsets, OperandMode mode, EnumSet<OperandFlag>[] flags, InstructionValueProcedure proc) {
+    protected static void forEach(LIRInstruction inst, int directCount, long[] offsets, OperandMode mode, EnumSet<OperandFlag>[] flags, InstructionValueProcedureBase proc) {
         for (int i = 0; i < offsets.length; i++) {
             assert LIRInstruction.ALLOWED_FLAGS.get(mode).containsAll(flags[i]);
 
@@ -129,7 +129,7 @@ abstract class LIRIntrospection extends FieldIntrospection {
                     CompositeValue composite = (CompositeValue) value;
                     newValue = composite.forEachComponent(inst, mode, proc);
                 } else {
-                    newValue = proc.doValue(inst, value, mode, flags[i]);
+                    newValue = proc.processValue(inst, value, mode, flags[i]);
                 }
                 if (!value.identityEquals(newValue)) {
                     setValue(inst, offsets[i], newValue);
@@ -143,7 +143,7 @@ abstract class LIRIntrospection extends FieldIntrospection {
                         CompositeValue composite = (CompositeValue) value;
                         newValue = composite.forEachComponent(inst, mode, proc);
                     } else {
-                        newValue = proc.doValue(inst, value, mode, flags[i]);
+                        newValue = proc.processValue(inst, value, mode, flags[i]);
                     }
                     if (!value.identityEquals(newValue)) {
                         values[j] = newValue;
@@ -154,7 +154,7 @@ abstract class LIRIntrospection extends FieldIntrospection {
     }
 
     protected static CompositeValue forEachComponent(LIRInstruction inst, CompositeValue obj, int directCount, long[] offsets, OperandMode mode, EnumSet<OperandFlag>[] flags,
-                    InstructionValueProcedure proc) {
+                    InstructionValueProcedureBase proc) {
         CompositeValue newCompValue = null;
         for (int i = 0; i < offsets.length; i++) {
             assert LIRInstruction.ALLOWED_FLAGS.get(mode).containsAll(flags[i]);
@@ -166,7 +166,7 @@ abstract class LIRIntrospection extends FieldIntrospection {
                     CompositeValue composite = (CompositeValue) value;
                     newValue = composite.forEachComponent(inst, mode, proc);
                 } else {
-                    newValue = proc.doValue(inst, value, mode, flags[i]);
+                    newValue = proc.processValue(inst, value, mode, flags[i]);
                 }
                 if (!value.identityEquals(newValue)) {
                     // lazy initialize
@@ -185,7 +185,7 @@ abstract class LIRIntrospection extends FieldIntrospection {
                         CompositeValue composite = (CompositeValue) value;
                         newValue = composite.forEachComponent(inst, mode, proc);
                     } else {
-                        newValue = proc.doValue(inst, value, mode, flags[i]);
+                        newValue = proc.processValue(inst, value, mode, flags[i]);
                     }
                     if (!value.identityEquals(newValue)) {
                         // lazy initialize

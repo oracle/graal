@@ -139,7 +139,7 @@ public class CompositeValueClass extends LIRIntrospection {
         return str.toString();
     }
 
-    public final CompositeValue forEachComponent(LIRInstruction inst, CompositeValue obj, OperandMode mode, InstructionValueProcedure proc) {
+    public final CompositeValue forEachComponent(LIRInstruction inst, CompositeValue obj, OperandMode mode, InstructionValueProcedureBase proc) {
         return forEachComponent(inst, obj, directComponentCount, componentOffsets, mode, componentFlags, proc);
     }
 

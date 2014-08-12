@@ -343,23 +343,23 @@ public class LIRInstructionClass extends LIRIntrospection {
         forEach(obj, obj, directDefCount, defOffsets, OperandMode.DEF, defFlags, proc, ValuePosition.ROOT_VALUE_POSITION);
     }
 
-    public final void forEachUse(LIRInstruction obj, InstructionValueProcedure proc) {
+    public final void forEachUse(LIRInstruction obj, InstructionValueProcedureBase proc) {
         forEach(obj, directUseCount, useOffsets, OperandMode.USE, useFlags, proc);
     }
 
-    public final void forEachAlive(LIRInstruction obj, InstructionValueProcedure proc) {
+    public final void forEachAlive(LIRInstruction obj, InstructionValueProcedureBase proc) {
         forEach(obj, directAliveCount, aliveOffsets, OperandMode.ALIVE, aliveFlags, proc);
     }
 
-    public final void forEachTemp(LIRInstruction obj, InstructionValueProcedure proc) {
+    public final void forEachTemp(LIRInstruction obj, InstructionValueProcedureBase proc) {
         forEach(obj, directTempCount, tempOffsets, OperandMode.TEMP, tempFlags, proc);
     }
 
-    public final void forEachDef(LIRInstruction obj, InstructionValueProcedure proc) {
+    public final void forEachDef(LIRInstruction obj, InstructionValueProcedureBase proc) {
         forEach(obj, directDefCount, defOffsets, OperandMode.DEF, defFlags, proc);
     }
 
-    public final void forEachState(LIRInstruction obj, InstructionValueProcedure proc) {
+    final void forEachState(LIRInstruction obj, InstructionValueProcedureBase proc) {
         for (int i = 0; i < stateOffsets.length; i++) {
             LIRFrameState state = getState(obj, stateOffsets[i]);
             if (state != null) {
@@ -393,7 +393,7 @@ public class LIRInstructionClass extends LIRIntrospection {
         for (int i = 0; i < hintOffsets.length; i++) {
             if (i < hintDirectCount) {
                 Value hintValue = getValue(obj, hintOffsets[i]);
-                Value result = proc.doValue(obj, hintValue, null, null);
+                Value result = proc.processValue(obj, hintValue, null, null);
                 if (result != null) {
                     return result;
                 }
@@ -401,7 +401,7 @@ public class LIRInstructionClass extends LIRIntrospection {
                 Value[] hintValues = getValueArray(obj, hintOffsets[i]);
                 for (int j = 0; j < hintValues.length; j++) {
                     Value hintValue = hintValues[j];
-                    Value result = proc.doValue(obj, hintValue, null, null);
+                    Value result = proc.processValue(obj, hintValue, null, null);
                     if (result != null) {
                         return result;
                     }

@@ -62,7 +62,7 @@ public class LIRFrameState {
      *
      * @param proc The procedure called for variables.
      */
-    public void forEachState(LIRInstruction inst, InstructionValueProcedure proc) {
+    public void forEachState(LIRInstruction inst, InstructionValueProcedureBase proc) {
         for (BytecodeFrame cur = topFrame; cur != null; cur = cur.caller()) {
             processValues(inst, cur.values, proc);
         }
@@ -79,16 +79,16 @@ public class LIRFrameState {
      */
     protected static final EnumSet<OperandFlag> STATE_FLAGS = EnumSet.of(OperandFlag.REG, OperandFlag.STACK);
 
-    protected void processValues(LIRInstruction inst, Value[] values, InstructionValueProcedure proc) {
+    protected void processValues(LIRInstruction inst, Value[] values, InstructionValueProcedureBase proc) {
         for (int i = 0; i < values.length; i++) {
             Value value = values[i];
             values[i] = processValue(inst, proc, value);
         }
     }
 
-    protected Value processValue(LIRInstruction inst, InstructionValueProcedure proc, Value value) {
+    protected Value processValue(LIRInstruction inst, InstructionValueProcedureBase proc, Value value) {
         if (processed(value)) {
-            return proc.doValue(inst, value, OperandMode.ALIVE, STATE_FLAGS);
+            return proc.processValue(inst, value, OperandMode.ALIVE, STATE_FLAGS);
         }
         return value;
     }

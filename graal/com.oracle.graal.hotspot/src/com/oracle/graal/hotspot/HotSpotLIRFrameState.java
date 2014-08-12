@@ -38,11 +38,11 @@ class HotSpotLIRFrameState extends LIRFrameState {
     }
 
     @Override
-    protected Value processValue(LIRInstruction inst, InstructionValueProcedure proc, Value value) {
+    protected Value processValue(LIRInstruction inst, InstructionValueProcedureBase proc, Value value) {
         if (value instanceof HotSpotMonitorValue) {
             HotSpotMonitorValue monitor = (HotSpotMonitorValue) value;
             if (processed(monitor.getOwner())) {
-                monitor.setOwner(proc.doValue(inst, monitor.getOwner(), OperandMode.ALIVE, STATE_FLAGS));
+                monitor.setOwner(proc.processValue(inst, monitor.getOwner(), OperandMode.ALIVE, STATE_FLAGS));
             }
             return value;
         } else {
