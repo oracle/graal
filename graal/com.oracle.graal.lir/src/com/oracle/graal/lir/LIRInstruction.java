@@ -217,6 +217,7 @@ public abstract class LIRInstruction {
         return false;
     }
 
+    // ValuePositionProcedures
     public final void forEachInput(ValuePositionProcedure proc) {
         instructionClass.forEachUse(this, proc);
     }
@@ -233,6 +234,7 @@ public abstract class LIRInstruction {
         instructionClass.forEachDef(this, proc);
     }
 
+    // InstructionValueProcedures
     public final void forEachInput(InstructionValueProcedure proc) {
         instructionClass.forEachUse(this, proc);
     }
@@ -249,11 +251,33 @@ public abstract class LIRInstruction {
         instructionClass.forEachDef(this, proc);
     }
 
+    // States
     public final void forEachState(InstructionValueProcedure proc) {
         instructionClass.forEachState(this, proc);
     }
 
     public final void forEachState(InstructionStateProcedure proc) {
+        instructionClass.forEachState(this, proc);
+    }
+
+    // Consumers
+    public final void visitEachInput(InstructionValueConsumer proc) {
+        instructionClass.forEachUse(this, proc);
+    }
+
+    public final void visitEachAlive(InstructionValueConsumer proc) {
+        instructionClass.forEachAlive(this, proc);
+    }
+
+    public final void visitEachTemp(InstructionValueConsumer proc) {
+        instructionClass.forEachTemp(this, proc);
+    }
+
+    public final void visitEachOutput(InstructionValueConsumer proc) {
+        instructionClass.forEachDef(this, proc);
+    }
+
+    public final void visitEachState(InstructionValueConsumer proc) {
         instructionClass.forEachState(this, proc);
     }
 
