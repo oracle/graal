@@ -81,7 +81,7 @@ public class UnsafeLoadNode extends UnsafeAccessNode implements Lowerable, Virtu
 
     @Override
     protected ValueNode cloneAsArrayAccess(ValueNode location, LocationIdentity identity) {
-        return new UnsafeLoadNode(object(), location, accessKind(), identity);
+        return new UnsafeLoadNode(object(), location, accessKind(), identity, guardingCondition);
     }
 
     @SuppressWarnings({"unchecked", "unused"})
