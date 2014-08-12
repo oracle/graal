@@ -85,8 +85,8 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
     public static class Options {
 
         // @formatter:off
-        @Option(help = "Number of donor threads for HSAIL kernel dispatch")
-        static public final OptionValue<Integer> HsailDonorThreads = new OptionValue<>(4);
+        @Option(help = "Number of TLABs used for HSAIL kernels which allocate")
+        static public final OptionValue<Integer> HsailKernelTlabs = new OptionValue<>(4);
         // @formatter:on
     }
 
@@ -369,25 +369,18 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
         return result;
     }
 
-    private static final ThreadLocal<DonorThreadPool> donorThreadPool = new ThreadLocal<DonorThreadPool>() {
-        @Override
-        protected DonorThreadPool initialValue() {
-            return new DonorThreadPool();
-        }
-    };
-
     public boolean executeKernel(HotSpotInstalledCode kernel, int jobSize, Object[] args) throws InvalidInstalledCodeException {
         if (!deviceInitialized) {
             throw new GraalInternalError("Cannot execute GPU kernel if device is not initialized");
         }
         int[] oopMapArray = ((HSAILHotSpotNmethod) kernel).getOopMapArray();
 
-        // Pass donorThreadPoolArray if this kernel uses allocation, otherwise null
-        Thread[] donorThreadArray = ((HSAILHotSpotNmethod) kernel).getUsesAllocationFlag() ? donorThreadPool.get().getThreads() : null;
-        return executeKernel0(kernel, jobSize, args, donorThreadArray, HsailAllocBytesPerWorkitem.getValue(), oopMapArray);
+        // Pass HsailKernelTlabs number if this kernel uses allocation, otherwise 0
+        int numTlabs = ((HSAILHotSpotNmethod) kernel).getUsesAllocationFlag() ? HsailKernelTlabs.getValue() : 0;
+        return executeKernel0(kernel, jobSize, args, numTlabs, HsailAllocBytesPerWorkitem.getValue(), oopMapArray);
     }
 
-    private static native boolean executeKernel0(HotSpotInstalledCode kernel, int jobSize, Object[] args, Thread[] donorThreads, int allocBytesPerWorkitem, int[] oopMapArray)
+    private static native boolean executeKernel0(HotSpotInstalledCode kernel, int jobSize, Object[] args, int numTlabs, int allocBytesPerWorkitem, int[] oopMapArray)
                     throws InvalidInstalledCodeException;
 
     /**
@@ -633,12 +626,12 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
             RegisterValue d16_deoptInfo = HSAIL.d16.asValue(wordLIRKind);
 
             // Aliases for d17
-            RegisterValue d17_donorThreadIndex = HSAIL.d17.asValue(wordLIRKind);
-            RegisterValue d17_safepointFlagAddrIndex = d17_donorThreadIndex;
+            RegisterValue d17_tlabIndex = HSAIL.d17.asValue(wordLIRKind);
+            RegisterValue d17_safepointFlagAddrIndex = d17_tlabIndex;
 
             // Aliases for s34
             RegisterValue s34_deoptOccurred = HSAIL.s34.asValue(LIRKind.value(Kind.Int));
-            RegisterValue s34_donorThreadIndex = s34_deoptOccurred;
+            RegisterValue s34_tlabIndex = s34_deoptOccurred;
 
             asm.emitLoadKernelArg(d16_deoptInfo, asm.getDeoptInfoName(), "u64");
             asm.emitComment("// Check if a deopt or safepoint has occurred and abort if true before doing any work");
@@ -657,15 +650,15 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
             // load thread register if this kernel performs allocation
             if (usesAllocation) {
                 RegisterValue threadReg = getProviders().getRegisters().getThreadRegister().asValue(wordLIRKind);
-                assert HsailDonorThreads.getValue() > 0;
+                assert HsailKernelTlabs.getValue() > 0;
                 asm.emitLoad(wordKind, threadReg, new HSAILAddressValue(wordLIRKind, d16_deoptInfo, config.hsailCurTlabInfoOffset).toAddress());
-                if (HsailDonorThreads.getValue() != 1) {
-                    asm.emitComment("// map workitem to a donor thread");
-                    asm.emitString(String.format("rem_u32  $%s, %s, %d;", s34_donorThreadIndex.getRegister(), workItemReg, HsailDonorThreads.getValue()));
-                    asm.emitConvert(d17_donorThreadIndex, s34_donorThreadIndex, wordKind, Kind.Int);
-                    asm.emit("mad", threadReg, d17_donorThreadIndex, Constant.forInt(8), threadReg);
+                if (HsailKernelTlabs.getValue() != 1) {
+                    asm.emitComment("// map workitem to a tlab");
+                    asm.emitString(String.format("rem_u32  $%s, %s, %d;", s34_tlabIndex.getRegister(), workItemReg, HsailKernelTlabs.getValue()));
+                    asm.emitConvert(d17_tlabIndex, s34_tlabIndex, wordKind, Kind.Int);
+                    asm.emit("mad", threadReg, d17_tlabIndex, Constant.forInt(8), threadReg);
                 } else {
-                    // workitem is already mapped to solitary donor thread
+                    // workitem is already mapped to solitary tlab
                 }
                 asm.emitComment("// $" + getProviders().getRegisters().getThreadRegister() + " will point to holder of tlab thread info for this workitem");
             }

@@ -1052,8 +1052,8 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMField(name = "HSAILTlabInfo::_end", type = "HeapWord*", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailTlabInfoEndOffset;
     @HotSpotVMField(name = "HSAILTlabInfo::_last_good_top", type = "HeapWord*", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailTlabInfoLastGoodTopOffset;
     @HotSpotVMField(name = "HSAILTlabInfo::_original_top", type = "HeapWord*", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailTlabInfoOriginalTopOffset;
-    @HotSpotVMField(name = "HSAILTlabInfo::_donor_thread", type = "JavaThread*", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailTlabInfoDonorThreadOffset;
     @HotSpotVMField(name = "HSAILTlabInfo::_alloc_info", type = "HSAILAllocationInfo*", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailTlabInfoAllocInfoOffset;
+    @HotSpotVMField(name = "HSAILTlabInfo::_tlab", type = "ThreadLocalAllocBuffer*", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailTlabInfoTlabOffset;
     @HotSpotVMType(name = "HSAILTlabInfo", get = HotSpotVMType.Type.SIZE) @Stable public int hsailTlabInfoSize;
 
     /**
