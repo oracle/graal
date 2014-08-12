@@ -25,28 +25,43 @@ package com.oracle.graal.lir;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.lir.LIRInstruction.*;
 
 /**
- * Common base class for modifying and non-modifying {@link Value value} iterators.
- *
- * This type should not be sub-classed directly. Use {@link InstructionValueProcedureBase} or
- * {@link InstructionValueConsumer} instead.
- *
- * @see InstructionValueProcedure
- * @see InstructionValueConsumer
+ * Non-modifying version of {@link ValueProcedure}.
  */
-public abstract class InstructionValueProcedureBase {
+public abstract class ValueConsumer extends InstructionValueConsumer {
+
+    /**
+     * Iterator method to be overwritten. This version of the iterator does not take additional
+     * parameters to keep the signature short.
+     *
+     * @param value The value that is iterated.
+     */
+    protected void visitValue(Value value) {
+        throw GraalInternalError.shouldNotReachHere("One of the visitValue() methods must be overwritten");
+    }
 
     /**
      * Iterator method to be overwritten. This version of the iterator gets additional parameters
      * about the processed value.
      *
-     * @param instruction The current instruction.
      * @param value The value that is iterated.
      * @param mode The operand mode for the value.
      * @param flags A set of flags for the value.
-     * @return The new value to replace the value that was passed in.
      */
-    abstract public Value processValue(LIRInstruction instruction, Value value, OperandMode mode, EnumSet<OperandFlag> flags);
+    protected void visitValue(Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
+        visitValue(value);
+    }
+
+    @Override
+    protected final void visitValue(LIRInstruction instruction, Value value) {
+        throw GraalInternalError.shouldNotReachHere("This visitValue() method should never be called");
+    }
+
+    @Override
+    protected void visitValue(LIRInstruction instruction, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
+        visitValue(value, mode, flags);
+    }
 }
