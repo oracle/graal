@@ -561,7 +561,6 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     public void emitNullCheck(Value address, LIRFrameState state) {
         if (address.getLIRKind().getPlatformKind() == Kind.Int) {
             CompressEncoding encoding = config.getOopEncoding();
-            System.out.println("compressed null check: " + address + " - " + address.getKind());
             if (encoding.shift <= 3) {
                 AMD64AddressValue uncompressionAddress = emitAddress(getProviders().getRegisters().getHeapBaseRegister().asValue(), 0, load(address), 1 << encoding.shift);
                 append(new AMD64HotSpotMove.CompressedNullCheckOp(uncompressionAddress, state));
