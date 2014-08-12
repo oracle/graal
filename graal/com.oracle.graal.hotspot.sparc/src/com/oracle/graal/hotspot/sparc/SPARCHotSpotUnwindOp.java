@@ -28,6 +28,7 @@ import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 import static com.oracle.graal.sparc.SPARC.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.asm.sparc.SPARCAssembler.*;
 import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Mov;
 import com.oracle.graal.hotspot.stubs.*;
@@ -61,7 +62,7 @@ final class SPARCHotSpotUnwindOp extends SPARCHotSpotEpilogueOp {
 
         // Get return address (is in o7 after leave).
         Register returnAddress = asRegister(cc.getArgument(1));
-        new Mov(o7, returnAddress).emit(masm);
+        new Add(o7, Return.PC_RETURN_OFFSET, returnAddress).emit(masm);
         Register scratch = g5;
         SPARCCall.indirectJmp(crb, masm, scratch, linkage);
     }
