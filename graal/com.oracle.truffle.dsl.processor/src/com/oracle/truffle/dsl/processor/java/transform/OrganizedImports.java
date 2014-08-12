@@ -481,7 +481,9 @@ public final class OrganizedImports {
 
         @Override
         public void visitTypeReference(Element enclosedType, TypeMirror type) {
-            createTypeReference(enclosedType, type);
+            if (type != null) {
+                createTypeReference(enclosedType, type);
+            }
         }
 
     }

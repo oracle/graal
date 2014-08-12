@@ -84,35 +84,7 @@ public class ProcessorContext {
     }
 
     public TypeMirror getType(Class<?> element) {
-        TypeMirror mirror;
-        if (element.isPrimitive()) {
-            if (element == boolean.class) {
-                mirror = environment.getTypeUtils().getPrimitiveType(TypeKind.BOOLEAN);
-            } else if (element == byte.class) {
-                mirror = environment.getTypeUtils().getPrimitiveType(TypeKind.BYTE);
-            } else if (element == short.class) {
-                mirror = environment.getTypeUtils().getPrimitiveType(TypeKind.SHORT);
-            } else if (element == char.class) {
-                mirror = environment.getTypeUtils().getPrimitiveType(TypeKind.CHAR);
-            } else if (element == int.class) {
-                mirror = environment.getTypeUtils().getPrimitiveType(TypeKind.INT);
-            } else if (element == long.class) {
-                mirror = environment.getTypeUtils().getPrimitiveType(TypeKind.LONG);
-            } else if (element == float.class) {
-                mirror = environment.getTypeUtils().getPrimitiveType(TypeKind.FLOAT);
-            } else if (element == double.class) {
-                mirror = environment.getTypeUtils().getPrimitiveType(TypeKind.DOUBLE);
-            } else if (element == void.class) {
-                mirror = environment.getTypeUtils().getNoType(TypeKind.VOID);
-            } else {
-                assert false;
-                return null;
-            }
-        } else {
-            TypeElement typeElement = environment.getElementUtils().getTypeElement(element.getCanonicalName());
-            mirror = typeElement.asType();
-        }
-        return mirror;
+        return ElementUtils.getType(environment, element);
     }
 
     public interface ProcessCallback {

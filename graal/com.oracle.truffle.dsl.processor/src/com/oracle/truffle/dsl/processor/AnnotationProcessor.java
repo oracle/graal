@@ -22,17 +22,13 @@
  */
 package com.oracle.truffle.dsl.processor;
 
-import java.io.*;
 import java.util.*;
 
-import javax.annotation.processing.*;
 import javax.lang.model.element.*;
 import javax.lang.model.type.*;
-import javax.tools.*;
 
 import com.oracle.truffle.dsl.processor.generator.*;
 import com.oracle.truffle.dsl.processor.java.*;
-import com.oracle.truffle.dsl.processor.java.compiler.*;
 import com.oracle.truffle.dsl.processor.java.model.*;
 import com.oracle.truffle.dsl.processor.java.transform.*;
 import com.oracle.truffle.dsl.processor.model.*;
@@ -88,42 +84,13 @@ class AnnotationProcessor<M extends Template> {
                 DeclaredType overrideType = (DeclaredType) context.getType(Override.class);
                 DeclaredType unusedType = (DeclaredType) context.getType(SuppressWarnings.class);
                 unit.accept(new GenerateOverrideVisitor(overrideType), null);
-                unit.accept(new FixWarningsVisitor(context, unusedType, overrideType), null);
+                unit.accept(new FixWarningsVisitor(context.getEnvironment(), unusedType, overrideType), null);
 
                 if (!callback) {
                     unit.accept(new CodeWriter(context.getEnvironment(), element), null);
                 }
             }
         }
-    }
-
-    private static class CodeWriter extends AbstractCodeWriter {
-
-        private final Element originalElement;
-        private final ProcessingEnvironment env;
-
-        public CodeWriter(ProcessingEnvironment env, Element originalElement) {
-            this.env = env;
-            this.originalElement = originalElement;
-        }
-
-        @Override
-        protected Writer createWriter(CodeTypeElement clazz) throws IOException {
-            JavaFileObject jfo = env.getFiler().createSourceFile(clazz.getQualifiedName(), originalElement);
-            return new BufferedWriter(jfo.openWriter());
-        }
-
-        @Override
-        protected void writeHeader() {
-            if (env == null) {
-                return;
-            }
-            String comment = CompilerFactory.getCompiler(originalElement).getHeaderComment(env, originalElement);
-            if (comment != null) {
-                writeLn(comment);
-            }
-        }
-
     }
 
 }

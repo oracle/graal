@@ -37,7 +37,7 @@ import com.oracle.truffle.dsl.processor.model.MessageContainer.Message;
 /**
  * THIS IS NOT PUBLIC API.
  */
-public abstract class AbstractParser<M extends Template> {
+public abstract class AbstractParser<M extends MessageContainer> {
 
     protected final ProcessorContext context;
     protected final ProcessingEnvironment processingEnv;

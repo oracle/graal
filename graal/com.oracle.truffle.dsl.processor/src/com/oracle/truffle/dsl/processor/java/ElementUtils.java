@@ -40,6 +40,39 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.DeclaredCodeTy
  */
 public class ElementUtils {
 
+    public static TypeMirror getType(ProcessingEnvironment processingEnv, Class<?> element) {
+        TypeMirror mirror;
+        if (element.isPrimitive()) {
+            TypeKind typeKind;
+            if (element == boolean.class) {
+                typeKind = TypeKind.BOOLEAN;
+            } else if (element == byte.class) {
+                typeKind = TypeKind.BYTE;
+            } else if (element == short.class) {
+                typeKind = TypeKind.SHORT;
+            } else if (element == char.class) {
+                typeKind = TypeKind.CHAR;
+            } else if (element == int.class) {
+                typeKind = TypeKind.INT;
+            } else if (element == long.class) {
+                typeKind = TypeKind.LONG;
+            } else if (element == float.class) {
+                typeKind = TypeKind.FLOAT;
+            } else if (element == double.class) {
+                typeKind = TypeKind.DOUBLE;
+            } else if (element == void.class) {
+                typeKind = TypeKind.VOID;
+            } else {
+                assert false;
+                return null;
+            }
+            mirror = processingEnv.getTypeUtils().getPrimitiveType(typeKind);
+        } else {
+            mirror = processingEnv.getElementUtils().getTypeElement(element.getCanonicalName()).asType();
+        }
+        return mirror;
+    }
+
     public static ExecutableElement findExecutableElement(DeclaredType type, String name) {
         List<? extends ExecutableElement> elements = ElementFilter.methodsIn(type.asElement().getEnclosedElements());
         for (ExecutableElement executableElement : elements) {
@@ -801,7 +834,7 @@ public class ElementUtils {
         return null;
     }
 
-    private static PackageElement findPackageElement(Element type) {
+    public static PackageElement findPackageElement(Element type) {
         List<Element> hierarchy = getElementHierarchy(type);
         for (Element element : hierarchy) {
             if (element.getKind() == ElementKind.PACKAGE) {

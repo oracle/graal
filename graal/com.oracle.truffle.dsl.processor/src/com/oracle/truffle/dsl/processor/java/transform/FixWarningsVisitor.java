@@ -28,10 +28,10 @@ import static javax.lang.model.element.Modifier.*;
 import java.io.*;
 import java.util.*;
 
+import javax.annotation.processing.*;
 import javax.lang.model.element.*;
 import javax.lang.model.type.*;
 
-import com.oracle.truffle.dsl.processor.*;
 import com.oracle.truffle.dsl.processor.java.*;
 import com.oracle.truffle.dsl.processor.java.model.*;
 
@@ -39,12 +39,12 @@ public class FixWarningsVisitor extends CodeElementScanner<Void, Void> {
 
     private final Set<String> symbolsUsed = new HashSet<>();
 
-    private final ProcessorContext context;
+    private final ProcessingEnvironment processingEnv;
     private final DeclaredType unusedAnnotation;
     private final DeclaredType overrideType;
 
-    public FixWarningsVisitor(ProcessorContext context, DeclaredType unusedAnnotation, DeclaredType overrideType) {
-        this.context = context;
+    public FixWarningsVisitor(ProcessingEnvironment processingEnv, DeclaredType unusedAnnotation, DeclaredType overrideType) {
+        this.processingEnv = processingEnv;
         this.unusedAnnotation = unusedAnnotation;
         this.overrideType = overrideType;
     }
@@ -56,7 +56,7 @@ public class FixWarningsVisitor extends CodeElementScanner<Void, Void> {
             String qualifiedName = ElementUtils.getQualifiedName(type);
             if (qualifiedName.equals(Serializable.class.getCanonicalName())) {
                 if (!e.containsField("serialVersionUID")) {
-                    e.add(new CodeVariableElement(modifiers(PRIVATE, STATIC, FINAL), context.getType(long.class), "serialVersionUID", "1L"));
+                    e.add(new CodeVariableElement(modifiers(PRIVATE, STATIC, FINAL), ElementUtils.getType(processingEnv, long.class), "serialVersionUID", "1L"));
                 }
                 break;
             }
