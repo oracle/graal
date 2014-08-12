@@ -259,14 +259,14 @@ public class GraalDebugConfig implements DebugConfig {
             if (o instanceof Graph) {
                 Debug.log("Context obj %s", o);
                 if (DumpOnError.getValue()) {
-                    Debug.dump(o, "Exception graph");
+                    Debug.dump(o, "Exception graph: " + e);
                 } else {
                     Debug.log("Use -G:+DumpOnError to enable dumping of graphs on this error");
                 }
             } else if (o instanceof LIR) {
                 Debug.log("Context obj %s", o);
                 if (DumpOnError.getValue()) {
-                    Debug.dump(o, "LIR");
+                    Debug.dump(o, "Exception LIR: " + e);
                 } else {
                     Debug.log("Use -G:+DumpOnError to enable dumping of graphs on this error");
                 }
