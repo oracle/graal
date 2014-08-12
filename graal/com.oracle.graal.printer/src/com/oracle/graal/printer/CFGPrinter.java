@@ -459,7 +459,7 @@ class CFGPrinter extends CompilationPrinter {
             out.printf("nr %4d ", inst.id()).print(COLUMN_END);
 
             final StringBuilder stateString = new StringBuilder();
-            inst.forEachState(new LIRInstruction.StateProcedure() {
+            inst.forEachState(new StateProcedure() {
 
                 @Override
                 protected void doState(LIRFrameState state) {

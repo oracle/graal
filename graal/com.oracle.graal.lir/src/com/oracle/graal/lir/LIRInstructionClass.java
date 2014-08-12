@@ -28,11 +28,8 @@ import java.util.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.lir.LIRInstruction.InstructionStateProcedure;
-import com.oracle.graal.lir.LIRInstruction.InstructionValueProcedure;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
-import com.oracle.graal.lir.LIRInstruction.ValuePositionProcedure;
 
 public class LIRInstructionClass extends LIRIntrospection {
 

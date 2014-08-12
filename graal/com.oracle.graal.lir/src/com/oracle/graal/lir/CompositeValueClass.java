@@ -28,10 +28,8 @@ import java.util.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.lir.CompositeValue.Component;
-import com.oracle.graal.lir.LIRInstruction.InstructionValueProcedure;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
-import com.oracle.graal.lir.LIRInstruction.ValuePositionProcedure;
 
 /**
  * Lazily associated metadata for every {@link CompositeValue} type. The metadata includes:
