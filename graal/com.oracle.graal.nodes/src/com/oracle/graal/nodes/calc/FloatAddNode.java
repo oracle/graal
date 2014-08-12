@@ -76,6 +76,16 @@ public final class FloatAddNode extends FloatArithmeticNode {
                     throw GraalGraphInternalError.shouldNotReachHere();
             }
         }
+        /*
+         * JVM spec, Chapter 6, dsub/fsub bytecode: For double subtraction, it is always the case
+         * that a-b produces the same result as a+(-b).
+         */
+        if (forX instanceof NegateNode) {
+            return new FloatSubNode(forY, ((NegateNode) forX).getValue(), isStrictFP());
+        }
+        if (forY instanceof NegateNode) {
+            return new FloatSubNode(forX, ((NegateNode) forY).getValue(), isStrictFP());
+        }
         return this;
     }
 
