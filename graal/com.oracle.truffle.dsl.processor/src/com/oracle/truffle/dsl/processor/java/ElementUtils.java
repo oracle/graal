@@ -41,7 +41,6 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.DeclaredCodeTy
 public class ElementUtils {
 
     public static TypeMirror getType(ProcessingEnvironment processingEnv, Class<?> element) {
-        TypeMirror mirror;
         if (element.isPrimitive()) {
             if (element == void.class) {
                 return processingEnv.getTypeUtils().getNoType(TypeKind.VOID);
@@ -67,11 +66,14 @@ public class ElementUtils {
                 assert false;
                 return null;
             }
-            mirror = processingEnv.getTypeUtils().getPrimitiveType(typeKind);
+            return processingEnv.getTypeUtils().getPrimitiveType(typeKind);
         } else {
-            mirror = processingEnv.getElementUtils().getTypeElement(element.getCanonicalName()).asType();
+            TypeElement typeElement = processingEnv.getElementUtils().getTypeElement(element.getCanonicalName());
+            if (typeElement == null) {
+                return null;
+            }
+            return typeElement.asType();
         }
-        return mirror;
     }
 
     public static ExecutableElement findExecutableElement(DeclaredType type, String name) {
