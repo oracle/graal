@@ -35,7 +35,7 @@ public class TypeSystemData extends Template {
     private List<TypeData> types;
     private List<TypeMirror> primitiveTypeMirrors = new ArrayList<>();
     private List<TypeMirror> boxedTypeMirrors = new ArrayList<>();
-    private Map<TypeMirror, TypeData> cachedTypes = new HashMap<>();
+    private Map<String, TypeData> cachedTypes = new HashMap<>();
 
     private List<ImplicitCastData> implicitCasts;
     private List<TypeCastData> casts;
@@ -59,7 +59,7 @@ public class TypeSystemData extends Template {
             for (TypeData typeData : types) {
                 primitiveTypeMirrors.add(typeData.getPrimitiveType());
                 boxedTypeMirrors.add(typeData.getBoxedType());
-                cachedTypes.put(typeData.getPrimitiveType(), typeData);
+                cachedTypes.put(typeData.getPrimitiveType().toString(), typeData);
             }
         }
     }
@@ -154,7 +154,7 @@ public class TypeSystemData extends Template {
     }
 
     public int findType(TypeMirror type) {
-        TypeData data = cachedTypes.get(type);
+        TypeData data = cachedTypes.get(type.toString());
         if (data != null) {
             return data.getIndex();
         }
