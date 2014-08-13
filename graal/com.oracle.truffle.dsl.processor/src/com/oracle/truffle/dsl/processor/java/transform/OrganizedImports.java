@@ -43,6 +43,7 @@ public final class OrganizedImports {
     private final Set<String> declaredStaticFields = new HashSet<>();
     private final Set<String> ambiguousStaticMethods = new HashSet<>();
     private final Set<String> ambiguousStaticFields = new HashSet<>();
+    private final Map<Element, Set<String>> autoImportCache = new HashMap<>();
 
     private final CodeTypeElement topLevelClass;
 
@@ -233,14 +234,18 @@ public final class OrganizedImports {
             return false; // same package name -> no import
         }
 
-        List<Element> elements = ElementUtils.getElementHierarchy(enclosedElement);
+        Set<String> autoImportedTypes = autoImportCache.get(enclosedElement);
 
-        Set<String> autoImportedTypes = new HashSet<>();
-        for (Element element : elements) {
-            if (element.getKind().isClass()) {
-                collectSuperTypeImports((TypeElement) element, autoImportedTypes);
-                collectInnerTypeImports((TypeElement) element, autoImportedTypes);
+        if (autoImportedTypes == null) {
+            List<Element> elements = ElementUtils.getElementHierarchy(enclosedElement);
+            autoImportedTypes = new HashSet<>();
+            for (Element element : elements) {
+                if (element.getKind().isClass()) {
+                    collectSuperTypeImports((TypeElement) element, autoImportedTypes);
+                    collectInnerTypeImports((TypeElement) element, autoImportedTypes);
+                }
             }
+            autoImportCache.put(enclosedElement, autoImportedTypes);
         }
 
         String qualifiedName = getQualifiedName(importType);
