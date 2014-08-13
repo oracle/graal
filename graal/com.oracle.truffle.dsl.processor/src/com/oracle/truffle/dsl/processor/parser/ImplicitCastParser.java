@@ -45,12 +45,10 @@ public class ImplicitCastParser extends TypeSystemMethodParser<ImplicitCastData>
 
     @Override
     public MethodSpec createSpecification(ExecutableElement method, AnnotationMirror mirror) {
-        List<TypeMirror> types = new ArrayList<>();
-        for (TypeData typeData : getTypeSystem().getTypes()) {
-            types.add(typeData.getPrimitiveType());
-        }
-        MethodSpec spec = new MethodSpec(new ParameterSpec("target", types));
-        spec.addRequired(new ParameterSpec("source", types));
+        List<TypeMirror> types = getTypeSystem().getPrimitiveTypeMirrors();
+        Set<String> identifiers = getTypeSystem().getTypeIdentifiers();
+        MethodSpec spec = new MethodSpec(new ParameterSpec("target", types, identifiers));
+        spec.addRequired(new ParameterSpec("source", types, identifiers));
         return spec;
     }
 

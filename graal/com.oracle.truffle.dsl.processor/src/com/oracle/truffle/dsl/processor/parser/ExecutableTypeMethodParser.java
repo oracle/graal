@@ -47,17 +47,28 @@ public class ExecutableTypeMethodParser extends NodeMethodParser<ExecutableTypeD
         spec.getRequired().clear();
 
         List<TypeMirror> allowedTypes = getNode().getTypeSystem().getPrimitiveTypeMirrors();
+        Set<String> allowedIdentifiers = getNode().getTypeSystem().getTypeIdentifiers();
         for (ParameterSpec originalSpec : requiredSpecs) {
-            spec.addRequired(new ParameterSpec(originalSpec, allowedTypes));
+            spec.addRequired(new ParameterSpec(originalSpec, allowedTypes, allowedIdentifiers));
         }
         spec.setIgnoreAdditionalSpecifications(true);
         spec.setIgnoreAdditionalParameters(true);
         spec.setVariableRequiredParameters(true);
         // varargs
-        ParameterSpec otherParameters = new ParameterSpec("other", allowedTypes);
+        ParameterSpec otherParameters = new ParameterSpec("other", allowedTypes, allowedIdentifiers);
         otherParameters.setSignature(true);
         spec.addRequired(otherParameters);
         return spec;
+    }
+
+    @Override
+    protected List<TypeMirror> nodeTypeMirrors(NodeData nodeData) {
+        return getNode().getTypeSystem().getPrimitiveTypeMirrors();
+    }
+
+    @Override
+    protected Set<String> nodeTypeIdentifiers(NodeData nodeData) {
+        return getNode().getTypeSystem().getTypeIdentifiers();
     }
 
     @Override
@@ -68,13 +79,6 @@ public class ExecutableTypeMethodParser extends NodeMethodParser<ExecutableTypeD
             return false;
         }
         return method.getSimpleName().toString().startsWith("execute");
-    }
-
-    @Override
-    protected List<TypeMirror> nodeTypeMirrors(NodeData nodeData) {
-        List<TypeMirror> types = new ArrayList<>(getNode().getTypeSystem().getPrimitiveTypeMirrors());
-        types.add(getNode().getTypeSystem().getVoidType().getPrimitiveType());
-        return types;
     }
 
     @Override

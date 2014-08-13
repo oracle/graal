@@ -30,6 +30,7 @@ import javax.lang.model.type.*;
 
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.dsl.processor.*;
+import com.oracle.truffle.dsl.processor.java.*;
 import com.oracle.truffle.dsl.processor.model.*;
 import com.oracle.truffle.dsl.processor.model.SpecializationData.SpecializationKind;
 
@@ -48,10 +49,13 @@ public class GenericParser extends NodeMethodParser<SpecializationData> {
     protected ParameterSpec createValueParameterSpec(NodeExecutionData execution) {
         List<ExecutableTypeData> execTypes = execution.getChild().findGenericExecutableTypes(getContext());
         List<TypeMirror> types = new ArrayList<>();
+        Set<String> typeIds = new HashSet<>();
         for (ExecutableTypeData type : execTypes) {
-            types.add(type.getType().getPrimitiveType());
+            TypeMirror typeMirror = type.getType().getPrimitiveType();
+            types.add(typeMirror);
+            typeIds.add(ElementUtils.getUniqueIdentifier(typeMirror));
         }
-        ParameterSpec spec = new ParameterSpec(execution.getName(), types);
+        ParameterSpec spec = new ParameterSpec(execution.getName(), types, typeIds);
         spec.setExecution(execution);
         return spec;
     }

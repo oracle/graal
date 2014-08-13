@@ -87,20 +87,21 @@ public class TypeSystemCodeGenerator extends AbstractCompilationUnitFactory<Type
             clazz.add(singleton);
 
             for (TypeData type : typeSystem.getTypes()) {
-                if (!type.isGeneric()) {
-                    clazz.addOptional(createIsTypeMethod(type));
-                    clazz.addOptional(createAsTypeMethod(type));
-
-                    for (TypeData sourceType : collectExpectSourceTypes(type)) {
-                        clazz.addOptional(createExpectTypeMethod(type, sourceType));
-                    }
-
-                    clazz.addOptional(createAsImplicitTypeMethod(type, true));
-                    clazz.addOptional(createAsImplicitTypeMethod(type, false));
-                    clazz.addOptional(createIsImplicitTypeMethod(type, true));
-                    clazz.addOptional(createIsImplicitTypeMethod(type, false));
-                    clazz.addOptional(createGetTypeIndex(type));
+                if (type.isGeneric() || type.isVoid()) {
+                    continue;
                 }
+                clazz.addOptional(createIsTypeMethod(type));
+                clazz.addOptional(createAsTypeMethod(type));
+
+                for (TypeData sourceType : collectExpectSourceTypes(type)) {
+                    clazz.addOptional(createExpectTypeMethod(type, sourceType));
+                }
+
+                clazz.addOptional(createAsImplicitTypeMethod(type, true));
+                clazz.addOptional(createAsImplicitTypeMethod(type, false));
+                clazz.addOptional(createIsImplicitTypeMethod(type, true));
+                clazz.addOptional(createIsImplicitTypeMethod(type, false));
+                clazz.addOptional(createGetTypeIndex(type));
             }
 
             return clazz;

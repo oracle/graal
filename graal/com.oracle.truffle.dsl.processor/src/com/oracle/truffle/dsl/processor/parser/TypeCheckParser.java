@@ -43,7 +43,7 @@ class TypeCheckParser extends TypeSystemMethodParser<TypeCheckData> {
             return null;
         }
         MethodSpec spec = new MethodSpec(new ParameterSpec("returnType", getContext().getType(boolean.class)));
-        spec.addRequired(new ParameterSpec("value", getTypeSystem().getPrimitiveTypeMirrors()));
+        spec.addRequired(new ParameterSpec("value", getTypeSystem().getPrimitiveTypeMirrors(), getTypeSystem().getTypeIdentifiers()));
         return spec;
     }
 

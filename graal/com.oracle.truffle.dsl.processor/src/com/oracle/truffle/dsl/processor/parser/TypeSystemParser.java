@@ -67,13 +67,16 @@ public class TypeSystemParser extends AbstractParser<TypeSystemData> {
             return typeSystem;
         }
 
-        typeSystem.setTypes(parseTypes(typeSystem));
+        List<TypeData> types = parseTypes(typeSystem);
+
+        TypeMirror genericType = context.getType(Object.class);
+        TypeData voidType = new TypeData(typeSystem, types.size(), null, context.getType(void.class), context.getType(Void.class));
+        types.add(voidType);
+
+        typeSystem.setTypes(types);
         if (typeSystem.hasErrors()) {
             return typeSystem;
         }
-
-        TypeMirror genericType = context.getType(Object.class);
-        TypeData voidType = new TypeData(typeSystem, typeSystem.getTypes().size(), null, context.getType(void.class), context.getType(Void.class));
 
         typeSystem.setGenericType(genericType);
         typeSystem.setVoidType(voidType);
@@ -198,7 +201,6 @@ public class TypeSystemParser extends AbstractParser<TypeSystemData> {
         verifyTypeOrder(types);
 
         types.add(new TypeData(typeSystem, index, annotationValue, objectType, objectType));
-
         return types;
     }
 

@@ -128,7 +128,6 @@ public abstract class AbstractClassElementFactory<M> extends AbstractCodeElement
         }
 
         clazz.addAnnotationMirror(generatedByAnnotation);
-
         return clazz;
     }
 }

@@ -914,7 +914,11 @@ public class ElementUtils {
     }
 
     public static String getUniqueIdentifier(TypeMirror typeMirror) {
-        return fixECJBinaryNameIssue(typeMirror.toString());
+        if (typeMirror.getKind() == TypeKind.ARRAY) {
+            return getUniqueIdentifier(((ArrayType) typeMirror).getComponentType()) + "[]";
+        } else {
+            return getQualifiedName(typeMirror);
+        }
     }
 
     public static int compareByTypeHierarchy(TypeMirror t1, TypeMirror t2) {

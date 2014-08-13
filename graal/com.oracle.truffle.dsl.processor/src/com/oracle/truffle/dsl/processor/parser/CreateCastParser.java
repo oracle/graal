@@ -99,7 +99,7 @@ public class CreateCastParser extends NodeMethodParser<CreateCastData> {
     private static class InheritsParameterSpec extends ParameterSpec {
 
         public InheritsParameterSpec(String name, TypeMirror... allowedTypes) {
-            super(name, Arrays.asList(allowedTypes));
+            super(name, Arrays.asList(allowedTypes), null);
         }
 
         @Override

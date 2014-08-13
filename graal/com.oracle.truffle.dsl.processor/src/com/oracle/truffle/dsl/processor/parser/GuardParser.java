@@ -58,7 +58,13 @@ public class GuardParser extends NodeMethodParser<GuardData> {
         if (compatibleSource != null) {
             spec.getRequired().clear();
             for (Parameter parameter : compatibleSource.getRequiredParameters()) {
-                spec.addRequired(new ParameterSpec(parameter.getSpecification(), ElementUtils.getAssignableTypes(getContext(), parameter.getType())));
+                List<TypeMirror> typeMirrors = ElementUtils.getAssignableTypes(getContext(), parameter.getType());
+                Set<String> typeIds = new HashSet<>();
+                for (TypeMirror typeMirror : typeMirrors) {
+                    typeIds.add(ElementUtils.getUniqueIdentifier(typeMirror));
+                }
+
+                spec.addRequired(new ParameterSpec(parameter.getSpecification(), typeMirrors, typeIds));
             }
         }
         return spec;
@@ -70,6 +76,11 @@ public class GuardParser extends NodeMethodParser<GuardData> {
         typeMirrors.addAll(nodeData.getTypeSystem().getPrimitiveTypeMirrors());
         typeMirrors.addAll(nodeData.getTypeSystem().getBoxedTypeMirrors());
         return new ArrayList<>(typeMirrors);
+    }
+
+    @Override
+    protected Set<String> nodeTypeIdentifiers(NodeData nodeData) {
+        return nodeData.getTypeSystem().getTypeIdentifiers();
     }
 
     @Override

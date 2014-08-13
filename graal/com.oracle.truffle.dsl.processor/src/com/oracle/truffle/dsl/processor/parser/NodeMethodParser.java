@@ -42,25 +42,21 @@ public abstract class NodeMethodParser<E extends TemplateMethod> extends Templat
     }
 
     protected ParameterSpec createValueParameterSpec(NodeExecutionData execution) {
-        ParameterSpec spec = new ParameterSpec(execution.getName(), nodeTypeMirrors(execution.getChild().getNodeData()));
+        ParameterSpec spec = new ParameterSpec(execution.getName(), nodeTypeMirrors(execution.getChild().getNodeData()), nodeTypeIdentifiers(execution.getChild().getNodeData()));
         spec.setExecution(execution);
         return spec;
     }
 
     protected List<TypeMirror> nodeTypeMirrors(NodeData nodeData) {
-        Set<TypeMirror> typeMirrors = new LinkedHashSet<>();
+        return nodeData.getTypeSystem().getPrimitiveTypeMirrors();
+    }
 
-        for (ExecutableTypeData typeData : nodeData.getExecutableTypes()) {
-            typeMirrors.add(typeData.getType().getPrimitiveType());
-        }
-
-        typeMirrors.add(nodeData.getTypeSystem().getGenericType());
-
-        return new ArrayList<>(typeMirrors);
+    protected Set<String> nodeTypeIdentifiers(NodeData nodeData) {
+        return nodeData.getTypeSystem().getTypeIdentifiers();
     }
 
     protected ParameterSpec createReturnParameterSpec() {
-        ParameterSpec returnValue = new ParameterSpec("returnValue", nodeTypeMirrors(getNode()));
+        ParameterSpec returnValue = new ParameterSpec("returnValue", nodeTypeMirrors(getNode()), nodeTypeIdentifiers(getNode()));
         returnValue.setExecution(getNode().getThisExecution());
         return returnValue;
     }
