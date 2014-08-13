@@ -34,6 +34,7 @@ import com.oracle.graal.nodes.type.*;
 /**
  * @see LoadIndexedNode
  */
+@NodeInfo
 public final class LoadIndexedFinalNode extends AccessIndexedNode implements Canonicalizable {
 
     /**

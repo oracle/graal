@@ -22,8 +22,10 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 
+@NodeInfo
 public abstract class ArrayRangeWriteBarrier extends WriteBarrier {
 
     @Input private ValueNode startIndex;

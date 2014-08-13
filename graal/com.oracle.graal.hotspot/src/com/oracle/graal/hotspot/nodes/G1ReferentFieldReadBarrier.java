@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 
@@ -31,6 +32,7 @@ import com.oracle.graal.nodes.extended.*;
  * {@code UnsafeLoadNode}). The return value of the read is passed to the snippet implementing the
  * read barrier and consequently is added to the SATB queue if the concurrent marker is enabled.
  */
+@NodeInfo
 public class G1ReferentFieldReadBarrier extends WriteBarrier {
 
     private final boolean doLoad;

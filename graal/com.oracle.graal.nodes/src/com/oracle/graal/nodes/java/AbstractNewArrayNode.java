@@ -23,6 +23,7 @@
 package com.oracle.graal.nodes.java;
 
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -30,6 +31,7 @@ import com.oracle.graal.nodes.spi.*;
 /**
  * The {@code AbstractNewArrayNode} is used for all 1-dimensional array allocations.
  */
+@NodeInfo
 public class AbstractNewArrayNode extends AbstractNewObjectNode implements ArrayLengthProvider {
 
     @Input private ValueNode length;
@@ -41,7 +43,7 @@ public class AbstractNewArrayNode extends AbstractNewObjectNode implements Array
 
     /**
      * Constructs a new AbstractNewArrayNode.
-     * 
+     *
      * @param stamp the stamp of the newly created array
      * @param length the node that produces the length for this allocation.
      * @param fillContents determines whether the array elements should be initialized to zero/null.

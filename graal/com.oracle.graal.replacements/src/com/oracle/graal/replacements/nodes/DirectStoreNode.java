@@ -26,6 +26,7 @@ import static com.oracle.graal.compiler.common.UnsafeAccess.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
@@ -34,6 +35,7 @@ import com.oracle.graal.nodes.spi.*;
  * A special purpose store node that differs from {@link UnsafeStoreNode} in that it is not a
  * {@link StateSplit} and takes a computed address instead of an object.
  */
+@NodeInfo
 public class DirectStoreNode extends FixedWithNextNode implements LIRLowerable {
 
     @Input private ValueNode address;

@@ -28,6 +28,7 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -37,7 +38,8 @@ import com.oracle.graal.word.*;
  * Intrinsic for allocating an on-stack array of integers to hold the dimensions of a multianewarray
  * instruction.
  */
-public final class DimensionsNode extends FixedWithNextNode implements LIRLowerable {
+@NodeInfo
+public class DimensionsNode extends FixedWithNextNode implements LIRLowerable {
 
     private final int rank;
 

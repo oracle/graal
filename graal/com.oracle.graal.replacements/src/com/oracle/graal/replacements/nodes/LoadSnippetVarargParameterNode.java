@@ -31,7 +31,8 @@ import com.oracle.graal.replacements.Snippet.VarargsParameter;
 /**
  * Implements the semantics of {@link VarargsParameter}.
  */
-public final class LoadSnippetVarargParameterNode extends FixedWithNextNode implements Canonicalizable {
+@NodeInfo
+public class LoadSnippetVarargParameterNode extends FixedWithNextNode implements Canonicalizable {
 
     @Input private ValueNode index;
 

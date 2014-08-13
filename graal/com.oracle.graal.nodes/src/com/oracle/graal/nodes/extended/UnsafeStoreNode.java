@@ -35,6 +35,7 @@ import com.oracle.graal.nodes.spi.*;
  * Store of a value at a location specified as an offset relative to an object. No null check is
  * performed before the store.
  */
+@NodeInfo
 public class UnsafeStoreNode extends UnsafeAccessNode implements StateSplit, Lowerable, Virtualizable, MemoryCheckpoint.Single {
 
     @Input private ValueNode value;

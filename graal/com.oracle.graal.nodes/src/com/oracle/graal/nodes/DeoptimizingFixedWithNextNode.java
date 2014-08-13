@@ -25,6 +25,7 @@ package com.oracle.graal.nodes;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 
+@NodeInfo
 public abstract class DeoptimizingFixedWithNextNode extends FixedWithNextNode implements DeoptimizingNode.DeoptBefore {
 
     @OptionalInput(InputType.State) private FrameState stateBefore;

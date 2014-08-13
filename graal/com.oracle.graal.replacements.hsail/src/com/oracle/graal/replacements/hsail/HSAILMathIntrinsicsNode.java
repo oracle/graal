@@ -37,6 +37,7 @@ import com.oracle.graal.nodes.spi.*;
 /**
  * This node implements HSAIL intrinsics for specific {@link Math} routines.
  */
+@NodeInfo
 public class HSAILMathIntrinsicsNode extends FloatingNode implements Canonicalizable, ArithmeticLIRLowerable {
 
     /**

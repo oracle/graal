@@ -22,8 +22,10 @@
  */
 package com.oracle.graal.truffle.test.nodes;
 
+import com.oracle.graal.graph.*;
 import com.oracle.truffle.api.frame.*;
 
+@NodeInfo
 public class ConstantTestNode extends AbstractTestNode {
 
     private final int value;

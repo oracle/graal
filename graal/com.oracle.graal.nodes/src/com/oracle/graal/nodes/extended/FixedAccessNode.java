@@ -30,6 +30,7 @@ import com.oracle.graal.nodes.*;
  * Accesses a value at an memory address specified by an {@linkplain #object object} and a
  * {@linkplain #accessLocation() location}. The access does not include a null check on the object.
  */
+@NodeInfo
 public abstract class FixedAccessNode extends DeoptimizingFixedWithNextNode implements Access {
 
     @OptionalInput(InputType.Guard) private GuardingNode guard;

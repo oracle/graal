@@ -32,7 +32,8 @@ import com.oracle.graal.nodes.type.*;
 /**
  * The {@code StoreIndexedNode} represents a write to an array element.
  */
-public final class StoreIndexedNode extends AccessIndexedNode implements StateSplit, Lowerable, Virtualizable {
+@NodeInfo
+public class StoreIndexedNode extends AccessIndexedNode implements StateSplit, Lowerable, Virtualizable {
 
     @Input private ValueNode value;
     @OptionalInput(InputType.State) private FrameState stateAfter;

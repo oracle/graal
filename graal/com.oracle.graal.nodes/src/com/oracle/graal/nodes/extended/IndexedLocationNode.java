@@ -38,7 +38,7 @@ import com.oracle.graal.nodes.type.*;
  * constants.
  */
 @NodeInfo(nameTemplate = "IdxLoc {p#locationIdentity/s}")
-public final class IndexedLocationNode extends LocationNode implements Canonicalizable {
+public class IndexedLocationNode extends LocationNode implements Canonicalizable {
 
     private final Kind valueKind;
     private final LocationIdentity locationIdentity;

@@ -32,6 +32,7 @@ import com.oracle.graal.graph.*;
  * After this node, execution will continue using a fallback execution engine (such as an
  * interpreter) at the position described by the {@link #stateBefore() deoptimization state}.
  */
+@NodeInfo
 public abstract class AbstractDeoptimizeNode extends ControlSinkNode implements IterableNodeType, DeoptimizingNode.DeoptBefore {
 
     @OptionalInput(InputType.State) private FrameState stateBefore;

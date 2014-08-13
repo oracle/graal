@@ -37,7 +37,7 @@ import com.oracle.graal.nodes.type.*;
  * [(base + x) + y] where base is a node and x and y are location nodes.
  */
 @NodeInfo(nameTemplate = "AddLoc {p#locationIdentity/s}")
-public final class AddLocationNode extends LocationNode implements Canonicalizable.Binary<LocationNode> {
+public class AddLocationNode extends LocationNode implements Canonicalizable.Binary<LocationNode> {
 
     @Input(InputType.Association) private ValueNode x;
     @Input(InputType.Association) private ValueNode y;
@@ -55,7 +55,7 @@ public final class AddLocationNode extends LocationNode implements Canonicalizab
         return graph.unique(new AddLocationNode(x, y));
     }
 
-    private AddLocationNode(ValueNode x, ValueNode y) {
+    AddLocationNode(ValueNode x, ValueNode y) {
         super(StampFactory.forVoid());
         this.x = x;
         this.y = y;

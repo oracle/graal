@@ -39,6 +39,7 @@ import com.oracle.truffle.api.*;
  *
  * Substitution for method {@link CompilerDirectives#unsafeGetFinalObject} and friends.
  */
+@NodeInfo
 public class CustomizedUnsafeLoadFinalNode extends FixedWithNextNode implements Canonicalizable, Virtualizable, Lowerable {
     @Input private ValueNode object;
     @Input private ValueNode offset;

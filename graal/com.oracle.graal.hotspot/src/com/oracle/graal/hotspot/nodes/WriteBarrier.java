@@ -28,6 +28,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 
+@NodeInfo
 public abstract class WriteBarrier extends FixedWithNextNode implements Lowerable {
 
     @Input private ValueNode object;

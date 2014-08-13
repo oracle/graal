@@ -32,6 +32,7 @@ import com.oracle.graal.graph.*;
  * which is not possible until loop peeling works without requiring begin nodes to have frames
  * states.
  */
+@NodeInfo
 public abstract class BeginStateSplitNode extends BeginNode implements StateSplit {
 
     @OptionalInput(InputType.State) private FrameState stateAfter;

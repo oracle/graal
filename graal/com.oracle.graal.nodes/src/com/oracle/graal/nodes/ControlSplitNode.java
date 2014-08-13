@@ -29,6 +29,7 @@ import com.oracle.graal.graph.*;
  * The {@code ControlSplitNode} is a base class for all instructions that split the control flow
  * (ie. have more than one successor).
  */
+@NodeInfo
 public abstract class ControlSplitNode extends FixedNode implements IterableNodeType {
 
     public ControlSplitNode(Stamp stamp) {

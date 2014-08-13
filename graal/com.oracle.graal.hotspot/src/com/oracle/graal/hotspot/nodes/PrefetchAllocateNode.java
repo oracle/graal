@@ -24,11 +24,13 @@
 package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.word.*;
 
+@NodeInfo
 public class PrefetchAllocateNode extends FixedWithNextNode implements LIRLowerable {
 
     @Input private ValueNode distance;

@@ -31,6 +31,7 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
+@NodeInfo
 public class AMD64RawNativeCallNode extends FixedWithNextNode implements LIRLowerable {
 
     private final Constant functionPointer;

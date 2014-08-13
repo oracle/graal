@@ -23,11 +23,13 @@
 package com.oracle.graal.nodes;
 
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.extended.*;
 
 /**
  * Provides an implementation of {@link StateSplit}.
  */
+@NodeInfo
 public abstract class AbstractMemoryCheckpoint extends AbstractStateSplit implements MemoryCheckpoint {
 
     protected AbstractMemoryCheckpoint(Stamp stamp) {

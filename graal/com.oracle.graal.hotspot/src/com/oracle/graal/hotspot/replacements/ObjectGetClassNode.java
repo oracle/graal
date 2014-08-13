@@ -37,6 +37,7 @@ import com.oracle.graal.replacements.nodes.*;
  * This macro node will replace itself with the correct Java {@link Class} as soon as the object's
  * type is known (exact).
  */
+@NodeInfo
 public class ObjectGetClassNode extends MacroNode implements Virtualizable, Canonicalizable {
 
     public ObjectGetClassNode(Invoke invoke) {

@@ -24,11 +24,13 @@ package com.oracle.graal.nodes.extended;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 
 /**
  * An {@link FixedAccessNode} that can be converted to a {@link FloatingAccessNode}.
  */
+@NodeInfo
 public abstract class FloatableAccessNode extends FixedAccessNode {
 
     public FloatableAccessNode(ValueNode object, ValueNode location, Stamp stamp) {

@@ -42,7 +42,8 @@ import com.oracle.graal.nodes.spi.*;
  * nodes. Both scale and disp must eventually canonicalize to {@link ConstantNode constants} so that
  * this node can be canonicalized to a {@link IndexedLocationNode} or {@link ConstantLocationNode}.
  */
-public final class SnippetLocationNode extends LocationNode implements Canonicalizable {
+@NodeInfo
+public class SnippetLocationNode extends LocationNode implements Canonicalizable {
 
     private final SnippetReflectionProvider snippetReflection;
 

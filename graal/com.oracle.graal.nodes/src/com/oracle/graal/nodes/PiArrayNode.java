@@ -33,7 +33,8 @@ import com.oracle.graal.nodes.spi.*;
  * that reads the array length, such as an {@link ArrayLengthNode}, can be canonicalized based on
  * this information.
  */
-public final class PiArrayNode extends PiNode implements ArrayLengthProvider {
+@NodeInfo
+public class PiArrayNode extends PiNode implements ArrayLengthProvider {
 
     @Input private ValueNode length;
 

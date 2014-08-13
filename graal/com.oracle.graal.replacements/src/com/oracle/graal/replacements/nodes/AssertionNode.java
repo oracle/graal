@@ -34,6 +34,7 @@ import com.oracle.graal.nodes.spi.*;
  * fail if this has not happened by the time the node is lowered to LIR, while runtime assertions
  * may need to insert a check.
  */
+@NodeInfo
 public class AssertionNode extends FixedWithNextNode implements Lowerable, Canonicalizable, LIRLowerable {
 
     @Input private ValueNode value;

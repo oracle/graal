@@ -52,6 +52,7 @@ import com.oracle.graal.graph.spi.*;
  * exception or return true. They can thus be used within an assert statement, so that the check is
  * only performed if assertions are enabled.
  */
+@NodeInfo
 public abstract class Node implements Cloneable, Formattable {
 
     static final int DELETED_ID_START = -1000000000;

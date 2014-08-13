@@ -24,6 +24,7 @@ package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
@@ -32,6 +33,7 @@ import com.oracle.graal.nodes.spi.*;
  * {@link #get(Object)} and all uses of the returned value must be atomic. The only exception to
  * this is if the usage is not an attempt to dereference the value.
  */
+@NodeInfo
 public class GetObjectAddressNode extends FixedWithNextNode implements LIRLowerable {
 
     @Input private ValueNode object;

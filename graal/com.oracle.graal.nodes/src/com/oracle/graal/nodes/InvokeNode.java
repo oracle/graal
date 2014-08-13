@@ -36,7 +36,7 @@ import com.oracle.graal.nodes.util.*;
  * The {@code InvokeNode} represents all kinds of method calls.
  */
 @NodeInfo(nameTemplate = "Invoke#{p#targetMethod/s}", allowedUsageTypes = {InputType.Memory})
-public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke, LIRLowerable, MemoryCheckpoint.Single, IterableNodeType {
+public class InvokeNode extends AbstractMemoryCheckpoint implements Invoke, LIRLowerable, MemoryCheckpoint.Single, IterableNodeType {
 
     @Input(InputType.Extension) private CallTargetNode callTarget;
     @OptionalInput(InputType.State) private FrameState stateDuring;

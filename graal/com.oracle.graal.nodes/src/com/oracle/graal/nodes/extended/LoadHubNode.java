@@ -25,6 +25,7 @@ package com.oracle.graal.nodes.extended;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.ResolvedJavaType.Representation;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -33,7 +34,8 @@ import com.oracle.graal.nodes.spi.*;
  * Loads an object's {@linkplain Representation#ObjectHub hub}. The object is not null-checked by
  * this operation.
  */
-public final class LoadHubNode extends FloatingGuardedNode implements Lowerable, Canonicalizable, Virtualizable {
+@NodeInfo
+public class LoadHubNode extends FloatingGuardedNode implements Lowerable, Canonicalizable, Virtualizable {
 
     @Input private ValueNode value;
 

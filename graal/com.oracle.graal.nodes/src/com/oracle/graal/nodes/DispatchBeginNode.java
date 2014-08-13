@@ -23,10 +23,12 @@
 package com.oracle.graal.nodes;
 
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 
 /**
  * The entry node of an exception dispatcher block.
  */
+@NodeInfo
 public class DispatchBeginNode extends BeginStateSplitNode {
 
     public DispatchBeginNode() {

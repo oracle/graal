@@ -33,7 +33,7 @@ import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 
 @NodeInfo(shortName = "^")
-public final class XorNode extends BitLogicNode {
+public class XorNode extends BitLogicNode {
 
     public XorNode(ValueNode x, ValueNode y) {
         super(StampTool.xor(x.stamp(), y.stamp()), x, y);

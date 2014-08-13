@@ -24,6 +24,7 @@ package com.oracle.graal.nodes;
 
 import com.oracle.graal.graph.*;
 
+@NodeInfo
 public abstract class ScheduledNode extends Node {
 
     @Override

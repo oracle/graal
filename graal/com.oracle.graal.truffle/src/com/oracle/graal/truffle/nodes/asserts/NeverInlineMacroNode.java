@@ -22,10 +22,12 @@
  */
 package com.oracle.graal.truffle.nodes.asserts;
 
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.replacements.nodes.*;
 
+@NodeInfo
 public class NeverInlineMacroNode extends MacroStateSplitNode implements com.oracle.graal.graph.IterableNodeType {
 
     public NeverInlineMacroNode(Invoke invoke) {

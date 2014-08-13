@@ -43,6 +43,7 @@ public class HotSpotNodeClassSubstitutions {
      * about node classes to replace itself with a constant value for a constant {@link Class}
      * parameter.
      */
+    @NodeInfo
     public static class NodeClassGetNode extends PureFunctionMacroNode {
 
         public NodeClassGetNode(Invoke invoke) {

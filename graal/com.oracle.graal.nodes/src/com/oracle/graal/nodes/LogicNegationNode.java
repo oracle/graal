@@ -28,6 +28,7 @@ import com.oracle.graal.graph.spi.*;
 /**
  * Logic node that negates its argument.
  */
+@NodeInfo
 public class LogicNegationNode extends LogicNode implements Canonicalizable.Unary<LogicNode> {
 
     @Input(InputType.Condition) private LogicNode value;

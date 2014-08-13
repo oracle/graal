@@ -34,7 +34,8 @@ import com.oracle.graal.word.phases.*;
  * Cast between Word and Object that is introduced by the {@link WordTypeRewriterPhase}. It has an
  * impact on the pointer maps for the GC, so it must not be scheduled or optimized away.
  */
-public final class WordCastNode extends FixedWithNextNode implements LIRLowerable, Canonicalizable {
+@NodeInfo
+public class WordCastNode extends FixedWithNextNode implements LIRLowerable, Canonicalizable {
 
     @Input private ValueNode input;
 

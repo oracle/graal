@@ -35,6 +35,7 @@ import com.oracle.graal.nodes.spi.*;
  * Load of a value from a location specified as an offset relative to an object. No null check is
  * performed before the load.
  */
+@NodeInfo
 public class UnsafeLoadNode extends UnsafeAccessNode implements Lowerable, Virtualizable {
     @OptionalInput(InputType.Condition) private LogicNode guardingCondition;
 

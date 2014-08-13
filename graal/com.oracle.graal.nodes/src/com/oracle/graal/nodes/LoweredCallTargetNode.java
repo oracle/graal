@@ -27,7 +27,9 @@ import java.util.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 
+@NodeInfo
 public abstract class LoweredCallTargetNode extends CallTargetNode {
 
     private final Stamp returnStamp;

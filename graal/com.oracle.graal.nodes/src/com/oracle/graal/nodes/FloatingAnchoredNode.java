@@ -27,6 +27,7 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 
+@NodeInfo
 public abstract class FloatingAnchoredNode extends FloatingNode {
 
     @Input(InputType.Anchor) private AnchoringNode anchor;

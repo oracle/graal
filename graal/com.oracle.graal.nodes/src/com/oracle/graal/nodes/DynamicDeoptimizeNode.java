@@ -27,6 +27,7 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.spi.*;
 
+@NodeInfo
 public class DynamicDeoptimizeNode extends AbstractDeoptimizeNode implements LIRLowerable, Canonicalizable {
     @Input private ValueNode actionAndReason;
     @Input private ValueNode speculation;

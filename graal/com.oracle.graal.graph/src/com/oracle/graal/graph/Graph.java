@@ -646,8 +646,12 @@ public class Graph {
         };
     }
 
-    private static final Node PLACE_HOLDER = new Node() {
-    };
+    @NodeInfo
+    static class PlaceHolderNode extends Node {
+
+    }
+
+    private static final Node PLACE_HOLDER = new PlaceHolderNode();
 
     /**
      * When the percent of live nodes in {@link #nodes} fall below this number, a call to

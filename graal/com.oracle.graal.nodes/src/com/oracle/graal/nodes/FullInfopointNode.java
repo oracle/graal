@@ -29,6 +29,7 @@ import com.oracle.graal.nodes.spi.*;
 /**
  * Nodes of this type are inserted into the graph to denote points of interest to debugging.
  */
+@NodeInfo
 public class FullInfopointNode extends InfopointNode implements LIRLowerable, NodeWithState {
     @Input(InputType.State) private FrameState state;
 

@@ -29,7 +29,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 
 @NodeInfo(allowedUsageTypes = {InputType.Value, InputType.Anchor, InputType.Guard})
-public final class SnippetAnchorNode extends FixedWithNextNode implements Simplifiable, GuardingNode {
+public class SnippetAnchorNode extends FixedWithNextNode implements Simplifiable, GuardingNode {
 
     public SnippetAnchorNode() {
         super(StampFactory.object());

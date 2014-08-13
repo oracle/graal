@@ -24,6 +24,7 @@ package com.oracle.graal.nodes.java;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
@@ -32,6 +33,7 @@ import com.oracle.graal.nodes.spi.*;
 /**
  * The {@code InstanceOfNode} represents an instanceof test.
  */
+@NodeInfo
 public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable, Virtualizable {
 
     private final ResolvedJavaType type;

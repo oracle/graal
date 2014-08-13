@@ -28,6 +28,7 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
+@NodeInfo
 public abstract class VirtualObjectNode extends ValueNode implements LIRLowerable, IterableNodeType {
 
     private boolean hasIdentity;

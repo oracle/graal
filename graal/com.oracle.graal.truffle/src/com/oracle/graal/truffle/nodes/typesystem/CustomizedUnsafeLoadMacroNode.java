@@ -36,6 +36,7 @@ import com.oracle.truffle.api.*;
 /**
  * Macro node for method {@link CompilerDirectives#unsafeCast(Object, Class, boolean)}.
  */
+@NodeInfo
 public class CustomizedUnsafeLoadMacroNode extends NeverPartOfCompilationNode implements Canonicalizable {
 
     private static final int ARGUMENT_COUNT = 4;

@@ -23,10 +23,12 @@
 package com.oracle.graal.nodes.extended;
 
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
-public final class StoreHubNode extends FixedWithNextNode implements Lowerable {
+@NodeInfo
+public class StoreHubNode extends FixedWithNextNode implements Lowerable {
 
     @Input private ValueNode value;
     @Input private ValueNode object;
@@ -39,7 +41,7 @@ public final class StoreHubNode extends FixedWithNextNode implements Lowerable {
         return object;
     }
 
-    private StoreHubNode(ValueNode object, ValueNode value) {
+    StoreHubNode(ValueNode object, ValueNode value) {
         super(StampFactory.forVoid());
         this.value = value;
         this.object = object;

@@ -44,6 +44,7 @@ import com.oracle.truffle.api.frame.*;
  * Intrinsic node representing the call for creating a frame in the {@link OptimizedCallTarget}
  * class.
  */
+@NodeInfo
 public class NewFrameNode extends FixedWithNextNode implements IterableNodeType, VirtualizableAllocation, Canonicalizable {
 
     @Input private ValueNode descriptor;

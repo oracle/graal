@@ -31,7 +31,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 @NodeInfo(shortName = ">>>")
-public final class UnsignedRightShiftNode extends ShiftNode {
+public class UnsignedRightShiftNode extends ShiftNode {
 
     public UnsignedRightShiftNode(ValueNode x, ValueNode y) {
         super(x, y);

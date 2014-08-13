@@ -26,6 +26,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.spi.*;
 
+@NodeInfo
 public class SimpleInfopointNode extends InfopointNode implements LIRLowerable, IterableNodeType {
     private BytecodePosition position;
 

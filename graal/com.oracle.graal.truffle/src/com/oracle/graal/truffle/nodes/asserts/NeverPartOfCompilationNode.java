@@ -26,6 +26,7 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.replacements.nodes.*;
 
+@NodeInfo
 public class NeverPartOfCompilationNode extends MacroStateSplitNode implements IterableNodeType {
 
     private final String message;

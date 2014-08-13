@@ -34,6 +34,7 @@ import com.oracle.graal.nodes.java.*;
  * This is an extension of {@link MacroNode} that is a {@link StateSplit} and a
  * {@link MemoryCheckpoint}.
  */
+@NodeInfo
 public class MacroStateSplitNode extends MacroNode implements StateSplit, MemoryCheckpoint.Single {
 
     @OptionalInput(InputType.State) private FrameState stateAfter;

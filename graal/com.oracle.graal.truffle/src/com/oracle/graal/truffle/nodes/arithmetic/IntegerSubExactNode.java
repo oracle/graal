@@ -24,6 +24,7 @@ package com.oracle.graal.truffle.nodes.arithmetic;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
@@ -36,6 +37,7 @@ import com.oracle.truffle.api.*;
  * Node representing an exact integer substraction that will throw an {@link ArithmeticException} in
  * case the addition would overflow the 32 bit range.
  */
+@NodeInfo
 public class IntegerSubExactNode extends IntegerSubNode implements IntegerExactArithmeticNode {
 
     public IntegerSubExactNode(ValueNode x, ValueNode y) {

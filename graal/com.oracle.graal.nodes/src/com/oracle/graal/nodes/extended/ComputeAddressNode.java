@@ -29,6 +29,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 
+@NodeInfo
 public class ComputeAddressNode extends FloatingNode implements LIRLowerable {
 
     @Input private ValueNode object;

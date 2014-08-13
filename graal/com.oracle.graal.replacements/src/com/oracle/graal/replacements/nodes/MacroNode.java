@@ -55,6 +55,7 @@ import com.oracle.graal.replacements.*;
  * possible if the macro node is a {@link MacroStateSplitNode}.</li>
  * </ul>
  */
+@NodeInfo
 public class MacroNode extends FixedWithNextNode implements Lowerable {
 
     @Input protected final NodeInputList<ValueNode> arguments;

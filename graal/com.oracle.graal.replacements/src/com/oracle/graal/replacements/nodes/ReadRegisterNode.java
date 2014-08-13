@@ -33,7 +33,7 @@ import com.oracle.graal.nodes.spi.*;
  * Access the value of a specific register.
  */
 @NodeInfo(nameTemplate = "ReadRegister %{p#register}")
-public final class ReadRegisterNode extends FixedWithNextNode implements LIRLowerable {
+public class ReadRegisterNode extends FixedWithNextNode implements LIRLowerable {
 
     /**
      * The fixed register to access.

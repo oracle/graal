@@ -25,6 +25,7 @@ package com.oracle.graal.truffle.test.nodes;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 
+@NodeInfo
 public class RootTestNode extends RootNode {
 
     private final String name;

@@ -44,6 +44,7 @@ import com.oracle.graal.replacements.nodes.*;
 /**
  * Node for invocation methods defined on the class {@link MethodHandle}.
  */
+@NodeInfo
 public class MethodHandleNode extends MacroStateSplitNode implements Simplifiable {
 
     /** The method that this node is representing. */

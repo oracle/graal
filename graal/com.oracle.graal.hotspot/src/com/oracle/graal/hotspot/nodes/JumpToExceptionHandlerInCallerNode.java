@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -32,6 +33,7 @@ import com.oracle.graal.word.*;
  * Sets up the {@linkplain HotSpotBackend#EXCEPTION_HANDLER_IN_CALLER arguments} expected by an
  * exception handler in the caller's frame, removes the current frame and jumps to said handler.
  */
+@NodeInfo
 public class JumpToExceptionHandlerInCallerNode extends ControlSinkNode implements LIRLowerable {
 
     @Input private ValueNode handlerInCallerPc;

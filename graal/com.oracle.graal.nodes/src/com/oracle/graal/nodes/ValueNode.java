@@ -31,6 +31,7 @@ import com.oracle.graal.graph.iterators.*;
  * This class represents a value within the graph, including local variables, phis, and all other
  * instructions.
  */
+@NodeInfo
 public abstract class ValueNode extends ScheduledNode implements StampProvider, KindProvider {
 
     /**

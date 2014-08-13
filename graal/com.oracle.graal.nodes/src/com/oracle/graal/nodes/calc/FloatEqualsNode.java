@@ -31,7 +31,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.util.*;
 
 @NodeInfo(shortName = "==")
-public final class FloatEqualsNode extends CompareNode {
+public class FloatEqualsNode extends CompareNode {
 
     /**
      * Constructs a new floating point equality comparison node.

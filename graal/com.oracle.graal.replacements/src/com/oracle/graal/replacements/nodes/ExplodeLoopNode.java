@@ -32,10 +32,11 @@ import com.oracle.graal.replacements.Snippet.VarargsParameter;
 /**
  * Placeholder node to denote to snippet preparation that the following loop must be completely
  * unrolled.
- * 
+ *
  * @see VarargsParameter
  */
-public final class ExplodeLoopNode extends FixedWithNextNode {
+@NodeInfo
+public class ExplodeLoopNode extends FixedWithNextNode {
 
     public ExplodeLoopNode() {
         super(StampFactory.forVoid());

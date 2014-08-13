@@ -22,9 +22,11 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 
+@NodeInfo
 public class G1PostWriteBarrier extends WriteBarrier {
 
     private final boolean alwaysNull;

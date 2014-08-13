@@ -29,6 +29,7 @@ import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
 
+@NodeInfo
 public class MethodCallTargetNode extends CallTargetNode implements IterableNodeType, Canonicalizable {
     private final JavaType returnType;
 

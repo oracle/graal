@@ -36,6 +36,7 @@ import com.oracle.graal.nodes.*;
  * The {@code DynamicNewArrayNode} is used for allocation of arrays when the type is not a
  * compile-time constant.
  */
+@NodeInfo
 public class DynamicNewArrayNode extends AbstractNewArrayNode {
 
     @Input private ValueNode elementType;

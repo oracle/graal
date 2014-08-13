@@ -26,6 +26,7 @@ import static com.oracle.graal.hotspot.HotSpotBackend.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.lir.*;
@@ -36,6 +37,7 @@ import com.oracle.graal.word.*;
 /**
  * A call to the {@link NewArrayStub}.
  */
+@NodeInfo
 public class NewArrayStubCall extends DeoptimizingStubCall implements LIRLowerable {
 
     private static final Stamp defaultStamp = StampFactory.objectNonNull();

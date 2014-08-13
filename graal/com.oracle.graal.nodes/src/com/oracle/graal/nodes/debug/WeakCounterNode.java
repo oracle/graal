@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes.debug;
 
+import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
@@ -32,6 +33,7 @@ import com.oracle.graal.nodes.spi.*;
  * only usage of the associated node. This way it only increments the counter if the node is
  * actually executed.
  */
+@NodeInfo
 public class WeakCounterNode extends DynamicCounterNode implements Simplifiable, Virtualizable {
 
     @Input private ValueNode checkedValue;

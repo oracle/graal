@@ -23,6 +23,7 @@
 package com.oracle.graal.nodes.extended;
 
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
@@ -30,7 +31,8 @@ import com.oracle.graal.nodes.spi.*;
  * Read a raw memory location according to Java field or array read semantics. It will perform read
  * barriers, implicit conversions and optionally oop uncompression.
  */
-public final class JavaReadNode extends FixedAccessNode implements Lowerable, GuardingNode {
+@NodeInfo
+public class JavaReadNode extends FixedAccessNode implements Lowerable, GuardingNode {
 
     private final boolean compressible;
 

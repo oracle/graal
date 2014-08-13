@@ -28,6 +28,7 @@ import com.oracle.graal.graph.*;
 /**
  * Provides an implementation of {@link StateSplit}.
  */
+@NodeInfo
 public abstract class AbstractStateSplit extends FixedWithNextNode implements StateSplit {
 
     @OptionalInput(InputType.State) private FrameState stateAfter;

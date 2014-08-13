@@ -32,6 +32,7 @@ import com.oracle.graal.nodes.spi.*;
  * Selects one object from a {@link CommitAllocationNode}. The object is identified by its
  * {@link VirtualObjectNode}.
  */
+@NodeInfo
 public class AllocatedObjectNode extends FloatingNode implements Virtualizable, ArrayLengthProvider {
 
     @Input private VirtualObjectNode virtualObject;

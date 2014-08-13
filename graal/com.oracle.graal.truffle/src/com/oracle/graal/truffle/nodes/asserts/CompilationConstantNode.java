@@ -26,6 +26,7 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 
+@NodeInfo
 public class CompilationConstantNode extends NeverPartOfCompilationNode implements Canonicalizable {
 
     public CompilationConstantNode(Invoke invoke) {

@@ -36,6 +36,7 @@ import com.oracle.graal.nodes.type.*;
  * information, i.e., an unsafe cast is removed if the input object has a more precise or equal type
  * than the type this nodes casts to.
  */
+@NodeInfo
 public class UnsafeCastNode extends FloatingGuardedNode implements LIRLowerable, Virtualizable, GuardingNode, IterableNodeType, Canonicalizable, ValueProxy {
 
     @Input private ValueNode object;

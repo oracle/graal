@@ -31,7 +31,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.util.*;
 
 @NodeInfo(shortName = "-")
-public final class FloatSubNode extends FloatArithmeticNode {
+public class FloatSubNode extends FloatArithmeticNode {
 
     public FloatSubNode(ValueNode x, ValueNode y, boolean isStrictFP) {
         super(x.stamp().unrestricted(), x, y, isStrictFP);

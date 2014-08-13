@@ -32,7 +32,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.util.*;
 
 @NodeInfo(shortName = "==")
-public final class IntegerEqualsNode extends CompareNode {
+public class IntegerEqualsNode extends CompareNode {
 
     /**
      * Constructs a new integer equality comparison node.

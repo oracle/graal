@@ -35,6 +35,7 @@ import com.oracle.graal.nodes.spi.*;
  * This node is used for method handle call nodes which have a constant call target but are not
  * inlined.
  */
+@NodeInfo
 public class SelfReplacingMethodCallTargetNode extends MethodCallTargetNode implements Lowerable {
 
     // Replacement method data

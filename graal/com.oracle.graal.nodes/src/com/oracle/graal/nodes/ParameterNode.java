@@ -29,7 +29,7 @@ import com.oracle.graal.graph.*;
  * The {@code Parameter} instruction is a placeholder for an incoming argument to a function call.
  */
 @NodeInfo(nameTemplate = "Param({p#index})")
-public final class ParameterNode extends AbstractLocalNode implements IterableNodeType {
+public class ParameterNode extends AbstractLocalNode implements IterableNodeType {
 
     public ParameterNode(int index, Stamp stamp) {
         super(index, stamp);

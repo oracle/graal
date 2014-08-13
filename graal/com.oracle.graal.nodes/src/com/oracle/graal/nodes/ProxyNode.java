@@ -32,6 +32,7 @@ import com.oracle.graal.nodes.extended.*;
  * A proxy is inserted at loop exits for any value that is created inside the loop (i.e. was not
  * live on entry to the loop) and is (potentially) used after the loop.
  */
+@NodeInfo
 public abstract class ProxyNode extends FloatingNode implements IterableNodeType, ValueNumberable {
 
     @Input(InputType.Association) private BeginNode proxyPoint;

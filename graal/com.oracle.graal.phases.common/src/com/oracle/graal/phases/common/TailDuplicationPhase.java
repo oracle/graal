@@ -61,7 +61,8 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
 
     private final CanonicalizerPhase canonicalizer;
 
-    private static final class DummyAnchorNode extends FixedWithNextNode implements GuardingNode {
+    @NodeInfo
+    private static class DummyAnchorNode extends FixedWithNextNode implements GuardingNode {
         public DummyAnchorNode() {
             super(StampFactory.forVoid());
         }

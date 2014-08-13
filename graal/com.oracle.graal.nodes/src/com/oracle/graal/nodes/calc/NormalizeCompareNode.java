@@ -24,6 +24,7 @@ package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -33,7 +34,8 @@ import com.oracle.graal.nodes.spi.*;
  * of the inputs is NaN), the result is 1 if isUnorderedLess is false and -1 if isUnorderedLess is
  * true.
  */
-public final class NormalizeCompareNode extends BinaryNode implements Lowerable {
+@NodeInfo
+public class NormalizeCompareNode extends BinaryNode implements Lowerable {
 
     public final boolean isUnorderedLess;
 

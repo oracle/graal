@@ -32,7 +32,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 @NodeInfo(shortName = ">>")
-public final class RightShiftNode extends ShiftNode {
+public class RightShiftNode extends ShiftNode {
 
     public RightShiftNode(ValueNode x, ValueNode y) {
         super(x, y);

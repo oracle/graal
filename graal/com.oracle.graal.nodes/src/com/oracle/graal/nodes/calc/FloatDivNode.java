@@ -30,7 +30,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo(shortName = "/")
-public final class FloatDivNode extends FloatArithmeticNode {
+public class FloatDivNode extends FloatArithmeticNode {
 
     public FloatDivNode(ValueNode x, ValueNode y, boolean isStrictFP) {
         super(x.stamp().unrestricted(), x, y, isStrictFP);

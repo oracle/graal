@@ -23,6 +23,7 @@
 package com.oracle.graal.nodes.debug;
 
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
@@ -34,6 +35,7 @@ import com.oracle.graal.nodes.spi.*;
  * A unique counter will be created for each unique name passed to the constructor. Depending on the
  * value of withContext, the name of the root method is added to the counter's name.
  */
+@NodeInfo
 public class DynamicCounterNode extends FixedWithNextNode implements Lowerable {
 
     @Input private ValueNode increment;

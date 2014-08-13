@@ -40,6 +40,7 @@ import com.oracle.graal.nodes.spi.*;
  * Performs a tail call to the specified target compiled method, with the parameter taken from the
  * supplied FrameState.
  */
+@NodeInfo
 public class TailcallNode extends FixedWithNextNode implements LIRLowerable {
 
     @Input(InputType.State) private FrameState frameState;

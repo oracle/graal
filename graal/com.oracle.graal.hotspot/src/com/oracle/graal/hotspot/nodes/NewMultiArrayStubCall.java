@@ -27,6 +27,7 @@ import static com.oracle.graal.hotspot.HotSpotBackend.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
@@ -36,6 +37,7 @@ import com.oracle.graal.word.*;
 /**
  * Node implementing a call to {@code GraalRuntime::new_multi_array}.
  */
+@NodeInfo
 public class NewMultiArrayStubCall extends ForeignCallNode {
 
     private static final Stamp defaultStamp = StampFactory.objectNonNull();

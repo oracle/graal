@@ -26,6 +26,7 @@ import static com.oracle.graal.compiler.common.GraalOptions.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.nodes.*;
@@ -43,6 +44,7 @@ public class CompositeValueClassSubstitutions {
      * knowledge about node classes to replace itself with a constant value for a constant
      * {@link Class} parameter.
      */
+    @NodeInfo
     public static class CompositeValueClassGetNode extends PureFunctionMacroNode {
 
         public CompositeValueClassGetNode(Invoke invoke) {

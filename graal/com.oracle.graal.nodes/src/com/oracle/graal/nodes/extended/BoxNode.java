@@ -26,6 +26,7 @@ import java.util.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
@@ -38,6 +39,7 @@ import com.oracle.graal.nodes.virtual.*;
  * This node represents the boxing of a primitive value. This corresponds to a call to the valueOf
  * methods in Integer, Long, etc.
  */
+@NodeInfo
 public class BoxNode extends UnaryNode implements VirtualizableAllocation, Lowerable {
 
     private final Kind boxingKind;

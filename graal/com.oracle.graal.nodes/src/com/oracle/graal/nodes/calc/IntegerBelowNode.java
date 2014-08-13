@@ -30,7 +30,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.util.*;
 
 @NodeInfo(shortName = "|<|")
-public final class IntegerBelowNode extends CompareNode {
+public class IntegerBelowNode extends CompareNode {
 
     /**
      * Constructs a new unsigned integer comparison node.

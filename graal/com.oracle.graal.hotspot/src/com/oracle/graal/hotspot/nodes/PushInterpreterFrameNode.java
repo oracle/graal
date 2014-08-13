@@ -24,6 +24,7 @@ package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -32,6 +33,7 @@ import com.oracle.graal.word.*;
 /**
  * A call to the runtime code implementing the uncommon trap logic.
  */
+@NodeInfo
 public class PushInterpreterFrameNode extends FixedWithNextNode implements LIRLowerable {
 
     @Input private ValueNode framePc;

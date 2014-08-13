@@ -23,6 +23,7 @@
 package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 
@@ -31,6 +32,7 @@ import com.oracle.graal.nodes.*;
  * expression "(x &amp; y) == 0", meaning that it will return true if (and only if) no bit is set in
  * both x and y.
  */
+@NodeInfo
 public class IntegerTestNode extends BinaryOpLogicNode {
 
     /**

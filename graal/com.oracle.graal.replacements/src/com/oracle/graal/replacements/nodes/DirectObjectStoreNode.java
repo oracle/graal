@@ -24,6 +24,7 @@ package com.oracle.graal.replacements.nodes;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.HeapAccess.BarrierType;
 import com.oracle.graal.nodes.extended.*;
@@ -33,6 +34,7 @@ import com.oracle.graal.nodes.spi.*;
  * A special purpose store node that differs from {@link UnsafeStoreNode} in that it is not a
  * {@link StateSplit} and does not include a write barrier.
  */
+@NodeInfo
 public class DirectObjectStoreNode extends FixedWithNextNode implements Lowerable {
 
     @Input private ValueNode object;

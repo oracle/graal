@@ -28,6 +28,7 @@ import static com.oracle.graal.hotspot.nodes.CStringNode.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.replacements.*;
@@ -36,7 +37,8 @@ import com.oracle.graal.replacements.*;
  * Causes the VM to exit with a description of the current Java location and an optional
  * {@linkplain Log#printf(String, long) formatted} error message specified.
  */
-public final class VMErrorNode extends DeoptimizingStubCall implements LIRLowerable {
+@NodeInfo
+public class VMErrorNode extends DeoptimizingStubCall implements LIRLowerable {
 
     private final String format;
     @Input private ValueNode value;

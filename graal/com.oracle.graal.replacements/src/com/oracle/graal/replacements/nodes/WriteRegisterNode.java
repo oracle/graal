@@ -33,7 +33,7 @@ import com.oracle.graal.nodes.spi.*;
  * Changes the value of a specific register.
  */
 @NodeInfo(nameTemplate = "WriteRegister %{p#register}")
-public final class WriteRegisterNode extends FixedWithNextNode implements LIRLowerable {
+public class WriteRegisterNode extends FixedWithNextNode implements LIRLowerable {
 
     /**
      * The fixed register to access.

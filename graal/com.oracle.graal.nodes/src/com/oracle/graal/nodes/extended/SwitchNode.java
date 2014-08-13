@@ -33,6 +33,7 @@ import com.oracle.graal.nodes.*;
 /**
  * The {@code SwitchNode} class is the base of both lookup and table switches.
  */
+@NodeInfo
 public abstract class SwitchNode extends ControlSplitNode {
 
     @Successor private final NodeSuccessorList<BeginNode> successors;

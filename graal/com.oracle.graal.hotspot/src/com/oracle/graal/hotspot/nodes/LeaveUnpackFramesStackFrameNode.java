@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.lir.StandardOp.*;
 import com.oracle.graal.nodes.*;
@@ -32,6 +33,7 @@ import com.oracle.graal.nodes.spi.*;
  * Emits code to leave a low-level stack frame specifically to call out to the C++ method
  * {@link HotSpotBackend#UNPACK_FRAMES Deoptimization::unpack_frames}.
  */
+@NodeInfo
 public class LeaveUnpackFramesStackFrameNode extends FixedWithNextNode implements LIRLowerable {
 
     @Input private SaveAllRegistersNode registerSaver;

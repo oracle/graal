@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -31,6 +32,7 @@ import com.oracle.graal.word.*;
 /**
  * Modifies the return address of the current frame.
  */
+@NodeInfo
 public class PatchReturnAddressNode extends FixedWithNextNode implements LIRLowerable {
 
     @Input private ValueNode address;

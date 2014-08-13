@@ -31,7 +31,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.util.*;
 
 @NodeInfo(shortName = "<")
-public final class FloatLessThanNode extends CompareNode {
+public class FloatLessThanNode extends CompareNode {
 
     private final boolean unorderedIsTrue;
 

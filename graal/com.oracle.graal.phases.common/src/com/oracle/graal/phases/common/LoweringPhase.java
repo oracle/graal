@@ -102,6 +102,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
             return context.getAssumptions();
         }
 
+        @NodeInfo
         private class DummyGuardHandle extends ValueNode implements GuardedNode {
             @Input(InputType.Guard) private GuardingNode guard;
 

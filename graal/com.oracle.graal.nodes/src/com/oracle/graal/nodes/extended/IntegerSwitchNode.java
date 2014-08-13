@@ -26,6 +26,7 @@ import java.util.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -35,7 +36,8 @@ import com.oracle.graal.nodes.util.*;
  * The {@code IntegerSwitchNode} represents a switch on integer keys, with a sorted array of key
  * values. The actual implementation of the switch will be decided by the backend.
  */
-public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable, Simplifiable {
+@NodeInfo
+public class IntegerSwitchNode extends SwitchNode implements LIRLowerable, Simplifiable {
 
     private final int[] keys;
 
