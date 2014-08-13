@@ -48,6 +48,10 @@ public class TypeData extends MessageContainer implements Comparable<TypeData> {
         this.boxedType = boxedType;
     }
 
+    public int getIndex() {
+        return index;
+    }
+
     @Override
     public Element getMessageElement() {
         return typeSystem.getMessageElement();
