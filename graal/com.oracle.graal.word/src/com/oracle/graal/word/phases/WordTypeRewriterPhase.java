@@ -335,8 +335,13 @@ public class WordTypeRewriterPhase extends Phase {
      */
     private static ValueNode createBinaryNodeInstance(Class<? extends ValueNode> nodeClass, ValueNode left, ValueNode right) {
         try {
-            Constructor<? extends ValueNode> constructor = nodeClass.getConstructor(ValueNode.class, ValueNode.class);
-            return constructor.newInstance(left, right);
+            try {
+                Constructor<? extends ValueNode> constructor = nodeClass.getConstructor(ValueNode.class, ValueNode.class);
+                return constructor.newInstance(left, right);
+            } catch (NoSuchMethodException e) {
+                Method create = nodeClass.getDeclaredMethod("create", ValueNode.class, ValueNode.class);
+                return (ValueNode) create.invoke(null, left, right);
+            }
         } catch (Throwable ex) {
             throw new GraalInternalError(ex).addContext(nodeClass.getName());
         }
