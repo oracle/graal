@@ -620,7 +620,11 @@ public class ElementUtils {
             TypeElement interfaceElement = fromTypeMirror(interfaceMirror);
             if (interfaceElement != null) {
                 types.add(interfaceElement);
-                superInterfaces = getSuperTypes(interfaceElement);
+                if (superInterfaces == null) {
+                    superInterfaces = getSuperTypes(interfaceElement);
+                } else {
+                    superInterfaces.addAll(getSuperTypes(interfaceElement));
+                }
             }
         }
 
