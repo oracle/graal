@@ -140,7 +140,7 @@ public abstract class CodeElement<E extends Element> implements Element, Generat
         getAnnotationMirrors().add(annotationMirror);
     }
 
-    protected void setEnclosingElement(Element parent) {
+    public void setEnclosingElement(Element parent) {
         this.enclosingElement = parent;
     }
 
