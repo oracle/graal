@@ -26,11 +26,16 @@ import static com.oracle.truffle.dsl.processor.java.ElementUtils.*;
 
 import javax.annotation.processing.*;
 import javax.lang.model.element.*;
+import javax.lang.model.type.*;
 import javax.lang.model.util.*;
 
+import com.oracle.graal.graph.*;
 import com.oracle.truffle.dsl.processor.java.*;
 import com.oracle.truffle.dsl.processor.java.model.*;
 
+/**
+ * Generates the source code for a {@link Node} class.
+ */
 public class GraphNodeGenerator {
 
     private final ProcessingEnvironment processingEnv;
@@ -66,6 +71,11 @@ public class GraphNodeGenerator {
             }
             nodeGenElement.add(createSuperConstructor(nodeGenElement, constructor));
         }
+
+        DeclaredType generatedNode = (DeclaredType) ElementUtils.getType(processingEnv, GeneratedNode.class);
+        CodeAnnotationMirror generatedByMirror = new CodeAnnotationMirror(generatedNode);
+        generatedByMirror.setElementValue(generatedByMirror.findExecutableElement("value"), new CodeAnnotationValue(typeElement.asType()));
+        nodeGenElement.getAnnotationMirrors().add(generatedByMirror);
 
         nodeGenElement.add(createDummyExampleMethod());
 
