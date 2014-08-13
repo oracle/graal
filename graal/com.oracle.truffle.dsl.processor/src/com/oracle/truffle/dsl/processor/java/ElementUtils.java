@@ -900,24 +900,17 @@ public class ElementUtils {
     }
 
     public static boolean typeEquals(TypeMirror type1, TypeMirror type2) {
-        if (type1 == null && type2 == null) {
+        if (type1 == type2) {
             return true;
         } else if (type1 == null || type2 == null) {
             return false;
-        } else if (type1 == type2) {
-            return true;
-        }
-        String qualified1 = getQualifiedName(type1);
-        String qualified2 = getQualifiedName(type2);
-
-        if (type1.getKind() == TypeKind.ARRAY || type2.getKind() == TypeKind.ARRAY) {
-            if (type1.getKind() == TypeKind.ARRAY && type2.getKind() == TypeKind.ARRAY) {
-                return typeEquals(((ArrayType) type1).getComponentType(), ((ArrayType) type2).getComponentType());
+        } else {
+            if (type1.getKind() == type2.getKind()) {
+                return type1.toString().equals(type2.toString());
             } else {
                 return false;
             }
         }
-        return qualified1.equals(qualified2);
     }
 
     public static int compareByTypeHierarchy(TypeMirror t1, TypeMirror t2) {
