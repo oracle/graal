@@ -143,19 +143,17 @@ public class CompositeValueReplacementTest2 {
             }
         });
 
-        op1.forEachInput(new InstructionValueProcedure() {
+        op1.visitEachInput(new InstructionValueConsumer() {
             @Override
-            public Value doValue(LIRInstruction instruction, Value value) {
+            public void visitValue(LIRInstruction instruction, Value value) {
                 assertEquals(dummyValue2, value);
-                return value;
             }
         });
 
-        op2.forEachInput(new InstructionValueProcedure() {
+        op2.visitEachInput(new InstructionValueConsumer() {
             @Override
-            public Value doValue(LIRInstruction instruction, Value value) {
+            public void visitValue(LIRInstruction instruction, Value value) {
                 assertEquals(dummyValue3, value);
-                return value;
             }
         });
     }
@@ -185,19 +183,17 @@ public class CompositeValueReplacementTest2 {
             }
         });
 
-        op1.forEachInput(new InstructionValueProcedure() {
+        op1.visitEachInput(new InstructionValueConsumer() {
             @Override
-            public Value doValue(LIRInstruction instruction, Value value) {
+            public void visitValue(LIRInstruction instruction, Value value) {
                 assertEquals(dummyValue2, value);
-                return value;
             }
         });
 
-        op2.forEachInput(new InstructionValueProcedure() {
+        op2.visitEachInput(new InstructionValueConsumer() {
             @Override
-            public Value doValue(LIRInstruction instruction, Value value) {
+            public void visitValue(LIRInstruction instruction, Value value) {
                 assertEquals(dummyValue3, value);
-                return value;
             }
         });
     }
