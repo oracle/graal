@@ -63,6 +63,7 @@ public abstract class InstructionValueProcedure extends InstructionValueProcedur
 
     @Override
     public final Value processValue(LIRInstruction instruction, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
+        assert !(value instanceof CompositeValue) : String.format("Must not visit CompositeValues! Instruction: %s Value: %s", instruction, value);
         return doValue(instruction, value, mode, flags);
     }
 }

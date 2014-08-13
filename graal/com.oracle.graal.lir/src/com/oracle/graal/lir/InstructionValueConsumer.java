@@ -59,6 +59,7 @@ public abstract class InstructionValueConsumer extends InstructionValueProcedure
 
     @Override
     public final Value processValue(LIRInstruction instruction, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
+        assert !(value instanceof CompositeValue) : String.format("Must not visit CompositeValues! Instruction: %s Value: %s", instruction, value);
         visitValue(instruction, value, mode, flags);
         return value;
     }
