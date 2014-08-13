@@ -38,6 +38,7 @@ import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.CompilerThreadFactory.DebugConfigAccess;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
@@ -113,6 +114,8 @@ public class CheckGraalInvariants extends GraalTest {
         for (String className : classNames) {
             try {
                 Class<?> c = Class.forName(className, false, CheckGraalInvariants.class.getClassLoader());
+                executor.execute(() -> checkClass(c, metaAccess));
+
                 for (Method m : c.getDeclaredMethods()) {
                     if (Modifier.isNative(m.getModifiers()) || Modifier.isAbstract(m.getModifiers())) {
                         // ignore
@@ -165,6 +168,22 @@ public class CheckGraalInvariants extends GraalTest {
                 msg.append(e);
             }
             Assert.fail(msg.toString());
+        }
+    }
+
+    /**
+     * @param metaAccess
+     */
+    private static void checkClass(Class<?> c, MetaAccessProvider metaAccess) {
+        if (Node.class.isAssignableFrom(c)) {
+            if (c.getAnnotation(GeneratedNode.class) == null) {
+                if (Modifier.isFinal(c.getModifiers())) {
+                    throw new AssertionError(String.format("Node subclass %s must not be final", c.getName()));
+                }
+                if (c.getAnnotation(NodeInfo.class) == null) {
+                    throw new AssertionError(String.format("Node subclass %s requires %s annotation", c.getName(), NodeClass.class.getSimpleName()));
+                }
+            }
         }
     }
 
