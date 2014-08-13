@@ -322,12 +322,12 @@ public class NodeCodeGenerator extends AbstractCompilationUnitFactory<NodeData> 
     /**
      * <pre>
      * variant1 $condition != null
-     *
+     * 
      * $type $name = defaultValue($type);
      * if ($condition) {
      *     $name = $value;
      * }
-     *
+     * 
      * variant2 $condition != null
      * $type $name = $value;
      * </pre>
@@ -2629,14 +2629,14 @@ public class NodeCodeGenerator extends AbstractCompilationUnitFactory<NodeData> 
                     primaryExecutes = findFunctionalExecutableType(specialization, lastEvaluatedCount);
                 }
 
-                CodeTreeBuilder builder = new CodeTreeBuilder(null);
-                builder.getTree().setEnclosingElement(execType.getMessageElement());
-
+                CodeExecutableElement executeMethod = createExecutableTypeOverride(execType, true);
+                clazz.add(executeMethod);
+                CodeTreeBuilder builder = executeMethod.getBuilder();
                 CodeTree result = createExecuteBody(builder, specialization, execType, primaryExecutes);
                 if (result != null) {
-                    CodeExecutableElement method = createExecutableTypeOverride(execType, true);
-                    method.createBuilder().tree(result);
-                    clazz.add(method);
+                    builder.tree(result);
+                } else {
+                    clazz.remove(executeMethod);
                 }
             }
         }

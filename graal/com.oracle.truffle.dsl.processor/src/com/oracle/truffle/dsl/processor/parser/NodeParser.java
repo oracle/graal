@@ -145,8 +145,8 @@ public class NodeParser extends AbstractParser<NodeData> {
             return node; // error sync point
         }
 
-        initializeChildren(node);
         node.setExecutableTypes(groupExecutableTypes(new ExecutableTypeMethodParser(context, node).parse(elements)));
+        initializeChildren(node);
 
         node.getSpecializations().addAll(new SpecializationMethodParser(context, node).parse(elements));
         node.getSpecializations().addAll(new GenericParser(context, node).parse(elements));
