@@ -38,14 +38,35 @@ import com.oracle.truffle.dsl.processor.java.model.*;
  */
 public class GraphNodeGenerator {
 
-    private final ProcessingEnvironment processingEnv;
+    private final GraphNodeProcessor processor;
 
-    public GraphNodeGenerator(ProcessingEnvironment processingEnv) {
-        this.processingEnv = processingEnv;
+    public GraphNodeGenerator(GraphNodeProcessor processor) {
+        this.processor = processor;
     }
 
     public ProcessingEnvironment getProcessingEnv() {
-        return processingEnv;
+        return processor.getProcessingEnv();
+    }
+
+    private String getGeneratedClassName(GraphNode node) {
+
+        TypeElement typeElement = node.getDeclaration();
+
+        String newClassName = typeElement.getSimpleName().toString() + "Gen";
+        Element enclosing = typeElement.getEnclosingElement();
+        while (enclosing != null) {
+            if (enclosing.getKind() == ElementKind.CLASS || enclosing.getKind() == ElementKind.INTERFACE) {
+                if (enclosing.getModifiers().contains(Modifier.PRIVATE)) {
+                    processor.errorMessage(enclosing, "%s %s cannot be private", enclosing.getKind().name().toLowerCase(), enclosing);
+                    return null;
+                }
+                newClassName = enclosing.getSimpleName() + "$" + newClassName;
+            } else {
+                assert enclosing.getKind() == ElementKind.PACKAGE;
+            }
+            enclosing = enclosing.getEnclosingElement();
+        }
+        return newClassName;
     }
 
     public CodeCompilationUnit process(GraphNode node) {
@@ -54,7 +75,8 @@ public class GraphNodeGenerator {
         TypeElement typeElement = node.getDeclaration();
         PackageElement packageElement = ElementUtils.findPackageElement(node.getDeclaration());
 
-        String newClassName = typeElement.getSimpleName().toString() + "Gen";
+        String newClassName = getGeneratedClassName(node);
+
         CodeTypeElement nodeGenElement = new CodeTypeElement(modifiers(), ElementKind.CLASS, packageElement, newClassName);
 
         if (typeElement.getModifiers().contains(Modifier.ABSTRACT)) {
@@ -72,7 +94,7 @@ public class GraphNodeGenerator {
             nodeGenElement.add(createSuperConstructor(nodeGenElement, constructor));
         }
 
-        DeclaredType generatedNode = (DeclaredType) ElementUtils.getType(processingEnv, GeneratedNode.class);
+        DeclaredType generatedNode = (DeclaredType) ElementUtils.getType(getProcessingEnv(), GeneratedNode.class);
         CodeAnnotationMirror generatedByMirror = new CodeAnnotationMirror(generatedNode);
         generatedByMirror.setElementValue(generatedByMirror.findExecutableElement("value"), new CodeAnnotationValue(typeElement.asType()));
         nodeGenElement.getAnnotationMirrors().add(generatedByMirror);
@@ -84,7 +106,7 @@ public class GraphNodeGenerator {
     }
 
     private CodeExecutableElement createSuperConstructor(TypeElement type, ExecutableElement element) {
-        CodeExecutableElement executable = CodeExecutableElement.clone(processingEnv, element);
+        CodeExecutableElement executable = CodeExecutableElement.clone(getProcessingEnv(), element);
 
         // to create a constructor we have to set the return type to null.(TODO needs fix)
         executable.setReturnType(null);
@@ -102,7 +124,7 @@ public class GraphNodeGenerator {
     }
 
     public ExecutableElement createDummyExampleMethod() {
-        CodeExecutableElement method = new CodeExecutableElement(modifiers(Modifier.PROTECTED), ElementUtils.getType(processingEnv, int.class), "computeTheMeaningOfLife");
+        CodeExecutableElement method = new CodeExecutableElement(modifiers(Modifier.PROTECTED), ElementUtils.getType(getProcessingEnv(), int.class), "computeTheMeaningOfLife");
 
         CodeTreeBuilder builder = method.createBuilder();
         builder.string("// this method got partially evaluated").newLine();

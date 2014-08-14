@@ -46,7 +46,7 @@ public class GraphNodeProcessor extends AbstractProcessor {
         return SourceVersion.latest();
     }
 
-    private void errorMessage(Element element, String format, Object... args) {
+    void errorMessage(Element element, String format, Object... args) {
         processingEnv.getMessager().printMessage(Kind.ERROR, String.format(format, args), element);
     }
 
@@ -61,13 +61,17 @@ public class GraphNodeProcessor extends AbstractProcessor {
         errorMessage(element, "Exception thrown during processing: %s", buf.toString());
     }
 
+    ProcessingEnvironment getProcessingEnv() {
+        return processingEnv;
+    }
+
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
         if (roundEnv.processingOver()) {
             return false;
         }
 
-        GraphNodeGenerator gen = new GraphNodeGenerator(processingEnv);
+        GraphNodeGenerator gen = new GraphNodeGenerator(this);
         Types types = processingEnv.getTypeUtils();
         Elements elements = processingEnv.getElementUtils();
 
@@ -103,8 +107,27 @@ public class GraphNodeProcessor extends AbstractProcessor {
                 unit.accept(new FixWarningsVisitor(processingEnv, unusedType, overrideType), null);
                 unit.accept(new CodeWriter(processingEnv, typeElement), null);
             } catch (Throwable t) {
-                reportException(element, t);
+                if (!isBug367599(t)) {
+                    reportException(element, t);
+                }
             }
+        }
+        return false;
+    }
+
+    /**
+     * Determines if a given exception is (most likely) caused by <a
+     * href="https://bugs.eclipse.org/bugs/show_bug.cgi?id=367599">Bug 367599</a>.
+     */
+    public static boolean isBug367599(Throwable t) {
+        for (StackTraceElement ste : t.getStackTrace()) {
+            if (ste.toString().contains("org.eclipse.jdt.internal.apt.pluggable.core.filer.IdeFilerImpl.create")) {
+                // See: https://bugs.eclipse.org/bugs/show_bug.cgi?id=367599
+                return true;
+            }
+        }
+        if (t.getCause() != null) {
+            return isBug367599(t.getCause());
         }
         return false;
     }
