@@ -44,7 +44,7 @@ public class UnsafeArrayCopyNode extends ArrayRangeWriteNode implements Lowerabl
 
     private Kind elementKind;
 
-    private UnsafeArrayCopyNode(ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, ValueNode layoutHelper, Kind elementKind) {
+    UnsafeArrayCopyNode(ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, ValueNode layoutHelper, Kind elementKind) {
         super(StampFactory.forVoid());
         assert layoutHelper == null || elementKind == null;
         this.src = src;

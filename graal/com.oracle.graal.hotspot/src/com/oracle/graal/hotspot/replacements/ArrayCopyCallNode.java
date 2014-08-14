@@ -58,7 +58,7 @@ public class ArrayCopyCallNode extends AbstractMemoryCheckpoint implements Lower
     private boolean disjoint;
     private boolean uninitialized;
 
-    private ArrayCopyCallNode(ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, Kind elementKind, boolean aligned, boolean disjoint, boolean uninitialized) {
+    ArrayCopyCallNode(ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, Kind elementKind, boolean aligned, boolean disjoint, boolean uninitialized) {
         super(StampFactory.forVoid());
         assert elementKind != null;
         this.src = src;
@@ -72,7 +72,7 @@ public class ArrayCopyCallNode extends AbstractMemoryCheckpoint implements Lower
         this.uninitialized = uninitialized;
     }
 
-    private ArrayCopyCallNode(ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, Kind elementKind, boolean disjoint) {
+    ArrayCopyCallNode(ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, Kind elementKind, boolean disjoint) {
         this(src, srcPos, dest, destPos, length, elementKind, false, disjoint, false);
     }
 

@@ -36,7 +36,7 @@ public class CStringNode extends FloatingNode implements LIRLowerable {
 
     private final String string;
 
-    private CStringNode(String string) {
+    CStringNode(String string) {
         super(null);
         this.string = string;
     }

@@ -49,7 +49,7 @@ public class WordCastNode extends FixedWithNextNode implements LIRLowerable, Can
         return new WordCastNode(StampFactory.forKind(wordKind), input);
     }
 
-    private WordCastNode(Stamp stamp, ValueNode input) {
+    WordCastNode(Stamp stamp, ValueNode input) {
         super(stamp);
         this.input = input;
     }

@@ -43,7 +43,7 @@ public class DimensionsNode extends FixedWithNextNode implements LIRLowerable {
 
     private final int rank;
 
-    private DimensionsNode(int rank) {
+    DimensionsNode(int rank) {
         super(null);
         this.rank = rank;
     }

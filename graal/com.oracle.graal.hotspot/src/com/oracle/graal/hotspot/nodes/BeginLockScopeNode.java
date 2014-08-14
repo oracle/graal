@@ -42,7 +42,7 @@ public class BeginLockScopeNode extends AbstractMemoryCheckpoint implements LIRL
 
     private int lockDepth;
 
-    private BeginLockScopeNode(int lockDepth) {
+    BeginLockScopeNode(int lockDepth) {
         super(null);
         this.lockDepth = lockDepth;
     }
