@@ -125,7 +125,6 @@ public class NodeParser extends AbstractParser<NodeData> {
         return node;
     }
 
-    @SuppressWarnings("unchecked")
     private NodeData parseNode(TypeElement originalTemplateType) {
         // reloading the type elements is needed for ecj
         TypeElement templateType = ElementUtils.fromTypeMirror(context.reloadTypeElement(originalTemplateType));
@@ -139,11 +138,11 @@ public class NodeParser extends AbstractParser<NodeData> {
         if (!ElementUtils.isAssignable(templateType.asType(), context.getTruffleTypes().getNode())) {
             return null;
         }
-        List<? extends Element> elements = CompilerFactory.getCompiler(templateType).getAllMembersInDeclarationOrder(context.getEnvironment(), templateType);
+        List<Element> elements = new ArrayList<>(CompilerFactory.getCompiler(templateType).getAllMembersInDeclarationOrder(context.getEnvironment(), templateType));
 
         NodeData node = parseNodeData(templateType, elements, lookupTypes);
 
-        parseImportGuards(node, lookupTypes, (List<Element>) elements);
+        parseImportGuards(node, lookupTypes, elements);
 
         if (node.hasErrors()) {
             return node; // error sync point
