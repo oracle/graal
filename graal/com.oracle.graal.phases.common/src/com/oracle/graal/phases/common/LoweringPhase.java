@@ -46,6 +46,30 @@ import com.oracle.graal.phases.tiers.*;
  */
 public class LoweringPhase extends BasePhase<PhaseContext> {
 
+    @NodeInfo
+    static class DummyGuardHandle extends ValueNode implements GuardedNode {
+        @Input(InputType.Guard) private GuardingNode guard;
+
+        public DummyGuardHandle(GuardingNode guard) {
+            super(StampFactory.forVoid());
+            this.guard = guard;
+        }
+
+        public GuardingNode getGuard() {
+            return guard;
+        }
+
+        public void setGuard(GuardingNode guard) {
+            updateUsagesInterface(this.guard, guard);
+            this.guard = guard;
+        }
+
+        @Override
+        public ValueNode asNode() {
+            return this;
+        }
+    }
+
     final class LoweringToolImpl implements LoweringTool {
 
         private final PhaseContext context;
@@ -100,31 +124,6 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
         @Override
         public Assumptions assumptions() {
             return context.getAssumptions();
-        }
-
-        @NodeInfo
-        private class DummyGuardHandle extends ValueNode implements GuardedNode {
-            @Input(InputType.Guard) private GuardingNode guard;
-
-            public DummyGuardHandle(GuardingNode guard) {
-                super(StampFactory.forVoid());
-                this.guard = guard;
-            }
-
-            public GuardingNode getGuard() {
-                return guard;
-            }
-
-            public void setGuard(GuardingNode guard) {
-                updateUsagesInterface(this.guard, guard);
-                this.guard = guard;
-            }
-
-            @Override
-            public ValueNode asNode() {
-                return this;
-            }
-
         }
 
         @Override

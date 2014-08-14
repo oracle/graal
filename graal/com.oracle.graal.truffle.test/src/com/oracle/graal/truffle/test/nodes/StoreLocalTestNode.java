@@ -22,10 +22,8 @@
  */
 package com.oracle.graal.truffle.test.nodes;
 
-import com.oracle.graal.graph.*;
 import com.oracle.truffle.api.frame.*;
 
-@NodeInfo
 public class StoreLocalTestNode extends AbstractTestNode {
 
     private final FrameSlot slot;

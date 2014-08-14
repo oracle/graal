@@ -42,7 +42,6 @@ import com.oracle.graal.lir.sparc.SPARCMove.CompareAndSwapOp;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 
-@NodeInfo
 public class SPARCHotSpotNodeLIRBuilder extends SPARCNodeLIRBuilder implements HotSpotNodeLIRBuilder {
 
     public SPARCHotSpotNodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool lirGen) {

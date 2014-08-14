@@ -25,7 +25,6 @@ package com.oracle.graal.hotspot.ptx;
 
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.ptx.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.lir.gen.*;
@@ -34,7 +33,6 @@ import com.oracle.graal.nodes.*;
 /**
  * LIR generator specialized for PTX HotSpot.
  */
-@NodeInfo
 public class PTXHotSpotNodeLIRBuilder extends PTXNodeLIRBuilder implements HotSpotNodeLIRBuilder {
 
     protected PTXHotSpotNodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool lirGen) {

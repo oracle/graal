@@ -27,11 +27,9 @@ import static com.oracle.graal.nodes.cfg.ControlFlowGraph.*;
 import java.util.*;
 import java.util.stream.*;
 
-import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.graph.*;
 
-@NodeInfo
 public class ComputeLoopFrequenciesClosure extends ReentrantNodeIterator.NodeIteratorClosure<Double> {
 
     private static final ComputeLoopFrequenciesClosure INSTANCE = new ComputeLoopFrequenciesClosure();

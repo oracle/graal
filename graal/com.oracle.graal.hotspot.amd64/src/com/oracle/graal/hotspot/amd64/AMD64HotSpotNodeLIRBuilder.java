@@ -55,7 +55,6 @@ import com.oracle.graal.nodes.extended.*;
 /**
  * LIR generator specialized for AMD64 HotSpot.
  */
-@NodeInfo
 public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements HotSpotNodeLIRBuilder {
 
     private static ValueNode filterCompression(ValueNode node) {
