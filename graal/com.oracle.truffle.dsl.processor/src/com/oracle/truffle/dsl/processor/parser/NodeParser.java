@@ -881,7 +881,7 @@ public class NodeParser extends AbstractParser<NodeData> {
         for (GuardData guard : availableGuards) {
             guardMethods.add(guard.getMethod());
         }
-        GuardParser parser = new GuardParser(context, node, source, new HashSet<>(Arrays.asList(expression.getGuardName())));
+        GuardParser parser = new GuardParser(context, node, source, null);
         List<GuardData> matchingGuards = parser.parse(guardMethods);
         if (!matchingGuards.isEmpty()) {
             GuardData guard = matchingGuards.get(0);

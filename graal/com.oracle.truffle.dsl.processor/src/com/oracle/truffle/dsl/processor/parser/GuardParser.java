@@ -90,7 +90,7 @@ public class GuardParser extends NodeMethodParser<GuardData> {
 
     @Override
     public boolean isParsable(ExecutableElement method) {
-        return guardNames.contains(method.getSimpleName().toString());
+        return guardNames == null || guardNames.contains(method.getSimpleName().toString());
     }
 
     @Override

@@ -593,11 +593,16 @@ public class ElementUtils {
         } else if (type.getKind() == TypeKind.ARRAY) {
             return Arrays.asList(type, context.getType(Object.class));
         } else if (type.getKind() == TypeKind.DECLARED) {
-            List<TypeElement> types = getSuperTypes(fromTypeMirror(type));
+            DeclaredType declaredType = (DeclaredType) type;
+            TypeElement typeElement = fromTypeMirror(declaredType);
+            List<TypeElement> types = getSuperTypes(typeElement);
             List<TypeMirror> mirrors = new ArrayList<>(types.size());
             mirrors.add(type);
-            for (TypeElement typeElement : types) {
-                mirrors.add(typeElement.asType());
+            for (TypeElement superTypeElement : types) {
+                mirrors.add(superTypeElement.asType());
+            }
+            if (typeElement.getKind().isInterface()) {
+                mirrors.add(getType(context.getEnvironment(), Object.class));
             }
             return mirrors;
         } else {

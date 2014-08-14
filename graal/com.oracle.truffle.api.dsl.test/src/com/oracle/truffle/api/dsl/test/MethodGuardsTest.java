@@ -28,6 +28,7 @@ import static org.junit.Assert.*;
 import org.junit.*;
 
 import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.api.dsl.test.BinaryNodeTest.*;
 import com.oracle.truffle.api.dsl.test.MethodGuardsTestFactory.GlobalFlagGuardFactory;
 import com.oracle.truffle.api.dsl.test.MethodGuardsTestFactory.GuardWithBaseClassFactory;
 import com.oracle.truffle.api.dsl.test.MethodGuardsTestFactory.GuardWithBoxedPrimitiveFactory;
@@ -37,11 +38,7 @@ import com.oracle.truffle.api.dsl.test.MethodGuardsTestFactory.TestAbstractGuard
 import com.oracle.truffle.api.dsl.test.MethodGuardsTestFactory.TestGuardResolve1Factory;
 import com.oracle.truffle.api.dsl.test.MethodGuardsTestFactory.TestGuardResolve2Factory;
 import com.oracle.truffle.api.dsl.test.MethodGuardsTestFactory.TestGuardResolve3Factory;
-import com.oracle.truffle.api.dsl.test.TypeSystemTest.Abstract;
-import com.oracle.truffle.api.dsl.test.TypeSystemTest.BExtendsAbstract;
-import com.oracle.truffle.api.dsl.test.TypeSystemTest.CExtendsAbstract;
-import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
-import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
+import com.oracle.truffle.api.dsl.test.TypeSystemTest.*;
 
 @SuppressWarnings("unused")
 public class MethodGuardsTest {
@@ -276,6 +273,19 @@ public class MethodGuardsTest {
         @Specialization(guards = "guard")
         int doSpecialized(BExtendsAbstract value0) {
             return 42;
+        }
+    }
+
+    @NodeChildren({@NodeChild("a"), @NodeChild("b")})
+    abstract static class TestGuardResolve5 extends ValueNode {
+
+        @Specialization(guards = "guard")
+        int add(Interface left, Interface right) {
+            return 42;
+        }
+
+        boolean guard(Interface left, Object right) {
+            return true;
         }
     }
 
