@@ -35,11 +35,11 @@ public abstract class MessageContainer implements Iterable<MessageContainer> {
     private final List<Message> messages = new ArrayList<>();
 
     public final void addWarning(String text, Object... params) {
-        getMessages().add(new Message(null, this, String.format(text, params), Kind.WARNING));
+        getMessages().add(new Message(null, null, this, String.format(text, params), Kind.WARNING));
     }
 
     public final void addWarning(AnnotationValue value, String text, Object... params) {
-        getMessages().add(new Message(value, this, String.format(text, params), Kind.WARNING));
+        getMessages().add(new Message(null, value, this, String.format(text, params), Kind.WARNING));
     }
 
     public final void addError(String text, Object... params) {
@@ -47,7 +47,11 @@ public abstract class MessageContainer implements Iterable<MessageContainer> {
     }
 
     public final void addError(AnnotationValue value, String text, Object... params) {
-        getMessages().add(new Message(value, this, String.format(text, params), Kind.ERROR));
+        getMessages().add(new Message(null, value, this, String.format(text, params), Kind.ERROR));
+    }
+
+    public final void addError(AnnotationMirror mirror, AnnotationValue value, String text, Object... params) {
+        getMessages().add(new Message(mirror, value, this, String.format(text, params), Kind.ERROR));
     }
 
     protected List<MessageContainer> findChildContainers() {
@@ -137,6 +141,9 @@ public abstract class MessageContainer implements Iterable<MessageContainer> {
         if (message.getAnnotationValue() != null) {
             messageValue = message.getAnnotationValue();
         }
+        if (message.getAnnotationMirror() != null) {
+            messageAnnotation = message.getAnnotationMirror();
+        }
 
         String text = message.getText();
 
@@ -224,15 +231,21 @@ public abstract class MessageContainer implements Iterable<MessageContainer> {
     public static final class Message {
 
         private final MessageContainer originalContainer;
+        private final AnnotationMirror annotationMirror;
         private final AnnotationValue annotationValue;
         private final String text;
         private final Kind kind;
 
-        public Message(AnnotationValue annotationValue, MessageContainer originalContainer, String text, Kind kind) {
+        public Message(AnnotationMirror annotationMirror, AnnotationValue annotationValue, MessageContainer originalContainer, String text, Kind kind) {
+            this.annotationMirror = annotationMirror;
             this.annotationValue = annotationValue;
             this.originalContainer = originalContainer;
             this.text = text;
             this.kind = kind;
+        }
+
+        public AnnotationMirror getAnnotationMirror() {
+            return annotationMirror;
         }
 
         public AnnotationValue getAnnotationValue() {

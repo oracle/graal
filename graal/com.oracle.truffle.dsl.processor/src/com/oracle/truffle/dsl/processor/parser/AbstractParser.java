@@ -83,7 +83,7 @@ public abstract class AbstractParser<M extends MessageContainer> {
                 // redirect message
                 MessageContainer original = message.getOriginalContainer();
                 String text = wrapText(original.getMessageElement(), original.getMessageAnnotation(), message.getText());
-                Message redirectedMessage = new Message(null, baseContainer, text, message.getKind());
+                Message redirectedMessage = new Message(null, null, baseContainer, text, message.getKind());
                 model.getMessages().remove(i);
                 baseContainer.getMessages().add(redirectedMessage);
             }

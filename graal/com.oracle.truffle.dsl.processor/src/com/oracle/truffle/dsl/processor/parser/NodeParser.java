@@ -125,6 +125,7 @@ public class NodeParser extends AbstractParser<NodeData> {
         return node;
     }
 
+    @SuppressWarnings("unchecked")
     private NodeData parseNode(TypeElement originalTemplateType) {
         // reloading the type elements is needed for ecj
         TypeElement templateType = ElementUtils.fromTypeMirror(context.reloadTypeElement(originalTemplateType));
@@ -141,6 +142,9 @@ public class NodeParser extends AbstractParser<NodeData> {
         List<? extends Element> elements = CompilerFactory.getCompiler(templateType).getAllMembersInDeclarationOrder(context.getEnvironment(), templateType);
 
         NodeData node = parseNodeData(templateType, elements, lookupTypes);
+
+        parseImportGuards(node, lookupTypes, (List<Element>) elements);
+
         if (node.hasErrors()) {
             return node; // error sync point
         }
@@ -167,6 +171,40 @@ public class NodeParser extends AbstractParser<NodeData> {
         verifyNamingConvention(node.getShortCircuits(), "needs");
         verifySpecializationThrows(node);
         return node;
+    }
+
+    private void parseImportGuards(NodeData node, List<TypeElement> lookupTypes, List<Element> elements) {
+        for (TypeElement lookupType : lookupTypes) {
+            AnnotationMirror importAnnotation = ElementUtils.findAnnotationMirror(processingEnv, lookupType, ImportGuards.class);
+            if (importAnnotation == null) {
+                continue;
+            }
+            AnnotationValue importClassesValue = ElementUtils.getAnnotationValue(importAnnotation, "value");
+            List<TypeMirror> importClasses = ElementUtils.getAnnotationValueList(TypeMirror.class, importAnnotation, "value");
+            if (importClasses.isEmpty()) {
+                node.addError(importAnnotation, importClassesValue, "At least import guard classes must be specified.");
+                continue;
+            }
+            for (TypeMirror importGuardClass : importClasses) {
+                if (importGuardClass.getKind() != TypeKind.DECLARED) {
+                    node.addError(importAnnotation, importClassesValue, "The specified import guard class '%s' is not a declared type.", ElementUtils.getQualifiedName(importGuardClass));
+                    continue;
+                }
+                TypeElement typeElement = ElementUtils.fromTypeMirror(importGuardClass);
+                if (!typeElement.getModifiers().contains(Modifier.PUBLIC)) {
+                    node.addError(importAnnotation, importClassesValue, "The specified import guard class '%s' must be public.", ElementUtils.getQualifiedName(importGuardClass));
+                    continue;
+                }
+
+                List<? extends ExecutableElement> importMethods = ElementFilter.methodsIn(processingEnv.getElementUtils().getAllMembers(typeElement));
+                for (ExecutableElement importMethod : importMethods) {
+                    if (!importMethod.getModifiers().contains(Modifier.PUBLIC) || !importMethod.getModifiers().contains(Modifier.STATIC)) {
+                        continue;
+                    }
+                    elements.add(importMethod);
+                }
+            }
+        }
     }
 
     private NodeData parseNodeData(TypeElement templateType, List<? extends Element> elements, List<TypeElement> typeHierarchy) {
