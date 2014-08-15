@@ -27,12 +27,12 @@ import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 
 import java.lang.reflect.*;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.*;
 import java.util.function.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.GraalInternalError;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.hsail.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;

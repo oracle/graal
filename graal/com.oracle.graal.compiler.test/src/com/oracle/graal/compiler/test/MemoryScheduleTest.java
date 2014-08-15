@@ -24,6 +24,7 @@ package com.oracle.graal.compiler.test;
 
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static org.junit.Assert.*;
+
 import java.util.*;
 
 import org.junit.*;

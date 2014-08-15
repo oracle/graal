@@ -182,8 +182,8 @@ public abstract class GuardingPiReduction extends BaseReduction {
      * Provided a condition as above can be reduced to a constant (and an anchor obtained in the
      * process), this method replaces all usages of the
      * {@link com.oracle.graal.nodes.GuardingPiNode} (necessarily of
-     * {@link com.oracle.graal.graph.InputType#Value}) with a {@link com.oracle.graal.nodes.PiNode}
-     * that wraps the payload and the anchor in question.
+     * {@link com.oracle.graal.nodeinfo.InputType#Value}) with a
+     * {@link com.oracle.graal.nodes.PiNode} that wraps the payload and the anchor in question.
      * </p>
      * 
      * <p>

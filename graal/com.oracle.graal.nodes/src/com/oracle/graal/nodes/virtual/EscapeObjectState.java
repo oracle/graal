@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.nodes.virtual;
 
-import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node.ValueNumberable;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 
 @NodeInfo

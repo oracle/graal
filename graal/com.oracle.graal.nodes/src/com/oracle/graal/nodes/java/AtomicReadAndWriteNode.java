@@ -23,15 +23,14 @@
 package com.oracle.graal.nodes.java;
 
 import static com.oracle.graal.compiler.common.UnsafeAccess.*;
+import sun.misc.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
-
-import sun.misc.*;
 
 /**
  * Represents an atomic read-and-write operation like {@link Unsafe#getAndSetInt(Object, long, int)}

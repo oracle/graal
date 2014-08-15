@@ -23,6 +23,7 @@
 package com.oracle.graal.compiler.test.ea;
 
 import static org.junit.Assert.*;
+
 import java.util.*;
 
 import org.junit.*;

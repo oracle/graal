@@ -24,18 +24,17 @@ package com.oracle.graal.compiler.test;
 
 import java.io.*;
 
-import com.oracle.graal.phases.common.cfs.FlowSensitiveReductionPhase;
-
 import org.junit.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.graph.Node.Verbosity;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.phases.common.*;
+import com.oracle.graal.phases.common.cfs.*;
 import com.oracle.graal.phases.schedule.*;
 import com.oracle.graal.phases.tiers.*;
 

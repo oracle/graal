@@ -23,7 +23,7 @@
 package com.oracle.graal.nodes;
 
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
+import com.oracle.graal.nodeinfo.*;
 
 /**
  * Base class of all nodes that are fixed within the control flow graph and have an immediate

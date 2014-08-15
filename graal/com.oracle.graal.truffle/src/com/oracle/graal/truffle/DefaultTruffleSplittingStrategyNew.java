@@ -26,7 +26,7 @@ import java.util.*;
 
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.nodes.*;
-import com.oracle.truffle.api.nodes.NodeUtil.*;
+import com.oracle.truffle.api.nodes.NodeUtil.NodeCountFilter;
 
 public class DefaultTruffleSplittingStrategyNew implements TruffleSplittingStrategy {
     private static int splitChangeCount;

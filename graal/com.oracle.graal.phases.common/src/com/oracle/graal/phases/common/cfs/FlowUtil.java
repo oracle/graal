@@ -23,9 +23,9 @@
 package com.oracle.graal.phases.common.cfs;
 
 import com.oracle.graal.api.meta.ResolvedJavaType;
-import com.oracle.graal.graph.InputType;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.compiler.common.type.ObjectStamp;
 import com.oracle.graal.compiler.common.type.Stamp;

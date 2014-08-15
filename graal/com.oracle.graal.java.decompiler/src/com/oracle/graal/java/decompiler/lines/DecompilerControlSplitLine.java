@@ -23,8 +23,8 @@
 package com.oracle.graal.java.decompiler.lines;
 
 import com.oracle.graal.graph.*;
-import com.oracle.graal.graph.Node.Verbosity;
 import com.oracle.graal.java.decompiler.block.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.cfg.*;
 
 public class DecompilerControlSplitLine extends DecompilerSyntaxLine {

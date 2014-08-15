@@ -22,13 +22,13 @@
  */
 package com.oracle.graal.compiler.test;
 
-import com.oracle.graal.phases.common.cfs.FlowSensitiveReductionPhase;
 import org.junit.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.common.*;
+import com.oracle.graal.phases.common.cfs.*;
 import com.oracle.graal.phases.tiers.*;
 
 /**

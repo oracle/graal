@@ -52,7 +52,7 @@ import com.oracle.graal.hotspot.events.EventProvider.CompilerFailureEvent;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.phases.*;
 import com.oracle.graal.java.*;
-import com.oracle.graal.java.GraphBuilderConfiguration.*;
+import com.oracle.graal.java.GraphBuilderConfiguration.DebugInfoMode;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;

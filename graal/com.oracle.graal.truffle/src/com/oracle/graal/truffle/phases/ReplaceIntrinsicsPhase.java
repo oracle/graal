@@ -23,8 +23,8 @@
 package com.oracle.graal.truffle.phases;
 
 import com.oracle.graal.debug.*;
-import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
+import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;

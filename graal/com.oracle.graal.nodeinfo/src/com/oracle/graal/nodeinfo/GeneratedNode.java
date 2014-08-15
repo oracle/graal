@@ -20,28 +20,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.graph.processor;
+package com.oracle.graal.nodeinfo;
 
-import javax.lang.model.element.*;
+import java.lang.annotation.*;
 
-import com.oracle.graal.graph.*;
+/**
+ * Denotes a Node class derived from a {@link NodeInfo} annotated Node type.
+ */
+@Retention(RetentionPolicy.RUNTIME)
+@Target({ElementType.TYPE})
+public @interface GeneratedNode {
 
-public class GraphNode {
-
-    private final NodeInfo nodeInfo;
-    private final TypeElement declaration;
-
-    public GraphNode(TypeElement type, NodeInfo nodeInfo) {
-        this.declaration = type;
-        this.nodeInfo = nodeInfo;
-    }
-
-    public NodeInfo getNodeInfo() {
-        return nodeInfo;
-    }
-
-    public TypeElement getDeclaration() {
-        return declaration;
-    }
-
+    /**
+     * The Node class from which the annotated type was generated.
+     */
+    Class<?> value();
 }

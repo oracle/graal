@@ -33,8 +33,8 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.Graph.DuplicationReplacement;
 import com.oracle.graal.graph.Node.Input;
 import com.oracle.graal.graph.Node.Successor;
-import com.oracle.graal.graph.Node.Verbosity;
 import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.nodeinfo.*;
 
 /**
  * Metadata for every {@link Node} type. The metadata includes:

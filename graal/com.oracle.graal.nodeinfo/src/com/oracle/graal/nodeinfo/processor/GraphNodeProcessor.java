@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.graph.processor;
+package com.oracle.graal.nodeinfo.processor;
 
 import java.io.*;
 import java.util.*;
@@ -32,14 +32,14 @@ import javax.lang.model.type.*;
 import javax.lang.model.util.*;
 import javax.tools.Diagnostic.Kind;
 
-import com.oracle.graal.graph.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.truffle.dsl.processor.*;
 import com.oracle.truffle.dsl.processor.java.*;
 import com.oracle.truffle.dsl.processor.java.model.*;
 import com.oracle.truffle.dsl.processor.java.transform.*;
 
 @SupportedSourceVersion(SourceVersion.RELEASE_8)
-@SupportedAnnotationTypes({"com.oracle.graal.graph.NodeInfo"})
+@SupportedAnnotationTypes({"com.oracle.graal.nodeinfo.NodeInfo"})
 public class GraphNodeProcessor extends AbstractProcessor {
     @Override
     public SourceVersion getSupportedSourceVersion() {
@@ -65,6 +65,22 @@ public class GraphNodeProcessor extends AbstractProcessor {
         return processingEnv;
     }
 
+    boolean isNodeType(Element element) {
+        if (element.getKind() != ElementKind.CLASS) {
+            return false;
+        }
+        TypeElement type = (TypeElement) element;
+        Types types = processingEnv.getTypeUtils();
+
+        while (type != null) {
+            if (type.toString().equals("com.oracle.graal.graph.Node")) {
+                return true;
+            }
+            type = (TypeElement) types.asElement(type.getSuperclass());
+        }
+        return false;
+    }
+
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
         if (roundEnv.processingOver()) {
@@ -72,15 +88,11 @@ public class GraphNodeProcessor extends AbstractProcessor {
         }
 
         GraphNodeGenerator gen = new GraphNodeGenerator(this);
-        Types types = processingEnv.getTypeUtils();
-        Elements elements = processingEnv.getElementUtils();
-
-        TypeMirror nodeType = elements.getTypeElement(Node.class.getName()).asType();
 
         for (Element element : roundEnv.getElementsAnnotatedWith(NodeInfo.class)) {
             try {
-                if (!types.isSubtype(element.asType(), nodeType)) {
-                    errorMessage(element, "%s can only be applied to %s subclasses", NodeInfo.class.getSimpleName(), Node.class.getSimpleName());
+                if (!isNodeType(element)) {
+                    errorMessage(element, "%s can only be applied to Node subclasses", NodeInfo.class.getSimpleName());
                     continue;
                 }
 
@@ -97,8 +109,7 @@ public class GraphNodeProcessor extends AbstractProcessor {
                     continue;
                 }
 
-                GraphNode graphNode = new GraphNode(typeElement, nodeInfo);
-                CodeCompilationUnit unit = gen.process(graphNode);
+                CodeCompilationUnit unit = gen.process(typeElement);
                 unit.setGeneratorElement(typeElement);
 
                 DeclaredType overrideType = (DeclaredType) ElementUtils.getType(processingEnv, Override.class);

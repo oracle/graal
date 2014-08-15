@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.graph.processor;
+package com.oracle.graal.nodeinfo.processor;
 
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.*;
 
@@ -29,12 +29,12 @@ import javax.lang.model.element.*;
 import javax.lang.model.type.*;
 import javax.lang.model.util.*;
 
-import com.oracle.graal.graph.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.truffle.dsl.processor.java.*;
 import com.oracle.truffle.dsl.processor.java.model.*;
 
 /**
- * Generates the source code for a {@link Node} class.
+ * Generates the source code for a Node class.
  */
 public class GraphNodeGenerator {
 
@@ -48,9 +48,9 @@ public class GraphNodeGenerator {
         return processor.getProcessingEnv();
     }
 
-    private String getGeneratedClassName(GraphNode node) {
+    private String getGeneratedClassName(TypeElement node) {
 
-        TypeElement typeElement = node.getDeclaration();
+        TypeElement typeElement = node;
 
         String newClassName = typeElement.getSimpleName().toString() + "Gen";
         Element enclosing = typeElement.getEnclosingElement();
@@ -69,24 +69,23 @@ public class GraphNodeGenerator {
         return newClassName;
     }
 
-    public CodeCompilationUnit process(GraphNode node) {
+    public CodeCompilationUnit process(TypeElement node) {
         CodeCompilationUnit compilationUnit = new CodeCompilationUnit();
 
-        TypeElement typeElement = node.getDeclaration();
-        PackageElement packageElement = ElementUtils.findPackageElement(node.getDeclaration());
+        PackageElement packageElement = ElementUtils.findPackageElement(node);
 
         String newClassName = getGeneratedClassName(node);
 
         CodeTypeElement nodeGenElement = new CodeTypeElement(modifiers(), ElementKind.CLASS, packageElement, newClassName);
 
-        if (typeElement.getModifiers().contains(Modifier.ABSTRACT)) {
+        if (node.getModifiers().contains(Modifier.ABSTRACT)) {
             // we do not support implementation of abstract methods yet.
             nodeGenElement.getModifiers().add(Modifier.ABSTRACT);
         }
 
-        nodeGenElement.setSuperClass(typeElement.asType());
+        nodeGenElement.setSuperClass(node.asType());
 
-        for (ExecutableElement constructor : ElementFilter.constructorsIn(typeElement.getEnclosedElements())) {
+        for (ExecutableElement constructor : ElementFilter.constructorsIn(node.getEnclosedElements())) {
             if (constructor.getModifiers().contains(Modifier.PRIVATE)) {
                 // ignore private constructors
                 continue;
@@ -96,7 +95,7 @@ public class GraphNodeGenerator {
 
         DeclaredType generatedNode = (DeclaredType) ElementUtils.getType(getProcessingEnv(), GeneratedNode.class);
         CodeAnnotationMirror generatedByMirror = new CodeAnnotationMirror(generatedNode);
-        generatedByMirror.setElementValue(generatedByMirror.findExecutableElement("value"), new CodeAnnotationValue(typeElement.asType()));
+        generatedByMirror.setElementValue(generatedByMirror.findExecutableElement("value"), new CodeAnnotationValue(node.asType()));
         nodeGenElement.getAnnotationMirrors().add(generatedByMirror);
 
         nodeGenElement.add(createDummyExampleMethod());

@@ -20,11 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.graph;
+package com.oracle.graal.nodeinfo;
 
 import java.lang.annotation.*;
-
-import com.oracle.graal.graph.Node.Verbosity;
 
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)

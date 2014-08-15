@@ -26,16 +26,15 @@ import static com.oracle.graal.nodes.ConstantNode.*;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
 import static org.junit.Assert.*;
 
-import com.oracle.graal.phases.common.cfs.FlowSensitiveReductionPhase;
-
 import org.junit.*;
 
-import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
+import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.common.*;
+import com.oracle.graal.phases.common.cfs.*;
 import com.oracle.graal.phases.tiers.*;
 
 /**

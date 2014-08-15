@@ -25,6 +25,7 @@ package com.oracle.graal.java;
 
 import static com.oracle.graal.api.code.TypeCheckHints.*;
 import static com.oracle.graal.bytecode.Bytecodes.*;
+
 import java.util.*;
 
 import com.oracle.graal.api.code.*;

@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.truffle;
 
-import com.oracle.truffle.api.frame.FrameInstance.*;
+import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
 
 public interface MaterializedFrameNotify {
 

@@ -23,6 +23,7 @@
 package com.oracle.graal.compiler.test.inlining;
 
 import static org.junit.Assert.*;
+
 import java.lang.reflect.*;
 
 import org.junit.*;

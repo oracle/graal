@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
-import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.stubs.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 
 /**

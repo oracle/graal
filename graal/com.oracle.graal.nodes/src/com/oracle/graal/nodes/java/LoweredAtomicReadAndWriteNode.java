@@ -22,13 +22,13 @@
  */
 package com.oracle.graal.nodes.java;
 
+import sun.misc.*;
+
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graph.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
-
-import sun.misc.*;
 
 /**
  * Represents the lowered version of an atomic read-and-write operation like
