@@ -23,6 +23,9 @@
 package com.oracle.graal.nodeinfo.processor;
 
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.*;
+import static javax.lang.model.element.Modifier.*;
+
+import java.util.*;
 
 import javax.annotation.processing.*;
 import javax.lang.model.element.*;
@@ -38,17 +41,38 @@ import com.oracle.truffle.dsl.processor.java.model.*;
  */
 public class GraphNodeGenerator {
 
-    private final GraphNodeProcessor processor;
+    final GraphNodeProcessor env;
+    final TypeElement Input;
+    final TypeElement OptionalInput;
+    final TypeElement Successor;
+
+    final TypeElement Node;
+    final TypeElement NodeInputList;
+    final TypeElement NodeSuccessorList;
 
     public GraphNodeGenerator(GraphNodeProcessor processor) {
-        this.processor = processor;
+        this.env = processor;
+        this.Input = getType("com.oracle.graal.graph.Node.Input");
+        this.OptionalInput = getType("com.oracle.graal.graph.Node.OptionalInput");
+        this.Successor = getType("com.oracle.graal.graph.Node.Successor");
+        this.Node = getType("com.oracle.graal.graph.Node");
+        this.NodeInputList = getType("com.oracle.graal.graph.NodeInputList");
+        this.NodeSuccessorList = getType("com.oracle.graal.graph.NodeSuccessorList");
+    }
+
+    public TypeElement getType(String name) {
+        TypeElement typeElement = env.getProcessingEnv().getElementUtils().getTypeElement(name);
+        if (typeElement == null) {
+            throw new NoClassDefFoundError(name);
+        }
+        return typeElement;
     }
 
     public ProcessingEnvironment getProcessingEnv() {
-        return processor.getProcessingEnv();
+        return env.getProcessingEnv();
     }
 
-    private String getGeneratedClassName(TypeElement node) {
+    private static String getGeneratedClassName(TypeElement node) {
 
         TypeElement typeElement = node;
 
@@ -57,10 +81,9 @@ public class GraphNodeGenerator {
         while (enclosing != null) {
             if (enclosing.getKind() == ElementKind.CLASS || enclosing.getKind() == ElementKind.INTERFACE) {
                 if (enclosing.getModifiers().contains(Modifier.PRIVATE)) {
-                    processor.errorMessage(enclosing, "%s %s cannot be private", enclosing.getKind().name().toLowerCase(), enclosing);
-                    return null;
+                    throw new ElementException(enclosing, "%s %s cannot be private", enclosing.getKind().name().toLowerCase(), enclosing);
                 }
-                newClassName = enclosing.getSimpleName() + "$" + newClassName;
+                newClassName = enclosing.getSimpleName() + "_" + newClassName;
             } else {
                 assert enclosing.getKind() == ElementKind.PACKAGE;
             }
@@ -69,7 +92,142 @@ public class GraphNodeGenerator {
         return newClassName;
     }
 
+    public class FieldScanner {
+        /**
+         * @param field
+         * @param isOptional
+         * @param isList
+         * @return true if field scanning should continue
+         */
+        public boolean scanInputField(VariableElement field, boolean isOptional, boolean isList) {
+            return true;
+        }
+
+        /**
+         * @param field
+         * @param isList
+         * @return true if field scanning should continue
+         */
+        public boolean scanSuccessorField(VariableElement field, boolean isList) {
+            return true;
+        }
+
+        /**
+         * @param field
+         * @return true if field scanning should continue
+         */
+        public boolean scanDataField(VariableElement field) {
+            return true;
+        }
+    }
+
+    public boolean isAssignable(Element from, Element to) {
+        Types types = env.getProcessingEnv().getTypeUtils();
+        TypeMirror fromType = types.erasure(from.asType());
+        TypeMirror toType = types.erasure(to.asType());
+        boolean res = types.isAssignable(fromType, toType);
+        // System.out.printf("%s:%s is %sassignable to %s:%s%n", from, fromType, res ? "" : "NOT ",
+// to, toType);
+        return res;
+    }
+
+    public void scanFields(TypeElement node, FieldScanner scanner) {
+        TypeElement currentClazz = node;
+        do {
+            for (VariableElement field : ElementFilter.fieldsIn(currentClazz.getEnclosedElements())) {
+                Set<Modifier> modifiers = field.getModifiers();
+                if (modifiers.contains(STATIC) || modifiers.contains(TRANSIENT)) {
+                    continue;
+                }
+
+                List<? extends AnnotationMirror> annotations = field.getAnnotationMirrors();
+
+                boolean isNonOptionalInput = findAnnotationMirror(annotations, Input) != null;
+                boolean isOptionalInput = findAnnotationMirror(annotations, OptionalInput) != null;
+                boolean isSuccessor = findAnnotationMirror(annotations, Successor) != null;
+
+                if (isNonOptionalInput || isOptionalInput) {
+                    if (findAnnotationMirror(annotations, Successor) != null) {
+                        throw new ElementException(field, "Field cannot be both input and successor");
+                    } else if (isNonOptionalInput && isOptionalInput) {
+                        throw new ElementException(field, "Inputs must be either optional or non-optional");
+                    } else if (isAssignable(field, NodeInputList)) {
+                        if (!modifiers.contains(FINAL)) {
+                            throw new ElementException(field, "Input list field must be final");
+                        }
+                        if (modifiers.contains(PUBLIC)) {
+                            throw new ElementException(field, "Input list field must not be public");
+                        }
+                        if (!scanner.scanInputField(field, isOptionalInput, true)) {
+                            return;
+                        }
+                    } else {
+                        if (!isAssignable(field, Node) && field.getKind() == ElementKind.INTERFACE) {
+                            throw new ElementException(field, "Input field type must be an interface or assignable to Node");
+                        }
+                        if (modifiers.contains(FINAL)) {
+                            throw new ElementException(field, "Input field must not be final");
+                        }
+// if (modifiers.contains(PRIVATE) || modifiers.contains(PUBLIC) || modifiers.contains(PROTECTED)) {
+// throw new ElementException(field, "Input field must be package-private");
+// }
+                        if (!modifiers.contains(PRIVATE)) {
+                            throw new ElementException(field, "Input field must be private");
+                        }
+                        if (!scanner.scanInputField(field, isOptionalInput, false)) {
+                            return;
+                        }
+                    }
+                } else if (isSuccessor) {
+                    if (isAssignable(field, NodeSuccessorList)) {
+                        if (!modifiers.contains(FINAL)) {
+                            throw new ElementException(field, "Successor list field must be final");
+                        }
+                        if (modifiers.contains(PUBLIC)) {
+                            throw new ElementException(field, "Successor list field must not be public");
+                        }
+                        if (!scanner.scanSuccessorField(field, true)) {
+                            return;
+                        }
+                    } else {
+                        if (!isAssignable(field, Node)) {
+                            throw new ElementException(field, "Successor field must be a Node type");
+                        }
+                        if (modifiers.contains(FINAL)) {
+                            throw new ElementException(field, "Successor field must not be final");
+                        }
+// if (modifiers.contains(PRIVATE) || modifiers.contains(PUBLIC) || modifiers.contains(PROTECTED)) {
+// throw new ElementException(field, "Successor field must be package-private");
+// }
+                        if (!modifiers.contains(PRIVATE)) {
+                            throw new ElementException(field, "Successor field must be private");
+                        }
+                        if (!scanner.scanSuccessorField(field, false)) {
+                            return;
+                        }
+                    }
+
+                } else {
+                    if (isAssignable(field, Node) && !field.getSimpleName().contentEquals("Null")) {
+                        throw new ElementException(field, "Suspicious Node field: " + field);
+                    }
+                    if (isAssignable(field, NodeInputList)) {
+                        throw new ElementException(field, "Suspicious NodeInputList field");
+                    }
+                    if (isAssignable(field, NodeSuccessorList)) {
+                        throw new ElementException(field, "Suspicious NodeSuccessorList field");
+                    }
+                    if (!scanner.scanDataField(field)) {
+                        return;
+                    }
+                }
+            }
+            currentClazz = getSuperType(currentClazz);
+        } while (!isObject(getSuperType(currentClazz).asType()));
+    }
+
     public CodeCompilationUnit process(TypeElement node) {
+
         CodeCompilationUnit compilationUnit = new CodeCompilationUnit();
 
         PackageElement packageElement = ElementUtils.findPackageElement(node);
@@ -77,11 +235,6 @@ public class GraphNodeGenerator {
         String newClassName = getGeneratedClassName(node);
 
         CodeTypeElement nodeGenElement = new CodeTypeElement(modifiers(), ElementKind.CLASS, packageElement, newClassName);
-
-        if (node.getModifiers().contains(Modifier.ABSTRACT)) {
-            // we do not support implementation of abstract methods yet.
-            nodeGenElement.getModifiers().add(Modifier.ABSTRACT);
-        }
 
         nodeGenElement.setSuperClass(node.asType());
 
@@ -98,7 +251,7 @@ public class GraphNodeGenerator {
         generatedByMirror.setElementValue(generatedByMirror.findExecutableElement("value"), new CodeAnnotationValue(node.asType()));
         nodeGenElement.getAnnotationMirrors().add(generatedByMirror);
 
-        nodeGenElement.add(createDummyExampleMethod());
+        nodeGenElement.add(createIsLeafNodeMethod(node));
 
         compilationUnit.add(nodeGenElement);
         return compilationUnit;
@@ -122,14 +275,27 @@ public class GraphNodeGenerator {
         return executable;
     }
 
-    public ExecutableElement createDummyExampleMethod() {
-        CodeExecutableElement method = new CodeExecutableElement(modifiers(Modifier.PROTECTED), ElementUtils.getType(getProcessingEnv(), int.class), "computeTheMeaningOfLife");
+    public ExecutableElement createIsLeafNodeMethod(TypeElement node) {
+        CodeExecutableElement method = new CodeExecutableElement(modifiers(PUBLIC), ElementUtils.getType(getProcessingEnv(), boolean.class), "isLeafNode");
+        boolean[] isLeafNode = {true};
+        scanFields(node, new FieldScanner() {
+
+            @Override
+            public boolean scanInputField(VariableElement field, boolean isOptional, boolean isList) {
+                isLeafNode[0] = false;
+                return false;
+            }
+
+            @Override
+            public boolean scanSuccessorField(VariableElement field, boolean isList) {
+                isLeafNode[0] = false;
+                return false;
+            }
+        });
 
         CodeTreeBuilder builder = method.createBuilder();
-        builder.string("// this method got partially evaluated").newLine();
-        builder.startReturn().string("42").end();
+        builder.startReturn().string(String.valueOf(isLeafNode[0])).end();
 
         return method;
     }
-
 }

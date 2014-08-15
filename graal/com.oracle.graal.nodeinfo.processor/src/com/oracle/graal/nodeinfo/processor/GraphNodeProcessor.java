@@ -105,18 +105,22 @@ public class GraphNodeProcessor extends AbstractProcessor {
                 TypeElement typeElement = (TypeElement) element;
 
                 if (typeElement.getModifiers().contains(Modifier.FINAL)) {
-                    errorMessage(element, "%s annotated class cannot be final", NodeInfo.class.getSimpleName());
+                    errorMessage(element, "%s annotated class must not be final", NodeInfo.class.getSimpleName());
                     continue;
                 }
 
-                CodeCompilationUnit unit = gen.process(typeElement);
-                unit.setGeneratorElement(typeElement);
+                if (!typeElement.equals(gen.Node) && !typeElement.getModifiers().contains(Modifier.ABSTRACT)) {
+                    CodeCompilationUnit unit = gen.process(typeElement);
+                    unit.setGeneratorElement(typeElement);
 
-                DeclaredType overrideType = (DeclaredType) ElementUtils.getType(processingEnv, Override.class);
-                DeclaredType unusedType = (DeclaredType) ElementUtils.getType(processingEnv, SuppressWarnings.class);
-                unit.accept(new GenerateOverrideVisitor(overrideType), null);
-                unit.accept(new FixWarningsVisitor(processingEnv, unusedType, overrideType), null);
-                unit.accept(new CodeWriter(processingEnv, typeElement), null);
+                    DeclaredType overrideType = (DeclaredType) ElementUtils.getType(processingEnv, Override.class);
+                    DeclaredType unusedType = (DeclaredType) ElementUtils.getType(processingEnv, SuppressWarnings.class);
+                    unit.accept(new GenerateOverrideVisitor(overrideType), null);
+                    unit.accept(new FixWarningsVisitor(processingEnv, unusedType, overrideType), null);
+                    unit.accept(new CodeWriter(processingEnv, typeElement), null);
+                }
+            } catch (ElementException ee) {
+                errorMessage(ee.element, ee.getMessage());
             } catch (Throwable t) {
                 if (!isBug367599(t)) {
                     reportException(element, t);
