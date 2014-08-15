@@ -576,12 +576,10 @@ public class ElementUtils {
 
     public static List<TypeElement> getDirectSuperTypes(TypeElement element) {
         List<TypeElement> types = new ArrayList<>();
-        if (element.getSuperclass() != null) {
-            TypeElement superElement = fromTypeMirror(element.getSuperclass());
-            if (superElement != null) {
-                types.add(superElement);
-                types.addAll(getDirectSuperTypes(superElement));
-            }
+        TypeElement superElement = getSuperType(element);
+        if (superElement != null) {
+            types.add(superElement);
+            types.addAll(getDirectSuperTypes(superElement));
         }
 
         return types;
@@ -610,16 +608,25 @@ public class ElementUtils {
         }
     }
 
+    /**
+     * Gets the element representing the {@linkplain TypeElement#getSuperclass() super class} of a
+     * given type element.
+     */
+    public static TypeElement getSuperType(TypeElement element) {
+        if (element.getSuperclass() != null) {
+            return fromTypeMirror(element.getSuperclass());
+        }
+        return null;
+    }
+
     public static List<TypeElement> getSuperTypes(TypeElement element) {
         List<TypeElement> types = new ArrayList<>();
         List<TypeElement> superTypes = null;
         List<TypeElement> superInterfaces = null;
-        if (element.getSuperclass() != null) {
-            TypeElement superElement = fromTypeMirror(element.getSuperclass());
-            if (superElement != null) {
-                types.add(superElement);
-                superTypes = getSuperTypes(superElement);
-            }
+        TypeElement superElement = getSuperType(element);
+        if (superElement != null) {
+            types.add(superElement);
+            superTypes = getSuperTypes(superElement);
         }
         for (TypeMirror interfaceMirror : element.getInterfaces()) {
             TypeElement interfaceElement = fromTypeMirror(interfaceMirror);
