@@ -30,7 +30,6 @@ import com.oracle.graal.graph.Node.ValueNumberable;
 import com.oracle.graal.graph.NodeClass.NodeClassIterator;
 import com.oracle.graal.graph.NodeClass.Position;
 import com.oracle.graal.graph.iterators.*;
-import com.oracle.graal.nodeinfo.*;
 
 /**
  * This class is a graph container, it contains the set of nodes that belong to this graph.
@@ -647,7 +646,8 @@ public class Graph {
         };
     }
 
-    @NodeInfo
+    // Fully qualified annotation name is required to satisfy javac
+    @com.oracle.graal.nodeinfo.NodeInfo
     static class PlaceHolderNode extends Node {
 
     }
