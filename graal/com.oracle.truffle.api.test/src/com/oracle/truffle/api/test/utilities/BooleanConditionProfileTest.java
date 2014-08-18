@@ -38,14 +38,14 @@ public class BooleanConditionProfileTest {
 
     @Test
     public void testInitial() {
-        BooleanConditionProfile profile = new BooleanConditionProfile();
+        BinaryConditionProfile profile = new BinaryConditionProfile();
         assertThat(profile.wasTrue(), is(false));
         assertThat(profile.wasFalse(), is(false));
     }
 
     @Theory
     public void testProfileOne(boolean value) {
-        BooleanConditionProfile profile = new BooleanConditionProfile();
+        BinaryConditionProfile profile = new BinaryConditionProfile();
         boolean result = profile.profile(value);
 
         assertThat(result, is(value));
@@ -55,7 +55,7 @@ public class BooleanConditionProfileTest {
 
     @Theory
     public void testProfileTwo(boolean value0, boolean value1) {
-        BooleanConditionProfile profile = new BooleanConditionProfile();
+        BinaryConditionProfile profile = new BinaryConditionProfile();
         boolean result0 = profile.profile(value0);
         boolean result1 = profile.profile(value1);
 
@@ -67,7 +67,7 @@ public class BooleanConditionProfileTest {
 
     @Theory
     public void testProfileThree(boolean value0, boolean value1, boolean value2) {
-        BooleanConditionProfile profile = new BooleanConditionProfile();
+        BinaryConditionProfile profile = new BinaryConditionProfile();
         boolean result0 = profile.profile(value0);
         boolean result1 = profile.profile(value1);
         boolean result2 = profile.profile(value2);

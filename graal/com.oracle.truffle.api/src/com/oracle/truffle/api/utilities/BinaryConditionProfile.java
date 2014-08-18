@@ -46,9 +46,9 @@ import com.oracle.truffle.api.CompilerDirectives.*;
  * </pre>
  *
  * @see ConditionProfile
- * @see IntegerConditionProfile
+ * @see CountingConditionProfile
  */
-public class BooleanConditionProfile extends ConditionProfile {
+public class BinaryConditionProfile extends ConditionProfile {
 
     @CompilationFinal private boolean wasTrue;
     @CompilationFinal private boolean wasFalse;

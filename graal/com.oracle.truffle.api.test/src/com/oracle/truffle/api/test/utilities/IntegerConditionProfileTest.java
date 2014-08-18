@@ -38,14 +38,14 @@ public class IntegerConditionProfileTest {
 
     @Test
     public void testInitial() {
-        IntegerConditionProfile profile = new IntegerConditionProfile();
+        CountingConditionProfile profile = new CountingConditionProfile();
         assertThat(profile.getTrueCount(), is(0));
         assertThat(profile.getFalseCount(), is(0));
     }
 
     @Theory
     public void testProfileOne(boolean value) {
-        IntegerConditionProfile profile = new IntegerConditionProfile();
+        CountingConditionProfile profile = new CountingConditionProfile();
         boolean result = profile.profile(value);
 
         assertThat(result, is(value));
@@ -55,7 +55,7 @@ public class IntegerConditionProfileTest {
 
     @Theory
     public void testProfileTwo(boolean value0, boolean value1) {
-        IntegerConditionProfile profile = new IntegerConditionProfile();
+        CountingConditionProfile profile = new CountingConditionProfile();
         boolean result0 = profile.profile(value0);
         boolean result1 = profile.profile(value1);
 
@@ -67,7 +67,7 @@ public class IntegerConditionProfileTest {
 
     @Theory
     public void testProfileThree(boolean value0, boolean value1, boolean value2) {
-        IntegerConditionProfile profile = new IntegerConditionProfile();
+        CountingConditionProfile profile = new CountingConditionProfile();
         boolean result0 = profile.profile(value0);
         boolean result1 = profile.profile(value1);
         boolean result2 = profile.profile(value2);

@@ -42,8 +42,8 @@ package com.oracle.truffle.api.utilities;
  *
  * </pre>
  *
- * @see BooleanConditionProfile
- * @see IntegerConditionProfile
+ * @see BinaryConditionProfile
+ * @see CountingConditionProfile
  */
 public abstract class ConditionProfile {
 
