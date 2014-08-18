@@ -22,7 +22,7 @@
 * New flag -G:TruffleSplittingStartCallCount=3 which sets the number of minimal calls until splitting is performed.
 * New flag -G:-TruffleSplittingAggressive if enabled splits every function call.
 * Added isVisited method for BranchProfile.
-* Added new ConditionProfile, BooleanConditionProfile and IntegerConditionProfile utility classes to profile if conditions.
+* Added new ConditionProfile, BinaryConditionProfile and CountingConditionProfile utility classes to profile if conditions.
 * ...
 
 ## Version 0.3
