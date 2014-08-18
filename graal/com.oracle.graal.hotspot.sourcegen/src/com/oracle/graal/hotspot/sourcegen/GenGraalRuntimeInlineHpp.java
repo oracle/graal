@@ -158,12 +158,12 @@ public class GenGraalRuntimeInlineHpp {
         }
         lengths.add("PrintFlags".length());
 
-        out.println("bool GraalRuntime::set_option_bool(KlassHandle hotSpotOptionsClass, char* name, int name_len, char value, TRAPS) {");
+        out.println("bool GraalRuntime::set_option_bool(KlassHandle hotSpotOptionsClass, char* name, size_t name_len, char value, TRAPS) {");
         out.println("  bool check_only = hotSpotOptionsClass.is_null();");
         genMatchers(out, lengths, options, true);
         out.println("  return false;");
         out.println("}");
-        out.println("bool GraalRuntime::set_option(KlassHandle hotSpotOptionsClass, char* name, int name_len, const char* value, TRAPS) {");
+        out.println("bool GraalRuntime::set_option(KlassHandle hotSpotOptionsClass, char* name, size_t name_len, const char* value, TRAPS) {");
         out.println("  bool check_only = hotSpotOptionsClass.is_null();");
         genMatchers(out, lengths, options, false);
         out.println("  return false;");
