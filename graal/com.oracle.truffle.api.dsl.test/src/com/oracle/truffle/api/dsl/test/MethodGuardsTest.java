@@ -142,7 +142,7 @@ public class MethodGuardsTest {
         }
 
         @Specialization(guards = "baseGuard")
-        @ExpectError("No compatible guard with method name 'baseGuard' found. Please note that all signature types of the method guard must be declared in the type system.")
+        @ExpectError("No guard with name 'baseGuard' matched the required signature.%")
         int doSpecialized(String value0) {
             return 42;
         }

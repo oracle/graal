@@ -530,7 +530,7 @@ public class ElementUtils {
     public static boolean isEnclosedIn(Element enclosedIn, Element element) {
         if (element == null) {
             return false;
-        } else if (enclosedIn.equals(element)) {
+        } else if (typeEquals(enclosedIn.asType(), element.asType())) {
             return true;
         } else {
             return isEnclosedIn(enclosedIn, element.getEnclosingElement());

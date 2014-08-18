@@ -35,14 +35,14 @@ import com.oracle.truffle.dsl.processor.model.*;
 
 public class GuardParser extends NodeMethodParser<GuardData> {
 
-    private final Set<String> guardNames;
-    private final TemplateMethod compatibleSource;
+    private final GuardExpression expression;
+    private final TemplateMethod guardedMethod;
 
-    public GuardParser(ProcessorContext context, NodeData node, TemplateMethod compatibleSource, Set<String> guardNames) {
+    public GuardParser(ProcessorContext context, NodeData node, TemplateMethod compatibleSource, GuardExpression expression) {
         super(context, node);
-        this.guardNames = guardNames;
-        this.compatibleSource = compatibleSource;
-        setEmitErrors(false);
+        this.expression = expression;
+        this.guardedMethod = compatibleSource;
+        getParser().setEmitErrors(false);
         setParseNullOnError(false);
     }
 
@@ -55,19 +55,33 @@ public class GuardParser extends NodeMethodParser<GuardData> {
     public MethodSpec createSpecification(ExecutableElement method, AnnotationMirror mirror) {
         MethodSpec spec = createDefaultMethodSpec(method, mirror, true, null);
         spec.setIgnoreAdditionalSpecifications(true);
-        if (compatibleSource != null) {
-            spec.getRequired().clear();
-            for (Parameter parameter : compatibleSource.getRequiredParameters()) {
-                List<TypeMirror> typeMirrors = ElementUtils.getAssignableTypes(getContext(), parameter.getType());
-                Set<String> typeIds = new HashSet<>();
-                for (TypeMirror typeMirror : typeMirrors) {
-                    typeIds.add(ElementUtils.getUniqueIdentifier(typeMirror));
-                }
+        spec.getRequired().clear();
 
-                spec.addRequired(new ParameterSpec(parameter.getSpecification(), typeMirrors, typeIds));
+        if (expression.getResolvedChildren() != null) {
+            for (NodeExecutionData execution : expression.getResolvedChildren()) {
+                List<Parameter> foundInGuardedMethod = guardedMethod.findByExecutionData(execution);
+                for (Parameter guardedParameter : foundInGuardedMethod) {
+                    spec.addRequired(createParameterSpec(guardedParameter));
+                }
+            }
+        } else {
+            for (Parameter parameter : guardedMethod.getRequiredParameters()) {
+                spec.addRequired(createParameterSpec(parameter));
             }
         }
+
         return spec;
+    }
+
+    private ParameterSpec createParameterSpec(Parameter parameter) {
+        List<TypeMirror> typeMirrors = ElementUtils.getAssignableTypes(getContext(), parameter.getType());
+        Set<String> typeIds = new HashSet<>();
+        for (TypeMirror typeMirror : typeMirrors) {
+            typeIds.add(ElementUtils.getUniqueIdentifier(typeMirror));
+        }
+        typeIds.retainAll(getTypeSystem().getTypeIdentifiers());
+
+        return new ParameterSpec(parameter.getSpecification(), typeMirrors, typeIds);
     }
 
     @Override
@@ -90,7 +104,7 @@ public class GuardParser extends NodeMethodParser<GuardData> {
 
     @Override
     public boolean isParsable(ExecutableElement method) {
-        return guardNames == null || guardNames.contains(method.getSimpleName().toString());
+        return true;
     }
 
     @Override
@@ -102,7 +116,7 @@ public class GuardParser extends NodeMethodParser<GuardData> {
         }
         List<GuardExpression> guardExpressions = new ArrayList<>();
         for (String string : impliesExpressions) {
-            guardExpressions.add(new GuardExpression(string));
+            guardExpressions.add(new GuardExpression(string, false));
         }
         return new GuardData(method, guardExpressions);
     }

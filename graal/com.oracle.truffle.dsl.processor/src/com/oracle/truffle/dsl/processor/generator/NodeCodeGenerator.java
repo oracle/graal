@@ -322,12 +322,12 @@ public class NodeCodeGenerator extends AbstractCompilationUnitFactory<NodeData> 
     /**
      * <pre>
      * variant1 $condition != null
-     * 
+     *
      * $type $name = defaultValue($type);
      * if ($condition) {
      *     $name = $value;
      * }
-     * 
+     *
      * variant2 $condition != null
      * $type $name = $value;
      * </pre>
@@ -1590,9 +1590,13 @@ public class NodeCodeGenerator extends AbstractCompilationUnitFactory<NodeData> 
         }
 
         private boolean needsTypeGuard(SpecializationData source, SpecializationGroup group, GuardExpression guard) {
-            int signatureIndex = 0;
             for (Parameter parameter : guard.getResolvedGuard().getParameters()) {
                 if (!parameter.getSpecification().isSignature()) {
+                    continue;
+                }
+
+                int signatureIndex = source.getNode().getChildExecutions().indexOf(parameter.getSpecification().getExecution());
+                if (signatureIndex == -1) {
                     continue;
                 }
 
@@ -1609,8 +1613,6 @@ public class NodeCodeGenerator extends AbstractCompilationUnitFactory<NodeData> 
                         return true;
                     }
                 }
-
-                signatureIndex++;
             }
             return false;
         }
