@@ -48,11 +48,11 @@ public final class SLIfNode extends SLStatementNode {
     /**
      * Profiling information, collected by the interpreter, capturing the profiling information of
      * the condition. This allows the compiler to generate better code for conditions that are
-     * always true or always false. Additionally the {@link IntegerConditionProfile} implementation
-     * (as opposed to {@link BooleanConditionProfile} implementation) transmits the probability of
+     * always true or always false. Additionally the {@link CountingConditionProfile} implementation
+     * (as opposed to {@link BinaryConditionProfile} implementation) transmits the probability of
      * the condition to be true to the compiler.
      */
-    private final ConditionProfile condition = new IntegerConditionProfile();
+    private final ConditionProfile condition = new CountingConditionProfile();
 
     public SLIfNode(SourceSection src, SLExpressionNode conditionNode, SLStatementNode thenPartNode, SLStatementNode elsePartNode) {
         super(src);
