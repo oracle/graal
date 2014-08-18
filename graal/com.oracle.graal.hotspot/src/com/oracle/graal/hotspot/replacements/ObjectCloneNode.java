@@ -43,7 +43,11 @@ import com.oracle.graal.replacements.nodes.*;
 @NodeInfo
 public class ObjectCloneNode extends MacroStateSplitNode implements VirtualizableAllocation, ArrayLengthProvider {
 
-    public ObjectCloneNode(Invoke invoke) {
+    public static ObjectCloneNode create(Invoke invoke) {
+        return new ObjectCloneNodeGen(invoke);
+    }
+
+    protected ObjectCloneNode(Invoke invoke) {
         super(invoke);
     }
 
@@ -84,16 +88,16 @@ public class ObjectCloneNode extends MacroStateSplitNode implements Virtualizabl
                 type = getConcreteType(getObject().stamp(), tool.assumptions(), tool.getMetaAccess());
                 if (type != null) {
                     StructuredGraph newGraph = new StructuredGraph();
-                    ParameterNode param = newGraph.unique(new ParameterNode(0, getObject().stamp()));
-                    NewInstanceNode newInstance = newGraph.add(new NewInstanceNode(type, true));
+                    ParameterNode param = newGraph.unique(ParameterNode.create(0, getObject().stamp()));
+                    NewInstanceNode newInstance = newGraph.add(NewInstanceNode.create(type, true));
                     newGraph.addAfterFixed(newGraph.start(), newInstance);
-                    ReturnNode returnNode = newGraph.add(new ReturnNode(newInstance));
+                    ReturnNode returnNode = newGraph.add(ReturnNode.create(newInstance));
                     newGraph.addAfterFixed(newInstance, returnNode);
 
                     for (ResolvedJavaField field : type.getInstanceFields(true)) {
-                        LoadFieldNode load = newGraph.add(new LoadFieldNode(param, field));
+                        LoadFieldNode load = newGraph.add(LoadFieldNode.create(param, field));
                         newGraph.addBeforeFixed(returnNode, load);
-                        newGraph.addBeforeFixed(returnNode, newGraph.add(new StoreFieldNode(newInstance, field, load)));
+                        newGraph.addBeforeFixed(returnNode, newGraph.add(StoreFieldNode.create(newInstance, field, load)));
                     }
                     return lowerReplacement(newGraph, tool);
                 }
@@ -109,7 +113,7 @@ public class ObjectCloneNode extends MacroStateSplitNode implements Virtualizabl
     /*
      * Looks at the given stamp and determines if it is an exact type (or can be assumed to be an
      * exact type) and if it is a cloneable type.
-     *
+     * 
      * If yes, then the exact type is returned, otherwise it returns null.
      */
     private static ResolvedJavaType getConcreteType(Stamp stamp, Assumptions assumptions, MetaAccessProvider metaAccess) {
@@ -155,13 +159,13 @@ public class ObjectCloneNode extends MacroStateSplitNode implements Virtualizabl
             }
             ResolvedJavaType type = getConcreteType(obj.stamp(), tool.getAssumptions(), tool.getMetaAccessProvider());
             if (type != null && !type.isArray()) {
-                VirtualInstanceNode newVirtual = new VirtualInstanceNode(type, true);
+                VirtualInstanceNode newVirtual = VirtualInstanceNode.create(type, true);
                 ResolvedJavaField[] fields = newVirtual.getFields();
 
                 ValueNode[] state = new ValueNode[fields.length];
                 final LoadFieldNode[] loads = new LoadFieldNode[fields.length];
                 for (int i = 0; i < fields.length; i++) {
-                    state[i] = loads[i] = new LoadFieldNode(obj, fields[i]);
+                    state[i] = loads[i] = LoadFieldNode.create(obj, fields[i]);
                     tool.addNode(loads[i]);
                 }
                 tool.createVirtualObject(newVirtual, state, Collections.<MonitorIdNode> emptyList());

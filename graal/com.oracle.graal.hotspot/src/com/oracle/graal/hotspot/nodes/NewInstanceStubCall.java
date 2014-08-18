@@ -44,7 +44,11 @@ public class NewInstanceStubCall extends DeoptimizingStubCall implements LIRLowe
 
     @Input private ValueNode hub;
 
-    public NewInstanceStubCall(ValueNode hub) {
+    public static NewInstanceStubCall create(ValueNode hub) {
+        return new NewInstanceStubCallGen(hub);
+    }
+
+    protected NewInstanceStubCall(ValueNode hub) {
         super(defaultStamp);
         this.hub = hub;
     }

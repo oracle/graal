@@ -34,7 +34,15 @@ import com.oracle.graal.nodes.util.*;
 @NodeInfo(shortName = "-")
 public class FloatSubNode extends FloatArithmeticNode {
 
-    public FloatSubNode(ValueNode x, ValueNode y, boolean isStrictFP) {
+    public static FloatSubNode create(ValueNode x, ValueNode y, boolean isStrictFP) {
+        return new FloatSubNodeGen(x, y, isStrictFP);
+    }
+
+    public static Class<? extends FloatSubNode> getGenClass() {
+        return FloatSubNodeGen.class;
+    }
+
+    protected FloatSubNode(ValueNode x, ValueNode y, boolean isStrictFP) {
         super(x.stamp().unrestricted(), x, y, isStrictFP);
     }
 
@@ -63,12 +71,12 @@ public class FloatSubNode extends FloatArithmeticNode {
             switch (x.getKind()) {
                 case Float:
                     if (Float.compare(x.asFloat(), -0.0f) == 0) {
-                        return new NegateNode(forY);
+                        return NegateNode.create(forY);
                     }
                     break;
                 case Double:
                     if (Double.compare(x.asDouble(), -0.0) == 0) {
-                        return new NegateNode(forY);
+                        return NegateNode.create(forY);
                     }
                     break;
                 default:
@@ -101,7 +109,7 @@ public class FloatSubNode extends FloatArithmeticNode {
          * that a-b produces the same result as a+(-b).
          */
         if (forY instanceof NegateNode) {
-            return new FloatAddNode(forX, ((NegateNode) forY).getValue(), isStrictFP());
+            return FloatAddNode.create(forX, ((NegateNode) forY).getValue(), isStrictFP());
         }
         return this;
     }

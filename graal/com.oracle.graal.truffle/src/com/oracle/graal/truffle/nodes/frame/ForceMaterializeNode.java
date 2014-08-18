@@ -32,7 +32,11 @@ public class ForceMaterializeNode extends FixedWithNextNode implements LIRLowera
 
     @Input private ValueNode object;
 
-    public ForceMaterializeNode(ValueNode object) {
+    public static ForceMaterializeNode create(ValueNode object) {
+        return new ForceMaterializeNodeGen(object);
+    }
+
+    protected ForceMaterializeNode(ValueNode object) {
         super(StampFactory.forVoid());
         this.object = object;
     }

@@ -43,7 +43,11 @@ public class EnterUnpackFramesStackFrameNode extends FixedWithNextNode implement
     @Input private ValueNode senderFp;
     @Input private SaveAllRegistersNode registerSaver;
 
-    public EnterUnpackFramesStackFrameNode(ValueNode framePc, ValueNode senderSp, ValueNode senderFp, ValueNode registerSaver) {
+    public static EnterUnpackFramesStackFrameNode create(ValueNode framePc, ValueNode senderSp, ValueNode senderFp, ValueNode registerSaver) {
+        return new EnterUnpackFramesStackFrameNodeGen(framePc, senderSp, senderFp, registerSaver);
+    }
+
+    protected EnterUnpackFramesStackFrameNode(ValueNode framePc, ValueNode senderSp, ValueNode senderFp, ValueNode registerSaver) {
         super(StampFactory.forVoid());
         this.framePc = framePc;
         this.senderSp = senderSp;

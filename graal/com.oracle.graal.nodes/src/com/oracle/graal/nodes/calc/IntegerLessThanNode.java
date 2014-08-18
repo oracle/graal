@@ -40,7 +40,11 @@ public class IntegerLessThanNode extends CompareNode {
      * @param x the instruction producing the first input to the instruction
      * @param y the instruction that produces the second input to this instruction
      */
-    public IntegerLessThanNode(ValueNode x, ValueNode y) {
+    public static IntegerLessThanNode create(ValueNode x, ValueNode y) {
+        return new IntegerLessThanNodeGen(x, y);
+    }
+
+    protected IntegerLessThanNode(ValueNode x, ValueNode y) {
         super(x, y);
         assert !x.getKind().isNumericFloat() && x.getKind() != Kind.Object;
         assert !y.getKind().isNumericFloat() && y.getKind() != Kind.Object;
@@ -64,9 +68,9 @@ public class IntegerLessThanNode extends CompareNode {
             ValueNode b = mirrored ? normalizeNode.getX() : normalizeNode.getY();
 
             if (normalizeNode.getX().getKind() == Kind.Double || normalizeNode.getX().getKind() == Kind.Float) {
-                return new FloatLessThanNode(a, b, mirrored ^ normalizeNode.isUnorderedLess);
+                return FloatLessThanNode.create(a, b, mirrored ^ normalizeNode.isUnorderedLess);
             } else {
-                return new IntegerLessThanNode(a, b);
+                return IntegerLessThanNode.create(a, b);
             }
         }
         return this;
@@ -91,7 +95,7 @@ public class IntegerLessThanNode extends CompareNode {
         }
         if (forX.stamp() instanceof IntegerStamp && forY.stamp() instanceof IntegerStamp) {
             if (IntegerStamp.sameSign((IntegerStamp) forX.stamp(), (IntegerStamp) forY.stamp())) {
-                return new IntegerBelowNode(forX, forY);
+                return IntegerBelowNode.create(forX, forY);
             }
         }
         return this;
@@ -100,9 +104,9 @@ public class IntegerLessThanNode extends CompareNode {
     @Override
     protected CompareNode duplicateModified(ValueNode newX, ValueNode newY) {
         if (newX.stamp() instanceof FloatStamp && newY.stamp() instanceof FloatStamp) {
-            return new FloatLessThanNode(newX, newY, true);
+            return FloatLessThanNode.create(newX, newY, true);
         } else if (newX.stamp() instanceof IntegerStamp && newY.stamp() instanceof IntegerStamp) {
-            return new IntegerLessThanNode(newX, newY);
+            return IntegerLessThanNode.create(newX, newY);
         }
         throw GraalInternalError.shouldNotReachHere();
     }

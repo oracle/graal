@@ -66,14 +66,14 @@ public class IndexedLocationNode extends LocationNode implements Canonicalizable
     }
 
     public static IndexedLocationNode create(LocationIdentity identity, Kind kind, long displacement, ValueNode index, Graph graph, int indexScaling) {
-        return graph.unique(new IndexedLocationNode(identity, kind, displacement, index, indexScaling));
+        return graph.unique(IndexedLocationNode.create(identity, kind, displacement, index, indexScaling));
     }
 
     public static IndexedLocationNode create(LocationIdentity identity, Kind kind, long displacement, ValueNode index, int indexScaling) {
-        return new IndexedLocationNode(identity, kind, displacement, index, indexScaling);
+        return new IndexedLocationNodeGen(identity, kind, displacement, index, indexScaling);
     }
 
-    public IndexedLocationNode(LocationIdentity identity, Kind kind, long displacement, ValueNode index, int indexScaling) {
+    IndexedLocationNode(LocationIdentity identity, Kind kind, long displacement, ValueNode index, int indexScaling) {
         super(StampFactory.forVoid());
         assert index != null;
         assert indexScaling != 0;

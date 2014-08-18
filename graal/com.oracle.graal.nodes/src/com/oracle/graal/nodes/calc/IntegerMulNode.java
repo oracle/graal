@@ -34,7 +34,15 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(shortName = "*")
 public class IntegerMulNode extends IntegerArithmeticNode implements NarrowableArithmeticNode {
 
-    public IntegerMulNode(ValueNode x, ValueNode y) {
+    public static IntegerMulNode create(ValueNode x, ValueNode y) {
+        return new IntegerMulNodeGen(x, y);
+    }
+
+    public static Class<? extends IntegerMulNode> getGenClass() {
+        return IntegerMulNodeGen.class;
+    }
+
+    protected IntegerMulNode(ValueNode x, ValueNode y) {
         super(x.stamp().unrestricted(), x, y);
         assert x.stamp().isCompatible(y.stamp());
     }
@@ -48,7 +56,7 @@ public class IntegerMulNode extends IntegerArithmeticNode implements NarrowableA
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
         if (forX.isConstant() && !forY.isConstant()) {
-            return new IntegerMulNode(forY, forX);
+            return IntegerMulNode.create(forY, forX);
         }
         if (forX.isConstant()) {
             return ConstantNode.forPrimitive(evalConst(forX.asConstant(), forY.asConstant()));
@@ -62,9 +70,9 @@ public class IntegerMulNode extends IntegerArithmeticNode implements NarrowableA
             }
             long abs = Math.abs(c);
             if (abs > 0 && CodeUtil.isPowerOf2(abs)) {
-                LeftShiftNode shift = new LeftShiftNode(forX, ConstantNode.forInt(CodeUtil.log2(abs)));
+                LeftShiftNode shift = LeftShiftNode.create(forX, ConstantNode.forInt(CodeUtil.log2(abs)));
                 if (c < 0) {
-                    return new NegateNode(shift);
+                    return NegateNode.create(shift);
                 } else {
                     return shift;
                 }

@@ -34,6 +34,10 @@ public class LogicConstantNode extends LogicNode implements LIRLowerable {
 
     public final boolean value;
 
+    public static LogicConstantNode create(boolean value) {
+        return new LogicConstantNodeGen(value);
+    }
+
     protected LogicConstantNode(boolean value) {
         super();
         this.value = value;
@@ -47,7 +51,7 @@ public class LogicConstantNode extends LogicNode implements LIRLowerable {
      * @return a node representing the boolean
      */
     public static LogicConstantNode forBoolean(boolean v, Graph graph) {
-        return graph.unique(new LogicConstantNode(v));
+        return graph.unique(LogicConstantNode.create(v));
     }
 
     /**
@@ -57,7 +61,7 @@ public class LogicConstantNode extends LogicNode implements LIRLowerable {
      * @return a node representing the boolean
      */
     public static LogicConstantNode forBoolean(boolean v) {
-        return new LogicConstantNode(v);
+        return LogicConstantNode.create(v);
     }
 
     /**

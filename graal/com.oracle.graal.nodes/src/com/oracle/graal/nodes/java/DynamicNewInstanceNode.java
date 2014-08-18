@@ -34,7 +34,11 @@ public class DynamicNewInstanceNode extends AbstractNewObjectNode implements Can
 
     @Input private ValueNode clazz;
 
-    public DynamicNewInstanceNode(ValueNode clazz, boolean fillContents) {
+    public static DynamicNewInstanceNode create(ValueNode clazz, boolean fillContents) {
+        return new DynamicNewInstanceNodeGen(clazz, fillContents);
+    }
+
+    DynamicNewInstanceNode(ValueNode clazz, boolean fillContents) {
         super(StampFactory.objectNonNull(), fillContents);
         this.clazz = clazz;
     }
@@ -44,7 +48,7 @@ public class DynamicNewInstanceNode extends AbstractNewObjectNode implements Can
         if (clazz.isConstant()) {
             ResolvedJavaType type = tool.getConstantReflection().asJavaType(clazz.asConstant());
             if (type != null && type.isInitialized() && !type.isArray() && !type.isInterface() && !type.isPrimitive()) {
-                return new NewInstanceNode(type, fillContents());
+                return NewInstanceNode.create(type, fillContents());
             }
         }
         return this;

@@ -162,7 +162,7 @@ public class UseTrappingNullChecksPhase extends BasePhase<LowTierContext> {
         IsNullNode isNullNode = (IsNullNode) condition;
         BeginNode nonTrappingContinuation = ifNode.falseSuccessor();
         BeginNode trappingContinuation = ifNode.trueSuccessor();
-        NullCheckNode trappingNullCheck = deopt.graph().add(new NullCheckNode(isNullNode.getValue()));
+        NullCheckNode trappingNullCheck = deopt.graph().add(NullCheckNode.create(isNullNode.getValue()));
         trappingNullCheck.setStateBefore(deopt.stateBefore());
         deopt.graph().replaceSplit(ifNode, trappingNullCheck, nonTrappingContinuation);
 

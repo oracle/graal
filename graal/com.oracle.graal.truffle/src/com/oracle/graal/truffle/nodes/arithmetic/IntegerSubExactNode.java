@@ -40,7 +40,11 @@ import com.oracle.truffle.api.*;
 @NodeInfo
 public class IntegerSubExactNode extends IntegerSubNode implements IntegerExactArithmeticNode {
 
-    public IntegerSubExactNode(ValueNode x, ValueNode y) {
+    public static IntegerSubExactNode create(ValueNode x, ValueNode y) {
+        return new IntegerSubExactNodeGen(x, y);
+    }
+
+    protected IntegerSubExactNode(ValueNode x, ValueNode y) {
         super(x, y);
         assert x.stamp().isCompatible(y.stamp()) && x.stamp() instanceof IntegerStamp;
     }
@@ -86,7 +90,7 @@ public class IntegerSubExactNode extends IntegerSubNode implements IntegerExactA
 
     @Override
     public IntegerExactArithmeticSplitNode createSplit(BeginNode next, BeginNode deopt) {
-        return graph().add(new IntegerSubExactSplitNode(stamp(), getX(), getY(), next, deopt));
+        return graph().add(IntegerSubExactSplitNode.create(stamp(), getX(), getY(), next, deopt));
     }
 
     @Override

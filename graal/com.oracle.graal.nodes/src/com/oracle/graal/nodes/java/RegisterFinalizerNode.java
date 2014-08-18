@@ -41,7 +41,11 @@ public class RegisterFinalizerNode extends AbstractStateSplit implements Canonic
     @OptionalInput(InputType.State) private FrameState deoptState;
     @Input private ValueNode value;
 
-    public RegisterFinalizerNode(ValueNode value) {
+    public static RegisterFinalizerNode create(ValueNode value) {
+        return new RegisterFinalizerNodeGen(value);
+    }
+
+    RegisterFinalizerNode(ValueNode value) {
         super(StampFactory.forVoid());
         this.value = value;
     }

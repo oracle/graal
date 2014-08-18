@@ -97,13 +97,13 @@ public abstract class IntegerConvertNode extends ConvertNode implements Arithmet
         if (toStamp.getBits() == fromStamp.getBits()) {
             result = input;
         } else if (toStamp.getBits() < fromStamp.getBits()) {
-            result = new NarrowNode(input, toStamp.getBits());
+            result = NarrowNode.create(input, toStamp.getBits());
         } else if (zeroExtend) {
             // toStamp.getBits() > fromStamp.getBits()
-            result = new ZeroExtendNode(input, toStamp.getBits());
+            result = ZeroExtendNode.create(input, toStamp.getBits());
         } else {
             // toStamp.getBits() > fromStamp.getBits()
-            result = new SignExtendNode(input, toStamp.getBits());
+            result = SignExtendNode.create(input, toStamp.getBits());
         }
 
         IntegerStamp resultStamp = (IntegerStamp) result.stamp();

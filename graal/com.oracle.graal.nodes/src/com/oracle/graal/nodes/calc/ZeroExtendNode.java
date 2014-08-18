@@ -38,7 +38,11 @@ import com.oracle.graal.nodes.type.*;
 @NodeInfo
 public class ZeroExtendNode extends IntegerConvertNode {
 
-    public ZeroExtendNode(ValueNode input, int resultBits) {
+    public static ZeroExtendNode create(ValueNode input, int resultBits) {
+        return new ZeroExtendNodeGen(input, resultBits);
+    }
+
+    protected ZeroExtendNode(ValueNode input, int resultBits) {
         super(StampTool.zeroExtend(input.stamp(), resultBits), input, resultBits);
     }
 
@@ -89,7 +93,7 @@ public class ZeroExtendNode extends IntegerConvertNode {
             // xxxx -(zero-extend)-> 0000 xxxx -(zero-extend)-> 00000000 0000xxxx
             // ==> xxxx -(zero-extend)-> 00000000 0000xxxx
             ZeroExtendNode other = (ZeroExtendNode) forValue;
-            return new ZeroExtendNode(other.getValue(), getResultBits());
+            return ZeroExtendNode.create(other.getValue(), getResultBits());
         }
         if (forValue instanceof NarrowNode) {
             NarrowNode narrow = (NarrowNode) forValue;

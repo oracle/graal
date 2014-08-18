@@ -116,7 +116,7 @@ public class ComputeInliningRelevance {
                         parent = loops.get(null);
                         break;
                     } else {
-                        assert current.getClass() == MergeNode.class : current;
+                        assert current.getClass() == MergeNode.getGenClass() : current;
                         // follow any path upwards - it doesn't matter which one
                         current = ((MergeNode) current).forwardEndAt(0);
                     }

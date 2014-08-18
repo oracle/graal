@@ -35,7 +35,15 @@ import com.oracle.graal.nodes.util.*;
 @NodeInfo(shortName = "-")
 public class IntegerSubNode extends IntegerArithmeticNode implements NarrowableArithmeticNode {
 
-    public IntegerSubNode(ValueNode x, ValueNode y) {
+    public static IntegerSubNode create(ValueNode x, ValueNode y) {
+        return new IntegerSubNodeGen(x, y);
+    }
+
+    public static Class<? extends IntegerSubNode> getGenClass() {
+        return IntegerSubNodeGen.class;
+    }
+
+    protected IntegerSubNode(ValueNode x, ValueNode y) {
         super(StampTool.sub(x.stamp(), y.stamp()), x, y);
     }
 
@@ -69,18 +77,18 @@ public class IntegerSubNode extends IntegerArithmeticNode implements NarrowableA
             IntegerSubNode x = (IntegerSubNode) forX;
             if (x.getX() == forY) {
                 // (a - b) - a
-                return new NegateNode(x.getY());
+                return NegateNode.create(x.getY());
             }
         }
         if (forY instanceof IntegerAddNode) {
             IntegerAddNode y = (IntegerAddNode) forY;
             if (y.getX() == forX) {
                 // a - (a + b)
-                return new NegateNode(y.getY());
+                return NegateNode.create(y.getY());
             }
             if (y.getY() == forX) {
                 // b - (a + b)
-                return new NegateNode(y.getX());
+                return NegateNode.create(y.getX());
             }
         } else if (forY instanceof IntegerSubNode) {
             IntegerSubNode y = (IntegerSubNode) forY;
@@ -108,7 +116,7 @@ public class IntegerSubNode extends IntegerArithmeticNode implements NarrowableA
         } else if (forX.isConstant()) {
             long c = forX.asConstant().asLong();
             if (c == 0) {
-                return new NegateNode(forY);
+                return NegateNode.create(forY);
             }
             return BinaryNode.reassociate(this, ValueNode.isConstantPredicate(), forX, forY);
         }

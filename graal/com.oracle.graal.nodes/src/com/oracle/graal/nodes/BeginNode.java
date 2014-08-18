@@ -38,11 +38,23 @@ import com.oracle.graal.nodes.util.*;
 @NodeInfo(allowedUsageTypes = {InputType.Guard, InputType.Anchor})
 public class BeginNode extends FixedWithNextNode implements LIRLowerable, Simplifiable, GuardingNode, AnchoringNode, IterableNodeType {
 
-    public BeginNode() {
+    public static BeginNode create() {
+        return new BeginNodeGen();
+    }
+
+    public static Class<? extends BeginNode> getGenClass() {
+        return BeginNodeGen.class;
+    }
+
+    protected BeginNode() {
         super(StampFactory.forVoid());
     }
 
-    public BeginNode(Stamp stamp) {
+    public static BeginNode create(Stamp stamp) {
+        return new BeginNodeGen(stamp);
+    }
+
+    protected BeginNode(Stamp stamp) {
         super(stamp);
     }
 
@@ -50,7 +62,7 @@ public class BeginNode extends FixedWithNextNode implements LIRLowerable, Simpli
         if (with instanceof BeginNode) {
             return (BeginNode) with;
         }
-        BeginNode begin = with.graph().add(new BeginNode());
+        BeginNode begin = with.graph().add(BeginNode.create());
         begin.setNext(with);
         return begin;
     }

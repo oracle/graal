@@ -47,7 +47,11 @@ public class MembarNode extends FixedWithNextNode implements LIRLowerable, Memor
     /**
      * @param barriers a mask of the barrier constants defined in {@link MemoryBarriers}
      */
-    public MembarNode(int barriers) {
+    public static MembarNode create(int barriers) {
+        return new MembarNodeGen(barriers);
+    }
+
+    MembarNode(int barriers) {
         super(StampFactory.forVoid());
         this.barriers = barriers;
     }

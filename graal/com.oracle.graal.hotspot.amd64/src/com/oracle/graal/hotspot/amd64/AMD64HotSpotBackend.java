@@ -329,7 +329,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
         HotSpotVMConfig config = HotSpotGraalRuntime.runtime().getConfig();
         RawNativeCallNodeFactory factory = new RawNativeCallNodeFactory() {
             public FixedWithNextNode createRawCallNode(Kind returnType, Constant functionPointer, ValueNode... args) {
-                return new AMD64RawNativeCallNode(returnType, functionPointer, args);
+                return AMD64RawNativeCallNode.create(returnType, functionPointer, args);
             }
         };
         Backend backend = HotSpotGraalRuntime.runtime().getBackend(AMD64.class);

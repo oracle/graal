@@ -59,10 +59,10 @@ public abstract class ProxyNode extends FloatingNode implements IterableNodeType
     }
 
     public static ValueProxyNode forValue(ValueNode value, BeginNode exit, StructuredGraph graph) {
-        return graph.unique(new ValueProxyNode(value, exit));
+        return graph.unique(ValueProxyNode.create(value, exit));
     }
 
     public static GuardProxyNode forGuard(GuardingNode value, BeginNode exit, StructuredGraph graph) {
-        return graph.unique(new GuardProxyNode(value, exit));
+        return graph.unique(GuardProxyNode.create(value, exit));
     }
 }

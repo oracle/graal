@@ -50,6 +50,10 @@ public class CompressionNode extends ConvertNode implements LIRLowerable {
     private final CompressionOp op;
     private final CompressEncoding encoding;
 
+    public static CompressionNode create(CompressionOp op, ValueNode input, CompressEncoding encoding) {
+        return new CompressionNodeGen(op, input, encoding);
+    }
+
     CompressionNode(CompressionOp op, ValueNode input, CompressEncoding encoding) {
         super(mkStamp(op, input.stamp(), encoding), input);
         this.op = op;
@@ -62,11 +66,11 @@ public class CompressionNode extends ConvertNode implements LIRLowerable {
     }
 
     public static CompressionNode compress(ValueNode input, CompressEncoding encoding) {
-        return input.graph().unique(new CompressionNode(CompressionOp.Compress, input, encoding));
+        return input.graph().unique(CompressionNode.create(CompressionOp.Compress, input, encoding));
     }
 
     public static CompressionNode uncompress(ValueNode input, CompressEncoding encoding) {
-        return input.graph().unique(new CompressionNode(CompressionOp.Uncompress, input, encoding));
+        return input.graph().unique(CompressionNode.create(CompressionOp.Uncompress, input, encoding));
     }
 
     private static Constant compress(Constant c, CompressEncoding encoding) {

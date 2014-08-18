@@ -44,6 +44,10 @@ public class UnsafeArrayCopyNode extends ArrayRangeWriteNode implements Lowerabl
 
     private Kind elementKind;
 
+    public static UnsafeArrayCopyNode create(ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, ValueNode layoutHelper, Kind elementKind) {
+        return new UnsafeArrayCopyNodeGen(src, srcPos, dest, destPos, length, layoutHelper, elementKind);
+    }
+
     UnsafeArrayCopyNode(ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, ValueNode layoutHelper, Kind elementKind) {
         super(StampFactory.forVoid());
         assert layoutHelper == null || elementKind == null;
@@ -56,11 +60,19 @@ public class UnsafeArrayCopyNode extends ArrayRangeWriteNode implements Lowerabl
         this.elementKind = elementKind;
     }
 
-    private UnsafeArrayCopyNode(ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, Kind elementKind) {
+    public static UnsafeArrayCopyNode create(ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, Kind elementKind) {
+        return new UnsafeArrayCopyNodeGen(src, srcPos, dest, destPos, length, elementKind);
+    }
+
+    UnsafeArrayCopyNode(ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, Kind elementKind) {
         this(src, srcPos, dest, destPos, length, null, elementKind);
     }
 
-    private UnsafeArrayCopyNode(ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, ValueNode layoutHelper) {
+    public static UnsafeArrayCopyNode create(ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, ValueNode layoutHelper) {
+        return new UnsafeArrayCopyNodeGen(src, srcPos, dest, destPos, length, layoutHelper);
+    }
+
+    UnsafeArrayCopyNode(ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, ValueNode layoutHelper) {
         this(src, srcPos, dest, destPos, length, layoutHelper, null);
     }
 

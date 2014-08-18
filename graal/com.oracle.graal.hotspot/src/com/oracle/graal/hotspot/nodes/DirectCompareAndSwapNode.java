@@ -47,7 +47,11 @@ public class DirectCompareAndSwapNode extends FixedWithNextNode implements LIRLo
 
     private final LocationIdentity locationIdentity;
 
-    public DirectCompareAndSwapNode(ValueNode object, ValueNode offset, ValueNode expected, ValueNode newValue, LocationIdentity locationIdentity) {
+    public static DirectCompareAndSwapNode create(ValueNode object, ValueNode offset, ValueNode expected, ValueNode newValue, LocationIdentity locationIdentity) {
+        return new DirectCompareAndSwapNodeGen(object, offset, expected, newValue, locationIdentity);
+    }
+
+    protected DirectCompareAndSwapNode(ValueNode object, ValueNode offset, ValueNode expected, ValueNode newValue, LocationIdentity locationIdentity) {
         super(expected.stamp());
         this.object = object;
         this.offset = offset;

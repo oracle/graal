@@ -38,7 +38,11 @@ import com.oracle.graal.replacements.nodes.*;
 @NodeInfo
 public class ClassIsInterfaceNode extends MacroNode implements Canonicalizable {
 
-    public ClassIsInterfaceNode(Invoke invoke) {
+    public static ClassIsInterfaceNode create(Invoke invoke) {
+        return new ClassIsInterfaceNodeGen(invoke);
+    }
+
+    protected ClassIsInterfaceNode(Invoke invoke) {
         super(invoke);
     }
 

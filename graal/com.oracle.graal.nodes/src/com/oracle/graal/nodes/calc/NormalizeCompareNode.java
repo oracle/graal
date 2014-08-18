@@ -47,7 +47,11 @@ public class NormalizeCompareNode extends BinaryNode implements Lowerable {
      * @param isUnorderedLess true when an unordered floating point comparison is interpreted as
      *            less, false when greater.
      */
-    public NormalizeCompareNode(ValueNode x, ValueNode y, boolean isUnorderedLess) {
+    public static NormalizeCompareNode create(ValueNode x, ValueNode y, boolean isUnorderedLess) {
+        return new NormalizeCompareNodeGen(x, y, isUnorderedLess);
+    }
+
+    protected NormalizeCompareNode(ValueNode x, ValueNode y, boolean isUnorderedLess) {
         super(StampFactory.forKind(Kind.Int), x, y);
         this.isUnorderedLess = isUnorderedLess;
     }
@@ -63,15 +67,15 @@ public class NormalizeCompareNode extends BinaryNode implements Lowerable {
         LogicNode equalComp;
         LogicNode lessComp;
         if (getX().stamp() instanceof FloatStamp) {
-            equalComp = graph().unique(new FloatEqualsNode(getX(), getY()));
-            lessComp = graph().unique(new FloatLessThanNode(getX(), getY(), isUnorderedLess));
+            equalComp = graph().unique(FloatEqualsNode.create(getX(), getY()));
+            lessComp = graph().unique(FloatLessThanNode.create(getX(), getY(), isUnorderedLess));
         } else {
-            equalComp = graph().unique(new IntegerEqualsNode(getX(), getY()));
-            lessComp = graph().unique(new IntegerLessThanNode(getX(), getY()));
+            equalComp = graph().unique(IntegerEqualsNode.create(getX(), getY()));
+            lessComp = graph().unique(IntegerLessThanNode.create(getX(), getY()));
         }
 
-        ConditionalNode equalValue = graph().unique(new ConditionalNode(equalComp, ConstantNode.forInt(0, graph()), ConstantNode.forInt(1, graph())));
-        ConditionalNode value = graph().unique(new ConditionalNode(lessComp, ConstantNode.forInt(-1, graph()), equalValue));
+        ConditionalNode equalValue = graph().unique(ConditionalNode.create(equalComp, ConstantNode.forInt(0, graph()), ConstantNode.forInt(1, graph())));
+        ConditionalNode value = graph().unique(ConditionalNode.create(lessComp, ConstantNode.forInt(-1, graph()), equalValue));
 
         graph().replaceFloating(this, value);
     }

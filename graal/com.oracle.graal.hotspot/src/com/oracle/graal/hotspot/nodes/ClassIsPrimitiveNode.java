@@ -38,7 +38,11 @@ import com.oracle.graal.replacements.nodes.*;
 @NodeInfo
 public class ClassIsPrimitiveNode extends MacroNode implements Canonicalizable {
 
-    public ClassIsPrimitiveNode(Invoke invoke) {
+    public static ClassIsPrimitiveNode create(Invoke invoke) {
+        return new ClassIsPrimitiveNodeGen(invoke);
+    }
+
+    protected ClassIsPrimitiveNode(Invoke invoke) {
         super(invoke);
     }
 

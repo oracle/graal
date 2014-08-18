@@ -39,15 +39,27 @@ public class FloatingReadNode extends FloatingAccessNode implements IterableNode
 
     @OptionalInput(InputType.Memory) private MemoryNode lastLocationAccess;
 
-    public FloatingReadNode(ValueNode object, LocationNode location, MemoryNode lastLocationAccess, Stamp stamp) {
+    public static FloatingReadNode create(ValueNode object, LocationNode location, MemoryNode lastLocationAccess, Stamp stamp) {
+        return new FloatingReadNodeGen(object, location, lastLocationAccess, stamp);
+    }
+
+    FloatingReadNode(ValueNode object, LocationNode location, MemoryNode lastLocationAccess, Stamp stamp) {
         this(object, location, lastLocationAccess, stamp, null, BarrierType.NONE);
     }
 
-    public FloatingReadNode(ValueNode object, LocationNode location, MemoryNode lastLocationAccess, Stamp stamp, GuardingNode guard) {
+    public static FloatingReadNode create(ValueNode object, LocationNode location, MemoryNode lastLocationAccess, Stamp stamp, GuardingNode guard) {
+        return new FloatingReadNodeGen(object, location, lastLocationAccess, stamp, guard);
+    }
+
+    FloatingReadNode(ValueNode object, LocationNode location, MemoryNode lastLocationAccess, Stamp stamp, GuardingNode guard) {
         this(object, location, lastLocationAccess, stamp, guard, BarrierType.NONE);
     }
 
-    public FloatingReadNode(ValueNode object, LocationNode location, MemoryNode lastLocationAccess, Stamp stamp, GuardingNode guard, BarrierType barrierType) {
+    public static FloatingReadNode create(ValueNode object, LocationNode location, MemoryNode lastLocationAccess, Stamp stamp, GuardingNode guard, BarrierType barrierType) {
+        return new FloatingReadNodeGen(object, location, lastLocationAccess, stamp, guard, barrierType);
+    }
+
+    FloatingReadNode(ValueNode object, LocationNode location, MemoryNode lastLocationAccess, Stamp stamp, GuardingNode guard, BarrierType barrierType) {
         super(object, location, stamp, guard, barrierType);
         this.lastLocationAccess = lastLocationAccess;
     }
@@ -71,14 +83,14 @@ public class FloatingReadNode extends FloatingAccessNode implements IterableNode
     @Override
     public Node canonical(CanonicalizerTool tool) {
         if (object() instanceof PiNode && ((PiNode) object()).getGuard() == getGuard()) {
-            return new FloatingReadNode(((PiNode) object()).getOriginalNode(), location(), getLastLocationAccess(), stamp(), getGuard(), getBarrierType());
+            return FloatingReadNode.create(((PiNode) object()).getOriginalNode(), location(), getLastLocationAccess(), stamp(), getGuard(), getBarrierType());
         }
         return ReadNode.canonicalizeRead(this, location(), object(), tool);
     }
 
     @Override
     public FixedAccessNode asFixedNode() {
-        return graph().add(new ReadNode(object(), accessLocation(), stamp(), getGuard(), getBarrierType()));
+        return graph().add(ReadNode.create(object(), accessLocation(), stamp(), getGuard(), getBarrierType()));
     }
 
     @Override

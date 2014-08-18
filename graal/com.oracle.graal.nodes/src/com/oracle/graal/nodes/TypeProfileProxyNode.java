@@ -43,7 +43,7 @@ public class TypeProfileProxyNode extends UnaryNode implements IterableNodeType,
     private transient ResolvedJavaType lastCheckedType;
     private transient JavaTypeProfile lastCheckedProfile;
 
-    public static ValueNode create(ValueNode object, JavaTypeProfile profile) {
+    public static ValueNode proxify(ValueNode object, JavaTypeProfile profile) {
         if (StampTool.isExactType(object)) {
             return object;
         }
@@ -55,7 +55,11 @@ public class TypeProfileProxyNode extends UnaryNode implements IterableNodeType,
             // Only null profiling is not beneficial enough to keep the node around.
             return object;
         }
-        return object.graph().addWithoutUnique(new TypeProfileProxyNode(object, profile));
+        return object.graph().addWithoutUnique(create(object, profile));
+    }
+
+    public static ValueNode create(ValueNode object, JavaTypeProfile profile) {
+        return new TypeProfileProxyNodeGen(object, profile);
     }
 
     TypeProfileProxyNode(ValueNode value, JavaTypeProfile profile) {
@@ -93,7 +97,7 @@ public class TypeProfileProxyNode extends UnaryNode implements IterableNodeType,
             }
             if (newProfile != this.profile) {
                 Debug.log("Improved profile via other profile.");
-                return new TypeProfileProxyNode(forValue, newProfile);
+                return TypeProfileProxyNode.create(forValue, newProfile);
             }
         } else if (StampTool.typeOrNull(forValue) != null) {
             ResolvedJavaType type = StampTool.typeOrNull(forValue);
@@ -115,7 +119,7 @@ public class TypeProfileProxyNode extends UnaryNode implements IterableNodeType,
                     // Only null profiling is not beneficial enough to keep the node around.
                     return forValue;
                 }
-                return new TypeProfileProxyNode(forValue, newProfile);
+                return TypeProfileProxyNode.create(forValue, newProfile);
             }
         }
         return this;

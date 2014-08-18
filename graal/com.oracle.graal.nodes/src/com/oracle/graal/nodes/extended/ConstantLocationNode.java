@@ -41,11 +41,11 @@ public class ConstantLocationNode extends LocationNode {
     private final long displacement;
 
     public static ConstantLocationNode create(LocationIdentity identity, Kind kind, long displacement, Graph graph) {
-        return graph.unique(new ConstantLocationNode(identity, kind, displacement));
+        return graph.unique(ConstantLocationNode.create(identity, kind, displacement));
     }
 
     public static ConstantLocationNode create(LocationIdentity identity, Kind kind, long displacement) {
-        return new ConstantLocationNode(identity, kind, displacement);
+        return new ConstantLocationNodeGen(identity, kind, displacement);
     }
 
     ConstantLocationNode(LocationIdentity identity, Kind kind, long displacement) {

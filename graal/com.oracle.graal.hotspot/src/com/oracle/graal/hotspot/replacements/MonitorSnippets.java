@@ -495,8 +495,8 @@ public class MonitorSnippets implements Snippets {
                 if (nodes.isEmpty()) {
                     // Only insert the nodes if this is the first monitorenter being lowered.
                     JavaType returnType = initCounter.getMethod().getSignature().getReturnType(initCounter.getMethod().getDeclaringClass());
-                    MethodCallTargetNode callTarget = graph.add(new MethodCallTargetNode(InvokeKind.Static, initCounter.getMethod(), new ValueNode[0], returnType));
-                    InvokeNode invoke = graph.add(new InvokeNode(callTarget, 0));
+                    MethodCallTargetNode callTarget = graph.add(MethodCallTargetNode.create(InvokeKind.Static, initCounter.getMethod(), new ValueNode[0], returnType));
+                    InvokeNode invoke = graph.add(InvokeNode.create(callTarget, 0));
                     invoke.setStateAfter(graph.start().stateAfter());
                     graph.addAfterFixed(graph.start(), invoke);
 
@@ -508,10 +508,10 @@ public class MonitorSnippets implements Snippets {
                         returnType = checkCounter.getMethod().getSignature().getReturnType(checkCounter.getMethod().getDeclaringClass());
                         String msg = "unbalanced monitors in " + graph.method().format("%H.%n(%p)") + ", count = %d";
                         ConstantNode errMsg = ConstantNode.forConstant(HotSpotObjectConstant.forObject(msg), providers.getMetaAccess(), graph);
-                        callTarget = graph.add(new MethodCallTargetNode(InvokeKind.Static, checkCounter.getMethod(), new ValueNode[]{errMsg}, returnType));
-                        invoke = graph.add(new InvokeNode(callTarget, 0));
+                        callTarget = graph.add(MethodCallTargetNode.create(InvokeKind.Static, checkCounter.getMethod(), new ValueNode[]{errMsg}, returnType));
+                        invoke = graph.add(InvokeNode.create(callTarget, 0));
                         List<ValueNode> stack = Collections.emptyList();
-                        FrameState stateAfter = new FrameState(graph.method(), BytecodeFrame.AFTER_BCI, new ValueNode[0], stack, new ValueNode[0], new MonitorIdNode[0], false, false);
+                        FrameState stateAfter = FrameState.create(graph.method(), BytecodeFrame.AFTER_BCI, new ValueNode[0], stack, new ValueNode[0], new MonitorIdNode[0], false, false);
                         invoke.setStateAfter(graph.add(stateAfter));
                         graph.addBeforeFixed(ret, invoke);
 

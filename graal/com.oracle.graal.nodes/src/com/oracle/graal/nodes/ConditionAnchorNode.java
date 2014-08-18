@@ -35,11 +35,19 @@ public class ConditionAnchorNode extends FixedWithNextNode implements Canonicali
     @Input(InputType.Condition) private LogicNode condition;
     private boolean negated;
 
-    public ConditionAnchorNode(LogicNode condition) {
+    public static ConditionAnchorNode create(LogicNode condition) {
+        return new ConditionAnchorNodeGen(condition);
+    }
+
+    protected ConditionAnchorNode(LogicNode condition) {
         this(condition, false);
     }
 
-    public ConditionAnchorNode(LogicNode condition, boolean negated) {
+    public static ConditionAnchorNode create(LogicNode condition, boolean negated) {
+        return new ConditionAnchorNodeGen(condition, negated);
+    }
+
+    protected ConditionAnchorNode(LogicNode condition, boolean negated) {
         super(StampFactory.forVoid());
         this.negated = negated;
         this.condition = condition;
@@ -65,14 +73,14 @@ public class ConditionAnchorNode extends FixedWithNextNode implements Canonicali
     public Node canonical(CanonicalizerTool tool, Node forValue) {
         if (condition instanceof LogicNegationNode) {
             LogicNegationNode negation = (LogicNegationNode) condition;
-            return new ConditionAnchorNode(negation.getValue(), !negated);
+            return ConditionAnchorNode.create(negation.getValue(), !negated);
         }
         if (condition instanceof LogicConstantNode) {
             LogicConstantNode c = (LogicConstantNode) condition;
             if (c.getValue() != negated) {
                 return null;
             } else {
-                return new ValueAnchorNode(null);
+                return ValueAnchorNode.create(null);
             }
         }
         return this;
@@ -81,7 +89,7 @@ public class ConditionAnchorNode extends FixedWithNextNode implements Canonicali
     @Override
     public void lower(LoweringTool tool) {
         if (graph().getGuardsStage() == StructuredGraph.GuardsStage.FIXED_DEOPTS) {
-            ValueAnchorNode newAnchor = graph().add(new ValueAnchorNode(null));
+            ValueAnchorNode newAnchor = graph().add(ValueAnchorNode.create(null));
             graph().replaceFixedWithFixed(this, newAnchor);
         }
     }

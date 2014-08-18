@@ -276,7 +276,7 @@ public final class TruffleCacheImpl implements TruffleCache {
             boolean removeAllocation = runtimeExceptionClass.isAssignableFrom(declaringClass) || errorClass.isAssignableFrom(declaringClass);
             boolean isControlFlowException = controlFlowExceptionClass.isAssignableFrom(exceptionType);
             if (removeAllocation && !isControlFlowException) {
-                DeoptimizeNode deoptNode = methodCallTargetNode.graph().add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.UnreachedCode));
+                DeoptimizeNode deoptNode = methodCallTargetNode.graph().add(DeoptimizeNode.create(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.UnreachedCode));
                 FixedNode invokeNode = methodCallTargetNode.invoke().asNode();
                 invokeNode.replaceAtPredecessor(deoptNode);
                 GraphUtil.killCFG(invokeNode);

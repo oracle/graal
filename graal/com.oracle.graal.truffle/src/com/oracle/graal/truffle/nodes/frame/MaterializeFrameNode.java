@@ -35,7 +35,11 @@ public class MaterializeFrameNode extends FixedWithNextNode implements IterableN
 
     @Input private ValueNode frame;
 
-    public MaterializeFrameNode(ValueNode frame) {
+    public static MaterializeFrameNode create(ValueNode frame) {
+        return new MaterializeFrameNodeGen(frame);
+    }
+
+    protected MaterializeFrameNode(ValueNode frame) {
         super(frame.stamp());
         this.frame = frame;
     }

@@ -276,9 +276,8 @@ public class EscapeAnalysisTest extends EATestBase {
         return obj2.x instanceof TestClassObject;
     }
 
-    @SuppressWarnings("unused")
     public static void testNewNodeSnippet() {
-        new ValueAnchorNode(null);
+        ValueAnchorNode.create(null);
     }
 
     /**

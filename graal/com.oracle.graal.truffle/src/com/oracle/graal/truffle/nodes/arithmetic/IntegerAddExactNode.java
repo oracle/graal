@@ -39,7 +39,11 @@ import com.oracle.truffle.api.*;
 @NodeInfo
 public class IntegerAddExactNode extends IntegerAddNode implements IntegerExactArithmeticNode {
 
-    public IntegerAddExactNode(ValueNode x, ValueNode y) {
+    public static IntegerAddExactNode create(ValueNode x, ValueNode y) {
+        return new IntegerAddExactNodeGen(x, y);
+    }
+
+    protected IntegerAddExactNode(ValueNode x, ValueNode y) {
         super(x, y);
         assert x.stamp().isCompatible(y.stamp()) && x.stamp() instanceof IntegerStamp;
     }
@@ -53,7 +57,7 @@ public class IntegerAddExactNode extends IntegerAddNode implements IntegerExactA
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
         if (forX.isConstant() && !forY.isConstant()) {
-            return new IntegerAddExactNode(forY, forX);
+            return IntegerAddExactNode.create(forY, forX);
         }
         if (forX.isConstant()) {
             return canonicalXconstant(forX, forY);
@@ -85,7 +89,7 @@ public class IntegerAddExactNode extends IntegerAddNode implements IntegerExactA
 
     @Override
     public IntegerExactArithmeticSplitNode createSplit(BeginNode next, BeginNode deopt) {
-        return graph().add(new IntegerAddExactSplitNode(stamp(), getX(), getY(), next, deopt));
+        return graph().add(IntegerAddExactSplitNode.create(stamp(), getX(), getY(), next, deopt));
     }
 
     @Override

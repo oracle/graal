@@ -53,7 +53,11 @@ public class NotNode extends UnaryNode implements ArithmeticLIRLowerable, Narrow
      *
      * @param x the instruction producing the value that is input to this instruction
      */
-    public NotNode(ValueNode x) {
+    public static NotNode create(ValueNode x) {
+        return new NotNodeGen(x);
+    }
+
+    protected NotNode(ValueNode x) {
         super(StampTool.not(x.stamp()), x);
     }
 

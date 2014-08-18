@@ -39,7 +39,11 @@ public class LoadSnippetVarargParameterNode extends FixedWithNextNode implements
 
     @Input private final NodeInputList<ParameterNode> parameters;
 
-    public LoadSnippetVarargParameterNode(ParameterNode[] locals, ValueNode index, Stamp stamp) {
+    public static LoadSnippetVarargParameterNode create(ParameterNode[] locals, ValueNode index, Stamp stamp) {
+        return new LoadSnippetVarargParameterNodeGen(locals, index, stamp);
+    }
+
+    protected LoadSnippetVarargParameterNode(ParameterNode[] locals, ValueNode index, Stamp stamp) {
         super(stamp);
         this.index = index;
         this.parameters = new NodeInputList<>(this, locals);

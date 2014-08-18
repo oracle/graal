@@ -39,6 +39,10 @@ public class AndNode extends BitLogicNode implements NarrowableArithmeticNode {
         return new AndNodeGen(x, y);
     }
 
+    public static Class<? extends AndNode> getGenClass() {
+        return AndNodeGen.class;
+    }
+
     AndNode(ValueNode x, ValueNode y) {
         super(StampTool.and(x.stamp(), y.stamp()), x, y);
         assert x.stamp().isCompatible(y.stamp());
@@ -61,7 +65,7 @@ public class AndNode extends BitLogicNode implements NarrowableArithmeticNode {
             return forX;
         }
         if (forX.isConstant() && !forY.isConstant()) {
-            return new AndNode(forY, forX);
+            return AndNode.create(forY, forX);
         }
         if (forX.isConstant()) {
             return ConstantNode.forPrimitive(stamp(), evalConst(forX.asConstant(), forY.asConstant()));
@@ -77,7 +81,7 @@ public class AndNode extends BitLogicNode implements NarrowableArithmeticNode {
             if (forX instanceof SignExtendNode) {
                 SignExtendNode ext = (SignExtendNode) forX;
                 if (rawY == ((1L << ext.getInputBits()) - 1)) {
-                    return new ZeroExtendNode(ext.getValue(), ext.getResultBits());
+                    return ZeroExtendNode.create(ext.getValue(), ext.getResultBits());
                 }
             }
             if (forX.stamp() instanceof IntegerStamp) {

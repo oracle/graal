@@ -47,7 +47,11 @@ public class NewInstanceNode extends AbstractNewObjectNode implements Virtualiza
      * @param fillContents determines whether the new object's fields should be initialized to
      *            zero/null.
      */
-    public NewInstanceNode(ResolvedJavaType type, boolean fillContents) {
+    public static NewInstanceNode create(ResolvedJavaType type, boolean fillContents) {
+        return new NewInstanceNodeGen(type, fillContents);
+    }
+
+    NewInstanceNode(ResolvedJavaType type, boolean fillContents) {
         super(StampFactory.exactNonNull(type), fillContents);
         assert !type.isArray() && !type.isInterface() && !type.isPrimitive();
         this.instanceClass = type;
@@ -69,7 +73,7 @@ public class NewInstanceNode extends AbstractNewObjectNode implements Virtualiza
          * they're excluded from escape analysis.
          */
         if (!tool.getMetaAccessProvider().lookupJavaType(Reference.class).isAssignableFrom(instanceClass)) {
-            VirtualInstanceNode virtualObject = new VirtualInstanceNode(instanceClass(), true);
+            VirtualInstanceNode virtualObject = VirtualInstanceNode.create(instanceClass(), true);
             ResolvedJavaField[] fields = virtualObject.getFields();
             ValueNode[] state = new ValueNode[fields.length];
             for (int i = 0; i < state.length; i++) {

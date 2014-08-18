@@ -47,7 +47,11 @@ public class HotSpotNodeClassSubstitutions {
     @NodeInfo
     public static class NodeClassGetNode extends PureFunctionMacroNode {
 
-        public NodeClassGetNode(Invoke invoke) {
+        public static NodeClassGetNode create(Invoke invoke) {
+            return new HotSpotNodeClassSubstitutions_NodeClassGetNodeGen(invoke);
+        }
+
+        protected NodeClassGetNode(Invoke invoke) {
             super(invoke);
         }
 

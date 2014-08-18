@@ -43,7 +43,11 @@ public class ComputeAddressNode extends FloatingNode implements LIRLowerable {
         return (LocationNode) location;
     }
 
-    public ComputeAddressNode(ValueNode object, ValueNode location, Stamp stamp) {
+    public static ComputeAddressNode create(ValueNode object, ValueNode location, Stamp stamp) {
+        return new ComputeAddressNodeGen(object, location, stamp);
+    }
+
+    ComputeAddressNode(ValueNode object, ValueNode location, Stamp stamp) {
         super(stamp);
         this.object = object;
         this.location = location;

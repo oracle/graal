@@ -172,12 +172,12 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
 
         ValueNode originalReceiver = ((MethodCallTargetNode) invoke.callTarget()).receiver();
         // setup merge and phi nodes for results and exceptions
-        MergeNode returnMerge = graph.add(new MergeNode());
+        MergeNode returnMerge = graph.add(MergeNode.create());
         returnMerge.setStateAfter(invoke.stateAfter());
 
         PhiNode returnValuePhi = null;
         if (invoke.asNode().getKind() != Kind.Void) {
-            returnValuePhi = graph.addWithoutUnique(new ValuePhiNode(invoke.asNode().stamp().unrestricted(), returnMerge));
+            returnValuePhi = graph.addWithoutUnique(ValuePhiNode.create(invoke.asNode().stamp().unrestricted(), returnMerge));
         }
 
         MergeNode exceptionMerge = null;
@@ -186,11 +186,11 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
             InvokeWithExceptionNode invokeWithException = (InvokeWithExceptionNode) invoke;
             ExceptionObjectNode exceptionEdge = (ExceptionObjectNode) invokeWithException.exceptionEdge();
 
-            exceptionMerge = graph.add(new MergeNode());
+            exceptionMerge = graph.add(MergeNode.create());
 
             FixedNode exceptionSux = exceptionEdge.next();
             graph.addBeforeFixed(exceptionSux, exceptionMerge);
-            exceptionObjectPhi = graph.addWithoutUnique(new ValuePhiNode(StampFactory.forKind(Kind.Object), exceptionMerge));
+            exceptionObjectPhi = graph.addWithoutUnique(ValuePhiNode.create(StampFactory.forKind(Kind.Object), exceptionMerge));
             exceptionMerge.setStateAfter(exceptionEdge.stateAfter().duplicateModified(invoke.stateAfter().bci, true, Kind.Object, exceptionObjectPhi));
         }
 
@@ -205,7 +205,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
         if (shouldFallbackToInvoke()) {
             unknownTypeSux = createInvocationBlock(graph, invoke, returnMerge, returnValuePhi, exceptionMerge, exceptionObjectPhi, false);
         } else {
-            unknownTypeSux = graph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.TypeCheckedInliningViolated));
+            unknownTypeSux = graph.add(DeoptimizeNode.create(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.TypeCheckedInliningViolated));
         }
         successors[successors.length - 1] = BeginNode.begin(unknownTypeSux);
 
@@ -329,7 +329,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
     private Collection<Node> inlineSingleMethod(StructuredGraph graph, MetaAccessProvider metaAccess, Assumptions assumptions) {
         assert concretes.size() == 1 && inlineableElements.length == 1 && ptypes.size() > 1 && !shouldFallbackToInvoke() && notRecordedTypeProbability == 0;
 
-        BeginNode calleeEntryNode = graph.add(new BeginNode());
+        BeginNode calleeEntryNode = graph.add(BeginNode.create());
 
         BeginNode unknownTypeSux = createUnknownTypeSuccessor(graph);
         BeginNode[] successors = new BeginNode[]{calleeEntryNode, unknownTypeSux};
@@ -344,7 +344,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
         assert ptypes.size() >= 1;
         ValueNode nonNullReceiver = InliningUtil.nonNullReceiver(invoke);
         Kind hubKind = ((MethodCallTargetNode) invoke.callTarget()).targetMethod().getDeclaringClass().getEncoding(ResolvedJavaType.Representation.ObjectHub).getKind();
-        LoadHubNode hub = graph.unique(new LoadHubNode(nonNullReceiver, hubKind));
+        LoadHubNode hub = graph.unique(LoadHubNode.create(nonNullReceiver, hubKind));
 
         if (!invokeIsOnlySuccessor && chooseMethodDispatch()) {
             assert successors.length == concretes.size() + 1;
@@ -375,9 +375,9 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
             ResolvedJavaType receiverType = invoke.getReceiverType();
             FixedNode lastSucc = successors[concretes.size()];
             for (int i = concretes.size() - 1; i >= 0; --i) {
-                LoadMethodNode method = graph.add(new LoadMethodNode(concretes.get(i), receiverType, hub, constantMethods[i].getKind()));
+                LoadMethodNode method = graph.add(LoadMethodNode.create(concretes.get(i), receiverType, hub, constantMethods[i].getKind()));
                 CompareNode methodCheck = CompareNode.createCompareNode(graph, Condition.EQ, method, constantMethods[i]);
-                IfNode ifNode = graph.add(new IfNode(methodCheck, successors[i], lastSucc, probability[i]));
+                IfNode ifNode = graph.add(IfNode.create(methodCheck, successors[i], lastSucc, probability[i]));
                 method.setNext(ifNode);
                 lastSucc = method;
             }
@@ -408,7 +408,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
             keyProbabilities[i] /= totalProbability;
         }
 
-        TypeSwitchNode typeSwitch = graph.add(new TypeSwitchNode(hub, successors, keys, keyProbabilities, keySuccessors));
+        TypeSwitchNode typeSwitch = graph.add(TypeSwitchNode.create(hub, successors, keys, keyProbabilities, keySuccessors));
         FixedWithNextNode pred = (FixedWithNextNode) invoke.asNode().predecessor();
         pred.setNext(typeSwitch);
         return false;
@@ -462,10 +462,10 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
     private static BeginNode createInvocationBlock(StructuredGraph graph, Invoke invoke, MergeNode returnMerge, PhiNode returnValuePhi, MergeNode exceptionMerge, PhiNode exceptionObjectPhi,
                     boolean useForInlining) {
         Invoke duplicatedInvoke = duplicateInvokeForInlining(graph, invoke, exceptionMerge, exceptionObjectPhi, useForInlining);
-        BeginNode calleeEntryNode = graph.add(new BeginNode());
+        BeginNode calleeEntryNode = graph.add(BeginNode.create());
         calleeEntryNode.setNext(duplicatedInvoke.asNode());
 
-        AbstractEndNode endNode = graph.add(new EndNode());
+        AbstractEndNode endNode = graph.add(EndNode.create());
         duplicatedInvoke.setNext(endNode);
         returnMerge.addForwardEnd(endNode);
 
@@ -500,7 +500,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
             // set new state (pop old exception object, push new one)
             newExceptionEdge.setStateAfter(stateAfterException.duplicateModified(stateAfterException.bci, stateAfterException.rethrowException(), Kind.Object, newExceptionEdge));
 
-            AbstractEndNode endNode = graph.add(new EndNode());
+            AbstractEndNode endNode = graph.add(EndNode.create());
             newExceptionEdge.setNext(endNode);
             exceptionMerge.addForwardEnd(endNode);
             exceptionObjectPhi.addInput(newExceptionEdge);
@@ -538,7 +538,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
     }
 
     private void devirtualizeWithTypeSwitch(StructuredGraph graph, InvokeKind kind, ResolvedJavaMethod target, MetaAccessProvider metaAccess) {
-        BeginNode invocationEntry = graph.add(new BeginNode());
+        BeginNode invocationEntry = graph.add(BeginNode.create());
         BeginNode unknownTypeSux = createUnknownTypeSuccessor(graph);
         BeginNode[] successors = new BeginNode[]{invocationEntry, unknownTypeSux};
         createDispatchOnTypeBeforeInvoke(graph, successors, true, metaAccess);
@@ -551,7 +551,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
     }
 
     private static BeginNode createUnknownTypeSuccessor(StructuredGraph graph) {
-        return BeginNode.begin(graph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.TypeCheckedInliningViolated)));
+        return BeginNode.begin(graph.add(DeoptimizeNode.create(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.TypeCheckedInliningViolated)));
     }
 
     @Override

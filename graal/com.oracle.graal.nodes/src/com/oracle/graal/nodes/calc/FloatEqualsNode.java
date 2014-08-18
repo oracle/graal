@@ -39,7 +39,11 @@ public class FloatEqualsNode extends CompareNode {
      * @param x the instruction producing the first input to the instruction
      * @param y the instruction that produces the second input to this instruction
      */
-    public FloatEqualsNode(ValueNode x, ValueNode y) {
+    public static FloatEqualsNode create(ValueNode x, ValueNode y) {
+        return new FloatEqualsNodeGen(x, y);
+    }
+
+    protected FloatEqualsNode(ValueNode x, ValueNode y) {
         super(x, y);
         assert x.stamp() instanceof FloatStamp && y.stamp() instanceof FloatStamp : x.stamp() + " " + y.stamp();
         assert x.stamp().isCompatible(y.stamp());
@@ -76,9 +80,9 @@ public class FloatEqualsNode extends CompareNode {
     @Override
     protected CompareNode duplicateModified(ValueNode newX, ValueNode newY) {
         if (newX.stamp() instanceof FloatStamp && newY.stamp() instanceof FloatStamp) {
-            return new FloatEqualsNode(newX, newY);
+            return FloatEqualsNode.create(newX, newY);
         } else if (newX.stamp() instanceof IntegerStamp && newY.stamp() instanceof IntegerStamp) {
-            return new IntegerEqualsNode(newX, newY);
+            return IntegerEqualsNode.create(newX, newY);
         }
         throw GraalInternalError.shouldNotReachHere();
     }

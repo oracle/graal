@@ -45,7 +45,11 @@ public class WriteRegisterNode extends FixedWithNextNode implements LIRLowerable
      */
     @Input private ValueNode value;
 
-    public WriteRegisterNode(Register register, ValueNode value) {
+    public static WriteRegisterNode create(Register register, ValueNode value) {
+        return new WriteRegisterNodeGen(register, value);
+    }
+
+    protected WriteRegisterNode(Register register, ValueNode value) {
         super(StampFactory.forVoid());
         this.register = register;
         this.value = value;

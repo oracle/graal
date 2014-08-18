@@ -33,7 +33,11 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(shortName = "/")
 public class FloatDivNode extends FloatArithmeticNode {
 
-    public FloatDivNode(ValueNode x, ValueNode y, boolean isStrictFP) {
+    public static FloatDivNode create(ValueNode x, ValueNode y, boolean isStrictFP) {
+        return new FloatDivNodeGen(x, y, isStrictFP);
+    }
+
+    protected FloatDivNode(ValueNode x, ValueNode y, boolean isStrictFP) {
         super(x.stamp().unrestricted(), x, y, isStrictFP);
     }
 

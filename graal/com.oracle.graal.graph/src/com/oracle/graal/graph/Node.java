@@ -114,7 +114,7 @@ public abstract class Node implements Cloneable, Formattable {
      * annotated method can be replaced with an instance of the node class denoted by
      * {@link #value()}. For this reason, the signature of the annotated method must match the
      * signature (excluding a prefix of {@linkplain InjectedNodeParameter injected} parameters) of a
-     * constructor in the node class.
+     * factory method named {@code "create"} in the node class.
      */
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.METHOD)
@@ -161,6 +161,7 @@ public abstract class Node implements Cloneable, Formattable {
     private Node predecessor;
 
     public Node() {
+        assert getClass().getAnnotation(GeneratedNode.class) != null : getClass() + " is not a generated Node class - forgot @" + NodeInfo.class.getSimpleName() + " on class declaration?";
         init();
     }
 

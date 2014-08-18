@@ -56,7 +56,11 @@ public class NewMultiArrayNode extends DeoptimizingFixedWithNextNode implements 
      * @param type the element type of the array
      * @param dimensions the node which produce the dimensions for this array
      */
-    public NewMultiArrayNode(ResolvedJavaType type, ValueNode[] dimensions) {
+    public static NewMultiArrayNode create(ResolvedJavaType type, ValueNode[] dimensions) {
+        return new NewMultiArrayNodeGen(type, dimensions);
+    }
+
+    NewMultiArrayNode(ResolvedJavaType type, ValueNode[] dimensions) {
         super(StampFactory.exactNonNull(type));
         this.type = type;
         this.dimensions = new NodeInputList<>(this, dimensions);

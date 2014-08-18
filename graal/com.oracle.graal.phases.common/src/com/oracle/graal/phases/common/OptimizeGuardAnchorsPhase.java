@@ -110,7 +110,7 @@ public class OptimizeGuardAnchorsPhase extends Phase {
 
             if (otherGuards.size() == successorCount - 1) {
                 BeginNode anchor = computeOptimalAnchor(cfg.get(), BeginNode.prevBegin(controlSplit));
-                GuardNode newGuard = controlSplit.graph().unique(new GuardNode(guard.condition(), anchor, guard.reason(), guard.action(), guard.negated(), guard.getSpeculation()));
+                GuardNode newGuard = controlSplit.graph().unique(GuardNode.create(guard.condition(), anchor, guard.reason(), guard.action(), guard.negated(), guard.getSpeculation()));
                 for (GuardNode otherGuard : otherGuards) {
                     otherGuard.replaceAndDelete(newGuard);
                 }

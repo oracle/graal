@@ -31,6 +31,12 @@ import com.oracle.graal.nodes.extended.*;
  */
 @NodeInfo(allowedUsageTypes = {InputType.Memory})
 public class StartNode extends BeginStateSplitNode implements MemoryCheckpoint.Single {
+    public static StartNode create() {
+        return new StartNodeGen();
+    }
+
+    protected StartNode() {
+    }
 
     @Override
     public LocationIdentity getLocationIdentity() {

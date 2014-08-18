@@ -52,7 +52,11 @@ public class InvokeNode extends AbstractMemoryCheckpoint implements Invoke, LIRL
      * @param callTarget the target method being called
      * @param bci the bytecode index of the original invoke (used for debug infos)
      */
-    public InvokeNode(CallTargetNode callTarget, int bci) {
+    public static InvokeNode create(CallTargetNode callTarget, int bci) {
+        return new InvokeNodeGen(callTarget, bci);
+    }
+
+    protected InvokeNode(CallTargetNode callTarget, int bci) {
         this(callTarget, bci, callTarget.returnStamp());
     }
 
@@ -63,7 +67,11 @@ public class InvokeNode extends AbstractMemoryCheckpoint implements Invoke, LIRL
      * @param bci the bytecode index of the original invoke (used for debug infos)
      * @param stamp the stamp to be used for this value
      */
-    public InvokeNode(CallTargetNode callTarget, int bci, Stamp stamp) {
+    public static InvokeNode create(CallTargetNode callTarget, int bci, Stamp stamp) {
+        return new InvokeNodeGen(callTarget, bci, stamp);
+    }
+
+    protected InvokeNode(CallTargetNode callTarget, int bci, Stamp stamp) {
         super(stamp);
         this.callTarget = callTarget;
         this.bci = bci;

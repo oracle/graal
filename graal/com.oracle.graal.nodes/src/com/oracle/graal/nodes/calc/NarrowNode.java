@@ -37,7 +37,11 @@ import com.oracle.graal.nodes.type.*;
 @NodeInfo
 public class NarrowNode extends IntegerConvertNode {
 
-    public NarrowNode(ValueNode input, int resultBits) {
+    public static NarrowNode create(ValueNode input, int resultBits) {
+        return new NarrowNodeGen(input, resultBits);
+    }
+
+    protected NarrowNode(ValueNode input, int resultBits) {
         super(StampTool.narrowingConversion(input.stamp(), resultBits), input, resultBits);
     }
 
@@ -73,7 +77,7 @@ public class NarrowNode extends IntegerConvertNode {
             // zzzzzzzz yyyyxxxx -(narrow)-> yyyyxxxx -(narrow)-> xxxx
             // ==> zzzzzzzz yyyyxxxx -(narrow)-> xxxx
             NarrowNode other = (NarrowNode) forValue;
-            return new NarrowNode(other.getValue(), getResultBits());
+            return NarrowNode.create(other.getValue(), getResultBits());
         } else if (forValue instanceof IntegerConvertNode) {
             // SignExtendNode or ZeroExtendNode
             IntegerConvertNode other = (IntegerConvertNode) forValue;
@@ -84,16 +88,16 @@ public class NarrowNode extends IntegerConvertNode {
             } else if (getResultBits() < other.getInputBits()) {
                 // yyyyxxxx -(extend)-> zzzzzzzz yyyyxxxx -(narrow)-> xxxx
                 // ==> yyyyxxxx -(narrow)-> xxxx
-                return new NarrowNode(other.getValue(), getResultBits());
+                return NarrowNode.create(other.getValue(), getResultBits());
             } else {
                 if (other instanceof SignExtendNode) {
                     // sxxx -(sign-extend)-> ssssssss sssssxxx -(narrow)-> sssssxxx
                     // ==> sxxx -(sign-extend)-> sssssxxx
-                    return new SignExtendNode(other.getValue(), getResultBits());
+                    return SignExtendNode.create(other.getValue(), getResultBits());
                 } else if (other instanceof ZeroExtendNode) {
                     // xxxx -(zero-extend)-> 00000000 00000xxx -(narrow)-> 0000xxxx
                     // ==> xxxx -(zero-extend)-> 0000xxxx
-                    return new ZeroExtendNode(other.getValue(), getResultBits());
+                    return ZeroExtendNode.create(other.getValue(), getResultBits());
                 }
             }
         }

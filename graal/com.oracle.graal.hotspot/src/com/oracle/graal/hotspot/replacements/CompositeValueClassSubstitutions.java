@@ -47,7 +47,11 @@ public class CompositeValueClassSubstitutions {
     @NodeInfo
     public static class CompositeValueClassGetNode extends PureFunctionMacroNode {
 
-        public CompositeValueClassGetNode(Invoke invoke) {
+        public static CompositeValueClassGetNode create(Invoke invoke) {
+            return new CompositeValueClassSubstitutions_CompositeValueClassGetNodeGen(invoke);
+        }
+
+        protected CompositeValueClassGetNode(Invoke invoke) {
             super(invoke);
         }
 

@@ -33,7 +33,11 @@ import com.oracle.graal.nodes.spi.*;
 public class FullInfopointNode extends InfopointNode implements LIRLowerable, NodeWithState {
     @Input(InputType.State) private FrameState state;
 
-    public FullInfopointNode(InfopointReason reason, FrameState state) {
+    public static FullInfopointNode create(InfopointReason reason, FrameState state) {
+        return new FullInfopointNodeGen(reason, state);
+    }
+
+    protected FullInfopointNode(InfopointReason reason, FrameState state) {
         super(reason);
         this.state = state;
     }

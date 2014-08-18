@@ -41,7 +41,11 @@ public class ValuePhiNode extends PhiNode {
      * @param stamp the stamp of the value
      * @param merge the merge that the new phi belongs to
      */
-    public ValuePhiNode(Stamp stamp, MergeNode merge) {
+    public static ValuePhiNode create(Stamp stamp, MergeNode merge) {
+        return new ValuePhiNodeGen(stamp, merge);
+    }
+
+    protected ValuePhiNode(Stamp stamp, MergeNode merge) {
         super(stamp, merge);
         assert stamp != StampFactory.forVoid();
         values = new NodeInputList<>(this);
@@ -54,7 +58,11 @@ public class ValuePhiNode extends PhiNode {
      * @param merge the merge that the new phi belongs to
      * @param values the initial values of the phi
      */
-    public ValuePhiNode(Stamp stamp, MergeNode merge, ValueNode[] values) {
+    public static ValuePhiNode create(Stamp stamp, MergeNode merge, ValueNode[] values) {
+        return new ValuePhiNodeGen(stamp, merge, values);
+    }
+
+    protected ValuePhiNode(Stamp stamp, MergeNode merge, ValueNode[] values) {
         super(stamp, merge);
         assert stamp != StampFactory.forVoid();
         this.values = new NodeInputList<>(this, values);

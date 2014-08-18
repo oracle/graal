@@ -360,7 +360,11 @@ public class SnippetTemplate {
 
         final Varargs varargs;
 
-        public VarargsPlaceholderNode(Varargs varargs, MetaAccessProvider metaAccess) {
+        public static VarargsPlaceholderNode create(Varargs varargs, MetaAccessProvider metaAccess) {
+            return new SnippetTemplate_VarargsPlaceholderNodeGen(varargs, metaAccess);
+        }
+
+        protected VarargsPlaceholderNode(Varargs varargs, MetaAccessProvider metaAccess) {
             super(StampFactory.exactNonNull(metaAccess.lookupJavaType(varargs.componentType).getArrayClass()));
             this.varargs = varargs;
         }
@@ -547,7 +551,7 @@ public class SnippetTemplate {
                 nodeReplacements.put(snippetGraph.getParameter(i), ConstantNode.forConstant(constantArg, metaAccess, snippetCopy));
             } else if (args.info.isVarargsParameter(i)) {
                 Varargs varargs = (Varargs) args.values[i];
-                VarargsPlaceholderNode placeholder = snippetCopy.unique(new VarargsPlaceholderNode(varargs, providers.getMetaAccess()));
+                VarargsPlaceholderNode placeholder = snippetCopy.unique(VarargsPlaceholderNode.create(varargs, providers.getMetaAccess()));
                 nodeReplacements.put(snippetGraph.getParameter(i), placeholder);
                 placeholders[i] = placeholder;
             }
@@ -575,7 +579,7 @@ public class SnippetTemplate {
                     assert parameterCount < 10000;
                     int idx = (i + 1) * 10000 + j;
                     assert idx >= parameterCount : "collision in parameter numbering";
-                    ParameterNode local = snippetCopy.unique(new ParameterNode(idx, stamp));
+                    ParameterNode local = snippetCopy.unique(ParameterNode.create(idx, stamp));
                     params[j] = local;
                 }
                 parameters[i] = params;
@@ -586,7 +590,7 @@ public class SnippetTemplate {
                     if (usage instanceof LoadIndexedNode) {
                         LoadIndexedNode loadIndexed = (LoadIndexedNode) usage;
                         Debug.dump(snippetCopy, "Before replacing %s", loadIndexed);
-                        LoadSnippetVarargParameterNode loadSnippetParameter = snippetCopy.add(new LoadSnippetVarargParameterNode(params, loadIndexed.index(), loadIndexed.stamp()));
+                        LoadSnippetVarargParameterNode loadSnippetParameter = snippetCopy.add(LoadSnippetVarargParameterNode.create(params, loadIndexed.index(), loadIndexed.stamp()));
                         snippetCopy.replaceFixedWithFixed(loadIndexed, loadSnippetParameter);
                         Debug.dump(snippetCopy, "After replacing %s", loadIndexed);
                     } else if (usage instanceof StoreIndexedNode) {
@@ -672,7 +676,7 @@ public class SnippetTemplate {
 
         new FloatingReadPhase(false, true, false).apply(snippetCopy);
 
-        MemoryAnchorNode memoryAnchor = snippetCopy.add(new MemoryAnchorNode());
+        MemoryAnchorNode memoryAnchor = snippetCopy.add(MemoryAnchorNode.create());
         snippetCopy.start().replaceAtUsages(InputType.Memory, memoryAnchor);
 
         this.snippet = snippetCopy;
@@ -691,12 +695,12 @@ public class SnippetTemplate {
         } else if (returnNodes.size() == 1) {
             this.returnNode = returnNodes.get(0);
         } else {
-            MergeNode merge = snippet.add(new MergeNode());
+            MergeNode merge = snippet.add(MergeNode.create());
             List<MemoryMapNode> memMaps = returnNodes.stream().map(n -> n.getMemoryMap()).collect(Collectors.toList());
             ValueNode returnValue = InliningUtil.mergeReturns(merge, returnNodes, null);
-            this.returnNode = snippet.add(new ReturnNode(returnValue));
+            this.returnNode = snippet.add(ReturnNode.create(returnValue));
             MemoryMapImpl mmap = FloatingReadPhase.mergeMemoryMaps(merge, memMaps, false);
-            MemoryMapNode memoryMap = snippet.unique(new MemoryMapNode(mmap.getMap()));
+            MemoryMapNode memoryMap = snippet.unique(MemoryMapNode.create(mmap.getMap()));
             this.returnNode.setMemoryMap(memoryMap);
             for (MemoryMapNode mm : memMaps) {
                 if (mm != memoryMap && mm.isAlive()) {

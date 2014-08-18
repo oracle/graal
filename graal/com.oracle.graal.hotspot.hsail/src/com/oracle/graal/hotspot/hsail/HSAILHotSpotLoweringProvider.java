@@ -94,7 +94,7 @@ public class HSAILHotSpotLoweringProvider extends DefaultHotSpotLoweringProvider
                     default:
                         reason = DeoptimizationReason.None;
                 }
-                unwind.replaceAtPredecessor(graph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, reason)));
+                unwind.replaceAtPredecessor(graph.add(DeoptimizeNode.create(DeoptimizationAction.InvalidateReprofile, reason)));
                 unwind.safeDelete();
             } else {
                 // unwind whose exception is not an instance of ForeignCallNode

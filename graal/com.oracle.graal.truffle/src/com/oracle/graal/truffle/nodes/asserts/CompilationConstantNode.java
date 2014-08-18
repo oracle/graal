@@ -30,7 +30,11 @@ import com.oracle.graal.nodes.*;
 @NodeInfo
 public class CompilationConstantNode extends NeverPartOfCompilationNode implements Canonicalizable {
 
-    public CompilationConstantNode(Invoke invoke) {
+    public static CompilationConstantNode create(Invoke invoke) {
+        return new CompilationConstantNodeGen(invoke);
+    }
+
+    protected CompilationConstantNode(Invoke invoke) {
         super(invoke, "The value could not be reduced to a compile time constant.");
         assert arguments.size() == 1;
     }

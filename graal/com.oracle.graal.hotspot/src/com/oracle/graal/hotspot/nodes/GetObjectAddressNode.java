@@ -38,7 +38,11 @@ public class GetObjectAddressNode extends FixedWithNextNode implements LIRLowera
 
     @Input private ValueNode object;
 
-    public GetObjectAddressNode(ValueNode obj) {
+    public static GetObjectAddressNode create(ValueNode obj) {
+        return new GetObjectAddressNodeGen(obj);
+    }
+
+    protected GetObjectAddressNode(ValueNode obj) {
         super(StampFactory.forKind(Kind.Long));
         this.object = obj;
     }

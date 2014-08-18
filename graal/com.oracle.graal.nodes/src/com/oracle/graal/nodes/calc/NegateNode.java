@@ -47,7 +47,11 @@ public class NegateNode extends UnaryNode implements ArithmeticLIRLowerable, Nar
      *
      * @param value the instruction producing the value that is input to this instruction
      */
-    public NegateNode(ValueNode value) {
+    public static NegateNode create(ValueNode value) {
+        return new NegateNodeGen(value);
+    }
+
+    protected NegateNode(ValueNode value) {
         super(StampTool.negate(value.stamp()), value);
     }
 
@@ -78,7 +82,7 @@ public class NegateNode extends UnaryNode implements ArithmeticLIRLowerable, Nar
         }
         if (forValue instanceof IntegerSubNode) {
             IntegerSubNode sub = (IntegerSubNode) forValue;
-            return new IntegerSubNode(sub.getY(), sub.getX());
+            return IntegerSubNode.create(sub.getY(), sub.getX());
         }
         return this;
     }

@@ -51,7 +51,11 @@ public class AllocaNode extends FixedWithNextNode implements LIRLowerable {
      */
     private final BitSet objects;
 
-    public AllocaNode(int slots, BitSet objects) {
+    public static AllocaNode create(int slots, BitSet objects) {
+        return new AllocaNodeGen(slots, objects);
+    }
+
+    protected AllocaNode(int slots, BitSet objects) {
         super(StampFactory.forKind(HotSpotGraalRuntime.getHostWordKind()));
         this.slots = slots;
         this.objects = objects;

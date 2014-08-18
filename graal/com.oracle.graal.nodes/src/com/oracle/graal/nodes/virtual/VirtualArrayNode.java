@@ -35,7 +35,11 @@ public class VirtualArrayNode extends VirtualObjectNode implements ArrayLengthPr
     private final ResolvedJavaType componentType;
     private final int length;
 
-    public VirtualArrayNode(ResolvedJavaType componentType, int length) {
+    public static VirtualArrayNode create(ResolvedJavaType componentType, int length) {
+        return new VirtualArrayNodeGen(componentType, length);
+    }
+
+    VirtualArrayNode(ResolvedJavaType componentType, int length) {
         super(componentType.getArrayClass(), true);
         this.componentType = componentType;
         this.length = length;
@@ -137,12 +141,12 @@ public class VirtualArrayNode extends VirtualObjectNode implements ArrayLengthPr
 
     @Override
     public VirtualArrayNode duplicate() {
-        return new VirtualArrayNode(componentType, length);
+        return VirtualArrayNode.create(componentType, length);
     }
 
     @Override
     public ValueNode getMaterializedRepresentation(FixedNode fixed, ValueNode[] entries, LockState locks) {
-        return new AllocatedObjectNode(this);
+        return AllocatedObjectNode.create(this);
     }
 
     public ValueNode length() {

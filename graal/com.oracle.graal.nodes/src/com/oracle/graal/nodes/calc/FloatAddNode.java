@@ -33,7 +33,15 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(shortName = "+")
 public class FloatAddNode extends FloatArithmeticNode {
 
-    public FloatAddNode(ValueNode x, ValueNode y, boolean isStrictFP) {
+    public static FloatAddNode create(ValueNode x, ValueNode y, boolean isStrictFP) {
+        return new FloatAddNodeGen(x, y, isStrictFP);
+    }
+
+    public static Class<? extends FloatAddNode> getGenClass() {
+        return FloatAddNodeGen.class;
+    }
+
+    protected FloatAddNode(ValueNode x, ValueNode y, boolean isStrictFP) {
         super(x.stamp().unrestricted(), x, y, isStrictFP);
     }
 
@@ -51,7 +59,7 @@ public class FloatAddNode extends FloatArithmeticNode {
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
         if (forX.isConstant() && !forY.isConstant()) {
-            return new FloatAddNode(forY, forX, isStrictFP());
+            return FloatAddNode.create(forY, forX, isStrictFP());
         }
         if (forX.isConstant()) {
             return ConstantNode.forConstant(evalConst(forX.asConstant(), forY.asConstant()), null);
@@ -82,10 +90,10 @@ public class FloatAddNode extends FloatArithmeticNode {
          * that a-b produces the same result as a+(-b).
          */
         if (forX instanceof NegateNode) {
-            return new FloatSubNode(forY, ((NegateNode) forX).getValue(), isStrictFP());
+            return FloatSubNode.create(forY, ((NegateNode) forX).getValue(), isStrictFP());
         }
         if (forY instanceof NegateNode) {
-            return new FloatSubNode(forX, ((NegateNode) forY).getValue(), isStrictFP());
+            return FloatSubNode.create(forX, ((NegateNode) forY).getValue(), isStrictFP());
         }
         return this;
     }

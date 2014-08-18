@@ -36,7 +36,11 @@ public class FixedValueAnchorNode extends FixedWithNextNode implements LIRLowera
         return object;
     }
 
-    public FixedValueAnchorNode(ValueNode object) {
+    public static FixedValueAnchorNode create(ValueNode object) {
+        return new FixedValueAnchorNodeGen(object);
+    }
+
+    FixedValueAnchorNode(ValueNode object) {
         super(StampFactory.forNodeIntrinsic());
         this.object = object;
 

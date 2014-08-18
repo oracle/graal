@@ -119,7 +119,7 @@ public final class HotSpotTruffleRuntime implements GraalTruffleRuntime {
 
     public DirectCallNode createDirectCallNode(CallTarget target) {
         if (target instanceof OptimizedCallTarget) {
-            return OptimizedDirectCallNode.create((OptimizedCallTarget) target);
+            return new OptimizedDirectCallNode((OptimizedCallTarget) target);
         } else {
             throw new IllegalStateException(String.format("Unexpected call target class %s!", target.getClass()));
         }

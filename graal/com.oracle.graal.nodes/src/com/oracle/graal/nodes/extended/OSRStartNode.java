@@ -29,6 +29,12 @@ import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo
 public class OSRStartNode extends StartNode implements Lowerable {
+    public static OSRStartNode create() {
+        return new OSRStartNodeGen();
+    }
+
+    OSRStartNode() {
+    }
 
     @Override
     public void lower(LoweringTool tool) {

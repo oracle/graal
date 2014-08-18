@@ -41,7 +41,11 @@ public class LeaveDeoptimizedStackFrameNode extends FixedWithNextNode implements
     @Input private ValueNode frameSize;
     @Input private ValueNode initialInfo;
 
-    public LeaveDeoptimizedStackFrameNode(ValueNode frameSize, ValueNode initialInfo) {
+    public static LeaveDeoptimizedStackFrameNode create(ValueNode frameSize, ValueNode initialInfo) {
+        return new LeaveDeoptimizedStackFrameNodeGen(frameSize, initialInfo);
+    }
+
+    protected LeaveDeoptimizedStackFrameNode(ValueNode frameSize, ValueNode initialInfo) {
         super(StampFactory.forVoid());
         this.frameSize = frameSize;
         this.initialInfo = initialInfo;

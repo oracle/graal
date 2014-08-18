@@ -46,7 +46,11 @@ public class AtomicReadAndWriteNode extends AbstractMemoryCheckpoint implements 
     private final Kind valueKind;
     private final LocationIdentity locationIdentity;
 
-    public AtomicReadAndWriteNode(ValueNode object, ValueNode offset, ValueNode newValue, Kind valueKind, LocationIdentity locationIdentity) {
+    public static AtomicReadAndWriteNode create(ValueNode object, ValueNode offset, ValueNode newValue, Kind valueKind, LocationIdentity locationIdentity) {
+        return new AtomicReadAndWriteNodeGen(object, offset, newValue, valueKind, locationIdentity);
+    }
+
+    AtomicReadAndWriteNode(ValueNode object, ValueNode offset, ValueNode newValue, Kind valueKind, LocationIdentity locationIdentity) {
         super(StampFactory.forKind(newValue.getKind()));
         this.object = object;
         this.offset = offset;

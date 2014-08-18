@@ -45,7 +45,11 @@ public class LoadFieldNode extends AccessFieldNode implements Canonicalizable.Un
      * @param object the receiver object
      * @param field the compiler interface field
      */
-    public LoadFieldNode(ValueNode object, ResolvedJavaField field) {
+    public static LoadFieldNode create(ValueNode object, ResolvedJavaField field) {
+        return new LoadFieldNodeGen(object, field);
+    }
+
+    protected LoadFieldNode(ValueNode object, ResolvedJavaField field) {
         super(createStamp(field), object, field);
     }
 
@@ -78,7 +82,7 @@ public class LoadFieldNode extends AccessFieldNode implements Canonicalizable.Un
             }
         }
         if (!isStatic() && forObject.isNullConstant()) {
-            return new DeoptimizeNode(DeoptimizationAction.None, DeoptimizationReason.NullCheckException);
+            return DeoptimizeNode.create(DeoptimizationAction.None, DeoptimizationReason.NullCheckException);
         }
         return this;
     }
@@ -114,7 +118,7 @@ public class LoadFieldNode extends AccessFieldNode implements Canonicalizable.Un
             for (int i = 0; i < phi.valueCount(); i++) {
                 constantNodes[i] = ConstantNode.forConstant(constants[i], metaAccess);
             }
-            return new ValuePhiNode(stamp(), phi.merge(), constantNodes);
+            return ValuePhiNode.create(stamp(), phi.merge(), constantNodes);
         }
         return null;
     }

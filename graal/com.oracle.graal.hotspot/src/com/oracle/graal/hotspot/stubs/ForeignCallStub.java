@@ -189,14 +189,14 @@ public class ForeignCallStub extends Stub {
         GraphKit kit = new GraphKit(graph, providers);
         ParameterNode[] params = createParameters(kit, args);
 
-        ReadRegisterNode thread = kit.append(new ReadRegisterNode(providers.getRegisters().getThreadRegister(), true, false));
+        ReadRegisterNode thread = kit.append(ReadRegisterNode.create(providers.getRegisters().getThreadRegister(), true, false));
         ValueNode result = createTargetCall(kit, params, thread);
         kit.createInvoke(StubUtil.class, "handlePendingException", thread, ConstantNode.forBoolean(isObjectResult, graph));
         if (isObjectResult) {
             InvokeNode object = kit.createInvoke(HotSpotReplacementsUtil.class, "getAndClearObjectResult", thread);
             result = kit.createInvoke(StubUtil.class, "verifyObject", object);
         }
-        kit.append(new ReturnNode(linkage.getDescriptor().getResultType() == void.class ? null : result));
+        kit.append(ReturnNode.create(linkage.getDescriptor().getResultType() == void.class ? null : result));
 
         if (Debug.isDumpEnabled()) {
             Debug.dump(graph, "Initial stub graph");
@@ -224,7 +224,7 @@ public class ForeignCallStub extends Stub {
             } else {
                 stamp = StampFactory.forKind(type.getKind());
             }
-            ParameterNode param = kit.unique(new ParameterNode(i, stamp));
+            ParameterNode param = kit.unique(ParameterNode.create(i, stamp));
             params[i] = param;
         }
         return params;
@@ -235,9 +235,9 @@ public class ForeignCallStub extends Stub {
             ValueNode[] targetArguments = new ValueNode[1 + params.length];
             targetArguments[0] = thread;
             System.arraycopy(params, 0, targetArguments, 1, params.length);
-            return kit.append(new StubForeignCallNode(providers.getForeignCalls(), target.getDescriptor(), targetArguments));
+            return kit.append(StubForeignCallNode.create(providers.getForeignCalls(), target.getDescriptor(), targetArguments));
         } else {
-            return kit.append(new StubForeignCallNode(providers.getForeignCalls(), target.getDescriptor(), params));
+            return kit.append(StubForeignCallNode.create(providers.getForeignCalls(), target.getDescriptor(), params));
         }
     }
 }

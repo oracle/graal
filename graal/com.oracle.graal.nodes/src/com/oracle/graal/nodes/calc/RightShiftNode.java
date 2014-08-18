@@ -34,7 +34,11 @@ import com.oracle.graal.nodes.type.*;
 @NodeInfo(shortName = ">>")
 public class RightShiftNode extends ShiftNode {
 
-    public RightShiftNode(ValueNode x, ValueNode y) {
+    public static RightShiftNode create(ValueNode x, ValueNode y) {
+        return new RightShiftNodeGen(x, y);
+    }
+
+    protected RightShiftNode(ValueNode x, ValueNode y) {
         super(x, y);
     }
 
@@ -57,7 +61,7 @@ public class RightShiftNode extends ShiftNode {
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
         if (forX.stamp() instanceof IntegerStamp && ((IntegerStamp) forX.stamp()).isPositive()) {
-            return new UnsignedRightShiftNode(forX, forY);
+            return UnsignedRightShiftNode.create(forX, forY);
         }
         if (forX.isConstant() && forY.isConstant()) {
             return ConstantNode.forPrimitive(evalConst(forX.asConstant(), forY.asConstant()));
@@ -91,14 +95,14 @@ public class RightShiftNode extends ShiftNode {
                              * full shift for this kind
                              */
                             assert total >= mask;
-                            return new RightShiftNode(other.getX(), ConstantNode.forInt(mask));
+                            return RightShiftNode.create(other.getX(), ConstantNode.forInt(mask));
                         }
-                        return new RightShiftNode(other.getX(), ConstantNode.forInt(total));
+                        return RightShiftNode.create(other.getX(), ConstantNode.forInt(total));
                     }
                 }
             }
             if (originalAmout != amount) {
-                return new RightShiftNode(forX, ConstantNode.forInt(amount));
+                return RightShiftNode.create(forX, ConstantNode.forInt(amount));
             }
         }
         return this;

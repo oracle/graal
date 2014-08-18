@@ -42,11 +42,19 @@ public class DynamicNewArrayNode extends AbstractNewArrayNode {
 
     @Input private ValueNode elementType;
 
-    public DynamicNewArrayNode(ValueNode elementType, ValueNode length) {
+    public static DynamicNewArrayNode create(ValueNode elementType, ValueNode length) {
+        return new DynamicNewArrayNodeGen(elementType, length);
+    }
+
+    DynamicNewArrayNode(ValueNode elementType, ValueNode length) {
         this(elementType, length, true);
     }
 
-    public DynamicNewArrayNode(ValueNode elementType, ValueNode length, boolean fillContents) {
+    public static DynamicNewArrayNode create(ValueNode elementType, ValueNode length, boolean fillContents) {
+        return new DynamicNewArrayNodeGen(elementType, length, fillContents);
+    }
+
+    DynamicNewArrayNode(ValueNode elementType, ValueNode length, boolean fillContents) {
         super(StampFactory.objectNonNull(), length, fillContents);
         this.elementType = elementType;
     }
@@ -61,7 +69,7 @@ public class DynamicNewArrayNode extends AbstractNewArrayNode {
             ResolvedJavaType javaType = tool.getConstantReflection().asJavaType(elementType.asConstant());
             if (javaType != null && !javaType.equals(tool.getMetaAccess().lookupJavaType(void.class))) {
                 ValueNode length = length();
-                NewArrayNode newArray = graph().add(new NewArrayNode(javaType, length.isAlive() ? length : graph().addOrUniqueWithInputs(length), fillContents()));
+                NewArrayNode newArray = graph().add(NewArrayNode.create(javaType, length.isAlive() ? length : graph().addOrUniqueWithInputs(length), fillContents()));
                 List<Node> snapshot = inputs().snapshot();
                 graph().replaceFixedWithFixed(this, newArray);
                 for (Node input : snapshot) {

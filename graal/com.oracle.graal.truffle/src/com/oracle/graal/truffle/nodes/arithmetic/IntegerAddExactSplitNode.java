@@ -31,7 +31,11 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public class IntegerAddExactSplitNode extends IntegerExactArithmeticSplitNode {
 
-    public IntegerAddExactSplitNode(Stamp stamp, ValueNode x, ValueNode y, BeginNode next, BeginNode overflowSuccessor) {
+    public static IntegerAddExactSplitNode create(Stamp stamp, ValueNode x, ValueNode y, BeginNode next, BeginNode overflowSuccessor) {
+        return new IntegerAddExactSplitNodeGen(stamp, x, y, next, overflowSuccessor);
+    }
+
+    protected IntegerAddExactSplitNode(Stamp stamp, ValueNode x, ValueNode y, BeginNode next, BeginNode overflowSuccessor) {
         super(stamp, x, y, next, overflowSuccessor);
     }
 

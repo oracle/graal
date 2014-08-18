@@ -43,7 +43,7 @@ public final class OptimizedDirectCallNode extends DirectCallNode implements Mat
 
     private final TruffleSplittingStrategy splittingStrategy;
 
-    private OptimizedDirectCallNode(OptimizedCallTarget target) {
+    public OptimizedDirectCallNode(OptimizedCallTarget target) {
         super(target);
         if (TruffleCompilerOptions.TruffleSplittingNew.getValue()) {
             this.splittingStrategy = new DefaultTruffleSplittingStrategyNew(this);
@@ -198,9 +198,5 @@ public final class OptimizedDirectCallNode extends DirectCallNode implements Mat
     public boolean split() {
         splittingStrategy.forceSplitting();
         return true;
-    }
-
-    public static OptimizedDirectCallNode create(OptimizedCallTarget target) {
-        return new OptimizedDirectCallNode(target);
     }
 }

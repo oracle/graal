@@ -32,11 +32,19 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(nameTemplate = "FixedGuard(!={p#negated}) {p#reason/s}", allowedUsageTypes = {InputType.Guard})
 public class FixedGuardNode extends AbstractFixedGuardNode implements Lowerable, IterableNodeType {
 
-    public FixedGuardNode(LogicNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action) {
+    public static FixedGuardNode create(LogicNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action) {
+        return new FixedGuardNodeGen(condition, deoptReason, action);
+    }
+
+    protected FixedGuardNode(LogicNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action) {
         this(condition, deoptReason, action, false);
     }
 
-    public FixedGuardNode(LogicNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action, boolean negated) {
+    public static FixedGuardNode create(LogicNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action, boolean negated) {
+        return new FixedGuardNodeGen(condition, deoptReason, action, negated);
+    }
+
+    protected FixedGuardNode(LogicNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action, boolean negated) {
         super(condition, deoptReason, action, negated);
     }
 
@@ -52,7 +60,7 @@ public class FixedGuardNode extends AbstractFixedGuardNode implements Lowerable,
                     tool.deleteBranch(next);
                 }
 
-                DeoptimizeNode deopt = graph().add(new DeoptimizeNode(getAction(), getReason()));
+                DeoptimizeNode deopt = graph().add(DeoptimizeNode.create(getAction(), getReason()));
                 deopt.setStateBefore(stateBefore());
                 setNext(deopt);
             }
@@ -66,7 +74,7 @@ public class FixedGuardNode extends AbstractFixedGuardNode implements Lowerable,
         if (graph().getGuardsStage() == StructuredGraph.GuardsStage.FLOATING_GUARDS) {
             ValueNode guard = tool.createGuard(this, condition(), getReason(), getAction(), isNegated()).asNode();
             this.replaceAtUsages(guard);
-            ValueAnchorNode newAnchor = graph().add(new ValueAnchorNode(guard.asNode()));
+            ValueAnchorNode newAnchor = graph().add(ValueAnchorNode.create(guard.asNode()));
             graph().replaceFixedWithFixed(this, newAnchor);
         } else {
             lowerToIf().lower(tool);

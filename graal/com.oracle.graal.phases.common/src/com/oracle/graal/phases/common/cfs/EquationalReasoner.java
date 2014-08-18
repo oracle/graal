@@ -664,7 +664,7 @@ public final class EquationalReasoner {
         try (Debug.Scope s = Debug.scope("Downcast", payload)) {
             assert payload != anchor : payload.graph().toString();
             metricDowncasting.increment();
-            PiNode result = graph.unique(new PiNode(payload, newStamp, anchor.asNode()));
+            PiNode result = graph.unique(PiNode.create(payload, newStamp, anchor.asNode()));
             // we've possibly got a new node in the graph --- bookkeeping is in order.
             added.add(result);
             if (remember) {

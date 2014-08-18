@@ -33,7 +33,11 @@ import com.oracle.graal.nodes.type.*;
 @NodeInfo(shortName = ">>>")
 public class UnsignedRightShiftNode extends ShiftNode {
 
-    public UnsignedRightShiftNode(ValueNode x, ValueNode y) {
+    public static UnsignedRightShiftNode create(ValueNode x, ValueNode y) {
+        return new UnsignedRightShiftNodeGen(x, y);
+    }
+
+    protected UnsignedRightShiftNode(ValueNode x, ValueNode y) {
         super(x, y);
     }
 
@@ -74,19 +78,19 @@ public class UnsignedRightShiftNode extends ShiftNode {
                         if (total != (total & mask)) {
                             return ConstantNode.forIntegerKind(getKind(), 0);
                         }
-                        return new UnsignedRightShiftNode(other.getX(), ConstantNode.forInt(total));
+                        return UnsignedRightShiftNode.create(other.getX(), ConstantNode.forInt(total));
                     } else if (other instanceof LeftShiftNode && otherAmount == amount) {
                         if (getKind() == Kind.Long) {
-                            return new AndNode(other.getX(), ConstantNode.forLong(-1L >>> amount));
+                            return AndNode.create(other.getX(), ConstantNode.forLong(-1L >>> amount));
                         } else {
                             assert getKind() == Kind.Int;
-                            return new AndNode(other.getX(), ConstantNode.forInt(-1 >>> amount));
+                            return AndNode.create(other.getX(), ConstantNode.forInt(-1 >>> amount));
                         }
                     }
                 }
             }
             if (originalAmout != amount) {
-                return new UnsignedRightShiftNode(forX, ConstantNode.forInt(amount));
+                return UnsignedRightShiftNode.create(forX, ConstantNode.forInt(amount));
             }
         }
         return this;

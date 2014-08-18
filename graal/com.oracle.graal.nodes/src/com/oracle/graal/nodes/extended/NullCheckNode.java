@@ -32,7 +32,11 @@ public class NullCheckNode extends DeoptimizingFixedWithNextNode implements LIRL
 
     @Input private ValueNode object;
 
-    public NullCheckNode(ValueNode object) {
+    public static NullCheckNode create(ValueNode object) {
+        return new NullCheckNodeGen(object);
+    }
+
+    NullCheckNode(ValueNode object) {
         super(StampFactory.forVoid());
         this.object = object;
     }

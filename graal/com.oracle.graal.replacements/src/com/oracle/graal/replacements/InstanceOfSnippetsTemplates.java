@@ -160,7 +160,7 @@ public abstract class InstanceOfSnippetsTemplates extends AbstractTemplates {
                 // Can simply use the phi result if the same materialized values are expected.
                 return result;
             } else {
-                return graph.unique(new ConditionalNode(asCondition(trueValue), t, f));
+                return graph.unique(ConditionalNode.create(asCondition(trueValue), t, f));
             }
         }
     }

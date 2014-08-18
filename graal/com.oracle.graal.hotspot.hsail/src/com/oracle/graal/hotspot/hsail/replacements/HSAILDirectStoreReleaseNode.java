@@ -33,7 +33,11 @@ import com.oracle.graal.word.*;
 @NodeInfo
 public class HSAILDirectStoreReleaseNode extends DirectStoreNode {
 
-    public HSAILDirectStoreReleaseNode(ValueNode address, ValueNode value, Kind kind) {
+    public static HSAILDirectStoreReleaseNode create(ValueNode address, ValueNode value, Kind kind) {
+        return new HSAILDirectStoreReleaseNodeGen(address, value, kind);
+    }
+
+    protected HSAILDirectStoreReleaseNode(ValueNode address, ValueNode value, Kind kind) {
         super(address, value, kind);
     }
 

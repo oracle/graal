@@ -90,7 +90,7 @@ public abstract class PartialEscapeBlockState<T extends PartialEscapeBlockState<
                 if (fixed.predecessor() instanceof CommitAllocationNode) {
                     commit = (CommitAllocationNode) fixed.predecessor();
                 } else {
-                    commit = graph.add(new CommitAllocationNode());
+                    commit = graph.add(CommitAllocationNode.create());
                     graph.addBeforeFixed(fixed, commit);
                 }
                 for (AllocatedObjectNode obj : objects) {

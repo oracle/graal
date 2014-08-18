@@ -27,6 +27,7 @@ import static com.oracle.graal.api.meta.DeoptimizationReason.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.compiler.common.type.StampFactory.*;
 
+import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
@@ -175,7 +176,7 @@ public class InliningUtil {
 
     public static void replaceInvokeCallTarget(Invoke invoke, StructuredGraph graph, InvokeKind invokeKind, ResolvedJavaMethod targetMethod) {
         MethodCallTargetNode oldCallTarget = (MethodCallTargetNode) invoke.callTarget();
-        MethodCallTargetNode newCallTarget = graph.add(new MethodCallTargetNode(invokeKind, targetMethod, oldCallTarget.arguments().toArray(new ValueNode[0]), oldCallTarget.returnType()));
+        MethodCallTargetNode newCallTarget = graph.add(MethodCallTargetNode.create(invokeKind, targetMethod, oldCallTarget.arguments().toArray(new ValueNode[0]), oldCallTarget.returnType()));
         invoke.asNode().replaceFirstInput(oldCallTarget, newCallTarget);
     }
 
@@ -185,7 +186,7 @@ public class InliningUtil {
 
     private static GuardedValueNode createAnchoredReceiver(StructuredGraph graph, GuardingNode anchor, ValueNode receiver, Stamp stamp) {
         // to avoid that floating reads on receiver fields float above the type check
-        return graph.unique(new GuardedValueNode(receiver, anchor, stamp));
+        return graph.unique(GuardedValueNode.create(receiver, anchor, stamp));
     }
 
     /**
@@ -301,7 +302,7 @@ public class InliningUtil {
             // get rid of memory kill
             BeginNode begin = invokeWithException.next();
             if (begin instanceof KillingBeginNode) {
-                BeginNode newBegin = new BeginNode();
+                BeginNode newBegin = BeginNode.create();
                 graph.addAfterFixed(begin, graph.add(newBegin));
                 begin.replaceAtUsages(newBegin);
                 graph.removeFixed(begin);
@@ -309,7 +310,7 @@ public class InliningUtil {
         } else {
             if (unwindNode != null) {
                 UnwindNode unwindDuplicate = (UnwindNode) duplicates.get(unwindNode);
-                DeoptimizeNode deoptimizeNode = graph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.NotCompiledExceptionHandler));
+                DeoptimizeNode deoptimizeNode = graph.add(DeoptimizeNode.create(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.NotCompiledExceptionHandler));
                 unwindDuplicate.replaceAndDelete(deoptimizeNode);
             }
         }
@@ -340,7 +341,7 @@ public class InliningUtil {
                 for (ReturnNode returnNode : returnNodes) {
                     returnDuplicates.add((ReturnNode) duplicates.get(returnNode));
                 }
-                MergeNode merge = graph.add(new MergeNode());
+                MergeNode merge = graph.add(MergeNode.create());
                 merge.setStateAfter(stateAfter);
                 ValueNode returnValue = mergeReturns(merge, returnDuplicates, canonicalizedNodes);
                 invokeNode.replaceAtUsages(returnValue);
@@ -442,12 +443,12 @@ public class InliningUtil {
                         MergeNode merge = (MergeNode) fixedStateSplit;
                         while (merge.isAlive()) {
                             AbstractEndNode end = merge.forwardEnds().first();
-                            DeoptimizeNode deoptimizeNode = graph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.NotCompiledExceptionHandler));
+                            DeoptimizeNode deoptimizeNode = graph.add(DeoptimizeNode.create(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.NotCompiledExceptionHandler));
                             end.replaceAtPredecessor(deoptimizeNode);
                             GraphUtil.killCFG(end);
                         }
                     } else {
-                        FixedNode deoptimizeNode = graph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.NotCompiledExceptionHandler));
+                        FixedNode deoptimizeNode = graph.add(DeoptimizeNode.create(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.NotCompiledExceptionHandler));
                         if (fixedStateSplit instanceof BeginNode) {
                             deoptimizeNode = BeginNode.begin(deoptimizeNode);
                         }
@@ -464,12 +465,12 @@ public class InliningUtil {
 
         for (ReturnNode returnNode : returnNodes) {
             // create and wire up a new EndNode
-            EndNode endNode = merge.graph().add(new EndNode());
+            EndNode endNode = merge.graph().add(EndNode.create());
             merge.addForwardEnd(endNode);
 
             if (returnNode.result() != null) {
                 if (returnValuePhi == null) {
-                    returnValuePhi = merge.graph().addWithoutUnique(new ValuePhiNode(returnNode.result().stamp().unrestricted(), merge));
+                    returnValuePhi = merge.graph().addWithoutUnique(ValuePhiNode.create(returnNode.result().stamp().unrestricted(), merge));
                     if (canonicalizedNodes != null) {
                         canonicalizedNodes.add(returnValuePhi);
                     }
@@ -501,9 +502,9 @@ public class InliningUtil {
         StructuredGraph graph = callTarget.graph();
         ValueNode firstParam = callTarget.arguments().get(0);
         if (firstParam.getKind() == Kind.Object && !StampTool.isObjectNonNull(firstParam)) {
-            IsNullNode condition = graph.unique(new IsNullNode(firstParam));
+            IsNullNode condition = graph.unique(IsNullNode.create(firstParam));
             Stamp stamp = firstParam.stamp().join(objectNonNull());
-            GuardingPiNode nonNullReceiver = graph.add(new GuardingPiNode(firstParam, condition, true, NullCheckException, InvalidateReprofile, stamp));
+            GuardingPiNode nonNullReceiver = graph.add(GuardingPiNode.create(firstParam, condition, true, NullCheckException, InvalidateReprofile, stamp));
             graph.addBeforeFixed(invoke.asNode(), nonNullReceiver);
             callTarget.replaceFirstInput(firstParam, nonNullReceiver);
             return nonNullReceiver;
@@ -546,7 +547,8 @@ public class InliningUtil {
 
     private static FixedWithNextNode createMacroNodeInstance(Class<? extends FixedWithNextNode> macroNodeClass, Invoke invoke) throws GraalInternalError {
         try {
-            return macroNodeClass.getConstructor(Invoke.class).newInstance(invoke);
+            Method factory = macroNodeClass.getDeclaredMethod("create", Invoke.class);
+            return (FixedWithNextNode) factory.invoke(null, invoke);
         } catch (ReflectiveOperationException | IllegalArgumentException | SecurityException e) {
             throw new GraalGraphInternalError(e).addContext(invoke.asNode()).addContext("macroSubstitution", macroNodeClass);
         }

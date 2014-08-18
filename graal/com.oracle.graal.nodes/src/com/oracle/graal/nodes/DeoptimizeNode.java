@@ -34,11 +34,19 @@ public class DeoptimizeNode extends AbstractDeoptimizeNode implements Lowerable,
     private final int debugId;
     private final Constant speculation;
 
-    public DeoptimizeNode(DeoptimizationAction action, DeoptimizationReason reason) {
+    public static DeoptimizeNode create(DeoptimizationAction action, DeoptimizationReason reason) {
+        return new DeoptimizeNodeGen(action, reason);
+    }
+
+    protected DeoptimizeNode(DeoptimizationAction action, DeoptimizationReason reason) {
         this(action, reason, 0, Constant.NULL_OBJECT, null);
     }
 
-    public DeoptimizeNode(DeoptimizationAction action, DeoptimizationReason reason, int debugId, Constant speculation, FrameState stateBefore) {
+    public static DeoptimizeNode create(DeoptimizationAction action, DeoptimizationReason reason, int debugId, Constant speculation, FrameState stateBefore) {
+        return new DeoptimizeNodeGen(action, reason, debugId, speculation, stateBefore);
+    }
+
+    protected DeoptimizeNode(DeoptimizationAction action, DeoptimizationReason reason, int debugId, Constant speculation, FrameState stateBefore) {
         super(stateBefore);
         assert action != null;
         assert reason != null;

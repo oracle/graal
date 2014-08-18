@@ -46,7 +46,11 @@ public class ArrayLengthNode extends FixedWithNextNode implements Canonicalizabl
         return array;
     }
 
-    public ArrayLengthNode(ValueNode array) {
+    public static ArrayLengthNode create(ValueNode array) {
+        return new ArrayLengthNodeGen(array);
+    }
+
+    ArrayLengthNode(ValueNode array) {
         super(StampFactory.positiveInt());
         this.array = array;
     }

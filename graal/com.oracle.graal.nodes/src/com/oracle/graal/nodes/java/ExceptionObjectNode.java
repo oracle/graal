@@ -36,7 +36,11 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(allowedUsageTypes = {InputType.Memory})
 public class ExceptionObjectNode extends DispatchBeginNode implements Lowerable, MemoryCheckpoint.Single {
 
-    public ExceptionObjectNode(MetaAccessProvider metaAccess) {
+    public static ExceptionObjectNode create(MetaAccessProvider metaAccess) {
+        return new ExceptionObjectNodeGen(metaAccess);
+    }
+
+    ExceptionObjectNode(MetaAccessProvider metaAccess) {
         super(StampFactory.declaredNonNull(metaAccess.lookupJavaType(Throwable.class)));
     }
 
@@ -53,8 +57,8 @@ public class ExceptionObjectNode extends DispatchBeginNode implements Lowerable,
              * deopts can float in between the begin node and the load exception node.
              */
             LocationIdentity locationsKilledByInvoke = ((InvokeWithExceptionNode) predecessor()).getLocationIdentity();
-            BeginNode entry = graph().add(new KillingBeginNode(locationsKilledByInvoke));
-            LoadExceptionObjectNode loadException = graph().add(new LoadExceptionObjectNode(stamp()));
+            BeginNode entry = graph().add(KillingBeginNode.create(locationsKilledByInvoke));
+            LoadExceptionObjectNode loadException = graph().add(LoadExceptionObjectNode.create(stamp()));
 
             loadException.setStateAfter(stateAfter());
             replaceAtUsages(InputType.Value, loadException);

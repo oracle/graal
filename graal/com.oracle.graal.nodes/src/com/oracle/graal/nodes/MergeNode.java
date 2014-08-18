@@ -39,6 +39,16 @@ import com.oracle.graal.nodes.util.*;
  */
 @NodeInfo(allowedUsageTypes = {InputType.Association})
 public class MergeNode extends BeginStateSplitNode implements IterableNodeType, LIRLowerable {
+    public static MergeNode create() {
+        return new MergeNodeGen();
+    }
+
+    public static Class<? extends MergeNode> getGenClass() {
+        return MergeNodeGen.class;
+    }
+
+    MergeNode() {
+    }
 
     @Input(InputType.Association) private final NodeInputList<AbstractEndNode> ends = new NodeInputList<>(this);
 
@@ -169,9 +179,9 @@ public class MergeNode extends BeginStateSplitNode implements IterableNodeType, 
                 }
                 AbstractEndNode newEnd;
                 if (merge instanceof LoopBeginNode) {
-                    newEnd = graph().add(new LoopEndNode((LoopBeginNode) merge));
+                    newEnd = graph().add(LoopEndNode.create((LoopBeginNode) merge));
                 } else {
-                    newEnd = graph().add(new EndNode());
+                    newEnd = graph().add(EndNode.create());
                     merge.addForwardEnd(newEnd);
                 }
                 for (PhiNode phi : merge.phis()) {
@@ -210,7 +220,7 @@ public class MergeNode extends BeginStateSplitNode implements IterableNodeType, 
             ValuePhiNode returnValuePhi = returnNode.result() == null || !isPhiAtMerge(returnNode.result()) ? null : (ValuePhiNode) returnNode.result();
             List<AbstractEndNode> endNodes = forwardEnds().snapshot();
             for (AbstractEndNode end : endNodes) {
-                ReturnNode newReturn = graph().add(new ReturnNode(returnValuePhi == null ? returnNode.result() : returnValuePhi.valueAt(end)));
+                ReturnNode newReturn = graph().add(ReturnNode.create(returnValuePhi == null ? returnNode.result() : returnValuePhi.valueAt(end)));
                 if (tool != null) {
                     tool.addToWorkList(end.predecessor());
                 }

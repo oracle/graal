@@ -275,63 +275,63 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
 
     protected AMD64Arithmetic getOp(ValueNode operation, Access access) {
         Kind memoryKind = getMemoryKind(access);
-        if (operation.getClass() == IntegerAddNode.class) {
+        if (operation.getClass() == IntegerAddNode.getGenClass()) {
             switch (memoryKind) {
                 case Int:
                     return IADD;
                 case Long:
                     return LADD;
             }
-        } else if (operation.getClass() == FloatAddNode.class) {
+        } else if (operation.getClass() == FloatAddNode.getGenClass()) {
             switch (memoryKind) {
                 case Float:
                     return FADD;
                 case Double:
                     return DADD;
             }
-        } else if (operation.getClass() == AndNode.class) {
+        } else if (operation.getClass() == AndNode.getGenClass()) {
             switch (memoryKind) {
                 case Int:
                     return IAND;
                 case Long:
                     return LAND;
             }
-        } else if (operation.getClass() == OrNode.class) {
+        } else if (operation.getClass() == OrNode.getGenClass()) {
             switch (memoryKind) {
                 case Int:
                     return IOR;
                 case Long:
                     return LOR;
             }
-        } else if (operation.getClass() == XorNode.class) {
+        } else if (operation.getClass() == XorNode.getGenClass()) {
             switch (memoryKind) {
                 case Int:
                     return IXOR;
                 case Long:
                     return LXOR;
             }
-        } else if (operation.getClass() == IntegerSubNode.class) {
+        } else if (operation.getClass() == IntegerSubNode.getGenClass()) {
             switch (memoryKind) {
                 case Int:
                     return ISUB;
                 case Long:
                     return LSUB;
             }
-        } else if (operation.getClass() == FloatSubNode.class) {
+        } else if (operation.getClass() == FloatSubNode.getGenClass()) {
             switch (memoryKind) {
                 case Float:
                     return FSUB;
                 case Double:
                     return DSUB;
             }
-        } else if (operation.getClass() == IntegerMulNode.class) {
+        } else if (operation.getClass() == IntegerMulNode.getGenClass()) {
             switch (memoryKind) {
                 case Int:
                     return IMUL;
                 case Long:
                     return LMUL;
             }
-        } else if (operation.getClass() == FloatMulNode.class) {
+        } else if (operation.getClass() == FloatMulNode.getGenClass()) {
             switch (memoryKind) {
                 case Float:
                     return FMUL;

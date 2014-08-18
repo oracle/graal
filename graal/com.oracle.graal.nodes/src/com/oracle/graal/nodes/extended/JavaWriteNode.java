@@ -35,7 +35,11 @@ public class JavaWriteNode extends AbstractWriteNode implements Lowerable, State
 
     private final boolean compressible;
 
-    public JavaWriteNode(ValueNode object, ValueNode value, ValueNode location, BarrierType barrierType, boolean compressible, boolean initialization) {
+    public static JavaWriteNode create(ValueNode object, ValueNode value, ValueNode location, BarrierType barrierType, boolean compressible, boolean initialization) {
+        return new JavaWriteNodeGen(object, value, location, barrierType, compressible, initialization);
+    }
+
+    JavaWriteNode(ValueNode object, ValueNode value, ValueNode location, BarrierType barrierType, boolean compressible, boolean initialization) {
         super(object, value, location, barrierType, initialization);
         this.compressible = compressible;
     }

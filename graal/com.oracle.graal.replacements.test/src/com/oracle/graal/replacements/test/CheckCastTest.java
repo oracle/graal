@@ -37,7 +37,7 @@ public class CheckCastTest extends TypeCheckTest {
     protected void replaceProfile(StructuredGraph graph, JavaTypeProfile profile) {
         CheckCastNode ccn = graph.getNodes().filter(CheckCastNode.class).first();
         if (ccn != null) {
-            CheckCastNode ccnNew = graph.add(new CheckCastNode(ccn.type(), ccn.object(), profile, false));
+            CheckCastNode ccnNew = graph.add(CheckCastNode.create(ccn.type(), ccn.object(), profile, false));
             graph.replaceFixedWithFixed(ccn, ccnNew);
         }
     }

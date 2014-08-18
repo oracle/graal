@@ -56,11 +56,19 @@ public class SnippetLocationNode extends LocationNode implements Canonicalizable
 
     public static SnippetLocationNode create(SnippetReflectionProvider snippetReflection, ValueNode identity, ValueNode kind, ValueNode displacement, ValueNode index, ValueNode indexScaling,
                     Graph graph) {
-        return graph.unique(new SnippetLocationNode(snippetReflection, identity, kind, displacement, index, indexScaling));
+        return graph.unique(SnippetLocationNode.create(snippetReflection, identity, kind, displacement, index, indexScaling));
+    }
+
+    public static SnippetLocationNode create(SnippetReflectionProvider snippetReflection, ValueNode locationIdentity, ValueNode kind, ValueNode displacement) {
+        return new SnippetLocationNodeGen(snippetReflection, locationIdentity, kind, displacement);
     }
 
     SnippetLocationNode(@InjectedNodeParameter SnippetReflectionProvider snippetReflection, ValueNode locationIdentity, ValueNode kind, ValueNode displacement) {
         this(snippetReflection, locationIdentity, kind, displacement, null, null);
+    }
+
+    public static SnippetLocationNode create(SnippetReflectionProvider snippetReflection, ValueNode locationIdentity, ValueNode kind, ValueNode displacement, ValueNode index, ValueNode indexScaling) {
+        return new SnippetLocationNodeGen(snippetReflection, locationIdentity, kind, displacement, index, indexScaling);
     }
 
     SnippetLocationNode(@InjectedNodeParameter SnippetReflectionProvider snippetReflection, ValueNode locationIdentity, ValueNode kind, ValueNode displacement, ValueNode index, ValueNode indexScaling) {

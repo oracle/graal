@@ -34,7 +34,11 @@ import com.oracle.graal.nodes.type.*;
 @NodeInfo
 public class ReverseBytesNode extends UnaryNode implements LIRLowerable {
 
-    public ReverseBytesNode(ValueNode value) {
+    public static ReverseBytesNode create(ValueNode value) {
+        return new ReverseBytesNodeGen(value);
+    }
+
+    protected ReverseBytesNode(ValueNode value) {
         super(StampFactory.forKind(value.getKind()), value);
         assert getKind() == Kind.Int || getKind() == Kind.Long;
     }

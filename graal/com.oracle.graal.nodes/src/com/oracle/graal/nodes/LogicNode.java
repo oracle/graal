@@ -41,8 +41,8 @@ public abstract class LogicNode extends FloatingNode {
 
     public static LogicNode and(LogicNode a, boolean negateA, LogicNode b, boolean negateB, double shortCircuitProbability) {
         StructuredGraph graph = a.graph();
-        ShortCircuitOrNode notAorNotB = graph.unique(new ShortCircuitOrNode(a, !negateA, b, !negateB, shortCircuitProbability));
-        return graph.unique(new LogicNegationNode(notAorNotB));
+        ShortCircuitOrNode notAorNotB = graph.unique(ShortCircuitOrNode.create(a, !negateA, b, !negateB, shortCircuitProbability));
+        return graph.unique(LogicNegationNode.create(notAorNotB));
     }
 
     public static LogicNode or(LogicNode a, LogicNode b, double shortCircuitProbability) {
@@ -50,6 +50,6 @@ public abstract class LogicNode extends FloatingNode {
     }
 
     public static LogicNode or(LogicNode a, boolean negateA, LogicNode b, boolean negateB, double shortCircuitProbability) {
-        return a.graph().unique(new ShortCircuitOrNode(a, negateA, b, negateB, shortCircuitProbability));
+        return a.graph().unique(ShortCircuitOrNode.create(a, negateA, b, negateB, shortCircuitProbability));
     }
 }

@@ -45,7 +45,11 @@ public class LoadIndexedFinalNode extends AccessIndexedNode implements Canonical
      * @param index the instruction producing the index
      * @param elementKind the element type
      */
-    public LoadIndexedFinalNode(ValueNode array, ValueNode index, Kind elementKind) {
+    public static LoadIndexedFinalNode create(ValueNode array, ValueNode index, Kind elementKind) {
+        return new LoadIndexedFinalNodeGen(array, index, elementKind);
+    }
+
+    protected LoadIndexedFinalNode(ValueNode array, ValueNode index, Kind elementKind) {
         super(createStamp(array, elementKind), array, index, elementKind);
     }
 
@@ -76,7 +80,7 @@ public class LoadIndexedFinalNode extends AccessIndexedNode implements Canonical
 
     @Override
     public void lower(LoweringTool tool) {
-        LoadIndexedNode loadIndexedNode = graph().add(new LoadIndexedNode(array(), index(), elementKind()));
+        LoadIndexedNode loadIndexedNode = graph().add(LoadIndexedNode.create(array(), index(), elementKind()));
         graph().replaceFixedWithFixed(this, loadIndexedNode);
         loadIndexedNode.lower(tool);
     }

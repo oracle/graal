@@ -32,7 +32,11 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(shortName = "%")
 public class FloatRemNode extends FloatArithmeticNode implements Lowerable {
 
-    public FloatRemNode(ValueNode x, ValueNode y, boolean isStrictFP) {
+    public static FloatRemNode create(ValueNode x, ValueNode y, boolean isStrictFP) {
+        return new FloatRemNodeGen(x, y, isStrictFP);
+    }
+
+    protected FloatRemNode(ValueNode x, ValueNode y, boolean isStrictFP) {
         super(x.stamp().unrestricted(), x, y, isStrictFP);
     }
 

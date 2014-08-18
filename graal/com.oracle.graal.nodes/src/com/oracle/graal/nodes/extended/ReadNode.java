@@ -38,19 +38,35 @@ import com.oracle.graal.nodes.virtual.*;
 @NodeInfo
 public class ReadNode extends FloatableAccessNode implements LIRLowerable, Canonicalizable, PiPushable, Virtualizable, GuardingNode {
 
-    public ReadNode(ValueNode object, ValueNode location, Stamp stamp, BarrierType barrierType) {
+    public static ReadNode create(ValueNode object, ValueNode location, Stamp stamp, BarrierType barrierType) {
+        return new ReadNodeGen(object, location, stamp, barrierType);
+    }
+
+    ReadNode(ValueNode object, ValueNode location, Stamp stamp, BarrierType barrierType) {
         super(object, location, stamp, null, barrierType);
     }
 
-    public ReadNode(ValueNode object, ValueNode location, Stamp stamp, GuardingNode guard, BarrierType barrierType) {
+    public static ReadNode create(ValueNode object, ValueNode location, Stamp stamp, GuardingNode guard, BarrierType barrierType) {
+        return new ReadNodeGen(object, location, stamp, guard, barrierType);
+    }
+
+    ReadNode(ValueNode object, ValueNode location, Stamp stamp, GuardingNode guard, BarrierType barrierType) {
         super(object, location, stamp, guard, barrierType);
     }
 
-    public ReadNode(ValueNode object, ValueNode location, Stamp stamp, GuardingNode guard, BarrierType barrierType, boolean nullCheck, FrameState stateBefore) {
+    public static ReadNode create(ValueNode object, ValueNode location, Stamp stamp, GuardingNode guard, BarrierType barrierType, boolean nullCheck, FrameState stateBefore) {
+        return new ReadNodeGen(object, location, stamp, guard, barrierType, nullCheck, stateBefore);
+    }
+
+    ReadNode(ValueNode object, ValueNode location, Stamp stamp, GuardingNode guard, BarrierType barrierType, boolean nullCheck, FrameState stateBefore) {
         super(object, location, stamp, guard, barrierType, nullCheck, stateBefore);
     }
 
-    private ReadNode(ValueNode object, ValueNode location, ValueNode guard, BarrierType barrierType) {
+    public static ReadNode create(ValueNode object, ValueNode location, ValueNode guard, BarrierType barrierType) {
+        return new ReadNodeGen(object, location, guard, barrierType);
+    }
+
+    ReadNode(ValueNode object, ValueNode location, ValueNode guard, BarrierType barrierType) {
         /*
          * Used by node intrinsics. Really, you can trust me on that! Since the initial value for
          * location is a parameter, i.e., a ParameterNode, the constructor cannot use the declared
@@ -72,14 +88,14 @@ public class ReadNode extends FloatableAccessNode implements LIRLowerable, Canon
             GuardingNode guard = getGuard();
             if (guard != null && !(guard instanceof FixedNode)) {
                 // The guard is necessary even if the read goes away.
-                return new ValueAnchorNode((ValueNode) guard);
+                return ValueAnchorNode.create((ValueNode) guard);
             } else {
                 // Read without usages or guard can be safely removed.
                 return null;
             }
         }
         if (object() instanceof PiNode && ((PiNode) object()).getGuard() == getGuard()) {
-            return new ReadNode(((PiNode) object()).getOriginalNode(), location(), stamp(), getGuard(), getBarrierType(), getNullCheck(), stateBefore());
+            return ReadNode.create(((PiNode) object()).getOriginalNode(), location(), stamp(), getGuard(), getBarrierType(), getNullCheck(), stateBefore());
         }
         if (!getNullCheck()) {
             return canonicalizeRead(this, location(), object(), tool);
@@ -92,7 +108,7 @@ public class ReadNode extends FloatableAccessNode implements LIRLowerable, Canon
 
     @Override
     public FloatingAccessNode asFloatingNode(MemoryNode lastLocationAccess) {
-        return graph().unique(new FloatingReadNode(object(), location(), lastLocationAccess, stamp(), getGuard(), getBarrierType()));
+        return graph().unique(FloatingReadNode.create(object(), location(), lastLocationAccess, stamp(), getGuard(), getBarrierType()));
     }
 
     @Override

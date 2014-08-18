@@ -38,7 +38,11 @@ public class IntegerBelowNode extends CompareNode {
      * @param x the instruction producing the first input to the instruction
      * @param y the instruction that produces the second input to this instruction
      */
-    public IntegerBelowNode(ValueNode x, ValueNode y) {
+    public static IntegerBelowNode create(ValueNode x, ValueNode y) {
+        return new IntegerBelowNodeGen(x, y);
+    }
+
+    protected IntegerBelowNode(ValueNode x, ValueNode y) {
         super(x, y);
         assert x.stamp() instanceof IntegerStamp;
         assert y.stamp() instanceof IntegerStamp;
@@ -75,13 +79,13 @@ public class IntegerBelowNode extends CompareNode {
         }
         if (forX.isConstant() && forX.asConstant().asLong() == 0) {
             // 0 |<| y is the same as 0 != y
-            return new LogicNegationNode(CompareNode.createCompareNode(Condition.EQ, forX, forY));
+            return LogicNegationNode.create(CompareNode.createCompareNode(Condition.EQ, forX, forY));
         }
         return this;
     }
 
     @Override
     protected CompareNode duplicateModified(ValueNode newX, ValueNode newY) {
-        return new IntegerBelowNode(newX, newY);
+        return IntegerBelowNode.create(newX, newY);
     }
 }

@@ -63,7 +63,7 @@ public class NewMultiArrayTest extends GraalCompilerTest {
                 dimensionNodes[i] = ConstantNode.forInt(dimensions[i], graph);
             }
 
-            NewMultiArrayNode repl = graph.add(new NewMultiArrayNode(arrayType, dimensionNodes));
+            NewMultiArrayNode repl = graph.add(NewMultiArrayNode.create(arrayType, dimensionNodes));
             graph.replaceFixedWithFixed(node, repl);
             forceCompile = true;
         }

@@ -42,7 +42,11 @@ public class DirectStoreNode extends FixedWithNextNode implements LIRLowerable {
     @Input private ValueNode value;
     private final Kind kind;
 
-    public DirectStoreNode(ValueNode address, ValueNode value, Kind kind) {
+    public static DirectStoreNode create(ValueNode address, ValueNode value, Kind kind) {
+        return new DirectStoreNodeGen(address, value, kind);
+    }
+
+    protected DirectStoreNode(ValueNode address, ValueNode value, Kind kind) {
         super(StampFactory.forVoid());
         this.address = address;
         this.value = value;

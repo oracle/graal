@@ -64,7 +64,11 @@ public class StoreIndexedNode extends AccessIndexedNode implements StateSplit, L
      * @param elementKind the element type
      * @param value the value to store into the array
      */
-    public StoreIndexedNode(ValueNode array, ValueNode index, Kind elementKind, ValueNode value) {
+    public static StoreIndexedNode create(ValueNode array, ValueNode index, Kind elementKind, ValueNode value) {
+        return new StoreIndexedNodeGen(array, index, elementKind, value);
+    }
+
+    StoreIndexedNode(ValueNode array, ValueNode index, Kind elementKind, ValueNode value) {
         super(StampFactory.forVoid(), array, index, elementKind);
         this.value = value;
     }

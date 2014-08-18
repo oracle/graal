@@ -25,7 +25,7 @@ package com.oracle.graal.nodeinfo;
 import java.lang.annotation.*;
 
 /**
- * Denotes a Node class derived from a {@link NodeInfo} annotated Node type.
+ * Denotes a Node subclass generated on the basis of a {@link NodeInfo} annotation on a Node type.
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE})

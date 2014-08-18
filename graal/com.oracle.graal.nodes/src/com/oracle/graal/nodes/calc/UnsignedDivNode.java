@@ -32,7 +32,11 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(shortName = "|/|")
 public class UnsignedDivNode extends FixedBinaryNode implements Lowerable, LIRLowerable {
 
-    public UnsignedDivNode(ValueNode x, ValueNode y) {
+    public static UnsignedDivNode create(ValueNode x, ValueNode y) {
+        return new UnsignedDivNodeGen(x, y);
+    }
+
+    protected UnsignedDivNode(ValueNode x, ValueNode y) {
         super(x.stamp().unrestricted(), x, y);
     }
 
@@ -50,7 +54,7 @@ public class UnsignedDivNode extends FixedBinaryNode implements Lowerable, LIRLo
                 return forX;
             }
             if (CodeUtil.isPowerOf2(c)) {
-                return new UnsignedRightShiftNode(forX, ConstantNode.forInt(CodeUtil.log2(c)));
+                return UnsignedRightShiftNode.create(forX, ConstantNode.forInt(CodeUtil.log2(c)));
             }
         }
         return this;

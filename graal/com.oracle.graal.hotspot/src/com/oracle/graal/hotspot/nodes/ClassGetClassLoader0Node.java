@@ -39,7 +39,11 @@ import com.oracle.graal.replacements.nodes.*;
 @NodeInfo
 public class ClassGetClassLoader0Node extends MacroStateSplitNode implements Canonicalizable {
 
-    public ClassGetClassLoader0Node(Invoke invoke) {
+    public static ClassGetClassLoader0Node create(Invoke invoke) {
+        return new ClassGetClassLoader0NodeGen(invoke);
+    }
+
+    protected ClassGetClassLoader0Node(Invoke invoke) {
         super(invoke);
     }
 

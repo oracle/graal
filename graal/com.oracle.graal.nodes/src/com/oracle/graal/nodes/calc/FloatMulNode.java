@@ -33,7 +33,15 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(shortName = "*")
 public class FloatMulNode extends FloatArithmeticNode {
 
-    public FloatMulNode(ValueNode x, ValueNode y, boolean isStrictFP) {
+    public static FloatMulNode create(ValueNode x, ValueNode y, boolean isStrictFP) {
+        return new FloatMulNodeGen(x, y, isStrictFP);
+    }
+
+    public static Class<? extends FloatMulNode> getGenClass() {
+        return FloatMulNodeGen.class;
+    }
+
+    protected FloatMulNode(ValueNode x, ValueNode y, boolean isStrictFP) {
         super(x.stamp().unrestricted(), x, y, isStrictFP);
     }
 
@@ -51,7 +59,7 @@ public class FloatMulNode extends FloatArithmeticNode {
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
         if (forX.isConstant() && !forY.isConstant()) {
-            return new FloatMulNode(forY, forX, isStrictFP());
+            return FloatMulNode.create(forY, forX, isStrictFP());
         }
         if (forX.isConstant()) {
             return ConstantNode.forPrimitive(evalConst(forX.asConstant(), forY.asConstant()));

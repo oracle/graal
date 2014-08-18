@@ -37,13 +37,21 @@ public class MemoryPhiNode extends PhiNode implements MemoryNode {
     @Input(InputType.Memory) final NodeInputList<ValueNode> values;
     private final LocationIdentity locationIdentity;
 
-    public MemoryPhiNode(MergeNode merge, LocationIdentity locationIdentity) {
+    public static MemoryPhiNode create(MergeNode merge, LocationIdentity locationIdentity) {
+        return new MemoryPhiNodeGen(merge, locationIdentity);
+    }
+
+    protected MemoryPhiNode(MergeNode merge, LocationIdentity locationIdentity) {
         super(StampFactory.forVoid(), merge);
         this.locationIdentity = locationIdentity;
         this.values = new NodeInputList<>(this);
     }
 
-    public MemoryPhiNode(MergeNode merge, LocationIdentity locationIdentity, ValueNode[] values) {
+    public static MemoryPhiNode create(MergeNode merge, LocationIdentity locationIdentity, ValueNode[] values) {
+        return new MemoryPhiNodeGen(merge, locationIdentity, values);
+    }
+
+    protected MemoryPhiNode(MergeNode merge, LocationIdentity locationIdentity, ValueNode[] values) {
         super(StampFactory.forVoid(), merge);
         this.locationIdentity = locationIdentity;
         this.values = new NodeInputList<>(this, values);

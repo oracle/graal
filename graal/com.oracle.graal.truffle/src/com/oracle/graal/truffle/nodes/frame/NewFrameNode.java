@@ -51,13 +51,21 @@ public class NewFrameNode extends FixedWithNextNode implements IterableNodeType,
     @Input private ValueNode descriptor;
     @Input private ValueNode arguments;
 
-    public NewFrameNode(Stamp stamp, ValueNode descriptor, ValueNode arguments) {
+    public static NewFrameNode create(Stamp stamp, ValueNode descriptor, ValueNode arguments) {
+        return new NewFrameNodeGen(stamp, descriptor, arguments);
+    }
+
+    protected NewFrameNode(Stamp stamp, ValueNode descriptor, ValueNode arguments) {
         super(stamp);
         this.descriptor = descriptor;
         this.arguments = arguments;
     }
 
-    public NewFrameNode(ResolvedJavaType frameType, ValueNode descriptor, ValueNode arguments) {
+    public static NewFrameNode create(ResolvedJavaType frameType, ValueNode descriptor, ValueNode arguments) {
+        return new NewFrameNodeGen(frameType, descriptor, arguments);
+    }
+
+    protected NewFrameNode(ResolvedJavaType frameType, ValueNode descriptor, ValueNode arguments) {
         this(StampFactory.exactNonNull(frameType), descriptor, arguments);
     }
 
@@ -120,7 +128,7 @@ public class NewFrameNode extends FixedWithNextNode implements IterableNodeType,
         if (fixed instanceof MaterializeFrameNode || fixed instanceof AbstractEndNode) {
             // We need to conservatively assume that a materialization of a virtual frame can also
             // happen at a merge point.
-            return new AllocatedObjectNode(virtualNode);
+            return AllocatedObjectNode.create(virtualNode);
         }
         String escapeReason;
         if (fixed instanceof StoreFieldNode) {
@@ -153,10 +161,10 @@ public class NewFrameNode extends FixedWithNextNode implements IterableNodeType,
         ResolvedJavaField primitiveLocalsField = findField(frameFields, "primitiveLocals");
         ResolvedJavaField tagsField = findField(frameFields, "tags");
 
-        VirtualObjectNode virtualFrame = new VirtualInstanceNode(frameType, frameFields, false);
-        VirtualObjectNode virtualFrameObjectArray = new VirtualArrayNode((ResolvedJavaType) localsField.getType().getComponentType(), frameSize);
-        VirtualObjectNode virtualFramePrimitiveArray = new VirtualArrayNode((ResolvedJavaType) primitiveLocalsField.getType().getComponentType(), frameSize);
-        VirtualObjectNode virtualFrameTagArray = new VirtualArrayNode((ResolvedJavaType) tagsField.getType().getComponentType(), frameSize);
+        VirtualObjectNode virtualFrame = VirtualInstanceNode.create(frameType, frameFields, false);
+        VirtualObjectNode virtualFrameObjectArray = VirtualArrayNode.create((ResolvedJavaType) localsField.getType().getComponentType(), frameSize);
+        VirtualObjectNode virtualFramePrimitiveArray = VirtualArrayNode.create((ResolvedJavaType) primitiveLocalsField.getType().getComponentType(), frameSize);
+        VirtualObjectNode virtualFrameTagArray = VirtualArrayNode.create((ResolvedJavaType) tagsField.getType().getComponentType(), frameSize);
 
         ValueNode[] objectArrayEntryState = new ValueNode[frameSize];
         ValueNode[] primitiveArrayEntryState = new ValueNode[frameSize];

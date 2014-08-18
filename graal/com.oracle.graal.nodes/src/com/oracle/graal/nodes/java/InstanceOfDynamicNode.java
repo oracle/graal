@@ -44,7 +44,11 @@ public class InstanceOfDynamicNode extends LogicNode implements Canonicalizable.
      * @param mirror the {@link Class} value representing the target target type of the test
      * @param object the object being tested
      */
-    public InstanceOfDynamicNode(ValueNode mirror, ValueNode object) {
+    public static InstanceOfDynamicNode create(ValueNode mirror, ValueNode object) {
+        return new InstanceOfDynamicNodeGen(mirror, object);
+    }
+
+    InstanceOfDynamicNode(ValueNode mirror, ValueNode object) {
         this.mirror = mirror;
         this.object = object;
         assert mirror.getKind() == Kind.Object : mirror.getKind();
@@ -64,7 +68,7 @@ public class InstanceOfDynamicNode extends LogicNode implements Canonicalizable.
                 if (t.isPrimitive()) {
                     return LogicConstantNode.contradiction();
                 } else {
-                    return new InstanceOfNode(t, forObject, null);
+                    return InstanceOfNode.create(t, forObject, null);
                 }
             }
         }
