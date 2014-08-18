@@ -45,6 +45,9 @@ public abstract class ExecutionContext {
     protected ExecutionContext() {
     }
 
+    /**
+     * Sets up the {@link SourceCallback} for this execution context.
+     */
     public void initialize() {
         setSourceCallback(new SourceCallback() {
 
@@ -99,23 +102,13 @@ public abstract class ExecutionContext {
     }
 
     /**
-     * Return the (possibly newly created) {@link Probe} uniquely associated with a particular
-     * source code location. A newly created probe carries no tags.
+     * Return a newly created {@link Probe} uniquely associated with a particular source section. A
+     * newly created probe carries no tags.
      *
      * @return a probe uniquely associated with an extent of guest language source code.
      */
-    public final Probe getProbe(SourceSection sourceSection) {
-        return probeManager.getProbe(sourceSection);
-    }
-
-    /**
-     * Has a {@link Probe} been created that is uniquely associated with a particular source code
-     * location.
-     *
-     * @return a probe uniquely associated with an extent of guest language source code.
-     */
-    public final boolean hasProbe(SourceSection sourceSection) {
-        return probeManager.hasProbe(sourceSection);
+    public final Probe createProbe(SourceSection source) {
+        return probeManager.createProbe(source);
     }
 
     /**
@@ -124,14 +117,6 @@ public abstract class ExecutionContext {
      */
     public final Collection<Probe> findProbesTaggedAs(SyntaxTag tag) {
         return probeManager.findProbesTaggedAs(tag);
-    }
-
-    /**
-     * Returns all existing probes with first character on a specified line; empty collection if no
-     * probes found.
-     */
-    public final Collection<Probe> findProbesByLine(LineLocation lineLocation) {
-        return probeManager.findProbesByLine(lineLocation);
     }
 
     /**

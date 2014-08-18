@@ -50,7 +50,7 @@ public final class SLExpressionWrapper extends SLExpressionNode implements Wrapp
         super(child.getSourceSection());
         assert !(child instanceof SLExpressionWrapper);
         this.child = insert(child);
-        this.probe = context.getProbe(child.getSourceSection());
+        this.probe = context.createProbe(child.getSourceSection());
     }
 
     @Override

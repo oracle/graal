@@ -39,7 +39,7 @@ public interface ProbeListener {
      * Notifies that a newly created (untagged) {@link Probe} has been inserted into a Truffle AST.
      * There will be no notification when an existing {@link Probe} is shared by an AST copy.
      */
-    void newProbeInserted(SourceSection location, Probe probe);
+    void newProbeInserted(SourceSection source, Probe probe);
 
     /**
      * Notifies that a (fully constructed) {@link Probe} has been tagged. A subsequent marking with

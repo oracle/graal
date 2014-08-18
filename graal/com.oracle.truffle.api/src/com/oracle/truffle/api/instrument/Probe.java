@@ -55,7 +55,10 @@ import com.oracle.truffle.api.source.*;
 public interface Probe extends ExecutionEvents, SyntaxTagged {
 
     /**
-     * The source location with which this probe is (presumably uniquely) associated.
+     * Get the {@link SourceSection} associated with this probe. This is no longer uniquely
+     * associated.
+     *
+     * @return The source associated with this probe.
      */
     SourceSection getSourceLocation();
 

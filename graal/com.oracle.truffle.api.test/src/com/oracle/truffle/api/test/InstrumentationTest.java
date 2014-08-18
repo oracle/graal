@@ -188,7 +188,7 @@ public class InstrumentationTest {
 
         public TestWrapper(RootNode child, ExecutionContext context) {
             this.child = insert(child);
-            this.probe = context.getProbe(child.getSourceSection());
+            this.probe = context.createProbe(child.getSourceSection());
         }
 
         public boolean isTaggedAs(SyntaxTag tag) {
