@@ -34,27 +34,16 @@ import com.oracle.truffle.api.CompilerDirectives.*;
  * optimization system using {@link CompilerDirectives#injectBranchProbability(double, boolean)}.
  * Condition profiles are intended to be used as part of if conditions.
  *
- * Example usage:
- *
- * <pre>
- * private final ConditionProfile zero = new IntegerConditionProfile();
- * 
- * int value = ...;
- * if (zero.profile(value == 0)) {
- *   return 0;
- * } else {
- *   return value;
- * }
- *
- * </pre>
- *
- * @see ConditionProfile
- * @see CountingConditionProfile
+ * @see ConditionProfile#createCountingProfile()
  */
-public class CountingConditionProfile extends ConditionProfile {
+public final class CountingConditionProfile extends ConditionProfile {
 
     @CompilationFinal private int trueCount;
     @CompilationFinal private int falseCount;
+
+    CountingConditionProfile() {
+        /* package protected constructor */
+    }
 
     @Override
     public boolean profile(boolean value) {

@@ -24,6 +24,8 @@
  */
 package com.oracle.truffle.api.utilities;
 
+import com.oracle.truffle.api.*;
+
 /**
  * Abstract utility class to speculate on conditions. Condition profiles are intended to be used as
  * part of if conditions.
@@ -31,8 +33,8 @@ package com.oracle.truffle.api.utilities;
  * Example usage:
  *
  * <pre>
- * private final ConditionProfile zero = ...;
- * 
+ * private final ConditionProfile zero = ConditionProfile.createBinaryProfile();
+ *
  * int value = ...;
  * if (zero.profile(value == 0)) {
  *   return 0;
@@ -42,11 +44,37 @@ package com.oracle.truffle.api.utilities;
  *
  * </pre>
  *
- * @see BinaryConditionProfile
- * @see CountingConditionProfile
+ * @see #createCountingProfile()
+ * @see #createBinaryProfile()
  */
 public abstract class ConditionProfile {
 
     public abstract boolean profile(boolean value);
+
+    /**
+     * Returns a {@link ConditionProfile} that speculates on conditions to be never
+     * <code>true</code> or to be never <code>false</code>. Additionally to a binary profile this
+     * method returns a condition profile that also counts the number of times the condition was
+     * true and false. This information is reported to the underlying optimization system using
+     * {@link CompilerDirectives#injectBranchProbability(double, boolean)}. Condition profiles are
+     * intended to be used as part of if conditions.
+     *
+     * @see ConditionProfile
+     * @see #createBinaryProfile()
+     */
+    public static CountingConditionProfile createCountingProfile() {
+        return new CountingConditionProfile();
+    }
+
+    /**
+     * REturns a {@link ConditionProfile} that speculates on conditions to be never true or to be
+     * never false. Condition profiles are intended to be used as part of if conditions.
+     *
+     * @see ConditionProfile
+     * @see ConditionProfile#createBinaryProfile()
+     */
+    public static BinaryConditionProfile createBinaryProfile() {
+        return new BinaryConditionProfile();
+    }
 
 }

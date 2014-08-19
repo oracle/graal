@@ -52,7 +52,7 @@ public final class SLIfNode extends SLStatementNode {
      * (as opposed to {@link BinaryConditionProfile} implementation) transmits the probability of
      * the condition to be true to the compiler.
      */
-    private final ConditionProfile condition = new CountingConditionProfile();
+    private final ConditionProfile condition = ConditionProfile.createCountingProfile();
 
     public SLIfNode(SourceSection src, SLExpressionNode conditionNode, SLStatementNode thenPartNode, SLStatementNode elsePartNode) {
         super(src);
