@@ -30,6 +30,7 @@ import java.util.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.asm.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.lir.*;
@@ -244,10 +245,7 @@ public class SPARCHotSpotRegisterConfig implements RegisterConfig {
             if (locations[i] == null) {
                 // Stack slot is always aligned to its size in bytes but minimum wordsize
                 int typeSize = SPARC.spillSlotSize(target, kind);
-                int modulus = currentStackOffset % typeSize;
-                if (modulus != 0) {
-                    currentStackOffset += typeSize - modulus;
-                }
+                currentStackOffset = NumUtil.roundUp(currentStackOffset, typeSize);
                 locations[i] = StackSlot.get(target.getLIRKind(kind.getStackKind()), currentStackOffset, !type.out);
                 currentStackOffset += typeSize;
             }

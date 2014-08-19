@@ -27,10 +27,12 @@ import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Movxtod;
 import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.sparc.*;
 
 /**
  * Saves registers to stack slots.
@@ -78,6 +80,7 @@ public class SPARCSaveRegistersOp extends SPARCLIRInstruction implements SaveReg
                 saveRegister(crb, masm, slots[i], savedRegisters[i]);
             }
         }
+        new Movxtod(SPARC.i0, SPARC.f31).emit(masm);
     }
 
     public StackSlot[] getSlots() {

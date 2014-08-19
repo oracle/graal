@@ -268,7 +268,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
     }
 
     public void emitLeaveCurrentStackFrame(SaveRegistersOp saveRegisterOp) {
-        append(new SPARCHotSpotLeaveCurrentStackFrameOp());
+        append(new SPARCHotSpotLeaveCurrentStackFrameOp(saveRegisterOp));
     }
 
     public void emitLeaveDeoptimizedStackFrame(Value frameSize, Value initialInfo) {
@@ -280,12 +280,13 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
         Variable framePcVariable = load(framePc);
         Variable senderSpVariable = load(senderSp);
         Variable scratchVariable = newVariable(LIRKind.value(getHostWordKind()));
-        append(new SPARCHotSpotEnterUnpackFramesStackFrameOp(thread, config.threadLastJavaSpOffset(), config.threadLastJavaPcOffset(), framePcVariable, senderSpVariable, scratchVariable));
+        append(new SPARCHotSpotEnterUnpackFramesStackFrameOp(thread, config.threadLastJavaSpOffset(), config.threadLastJavaPcOffset(), framePcVariable, senderSpVariable, scratchVariable,
+                        saveRegisterOp));
     }
 
     public void emitLeaveUnpackFramesStackFrame(SaveRegistersOp saveRegisterOp) {
         Register thread = getProviders().getRegisters().getThreadRegister();
-        append(new SPARCHotSpotLeaveUnpackFramesStackFrameOp(thread, config.threadLastJavaSpOffset(), config.threadLastJavaPcOffset(), config.threadJavaFrameAnchorFlagsOffset()));
+        append(new SPARCHotSpotLeaveUnpackFramesStackFrameOp(thread, config.threadLastJavaSpOffset(), config.threadLastJavaPcOffset(), config.threadJavaFrameAnchorFlagsOffset(), saveRegisterOp));
     }
 
     public void emitPushInterpreterFrame(Value frameSize, Value framePc, Value senderSp, Value initialInfo) {

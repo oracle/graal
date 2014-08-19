@@ -200,7 +200,7 @@ public class SPARCControlFlow {
         private final LabelRef[] keyTargets;
         private LabelRef defaultTarget;
         @Alive({REG}) protected Value key;
-        @Temp({REG, ILLEGAL}) protected Value scratch;
+        @Temp({REG}) protected Value scratch;
         private final SwitchStrategy strategy;
 
         public StrategySwitchOp(SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, Value key, Value scratch) {
@@ -212,7 +212,6 @@ public class SPARCControlFlow {
             this.scratch = scratch;
             assert keyConstants.length == keyTargets.length;
             assert keyConstants.length == strategy.keyProbabilities.length;
-            assert (scratch.getKind() == Kind.Illegal) == (key.getKind() == Kind.Int);
         }
 
         @Override
@@ -228,8 +227,13 @@ public class SPARCControlFlow {
                                 crb.recordInlineDataInCode(keyConstants[index]);
                             }
                             long lc = keyConstants[index].asLong();
-                            assert NumUtil.isInt(lc);
-                            new Cmp(keyRegister, (int) lc).emit(masm);
+                            if (SPARCAssembler.isSimm13(lc)) {
+                                assert NumUtil.isInt(lc);
+                                new Cmp(keyRegister, (int) lc).emit(masm);
+                            } else {
+                                new Setx(lc, asIntReg(scratch)).emit(masm);
+                                new Cmp(keyRegister, asIntReg(scratch)).emit(masm);
+                            }
                             emitCompare(masm, target, condition, CC.Icc);
                             break;
                         case Long: {

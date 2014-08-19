@@ -24,13 +24,18 @@ package com.oracle.graal.hotspot.sparc;
 
 import static com.oracle.graal.asm.sparc.SPARCMacroAssembler.*;
 import static com.oracle.graal.sparc.SPARC.*;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.sparc.*;
+import com.oracle.graal.lir.StandardOp.*;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.sparc.*;
 
 /**
  * Emits code that leaves a stack frame which is tailored to call the C++ method
@@ -44,11 +49,14 @@ final class SPARCHotSpotLeaveUnpackFramesStackFrameOp extends SPARCLIRInstructio
     private final int threadLastJavaPcOffset;
     private final int threadJavaFrameAnchorFlagsOffset;
 
-    SPARCHotSpotLeaveUnpackFramesStackFrameOp(Register thread, int threadLastJavaSpOffset, int threadLastJavaPcOffset, int threadJavaFrameAnchorFlagsOffset) {
+    private final SaveRegistersOp saveRegisterOp;
+
+    SPARCHotSpotLeaveUnpackFramesStackFrameOp(Register thread, int threadLastJavaSpOffset, int threadLastJavaPcOffset, int threadJavaFrameAnchorFlagsOffset, SaveRegistersOp saveRegisterOp) {
         this.thread = thread;
         this.threadLastJavaSpOffset = threadLastJavaSpOffset;
         this.threadLastJavaPcOffset = threadLastJavaPcOffset;
         this.threadJavaFrameAnchorFlagsOffset = threadJavaFrameAnchorFlagsOffset;
+        this.saveRegisterOp = saveRegisterOp;
     }
 
     @Override
@@ -63,5 +71,7 @@ final class SPARCHotSpotLeaveUnpackFramesStackFrameOp extends SPARCLIRInstructio
         new Stx(g0, new SPARCAddress(thread, threadLastJavaSpOffset)).emit(masm);
         new Stx(g0, new SPARCAddress(thread, threadLastJavaPcOffset)).emit(masm);
         new Stw(g0, new SPARCAddress(thread, threadJavaFrameAnchorFlagsOffset)).emit(masm);
+
+        new Movdtox(f31, i0).emit(masm);
     }
 }

@@ -32,7 +32,7 @@ public class AMD64AllocatorTest extends AllocatorTest {
 
     @Before
     public void setUp() {
-        assumeTrue(isArchitecture("AMD64"));
+        assumeTrue(isArchitecture("x86_64"));
     }
 
     @Test
