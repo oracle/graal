@@ -27,11 +27,10 @@ package com.oracle.truffle.api.instrument;
 import com.oracle.truffle.api.nodes.*;
 
 /**
- * Implementation of a policy for <em>instrumenting</em> inserting a {@link Probe} at a Truffle AST
- * node.
+ * Methods for inserting a {@link Probe} at a Truffle AST node.
  * <p>
- * Note that this interface is guest language agnostic, but current extensions are
- * language-specific. This will be revisited.
+ * This interface is guest language agnostic, but current extensions are language-specific. This
+ * will be revisited.
  * <p>
  * <strong>Disclaimer:</strong> experimental interface under development. Really!
  */

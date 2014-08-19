@@ -43,6 +43,10 @@ public final class ProbeManager {
     /**
      * Called when a {@link #tagTrap} is activated in a Probe.
      */
+    /**
+     * The callback to be triggered by the {@link #tagTrap}.
+     *
+     */
     private final ProbeCallback probeCallback;
 
     /**
@@ -114,6 +118,8 @@ public final class ProbeManager {
     /**
      * Returns the subset of all {@link Probe}s holding a particular {@link SyntaxTag}, or the whole
      * collection if the specified tag is {@code null}.
+     *
+     * @return An iterable collection of probes containing the given tag.
      */
     public Collection<Probe> findProbesTaggedAs(SyntaxTag tag) {
         final List<Probe> probes = new ArrayList<>();

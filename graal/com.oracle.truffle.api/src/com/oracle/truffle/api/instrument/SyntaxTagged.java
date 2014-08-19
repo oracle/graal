@@ -36,12 +36,13 @@ package com.oracle.truffle.api.instrument;
 public interface SyntaxTagged {
 
     /**
-     * Is this node tagged as belonging to a particular category of language constructs?
+     * Is this node tagged as belonging to a particular human-sensible category of language
+     * constructs?
      */
     boolean isTaggedAs(SyntaxTag tag);
 
     /**
-     * In which categories has this node been tagged (<em>empty set</em> if none).
+     * In which user-sensible categories has this node been tagged (<em>empty set</em> if none).
      */
     Iterable<SyntaxTag> getSyntaxTags();
 

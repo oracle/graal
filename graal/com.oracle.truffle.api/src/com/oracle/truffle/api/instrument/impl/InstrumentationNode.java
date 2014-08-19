@@ -359,10 +359,19 @@ public abstract class InstrumentationNode extends Node implements ExecutionEvent
             this.next = null;
         }
 
+        /**
+         * Returns the {@link SourceSection} associated with this probe.
+         */
         public SourceSection getSourceLocation() {
             return source;
         }
 
+        /**
+         * Tags this probe with the given {@link SyntaxTag}. If the tag already exists, the tag is
+         * not added.
+         *
+         * @param tag The tag to add to this probe.
+         */
         @SlowPath
         public void tagAs(SyntaxTag tag) {
             assert tag != null;
@@ -372,11 +381,22 @@ public abstract class InstrumentationNode extends Node implements ExecutionEvent
             }
         }
 
+        /**
+         * Checks if this probe has been tagged with the given tag.
+         *
+         * @param tag The {@link SyntaxTag} to check for.
+         * @return True if this probe has the given tag, false otherwise.
+         */
         public boolean isTaggedAs(SyntaxTag tag) {
             assert tag != null;
             return tags.contains(tag);
         }
 
+        /**
+         * Returns an iterable collection of all syntax tags on this probe.
+         *
+         * @return A collection of {@link SyntaxTag}s.
+         */
         public Iterable<SyntaxTag> getSyntaxTags() {
             return tags;
         }

@@ -30,7 +30,7 @@ package com.oracle.truffle.api;
 public interface CallTarget {
 
     /**
-     * Calls this target as a root method..
+     * Calls this target as a root method.
      *
      * @param arguments passed arguments as an object array
      * @return the return result of the call

@@ -28,8 +28,9 @@ import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 
 /**
- * Normal events during program execution at Truffle AST nodes that are reported via a {@link Probe}
- * associated with the node, and made available to the probe's attached {@link Instrument}s.
+ * Normal events at each Truffle AST {@link Node} that occur during guest language execution, and
+ * which the {@link Probe} associated with that node, if any, reports to every {@link Instrument}
+ * attached to the {@link Probe}.
  * <p>
  * <strong>Disclaimer:</strong> experimental interface under development.
  */
