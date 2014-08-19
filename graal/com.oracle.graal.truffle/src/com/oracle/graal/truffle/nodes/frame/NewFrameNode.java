@@ -153,7 +153,7 @@ public class NewFrameNode extends FixedWithNextNode implements IterableNodeType,
         ResolvedJavaField primitiveLocalsField = findField(frameFields, "primitiveLocals");
         ResolvedJavaField tagsField = findField(frameFields, "tags");
 
-        VirtualObjectNode virtualFrame = new VirtualInstanceNode(frameType, frameFields, false);
+        VirtualObjectNode virtualFrame = new VirtualOnlyInstanceNode(frameType, frameFields);
         VirtualObjectNode virtualFrameObjectArray = new VirtualArrayNode((ResolvedJavaType) localsField.getType().getComponentType(), frameSize);
         VirtualObjectNode virtualFramePrimitiveArray = new VirtualArrayNode((ResolvedJavaType) primitiveLocalsField.getType().getComponentType(), frameSize);
         VirtualObjectNode virtualFrameTagArray = new VirtualArrayNode((ResolvedJavaType) tagsField.getType().getComponentType(), frameSize);
