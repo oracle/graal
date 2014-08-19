@@ -380,7 +380,7 @@ public class ContainsTest {
             return true;
         }
 
-        @Specialization()
+        @Specialization
         Object f0() {
             return null;
         }

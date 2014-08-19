@@ -50,7 +50,7 @@ public class NegatedGuardsTest {
             throw new AssertionError();
         }
 
-        @Specialization()
+        @Specialization
         int do2() {
             return 42; // the generic answer to all questions
         }
