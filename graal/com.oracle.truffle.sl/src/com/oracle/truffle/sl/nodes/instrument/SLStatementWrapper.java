@@ -49,7 +49,7 @@ public final class SLStatementWrapper extends SLStatementNode implements Wrapper
         super(child.getSourceSection());
         assert !(child instanceof SLStatementWrapper);
         this.child = insert(child);
-        this.probe = context.getProbe(child.getSourceSection());
+        this.probe = context.createProbe(child.getSourceSection());
     }
 
     @Override
