@@ -36,19 +36,12 @@ import com.oracle.truffle.api.source.*;
  */
 public final class ProbeManager {
 
-    /**
-     * The collection of {@link ProbeListener}s to call.
-     */
     private final List<ProbeListener> probeListeners = new ArrayList<>();
 
-    /**
-     * The collection of all probes added.
-     */
-    private final List<ProbeImpl> probeList = new ArrayList<>();
+    private final List<ProbeImpl> allProbes = new ArrayList<>();
 
     /**
-     * The callback to be triggered by the {@link #tagTrap}.
-     *
+     * Called when a {@link #tagTrap} is activated in a Probe.
      */
     private final ProbeCallback probeCallback;
 
@@ -99,8 +92,8 @@ public final class ProbeManager {
     }
 
     /**
-     * Creates a {@link Probe} for the given {@link SourceSection} and informs all
-     * {@link ProbeListener}s stored in this manager of its creation.
+     * Creates a new {@link Probe} associated with a {@link SourceSection} of code corresponding to
+     * a Trufle AST node.
      *
      * @param source The source section to associate with this probe.
      * @return The probe that was created.
@@ -109,7 +102,7 @@ public final class ProbeManager {
         assert source != null;
 
         ProbeImpl probe = InstrumentationNode.createProbe(source, probeCallback);
-        probeList.add(probe);
+        allProbes.add(probe);
 
         for (ProbeListener listener : probeListeners) {
             listener.newProbeInserted(source, probe);
@@ -119,15 +112,12 @@ public final class ProbeManager {
     }
 
     /**
-     * Returns a collection of {@link Probe}s created by this manager that have the given
-     * {@link SyntaxTag}.
-     *
-     * @param tag The tag to search for.
-     * @return An iterable collection of probes containing the given tag.
+     * Returns the subset of all {@link Probe}s holding a particular {@link SyntaxTag}, or the whole
+     * collection if the specified tag is {@code null}.
      */
     public Collection<Probe> findProbesTaggedAs(SyntaxTag tag) {
         final List<Probe> probes = new ArrayList<>();
-        for (Probe probe : probeList) {
+        for (Probe probe : allProbes) {
             if (tag == null || probe.isTaggedAs(tag)) {
                 probes.add(probe);
             }
@@ -137,13 +127,12 @@ public final class ProbeManager {
 
     /**
      * Calls {@link ProbeImpl#setTrap(SyntaxTagTrap)} for all probes with the given
-     * {@link SyntaxTag} . There can only be one tag trap set at a time. An
-     * {@link IllegalStateException} is thrown if this is called and a tag trap has already been
-     * set.
+     * {@link SyntaxTag} . There can only be one tag trap set at a time.
      *
      * @param tagTrap The {@link SyntaxTagTrap} to set.
+     * @throws IllegalStateException if a trap is currently set.
      */
-    public void setTagTrap(SyntaxTagTrap tagTrap) {
+    public void setTagTrap(SyntaxTagTrap tagTrap) throws IllegalStateException {
         assert tagTrap != null;
         if (this.tagTrap != null) {
             throw new IllegalStateException("trap already set");
@@ -151,7 +140,7 @@ public final class ProbeManager {
         this.tagTrap = tagTrap;
 
         SyntaxTag tag = tagTrap.getTag();
-        for (ProbeImpl probe : probeList) {
+        for (ProbeImpl probe : allProbes) {
             if (probe.isTaggedAs(tag)) {
                 probe.setTrap(tagTrap);
             }
@@ -159,14 +148,15 @@ public final class ProbeManager {
     }
 
     /**
-     * Clears the current {@link SyntaxTagTrap}. If no trap has been set, an
-     * {@link IllegalStateException} is thrown.
+     * Clears the current {@link SyntaxTagTrap}.
+     *
+     * @throws IllegalStateException if no trap is currently set.
      */
     public void clearTagTrap() {
         if (this.tagTrap == null) {
             throw new IllegalStateException("no trap set");
         }
-        for (ProbeImpl probe : probeList) {
+        for (ProbeImpl probe : allProbes) {
             if (probe.isTaggedAs(tagTrap.getTag())) {
                 probe.setTrap(null);
             }

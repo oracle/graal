@@ -34,11 +34,9 @@ import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.source.*;
 
 /**
- * Abstract implementation of Truffle {@link Node} to be used for AST probes and instruments.
- * Instruments are represented as a chain using the next field. Each instrument chain is connected
- * to a single probe.
- * <p>
- * Coordinates propagation of Truffle AST {@link ExecutionEvents}.
+ * Abstract implementation of Truffle {@link Node}s used as AST {@link Probe}s and
+ * {@link Instrument}s. A {@link Probe} manages its attached {@link Instrument}s by appending them
+ * to a chain through which {@link ExecutionEvents} are propagated.
  */
 public abstract class InstrumentationNode extends Node implements ExecutionEvents {
 
@@ -112,9 +110,9 @@ public abstract class InstrumentationNode extends Node implements ExecutionEvent
     }
 
     /**
-     * Inform the instrument that the AST node this is attached to has just been entered. This will
-     * continue to call {@link #internalEnter(Node, VirtualFrame)} to inform all instruments in the
-     * chain.
+     * Informs the instrument that execution is just about to enter an AST node with which this
+     * instrumentation node is associated. This will continue to call
+     * {@link #internalEnter(Node, VirtualFrame)} to inform all instruments in the chain.
      *
      * @param astNode The {@link Node} that was entered
      * @param frame The {@link VirtualFrame} at the time of entry
@@ -127,9 +125,10 @@ public abstract class InstrumentationNode extends Node implements ExecutionEvent
     }
 
     /**
-     * Inform the instrument that the AST node this is attached to is about to be left. This will
-     * continue to call {@link #internalEnter(Node, VirtualFrame)} to inform all instruments in the
-     * chain. In this case, there is no return value.
+     * Informs the instrument that execution has just returned from an AST node with which this
+     * instrumentation node is associated. This will continue to call
+     * {@link #internalEnter(Node, VirtualFrame)} to inform all instruments in the chain. In this
+     * case, there is no return value.
      *
      * @param astNode The {@link Node} that was entered
      * @param frame The {@link VirtualFrame} at the time of exit
@@ -142,9 +141,10 @@ public abstract class InstrumentationNode extends Node implements ExecutionEvent
     }
 
     /**
-     * Inform the instrument that the AST node this is attached to has just been left. This will
-     * continue to call {@link #internalLeave(Node, VirtualFrame, boolean)} to inform all
-     * instruments in the chain. In this case, a boolean value was returned.
+     * Informs the instrument that execution has just returned from an AST node with which this
+     * instrumentation node is associated. This will continue to call
+     * {@link #internalLeave(Node, VirtualFrame, boolean)} to inform all instruments in the chain.
+     * In this case, a boolean value was returned.
      *
      * @param astNode The {@link Node} that was entered
      * @param frame The {@link VirtualFrame} at the time of exit
@@ -158,9 +158,10 @@ public abstract class InstrumentationNode extends Node implements ExecutionEvent
     }
 
     /**
-     * Inform the instrument that the AST node this is attached to is about to be left. This will
-     * continue to call {@link #internalLeave(Node, VirtualFrame, byte)} to inform all instruments
-     * in the chain. In this case, a byte value was returned.
+     * Informs the instrument that execution has just returned from an AST node with which this
+     * instrumentation node is associated. This will continue to call
+     * {@link #internalLeave(Node, VirtualFrame, byte)} to inform all instruments in the chain. In
+     * this case, a byte value was returned.
      *
      * @param astNode The {@link Node} that was entered
      * @param frame The {@link VirtualFrame} at the time of exit
@@ -174,9 +175,10 @@ public abstract class InstrumentationNode extends Node implements ExecutionEvent
     }
 
     /**
-     * Inform the instrument that the AST node this is attached to is about to be left. This will
-     * continue to call {@link #internalLeave(Node, VirtualFrame, short)} to inform all instruments
-     * in the chain. In this case, a short value was returned.
+     * Informs the instrument that execution has just returned from an AST node with which this
+     * instrumentation node is associated. This will continue to call
+     * {@link #internalLeave(Node, VirtualFrame, short)} to inform all instruments in the chain. In
+     * this case, a short value was returned.
      *
      * @param astNode The {@link Node} that was entered
      * @param frame The {@link VirtualFrame} at the time of exit
@@ -190,9 +192,10 @@ public abstract class InstrumentationNode extends Node implements ExecutionEvent
     }
 
     /**
-     * Inform the instrument that the AST node this is attached to is about to be left. This will
-     * continue to call {@link #internalLeave(Node, VirtualFrame, int)} to inform all instruments in
-     * the chain. In this case, a int value was returned.
+     * Informs the instrument that execution has just returned from an AST node with which this
+     * instrumentation node is associated. This will continue to call
+     * {@link #internalLeave(Node, VirtualFrame, int)} to inform all instruments in the chain. In
+     * this case, a int value was returned.
      *
      * @param astNode The {@link Node} that was entered
      * @param frame The {@link VirtualFrame} at the time of exit
@@ -206,9 +209,10 @@ public abstract class InstrumentationNode extends Node implements ExecutionEvent
     }
 
     /**
-     * Inform the instrument that the AST node this is attached to is about to be left. This will
-     * continue to call {@link #internalLeave(Node, VirtualFrame, long)} to inform all instruments
-     * in the chain. In this case, a long value was returned.
+     * Informs the instrument that execution has just returned from an AST node with which this
+     * instrumentation node is associated. This will continue to call
+     * {@link #internalLeave(Node, VirtualFrame, long)} to inform all instruments in the chain. In
+     * this case, a long value was returned.
      *
      * @param astNode The {@link Node} that was entered
      * @param frame The {@link VirtualFrame} at the time of exit
@@ -222,9 +226,10 @@ public abstract class InstrumentationNode extends Node implements ExecutionEvent
     }
 
     /**
-     * Inform the instrument that the AST node this is attached to is about to be left. This will
-     * continue to call {@link #internalLeave(Node, VirtualFrame, char)} to inform all instruments
-     * in the chain. In this case, a char value was returned.
+     * Informs the instrument that execution has just returned from an AST node with which this
+     * instrumentation node is associated. This will continue to call
+     * {@link #internalLeave(Node, VirtualFrame, char)} to inform all instruments in the chain. In
+     * this case, a char value was returned.
      *
      * @param astNode The {@link Node} that was entered
      * @param frame The {@link VirtualFrame} at the time of exit
@@ -238,9 +243,10 @@ public abstract class InstrumentationNode extends Node implements ExecutionEvent
     }
 
     /**
-     * Inform the instrument that the AST node this is attached to is about to be left. This will
-     * continue to call {@link #internalLeave(Node, VirtualFrame, float)} to inform all instruments
-     * in the chain. In this case, a float value was returned.
+     * Informs the instrument that execution has just returned from an AST node with which this
+     * instrumentation node is associated. This will continue to call
+     * {@link #internalLeave(Node, VirtualFrame, float)} to inform all instruments in the chain. In
+     * this case, a float value was returned.
      *
      * @param astNode The {@link Node} that was entered
      * @param frame The {@link VirtualFrame} at the time of exit
@@ -254,9 +260,10 @@ public abstract class InstrumentationNode extends Node implements ExecutionEvent
     }
 
     /**
-     * Inform the instrument that the AST node this is attached to is about to be left. This will
-     * continue to call {@link #internalLeave(Node, VirtualFrame, double)} to inform all instruments
-     * in the chain. In this case, a double value was returned.
+     * Informs the instrument that execution has just returned from an AST node with which this
+     * instrumentation node is associated. This will continue to call
+     * {@link #internalLeave(Node, VirtualFrame, double)} to inform all instruments in the chain. In
+     * this case, a double value was returned.
      *
      * @param astNode The {@link Node} that was entered
      * @param frame The {@link VirtualFrame} at the time of exit
@@ -270,9 +277,10 @@ public abstract class InstrumentationNode extends Node implements ExecutionEvent
     }
 
     /**
-     * Inform the instrument that the AST node this is attached to is about to be left. This will
-     * continue to call {@link #internalLeave(Node, VirtualFrame, Object)} to inform all instruments
-     * in the chain. In this case, an Object was returned.
+     * Informs the instrument that execution has just returned from an AST node with which this
+     * instrumentation node is associated. This will continue to call
+     * {@link #internalLeave(Node, VirtualFrame, Object)} to inform all instruments in the chain. In
+     * this case, an Object was returned.
      *
      * @param astNode The {@link Node} that was entered
      * @param frame The {@link VirtualFrame} at the time of exit
@@ -286,10 +294,10 @@ public abstract class InstrumentationNode extends Node implements ExecutionEvent
     }
 
     /**
-     * Inform the instrument that the AST node this is attached to is about to be left. This will
-     * continue to call {@link #internalLeaveExceptional(Node, VirtualFrame, Exception)} to inform
-     * all instruments in the chain. In this case, a exception (sometimes containing a value) was
-     * returned.
+     * Informs the instrument that execution has just returned from an AST node with which this
+     * instrumentation node is associated. This will continue to call
+     * {@link #internalLeaveExceptional(Node, VirtualFrame, Exception)} to inform all instruments in
+     * the chain. In this case, a exception (sometimes containing a value) was thrown.
      *
      * @param astNode The {@link Node} that was entered
      * @param frame The {@link VirtualFrame} at the time of exit
@@ -304,18 +312,17 @@ public abstract class InstrumentationNode extends Node implements ExecutionEvent
 
     /**
      * Holder of a chain of {@linkplain InstrumentationNode instruments}: manages the
-     * {@link Assumption} that none of the instruments have changed since last checked.
+     * {@link Assumption} that no {@link Instrument}s have been added or removed and that none of
+     * the attached instruments have changed state in a way that would require deopt.
      * <p>
      * An instance is intended to be shared by every clone of the AST node with which it is
      * originally attached, so it holds no parent pointer.
      * <p>
-     * Each probe is associated with a {@link SourceSection} which was originally intended to be a
-     * unique id for the probe, but this is no longer true. Instead, it is the responsibility of the
-     * tool using to probes to track which probes they are interested in. One approach is to use the
-     * callback functionality in {@link ProbeManager}.
+     * Each probe is associated with a {@link SourceSection}, not necessarily uniquely, although
+     * such a policy could be enforced for some uses.
      * <p>
-     * May be categorized by one or more {@linkplain SyntaxTag tags}, signifying information useful
-     * for instrumentation about its AST location(s).
+     * Each {@link Probe} be categorized by one or more {@linkplain SyntaxTag tags}, signifying
+     * information useful for instrumentation about its AST location(s).
      */
     static final class ProbeImpl extends InstrumentationNode implements Probe {
 
@@ -332,7 +339,9 @@ public abstract class InstrumentationNode extends Node implements ExecutionEvent
         private final ArrayList<SyntaxTag> tags = new ArrayList<>();
 
         /**
-         * The wrapper that this probe belongs to.
+         * The region of source code associated with this probe. Note that this is distinct from
+         * {@link Node#getSourceSection()}, which is {@code null} for all instances of
+         * {@link InstrumentationNode} since they have no corresponding source of their own.
          */
         private final SourceSection source;
 
@@ -350,19 +359,10 @@ public abstract class InstrumentationNode extends Node implements ExecutionEvent
             this.next = null;
         }
 
-        /**
-         * Returns the {@link SourceSection} associated with this probe.
-         */
         public SourceSection getSourceLocation() {
             return source;
         }
 
-        /**
-         * Tags this probe with the given {@link SyntaxTag}. If the tag already exists, the tag is
-         * not added.
-         *
-         * @param tag The tag to add to this probe.
-         */
         @SlowPath
         public void tagAs(SyntaxTag tag) {
             assert tag != null;
@@ -372,22 +372,11 @@ public abstract class InstrumentationNode extends Node implements ExecutionEvent
             }
         }
 
-        /**
-         * Checks if this probe has been tagged with the given tag.
-         *
-         * @param tag The {@link SyntaxTag} to check for.
-         * @return True if this probe has the given tag, false otherwise.
-         */
         public boolean isTaggedAs(SyntaxTag tag) {
             assert tag != null;
             return tags.contains(tag);
         }
 
-        /**
-         * Returns an iterable collection of all syntax tags on this probe.
-         *
-         * @return A collection of {@link SyntaxTag}s.
-         */
         public Iterable<SyntaxTag> getSyntaxTags() {
             return tags;
         }

@@ -102,10 +102,10 @@ public abstract class ExecutionContext {
     }
 
     /**
-     * Return a newly created {@link Probe} uniquely associated with a particular source section. A
-     * newly created probe carries no tags.
+     * Return a newly created, untagged, {@link Probe} associated with a particular source section,
+     * with no requirement that the association be unique.
      *
-     * @return a probe uniquely associated with an extent of guest language source code.
+     * @return a probe associated with an extent of guest language source code.
      */
     public final Probe createProbe(SourceSection source) {
         return probeManager.createProbe(source);

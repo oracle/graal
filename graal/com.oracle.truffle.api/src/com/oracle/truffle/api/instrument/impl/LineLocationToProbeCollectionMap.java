@@ -30,9 +30,8 @@ import com.oracle.truffle.api.instrument.*;
 import com.oracle.truffle.api.source.*;
 
 /**
- * This class maintains a mapping from {@link LineLocation} to a collection of {@link Probe}s to be
- * used by debugging tools.
- *
+ * A mapping from {@link LineLocation} (a line number in a specific piece of {@link Source} code) to
+ * a collection of {@link Probe}s whose associated {@link SourceSection} starts on that line.
  */
 public class LineLocationToProbeCollectionMap implements ProbeListener {
     /**
@@ -43,24 +42,18 @@ public class LineLocationToProbeCollectionMap implements ProbeListener {
     public LineLocationToProbeCollectionMap() {
     }
 
-    /**
-     * Adds the current wrapper's child's line location and probe to this map.
-     */
     public void newProbeInserted(SourceSection source, Probe probe) {
         final LineLocation line = source.getLineLocation();
         this.addProbeToLine(line, probe);
     }
 
-    /**
-     * Does nothing.
-     */
     public void probeTaggedAs(Probe probe, SyntaxTag tag) {
-
+        // This map ignores tags
     }
 
     /**
      * Returns the {@link Probe}, if any, associated with source that starts on a specified line; if
-     * there are more than one, return the one with the first character location.
+     * there are more than one, return the one with the first starting character location.
      */
     public Probe findLineProbe(LineLocation lineLocation) {
         Probe probe = null;
