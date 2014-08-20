@@ -34,6 +34,7 @@ import com.oracle.truffle.api.source.*;
  * a collection of {@link Probe}s whose associated {@link SourceSection} starts on that line.
  */
 public class LineLocationToProbeCollectionMap implements ProbeListener {
+
     /**
      * Map: Source line ==> probes associated with source sections starting on the line.
      */
@@ -69,7 +70,7 @@ public class LineLocationToProbeCollectionMap implements ProbeListener {
     }
 
     /**
-     * Adds a probe to the given line.
+     * Records creation of a probe whose associated source starts on the given line.
      * <p>
      * If the line already exists in the internal {@link #lineToProbesMap}, this probe will be added
      * to the existing collection. If no line already exists in the internal map, then a new key is
@@ -97,11 +98,11 @@ public class LineLocationToProbeCollectionMap implements ProbeListener {
     }
 
     /**
-     * Returns a collection of {@link Probe}s at the given {@link LineLocation}. If there are no
-     * probes at that line, an empty list is returned.
+     * Returns a collection of {@link Probe}s whose associated source begings at the given
+     * {@link LineLocation}. If there are no probes at that line, an empty list is returned.
      *
      * @param line The line to check.
-     * @return A iterable collection of probes at the given line.
+     * @return A collection of probes at the given line.
      */
     private Collection<Probe> getProbesAtLine(LineLocation line) {
         Collection<Probe> probeList = lineToProbesMap.get(line);

@@ -43,10 +43,6 @@ public final class ProbeManager {
     /**
      * Called when a {@link #tagTrap} is activated in a Probe.
      */
-    /**
-     * The callback to be triggered by the {@link #tagTrap}.
-     *
-     */
     private final ProbeCallback probeCallback;
 
     /**
@@ -72,9 +68,7 @@ public final class ProbeManager {
     }
 
     /**
-     * Add a {@link ProbeListener} to receive events.
-     *
-     * @param listener The listener to be added.
+     * Adds a {@link ProbeListener} to receive events.
      */
     public void addProbeListener(ProbeListener listener) {
         assert listener != null;
@@ -82,9 +76,7 @@ public final class ProbeManager {
     }
 
     /**
-     * Remove a {@link ProbeListener}. If no matching probe listener is found, nothing happens.
-     *
-     * @param removeListener
+     * Removes a {@link ProbeListener}. Ignored if listener not found.
      */
     public void removeProbeListener(ProbeListener removeListener) {
         final List<ProbeListener> listeners = new ArrayList<>(probeListeners);
@@ -97,10 +89,7 @@ public final class ProbeManager {
 
     /**
      * Creates a new {@link Probe} associated with a {@link SourceSection} of code corresponding to
-     * a Trufle AST node.
-     *
-     * @param source The source section to associate with this probe.
-     * @return The probe that was created.
+     * a Truffle AST node.
      */
     public Probe createProbe(SourceSection source) {
         assert source != null;
@@ -119,7 +108,7 @@ public final class ProbeManager {
      * Returns the subset of all {@link Probe}s holding a particular {@link SyntaxTag}, or the whole
      * collection if the specified tag is {@code null}.
      *
-     * @return An iterable collection of probes containing the given tag.
+     * @return A collection of probes containing the given tag.
      */
     public Collection<Probe> findProbesTaggedAs(SyntaxTag tag) {
         final List<Probe> probes = new ArrayList<>();
@@ -132,8 +121,10 @@ public final class ProbeManager {
     }
 
     /**
-     * Calls {@link ProbeImpl#setTrap(SyntaxTagTrap)} for all probes with the given
-     * {@link SyntaxTag} . There can only be one tag trap set at a time.
+     * Sets the current "tag trap", which will cause a callback to be triggered whenever execution
+     * reaches a Probe (existing or subsequently created) with the specified tag. There can only be
+     * one tag trap set at a time.
+     * <p>
      *
      * @param tagTrap The {@link SyntaxTagTrap} to set.
      * @throws IllegalStateException if a trap is currently set.
