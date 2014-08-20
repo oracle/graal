@@ -128,7 +128,7 @@ public class OptionValue<T> {
         return new MultipleOverridesScope(current, map);
     }
 
-    private static final ThreadLocal<OverrideScope> overrideScopes = new ThreadLocal<>();
+    static final ThreadLocal<OverrideScope> overrideScopes = new ThreadLocal<>();
 
     /**
      * The raw option value.
@@ -252,6 +252,22 @@ public class OptionValue<T> {
      * {@link OptionValue#override(OptionValue, Object)} or {@link OptionValue#override(Map)}.
      */
     public abstract static class OverrideScope implements AutoCloseable {
+
+        private Map<DerivedOptionValue<?>, Object> derivedCache = null;
+
+        public <T> T getDerived(DerivedOptionValue<T> key) {
+            if (derivedCache == null) {
+                derivedCache = new HashMap<>();
+            }
+            @SuppressWarnings("unchecked")
+            T ret = (T) derivedCache.get(key);
+            if (ret == null) {
+                ret = key.createValue();
+                derivedCache.put(key, ret);
+            }
+            return ret;
+        }
+
         abstract void addToInherited(Map<OptionValue<?>, Object> inherited);
 
         abstract <T> T getOverride(OptionValue<T> option);

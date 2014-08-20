@@ -22,21 +22,22 @@
  */
 package com.oracle.graal.java;
 
+import com.oracle.graal.options.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.tiers.*;
 
 public class DefaultSuitesProvider implements SuitesProvider {
 
-    private final Suites defaultSuites;
+    private final DerivedOptionValue<Suites> defaultSuites;
     private final PhaseSuite<HighTierContext> defaultGraphBuilderSuite;
 
     public DefaultSuitesProvider() {
         this.defaultGraphBuilderSuite = createGraphBuilderSuite();
-        this.defaultSuites = createSuites();
+        this.defaultSuites = new DerivedOptionValue<>(this::createSuites);
     }
 
     public Suites getDefaultSuites() {
-        return defaultSuites;
+        return defaultSuites.getValue();
     }
 
     public Suites createSuites() {
