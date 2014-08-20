@@ -117,7 +117,7 @@ public class NewFrameNode extends FixedWithNextNode implements IterableNodeType,
     }
 
     public static ValueNode getMaterializedRepresentationHelper(VirtualObjectNode virtualNode, FixedNode fixed) {
-        if (fixed instanceof MaterializeFrameNode || fixed instanceof AbstractEndNode) {
+        if (fixed instanceof MaterializeFrameNode || fixed instanceof AbstractEndNode || fixed instanceof ForceMaterializeNode) {
             // We need to conservatively assume that a materialization of a virtual frame can also
             // happen at a merge point.
             return new AllocatedObjectNode(virtualNode);
