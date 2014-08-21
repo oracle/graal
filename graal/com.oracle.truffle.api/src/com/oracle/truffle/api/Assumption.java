@@ -34,6 +34,9 @@ import com.oracle.truffle.api.nodes.*;
  * method. The Truffle compiler has special knowledge of this class in order to produce efficient
  * machine code for checking an assumption in case the assumption object is a compile time constant.
  * Therefore, assumptions should be stored in final fields in Truffle nodes.
+ *
+ * All instances of classes implementing {@code Assumption} must be held in {@code final} fields for
+ * compiler optimizations to take effect.
  */
 public interface Assumption {
 
@@ -42,14 +45,14 @@ public interface Assumption {
      * longer the case. This method is preferred over the {@link #isValid()} method when writing
      * guest language interpreter code. The catch block should perform a node rewrite (see
      * {@link Node#replace(Node)}) with a node that no longer relies on the assumption.
-     * 
+     *
      * @throws InvalidAssumptionException If the assumption is no longer valid.
      */
     void check() throws InvalidAssumptionException;
 
     /**
      * Checks whether the assumption is still valid.
-     * 
+     *
      * @return a boolean value indicating the validity of the assumption
      */
     boolean isValid();
@@ -61,7 +64,7 @@ public interface Assumption {
 
     /**
      * A name for the assumption that is used for debug output.
-     * 
+     *
      * @return the name of the assumption
      */
     String getName();

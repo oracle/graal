@@ -34,7 +34,7 @@ import com.oracle.truffle.api.*;
  *
  * <pre>
  * private final ConditionProfile zero = ConditionProfile.createBinaryProfile();
- *
+ * 
  * int value = ...;
  * if (zero.profile(value == 0)) {
  *   return 0;
@@ -43,6 +43,9 @@ import com.oracle.truffle.api.*;
  * }
  *
  * </pre>
+ *
+ * All instances of {@code ConditionProfile} (and subclasses) must be held in {@code final} fields
+ * for compiler optimizations to take effect.
  *
  * @see #createCountingProfile()
  * @see #createBinaryProfile()
