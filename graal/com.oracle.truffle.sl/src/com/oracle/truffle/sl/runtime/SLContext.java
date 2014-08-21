@@ -33,7 +33,6 @@ import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.sl.*;
 import com.oracle.truffle.sl.builtins.*;
 import com.oracle.truffle.sl.nodes.*;
-import com.oracle.truffle.sl.nodes.instrument.*;
 import com.oracle.truffle.sl.nodes.local.*;
 import com.oracle.truffle.sl.parser.*;
 
@@ -52,7 +51,6 @@ public final class SLContext extends ExecutionContext {
     private final PrintStream output;
     private final SLFunctionRegistry functionRegistry;
     private SourceCallback sourceCallback = null;
-    private SLASTProber astProber;
 
     public SLContext(BufferedReader input, PrintStream output) {
         this.input = input;
@@ -154,7 +152,7 @@ public final class SLContext extends ExecutionContext {
             sourceCallback.startLoading(source);
         }
 
-        Parser.parseSL(this, source, astProber);
+        Parser.parseSL(this, source);
 
         if (sourceCallback != null) {
             sourceCallback.endLoading(source);
@@ -165,14 +163,5 @@ public final class SLContext extends ExecutionContext {
             throw new SLException("No function main() defined in SL source file.");
         }
         main.getCallTarget().call();
-    }
-
-    /**
-     * Sets the {@link SLASTProber} for the executeMain method.
-     *
-     * @param astProber The prober to use for adding instrumentation for this context.
-     */
-    public void setASTNodeProber(SLASTProber astProber) {
-        this.astProber = astProber;
     }
 }

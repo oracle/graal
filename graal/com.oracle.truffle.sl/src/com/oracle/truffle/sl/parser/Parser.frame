@@ -33,7 +33,6 @@ import java.util.*;
 import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.sl.*;
 import com.oracle.truffle.sl.nodes.*;
-import com.oracle.truffle.sl.nodes.instrument.*;
 import com.oracle.truffle.sl.runtime.*;
 
 // Checkstyle: stop
@@ -52,9 +51,9 @@ public class Parser {
     public final Errors errors;
     private final SLNodeFactory factory;
     -->declarations
-    public Parser(SLContext context, Source source, SLNodeProber astProber) {
+    public Parser(SLContext context, Source source) {
         this.scanner = new Scanner(source.getInputStream());
-        this.factory = new SLNodeFactory(context, source, astProber);
+        this.factory = new SLNodeFactory(context, source);
         errors = new Errors();
     }
 
@@ -135,8 +134,8 @@ public class Parser {
 -->initialization
     };
 
-    public static void parseSL(SLContext context, Source source, SLNodeProber astProber) {
-        Parser parser = new Parser(context, source, astProber);
+    public static void parseSL(SLContext context, Source source) {
+        Parser parser = new Parser(context, source);
         parser.Parse();
         if (parser.errors.errors.size() > 0) {
             StringBuilder msg = new StringBuilder("Error(s) parsing script:\n");

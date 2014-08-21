@@ -29,8 +29,6 @@ import com.oracle.truffle.sl.runtime.*;
 
 public final class SLContextFactory {
 
-    private static SLASTProber astProber;
-
     private SLContextFactory() {
 
     }
@@ -39,12 +37,6 @@ public final class SLContextFactory {
         final SLContext slContext = new SLContext(new BufferedReader(new InputStreamReader(System.in)), System.out);
         slContext.initialize();
         slContext.setVisualizer(new SLDefaultVisualizer());
-        astProber = new SLASTProber();
-        slContext.setASTNodeProber(astProber);
         return slContext;
-    }
-
-    public static void addNodeProber(SLNodeProber nodeProber) {
-        astProber.addNodeProber(nodeProber);
     }
 }

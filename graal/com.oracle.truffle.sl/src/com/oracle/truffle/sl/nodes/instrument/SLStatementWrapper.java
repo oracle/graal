@@ -48,8 +48,10 @@ public final class SLStatementWrapper extends SLStatementNode implements Wrapper
     public SLStatementWrapper(SLContext context, SLStatementNode child) {
         super(child.getSourceSection());
         assert !(child instanceof SLStatementWrapper);
-        this.child = insert(child);
         this.probe = context.createProbe(child.getSourceSection());
+        this.child = child;
+        // The child should only be inserted after a replace, so we defer inserting the child to the
+        // creator of the wrapper.
     }
 
     @Override
@@ -94,6 +96,12 @@ public final class SLStatementWrapper extends SLStatementNode implements Wrapper
             probe.leaveExceptional(child, frame, e);
             throw (e);
         }
+    }
 
+    /**
+     * Sets the parent pointer of this wrapper's child.
+     */
+    public void insertChild() {
+        insert(this.child);
     }
 }

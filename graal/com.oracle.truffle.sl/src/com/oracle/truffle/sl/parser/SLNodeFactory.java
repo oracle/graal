@@ -32,7 +32,6 @@ import com.oracle.truffle.sl.nodes.*;
 import com.oracle.truffle.sl.nodes.call.*;
 import com.oracle.truffle.sl.nodes.controlflow.*;
 import com.oracle.truffle.sl.nodes.expression.*;
-import com.oracle.truffle.sl.nodes.instrument.*;
 import com.oracle.truffle.sl.nodes.local.*;
 import com.oracle.truffle.sl.runtime.*;
 
@@ -75,12 +74,9 @@ public class SLNodeFactory {
     /* State while parsing a block. */
     private LexicalScope lexicalScope;
 
-    private final SLNodeProber prober;
-
-    public SLNodeFactory(SLContext context, Source source, SLNodeProber prober) {
+    public SLNodeFactory(SLContext context, Source source) {
         this.context = context;
         this.source = source;
-        this.prober = prober;
     }
 
     public void startFunction(Token nameToken, int bodyStartPos) {
@@ -156,114 +152,69 @@ public class SLNodeFactory {
     }
 
     /**
-     * Returns a {@link SLBreakNode} for the given token. This node will be instrumented, tagged as
-     * a statement and wrapped in an {@link SLStatementWrapper} if an {@link SLASTProber} was
-     * initialized in this class. ({@link #prober} != null)
+     * Returns an {@link SLBreakNode} for the given token.
      *
-     * @param breakToken The token containing the break node's info
-     * @return either:
-     *         <ul>
-     *         <li>An un-instrumented SLBreakNode if there is no prober</li>
-     *         <li>An {@link SLStatementWrapper} instrumenting this node.</li>
-     *         </ul>
+     * @param breakToken The token containing the break node's info.
+     * @return A SLBreakNode for the given token.
      */
     public SLStatementNode createBreak(Token breakToken) {
         final SLBreakNode breakNode = new SLBreakNode(srcFromToken(breakToken));
-        if (prober != null) {
-            return prober.probeAsStatement(breakNode);
-        }
         return breakNode;
     }
 
     /**
-     * Returns a {@link SLContinueNode} for the given token. This node will be instrumented, tagged
-     * as a statement and wrapped in an {@link SLStatementWrapper} if an {@link SLASTProber} was
-     * initialized in this class. ({@link #prober} != null)
+     * Returns an {@link SLContinueNode} for the given token.
      *
-     * @param continueToken The token containing the continue node's info
-     * @return either:
-     *         <ul>
-     *         <li>An un-instrumented SLContinueNode if there is no prober</li>
-     *         <li>An {@link SLStatementWrapper} instrumenting this node.</li>
-     *         </ul>
+     * @param continueToken The token containing the continue node's info.
+     * @return A SLContinueNode built using the given token.
      */
     public SLStatementNode createContinue(Token continueToken) {
         final SLContinueNode continueNode = new SLContinueNode(srcFromToken(continueToken));
-        if (prober != null) {
-            return prober.probeAsStatement(continueNode);
-        }
         return continueNode;
     }
 
     /**
-     * Returns a {@link SLWhileNode} for the given token. This node will be instrumented, tagged as
-     * a statement and wrapped in an {@link SLStatementWrapper} if an {@link SLASTProber} was
-     * initialized in this class. ({@link #prober} != null)
+     * Returns an {@link SLWhileNode} for the given parameters.
      *
      * @param whileToken The token containing the while node's info
      * @param conditionNode The conditional node for this while loop
      * @param bodyNode The body of the while loop
-     * @return either:
-     *         <ul>
-     *         <li>An un-instrumented SLWhileNode if there is no prober</li>
-     *         <li>An {@link SLStatementWrapper} instrumenting this node.</li>
-     *         </ul>
+     * @return A SLWhileNode built using the given parameters.
      */
     public SLStatementNode createWhile(Token whileToken, SLExpressionNode conditionNode, SLStatementNode bodyNode) {
         final int start = whileToken.charPos;
         final int end = bodyNode.getSourceSection().getCharEndIndex();
         final SLWhileNode whileNode = new SLWhileNode(source.createSection(whileToken.val, start, end - start), conditionNode, bodyNode);
-        if (prober != null) {
-            return prober.probeAsStatement(whileNode);
-        }
         return whileNode;
     }
 
     /**
-     * Returns a {@link SLIfNode} for the given token. This node will be instrumented, tagged as a
-     * statement and wrapped in an {@link SLStatementWrapper} if an {@link SLASTProber} was
-     * initialized in this class. ({@link #prober} != null)
+     * Returns an {@link SLIfNode} for the given parameters.
      *
      * @param ifToken The token containing the if node's info
      * @param conditionNode The condition node of this if statement
      * @param thenPartNode The then part of the if
      * @param elsePartNode The else part of the if
-     * @return either:
-     *         <ul>
-     *         <li>An un-instrumented SLIfNode if there is no prober</li>
-     *         <li>An {@link SLStatementWrapper} instrumenting this node.</li>
-     *         </ul>
+     * @return An SLIfNode for the given parameters.
      */
     public SLStatementNode createIf(Token ifToken, SLExpressionNode conditionNode, SLStatementNode thenPartNode, SLStatementNode elsePartNode) {
         final int start = ifToken.charPos;
         final int end = elsePartNode == null ? thenPartNode.getSourceSection().getCharEndIndex() : elsePartNode.getSourceSection().getCharEndIndex();
         final SLIfNode ifNode = new SLIfNode(source.createSection(ifToken.val, start, end - start), conditionNode, thenPartNode, elsePartNode);
-        if (prober != null) {
-            return prober.probeAsStatement(ifNode);
-        }
         return ifNode;
     }
 
     /**
-     * Returns a {@link SLReturnNode} for the given token. This node will be instrumented, tagged as
-     * a statement and wrapped in an {@link SLStatementWrapper} if an {@link SLASTProber} was
-     * initialized in this class. ({@link #prober} != null)
+     * Returns an {@link SLReturnNode} for the given parameters.
      *
      * @param t The token containing the return node's info
      * @param valueNode The value of the return
-     * @return either:
-     *         <ul>
-     *         <li>An un-instrumented SLReturnNode if there is no prober</li>
-     *         <li>An {@link SLStatementWrapper} instrumenting this node.</li>
-     *         </ul>
+     * @return An SLReturnNode for the given parameters.
      */
     public SLStatementNode createReturn(Token t, SLExpressionNode valueNode) {
         final int start = t.charPos;
         final int length = valueNode == null ? t.val.length() : valueNode.getSourceSection().getCharEndIndex() - start;
         final SLReturnNode returnNode = new SLReturnNode(source.createSection(t.val, start, length), valueNode);
-        if (prober != null) {
-            return prober.probeAsStatement(returnNode);
-        }
         return returnNode;
     }
 
@@ -274,7 +225,7 @@ public class SLNodeFactory {
      * @param opToken The operator of the binary expression
      * @param leftNode The left node of the expression
      * @param rightNode The right node of the expression
-     * @return A subclass of SLExpressionNode for the operation given by opToken.
+     * @return A subclass of SLExpressionNode using the given parameters based on the given opToken.
      */
     public SLExpressionNode createBinary(Token opToken, SLExpressionNode leftNode, SLExpressionNode rightNode) {
         int start = leftNode.getSourceSection().getCharIndex();
@@ -311,54 +262,33 @@ public class SLNodeFactory {
     }
 
     /**
-     * Returns a {@link SLInvokeNode} for the given token. This node will be instrumented, tagged as
-     * a call and wrapped in an {@link SLExpressionWrapper} if an {@link SLASTProber} was
-     * initialized in this class. ({@link #prober} != null)
+     * Returns an {@link SLInvokeNode} for the given parameters.
      *
      * @param nameToken The name of the function being called
      * @param parameterNodes The parameters of the function call
      * @param finalToken A token used to determine the end of the sourceSelection for this call
-     * @return either:
-     *         <ul>
-     *         <li>An un-instrumented SLInvokeNode if there is no prober</li>
-     *         <li>An {@link SLExpressionWrapper} instrumenting this node.</li>
-     *         </ul>
+     * @return An SLInvokeNode for the given parameters.
      */
     public SLExpressionNode createCall(Token nameToken, List<SLExpressionNode> parameterNodes, Token finalToken) {
         final int startPos = nameToken.charPos;
         final int endPos = finalToken.charPos + finalToken.val.length();
         final SourceSection src = source.createSection(nameToken.val, startPos, endPos - startPos);
         SLExpressionNode functionNode = createRead(nameToken);
-        if (prober != null) {
-            SLExpressionNode wrappedNode = prober.probeAsCall(functionNode, nameToken.val);
-            return SLInvokeNode.create(src, wrappedNode, parameterNodes.toArray(new SLExpressionNode[parameterNodes.size()]));
-        }
         return SLInvokeNode.create(src, functionNode, parameterNodes.toArray(new SLExpressionNode[parameterNodes.size()]));
     }
 
     /**
-     * Returns a {@link SLWriteLocalVariableNode} for the given token. This node will be
-     * instrumented, tagged as an assignment and wrapped in an {@link SLExpressionWrapper} if an
-     * {@link SLASTProber} was initialized in this class. ({@link #prober} != null)
+     * Returns an {@link SLWriteLocalVariableNode} for the given parameters.
      *
      * @param nameToken The name of the variable being assigned
      * @param valueNode The value to be assigned
-     * @return either:
-     *         <ul>
-     *         <li>An un-instrumented SLWriteLocalVariableNode if there is no prober</li>
-     *         <li>An {@link SLExpressionWrapper} instrumenting this node.</li>
-     *         </ul>
+     * @return An SLExpressionNode for the given parameters.
      */
     public SLExpressionNode createAssignment(Token nameToken, SLExpressionNode valueNode) {
         FrameSlot frameSlot = frameDescriptor.findOrAddFrameSlot(nameToken.val);
         lexicalScope.locals.put(nameToken.val, frameSlot);
         final int start = nameToken.charPos;
         final int length = valueNode.getSourceSection().getCharEndIndex() - start;
-        if (prober != null) {
-            SLWriteLocalVariableNode writeNode = SLWriteLocalVariableNodeFactory.create(source.createSection("=", start, length), valueNode, frameSlot);
-            final SLExpressionNode wrappedNode = prober.probeAsLocalAssignment(writeNode, nameToken.val);
-            return wrappedNode;
-        }
         return SLWriteLocalVariableNodeFactory.create(source.createSection("=", start, length), valueNode, frameSlot);
     }
 

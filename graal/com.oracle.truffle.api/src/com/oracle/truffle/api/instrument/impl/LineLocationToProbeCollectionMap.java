@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,8 +43,8 @@ public class LineLocationToProbeCollectionMap implements ProbeListener {
     }
 
     public void newProbeInserted(SourceSection source, Probe probe) {
-        final LineLocation line = source.getLineLocation();
-        this.addProbeToLine(line, probe);
+        if (source != null && !(source instanceof NullSourceSection))
+            this.addProbeToLine(source.getLineLocation(), probe);
     }
 
     public void probeTaggedAs(Probe probe, SyntaxTag tag) {
@@ -81,7 +81,7 @@ public class LineLocationToProbeCollectionMap implements ProbeListener {
      * @param line The {@link LineLocation} to attach the probe to.
      * @param probe The {@link Probe} to attach for that line location.
      */
-    private void addProbeToLine(LineLocation line, Probe probe) {
+    protected void addProbeToLine(LineLocation line, Probe probe) {
 
         if (!lineToProbesMap.containsKey(line)) {
             // Key does not exist, add new probe list
@@ -98,17 +98,36 @@ public class LineLocationToProbeCollectionMap implements ProbeListener {
 
     /**
      * Returns a collection of {@link Probe}s at the given {@link LineLocation}. If there are no
-     * probes at that line, an empty list is returned.
+     * probes at that line, a new empty list of size 1 is returned.
      *
      * @param line The line to check.
      * @return A iterable collection of probes at the given line.
      */
-    private Collection<Probe> getProbesAtLine(LineLocation line) {
+    public Collection<Probe> getProbesAtLine(LineLocation line) {
         Collection<Probe> probeList = lineToProbesMap.get(line);
 
         if (probeList == null)
-            probeList = new ArrayList<>(2);
+            probeList = new ArrayList<>(1);
 
         return probeList;
+    }
+
+    /**
+     * Convenience method to get probes according to a int line number. Returns a collection of
+     * {@link Probe}s at the given line number. If there are no probes at that line, a new empty
+     * list is returned.
+     *
+     * @param lineNumber The line number to check.
+     * @return A iterable collection of probes at the given line.
+     */
+    public Collection<Probe> getProbesAtLineNumber(int lineNumber) {
+        ArrayList<Probe> probes = new ArrayList<>();
+
+        for (LineLocation line : lineToProbesMap.keySet()) {
+            if (line.getLineNumber() == lineNumber)
+                probes.addAll(lineToProbesMap.get(line));
+        }
+
+        return probes;
     }
 }

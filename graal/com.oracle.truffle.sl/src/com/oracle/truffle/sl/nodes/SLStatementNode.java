@@ -22,9 +22,13 @@
  */
 package com.oracle.truffle.sl.nodes;
 
+import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.instrument.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.source.*;
+import com.oracle.truffle.sl.nodes.instrument.*;
+import com.oracle.truffle.sl.runtime.*;
 
 /**
  * The base class of all Truffle nodes for SL. All nodes (even expressions) can be used as
@@ -32,7 +36,7 @@ import com.oracle.truffle.api.source.*;
  * local variables.
  */
 @NodeInfo(language = "Simple Language", description = "The abstract base node for all statements")
-public abstract class SLStatementNode extends Node {
+public abstract class SLStatementNode extends Node implements Instrumentable {
 
     public SLStatementNode(SourceSection src) {
         super(src);
@@ -45,5 +49,21 @@ public abstract class SLStatementNode extends Node {
 
     public SLStatementNode getNonWrapperNode() {
         return this;
+    }
+
+    @Override
+    public Probe probe(ExecutionContext context) {
+        Node parent = getParent();
+
+        if (parent == null)
+            throw new IllegalStateException("Cannot probe a node without a parent");
+
+        if (parent instanceof SLStatementWrapper)
+            return ((SLStatementWrapper) parent).getProbe();
+
+        SLStatementWrapper wrapper = new SLStatementWrapper((SLContext) context, this);
+        this.replace(wrapper);
+        wrapper.insertChild();
+        return wrapper.getProbe();
     }
 }
