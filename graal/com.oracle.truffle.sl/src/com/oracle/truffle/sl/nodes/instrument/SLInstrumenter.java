@@ -56,20 +56,23 @@ public class SLInstrumenter implements NodeVisitor {
         // SLExpressionNode first.
         if (node instanceof SLExpressionNode && node.getParent() != null) {
             SLExpressionNode expressionNode = (SLExpressionNode) node;
-            Probe probe = expressionNode.probe(context);
-            // probe.tagAs(STATEMENT);
+            if (expressionNode.getSourceSection() != null) {
+                Probe probe = expressionNode.probe(context);
+                // probe.tagAs(STATEMENT);
 
-            if (node instanceof SLWriteLocalVariableNode)
-                probe.tagAs(ASSIGNMENT);
-
+                if (node instanceof SLWriteLocalVariableNode)
+                    probe.tagAs(ASSIGNMENT);
+            }
         } else if (node instanceof SLStatementNode && node.getParent() != null) {
 
             SLStatementNode statementNode = (SLStatementNode) node;
-            Probe probe = statementNode.probe(context);
-            probe.tagAs(STATEMENT);
+            if (statementNode.getSourceSection() != null) {
+                Probe probe = statementNode.probe(context);
+                probe.tagAs(STATEMENT);
 
-            if (node instanceof SLWhileNode)
-                probe.tagAs(START_LOOP);
+                if (node instanceof SLWhileNode)
+                    probe.tagAs(START_LOOP);
+            }
         }
 
         return true;
