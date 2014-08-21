@@ -88,12 +88,30 @@ public abstract class HSAILAssembler extends AbstractHSAILAssembler {
      */
     public abstract void mov(Register a, Constant src);
 
+    private static String getBitTypeFromKind(Kind kind) {
+        switch (kind) {
+            case Boolean:
+            case Byte:
+            case Short:
+            case Char:
+            case Int:
+            case Float:
+                return "b32";
+            case Long:
+            case Double:
+            case Object:
+                return "b64";
+            default:
+                throw GraalInternalError.shouldNotReachHere();
+        }
+    }
+
     public final void emitMov(Kind kind, Value dst, Value src) {
         if (isRegister(dst) && isConstant(src) && kind.getStackKind() == Kind.Object) {
             mov(asRegister(dst), asConstant(src));
         } else {
-            String argtype = getArgTypeFromKind(kind).substring(1);
-            emitString("mov_b" + argtype + " " + mapRegOrConstToString(dst) + ", " + mapRegOrConstToString(src) + ";");
+            String argtype = getBitTypeFromKind(kind);
+            emitString("mov_" + argtype + " " + mapRegOrConstToString(dst) + ", " + mapRegOrConstToString(src) + ";");
         }
     }
 
