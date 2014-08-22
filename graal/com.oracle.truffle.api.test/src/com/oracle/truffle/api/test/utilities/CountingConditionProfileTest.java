@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,42 +32,42 @@ import org.junit.runner.*;
 import com.oracle.truffle.api.utilities.*;
 
 @RunWith(Theories.class)
-public class BooleanConditionProfileTest {
+public class CountingConditionProfileTest {
 
     @DataPoints public static boolean[] data = new boolean[]{true, false};
 
     @Test
     public void testInitial() {
-        BooleanConditionProfile profile = new BooleanConditionProfile();
-        assertThat(profile.wasTrue(), is(false));
-        assertThat(profile.wasFalse(), is(false));
+        CountingConditionProfile profile = ConditionProfile.createCountingProfile();
+        assertThat(profile.getTrueCount(), is(0));
+        assertThat(profile.getFalseCount(), is(0));
     }
 
     @Theory
     public void testProfileOne(boolean value) {
-        BooleanConditionProfile profile = new BooleanConditionProfile();
+        CountingConditionProfile profile = ConditionProfile.createCountingProfile();
         boolean result = profile.profile(value);
 
         assertThat(result, is(value));
-        assertThat(profile.wasTrue(), is(value));
-        assertThat(profile.wasFalse(), is(!value));
+        assertThat(profile.getTrueCount(), is(value ? 1 : 0));
+        assertThat(profile.getFalseCount(), is(!value ? 1 : 0));
     }
 
     @Theory
     public void testProfileTwo(boolean value0, boolean value1) {
-        BooleanConditionProfile profile = new BooleanConditionProfile();
+        CountingConditionProfile profile = ConditionProfile.createCountingProfile();
         boolean result0 = profile.profile(value0);
         boolean result1 = profile.profile(value1);
 
         assertThat(result0, is(value0));
         assertThat(result1, is(value1));
-        assertThat(profile.wasTrue(), is(value0 || value1));
-        assertThat(profile.wasFalse(), is(!value0 || !value1));
+        assertThat(profile.getTrueCount(), is((value0 ? 1 : 0) + (value1 ? 1 : 0)));
+        assertThat(profile.getFalseCount(), is((!value0 ? 1 : 0) + (!value1 ? 1 : 0)));
     }
 
     @Theory
     public void testProfileThree(boolean value0, boolean value1, boolean value2) {
-        BooleanConditionProfile profile = new BooleanConditionProfile();
+        CountingConditionProfile profile = ConditionProfile.createCountingProfile();
         boolean result0 = profile.profile(value0);
         boolean result1 = profile.profile(value1);
         boolean result2 = profile.profile(value2);
@@ -75,8 +75,8 @@ public class BooleanConditionProfileTest {
         assertThat(result0, is(value0));
         assertThat(result1, is(value1));
         assertThat(result2, is(value2));
-        assertThat(profile.wasTrue(), is(value0 || value1 || value2));
-        assertThat(profile.wasFalse(), is(!value0 || !value1 || !value2));
+        assertThat(profile.getTrueCount(), is((value0 ? 1 : 0) + (value1 ? 1 : 0) + (value2 ? 1 : 0)));
+        assertThat(profile.getFalseCount(), is((!value0 ? 1 : 0) + (!value1 ? 1 : 0) + (!value2 ? 1 : 0)));
     }
 
 }

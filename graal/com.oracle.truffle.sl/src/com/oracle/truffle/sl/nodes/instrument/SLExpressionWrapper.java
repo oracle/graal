@@ -46,11 +46,19 @@ public final class SLExpressionWrapper extends SLExpressionNode implements Wrapp
 
     private final Probe probe;
 
+    /**
+     * Constructor.
+     *
+     * @param context The current Simple execution context
+     * @param child The {@link SLExpressionNode} that this wrapper is wrapping
+     */
     public SLExpressionWrapper(SLContext context, SLExpressionNode child) {
         super(child.getSourceSection());
         assert !(child instanceof SLExpressionWrapper);
-        this.child = insert(child);
-        this.probe = context.getProbe(child.getSourceSection());
+        this.probe = context.createProbe(child.getSourceSection());
+        this.child = child;
+        // The child should only be inserted after a replace, so we defer inserting the child to the
+        // creator of the wrapper.
     }
 
     @Override
@@ -144,5 +152,12 @@ public final class SLExpressionWrapper extends SLExpressionNode implements Wrapp
     @Override
     public SLNull executeNull(VirtualFrame frame) throws UnexpectedResultException {
         return SLTypesGen.SLTYPES.expectSLNull(executeGeneric(frame));
+    }
+
+    /**
+     * Sets the parent pointer of this wrapper's child.
+     */
+    public void insertChild() {
+        insert(this.child);
     }
 }

@@ -20,11 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.dsl.processor.parser;
+package com.oracle.truffle.dsl.processor.model;
 
 import javax.lang.model.type.*;
 
-import com.oracle.truffle.dsl.processor.model.*;
 import com.oracle.truffle.dsl.processor.model.NodeChildData.Cardinality;
 
 public class NodeExecutionData {
@@ -42,10 +41,7 @@ public class NodeExecutionData {
     }
 
     private String createName() {
-        if (isIndexed()) {
-            return child.getName() + index;
-        }
-        return child.getName();
+        return createName(child.getName(), index);
     }
 
     public TypeMirror getNodeType() {
@@ -88,6 +84,13 @@ public class NodeExecutionData {
             shortCircuitName = shortCircuitName + "[" + varArgsIndex + "]";
         }
         return shortCircuitName;
+    }
+
+    public static String createName(String childName, int index) {
+        if (index > -1) {
+            return childName + index;
+        }
+        return childName;
     }
 
 }

@@ -163,6 +163,17 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
         return foundParameters;
     }
 
+    public List<Parameter> findByExecutionData(NodeExecutionData execution) {
+        List<Parameter> foundParameters = new ArrayList<>();
+        for (Parameter parameter : getParameters()) {
+            ParameterSpec spec = parameter.getSpecification();
+            if (spec != null && spec.getExecution() != null && spec.getExecution().equals(execution) && parameter.getSpecification().isSignature()) {
+                foundParameters.add(parameter);
+            }
+        }
+        return foundParameters;
+    }
+
     public Parameter findParameter(String valueName) {
         for (Parameter param : getReturnTypeAndParameters()) {
             if (param.getLocalName().equals(valueName)) {

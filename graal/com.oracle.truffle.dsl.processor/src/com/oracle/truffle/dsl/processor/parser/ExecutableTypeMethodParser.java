@@ -35,9 +35,9 @@ public class ExecutableTypeMethodParser extends NodeMethodParser<ExecutableTypeD
 
     public ExecutableTypeMethodParser(ProcessorContext context, NodeData node) {
         super(context, node);
-        setEmitErrors(false);
         setParseNullOnError(false);
-        setUseVarArgs(true);
+        getParser().setEmitErrors(false);
+        getParser().setUseVarArgs(true);
     }
 
     @Override

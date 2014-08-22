@@ -424,16 +424,15 @@ public final class SpecializationGroup {
     }
 
     public boolean isTypeGuardUsedInAnyGuardBelow(ProcessorContext context, SpecializationData source, TypeGuard typeGuard) {
+        NodeExecutionData execution = source.getNode().getChildExecutions().get(typeGuard.getSignatureIndex());
 
         for (GuardExpression guard : guards) {
-            Parameter guardParameter = guard.getResolvedGuard().getSignatureParameter(typeGuard.getSignatureIndex());
-            if (guardParameter == null) {
-                // guardParameters are optional
-                continue;
-            }
+            List<Parameter> guardParameters = guard.getResolvedGuard().findByExecutionData(execution);
             Parameter sourceParameter = source.getSignatureParameter(typeGuard.getSignatureIndex());
-            if (sourceParameter.getTypeSystemType().needsCastTo(guardParameter.getType())) {
-                return true;
+            for (Parameter guardParameter : guardParameters) {
+                if (sourceParameter.getTypeSystemType().needsCastTo(guardParameter.getType())) {
+                    return true;
+                }
             }
         }
 

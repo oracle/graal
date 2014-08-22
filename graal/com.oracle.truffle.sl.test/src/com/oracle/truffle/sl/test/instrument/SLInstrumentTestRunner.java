@@ -37,12 +37,11 @@ import org.junit.runners.*;
 import org.junit.runners.model.*;
 
 import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.instrument.*;
 import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.sl.nodes.instrument.*;
 import com.oracle.truffle.sl.parser.*;
 import com.oracle.truffle.sl.runtime.*;
-import com.oracle.truffle.sl.test.*;
 import com.oracle.truffle.sl.test.instrument.SLInstrumentTestRunner.InstrumentTestCase;
 
 /**
@@ -58,8 +57,7 @@ public final class SLInstrumentTestRunner extends ParentRunner<InstrumentTestCas
     private static final String SOURCE_SUFFIX = ".sl";
     private static final String INPUT_SUFFIX = ".input";
     private static final String OUTPUT_SUFFIX = ".output";
-    private static final String VISITOR_ASSIGNMENT_COUNT_SUFFIX = "_assnCount";
-    private static final String VISITOR_VARIABLE_COMPARE_SUFFIX = "_varCompare";
+    private static final String ASSIGNMENT_VALUE_SUFFIX = "_assnCount";
 
     private static final String LF = System.getProperty("line.separator");
     private static SLContext slContext;
@@ -128,7 +126,8 @@ public final class SLInstrumentTestRunner extends ParentRunner<InstrumentTestCas
     protected static List<InstrumentTestCase> createTests(final Class<?> c) throws IOException, InitializationError {
         SLInstrumentTestSuite suite = c.getAnnotation(SLInstrumentTestSuite.class);
         if (suite == null) {
-            throw new InitializationError(String.format("@%s annotation required on class '%s' to run with '%s'.", SLTestSuite.class.getSimpleName(), c.getName(), SLTestRunner.class.getSimpleName()));
+            throw new InitializationError(String.format("@%s annotation required on class '%s' to run with '%s'.", SLInstrumentTestSuite.class.getSimpleName(), c.getName(),
+                            SLInstrumentTestRunner.class.getSimpleName()));
         }
 
         String[] paths = suite.value();
@@ -200,57 +199,29 @@ public final class SLInstrumentTestRunner extends ParentRunner<InstrumentTestCas
         PrintStream printer = new PrintStream(out);
         try {
             // We use the name of the file to determine what visitor to attach to it.
-            if (testCase.baseName.endsWith(VISITOR_ASSIGNMENT_COUNT_SUFFIX) || testCase.baseName.endsWith(VISITOR_VARIABLE_COMPARE_SUFFIX)) {
-                NodeVisitor nodeVisitor = null;
+            if (testCase.baseName.endsWith(ASSIGNMENT_VALUE_SUFFIX)) {
+                // Set up the execution context for Simple and register our two listeners
                 slContext = new SLContext(new BufferedReader(new StringReader(testCase.testInput)), printer);
+
                 final Source source = Source.fromText(readAllLines(testCase.path), testCase.sourceName);
-                SLASTProber prober = new SLASTProber();
-
-                // Note that the visitor looks for an attachment point via line number
-                if (testCase.baseName.endsWith(VISITOR_ASSIGNMENT_COUNT_SUFFIX)) {
-                    nodeVisitor = new NodeVisitor() {
-
-                        public boolean visit(Node node) {
-                            if (node instanceof SLExpressionWrapper) {
-                                SLExpressionWrapper wrapper = (SLExpressionWrapper) node;
-                                int lineNum = wrapper.getSourceSection().getLineLocation().getLineNumber();
-
-                                if (lineNum == 4) {
-                                    wrapper.getProbe().addInstrument(new SLPrintAssigmentValueInstrument(slContext.getOutput()));
-                                }
-                            }
-                            return true;
-                        }
-                    };
-
-                    // Note that the visitor looks for an attachment point via line number
-                } else if (testCase.baseName.endsWith(VISITOR_VARIABLE_COMPARE_SUFFIX)) {
-                    nodeVisitor = new NodeVisitor() {
-
-                        public boolean visit(Node node) {
-                            if (node instanceof SLStatementWrapper) {
-                                SLStatementWrapper wrapper = (SLStatementWrapper) node;
-                                int lineNum = wrapper.getSourceSection().getLineLocation().getLineNumber();
-
-                                if (lineNum == 6) {
-                                    wrapper.getProbe().addInstrument(new SLCheckVariableEqualityInstrument("i", "count", slContext.getOutput()));
-                                }
-                            }
-                            return true;
-                        }
-                    };
-                }
-
-                prober.addNodeProber(new SLInstrumentTestNodeProber(slContext));
-                Parser.parseSL(slContext, source, prober);
+                Parser.parseSL(slContext, source);
                 List<SLFunction> functionList = slContext.getFunctionRegistry().getFunctions();
 
                 // Since only functions can be global in SL, this guarantees that we instrument
                 // everything of interest. Parsing must occur before accepting the visitors since
-                // parsing is what creates our instrumentation points.
+                // the visitor which creates our instrumentation points expects a complete AST.
+
                 for (SLFunction function : functionList) {
                     RootCallTarget rootCallTarget = function.getCallTarget();
-                    rootCallTarget.getRootNode().accept(nodeVisitor);
+                    rootCallTarget.getRootNode().accept(new SLInstrumenter(slContext));
+                }
+
+                // We iterate over all tags the SLInsturmenter tagged as assignments and attach our
+                // test instrument to those.
+                for (Probe probe : slContext.findProbesTaggedAs(StandardSyntaxTag.ASSIGNMENT)) {
+                    if (probe.isTaggedAs(StandardSyntaxTag.ASSIGNMENT)) {
+                        probe.addInstrument(new SLPrintAssigmentValueInstrument(printer));
+                    }
                 }
 
                 SLFunction main = slContext.getFunctionRegistry().lookup("main");
@@ -272,7 +243,7 @@ public final class SLInstrumentTestRunner extends ParentRunner<InstrumentTestCas
     public static void runInMain(Class<?> testClass, String[] args) throws InitializationError, NoTestsRemainException {
         JUnitCore core = new JUnitCore();
         core.addListener(new TextListener(System.out));
-        SLTestRunner suite = new SLTestRunner(testClass);
+        SLInstrumentTestRunner suite = new SLInstrumentTestRunner(testClass);
         if (args.length > 0) {
             suite.filter(new NameFilter(args[0]));
         }

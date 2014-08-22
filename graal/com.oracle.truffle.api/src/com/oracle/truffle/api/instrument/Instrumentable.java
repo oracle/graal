@@ -24,27 +24,25 @@
  */
 package com.oracle.truffle.api.instrument;
 
-import com.oracle.truffle.api.source.*;
+import com.oracle.truffle.api.*;
 
-/**
- * Client for receiving events relate to {@link Probe} management. Does not report AST copying.
- * <p>
- * <strong>Disclaimer:</strong> experimental interface under development.
- *
- * @See Instrumentation
- */
-public interface ProbeListener {
+public interface Instrumentable {
 
     /**
-     * Notifies that a newly created (untagged) {@link Probe} has been inserted into a Truffle AST.
-     * There will be no notification when an existing {@link Probe} is shared by an AST copy.
+     * Optionally applies <em>instrumentation</em> at a Truffle AST node, depending on guest
+     * language characteristics and use-case policy. Ideally, the parent node of the guest language
+     * implements this interface.
+     * <ul>
+     * <li>if no instrumentation is to be applied, returns the AST node unmodified;</li>
+     * <li>if an AST node is to be instrumented, then creates a new Wrapper that <em>decorates</em>
+     * the AST node. Additionally, this creates a probe on the wrapper that is to be used for
+     * attaching instruments. This {@link Probe} is notified of all {@link ExecutionEvents} at the
+     * wrapped AST node.</li>
+     * </ul>
+     *
+     * @param context The {@link ExecutionContext} of the guest language used to create probes on
+     *            the wrapper.
+     * @return The probe that was created.
      */
-    void newProbeInserted(SourceSection source, Probe probe);
-
-    /**
-     * Notifies that a (fully constructed) {@link Probe} has been tagged. A subsequent marking with
-     * the same tag is idempotent and generates no notification.
-     */
-    void probeTaggedAs(Probe probe, SyntaxTag tag);
-
+    public Probe probe(ExecutionContext context);
 }

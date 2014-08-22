@@ -24,10 +24,13 @@ package com.oracle.truffle.sl.nodes;
 
 import java.math.*;
 
+import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.instrument.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.source.*;
+import com.oracle.truffle.sl.nodes.instrument.*;
 import com.oracle.truffle.sl.runtime.*;
 
 /**
@@ -86,5 +89,21 @@ public abstract class SLExpressionNode extends SLStatementNode {
 
     public SLNull executeNull(VirtualFrame frame) throws UnexpectedResultException {
         return SLTypesGen.SLTYPES.expectSLNull(executeGeneric(frame));
+    }
+
+    @Override
+    public Probe probe(ExecutionContext context) {
+        Node parent = getParent();
+
+        if (parent == null)
+            throw new IllegalStateException("Cannot probe a node without a parent");
+
+        if (parent instanceof SLExpressionWrapper)
+            return ((SLExpressionWrapper) parent).getProbe();
+
+        SLExpressionWrapper wrapper = new SLExpressionWrapper((SLContext) context, this);
+        this.replace(wrapper);
+        wrapper.insertChild();
+        return wrapper.getProbe();
     }
 }

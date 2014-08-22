@@ -8,5 +8,4 @@ function loop(count) {
 
 function main() {
   count = loop(100);
-  println(count);
 }

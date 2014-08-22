@@ -46,25 +46,25 @@ public class ImportGuardsTest {
     @ImportGuards(Imports0.class)
     static class ImportGuards1 extends ValueNode {
 
-        @ExpectError("No compatible guard with method name 'nonStaticGuard' found. Please note that all signature types of the method guard must be declared in the type system.")
+        @ExpectError("No compatible guard with method name 'nonStaticGuard' found.")
         @Specialization(guards = "nonStaticGuard")
         int f1(int a) {
             return a;
         }
 
-        @ExpectError("No compatible guard with method name 'protectedGuard' found. Please note that all signature types of the method guard must be declared in the type system.")
+        @ExpectError("No compatible guard with method name 'protectedGuard' found.")
         @Specialization(guards = "protectedGuard")
         int f2(int a) {
             return a;
         }
 
-        @ExpectError("No compatible guard with method name 'packageGuard' found. Please note that all signature types of the method guard must be declared in the type system.")
+        @ExpectError("No compatible guard with method name 'packageGuard' found.")
         @Specialization(guards = "packageGuard")
         int f3(int a) {
             return a;
         }
 
-        @ExpectError("No compatible guard with method name 'privateGuard' found. Please note that all signature types of the method guard must be declared in the type system.")
+        @ExpectError("No compatible guard with method name 'privateGuard' found.")
         @Specialization(guards = "privateGuard")
         int f4(int a) {
             return a;

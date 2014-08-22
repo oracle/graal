@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,27 +31,16 @@ import com.oracle.truffle.api.CompilerDirectives.*;
  * Utility class to speculate on conditions to be never true or to be never false. Condition
  * profiles are intended to be used as part of if conditions.
  *
- * Example usage:
- *
- * <pre>
- * private final ConditionProfile zero = new BooleanConditionProfile();
- * 
- * int value = ...;
- * if (zero.profile(value == 0)) {
- *   return 0;
- * } else {
- *   return value;
- * }
- *
- * </pre>
- *
- * @see ConditionProfile
- * @see IntegerConditionProfile
+ * @see ConditionProfile#createBinaryProfile()
  */
-public class BooleanConditionProfile extends ConditionProfile {
+public final class BinaryConditionProfile extends ConditionProfile {
 
     @CompilationFinal private boolean wasTrue;
     @CompilationFinal private boolean wasFalse;
+
+    BinaryConditionProfile() {
+        /* package protected constructor */
+    }
 
     @Override
     public boolean profile(boolean value) {

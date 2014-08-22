@@ -36,20 +36,13 @@ import com.oracle.truffle.api.source.*;
  */
 public final class ProbeManager {
 
-    // TODO (mlvdv) use weak references.
-    /**
-     * Map: SourceSection ==> probe associated with that source section in an AST.
-     */
-    private final Map<SourceSection, ProbeImpl> srcToProbe = new HashMap<>();
-
-    // TODO (mlvdv) use weak references.
-    /**
-     * Map: Source line ==> probes associated with source sections starting on the line.
-     */
-    private final Map<LineLocation, Collection<Probe>> lineToProbes = new HashMap<>();
-
     private final List<ProbeListener> probeListeners = new ArrayList<>();
 
+    private final List<ProbeImpl> allProbes = new ArrayList<>();
+
+    /**
+     * Called when a {@link #tagTrap} is activated in a Probe.
+     */
     private final ProbeCallback probeCallback;
 
     /**
@@ -74,11 +67,17 @@ public final class ProbeManager {
         };
     }
 
+    /**
+     * Adds a {@link ProbeListener} to receive events.
+     */
     public void addProbeListener(ProbeListener listener) {
         assert listener != null;
         probeListeners.add(listener);
     }
 
+    /**
+     * Removes a {@link ProbeListener}. Ignored if listener not found.
+     */
     public void removeProbeListener(ProbeListener removeListener) {
         final List<ProbeListener> listeners = new ArrayList<>(probeListeners);
         for (ProbeListener listener : listeners) {
@@ -88,45 +87,32 @@ public final class ProbeManager {
         }
     }
 
-    public Probe getProbe(SourceSection sourceSection) {
-        assert sourceSection != null;
+    /**
+     * Creates a new {@link Probe} associated with a {@link SourceSection} of code corresponding to
+     * a Truffle AST node.
+     */
+    public Probe createProbe(SourceSection source) {
+        assert source != null;
 
-        ProbeImpl probe = srcToProbe.get(sourceSection);
-
-        if (probe != null) {
-            return probe;
-        }
-        probe = InstrumentationNode.createProbe(sourceSection, probeCallback);
-
-        // Register new probe by unique SourceSection
-        srcToProbe.put(sourceSection, probe);
-
-        // Register new probe by source line, there may be more than one
-        // Create line location for map key
-        final LineLocation lineLocation = sourceSection.getLineLocation();
-
-        Collection<Probe> probes = lineToProbes.get(lineLocation);
-        if (probes == null) {
-            probes = new ArrayList<>(2);
-            lineToProbes.put(lineLocation, probes);
-        }
-        probes.add(probe);
+        ProbeImpl probe = InstrumentationNode.createProbe(source, probeCallback);
+        allProbes.add(probe);
 
         for (ProbeListener listener : probeListeners) {
-            listener.newProbeInserted(sourceSection, probe);
+            listener.newProbeInserted(source, probe);
         }
 
         return probe;
     }
 
-    public boolean hasProbe(SourceSection sourceSection) {
-        assert sourceSection != null;
-        return srcToProbe.get(sourceSection) != null;
-    }
-
+    /**
+     * Returns the subset of all {@link Probe}s holding a particular {@link SyntaxTag}, or the whole
+     * collection if the specified tag is {@code null}.
+     *
+     * @return A collection of probes containing the given tag.
+     */
     public Collection<Probe> findProbesTaggedAs(SyntaxTag tag) {
         final List<Probe> probes = new ArrayList<>();
-        for (Probe probe : srcToProbe.values()) {
+        for (Probe probe : allProbes) {
             if (tag == null || probe.isTaggedAs(tag)) {
                 probes.add(probe);
             }
@@ -134,15 +120,16 @@ public final class ProbeManager {
         return probes;
     }
 
-    public Collection<Probe> findProbesByLine(LineLocation lineLocation) {
-        final Collection<Probe> probes = lineToProbes.get(lineLocation);
-        if (probes == null) {
-            return Collections.emptyList();
-        }
-        return new ArrayList<>(probes);
-    }
-
-    public void setTagTrap(SyntaxTagTrap tagTrap) {
+    /**
+     * Sets the current "tag trap", which will cause a callback to be triggered whenever execution
+     * reaches a Probe (existing or subsequently created) with the specified tag. There can only be
+     * one tag trap set at a time.
+     * <p>
+     *
+     * @param tagTrap The {@link SyntaxTagTrap} to set.
+     * @throws IllegalStateException if a trap is currently set.
+     */
+    public void setTagTrap(SyntaxTagTrap tagTrap) throws IllegalStateException {
         assert tagTrap != null;
         if (this.tagTrap != null) {
             throw new IllegalStateException("trap already set");
@@ -150,18 +137,23 @@ public final class ProbeManager {
         this.tagTrap = tagTrap;
 
         SyntaxTag tag = tagTrap.getTag();
-        for (ProbeImpl probe : srcToProbe.values()) {
+        for (ProbeImpl probe : allProbes) {
             if (probe.isTaggedAs(tag)) {
                 probe.setTrap(tagTrap);
             }
         }
     }
 
+    /**
+     * Clears the current {@link SyntaxTagTrap}.
+     *
+     * @throws IllegalStateException if no trap is currently set.
+     */
     public void clearTagTrap() {
         if (this.tagTrap == null) {
             throw new IllegalStateException("no trap set");
         }
-        for (ProbeImpl probe : srcToProbe.values()) {
+        for (ProbeImpl probe : allProbes) {
             if (probe.isTaggedAs(tagTrap.getTag())) {
                 probe.setTrap(null);
             }

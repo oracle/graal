@@ -30,7 +30,6 @@ import javax.lang.model.type.*;
 import com.oracle.truffle.dsl.processor.*;
 import com.oracle.truffle.dsl.processor.java.*;
 import com.oracle.truffle.dsl.processor.model.NodeChildData.Cardinality;
-import com.oracle.truffle.dsl.processor.parser.*;
 
 public class NodeData extends Template implements Comparable<NodeData> {
 
@@ -206,6 +205,30 @@ public class NodeData extends Template implements Comparable<NodeData> {
             }
         }
         return true;
+    }
+
+    public NodeExecutionData findExecutionByExpression(String childNameExpression) {
+        String childName = childNameExpression;
+        int index = -1;
+
+        int start = childName.indexOf('[');
+        int end = childName.lastIndexOf(']');
+        if (start != -1 && end != -1 && start < end) {
+            try {
+                index = Integer.parseInt(childName.substring(start + 1, end));
+                childName = childName.substring(0, start);
+                childName = NodeExecutionData.createName(childName, index);
+            } catch (NumberFormatException e) {
+                // ignore
+            }
+        }
+
+        for (NodeExecutionData execution : childExecutions) {
+            if (execution.getName().equals(childName) && (execution.getIndex() == -1 || execution.getIndex() == index)) {
+                return execution;
+            }
+        }
+        return null;
     }
 
     public List<NodeData> getNodeDeclaringChildren() {

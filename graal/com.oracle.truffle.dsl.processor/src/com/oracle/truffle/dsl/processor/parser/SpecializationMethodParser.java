@@ -84,7 +84,7 @@ public class SpecializationMethodParser extends NodeMethodParser<SpecializationD
         List<String> guardDefs = ElementUtils.getAnnotationValueList(String.class, specialization.getMarkerAnnotation(), "guards");
         List<GuardExpression> guardExpressions = new ArrayList<>();
         for (String guardDef : guardDefs) {
-            guardExpressions.add(new GuardExpression(guardDef));
+            guardExpressions.add(new GuardExpression(guardDef, true));
         }
         specialization.setGuards(guardExpressions);
 
