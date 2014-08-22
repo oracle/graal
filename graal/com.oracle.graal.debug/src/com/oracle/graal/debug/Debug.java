@@ -1087,6 +1087,14 @@ public class Debug {
         enabledTimers = timers.isEmpty() ? null : timers;
     }
 
+    public static boolean areUnconditionalTimersEnabled() {
+        return enabledTimers != null && !enabledTimers.isEmpty();
+    }
+
+    public static boolean areUnconditionalMetricsEnabled() {
+        return enabledMetrics != null && !enabledMetrics.isEmpty();
+    }
+
     protected static void parseMetricAndTimerSystemProperties(Set<String> metrics, Set<String> timers) {
         do {
             try {

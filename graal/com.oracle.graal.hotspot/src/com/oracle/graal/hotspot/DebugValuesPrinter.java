@@ -38,7 +38,7 @@ import com.oracle.graal.debug.internal.*;
 public class DebugValuesPrinter {
 
     public void printDebugValues(String phase, boolean reset) throws GraalInternalError {
-        if (Debug.isEnabled() && areMetricsOrTimersEnabled()) {
+        if (Debug.areUnconditionalMetricsEnabled() || Debug.areUnconditionalTimersEnabled() || (Debug.isEnabled() && areMetricsOrTimersEnabled())) {
             TTY.println();
             if (phase != null) {
                 TTY.println("<DebugValues:" + phase + ">");
