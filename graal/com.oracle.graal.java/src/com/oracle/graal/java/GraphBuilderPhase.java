@@ -1397,20 +1397,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     return;
                 }
 
-                double probability = profilingInfo.getBranchTakenProbability(bci());
-                if (probability < 0) {
-                    assert probability == -1 : "invalid probability";
-                    Debug.log("missing probability in %s at bci %d", method, bci());
-                    probability = 0.5;
-                }
-
-                if (!optimisticOpts.removeNeverExecutedCode()) {
-                    if (probability == 0) {
-                        probability = 0.0000001;
-                    } else if (probability == 1) {
-                        probability = 0.999999;
-                    }
-                }
+                double probability = branchProbability();
 
                 // the mirroring and negation operations get the condition into canonical form
                 boolean mirror = cond.canonicalMirror();
