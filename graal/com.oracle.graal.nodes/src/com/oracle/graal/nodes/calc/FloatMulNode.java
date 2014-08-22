@@ -65,6 +65,7 @@ public class FloatMulNode extends FloatArithmeticNode {
             return ConstantNode.forPrimitive(evalConst(forX.asConstant(), forY.asConstant()));
         }
         if (forY.isConstant()) {
+            @SuppressWarnings("hiding")
             Constant y = forY.asConstant();
             switch (y.getKind()) {
                 case Float:

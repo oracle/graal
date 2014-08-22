@@ -29,8 +29,8 @@ import com.oracle.graal.nodeinfo.*;
 @NodeInfo
 public class ShortCircuitOrNode extends LogicNode implements IterableNodeType, Canonicalizable.Binary<LogicNode> {
 
-    @Input(InputType.Condition) private LogicNode x;
-    @Input(InputType.Condition) private LogicNode y;
+    @Input(InputType.Condition) LogicNode x;
+    @Input(InputType.Condition) LogicNode y;
     private boolean xNegated;
     private boolean yNegated;
     private double shortCircuitProbability;

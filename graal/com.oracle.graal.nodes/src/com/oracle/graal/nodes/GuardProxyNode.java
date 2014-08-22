@@ -31,7 +31,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(allowedUsageTypes = {InputType.Guard})
 public class GuardProxyNode extends ProxyNode implements GuardingNode, Proxy, LIRLowerable {
 
-    @Input(InputType.Guard) private GuardingNode value;
+    @Input(InputType.Guard) GuardingNode value;
 
     public static GuardProxyNode create(GuardingNode value, BeginNode proxyPoint) {
         return new GuardProxyNodeGen(value, proxyPoint);

@@ -32,7 +32,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(nameTemplate = "ConditionAnchor(!={p#negated})", allowedUsageTypes = {InputType.Guard})
 public class ConditionAnchorNode extends FixedWithNextNode implements Canonicalizable.Unary<Node>, Lowerable, GuardingNode {
 
-    @Input(InputType.Condition) private LogicNode condition;
+    @Input(InputType.Condition) LogicNode condition;
     private boolean negated;
 
     public static ConditionAnchorNode create(LogicNode condition) {

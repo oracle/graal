@@ -39,9 +39,9 @@ import com.oracle.graal.nodes.util.*;
 @NodeInfo(nameTemplate = "Invoke#{p#targetMethod/s}", allowedUsageTypes = {InputType.Memory})
 public class InvokeNode extends AbstractMemoryCheckpoint implements Invoke, LIRLowerable, MemoryCheckpoint.Single, IterableNodeType {
 
-    @Input(InputType.Extension) private CallTargetNode callTarget;
-    @OptionalInput(InputType.State) private FrameState stateDuring;
-    @OptionalInput(InputType.Guard) private GuardingNode guard;
+    @Input(InputType.Extension) CallTargetNode callTarget;
+    @OptionalInput(InputType.State) FrameState stateDuring;
+    @OptionalInput(InputType.Guard) GuardingNode guard;
     private final int bci;
     private boolean polymorphic;
     private boolean useForInlining;
@@ -159,10 +159,10 @@ public class InvokeNode extends AbstractMemoryCheckpoint implements Invoke, LIRL
     public void intrinsify(Node node) {
         assert !(node instanceof ValueNode) || node.isAllowedUsageType(InputType.Value) == isAllowedUsageType(InputType.Value) : "replacing " + this + " with " + node;
         CallTargetNode call = callTarget;
-        FrameState stateAfter = stateAfter();
+        FrameState currentStateAfter = stateAfter();
         if (node instanceof StateSplit) {
             StateSplit stateSplit = (StateSplit) node;
-            stateSplit.setStateAfter(stateAfter);
+            stateSplit.setStateAfter(currentStateAfter);
         }
         if (node instanceof FixedWithNextNode) {
             graph().replaceFixedWithFixed(this, (FixedWithNextNode) node);
@@ -175,8 +175,8 @@ public class InvokeNode extends AbstractMemoryCheckpoint implements Invoke, LIRL
             graph().replaceFixed(this, node);
         }
         GraphUtil.killWithUnusedFloatingInputs(call);
-        if (stateAfter.usages().isEmpty()) {
-            GraphUtil.killWithUnusedFloatingInputs(stateAfter);
+        if (currentStateAfter.usages().isEmpty()) {
+            GraphUtil.killWithUnusedFloatingInputs(currentStateAfter);
         }
     }
 

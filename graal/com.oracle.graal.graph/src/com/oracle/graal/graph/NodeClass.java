@@ -23,6 +23,7 @@
 package com.oracle.graal.graph;
 
 import static com.oracle.graal.graph.Graph.*;
+import static com.oracle.graal.graph.Node.*;
 import static com.oracle.graal.graph.util.CollectionsAccess.*;
 
 import java.lang.reflect.*;
@@ -72,9 +73,6 @@ public final class NodeClass extends FieldIntrospection {
         return value;
     }
 
-    public static final int NOT_ITERABLE = -1;
-    public static final int NODE_LIST = -2;
-
     private static final Class<?> NODE_CLASS = Node.class;
     private static final Class<?> INPUT_LIST_CLASS = NodeInputList.class;
     private static final Class<?> SUCCESSOR_LIST_CLASS = NodeSuccessorList.class;
@@ -89,7 +87,6 @@ public final class NodeClass extends FieldIntrospection {
     private final long[] successorOffsets;
     private final Class<?>[] dataTypes;
     private final boolean canGVN;
-    private final boolean isLeafNode;
     private final int startGVNNumber;
     private final String shortName;
     private final String nameTemplate;
@@ -205,11 +202,10 @@ public final class NodeClass extends FieldIntrospection {
             }
             this.iterableIds = ids;
         } else {
-            this.iterableId = NOT_ITERABLE;
+            this.iterableId = Node.NOT_ITERABLE;
             this.iterableIds = null;
         }
 
-        isLeafNode = (this.inputOffsets.length == 0 && this.successorOffsets.length == 0);
         nodeIterableCount = Debug.metric("NodeIterable_%s", shortName);
     }
 
@@ -248,10 +244,6 @@ public final class NodeClass extends FieldIntrospection {
 
     public boolean valueNumberable() {
         return canGVN;
-    }
-
-    public boolean isLeafNode() {
-        return isLeafNode;
     }
 
     /**
@@ -296,13 +288,14 @@ public final class NodeClass extends FieldIntrospection {
                 assert !field.isAnnotationPresent(Node.Successor.class) : "field cannot be both input and successor";
                 assert field.isAnnotationPresent(Node.Input.class) ^ field.isAnnotationPresent(Node.OptionalInput.class) : "inputs can either be optional or non-optional";
                 if (INPUT_LIST_CLASS.isAssignableFrom(type)) {
-                    GraalInternalError.guarantee(Modifier.isFinal(field.getModifiers()), "NodeInputList input field %s should be final", field);
+                    // NodeInputList fields should not be final since they are
+                    // written (via Unsafe) in clearInputs()
+                    GraalInternalError.guarantee(!Modifier.isFinal(field.getModifiers()), "NodeInputList input field %s should not be final", field);
                     GraalInternalError.guarantee(!Modifier.isPublic(field.getModifiers()), "NodeInputList input field %s should not be public", field);
                     inputListOffsets.add(offset);
                 } else {
                     GraalInternalError.guarantee(NODE_CLASS.isAssignableFrom(type) || type.isInterface(), "invalid input type: %s", type);
                     GraalInternalError.guarantee(!Modifier.isFinal(field.getModifiers()), "Node input field %s should not be final", field);
-                    GraalInternalError.guarantee(Modifier.isPrivate(field.getModifiers()), "Node input field %s should be private", field);
                     inputOffsets.add(offset);
                 }
                 if (field.isAnnotationPresent(Node.Input.class)) {
@@ -316,13 +309,14 @@ public final class NodeClass extends FieldIntrospection {
                 }
             } else if (field.isAnnotationPresent(Node.Successor.class)) {
                 if (SUCCESSOR_LIST_CLASS.isAssignableFrom(type)) {
-                    GraalInternalError.guarantee(Modifier.isFinal(field.getModifiers()), "NodeSuccessorList successor field % should be final", field);
+                    // NodeSuccessorList fields should not be final since they are
+                    // written (via Unsafe) in clearSuccessors()
+                    GraalInternalError.guarantee(!Modifier.isFinal(field.getModifiers()), "NodeSuccessorList successor field % should not be final", field);
                     GraalInternalError.guarantee(!Modifier.isPublic(field.getModifiers()), "NodeSuccessorList successor field %s should not be public", field);
                     successorListOffsets.add(offset);
                 } else {
                     GraalInternalError.guarantee(NODE_CLASS.isAssignableFrom(type), "invalid successor type: %s", type);
                     GraalInternalError.guarantee(!Modifier.isFinal(field.getModifiers()), "Node successor field %s should not be final", field);
-                    GraalInternalError.guarantee(Modifier.isPrivate(field.getModifiers()), "Node successor field %s should be private", field);
                     successorOffsets.add(offset);
                 }
                 names.put(offset, field.getName());
@@ -352,104 +346,6 @@ public final class NodeClass extends FieldIntrospection {
         }
         str.append("]");
         return str.toString();
-    }
-
-    /**
-     * Describes an edge slot for a {@link NodeClass}.
-     *
-     * @see NodeClass#get(Node, Position)
-     * @see NodeClass#getName(Position)
-     */
-    public static final class Position {
-
-        private final boolean input;
-        private final int index;
-        private final int subIndex;
-
-        public Position(boolean input, int index, int subIndex) {
-            this.input = input;
-            this.index = index;
-            this.subIndex = subIndex;
-        }
-
-        @Override
-        public String toString() {
-            return (input ? "input " : "successor ") + index + "/" + subIndex;
-        }
-
-        public Node get(Node node) {
-            return node.getNodeClass().get(node, this);
-        }
-
-        public InputType getInputType(Node node) {
-            return node.getNodeClass().getInputType(this);
-        }
-
-        public String getInputName(Node node) {
-            return node.getNodeClass().getName(this);
-        }
-
-        public boolean isInputOptional(Node node) {
-            return node.getNodeClass().isInputOptional(this);
-        }
-
-        public void set(Node node, Node value) {
-            node.getNodeClass().set(node, this, value);
-        }
-
-        public void initialize(Node node, Node value) {
-            node.getNodeClass().initializePosition(node, this, value);
-        }
-
-        public boolean isValidFor(Node node, Node from) {
-            return node.getNodeClass().isValid(this, from.getNodeClass());
-        }
-
-        @Override
-        public int hashCode() {
-            final int prime = 31;
-            int result = 1;
-            result = prime * result + index;
-            result = prime * result + (input ? 1231 : 1237);
-            result = prime * result + subIndex;
-            return result;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (this == obj) {
-                return true;
-            }
-            if (obj == null) {
-                return false;
-            }
-            if (getClass() != obj.getClass()) {
-                return false;
-            }
-            Position other = (Position) obj;
-            if (index != other.index) {
-                return false;
-            }
-            if (input != other.input) {
-                return false;
-            }
-            if (subIndex != other.subIndex) {
-                return false;
-            }
-            return true;
-        }
-
-        public int getSubIndex() {
-            return subIndex;
-        }
-
-        public int getIndex() {
-            return index;
-        }
-
-        public boolean isInput() {
-            return input;
-        }
     }
 
     private static Node getNode(Node node, long offset) {
@@ -966,7 +862,7 @@ public final class NodeClass extends FieldIntrospection {
 
     public NodeList<?> getNodeList(Node node, Position pos) {
         long offset = pos.isInput() ? inputOffsets[pos.getIndex()] : successorOffsets[pos.getIndex()];
-        assert pos.getSubIndex() == NODE_LIST;
+        assert pos.getSubIndex() == Node.NODE_LIST;
         return getNodeList(node, offset);
     }
 
@@ -1425,7 +1321,7 @@ public final class NodeClass extends FieldIntrospection {
         return new AbstractCollection<Position>() {
             @Override
             public Iterator<Position> iterator() {
-                return new Iterator<NodeClass.Position>() {
+                return new Iterator<Position>() {
                     int i = 0;
 
                     @Override
@@ -1434,7 +1330,7 @@ public final class NodeClass extends FieldIntrospection {
                     }
 
                     public Position next() {
-                        Position pos = new Position(true, i, i >= directInputCount ? NODE_LIST : NOT_ITERABLE);
+                        Position pos = new Position(true, i, i >= directInputCount ? Node.NODE_LIST : Node.NOT_ITERABLE);
                         i++;
                         return pos;
                     }
@@ -1456,7 +1352,7 @@ public final class NodeClass extends FieldIntrospection {
         return new AbstractCollection<Position>() {
             @Override
             public Iterator<Position> iterator() {
-                return new Iterator<NodeClass.Position>() {
+                return new Iterator<Position>() {
                     int i = 0;
 
                     @Override
@@ -1465,7 +1361,7 @@ public final class NodeClass extends FieldIntrospection {
                     }
 
                     public Position next() {
-                        Position pos = new Position(false, i, i >= directSuccessorCount ? NODE_LIST : NOT_ITERABLE);
+                        Position pos = new Position(false, i, i >= directSuccessorCount ? Node.NODE_LIST : Node.NOT_ITERABLE);
                         i++;
                         return pos;
                     }

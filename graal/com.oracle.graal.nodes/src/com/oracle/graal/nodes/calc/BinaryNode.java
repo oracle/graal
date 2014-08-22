@@ -35,8 +35,8 @@ import com.oracle.graal.nodes.*;
 @NodeInfo
 public abstract class BinaryNode extends FloatingNode implements Canonicalizable.Binary<ValueNode> {
 
-    @Input private ValueNode x;
-    @Input private ValueNode y;
+    @Input protected ValueNode x;
+    @Input protected ValueNode y;
 
     public ValueNode getX() {
         return x;

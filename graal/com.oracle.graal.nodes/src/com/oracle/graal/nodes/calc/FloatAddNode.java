@@ -67,6 +67,7 @@ public class FloatAddNode extends FloatArithmeticNode {
         // Constant 0.0 can't be eliminated since it can affect the sign of the result.
         // Constant -0.0 is an additive identity.
         if (forY.isConstant()) {
+            @SuppressWarnings("hiding")
             Constant y = forY.asConstant();
             switch (y.getKind()) {
                 case Float:

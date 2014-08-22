@@ -35,7 +35,7 @@ import com.oracle.graal.nodeinfo.*;
 @NodeInfo
 public abstract class BeginStateSplitNode extends BeginNode implements StateSplit {
 
-    @OptionalInput(InputType.State) private FrameState stateAfter;
+    @OptionalInput(InputType.State) protected FrameState stateAfter;
 
     public BeginStateSplitNode() {
     }

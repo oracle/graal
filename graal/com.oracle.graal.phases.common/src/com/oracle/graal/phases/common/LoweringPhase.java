@@ -49,7 +49,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
 
     @NodeInfo
     static class DummyGuardHandle extends ValueNode implements GuardedNode {
-        @Input(InputType.Guard) private GuardingNode guard;
+        @Input(InputType.Guard) GuardingNode guard;
 
         public static DummyGuardHandle create(GuardingNode guard) {
             return new LoweringPhase_DummyGuardHandleGen(guard);

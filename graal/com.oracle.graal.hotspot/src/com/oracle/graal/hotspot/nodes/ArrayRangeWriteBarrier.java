@@ -28,8 +28,8 @@ import com.oracle.graal.nodes.*;
 @NodeInfo
 public abstract class ArrayRangeWriteBarrier extends WriteBarrier {
 
-    @Input private ValueNode startIndex;
-    @Input private ValueNode length;
+    @Input ValueNode startIndex;
+    @Input ValueNode length;
 
     public ArrayRangeWriteBarrier(ValueNode object, ValueNode startIndex, ValueNode length) {
         super(object, null, null, true);

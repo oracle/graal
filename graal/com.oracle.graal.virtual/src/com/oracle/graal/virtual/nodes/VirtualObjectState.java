@@ -35,7 +35,7 @@ import com.oracle.graal.nodes.virtual.*;
 @NodeInfo
 public class VirtualObjectState extends EscapeObjectState implements Node.ValueNumberable {
 
-    @Input private final NodeInputList<ValueNode> values;
+    @Input NodeInputList<ValueNode> values;
 
     public NodeInputList<ValueNode> values() {
         return values;

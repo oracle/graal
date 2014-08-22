@@ -36,10 +36,10 @@ import com.oracle.graal.word.*;
 @NodeInfo
 public class PushInterpreterFrameNode extends FixedWithNextNode implements LIRLowerable {
 
-    @Input private ValueNode framePc;
-    @Input private ValueNode frameSize;
-    @Input private ValueNode senderSp;
-    @Input private ValueNode initialInfo;
+    @Input ValueNode framePc;
+    @Input ValueNode frameSize;
+    @Input ValueNode senderSp;
+    @Input ValueNode initialInfo;
 
     public static PushInterpreterFrameNode create(ValueNode frameSize, ValueNode framePc, ValueNode senderSp, ValueNode initialInfo) {
         return new PushInterpreterFrameNodeGen(frameSize, framePc, senderSp, initialInfo);

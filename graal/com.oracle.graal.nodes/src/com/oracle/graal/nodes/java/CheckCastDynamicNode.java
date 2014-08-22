@@ -36,8 +36,8 @@ import com.oracle.graal.nodes.type.*;
 @NodeInfo
 public class CheckCastDynamicNode extends FixedWithNextNode implements Canonicalizable.Binary<ValueNode>, Lowerable {
 
-    @Input private ValueNode object;
-    @Input private ValueNode hub;
+    @Input ValueNode object;
+    @Input ValueNode hub;
 
     /**
      * Determines the exception thrown by this node if the check fails: {@link ClassCastException}

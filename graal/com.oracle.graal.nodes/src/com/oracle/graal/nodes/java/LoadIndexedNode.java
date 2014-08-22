@@ -69,9 +69,9 @@ public class LoadIndexedNode extends AccessIndexedNode implements Virtualizable 
         State arrayState = tool.getObjectState(array());
         if (arrayState != null && arrayState.getState() == EscapeState.Virtual) {
             ValueNode indexValue = tool.getReplacedValue(index());
-            int index = indexValue.isConstant() ? indexValue.asConstant().asInt() : -1;
-            if (index >= 0 && index < arrayState.getVirtualObject().entryCount()) {
-                tool.replaceWith(arrayState.getEntry(index));
+            int idx = indexValue.isConstant() ? indexValue.asConstant().asInt() : -1;
+            if (idx >= 0 && idx < arrayState.getVirtualObject().entryCount()) {
+                tool.replaceWith(arrayState.getEntry(idx));
             }
         }
     }

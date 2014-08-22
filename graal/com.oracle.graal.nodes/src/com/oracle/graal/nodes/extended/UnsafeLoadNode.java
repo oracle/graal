@@ -37,7 +37,7 @@ import com.oracle.graal.nodes.spi.*;
  */
 @NodeInfo
 public class UnsafeLoadNode extends UnsafeAccessNode implements Lowerable, Virtualizable {
-    @OptionalInput(InputType.Condition) private LogicNode guardingCondition;
+    @OptionalInput(InputType.Condition) LogicNode guardingCondition;
 
     public static UnsafeLoadNode create(ValueNode object, ValueNode offset, Kind accessKind, LocationIdentity locationIdentity) {
         return new UnsafeLoadNodeGen(object, offset, accessKind, locationIdentity);
@@ -71,8 +71,8 @@ public class UnsafeLoadNode extends UnsafeAccessNode implements Lowerable, Virtu
         if (state != null && state.getState() == EscapeState.Virtual) {
             ValueNode offsetValue = tool.getReplacedValue(offset());
             if (offsetValue.isConstant()) {
-                long offset = offsetValue.asConstant().asLong();
-                int entryIndex = state.getVirtualObject().entryIndexForOffset(offset);
+                long off = offsetValue.asConstant().asLong();
+                int entryIndex = state.getVirtualObject().entryIndexForOffset(off);
                 if (entryIndex != -1) {
                     ValueNode entry = state.getEntry(entryIndex);
                     if (entry.getKind() == getKind() || state.getVirtualObject().entryKind(entryIndex) == accessKind()) {

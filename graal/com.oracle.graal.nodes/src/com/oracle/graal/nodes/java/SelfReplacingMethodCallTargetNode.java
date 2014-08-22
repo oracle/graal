@@ -42,7 +42,7 @@ public class SelfReplacingMethodCallTargetNode extends MethodCallTargetNode impl
     // Replacement method data
     private final ResolvedJavaMethod replacementTargetMethod;
     private final JavaType replacementReturnType;
-    @Input private final NodeInputList<ValueNode> replacementArguments;
+    @Input NodeInputList<ValueNode> replacementArguments;
 
     public static SelfReplacingMethodCallTargetNode create(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, JavaType returnType,
                     ResolvedJavaMethod replacementTargetMethod, ValueNode[] replacementArguments, JavaType replacementReturnType) {

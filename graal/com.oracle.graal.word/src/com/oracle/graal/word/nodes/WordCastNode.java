@@ -38,7 +38,7 @@ import com.oracle.graal.word.phases.*;
 @NodeInfo
 public class WordCastNode extends FixedWithNextNode implements LIRLowerable, Canonicalizable {
 
-    @Input private ValueNode input;
+    @Input ValueNode input;
 
     public static WordCastNode wordToObject(ValueNode input, Kind wordKind) {
         assert input.getKind() == wordKind;

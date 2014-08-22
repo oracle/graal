@@ -38,10 +38,10 @@ import com.oracle.graal.word.*;
 @NodeInfo
 public class EnterUnpackFramesStackFrameNode extends FixedWithNextNode implements LIRLowerable {
 
-    @Input private ValueNode framePc;
-    @Input private ValueNode senderSp;
-    @Input private ValueNode senderFp;
-    @Input private SaveAllRegistersNode registerSaver;
+    @Input ValueNode framePc;
+    @Input ValueNode senderSp;
+    @Input ValueNode senderFp;
+    @Input SaveAllRegistersNode registerSaver;
 
     public static EnterUnpackFramesStackFrameNode create(ValueNode framePc, ValueNode senderSp, ValueNode senderFp, ValueNode registerSaver) {
         return new EnterUnpackFramesStackFrameNodeGen(framePc, senderSp, senderFp, registerSaver);

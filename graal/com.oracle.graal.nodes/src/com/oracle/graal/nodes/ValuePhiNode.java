@@ -33,7 +33,7 @@ import com.oracle.graal.nodes.type.*;
 @NodeInfo(nameTemplate = "ValuePhi({i#values})")
 public class ValuePhiNode extends PhiNode {
 
-    @Input final NodeInputList<ValueNode> values;
+    @Input NodeInputList<ValueNode> values;
 
     /**
      * Create a value phi with the specified stamp.

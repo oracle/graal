@@ -32,7 +32,7 @@ import com.oracle.graal.nodeinfo.*;
 @NodeInfo
 public class IndirectCallTargetNode extends LoweredCallTargetNode {
 
-    @Input private ValueNode computedAddress;
+    @Input protected ValueNode computedAddress;
 
     public static IndirectCallTargetNode create(ValueNode computedAddress, List<ValueNode> arguments, Stamp returnStamp, JavaType[] signature, ResolvedJavaMethod target,
                     CallingConvention.Type callType, InvokeKind invokeKind) {

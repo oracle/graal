@@ -35,8 +35,8 @@ import com.oracle.graal.nodes.type.*;
 @NodeInfo
 public class StoreIndexedNode extends AccessIndexedNode implements StateSplit, Lowerable, Virtualizable {
 
-    @Input private ValueNode value;
-    @OptionalInput(InputType.State) private FrameState stateAfter;
+    @Input ValueNode value;
+    @OptionalInput(InputType.State) FrameState stateAfter;
 
     public FrameState stateAfter() {
         return stateAfter;
@@ -78,12 +78,12 @@ public class StoreIndexedNode extends AccessIndexedNode implements StateSplit, L
         State arrayState = tool.getObjectState(array());
         if (arrayState != null && arrayState.getState() == EscapeState.Virtual) {
             ValueNode indexValue = tool.getReplacedValue(index());
-            int index = indexValue.isConstant() ? indexValue.asConstant().asInt() : -1;
-            if (index >= 0 && index < arrayState.getVirtualObject().entryCount()) {
+            int idx = indexValue.isConstant() ? indexValue.asConstant().asInt() : -1;
+            if (idx >= 0 && idx < arrayState.getVirtualObject().entryCount()) {
                 ResolvedJavaType componentType = arrayState.getVirtualObject().type().getComponentType();
                 if (componentType.isPrimitive() || StampTool.isObjectAlwaysNull(value) || componentType.getSuperclass() == null ||
                                 (StampTool.typeOrNull(value) != null && componentType.isAssignableFrom(StampTool.typeOrNull(value)))) {
-                    tool.setVirtualEntry(arrayState, index, value(), false);
+                    tool.setVirtualEntry(arrayState, idx, value(), false);
                     tool.delete();
                 }
             }

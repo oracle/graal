@@ -28,7 +28,6 @@ import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.Node.ValueNumberable;
 import com.oracle.graal.graph.NodeClass.NodeClassIterator;
-import com.oracle.graal.graph.NodeClass.Position;
 import com.oracle.graal.graph.iterators.*;
 
 /**
@@ -85,7 +84,7 @@ public class Graph {
 
         public CacheEntry(Node node) {
             assert node.getNodeClass().valueNumberable();
-            assert node.getNodeClass().isLeafNode();
+            assert node.isLeafNode();
             this.node = node;
         }
 
@@ -117,7 +116,7 @@ public class Graph {
         this(null);
     }
 
-    static final boolean MODIFICATION_COUNTS_ENABLED = assertionsEnabled();
+    public static final boolean MODIFICATION_COUNTS_ENABLED = assertionsEnabled();
 
     /**
      * Determines if assertions are enabled for the {@link Graph} class.
@@ -440,7 +439,7 @@ public class Graph {
             return (T) other;
         } else {
             Node result = addIfMissing ? addHelper(node) : node;
-            if (node.getNodeClass().isLeafNode()) {
+            if (node.isLeafNode()) {
                 putNodeIntoCache(result);
             }
             return (T) result;
@@ -450,7 +449,7 @@ public class Graph {
     void putNodeIntoCache(Node node) {
         assert node.graph() == this || node.graph() == null;
         assert node.getNodeClass().valueNumberable();
-        assert node.getNodeClass().isLeafNode() : node.getClass();
+        assert node.isLeafNode() : node.getClass();
         cachedNodes.put(new CacheEntry(node), node);
     }
 
@@ -467,7 +466,7 @@ public class Graph {
     public Node findDuplicate(Node node) {
         NodeClass nodeClass = node.getNodeClass();
         assert nodeClass.valueNumberable();
-        if (nodeClass.isLeafNode()) {
+        if (node.isLeafNode()) {
             Node cachedNode = findNodeInCache(node);
             if (cachedNode != null) {
                 return cachedNode;
@@ -654,7 +653,6 @@ public class Graph {
         }
 
         PlaceHolderNode() {
-            // TODO Auto-generated constructor stub
         }
     }
 
@@ -872,7 +870,7 @@ public class Graph {
         nodesSize++;
 
         int nodeClassId = node.getNodeClass().iterableId();
-        if (nodeClassId != NodeClass.NOT_ITERABLE) {
+        if (nodeClassId != Node.NOT_ITERABLE) {
             while (nodeCacheFirst.size() <= nodeClassId) {
                 nodeCacheFirst.add(null);
                 nodeCacheLast.add(null);

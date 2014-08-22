@@ -38,8 +38,8 @@ import com.oracle.graal.nodes.type.*;
 @NodeInfo(nameTemplate = "GuardingPi(!={p#negated}) {p#reason/s}")
 public class GuardingPiNode extends FixedWithNextNode implements Lowerable, Virtualizable, Canonicalizable, ValueProxy {
 
-    @Input private ValueNode object;
-    @Input(InputType.Condition) private LogicNode condition;
+    @Input ValueNode object;
+    @Input(InputType.Condition) LogicNode condition;
     private final DeoptimizationReason reason;
     private final DeoptimizationAction action;
     private final Stamp piStamp;

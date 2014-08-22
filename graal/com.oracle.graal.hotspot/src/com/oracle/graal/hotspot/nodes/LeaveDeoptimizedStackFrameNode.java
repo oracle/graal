@@ -38,8 +38,8 @@ import com.oracle.graal.word.*;
 @NodeInfo
 public class LeaveDeoptimizedStackFrameNode extends FixedWithNextNode implements LIRLowerable {
 
-    @Input private ValueNode frameSize;
-    @Input private ValueNode initialInfo;
+    @Input ValueNode frameSize;
+    @Input ValueNode initialInfo;
 
     public static LeaveDeoptimizedStackFrameNode create(ValueNode frameSize, ValueNode initialInfo) {
         return new LeaveDeoptimizedStackFrameNodeGen(frameSize, initialInfo);

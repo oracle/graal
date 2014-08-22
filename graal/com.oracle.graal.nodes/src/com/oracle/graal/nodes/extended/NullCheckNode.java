@@ -30,7 +30,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(allowedUsageTypes = {InputType.Guard})
 public class NullCheckNode extends DeoptimizingFixedWithNextNode implements LIRLowerable, GuardingNode {
 
-    @Input private ValueNode object;
+    @Input ValueNode object;
 
     public static NullCheckNode create(ValueNode object) {
         return new NullCheckNodeGen(object);

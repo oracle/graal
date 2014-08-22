@@ -50,7 +50,7 @@ public class MergeNode extends BeginStateSplitNode implements IterableNodeType, 
     MergeNode() {
     }
 
-    @Input(InputType.Association) private final NodeInputList<AbstractEndNode> ends = new NodeInputList<>(this);
+    @Input(InputType.Association) NodeInputList<AbstractEndNode> ends = new NodeInputList<>(this);
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
@@ -149,9 +149,9 @@ public class MergeNode extends BeginStateSplitNode implements IterableNodeType, 
      */
     @Override
     public void simplify(SimplifierTool tool) {
-        FixedNode next = next();
-        if (next instanceof AbstractEndNode) {
-            AbstractEndNode origLoopEnd = (AbstractEndNode) next;
+        FixedNode currentNext = next();
+        if (currentNext instanceof AbstractEndNode) {
+            AbstractEndNode origLoopEnd = (AbstractEndNode) currentNext;
             MergeNode merge = origLoopEnd.merge();
             if (merge instanceof LoopBeginNode && !(origLoopEnd instanceof LoopEndNode)) {
                 return;
@@ -203,8 +203,8 @@ public class MergeNode extends BeginStateSplitNode implements IterableNodeType, 
                 }
             }
             graph().reduceTrivialMerge(this);
-        } else if (next instanceof ReturnNode) {
-            ReturnNode returnNode = (ReturnNode) next;
+        } else if (currentNext instanceof ReturnNode) {
+            ReturnNode returnNode = (ReturnNode) currentNext;
             if (anchored().isNotEmpty() || returnNode.getMemoryMap() != null) {
                 return;
             }

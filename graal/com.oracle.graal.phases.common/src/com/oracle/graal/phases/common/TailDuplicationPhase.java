@@ -34,7 +34,6 @@ import com.oracle.graal.graph.Graph.DuplicationReplacement;
 import com.oracle.graal.graph.Graph.Mark;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.NodeClass.NodeClassIterator;
-import com.oracle.graal.graph.NodeClass.Position;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.VirtualState.NodeClosure;

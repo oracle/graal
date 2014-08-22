@@ -30,8 +30,8 @@ import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo
 public class DynamicDeoptimizeNode extends AbstractDeoptimizeNode implements LIRLowerable, Canonicalizable {
-    @Input private ValueNode actionAndReason;
-    @Input private ValueNode speculation;
+    @Input ValueNode actionAndReason;
+    @Input ValueNode speculation;
 
     public static DynamicDeoptimizeNode create(ValueNode actionAndReason, ValueNode speculation) {
         return new DynamicDeoptimizeNodeGen(actionAndReason, speculation);

@@ -30,8 +30,8 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public class ReturnNode extends ControlSinkNode implements LIRLowerable, IterableNodeType {
 
-    @OptionalInput private ValueNode result;
-    @OptionalInput(InputType.Extension) private MemoryMapNode memoryMap;
+    @OptionalInput ValueNode result;
+    @OptionalInput(InputType.Extension) MemoryMapNode memoryMap;
 
     public ValueNode result() {
         return result;

@@ -31,7 +31,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public class LoopEndNode extends AbstractEndNode {
 
-    @Input(InputType.Association) private LoopBeginNode loopBegin;
+    @Input(InputType.Association) LoopBeginNode loopBegin;
     private boolean canSafepoint;
     private int endIndex;
 

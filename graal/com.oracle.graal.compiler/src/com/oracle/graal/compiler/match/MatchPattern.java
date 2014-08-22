@@ -137,7 +137,7 @@ public class MatchPattern {
     /**
      * The inputs to match the patterns against.
      */
-    private final NodeClass.Position[] inputs;
+    private final Position[] inputs;
 
     /**
      * Can there only be one user of the node. Constant nodes can be matched even if there are other
@@ -159,7 +159,7 @@ public class MatchPattern {
         this.inputs = null;
     }
 
-    private MatchPattern(Class<? extends ValueNode> nodeClass, String name, boolean singleUser, MatchPattern[] patterns, NodeClass.Position[] inputs) {
+    private MatchPattern(Class<? extends ValueNode> nodeClass, String name, boolean singleUser, MatchPattern[] patterns, Position[] inputs) {
         assert inputs == null || inputs.length == patterns.length;
         this.nodeClass = nodeClass;
         this.name = name;
@@ -168,15 +168,15 @@ public class MatchPattern {
         this.inputs = inputs;
     }
 
-    public MatchPattern(Class<? extends ValueNode> nodeClass, String name, MatchPattern first, NodeClass.Position[] inputs, boolean singleUser) {
+    public MatchPattern(Class<? extends ValueNode> nodeClass, String name, MatchPattern first, Position[] inputs, boolean singleUser) {
         this(nodeClass, name, singleUser, new MatchPattern[]{first}, inputs);
     }
 
-    public MatchPattern(Class<? extends ValueNode> nodeClass, String name, MatchPattern first, MatchPattern second, NodeClass.Position[] inputs, boolean singleUser) {
+    public MatchPattern(Class<? extends ValueNode> nodeClass, String name, MatchPattern first, MatchPattern second, Position[] inputs, boolean singleUser) {
         this(nodeClass, name, singleUser, new MatchPattern[]{first, second}, inputs);
     }
 
-    public MatchPattern(Class<? extends ValueNode> nodeClass, String name, MatchPattern first, MatchPattern second, MatchPattern third, NodeClass.Position[] inputs, boolean singleUser) {
+    public MatchPattern(Class<? extends ValueNode> nodeClass, String name, MatchPattern first, MatchPattern second, MatchPattern third, Position[] inputs, boolean singleUser) {
         this(nodeClass, name, singleUser, new MatchPattern[]{first, second, third}, inputs);
     }
 

@@ -32,8 +32,8 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public class ComputeAddressNode extends FloatingNode implements LIRLowerable {
 
-    @Input private ValueNode object;
-    @Input(InputType.Association) private ValueNode location;
+    @Input ValueNode object;
+    @Input(InputType.Association) ValueNode location;
 
     public ValueNode getObject() {
         return object;

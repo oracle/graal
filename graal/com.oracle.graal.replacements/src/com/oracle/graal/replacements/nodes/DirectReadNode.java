@@ -38,7 +38,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public class DirectReadNode extends FixedWithNextNode implements LIRLowerable {
 
-    @Input private ValueNode address;
+    @Input protected ValueNode address;
     private final Kind readKind;
 
     public static DirectReadNode create(ValueNode address, Kind readKind) {

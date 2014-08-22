@@ -40,9 +40,9 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public class ConditionalNode extends FloatingNode implements Canonicalizable, LIRLowerable {
 
-    @Input(InputType.Condition) private LogicNode condition;
-    @Input private ValueNode trueValue;
-    @Input private ValueNode falseValue;
+    @Input(InputType.Condition) LogicNode condition;
+    @Input ValueNode trueValue;
+    @Input ValueNode falseValue;
 
     public LogicNode condition() {
         return condition;

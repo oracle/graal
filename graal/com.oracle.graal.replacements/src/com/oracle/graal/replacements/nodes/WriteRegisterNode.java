@@ -43,7 +43,7 @@ public class WriteRegisterNode extends FixedWithNextNode implements LIRLowerable
     /**
      * The new value assigned to the register.
      */
-    @Input private ValueNode value;
+    @Input ValueNode value;
 
     public static WriteRegisterNode create(Register register, ValueNode value) {
         return new WriteRegisterNodeGen(register, value);

@@ -48,8 +48,8 @@ import com.oracle.truffle.api.frame.*;
 @NodeInfo
 public class NewFrameNode extends FixedWithNextNode implements IterableNodeType, VirtualizableAllocation, Canonicalizable {
 
-    @Input private ValueNode descriptor;
-    @Input private ValueNode arguments;
+    @Input ValueNode descriptor;
+    @Input ValueNode arguments;
 
     public static NewFrameNode create(Stamp stamp, ValueNode descriptor, ValueNode arguments) {
         return new NewFrameNodeGen(stamp, descriptor, arguments);

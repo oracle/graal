@@ -33,7 +33,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public class UnwindNode extends ControlSinkNode implements Lowerable, LIRLowerable {
 
-    @Input private ValueNode exception;
+    @Input ValueNode exception;
 
     public ValueNode exception() {
         return exception;

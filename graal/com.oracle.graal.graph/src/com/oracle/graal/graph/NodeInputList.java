@@ -61,7 +61,7 @@ public final class NodeInputList<T extends Node> extends NodeList<T> {
     }
 
     @Override
-    public boolean add(T node) {
+    public boolean add(Node node) {
         assert node == null || !node.isDeleted();
         self.incModCount();
         return super.add(node);
@@ -86,7 +86,7 @@ public final class NodeInputList<T extends Node> extends NodeList<T> {
     }
 
     @Override
-    void copy(NodeList<T> other) {
+    void copy(NodeList<? extends Node> other) {
         self.incModCount();
         super.copy(other);
     }

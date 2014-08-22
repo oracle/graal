@@ -35,12 +35,12 @@ import com.oracle.graal.replacements.SnippetTemplate.Arguments;
 @NodeInfo(allowedUsageTypes = {InputType.Memory})
 public class UnsafeArrayCopyNode extends ArrayRangeWriteNode implements Lowerable, MemoryCheckpoint.Single {
 
-    @Input private ValueNode src;
-    @Input private ValueNode srcPos;
-    @Input private ValueNode dest;
-    @Input private ValueNode destPos;
-    @Input private ValueNode length;
-    @OptionalInput private ValueNode layoutHelper;
+    @Input ValueNode src;
+    @Input ValueNode srcPos;
+    @Input ValueNode dest;
+    @Input ValueNode destPos;
+    @Input ValueNode length;
+    @OptionalInput ValueNode layoutHelper;
 
     private Kind elementKind;
 

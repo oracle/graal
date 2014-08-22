@@ -43,11 +43,11 @@ import com.oracle.graal.runtime.*;
 @NodeInfo(allowedUsageTypes = {InputType.Memory})
 public class ArrayCopyCallNode extends AbstractMemoryCheckpoint implements Lowerable, MemoryCheckpoint.Single {
 
-    @Input private ValueNode src;
-    @Input private ValueNode srcPos;
-    @Input private ValueNode dest;
-    @Input private ValueNode destPos;
-    @Input private ValueNode length;
+    @Input ValueNode src;
+    @Input ValueNode srcPos;
+    @Input ValueNode dest;
+    @Input ValueNode destPos;
+    @Input ValueNode length;
 
     private Kind elementKind;
 

@@ -42,9 +42,9 @@ public class NodeUsagesTests {
 
     @NodeInfo
     static class Use extends Node {
-        private @Input Def in0;
-        private @Input Def in1;
-        private @Input Def in2;
+        @Input Def in0;
+        @Input Def in1;
+        @Input Def in2;
 
         public static Use create(Def in0, Def in1, Def in2) {
             return new NodeUsagesTests_UseGen(in0, in1, in2);

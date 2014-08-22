@@ -121,14 +121,15 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
         modCount++;
     }
 
+    @SuppressWarnings("unchecked")
     @Override
-    public boolean add(T node) {
+    public boolean add(Node node) {
         incModCount();
         if (size == nodes.length) {
             nodes = Arrays.copyOf(nodes, nodes.length * 2 + 1);
         }
         nodes[size++] = node;
-        update(null, node);
+        update(null, (T) node);
         return true;
     }
 
@@ -145,22 +146,22 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
 
     @Override
     @SuppressWarnings("unchecked")
-    public T set(int index, T node) {
+    public T set(int index, Node node) {
         incModCount();
         T oldValue = (T) nodes[index];
         assert index < size();
-        update((T) nodes[index], node);
+        update((T) nodes[index], (T) node);
         nodes[index] = node;
         return oldValue;
     }
 
-    void initialize(int index, T node) {
+    public void initialize(int index, Node node) {
         incModCount();
         assert index < size();
         nodes[index] = node;
     }
 
-    void copy(NodeList<T> other) {
+    void copy(NodeList<? extends Node> other) {
         incModCount();
         nodes = Arrays.copyOf(other.nodes, other.size);
         size = other.size;

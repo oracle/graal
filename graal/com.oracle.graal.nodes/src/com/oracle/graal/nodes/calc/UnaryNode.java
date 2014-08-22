@@ -34,7 +34,7 @@ import com.oracle.graal.nodes.*;
 @NodeInfo
 public abstract class UnaryNode extends FloatingNode implements Canonicalizable.Unary<ValueNode> {
 
-    @Input private ValueNode value;
+    @Input protected ValueNode value;
 
     public ValueNode getValue() {
         return value;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,39 +20,34 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes;
+package com.oracle.graal.graph;
 
-import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.nodeinfo.*;
+import com.oracle.graal.graph.iterators.*;
 
 /**
- * Provides an implementation of {@link StateSplit}.
+ * The iterator returned by this iterable can be used to access {@link Position Positions} during
+ * iteration using {@link NodeRefIterator#nextPosition()}.
  */
-@NodeInfo
-public abstract class AbstractStateSplit extends FixedWithNextNode implements StateSplit {
+public interface NodeRefIterable extends NodeIterable<Node> {
+    /**
+     * Returns an iterator that produces all non-null values.
+     */
+    @Override
+    NodeRefIterator iterator();
 
-    @OptionalInput(InputType.State) protected FrameState stateAfter;
+    /**
+     * Returns an iterator that produces all values, including null values.
+     */
+    NodeRefIterator withNullIterator();
 
-    public FrameState stateAfter() {
-        return stateAfter;
-    }
+    NodeRefIterable Empty = new NodeRefIterable() {
 
-    public void setStateAfter(FrameState x) {
-        assert x == null || x.isAlive() : "frame state must be in a graph";
-        updateUsages(stateAfter, x);
-        stateAfter = x;
-    }
+        public NodeRefIterator withNullIterator() {
+            return NodeRefIterator.Empty;
+        }
 
-    public boolean hasSideEffect() {
-        return true;
-    }
-
-    public AbstractStateSplit(Stamp stamp) {
-        super(stamp);
-    }
-
-    public AbstractStateSplit(Stamp stamp, FrameState stateAfter) {
-        super(stamp);
-        this.stateAfter = stateAfter;
-    }
+        public NodeRefIterator iterator() {
+            return NodeRefIterator.Empty;
+        }
+    };
 }

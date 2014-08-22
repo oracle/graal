@@ -40,8 +40,8 @@ import com.oracle.graal.nodes.type.*;
 @NodeInfo(nameTemplate = "AddLoc {p#locationIdentity/s}")
 public class AddLocationNode extends LocationNode implements Canonicalizable.Binary<LocationNode> {
 
-    @Input(InputType.Association) private ValueNode x;
-    @Input(InputType.Association) private ValueNode y;
+    @Input(InputType.Association) ValueNode x;
+    @Input(InputType.Association) ValueNode y;
 
     public LocationNode getX() {
         return (LocationNode) x;

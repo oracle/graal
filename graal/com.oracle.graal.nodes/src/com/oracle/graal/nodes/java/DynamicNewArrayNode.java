@@ -40,7 +40,7 @@ import com.oracle.graal.nodes.*;
 @NodeInfo
 public class DynamicNewArrayNode extends AbstractNewArrayNode {
 
-    @Input private ValueNode elementType;
+    @Input ValueNode elementType;
 
     public static DynamicNewArrayNode create(ValueNode elementType, ValueNode length) {
         return new DynamicNewArrayNodeGen(elementType, length);
@@ -68,8 +68,8 @@ public class DynamicNewArrayNode extends AbstractNewArrayNode {
         if (isAlive() && elementType.isConstant()) {
             ResolvedJavaType javaType = tool.getConstantReflection().asJavaType(elementType.asConstant());
             if (javaType != null && !javaType.equals(tool.getMetaAccess().lookupJavaType(void.class))) {
-                ValueNode length = length();
-                NewArrayNode newArray = graph().add(NewArrayNode.create(javaType, length.isAlive() ? length : graph().addOrUniqueWithInputs(length), fillContents()));
+                ValueNode len = length();
+                NewArrayNode newArray = graph().add(NewArrayNode.create(javaType, len.isAlive() ? len : graph().addOrUniqueWithInputs(len), fillContents()));
                 List<Node> snapshot = inputs().snapshot();
                 graph().replaceFixedWithFixed(this, newArray);
                 for (Node input : snapshot) {

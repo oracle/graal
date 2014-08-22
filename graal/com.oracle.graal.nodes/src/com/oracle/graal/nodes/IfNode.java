@@ -47,9 +47,9 @@ import com.oracle.graal.nodes.util.*;
 @NodeInfo
 public class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerable {
 
-    @Successor private BeginNode trueSuccessor;
-    @Successor private BeginNode falseSuccessor;
-    @Input(InputType.Condition) private LogicNode condition;
+    @Successor BeginNode trueSuccessor;
+    @Successor BeginNode falseSuccessor;
+    @Input(InputType.Condition) LogicNode condition;
     private double trueSuccessorProbability;
 
     public LogicNode condition() {
@@ -233,7 +233,7 @@ public class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerab
                         graph().addBeforeFixed(this, trueNext);
                         for (Node usage : trueNext.usages().snapshot()) {
                             if (usage.isAlive()) {
-                                if (usage.getNodeClass().valueNumberable() && !usage.getNodeClass().isLeafNode()) {
+                                if (usage.getNodeClass().valueNumberable() && !usage.isLeafNode()) {
                                     Node newNode = graph().findDuplicate(usage);
                                     if (newNode != null) {
                                         usage.replaceAtUsages(newNode);

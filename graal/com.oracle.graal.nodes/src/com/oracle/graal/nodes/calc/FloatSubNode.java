@@ -67,6 +67,7 @@ public class FloatSubNode extends FloatArithmeticNode {
         }
         // Constant -0.0 is an additive identity, so (-0.0) - x == (-0.0) + (-x) == -x.
         if (forX.isConstant()) {
+            @SuppressWarnings("hiding")
             Constant x = forX.asConstant();
             switch (x.getKind()) {
                 case Float:
@@ -86,6 +87,7 @@ public class FloatSubNode extends FloatArithmeticNode {
         // Constant -0.0 can't be eliminated since it can affect the sign of the result.
         // Constant 0.0 is a subtractive identity.
         if (forY.isConstant()) {
+            @SuppressWarnings("hiding")
             Constant y = forY.asConstant();
             switch (y.getKind()) {
                 case Float:

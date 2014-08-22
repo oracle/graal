@@ -30,8 +30,8 @@ import com.oracle.graal.nodes.*;
 @NodeInfo
 public abstract class FixedBinaryNode extends DeoptimizingFixedWithNextNode implements Canonicalizable.Binary<ValueNode> {
 
-    @Input private ValueNode x;
-    @Input private ValueNode y;
+    @Input ValueNode x;
+    @Input ValueNode y;
 
     public FixedBinaryNode(Stamp stamp, ValueNode x, ValueNode y) {
         super(stamp);

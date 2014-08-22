@@ -55,16 +55,16 @@ public class FrameState extends VirtualState implements IterableNodeType {
 
     private boolean duringCall;
 
-    @OptionalInput(value = InputType.State) private FrameState outerFrameState;
+    @OptionalInput(value = InputType.State) FrameState outerFrameState;
 
     /**
      * Contains the locals, the expressions and the locked objects, in this order.
      */
-    @OptionalInput private final NodeInputList<ValueNode> values;
+    @OptionalInput NodeInputList<ValueNode> values;
 
-    @OptionalInput(InputType.Association) private final NodeInputList<MonitorIdNode> monitorIds;
+    @OptionalInput(InputType.Association) NodeInputList<MonitorIdNode> monitorIds;
 
-    @Input(InputType.State) private final NodeInputList<EscapeObjectState> virtualObjectMappings;
+    @Input(InputType.State) NodeInputList<EscapeObjectState> virtualObjectMappings;
 
     /**
      * The bytecode index to which this frame state applies.

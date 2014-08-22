@@ -59,7 +59,7 @@ import com.oracle.graal.replacements.*;
 @NodeInfo
 public class MacroNode extends FixedWithNextNode implements Lowerable {
 
-    @Input protected final NodeInputList<ValueNode> arguments;
+    @Input protected NodeInputList<ValueNode> arguments;
 
     private final int bci;
     private final ResolvedJavaMethod targetMethod;

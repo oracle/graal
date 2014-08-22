@@ -54,7 +54,7 @@ public class MethodHandleNode extends MacroStateSplitNode implements Simplifiabl
     // Replacement method data
     private ResolvedJavaMethod replacementTargetMethod;
     private JavaType replacementReturnType;
-    @Input private final NodeInputList<ValueNode> replacementArguments;
+    @Input NodeInputList<ValueNode> replacementArguments;
 
     public static MethodHandleNode create(Invoke invoke) {
         return new MethodHandleNodeGen(invoke);
@@ -104,10 +104,10 @@ public class MethodHandleNode extends MacroStateSplitNode implements Simplifiabl
                 throw GraalInternalError.shouldNotReachHere();
         }
         if (invoke != null) {
-            FixedNode next = next();
+            FixedNode currentNext = next();
             replaceAtUsages(invoke);
             GraphUtil.removeFixedWithUnusedInputs(this);
-            graph().addBeforeFixed(next, invoke);
+            graph().addBeforeFixed(currentNext, invoke);
         }
     }
 

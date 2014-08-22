@@ -49,6 +49,7 @@ public class IntegerRemNode extends FixedBinaryNode implements Lowerable, LIRLow
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
         if (forX.isConstant() && forY.isConstant()) {
+            @SuppressWarnings("hiding")
             long y = forY.asConstant().asLong();
             if (y == 0) {
                 return this; // this will trap, can not canonicalize

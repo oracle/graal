@@ -41,7 +41,7 @@ import com.oracle.graal.replacements.*;
 public class VMErrorNode extends DeoptimizingStubCall implements LIRLowerable {
 
     private final String format;
-    @Input private ValueNode value;
+    @Input ValueNode value;
 
     public static VMErrorNode create(String format, ValueNode value) {
         return new VMErrorNodeGen(format, value);

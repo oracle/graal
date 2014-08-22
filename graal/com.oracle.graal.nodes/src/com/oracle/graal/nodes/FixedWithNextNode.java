@@ -32,7 +32,7 @@ import com.oracle.graal.nodeinfo.*;
 @NodeInfo
 public abstract class FixedWithNextNode extends FixedNode {
 
-    @Successor private FixedNode next;
+    @Successor protected FixedNode next;
 
     public FixedNode next() {
         return next;

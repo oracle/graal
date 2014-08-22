@@ -33,7 +33,7 @@ import com.oracle.graal.truffle.*;
 @NodeInfo(nameTemplate = "MaterializeFrame{p#frame/s}")
 public class MaterializeFrameNode extends FixedWithNextNode implements IterableNodeType {
 
-    @Input private ValueNode frame;
+    @Input ValueNode frame;
 
     public static MaterializeFrameNode create(ValueNode frame) {
         return new MaterializeFrameNodeGen(frame);

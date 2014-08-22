@@ -37,8 +37,8 @@ import com.oracle.graal.nodes.type.*;
 @NodeInfo
 public class InstanceOfDynamicNode extends LogicNode implements Canonicalizable.Binary<ValueNode>, Lowerable {
 
-    @Input private ValueNode object;
-    @Input private ValueNode mirror;
+    @Input ValueNode object;
+    @Input ValueNode mirror;
 
     /**
      * @param mirror the {@link Class} value representing the target target type of the test

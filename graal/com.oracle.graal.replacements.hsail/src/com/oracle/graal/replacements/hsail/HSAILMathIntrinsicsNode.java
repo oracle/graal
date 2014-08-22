@@ -44,7 +44,7 @@ public class HSAILMathIntrinsicsNode extends FloatingNode implements Canonicaliz
     /**
      * The parameter passed to the math operation that this node represents.
      */
-    @Input private ValueNode param;
+    @Input ValueNode param;
 
     /**
      * The math operation that this Node represents.

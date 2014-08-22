@@ -58,6 +58,7 @@ public class IntegerSubNode extends IntegerArithmeticNode implements NarrowableA
         return Constant.forPrimitiveInt(PrimitiveStamp.getBits(stamp()), inputs[0].asLong() - inputs[1].asLong());
     }
 
+    @SuppressWarnings("hiding")
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
         if (GraphUtil.unproxify(forX) == GraphUtil.unproxify(forY)) {

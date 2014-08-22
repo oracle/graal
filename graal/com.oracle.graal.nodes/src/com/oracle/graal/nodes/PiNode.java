@@ -44,7 +44,7 @@ import com.oracle.graal.nodes.type.*;
 @NodeInfo
 public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtualizable, IterableNodeType, Canonicalizable, ValueProxy {
 
-    @Input private ValueNode object;
+    @Input ValueNode object;
     private final Stamp piStamp;
 
     public ValueNode object() {

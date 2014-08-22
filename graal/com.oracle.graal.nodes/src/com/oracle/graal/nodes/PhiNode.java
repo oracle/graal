@@ -39,7 +39,7 @@ import com.oracle.graal.nodes.calc.*;
 @NodeInfo
 public abstract class PhiNode extends FloatingNode implements Simplifiable {
 
-    @Input(InputType.Association) private MergeNode merge;
+    @Input(InputType.Association) MergeNode merge;
 
     protected PhiNode(Stamp stamp, MergeNode merge) {
         super(stamp);

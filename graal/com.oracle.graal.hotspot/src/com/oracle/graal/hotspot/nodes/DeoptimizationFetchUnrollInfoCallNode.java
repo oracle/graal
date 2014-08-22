@@ -41,7 +41,7 @@ import com.oracle.graal.word.*;
 @NodeInfo(allowedUsageTypes = {InputType.Memory})
 public class DeoptimizationFetchUnrollInfoCallNode extends FixedWithNextNode implements LIRLowerable, MemoryCheckpoint.Multi {
 
-    @Input private SaveAllRegistersNode registerSaver;
+    @Input SaveAllRegistersNode registerSaver;
     private final ForeignCallsProvider foreignCalls;
 
     public static DeoptimizationFetchUnrollInfoCallNode create(@InjectedNodeParameter ForeignCallsProvider foreignCalls, ValueNode registerSaver) {

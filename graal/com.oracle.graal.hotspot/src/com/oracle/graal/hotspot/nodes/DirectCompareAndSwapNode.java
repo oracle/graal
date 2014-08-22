@@ -40,10 +40,10 @@ import com.oracle.graal.word.*;
 @NodeInfo(allowedUsageTypes = {InputType.Memory})
 public class DirectCompareAndSwapNode extends FixedWithNextNode implements LIRLowerable, MemoryCheckpoint.Single {
 
-    @Input private ValueNode object;
-    @Input private ValueNode offset;
-    @Input private ValueNode expectedValue;
-    @Input private ValueNode newValue;
+    @Input ValueNode object;
+    @Input ValueNode offset;
+    @Input ValueNode expectedValue;
+    @Input ValueNode newValue;
 
     private final LocationIdentity locationIdentity;
 

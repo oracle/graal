@@ -33,8 +33,8 @@ import com.oracle.graal.nodes.type.*;
 @NodeInfo
 public abstract class UnsafeAccessNode extends FixedWithNextNode implements Canonicalizable {
 
-    @Input private ValueNode object;
-    @Input private ValueNode offset;
+    @Input ValueNode object;
+    @Input ValueNode offset;
     private final Kind accessKind;
     private final LocationIdentity locationIdentity;
 

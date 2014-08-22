@@ -27,8 +27,8 @@ import static com.oracle.graal.graph.Graph.*;
 import java.lang.annotation.*;
 import java.util.*;
 
+import com.oracle.graal.graph.Graph.NodeEventListener;
 import com.oracle.graal.graph.NodeClass.NodeClassIterator;
-import com.oracle.graal.graph.NodeClass.Position;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
@@ -159,6 +159,9 @@ public abstract class Node implements Cloneable, Formattable {
     private Node[] extraUsages;
 
     private Node predecessor;
+
+    public static final int NODE_LIST = -2;
+    public static final int NOT_ITERABLE = -1;
 
     public Node() {
         assert getClass().getAnnotation(GeneratedNode.class) != null : getClass() + " is not a generated Node class - forgot @" + NodeInfo.class.getSimpleName() + " on class declaration?";
@@ -527,7 +530,7 @@ public abstract class Node implements Cloneable, Formattable {
         return predecessor;
     }
 
-    final int modCount() {
+    public final int modCount() {
         if (MODIFICATION_COUNTS_ENABLED && graph != null) {
             return graph.modCount(this);
         }
@@ -843,7 +846,7 @@ public abstract class Node implements Cloneable, Formattable {
 
     final Node clone(Graph into, boolean clearInputsAndSuccessors) {
         NodeClass nodeClass = getNodeClass();
-        if (into != null && nodeClass.valueNumberable() && nodeClass.isLeafNode()) {
+        if (into != null && nodeClass.valueNumberable() && isLeafNode()) {
             Node otherNode = into.findNodeInCache(this);
             if (otherNode != null) {
                 return otherNode;
@@ -871,11 +874,18 @@ public abstract class Node implements Cloneable, Formattable {
         newNode.extraUsages = NO_NODES;
         newNode.predecessor = null;
 
-        if (into != null && nodeClass.valueNumberable() && nodeClass.isLeafNode()) {
+        if (into != null && nodeClass.valueNumberable() && isLeafNode()) {
             into.putNodeIntoCache(newNode);
         }
         newNode.afterClone(this);
         return newNode;
+    }
+
+    /**
+     * @returns true if this node has no inputs and no successors
+     */
+    public boolean isLeafNode() {
+        return true;
     }
 
     protected void afterClone(@SuppressWarnings("unused") Node other) {
@@ -1094,5 +1104,40 @@ public abstract class Node implements Cloneable, Formattable {
                 }
             }
         }
+    }
+
+    // NEW API IMPLEMENTED BY GENERATED METHODS - NOT YET USED
+
+    public NodeRefIterable inputsV2() {
+        return NodeRefIterable.Empty;
+    }
+
+    public Collection<Position> getFirstLevelInputs() {
+        return Collections.emptyList();
+    }
+
+    public Collection<Position> getFirstLevelSuccessors() {
+        return Collections.emptyList();
+    }
+
+    /**
+     * @param pos
+     */
+    public InputType getInputTypeAt(Position pos) {
+        throw new NoSuchElementException();
+    }
+
+    /**
+     * @param pos
+     */
+    public String getNameOf(Position pos) {
+        throw new NoSuchElementException();
+    }
+
+    /**
+     * @param pos
+     */
+    public boolean isOptionalInputAt(Position pos) {
+        throw new NoSuchElementException();
     }
 }

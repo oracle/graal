@@ -31,7 +31,7 @@ import com.oracle.graal.nodeinfo.*;
 @NodeInfo
 public class LogicNegationNode extends LogicNode implements Canonicalizable.Unary<LogicNode> {
 
-    @Input(InputType.Condition) private LogicNode value;
+    @Input(InputType.Condition) LogicNode value;
 
     public static LogicNegationNode create(LogicNode value) {
         return new LogicNegationNodeGen(value);

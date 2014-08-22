@@ -43,8 +43,8 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public class TailcallNode extends FixedWithNextNode implements LIRLowerable {
 
-    @Input(InputType.State) private FrameState frameState;
-    @Input private ValueNode target;
+    @Input(InputType.State) FrameState frameState;
+    @Input ValueNode target;
 
     /**
      * Creates a TailcallNode.

@@ -36,7 +36,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public class LeaveCurrentStackFrameNode extends FixedWithNextNode implements LIRLowerable {
 
-    @Input private SaveAllRegistersNode registerSaver;
+    @Input SaveAllRegistersNode registerSaver;
 
     public static LeaveCurrentStackFrameNode create(ValueNode registerSaver) {
         return new LeaveCurrentStackFrameNodeGen(registerSaver);

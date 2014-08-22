@@ -41,7 +41,7 @@ public class LoopBeginNode extends MergeNode implements IterableNodeType, LIRLow
     private double loopFrequency;
     private int nextEndIndex;
     private int unswitches;
-    @OptionalInput(InputType.Guard) private GuardingNode overflowGuard;
+    @OptionalInput(InputType.Guard) GuardingNode overflowGuard;
 
     public static LoopBeginNode create() {
         return new LoopBeginNodeGen();
@@ -193,10 +193,10 @@ public class LoopBeginNode extends MergeNode implements IterableNodeType, LIRLow
     public void removeExits() {
         for (LoopExitNode loopexit : loopExits().snapshot()) {
             loopexit.removeProxies();
-            FrameState stateAfter = loopexit.stateAfter();
+            FrameState loopStateAfter = loopexit.stateAfter();
             graph().replaceFixedWithFixed(loopexit, graph().add(BeginNode.create()));
-            if (stateAfter != null && stateAfter.isAlive() && stateAfter.usages().isEmpty()) {
-                GraphUtil.killWithUnusedFloatingInputs(stateAfter);
+            if (loopStateAfter != null && loopStateAfter.isAlive() && loopStateAfter.usages().isEmpty()) {
+                GraphUtil.killWithUnusedFloatingInputs(loopStateAfter);
             }
         }
     }
