@@ -37,6 +37,7 @@ import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.virtual.phases.ea.ReadEliminationBlockState.CacheEntry;
 import com.oracle.graal.virtual.phases.ea.ReadEliminationBlockState.LoadCacheEntry;
 import com.oracle.graal.virtual.phases.ea.ReadEliminationBlockState.ReadCacheEntry;
+import com.oracle.graal.virtual.phases.ea.ReadEliminationBlockState.UnsafeLoadCacheEntry;
 
 public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockState> {
 
@@ -121,7 +122,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                 UnsafeLoadNode load = (UnsafeLoadNode) node;
                 if (load.offset().isConstant() && load.getLocationIdentity() != LocationIdentity.ANY_LOCATION) {
                     ValueNode object = GraphUtil.unproxify(load.object());
-                    LoadCacheEntry identifier = new LoadCacheEntry(object, load.getLocationIdentity());
+                    UnsafeLoadCacheEntry identifier = new UnsafeLoadCacheEntry(object, load.offset(), load.getLocationIdentity());
                     ValueNode cachedValue = state.getCacheEntry(identifier);
                     if (cachedValue != null) {
                         effects.replaceAtUsages(load, cachedValue);
@@ -136,7 +137,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                 UnsafeStoreNode write = (UnsafeStoreNode) node;
                 if (write.offset().isConstant() && write.getLocationIdentity() != LocationIdentity.ANY_LOCATION) {
                     ValueNode object = GraphUtil.unproxify(write.object());
-                    LoadCacheEntry identifier = new LoadCacheEntry(object, write.getLocationIdentity());
+                    UnsafeLoadCacheEntry identifier = new UnsafeLoadCacheEntry(object, write.offset(), write.getLocationIdentity());
                     ValueNode cachedValue = state.getCacheEntry(identifier);
 
                     ValueNode value = getScalarAlias(write.value());

@@ -84,6 +84,32 @@ public class ReadEliminationBlockState extends EffectsBlockState<ReadElimination
         }
     }
 
+    /**
+     * CacheEntry describing an Unsafe memory reference. The memory location and the location
+     * identity are separate so both must be considered when looking for optimizable memory
+     * accesses.
+     *
+     */
+    static class UnsafeLoadCacheEntry extends CacheEntry<ValueNode> {
+
+        private LocationIdentity locationIdentity;
+
+        public UnsafeLoadCacheEntry(ValueNode object, ValueNode location, LocationIdentity locationIdentity) {
+            super(object, location);
+            this.locationIdentity = locationIdentity;
+        }
+
+        @Override
+        public CacheEntry<ValueNode> duplicateWithObject(ValueNode newObject) {
+            return new UnsafeLoadCacheEntry(newObject, identity, locationIdentity);
+        }
+
+        @Override
+        public boolean conflicts(LocationIdentity other) {
+            return locationIdentity == other;
+        }
+    }
+
     static class ReadCacheEntry extends CacheEntry<LocationNode> {
 
         public ReadCacheEntry(ValueNode object, LocationNode identity) {
