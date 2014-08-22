@@ -896,6 +896,28 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
         return probability == 0 && optimisticOpts.removeNeverExecutedCode() && entryBCI == StructuredGraph.INVOCATION_ENTRY_BCI;
     }
 
+    protected double branchProbability() {
+        double probability = profilingInfo.getBranchTakenProbability(bci());
+        if (probability < 0) {
+            assert probability == -1 : "invalid probability";
+            Debug.log("missing probability in %s at bci %d", method, bci());
+            probability = 0.5;
+        }
+
+        if (!removeNeverExecutedCode()) {
+            if (probability == 0) {
+                probability = 0.0000001;
+            } else if (probability == 1) {
+                probability = 0.999999;
+            }
+        }
+        return probability;
+    }
+
+    protected boolean removeNeverExecutedCode() {
+        return optimisticOpts.removeNeverExecutedCode() && entryBCI == StructuredGraph.INVOCATION_ENTRY_BCI;
+    }
+
     protected abstract void processBlock(BciBlock block);
 
     protected abstract void iterateBytecodesForBlock(BciBlock block);

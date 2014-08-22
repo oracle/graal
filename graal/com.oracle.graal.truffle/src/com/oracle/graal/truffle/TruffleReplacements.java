@@ -54,6 +54,7 @@ public abstract class TruffleReplacements extends ReplacementsImpl {
         registerSubstitutions(ExactMath.class, ExactMathSubstitutions.class);
         registerSubstitutions(OptimizedAssumption.class, OptimizedAssumptionSubstitutions.class);
         registerSubstitutions(OptimizedCallTarget.class, OptimizedCallTargetSubstitutions.class);
+        registerSubstitutions(FrameWithoutBoxing.class, FrameWithoutBoxingSubstitutions.class);
     }
 
     @Override

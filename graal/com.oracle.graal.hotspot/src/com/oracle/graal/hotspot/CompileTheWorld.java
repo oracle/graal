@@ -42,7 +42,6 @@ import com.oracle.graal.hotspot.HotSpotOptions.OptionConsumer;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.options.OptionValue.OverrideScope;
-import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.replacements.*;
 
 /**
@@ -237,79 +236,81 @@ public final class CompileTheWorld {
     private void compile(String fileList) throws Throwable {
         final String[] entries = fileList.split(File.pathSeparator);
 
-        for (int i = 0; i < entries.length; i++) {
-            final String entry = entries[i];
+        try (AutoCloseable s = config.apply()) {
+            for (int i = 0; i < entries.length; i++) {
+                final String entry = entries[i];
 
-            // For now we only compile all methods in all classes in zip/jar files.
-            if (!entry.endsWith(".zip") && !entry.endsWith(".jar")) {
-                println("CompileTheWorld : Skipped classes in " + entry);
-                println();
-                continue;
-            }
-
-            println("CompileTheWorld : Compiling all classes in " + entry);
-            println();
-
-            URL url = new URL("jar", "", "file:" + entry + "!/");
-            ClassLoader loader = new URLClassLoader(new URL[]{url});
-
-            JarFile jarFile = new JarFile(entry);
-            Enumeration<JarEntry> e = jarFile.entries();
-
-            while (e.hasMoreElements()) {
-                JarEntry je = e.nextElement();
-                if (je.isDirectory() || !je.getName().endsWith(".class")) {
+                // For now we only compile all methods in all classes in zip/jar files.
+                if (!entry.endsWith(".zip") && !entry.endsWith(".jar")) {
+                    println("CompileTheWorld : Skipped classes in " + entry);
+                    println();
                     continue;
                 }
 
-                // Are we done?
-                if (classFileCounter >= stopAt) {
-                    break;
-                }
+                println("CompileTheWorld : Compiling all classes in " + entry);
+                println();
 
-                String className = je.getName().substring(0, je.getName().length() - ".class".length());
-                classFileCounter++;
+                URL url = new URL("jar", "", "file:" + entry + "!/");
+                ClassLoader loader = new URLClassLoader(new URL[]{url});
 
-                try (AutoCloseable s = config.apply()) {
-                    // Load and initialize class
-                    Class<?> javaClass = Class.forName(className.replace('/', '.'), true, loader);
+                JarFile jarFile = new JarFile(entry);
+                Enumeration<JarEntry> e = jarFile.entries();
 
-                    // Pre-load all classes in the constant pool.
+                while (e.hasMoreElements()) {
+                    JarEntry je = e.nextElement();
+                    if (je.isDirectory() || !je.getName().endsWith(".class")) {
+                        continue;
+                    }
+
+                    // Are we done?
+                    if (classFileCounter >= stopAt) {
+                        break;
+                    }
+
+                    String className = je.getName().substring(0, je.getName().length() - ".class".length());
+                    classFileCounter++;
+
                     try {
-                        HotSpotResolvedObjectType objectType = (HotSpotResolvedObjectType) HotSpotResolvedObjectType.fromClass(javaClass);
-                        ConstantPool constantPool = objectType.constantPool();
-                        for (int cpi = 1; cpi < constantPool.length(); cpi++) {
-                            constantPool.loadReferencedType(cpi, Bytecodes.LDC);
+                        // Load and initialize class
+                        Class<?> javaClass = Class.forName(className.replace('/', '.'), true, loader);
+
+                        // Pre-load all classes in the constant pool.
+                        try {
+                            HotSpotResolvedObjectType objectType = (HotSpotResolvedObjectType) HotSpotResolvedObjectType.fromClass(javaClass);
+                            ConstantPool constantPool = objectType.constantPool();
+                            for (int cpi = 1; cpi < constantPool.length(); cpi++) {
+                                constantPool.loadReferencedType(cpi, Bytecodes.LDC);
+                            }
+                        } catch (Throwable t) {
+                            // If something went wrong during pre-loading we just ignore it.
+                            println("Preloading failed for (%d) %s", classFileCounter, className);
+                        }
+
+                        // Are we compiling this class?
+                        HotSpotMetaAccessProvider metaAccess = runtime.getHostProviders().getMetaAccess();
+                        if (classFileCounter >= startAt) {
+                            println("CompileTheWorld (%d) : %s", classFileCounter, className);
+
+                            // Compile each constructor/method in the class.
+                            for (Constructor<?> constructor : javaClass.getDeclaredConstructors()) {
+                                HotSpotResolvedJavaMethod javaMethod = (HotSpotResolvedJavaMethod) metaAccess.lookupJavaConstructor(constructor);
+                                if (canBeCompiled(javaMethod, constructor.getModifiers())) {
+                                    compileMethod(javaMethod);
+                                }
+                            }
+                            for (Method method : javaClass.getDeclaredMethods()) {
+                                HotSpotResolvedJavaMethod javaMethod = (HotSpotResolvedJavaMethod) metaAccess.lookupJavaMethod(method);
+                                if (canBeCompiled(javaMethod, method.getModifiers())) {
+                                    compileMethod(javaMethod);
+                                }
+                            }
                         }
                     } catch (Throwable t) {
-                        // If something went wrong during pre-loading we just ignore it.
-                        println("Preloading failed for (%d) %s", classFileCounter, className);
+                        println("CompileTheWorld (%d) : Skipping %s", classFileCounter, className);
                     }
-
-                    // Are we compiling this class?
-                    HotSpotMetaAccessProvider metaAccess = runtime.getHostProviders().getMetaAccess();
-                    if (classFileCounter >= startAt) {
-                        println("CompileTheWorld (%d) : %s", classFileCounter, className);
-
-                        // Compile each constructor/method in the class.
-                        for (Constructor<?> constructor : javaClass.getDeclaredConstructors()) {
-                            HotSpotResolvedJavaMethod javaMethod = (HotSpotResolvedJavaMethod) metaAccess.lookupJavaConstructor(constructor);
-                            if (canBeCompiled(javaMethod, constructor.getModifiers())) {
-                                compileMethod(javaMethod);
-                            }
-                        }
-                        for (Method method : javaClass.getDeclaredMethods()) {
-                            HotSpotResolvedJavaMethod javaMethod = (HotSpotResolvedJavaMethod) metaAccess.lookupJavaMethod(method);
-                            if (canBeCompiled(javaMethod, method.getModifiers())) {
-                                compileMethod(javaMethod);
-                            }
-                        }
-                    }
-                } catch (Throwable t) {
-                    println("CompileTheWorld (%d) : Skipping %s", classFileCounter, className);
                 }
+                jarFile.close();
             }
-            jarFile.close();
         }
 
         println();
@@ -320,16 +321,6 @@ public final class CompileTheWorld {
 
         CTWCompilationTask(HotSpotBackend backend, HotSpotResolvedJavaMethod method) {
             super(backend, method, INVOCATION_ENTRY_BCI, 0L, method.allocateCompileId(INVOCATION_ENTRY_BCI));
-        }
-
-        /**
-         * Returns a fresh compilation suite for its compilation so that the CTW option value
-         * overriding configuration has effect.
-         */
-        @Override
-        protected Suites getSuites(HotSpotProviders providers) {
-            assert config.scope != null : "not inside a CTW option value overriding scope";
-            return providers.getSuites().createSuites();
         }
 
         /**

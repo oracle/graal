@@ -275,9 +275,17 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     protected ReadNode createUnsafeRead(StructuredGraph graph, UnsafeLoadNode load, GuardingNode guard) {
         boolean compressible = load.accessKind() == Kind.Object;
         Kind readKind = load.accessKind();
-        LocationNode location = createLocation(load);
+        ValueNode[] base = null;
+        ValueNode object = load.object();
+        if (object.isConstant() && object.asConstant().isDefaultForKind()) {
+            base = new ValueNode[1];
+        }
+        LocationNode location = createLocation(load, base);
+        if (base != null && base[0] != null) {
+            object = base[0];
+        }
         Stamp loadStamp = loadStamp(load.stamp(), readKind, compressible);
-        ReadNode memoryRead = graph.add(ReadNode.create(load.object(), location, loadStamp, guard, BarrierType.NONE));
+        ReadNode memoryRead = graph.add(ReadNode.create(object, location, loadStamp, guard, BarrierType.NONE));
         ValueNode readValue = implicitLoadConvert(graph, readKind, memoryRead, compressible);
         load.replaceAtUsages(readValue);
         return memoryRead;
@@ -285,8 +293,15 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
 
     protected void lowerUnsafeStoreNode(UnsafeStoreNode store) {
         StructuredGraph graph = store.graph();
-        LocationNode location = createLocation(store);
         ValueNode object = store.object();
+        ValueNode[] base = null;
+        if (object.isConstant() && object.asConstant().isDefaultForKind()) {
+            base = new ValueNode[1];
+        }
+        LocationNode location = createLocation(store, base);
+        if (base != null && base[0] != null) {
+            object = base[0];
+        }
         boolean compressible = store.value().getKind() == Kind.Object;
         Kind valueKind = store.accessKind();
         ValueNode value = implicitStoreConvert(graph, valueKind, store.value(), compressible);
@@ -566,11 +581,26 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         }
     }
 
-    protected LocationNode createLocation(UnsafeAccessNode access) {
-        return createLocation(access.offset(), access.getLocationIdentity(), access.accessKind());
+    protected LocationNode createLocation(UnsafeAccessNode access, ValueNode[] base) {
+        return createLocation(access.offset(), access.getLocationIdentity(), access.accessKind(), base);
     }
 
     protected LocationNode createLocation(ValueNode offsetNode, LocationIdentity locationIdentity, Kind accessKind) {
+        return createLocation(offsetNode, locationIdentity, accessKind, null);
+    }
+
+    /**
+     * Try to unpack the operations in offsetNode into a LocationNode, taking advantage of
+     * addressing modes if possible.
+     *
+     * @param offsetNode the computed offset into the base of the memory operation
+     * @param locationIdentity
+     * @param accessKind
+     * @param base if non-null try to find a value that can be used as the base of the memory
+     *            operation and return it as base[0]
+     * @return the newly created LocationNode
+     */
+    protected LocationNode createLocation(ValueNode offsetNode, LocationIdentity locationIdentity, Kind accessKind, ValueNode[] base) {
         ValueNode offset = offsetNode;
         if (offset.isConstant()) {
             long offsetValue = offset.asConstant().asLong();
@@ -594,7 +624,27 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                 offset = integerAddNode.getX();
             }
         }
-
+        if (base != null && signExtend == false && offset instanceof IntegerAddNode) {
+            /*
+             * Try to decompose the operation into base plus offset so the base can go into a new
+             * node. Prefer the unshifted side of an add as the base.
+             */
+            IntegerAddNode integerAddNode = (IntegerAddNode) offset;
+            if (integerAddNode.getY() instanceof LeftShiftNode) {
+                base[0] = integerAddNode.getX();
+                offset = integerAddNode.getY();
+            } else {
+                base[0] = integerAddNode.getY();
+                offset = integerAddNode.getX();
+            }
+            if (offset instanceof IntegerAddNode) {
+                integerAddNode = (IntegerAddNode) offset;
+                if (integerAddNode.getY() instanceof ConstantNode) {
+                    displacement = integerAddNode.getY().asConstant().asLong();
+                    offset = integerAddNode.getX();
+                }
+            }
+        }
         if (offset instanceof LeftShiftNode) {
             LeftShiftNode leftShiftNode = (LeftShiftNode) offset;
             if (leftShiftNode.getY() instanceof ConstantNode) {

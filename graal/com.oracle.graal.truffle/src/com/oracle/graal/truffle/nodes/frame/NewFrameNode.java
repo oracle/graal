@@ -103,11 +103,16 @@ public class NewFrameNode extends FixedWithNextNode implements IterableNodeType,
         throw new RuntimeException("Frame field not found: " + fieldName);
     }
 
+    @NodeInfo
     public static class VirtualOnlyInstanceNode extends VirtualInstanceNode {
 
         private boolean allowMaterialization;
 
-        public VirtualOnlyInstanceNode(ResolvedJavaType type, ResolvedJavaField[] fields) {
+        public static VirtualOnlyInstanceNode create(ResolvedJavaType type, ResolvedJavaField[] fields) {
+            return new NewFrameNode_VirtualOnlyInstanceNodeGen(type, fields);
+        }
+
+        VirtualOnlyInstanceNode(ResolvedJavaType type, ResolvedJavaField[] fields) {
             super(type, fields, false);
         }
 
@@ -125,7 +130,7 @@ public class NewFrameNode extends FixedWithNextNode implements IterableNodeType,
     }
 
     public static ValueNode getMaterializedRepresentationHelper(VirtualObjectNode virtualNode, FixedNode fixed) {
-        if (fixed instanceof MaterializeFrameNode || fixed instanceof AbstractEndNode) {
+        if (fixed instanceof MaterializeFrameNode || fixed instanceof AbstractEndNode || fixed instanceof ForceMaterializeNode) {
             // We need to conservatively assume that a materialization of a virtual frame can also
             // happen at a merge point.
             return AllocatedObjectNode.create(virtualNode);
@@ -161,7 +166,7 @@ public class NewFrameNode extends FixedWithNextNode implements IterableNodeType,
         ResolvedJavaField primitiveLocalsField = findField(frameFields, "primitiveLocals");
         ResolvedJavaField tagsField = findField(frameFields, "tags");
 
-        VirtualObjectNode virtualFrame = VirtualInstanceNode.create(frameType, frameFields, false);
+        VirtualObjectNode virtualFrame = VirtualOnlyInstanceNode.create(frameType, frameFields);
         VirtualObjectNode virtualFrameObjectArray = VirtualArrayNode.create((ResolvedJavaType) localsField.getType().getComponentType(), frameSize);
         VirtualObjectNode virtualFramePrimitiveArray = VirtualArrayNode.create((ResolvedJavaType) primitiveLocalsField.getType().getComponentType(), frameSize);
         VirtualObjectNode virtualFrameTagArray = VirtualArrayNode.create((ResolvedJavaType) tagsField.getType().getComponentType(), frameSize);
