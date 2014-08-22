@@ -60,14 +60,17 @@ public abstract class Node implements Cloneable, Formattable {
     static final int INITIAL_ID = -1;
     static final int ALIVE_ID_START = 0;
 
+    // The use of fully qualified class names here and in the rest
+    // of this file works around a problem javac has resolving symbols
+
     /**
      * Denotes a non-optional (non-null) node input. This should be applied to exactly the fields of
      * a node that are of type {@link Node} or {@link NodeInputList}. Nodes that update fields of
      * type {@link Node} outside of their constructor should call
      * {@link Node#updateUsages(Node, Node)} just prior to doing the update of the input.
      */
-    @Retention(RetentionPolicy.RUNTIME)
-    @Target(ElementType.FIELD)
+    @java.lang.annotation.Retention(RetentionPolicy.RUNTIME)
+    @java.lang.annotation.Target(ElementType.FIELD)
     public static @interface Input {
         InputType value() default InputType.Value;
     }
@@ -78,14 +81,14 @@ public abstract class Node implements Cloneable, Formattable {
      * {@link Node} outside of their constructor should call {@link Node#updateUsages(Node, Node)}
      * just prior to doing the update of the input.
      */
-    @Retention(RetentionPolicy.RUNTIME)
-    @Target(ElementType.FIELD)
+    @java.lang.annotation.Retention(RetentionPolicy.RUNTIME)
+    @java.lang.annotation.Target(ElementType.FIELD)
     public static @interface OptionalInput {
         InputType value() default InputType.Value;
     }
 
-    @Retention(RetentionPolicy.RUNTIME)
-    @Target(ElementType.FIELD)
+    @java.lang.annotation.Retention(RetentionPolicy.RUNTIME)
+    @java.lang.annotation.Target(ElementType.FIELD)
     public static @interface Successor {
     }
 
@@ -93,8 +96,8 @@ public abstract class Node implements Cloneable, Formattable {
      * Denotes that a parameter of an {@linkplain NodeIntrinsic intrinsic} method must be a compile
      * time constant at all call sites to the intrinsic method.
      */
-    @Retention(RetentionPolicy.RUNTIME)
-    @Target(ElementType.PARAMETER)
+    @java.lang.annotation.Retention(RetentionPolicy.RUNTIME)
+    @java.lang.annotation.Target(ElementType.PARAMETER)
     public static @interface ConstantNodeParameter {
     }
 
@@ -104,8 +107,8 @@ public abstract class Node implements Cloneable, Formattable {
      * an argument for the annotated parameter. Injected parameters must precede all non-injected
      * parameters in a constructor.
      */
-    @Retention(RetentionPolicy.RUNTIME)
-    @Target(ElementType.PARAMETER)
+    @java.lang.annotation.Retention(RetentionPolicy.RUNTIME)
+    @java.lang.annotation.Target(ElementType.PARAMETER)
     public static @interface InjectedNodeParameter {
     }
 
@@ -116,8 +119,8 @@ public abstract class Node implements Cloneable, Formattable {
      * signature (excluding a prefix of {@linkplain InjectedNodeParameter injected} parameters) of a
      * factory method named {@code "create"} in the node class.
      */
-    @Retention(RetentionPolicy.RUNTIME)
-    @Target(ElementType.METHOD)
+    @java.lang.annotation.Retention(RetentionPolicy.RUNTIME)
+    @java.lang.annotation.Target(ElementType.METHOD)
     public static @interface NodeIntrinsic {
 
         /**
@@ -204,7 +207,7 @@ public abstract class Node implements Cloneable, Formattable {
         return getNodeClass().getSuccessorIterable(this);
     }
 
-    class NodeUsageIterator implements Iterator<Node> {
+    class NodeUsageIterator implements java.util.Iterator<Node> {
 
         int index = -1;
         Node current;
@@ -267,7 +270,7 @@ public abstract class Node implements Cloneable, Formattable {
         }
     }
 
-    class NodeUsageIterable implements NodeIterable<Node> {
+    class NodeUsageIterable implements com.oracle.graal.graph.iterators.NodeIterable<Node> {
 
         public NodeUsageIterator iterator() {
             if (MODIFICATION_COUNTS_ENABLED) {
