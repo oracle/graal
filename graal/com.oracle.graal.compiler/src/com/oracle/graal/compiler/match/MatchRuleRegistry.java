@@ -44,7 +44,6 @@ public class MatchRuleRegistry {
      */
     public static interface NodeClassLookup {
         NodeClass get(Class<?> theClass);
-
     }
 
     static class DefaultNodeClassLookup implements NodeClassLookup {
@@ -54,9 +53,9 @@ public class MatchRuleRegistry {
     }
 
     /**
-     * Convert a list of field names into {@link com.oracle.graal.graph.Position} objects
-     * that can be used to read them during a match. The names should already have been confirmed to
-     * exist in the type.
+     * Convert a list of field names into {@link com.oracle.graal.graph.Position} objects that can
+     * be used to read them during a match. The names should already have been confirmed to exist in
+     * the type.
      *
      * @param theClass
      * @param names
