@@ -900,19 +900,29 @@ public class ElementUtils {
         return null;
     }
 
-    private static boolean isDeclaredMethod(TypeElement element, String name, TypeMirror[] params) {
-        return getDeclaredMethod(element, name, params) != null;
+    public static boolean isDeclaredMethodInSuperType(TypeElement element, String name, TypeMirror[] params) {
+        return !getDeclaredMethodsInSuperTypes(element, name, params).isEmpty();
     }
 
-    public static boolean isDeclaredMethodInSuperType(TypeElement element, String name, TypeMirror[] params) {
-        List<TypeElement> superElements = getSuperTypes(element);
+    /**
+     * Gets the methods in the super type hierarchy (excluding interfaces) that are overridden by a
+     * method in a subtype.
+     *
+     * @param declaringElement the subtype element declaring the method
+     * @param name the name of the method
+     * @param params the signature of the method
+     */
+    public static List<ExecutableElement> getDeclaredMethodsInSuperTypes(TypeElement declaringElement, String name, TypeMirror... params) {
+        List<ExecutableElement> superMethods = new ArrayList<>();
+        List<TypeElement> superElements = getSuperTypes(declaringElement);
 
-        for (TypeElement typeElement : superElements) {
-            if (isDeclaredMethod(typeElement, name, params)) {
-                return true;
+        for (TypeElement superElement : superElements) {
+            ExecutableElement superMethod = getDeclaredMethod(superElement, name, params);
+            if (superMethod != null) {
+                superMethods.add(superMethod);
             }
         }
-        return false;
+        return superMethods;
     }
 
     public static boolean typeEquals(TypeMirror type1, TypeMirror type2) {
