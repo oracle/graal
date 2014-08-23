@@ -106,6 +106,26 @@ public class ShortCircuitTest {
 
     }
 
+    @NodeChildren({@NodeChild("child0"), @NodeChild("child1")})
+    @SuppressWarnings("unused")
+    abstract static class GuardChildNode extends ValueNode {
+
+        @ShortCircuit("child1")
+        boolean needsChild1(Object a) {
+            return a.equals(new Integer(42));
+        }
+
+        static boolean guard(int a, boolean hasB, int b) {
+            return false;
+        }
+
+        @Specialization(guards = "guard")
+        int doIt(int a, boolean hasB, int b) {
+            return a + b;
+        }
+
+    }
+
     @Test
     public void testVarArgs1() {
         ArgumentNode arg0 = new ArgumentNode(0);

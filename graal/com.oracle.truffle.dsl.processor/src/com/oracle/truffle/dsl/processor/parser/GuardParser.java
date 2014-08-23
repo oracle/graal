@@ -79,7 +79,9 @@ public class GuardParser extends NodeMethodParser<GuardData> {
         for (TypeMirror typeMirror : typeMirrors) {
             typeIds.add(ElementUtils.getUniqueIdentifier(typeMirror));
         }
-        typeIds.retainAll(getTypeSystem().getTypeIdentifiers());
+        if (parameter.getSpecification().isSignature()) {
+            typeIds.retainAll(getTypeSystem().getTypeIdentifiers());
+        }
 
         return new ParameterSpec(parameter.getSpecification(), typeMirrors, typeIds);
     }
