@@ -22,30 +22,30 @@
  */
 package com.oracle.truffle.dsl.processor.java.model;
 
-import javax.lang.model.type.*;
+import java.util.*;
 
 public class CodeImport implements Comparable<CodeImport> {
 
-    private final TypeMirror importType;
-    private final String importString;
+    private final String packageName;
+    private final String symbolName;
     private final boolean staticImport;
 
-    public CodeImport(TypeMirror importedType, String importString, boolean staticImport) {
-        this.importType = importedType;
-        this.importString = importString;
+    public CodeImport(String packageName, String symbolName, boolean staticImport) {
+        this.packageName = packageName;
+        this.symbolName = symbolName;
         this.staticImport = staticImport;
     }
 
-    public TypeMirror getImportType() {
-        return importType;
+    public String getPackageName() {
+        return packageName;
+    }
+
+    public String getSymbolName() {
+        return symbolName;
     }
 
     public boolean isStaticImport() {
         return staticImport;
-    }
-
-    public String getImportString() {
-        return importString;
     }
 
     @Override
@@ -55,7 +55,11 @@ public class CodeImport implements Comparable<CodeImport> {
         } else if (!staticImport && o.staticImport) {
             return -1;
         } else {
-            return importString.compareTo(o.getImportString());
+            int result = getPackageName().compareTo(o.getPackageName());
+            if (result == 0) {
+                return getSymbolName().compareTo(o.getSymbolName());
+            }
+            return result;
         }
     }
 
@@ -65,36 +69,16 @@ public class CodeImport implements Comparable<CodeImport> {
 
     @Override
     public int hashCode() {
-        final int prime = 31;
-        int result = 1;
-        result = prime * result + ((importString == null) ? 0 : importString.hashCode());
-        result = prime * result + (staticImport ? 1231 : 1237);
-        return result;
+        return Objects.hash(packageName, symbolName, staticImport);
     }
 
     @Override
     public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
+        if (obj instanceof CodeImport) {
+            CodeImport otherImport = (CodeImport) obj;
+            return getPackageName().equals(otherImport.getPackageName()) && getSymbolName().equals(otherImport.getSymbolName()) //
+                            && staticImport == otherImport.staticImport;
         }
-        if (obj == null) {
-            return false;
-        }
-        if (getClass() != obj.getClass()) {
-            return false;
-        }
-        CodeImport other = (CodeImport) obj;
-        if (importString == null) {
-            if (other.importString != null) {
-                return false;
-            }
-        } else if (!importString.equals(other.importString)) {
-            return false;
-        }
-        if (staticImport != other.staticImport) {
-            return false;
-        }
-        return true;
+        return super.equals(obj);
     }
-
 }
