@@ -36,16 +36,21 @@ public class BinaryConditionProfileTest {
 
     @DataPoints public static boolean[] data = new boolean[]{true, false};
 
+    private BinaryConditionProfile profile;
+
+    @Before
+    public void create() {
+        profile = (BinaryConditionProfile) ConditionProfile.createBinaryProfile();
+    }
+
     @Test
     public void testInitial() {
-        BinaryConditionProfile profile = ConditionProfile.createBinaryProfile();
         assertThat(profile.wasTrue(), is(false));
         assertThat(profile.wasFalse(), is(false));
     }
 
     @Theory
     public void testProfileOne(boolean value) {
-        BinaryConditionProfile profile = ConditionProfile.createBinaryProfile();
         boolean result = profile.profile(value);
 
         assertThat(result, is(value));
@@ -55,7 +60,6 @@ public class BinaryConditionProfileTest {
 
     @Theory
     public void testProfileTwo(boolean value0, boolean value1) {
-        BinaryConditionProfile profile = ConditionProfile.createBinaryProfile();
         boolean result0 = profile.profile(value0);
         boolean result1 = profile.profile(value1);
 
@@ -67,7 +71,6 @@ public class BinaryConditionProfileTest {
 
     @Theory
     public void testProfileThree(boolean value0, boolean value1, boolean value2) {
-        BinaryConditionProfile profile = ConditionProfile.createBinaryProfile();
         boolean result0 = profile.profile(value0);
         boolean result1 = profile.profile(value1);
         boolean result2 = profile.profile(value2);

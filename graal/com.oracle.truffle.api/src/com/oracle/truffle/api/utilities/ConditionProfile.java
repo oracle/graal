@@ -65,18 +65,18 @@ public abstract class ConditionProfile {
      * @see ConditionProfile
      * @see #createBinaryProfile()
      */
-    public static CountingConditionProfile createCountingProfile() {
+    public static ConditionProfile createCountingProfile() {
         return new CountingConditionProfile();
     }
 
     /**
-     * REturns a {@link ConditionProfile} that speculates on conditions to be never true or to be
+     * Returns a {@link ConditionProfile} that speculates on conditions to be never true or to be
      * never false. Condition profiles are intended to be used as part of if conditions.
      *
      * @see ConditionProfile
-     * @see ConditionProfile#createBinaryProfile()
+     * @see ConditionProfile#createCountingProfile()
      */
-    public static BinaryConditionProfile createBinaryProfile() {
+    public static ConditionProfile createBinaryProfile() {
         return new BinaryConditionProfile();
     }
 

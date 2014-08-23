@@ -36,16 +36,21 @@ public class CountingConditionProfileTest {
 
     @DataPoints public static boolean[] data = new boolean[]{true, false};
 
+    private CountingConditionProfile profile;
+
+    @Before
+    public void create() {
+        profile = (CountingConditionProfile) ConditionProfile.createCountingProfile();
+    }
+
     @Test
     public void testInitial() {
-        CountingConditionProfile profile = ConditionProfile.createCountingProfile();
         assertThat(profile.getTrueCount(), is(0));
         assertThat(profile.getFalseCount(), is(0));
     }
 
     @Theory
     public void testProfileOne(boolean value) {
-        CountingConditionProfile profile = ConditionProfile.createCountingProfile();
         boolean result = profile.profile(value);
 
         assertThat(result, is(value));
@@ -55,7 +60,6 @@ public class CountingConditionProfileTest {
 
     @Theory
     public void testProfileTwo(boolean value0, boolean value1) {
-        CountingConditionProfile profile = ConditionProfile.createCountingProfile();
         boolean result0 = profile.profile(value0);
         boolean result1 = profile.profile(value1);
 
@@ -67,7 +71,6 @@ public class CountingConditionProfileTest {
 
     @Theory
     public void testProfileThree(boolean value0, boolean value1, boolean value2) {
-        CountingConditionProfile profile = ConditionProfile.createCountingProfile();
         boolean result0 = profile.profile(value0);
         boolean result1 = profile.profile(value1);
         boolean result2 = profile.profile(value2);
