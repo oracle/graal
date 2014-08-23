@@ -949,10 +949,8 @@ public class NodeParser extends AbstractParser<NodeData> {
 
         GuardParser parser = new GuardParser(context, node, source, expression);
         List<GuardData> matchingGuards = parser.parse(availableGuards);
-        if (!matchingGuards.isEmpty()) {
-            GuardData guard = matchingGuards.get(0);
-            // use the shared instance of the guard data
-            expression.setResolvedGuard(guard);
+        if (!matchingGuards.isEmpty() && matchingGuards.get(0) != null) {
+            expression.setResolvedGuard(matchingGuards.get(0));
         } else {
             MethodSpec spec = parser.createSpecification(source.getMethod(), source.getMarkerAnnotation());
             spec.applyTypeDefinitions("types");
