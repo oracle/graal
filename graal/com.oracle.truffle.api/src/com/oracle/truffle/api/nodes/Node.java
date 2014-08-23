@@ -299,12 +299,17 @@ public abstract class Node implements Cloneable {
     }
 
     private void reportReplace(Node oldNode, Node newNode, CharSequence reason) {
-        RootNode rootNode = getRootNode();
-        if (rootNode != null) {
-            CallTarget target = rootNode.getCallTarget();
-            if (target instanceof ReplaceObserver) {
-                ((ReplaceObserver) target).nodeReplaced(oldNode, newNode, reason);
+        Node node = this;
+        while (node != null) {
+            if (node instanceof ReplaceObserver) {
+                ((ReplaceObserver) node).nodeReplaced(oldNode, newNode, reason);
+            } else if (node instanceof RootNode) {
+                CallTarget target = ((RootNode) node).getCallTarget();
+                if (target instanceof ReplaceObserver) {
+                    ((ReplaceObserver) target).nodeReplaced(oldNode, newNode, reason);
+                }
             }
+            node = node.getParent();
         }
         if (TruffleOptions.TraceRewrites) {
             NodeUtil.traceRewrite(this, newNode, reason);
