@@ -62,7 +62,9 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
             newParam.setMethod(this);
             parameterCache.put(param.getLocalName(), param);
         }
-        parameterCache.put(returnType.getLocalName(), returnType);
+        if (returnType != null) {
+            parameterCache.put(returnType.getLocalName(), returnType);
+        }
         this.id = id;
     }
 
