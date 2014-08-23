@@ -59,6 +59,11 @@ public interface TruffleRuntime {
     DirectCallNode createDirectCallNode(CallTarget target);
 
     /**
+     * Experimental API. May change without notice.
+     */
+    LoopNode createLoopNode(RepeatingNode body);
+
+    /**
      * Creates a new runtime specific version of {@link IndirectCallNode}.
      *
      * @return the new call node
@@ -135,4 +140,5 @@ public interface TruffleRuntime {
      * Internal API method. Do not use.
      */
     void notifyTransferToInterpreter();
+
 }

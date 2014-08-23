@@ -138,4 +138,11 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
 
     public void notifyTransferToInterpreter() {
     }
+
+    public LoopNode createLoopNode(RepeatingNode repeating) {
+        if (!(repeating instanceof Node)) {
+            throw new IllegalArgumentException("Repeating node must be of type Node.");
+        }
+        return new DefaultLoopNode(repeating);
+    }
 }
