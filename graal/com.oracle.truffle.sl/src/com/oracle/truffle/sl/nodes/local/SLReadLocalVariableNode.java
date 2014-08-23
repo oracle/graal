@@ -57,7 +57,7 @@ public abstract class SLReadLocalVariableNode extends SLExpressionNode {
         return frame.getBoolean(getSlot());
     }
 
-    @Specialization(order = 1, rewriteOn = FrameSlotTypeException.class)
+    @Specialization(rewriteOn = FrameSlotTypeException.class)
     protected Object readObject(VirtualFrame frame) throws FrameSlotTypeException {
         return frame.getObject(getSlot());
     }
@@ -66,7 +66,7 @@ public abstract class SLReadLocalVariableNode extends SLExpressionNode {
      * This is the generic case that always succeeds. Since we already have another specialization
      * with the same signature above, we need to order them explicitly with the order attribute.
      */
-    @Specialization(order = 2)
+    @Specialization(contains = {"readLong", "readBoolean", "readObject"})
     protected Object read(VirtualFrame frame) {
         return frame.getValue(getSlot());
     }

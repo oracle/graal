@@ -52,13 +52,13 @@ public abstract class SLWriteLocalVariableNode extends SLExpressionNode {
      * {@link #isLongKind() custom guard} is specified.
      */
     @Specialization(guards = "isLongKind")
-    protected long write(VirtualFrame frame, long value) {
+    protected long writeLong(VirtualFrame frame, long value) {
         frame.setLong(getSlot(), value);
         return value;
     }
 
     @Specialization(guards = "isBooleanKind")
-    protected boolean write(VirtualFrame frame, boolean value) {
+    protected boolean writeBoolean(VirtualFrame frame, boolean value) {
         frame.setBoolean(getSlot(), value);
         return value;
     }
@@ -73,7 +73,7 @@ public abstract class SLWriteLocalVariableNode extends SLExpressionNode {
      * {@link Object}, it is guaranteed to never fail, i.e., once we are in this specialization the
      * node will never be re-specialized.
      */
-    @Specialization
+    @Specialization(contains = {"writeLong", "writeBoolean"})
     protected Object write(VirtualFrame frame, Object value) {
         if (getSlot().getKind() != FrameSlotKind.Object) {
             /*
