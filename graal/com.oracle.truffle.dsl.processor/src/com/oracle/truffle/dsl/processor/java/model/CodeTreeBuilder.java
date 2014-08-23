@@ -33,17 +33,22 @@ import com.oracle.truffle.dsl.processor.java.*;
 
 public class CodeTreeBuilder {
 
-    private final CodeTreeBuilder parent;
-
     private BuilderCodeTree currentElement;
     private final BuilderCodeTree root;
 
     private int treeCount;
+    private Element enclosingElement;
 
     public CodeTreeBuilder(CodeTreeBuilder parent) {
-        this.root = new BuilderCodeTree(GROUP, null, null);
+        this.root = new BuilderCodeTree(null, GROUP, null, null);
         this.currentElement = root;
-        this.parent = parent;
+        if (parent != null) {
+            this.enclosingElement = parent.enclosingElement;
+        }
+    }
+
+    public void setEnclosingElement(Element enclosingElement) {
+        this.enclosingElement = enclosingElement;
     }
 
     @Override
@@ -80,24 +85,24 @@ public class CodeTreeBuilder {
     }
 
     private CodeTreeBuilder push(CodeTreeKind kind) {
-        return push(new BuilderCodeTree(kind, null, null));
+        return push(new BuilderCodeTree(currentElement, kind, null, null), kind == NEW_LINE);
     }
 
     private CodeTreeBuilder push(String string) {
-        return push(new BuilderCodeTree(CodeTreeKind.STRING, null, string));
+        return push(new BuilderCodeTree(currentElement, CodeTreeKind.STRING, null, string), false);
     }
 
     private CodeTreeBuilder push(TypeMirror type) {
-        return push(new BuilderCodeTree(CodeTreeKind.TYPE, type, null));
+        return push(new BuilderCodeTree(currentElement, CodeTreeKind.TYPE, type, null), false);
     }
 
     private CodeTreeBuilder push(CodeTreeKind kind, TypeMirror type, String string) {
-        return push(new BuilderCodeTree(kind, type, string));
+        return push(new BuilderCodeTree(currentElement, kind, type, string), kind == NEW_LINE);
     }
 
-    private CodeTreeBuilder push(BuilderCodeTree tree) {
+    private CodeTreeBuilder push(BuilderCodeTree tree, boolean removeLast) {
         if (currentElement != null) {
-            if (!removeLastIfEnqueued(tree)) {
+            if (removeLast && !removeLastIfEnqueued(tree)) {
                 return this;
             }
             currentElement.add(tree);
@@ -118,7 +123,7 @@ public class CodeTreeBuilder {
             return !clearLastRec(tree.removeLast, currentElement.getEnclosedElements());
         }
         List<CodeTree> childTree = tree.getEnclosedElements();
-        if (!childTree.isEmpty()) {
+        if (childTree != null && !childTree.isEmpty()) {
             CodeTree last = childTree.get(0);
             if (last instanceof BuilderCodeTree) {
                 if (!removeLastIfEnqueued((BuilderCodeTree) last)) {
@@ -134,9 +139,9 @@ public class CodeTreeBuilder {
             treeCount--;
         } else {
             // delay clearing the last
-            BuilderCodeTree tree = new BuilderCodeTree(REMOVE_LAST, null, null);
+            BuilderCodeTree tree = new BuilderCodeTree(currentElement, REMOVE_LAST, null, null);
             tree.removeLast = kind;
-            push(tree);
+            push(tree, false);
         }
     }
 
@@ -299,11 +304,11 @@ public class CodeTreeBuilder {
 
     public CodeTreeBuilder tree(CodeTree treeToAdd) {
         if (treeToAdd instanceof BuilderCodeTree) {
-            return push((BuilderCodeTree) treeToAdd).end();
+            return push((BuilderCodeTree) treeToAdd, true).end();
         } else {
-            BuilderCodeTree tree = new BuilderCodeTree(GROUP, null, null);
-            tree.add(treeToAdd);
-            return push(tree).end();
+            BuilderCodeTree tree = new BuilderCodeTree(currentElement, GROUP, null, null);
+            currentElement.add(treeToAdd);
+            return push(tree, true).end();
         }
     }
 
@@ -364,6 +369,9 @@ public class CodeTreeBuilder {
     }
 
     private boolean clearLastRec(CodeTreeKind kind, List<CodeTree> children) {
+        if (children == null) {
+            return false;
+        }
         for (int i = children.size() - 1; i >= 0; i--) {
             CodeTree child = children.get(i);
             if (child.getCodeKind() == kind) {
@@ -474,7 +482,7 @@ public class CodeTreeBuilder {
     }
 
     private void toParent() {
-        Element parentElement = currentElement.getEnclosingElement();
+        CodeTree parentElement = currentElement.getParent();
         if (currentElement != root) {
             this.currentElement = (BuilderCodeTree) parentElement;
         } else {
@@ -640,15 +648,10 @@ public class CodeTreeBuilder {
     }
 
     public ExecutableElement findMethod() {
-        Element element = currentElement;
-        while (element != null && (element.getKind() != ElementKind.METHOD && (element.getKind() != ElementKind.CONSTRUCTOR))) {
-            element = element.getEnclosingElement();
+        if (enclosingElement != null && (enclosingElement.getKind() == ElementKind.METHOD || enclosingElement.getKind() == ElementKind.CONSTRUCTOR)) {
+            return (ExecutableElement) enclosingElement;
         }
-        ExecutableElement found = element != null ? (ExecutableElement) element : null;
-        if (found == null && parent != null) {
-            found = parent.findMethod();
-        }
-        return found;
+        return null;
     }
 
     public CodeTreeBuilder returnNull() {
@@ -751,8 +754,8 @@ public class CodeTreeBuilder {
         private EndCallback atEndListener;
         private CodeTreeKind removeLast;
 
-        public BuilderCodeTree(CodeTreeKind kind, TypeMirror type, String string) {
-            super(kind, type, string);
+        public BuilderCodeTree(CodeTree parent, CodeTreeKind kind, TypeMirror type, String string) {
+            super(parent, kind, type, string);
         }
 
         public void registerAtEnd(EndCallback atEnd) {
@@ -770,7 +773,7 @@ public class CodeTreeBuilder {
         @Override
         public String toString() {
             final StringBuilder b = new StringBuilder();
-            acceptCodeElementScanner(new Printer(b), null);
+            new Printer(b).visitTree(this, null, null);
             return b.toString();
         }
 
@@ -819,23 +822,25 @@ public class CodeTreeBuilder {
         }
 
         @Override
-        public void visitTree(CodeTree e, Void p) {
+        public void visitTree(CodeTree e, Void p, Element enclosingElement) {
             switch (e.getCodeKind()) {
                 case COMMA_GROUP:
                     List<CodeTree> children = e.getEnclosedElements();
-                    for (int i = 0; i < children.size(); i++) {
-                        children.get(i).acceptCodeElementScanner(this, p);
-                        if (i < e.getEnclosedElements().size() - 1) {
-                            b.append(", ");
+                    if (children != null) {
+                        for (int i = 0; i < children.size(); i++) {
+                            visitTree(children.get(i), p, enclosingElement);
+                            if (i < e.getEnclosedElements().size() - 1) {
+                                b.append(", ");
+                            }
                         }
                     }
                     break;
                 case GROUP:
-                    super.visitTree(e, p);
+                    super.visitTree(e, p, enclosingElement);
                     break;
                 case INDENT:
                     indent();
-                    super.visitTree(e, p);
+                    super.visitTree(e, p, enclosingElement);
                     dedent();
                     break;
                 case NEW_LINE:

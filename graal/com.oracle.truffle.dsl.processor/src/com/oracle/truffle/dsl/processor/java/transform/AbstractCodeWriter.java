@@ -262,7 +262,7 @@ public abstract class AbstractCodeWriter extends CodeElementScanner<Void, Void> 
             write(f.getSimpleName());
             if (init != null) {
                 write("(");
-                init.acceptCodeElementScanner(this, p);
+                visitTree(init, p, f);
                 write(")");
             }
         } else {
@@ -292,7 +292,7 @@ public abstract class AbstractCodeWriter extends CodeElementScanner<Void, Void> 
             write(f.getSimpleName());
             if (init != null) {
                 write(" = ");
-                init.acceptCodeElementScanner(this, p);
+                visitTree(init, p, f);
             }
         }
         return null;
@@ -459,11 +459,14 @@ public abstract class AbstractCodeWriter extends CodeElementScanner<Void, Void> 
 
     @Override
     public void visitImport(CodeImport e, Void p) {
+        write("import ");
         if (e.isStaticImport()) {
-            write("import static ").write(e.getImportString()).write(";");
-        } else {
-            write("import ").write(e.getImportString()).write(";");
+            write("static ");
         }
+        write(e.getPackageName());
+        write(".");
+        write(e.getSymbolName());
+        write(";");
     }
 
     @Override
@@ -507,7 +510,7 @@ public abstract class AbstractCodeWriter extends CodeElementScanner<Void, Void> 
         } else if (e.getBodyTree() != null) {
             writeLn(" {");
             indent(1);
-            e.getBodyTree().acceptCodeElementScanner(this, p);
+            visitTree(e.getBodyTree(), p, e);
             dedent(1);
             writeLn("}");
         } else if (e.getBody() != null) {
@@ -522,29 +525,27 @@ public abstract class AbstractCodeWriter extends CodeElementScanner<Void, Void> 
     }
 
     @Override
-    public void visitTree(CodeTree e, Void p) {
+    public void visitTree(CodeTree e, Void p, Element enclosingElement) {
         CodeTreeKind kind = e.getCodeKind();
 
         switch (kind) {
             case COMMA_GROUP:
                 List<CodeTree> children = e.getEnclosedElements();
-                for (int i = 0; i < children.size(); i++) {
-                    children.get(i).acceptCodeElementScanner(this, p);
-                    if (i < e.getEnclosedElements().size() - 1) {
-                        write(", ");
+                if (children != null) {
+                    for (int i = 0; i < children.size(); i++) {
+                        visitTree(children.get(i), p, enclosingElement);
+                        if (i < e.getEnclosedElements().size() - 1) {
+                            write(", ");
+                        }
                     }
                 }
                 break;
             case GROUP:
-                for (CodeTree tree : e.getEnclosedElements()) {
-                    tree.acceptCodeElementScanner(this, p);
-                }
+                super.visitTree(e, p, enclosingElement);
                 break;
             case INDENT:
                 indent(1);
-                for (CodeTree tree : e.getEnclosedElements()) {
-                    tree.acceptCodeElementScanner(this, p);
-                }
+                super.visitTree(e, p, enclosingElement);
                 dedent(1);
                 break;
             case NEW_LINE:
@@ -559,20 +560,20 @@ public abstract class AbstractCodeWriter extends CodeElementScanner<Void, Void> 
                 break;
             case STATIC_FIELD_REFERENCE:
                 if (e.getString() != null) {
-                    write(imports.createStaticFieldReference(e, e.getType(), e.getString()));
+                    write(imports.createStaticFieldReference(enclosingElement, e.getType(), e.getString()));
                 } else {
                     write("null");
                 }
                 break;
             case STATIC_METHOD_REFERENCE:
                 if (e.getString() != null) {
-                    write(imports.createStaticMethodReference(e, e.getType(), e.getString()));
+                    write(imports.createStaticMethodReference(enclosingElement, e.getType(), e.getString()));
                 } else {
                     write("null");
                 }
                 break;
             case TYPE:
-                write(useImport(e, e.getType()));
+                write(useImport(enclosingElement, e.getType()));
                 break;
             default:
                 assert false;
@@ -676,8 +677,9 @@ public abstract class AbstractCodeWriter extends CodeElementScanner<Void, Void> 
 
                 // TODO(CH): fails in normal usage - output ok though
                 // assert lineLength + (end - i) + 2 < MAX_LINE_LENGTH;
-
-                write("\"" + string.substring(i, end) + "\"");
+                write("\"");
+                write(string.substring(i, end));
+                write("\"");
                 size = nextSize;
             }
 

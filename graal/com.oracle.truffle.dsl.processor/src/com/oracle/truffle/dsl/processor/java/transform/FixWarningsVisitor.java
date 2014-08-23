@@ -103,11 +103,11 @@ public class FixWarningsVisitor extends CodeElementScanner<Void, Void> {
     }
 
     @Override
-    public void visitTree(CodeTree e, Void p) {
+    public void visitTree(CodeTree e, Void p, Element enclosingElement) {
         if (e.getString() != null) {
             computeSymbols(e.getString());
         }
-        super.visitTree(e, p);
+        super.visitTree(e, p, enclosingElement);
     }
 
     private void computeSymbols(String s) {

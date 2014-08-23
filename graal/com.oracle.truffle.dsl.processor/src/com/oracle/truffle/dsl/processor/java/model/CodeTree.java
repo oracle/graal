@@ -22,27 +22,53 @@
  */
 package com.oracle.truffle.dsl.processor.java.model;
 
-import javax.lang.model.element.*;
+import java.util.*;
+
 import javax.lang.model.type.*;
 
-public class CodeTree extends CodeElement<CodeTree> {
+public class CodeTree {
 
     private final CodeTreeKind kind;
+
+    private CodeTree parent;
 
     private TypeMirror type;
     private final String string;
 
-    CodeTree(CodeTreeKind kind, TypeMirror type, String string) {
+    private List<CodeTree> children;
+
+    CodeTree(CodeTree parent, CodeTreeKind kind, TypeMirror type, String string) {
+        this.parent = parent;
         this.kind = kind;
         this.type = type;
         this.string = string;
+    }
+
+    public void setParent(CodeTree parent) {
+        this.parent = parent;
+    }
+
+    public CodeTree getParent() {
+        return parent;
     }
 
     public TypeMirror getType() {
         return type;
     }
 
-    public CodeTreeKind getCodeKind() {
+    public void add(CodeTree element) {
+        if (children == null) {
+            children = new ArrayList<>();
+        }
+        element.setParent(this);
+        children.add(element);
+    }
+
+    public final List<CodeTree> getEnclosedElements() {
+        return children;
+    }
+
+    public final CodeTreeKind getCodeKind() {
         return kind;
     }
 
@@ -50,36 +76,8 @@ public class CodeTree extends CodeElement<CodeTree> {
         return string;
     }
 
-    public <P> void acceptCodeElementScanner(CodeElementScanner<?, P> s, P p) {
-        s.visitTree(this, p);
-    }
-
     public void setType(TypeMirror type) {
         this.type = type;
     }
 
-    @Override
-    public TypeMirror asType() {
-        return type;
-    }
-
-    @Override
-    public ElementKind getKind() {
-        return ElementKind.OTHER;
-    }
-
-    @Override
-    public Name getSimpleName() {
-        return CodeNames.of(getString());
-    }
-
-    @Override
-    public <R, P> R accept(ElementVisitor<R, P> v, P p) {
-        if (v instanceof CodeElementScanner<?, ?>) {
-            acceptCodeElementScanner((CodeElementScanner<?, P>) v, p);
-            return null;
-        } else {
-            throw new UnsupportedOperationException();
-        }
-    }
 }

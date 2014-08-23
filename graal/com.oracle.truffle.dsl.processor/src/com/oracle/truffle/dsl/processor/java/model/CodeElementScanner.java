@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.dsl.processor.java.model;
 
+import java.util.*;
+
 import javax.lang.model.element.*;
 import javax.lang.model.util.*;
 
@@ -35,9 +37,20 @@ public abstract class CodeElementScanner<R, P> extends ElementScanner7<R, P> {
     public R visitExecutable(CodeExecutableElement e, P p) {
         R ret = super.visitExecutable(e, p);
         if (e.getBodyTree() != null) {
-            visitTree(e.getBodyTree(), p);
+            visitTree(e.getBodyTree(), p, e);
         }
         return ret;
+    }
+
+    @Override
+    public R visitVariable(VariableElement e, P p) {
+        if (e instanceof CodeVariableElement) {
+            CodeTree init = ((CodeVariableElement) e).getInit();
+            if (init != null) {
+                visitTree(init, p, e);
+            }
+        }
+        return super.visitVariable(e, p);
     }
 
     @Override
@@ -63,9 +76,12 @@ public abstract class CodeElementScanner<R, P> extends ElementScanner7<R, P> {
         return clazz.cast(element);
     }
 
-    public void visitTree(CodeTree e, P p) {
-        for (CodeTree tree : e.getEnclosedElements()) {
-            tree.acceptCodeElementScanner(this, p);
+    public void visitTree(CodeTree e, P p, Element parent) {
+        List<CodeTree> elements = e.getEnclosedElements();
+        if (elements != null) {
+            for (CodeTree tree : e.getEnclosedElements()) {
+                visitTree(tree, p, parent);
+            }
         }
     }
 

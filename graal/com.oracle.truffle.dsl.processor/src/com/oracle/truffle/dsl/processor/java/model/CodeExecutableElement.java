@@ -117,8 +117,8 @@ public class CodeExecutableElement extends CodeElement<Element> implements Execu
 
     public CodeTreeBuilder createBuilder() {
         CodeTreeBuilder builder = new CodeTreeBuilder(null);
+        builder.setEnclosingElement(this);
         this.bodyTree = builder.getTree();
-        this.bodyTree.setEnclosingElement(this);
         this.body = null;
         return builder;
     }

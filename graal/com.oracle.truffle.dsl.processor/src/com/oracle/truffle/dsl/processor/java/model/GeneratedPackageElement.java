@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.dsl.processor.java.model;
 
+import java.util.*;
+
 import javax.lang.model.element.*;
 import javax.lang.model.type.*;
 
@@ -31,6 +33,7 @@ public final class GeneratedPackageElement extends CodeElement<Element> implemen
     private final Name simpleName;
 
     public GeneratedPackageElement(String qualifiedName) {
+        super(Collections.<Modifier> emptySet());
         this.qualifiedName = CodeNames.of(qualifiedName);
         int lastIndex = qualifiedName.lastIndexOf('.');
         if (lastIndex == -1) {

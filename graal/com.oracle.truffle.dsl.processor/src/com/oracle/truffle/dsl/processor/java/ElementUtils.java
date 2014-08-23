@@ -398,7 +398,7 @@ public class ElementUtils {
             case LONG:
                 return "long";
             case DECLARED:
-                return getDeclaredName((DeclaredType) mirror);
+                return getDeclaredName((DeclaredType) mirror, true);
             case ARRAY:
                 return getSimpleName(((ArrayType) mirror).getComponentType()) + "[]";
             case VOID:
@@ -424,10 +424,10 @@ public class ElementUtils {
         return b.toString();
     }
 
-    private static String getDeclaredName(DeclaredType element) {
+    public static String getDeclaredName(DeclaredType element, boolean includeTypeVariables) {
         String simpleName = fixECJBinaryNameIssue(element.asElement().getSimpleName().toString());
 
-        if (element.getTypeArguments().size() == 0) {
+        if (!includeTypeVariables || element.getTypeArguments().size() == 0) {
             return simpleName;
         }
 
@@ -653,6 +653,17 @@ public class ElementUtils {
 
     public static String getPackageName(TypeElement element) {
         return findPackageElement(element).getQualifiedName().toString();
+    }
+
+    public static String getEnclosedQualifiedName(DeclaredType mirror) {
+        Element e = ((TypeElement) mirror.asElement()).getEnclosingElement();
+        if (e.getKind() == ElementKind.PACKAGE) {
+            return ((PackageElement) e).getQualifiedName().toString();
+        } else if (e.getKind().isInterface() || e.getKind().isClass()) {
+            return getQualifiedName((TypeElement) e);
+        } else {
+            return null;
+        }
     }
 
     public static String getPackageName(TypeMirror mirror) {

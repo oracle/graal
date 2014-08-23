@@ -41,10 +41,6 @@ public abstract class CodeElement<E extends Element> implements Element, Generat
     private Element generatorElement;
     private AnnotationMirror generatorAnnotationMirror;
 
-    public CodeElement() {
-        this.modifiers = new LinkedHashSet<>();
-    }
-
     public CodeElement(Set<Modifier> modifiers) {
         this.modifiers = new LinkedHashSet<>(modifiers);
     }
