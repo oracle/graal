@@ -103,22 +103,22 @@ public class HSAILHotSpotLoweringProvider extends DefaultHotSpotLoweringProvider
         }
     };
 
-    private HashMap<Class<?>, LoweringStrategy> strategyMap = new HashMap<>();
+    private HashMap<NodeClass, LoweringStrategy> strategyMap = new HashMap<>();
 
     void initStrategyMap() {
-        strategyMap.put(ConvertNode.class, PassThruStrategy);
-        strategyMap.put(FloatConvertNode.class, PassThruStrategy);
-        strategyMap.put(NewInstanceNode.class, NewObjectStrategy);
-        strategyMap.put(NewArrayNode.class, NewObjectStrategy);
-        strategyMap.put(NewMultiArrayNode.class, RejectStrategy);
-        strategyMap.put(DynamicNewArrayNode.class, RejectStrategy);
-        strategyMap.put(MonitorEnterNode.class, RejectStrategy);
-        strategyMap.put(MonitorExitNode.class, RejectStrategy);
-        strategyMap.put(UnwindNode.class, UnwindNodeStrategy);
+        strategyMap.put(NodeClass.get(ConvertNode.class), PassThruStrategy);
+        strategyMap.put(NodeClass.get(FloatConvertNode.class), PassThruStrategy);
+        strategyMap.put(NodeClass.get(NewInstanceNode.class), NewObjectStrategy);
+        strategyMap.put(NodeClass.get(NewArrayNode.class), NewObjectStrategy);
+        strategyMap.put(NodeClass.get(NewMultiArrayNode.class), RejectStrategy);
+        strategyMap.put(NodeClass.get(DynamicNewArrayNode.class), RejectStrategy);
+        strategyMap.put(NodeClass.get(MonitorEnterNode.class), RejectStrategy);
+        strategyMap.put(NodeClass.get(MonitorExitNode.class), RejectStrategy);
+        strategyMap.put(NodeClass.get(UnwindNode.class), UnwindNodeStrategy);
     }
 
     private LoweringStrategy getStrategy(Node n) {
-        return strategyMap.get(n.getClass());
+        return strategyMap.get(n.getNodeClass());
     }
 
     public HSAILHotSpotLoweringProvider(HotSpotGraalRuntime runtime, MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, HotSpotRegistersProvider registers, TargetDescription target) {
