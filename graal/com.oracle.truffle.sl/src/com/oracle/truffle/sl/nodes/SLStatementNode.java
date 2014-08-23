@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.sl.nodes;
 
+import java.io.*;
+
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.instrument.*;
