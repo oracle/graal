@@ -709,15 +709,17 @@ public class Graph {
         return true;
     }
 
-    private class TypedNodeIterator<T extends IterableNodeType> implements Iterator<T> {
+    private static class TypedNodeIterator<T extends IterableNodeType> implements Iterator<T> {
 
+        private final Graph graph;
         private final int[] ids;
         private final Node[] current;
 
         private int currentIdIndex;
         private boolean needsForward;
 
-        public TypedNodeIterator(NodeClass clazz) {
+        public TypedNodeIterator(NodeClass clazz, Graph graph) {
+            this.graph = graph;
             ids = clazz.iterableIds();
             currentIdIndex = 0;
             current = new Node[ids.length];
@@ -743,7 +745,7 @@ public class Graph {
             return current();
         }
 
-        private Node skipDeleted(Node node) {
+        private static Node skipDeleted(Node node) {
             Node n = node;
             while (n != null && n.isDeleted()) {
                 n = n.typeCacheNext;
@@ -757,7 +759,7 @@ public class Graph {
             while (true) {
                 Node next;
                 if (current() == PLACE_HOLDER) {
-                    next = getStartNode(ids[currentIdIndex]);
+                    next = graph.getStartNode(ids[currentIdIndex]);
                 } else {
                     next = current().typeCacheNext;
                 }
@@ -821,7 +823,7 @@ public class Graph {
 
             @Override
             public Iterator<T> iterator() {
-                return new TypedNodeIterator<>(nodeClass);
+                return new TypedNodeIterator<>(nodeClass, Graph.this);
             }
         };
     }

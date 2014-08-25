@@ -152,16 +152,16 @@ public abstract class Node implements Cloneable, Formattable {
     // therefore points to the next Node of the same type.
     Node typeCacheNext;
 
-    private static final int INLINE_USAGE_COUNT = 2;
+    static final int INLINE_USAGE_COUNT = 2;
     private static final Node[] NO_NODES = {};
 
     /**
      * Head of usage list. The elements of the usage list in order are {@link #usage0},
      * {@link #usage1} and {@link #extraUsages}. The first null entry terminates the list.
      */
-    private Node usage0;
-    private Node usage1;
-    private Node[] extraUsages;
+    Node usage0;
+    Node usage1;
+    Node[] extraUsages;
 
     private Node predecessor;
 
@@ -210,95 +210,6 @@ public abstract class Node implements Cloneable, Formattable {
         return getNodeClass().getSuccessorIterable(this);
     }
 
-    class NodeUsageIterator implements java.util.Iterator<Node> {
-
-        int index = -1;
-        Node current;
-
-        private void advance() {
-            current = null;
-            index++;
-            if (index == 0) {
-                current = usage0;
-            } else if (index == 1) {
-                current = usage1;
-            } else {
-                if (index - INLINE_USAGE_COUNT < extraUsages.length) {
-                    current = extraUsages[index - INLINE_USAGE_COUNT];
-                }
-            }
-        }
-
-        public NodeUsageIterator() {
-            advance();
-        }
-
-        public boolean hasNext() {
-            return current != null;
-        }
-
-        public Node next() {
-            Node result = current;
-            if (result == null) {
-                throw new NoSuchElementException();
-            }
-            advance();
-            return result;
-        }
-
-        @Override
-        public void remove() {
-            throw new UnsupportedOperationException();
-        }
-    }
-
-    class NodeUsageWithModCountIterator extends NodeUsageIterator {
-
-        private final int expectedModCount = usageModCount();
-
-        @Override
-        public boolean hasNext() {
-            if (expectedModCount != usageModCount()) {
-                throw new ConcurrentModificationException();
-            }
-            return super.hasNext();
-        }
-
-        @Override
-        public Node next() {
-            if (expectedModCount != usageModCount()) {
-                throw new ConcurrentModificationException();
-            }
-            return super.next();
-        }
-    }
-
-    class NodeUsageIterable implements com.oracle.graal.graph.iterators.NodeIterable<Node> {
-
-        public NodeUsageIterator iterator() {
-            if (MODIFICATION_COUNTS_ENABLED) {
-                return new NodeUsageWithModCountIterator();
-            } else {
-                return new NodeUsageIterator();
-            }
-        }
-
-        @Override
-        public boolean isEmpty() {
-            return usage0 == null;
-        }
-
-        @Override
-        public boolean isNotEmpty() {
-            return usage0 != null;
-        }
-
-        @Override
-        public int count() {
-            return usageCount();
-        }
-    }
-
     int getUsageCountUpperBound() {
         assert recordsUsages();
         if (usage0 == null) {
@@ -315,7 +226,7 @@ public abstract class Node implements Cloneable, Formattable {
      */
     public final NodeIterable<Node> usages() {
         assert recordsUsages() : this;
-        return new NodeUsageIterable();
+        return new NodeUsageIterable(this);
     }
 
     /**
@@ -392,7 +303,7 @@ public abstract class Node implements Cloneable, Formattable {
         }
     }
 
-    private int usageCount() {
+    int usageCount() {
         if (usage0 == null) {
             return 0;
         }
