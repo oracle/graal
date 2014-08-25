@@ -708,6 +708,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
                 op = IUDIV;
                 actualA = emitZeroExtend(actualA, 32, 64);
                 actualB = emitZeroExtend(actualB, 32, 64);
+                break;
             case Long:
                 op = LUDIV;
                 break;

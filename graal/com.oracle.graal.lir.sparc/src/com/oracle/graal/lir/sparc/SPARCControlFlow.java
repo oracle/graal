@@ -31,7 +31,6 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.asm.sparc.SPARCAssembler.*;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
@@ -112,7 +111,7 @@ public class SPARCControlFlow {
                 if (actualCondition != null) {
                     emitCompare(masm, actualTarget, actualCondition, cc);
                 } else if (actualConditionFlag != null) {
-                    emitCompare(masm, actualTarget, actualConditionFlag, cc);
+                    emitCompare(masm, actualTarget, actualConditionFlag);
                 } else {
                     GraalInternalError.shouldNotReachHere();
                 }
@@ -155,7 +154,7 @@ public class SPARCControlFlow {
         new Nop().emit(masm);
     }
 
-    private static void emitCompare(SPARCMacroAssembler masm, Label target, ConditionFlag actualCondition, CC cc) {
+    private static void emitCompare(SPARCMacroAssembler masm, Label target, ConditionFlag actualCondition) {
         new Fmt00b(false, actualCondition, Op2s.Br, target).emit(masm);
     }
 

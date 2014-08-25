@@ -27,7 +27,6 @@ package com.oracle.graal.jtt.micro;
 
 import org.junit.*;
 
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.jtt.*;
 
 /**
