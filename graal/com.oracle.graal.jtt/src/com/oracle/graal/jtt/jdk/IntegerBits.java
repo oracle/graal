@@ -103,4 +103,60 @@ public class IntegerBits extends JTTTest {
     public void run10() {
         runTest("test4", 0xffffffff);
     }
+
+    @Test
+    public void run11() {
+        runTest("test2", 0xFFFFFFFF);
+    }
+
+    @Test
+    public void run12() {
+        runTest("test2", 0x7FFFFFFF);
+    }
+
+    @Test
+    public void run17() {
+        runTest("test2", 0x80000000);
+    }
+
+    @Test
+    public void run18() {
+        runTest("test2", 0x40000000);
+    }
+
+    @Test
+    public void run13() {
+        runTest("test3", 0x7FFFFFFF);
+    }
+
+    @Test
+    public void run14() {
+        runTest("test3", 0xFFFFFFFF);
+    }
+
+    @Test
+    public void run15() {
+        runTest("test3", 0x80000000);
+    }
+
+    @Test
+    public void run16() {
+        runTest("test3", 0x40000000);
+    }
+
+    @Test
+    public void run19() {
+        runTest("test4", 0x80000000);
+    }
+
+    @Test
+    public void run20() {
+        runTest("test4", 0x40000000);
+    }
+
+    @Test
+    public void run21() {
+        runTest("test4", 0x00000001);
+    }
+
 }
