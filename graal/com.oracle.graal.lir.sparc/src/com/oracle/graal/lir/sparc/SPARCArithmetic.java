@@ -519,7 +519,11 @@ public enum SPARCArithmetic {
                     new Fsubs(asFloatReg(src1), asFloatReg(src2), asFloatReg(dst)).emit(masm);
                     break;
                 case FMUL:
-                    new Fmuls(asFloatReg(src1), asFloatReg(src2), asFloatReg(dst)).emit(masm);
+                    if (dst.getPlatformKind() == Kind.Double) {
+                        new Fsmuld(asFloatReg(src1), asFloatReg(src2), asDoubleReg(dst)).emit(masm);
+                    } else if (dst.getPlatformKind() == Kind.Float) {
+                        new Fmuls(asFloatReg(src1), asFloatReg(src2), asFloatReg(dst)).emit(masm);
+                    }
                     break;
                 case FDIV:
                     new Fdivs(asFloatReg(src1), asFloatReg(src2), asFloatReg(dst)).emit(masm);
@@ -878,7 +882,7 @@ public enum SPARCArithmetic {
                 rk = result.getKind();
                 xk = x.getKind();
                 yk = y.getKind();
-                assert rk == Kind.Float && xk == Kind.Float && yk == Kind.Float;
+                assert (rk == Kind.Float || rk == Kind.Double) && xk == Kind.Float && yk == Kind.Float;
                 break;
             case DAND:
             case DADD:
