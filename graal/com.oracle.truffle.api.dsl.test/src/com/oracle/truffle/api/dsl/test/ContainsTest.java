@@ -23,6 +23,8 @@
 package com.oracle.truffle.api.dsl.test;
 
 import static com.oracle.truffle.api.dsl.test.TestHelper.*;
+import static org.hamcrest.CoreMatchers.*;
+import static org.junit.Assert.*;
 
 import org.junit.*;
 
@@ -32,6 +34,7 @@ import com.oracle.truffle.api.dsl.test.ContainsTestFactory.Contains1Factory;
 import com.oracle.truffle.api.dsl.test.ContainsTestFactory.Contains2Factory;
 import com.oracle.truffle.api.dsl.test.ContainsTestFactory.Contains3Factory;
 import com.oracle.truffle.api.dsl.test.ContainsTestFactory.Contains4Factory;
+import com.oracle.truffle.api.dsl.test.ContainsTestFactory.PolymorphicToMonomorphic0Factory;
 import com.oracle.truffle.api.dsl.test.TestHelper.ExecutionListener;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
@@ -598,6 +601,43 @@ public class ContainsTest {
         Object f2() {
             return null;
         }
+    }
+
+    @Test
+    public void testPolymorphicToMonomorphic0() {
+        TestRootNode<PolymorphicToMonomorphic0> root = createRoot(PolymorphicToMonomorphic0Factory.getInstance());
+        assertThat((int) executeWith(root, 1), is(1));
+        assertThat((int) executeWith(root, 2), is(2));
+        assertThat((int) executeWith(root, 3), is(3));
+        assertThat(root.getNode().getCost(), is(NodeCost.MONOMORPHIC));
+    }
+
+    @NodeChild("a")
+    static class PolymorphicToMonomorphic0 extends ValueNode {
+
+        boolean isOne(int a) {
+            return a == 1;
+        }
+
+        boolean isTwo(int a) {
+            return a == 2;
+        }
+
+        @Specialization(guards = "isOne")
+        int do1(int a) {
+            return a;
+        }
+
+        @Specialization(guards = "isTwo")
+        int do2(int a) {
+            return a;
+        }
+
+        @Specialization(contains = {"do1", "do2"})
+        int do3(int a) {
+            return a;
+        }
+
     }
 
 }

@@ -99,21 +99,17 @@ public class DSLShare {
     public static <T extends Node & DSLNode> T rewriteToPolymorphic(Node oldNode, DSLNode uninitializedDSL, T polymorphic, DSLNode currentCopy, DSLNode newNodeDSL, String message) {
         assert getNext(oldNode) == null;
         assert getPrevious(oldNode) == null;
+        assert newNodeDSL != null;
 
         Node uninitialized = (Node) uninitializedDSL;
         Node newNode = (Node) newNodeDSL;
         polymorphic.adoptChildren0(oldNode, (Node) currentCopy);
 
         updateSourceSection(oldNode, uninitialized);
-        if (newNode == null) {
-            // fallback
-            currentCopy.adoptChildren0(null, uninitialized);
-        } else {
-            // new specialization
-            updateSourceSection(oldNode, newNode);
-            newNodeDSL.adoptChildren0(null, uninitialized);
-            currentCopy.adoptChildren0(null, newNode);
-        }
+        // new specialization
+        updateSourceSection(oldNode, newNode);
+        newNodeDSL.adoptChildren0(null, uninitialized);
+        currentCopy.adoptChildren0(null, newNode);
 
         oldNode.replace(polymorphic, message);
 
@@ -165,7 +161,7 @@ public class DSLShare {
         assert prev.getCost() == NodeCost.POLYMORPHIC;
 
         updateSourceSection(prev, newNode);
-        if (depth == 0) {
+        if (depth <= 1) {
             newNode.adoptChildren0(prev, null);
             return prev.replace(newNode, "Polymorphic to monomorphic.");
         } else {
