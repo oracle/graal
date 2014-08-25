@@ -25,6 +25,7 @@ package com.oracle.graal.lir.sparc;
 import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 import static com.oracle.graal.sparc.SPARC.*;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
@@ -281,12 +282,20 @@ public class SPARCControlFlow {
 
             // Compare index against jump table bounds
             int highKey = lowKey + targets.length - 1;
-            if (lowKey != 0) {
-                // subtract the low value from the switch value
-                new Sub(value, lowKey, value).emit(masm);
-                new Cmp(value, highKey - lowKey).emit(masm);
+
+            // subtract the low value from the switch value
+            if (isSimm13(lowKey)) {
+                new Sub(value, lowKey, scratchReg).emit(masm);
             } else {
-                new Cmp(value, highKey).emit(masm);
+                new Setx(lowKey, g3).emit(masm);
+                new Sub(value, g3, scratchReg).emit(masm);
+            }
+            int upperLimit = highKey - lowKey;
+            if (isSimm13(upperLimit)) {
+                new Cmp(scratchReg, upperLimit).emit(masm);
+            } else {
+                new Setx(upperLimit, g3).emit(masm);
+                new Cmp(scratchReg, upperLimit).emit(masm);
             }
 
             // Jump to default target if index is not within the jump table
@@ -296,19 +305,20 @@ public class SPARCControlFlow {
             }
 
             // Load jump table entry into scratch and jump to it
-            new Sll(value, 3, value).emit(masm); // Multiply by 8
-            new Rdpc(scratchReg).emit(masm);
+            new Sll(scratchReg, 3, scratchReg).emit(masm); // Multiply by 8
+            // Zero the left bits sll with shcnt>0 does not mask upper 32 bits
+            new Srl(scratchReg, 0, scratchReg).emit(masm);
+            new Rdpc(g3).emit(masm);
 
             // The jump table follows four instructions after rdpc
             new Add(scratchReg, 4 * 4, scratchReg).emit(masm);
-            new Jmpl(value, scratchReg, g0).emit(masm);
-            new Sra(value, 3, value).emit(masm); // delay slot, correct the value (division by 8)
+            new Jmpl(g3, scratchReg, g0).emit(masm);
+            new Nop().emit(masm);
+            // new Sra(value, 3, value).emit(masm); // delay slot, correct the value (division by 8)
 
             // Emit jump table entries
             for (LabelRef target : targets) {
-                Label label = target.label();
-                label.addPatchAt(masm.position());
-                new Bpa(0).emit(masm);
+                new Bpa(target.label()).emit(masm);
                 new Nop().emit(masm); // delay slot
             }
         }
