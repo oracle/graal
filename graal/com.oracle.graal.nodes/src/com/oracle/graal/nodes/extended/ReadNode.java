@@ -55,7 +55,8 @@ public class ReadNode extends FloatableAccessNode implements LIRLowerable, Canon
     }
 
     public static ReadNode create(ValueNode object, ValueNode location, Stamp stamp, GuardingNode guard, BarrierType barrierType, boolean nullCheck, FrameState stateBefore) {
-        return USE_GENERATED_NODES ? new ReadNodeGen(object, location, stamp, guard, barrierType, nullCheck, stateBefore) : new ReadNode(object, location, stamp, guard, barrierType, nullCheck, stateBefore);
+        return USE_GENERATED_NODES ? new ReadNodeGen(object, location, stamp, guard, barrierType, nullCheck, stateBefore) : new ReadNode(object, location, stamp, guard, barrierType, nullCheck,
+                        stateBefore);
     }
 
     ReadNode(ValueNode object, ValueNode location, Stamp stamp, GuardingNode guard, BarrierType barrierType, boolean nullCheck, FrameState stateBefore) {

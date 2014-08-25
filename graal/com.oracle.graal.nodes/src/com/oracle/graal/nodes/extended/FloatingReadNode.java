@@ -56,7 +56,8 @@ public class FloatingReadNode extends FloatingAccessNode implements IterableNode
     }
 
     public static FloatingReadNode create(ValueNode object, LocationNode location, MemoryNode lastLocationAccess, Stamp stamp, GuardingNode guard, BarrierType barrierType) {
-        return USE_GENERATED_NODES ? new FloatingReadNodeGen(object, location, lastLocationAccess, stamp, guard, barrierType) : new FloatingReadNode(object, location, lastLocationAccess, stamp, guard, barrierType);
+        return USE_GENERATED_NODES ? new FloatingReadNodeGen(object, location, lastLocationAccess, stamp, guard, barrierType) : new FloatingReadNode(object, location, lastLocationAccess, stamp,
+                        guard, barrierType);
     }
 
     FloatingReadNode(ValueNode object, LocationNode location, MemoryNode lastLocationAccess, Stamp stamp, GuardingNode guard, BarrierType barrierType) {

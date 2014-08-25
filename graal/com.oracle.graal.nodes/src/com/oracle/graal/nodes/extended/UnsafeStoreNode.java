@@ -50,7 +50,8 @@ public class UnsafeStoreNode extends UnsafeAccessNode implements StateSplit, Low
     }
 
     public static UnsafeStoreNode create(ValueNode object, ValueNode offset, ValueNode value, Kind accessKind, LocationIdentity locationIdentity, FrameState stateAfter) {
-        return USE_GENERATED_NODES ? new UnsafeStoreNodeGen(object, offset, value, accessKind, locationIdentity, stateAfter) : new UnsafeStoreNode(object, offset, value, accessKind, locationIdentity, stateAfter);
+        return USE_GENERATED_NODES ? new UnsafeStoreNodeGen(object, offset, value, accessKind, locationIdentity, stateAfter) : new UnsafeStoreNode(object, offset, value, accessKind, locationIdentity,
+                        stateAfter);
     }
 
     UnsafeStoreNode(ValueNode object, ValueNode offset, ValueNode value, Kind accessKind, LocationIdentity locationIdentity, FrameState stateAfter) {

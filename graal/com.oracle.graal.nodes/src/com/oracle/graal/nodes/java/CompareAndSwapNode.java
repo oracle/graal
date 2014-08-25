@@ -47,7 +47,8 @@ public class CompareAndSwapNode extends AbstractMemoryCheckpoint implements Lowe
     private final LocationIdentity locationIdentity;
 
     public static CompareAndSwapNode create(ValueNode object, ValueNode offset, ValueNode expected, ValueNode newValue, Kind valueKind, LocationIdentity locationIdentity) {
-        return USE_GENERATED_NODES ? new CompareAndSwapNodeGen(object, offset, expected, newValue, valueKind, locationIdentity) : new CompareAndSwapNode(object, offset, expected, newValue, valueKind, locationIdentity);
+        return USE_GENERATED_NODES ? new CompareAndSwapNodeGen(object, offset, expected, newValue, valueKind, locationIdentity) : new CompareAndSwapNode(object, offset, expected, newValue, valueKind,
+                        locationIdentity);
     }
 
     CompareAndSwapNode(ValueNode object, ValueNode offset, ValueNode expected, ValueNode newValue, Kind valueKind, LocationIdentity locationIdentity) {
