@@ -39,7 +39,7 @@ public class AllocatedObjectNode extends FloatingNode implements Virtualizable, 
     @Input(InputType.Extension) CommitAllocationNode commit;
 
     public static AllocatedObjectNode create(VirtualObjectNode virtualObject) {
-        return new AllocatedObjectNodeGen(virtualObject);
+        return USE_GENERATED_NODES ? new AllocatedObjectNodeGen(virtualObject) : new AllocatedObjectNode(virtualObject);
     }
 
     AllocatedObjectNode(VirtualObjectNode virtualObject) {

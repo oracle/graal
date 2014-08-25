@@ -36,11 +36,11 @@ import com.oracle.graal.nodes.util.*;
 public class IntegerSubNode extends IntegerArithmeticNode implements NarrowableArithmeticNode {
 
     public static IntegerSubNode create(ValueNode x, ValueNode y) {
-        return new IntegerSubNodeGen(x, y);
+        return USE_GENERATED_NODES ? new IntegerSubNodeGen(x, y) : new IntegerSubNode(x, y);
     }
 
     public static Class<? extends IntegerSubNode> getGenClass() {
-        return IntegerSubNodeGen.class;
+        return USE_GENERATED_NODES ? IntegerSubNodeGen.class : IntegerSubNode.class;
     }
 
     protected IntegerSubNode(ValueNode x, ValueNode y) {

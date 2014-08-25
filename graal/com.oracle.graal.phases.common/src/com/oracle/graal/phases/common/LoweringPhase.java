@@ -52,7 +52,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
         @Input(InputType.Guard) GuardingNode guard;
 
         public static DummyGuardHandle create(GuardingNode guard) {
-            return new LoweringPhase_DummyGuardHandleGen(guard);
+            return USE_GENERATED_NODES ? new LoweringPhase_DummyGuardHandleGen(guard) : new DummyGuardHandle(guard);
         }
 
         protected DummyGuardHandle(GuardingNode guard) {

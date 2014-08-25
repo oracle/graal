@@ -46,7 +46,7 @@ public class NewArrayStubCall extends DeoptimizingStubCall implements LIRLowerab
     @Input ValueNode length;
 
     public static NewArrayStubCall create(ValueNode hub, ValueNode length) {
-        return new NewArrayStubCallGen(hub, length);
+        return USE_GENERATED_NODES ? new NewArrayStubCallGen(hub, length) : new NewArrayStubCall(hub, length);
     }
 
     protected NewArrayStubCall(ValueNode hub, ValueNode length) {

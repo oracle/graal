@@ -40,7 +40,7 @@ public class UnsafeLoadNode extends UnsafeAccessNode implements Lowerable, Virtu
     @OptionalInput(InputType.Condition) LogicNode guardingCondition;
 
     public static UnsafeLoadNode create(ValueNode object, ValueNode offset, Kind accessKind, LocationIdentity locationIdentity) {
-        return new UnsafeLoadNodeGen(object, offset, accessKind, locationIdentity);
+        return USE_GENERATED_NODES ? new UnsafeLoadNodeGen(object, offset, accessKind, locationIdentity) : new UnsafeLoadNode(object, offset, accessKind, locationIdentity);
     }
 
     UnsafeLoadNode(ValueNode object, ValueNode offset, Kind accessKind, LocationIdentity locationIdentity) {
@@ -48,7 +48,7 @@ public class UnsafeLoadNode extends UnsafeAccessNode implements Lowerable, Virtu
     }
 
     public static UnsafeLoadNode create(ValueNode object, ValueNode offset, Kind accessKind, LocationIdentity locationIdentity, LogicNode condition) {
-        return new UnsafeLoadNodeGen(object, offset, accessKind, locationIdentity, condition);
+        return USE_GENERATED_NODES ? new UnsafeLoadNodeGen(object, offset, accessKind, locationIdentity, condition) : new UnsafeLoadNode(object, offset, accessKind, locationIdentity, condition);
     }
 
     UnsafeLoadNode(ValueNode object, ValueNode offset, Kind accessKind, LocationIdentity locationIdentity, LogicNode condition) {

@@ -44,7 +44,7 @@ public class DimensionsNode extends FixedWithNextNode implements LIRLowerable {
     private final int rank;
 
     public static DimensionsNode create(int rank) {
-        return new DimensionsNodeGen(rank);
+        return USE_GENERATED_NODES ? new DimensionsNodeGen(rank) : new DimensionsNode(rank);
     }
 
     DimensionsNode(int rank) {

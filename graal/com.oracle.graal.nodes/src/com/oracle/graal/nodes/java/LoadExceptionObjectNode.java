@@ -31,7 +31,7 @@ import com.oracle.graal.nodes.spi.*;
 public class LoadExceptionObjectNode extends AbstractStateSplit implements Lowerable {
 
     public static LoadExceptionObjectNode create(Stamp stamp) {
-        return new LoadExceptionObjectNodeGen(stamp);
+        return USE_GENERATED_NODES ? new LoadExceptionObjectNodeGen(stamp) : new LoadExceptionObjectNode(stamp);
     }
 
     LoadExceptionObjectNode(Stamp stamp) {

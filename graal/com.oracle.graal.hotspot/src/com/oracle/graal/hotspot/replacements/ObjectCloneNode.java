@@ -44,7 +44,7 @@ import com.oracle.graal.replacements.nodes.*;
 public class ObjectCloneNode extends MacroStateSplitNode implements VirtualizableAllocation, ArrayLengthProvider {
 
     public static ObjectCloneNode create(Invoke invoke) {
-        return new ObjectCloneNodeGen(invoke);
+        return USE_GENERATED_NODES ? new ObjectCloneNodeGen(invoke) : new ObjectCloneNode(invoke);
     }
 
     protected ObjectCloneNode(Invoke invoke) {

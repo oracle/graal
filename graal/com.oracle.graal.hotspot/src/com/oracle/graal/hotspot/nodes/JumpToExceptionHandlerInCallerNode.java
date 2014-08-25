@@ -41,7 +41,7 @@ public class JumpToExceptionHandlerInCallerNode extends ControlSinkNode implemen
     @Input ValueNode exceptionPc;
 
     public static JumpToExceptionHandlerInCallerNode create(ValueNode handlerInCallerPc, ValueNode exception, ValueNode exceptionPc) {
-        return new JumpToExceptionHandlerInCallerNodeGen(handlerInCallerPc, exception, exceptionPc);
+        return USE_GENERATED_NODES ? new JumpToExceptionHandlerInCallerNodeGen(handlerInCallerPc, exception, exceptionPc) : new JumpToExceptionHandlerInCallerNode(handlerInCallerPc, exception, exceptionPc);
     }
 
     protected JumpToExceptionHandlerInCallerNode(ValueNode handlerInCallerPc, ValueNode exception, ValueNode exceptionPc) {

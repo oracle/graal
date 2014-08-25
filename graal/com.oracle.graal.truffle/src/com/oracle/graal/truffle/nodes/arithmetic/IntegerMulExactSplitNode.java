@@ -32,7 +32,7 @@ import com.oracle.graal.nodes.spi.*;
 public class IntegerMulExactSplitNode extends IntegerExactArithmeticSplitNode {
 
     public static IntegerMulExactSplitNode create(Stamp stamp, ValueNode x, ValueNode y, BeginNode next, BeginNode overflowSuccessor) {
-        return new IntegerMulExactSplitNodeGen(stamp, x, y, next, overflowSuccessor);
+        return USE_GENERATED_NODES ? new IntegerMulExactSplitNodeGen(stamp, x, y, next, overflowSuccessor) : new IntegerMulExactSplitNode(stamp, x, y, next, overflowSuccessor);
     }
 
     protected IntegerMulExactSplitNode(Stamp stamp, ValueNode x, ValueNode y, BeginNode next, BeginNode overflowSuccessor) {

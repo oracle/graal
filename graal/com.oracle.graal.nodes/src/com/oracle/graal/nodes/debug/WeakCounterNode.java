@@ -39,7 +39,7 @@ public class WeakCounterNode extends DynamicCounterNode implements Simplifiable,
     @Input ValueNode checkedValue;
 
     public static WeakCounterNode create(String group, String name, ValueNode increment, boolean addContext, ValueNode checkedValue) {
-        return new WeakCounterNodeGen(group, name, increment, addContext, checkedValue);
+        return USE_GENERATED_NODES ? new WeakCounterNodeGen(group, name, increment, addContext, checkedValue) : new WeakCounterNode(group, name, increment, addContext, checkedValue);
     }
 
     WeakCounterNode(String group, String name, ValueNode increment, boolean addContext, ValueNode checkedValue) {

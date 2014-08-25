@@ -39,7 +39,7 @@ import com.oracle.truffle.api.*;
 public class IntegerMulHighNode extends IntegerArithmeticNode {
 
     public static IntegerMulHighNode create(ValueNode x, ValueNode y) {
-        return new IntegerMulHighNodeGen(x, y);
+        return USE_GENERATED_NODES ? new IntegerMulHighNodeGen(x, y) : new IntegerMulHighNode(x, y);
     }
 
     protected IntegerMulHighNode(ValueNode x, ValueNode y) {
@@ -47,7 +47,7 @@ public class IntegerMulHighNode extends IntegerArithmeticNode {
     }
 
     public static IntegerMulHighNode create(Stamp stamp, ValueNode x, ValueNode y) {
-        return new IntegerMulHighNodeGen(stamp, x, y);
+        return USE_GENERATED_NODES ? new IntegerMulHighNodeGen(stamp, x, y) : new IntegerMulHighNode(stamp, x, y);
     }
 
     protected IntegerMulHighNode(Stamp stamp, ValueNode x, ValueNode y) {

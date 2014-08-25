@@ -43,7 +43,7 @@ public class DynamicNewArrayNode extends AbstractNewArrayNode {
     @Input ValueNode elementType;
 
     public static DynamicNewArrayNode create(ValueNode elementType, ValueNode length) {
-        return new DynamicNewArrayNodeGen(elementType, length);
+        return USE_GENERATED_NODES ? new DynamicNewArrayNodeGen(elementType, length) : new DynamicNewArrayNode(elementType, length);
     }
 
     DynamicNewArrayNode(ValueNode elementType, ValueNode length) {
@@ -51,7 +51,7 @@ public class DynamicNewArrayNode extends AbstractNewArrayNode {
     }
 
     public static DynamicNewArrayNode create(ValueNode elementType, ValueNode length, boolean fillContents) {
-        return new DynamicNewArrayNodeGen(elementType, length, fillContents);
+        return USE_GENERATED_NODES ? new DynamicNewArrayNodeGen(elementType, length, fillContents) : new DynamicNewArrayNode(elementType, length, fillContents);
     }
 
     DynamicNewArrayNode(ValueNode elementType, ValueNode length, boolean fillContents) {

@@ -39,7 +39,7 @@ public class AMD64RawNativeCallNode extends FixedWithNextNode implements LIRLowe
     @Input NodeInputList<ValueNode> args;
 
     public static AMD64RawNativeCallNode create(Kind returnType, Constant functionPointer, ValueNode[] args) {
-        return new AMD64RawNativeCallNodeGen(returnType, functionPointer, args);
+        return USE_GENERATED_NODES ? new AMD64RawNativeCallNodeGen(returnType, functionPointer, args) : new AMD64RawNativeCallNode(returnType, functionPointer, args);
     }
 
     protected AMD64RawNativeCallNode(Kind returnType, Constant functionPointer, ValueNode[] args) {

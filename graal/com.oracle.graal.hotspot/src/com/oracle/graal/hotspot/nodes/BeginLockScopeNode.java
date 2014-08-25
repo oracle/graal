@@ -43,7 +43,7 @@ public class BeginLockScopeNode extends AbstractMemoryCheckpoint implements LIRL
     private int lockDepth;
 
     public static BeginLockScopeNode create(int lockDepth) {
-        return new BeginLockScopeNodeGen(lockDepth);
+        return USE_GENERATED_NODES ? new BeginLockScopeNodeGen(lockDepth) : new BeginLockScopeNode(lockDepth);
     }
 
     BeginLockScopeNode(int lockDepth) {

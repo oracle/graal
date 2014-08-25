@@ -42,7 +42,7 @@ public class VirtualObjectState extends EscapeObjectState implements Node.ValueN
     }
 
     public static VirtualObjectState create(VirtualObjectNode object, ValueNode[] values) {
-        return new VirtualObjectStateGen(object, values);
+        return USE_GENERATED_NODES ? new VirtualObjectStateGen(object, values) : new VirtualObjectState(object, values);
     }
 
     protected VirtualObjectState(VirtualObjectNode object, ValueNode[] values) {
@@ -52,7 +52,7 @@ public class VirtualObjectState extends EscapeObjectState implements Node.ValueN
     }
 
     public static VirtualObjectState create(VirtualObjectNode object, List<ValueNode> values) {
-        return new VirtualObjectStateGen(object, values);
+        return USE_GENERATED_NODES ? new VirtualObjectStateGen(object, values) : new VirtualObjectState(object, values);
     }
 
     protected VirtualObjectState(VirtualObjectNode object, List<ValueNode> values) {

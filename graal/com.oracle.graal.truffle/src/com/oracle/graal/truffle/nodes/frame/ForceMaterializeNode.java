@@ -33,7 +33,7 @@ public class ForceMaterializeNode extends FixedWithNextNode implements LIRLowera
     @Input ValueNode object;
 
     public static ForceMaterializeNode create(ValueNode object) {
-        return new ForceMaterializeNodeGen(object);
+        return USE_GENERATED_NODES ? new ForceMaterializeNodeGen(object) : new ForceMaterializeNode(object);
     }
 
     protected ForceMaterializeNode(ValueNode object) {

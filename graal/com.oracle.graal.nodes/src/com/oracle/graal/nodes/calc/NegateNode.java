@@ -48,7 +48,7 @@ public class NegateNode extends UnaryNode implements ArithmeticLIRLowerable, Nar
      * @param value the instruction producing the value that is input to this instruction
      */
     public static NegateNode create(ValueNode value) {
-        return new NegateNodeGen(value);
+        return USE_GENERATED_NODES ? new NegateNodeGen(value) : new NegateNode(value);
     }
 
     protected NegateNode(ValueNode value) {

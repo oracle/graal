@@ -46,7 +46,7 @@ public class LoadIndexedFinalNode extends AccessIndexedNode implements Canonical
      * @param elementKind the element type
      */
     public static LoadIndexedFinalNode create(ValueNode array, ValueNode index, Kind elementKind) {
-        return new LoadIndexedFinalNodeGen(array, index, elementKind);
+        return USE_GENERATED_NODES ? new LoadIndexedFinalNodeGen(array, index, elementKind) : new LoadIndexedFinalNode(array, index, elementKind);
     }
 
     protected LoadIndexedFinalNode(ValueNode array, ValueNode index, Kind elementKind) {

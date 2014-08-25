@@ -49,7 +49,7 @@ public class AbstractNewArrayNode extends AbstractNewObjectNode implements Array
      * @param fillContents determines whether the array elements should be initialized to zero/null.
      */
     public static AbstractNewArrayNode create(Stamp stamp, ValueNode length, boolean fillContents) {
-        return new AbstractNewArrayNodeGen(stamp, length, fillContents);
+        return USE_GENERATED_NODES ? new AbstractNewArrayNodeGen(stamp, length, fillContents) : new AbstractNewArrayNode(stamp, length, fillContents);
     }
 
     protected AbstractNewArrayNode(Stamp stamp, ValueNode length, boolean fillContents) {

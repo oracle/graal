@@ -41,7 +41,7 @@ public class LoweredAtomicReadAndWriteNode extends FixedAccessNode implements St
     @OptionalInput(InputType.State) FrameState stateAfter;
 
     public static LoweredAtomicReadAndWriteNode create(ValueNode object, LocationNode location, ValueNode newValue, BarrierType barrierType) {
-        return new LoweredAtomicReadAndWriteNodeGen(object, location, newValue, barrierType);
+        return USE_GENERATED_NODES ? new LoweredAtomicReadAndWriteNodeGen(object, location, newValue, barrierType) : new LoweredAtomicReadAndWriteNode(object, location, newValue, barrierType);
     }
 
     LoweredAtomicReadAndWriteNode(ValueNode object, LocationNode location, ValueNode newValue, BarrierType barrierType) {

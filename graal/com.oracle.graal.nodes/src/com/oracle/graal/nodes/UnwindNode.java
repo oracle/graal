@@ -40,7 +40,7 @@ public class UnwindNode extends ControlSinkNode implements Lowerable, LIRLowerab
     }
 
     public static UnwindNode create(ValueNode exception) {
-        return new UnwindNodeGen(exception);
+        return USE_GENERATED_NODES ? new UnwindNodeGen(exception) : new UnwindNode(exception);
     }
 
     protected UnwindNode(ValueNode exception) {

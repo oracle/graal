@@ -39,7 +39,7 @@ public class GetObjectAddressNode extends FixedWithNextNode implements LIRLowera
     @Input ValueNode object;
 
     public static GetObjectAddressNode create(ValueNode obj) {
-        return new GetObjectAddressNodeGen(obj);
+        return USE_GENERATED_NODES ? new GetObjectAddressNodeGen(obj) : new GetObjectAddressNode(obj);
     }
 
     protected GetObjectAddressNode(ValueNode obj) {

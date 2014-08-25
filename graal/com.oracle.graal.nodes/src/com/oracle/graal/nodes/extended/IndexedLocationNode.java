@@ -70,7 +70,7 @@ public class IndexedLocationNode extends LocationNode implements Canonicalizable
     }
 
     public static IndexedLocationNode create(LocationIdentity identity, Kind kind, long displacement, ValueNode index, int indexScaling) {
-        return new IndexedLocationNodeGen(identity, kind, displacement, index, indexScaling);
+        return USE_GENERATED_NODES ? new IndexedLocationNodeGen(identity, kind, displacement, index, indexScaling) : new IndexedLocationNode(identity, kind, displacement, index, indexScaling);
     }
 
     IndexedLocationNode(LocationIdentity identity, Kind kind, long displacement, ValueNode index, int indexScaling) {

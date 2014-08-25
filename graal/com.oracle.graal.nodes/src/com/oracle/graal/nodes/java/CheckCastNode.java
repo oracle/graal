@@ -60,7 +60,7 @@ public class CheckCastNode extends FixedWithNextNode implements Canonicalizable,
      * @param object the instruction producing the object
      */
     public static CheckCastNode create(ResolvedJavaType type, ValueNode object, JavaTypeProfile profile, boolean forStoreCheck) {
-        return new CheckCastNodeGen(type, object, profile, forStoreCheck);
+        return USE_GENERATED_NODES ? new CheckCastNodeGen(type, object, profile, forStoreCheck) : new CheckCastNode(type, object, profile, forStoreCheck);
     }
 
     CheckCastNode(ResolvedJavaType type, ValueNode object, JavaTypeProfile profile, boolean forStoreCheck) {

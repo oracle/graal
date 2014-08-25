@@ -27,11 +27,11 @@ import com.oracle.graal.nodeinfo.*;
 @NodeInfo(allowedUsageTypes = {InputType.Association})
 public class EndNode extends AbstractEndNode {
     public static EndNode create() {
-        return new EndNodeGen();
+        return USE_GENERATED_NODES ? new EndNodeGen() : new EndNode();
     }
 
     public static Class<? extends EndNode> getGenClass() {
-        return EndNodeGen.class;
+        return USE_GENERATED_NODES ? EndNodeGen.class : EndNode.class;
     }
 
     EndNode() {

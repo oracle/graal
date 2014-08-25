@@ -65,7 +65,7 @@ public class StoreIndexedNode extends AccessIndexedNode implements StateSplit, L
      * @param value the value to store into the array
      */
     public static StoreIndexedNode create(ValueNode array, ValueNode index, Kind elementKind, ValueNode value) {
-        return new StoreIndexedNodeGen(array, index, elementKind, value);
+        return USE_GENERATED_NODES ? new StoreIndexedNodeGen(array, index, elementKind, value) : new StoreIndexedNode(array, index, elementKind, value);
     }
 
     StoreIndexedNode(ValueNode array, ValueNode index, Kind elementKind, ValueNode value) {

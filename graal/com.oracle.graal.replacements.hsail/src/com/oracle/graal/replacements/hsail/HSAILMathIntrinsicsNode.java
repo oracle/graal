@@ -76,7 +76,7 @@ public class HSAILMathIntrinsicsNode extends FloatingNode implements Canonicaliz
      * @param op the math operation
      */
     public static HSAILMathIntrinsicsNode create(ValueNode x, HSAILArithmetic op) {
-        return new HSAILMathIntrinsicsNodeGen(x, op);
+        return USE_GENERATED_NODES ? new HSAILMathIntrinsicsNodeGen(x, op) : new HSAILMathIntrinsicsNode(x, op);
     }
 
     protected HSAILMathIntrinsicsNode(ValueNode x, HSAILArithmetic op) {

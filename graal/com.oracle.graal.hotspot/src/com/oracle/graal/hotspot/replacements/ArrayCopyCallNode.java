@@ -60,7 +60,7 @@ public class ArrayCopyCallNode extends AbstractMemoryCheckpoint implements Lower
 
     public static ArrayCopyCallNode create(ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, Kind elementKind, boolean aligned, boolean disjoint,
                     boolean uninitialized) {
-        return new ArrayCopyCallNodeGen(src, srcPos, dest, destPos, length, elementKind, aligned, disjoint, uninitialized);
+        return USE_GENERATED_NODES ? new ArrayCopyCallNodeGen(src, srcPos, dest, destPos, length, elementKind, aligned, disjoint, uninitialized) : new ArrayCopyCallNode(src, srcPos, dest, destPos, length, elementKind, aligned, disjoint, uninitialized);
     }
 
     ArrayCopyCallNode(ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, Kind elementKind, boolean aligned, boolean disjoint, boolean uninitialized) {
@@ -78,7 +78,7 @@ public class ArrayCopyCallNode extends AbstractMemoryCheckpoint implements Lower
     }
 
     public static ArrayCopyCallNode create(ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, Kind elementKind, boolean disjoint) {
-        return new ArrayCopyCallNodeGen(src, srcPos, dest, destPos, length, elementKind, disjoint);
+        return USE_GENERATED_NODES ? new ArrayCopyCallNodeGen(src, srcPos, dest, destPos, length, elementKind, disjoint) : new ArrayCopyCallNode(src, srcPos, dest, destPos, length, elementKind, disjoint);
     }
 
     ArrayCopyCallNode(ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, Kind elementKind, boolean disjoint) {

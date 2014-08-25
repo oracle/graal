@@ -37,7 +37,7 @@ import com.oracle.graal.nodes.spi.*;
 public class ExceptionObjectNode extends DispatchBeginNode implements Lowerable, MemoryCheckpoint.Single {
 
     public static ExceptionObjectNode create(MetaAccessProvider metaAccess) {
-        return new ExceptionObjectNodeGen(metaAccess);
+        return USE_GENERATED_NODES ? new ExceptionObjectNodeGen(metaAccess) : new ExceptionObjectNode(metaAccess);
     }
 
     ExceptionObjectNode(MetaAccessProvider metaAccess) {

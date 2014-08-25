@@ -38,7 +38,7 @@ import com.oracle.graal.truffle.*;
 public class AssumptionNode extends MacroNode implements com.oracle.graal.graph.IterableNodeType, Simplifiable {
 
     public static AssumptionNode create(Invoke invoke) {
-        return new AssumptionNodeGen(invoke);
+        return USE_GENERATED_NODES ? new AssumptionNodeGen(invoke) : new AssumptionNode(invoke);
     }
 
     protected AssumptionNode(Invoke invoke) {

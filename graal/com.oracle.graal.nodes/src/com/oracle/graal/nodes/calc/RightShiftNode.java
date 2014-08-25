@@ -35,7 +35,7 @@ import com.oracle.graal.nodes.type.*;
 public class RightShiftNode extends ShiftNode {
 
     public static RightShiftNode create(ValueNode x, ValueNode y) {
-        return new RightShiftNodeGen(x, y);
+        return USE_GENERATED_NODES ? new RightShiftNodeGen(x, y) : new RightShiftNode(x, y);
     }
 
     protected RightShiftNode(ValueNode x, ValueNode y) {

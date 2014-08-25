@@ -40,11 +40,11 @@ import com.oracle.graal.nodes.util.*;
 @NodeInfo(allowedUsageTypes = {InputType.Association})
 public class MergeNode extends BeginStateSplitNode implements IterableNodeType, LIRLowerable {
     public static MergeNode create() {
-        return new MergeNodeGen();
+        return USE_GENERATED_NODES ? new MergeNodeGen() : new MergeNode();
     }
 
     public static Class<? extends MergeNode> getGenClass() {
-        return MergeNodeGen.class;
+        return USE_GENERATED_NODES ? MergeNodeGen.class : MergeNode.class;
     }
 
     MergeNode() {

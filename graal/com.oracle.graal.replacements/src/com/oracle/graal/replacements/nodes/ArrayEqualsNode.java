@@ -51,7 +51,7 @@ public class ArrayEqualsNode extends FixedWithNextNode implements LIRLowerable, 
     @Input ValueNode length;
 
     public static ArrayEqualsNode create(ValueNode array1, ValueNode array2, ValueNode length) {
-        return new ArrayEqualsNodeGen(array1, array2, length);
+        return USE_GENERATED_NODES ? new ArrayEqualsNodeGen(array1, array2, length) : new ArrayEqualsNode(array1, array2, length);
     }
 
     protected ArrayEqualsNode(ValueNode array1, ValueNode array2, ValueNode length) {

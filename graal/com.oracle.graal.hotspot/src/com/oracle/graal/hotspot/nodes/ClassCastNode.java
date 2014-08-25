@@ -39,7 +39,7 @@ import com.oracle.graal.replacements.nodes.*;
 public class ClassCastNode extends MacroStateSplitNode implements Canonicalizable.Binary<ValueNode> {
 
     public static ClassCastNode create(Invoke invoke) {
-        return new ClassCastNodeGen(invoke);
+        return USE_GENERATED_NODES ? new ClassCastNodeGen(invoke) : new ClassCastNode(invoke);
     }
 
     protected ClassCastNode(Invoke invoke) {

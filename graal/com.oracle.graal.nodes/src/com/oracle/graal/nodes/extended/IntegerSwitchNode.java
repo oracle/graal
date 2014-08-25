@@ -52,7 +52,7 @@ public class IntegerSwitchNode extends SwitchNode implements LIRLowerable, Simpl
      * @param keySuccessors the successor index for each key
      */
     public static IntegerSwitchNode create(ValueNode value, BeginNode[] successors, int[] keys, double[] keyProbabilities, int[] keySuccessors) {
-        return new IntegerSwitchNodeGen(value, successors, keys, keyProbabilities, keySuccessors);
+        return USE_GENERATED_NODES ? new IntegerSwitchNodeGen(value, successors, keys, keyProbabilities, keySuccessors) : new IntegerSwitchNode(value, successors, keys, keyProbabilities, keySuccessors);
     }
 
     IntegerSwitchNode(ValueNode value, BeginNode[] successors, int[] keys, double[] keyProbabilities, int[] keySuccessors) {
@@ -82,7 +82,7 @@ public class IntegerSwitchNode extends SwitchNode implements LIRLowerable, Simpl
      * @param keySuccessors the successor index for each key
      */
     public static IntegerSwitchNode create(ValueNode value, int successorCount, int[] keys, double[] keyProbabilities, int[] keySuccessors) {
-        return new IntegerSwitchNodeGen(value, successorCount, keys, keyProbabilities, keySuccessors);
+        return USE_GENERATED_NODES ? new IntegerSwitchNodeGen(value, successorCount, keys, keyProbabilities, keySuccessors) : new IntegerSwitchNode(value, successorCount, keys, keyProbabilities, keySuccessors);
     }
 
     IntegerSwitchNode(ValueNode value, int successorCount, int[] keys, double[] keyProbabilities, int[] keySuccessors) {

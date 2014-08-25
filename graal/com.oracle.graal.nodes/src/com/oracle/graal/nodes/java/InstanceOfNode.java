@@ -46,7 +46,7 @@ public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable, Virtu
      * @param object the object being tested by the instanceof
      */
     public static InstanceOfNode create(ResolvedJavaType type, ValueNode object, JavaTypeProfile profile) {
-        return new InstanceOfNodeGen(type, object, profile);
+        return USE_GENERATED_NODES ? new InstanceOfNodeGen(type, object, profile) : new InstanceOfNode(type, object, profile);
     }
 
     InstanceOfNode(ResolvedJavaType type, ValueNode object, JavaTypeProfile profile) {

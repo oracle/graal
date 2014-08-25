@@ -46,7 +46,7 @@ public class LoadFieldNode extends AccessFieldNode implements Canonicalizable.Un
      * @param field the compiler interface field
      */
     public static LoadFieldNode create(ValueNode object, ResolvedJavaField field) {
-        return new LoadFieldNodeGen(object, field);
+        return USE_GENERATED_NODES ? new LoadFieldNodeGen(object, field) : new LoadFieldNode(object, field);
     }
 
     protected LoadFieldNode(ValueNode object, ResolvedJavaField field) {

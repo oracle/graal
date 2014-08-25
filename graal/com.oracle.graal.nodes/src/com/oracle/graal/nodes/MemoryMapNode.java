@@ -50,7 +50,7 @@ public class MemoryMapNode extends FloatingNode implements MemoryMap, LIRLowerab
     }
 
     public static MemoryMapNode create(Map<LocationIdentity, MemoryNode> mmap) {
-        return new MemoryMapNodeGen(mmap);
+        return USE_GENERATED_NODES ? new MemoryMapNodeGen(mmap) : new MemoryMapNode(mmap);
     }
 
     protected MemoryMapNode(Map<LocationIdentity, MemoryNode> mmap) {

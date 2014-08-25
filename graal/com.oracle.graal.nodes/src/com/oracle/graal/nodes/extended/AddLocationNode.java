@@ -57,7 +57,7 @@ public class AddLocationNode extends LocationNode implements Canonicalizable.Bin
     }
 
     public static AddLocationNode create(ValueNode x, ValueNode y) {
-        return new AddLocationNodeGen(x, y);
+        return USE_GENERATED_NODES ? new AddLocationNodeGen(x, y) : new AddLocationNode(x, y);
     }
 
     AddLocationNode(ValueNode x, ValueNode y) {

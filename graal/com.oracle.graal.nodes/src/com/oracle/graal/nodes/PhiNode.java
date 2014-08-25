@@ -143,7 +143,7 @@ public abstract class PhiNode extends FloatingNode implements Simplifiable {
     static class MultipleValuesNode extends ValueNode {
 
         public static MultipleValuesNode create() {
-            return new PhiNode_MultipleValuesNodeGen();
+            return USE_GENERATED_NODES ? new PhiNode_MultipleValuesNodeGen() : new MultipleValuesNode();
         }
 
         protected MultipleValuesNode() {

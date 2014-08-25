@@ -29,7 +29,7 @@ import com.oracle.graal.nodes.*;
 public class SerialArrayRangeWriteBarrier extends ArrayRangeWriteBarrier {
 
     public static SerialArrayRangeWriteBarrier create(ValueNode object, ValueNode startIndex, ValueNode length) {
-        return new SerialArrayRangeWriteBarrierGen(object, startIndex, length);
+        return USE_GENERATED_NODES ? new SerialArrayRangeWriteBarrierGen(object, startIndex, length) : new SerialArrayRangeWriteBarrier(object, startIndex, length);
     }
 
     protected SerialArrayRangeWriteBarrier(ValueNode object, ValueNode startIndex, ValueNode length) {

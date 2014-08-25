@@ -44,7 +44,7 @@ public class FloatLessThanNode extends CompareNode {
      *            a "true" result
      */
     public static FloatLessThanNode create(ValueNode x, ValueNode y, boolean unorderedIsTrue) {
-        return new FloatLessThanNodeGen(x, y, unorderedIsTrue);
+        return USE_GENERATED_NODES ? new FloatLessThanNodeGen(x, y, unorderedIsTrue) : new FloatLessThanNode(x, y, unorderedIsTrue);
     }
 
     protected FloatLessThanNode(ValueNode x, ValueNode y, boolean unorderedIsTrue) {

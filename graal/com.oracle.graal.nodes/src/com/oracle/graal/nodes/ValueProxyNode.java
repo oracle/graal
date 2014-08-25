@@ -33,7 +33,7 @@ public class ValueProxyNode extends ProxyNode implements Canonicalizable, Virtua
     @Input ValueNode value;
 
     public static ValueProxyNode create(ValueNode value, BeginNode proxyPoint) {
-        return new ValueProxyNodeGen(value, proxyPoint);
+        return USE_GENERATED_NODES ? new ValueProxyNodeGen(value, proxyPoint) : new ValueProxyNode(value, proxyPoint);
     }
 
     protected ValueProxyNode(ValueNode value, BeginNode proxyPoint) {

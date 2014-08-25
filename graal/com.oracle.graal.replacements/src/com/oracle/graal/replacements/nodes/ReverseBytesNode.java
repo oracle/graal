@@ -35,7 +35,7 @@ import com.oracle.graal.nodes.type.*;
 public class ReverseBytesNode extends UnaryNode implements LIRLowerable {
 
     public static ReverseBytesNode create(ValueNode value) {
-        return new ReverseBytesNodeGen(value);
+        return USE_GENERATED_NODES ? new ReverseBytesNodeGen(value) : new ReverseBytesNode(value);
     }
 
     protected ReverseBytesNode(ValueNode value) {

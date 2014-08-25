@@ -54,7 +54,7 @@ public class ReadRegisterNode extends FixedWithNextNode implements LIRLowerable 
     private final boolean incoming;
 
     public static ReadRegisterNode create(Register register, Kind kind, boolean directUse, boolean incoming) {
-        return new ReadRegisterNodeGen(register, kind, directUse, incoming);
+        return USE_GENERATED_NODES ? new ReadRegisterNodeGen(register, kind, directUse, incoming) : new ReadRegisterNode(register, kind, directUse, incoming);
     }
 
     protected ReadRegisterNode(Register register, Kind kind, boolean directUse, boolean incoming) {
@@ -70,7 +70,7 @@ public class ReadRegisterNode extends FixedWithNextNode implements LIRLowerable 
      * definition.
      */
     public static ReadRegisterNode create(Register register, boolean directUse, boolean incoming) {
-        return new ReadRegisterNodeGen(register, directUse, incoming);
+        return USE_GENERATED_NODES ? new ReadRegisterNodeGen(register, directUse, incoming) : new ReadRegisterNode(register, directUse, incoming);
     }
 
     protected ReadRegisterNode(Register register, boolean directUse, boolean incoming) {

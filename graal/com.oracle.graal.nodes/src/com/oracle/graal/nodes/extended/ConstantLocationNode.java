@@ -45,7 +45,7 @@ public class ConstantLocationNode extends LocationNode {
     }
 
     public static ConstantLocationNode create(LocationIdentity identity, Kind kind, long displacement) {
-        return new ConstantLocationNodeGen(identity, kind, displacement);
+        return USE_GENERATED_NODES ? new ConstantLocationNodeGen(identity, kind, displacement) : new ConstantLocationNode(identity, kind, displacement);
     }
 
     ConstantLocationNode(LocationIdentity identity, Kind kind, long displacement) {

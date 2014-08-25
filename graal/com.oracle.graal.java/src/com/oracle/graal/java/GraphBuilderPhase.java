@@ -111,7 +111,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             private final Object nextPlaceholder;
 
             public static BlockPlaceholderNode create(BytecodeParser builder) {
-                return new GraphBuilderPhase_Instance_BlockPlaceholderNodeGen(builder);
+                return USE_GENERATED_NODES ? new GraphBuilderPhase_Instance_BlockPlaceholderNodeGen(builder) : new BlockPlaceholderNode(builder);
             }
 
             protected BlockPlaceholderNode(BytecodeParser builder) {

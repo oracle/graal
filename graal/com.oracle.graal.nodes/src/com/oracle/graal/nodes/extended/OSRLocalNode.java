@@ -31,7 +31,7 @@ import com.oracle.graal.nodes.*;
 public class OSRLocalNode extends AbstractLocalNode implements IterableNodeType {
 
     public static OSRLocalNode create(int index, Stamp stamp) {
-        return new OSRLocalNodeGen(index, stamp);
+        return USE_GENERATED_NODES ? new OSRLocalNodeGen(index, stamp) : new OSRLocalNode(index, stamp);
     }
 
     OSRLocalNode(int index, Stamp stamp) {

@@ -36,7 +36,7 @@ public class NodeUsagesTests {
     @NodeInfo
     static class Def extends Node {
         public static Def create() {
-            return new NodeUsagesTests_DefGen();
+            return USE_GENERATED_NODES ? new NodeUsagesTests_DefGen() : new Def();
         }
     }
 
@@ -47,7 +47,7 @@ public class NodeUsagesTests {
         @Input Def in2;
 
         public static Use create(Def in0, Def in1, Def in2) {
-            return new NodeUsagesTests_UseGen(in0, in1, in2);
+            return USE_GENERATED_NODES ? new NodeUsagesTests_UseGen(in0, in1, in2) : new Use(in0, in1, in2);
         }
 
         Use(Def in0, Def in1, Def in2) {

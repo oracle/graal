@@ -32,7 +32,7 @@ import com.oracle.graal.nodes.extended.*;
 public class SnippetAnchorNode extends FixedWithNextNode implements Simplifiable, GuardingNode {
 
     public static SnippetAnchorNode create() {
-        return new SnippetAnchorNodeGen();
+        return USE_GENERATED_NODES ? new SnippetAnchorNodeGen() : new SnippetAnchorNode();
     }
 
     protected SnippetAnchorNode() {

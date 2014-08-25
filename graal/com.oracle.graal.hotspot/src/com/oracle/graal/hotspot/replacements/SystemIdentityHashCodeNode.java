@@ -34,7 +34,7 @@ import com.oracle.graal.replacements.nodes.*;
 public class SystemIdentityHashCodeNode extends PureFunctionMacroNode {
 
     public static SystemIdentityHashCodeNode create(Invoke invoke) {
-        return new SystemIdentityHashCodeNodeGen(invoke);
+        return USE_GENERATED_NODES ? new SystemIdentityHashCodeNodeGen(invoke) : new SystemIdentityHashCodeNode(invoke);
     }
 
     protected SystemIdentityHashCodeNode(Invoke invoke) {

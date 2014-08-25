@@ -52,7 +52,7 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
     }
 
     public static PiNode create(ValueNode object, Stamp stamp) {
-        return new PiNodeGen(object, stamp);
+        return USE_GENERATED_NODES ? new PiNodeGen(object, stamp) : new PiNode(object, stamp);
     }
 
     protected PiNode(ValueNode object, Stamp stamp) {
@@ -62,7 +62,7 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
     }
 
     public static PiNode create(ValueNode object, Stamp stamp, ValueNode anchor) {
-        return new PiNodeGen(object, stamp, anchor);
+        return USE_GENERATED_NODES ? new PiNodeGen(object, stamp, anchor) : new PiNode(object, stamp, anchor);
     }
 
     protected PiNode(ValueNode object, Stamp stamp, ValueNode anchor) {
@@ -72,7 +72,7 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
     }
 
     public static PiNode create(ValueNode object, ResolvedJavaType toType, boolean exactType, boolean nonNull) {
-        return new PiNodeGen(object, toType, exactType, nonNull);
+        return USE_GENERATED_NODES ? new PiNodeGen(object, toType, exactType, nonNull) : new PiNode(object, toType, exactType, nonNull);
     }
 
     protected PiNode(ValueNode object, ResolvedJavaType toType, boolean exactType, boolean nonNull) {

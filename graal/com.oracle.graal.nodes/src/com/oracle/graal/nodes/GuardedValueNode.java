@@ -43,7 +43,7 @@ public class GuardedValueNode extends FloatingGuardedNode implements LIRLowerabl
     private final Stamp piStamp;
 
     public static GuardedValueNode create(ValueNode object, GuardingNode guard, Stamp stamp) {
-        return new GuardedValueNodeGen(object, guard, stamp);
+        return USE_GENERATED_NODES ? new GuardedValueNodeGen(object, guard, stamp) : new GuardedValueNode(object, guard, stamp);
     }
 
     protected GuardedValueNode(ValueNode object, GuardingNode guard, Stamp stamp) {
@@ -53,7 +53,7 @@ public class GuardedValueNode extends FloatingGuardedNode implements LIRLowerabl
     }
 
     public static GuardedValueNode create(ValueNode object, GuardingNode guard) {
-        return new GuardedValueNodeGen(object, guard);
+        return USE_GENERATED_NODES ? new GuardedValueNodeGen(object, guard) : new GuardedValueNode(object, guard);
     }
 
     protected GuardedValueNode(ValueNode object, GuardingNode guard) {

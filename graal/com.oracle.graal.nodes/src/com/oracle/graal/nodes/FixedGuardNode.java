@@ -33,7 +33,7 @@ import com.oracle.graal.nodes.spi.*;
 public class FixedGuardNode extends AbstractFixedGuardNode implements Lowerable, IterableNodeType {
 
     public static FixedGuardNode create(LogicNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action) {
-        return new FixedGuardNodeGen(condition, deoptReason, action);
+        return USE_GENERATED_NODES ? new FixedGuardNodeGen(condition, deoptReason, action) : new FixedGuardNode(condition, deoptReason, action);
     }
 
     protected FixedGuardNode(LogicNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action) {
@@ -41,7 +41,7 @@ public class FixedGuardNode extends AbstractFixedGuardNode implements Lowerable,
     }
 
     public static FixedGuardNode create(LogicNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action, boolean negated) {
-        return new FixedGuardNodeGen(condition, deoptReason, action, negated);
+        return USE_GENERATED_NODES ? new FixedGuardNodeGen(condition, deoptReason, action, negated) : new FixedGuardNode(condition, deoptReason, action, negated);
     }
 
     protected FixedGuardNode(LogicNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action, boolean negated) {

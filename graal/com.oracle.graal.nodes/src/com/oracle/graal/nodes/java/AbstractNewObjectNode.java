@@ -47,7 +47,7 @@ public class AbstractNewObjectNode extends DeoptimizingFixedWithNextNode impleme
      * @param fillContents determines if the object's contents should be initialized to zero/null.
      */
     public static AbstractNewObjectNode create(Stamp stamp, boolean fillContents) {
-        return new AbstractNewObjectNodeGen(stamp, fillContents);
+        return USE_GENERATED_NODES ? new AbstractNewObjectNodeGen(stamp, fillContents) : new AbstractNewObjectNode(stamp, fillContents);
     }
 
     protected AbstractNewObjectNode(Stamp stamp, boolean fillContents) {

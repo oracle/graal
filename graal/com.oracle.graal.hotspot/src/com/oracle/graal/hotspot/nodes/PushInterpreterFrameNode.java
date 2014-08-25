@@ -42,7 +42,7 @@ public class PushInterpreterFrameNode extends FixedWithNextNode implements LIRLo
     @Input ValueNode initialInfo;
 
     public static PushInterpreterFrameNode create(ValueNode frameSize, ValueNode framePc, ValueNode senderSp, ValueNode initialInfo) {
-        return new PushInterpreterFrameNodeGen(frameSize, framePc, senderSp, initialInfo);
+        return USE_GENERATED_NODES ? new PushInterpreterFrameNodeGen(frameSize, framePc, senderSp, initialInfo) : new PushInterpreterFrameNode(frameSize, framePc, senderSp, initialInfo);
     }
 
     protected PushInterpreterFrameNode(ValueNode frameSize, ValueNode framePc, ValueNode senderSp, ValueNode initialInfo) {

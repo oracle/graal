@@ -40,7 +40,7 @@ public class SaveAllRegistersNode extends FixedWithNextNode implements LIRLowera
     private SaveRegistersOp saveRegistersOp;
 
     public static SaveAllRegistersNode create() {
-        return new SaveAllRegistersNodeGen();
+        return USE_GENERATED_NODES ? new SaveAllRegistersNodeGen() : new SaveAllRegistersNode();
     }
 
     protected SaveAllRegistersNode() {

@@ -45,7 +45,7 @@ public class ForeignCallNode extends AbstractMemoryCheckpoint implements LIRLowe
     private final ForeignCallDescriptor descriptor;
 
     public static ForeignCallNode create(@InjectedNodeParameter ForeignCallsProvider foreignCalls, ForeignCallDescriptor descriptor, ValueNode... arguments) {
-        return new ForeignCallNodeGen(foreignCalls, descriptor, arguments);
+        return USE_GENERATED_NODES ? new ForeignCallNodeGen(foreignCalls, descriptor, arguments) : new ForeignCallNode(foreignCalls, descriptor, arguments);
     }
 
     ForeignCallNode(ForeignCallsProvider foreignCalls, ForeignCallDescriptor descriptor, ValueNode... arguments) {
@@ -56,7 +56,7 @@ public class ForeignCallNode extends AbstractMemoryCheckpoint implements LIRLowe
     }
 
     public static ForeignCallNode create(ForeignCallsProvider foreignCalls, ForeignCallDescriptor descriptor, List<ValueNode> arguments) {
-        return new ForeignCallNodeGen(foreignCalls, descriptor, arguments);
+        return USE_GENERATED_NODES ? new ForeignCallNodeGen(foreignCalls, descriptor, arguments) : new ForeignCallNode(foreignCalls, descriptor, arguments);
     }
 
     ForeignCallNode(ForeignCallsProvider foreignCalls, ForeignCallDescriptor descriptor, List<ValueNode> arguments) {
@@ -64,7 +64,7 @@ public class ForeignCallNode extends AbstractMemoryCheckpoint implements LIRLowe
     }
 
     public static ForeignCallNode create(@InjectedNodeParameter ForeignCallsProvider foreignCalls, ForeignCallDescriptor descriptor, Stamp stamp, List<ValueNode> arguments) {
-        return new ForeignCallNodeGen(foreignCalls, descriptor, stamp, arguments);
+        return USE_GENERATED_NODES ? new ForeignCallNodeGen(foreignCalls, descriptor, stamp, arguments) : new ForeignCallNode(foreignCalls, descriptor, stamp, arguments);
     }
 
     ForeignCallNode(ForeignCallsProvider foreignCalls, ForeignCallDescriptor descriptor, Stamp stamp, List<ValueNode> arguments) {
@@ -75,7 +75,7 @@ public class ForeignCallNode extends AbstractMemoryCheckpoint implements LIRLowe
     }
 
     public static ForeignCallNode create(@InjectedNodeParameter ForeignCallsProvider foreignCalls, ForeignCallDescriptor descriptor, Stamp stamp) {
-        return new ForeignCallNodeGen(foreignCalls, descriptor, stamp);
+        return USE_GENERATED_NODES ? new ForeignCallNodeGen(foreignCalls, descriptor, stamp) : new ForeignCallNode(foreignCalls, descriptor, stamp);
     }
 
     protected ForeignCallNode(ForeignCallsProvider foreignCalls, ForeignCallDescriptor descriptor, Stamp stamp) {

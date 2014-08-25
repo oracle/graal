@@ -35,11 +35,11 @@ import com.oracle.graal.nodes.util.*;
 public class FloatSubNode extends FloatArithmeticNode {
 
     public static FloatSubNode create(ValueNode x, ValueNode y, boolean isStrictFP) {
-        return new FloatSubNodeGen(x, y, isStrictFP);
+        return USE_GENERATED_NODES ? new FloatSubNodeGen(x, y, isStrictFP) : new FloatSubNode(x, y, isStrictFP);
     }
 
     public static Class<? extends FloatSubNode> getGenClass() {
-        return FloatSubNodeGen.class;
+        return USE_GENERATED_NODES ? FloatSubNodeGen.class : FloatSubNode.class;
     }
 
     protected FloatSubNode(ValueNode x, ValueNode y, boolean isStrictFP) {

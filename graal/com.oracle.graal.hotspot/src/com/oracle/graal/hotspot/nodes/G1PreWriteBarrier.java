@@ -34,7 +34,7 @@ public class G1PreWriteBarrier extends WriteBarrier implements DeoptimizingNode.
     private final boolean doLoad;
 
     public static G1PreWriteBarrier create(ValueNode object, ValueNode expectedObject, LocationNode location, boolean doLoad, boolean nullCheck) {
-        return new G1PreWriteBarrierGen(object, expectedObject, location, doLoad, nullCheck);
+        return USE_GENERATED_NODES ? new G1PreWriteBarrierGen(object, expectedObject, location, doLoad, nullCheck) : new G1PreWriteBarrier(object, expectedObject, location, doLoad, nullCheck);
     }
 
     protected G1PreWriteBarrier(ValueNode object, ValueNode expectedObject, LocationNode location, boolean doLoad, boolean nullCheck) {

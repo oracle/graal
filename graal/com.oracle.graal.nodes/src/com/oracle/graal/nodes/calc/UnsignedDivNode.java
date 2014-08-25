@@ -33,7 +33,7 @@ import com.oracle.graal.nodes.spi.*;
 public class UnsignedDivNode extends FixedBinaryNode implements Lowerable, LIRLowerable {
 
     public static UnsignedDivNode create(ValueNode x, ValueNode y) {
-        return new UnsignedDivNodeGen(x, y);
+        return USE_GENERATED_NODES ? new UnsignedDivNodeGen(x, y) : new UnsignedDivNode(x, y);
     }
 
     protected UnsignedDivNode(ValueNode x, ValueNode y) {

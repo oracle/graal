@@ -47,7 +47,7 @@ public class AtomicReadAndWriteNode extends AbstractMemoryCheckpoint implements 
     private final LocationIdentity locationIdentity;
 
     public static AtomicReadAndWriteNode create(ValueNode object, ValueNode offset, ValueNode newValue, Kind valueKind, LocationIdentity locationIdentity) {
-        return new AtomicReadAndWriteNodeGen(object, offset, newValue, valueKind, locationIdentity);
+        return USE_GENERATED_NODES ? new AtomicReadAndWriteNodeGen(object, offset, newValue, valueKind, locationIdentity) : new AtomicReadAndWriteNode(object, offset, newValue, valueKind, locationIdentity);
     }
 
     AtomicReadAndWriteNode(ValueNode object, ValueNode offset, ValueNode newValue, Kind valueKind, LocationIdentity locationIdentity) {

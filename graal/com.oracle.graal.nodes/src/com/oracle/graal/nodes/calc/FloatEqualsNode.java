@@ -40,7 +40,7 @@ public class FloatEqualsNode extends CompareNode {
      * @param y the instruction that produces the second input to this instruction
      */
     public static FloatEqualsNode create(ValueNode x, ValueNode y) {
-        return new FloatEqualsNodeGen(x, y);
+        return USE_GENERATED_NODES ? new FloatEqualsNodeGen(x, y) : new FloatEqualsNode(x, y);
     }
 
     protected FloatEqualsNode(ValueNode x, ValueNode y) {

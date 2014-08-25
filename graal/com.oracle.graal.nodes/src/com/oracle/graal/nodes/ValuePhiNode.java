@@ -42,7 +42,7 @@ public class ValuePhiNode extends PhiNode {
      * @param merge the merge that the new phi belongs to
      */
     public static ValuePhiNode create(Stamp stamp, MergeNode merge) {
-        return new ValuePhiNodeGen(stamp, merge);
+        return USE_GENERATED_NODES ? new ValuePhiNodeGen(stamp, merge) : new ValuePhiNode(stamp, merge);
     }
 
     protected ValuePhiNode(Stamp stamp, MergeNode merge) {
@@ -59,7 +59,7 @@ public class ValuePhiNode extends PhiNode {
      * @param values the initial values of the phi
      */
     public static ValuePhiNode create(Stamp stamp, MergeNode merge, ValueNode[] values) {
-        return new ValuePhiNodeGen(stamp, merge, values);
+        return USE_GENERATED_NODES ? new ValuePhiNodeGen(stamp, merge, values) : new ValuePhiNode(stamp, merge, values);
     }
 
     protected ValuePhiNode(Stamp stamp, MergeNode merge, ValueNode[] values) {

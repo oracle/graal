@@ -36,11 +36,11 @@ import com.oracle.graal.nodes.util.*;
 public class OrNode extends BitLogicNode {
 
     public static OrNode create(ValueNode x, ValueNode y) {
-        return new OrNodeGen(x, y);
+        return USE_GENERATED_NODES ? new OrNodeGen(x, y) : new OrNode(x, y);
     }
 
     public static Class<? extends OrNode> getGenClass() {
-        return OrNodeGen.class;
+        return USE_GENERATED_NODES ? OrNodeGen.class : OrNode.class;
     }
 
     OrNode(ValueNode x, ValueNode y) {

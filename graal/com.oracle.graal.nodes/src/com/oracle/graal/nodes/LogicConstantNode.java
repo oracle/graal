@@ -35,7 +35,7 @@ public class LogicConstantNode extends LogicNode implements LIRLowerable {
     public final boolean value;
 
     public static LogicConstantNode create(boolean value) {
-        return new LogicConstantNodeGen(value);
+        return USE_GENERATED_NODES ? new LogicConstantNodeGen(value) : new LogicConstantNode(value);
     }
 
     protected LogicConstantNode(boolean value) {

@@ -34,7 +34,7 @@ import com.oracle.graal.word.*;
 public class HSAILDirectLoadAcquireNode extends DirectReadNode {
 
     public static HSAILDirectLoadAcquireNode create(ValueNode address, Kind readKind) {
-        return new HSAILDirectLoadAcquireNodeGen(address, readKind);
+        return USE_GENERATED_NODES ? new HSAILDirectLoadAcquireNodeGen(address, readKind) : new HSAILDirectLoadAcquireNode(address, readKind);
     }
 
     protected HSAILDirectLoadAcquireNode(ValueNode address, Kind readKind) {

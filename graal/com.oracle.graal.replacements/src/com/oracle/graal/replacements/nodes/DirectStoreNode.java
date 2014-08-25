@@ -43,7 +43,7 @@ public class DirectStoreNode extends FixedWithNextNode implements LIRLowerable {
     private final Kind kind;
 
     public static DirectStoreNode create(ValueNode address, ValueNode value, Kind kind) {
-        return new DirectStoreNodeGen(address, value, kind);
+        return USE_GENERATED_NODES ? new DirectStoreNodeGen(address, value, kind) : new DirectStoreNode(address, value, kind);
     }
 
     protected DirectStoreNode(ValueNode address, ValueNode value, Kind kind) {

@@ -33,7 +33,7 @@ public class NullCheckNode extends DeoptimizingFixedWithNextNode implements LIRL
     @Input ValueNode object;
 
     public static NullCheckNode create(ValueNode object) {
-        return new NullCheckNodeGen(object);
+        return USE_GENERATED_NODES ? new NullCheckNodeGen(object) : new NullCheckNode(object);
     }
 
     NullCheckNode(ValueNode object) {

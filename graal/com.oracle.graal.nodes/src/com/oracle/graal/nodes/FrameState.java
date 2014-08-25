@@ -89,7 +89,7 @@ public class FrameState extends VirtualState implements IterableNodeType {
      */
     public static FrameState create(FrameState outerFrameState, ResolvedJavaMethod method, int bci, List<ValueNode> values, int localsSize, int stackSize, boolean rethrowException,
                     boolean duringCall, List<MonitorIdNode> monitorIds, List<EscapeObjectState> virtualObjectMappings) {
-        return new FrameStateGen(outerFrameState, method, bci, values, localsSize, stackSize, rethrowException, duringCall, monitorIds, virtualObjectMappings);
+        return USE_GENERATED_NODES ? new FrameStateGen(outerFrameState, method, bci, values, localsSize, stackSize, rethrowException, duringCall, monitorIds, virtualObjectMappings) : new FrameState(outerFrameState, method, bci, values, localsSize, stackSize, rethrowException, duringCall, monitorIds, virtualObjectMappings);
     }
 
     protected FrameState(FrameState outerFrameState, ResolvedJavaMethod method, int bci, List<ValueNode> values, int localsSize, int stackSize, boolean rethrowException, boolean duringCall,
@@ -116,7 +116,7 @@ public class FrameState extends VirtualState implements IterableNodeType {
      * @param bci marker bci, needs to be &lt; 0
      */
     public static FrameState create(int bci) {
-        return new FrameStateGen(bci);
+        return USE_GENERATED_NODES ? new FrameStateGen(bci) : new FrameState(bci);
     }
 
     protected FrameState(int bci) {
@@ -127,7 +127,7 @@ public class FrameState extends VirtualState implements IterableNodeType {
 
     public static FrameState create(ResolvedJavaMethod method, int bci, ValueNode[] locals, List<ValueNode> stack, ValueNode[] locks, MonitorIdNode[] monitorIds, boolean rethrowException,
                     boolean duringCall) {
-        return new FrameStateGen(method, bci, locals, stack, locks, monitorIds, rethrowException, duringCall);
+        return USE_GENERATED_NODES ? new FrameStateGen(method, bci, locals, stack, locks, monitorIds, rethrowException, duringCall) : new FrameState(method, bci, locals, stack, locks, monitorIds, rethrowException, duringCall);
     }
 
     protected FrameState(ResolvedJavaMethod method, int bci, ValueNode[] locals, List<ValueNode> stack, ValueNode[] locks, MonitorIdNode[] monitorIds, boolean rethrowException, boolean duringCall) {

@@ -43,7 +43,7 @@ import com.oracle.graal.replacements.nodes.*;
 public class ArrayCopyNode extends MacroStateSplitNode implements Virtualizable, Lowerable {
 
     public static ArrayCopyNode create(Invoke invoke) {
-        return new ArrayCopyNodeGen(invoke);
+        return USE_GENERATED_NODES ? new ArrayCopyNodeGen(invoke) : new ArrayCopyNode(invoke);
     }
 
     protected ArrayCopyNode(Invoke invoke) {

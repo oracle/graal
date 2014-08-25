@@ -49,7 +49,7 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Invoke,
     private double exceptionProbability;
 
     public static InvokeWithExceptionNode create(CallTargetNode callTarget, BeginNode exceptionEdge, int bci) {
-        return new InvokeWithExceptionNodeGen(callTarget, exceptionEdge, bci);
+        return USE_GENERATED_NODES ? new InvokeWithExceptionNodeGen(callTarget, exceptionEdge, bci) : new InvokeWithExceptionNode(callTarget, exceptionEdge, bci);
     }
 
     protected InvokeWithExceptionNode(CallTargetNode callTarget, BeginNode exceptionEdge, int bci) {

@@ -33,7 +33,7 @@ import com.oracle.graal.nodes.spi.*;
 public class UnsignedRemNode extends FixedBinaryNode implements Lowerable, LIRLowerable {
 
     public static UnsignedRemNode create(ValueNode x, ValueNode y) {
-        return new UnsignedRemNodeGen(x, y);
+        return USE_GENERATED_NODES ? new UnsignedRemNodeGen(x, y) : new UnsignedRemNode(x, y);
     }
 
     protected UnsignedRemNode(ValueNode x, ValueNode y) {

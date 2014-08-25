@@ -39,7 +39,7 @@ import com.oracle.graal.nodes.virtual.*;
 public class ReadNode extends FloatableAccessNode implements LIRLowerable, Canonicalizable, PiPushable, Virtualizable, GuardingNode {
 
     public static ReadNode create(ValueNode object, ValueNode location, Stamp stamp, BarrierType barrierType) {
-        return new ReadNodeGen(object, location, stamp, barrierType);
+        return USE_GENERATED_NODES ? new ReadNodeGen(object, location, stamp, barrierType) : new ReadNode(object, location, stamp, barrierType);
     }
 
     ReadNode(ValueNode object, ValueNode location, Stamp stamp, BarrierType barrierType) {
@@ -47,7 +47,7 @@ public class ReadNode extends FloatableAccessNode implements LIRLowerable, Canon
     }
 
     public static ReadNode create(ValueNode object, ValueNode location, Stamp stamp, GuardingNode guard, BarrierType barrierType) {
-        return new ReadNodeGen(object, location, stamp, guard, barrierType);
+        return USE_GENERATED_NODES ? new ReadNodeGen(object, location, stamp, guard, barrierType) : new ReadNode(object, location, stamp, guard, barrierType);
     }
 
     ReadNode(ValueNode object, ValueNode location, Stamp stamp, GuardingNode guard, BarrierType barrierType) {
@@ -55,7 +55,7 @@ public class ReadNode extends FloatableAccessNode implements LIRLowerable, Canon
     }
 
     public static ReadNode create(ValueNode object, ValueNode location, Stamp stamp, GuardingNode guard, BarrierType barrierType, boolean nullCheck, FrameState stateBefore) {
-        return new ReadNodeGen(object, location, stamp, guard, barrierType, nullCheck, stateBefore);
+        return USE_GENERATED_NODES ? new ReadNodeGen(object, location, stamp, guard, barrierType, nullCheck, stateBefore) : new ReadNode(object, location, stamp, guard, barrierType, nullCheck, stateBefore);
     }
 
     ReadNode(ValueNode object, ValueNode location, Stamp stamp, GuardingNode guard, BarrierType barrierType, boolean nullCheck, FrameState stateBefore) {
@@ -63,7 +63,7 @@ public class ReadNode extends FloatableAccessNode implements LIRLowerable, Canon
     }
 
     public static ReadNode create(ValueNode object, ValueNode location, ValueNode guard, BarrierType barrierType) {
-        return new ReadNodeGen(object, location, guard, barrierType);
+        return USE_GENERATED_NODES ? new ReadNodeGen(object, location, guard, barrierType) : new ReadNode(object, location, guard, barrierType);
     }
 
     ReadNode(ValueNode object, ValueNode location, ValueNode guard, BarrierType barrierType) {

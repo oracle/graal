@@ -36,11 +36,11 @@ import com.oracle.graal.nodes.util.*;
 public class XorNode extends BitLogicNode {
 
     public static XorNode create(ValueNode x, ValueNode y) {
-        return new XorNodeGen(x, y);
+        return USE_GENERATED_NODES ? new XorNodeGen(x, y) : new XorNode(x, y);
     }
 
     public static Class<? extends XorNode> getGenClass() {
-        return XorNodeGen.class;
+        return USE_GENERATED_NODES ? XorNodeGen.class : XorNode.class;
     }
 
     protected XorNode(ValueNode x, ValueNode y) {

@@ -29,7 +29,7 @@ import com.oracle.graal.nodes.*;
 public class G1ArrayRangePreWriteBarrier extends ArrayRangeWriteBarrier {
 
     public static G1ArrayRangePreWriteBarrier create(ValueNode object, ValueNode startIndex, ValueNode length) {
-        return new G1ArrayRangePreWriteBarrierGen(object, startIndex, length);
+        return USE_GENERATED_NODES ? new G1ArrayRangePreWriteBarrierGen(object, startIndex, length) : new G1ArrayRangePreWriteBarrier(object, startIndex, length);
     }
 
     protected G1ArrayRangePreWriteBarrier(ValueNode object, ValueNode startIndex, ValueNode length) {

@@ -54,7 +54,7 @@ public class NotNode extends UnaryNode implements ArithmeticLIRLowerable, Narrow
      * @param x the instruction producing the value that is input to this instruction
      */
     public static NotNode create(ValueNode x) {
-        return new NotNodeGen(x);
+        return USE_GENERATED_NODES ? new NotNodeGen(x) : new NotNode(x);
     }
 
     protected NotNode(ValueNode x) {

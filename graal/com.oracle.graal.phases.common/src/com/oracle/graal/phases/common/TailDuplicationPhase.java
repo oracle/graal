@@ -64,7 +64,7 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
     @NodeInfo
     static class DummyAnchorNode extends FixedWithNextNode implements GuardingNode {
         public static DummyAnchorNode create() {
-            return new TailDuplicationPhase_DummyAnchorNodeGen();
+            return USE_GENERATED_NODES ? new TailDuplicationPhase_DummyAnchorNodeGen() : new DummyAnchorNode();
         }
 
         protected DummyAnchorNode() {

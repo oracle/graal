@@ -39,7 +39,7 @@ public class ValueAnchorNode extends FixedWithNextNode implements LIRLowerable, 
     @OptionalInput(InputType.Guard) ValueNode anchored;
 
     public static ValueAnchorNode create(ValueNode value) {
-        return new ValueAnchorNodeGen(value);
+        return USE_GENERATED_NODES ? new ValueAnchorNodeGen(value) : new ValueAnchorNode(value);
     }
 
     ValueAnchorNode(ValueNode value) {

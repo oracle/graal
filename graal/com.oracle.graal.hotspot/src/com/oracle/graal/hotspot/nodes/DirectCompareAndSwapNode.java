@@ -48,7 +48,7 @@ public class DirectCompareAndSwapNode extends FixedWithNextNode implements LIRLo
     private final LocationIdentity locationIdentity;
 
     public static DirectCompareAndSwapNode create(ValueNode object, ValueNode offset, ValueNode expected, ValueNode newValue, LocationIdentity locationIdentity) {
-        return new DirectCompareAndSwapNodeGen(object, offset, expected, newValue, locationIdentity);
+        return USE_GENERATED_NODES ? new DirectCompareAndSwapNodeGen(object, offset, expected, newValue, locationIdentity) : new DirectCompareAndSwapNode(object, offset, expected, newValue, locationIdentity);
     }
 
     protected DirectCompareAndSwapNode(ValueNode object, ValueNode offset, ValueNode expected, ValueNode newValue, LocationIdentity locationIdentity) {

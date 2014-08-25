@@ -43,7 +43,7 @@ public class UnsafeCastNode extends FloatingGuardedNode implements LIRLowerable,
     @Input ValueNode object;
 
     public static UnsafeCastNode create(ValueNode object, Stamp stamp) {
-        return new UnsafeCastNodeGen(object, stamp);
+        return USE_GENERATED_NODES ? new UnsafeCastNodeGen(object, stamp) : new UnsafeCastNode(object, stamp);
     }
 
     UnsafeCastNode(ValueNode object, Stamp stamp) {
@@ -52,7 +52,7 @@ public class UnsafeCastNode extends FloatingGuardedNode implements LIRLowerable,
     }
 
     public static UnsafeCastNode create(ValueNode object, Stamp stamp, ValueNode anchor) {
-        return new UnsafeCastNodeGen(object, stamp, anchor);
+        return USE_GENERATED_NODES ? new UnsafeCastNodeGen(object, stamp, anchor) : new UnsafeCastNode(object, stamp, anchor);
     }
 
     UnsafeCastNode(ValueNode object, Stamp stamp, ValueNode anchor) {
@@ -61,7 +61,7 @@ public class UnsafeCastNode extends FloatingGuardedNode implements LIRLowerable,
     }
 
     public static UnsafeCastNode create(ValueNode object, ResolvedJavaType toType, boolean exactType, boolean nonNull) {
-        return new UnsafeCastNodeGen(object, toType, exactType, nonNull);
+        return USE_GENERATED_NODES ? new UnsafeCastNodeGen(object, toType, exactType, nonNull) : new UnsafeCastNode(object, toType, exactType, nonNull);
     }
 
     UnsafeCastNode(ValueNode object, ResolvedJavaType toType, boolean exactType, boolean nonNull) {

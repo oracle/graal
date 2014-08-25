@@ -64,7 +64,7 @@ public class StoreFieldNode extends AccessFieldNode implements StateSplit, Virtu
      * @param value the node representing the value to store to the field
      */
     public static StoreFieldNode create(ValueNode object, ResolvedJavaField field, ValueNode value) {
-        return new StoreFieldNodeGen(object, field, value);
+        return USE_GENERATED_NODES ? new StoreFieldNodeGen(object, field, value) : new StoreFieldNode(object, field, value);
     }
 
     StoreFieldNode(ValueNode object, ResolvedJavaField field, ValueNode value) {
@@ -73,7 +73,7 @@ public class StoreFieldNode extends AccessFieldNode implements StateSplit, Virtu
     }
 
     public static StoreFieldNode create(ValueNode object, ResolvedJavaField field, ValueNode value, FrameState stateAfter) {
-        return new StoreFieldNodeGen(object, field, value, stateAfter);
+        return USE_GENERATED_NODES ? new StoreFieldNodeGen(object, field, value, stateAfter) : new StoreFieldNode(object, field, value, stateAfter);
     }
 
     StoreFieldNode(ValueNode object, ResolvedJavaField field, ValueNode value, FrameState stateAfter) {

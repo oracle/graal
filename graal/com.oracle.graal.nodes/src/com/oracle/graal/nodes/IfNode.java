@@ -62,7 +62,7 @@ public class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerab
     }
 
     public static IfNode create(LogicNode condition, FixedNode trueSuccessor, FixedNode falseSuccessor, double trueSuccessorProbability) {
-        return new IfNodeGen(condition, trueSuccessor, falseSuccessor, trueSuccessorProbability);
+        return USE_GENERATED_NODES ? new IfNodeGen(condition, trueSuccessor, falseSuccessor, trueSuccessorProbability) : new IfNode(condition, trueSuccessor, falseSuccessor, trueSuccessorProbability);
     }
 
     protected IfNode(LogicNode condition, FixedNode trueSuccessor, FixedNode falseSuccessor, double trueSuccessorProbability) {
@@ -70,7 +70,7 @@ public class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerab
     }
 
     public static IfNode create(LogicNode condition, BeginNode trueSuccessor, BeginNode falseSuccessor, double trueSuccessorProbability) {
-        return new IfNodeGen(condition, trueSuccessor, falseSuccessor, trueSuccessorProbability);
+        return USE_GENERATED_NODES ? new IfNodeGen(condition, trueSuccessor, falseSuccessor, trueSuccessorProbability) : new IfNode(condition, trueSuccessor, falseSuccessor, trueSuccessorProbability);
     }
 
     protected IfNode(LogicNode condition, BeginNode trueSuccessor, BeginNode falseSuccessor, double trueSuccessorProbability) {

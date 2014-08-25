@@ -32,7 +32,7 @@ public class SerialWriteBarrier extends WriteBarrier {
     private final boolean alwaysNull;
 
     public static SerialWriteBarrier create(ValueNode object, LocationNode location, boolean precise, boolean alwaysNull) {
-        return new SerialWriteBarrierGen(object, location, precise, alwaysNull);
+        return USE_GENERATED_NODES ? new SerialWriteBarrierGen(object, location, precise, alwaysNull) : new SerialWriteBarrier(object, location, precise, alwaysNull);
     }
 
     protected SerialWriteBarrier(ValueNode object, LocationNode location, boolean precise, boolean alwaysNull) {

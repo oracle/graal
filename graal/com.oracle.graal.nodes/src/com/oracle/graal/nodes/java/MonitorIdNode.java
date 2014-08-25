@@ -39,7 +39,7 @@ public class MonitorIdNode extends ValueNode implements IterableNodeType, LIRLow
     private int lockDepth;
 
     public static MonitorIdNode create(int lockDepth) {
-        return new MonitorIdNodeGen(lockDepth);
+        return USE_GENERATED_NODES ? new MonitorIdNodeGen(lockDepth) : new MonitorIdNode(lockDepth);
     }
 
     MonitorIdNode(int lockDepth) {

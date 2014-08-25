@@ -32,7 +32,7 @@ public class KillingBeginNode extends BeginNode implements MemoryCheckpoint.Sing
     private LocationIdentity locationIdentity;
 
     public static KillingBeginNode create(LocationIdentity locationIdentity) {
-        return new KillingBeginNodeGen(locationIdentity);
+        return USE_GENERATED_NODES ? new KillingBeginNodeGen(locationIdentity) : new KillingBeginNode(locationIdentity);
     }
 
     protected KillingBeginNode(LocationIdentity locationIdentity) {

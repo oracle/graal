@@ -39,7 +39,7 @@ import com.oracle.graal.nodes.type.*;
 public class ZeroExtendNode extends IntegerConvertNode {
 
     public static ZeroExtendNode create(ValueNode input, int resultBits) {
-        return new ZeroExtendNodeGen(input, resultBits);
+        return USE_GENERATED_NODES ? new ZeroExtendNodeGen(input, resultBits) : new ZeroExtendNode(input, resultBits);
     }
 
     protected ZeroExtendNode(ValueNode input, int resultBits) {

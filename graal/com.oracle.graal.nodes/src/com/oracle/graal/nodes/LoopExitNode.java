@@ -32,7 +32,7 @@ public class LoopExitNode extends BeginStateSplitNode implements IterableNodeTyp
     @Input(InputType.Association) LoopBeginNode loopBegin;
 
     public static LoopExitNode create(LoopBeginNode loop) {
-        return new LoopExitNodeGen(loop);
+        return USE_GENERATED_NODES ? new LoopExitNodeGen(loop) : new LoopExitNode(loop);
     }
 
     protected LoopExitNode(LoopBeginNode loop) {

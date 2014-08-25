@@ -38,7 +38,7 @@ import com.oracle.graal.nodes.type.*;
 public class NarrowNode extends IntegerConvertNode {
 
     public static NarrowNode create(ValueNode input, int resultBits) {
-        return new NarrowNodeGen(input, resultBits);
+        return USE_GENERATED_NODES ? new NarrowNodeGen(input, resultBits) : new NarrowNode(input, resultBits);
     }
 
     protected NarrowNode(ValueNode input, int resultBits) {

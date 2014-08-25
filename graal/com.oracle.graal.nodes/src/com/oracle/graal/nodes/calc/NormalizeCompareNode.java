@@ -48,7 +48,7 @@ public class NormalizeCompareNode extends BinaryNode implements Lowerable {
      *            less, false when greater.
      */
     public static NormalizeCompareNode create(ValueNode x, ValueNode y, boolean isUnorderedLess) {
-        return new NormalizeCompareNodeGen(x, y, isUnorderedLess);
+        return USE_GENERATED_NODES ? new NormalizeCompareNodeGen(x, y, isUnorderedLess) : new NormalizeCompareNode(x, y, isUnorderedLess);
     }
 
     protected NormalizeCompareNode(ValueNode x, ValueNode y, boolean isUnorderedLess) {

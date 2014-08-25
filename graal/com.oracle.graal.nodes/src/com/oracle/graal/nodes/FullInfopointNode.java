@@ -34,7 +34,7 @@ public class FullInfopointNode extends InfopointNode implements LIRLowerable, No
     @Input(InputType.State) FrameState state;
 
     public static FullInfopointNode create(InfopointReason reason, FrameState state) {
-        return new FullInfopointNodeGen(reason, state);
+        return USE_GENERATED_NODES ? new FullInfopointNodeGen(reason, state) : new FullInfopointNode(reason, state);
     }
 
     protected FullInfopointNode(InfopointReason reason, FrameState state) {

@@ -39,7 +39,7 @@ import com.oracle.truffle.api.*;
 public class IntegerMulExactNode extends IntegerMulNode implements IntegerExactArithmeticNode {
 
     public static IntegerMulExactNode create(ValueNode x, ValueNode y) {
-        return new IntegerMulExactNodeGen(x, y);
+        return USE_GENERATED_NODES ? new IntegerMulExactNodeGen(x, y) : new IntegerMulExactNode(x, y);
     }
 
     protected IntegerMulExactNode(ValueNode x, ValueNode y) {

@@ -36,7 +36,7 @@ public class VirtualArrayNode extends VirtualObjectNode implements ArrayLengthPr
     private final int length;
 
     public static VirtualArrayNode create(ResolvedJavaType componentType, int length) {
-        return new VirtualArrayNodeGen(componentType, length);
+        return USE_GENERATED_NODES ? new VirtualArrayNodeGen(componentType, length) : new VirtualArrayNode(componentType, length);
     }
 
     VirtualArrayNode(ResolvedJavaType componentType, int length) {

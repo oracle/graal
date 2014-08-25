@@ -33,7 +33,7 @@ import com.oracle.graal.nodeinfo.*;
 public class ParameterNode extends AbstractLocalNode implements IterableNodeType {
 
     public static ParameterNode create(int index, Stamp stamp) {
-        return new ParameterNodeGen(index, stamp);
+        return USE_GENERATED_NODES ? new ParameterNodeGen(index, stamp) : new ParameterNode(index, stamp);
     }
 
     protected ParameterNode(int index, Stamp stamp) {

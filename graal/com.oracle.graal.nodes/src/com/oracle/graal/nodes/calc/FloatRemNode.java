@@ -33,7 +33,7 @@ import com.oracle.graal.nodes.spi.*;
 public class FloatRemNode extends FloatArithmeticNode implements Lowerable {
 
     public static FloatRemNode create(ValueNode x, ValueNode y, boolean isStrictFP) {
-        return new FloatRemNodeGen(x, y, isStrictFP);
+        return USE_GENERATED_NODES ? new FloatRemNodeGen(x, y, isStrictFP) : new FloatRemNode(x, y, isStrictFP);
     }
 
     protected FloatRemNode(ValueNode x, ValueNode y, boolean isStrictFP) {

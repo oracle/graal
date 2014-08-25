@@ -44,7 +44,7 @@ public class PiArrayNode extends PiNode implements ArrayLengthProvider {
     }
 
     public static PiArrayNode create(ValueNode object, ValueNode length, Stamp stamp) {
-        return new PiArrayNodeGen(object, length, stamp);
+        return USE_GENERATED_NODES ? new PiArrayNodeGen(object, length, stamp) : new PiArrayNode(object, length, stamp);
     }
 
     protected PiArrayNode(ValueNode object, ValueNode length, Stamp stamp) {

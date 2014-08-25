@@ -48,7 +48,7 @@ public class NewInstanceNode extends AbstractNewObjectNode implements Virtualiza
      *            zero/null.
      */
     public static NewInstanceNode create(ResolvedJavaType type, boolean fillContents) {
-        return new NewInstanceNodeGen(type, fillContents);
+        return USE_GENERATED_NODES ? new NewInstanceNodeGen(type, fillContents) : new NewInstanceNode(type, fillContents);
     }
 
     NewInstanceNode(ResolvedJavaType type, boolean fillContents) {

@@ -41,7 +41,7 @@ public class IntegerEqualsNode extends CompareNode {
      * @param y the instruction that produces the second input to this instruction
      */
     public static IntegerEqualsNode create(ValueNode x, ValueNode y) {
-        return new IntegerEqualsNodeGen(x, y);
+        return USE_GENERATED_NODES ? new IntegerEqualsNodeGen(x, y) : new IntegerEqualsNode(x, y);
     }
 
     protected IntegerEqualsNode(ValueNode x, ValueNode y) {

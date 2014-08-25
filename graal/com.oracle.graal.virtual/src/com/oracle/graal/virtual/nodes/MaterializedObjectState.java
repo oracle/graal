@@ -40,7 +40,7 @@ public class MaterializedObjectState extends EscapeObjectState implements Node.V
     }
 
     public static MaterializedObjectState create(VirtualObjectNode object, ValueNode materializedValue) {
-        return new MaterializedObjectStateGen(object, materializedValue);
+        return USE_GENERATED_NODES ? new MaterializedObjectStateGen(object, materializedValue) : new MaterializedObjectState(object, materializedValue);
     }
 
     protected MaterializedObjectState(VirtualObjectNode object, ValueNode materializedValue) {

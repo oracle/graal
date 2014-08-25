@@ -34,7 +34,7 @@ import com.oracle.graal.nodes.spi.*;
 public class MemoryAnchorNode extends FixedWithNextNode implements LIRLowerable, MemoryNode, Canonicalizable {
 
     public static MemoryAnchorNode create() {
-        return new MemoryAnchorNodeGen();
+        return USE_GENERATED_NODES ? new MemoryAnchorNodeGen() : new MemoryAnchorNode();
     }
 
     protected MemoryAnchorNode() {

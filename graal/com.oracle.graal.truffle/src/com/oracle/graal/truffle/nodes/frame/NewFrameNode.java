@@ -52,7 +52,7 @@ public class NewFrameNode extends FixedWithNextNode implements IterableNodeType,
     @Input ValueNode arguments;
 
     public static NewFrameNode create(Stamp stamp, ValueNode descriptor, ValueNode arguments) {
-        return new NewFrameNodeGen(stamp, descriptor, arguments);
+        return USE_GENERATED_NODES ? new NewFrameNodeGen(stamp, descriptor, arguments) : new NewFrameNode(stamp, descriptor, arguments);
     }
 
     protected NewFrameNode(Stamp stamp, ValueNode descriptor, ValueNode arguments) {
@@ -62,7 +62,7 @@ public class NewFrameNode extends FixedWithNextNode implements IterableNodeType,
     }
 
     public static NewFrameNode create(ResolvedJavaType frameType, ValueNode descriptor, ValueNode arguments) {
-        return new NewFrameNodeGen(frameType, descriptor, arguments);
+        return USE_GENERATED_NODES ? new NewFrameNodeGen(frameType, descriptor, arguments) : new NewFrameNode(frameType, descriptor, arguments);
     }
 
     protected NewFrameNode(ResolvedJavaType frameType, ValueNode descriptor, ValueNode arguments) {
@@ -109,7 +109,7 @@ public class NewFrameNode extends FixedWithNextNode implements IterableNodeType,
         private boolean allowMaterialization;
 
         public static VirtualOnlyInstanceNode create(ResolvedJavaType type, ResolvedJavaField[] fields) {
-            return new NewFrameNode_VirtualOnlyInstanceNodeGen(type, fields);
+            return USE_GENERATED_NODES ? new NewFrameNode_VirtualOnlyInstanceNodeGen(type, fields) : new VirtualOnlyInstanceNode(type, fields);
         }
 
         VirtualOnlyInstanceNode(ResolvedJavaType type, ResolvedJavaField[] fields) {

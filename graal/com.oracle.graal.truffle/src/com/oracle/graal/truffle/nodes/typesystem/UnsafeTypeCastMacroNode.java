@@ -46,7 +46,7 @@ public class UnsafeTypeCastMacroNode extends NeverPartOfCompilationNode implemen
     private static final int ARGUMENT_COUNT = 4;
 
     public static UnsafeTypeCastMacroNode create(Invoke invoke) {
-        return new UnsafeTypeCastMacroNodeGen(invoke);
+        return USE_GENERATED_NODES ? new UnsafeTypeCastMacroNodeGen(invoke) : new UnsafeTypeCastMacroNode(invoke);
     }
 
     protected UnsafeTypeCastMacroNode(Invoke invoke) {

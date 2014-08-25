@@ -46,7 +46,7 @@ public class LoadMethodNode extends FixedWithNextNode implements Lowerable, Cano
     }
 
     public static LoadMethodNode create(ResolvedJavaMethod method, ResolvedJavaType receiverType, ValueNode hub, Kind kind) {
-        return new LoadMethodNodeGen(method, receiverType, hub, kind);
+        return USE_GENERATED_NODES ? new LoadMethodNodeGen(method, receiverType, hub, kind) : new LoadMethodNode(method, receiverType, hub, kind);
     }
 
     LoadMethodNode(ResolvedJavaMethod method, ResolvedJavaType receiverType, ValueNode hub, Kind kind) {

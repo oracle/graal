@@ -40,7 +40,7 @@ public class FloatingReadNode extends FloatingAccessNode implements IterableNode
     @OptionalInput(InputType.Memory) MemoryNode lastLocationAccess;
 
     public static FloatingReadNode create(ValueNode object, LocationNode location, MemoryNode lastLocationAccess, Stamp stamp) {
-        return new FloatingReadNodeGen(object, location, lastLocationAccess, stamp);
+        return USE_GENERATED_NODES ? new FloatingReadNodeGen(object, location, lastLocationAccess, stamp) : new FloatingReadNode(object, location, lastLocationAccess, stamp);
     }
 
     FloatingReadNode(ValueNode object, LocationNode location, MemoryNode lastLocationAccess, Stamp stamp) {
@@ -48,7 +48,7 @@ public class FloatingReadNode extends FloatingAccessNode implements IterableNode
     }
 
     public static FloatingReadNode create(ValueNode object, LocationNode location, MemoryNode lastLocationAccess, Stamp stamp, GuardingNode guard) {
-        return new FloatingReadNodeGen(object, location, lastLocationAccess, stamp, guard);
+        return USE_GENERATED_NODES ? new FloatingReadNodeGen(object, location, lastLocationAccess, stamp, guard) : new FloatingReadNode(object, location, lastLocationAccess, stamp, guard);
     }
 
     FloatingReadNode(ValueNode object, LocationNode location, MemoryNode lastLocationAccess, Stamp stamp, GuardingNode guard) {
@@ -56,7 +56,7 @@ public class FloatingReadNode extends FloatingAccessNode implements IterableNode
     }
 
     public static FloatingReadNode create(ValueNode object, LocationNode location, MemoryNode lastLocationAccess, Stamp stamp, GuardingNode guard, BarrierType barrierType) {
-        return new FloatingReadNodeGen(object, location, lastLocationAccess, stamp, guard, barrierType);
+        return USE_GENERATED_NODES ? new FloatingReadNodeGen(object, location, lastLocationAccess, stamp, guard, barrierType) : new FloatingReadNode(object, location, lastLocationAccess, stamp, guard, barrierType);
     }
 
     FloatingReadNode(ValueNode object, LocationNode location, MemoryNode lastLocationAccess, Stamp stamp, GuardingNode guard, BarrierType barrierType) {

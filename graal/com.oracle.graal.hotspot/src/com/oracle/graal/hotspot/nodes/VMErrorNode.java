@@ -44,7 +44,7 @@ public class VMErrorNode extends DeoptimizingStubCall implements LIRLowerable {
     @Input ValueNode value;
 
     public static VMErrorNode create(String format, ValueNode value) {
-        return new VMErrorNodeGen(format, value);
+        return USE_GENERATED_NODES ? new VMErrorNodeGen(format, value) : new VMErrorNode(format, value);
     }
 
     protected VMErrorNode(String format, ValueNode value) {

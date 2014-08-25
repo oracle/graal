@@ -34,7 +34,7 @@ public class DynamicDeoptimizeNode extends AbstractDeoptimizeNode implements LIR
     @Input ValueNode speculation;
 
     public static DynamicDeoptimizeNode create(ValueNode actionAndReason, ValueNode speculation) {
-        return new DynamicDeoptimizeNodeGen(actionAndReason, speculation);
+        return USE_GENERATED_NODES ? new DynamicDeoptimizeNodeGen(actionAndReason, speculation) : new DynamicDeoptimizeNode(actionAndReason, speculation);
     }
 
     protected DynamicDeoptimizeNode(ValueNode actionAndReason, ValueNode speculation) {

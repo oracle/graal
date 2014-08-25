@@ -40,7 +40,7 @@ public class MacroStateSplitNode extends MacroNode implements StateSplit, Memory
     @OptionalInput(InputType.State) protected FrameState stateAfter;
 
     public static MacroStateSplitNode create(Invoke invoke) {
-        return new MacroStateSplitNodeGen(invoke);
+        return USE_GENERATED_NODES ? new MacroStateSplitNodeGen(invoke) : new MacroStateSplitNode(invoke);
     }
 
     protected MacroStateSplitNode(Invoke invoke) {

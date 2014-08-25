@@ -34,7 +34,7 @@ import com.oracle.graal.replacements.nodes.*;
 public class BailoutNode extends MacroNode implements Canonicalizable {
 
     public static BailoutNode create(Invoke invoke) {
-        return new BailoutNodeGen(invoke);
+        return USE_GENERATED_NODES ? new BailoutNodeGen(invoke) : new BailoutNode(invoke);
     }
 
     protected BailoutNode(Invoke invoke) {

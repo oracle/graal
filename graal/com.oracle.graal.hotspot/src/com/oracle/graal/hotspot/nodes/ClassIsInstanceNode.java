@@ -41,7 +41,7 @@ import com.oracle.graal.replacements.nodes.*;
 public class ClassIsInstanceNode extends MacroNode implements Canonicalizable {
 
     public static ClassIsInstanceNode create(Invoke invoke) {
-        return new ClassIsInstanceNodeGen(invoke);
+        return USE_GENERATED_NODES ? new ClassIsInstanceNodeGen(invoke) : new ClassIsInstanceNode(invoke);
     }
 
     protected ClassIsInstanceNode(Invoke invoke) {

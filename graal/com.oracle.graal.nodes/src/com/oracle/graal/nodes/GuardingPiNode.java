@@ -69,7 +69,7 @@ public class GuardingPiNode extends FixedWithNextNode implements Lowerable, Virt
      * Constructor for {@link #guardingNonNull(Object)} node intrinsic.
      */
     public static GuardingPiNode create(ValueNode object) {
-        return new GuardingPiNodeGen(object);
+        return USE_GENERATED_NODES ? new GuardingPiNodeGen(object) : new GuardingPiNode(object);
     }
 
     GuardingPiNode(ValueNode object) {
@@ -85,7 +85,7 @@ public class GuardingPiNode extends FixedWithNextNode implements Lowerable, Virt
      * @param stamp the refined type of the object if the guard succeeds
      */
     public static GuardingPiNode create(ValueNode object, ValueNode condition, boolean negateCondition, DeoptimizationReason reason, DeoptimizationAction action, Stamp stamp) {
-        return new GuardingPiNodeGen(object, condition, negateCondition, reason, action, stamp);
+        return USE_GENERATED_NODES ? new GuardingPiNodeGen(object, condition, negateCondition, reason, action, stamp) : new GuardingPiNode(object, condition, negateCondition, reason, action, stamp);
     }
 
     protected GuardingPiNode(ValueNode object, ValueNode condition, boolean negateCondition, DeoptimizationReason reason, DeoptimizationAction action, Stamp stamp) {

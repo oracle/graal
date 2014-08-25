@@ -42,7 +42,7 @@ public class IsNullNode extends UnaryOpLogicNode implements LIRLowerable, Virtua
      * @param object the instruction producing the object to check against null
      */
     public static IsNullNode create(ValueNode object) {
-        return new IsNullNodeGen(object);
+        return USE_GENERATED_NODES ? new IsNullNodeGen(object) : new IsNullNode(object);
     }
 
     protected IsNullNode(ValueNode object) {

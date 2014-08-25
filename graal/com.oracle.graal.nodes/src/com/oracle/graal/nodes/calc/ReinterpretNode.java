@@ -40,7 +40,7 @@ import com.oracle.graal.nodes.spi.*;
 public class ReinterpretNode extends UnaryNode implements ArithmeticLIRLowerable {
 
     public static ReinterpretNode create(Kind to, ValueNode value) {
-        return new ReinterpretNodeGen(to, value);
+        return USE_GENERATED_NODES ? new ReinterpretNodeGen(to, value) : new ReinterpretNode(to, value);
     }
 
     ReinterpretNode(Kind to, ValueNode value) {
@@ -48,7 +48,7 @@ public class ReinterpretNode extends UnaryNode implements ArithmeticLIRLowerable
     }
 
     public static ReinterpretNode create(Stamp to, ValueNode value) {
-        return new ReinterpretNodeGen(to, value);
+        return USE_GENERATED_NODES ? new ReinterpretNodeGen(to, value) : new ReinterpretNode(to, value);
     }
 
     protected ReinterpretNode(Stamp to, ValueNode value) {

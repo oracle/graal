@@ -39,7 +39,7 @@ public class LeaveCurrentStackFrameNode extends FixedWithNextNode implements LIR
     @Input SaveAllRegistersNode registerSaver;
 
     public static LeaveCurrentStackFrameNode create(ValueNode registerSaver) {
-        return new LeaveCurrentStackFrameNodeGen(registerSaver);
+        return USE_GENERATED_NODES ? new LeaveCurrentStackFrameNodeGen(registerSaver) : new LeaveCurrentStackFrameNode(registerSaver);
     }
 
     protected LeaveCurrentStackFrameNode(ValueNode registerSaver) {

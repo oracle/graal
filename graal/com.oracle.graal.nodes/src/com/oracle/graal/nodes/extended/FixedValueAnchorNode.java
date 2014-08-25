@@ -37,7 +37,7 @@ public class FixedValueAnchorNode extends FixedWithNextNode implements LIRLowera
     }
 
     public static FixedValueAnchorNode create(ValueNode object) {
-        return new FixedValueAnchorNodeGen(object);
+        return USE_GENERATED_NODES ? new FixedValueAnchorNodeGen(object) : new FixedValueAnchorNode(object);
     }
 
     FixedValueAnchorNode(ValueNode object) {

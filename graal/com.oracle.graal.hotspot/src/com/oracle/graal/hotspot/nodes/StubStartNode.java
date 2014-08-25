@@ -35,7 +35,7 @@ public class StubStartNode extends StartNode {
     private final Stub stub;
 
     public static StubStartNode create(Stub stub) {
-        return new StubStartNodeGen(stub);
+        return USE_GENERATED_NODES ? new StubStartNodeGen(stub) : new StubStartNode(stub);
     }
 
     protected StubStartNode(Stub stub) {

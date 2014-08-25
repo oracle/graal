@@ -42,7 +42,7 @@ public class UnsafeStoreNode extends UnsafeAccessNode implements StateSplit, Low
     @OptionalInput(InputType.State) FrameState stateAfter;
 
     public static UnsafeStoreNode create(ValueNode object, ValueNode offset, ValueNode value, Kind accessKind, LocationIdentity locationIdentity) {
-        return new UnsafeStoreNodeGen(object, offset, value, accessKind, locationIdentity);
+        return USE_GENERATED_NODES ? new UnsafeStoreNodeGen(object, offset, value, accessKind, locationIdentity) : new UnsafeStoreNode(object, offset, value, accessKind, locationIdentity);
     }
 
     UnsafeStoreNode(ValueNode object, ValueNode offset, ValueNode value, Kind accessKind, LocationIdentity locationIdentity) {
@@ -50,7 +50,7 @@ public class UnsafeStoreNode extends UnsafeAccessNode implements StateSplit, Low
     }
 
     public static UnsafeStoreNode create(ValueNode object, ValueNode offset, ValueNode value, Kind accessKind, LocationIdentity locationIdentity, FrameState stateAfter) {
-        return new UnsafeStoreNodeGen(object, offset, value, accessKind, locationIdentity, stateAfter);
+        return USE_GENERATED_NODES ? new UnsafeStoreNodeGen(object, offset, value, accessKind, locationIdentity, stateAfter) : new UnsafeStoreNode(object, offset, value, accessKind, locationIdentity, stateAfter);
     }
 
     UnsafeStoreNode(ValueNode object, ValueNode offset, ValueNode value, Kind accessKind, LocationIdentity locationIdentity, FrameState stateAfter) {

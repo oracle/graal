@@ -47,7 +47,7 @@ public class CustomizedUnsafeLoadMacroNode extends NeverPartOfCompilationNode im
     private static final int LOCATION_ARGUMENT_INDEX = 3;
 
     public static CustomizedUnsafeLoadMacroNode create(Invoke invoke) {
-        return new CustomizedUnsafeLoadMacroNodeGen(invoke);
+        return USE_GENERATED_NODES ? new CustomizedUnsafeLoadMacroNodeGen(invoke) : new CustomizedUnsafeLoadMacroNode(invoke);
     }
 
     protected CustomizedUnsafeLoadMacroNode(Invoke invoke) {
