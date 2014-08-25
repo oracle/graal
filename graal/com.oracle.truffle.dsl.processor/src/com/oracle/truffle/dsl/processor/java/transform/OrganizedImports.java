@@ -107,6 +107,8 @@ public final class OrganizedImports {
             b.append("? extends ").append(createTypeReference(enclosedElement, type.getExtendsBound()));
         } else if (type.getSuperBound() != null) {
             b.append("? super ").append(createTypeReference(enclosedElement, type.getExtendsBound()));
+        } else {
+            b.append("?");
         }
         return b.toString();
     }
@@ -122,18 +124,23 @@ public final class OrganizedImports {
             }
         }
 
-        if (type.getTypeArguments().size() == 0) {
+        List<? extends TypeMirror> genericTypes = type.getTypeArguments();
+        if (genericTypes.size() == 0) {
             return name;
         }
 
         StringBuilder b = new StringBuilder(name);
         b.append("<");
-        if (type.getTypeArguments().size() > 0) {
-            for (int i = 0; i < type.getTypeArguments().size(); i++) {
-                b.append(createTypeReference(enclosedElement, type.getTypeArguments().get(i)));
-                if (i < type.getTypeArguments().size() - 1) {
-                    b.append(", ");
-                }
+        for (int i = 0; i < genericTypes.size(); i++) {
+            TypeMirror genericType = i < genericTypes.size() ? genericTypes.get(i) : null;
+            if (genericType != null) {
+                b.append(createTypeReference(enclosedElement, genericType));
+            } else {
+                b.append("?");
+            }
+
+            if (i < genericTypes.size() - 1) {
+                b.append(", ");
             }
         }
         b.append(">");

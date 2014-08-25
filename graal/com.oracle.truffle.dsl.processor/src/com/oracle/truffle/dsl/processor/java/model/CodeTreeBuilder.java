@@ -592,7 +592,7 @@ public class CodeTreeBuilder {
     }
 
     public CodeTreeBuilder typeLiteral(TypeMirror type) {
-        return startGroup().type(type).string(".class").end();
+        return startGroup().type(ElementUtils.eraseGenericTypes(type)).string(".class").end();
     }
 
     private void assertRoot() {
