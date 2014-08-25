@@ -108,7 +108,7 @@ public class MonitorTest extends GraalCompilerTest {
     public void test7() {
         char[] src = "1234567890".toCharArray();
         char[] dst = new char[src.length];
-        int n = Runtime.getRuntime().availableProcessors();
+        int n = Math.min(32, Runtime.getRuntime().availableProcessors());
         testN(n, "copyArr", src, dst, 100);
     }
 
