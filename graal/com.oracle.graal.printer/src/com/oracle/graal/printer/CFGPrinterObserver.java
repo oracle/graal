@@ -50,7 +50,6 @@ public class CFGPrinterObserver implements DebugDumpHandler {
     private JavaMethod curMethod;
     private List<String> curDecorators = Collections.emptyList();
     private final boolean dumpFrontend;
-    private Object previousObject;
 
     public CFGPrinterObserver(boolean dumpFrontend) {
         this.dumpFrontend = dumpFrontend;
@@ -162,10 +161,8 @@ public class CFGPrinterObserver implements DebugDumpHandler {
             }
 
         } else if (object instanceof LIR) {
-            // No need to print the HIR nodes again if this is not the first
-            // time dumping the same LIR since the HIR will not have changed.
-            boolean printNodes = previousObject != object && cfgPrinter.cfg != null;
-            cfgPrinter.printCFG(message, cfgPrinter.lir.codeEmittingOrder(), printNodes);
+            // Currently no node printing for lir
+            cfgPrinter.printCFG(message, cfgPrinter.lir.codeEmittingOrder(), false);
 
         } else if (object instanceof SchedulePhase) {
             cfgPrinter.printSchedule(message, (SchedulePhase) object);
@@ -193,7 +190,6 @@ public class CFGPrinterObserver implements DebugDumpHandler {
         cfgPrinter.cfg = null;
         cfgPrinter.flush();
 
-        previousObject = object;
     }
 
     private static boolean isCompilationResultAndInstalledCode(Object object) {
