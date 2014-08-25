@@ -815,14 +815,19 @@ public abstract class SPARCAssembler extends Assembler {
         }
 
         public void verify() {
-            assert ((rd << RD_SHIFT) & RD_MASK) == (rd << RD_SHIFT);
-            assert ((op3 << OP3_SHIFT) & OP3_MASK) == (op3 << OP3_SHIFT);
-            assert ((rs1 << RS1_SHIFT) & RS1_MASK) == (rs1 << RS1_SHIFT);
-            assert ((i << I_SHIFT) & I_MASK) == (i << I_SHIFT);
-            assert ((x << X_SHIFT) & X_MASK) == (x << X_SHIFT);
-            assert ((immAsi << IMM_ASI_SHIFT) & IMM_ASI_MASK) == (immAsi << IMM_ASI_SHIFT);
-            assert ((rs2 << RS2_SHIFT) & RS2_MASK) == (rs2 << RS2_SHIFT);
-            assert isSimm13(simm13);
+            assert ((rd << RD_SHIFT) & RD_MASK) == (rd << RD_SHIFT) : this;
+            assert ((op3 << OP3_SHIFT) & OP3_MASK) == (op3 << OP3_SHIFT) : this;
+            assert ((rs1 << RS1_SHIFT) & RS1_MASK) == (rs1 << RS1_SHIFT) : this;
+            assert ((i << I_SHIFT) & I_MASK) == (i << I_SHIFT) : this;
+            assert ((x << X_SHIFT) & X_MASK) == (x << X_SHIFT) : this;
+            assert ((immAsi << IMM_ASI_SHIFT) & IMM_ASI_MASK) == (immAsi << IMM_ASI_SHIFT) : this;
+            assert ((rs2 << RS2_SHIFT) & RS2_MASK) == (rs2 << RS2_SHIFT) : this;
+            assert isSimm13(simm13) : this;
+        }
+
+        @Override
+        public String toString() {
+            return String.format("%s: [rd: 0x%x, op3: 0x%x, rs1: 0x%x, i: 0x%x, x: 0x%x, immAsi: 0x%x, rs2: 0x%x, simm13: 0x%x", getClass().getName(), rd, op3, rs1, i, x, immAsi, rs2, simm13);
         }
     }
 
@@ -2834,6 +2839,13 @@ public abstract class SPARCAssembler extends Assembler {
 
         public Fmuld(Register src1, Register src2, Register dst) {
             super(Ops.ArithOp, Op3s.Fpop1, Opfs.Fmuld, src1, src2, dst);
+        }
+    }
+
+    public static class Fsmuld extends Fmt3p {
+
+        public Fsmuld(Register src1, Register src2, Register dst) {
+            super(Ops.ArithOp, Op3s.Fpop1, Opfs.Fsmuld, src1, src2, dst);
         }
     }
 

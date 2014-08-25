@@ -27,6 +27,7 @@ import static com.oracle.graal.sparc.SPARC.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.asm.*;
+import com.oracle.graal.sparc.*;
 
 public class SPARCMacroAssembler extends SPARCAssembler {
 
@@ -327,7 +328,7 @@ public class SPARCMacroAssembler extends SPARCAssembler {
         public void emit(SPARCMacroAssembler masm) {
             if (value == 0) {
                 new Clr(dst).emit(masm);
-            } else if (-4095 <= value && value <= 4096) {
+            } else if (isSimm13(value)) {
                 new Or(g0, value, dst).emit(masm);
             } else if (value >= 0 && ((value & 0x3FFF) == 0)) {
                 new Sethi(hi22(value), dst).emit(masm);

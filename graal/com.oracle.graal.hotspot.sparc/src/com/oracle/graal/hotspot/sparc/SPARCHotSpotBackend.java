@@ -137,12 +137,18 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
         @Override
         public void enter(CompilationResultBuilder crb) {
             final int frameSize = crb.frameMap.totalFrameSize();
-
+            final int stackpoinerChange = -frameSize;
             SPARCMacroAssembler masm = (SPARCMacroAssembler) crb.asm;
             if (!isStub && pagesToBang > 0) {
                 emitStackOverflowCheck(crb, pagesToBang, false);
             }
-            new Save(sp, -frameSize, sp).emit(masm);
+
+            if (SPARCAssembler.isSimm13(stackpoinerChange)) {
+                new Save(sp, stackpoinerChange, sp).emit(masm);
+            } else {
+                new Setx(stackpoinerChange, g3).emit(masm);
+                new Save(sp, g3, sp).emit(masm);
+            }
 
             if (ZapStackOnMethodEntry.getValue()) {
                 final int slotSize = 8;

@@ -310,10 +310,10 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
         switch ((Kind) cmpKind) {
             case Short:
             case Char:
-                append(new CompareOp(ICMP, emitZeroExtend(left, 16, 32), emitZeroExtend(right, 16, 32)));
+                append(new CompareOp(ICMP, emitSignExtend(left, 16, 32), emitSignExtend(right, 16, 32)));
                 break;
             case Byte:
-                append(new CompareOp(ICMP, emitZeroExtend(left, 8, 32), emitZeroExtend(right, 8, 32)));
+                append(new CompareOp(ICMP, emitSignExtend(left, 8, 32), emitSignExtend(right, 8, 32)));
                 break;
             case Int:
                 append(new CompareOp(ICMP, left, right));
