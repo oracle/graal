@@ -96,27 +96,37 @@ public class DSLShare {
         }
     }
 
-    public static <T extends Node & DSLNode> T rewriteToPolymorphic(Node oldNode, DSLNode uninitialized, T polymorphic, DSLNode currentCopy, DSLNode newNode, String message) {
+    public static <T extends Node & DSLNode> T rewriteToPolymorphic(Node oldNode, DSLNode uninitializedDSL, T polymorphic, DSLNode currentCopy, DSLNode newNodeDSL, String message) {
         assert getNext(oldNode) == null;
         assert getPrevious(oldNode) == null;
 
+        Node uninitialized = (Node) uninitializedDSL;
+        Node newNode = (Node) newNodeDSL;
         polymorphic.adoptChildren0(oldNode, (Node) currentCopy);
 
+        updateSourceSection(oldNode, uninitialized);
         if (newNode == null) {
             // fallback
-            currentCopy.adoptChildren0(null, (Node) uninitialized);
+            currentCopy.adoptChildren0(null, uninitialized);
         } else {
             // new specialization
-            newNode.adoptChildren0(null, (Node) uninitialized);
-            currentCopy.adoptChildren0(null, (Node) newNode);
+            updateSourceSection(oldNode, newNode);
+            newNodeDSL.adoptChildren0(null, uninitialized);
+            currentCopy.adoptChildren0(null, newNode);
         }
 
         oldNode.replace(polymorphic, message);
 
         assert polymorphic.getNext0() == currentCopy;
         assert newNode != null ? currentCopy.getNext0() == newNode : currentCopy.getNext0() == uninitialized;
-        assert uninitialized.getNext0() == null;
+        assert uninitializedDSL.getNext0() == null;
         return polymorphic;
+    }
+
+    private static void updateSourceSection(Node oldNode, Node newNode) {
+        if (newNode.getSourceSection() == null) {
+            newNode.assignSourceSection(oldNode.getSourceSection());
+        }
     }
 
     private static Class<?>[] mergeTypes(DSLNode node, Class<?>[] types) {
@@ -154,6 +164,7 @@ public class DSLShare {
         }
         assert prev.getCost() == NodeCost.POLYMORPHIC;
 
+        updateSourceSection(prev, newNode);
         if (depth == 0) {
             newNode.adoptChildren0(prev, null);
             return prev.replace(newNode, "Polymorphic to monomorphic.");
