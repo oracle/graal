@@ -286,10 +286,11 @@ public class SPARCMove {
     }
 
     private static void loadEffectiveAddress(SPARCAddress address, Register result, SPARCMacroAssembler masm) {
-        if (address.getIndex() == Register.None) {
+        if (address.getIndex().equals(Register.None)) {
             if (isSimm13(address.getDisplacement())) {
                 new Add(address.getBase(), address.getDisplacement(), result).emit(masm);
             } else {
+                assert result.encoding() != address.getBase().encoding();
                 new Setx(address.getDisplacement(), result).emit(masm);
                 new Add(address.getBase(), result, result).emit(masm);
             }
@@ -473,7 +474,7 @@ public class SPARCMove {
      * @return a loadable SPARCAddress
      */
     public static SPARCAddress guaranueeLoadable(SPARCAddress addr, SPARCMacroAssembler masm) {
-        boolean displacementOutOfBound = addr.getIndex() == Register.None && !SPARCAssembler.isSimm13(addr.getDisplacement());
+        boolean displacementOutOfBound = addr.getIndex().equals(Register.None) && !SPARCAssembler.isSimm13(addr.getDisplacement());
         if (displacementOutOfBound) {
             Register scratch = g3;
             new Setx(addr.getDisplacement(), scratch, false).emit(masm);
@@ -551,28 +552,10 @@ public class SPARCMove {
         Register scratch = g5;
         switch (input.getKind().getStackKind()) {
             case Int:
-                if (crb.codeCache.needsDataPatch(input)) {
-                    crb.recordInlineDataInCode(input);
-                    new Setuw(input.asInt(), asRegister(result)).emit(masm);
-                } else {
-                    if (input.isDefaultForKind()) {
-                        new Clr(asRegister(result)).emit(masm);
-                    } else {
-                        new Setuw(input.asInt(), asRegister(result)).emit(masm);
-                    }
-                }
+                new Setx(input.asLong(), asIntReg(result)).emit(masm);
                 break;
             case Long:
-                if (crb.codeCache.needsDataPatch(input)) {
-                    crb.recordInlineDataInCode(input);
-                    new Setx(input.asLong(), asRegister(result), true).emit(masm);
-                } else {
-                    if (input.isDefaultForKind()) {
-                        new Clr(asRegister(result)).emit(masm);
-                    } else {
-                        new Setx(input.asLong(), asRegister(result)).emit(masm);
-                    }
-                }
+                new Setx(input.asLong(), asLongReg(result)).emit(masm);
                 break;
             case Float:
                 // TODO: Handle it the same way, as in the double case with Movwtos

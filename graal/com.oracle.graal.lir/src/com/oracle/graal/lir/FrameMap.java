@@ -204,7 +204,8 @@ public abstract class FrameMap {
         // @formatter:off
         assert (!slot.getRawAddFrameSize() && slot.getRawOffset() <  outgoingSize) ||
                ( slot.getRawAddFrameSize() && slot.getRawOffset() <  0 && -slot.getRawOffset() <= spillSize) ||
-               ( slot.getRawAddFrameSize() && slot.getRawOffset() >= 0);
+               ( slot.getRawAddFrameSize() && slot.getRawOffset() >= 0) :
+                   String.format("RawAddFrameSize: %b RawOffset: 0x%x spillSize: 0x%x outgoingSize: 0x%x", slot.getRawAddFrameSize(), slot.getRawOffset(), spillSize, outgoingSize);
         // @formatter:on
         if (slot.isInCallerFrame()) {
             accessesCallerFrame = true;
