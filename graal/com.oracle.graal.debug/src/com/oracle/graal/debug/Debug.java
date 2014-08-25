@@ -929,6 +929,9 @@ public class Debug {
     private static DebugMetric createMetric(String format, Object arg1, Object arg2) {
         String name = formatDebugName(format, arg1, arg2);
         boolean conditional = enabledMetrics == null || !enabledMetrics.contains(name);
+        if (!ENABLED && conditional) {
+            return VOID_METRIC;
+        }
         return new MetricImpl(name, conditional);
     }
 
@@ -1203,6 +1206,9 @@ public class Debug {
     private static DebugTimer createTimer(String format, Object arg1, Object arg2) {
         String name = formatDebugName(format, arg1, arg2);
         boolean conditional = enabledTimers == null || !enabledTimers.contains(name);
+        if (!ENABLED && conditional) {
+            return VOID_TIMER;
+        }
         return new TimerImpl(name, conditional);
     }
 
