@@ -32,15 +32,12 @@ import com.oracle.truffle.sl.nodes.*;
 import com.oracle.truffle.sl.runtime.*;
 
 /**
- * SLExpressionWrapper is a Truffle AST node that gets inserted as the parent to the node that it is
- * wrapping. Any debugging instruments are attached to this wrapper through {@link Probe}s (which
- * themselves contain the instruments. It is through this mechanism that tools can interact directly
- * with the AST. <br/>
- * {@link SLExpressionWrapper} specifically wraps {@link SLExpressionNode}s and overrides the
- * various execute functions in {@link SLExpressionNode} to operate on the child of the wrapper
- * instead of the wrapper itself.
- *
+ * A Truffle node that can be inserted into a Simple AST (assumed not to have executed yet) to
+ * enable "instrumentation" of an {@link SLExpressionNode}. Tools wishing to interact with AST
+ * execution may attach {@link Instrument}s to the {@link Probe} uniquely associated with the
+ * wrapper, and to which this wrapper routes {@link ExecutionEvents}.
  */
+
 public final class SLExpressionWrapper extends SLExpressionNode implements Wrapper {
     @Child private SLExpressionNode child;
 

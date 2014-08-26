@@ -32,10 +32,8 @@ import com.oracle.truffle.sl.nodes.local.*;
 import com.oracle.truffle.sl.runtime.*;
 
 /**
- * This is a general purpose visitor which traverses a completely parsed Simple AST and instruments
- * all the nodes within it. This visitor is designed to visit the tree immediately after it has been
- * parsed.
- *
+ * A visitor which traverses a completely parsed Simple (not yet executed) AST and instruments some
+ * of them.
  */
 public class SLInstrumenter implements NodeVisitor {
 

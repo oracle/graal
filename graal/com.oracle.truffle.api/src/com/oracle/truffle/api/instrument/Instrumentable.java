@@ -26,23 +26,22 @@ package com.oracle.truffle.api.instrument;
 
 import com.oracle.truffle.api.*;
 
+/**
+ * Any Truffle node implementing this interface can be "instrumented" by installing a {@link Probe}
+ * that intercepts {@link ExecutionEvents} at the node and routes them to any {@link Instrument}s
+ * that have been attached to the {@link Probe}. Only one {@link Probe} may be installed at each
+ * node; subsequent calls return the one already installed.
+ */
 public interface Instrumentable {
 
     /**
-     * Optionally applies <em>instrumentation</em> at a Truffle AST node, depending on guest
-     * language characteristics and use-case policy. Ideally, the parent node of the guest language
-     * implements this interface.
-     * <ul>
-     * <li>if no instrumentation is to be applied, returns the AST node unmodified;</li>
-     * <li>if an AST node is to be instrumented, then creates a new Wrapper that <em>decorates</em>
-     * the AST node. Additionally, this creates a probe on the wrapper that is to be used for
-     * attaching instruments. This {@link Probe} is notified of all {@link ExecutionEvents} at the
-     * wrapped AST node.</li>
-     * </ul>
+     * Enables "instrumentation" of this Truffle node by tools, where this node is presumed to be
+     * part (and not the root of) of a well-formed Truffle AST that is not being executed. The AST
+     * may be modified.
      *
-     * @param context The {@link ExecutionContext} of the guest language used to create probes on
-     *            the wrapper.
-     * @return The probe that was created.
+     * @param context access to language implementation context
+     * @return a {@link Probe} to which tools may attach {@link Instrument}s that will receive
+     *         {@link ExecutionEvents}
      */
     public Probe probe(ExecutionContext context);
 }

@@ -93,12 +93,16 @@ public abstract class SLStatementNode extends Node implements Instrumentable {
         if (parent == null)
             throw new IllegalStateException("Cannot probe a node without a parent");
 
-        if (parent instanceof SLStatementWrapper)
+        if (parent instanceof SLStatementWrapper) {
             return ((SLStatementWrapper) parent).getProbe();
+        }
 
+        // Create a new wrapper/probe with this node as its child.
         SLStatementWrapper wrapper = new SLStatementWrapper((SLContext) context, this);
+
+        // Replace this node in the AST with the wrapper
         this.replace(wrapper);
-        wrapper.insertChild();
+
         return wrapper.getProbe();
     }
 }

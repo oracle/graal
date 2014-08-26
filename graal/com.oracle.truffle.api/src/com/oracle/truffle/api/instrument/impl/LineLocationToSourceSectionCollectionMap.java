@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.api.instrument.impl;
 
+import java.io.*;
 import java.util.*;
 
 import com.oracle.truffle.api.instrument.*;
@@ -37,18 +38,24 @@ import com.oracle.truffle.api.source.*;
  */
 public class LineLocationToSourceSectionCollectionMap implements ProbeListener {
 
+    private static final boolean TRACE = false;
+    private static final PrintStream OUT = System.out;
+
     /**
      * Map: Source line ==> source sections that exist on the line.
      */
     private final Map<LineLocation, Collection<SourceSection>> lineToSourceSectionsMap = new HashMap<>();
 
     public LineLocationToSourceSectionCollectionMap() {
-
     }
 
     public void newProbeInserted(SourceSection sourceSection, Probe probe) {
         if (sourceSection != null && !(sourceSection instanceof NullSourceSection)) {
-            this.addSourceSectionToLine(sourceSection.getLineLocation(), sourceSection);
+            final LineLocation lineLocation = sourceSection.getLineLocation();
+            if (TRACE) {
+                OUT.println("LineLocationToSourceSectionCollectionMap: adding " + lineLocation + " Probe=" + probe);
+            }
+            this.addSourceSectionToLine(lineLocation, sourceSection);
         }
     }
 
@@ -82,33 +89,38 @@ public class LineLocationToSourceSectionCollectionMap implements ProbeListener {
     }
 
     /**
-     * Returns a collection of {@link SourceSection}s at the given {@link LineLocation}. If there
-     * are no source sections at that line, a new empty list of size 1 is returned.
+     * Returns a collection of {@link SourceSection}s at the given {@link LineLocation}, an empty
+     * list if none.
      *
      * @param line The line to check.
-     * @return A iterable collection of source sections at the given line.
+     * @return the source sections at the given line.
      */
     public Collection<SourceSection> getSourceSectionsAtLine(LineLocation line) {
         Collection<SourceSection> sourceSectionList = lineToSourceSectionsMap.get(line);
 
-        if (sourceSectionList == null)
-            sourceSectionList = new ArrayList<>(1);
-
+        if (sourceSectionList == null) {
+            return Collections.emptyList();
+        }
         return sourceSectionList;
     }
 
     /**
      * Convenience method to get source sections according to a int line number. Returns a
      * collection of {@link SourceSection}s at the given line number. If there are no source
-     * sections at that line, a new empty list is returned.
+     * sections at that line, an empty list is returned.
      *
      * @param lineNumber The line number to check.
-     * @return A iterable collection of source sections at the given line.
+     * @return A collection of source sections at the given line.
      */
     public Collection<SourceSection> getSourceSectionsAtLineNumber(int lineNumber) {
-        ArrayList<SourceSection> sourceSections = new ArrayList<>();
 
-        for (LineLocation line : lineToSourceSectionsMap.keySet()) {
+        final Set<LineLocation> keySet = lineToSourceSectionsMap.keySet();
+        if (keySet.size() == 0) {
+            return Collections.emptyList();
+        }
+
+        final ArrayList<SourceSection> sourceSections = new ArrayList<>();
+        for (LineLocation line : keySet) {
             if (line.getLineNumber() == lineNumber)
                 sourceSections.addAll(lineToSourceSectionsMap.get(line));
         }
