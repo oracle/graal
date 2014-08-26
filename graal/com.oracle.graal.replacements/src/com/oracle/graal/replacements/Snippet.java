@@ -23,6 +23,7 @@
 package com.oracle.graal.replacements;
 
 import java.lang.annotation.*;
+
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.replacements.nodes.*;

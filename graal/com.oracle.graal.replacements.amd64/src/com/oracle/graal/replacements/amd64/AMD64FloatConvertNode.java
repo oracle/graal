@@ -28,6 +28,7 @@ import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
@@ -37,11 +38,16 @@ import com.oracle.graal.nodes.spi.*;
  * of the {@link FloatConvertNode} which, on AMD64 needs a {@link AMD64FloatConvertNode} plus some
  * fixup code that handles the corner cases that differ between AMD64 and Java.
  */
+@NodeInfo
 public class AMD64FloatConvertNode extends UnaryNode implements ArithmeticLIRLowerable {
 
     private final FloatConvert op;
 
-    public AMD64FloatConvertNode(Stamp stamp, FloatConvert op, ValueNode value) {
+    public static AMD64FloatConvertNode create(Stamp stamp, FloatConvert op, ValueNode value) {
+        return USE_GENERATED_NODES ? new AMD64FloatConvertNodeGen(stamp, op, value) : new AMD64FloatConvertNode(stamp, op, value);
+    }
+
+    protected AMD64FloatConvertNode(Stamp stamp, FloatConvert op, ValueNode value) {
         super(stamp, value);
         this.op = op;
     }

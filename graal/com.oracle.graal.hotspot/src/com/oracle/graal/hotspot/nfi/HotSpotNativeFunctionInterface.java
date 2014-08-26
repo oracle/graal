@@ -40,6 +40,7 @@ import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.tiers.*;
+import com.oracle.nfi.api.*;
 
 public class HotSpotNativeFunctionInterface implements NativeFunctionInterface {
 
@@ -87,7 +88,7 @@ public class HotSpotNativeFunctionInterface implements NativeFunctionInterface {
 
     @Override
     public HotSpotNativeFunctionHandle getFunctionHandle(NativeLibraryHandle library, String name, Class<?> returnType, Class<?>... argumentTypes) {
-        HotSpotNativeFunctionPointer functionPointer = lookupFunctionPointer(name, library, true);
+        HotSpotNativeFunctionPointer functionPointer = lookupFunctionPointer(name, library, false);
         return createHandle(functionPointer, returnType, argumentTypes);
     }
 
@@ -178,7 +179,7 @@ public class HotSpotNativeFunctionInterface implements NativeFunctionInterface {
         if (rtldDefault == null) {
             throw new UnsatisfiedLinkError(name);
         }
-        return lookupFunctionPointer(name, rtldDefault, true);
+        return lookupFunctionPointer(name, rtldDefault, false);
     }
 
     public boolean isDefaultLibrarySearchSupported() {

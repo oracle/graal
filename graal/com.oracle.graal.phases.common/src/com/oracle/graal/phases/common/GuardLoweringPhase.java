@@ -162,9 +162,9 @@ public class GuardLoweringPhase extends BasePhase<MidTierContext> {
 
         private void lowerToIf(GuardNode guard) {
             StructuredGraph graph = guard.graph();
-            BeginNode fastPath = graph.add(new BeginNode());
+            BeginNode fastPath = graph.add(BeginNode.create());
             @SuppressWarnings("deprecation")
-            DeoptimizeNode deopt = graph.add(new DeoptimizeNode(guard.action(), guard.reason(), useGuardIdAsDebugId ? guard.getId() : 0, guard.getSpeculation(), null));
+            DeoptimizeNode deopt = graph.add(DeoptimizeNode.create(guard.action(), guard.reason(), useGuardIdAsDebugId ? guard.getId() : 0, guard.getSpeculation(), null));
             BeginNode deoptBranch = BeginNode.begin(deopt);
             BeginNode trueSuccessor;
             BeginNode falseSuccessor;
@@ -176,7 +176,7 @@ public class GuardLoweringPhase extends BasePhase<MidTierContext> {
                 trueSuccessor = fastPath;
                 falseSuccessor = deoptBranch;
             }
-            IfNode ifNode = graph.add(new IfNode(guard.condition(), trueSuccessor, falseSuccessor, trueSuccessor == fastPath ? 1 : 0));
+            IfNode ifNode = graph.add(IfNode.create(guard.condition(), trueSuccessor, falseSuccessor, trueSuccessor == fastPath ? 1 : 0));
             guard.replaceAndDelete(fastPath);
             insert(ifNode, fastPath);
         }
@@ -185,7 +185,7 @@ public class GuardLoweringPhase extends BasePhase<MidTierContext> {
             Loop<Block> loop = block.getLoop();
             StructuredGraph graph = deopt.graph();
             while (loop != null) {
-                LoopExitNode exit = graph.add(new LoopExitNode((LoopBeginNode) loop.getHeader().getBeginNode()));
+                LoopExitNode exit = graph.add(LoopExitNode.create((LoopBeginNode) loop.getHeader().getBeginNode()));
                 graph.addBeforeFixed(deopt, exit);
                 loop = loop.getParent();
             }

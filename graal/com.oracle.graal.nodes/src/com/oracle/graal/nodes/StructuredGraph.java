@@ -104,7 +104,7 @@ public class StructuredGraph extends Graph {
 
     private StructuredGraph(String name, ResolvedJavaMethod method, long graphId, int entryBCI) {
         super(name);
-        this.setStart(add(new StartNode()));
+        this.setStart(add(StartNode.create()));
         this.method = method;
         this.graphId = graphId;
         this.entryBCI = entryBCI;
@@ -374,7 +374,7 @@ public class StructuredGraph extends Graph {
         if (begin.forwardEndCount() == 1) { // bypass merge and remove
             reduceTrivialMerge(begin);
         } else { // convert to merge
-            MergeNode merge = this.add(new MergeNode());
+            MergeNode merge = this.add(MergeNode.create());
             this.replaceFixedWithFixed(begin, merge);
         }
     }

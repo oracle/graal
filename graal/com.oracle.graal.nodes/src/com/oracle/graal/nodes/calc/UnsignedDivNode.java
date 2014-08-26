@@ -24,15 +24,19 @@ package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo(shortName = "|/|")
 public class UnsignedDivNode extends FixedBinaryNode implements Lowerable, LIRLowerable {
 
-    public UnsignedDivNode(ValueNode x, ValueNode y) {
+    public static UnsignedDivNode create(ValueNode x, ValueNode y) {
+        return USE_GENERATED_NODES ? new UnsignedDivNodeGen(x, y) : new UnsignedDivNode(x, y);
+    }
+
+    protected UnsignedDivNode(ValueNode x, ValueNode y) {
         super(x.stamp().unrestricted(), x, y);
     }
 
@@ -50,7 +54,7 @@ public class UnsignedDivNode extends FixedBinaryNode implements Lowerable, LIRLo
                 return forX;
             }
             if (CodeUtil.isPowerOf2(c)) {
-                return new UnsignedRightShiftNode(forX, ConstantNode.forInt(CodeUtil.log2(c)));
+                return UnsignedRightShiftNode.create(forX, ConstantNode.forInt(CodeUtil.log2(c)));
             }
         }
         return this;

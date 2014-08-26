@@ -22,19 +22,23 @@
  */
 package com.oracle.graal.nodes.extended;
 
+import java.util.*;
+
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 
 /**
  * The {@code SwitchNode} class is the base of both lookup and table switches.
  */
+@NodeInfo
 public abstract class SwitchNode extends ControlSplitNode {
 
-    @Successor private final NodeSuccessorList<BeginNode> successors;
-    @Input private ValueNode value;
+    @Successor protected NodeSuccessorList<BeginNode> successors;
+    @Input protected ValueNode value;
 
     // do not change the contents of these arrays:
     private final double[] keyProbabilities;
@@ -102,6 +106,10 @@ public abstract class SwitchNode extends ControlSplitNode {
      * The key at the specified position, encoded in a Constant.
      */
     public abstract Constant keyAt(int i);
+
+    public boolean structureEquals(SwitchNode switchNode) {
+        return Arrays.equals(keySuccessors, switchNode.keySuccessors) && equalKeys(switchNode);
+    }
 
     /**
      * Returns true if the switch has the same keys in the same order as this switch.

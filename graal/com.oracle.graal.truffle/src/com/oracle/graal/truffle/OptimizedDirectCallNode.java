@@ -31,6 +31,7 @@ import com.oracle.truffle.api.nodes.*;
 /**
  * A call node with a constant {@link CallTarget} that can be optimized by Graal.
  */
+@NodeInfo
 public final class OptimizedDirectCallNode extends DirectCallNode implements MaterializedFrameNotify {
 
     private int callCount;
@@ -42,7 +43,7 @@ public final class OptimizedDirectCallNode extends DirectCallNode implements Mat
 
     private final TruffleSplittingStrategy splittingStrategy;
 
-    private OptimizedDirectCallNode(OptimizedCallTarget target) {
+    public OptimizedDirectCallNode(OptimizedCallTarget target) {
         super(target);
         if (TruffleCompilerOptions.TruffleSplittingNew.getValue()) {
             this.splittingStrategy = new DefaultTruffleSplittingStrategyNew(this);
@@ -66,7 +67,7 @@ public final class OptimizedDirectCallNode extends DirectCallNode implements Mat
 
     private void afterInterpreterCall(Object result) {
         splittingStrategy.afterCall(result);
-        propagateInliningInvalidations();
+        // propagateInliningInvalidations();
     }
 
     public static Object callProxy(MaterializedFrameNotify notify, CallTarget callTarget, VirtualFrame frame, Object[] arguments, boolean inlined, boolean direct) {
@@ -149,7 +150,7 @@ public final class OptimizedDirectCallNode extends DirectCallNode implements Mat
             getCurrentCallTarget().incrementKnownCallSites();
         }
         splittingStrategy.beforeCall(arguments);
-        propagateInliningInvalidations();
+        // propagateInliningInvalidations();
     }
 
     /** Used by the splitting strategy to install new targets. */
@@ -176,6 +177,7 @@ public final class OptimizedDirectCallNode extends DirectCallNode implements Mat
         }
     }
 
+    @SuppressWarnings("unused")
     private void propagateInliningInvalidations() {
         if (isInlined() && !getCurrentCallTarget().inliningPerformed) {
             replace(this, "Propagate invalid inlining from " + getCurrentCallTarget().toString());
@@ -196,9 +198,5 @@ public final class OptimizedDirectCallNode extends DirectCallNode implements Mat
     public boolean split() {
         splittingStrategy.forceSplitting();
         return true;
-    }
-
-    public static OptimizedDirectCallNode create(OptimizedCallTarget target) {
-        return new OptimizedDirectCallNode(target);
     }
 }

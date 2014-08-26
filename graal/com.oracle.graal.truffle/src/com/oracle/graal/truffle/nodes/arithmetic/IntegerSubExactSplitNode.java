@@ -24,12 +24,18 @@ package com.oracle.graal.truffle.nodes.arithmetic;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
+@NodeInfo
 public class IntegerSubExactSplitNode extends IntegerExactArithmeticSplitNode {
 
-    public IntegerSubExactSplitNode(Stamp stamp, ValueNode x, ValueNode y, BeginNode next, BeginNode overflowSuccessor) {
+    public static IntegerSubExactSplitNode create(Stamp stamp, ValueNode x, ValueNode y, BeginNode next, BeginNode overflowSuccessor) {
+        return USE_GENERATED_NODES ? new IntegerSubExactSplitNodeGen(stamp, x, y, next, overflowSuccessor) : new IntegerSubExactSplitNode(stamp, x, y, next, overflowSuccessor);
+    }
+
+    protected IntegerSubExactSplitNode(Stamp stamp, ValueNode x, ValueNode y, BeginNode next, BeginNode overflowSuccessor) {
         super(stamp, x, y, next, overflowSuccessor);
     }
 

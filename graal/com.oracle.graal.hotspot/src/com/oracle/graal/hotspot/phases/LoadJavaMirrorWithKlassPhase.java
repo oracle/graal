@@ -28,7 +28,7 @@ import static com.oracle.graal.nodes.ConstantNode.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.hotspot.HotSpotVMConfig.*;
+import com.oracle.graal.hotspot.HotSpotVMConfig.CompressEncoding;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.nodes.*;
@@ -91,7 +91,7 @@ public class LoadJavaMirrorWithKlassPhase extends BasePhase<PhaseContext> {
             ConstantNode klassNode = ConstantNode.forConstant(klass, metaAccess, graph);
 
             Stamp stamp = StampFactory.exactNonNull(metaAccess.lookupJavaType(Class.class));
-            FloatingReadNode freadNode = graph.unique(new FloatingReadNode(klassNode, location, null, stamp));
+            FloatingReadNode freadNode = graph.unique(FloatingReadNode.create(klassNode, location, null, stamp));
 
             if (HotSpotObjectConstant.isCompressed(constant)) {
                 return CompressionNode.compress(freadNode, oopEncoding);

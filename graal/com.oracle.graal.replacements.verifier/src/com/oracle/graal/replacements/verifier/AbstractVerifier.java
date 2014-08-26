@@ -44,7 +44,7 @@ public abstract class AbstractVerifier {
     @SuppressWarnings("unchecked")
     protected static <T> T resolveAnnotationValue(Class<T> expectedType, AnnotationValue value) {
         if (value == null) {
-            throw new NullPointerException("Value must not be null.");
+            return null;
         }
         Object unboxedValue = value.getValue();
         if (unboxedValue != null) {

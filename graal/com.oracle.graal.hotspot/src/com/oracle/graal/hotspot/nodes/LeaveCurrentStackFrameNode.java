@@ -24,7 +24,8 @@ package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.lir.StandardOp.*;
+import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
@@ -32,11 +33,16 @@ import com.oracle.graal.nodes.spi.*;
  * Emits code to leave (pop) the current low-level stack frame. This operation also removes the
  * return address if its location is on the stack.
  */
+@NodeInfo
 public class LeaveCurrentStackFrameNode extends FixedWithNextNode implements LIRLowerable {
 
-    @Input private SaveAllRegistersNode registerSaver;
+    @Input SaveAllRegistersNode registerSaver;
 
-    public LeaveCurrentStackFrameNode(ValueNode registerSaver) {
+    public static LeaveCurrentStackFrameNode create(ValueNode registerSaver) {
+        return USE_GENERATED_NODES ? new LeaveCurrentStackFrameNodeGen(registerSaver) : new LeaveCurrentStackFrameNode(registerSaver);
+    }
+
+    protected LeaveCurrentStackFrameNode(ValueNode registerSaver) {
         super(StampFactory.forVoid());
         this.registerSaver = (SaveAllRegistersNode) registerSaver;
     }

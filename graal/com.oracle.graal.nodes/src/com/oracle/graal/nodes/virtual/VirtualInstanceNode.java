@@ -23,7 +23,7 @@
 package com.oracle.graal.nodes.virtual;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graph.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 
 @NodeInfo(nameTemplate = "VirtualInstance {p#type/s}")
@@ -32,11 +32,19 @@ public class VirtualInstanceNode extends VirtualObjectNode {
     private final ResolvedJavaType type;
     private final ResolvedJavaField[] fields;
 
-    public VirtualInstanceNode(ResolvedJavaType type, boolean hasIdentity) {
+    public static VirtualInstanceNode create(ResolvedJavaType type, boolean hasIdentity) {
+        return USE_GENERATED_NODES ? new VirtualInstanceNodeGen(type, hasIdentity) : new VirtualInstanceNode(type, hasIdentity);
+    }
+
+    VirtualInstanceNode(ResolvedJavaType type, boolean hasIdentity) {
         this(type, type.getInstanceFields(true), hasIdentity);
     }
 
-    public VirtualInstanceNode(ResolvedJavaType type, ResolvedJavaField[] fields, boolean hasIdentity) {
+    public static VirtualInstanceNode create(ResolvedJavaType type, ResolvedJavaField[] fields, boolean hasIdentity) {
+        return USE_GENERATED_NODES ? new VirtualInstanceNodeGen(type, fields, hasIdentity) : new VirtualInstanceNode(type, fields, hasIdentity);
+    }
+
+    protected VirtualInstanceNode(ResolvedJavaType type, ResolvedJavaField[] fields, boolean hasIdentity) {
         super(type, hasIdentity);
         this.type = type;
         this.fields = fields;
@@ -97,11 +105,11 @@ public class VirtualInstanceNode extends VirtualObjectNode {
 
     @Override
     public VirtualInstanceNode duplicate() {
-        return new VirtualInstanceNode(type, fields, super.hasIdentity());
+        return VirtualInstanceNode.create(type, fields, super.hasIdentity());
     }
 
     @Override
     public ValueNode getMaterializedRepresentation(FixedNode fixed, ValueNode[] entries, LockState locks) {
-        return new AllocatedObjectNode(this);
+        return AllocatedObjectNode.create(this);
     }
 }

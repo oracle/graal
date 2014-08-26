@@ -121,8 +121,8 @@ public class LoopUnswitchTest extends GraalCompilerTest {
     }
 
     private void test(String snippet, String referenceSnippet) {
-        final StructuredGraph graph = parse(snippet);
-        final StructuredGraph referenceGraph = parse(referenceSnippet);
+        final StructuredGraph graph = parseEager(snippet);
+        final StructuredGraph referenceGraph = parseEager(referenceSnippet);
 
         new LoopTransformLowPhase().apply(graph);
 

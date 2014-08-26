@@ -24,6 +24,7 @@ package com.oracle.graal.nodes.java;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
@@ -33,16 +34,21 @@ import com.oracle.graal.nodes.type.*;
  * known at compile time. This is used, for instance, to intrinsify {@link Class#isInstance(Object)}
  * .
  */
-public final class InstanceOfDynamicNode extends LogicNode implements Canonicalizable.Binary<ValueNode>, Lowerable {
+@NodeInfo
+public class InstanceOfDynamicNode extends LogicNode implements Canonicalizable.Binary<ValueNode>, Lowerable {
 
-    @Input private ValueNode object;
-    @Input private ValueNode mirror;
+    @Input ValueNode object;
+    @Input ValueNode mirror;
 
     /**
      * @param mirror the {@link Class} value representing the target target type of the test
      * @param object the object being tested
      */
-    public InstanceOfDynamicNode(ValueNode mirror, ValueNode object) {
+    public static InstanceOfDynamicNode create(ValueNode mirror, ValueNode object) {
+        return USE_GENERATED_NODES ? new InstanceOfDynamicNodeGen(mirror, object) : new InstanceOfDynamicNode(mirror, object);
+    }
+
+    InstanceOfDynamicNode(ValueNode mirror, ValueNode object) {
         this.mirror = mirror;
         this.object = object;
         assert mirror.getKind() == Kind.Object : mirror.getKind();
@@ -62,7 +68,7 @@ public final class InstanceOfDynamicNode extends LogicNode implements Canonicali
                 if (t.isPrimitive()) {
                     return LogicConstantNode.contradiction();
                 } else {
-                    return new InstanceOfNode(t, forObject, null);
+                    return InstanceOfNode.create(t, forObject, null);
                 }
             }
         }

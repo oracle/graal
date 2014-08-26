@@ -29,10 +29,10 @@ import java.util.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.lir.gen.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
@@ -40,10 +40,11 @@ import com.oracle.graal.nodes.spi.*;
  * Performs a tail call to the specified target compiled method, with the parameter taken from the
  * supplied FrameState.
  */
+@NodeInfo
 public class TailcallNode extends FixedWithNextNode implements LIRLowerable {
 
-    @Input(InputType.State) private FrameState frameState;
-    @Input private ValueNode target;
+    @Input(InputType.State) FrameState frameState;
+    @Input ValueNode target;
 
     /**
      * Creates a TailcallNode.
@@ -51,7 +52,11 @@ public class TailcallNode extends FixedWithNextNode implements LIRLowerable {
      * @param target points to the start of an nmethod
      * @param frameState the parameters will be taken from this FrameState
      */
-    public TailcallNode(ValueNode target, FrameState frameState) {
+    public static TailcallNode create(ValueNode target, FrameState frameState) {
+        return USE_GENERATED_NODES ? new TailcallNodeGen(target, frameState) : new TailcallNode(target, frameState);
+    }
+
+    protected TailcallNode(ValueNode target, FrameState frameState) {
         super(StampFactory.forVoid());
         this.target = target;
         this.frameState = frameState;

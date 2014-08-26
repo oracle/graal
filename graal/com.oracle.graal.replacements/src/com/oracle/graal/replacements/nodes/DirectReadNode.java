@@ -26,6 +26,7 @@ import static com.oracle.graal.compiler.common.UnsafeAccess.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
@@ -34,12 +35,17 @@ import com.oracle.graal.nodes.spi.*;
  * A special purpose store node that differs from {@link UnsafeStoreNode} in that it is not a
  * {@link StateSplit} and takes a computed address instead of an object.
  */
+@NodeInfo
 public class DirectReadNode extends FixedWithNextNode implements LIRLowerable {
 
-    @Input private ValueNode address;
+    @Input protected ValueNode address;
     private final Kind readKind;
 
-    public DirectReadNode(ValueNode address, Kind readKind) {
+    public static DirectReadNode create(ValueNode address, Kind readKind) {
+        return USE_GENERATED_NODES ? new DirectReadNodeGen(address, readKind) : new DirectReadNode(address, readKind);
+    }
+
+    protected DirectReadNode(ValueNode address, Kind readKind) {
         super(StampFactory.forKind(readKind));
         this.address = address;
         this.readKind = readKind;

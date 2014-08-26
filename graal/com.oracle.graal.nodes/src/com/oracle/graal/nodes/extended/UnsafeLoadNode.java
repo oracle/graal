@@ -26,7 +26,7 @@ import static com.oracle.graal.compiler.common.UnsafeAccess.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
@@ -35,14 +35,23 @@ import com.oracle.graal.nodes.spi.*;
  * Load of a value from a location specified as an offset relative to an object. No null check is
  * performed before the load.
  */
+@NodeInfo
 public class UnsafeLoadNode extends UnsafeAccessNode implements Lowerable, Virtualizable {
-    @OptionalInput(InputType.Condition) private LogicNode guardingCondition;
+    @OptionalInput(InputType.Condition) LogicNode guardingCondition;
 
-    public UnsafeLoadNode(ValueNode object, ValueNode offset, Kind accessKind, LocationIdentity locationIdentity) {
+    public static UnsafeLoadNode create(ValueNode object, ValueNode offset, Kind accessKind, LocationIdentity locationIdentity) {
+        return USE_GENERATED_NODES ? new UnsafeLoadNodeGen(object, offset, accessKind, locationIdentity) : new UnsafeLoadNode(object, offset, accessKind, locationIdentity);
+    }
+
+    UnsafeLoadNode(ValueNode object, ValueNode offset, Kind accessKind, LocationIdentity locationIdentity) {
         this(object, offset, accessKind, locationIdentity, null);
     }
 
-    public UnsafeLoadNode(ValueNode object, ValueNode offset, Kind accessKind, LocationIdentity locationIdentity, LogicNode condition) {
+    public static UnsafeLoadNode create(ValueNode object, ValueNode offset, Kind accessKind, LocationIdentity locationIdentity, LogicNode condition) {
+        return USE_GENERATED_NODES ? new UnsafeLoadNodeGen(object, offset, accessKind, locationIdentity, condition) : new UnsafeLoadNode(object, offset, accessKind, locationIdentity, condition);
+    }
+
+    UnsafeLoadNode(ValueNode object, ValueNode offset, Kind accessKind, LocationIdentity locationIdentity, LogicNode condition) {
         super(StampFactory.forKind(accessKind.getStackKind()), object, offset, accessKind, locationIdentity);
         this.guardingCondition = condition;
     }
@@ -62,8 +71,8 @@ public class UnsafeLoadNode extends UnsafeAccessNode implements Lowerable, Virtu
         if (state != null && state.getState() == EscapeState.Virtual) {
             ValueNode offsetValue = tool.getReplacedValue(offset());
             if (offsetValue.isConstant()) {
-                long offset = offsetValue.asConstant().asLong();
-                int entryIndex = state.getVirtualObject().entryIndexForOffset(offset);
+                long off = offsetValue.asConstant().asLong();
+                int entryIndex = state.getVirtualObject().entryIndexForOffset(off);
                 if (entryIndex != -1) {
                     ValueNode entry = state.getEntry(entryIndex);
                     if (entry.getKind() == getKind() || state.getVirtualObject().entryKind(entryIndex) == accessKind()) {
@@ -76,12 +85,12 @@ public class UnsafeLoadNode extends UnsafeAccessNode implements Lowerable, Virtu
 
     @Override
     protected ValueNode cloneAsFieldAccess(ResolvedJavaField field) {
-        return new LoadFieldNode(object(), field);
+        return LoadFieldNode.create(object(), field);
     }
 
     @Override
     protected ValueNode cloneAsArrayAccess(ValueNode location, LocationIdentity identity) {
-        return new UnsafeLoadNode(object(), location, accessKind(), identity);
+        return UnsafeLoadNode.create(object(), location, accessKind(), identity, guardingCondition);
     }
 
     @SuppressWarnings({"unchecked", "unused"})

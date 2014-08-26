@@ -26,8 +26,8 @@ import static com.oracle.graal.graph.iterators.NodePredicates.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
@@ -37,7 +37,7 @@ import com.oracle.graal.nodes.virtual.*;
  * The {@code LoadFieldNode} represents a read of a static or instance field.
  */
 @NodeInfo(nameTemplate = "LoadField#{p#field/s}")
-public final class LoadFieldNode extends AccessFieldNode implements Canonicalizable.Unary<ValueNode>, VirtualizableRoot {
+public class LoadFieldNode extends AccessFieldNode implements Canonicalizable.Unary<ValueNode>, VirtualizableRoot {
 
     /**
      * Creates a new LoadFieldNode instance.
@@ -45,7 +45,11 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
      * @param object the receiver object
      * @param field the compiler interface field
      */
-    public LoadFieldNode(ValueNode object, ResolvedJavaField field) {
+    public static LoadFieldNode create(ValueNode object, ResolvedJavaField field) {
+        return USE_GENERATED_NODES ? new LoadFieldNodeGen(object, field) : new LoadFieldNode(object, field);
+    }
+
+    protected LoadFieldNode(ValueNode object, ResolvedJavaField field) {
         super(createStamp(field), object, field);
     }
 
@@ -78,7 +82,7 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
             }
         }
         if (!isStatic() && forObject.isNullConstant()) {
-            return new DeoptimizeNode(DeoptimizationAction.None, DeoptimizationReason.NullCheckException);
+            return DeoptimizeNode.create(DeoptimizationAction.None, DeoptimizationReason.NullCheckException);
         }
         return this;
     }
@@ -114,7 +118,7 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
             for (int i = 0; i < phi.valueCount(); i++) {
                 constantNodes[i] = ConstantNode.forConstant(constants[i], metaAccess);
             }
-            return new ValuePhiNode(stamp(), phi.merge(), constantNodes);
+            return ValuePhiNode.create(stamp(), phi.merge(), constantNodes);
         }
         return null;
     }

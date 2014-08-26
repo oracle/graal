@@ -23,6 +23,7 @@
 package com.oracle.graal.compiler.test;
 
 import static com.oracle.graal.graph.iterators.NodePredicates.*;
+
 import java.util.*;
 
 import org.junit.*;
@@ -83,7 +84,7 @@ public class MonitorGraphTest extends GraalCompilerTest {
     }
 
     private StructuredGraph parseAndProcess(String snippet) {
-        StructuredGraph graph = parse(snippet);
+        StructuredGraph graph = parseEager(snippet);
         ParameterNode param = graph.getNodes(ParameterNode.class).first();
         if (param != null) {
             ConstantNode constant = ConstantNode.forInt(0, graph);
@@ -105,7 +106,7 @@ public class MonitorGraphTest extends GraalCompilerTest {
 
     private void test(String snippet) {
         StructuredGraph graph = parseAndProcess(snippet);
-        StructuredGraph referenceGraph = parse(REFERENCE_SNIPPET);
+        StructuredGraph referenceGraph = parseEager(REFERENCE_SNIPPET);
         assertEquals(referenceGraph, graph);
     }
 }

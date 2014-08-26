@@ -78,9 +78,9 @@ public class LoadExceptionObjectSnippets implements Snippets {
         public void lower(LoadExceptionObjectNode loadExceptionObject, HotSpotRegistersProvider registers, LoweringTool tool) {
             if (USE_C_RUNTIME) {
                 StructuredGraph graph = loadExceptionObject.graph();
-                ReadRegisterNode thread = graph.add(new ReadRegisterNode(registers.getThreadRegister(), true, false));
+                ReadRegisterNode thread = graph.add(ReadRegisterNode.create(registers.getThreadRegister(), true, false));
                 graph.addBeforeFixed(loadExceptionObject, thread);
-                ForeignCallNode loadExceptionC = graph.add(new ForeignCallNode(providers.getForeignCalls(), LOAD_AND_CLEAR_EXCEPTION, thread));
+                ForeignCallNode loadExceptionC = graph.add(ForeignCallNode.create(providers.getForeignCalls(), LOAD_AND_CLEAR_EXCEPTION, thread));
                 loadExceptionC.setStateAfter(loadExceptionObject.stateAfter());
                 graph.replaceFixedWithFixed(loadExceptionObject, loadExceptionC);
             } else {

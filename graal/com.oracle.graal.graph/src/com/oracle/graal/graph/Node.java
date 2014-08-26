@@ -27,10 +27,11 @@ import static com.oracle.graal.graph.Graph.*;
 import java.lang.annotation.*;
 import java.util.*;
 
+import com.oracle.graal.graph.Graph.NodeEventListener;
 import com.oracle.graal.graph.NodeClass.NodeClassIterator;
-import com.oracle.graal.graph.NodeClass.Position;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.nodeinfo.*;
 
 /**
  * This class is the base class for all nodes, it represent a node which can be inserted in a
@@ -52,11 +53,17 @@ import com.oracle.graal.graph.spi.*;
  * exception or return true. They can thus be used within an assert statement, so that the check is
  * only performed if assertions are enabled.
  */
+@NodeInfo
 public abstract class Node implements Cloneable, Formattable {
+
+    public final static boolean USE_GENERATED_NODES = Boolean.getBoolean("graal.useGeneratedNodes");
 
     static final int DELETED_ID_START = -1000000000;
     static final int INITIAL_ID = -1;
     static final int ALIVE_ID_START = 0;
+
+    // The use of fully qualified class names here and in the rest
+    // of this file works around a problem javac has resolving symbols
 
     /**
      * Denotes a non-optional (non-null) node input. This should be applied to exactly the fields of
@@ -64,8 +71,8 @@ public abstract class Node implements Cloneable, Formattable {
      * type {@link Node} outside of their constructor should call
      * {@link Node#updateUsages(Node, Node)} just prior to doing the update of the input.
      */
-    @Retention(RetentionPolicy.RUNTIME)
-    @Target(ElementType.FIELD)
+    @java.lang.annotation.Retention(RetentionPolicy.RUNTIME)
+    @java.lang.annotation.Target(ElementType.FIELD)
     public static @interface Input {
         InputType value() default InputType.Value;
     }
@@ -76,14 +83,14 @@ public abstract class Node implements Cloneable, Formattable {
      * {@link Node} outside of their constructor should call {@link Node#updateUsages(Node, Node)}
      * just prior to doing the update of the input.
      */
-    @Retention(RetentionPolicy.RUNTIME)
-    @Target(ElementType.FIELD)
+    @java.lang.annotation.Retention(RetentionPolicy.RUNTIME)
+    @java.lang.annotation.Target(ElementType.FIELD)
     public static @interface OptionalInput {
         InputType value() default InputType.Value;
     }
 
-    @Retention(RetentionPolicy.RUNTIME)
-    @Target(ElementType.FIELD)
+    @java.lang.annotation.Retention(RetentionPolicy.RUNTIME)
+    @java.lang.annotation.Target(ElementType.FIELD)
     public static @interface Successor {
     }
 
@@ -91,8 +98,8 @@ public abstract class Node implements Cloneable, Formattable {
      * Denotes that a parameter of an {@linkplain NodeIntrinsic intrinsic} method must be a compile
      * time constant at all call sites to the intrinsic method.
      */
-    @Retention(RetentionPolicy.RUNTIME)
-    @Target(ElementType.PARAMETER)
+    @java.lang.annotation.Retention(RetentionPolicy.RUNTIME)
+    @java.lang.annotation.Target(ElementType.PARAMETER)
     public static @interface ConstantNodeParameter {
     }
 
@@ -102,8 +109,8 @@ public abstract class Node implements Cloneable, Formattable {
      * an argument for the annotated parameter. Injected parameters must precede all non-injected
      * parameters in a constructor.
      */
-    @Retention(RetentionPolicy.RUNTIME)
-    @Target(ElementType.PARAMETER)
+    @java.lang.annotation.Retention(RetentionPolicy.RUNTIME)
+    @java.lang.annotation.Target(ElementType.PARAMETER)
     public static @interface InjectedNodeParameter {
     }
 
@@ -112,10 +119,10 @@ public abstract class Node implements Cloneable, Formattable {
      * annotated method can be replaced with an instance of the node class denoted by
      * {@link #value()}. For this reason, the signature of the annotated method must match the
      * signature (excluding a prefix of {@linkplain InjectedNodeParameter injected} parameters) of a
-     * constructor in the node class.
+     * factory method named {@code "create"} in the node class.
      */
-    @Retention(RetentionPolicy.RUNTIME)
-    @Target(ElementType.METHOD)
+    @java.lang.annotation.Retention(RetentionPolicy.RUNTIME)
+    @java.lang.annotation.Target(ElementType.METHOD)
     public static @interface NodeIntrinsic {
 
         /**
@@ -145,20 +152,25 @@ public abstract class Node implements Cloneable, Formattable {
     // therefore points to the next Node of the same type.
     Node typeCacheNext;
 
-    private static final int INLINE_USAGE_COUNT = 2;
+    static final int INLINE_USAGE_COUNT = 2;
     private static final Node[] NO_NODES = {};
 
     /**
      * Head of usage list. The elements of the usage list in order are {@link #usage0},
      * {@link #usage1} and {@link #extraUsages}. The first null entry terminates the list.
      */
-    private Node usage0;
-    private Node usage1;
-    private Node[] extraUsages;
+    Node usage0;
+    Node usage1;
+    Node[] extraUsages;
 
     private Node predecessor;
 
+    public static final int NODE_LIST = -2;
+    public static final int NOT_ITERABLE = -1;
+
     public Node() {
+        assert USE_GENERATED_NODES == (getClass().getAnnotation(GeneratedNode.class) != null) : getClass() + " is not a generated Node class - forgot @" + NodeInfo.class.getSimpleName() +
+                        " on class declaration?";
         init();
     }
 
@@ -198,95 +210,6 @@ public abstract class Node implements Cloneable, Formattable {
         return getNodeClass().getSuccessorIterable(this);
     }
 
-    class NodeUsageIterator implements Iterator<Node> {
-
-        int index = -1;
-        Node current;
-
-        private void advance() {
-            current = null;
-            index++;
-            if (index == 0) {
-                current = usage0;
-            } else if (index == 1) {
-                current = usage1;
-            } else {
-                if (index - INLINE_USAGE_COUNT < extraUsages.length) {
-                    current = extraUsages[index - INLINE_USAGE_COUNT];
-                }
-            }
-        }
-
-        public NodeUsageIterator() {
-            advance();
-        }
-
-        public boolean hasNext() {
-            return current != null;
-        }
-
-        public Node next() {
-            Node result = current;
-            if (result == null) {
-                throw new NoSuchElementException();
-            }
-            advance();
-            return result;
-        }
-
-        @Override
-        public void remove() {
-            throw new UnsupportedOperationException();
-        }
-    }
-
-    class NodeUsageWithModCountIterator extends NodeUsageIterator {
-
-        private final int expectedModCount = usageModCount();
-
-        @Override
-        public boolean hasNext() {
-            if (expectedModCount != usageModCount()) {
-                throw new ConcurrentModificationException();
-            }
-            return super.hasNext();
-        }
-
-        @Override
-        public Node next() {
-            if (expectedModCount != usageModCount()) {
-                throw new ConcurrentModificationException();
-            }
-            return super.next();
-        }
-    }
-
-    class NodeUsageIterable implements NodeIterable<Node> {
-
-        public NodeUsageIterator iterator() {
-            if (MODIFICATION_COUNTS_ENABLED) {
-                return new NodeUsageWithModCountIterator();
-            } else {
-                return new NodeUsageIterator();
-            }
-        }
-
-        @Override
-        public boolean isEmpty() {
-            return usage0 == null;
-        }
-
-        @Override
-        public boolean isNotEmpty() {
-            return usage0 != null;
-        }
-
-        @Override
-        public int count() {
-            return usageCount();
-        }
-    }
-
     int getUsageCountUpperBound() {
         assert recordsUsages();
         if (usage0 == null) {
@@ -303,7 +226,7 @@ public abstract class Node implements Cloneable, Formattable {
      */
     public final NodeIterable<Node> usages() {
         assert recordsUsages() : this;
-        return new NodeUsageIterable();
+        return new NodeUsageIterable(this);
     }
 
     /**
@@ -380,7 +303,7 @@ public abstract class Node implements Cloneable, Formattable {
         }
     }
 
-    private int usageCount() {
+    int usageCount() {
         if (usage0 == null) {
             return 0;
         }
@@ -524,7 +447,7 @@ public abstract class Node implements Cloneable, Formattable {
         return predecessor;
     }
 
-    final int modCount() {
+    public final int modCount() {
         if (MODIFICATION_COUNTS_ENABLED && graph != null) {
             return graph.modCount(this);
         }
@@ -840,7 +763,7 @@ public abstract class Node implements Cloneable, Formattable {
 
     final Node clone(Graph into, boolean clearInputsAndSuccessors) {
         NodeClass nodeClass = getNodeClass();
-        if (into != null && nodeClass.valueNumberable() && nodeClass.isLeafNode()) {
+        if (into != null && nodeClass.valueNumberable() && isLeafNode()) {
             Node otherNode = into.findNodeInCache(this);
             if (otherNode != null) {
                 return otherNode;
@@ -868,11 +791,18 @@ public abstract class Node implements Cloneable, Formattable {
         newNode.extraUsages = NO_NODES;
         newNode.predecessor = null;
 
-        if (into != null && nodeClass.valueNumberable() && nodeClass.isLeafNode()) {
+        if (into != null && nodeClass.valueNumberable() && isLeafNode()) {
             into.putNodeIntoCache(newNode);
         }
         newNode.afterClone(this);
         return newNode;
+    }
+
+    /**
+     * @returns true if this node has no inputs and no successors
+     */
+    public boolean isLeafNode() {
+        return USE_GENERATED_NODES || getNodeClass().isLeafNode();
     }
 
     protected void afterClone(@SuppressWarnings("unused") Node other) {
@@ -996,34 +926,6 @@ public abstract class Node implements Cloneable, Formattable {
         return toString(Verbosity.Short);
     }
 
-    public enum Verbosity {
-        /**
-         * Only the id of the node.
-         */
-        Id,
-        /**
-         * Only the name of the node, which may contain some more information for certain node types
-         * (constants, ...).
-         */
-        Name,
-        /**
-         * {@link #Id} + {@link #Name}.
-         */
-        Short,
-        /**
-         * Defaults to {@link #Short} and may be enhanced by subclasses.
-         */
-        Long,
-        /**
-         * For use by a custom formatting facility in an IDE.
-         */
-        Debugger,
-        /**
-         * All the other information plus all debug properties of the node.
-         */
-        All
-    }
-
     /**
      * Creates a String representation for this node with a given {@link Verbosity}.
      */
@@ -1119,5 +1021,40 @@ public abstract class Node implements Cloneable, Formattable {
                 }
             }
         }
+    }
+
+    // NEW API IMPLEMENTED BY GENERATED METHODS - NOT YET USED
+
+    public NodeRefIterable inputsV2() {
+        return NodeRefIterable.Empty;
+    }
+
+    public Collection<Position> getFirstLevelInputs() {
+        return Collections.emptyList();
+    }
+
+    public Collection<Position> getFirstLevelSuccessors() {
+        return Collections.emptyList();
+    }
+
+    /**
+     * @param pos
+     */
+    public InputType getInputTypeAt(Position pos) {
+        throw new NoSuchElementException();
+    }
+
+    /**
+     * @param pos
+     */
+    public String getNameOf(Position pos) {
+        throw new NoSuchElementException();
+    }
+
+    /**
+     * @param pos
+     */
+    public boolean isOptionalInputAt(Position pos) {
+        throw new NoSuchElementException();
     }
 }

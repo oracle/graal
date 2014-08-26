@@ -28,6 +28,7 @@ import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
@@ -38,12 +39,12 @@ import com.oracle.graal.nodes.type.*;
  * constants.
  */
 @NodeInfo(nameTemplate = "IdxLoc {p#locationIdentity/s}")
-public final class IndexedLocationNode extends LocationNode implements Canonicalizable {
+public class IndexedLocationNode extends LocationNode implements Canonicalizable {
 
     private final Kind valueKind;
     private final LocationIdentity locationIdentity;
     private final long displacement;
-    @Input private ValueNode index;
+    @Input ValueNode index;
     private final int indexScaling;
 
     /**
@@ -65,14 +66,14 @@ public final class IndexedLocationNode extends LocationNode implements Canonical
     }
 
     public static IndexedLocationNode create(LocationIdentity identity, Kind kind, long displacement, ValueNode index, Graph graph, int indexScaling) {
-        return graph.unique(new IndexedLocationNode(identity, kind, displacement, index, indexScaling));
+        return graph.unique(IndexedLocationNode.create(identity, kind, displacement, index, indexScaling));
     }
 
     public static IndexedLocationNode create(LocationIdentity identity, Kind kind, long displacement, ValueNode index, int indexScaling) {
-        return new IndexedLocationNode(identity, kind, displacement, index, indexScaling);
+        return USE_GENERATED_NODES ? new IndexedLocationNodeGen(identity, kind, displacement, index, indexScaling) : new IndexedLocationNode(identity, kind, displacement, index, indexScaling);
     }
 
-    public IndexedLocationNode(LocationIdentity identity, Kind kind, long displacement, ValueNode index, int indexScaling) {
+    IndexedLocationNode(LocationIdentity identity, Kind kind, long displacement, ValueNode index, int indexScaling) {
         super(StampFactory.forVoid());
         assert index != null;
         assert indexScaling != 0;

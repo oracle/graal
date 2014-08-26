@@ -30,7 +30,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.graph.Graph.Mark;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.NodeClass.NodeClassIterator;
-import com.oracle.graal.graph.NodeClass.Position;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.phases.common.*;
@@ -167,7 +167,7 @@ public abstract class LoopTransformations {
                         invariantValue = switchNode.value();
                         controls = new ArrayList<>();
                         controls.add(switchNode);
-                    } else if (switchNode.value() == invariantValue && firstSwitch.equalKeys(switchNode)) {
+                    } else if (switchNode.value() == invariantValue && firstSwitch.structureEquals(switchNode)) {
                         // Only collect switches which test the same values in the same order
                         controls.add(switchNode);
                     }

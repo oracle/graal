@@ -64,7 +64,7 @@ public class StubUtil {
         Method found = null;
         for (Method method : stubClass.getDeclaredMethods()) {
             if (Modifier.isStatic(method.getModifiers()) && method.getAnnotation(NodeIntrinsic.class) != null && method.getName().equals(name)) {
-                if (method.getAnnotation(NodeIntrinsic.class).value() == StubForeignCallNode.class) {
+                if (method.getAnnotation(NodeIntrinsic.class).value().equals(StubForeignCallNode.class)) {
                     assert found == null : "found more than one foreign call named " + name + " in " + stubClass;
                     assert method.getParameterTypes().length != 0 && method.getParameterTypes()[0] == ForeignCallDescriptor.class : "first parameter of foreign call '" + name + "' in " + stubClass +
                                     " must be of type " + ForeignCallDescriptor.class.getSimpleName();

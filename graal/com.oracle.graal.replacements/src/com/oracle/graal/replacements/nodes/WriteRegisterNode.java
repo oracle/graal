@@ -25,7 +25,7 @@ package com.oracle.graal.replacements.nodes;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
@@ -33,7 +33,7 @@ import com.oracle.graal.nodes.spi.*;
  * Changes the value of a specific register.
  */
 @NodeInfo(nameTemplate = "WriteRegister %{p#register}")
-public final class WriteRegisterNode extends FixedWithNextNode implements LIRLowerable {
+public class WriteRegisterNode extends FixedWithNextNode implements LIRLowerable {
 
     /**
      * The fixed register to access.
@@ -43,9 +43,13 @@ public final class WriteRegisterNode extends FixedWithNextNode implements LIRLow
     /**
      * The new value assigned to the register.
      */
-    @Input private ValueNode value;
+    @Input ValueNode value;
 
-    public WriteRegisterNode(Register register, ValueNode value) {
+    public static WriteRegisterNode create(Register register, ValueNode value) {
+        return USE_GENERATED_NODES ? new WriteRegisterNodeGen(register, value) : new WriteRegisterNode(register, value);
+    }
+
+    protected WriteRegisterNode(Register register, ValueNode value) {
         super(StampFactory.forVoid());
         this.register = register;
         this.value = value;

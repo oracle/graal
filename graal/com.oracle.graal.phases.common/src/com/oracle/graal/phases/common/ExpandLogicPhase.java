@@ -72,16 +72,16 @@ public class ExpandLogicPhase extends Phase {
         }
         ifNode.clearSuccessors();
         Graph graph = ifNode.graph();
-        MergeNode trueTargetMerge = graph.add(new MergeNode());
+        MergeNode trueTargetMerge = graph.add(MergeNode.create());
         trueTargetMerge.setNext(trueTarget);
-        EndNode firstTrueEnd = graph.add(new EndNode());
-        EndNode secondTrueEnd = graph.add(new EndNode());
+        EndNode firstTrueEnd = graph.add(EndNode.create());
+        EndNode secondTrueEnd = graph.add(EndNode.create());
         trueTargetMerge.addForwardEnd(firstTrueEnd);
         trueTargetMerge.addForwardEnd(secondTrueEnd);
         BeginNode firstTrueTarget = BeginNode.begin(firstTrueEnd);
         BeginNode secondTrueTarget = BeginNode.begin(secondTrueEnd);
-        BeginNode secondIf = BeginNode.begin(graph.add(new IfNode(y, yNegated ? falseTarget : secondTrueTarget, yNegated ? secondTrueTarget : falseTarget, secondIfProbability)));
-        IfNode firstIf = graph.add(new IfNode(x, xNegated ? secondIf : firstTrueTarget, xNegated ? firstTrueTarget : secondIf, firstIfProbability));
+        BeginNode secondIf = BeginNode.begin(graph.add(IfNode.create(y, yNegated ? falseTarget : secondTrueTarget, yNegated ? secondTrueTarget : falseTarget, secondIfProbability)));
+        IfNode firstIf = graph.add(IfNode.create(x, xNegated ? secondIf : firstTrueTarget, xNegated ? firstTrueTarget : secondIf, firstIfProbability));
         ifNode.replaceAtPredecessor(firstIf);
         ifNode.safeDelete();
     }
@@ -90,8 +90,8 @@ public class ExpandLogicPhase extends Phase {
         ValueNode trueTarget = conditional.trueValue();
         ValueNode falseTarget = conditional.falseValue();
         Graph graph = conditional.graph();
-        ConditionalNode secondConditional = graph.unique(new ConditionalNode(y, yNegated ? falseTarget : trueTarget, yNegated ? trueTarget : falseTarget));
-        ConditionalNode firstConditional = graph.unique(new ConditionalNode(x, xNegated ? secondConditional : trueTarget, xNegated ? trueTarget : secondConditional));
+        ConditionalNode secondConditional = graph.unique(ConditionalNode.create(y, yNegated ? falseTarget : trueTarget, yNegated ? trueTarget : falseTarget));
+        ConditionalNode firstConditional = graph.unique(ConditionalNode.create(x, xNegated ? secondConditional : trueTarget, xNegated ? trueTarget : secondConditional));
         conditional.replaceAndDelete(firstConditional);
     }
 }

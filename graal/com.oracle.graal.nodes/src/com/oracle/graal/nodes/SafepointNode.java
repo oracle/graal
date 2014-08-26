@@ -23,14 +23,20 @@
 package com.oracle.graal.nodes;
 
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.spi.*;
 
 /**
  * Marks a position in the graph where a safepoint should be emitted.
  */
+@NodeInfo
 public class SafepointNode extends DeoptimizingFixedWithNextNode implements LIRLowerable {
 
-    public SafepointNode() {
+    public static SafepointNode create() {
+        return USE_GENERATED_NODES ? new SafepointNodeGen() : new SafepointNode();
+    }
+
+    protected SafepointNode() {
         super(StampFactory.forVoid());
     }
 

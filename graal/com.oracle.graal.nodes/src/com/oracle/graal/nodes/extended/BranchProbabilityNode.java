@@ -25,6 +25,7 @@ package com.oracle.graal.nodes.extended;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
@@ -34,6 +35,7 @@ import com.oracle.graal.nodes.spi.*;
  * the if node's taken probability. Then the branch probability node will be removed. This node is
  * intended primarily for snippets, so that they can define their fast and slow paths.
  */
+@NodeInfo
 public class BranchProbabilityNode extends FloatingNode implements Simplifiable, Lowerable {
 
     public static final double LIKELY_PROBABILITY = 0.6;
@@ -48,10 +50,14 @@ public class BranchProbabilityNode extends FloatingNode implements Simplifiable,
     public static final double VERY_FAST_PATH_PROBABILITY = 0.999;
     public static final double VERY_SLOW_PATH_PROBABILITY = 1 - VERY_FAST_PATH_PROBABILITY;
 
-    @Input private ValueNode probability;
-    @Input private ValueNode condition;
+    @Input ValueNode probability;
+    @Input ValueNode condition;
 
-    public BranchProbabilityNode(ValueNode probability, ValueNode condition) {
+    public static BranchProbabilityNode create(ValueNode probability, ValueNode condition) {
+        return USE_GENERATED_NODES ? new BranchProbabilityNodeGen(probability, condition) : new BranchProbabilityNode(probability, condition);
+    }
+
+    BranchProbabilityNode(ValueNode probability, ValueNode condition) {
         super(condition.stamp());
         this.probability = probability;
         this.condition = condition;

@@ -27,12 +27,20 @@ import java.util.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.nodeinfo.*;
 
+@NodeInfo
 public class IndirectCallTargetNode extends LoweredCallTargetNode {
 
-    @Input private ValueNode computedAddress;
+    @Input protected ValueNode computedAddress;
 
-    public IndirectCallTargetNode(ValueNode computedAddress, List<ValueNode> arguments, Stamp returnStamp, JavaType[] signature, ResolvedJavaMethod target, CallingConvention.Type callType,
+    public static IndirectCallTargetNode create(ValueNode computedAddress, List<ValueNode> arguments, Stamp returnStamp, JavaType[] signature, ResolvedJavaMethod target,
+                    CallingConvention.Type callType, InvokeKind invokeKind) {
+        return USE_GENERATED_NODES ? new IndirectCallTargetNodeGen(computedAddress, arguments, returnStamp, signature, target, callType, invokeKind) : new IndirectCallTargetNode(computedAddress,
+                        arguments, returnStamp, signature, target, callType, invokeKind);
+    }
+
+    protected IndirectCallTargetNode(ValueNode computedAddress, List<ValueNode> arguments, Stamp returnStamp, JavaType[] signature, ResolvedJavaMethod target, CallingConvention.Type callType,
                     InvokeKind invokeKind) {
         super(arguments, returnStamp, signature, target, callType, invokeKind);
         this.computedAddress = computedAddress;

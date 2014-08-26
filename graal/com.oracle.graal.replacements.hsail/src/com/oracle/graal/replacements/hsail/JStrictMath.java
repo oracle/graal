@@ -23,12 +23,11 @@
 
 package com.oracle.graal.replacements.hsail;
 
-import java.util.Random;
+import java.util.*;
+
+import sun.misc.*;
 
 import com.oracle.graal.api.replacements.*;
-
-import sun.misc.FpUtils;
-import sun.misc.DoubleConsts;
 
 /**
  * This class contains methods for performing basic numeric operations such as the elementary

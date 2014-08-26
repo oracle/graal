@@ -28,6 +28,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.hotspot.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
@@ -35,7 +36,8 @@ import com.oracle.graal.nodes.spi.*;
  * Reserves a block of memory in the stack frame of a method. The block is reserved in the frame for
  * the entire execution of the associated method.
  */
-public final class AllocaNode extends FixedWithNextNode implements LIRLowerable {
+@NodeInfo
+public class AllocaNode extends FixedWithNextNode implements LIRLowerable {
 
     /**
      * The number of slots in block.
@@ -49,7 +51,11 @@ public final class AllocaNode extends FixedWithNextNode implements LIRLowerable 
      */
     private final BitSet objects;
 
-    public AllocaNode(int slots, BitSet objects) {
+    public static AllocaNode create(int slots, BitSet objects) {
+        return USE_GENERATED_NODES ? new AllocaNodeGen(slots, objects) : new AllocaNode(slots, objects);
+    }
+
+    protected AllocaNode(int slots, BitSet objects) {
         super(StampFactory.forKind(HotSpotGraalRuntime.getHostWordKind()));
         this.slots = slots;
         this.objects = objects;

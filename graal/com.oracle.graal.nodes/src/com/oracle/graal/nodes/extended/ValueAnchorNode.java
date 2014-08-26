@@ -23,8 +23,8 @@
 package com.oracle.graal.nodes.extended;
 
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
@@ -34,11 +34,15 @@ import com.oracle.graal.nodes.util.*;
  * The ValueAnchor instruction keeps non-CFG (floating) nodes above a certain point in the graph.
  */
 @NodeInfo(allowedUsageTypes = {InputType.Anchor, InputType.Guard})
-public final class ValueAnchorNode extends FixedWithNextNode implements LIRLowerable, Simplifiable, Virtualizable, AnchoringNode, GuardingNode {
+public class ValueAnchorNode extends FixedWithNextNode implements LIRLowerable, Simplifiable, Virtualizable, AnchoringNode, GuardingNode {
 
-    @OptionalInput(InputType.Guard) private ValueNode anchored;
+    @OptionalInput(InputType.Guard) ValueNode anchored;
 
-    public ValueAnchorNode(ValueNode value) {
+    public static ValueAnchorNode create(ValueNode value) {
+        return USE_GENERATED_NODES ? new ValueAnchorNodeGen(value) : new ValueAnchorNode(value);
+    }
+
+    ValueAnchorNode(ValueNode value) {
         super(StampFactory.forVoid());
         this.anchored = value;
     }
@@ -66,13 +70,13 @@ public final class ValueAnchorNode extends FixedWithNextNode implements LIRLower
             }
         }
         if (usages().isEmpty() && next() instanceof FixedAccessNode) {
-            FixedAccessNode next = (FixedAccessNode) next();
-            if (next.getGuard() == anchored) {
+            FixedAccessNode currentNext = (FixedAccessNode) next();
+            if (currentNext.getGuard() == anchored) {
                 GraphUtil.removeFixedWithUnusedInputs(this);
                 return;
-            } else if (next.getGuard() == null && anchored instanceof GuardNode && ((GuardNode) anchored).condition() instanceof IsNullNode) {
+            } else if (currentNext.getGuard() == null && anchored instanceof GuardNode && ((GuardNode) anchored).condition() instanceof IsNullNode) {
                 // coalesce null check guards into subsequent read/write
-                next.setGuard((GuardingNode) anchored);
+                currentNext.setGuard((GuardingNode) anchored);
                 tool.addToWorkList(next());
                 return;
             }

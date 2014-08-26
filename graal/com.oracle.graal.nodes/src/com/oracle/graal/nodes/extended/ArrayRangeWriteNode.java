@@ -23,11 +23,13 @@
 package com.oracle.graal.nodes.extended;
 
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 
 /**
  * Base class for nodes that modify a range of an array.
  */
+@NodeInfo
 public abstract class ArrayRangeWriteNode extends AbstractMemoryCheckpoint {
 
     protected ArrayRangeWriteNode(Stamp stamp) {

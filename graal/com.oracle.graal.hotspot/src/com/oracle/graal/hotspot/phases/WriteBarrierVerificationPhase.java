@@ -128,7 +128,7 @@ public class WriteBarrierVerificationPhase extends Phase {
     }
 
     private static boolean validateBarrier(FixedAccessNode write, WriteBarrier barrier) {
-        assert write instanceof WriteNode || write instanceof LoweredCompareAndSwapNode : "Node must be of type requiring a write barrier";
+        assert write instanceof WriteNode || write instanceof LoweredCompareAndSwapNode || write instanceof LoweredAtomicReadAndWriteNode : "Node must be of type requiring a write barrier " + write;
         if ((barrier.getObject() == write.object()) && (!barrier.usePrecise() || (barrier.usePrecise() && barrier.getLocation() == write.location()))) {
             return true;
         }

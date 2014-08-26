@@ -48,7 +48,7 @@ public class NegateNodeCanonicalizationTest {
         for (byte i : a) {
             ConstantNode node = ConstantNode.forByte(i, graph);
             Constant expected = Constant.forInt(-i);
-            assertEquals(expected, new NegateNode(node).evalConst(node.asConstant()));
+            assertEquals(expected, NegateNode.create(node).evalConst(node.asConstant()));
         }
     }
 
@@ -58,7 +58,7 @@ public class NegateNodeCanonicalizationTest {
         for (char i : a) {
             ConstantNode node = ConstantNode.forChar(i, graph);
             Constant expected = Constant.forInt(-i);
-            assertEquals(expected, new NegateNode(node).evalConst(node.asConstant()));
+            assertEquals(expected, NegateNode.create(node).evalConst(node.asConstant()));
         }
     }
 
@@ -68,7 +68,7 @@ public class NegateNodeCanonicalizationTest {
         for (short i : a) {
             ConstantNode node = ConstantNode.forShort(i, graph);
             Constant expected = Constant.forInt(-i);
-            assertEquals(expected, new NegateNode(node).evalConst(node.asConstant()));
+            assertEquals(expected, NegateNode.create(node).evalConst(node.asConstant()));
         }
     }
 
@@ -78,7 +78,7 @@ public class NegateNodeCanonicalizationTest {
         for (int i : a) {
             ConstantNode node = ConstantNode.forInt(i, graph);
             Constant expected = Constant.forInt(-i);
-            assertEquals(expected, new NegateNode(node).evalConst(node.asConstant()));
+            assertEquals(expected, NegateNode.create(node).evalConst(node.asConstant()));
         }
     }
 
@@ -88,7 +88,7 @@ public class NegateNodeCanonicalizationTest {
         for (long i : a) {
             ConstantNode node = ConstantNode.forLong(i, graph);
             Constant expected = Constant.forLong(-i);
-            assertEquals(expected, new NegateNode(node).evalConst(node.asConstant()));
+            assertEquals(expected, NegateNode.create(node).evalConst(node.asConstant()));
         }
     }
 
@@ -98,7 +98,7 @@ public class NegateNodeCanonicalizationTest {
         for (float i : a) {
             ConstantNode node = ConstantNode.forFloat(i, graph);
             Constant expected = Constant.forFloat(-i);
-            assertEquals(expected, new NegateNode(node).evalConst(node.asConstant()));
+            assertEquals(expected, NegateNode.create(node).evalConst(node.asConstant()));
         }
     }
 
@@ -108,7 +108,7 @@ public class NegateNodeCanonicalizationTest {
         for (double i : a) {
             ConstantNode node = ConstantNode.forDouble(i, graph);
             Constant expected = Constant.forDouble(-i);
-            assertEquals(expected, new NegateNode(node).evalConst(node.asConstant()));
+            assertEquals(expected, NegateNode.create(node).evalConst(node.asConstant()));
         }
     }
 

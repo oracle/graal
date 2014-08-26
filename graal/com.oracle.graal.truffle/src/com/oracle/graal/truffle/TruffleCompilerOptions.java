@@ -69,7 +69,7 @@ public class TruffleCompilerOptions {
     @Option(help = "Experimental: Enable the new version of truffle splitting.")
     public static final OptionValue<Boolean> TruffleSplittingNew = new OptionValue<>(false);
     @Option(help = "Experimental. New splitting only: Whether or not splitting should be based instance comparisons of non TypedObjects")
-    public static final OptionValue<Boolean> TruffleSplittingClassInstanceStamps = new OptionValue<>(true);
+    public static final OptionValue<Boolean> TruffleSplittingClassInstanceStamps = new OptionValue<>(false);
     @Option(help = "Experimental. New splitting only: Whether or not splitting should be based instance comparisons of TypedObjects")
     public static final OptionValue<Boolean> TruffleSplittingTypeInstanceStamps = new OptionValue<>(true);
     @Option(help = "Experimental. New splitting only: The number of calls until splitting is performed. ")
@@ -121,6 +121,8 @@ public class TruffleCompilerOptions {
     public static final OptionValue<Boolean> TraceTruffleSplitting = new OptionValue<>(false);
     @Option(help = "Print stack trace on transfer to interpreter")
     public static final OptionValue<Boolean> TraceTruffleTransferToInterpreter = new StableOptionValue<>(false);
+    @Option(help = "Print stack trace on assumption invalidation")
+    public static final OptionValue<Boolean> TraceTruffleAssumptions = new StableOptionValue<>(false);
     @Option(help = "")
     public static final OptionValue<Boolean> TruffleCallTargetProfiling = new StableOptionValue<>(false);
     // @formatter:on

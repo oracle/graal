@@ -24,13 +24,19 @@ package com.oracle.graal.nodes;
 
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.spi.*;
 
+@NodeInfo
 public class ValueProxyNode extends ProxyNode implements Canonicalizable, Virtualizable, ValueAndStampProxy {
 
-    @Input private ValueNode value;
+    @Input ValueNode value;
 
-    public ValueProxyNode(ValueNode value, BeginNode proxyPoint) {
+    public static ValueProxyNode create(ValueNode value, BeginNode proxyPoint) {
+        return USE_GENERATED_NODES ? new ValueProxyNodeGen(value, proxyPoint) : new ValueProxyNode(value, proxyPoint);
+    }
+
+    protected ValueProxyNode(ValueNode value, BeginNode proxyPoint) {
         super(value.stamp(), proxyPoint);
         this.value = value;
     }

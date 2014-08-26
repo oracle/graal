@@ -158,7 +158,7 @@ public class PartialEvaluationTest extends GraalCompilerTest {
 
         try (Scope s = Debug.scope("Truffle", new DebugDumpScope("Comparison: " + methodName))) {
             Assumptions assumptions = new Assumptions(false);
-            StructuredGraph graph = parse(methodName);
+            StructuredGraph graph = parseEager(methodName);
             PhaseContext context = new PhaseContext(getProviders(), assumptions);
             CanonicalizerPhase canonicalizer = new CanonicalizerPhase(true);
             canonicalizer.apply(graph, context);

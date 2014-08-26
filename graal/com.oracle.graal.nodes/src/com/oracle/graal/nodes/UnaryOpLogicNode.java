@@ -23,11 +23,13 @@
 package com.oracle.graal.nodes;
 
 import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.spi.*;
 
+@NodeInfo
 public abstract class UnaryOpLogicNode extends LogicNode implements LIRLowerable, Canonicalizable.Unary<ValueNode> {
 
-    @Input private ValueNode value;
+    @Input protected ValueNode value;
 
     public ValueNode getValue() {
         return value;

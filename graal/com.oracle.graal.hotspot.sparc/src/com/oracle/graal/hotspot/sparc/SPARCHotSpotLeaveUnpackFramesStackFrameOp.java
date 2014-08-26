@@ -24,18 +24,13 @@ package com.oracle.graal.hotspot.sparc;
 
 import static com.oracle.graal.asm.sparc.SPARCMacroAssembler.*;
 import static com.oracle.graal.sparc.SPARC.*;
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.sparc.*;
-import com.oracle.graal.lir.StandardOp.*;
 import com.oracle.graal.lir.asm.*;
-import com.oracle.graal.sparc.*;
 
 /**
  * Emits code that leaves a stack frame which is tailored to call the C++ method
@@ -49,14 +44,11 @@ final class SPARCHotSpotLeaveUnpackFramesStackFrameOp extends SPARCLIRInstructio
     private final int threadLastJavaPcOffset;
     private final int threadJavaFrameAnchorFlagsOffset;
 
-    private final SaveRegistersOp saveRegisterOp;
-
-    SPARCHotSpotLeaveUnpackFramesStackFrameOp(Register thread, int threadLastJavaSpOffset, int threadLastJavaPcOffset, int threadJavaFrameAnchorFlagsOffset, SaveRegistersOp saveRegisterOp) {
+    SPARCHotSpotLeaveUnpackFramesStackFrameOp(Register thread, int threadLastJavaSpOffset, int threadLastJavaPcOffset, int threadJavaFrameAnchorFlagsOffset) {
         this.thread = thread;
         this.threadLastJavaSpOffset = threadLastJavaSpOffset;
         this.threadLastJavaPcOffset = threadLastJavaPcOffset;
         this.threadJavaFrameAnchorFlagsOffset = threadJavaFrameAnchorFlagsOffset;
-        this.saveRegisterOp = saveRegisterOp;
     }
 
     @Override

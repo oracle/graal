@@ -26,13 +26,22 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo(shortName = "*")
-public final class FloatMulNode extends FloatArithmeticNode {
+public class FloatMulNode extends FloatArithmeticNode {
 
-    public FloatMulNode(ValueNode x, ValueNode y, boolean isStrictFP) {
+    public static FloatMulNode create(ValueNode x, ValueNode y, boolean isStrictFP) {
+        return USE_GENERATED_NODES ? new FloatMulNodeGen(x, y, isStrictFP) : new FloatMulNode(x, y, isStrictFP);
+    }
+
+    public static Class<? extends FloatMulNode> getGenClass() {
+        return USE_GENERATED_NODES ? FloatMulNodeGen.class : FloatMulNode.class;
+    }
+
+    protected FloatMulNode(ValueNode x, ValueNode y, boolean isStrictFP) {
         super(x.stamp().unrestricted(), x, y, isStrictFP);
     }
 
@@ -50,12 +59,13 @@ public final class FloatMulNode extends FloatArithmeticNode {
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
         if (forX.isConstant() && !forY.isConstant()) {
-            return new FloatMulNode(forY, forX, isStrictFP());
+            return FloatMulNode.create(forY, forX, isStrictFP());
         }
         if (forX.isConstant()) {
             return ConstantNode.forPrimitive(evalConst(forX.asConstant(), forY.asConstant()));
         }
         if (forY.isConstant()) {
+            @SuppressWarnings("hiding")
             Constant y = forY.asConstant();
             switch (y.getKind()) {
                 case Float:

@@ -24,12 +24,14 @@ package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 
+@NodeInfo
 public abstract class FixedBinaryNode extends DeoptimizingFixedWithNextNode implements Canonicalizable.Binary<ValueNode> {
 
-    @Input private ValueNode x;
-    @Input private ValueNode y;
+    @Input ValueNode x;
+    @Input ValueNode y;
 
     public FixedBinaryNode(Stamp stamp, ValueNode x, ValueNode y) {
         super(stamp);

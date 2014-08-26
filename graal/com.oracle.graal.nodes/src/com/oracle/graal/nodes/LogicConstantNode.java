@@ -23,6 +23,7 @@
 package com.oracle.graal.nodes;
 
 import com.oracle.graal.graph.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.spi.*;
 
 /**
@@ -32,6 +33,10 @@ import com.oracle.graal.nodes.spi.*;
 public class LogicConstantNode extends LogicNode implements LIRLowerable {
 
     public final boolean value;
+
+    public static LogicConstantNode create(boolean value) {
+        return USE_GENERATED_NODES ? new LogicConstantNodeGen(value) : new LogicConstantNode(value);
+    }
 
     protected LogicConstantNode(boolean value) {
         super();
@@ -46,7 +51,7 @@ public class LogicConstantNode extends LogicNode implements LIRLowerable {
      * @return a node representing the boolean
      */
     public static LogicConstantNode forBoolean(boolean v, Graph graph) {
-        return graph.unique(new LogicConstantNode(v));
+        return graph.unique(LogicConstantNode.create(v));
     }
 
     /**
@@ -56,7 +61,7 @@ public class LogicConstantNode extends LogicNode implements LIRLowerable {
      * @return a node representing the boolean
      */
     public static LogicConstantNode forBoolean(boolean v) {
-        return new LogicConstantNode(v);
+        return LogicConstantNode.create(v);
     }
 
     /**

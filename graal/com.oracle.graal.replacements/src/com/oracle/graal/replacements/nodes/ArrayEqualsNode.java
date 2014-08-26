@@ -26,28 +26,35 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.util.*;
 
 /**
  * Compares two arrays with the same length.
  */
-public class ArrayEqualsNode extends FixedWithNextNode implements LIRLowerable, Canonicalizable, Virtualizable {
+@NodeInfo
+public class ArrayEqualsNode extends FixedWithNextNode implements LIRLowerable, Canonicalizable, Virtualizable, MemoryAccess {
 
     /** {@link Kind} of the arrays to compare. */
     private final Kind kind;
 
     /** One array to be tested for equality. */
-    @Input private ValueNode array1;
+    @Input ValueNode array1;
 
     /** The other array to be tested for equality. */
-    @Input private ValueNode array2;
+    @Input ValueNode array2;
 
     /** Length of both arrays. */
-    @Input private ValueNode length;
+    @Input ValueNode length;
 
-    public ArrayEqualsNode(ValueNode array1, ValueNode array2, ValueNode length) {
+    public static ArrayEqualsNode create(ValueNode array1, ValueNode array2, ValueNode length) {
+        return USE_GENERATED_NODES ? new ArrayEqualsNodeGen(array1, array2, length) : new ArrayEqualsNode(array1, array2, length);
+    }
+
+    protected ArrayEqualsNode(ValueNode array1, ValueNode array2, ValueNode length) {
         super(StampFactory.forKind(Kind.Boolean));
 
         assert array1.stamp().equals(array2.stamp());
@@ -131,5 +138,9 @@ public class ArrayEqualsNode extends FixedWithNextNode implements LIRLowerable, 
     public void generate(NodeLIRBuilderTool gen) {
         Value result = gen.getLIRGeneratorTool().emitArrayEquals(kind, gen.operand(array1), gen.operand(array2), gen.operand(length));
         gen.setResult(this, result);
+    }
+
+    public LocationIdentity getLocationIdentity() {
+        return NamedLocationIdentity.getArrayLocation(kind);
     }
 }

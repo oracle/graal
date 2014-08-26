@@ -24,18 +24,26 @@ package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 
 @NodeInfo(shortName = "^")
-public final class XorNode extends BitLogicNode {
+public class XorNode extends BitLogicNode {
 
-    public XorNode(ValueNode x, ValueNode y) {
+    public static XorNode create(ValueNode x, ValueNode y) {
+        return USE_GENERATED_NODES ? new XorNodeGen(x, y) : new XorNode(x, y);
+    }
+
+    public static Class<? extends XorNode> getGenClass() {
+        return USE_GENERATED_NODES ? XorNodeGen.class : XorNode.class;
+    }
+
+    protected XorNode(ValueNode x, ValueNode y) {
         super(StampTool.xor(x.stamp(), y.stamp()), x, y);
         assert x.stamp().isCompatible(y.stamp());
     }
@@ -57,7 +65,7 @@ public final class XorNode extends BitLogicNode {
             return ConstantNode.forIntegerStamp(stamp(), 0);
         }
         if (forX.isConstant() && !forY.isConstant()) {
-            return new XorNode(forY, forX);
+            return XorNode.create(forY, forX);
         }
         if (forX.isConstant()) {
             return ConstantNode.forPrimitive(stamp(), evalConst(forX.asConstant(), forY.asConstant()));
@@ -67,7 +75,7 @@ public final class XorNode extends BitLogicNode {
             if ((rawY & mask) == 0) {
                 return forX;
             } else if ((rawY & mask) == mask) {
-                return new NotNode(forX);
+                return NotNode.create(forX);
             }
             return BinaryNode.reassociate(this, ValueNode.isConstantPredicate(), forX, forY);
         }

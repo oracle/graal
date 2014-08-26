@@ -51,7 +51,7 @@ import com.google.monitoring.runtime.instrumentation.*;
  * @see #BarSize
  * @see #NumberSize
  */
-final class AllocSpy implements AutoCloseable {
+public final class AllocSpy implements AutoCloseable {
 
     static ThreadLocal<AllocSpy> current = new ThreadLocal<>();
 
@@ -68,6 +68,10 @@ final class AllocSpy implements AutoCloseable {
         if (ENABLED) {
             AllocationRecorder.addSampler(new GraalContextSampler());
         }
+    }
+
+    public static boolean isEnabled() {
+        return ENABLED;
     }
 
     static String prop(String sfx) {

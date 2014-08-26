@@ -24,6 +24,7 @@ package com.oracle.graal.nodes;
 
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
@@ -32,7 +33,7 @@ import com.oracle.graal.nodes.type.*;
 @NodeInfo(nameTemplate = "ValuePhi({i#values})")
 public class ValuePhiNode extends PhiNode {
 
-    @Input final NodeInputList<ValueNode> values;
+    @Input NodeInputList<ValueNode> values;
 
     /**
      * Create a value phi with the specified stamp.
@@ -40,7 +41,11 @@ public class ValuePhiNode extends PhiNode {
      * @param stamp the stamp of the value
      * @param merge the merge that the new phi belongs to
      */
-    public ValuePhiNode(Stamp stamp, MergeNode merge) {
+    public static ValuePhiNode create(Stamp stamp, MergeNode merge) {
+        return USE_GENERATED_NODES ? new ValuePhiNodeGen(stamp, merge) : new ValuePhiNode(stamp, merge);
+    }
+
+    protected ValuePhiNode(Stamp stamp, MergeNode merge) {
         super(stamp, merge);
         assert stamp != StampFactory.forVoid();
         values = new NodeInputList<>(this);
@@ -53,7 +58,11 @@ public class ValuePhiNode extends PhiNode {
      * @param merge the merge that the new phi belongs to
      * @param values the initial values of the phi
      */
-    public ValuePhiNode(Stamp stamp, MergeNode merge, ValueNode[] values) {
+    public static ValuePhiNode create(Stamp stamp, MergeNode merge, ValueNode[] values) {
+        return USE_GENERATED_NODES ? new ValuePhiNodeGen(stamp, merge, values) : new ValuePhiNode(stamp, merge, values);
+    }
+
+    protected ValuePhiNode(Stamp stamp, MergeNode merge, ValueNode[] values) {
         super(stamp, merge);
         assert stamp != StampFactory.forVoid();
         this.values = new NodeInputList<>(this, values);

@@ -27,6 +27,7 @@ import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
@@ -37,10 +38,10 @@ import com.oracle.graal.nodes.type.*;
  * [(base + x) + y] where base is a node and x and y are location nodes.
  */
 @NodeInfo(nameTemplate = "AddLoc {p#locationIdentity/s}")
-public final class AddLocationNode extends LocationNode implements Canonicalizable.Binary<LocationNode> {
+public class AddLocationNode extends LocationNode implements Canonicalizable.Binary<LocationNode> {
 
-    @Input(InputType.Association) private ValueNode x;
-    @Input(InputType.Association) private ValueNode y;
+    @Input(InputType.Association) ValueNode x;
+    @Input(InputType.Association) ValueNode y;
 
     public LocationNode getX() {
         return (LocationNode) x;
@@ -52,10 +53,14 @@ public final class AddLocationNode extends LocationNode implements Canonicalizab
 
     public static AddLocationNode create(LocationNode x, LocationNode y, Graph graph) {
         assert x.getValueKind().equals(y.getValueKind()) && x.getLocationIdentity() == y.getLocationIdentity();
-        return graph.unique(new AddLocationNode(x, y));
+        return graph.unique(AddLocationNode.create(x, y));
     }
 
-    private AddLocationNode(ValueNode x, ValueNode y) {
+    public static AddLocationNode create(ValueNode x, ValueNode y) {
+        return USE_GENERATED_NODES ? new AddLocationNodeGen(x, y) : new AddLocationNode(x, y);
+    }
+
+    AddLocationNode(ValueNode x, ValueNode y) {
         super(StampFactory.forVoid());
         this.x = x;
         this.y = y;
@@ -101,7 +106,7 @@ public final class AddLocationNode extends LocationNode implements Canonicalizab
             AddLocationNode otherAdd = (AddLocationNode) other;
             LocationNode newInner = otherAdd.canonical(constant, otherAdd.getX());
             if (newInner != otherAdd) {
-                return new AddLocationNode(newInner, otherAdd.getY());
+                return AddLocationNode.create(newInner, otherAdd.getY());
             }
         }
         return this;

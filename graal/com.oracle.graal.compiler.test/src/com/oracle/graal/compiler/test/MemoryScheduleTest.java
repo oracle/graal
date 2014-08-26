@@ -24,6 +24,7 @@ package com.oracle.graal.compiler.test;
 
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static org.junit.Assert.*;
+
 import java.util.*;
 
 import org.junit.*;
@@ -600,7 +601,7 @@ public class MemoryScheduleTest extends GraphScheduleTest {
     }
 
     private SchedulePhase getFinalSchedule(final String snippet, final TestMode mode, final MemoryScheduling memsched, final SchedulingStrategy schedulingStrategy) {
-        final StructuredGraph graph = parse(snippet);
+        final StructuredGraph graph = parseEager(snippet);
         try (Scope d = Debug.scope("FloatingReadTest", graph)) {
             try (OverrideScope s = OptionValue.override(OptScheduleOutOfLoops, schedulingStrategy == SchedulingStrategy.LATEST_OUT_OF_LOOPS, OptImplicitNullChecks, false)) {
                 Assumptions assumptions = new Assumptions(false);

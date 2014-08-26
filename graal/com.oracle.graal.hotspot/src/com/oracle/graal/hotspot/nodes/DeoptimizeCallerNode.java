@@ -24,8 +24,8 @@ package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
@@ -38,7 +38,11 @@ public class DeoptimizeCallerNode extends ControlSinkNode implements LIRLowerabl
     private final DeoptimizationAction action;
     private final DeoptimizationReason reason;
 
-    public DeoptimizeCallerNode(DeoptimizationAction action, DeoptimizationReason reason) {
+    public static DeoptimizeCallerNode create(DeoptimizationAction action, DeoptimizationReason reason) {
+        return USE_GENERATED_NODES ? new DeoptimizeCallerNodeGen(action, reason) : new DeoptimizeCallerNode(action, reason);
+    }
+
+    protected DeoptimizeCallerNode(DeoptimizationAction action, DeoptimizationReason reason) {
         super(StampFactory.forVoid());
         this.action = action;
         this.reason = reason;

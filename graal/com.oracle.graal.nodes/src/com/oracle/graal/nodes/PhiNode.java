@@ -27,6 +27,7 @@ import java.util.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.calc.*;
 
 /**
@@ -35,9 +36,10 @@ import com.oracle.graal.nodes.calc.*;
  * of the ends. For {@link LoopBeginNode}s, the first value corresponds to the loop's predecessor,
  * while the rest of the values correspond to the {@link LoopEndNode}s.
  */
+@NodeInfo
 public abstract class PhiNode extends FloatingNode implements Simplifiable {
 
-    @Input(InputType.Association) private MergeNode merge;
+    @Input(InputType.Association) MergeNode merge;
 
     protected PhiNode(Stamp stamp, MergeNode merge) {
         super(stamp);
@@ -137,9 +139,20 @@ public abstract class PhiNode extends FloatingNode implements Simplifiable {
         values().remove(index);
     }
 
-    public static final ValueNode MULTIPLE_VALUES = new ValueNode(null) {
-        // empty dummy class
-    };
+    @NodeInfo
+    static class MultipleValuesNode extends ValueNode {
+
+        public static MultipleValuesNode create() {
+            return USE_GENERATED_NODES ? new PhiNode_MultipleValuesNodeGen() : new MultipleValuesNode();
+        }
+
+        protected MultipleValuesNode() {
+            super(null);
+        }
+
+    }
+
+    public static final ValueNode MULTIPLE_VALUES = MultipleValuesNode.create();
 
     /**
      * If all inputs are the same value, this value is returned, otherwise {@link #MULTIPLE_VALUES}.

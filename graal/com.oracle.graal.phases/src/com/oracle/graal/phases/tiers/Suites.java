@@ -83,26 +83,19 @@ public final class Suites {
             }
         }
 
-        if (CompilerConfiguration.getValue().equals("")) {
-            if (nonBasicCount == 1) {
-                /*
-                 * There is exactly one non-basic configuration. We use this one as default.
-                 */
-                defaultConfiguration = nonBasic;
-            } else {
-                /*
-                 * There is either no extended configuration available, or more than one. In that
-                 * case, default to "basic".
-                 */
-                defaultConfiguration = basic;
-                if (defaultConfiguration == null) {
-                    throw new GraalInternalError("unable to find basic compiler configuration");
-                }
-            }
+        if (nonBasicCount == 1) {
+            /*
+             * There is exactly one non-basic configuration. We use this one as default.
+             */
+            defaultConfiguration = nonBasic;
         } else {
-            defaultConfiguration = configurations.get(CompilerConfiguration.getValue());
+            /*
+             * There is either no extended configuration available, or more than one. In that case,
+             * default to "basic".
+             */
+            defaultConfiguration = basic;
             if (defaultConfiguration == null) {
-                throw new GraalInternalError("unknown compiler configuration: " + CompilerConfiguration.getValue());
+                throw new GraalInternalError("unable to find basic compiler configuration");
             }
         }
     }
@@ -120,7 +113,12 @@ public final class Suites {
     }
 
     public static Suites createDefaultSuites() {
-        return new Suites(defaultConfiguration);
+        String selected = CompilerConfiguration.getValue();
+        if (selected.equals("")) {
+            return new Suites(defaultConfiguration);
+        } else {
+            return createSuites(selected);
+        }
     }
 
     public static Suites createSuites(String name) {

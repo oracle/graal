@@ -24,16 +24,11 @@ package com.oracle.graal.hotspot.sparc;
 
 import static com.oracle.graal.sparc.SPARC.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Lddf;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Mov;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.sparc.*;
-import com.oracle.graal.sparc.*;
 
 /**
  * Pops the current frame off the stack.
@@ -41,10 +36,7 @@ import com.oracle.graal.sparc.*;
 @Opcode("LEAVE_CURRENT_STACK_FRAME")
 final class SPARCHotSpotLeaveCurrentStackFrameOp extends SPARCLIRInstruction {
 
-    private final SaveRegistersOp saveRegisterOp;
-
-    public SPARCHotSpotLeaveCurrentStackFrameOp(SaveRegistersOp saveRegisterOp) {
-        this.saveRegisterOp = saveRegisterOp;
+    public SPARCHotSpotLeaveCurrentStackFrameOp() {
     }
 
     @Override

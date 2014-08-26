@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.compiler.test;
 
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 import java.util.*;
 
@@ -42,21 +42,21 @@ public class SimpleCFGTest extends GraalCompilerTest {
     public void testImplies() {
         StructuredGraph graph = new StructuredGraph();
 
-        AbstractEndNode trueEnd = graph.add(new EndNode());
-        AbstractEndNode falseEnd = graph.add(new EndNode());
+        AbstractEndNode trueEnd = graph.add(EndNode.create());
+        AbstractEndNode falseEnd = graph.add(EndNode.create());
 
-        BeginNode trueBegin = graph.add(new BeginNode());
+        BeginNode trueBegin = graph.add(BeginNode.create());
         trueBegin.setNext(trueEnd);
-        BeginNode falseBegin = graph.add(new BeginNode());
+        BeginNode falseBegin = graph.add(BeginNode.create());
         falseBegin.setNext(falseEnd);
 
-        IfNode ifNode = graph.add(new IfNode(null, trueBegin, falseBegin, 0.5));
+        IfNode ifNode = graph.add(IfNode.create(null, trueBegin, falseBegin, 0.5));
         graph.start().setNext(ifNode);
 
-        MergeNode merge = graph.add(new MergeNode());
+        MergeNode merge = graph.add(MergeNode.create());
         merge.addForwardEnd(trueEnd);
         merge.addForwardEnd(falseEnd);
-        ReturnNode returnNode = graph.add(new ReturnNode(null));
+        ReturnNode returnNode = graph.add(ReturnNode.create(null));
         merge.setNext(returnNode);
 
         dumpGraph(graph);

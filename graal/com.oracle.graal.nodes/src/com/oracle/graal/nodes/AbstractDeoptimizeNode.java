@@ -25,6 +25,7 @@ package com.oracle.graal.nodes;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.nodeinfo.*;
 
 /**
  * This node represents an unconditional explicit request for immediate deoptimization.
@@ -32,9 +33,10 @@ import com.oracle.graal.graph.*;
  * After this node, execution will continue using a fallback execution engine (such as an
  * interpreter) at the position described by the {@link #stateBefore() deoptimization state}.
  */
+@NodeInfo
 public abstract class AbstractDeoptimizeNode extends ControlSinkNode implements IterableNodeType, DeoptimizingNode.DeoptBefore {
 
-    @OptionalInput(InputType.State) private FrameState stateBefore;
+    @OptionalInput(InputType.State) FrameState stateBefore;
 
     public AbstractDeoptimizeNode() {
         super(StampFactory.forVoid());

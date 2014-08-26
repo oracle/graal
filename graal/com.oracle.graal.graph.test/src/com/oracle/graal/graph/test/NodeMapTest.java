@@ -27,10 +27,18 @@ import static org.junit.Assert.*;
 import org.junit.*;
 
 import com.oracle.graal.graph.*;
+import com.oracle.graal.nodeinfo.*;
 
 public class NodeMapTest {
 
-    private static class TestNode extends Node {
+    @NodeInfo
+    static class TestNode extends Node {
+        TestNode() {
+        }
+
+        public static TestNode create() {
+            return USE_GENERATED_NODES ? new NodeMapTest_TestNodeGen() : new TestNode();
+        }
     }
 
     private Graph graph;
@@ -41,7 +49,7 @@ public class NodeMapTest {
     public void before() {
         graph = new Graph();
         for (int i = 0; i < nodes.length; i++) {
-            nodes[i] = graph.add(new TestNode());
+            nodes[i] = graph.add(TestNode.create());
         }
         map = new NodeMap<>(graph);
         for (int i = 0; i < nodes.length; i += 2) {
@@ -95,7 +103,7 @@ public class NodeMapTest {
          * Failing here is not required, but if this behavior changes, usages of get need to be
          * checked for compatibility.
          */
-        TestNode newNode = graph.add(new TestNode());
+        TestNode newNode = graph.add(TestNode.create());
         map.get(newNode);
     }
 
@@ -105,19 +113,19 @@ public class NodeMapTest {
          * Failing here is not required, but if this behavior changes, usages of set need to be
          * checked for compatibility.
          */
-        TestNode newNode = graph.add(new TestNode());
+        TestNode newNode = graph.add(TestNode.create());
         map.set(newNode, 1);
     }
 
     @Test
     public void testNewGetAndGrow() {
-        TestNode newNode = graph.add(new TestNode());
+        TestNode newNode = graph.add(TestNode.create());
         assertEquals(null, map.getAndGrow(newNode));
     }
 
     @Test
     public void testNewSetAndGrow() {
-        TestNode newNode = graph.add(new TestNode());
+        TestNode newNode = graph.add(TestNode.create());
         map.setAndGrow(newNode, 1);
         assertEquals((Integer) 1, map.get(newNode));
     }

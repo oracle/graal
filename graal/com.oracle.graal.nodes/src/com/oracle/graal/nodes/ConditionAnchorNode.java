@@ -25,20 +25,29 @@ package com.oracle.graal.nodes;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo(nameTemplate = "ConditionAnchor(!={p#negated})", allowedUsageTypes = {InputType.Guard})
-public final class ConditionAnchorNode extends FixedWithNextNode implements Canonicalizable.Unary<Node>, Lowerable, GuardingNode {
+public class ConditionAnchorNode extends FixedWithNextNode implements Canonicalizable.Unary<Node>, Lowerable, GuardingNode {
 
-    @Input(InputType.Condition) private LogicNode condition;
+    @Input(InputType.Condition) LogicNode condition;
     private boolean negated;
 
-    public ConditionAnchorNode(LogicNode condition) {
+    public static ConditionAnchorNode create(LogicNode condition) {
+        return USE_GENERATED_NODES ? new ConditionAnchorNodeGen(condition) : new ConditionAnchorNode(condition);
+    }
+
+    protected ConditionAnchorNode(LogicNode condition) {
         this(condition, false);
     }
 
-    public ConditionAnchorNode(LogicNode condition, boolean negated) {
+    public static ConditionAnchorNode create(LogicNode condition, boolean negated) {
+        return USE_GENERATED_NODES ? new ConditionAnchorNodeGen(condition, negated) : new ConditionAnchorNode(condition, negated);
+    }
+
+    protected ConditionAnchorNode(LogicNode condition, boolean negated) {
         super(StampFactory.forVoid());
         this.negated = negated;
         this.condition = condition;
@@ -64,14 +73,14 @@ public final class ConditionAnchorNode extends FixedWithNextNode implements Cano
     public Node canonical(CanonicalizerTool tool, Node forValue) {
         if (condition instanceof LogicNegationNode) {
             LogicNegationNode negation = (LogicNegationNode) condition;
-            return new ConditionAnchorNode(negation.getValue(), !negated);
+            return ConditionAnchorNode.create(negation.getValue(), !negated);
         }
         if (condition instanceof LogicConstantNode) {
             LogicConstantNode c = (LogicConstantNode) condition;
             if (c.getValue() != negated) {
                 return null;
             } else {
-                return new ValueAnchorNode(null);
+                return ValueAnchorNode.create(null);
             }
         }
         return this;
@@ -80,7 +89,7 @@ public final class ConditionAnchorNode extends FixedWithNextNode implements Cano
     @Override
     public void lower(LoweringTool tool) {
         if (graph().getGuardsStage() == StructuredGraph.GuardsStage.FIXED_DEOPTS) {
-            ValueAnchorNode newAnchor = graph().add(new ValueAnchorNode(null));
+            ValueAnchorNode newAnchor = graph().add(ValueAnchorNode.create(null));
             graph().replaceFixedWithFixed(this, newAnchor);
         }
     }

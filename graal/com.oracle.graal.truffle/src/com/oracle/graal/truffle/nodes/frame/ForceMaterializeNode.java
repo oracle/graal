@@ -23,14 +23,20 @@
 package com.oracle.graal.truffle.nodes.frame;
 
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
+@NodeInfo
 public class ForceMaterializeNode extends FixedWithNextNode implements LIRLowerable {
 
-    @Input private ValueNode object;
+    @Input ValueNode object;
 
-    public ForceMaterializeNode(ValueNode object) {
+    public static ForceMaterializeNode create(ValueNode object) {
+        return USE_GENERATED_NODES ? new ForceMaterializeNodeGen(object) : new ForceMaterializeNode(object);
+    }
+
+    protected ForceMaterializeNode(ValueNode object) {
         super(StampFactory.forVoid());
         this.object = object;
     }

@@ -24,6 +24,7 @@ package com.oracle.graal.nodes;
 
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.spi.*;
 
 /**
@@ -33,22 +34,27 @@ import com.oracle.graal.nodes.spi.*;
  * are set up as if the breakpoint instruction was a call to a compiled Java method.
  * <p>
  * A breakpoint is usually place by defining a node intrinsic method as follows:
- * 
+ *
  * <pre>
  *     {@literal @}NodeIntrinsic(BreakpointNode.class)
  *     static void breakpoint(Object object, Word mark, Word value) {
  *          throw new GraalInternalError("");
  *     }
  * </pre>
- * 
+ *
  * Note that the signature is arbitrary. It's sole purpose is to capture values you may want to
  * inspect in the native debugger when the breakpoint is hit.
  */
-public final class BreakpointNode extends FixedWithNextNode implements LIRLowerable {
+@NodeInfo
+public class BreakpointNode extends FixedWithNextNode implements LIRLowerable {
 
-    @Input private final NodeInputList<ValueNode> arguments;
+    @Input NodeInputList<ValueNode> arguments;
 
-    public BreakpointNode(ValueNode... arguments) {
+    public static BreakpointNode create(ValueNode[] arguments) {
+        return USE_GENERATED_NODES ? new BreakpointNodeGen(arguments) : new BreakpointNode(arguments);
+    }
+
+    protected BreakpointNode(ValueNode... arguments) {
         super(StampFactory.forVoid());
         this.arguments = new NodeInputList<>(this, arguments);
     }

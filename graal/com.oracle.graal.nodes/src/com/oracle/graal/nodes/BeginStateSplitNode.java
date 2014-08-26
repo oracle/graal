@@ -23,7 +23,7 @@
 package com.oracle.graal.nodes;
 
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
+import com.oracle.graal.nodeinfo.*;
 
 /**
  * Base class for {@link BeginNode}s that are associated with a frame state.
@@ -32,9 +32,10 @@ import com.oracle.graal.graph.*;
  * which is not possible until loop peeling works without requiring begin nodes to have frames
  * states.
  */
+@NodeInfo
 public abstract class BeginStateSplitNode extends BeginNode implements StateSplit {
 
-    @OptionalInput(InputType.State) private FrameState stateAfter;
+    @OptionalInput(InputType.State) protected FrameState stateAfter;
 
     public BeginStateSplitNode() {
     }

@@ -30,6 +30,7 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.hsail.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
@@ -37,12 +38,13 @@ import com.oracle.graal.nodes.spi.*;
 /**
  * This node implements HSAIL intrinsics for specific {@link Math} routines.
  */
+@NodeInfo
 public class HSAILMathIntrinsicsNode extends FloatingNode implements Canonicalizable, ArithmeticLIRLowerable {
 
     /**
      * The parameter passed to the math operation that this node represents.
      */
-    @Input private ValueNode param;
+    @Input ValueNode param;
 
     /**
      * The math operation that this Node represents.
@@ -73,7 +75,11 @@ public class HSAILMathIntrinsicsNode extends FloatingNode implements Canonicaliz
      * @param x the argument to the math operation
      * @param op the math operation
      */
-    public HSAILMathIntrinsicsNode(ValueNode x, HSAILArithmetic op) {
+    public static HSAILMathIntrinsicsNode create(ValueNode x, HSAILArithmetic op) {
+        return USE_GENERATED_NODES ? new HSAILMathIntrinsicsNodeGen(x, op) : new HSAILMathIntrinsicsNode(x, op);
+    }
+
+    protected HSAILMathIntrinsicsNode(ValueNode x, HSAILArithmetic op) {
         super(StampFactory.forKind(x.getKind()));
         this.param = x;
         this.operation = op;

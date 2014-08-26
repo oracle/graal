@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.hotspot.nfi;
 
-import com.oracle.graal.api.code.*;
+import com.oracle.nfi.api.*;
 
 public class HotSpotNativeFunctionPointer implements NativeFunctionPointer {
 
@@ -41,7 +41,7 @@ public class HotSpotNativeFunctionPointer implements NativeFunctionPointer {
         return name;
     }
 
-    public long getValue() {
+    public long getRawValue() {
         return value;
     }
 

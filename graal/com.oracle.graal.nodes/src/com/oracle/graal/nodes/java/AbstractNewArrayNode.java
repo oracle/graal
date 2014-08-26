@@ -24,15 +24,17 @@ package com.oracle.graal.nodes.java;
 
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
 /**
  * The {@code AbstractNewArrayNode} is used for all 1-dimensional array allocations.
  */
+@NodeInfo
 public class AbstractNewArrayNode extends AbstractNewObjectNode implements ArrayLengthProvider {
 
-    @Input private ValueNode length;
+    @Input ValueNode length;
 
     @Override
     public ValueNode length() {
@@ -41,11 +43,15 @@ public class AbstractNewArrayNode extends AbstractNewObjectNode implements Array
 
     /**
      * Constructs a new AbstractNewArrayNode.
-     * 
+     *
      * @param stamp the stamp of the newly created array
      * @param length the node that produces the length for this allocation.
      * @param fillContents determines whether the array elements should be initialized to zero/null.
      */
+    public static AbstractNewArrayNode create(Stamp stamp, ValueNode length, boolean fillContents) {
+        return USE_GENERATED_NODES ? new AbstractNewArrayNodeGen(stamp, length, fillContents) : new AbstractNewArrayNode(stamp, length, fillContents);
+    }
+
     protected AbstractNewArrayNode(Stamp stamp, ValueNode length, boolean fillContents) {
         super(stamp, fillContents);
         this.length = length;

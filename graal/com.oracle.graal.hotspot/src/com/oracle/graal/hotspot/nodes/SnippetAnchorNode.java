@@ -23,15 +23,19 @@
 package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 
 @NodeInfo(allowedUsageTypes = {InputType.Value, InputType.Anchor, InputType.Guard})
-public final class SnippetAnchorNode extends FixedWithNextNode implements Simplifiable, GuardingNode {
+public class SnippetAnchorNode extends FixedWithNextNode implements Simplifiable, GuardingNode {
 
-    public SnippetAnchorNode() {
+    public static SnippetAnchorNode create() {
+        return USE_GENERATED_NODES ? new SnippetAnchorNodeGen() : new SnippetAnchorNode();
+    }
+
+    protected SnippetAnchorNode() {
         super(StampFactory.object());
     }
 

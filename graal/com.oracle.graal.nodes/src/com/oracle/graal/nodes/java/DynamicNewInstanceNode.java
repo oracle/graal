@@ -26,13 +26,19 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 
+@NodeInfo
 public class DynamicNewInstanceNode extends AbstractNewObjectNode implements Canonicalizable {
 
-    @Input private ValueNode clazz;
+    @Input ValueNode clazz;
 
-    public DynamicNewInstanceNode(ValueNode clazz, boolean fillContents) {
+    public static DynamicNewInstanceNode create(ValueNode clazz, boolean fillContents) {
+        return USE_GENERATED_NODES ? new DynamicNewInstanceNodeGen(clazz, fillContents) : new DynamicNewInstanceNode(clazz, fillContents);
+    }
+
+    DynamicNewInstanceNode(ValueNode clazz, boolean fillContents) {
         super(StampFactory.objectNonNull(), fillContents);
         this.clazz = clazz;
     }
@@ -42,7 +48,7 @@ public class DynamicNewInstanceNode extends AbstractNewObjectNode implements Can
         if (clazz.isConstant()) {
             ResolvedJavaType type = tool.getConstantReflection().asJavaType(clazz.asConstant());
             if (type != null && type.isInitialized() && !type.isArray() && !type.isInterface() && !type.isPrimitive()) {
-                return new NewInstanceNode(type, fillContents());
+                return NewInstanceNode.create(type, fillContents());
             }
         }
         return this;

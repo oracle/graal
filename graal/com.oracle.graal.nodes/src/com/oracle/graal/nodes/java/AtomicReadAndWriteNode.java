@@ -23,29 +23,35 @@
 package com.oracle.graal.nodes.java;
 
 import static com.oracle.graal.compiler.common.UnsafeAccess.*;
+import sun.misc.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
-
-import sun.misc.*;
 
 /**
  * Represents an atomic read-and-write operation like {@link Unsafe#getAndSetInt(Object, long, int)}
  * .
  */
+@NodeInfo
 public class AtomicReadAndWriteNode extends AbstractMemoryCheckpoint implements Lowerable, MemoryCheckpoint.Single {
 
-    @Input private ValueNode object;
-    @Input private ValueNode offset;
-    @Input private ValueNode newValue;
+    @Input ValueNode object;
+    @Input ValueNode offset;
+    @Input ValueNode newValue;
 
     private final Kind valueKind;
     private final LocationIdentity locationIdentity;
 
-    public AtomicReadAndWriteNode(ValueNode object, ValueNode offset, ValueNode newValue, Kind valueKind, LocationIdentity locationIdentity) {
+    public static AtomicReadAndWriteNode create(ValueNode object, ValueNode offset, ValueNode newValue, Kind valueKind, LocationIdentity locationIdentity) {
+        return USE_GENERATED_NODES ? new AtomicReadAndWriteNodeGen(object, offset, newValue, valueKind, locationIdentity) : new AtomicReadAndWriteNode(object, offset, newValue, valueKind,
+                        locationIdentity);
+    }
+
+    AtomicReadAndWriteNode(ValueNode object, ValueNode offset, ValueNode newValue, Kind valueKind, LocationIdentity locationIdentity) {
         super(StampFactory.forKind(newValue.getKind()));
         this.object = object;
         this.offset = offset;

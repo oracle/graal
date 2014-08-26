@@ -81,7 +81,9 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     }
 
     private Object getObjectUnsafe(FrameSlot slot) {
-        return CompilerDirectives.unsafeGetObject(getLocals(), (long) slot.getIndex() * Unsafe.ARRAY_OBJECT_INDEX_SCALE + Unsafe.ARRAY_OBJECT_BASE_OFFSET, true, slot);
+        int slotIndex = slot.getIndex();
+        return CompilerDirectives.unsafeGetObject(getLocals(), (long) slotIndex * Unsafe.ARRAY_OBJECT_INDEX_SCALE + Unsafe.ARRAY_OBJECT_BASE_OFFSET,
+                        this.getTags()[slotIndex] == FrameSlotKind.Object.ordinal(), slot);
     }
 
     @Override
@@ -101,7 +103,9 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     }
 
     private byte getByteUnsafe(FrameSlot slot) {
-        return CompilerDirectives.unsafeGetByte(getPrimitiveLocals(), (long) slot.getIndex() * Unsafe.ARRAY_LONG_INDEX_SCALE + Unsafe.ARRAY_LONG_BASE_OFFSET, true, slot);
+        int slotIndex = slot.getIndex();
+        return CompilerDirectives.unsafeGetByte(getPrimitiveLocals(), (long) slotIndex * Unsafe.ARRAY_LONG_INDEX_SCALE + Unsafe.ARRAY_LONG_BASE_OFFSET,
+                        this.getTags()[slotIndex] == FrameSlotKind.Byte.ordinal(), slot);
     }
 
     @Override
@@ -121,7 +125,9 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     }
 
     private boolean getBooleanUnsafe(FrameSlot slot) {
-        return CompilerDirectives.unsafeGetBoolean(getPrimitiveLocals(), (long) slot.getIndex() * Unsafe.ARRAY_LONG_INDEX_SCALE + Unsafe.ARRAY_LONG_BASE_OFFSET, true, slot);
+        int slotIndex = slot.getIndex();
+        return CompilerDirectives.unsafeGetBoolean(getPrimitiveLocals(), (long) slotIndex * Unsafe.ARRAY_LONG_INDEX_SCALE + Unsafe.ARRAY_LONG_BASE_OFFSET,
+                        this.getTags()[slotIndex] == FrameSlotKind.Boolean.ordinal(), slot);
     }
 
     @Override
@@ -141,7 +147,9 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     }
 
     private float getFloatUnsafe(FrameSlot slot) {
-        return CompilerDirectives.unsafeGetFloat(getPrimitiveLocals(), (long) slot.getIndex() * Unsafe.ARRAY_LONG_INDEX_SCALE + Unsafe.ARRAY_LONG_BASE_OFFSET, true, slot);
+        int slotIndex = slot.getIndex();
+        return CompilerDirectives.unsafeGetFloat(getPrimitiveLocals(), (long) slotIndex * Unsafe.ARRAY_LONG_INDEX_SCALE + Unsafe.ARRAY_LONG_BASE_OFFSET,
+                        this.getTags()[slotIndex] == FrameSlotKind.Float.ordinal(), slot);
     }
 
     @Override
@@ -161,7 +169,9 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     }
 
     private long getLongUnsafe(FrameSlot slot) {
-        return CompilerDirectives.unsafeGetLong(getPrimitiveLocals(), (long) slot.getIndex() * Unsafe.ARRAY_LONG_INDEX_SCALE + Unsafe.ARRAY_LONG_BASE_OFFSET, true, slot);
+        int slotIndex = slot.getIndex();
+        return CompilerDirectives.unsafeGetLong(getPrimitiveLocals(), (long) slotIndex * Unsafe.ARRAY_LONG_INDEX_SCALE + Unsafe.ARRAY_LONG_BASE_OFFSET,
+                        this.getTags()[slotIndex] == FrameSlotKind.Long.ordinal(), slot);
     }
 
     @Override
@@ -181,7 +191,9 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     }
 
     private int getIntUnsafe(FrameSlot slot) {
-        return CompilerDirectives.unsafeGetInt(getPrimitiveLocals(), (long) slot.getIndex() * Unsafe.ARRAY_LONG_INDEX_SCALE + Unsafe.ARRAY_LONG_BASE_OFFSET, true, slot);
+        int slotIndex = slot.getIndex();
+        return CompilerDirectives.unsafeGetInt(getPrimitiveLocals(), (long) slotIndex * Unsafe.ARRAY_LONG_INDEX_SCALE + Unsafe.ARRAY_LONG_BASE_OFFSET,
+                        this.getTags()[slotIndex] == FrameSlotKind.Int.ordinal(), slot);
     }
 
     @Override
@@ -201,7 +213,9 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     }
 
     private double getDoubleUnsafe(FrameSlot slot) {
-        return CompilerDirectives.unsafeGetDouble(getPrimitiveLocals(), (long) slot.getIndex() * Unsafe.ARRAY_LONG_INDEX_SCALE + Unsafe.ARRAY_LONG_BASE_OFFSET, true, slot);
+        int slotIndex = slot.getIndex();
+        return CompilerDirectives.unsafeGetDouble(getPrimitiveLocals(), (long) slotIndex * Unsafe.ARRAY_LONG_INDEX_SCALE + Unsafe.ARRAY_LONG_BASE_OFFSET,
+                        this.getTags()[slotIndex] == FrameSlotKind.Double.ordinal(), slot);
     }
 
     @Override

@@ -30,6 +30,7 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.util.*;
 
@@ -38,8 +39,18 @@ import com.oracle.graal.nodes.util.*;
  */
 @NodeInfo(allowedUsageTypes = {InputType.Association})
 public class MergeNode extends BeginStateSplitNode implements IterableNodeType, LIRLowerable {
+    public static MergeNode create() {
+        return USE_GENERATED_NODES ? new MergeNodeGen() : new MergeNode();
+    }
 
-    @Input(InputType.Association) private final NodeInputList<AbstractEndNode> ends = new NodeInputList<>(this);
+    public static Class<? extends MergeNode> getGenClass() {
+        return USE_GENERATED_NODES ? MergeNodeGen.class : MergeNode.class;
+    }
+
+    MergeNode() {
+    }
+
+    @Input(InputType.Association) NodeInputList<AbstractEndNode> ends = new NodeInputList<>(this);
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
@@ -138,9 +149,9 @@ public class MergeNode extends BeginStateSplitNode implements IterableNodeType, 
      */
     @Override
     public void simplify(SimplifierTool tool) {
-        FixedNode next = next();
-        if (next instanceof AbstractEndNode) {
-            AbstractEndNode origLoopEnd = (AbstractEndNode) next;
+        FixedNode currentNext = next();
+        if (currentNext instanceof AbstractEndNode) {
+            AbstractEndNode origLoopEnd = (AbstractEndNode) currentNext;
             MergeNode merge = origLoopEnd.merge();
             if (merge instanceof LoopBeginNode && !(origLoopEnd instanceof LoopEndNode)) {
                 return;
@@ -168,9 +179,9 @@ public class MergeNode extends BeginStateSplitNode implements IterableNodeType, 
                 }
                 AbstractEndNode newEnd;
                 if (merge instanceof LoopBeginNode) {
-                    newEnd = graph().add(new LoopEndNode((LoopBeginNode) merge));
+                    newEnd = graph().add(LoopEndNode.create((LoopBeginNode) merge));
                 } else {
-                    newEnd = graph().add(new EndNode());
+                    newEnd = graph().add(EndNode.create());
                     merge.addForwardEnd(newEnd);
                 }
                 for (PhiNode phi : merge.phis()) {
@@ -192,8 +203,8 @@ public class MergeNode extends BeginStateSplitNode implements IterableNodeType, 
                 }
             }
             graph().reduceTrivialMerge(this);
-        } else if (next instanceof ReturnNode) {
-            ReturnNode returnNode = (ReturnNode) next;
+        } else if (currentNext instanceof ReturnNode) {
+            ReturnNode returnNode = (ReturnNode) currentNext;
             if (anchored().isNotEmpty() || returnNode.getMemoryMap() != null) {
                 return;
             }
@@ -209,7 +220,7 @@ public class MergeNode extends BeginStateSplitNode implements IterableNodeType, 
             ValuePhiNode returnValuePhi = returnNode.result() == null || !isPhiAtMerge(returnNode.result()) ? null : (ValuePhiNode) returnNode.result();
             List<AbstractEndNode> endNodes = forwardEnds().snapshot();
             for (AbstractEndNode end : endNodes) {
-                ReturnNode newReturn = graph().add(new ReturnNode(returnValuePhi == null ? returnNode.result() : returnValuePhi.valueAt(end)));
+                ReturnNode newReturn = graph().add(ReturnNode.create(returnValuePhi == null ? returnNode.result() : returnValuePhi.valueAt(end)));
                 if (tool != null) {
                     tool.addToWorkList(end.predecessor());
                 }

@@ -25,7 +25,7 @@ package com.oracle.graal.replacements.nodes;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
@@ -33,7 +33,7 @@ import com.oracle.graal.nodes.spi.*;
  * Access the value of a specific register.
  */
 @NodeInfo(nameTemplate = "ReadRegister %{p#register}")
-public final class ReadRegisterNode extends FixedWithNextNode implements LIRLowerable {
+public class ReadRegisterNode extends FixedWithNextNode implements LIRLowerable {
 
     /**
      * The fixed register to access.
@@ -53,7 +53,11 @@ public final class ReadRegisterNode extends FixedWithNextNode implements LIRLowe
      */
     private final boolean incoming;
 
-    public ReadRegisterNode(Register register, Kind kind, boolean directUse, boolean incoming) {
+    public static ReadRegisterNode create(Register register, Kind kind, boolean directUse, boolean incoming) {
+        return USE_GENERATED_NODES ? new ReadRegisterNodeGen(register, kind, directUse, incoming) : new ReadRegisterNode(register, kind, directUse, incoming);
+    }
+
+    protected ReadRegisterNode(Register register, Kind kind, boolean directUse, boolean incoming) {
         super(StampFactory.forKind(kind));
         assert register != null;
         this.register = register;
@@ -65,7 +69,11 @@ public final class ReadRegisterNode extends FixedWithNextNode implements LIRLowe
      * Constructor to be used by node intrinsics where the stamp is inferred from the intrinsic
      * definition.
      */
-    public ReadRegisterNode(Register register, boolean directUse, boolean incoming) {
+    public static ReadRegisterNode create(Register register, boolean directUse, boolean incoming) {
+        return USE_GENERATED_NODES ? new ReadRegisterNodeGen(register, directUse, incoming) : new ReadRegisterNode(register, directUse, incoming);
+    }
+
+    protected ReadRegisterNode(Register register, boolean directUse, boolean incoming) {
         super(StampFactory.forNodeIntrinsic());
         assert register != null;
         this.register = register;

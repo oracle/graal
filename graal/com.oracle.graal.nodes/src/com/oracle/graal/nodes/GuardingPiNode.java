@@ -26,6 +26,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
@@ -37,8 +38,8 @@ import com.oracle.graal.nodes.type.*;
 @NodeInfo(nameTemplate = "GuardingPi(!={p#negated}) {p#reason/s}")
 public class GuardingPiNode extends FixedWithNextNode implements Lowerable, Virtualizable, Canonicalizable, ValueProxy {
 
-    @Input private ValueNode object;
-    @Input(InputType.Condition) private LogicNode condition;
+    @Input ValueNode object;
+    @Input(InputType.Condition) LogicNode condition;
     private final DeoptimizationReason reason;
     private final DeoptimizationAction action;
     private final Stamp piStamp;
@@ -67,8 +68,12 @@ public class GuardingPiNode extends FixedWithNextNode implements Lowerable, Virt
     /**
      * Constructor for {@link #guardingNonNull(Object)} node intrinsic.
      */
-    private GuardingPiNode(ValueNode object) {
-        this(object, object.graph().unique(new IsNullNode(object)), true, DeoptimizationReason.NullCheckException, DeoptimizationAction.None, object.stamp().join(StampFactory.objectNonNull()));
+    public static GuardingPiNode create(ValueNode object) {
+        return USE_GENERATED_NODES ? new GuardingPiNodeGen(object) : new GuardingPiNode(object);
+    }
+
+    GuardingPiNode(ValueNode object) {
+        this(object, object.graph().unique(IsNullNode.create(object)), true, DeoptimizationReason.NullCheckException, DeoptimizationAction.None, object.stamp().join(StampFactory.objectNonNull()));
     }
 
     /**
@@ -79,7 +84,11 @@ public class GuardingPiNode extends FixedWithNextNode implements Lowerable, Virt
      * @param negateCondition the guard succeeds if {@code condition != negateCondition}
      * @param stamp the refined type of the object if the guard succeeds
      */
-    public GuardingPiNode(ValueNode object, ValueNode condition, boolean negateCondition, DeoptimizationReason reason, DeoptimizationAction action, Stamp stamp) {
+    public static GuardingPiNode create(ValueNode object, ValueNode condition, boolean negateCondition, DeoptimizationReason reason, DeoptimizationAction action, Stamp stamp) {
+        return USE_GENERATED_NODES ? new GuardingPiNodeGen(object, condition, negateCondition, reason, action, stamp) : new GuardingPiNode(object, condition, negateCondition, reason, action, stamp);
+    }
+
+    protected GuardingPiNode(ValueNode object, ValueNode condition, boolean negateCondition, DeoptimizationReason reason, DeoptimizationAction action, Stamp stamp) {
         super(stamp);
         assert stamp != null;
         this.piStamp = stamp;
@@ -93,9 +102,9 @@ public class GuardingPiNode extends FixedWithNextNode implements Lowerable, Virt
     @Override
     public void lower(LoweringTool tool) {
         GuardingNode guard = tool.createGuard(next(), condition, reason, action, negated);
-        ValueAnchorNode anchor = graph().add(new ValueAnchorNode((ValueNode) guard));
+        ValueAnchorNode anchor = graph().add(ValueAnchorNode.create((ValueNode) guard));
         if (usages().isNotEmpty()) {
-            PiNode pi = graph().unique(new PiNode(object, stamp(), (ValueNode) guard));
+            PiNode pi = graph().unique(PiNode.create(object, stamp(), (ValueNode) guard));
             replaceAtUsages(pi);
         }
         graph().replaceFixedWithFixed(this, anchor);
@@ -118,19 +127,19 @@ public class GuardingPiNode extends FixedWithNextNode implements Lowerable, Virt
     public Node canonical(CanonicalizerTool tool) {
         if (stamp() == StampFactory.illegal(object.getKind())) {
             // The guard always fails
-            return new DeoptimizeNode(action, reason);
+            return DeoptimizeNode.create(action, reason);
         }
         if (condition instanceof LogicConstantNode) {
             LogicConstantNode c = (LogicConstantNode) condition;
             if (c.getValue() == negated) {
                 // The guard always fails
-                return new DeoptimizeNode(action, reason);
+                return DeoptimizeNode.create(action, reason);
             } else if (stamp().equals(object().stamp())) {
                 // The guard always succeeds, and does not provide new type information
                 return object;
             } else {
                 // The guard always succeeds, and provides new type information
-                return new PiNode(object, stamp());
+                return PiNode.create(object, stamp());
             }
         }
         return this;

@@ -30,10 +30,9 @@ import java.util.Map.Entry;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.graph.Node.Verbosity;
 import com.oracle.graal.graph.NodeClass.NodeClassIterator;
-import com.oracle.graal.graph.NodeClass.Position;
 import com.oracle.graal.java.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.phases.schedule.*;
@@ -175,9 +174,9 @@ public class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPr
                     printProperty(bit, "true");
                 }
             }
-            if (node.getClass() == BeginNode.class) {
+            if (node.getClass() == BeginNode.getGenClass()) {
                 printProperty("shortName", "B");
-            } else if (node.getClass() == AbstractEndNode.class) {
+            } else if (node.getClass() == EndNode.getGenClass()) {
                 printProperty("shortName", "E");
             }
             if (node.predecessor() != null) {

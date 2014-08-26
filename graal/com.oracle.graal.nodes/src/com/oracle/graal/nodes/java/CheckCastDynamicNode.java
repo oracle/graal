@@ -24,6 +24,7 @@ package com.oracle.graal.nodes.java;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
@@ -32,10 +33,11 @@ import com.oracle.graal.nodes.type.*;
  * Implements a type check where the type being checked is loaded at runtime. This is used, for
  * instance, to implement an object array store check.
  */
-public final class CheckCastDynamicNode extends FixedWithNextNode implements Canonicalizable.Binary<ValueNode>, Lowerable {
+@NodeInfo
+public class CheckCastDynamicNode extends FixedWithNextNode implements Canonicalizable.Binary<ValueNode>, Lowerable {
 
-    @Input private ValueNode object;
-    @Input private ValueNode hub;
+    @Input ValueNode object;
+    @Input ValueNode hub;
 
     /**
      * Determines the exception thrown by this node if the check fails: {@link ClassCastException}
@@ -47,7 +49,11 @@ public final class CheckCastDynamicNode extends FixedWithNextNode implements Can
      * @param hub the type being cast to
      * @param object the object being cast
      */
-    public CheckCastDynamicNode(ValueNode hub, ValueNode object, boolean forStoreCheck) {
+    public static CheckCastDynamicNode create(ValueNode hub, ValueNode object, boolean forStoreCheck) {
+        return USE_GENERATED_NODES ? new CheckCastDynamicNodeGen(hub, object, forStoreCheck) : new CheckCastDynamicNode(hub, object, forStoreCheck);
+    }
+
+    CheckCastDynamicNode(ValueNode hub, ValueNode object, boolean forStoreCheck) {
         super(object.stamp());
         this.hub = hub;
         this.object = object;
@@ -95,7 +101,7 @@ public final class CheckCastDynamicNode extends FixedWithNextNode implements Can
         if (forHub.isConstant()) {
             ResolvedJavaType t = tool.getConstantReflection().asJavaType(forHub.asConstant());
             if (t != null) {
-                return new CheckCastNode(t, forObject, null, forStoreCheck);
+                return CheckCastNode.create(t, forObject, null, forStoreCheck);
             }
         }
         return this;

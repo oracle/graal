@@ -24,9 +24,9 @@ package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.lir.StandardOp.*;
+import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
@@ -39,7 +39,11 @@ public class SaveAllRegistersNode extends FixedWithNextNode implements LIRLowera
 
     private SaveRegistersOp saveRegistersOp;
 
-    public SaveAllRegistersNode() {
+    public static SaveAllRegistersNode create() {
+        return USE_GENERATED_NODES ? new SaveAllRegistersNodeGen() : new SaveAllRegistersNode();
+    }
+
+    protected SaveAllRegistersNode() {
         super(StampFactory.forKind(Kind.Long));
     }
 

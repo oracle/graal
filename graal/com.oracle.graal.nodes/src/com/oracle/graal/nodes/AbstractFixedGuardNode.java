@@ -24,14 +24,15 @@ package com.oracle.graal.nodes;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.util.*;
 
+@NodeInfo
 public abstract class AbstractFixedGuardNode extends DeoptimizingFixedWithNextNode implements Simplifiable, GuardingNode {
 
-    @Input(InputType.Condition) private LogicNode condition;
+    @Input(InputType.Condition) LogicNode condition;
     private final DeoptimizationReason reason;
     private final DeoptimizationAction action;
     private boolean negated;
@@ -84,17 +85,17 @@ public abstract class AbstractFixedGuardNode extends DeoptimizingFixedWithNextNo
     }
 
     public DeoptimizeNode lowerToIf() {
-        FixedNode next = next();
+        FixedNode currentNext = next();
         setNext(null);
-        DeoptimizeNode deopt = graph().add(new DeoptimizeNode(action, reason));
+        DeoptimizeNode deopt = graph().add(DeoptimizeNode.create(action, reason));
         deopt.setStateBefore(stateBefore());
         IfNode ifNode;
         BeginNode noDeoptSuccessor;
         if (negated) {
-            ifNode = graph().add(new IfNode(condition, deopt, next, 0));
+            ifNode = graph().add(IfNode.create(condition, deopt, currentNext, 0));
             noDeoptSuccessor = ifNode.falseSuccessor();
         } else {
-            ifNode = graph().add(new IfNode(condition, next, deopt, 1));
+            ifNode = graph().add(IfNode.create(condition, currentNext, deopt, 1));
             noDeoptSuccessor = ifNode.trueSuccessor();
         }
         ((FixedWithNextNode) predecessor()).setNext(ifNode);

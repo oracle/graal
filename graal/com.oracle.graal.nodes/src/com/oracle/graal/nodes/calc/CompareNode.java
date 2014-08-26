@@ -26,6 +26,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 
 /* TODO (thomaswue/gdub) For high-level optimization purpose the compare node should be a boolean *value* (it is currently only a helper node)
@@ -34,6 +35,7 @@ import com.oracle.graal.nodes.*;
  * Compare should probably be made a value (so that it can be canonicalized for example) and in later stages some Compare usage should be transformed
  * into variants that do not materialize the value (CompareIf, CompareGuard...)
  */
+@NodeInfo
 public abstract class CompareNode extends BinaryOpLogicNode {
 
     /**
@@ -76,7 +78,7 @@ public abstract class CompareNode extends BinaryOpLogicNode {
                     return conditionalNode.condition();
                 } else {
                     assert falseResult == true;
-                    return new LogicNegationNode(conditionalNode.condition());
+                    return LogicNegationNode.create(conditionalNode.condition());
 
                 }
             }
@@ -155,18 +157,18 @@ public abstract class CompareNode extends BinaryOpLogicNode {
         CompareNode comparison;
         if (condition == Condition.EQ) {
             if (x.getKind() == Kind.Object) {
-                comparison = new ObjectEqualsNode(x, y);
+                comparison = ObjectEqualsNode.create(x, y);
             } else {
                 assert x.getKind().isNumericInteger();
-                comparison = new IntegerEqualsNode(x, y);
+                comparison = IntegerEqualsNode.create(x, y);
             }
         } else if (condition == Condition.LT) {
             assert x.getKind().isNumericInteger();
-            comparison = new IntegerLessThanNode(x, y);
+            comparison = IntegerLessThanNode.create(x, y);
         } else {
             assert condition == Condition.BT;
             assert x.getKind().isNumericInteger();
-            comparison = new IntegerBelowNode(x, y);
+            comparison = IntegerBelowNode.create(x, y);
         }
 
         return comparison;

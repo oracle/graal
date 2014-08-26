@@ -27,10 +27,12 @@ import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 
+@NodeInfo
 public class MathIntrinsicNode extends UnaryNode implements ArithmeticLIRLowerable {
 
     private final Operation operation;
@@ -49,7 +51,11 @@ public class MathIntrinsicNode extends UnaryNode implements ArithmeticLIRLowerab
         return operation;
     }
 
-    public MathIntrinsicNode(ValueNode value, Operation op) {
+    public static MathIntrinsicNode create(ValueNode value, Operation op) {
+        return USE_GENERATED_NODES ? new MathIntrinsicNodeGen(value, op) : new MathIntrinsicNode(value, op);
+    }
+
+    protected MathIntrinsicNode(ValueNode value, Operation op) {
         super(StampFactory.forKind(Kind.Double), value);
         assert value.stamp() instanceof FloatStamp && PrimitiveStamp.getBits(value.stamp()) == 64;
         this.operation = op;

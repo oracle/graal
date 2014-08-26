@@ -59,7 +59,7 @@ public class PoorMansEATest extends GraalCompilerTest {
 
     private void test(final String snippet) {
         try (Scope s = Debug.scope("PoorMansEATest", new DebugDumpScope(snippet))) {
-            StructuredGraph graph = parse(snippet);
+            StructuredGraph graph = parseEager(snippet);
             Assumptions assumptions = new Assumptions(false);
             HighTierContext highTierContext = new HighTierContext(getProviders(), assumptions, null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
             new InliningPhase(new CanonicalizerPhase(true)).apply(graph, highTierContext);

@@ -26,6 +26,7 @@ import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
@@ -34,14 +35,19 @@ import com.oracle.graal.nodes.spi.*;
  * fail if this has not happened by the time the node is lowered to LIR, while runtime assertions
  * may need to insert a check.
  */
+@NodeInfo
 public class AssertionNode extends FixedWithNextNode implements Lowerable, Canonicalizable, LIRLowerable {
 
-    @Input private ValueNode value;
+    @Input ValueNode value;
 
     private final boolean compileTimeAssertion;
     private final String message;
 
-    public AssertionNode(boolean compileTimeAssertion, ValueNode value, String message) {
+    public static AssertionNode create(boolean compileTimeAssertion, ValueNode value, String message) {
+        return USE_GENERATED_NODES ? new AssertionNodeGen(compileTimeAssertion, value, message) : new AssertionNode(compileTimeAssertion, value, message);
+    }
+
+    protected AssertionNode(boolean compileTimeAssertion, ValueNode value, String message) {
         super(StampFactory.forVoid());
         this.value = value;
         this.compileTimeAssertion = compileTimeAssertion;

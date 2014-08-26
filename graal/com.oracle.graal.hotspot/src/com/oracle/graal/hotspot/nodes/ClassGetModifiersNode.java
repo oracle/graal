@@ -26,6 +26,7 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.replacements.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.replacements.nodes.*;
 
@@ -34,9 +35,14 @@ import com.oracle.graal.replacements.nodes.*;
  *
  * @see ClassSubstitutions#getModifiers(Class)
  */
+@NodeInfo
 public class ClassGetModifiersNode extends MacroNode implements Canonicalizable {
 
-    public ClassGetModifiersNode(Invoke invoke) {
+    public static ClassGetModifiersNode create(Invoke invoke) {
+        return USE_GENERATED_NODES ? new ClassGetModifiersNodeGen(invoke) : new ClassGetModifiersNode(invoke);
+    }
+
+    protected ClassGetModifiersNode(Invoke invoke) {
         super(invoke);
     }
 

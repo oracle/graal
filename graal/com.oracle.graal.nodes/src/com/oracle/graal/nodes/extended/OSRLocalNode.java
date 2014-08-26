@@ -24,12 +24,17 @@ package com.oracle.graal.nodes.extended;
 
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 
 @NodeInfo(nameTemplate = "OSRLocal({p#index})")
 public class OSRLocalNode extends AbstractLocalNode implements IterableNodeType {
 
-    public OSRLocalNode(int index, Stamp stamp) {
+    public static OSRLocalNode create(int index, Stamp stamp) {
+        return USE_GENERATED_NODES ? new OSRLocalNodeGen(index, stamp) : new OSRLocalNode(index, stamp);
+    }
+
+    OSRLocalNode(int index, Stamp stamp) {
         super(index, stamp);
     }
 

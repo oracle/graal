@@ -231,7 +231,7 @@ public abstract class CheckCastReduction extends GuardingPiReduction {
              * (1 of 3) definitely-non-null
              */
             // addWithoutUnique for the same reason as in CheckCastNode.lower()
-            condition = graph.addWithoutUnique(new InstanceOfNode(toType, subject, profile));
+            condition = graph.addWithoutUnique(InstanceOfNode.create(toType, subject, profile));
             reasoner.added.add(condition);
             resultStamp = FlowUtil.asNonNullStamp(resultStamp);
             // TODO fix in CheckCastNode.lower()
@@ -240,15 +240,15 @@ public abstract class CheckCastReduction extends GuardingPiReduction {
                 /*
                  * (2 of 3) null-not-seen-in-profiling
                  */
-                IsNullNode isNN = graph.unique(new IsNullNode(subject));
+                IsNullNode isNN = graph.unique(IsNullNode.create(subject));
                 reasoner.added.add(isNN);
-                FixedGuardNode nullCheck = graph.add(new FixedGuardNode(isNN, UnreachedCode, InvalidateReprofile, true));
+                FixedGuardNode nullCheck = graph.add(FixedGuardNode.create(isNN, UnreachedCode, InvalidateReprofile, true));
                 graph.addBeforeFixed(checkCast, nullCheck);
                 // not calling wrapInPiNode() because we don't want to rememberSubstitution()
-                PiNode nonNullGuarded = graph.unique(new PiNode(subject, FlowUtil.asNonNullStamp(subjectStamp), nullCheck));
+                PiNode nonNullGuarded = graph.unique(PiNode.create(subject, FlowUtil.asNonNullStamp(subjectStamp), nullCheck));
                 reasoner.added.add(nonNullGuarded);
                 // addWithoutUnique for the same reason as in CheckCastNode.lower()
-                condition = graph.addWithoutUnique(new InstanceOfNode(toType, nonNullGuarded, profile));
+                condition = graph.addWithoutUnique(InstanceOfNode.create(toType, nonNullGuarded, profile));
                 reasoner.added.add(condition);
                 resultStamp = FlowUtil.asNonNullStamp(resultStamp);
             } else {
@@ -256,9 +256,9 @@ public abstract class CheckCastReduction extends GuardingPiReduction {
                  * (3 of 3) runtime-null-check-needed
                  */
                 // addWithoutUnique for the same reason as in CheckCastNode.lower()
-                InstanceOfNode typeTest = graph.addWithoutUnique(new InstanceOfNode(toType, subject, profile));
+                InstanceOfNode typeTest = graph.addWithoutUnique(InstanceOfNode.create(toType, subject, profile));
                 reasoner.added.add(typeTest);
-                LogicNode nullTest = graph.unique(new IsNullNode(subject));
+                LogicNode nullTest = graph.unique(IsNullNode.create(subject));
                 reasoner.added.add(nullTest);
                 // TODO (ds) replace with probability of null-seen when available
                 final double shortCircuitProbability = NOT_FREQUENT_PROBABILITY;
@@ -271,7 +271,7 @@ public abstract class CheckCastReduction extends GuardingPiReduction {
          * Add a cast-guard (checking only what needs to be checked) and a PiNode (to be used in
          * place of the CheckCastNode).
          */
-        FixedGuardNode castGuard = graph.add(new FixedGuardNode(condition, checkCast.isForStoreCheck() ? ArrayStoreException : ClassCastException, InvalidateReprofile));
+        FixedGuardNode castGuard = graph.add(FixedGuardNode.create(condition, checkCast.isForStoreCheck() ? ArrayStoreException : ClassCastException, InvalidateReprofile));
         graph.addBeforeFixed(checkCast, castGuard);
 
         assert FlowUtil.isLegalObjectStamp(resultStamp);
@@ -280,7 +280,7 @@ public abstract class CheckCastReduction extends GuardingPiReduction {
 
         if (!FlowUtil.lacksUsages(checkCast)) {
             // not calling wrapInPiNode() because we don't want to rememberSubstitution()
-            PiNode checkedObject = graph.unique(new PiNode(subject, resultStamp, castGuard));
+            PiNode checkedObject = graph.unique(PiNode.create(subject, resultStamp, castGuard));
             reasoner.added.add(checkedObject);
             assert !precisionLoss(originalCheckCastObject, checkedObject);
             assert !precisionLoss(subject, checkedObject);

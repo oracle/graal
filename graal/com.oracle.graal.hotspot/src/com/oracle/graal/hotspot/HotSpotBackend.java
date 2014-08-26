@@ -36,7 +36,6 @@ import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.LIRInstruction.ValueProcedure;
 import com.oracle.graal.lir.StandardOp.LabelOp;
 import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 import com.oracle.graal.nodes.*;
@@ -152,15 +151,14 @@ public abstract class HotSpotBackend extends Backend {
      */
     protected static Set<Register> gatherDefinedRegisters(LIR lir) {
         final Set<Register> definedRegisters = new HashSet<>();
-        ValueProcedure defProc = new ValueProcedure() {
+        ValueConsumer defConsumer = new ValueConsumer() {
 
             @Override
-            public Value doValue(Value value) {
+            public void visitValue(Value value) {
                 if (ValueUtil.isRegister(value)) {
                     final Register reg = ValueUtil.asRegister(value);
                     definedRegisters.add(reg);
                 }
-                return value;
             }
         };
         for (AbstractBlock<?> block : lir.codeEmittingOrder()) {
@@ -168,8 +166,8 @@ public abstract class HotSpotBackend extends Backend {
                 if (op instanceof LabelOp) {
                     // Don't consider this as a definition
                 } else {
-                    op.forEachTemp(defProc);
-                    op.forEachOutput(defProc);
+                    op.visitEachTemp(defConsumer);
+                    op.visitEachOutput(defConsumer);
                 }
             }
         }

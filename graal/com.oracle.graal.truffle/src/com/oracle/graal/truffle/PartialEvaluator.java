@@ -38,8 +38,8 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.loop.*;
-import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
+import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.util.*;
@@ -138,7 +138,11 @@ public class PartialEvaluator {
             }
 
             // EA frame and clean up.
-            new PartialEscapePhase(true, canonicalizer).apply(graph, tierContext);
+            try (Scope pe = Debug.scope("TrufflePartialEscape", graph)) {
+                new PartialEscapePhase(true, canonicalizer).apply(graph, tierContext);
+            } catch (Throwable t) {
+                Debug.handle(t);
+            }
             new VerifyNoIntrinsicsLeftPhase().apply(graph, false);
             for (MaterializeFrameNode materializeNode : graph.getNodes(MaterializeFrameNode.class).snapshot()) {
                 materializeNode.replaceAtUsages(materializeNode.getFrame());

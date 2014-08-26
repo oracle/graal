@@ -25,6 +25,7 @@ package com.oracle.graal.truffle.nodes.arithmetic;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
@@ -36,9 +37,14 @@ import com.oracle.truffle.api.*;
  * Node representing an exact integer substraction that will throw an {@link ArithmeticException} in
  * case the addition would overflow the 32 bit range.
  */
+@NodeInfo
 public class IntegerSubExactNode extends IntegerSubNode implements IntegerExactArithmeticNode {
 
-    public IntegerSubExactNode(ValueNode x, ValueNode y) {
+    public static IntegerSubExactNode create(ValueNode x, ValueNode y) {
+        return USE_GENERATED_NODES ? new IntegerSubExactNodeGen(x, y) : new IntegerSubExactNode(x, y);
+    }
+
+    protected IntegerSubExactNode(ValueNode x, ValueNode y) {
         super(x, y);
         assert x.stamp().isCompatible(y.stamp()) && x.stamp() instanceof IntegerStamp;
     }
@@ -84,7 +90,7 @@ public class IntegerSubExactNode extends IntegerSubNode implements IntegerExactA
 
     @Override
     public IntegerExactArithmeticSplitNode createSplit(BeginNode next, BeginNode deopt) {
-        return graph().add(new IntegerSubExactSplitNode(stamp(), getX(), getY(), next, deopt));
+        return graph().add(IntegerSubExactSplitNode.create(stamp(), getX(), getY(), next, deopt));
     }
 
     @Override

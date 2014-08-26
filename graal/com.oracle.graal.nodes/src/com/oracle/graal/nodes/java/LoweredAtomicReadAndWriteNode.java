@@ -22,13 +22,13 @@
  */
 package com.oracle.graal.nodes.java;
 
+import sun.misc.*;
+
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graph.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
-
-import sun.misc.*;
 
 /**
  * Represents the lowered version of an atomic read-and-write operation like
@@ -37,10 +37,14 @@ import sun.misc.*;
 @NodeInfo(allowedUsageTypes = {InputType.Memory})
 public class LoweredAtomicReadAndWriteNode extends FixedAccessNode implements StateSplit, LIRLowerable, MemoryCheckpoint.Single {
 
-    @Input private ValueNode newValue;
-    @OptionalInput(InputType.State) private FrameState stateAfter;
+    @Input ValueNode newValue;
+    @OptionalInput(InputType.State) FrameState stateAfter;
 
-    public LoweredAtomicReadAndWriteNode(ValueNode object, LocationNode location, ValueNode newValue, BarrierType barrierType) {
+    public static LoweredAtomicReadAndWriteNode create(ValueNode object, LocationNode location, ValueNode newValue, BarrierType barrierType) {
+        return USE_GENERATED_NODES ? new LoweredAtomicReadAndWriteNodeGen(object, location, newValue, barrierType) : new LoweredAtomicReadAndWriteNode(object, location, newValue, barrierType);
+    }
+
+    LoweredAtomicReadAndWriteNode(ValueNode object, LocationNode location, ValueNode newValue, BarrierType barrierType) {
         super(object, location, newValue.stamp().unrestricted(), barrierType);
         this.newValue = newValue;
     }

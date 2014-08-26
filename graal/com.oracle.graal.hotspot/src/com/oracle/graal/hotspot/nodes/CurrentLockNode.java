@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot.nodes;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.word.*;
@@ -32,11 +33,16 @@ import com.oracle.graal.word.*;
 /**
  * Intrinsic for getting the lock in the current {@linkplain BeginLockScopeNode lock scope}.
  */
-public final class CurrentLockNode extends FixedWithNextNode implements LIRLowerable {
+@NodeInfo
+public class CurrentLockNode extends FixedWithNextNode implements LIRLowerable {
 
     private int lockDepth;
 
-    private CurrentLockNode(int lockDepth) {
+    public static CurrentLockNode create(int lockDepth) {
+        return USE_GENERATED_NODES ? new CurrentLockNodeGen(lockDepth) : new CurrentLockNode(lockDepth);
+    }
+
+    CurrentLockNode(int lockDepth) {
         super(null);
         this.lockDepth = lockDepth;
     }

@@ -25,7 +25,8 @@ package com.oracle.graal.hotspot.nodes;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.lir.StandardOp.*;
+import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.word.*;
@@ -34,14 +35,20 @@ import com.oracle.graal.word.*;
  * Emits code to enter a low-level stack frame specifically to call out to the C++ method
  * {@link HotSpotBackend#UNPACK_FRAMES Deoptimization::unpack_frames}.
  */
+@NodeInfo
 public class EnterUnpackFramesStackFrameNode extends FixedWithNextNode implements LIRLowerable {
 
-    @Input private ValueNode framePc;
-    @Input private ValueNode senderSp;
-    @Input private ValueNode senderFp;
-    @Input private SaveAllRegistersNode registerSaver;
+    @Input ValueNode framePc;
+    @Input ValueNode senderSp;
+    @Input ValueNode senderFp;
+    @Input SaveAllRegistersNode registerSaver;
 
-    public EnterUnpackFramesStackFrameNode(ValueNode framePc, ValueNode senderSp, ValueNode senderFp, ValueNode registerSaver) {
+    public static EnterUnpackFramesStackFrameNode create(ValueNode framePc, ValueNode senderSp, ValueNode senderFp, ValueNode registerSaver) {
+        return USE_GENERATED_NODES ? new EnterUnpackFramesStackFrameNodeGen(framePc, senderSp, senderFp, registerSaver) : new EnterUnpackFramesStackFrameNode(framePc, senderSp, senderFp,
+                        registerSaver);
+    }
+
+    protected EnterUnpackFramesStackFrameNode(ValueNode framePc, ValueNode senderSp, ValueNode senderFp, ValueNode registerSaver) {
         super(StampFactory.forVoid());
         this.framePc = framePc;
         this.senderSp = senderSp;

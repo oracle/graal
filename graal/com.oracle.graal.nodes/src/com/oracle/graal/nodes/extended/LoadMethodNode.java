@@ -26,6 +26,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
@@ -33,9 +34,10 @@ import com.oracle.graal.nodes.type.*;
 /**
  * Loads a method from the virtual method table of a given hub.
  */
-public final class LoadMethodNode extends FixedWithNextNode implements Lowerable, Canonicalizable {
+@NodeInfo
+public class LoadMethodNode extends FixedWithNextNode implements Lowerable, Canonicalizable {
 
-    @Input private ValueNode hub;
+    @Input ValueNode hub;
     private final ResolvedJavaMethod method;
     private final ResolvedJavaType receiverType;
 
@@ -43,7 +45,11 @@ public final class LoadMethodNode extends FixedWithNextNode implements Lowerable
         return hub;
     }
 
-    public LoadMethodNode(ResolvedJavaMethod method, ResolvedJavaType receiverType, ValueNode hub, Kind kind) {
+    public static LoadMethodNode create(ResolvedJavaMethod method, ResolvedJavaType receiverType, ValueNode hub, Kind kind) {
+        return USE_GENERATED_NODES ? new LoadMethodNodeGen(method, receiverType, hub, kind) : new LoadMethodNode(method, receiverType, hub, kind);
+    }
+
+    LoadMethodNode(ResolvedJavaMethod method, ResolvedJavaType receiverType, ValueNode hub, Kind kind) {
         super(kind == Kind.Object ? StampFactory.objectNonNull() : StampFactory.forKind(kind));
         this.receiverType = receiverType;
         this.hub = hub;

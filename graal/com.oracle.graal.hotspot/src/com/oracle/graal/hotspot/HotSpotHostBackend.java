@@ -27,7 +27,6 @@ import static com.oracle.graal.hotspot.InitTimer.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.runtime.*;
-import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.hotspot.meta.*;
@@ -37,7 +36,7 @@ import com.oracle.graal.nodes.spi.*;
 /**
  * Common functionality of HotSpot host backends.
  */
-public abstract class HotSpotHostBackend extends HotSpotBackend implements HostBackend {
+public abstract class HotSpotHostBackend extends HotSpotBackend {
 
     /**
      * Descriptor for {@link DeoptimizationStub#deoptimizationHandler}.

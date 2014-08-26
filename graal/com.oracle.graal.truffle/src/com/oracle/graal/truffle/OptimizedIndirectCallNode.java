@@ -31,6 +31,7 @@ import com.oracle.truffle.api.nodes.*;
 /**
  * A call node with a constant {@link CallTarget} that can be optimized by Graal.
  */
+@NodeInfo
 public final class OptimizedIndirectCallNode extends IndirectCallNode implements MaterializedFrameNotify {
 
     @CompilationFinal private FrameAccess outsideFrameAccess = FrameAccess.NONE;

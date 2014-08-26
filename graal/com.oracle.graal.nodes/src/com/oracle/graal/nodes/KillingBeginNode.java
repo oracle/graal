@@ -23,7 +23,7 @@
 package com.oracle.graal.nodes;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graph.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.extended.*;
 
 @NodeInfo(allowedUsageTypes = {InputType.Memory})
@@ -31,7 +31,11 @@ public class KillingBeginNode extends BeginNode implements MemoryCheckpoint.Sing
 
     private LocationIdentity locationIdentity;
 
-    public KillingBeginNode(LocationIdentity locationIdentity) {
+    public static KillingBeginNode create(LocationIdentity locationIdentity) {
+        return USE_GENERATED_NODES ? new KillingBeginNodeGen(locationIdentity) : new KillingBeginNode(locationIdentity);
+    }
+
+    protected KillingBeginNode(LocationIdentity locationIdentity) {
         this.locationIdentity = locationIdentity;
     }
 
@@ -39,7 +43,7 @@ public class KillingBeginNode extends BeginNode implements MemoryCheckpoint.Sing
         if (with instanceof KillingBeginNode) {
             return (KillingBeginNode) with;
         }
-        KillingBeginNode begin = with.graph().add(new KillingBeginNode(locationIdentity));
+        KillingBeginNode begin = with.graph().add(KillingBeginNode.create(locationIdentity));
         begin.setNext(with);
         return begin;
     }

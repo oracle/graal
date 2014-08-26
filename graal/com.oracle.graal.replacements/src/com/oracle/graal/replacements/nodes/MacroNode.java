@@ -30,8 +30,9 @@ import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
+import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.GuardsStage;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
@@ -55,14 +56,19 @@ import com.oracle.graal.replacements.*;
  * possible if the macro node is a {@link MacroStateSplitNode}.</li>
  * </ul>
  */
+@NodeInfo
 public class MacroNode extends FixedWithNextNode implements Lowerable {
 
-    @Input protected final NodeInputList<ValueNode> arguments;
+    @Input protected NodeInputList<ValueNode> arguments;
 
     private final int bci;
     private final ResolvedJavaMethod targetMethod;
     private final JavaType returnType;
     private final InvokeKind invokeKind;
+
+    public static MacroNode create(Invoke invoke) {
+        return USE_GENERATED_NODES ? new MacroNodeGen(invoke) : new MacroNode(invoke);
+    }
 
     protected MacroNode(Invoke invoke) {
         super(StampFactory.forKind(((MethodCallTargetNode) invoke.callTarget()).targetMethod().getSignature().getReturnKind()));
@@ -182,8 +188,8 @@ public class MacroNode extends FixedWithNextNode implements Lowerable {
     }
 
     protected InvokeNode createInvoke() {
-        MethodCallTargetNode callTarget = graph().add(new MethodCallTargetNode(invokeKind, targetMethod, arguments.toArray(new ValueNode[arguments.size()]), returnType));
-        InvokeNode invoke = graph().add(new InvokeNode(callTarget, bci));
+        MethodCallTargetNode callTarget = graph().add(MethodCallTargetNode.create(invokeKind, targetMethod, arguments.toArray(new ValueNode[arguments.size()]), returnType));
+        InvokeNode invoke = graph().add(InvokeNode.create(callTarget, bci));
         if (stateAfter() != null) {
             invoke.setStateAfter(stateAfter().duplicate());
             if (getKind() != Kind.Void) {

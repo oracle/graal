@@ -27,8 +27,8 @@ import static com.oracle.graal.nodes.calc.CompareNode.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
@@ -37,21 +37,30 @@ import com.oracle.graal.nodes.spi.*;
  * The {@code ConditionalNode} class represents a comparison that yields one of two values. Note
  * that these nodes are not built directly from the bytecode but are introduced by canonicalization.
  */
-public final class ConditionalNode extends FloatingNode implements Canonicalizable, LIRLowerable {
+@NodeInfo
+public class ConditionalNode extends FloatingNode implements Canonicalizable, LIRLowerable {
 
-    @Input(InputType.Condition) private LogicNode condition;
-    @Input private ValueNode trueValue;
-    @Input private ValueNode falseValue;
+    @Input(InputType.Condition) LogicNode condition;
+    @Input ValueNode trueValue;
+    @Input ValueNode falseValue;
 
     public LogicNode condition() {
         return condition;
     }
 
-    public ConditionalNode(LogicNode condition) {
+    public static ConditionalNode create(LogicNode condition) {
+        return USE_GENERATED_NODES ? new ConditionalNodeGen(condition) : new ConditionalNode(condition);
+    }
+
+    protected ConditionalNode(LogicNode condition) {
         this(condition, ConstantNode.forInt(1, condition.graph()), ConstantNode.forInt(0, condition.graph()));
     }
 
-    public ConditionalNode(LogicNode condition, ValueNode trueValue, ValueNode falseValue) {
+    public static ConditionalNode create(LogicNode condition, ValueNode trueValue, ValueNode falseValue) {
+        return USE_GENERATED_NODES ? new ConditionalNodeGen(condition, trueValue, falseValue) : new ConditionalNode(condition, trueValue, falseValue);
+    }
+
+    protected ConditionalNode(LogicNode condition, ValueNode trueValue, ValueNode falseValue) {
         super(trueValue.stamp().meet(falseValue.stamp()));
         assert trueValue.stamp().isCompatible(falseValue.stamp());
         this.condition = condition;
@@ -76,7 +85,7 @@ public final class ConditionalNode extends FloatingNode implements Canonicalizab
     public ValueNode canonical(CanonicalizerTool tool) {
         if (condition instanceof LogicNegationNode) {
             LogicNegationNode negated = (LogicNegationNode) condition;
-            return new ConditionalNode(negated.getValue(), falseValue(), trueValue());
+            return ConditionalNode.create(negated.getValue(), falseValue(), trueValue());
         }
 
         // this optimizes the case where a value that can only be 0 or 1 is materialized to 0 or 1
@@ -118,12 +127,20 @@ public final class ConditionalNode extends FloatingNode implements Canonicalizab
         generator.emitConditional(this);
     }
 
-    private ConditionalNode(@InjectedNodeParameter StructuredGraph graph, Condition condition, ValueNode x, ValueNode y) {
+    public static ConditionalNode create(@InjectedNodeParameter StructuredGraph graph, Condition condition, ValueNode x, ValueNode y) {
+        return USE_GENERATED_NODES ? new ConditionalNodeGen(graph, condition, x, y) : new ConditionalNode(graph, condition, x, y);
+    }
+
+    ConditionalNode(StructuredGraph graph, Condition condition, ValueNode x, ValueNode y) {
         this(createCompareNode(graph, condition, x, y));
     }
 
-    private ConditionalNode(ValueNode type, ValueNode object) {
-        this(type.graph().unique(new InstanceOfDynamicNode(type, object)));
+    public static ConditionalNode create(ValueNode type, ValueNode object) {
+        return USE_GENERATED_NODES ? new ConditionalNodeGen(type, object) : new ConditionalNode(type, object);
+    }
+
+    ConditionalNode(ValueNode type, ValueNode object) {
+        this(type.graph().unique(InstanceOfDynamicNode.create(type, object)));
     }
 
     @NodeIntrinsic

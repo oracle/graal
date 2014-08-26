@@ -24,9 +24,9 @@ package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
@@ -34,7 +34,15 @@ import com.oracle.graal.nodes.type.*;
 @NodeInfo(shortName = "+")
 public class IntegerAddNode extends IntegerArithmeticNode implements NarrowableArithmeticNode {
 
-    public IntegerAddNode(ValueNode x, ValueNode y) {
+    public static IntegerAddNode create(ValueNode x, ValueNode y) {
+        return USE_GENERATED_NODES ? new IntegerAddNodeGen(x, y) : new IntegerAddNode(x, y);
+    }
+
+    public static Class<? extends IntegerAddNode> getGenClass() {
+        return USE_GENERATED_NODES ? IntegerAddNodeGen.class : IntegerAddNode.class;
+    }
+
+    protected IntegerAddNode(ValueNode x, ValueNode y) {
         super(StampTool.add(x.stamp(), y.stamp()), x, y);
     }
 
@@ -52,7 +60,7 @@ public class IntegerAddNode extends IntegerArithmeticNode implements NarrowableA
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
         if (forX.isConstant() && !forY.isConstant()) {
-            return new IntegerAddNode(forY, forX);
+            return IntegerAddNode.create(forY, forX);
         }
         if (forX instanceof IntegerSubNode) {
             IntegerSubNode sub = (IntegerSubNode) forX;

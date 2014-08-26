@@ -25,15 +25,17 @@ package com.oracle.graal.nodes.java;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
 /**
  * The {@code NewMultiArrayNode} represents an allocation of a multi-dimensional object array.
  */
+@NodeInfo
 public class NewMultiArrayNode extends DeoptimizingFixedWithNextNode implements Lowerable, ArrayLengthProvider {
 
-    @Input private final NodeInputList<ValueNode> dimensions;
+    @Input NodeInputList<ValueNode> dimensions;
     private final ResolvedJavaType type;
 
     public ValueNode dimension(int index) {
@@ -54,7 +56,11 @@ public class NewMultiArrayNode extends DeoptimizingFixedWithNextNode implements 
      * @param type the element type of the array
      * @param dimensions the node which produce the dimensions for this array
      */
-    public NewMultiArrayNode(ResolvedJavaType type, ValueNode[] dimensions) {
+    public static NewMultiArrayNode create(ResolvedJavaType type, ValueNode[] dimensions) {
+        return USE_GENERATED_NODES ? new NewMultiArrayNodeGen(type, dimensions) : new NewMultiArrayNode(type, dimensions);
+    }
+
+    NewMultiArrayNode(ResolvedJavaType type, ValueNode[] dimensions) {
         super(StampFactory.exactNonNull(type));
         this.type = type;
         this.dimensions = new NodeInputList<>(this, dimensions);

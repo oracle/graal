@@ -167,7 +167,7 @@ public enum HSAILArithmetic {
 
     public static class ShiftOp extends HSAILLIRInstruction {
         @Opcode private final HSAILArithmetic opcode;
-        @Def({REG, HINT}) protected Value result;
+        @Def({REG}) protected Value result;
         @Use({REG, CONST}) protected Value x;
         @Alive({REG, CONST}) protected Value y;
 

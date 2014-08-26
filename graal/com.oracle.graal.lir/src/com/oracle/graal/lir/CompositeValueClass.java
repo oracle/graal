@@ -28,10 +28,8 @@ import java.util.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.lir.CompositeValue.Component;
-import com.oracle.graal.lir.LIRInstruction.InstructionValueProcedure;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
-import com.oracle.graal.lir.LIRInstruction.ValuePositionProcedure;
 
 /**
  * Lazily associated metadata for every {@link CompositeValue} type. The metadata includes:
@@ -141,11 +139,11 @@ public class CompositeValueClass extends LIRIntrospection {
         return str.toString();
     }
 
-    public final void forEachComponent(LIRInstruction inst, CompositeValue obj, OperandMode mode, InstructionValueProcedure proc) {
-        forEach(inst, obj, directComponentCount, componentOffsets, mode, componentFlags, proc);
+    final CompositeValue forEachComponent(LIRInstruction inst, CompositeValue obj, OperandMode mode, InstructionValueProcedureBase proc) {
+        return forEachComponent(inst, obj, directComponentCount, componentOffsets, mode, componentFlags, proc);
     }
 
-    public final void forEachComponent(LIRInstruction inst, CompositeValue obj, OperandMode mode, ValuePositionProcedure proc, ValuePosition outerPosition) {
+    final void forEachComponent(LIRInstruction inst, CompositeValue obj, OperandMode mode, ValuePositionProcedure proc, ValuePosition outerPosition) {
         forEach(inst, obj, directComponentCount, componentOffsets, mode, componentFlags, proc, outerPosition);
     }
 
@@ -165,11 +163,21 @@ public class CompositeValueClass extends LIRIntrospection {
         return getValueForPosition(obj, componentOffsets, directComponentCount, pos);
     }
 
-    void setValue(CompositeValue obj, ValuePosition pos, Value value) {
-        setValueForPosition(obj, componentOffsets, directComponentCount, pos, value);
+    CompositeValue createUpdatedValue(CompositeValue compValue, ValuePosition pos, Value value) {
+        CompositeValue newCompValue = compValue.clone();
+        setValueForPosition(newCompValue, componentOffsets, directComponentCount, pos, value);
+        return newCompValue;
     }
 
     EnumSet<OperandFlag> getFlags(ValuePosition pos) {
         return componentFlags[pos.getIndex()];
+    }
+
+    void copyValueArrays(CompositeValue compositeValue) {
+        for (int i = directComponentCount; i < componentOffsets.length; i++) {
+            Value[] valueArray = getValueArray(compositeValue, componentOffsets[i]);
+            Value[] newValueArray = Arrays.copyOf(valueArray, valueArray.length);
+            setValueArray(compositeValue, componentOffsets[i], newValueArray);
+        }
     }
 }

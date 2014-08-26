@@ -44,7 +44,6 @@ public class MatchRuleRegistry {
      */
     public static interface NodeClassLookup {
         NodeClass get(Class<?> theClass);
-
     }
 
     static class DefaultNodeClassLookup implements NodeClassLookup {
@@ -54,19 +53,19 @@ public class MatchRuleRegistry {
     }
 
     /**
-     * Convert a list of field names into {@link com.oracle.graal.graph.NodeClass.Position} objects
-     * that can be used to read them during a match. The names should already have been confirmed to
-     * exist in the type.
+     * Convert a list of field names into {@link com.oracle.graal.graph.Position} objects that can
+     * be used to read them during a match. The names should already have been confirmed to exist in
+     * the type.
      *
      * @param theClass
      * @param names
      * @return an array of Position objects corresponding to the named fields.
      */
-    public static NodeClass.Position[] findPositions(NodeClassLookup lookup, Class<? extends ValueNode> theClass, String[] names) {
-        NodeClass.Position[] result = new NodeClass.Position[names.length];
+    public static Position[] findPositions(NodeClassLookup lookup, Class<? extends ValueNode> theClass, String[] names) {
+        Position[] result = new Position[names.length];
         NodeClass nodeClass = lookup.get(theClass);
         for (int i = 0; i < names.length; i++) {
-            for (NodeClass.Position position : nodeClass.getFirstLevelInputPositions()) {
+            for (Position position : nodeClass.getFirstLevelInputPositions()) {
                 String name = nodeClass.getName(position);
                 if (name.equals(names[i])) {
                     result[i] = position;

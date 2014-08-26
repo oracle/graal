@@ -193,7 +193,7 @@ public class MatchProcessor extends AbstractProcessor {
         }
 
         /**
-         * Recursively accumulate any required NodeClass.Position declarations.
+         * Recursively accumulate any required Position declarations.
          */
         void generatePositionDeclarations(Set<String> declarations) {
             matchDescriptor.generatePositionDeclarations(declarations);
@@ -460,7 +460,7 @@ public class MatchProcessor extends AbstractProcessor {
         }
 
         String generatePositionDeclaration() {
-            return String.format("NodeClass.Position[] %s_positions = MatchRuleRegistry.findPositions(lookup, %s.class, new String[]{\"%s\"});", nodeType.nodeClass, nodeType.nodeClass,
+            return String.format("Position[] %s_positions = MatchRuleRegistry.findPositions(lookup, %s.class, new String[]{\"%s\"});", nodeType.nodeClass, nodeType.nodeClass,
                             String.join("\", \"", nodeType.inputs));
         }
     }
@@ -493,7 +493,7 @@ public class MatchProcessor extends AbstractProcessor {
             out.println("import java.util.*;");
             out.println("import " + MatchStatementSet.class.getPackage().getName() + ".*;");
             out.println("import " + NodeLIRBuilder.class.getName() + ";");
-            out.println("import " + NodeClass.class.getName() + ";");
+            out.println("import " + Position.class.getName() + ";");
             for (String p : requiredPackages) {
                 out.println("import " + p + ".*;");
             }

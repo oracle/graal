@@ -24,15 +24,20 @@ package com.oracle.graal.nodes;
 
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo(allowedUsageTypes = {InputType.Guard})
 public class GuardProxyNode extends ProxyNode implements GuardingNode, Proxy, LIRLowerable {
 
-    @Input(InputType.Guard) private GuardingNode value;
+    @Input(InputType.Guard) GuardingNode value;
 
-    public GuardProxyNode(GuardingNode value, BeginNode proxyPoint) {
+    public static GuardProxyNode create(GuardingNode value, BeginNode proxyPoint) {
+        return USE_GENERATED_NODES ? new GuardProxyNodeGen(value, proxyPoint) : new GuardProxyNode(value, proxyPoint);
+    }
+
+    protected GuardProxyNode(GuardingNode value, BeginNode proxyPoint) {
         super(StampFactory.forVoid(), proxyPoint);
         this.value = value;
     }

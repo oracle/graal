@@ -26,11 +26,13 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 
 /**
  * Represents a conversion between primitive types.
  */
+@NodeInfo
 public abstract class ConvertNode extends UnaryNode implements ArithmeticOperation {
 
     protected ConvertNode(Stamp stamp, ValueNode value) {

@@ -26,6 +26,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
@@ -36,6 +37,7 @@ import com.oracle.truffle.api.*;
 /**
  * Macro node for method {@link CompilerDirectives#unsafeCast(Object, Class, boolean)}.
  */
+@NodeInfo
 public class CustomizedUnsafeLoadMacroNode extends NeverPartOfCompilationNode implements Canonicalizable {
 
     private static final int ARGUMENT_COUNT = 4;
@@ -44,7 +46,11 @@ public class CustomizedUnsafeLoadMacroNode extends NeverPartOfCompilationNode im
     private static final int CONDITION_ARGUMENT_INDEX = 2;
     private static final int LOCATION_ARGUMENT_INDEX = 3;
 
-    public CustomizedUnsafeLoadMacroNode(Invoke invoke) {
+    public static CustomizedUnsafeLoadMacroNode create(Invoke invoke) {
+        return USE_GENERATED_NODES ? new CustomizedUnsafeLoadMacroNodeGen(invoke) : new CustomizedUnsafeLoadMacroNode(invoke);
+    }
+
+    protected CustomizedUnsafeLoadMacroNode(Invoke invoke) {
         super(invoke, "The location argument could not be resolved to a constant.");
         assert arguments.size() == ARGUMENT_COUNT;
     }
@@ -64,7 +70,7 @@ public class CustomizedUnsafeLoadMacroNode extends NeverPartOfCompilationNode im
             }
             CompareNode compare = CompareNode.createCompareNode(Condition.EQ, conditionArgument, ConstantNode.forBoolean(true));
             Kind returnKind = this.getTargetMethod().getSignature().getReturnKind();
-            return new UnsafeLoadNode(objectArgument, offsetArgument, returnKind, locationIdentity, compare);
+            return UnsafeLoadNode.create(objectArgument, offsetArgument, returnKind, locationIdentity, compare);
         }
         return this;
     }

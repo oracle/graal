@@ -161,6 +161,9 @@ public class BytecodeFrame extends BytecodePosition implements Serializable {
      * because of Word type rewriting and alternative backends that can't be done.
      */
     public boolean validateFormat() {
+        if (caller() != null) {
+            caller().validateFormat();
+        }
         for (int i = 0; i < numLocals + numStack; i++) {
             if (values[i] != null) {
                 Kind kind = values[i].getKind();

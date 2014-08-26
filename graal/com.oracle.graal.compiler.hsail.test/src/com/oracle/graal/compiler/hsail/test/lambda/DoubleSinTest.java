@@ -38,6 +38,12 @@ public class DoubleSinTest extends DoubleMathBase {
         });
     }
 
+    // internally allocates a Rempiostruct, escape analysis not catching it
+    @Override
+    protected boolean supportsRequiredCapabilities() {
+        return (canHandleObjectAllocation());
+    }
+
     @Test
     public void testUsingLambdaMethod() {
         testGeneratedHsailUsingLambdaMethod();

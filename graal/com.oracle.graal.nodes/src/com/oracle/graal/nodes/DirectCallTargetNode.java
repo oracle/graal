@@ -27,10 +27,17 @@ import java.util.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.nodeinfo.*;
 
+@NodeInfo
 public class DirectCallTargetNode extends LoweredCallTargetNode {
 
-    public DirectCallTargetNode(List<ValueNode> arguments, Stamp returnStamp, JavaType[] signature, ResolvedJavaMethod target, CallingConvention.Type callType, InvokeKind invokeKind) {
+    public static DirectCallTargetNode create(List<ValueNode> arguments, Stamp returnStamp, JavaType[] signature, ResolvedJavaMethod target, CallingConvention.Type callType, InvokeKind invokeKind) {
+        return USE_GENERATED_NODES ? new DirectCallTargetNodeGen(arguments, returnStamp, signature, target, callType, invokeKind) : new DirectCallTargetNode(arguments, returnStamp, signature, target,
+                        callType, invokeKind);
+    }
+
+    protected DirectCallTargetNode(List<ValueNode> arguments, Stamp returnStamp, JavaType[] signature, ResolvedJavaMethod target, CallingConvention.Type callType, InvokeKind invokeKind) {
         super(arguments, returnStamp, signature, target, callType, invokeKind);
     }
 

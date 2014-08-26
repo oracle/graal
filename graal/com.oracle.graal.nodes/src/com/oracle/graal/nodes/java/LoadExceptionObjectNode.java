@@ -23,12 +23,18 @@
 package com.oracle.graal.nodes.java;
 
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
+@NodeInfo
 public class LoadExceptionObjectNode extends AbstractStateSplit implements Lowerable {
 
-    public LoadExceptionObjectNode(Stamp stamp) {
+    public static LoadExceptionObjectNode create(Stamp stamp) {
+        return USE_GENERATED_NODES ? new LoadExceptionObjectNodeGen(stamp) : new LoadExceptionObjectNode(stamp);
+    }
+
+    LoadExceptionObjectNode(Stamp stamp) {
         super(stamp);
     }
 

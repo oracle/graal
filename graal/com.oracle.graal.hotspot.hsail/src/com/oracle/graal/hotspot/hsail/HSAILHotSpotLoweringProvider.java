@@ -22,20 +22,20 @@
  */
 package com.oracle.graal.hotspot.hsail;
 
+import java.util.*;
+
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.hsail.replacements.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.hotspot.hsail.replacements.*;
-
-import java.util.HashMap;
+import com.oracle.graal.nodes.spi.*;
 
 public class HSAILHotSpotLoweringProvider extends DefaultHotSpotLoweringProvider {
 
@@ -94,7 +94,7 @@ public class HSAILHotSpotLoweringProvider extends DefaultHotSpotLoweringProvider
                     default:
                         reason = DeoptimizationReason.None;
                 }
-                unwind.replaceAtPredecessor(graph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, reason)));
+                unwind.replaceAtPredecessor(graph.add(DeoptimizeNode.create(DeoptimizationAction.InvalidateReprofile, reason)));
                 unwind.safeDelete();
             } else {
                 // unwind whose exception is not an instance of ForeignCallNode
@@ -103,22 +103,22 @@ public class HSAILHotSpotLoweringProvider extends DefaultHotSpotLoweringProvider
         }
     };
 
-    private HashMap<Class<?>, LoweringStrategy> strategyMap = new HashMap<>();
+    private HashMap<NodeClass, LoweringStrategy> strategyMap = new HashMap<>();
 
     void initStrategyMap() {
-        strategyMap.put(ConvertNode.class, PassThruStrategy);
-        strategyMap.put(FloatConvertNode.class, PassThruStrategy);
-        strategyMap.put(NewInstanceNode.class, NewObjectStrategy);
-        strategyMap.put(NewArrayNode.class, NewObjectStrategy);
-        strategyMap.put(NewMultiArrayNode.class, RejectStrategy);
-        strategyMap.put(DynamicNewArrayNode.class, RejectStrategy);
-        strategyMap.put(MonitorEnterNode.class, RejectStrategy);
-        strategyMap.put(MonitorExitNode.class, RejectStrategy);
-        strategyMap.put(UnwindNode.class, UnwindNodeStrategy);
+        strategyMap.put(NodeClass.get(ConvertNode.class), PassThruStrategy);
+        strategyMap.put(NodeClass.get(FloatConvertNode.class), PassThruStrategy);
+        strategyMap.put(NodeClass.get(NewInstanceNode.class), NewObjectStrategy);
+        strategyMap.put(NodeClass.get(NewArrayNode.class), NewObjectStrategy);
+        strategyMap.put(NodeClass.get(NewMultiArrayNode.class), RejectStrategy);
+        strategyMap.put(NodeClass.get(DynamicNewArrayNode.class), RejectStrategy);
+        strategyMap.put(NodeClass.get(MonitorEnterNode.class), RejectStrategy);
+        strategyMap.put(NodeClass.get(MonitorExitNode.class), RejectStrategy);
+        strategyMap.put(NodeClass.get(UnwindNode.class), UnwindNodeStrategy);
     }
 
     private LoweringStrategy getStrategy(Node n) {
-        return strategyMap.get(n.getClass());
+        return strategyMap.get(n.getNodeClass());
     }
 
     public HSAILHotSpotLoweringProvider(HotSpotGraalRuntime runtime, MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, HotSpotRegistersProvider registers, TargetDescription target) {

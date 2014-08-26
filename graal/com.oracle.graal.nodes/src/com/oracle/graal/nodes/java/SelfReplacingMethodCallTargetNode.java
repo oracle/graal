@@ -25,24 +25,32 @@ package com.oracle.graal.nodes.java;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
 /**
  * A SelfReplacingMethodCallTargetNode replaces itself in the graph when being lowered with a
  * {@link MethodCallTargetNode} that calls the stored replacement target method.
- * 
+ *
  * This node is used for method handle call nodes which have a constant call target but are not
  * inlined.
  */
+@NodeInfo
 public class SelfReplacingMethodCallTargetNode extends MethodCallTargetNode implements Lowerable {
 
     // Replacement method data
     private final ResolvedJavaMethod replacementTargetMethod;
     private final JavaType replacementReturnType;
-    @Input private final NodeInputList<ValueNode> replacementArguments;
+    @Input NodeInputList<ValueNode> replacementArguments;
 
-    public SelfReplacingMethodCallTargetNode(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, JavaType returnType, ResolvedJavaMethod replacementTargetMethod,
+    public static SelfReplacingMethodCallTargetNode create(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, JavaType returnType,
+                    ResolvedJavaMethod replacementTargetMethod, ValueNode[] replacementArguments, JavaType replacementReturnType) {
+        return USE_GENERATED_NODES ? new SelfReplacingMethodCallTargetNodeGen(invokeKind, targetMethod, arguments, returnType, replacementTargetMethod, replacementArguments, replacementReturnType)
+                        : new SelfReplacingMethodCallTargetNode(invokeKind, targetMethod, arguments, returnType, replacementTargetMethod, replacementArguments, replacementReturnType);
+    }
+
+    SelfReplacingMethodCallTargetNode(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, JavaType returnType, ResolvedJavaMethod replacementTargetMethod,
                     ValueNode[] replacementArguments, JavaType replacementReturnType) {
         super(invokeKind, targetMethod, arguments, returnType);
         this.replacementTargetMethod = replacementTargetMethod;
@@ -66,7 +74,7 @@ public class SelfReplacingMethodCallTargetNode extends MethodCallTargetNode impl
     public void lower(LoweringTool tool) {
         InvokeKind invokeKind = replacementTargetMethod.isStatic() ? InvokeKind.Static : InvokeKind.Special;
         MethodCallTargetNode replacement = graph().add(
-                        new MethodCallTargetNode(invokeKind, replacementTargetMethod, replacementArguments.toArray(new ValueNode[replacementArguments.size()]), replacementReturnType));
+                        MethodCallTargetNode.create(invokeKind, replacementTargetMethod, replacementArguments.toArray(new ValueNode[replacementArguments.size()]), replacementReturnType));
 
         // Replace myself...
         this.replaceAndDelete(replacement);

@@ -29,6 +29,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
+import com.oracle.nfi.api.*;
 
 public class HotSpotNativeFunctionHandle implements NativeFunctionHandle {
 
@@ -85,10 +86,6 @@ public class HotSpotNativeFunctionHandle implements NativeFunctionHandle {
 
         }
         return true;
-    }
-
-    public InstalledCode getCallStub() {
-        return code;
     }
 
     @Override

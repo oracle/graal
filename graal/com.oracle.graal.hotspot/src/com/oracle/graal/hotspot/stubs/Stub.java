@@ -148,7 +148,7 @@ public abstract class Stub {
             try (Scope d = Debug.sandbox("CompilingStub", DebugScope.getConfig(), providers.getCodeCache(), debugScopeContext())) {
                 final StructuredGraph graph = getGraph();
                 if (!(graph.start() instanceof StubStartNode)) {
-                    StubStartNode newStart = graph.add(new StubStartNode(Stub.this));
+                    StubStartNode newStart = graph.add(StubStartNode.create(Stub.this));
                     newStart.setStateAfter(graph.start().stateAfter());
                     graph.replaceFixed(graph.start(), newStart);
                 }

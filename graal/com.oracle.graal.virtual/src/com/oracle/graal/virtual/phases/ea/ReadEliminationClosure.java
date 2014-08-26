@@ -37,6 +37,7 @@ import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.virtual.phases.ea.ReadEliminationBlockState.CacheEntry;
 import com.oracle.graal.virtual.phases.ea.ReadEliminationBlockState.LoadCacheEntry;
 import com.oracle.graal.virtual.phases.ea.ReadEliminationBlockState.ReadCacheEntry;
+import com.oracle.graal.virtual.phases.ea.ReadEliminationBlockState.UnsafeLoadCacheEntry;
 
 public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockState> {
 
@@ -89,7 +90,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                     ValueNode cachedValue = state.getCacheEntry(identifier);
                     if (cachedValue != null) {
                         if (read.getGuard() != null && !(read.getGuard() instanceof FixedNode)) {
-                            effects.addFixedNodeBefore(new ValueAnchorNode((ValueNode) read.getGuard()), read);
+                            effects.addFixedNodeBefore(ValueAnchorNode.create((ValueNode) read.getGuard()), read);
                         }
                         effects.replaceAtUsages(read, cachedValue);
                         addScalarAlias(read, cachedValue);
@@ -121,7 +122,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                 UnsafeLoadNode load = (UnsafeLoadNode) node;
                 if (load.offset().isConstant() && load.getLocationIdentity() != LocationIdentity.ANY_LOCATION) {
                     ValueNode object = GraphUtil.unproxify(load.object());
-                    LoadCacheEntry identifier = new LoadCacheEntry(object, load.getLocationIdentity());
+                    UnsafeLoadCacheEntry identifier = new UnsafeLoadCacheEntry(object, load.offset(), load.getLocationIdentity());
                     ValueNode cachedValue = state.getCacheEntry(identifier);
                     if (cachedValue != null) {
                         effects.replaceAtUsages(load, cachedValue);
@@ -136,7 +137,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                 UnsafeStoreNode write = (UnsafeStoreNode) node;
                 if (write.offset().isConstant() && write.getLocationIdentity() != LocationIdentity.ANY_LOCATION) {
                     ValueNode object = GraphUtil.unproxify(write.object());
-                    LoadCacheEntry identifier = new LoadCacheEntry(object, write.getLocationIdentity());
+                    UnsafeLoadCacheEntry identifier = new UnsafeLoadCacheEntry(object, write.offset(), write.getLocationIdentity());
                     ValueNode cachedValue = state.getCacheEntry(identifier);
 
                     ValueNode value = getScalarAlias(write.value());
@@ -174,7 +175,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
         if (exitNode.graph().hasValueProxies()) {
             for (Map.Entry<CacheEntry<?>, ValueNode> entry : exitState.getReadCache().entrySet()) {
                 if (initialState.getReadCache().get(entry.getKey()) != entry.getValue()) {
-                    ProxyNode proxy = new ValueProxyNode(exitState.getCacheEntry(entry.getKey()), exitNode);
+                    ProxyNode proxy = ValueProxyNode.create(exitState.getCacheEntry(entry.getKey()), exitNode);
                     effects.addFloatingNode(proxy, "readCacheProxy");
                     entry.setValue(proxy);
                 }
@@ -203,7 +204,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
         protected <T> PhiNode getCachedPhi(T virtual, Stamp stamp) {
             ValuePhiNode result = materializedPhis.get(virtual);
             if (result == null) {
-                result = new ValuePhiNode(stamp, merge);
+                result = ValuePhiNode.create(stamp, merge);
                 materializedPhis.put(virtual, result);
             }
             return result;

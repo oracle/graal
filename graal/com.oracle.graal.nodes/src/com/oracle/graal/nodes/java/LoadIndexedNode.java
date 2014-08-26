@@ -24,6 +24,7 @@ package com.oracle.graal.nodes.java;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
@@ -31,7 +32,8 @@ import com.oracle.graal.nodes.type.*;
 /**
  * The {@code LoadIndexedNode} represents a read from an element of an array.
  */
-public final class LoadIndexedNode extends AccessIndexedNode implements Virtualizable {
+@NodeInfo
+public class LoadIndexedNode extends AccessIndexedNode implements Virtualizable {
 
     /**
      * Creates a new LoadIndexedNode.
@@ -40,7 +42,11 @@ public final class LoadIndexedNode extends AccessIndexedNode implements Virtuali
      * @param index the instruction producing the index
      * @param elementKind the element type
      */
-    public LoadIndexedNode(ValueNode array, ValueNode index, Kind elementKind) {
+    public static LoadIndexedNode create(ValueNode array, ValueNode index, Kind elementKind) {
+        return USE_GENERATED_NODES ? new LoadIndexedNodeGen(array, index, elementKind) : new LoadIndexedNode(array, index, elementKind);
+    }
+
+    LoadIndexedNode(ValueNode array, ValueNode index, Kind elementKind) {
         super(createStamp(array, elementKind), array, index, elementKind);
     }
 
@@ -63,9 +69,9 @@ public final class LoadIndexedNode extends AccessIndexedNode implements Virtuali
         State arrayState = tool.getObjectState(array());
         if (arrayState != null && arrayState.getState() == EscapeState.Virtual) {
             ValueNode indexValue = tool.getReplacedValue(index());
-            int index = indexValue.isConstant() ? indexValue.asConstant().asInt() : -1;
-            if (index >= 0 && index < arrayState.getVirtualObject().entryCount()) {
-                tool.replaceWith(arrayState.getEntry(index));
+            int idx = indexValue.isConstant() ? indexValue.asConstant().asInt() : -1;
+            if (idx >= 0 && idx < arrayState.getVirtualObject().entryCount()) {
+                tool.replaceWith(arrayState.getEntry(idx));
             }
         }
     }

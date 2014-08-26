@@ -24,7 +24,7 @@ package com.oracle.graal.nodes.java;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.virtual.*;
@@ -33,10 +33,10 @@ import com.oracle.graal.nodes.virtual.*;
  * The {@code StoreFieldNode} represents a write to a static or instance field.
  */
 @NodeInfo(nameTemplate = "StoreField#{p#field/s}")
-public final class StoreFieldNode extends AccessFieldNode implements StateSplit, VirtualizableRoot {
+public class StoreFieldNode extends AccessFieldNode implements StateSplit, VirtualizableRoot {
 
-    @Input private ValueNode value;
-    @OptionalInput(InputType.State) private FrameState stateAfter;
+    @Input ValueNode value;
+    @OptionalInput(InputType.State) FrameState stateAfter;
 
     public FrameState stateAfter() {
         return stateAfter;
@@ -63,12 +63,20 @@ public final class StoreFieldNode extends AccessFieldNode implements StateSplit,
      * @param field the compiler interface field
      * @param value the node representing the value to store to the field
      */
-    public StoreFieldNode(ValueNode object, ResolvedJavaField field, ValueNode value) {
+    public static StoreFieldNode create(ValueNode object, ResolvedJavaField field, ValueNode value) {
+        return USE_GENERATED_NODES ? new StoreFieldNodeGen(object, field, value) : new StoreFieldNode(object, field, value);
+    }
+
+    StoreFieldNode(ValueNode object, ResolvedJavaField field, ValueNode value) {
         super(StampFactory.forVoid(), object, field);
         this.value = value;
     }
 
-    public StoreFieldNode(ValueNode object, ResolvedJavaField field, ValueNode value, FrameState stateAfter) {
+    public static StoreFieldNode create(ValueNode object, ResolvedJavaField field, ValueNode value, FrameState stateAfter) {
+        return USE_GENERATED_NODES ? new StoreFieldNodeGen(object, field, value, stateAfter) : new StoreFieldNode(object, field, value, stateAfter);
+    }
+
+    StoreFieldNode(ValueNode object, ResolvedJavaField field, ValueNode value, FrameState stateAfter) {
         super(StampFactory.forVoid(), object, field);
         this.value = value;
         this.stateAfter = stateAfter;

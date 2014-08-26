@@ -24,15 +24,19 @@ package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo(shortName = "|%|")
 public class UnsignedRemNode extends FixedBinaryNode implements Lowerable, LIRLowerable {
 
-    public UnsignedRemNode(ValueNode x, ValueNode y) {
+    public static UnsignedRemNode create(ValueNode x, ValueNode y) {
+        return USE_GENERATED_NODES ? new UnsignedRemNodeGen(x, y) : new UnsignedRemNode(x, y);
+    }
+
+    protected UnsignedRemNode(ValueNode x, ValueNode y) {
         super(x.stamp().unrestricted(), x, y);
     }
 
@@ -49,7 +53,7 @@ public class UnsignedRemNode extends FixedBinaryNode implements Lowerable, LIRLo
             if (c == 1) {
                 return ConstantNode.forIntegerStamp(stamp(), 0);
             } else if (CodeUtil.isPowerOf2(c)) {
-                return new AndNode(forX, ConstantNode.forIntegerStamp(stamp(), c - 1));
+                return AndNode.create(forX, ConstantNode.forIntegerStamp(stamp(), c - 1));
             }
         }
         return this;

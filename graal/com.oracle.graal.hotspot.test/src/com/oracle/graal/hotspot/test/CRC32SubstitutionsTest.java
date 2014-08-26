@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot.test;
 
 import java.io.*;
+import java.nio.*;
 import java.util.zip.*;
 
 import org.junit.*;
@@ -72,6 +73,28 @@ public class CRC32SubstitutionsTest extends GraalCompilerTest {
         for (int offset = 1; offset < buf.length; offset++) {
             test("updateBytes", buf, offset, buf.length - offset);
         }
+    }
+
+    public static long updateByteBuffer(ByteBuffer buffer) {
+        CRC32 crc = new CRC32();
+        buffer.rewind();
+        crc.update(buffer);
+        return crc.getValue();
+    }
+
+    @Test
+    public void test4() throws Throwable {
+        String classfileName = CRC32SubstitutionsTest.class.getSimpleName().replace('.', '/') + ".class";
+        InputStream s = CRC32SubstitutionsTest.class.getResourceAsStream(classfileName);
+        byte[] buf = new byte[s.available()];
+        new DataInputStream(s).readFully(buf);
+
+        ByteBuffer directBuf = ByteBuffer.allocateDirect(buf.length);
+        directBuf.put(buf);
+        ByteBuffer heapBuf = ByteBuffer.wrap(buf);
+
+        test("updateByteBuffer", directBuf);
+        test("updateByteBuffer", heapBuf);
     }
 
 }

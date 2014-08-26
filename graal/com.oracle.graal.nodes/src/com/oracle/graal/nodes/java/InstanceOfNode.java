@@ -25,6 +25,7 @@ package com.oracle.graal.nodes.java;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
@@ -32,6 +33,7 @@ import com.oracle.graal.nodes.spi.*;
 /**
  * The {@code InstanceOfNode} represents an instanceof test.
  */
+@NodeInfo
 public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable, Virtualizable {
 
     private final ResolvedJavaType type;
@@ -43,7 +45,11 @@ public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable, Virtu
      * @param type the target type of the instanceof check
      * @param object the object being tested by the instanceof
      */
-    public InstanceOfNode(ResolvedJavaType type, ValueNode object, JavaTypeProfile profile) {
+    public static InstanceOfNode create(ResolvedJavaType type, ValueNode object, JavaTypeProfile profile) {
+        return USE_GENERATED_NODES ? new InstanceOfNodeGen(type, object, profile) : new InstanceOfNode(type, object, profile);
+    }
+
+    InstanceOfNode(ResolvedJavaType type, ValueNode object, JavaTypeProfile profile) {
         super(object);
         this.type = type;
         this.profile = profile;
@@ -112,7 +118,7 @@ public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable, Virtu
             if (!nonNull) {
                 // the instanceof matches if the object is non-null, so return true
                 // depending on the null-ness.
-                return new LogicNegationNode(new IsNullNode(forValue));
+                return LogicNegationNode.create(IsNullNode.create(forValue));
             }
         }
         return null;

@@ -24,6 +24,7 @@ package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.hotspot.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.word.*;
@@ -31,11 +32,16 @@ import com.oracle.graal.word.*;
 /**
  * Modifies the return address of the current frame.
  */
+@NodeInfo
 public class PatchReturnAddressNode extends FixedWithNextNode implements LIRLowerable {
 
-    @Input private ValueNode address;
+    @Input ValueNode address;
 
-    public PatchReturnAddressNode(ValueNode address) {
+    public static PatchReturnAddressNode create(ValueNode address) {
+        return USE_GENERATED_NODES ? new PatchReturnAddressNodeGen(address) : new PatchReturnAddressNode(address);
+    }
+
+    protected PatchReturnAddressNode(ValueNode address) {
         super(StampFactory.forVoid());
         this.address = address;
     }

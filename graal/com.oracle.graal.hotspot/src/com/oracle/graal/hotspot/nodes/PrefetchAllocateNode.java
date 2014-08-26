@@ -25,16 +25,22 @@ package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.hotspot.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.word.*;
 
+@NodeInfo
 public class PrefetchAllocateNode extends FixedWithNextNode implements LIRLowerable {
 
-    @Input private ValueNode distance;
-    @Input private ValueNode address;
+    @Input ValueNode distance;
+    @Input ValueNode address;
 
-    public PrefetchAllocateNode(ValueNode address, ValueNode distance) {
+    public static PrefetchAllocateNode create(ValueNode address, ValueNode distance) {
+        return USE_GENERATED_NODES ? new PrefetchAllocateNodeGen(address, distance) : new PrefetchAllocateNode(address, distance);
+    }
+
+    protected PrefetchAllocateNode(ValueNode address, ValueNode distance) {
         super(StampFactory.forVoid());
         this.address = address;
         this.distance = distance;

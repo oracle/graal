@@ -24,12 +24,14 @@ package com.oracle.graal.nodes;
 
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.spi.*;
 
-public final class ReturnNode extends ControlSinkNode implements LIRLowerable, IterableNodeType {
+@NodeInfo
+public class ReturnNode extends ControlSinkNode implements LIRLowerable, IterableNodeType {
 
-    @OptionalInput private ValueNode result;
-    @OptionalInput(InputType.Extension) private MemoryMapNode memoryMap;
+    @OptionalInput ValueNode result;
+    @OptionalInput(InputType.Extension) MemoryMapNode memoryMap;
 
     public ValueNode result() {
         return result;
@@ -41,19 +43,22 @@ public final class ReturnNode extends ControlSinkNode implements LIRLowerable, I
      * @param result the instruction producing the result for this return; {@code null} if this is a
      *            void return
      */
-    public ReturnNode(ValueNode result) {
+    public static ReturnNode create(ValueNode result) {
+        return USE_GENERATED_NODES ? new ReturnNodeGen(result) : new ReturnNode(result);
+    }
+
+    protected ReturnNode(ValueNode result) {
         this(result, null);
     }
 
-    public ReturnNode(ValueNode result, MemoryMapNode memoryMap) {
+    public static ReturnNode create(ValueNode result, MemoryMapNode memoryMap) {
+        return USE_GENERATED_NODES ? new ReturnNodeGen(result, memoryMap) : new ReturnNode(result, memoryMap);
+    }
+
+    protected ReturnNode(ValueNode result, MemoryMapNode memoryMap) {
         super(StampFactory.forVoid());
         this.result = result;
         this.memoryMap = memoryMap;
-    }
-
-    @Override
-    public boolean verify() {
-        return super.verify();
     }
 
     @Override

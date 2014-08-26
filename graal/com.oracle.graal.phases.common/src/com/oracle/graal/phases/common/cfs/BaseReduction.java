@@ -97,7 +97,7 @@ public abstract class BaseReduction extends SinglePassNodeIterator<State> {
             metricUnconditionalDeoptInserted.increment();
             StructuredGraph graph = fixed.graph();
             // have to insert a FixedNode other than a ControlSinkNode
-            FixedGuardNode buckStopsHere = graph.add(new FixedGuardNode(falseConstant, deoptReason, DeoptimizationAction.None));
+            FixedGuardNode buckStopsHere = graph.add(FixedGuardNode.create(falseConstant, deoptReason, DeoptimizationAction.None));
             if (goesBeforeFixed) {
                 fixed.replaceAtPredecessor(buckStopsHere);
             } else {

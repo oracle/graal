@@ -30,6 +30,7 @@ import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.loop.phases.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
@@ -38,9 +39,14 @@ import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.replacements.nodes.*;
 
+@NodeInfo
 public class ArrayCopyNode extends MacroStateSplitNode implements Virtualizable, Lowerable {
 
-    public ArrayCopyNode(Invoke invoke) {
+    public static ArrayCopyNode create(Invoke invoke) {
+        return USE_GENERATED_NODES ? new ArrayCopyNodeGen(invoke) : new ArrayCopyNode(invoke);
+    }
+
+    protected ArrayCopyNode(Invoke invoke) {
         super(invoke);
     }
 

@@ -82,7 +82,7 @@ public class ReadAfterCheckCastTest extends GraphScheduleTest {
         try (Scope s = Debug.scope("ReadAfterCheckCastTest", new DebugDumpScope(snippet))) {
             // check shape of graph, with lots of assumptions. will probably fail if graph
             // structure changes significantly
-            StructuredGraph graph = parse(snippet);
+            StructuredGraph graph = parseEager(snippet);
             PhaseContext context = new PhaseContext(getProviders(), new Assumptions(false));
             CanonicalizerPhase canonicalizer = new CanonicalizerPhase(true);
             new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);

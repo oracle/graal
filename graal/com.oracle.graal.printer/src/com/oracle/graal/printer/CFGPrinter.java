@@ -34,12 +34,11 @@ import com.oracle.graal.compiler.alloc.Interval.UsePosList;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.graph.Node.Verbosity;
 import com.oracle.graal.graph.NodeClass.NodeClassIterator;
-import com.oracle.graal.graph.NodeClass.Position;
 import com.oracle.graal.java.*;
 import com.oracle.graal.java.BciBlockMapping.BciBlock;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.cfg.*;
@@ -459,7 +458,7 @@ class CFGPrinter extends CompilationPrinter {
             out.printf("nr %4d ", inst.id()).print(COLUMN_END);
 
             final StringBuilder stateString = new StringBuilder();
-            inst.forEachState(new LIRInstruction.StateProcedure() {
+            inst.forEachState(new StateProcedure() {
 
                 @Override
                 protected void doState(LIRFrameState state) {

@@ -25,13 +25,13 @@ package com.oracle.graal.nodes.calc;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.util.*;
 
 @NodeInfo(shortName = "<")
-public final class FloatLessThanNode extends CompareNode {
+public class FloatLessThanNode extends CompareNode {
 
     private final boolean unorderedIsTrue;
 
@@ -43,7 +43,11 @@ public final class FloatLessThanNode extends CompareNode {
      * @param unorderedIsTrue whether a comparison that is undecided (involving NaNs, etc.) leads to
      *            a "true" result
      */
-    public FloatLessThanNode(ValueNode x, ValueNode y, boolean unorderedIsTrue) {
+    public static FloatLessThanNode create(ValueNode x, ValueNode y, boolean unorderedIsTrue) {
+        return USE_GENERATED_NODES ? new FloatLessThanNodeGen(x, y, unorderedIsTrue) : new FloatLessThanNode(x, y, unorderedIsTrue);
+    }
+
+    protected FloatLessThanNode(ValueNode x, ValueNode y, boolean unorderedIsTrue) {
         super(x, y);
         assert x.stamp() instanceof FloatStamp && y.stamp() instanceof FloatStamp;
         assert x.stamp().isCompatible(y.stamp());
@@ -75,9 +79,9 @@ public final class FloatLessThanNode extends CompareNode {
     @Override
     protected CompareNode duplicateModified(ValueNode newX, ValueNode newY) {
         if (newX.stamp() instanceof FloatStamp && newY.stamp() instanceof FloatStamp) {
-            return new FloatLessThanNode(newX, newY, unorderedIsTrue);
+            return FloatLessThanNode.create(newX, newY, unorderedIsTrue);
         } else if (newX.stamp() instanceof IntegerStamp && newY.stamp() instanceof IntegerStamp) {
-            return new IntegerLessThanNode(newX, newY);
+            return IntegerLessThanNode.create(newX, newY);
         }
         throw GraalInternalError.shouldNotReachHere();
     }

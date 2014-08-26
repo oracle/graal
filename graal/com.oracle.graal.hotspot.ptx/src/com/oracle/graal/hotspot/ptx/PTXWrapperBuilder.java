@@ -192,7 +192,7 @@ public class PTXWrapperBuilder extends GraphKit {
 
         InvokeNode kernelStart = createInvoke(getClass(), "getKernelStart", ConstantNode.forConstant(HotSpotObjectConstant.forObject(kernel), providers.getMetaAccess(), getGraph()));
 
-        AllocaNode buf = append(new AllocaNode(bufSize / wordSize, new BitSet()));
+        AllocaNode buf = append(AllocaNode.create(bufSize / wordSize, new BitSet()));
         ValueNode objectParametersOffsets;
         ValueNode pinnedObjects;
         ConstantNode nullWord = ConstantNode.forIntegerKind(wordKind, 0L, getGraph());
@@ -202,22 +202,22 @@ public class PTXWrapperBuilder extends GraphKit {
         } else {
             int intsPerWord = wordSize / intSize;
             int slots = roundUp(objectSlots.size(), intsPerWord);
-            objectParametersOffsets = append(new AllocaNode(slots, new BitSet()));
+            objectParametersOffsets = append(AllocaNode.create(slots, new BitSet()));
             // No refmap for pinned objects list since kernel execution is (currently) GC unsafe
-            pinnedObjects = append(new AllocaNode(objectSlots.size(), new BitSet()));
+            pinnedObjects = append(AllocaNode.create(objectSlots.size(), new BitSet()));
 
             // Initialize the object parameter offsets array
             int index = 0;
             for (int slot : objectSlots) {
                 int offset = slot * wordSize;
                 LocationNode location = ConstantLocationNode.create(FINAL_LOCATION, Kind.Int, index * intSize, getGraph());
-                append(new WriteNode(objectParametersOffsets, ConstantNode.forInt(offset, getGraph()), location, BarrierType.NONE, false));
+                append(WriteNode.create(objectParametersOffsets, ConstantNode.forInt(offset, getGraph()), location, BarrierType.NONE, false));
                 index++;
             }
         }
 
         Map<LaunchArg, ValueNode> args = new EnumMap<>(LaunchArg.class);
-        args.put(Thread, append(new ReadRegisterNode(providers.getRegisters().getThreadRegister(), true, false)));
+        args.put(Thread, append(ReadRegisterNode.create(providers.getRegisters().getThreadRegister(), true, false)));
         args.put(Kernel, kernelStart);
         args.put(DimX, forInt(1, getGraph()));
         args.put(DimY, forInt(1, getGraph()));
@@ -234,12 +234,12 @@ public class PTXWrapperBuilder extends GraphKit {
             ParameterNode javaParameter = javaParameters[javaParametersIndex];
             int javaParameterOffset = javaParameterOffsetsInKernelParametersBuffer[javaParametersIndex];
             LocationNode location = ConstantLocationNode.create(FINAL_LOCATION, javaParameter.getKind(), javaParameterOffset, getGraph());
-            append(new WriteNode(buf, javaParameter, location, BarrierType.NONE, false));
+            append(WriteNode.create(buf, javaParameter, location, BarrierType.NONE, false));
             updateDimArg(method, sig, sigIndex++, args, javaParameter);
         }
         if (returnKind != Kind.Void) {
             LocationNode location = ConstantLocationNode.create(FINAL_LOCATION, wordKind, bufSize - wordSize, getGraph());
-            append(new WriteNode(buf, nullWord, location, BarrierType.NONE, false));
+            append(WriteNode.create(buf, nullWord, location, BarrierType.NONE, false));
         }
 
         HIRFrameStateBuilder fsb = new HIRFrameStateBuilder(method, getGraph(), true);
@@ -247,7 +247,7 @@ public class PTXWrapperBuilder extends GraphKit {
         getGraph().start().setStateAfter(fs);
 
         ValueNode[] launchArgsArray = args.values().toArray(new ValueNode[args.size()]);
-        ForeignCallNode result = append(new ForeignCallNode(providers.getForeignCalls(), CALL_KERNEL, launchArgsArray));
+        ForeignCallNode result = append(ForeignCallNode.create(providers.getForeignCalls(), CALL_KERNEL, launchArgsArray));
         result.setStateAfter(fs);
 
         InvokeNode getObjectResult = null;
@@ -261,13 +261,13 @@ public class PTXWrapperBuilder extends GraphKit {
             case Short:
             case Char:
             case Int:
-                returnValue = unique(new NarrowNode(result, 32));
+                returnValue = unique(NarrowNode.create(result, 32));
                 break;
             case Long:
                 returnValue = result;
                 break;
             case Float: {
-                ValueNode asInt = unique(new NarrowNode(result, 32));
+                ValueNode asInt = unique(NarrowNode.create(result, 32));
                 returnValue = ReinterpretNode.reinterpret(Kind.Float, asInt);
                 break;
             }
@@ -282,7 +282,7 @@ public class PTXWrapperBuilder extends GraphKit {
                 throw new GraalInternalError("%s return kind not supported", returnKind);
         }
 
-        append(new ReturnNode(returnValue));
+        append(ReturnNode.create(returnValue));
 
         if (Debug.isDumpEnabled()) {
             Debug.dump(getGraph(), "Initial kernel launch graph");
@@ -314,7 +314,7 @@ public class PTXWrapperBuilder extends GraphKit {
         } else {
             stamp = StampFactory.forKind(kind);
         }
-        javaParameters[javaParametersIndex] = unique(new ParameterNode(javaParametersIndex, stamp));
+        javaParameters[javaParametersIndex] = unique(ParameterNode.create(javaParametersIndex, stamp));
         bufSize += kindByteSize;
     }
 
@@ -326,7 +326,7 @@ public class PTXWrapperBuilder extends GraphKit {
         if (sigIndex >= 0) {
             ParallelOver parallelOver = method.getParameterAnnotation(ParallelOver.class, sigIndex);
             if (parallelOver != null && sig.getParameterType(sigIndex, method.getDeclaringClass()).equals(providers.getMetaAccess().lookupJavaType(int[].class))) {
-                ArrayLengthNode dimension = append(new ArrayLengthNode(javaParameter));
+                ArrayLengthNode dimension = append(ArrayLengthNode.create(javaParameter));
                 LaunchArg argKey = LaunchArg.valueOf(LaunchArg.class, "Dim" + parallelOver.dimension());
                 ValueNode existing = launchArgs.put(argKey, dimension);
                 if (existing != null && existing instanceof ArrayLengthNode) {

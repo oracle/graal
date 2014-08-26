@@ -24,17 +24,21 @@ package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 @NodeInfo(shortName = ">>")
-public final class RightShiftNode extends ShiftNode {
+public class RightShiftNode extends ShiftNode {
 
-    public RightShiftNode(ValueNode x, ValueNode y) {
+    public static RightShiftNode create(ValueNode x, ValueNode y) {
+        return USE_GENERATED_NODES ? new RightShiftNodeGen(x, y) : new RightShiftNode(x, y);
+    }
+
+    protected RightShiftNode(ValueNode x, ValueNode y) {
         super(x, y);
     }
 
@@ -57,7 +61,7 @@ public final class RightShiftNode extends ShiftNode {
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
         if (forX.stamp() instanceof IntegerStamp && ((IntegerStamp) forX.stamp()).isPositive()) {
-            return new UnsignedRightShiftNode(forX, forY);
+            return UnsignedRightShiftNode.create(forX, forY);
         }
         if (forX.isConstant() && forY.isConstant()) {
             return ConstantNode.forPrimitive(evalConst(forX.asConstant(), forY.asConstant()));
@@ -91,14 +95,14 @@ public final class RightShiftNode extends ShiftNode {
                              * full shift for this kind
                              */
                             assert total >= mask;
-                            return new RightShiftNode(other.getX(), ConstantNode.forInt(mask));
+                            return RightShiftNode.create(other.getX(), ConstantNode.forInt(mask));
                         }
-                        return new RightShiftNode(other.getX(), ConstantNode.forInt(total));
+                        return RightShiftNode.create(other.getX(), ConstantNode.forInt(total));
                     }
                 }
             }
             if (originalAmout != amount) {
-                return new RightShiftNode(forX, ConstantNode.forInt(amount));
+                return RightShiftNode.create(forX, ConstantNode.forInt(amount));
             }
         }
         return this;

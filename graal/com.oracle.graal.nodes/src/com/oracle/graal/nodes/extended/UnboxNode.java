@@ -25,15 +25,21 @@ package com.oracle.graal.nodes.extended;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 
+@NodeInfo
 public class UnboxNode extends UnaryNode implements Virtualizable, Lowerable {
 
     private final Kind boxingKind;
 
-    public UnboxNode(ValueNode value, Kind boxingKind) {
+    public static UnboxNode create(ValueNode value, Kind boxingKind) {
+        return USE_GENERATED_NODES ? new UnboxNodeGen(value, boxingKind) : new UnboxNode(value, boxingKind);
+    }
+
+    UnboxNode(ValueNode value, Kind boxingKind) {
         super(StampFactory.forKind(boxingKind.getStackKind()), value);
         this.boxingKind = boxingKind;
     }

@@ -24,6 +24,7 @@ package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.hotspot.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.word.*;
@@ -32,13 +33,19 @@ import com.oracle.graal.word.*;
  * Sets up the {@linkplain HotSpotBackend#EXCEPTION_HANDLER_IN_CALLER arguments} expected by an
  * exception handler in the caller's frame, removes the current frame and jumps to said handler.
  */
+@NodeInfo
 public class JumpToExceptionHandlerInCallerNode extends ControlSinkNode implements LIRLowerable {
 
-    @Input private ValueNode handlerInCallerPc;
-    @Input private ValueNode exception;
-    @Input private ValueNode exceptionPc;
+    @Input ValueNode handlerInCallerPc;
+    @Input ValueNode exception;
+    @Input ValueNode exceptionPc;
 
-    public JumpToExceptionHandlerInCallerNode(ValueNode handlerInCallerPc, ValueNode exception, ValueNode exceptionPc) {
+    public static JumpToExceptionHandlerInCallerNode create(ValueNode handlerInCallerPc, ValueNode exception, ValueNode exceptionPc) {
+        return USE_GENERATED_NODES ? new JumpToExceptionHandlerInCallerNodeGen(handlerInCallerPc, exception, exceptionPc) : new JumpToExceptionHandlerInCallerNode(handlerInCallerPc, exception,
+                        exceptionPc);
+    }
+
+    protected JumpToExceptionHandlerInCallerNode(ValueNode handlerInCallerPc, ValueNode exception, ValueNode exceptionPc) {
         super(StampFactory.forVoid());
         this.handlerInCallerPc = handlerInCallerPc;
         this.exception = exception;

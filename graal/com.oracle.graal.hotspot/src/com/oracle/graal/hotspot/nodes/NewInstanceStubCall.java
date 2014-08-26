@@ -29,6 +29,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.stubs.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.word.*;
@@ -36,13 +37,18 @@ import com.oracle.graal.word.*;
 /**
  * A call to the {@link NewInstanceStub}.
  */
+@NodeInfo
 public class NewInstanceStubCall extends DeoptimizingStubCall implements LIRLowerable {
 
     private static final Stamp defaultStamp = StampFactory.objectNonNull();
 
-    @Input private ValueNode hub;
+    @Input ValueNode hub;
 
-    public NewInstanceStubCall(ValueNode hub) {
+    public static NewInstanceStubCall create(ValueNode hub) {
+        return USE_GENERATED_NODES ? new NewInstanceStubCallGen(hub) : new NewInstanceStubCall(hub);
+    }
+
+    protected NewInstanceStubCall(ValueNode hub) {
         super(defaultStamp);
         this.hub = hub;
     }

@@ -32,10 +32,8 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.debug.*;
-import com.oracle.graal.lir.LIRInstruction.InstructionValueProcedure;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
-import com.oracle.graal.lir.LIRInstruction.ValueProcedure;
 
 public final class LIRVerifier {
 
@@ -63,21 +61,21 @@ public final class LIRVerifier {
         return isRegister(value) && frameMap.registerConfig.getAttributesMap()[asRegister(value).number].isAllocatable();
     }
 
-    private static InstructionValueProcedure allowedProc = new InstructionValueProcedure() {
+    private static InstructionValueConsumer allowedConsumer = new InstructionValueConsumer() {
 
         @Override
-        public Value doValue(LIRInstruction op, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
-            return allowed(op, value, mode, flags);
+        public void visitValue(LIRInstruction op, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
+            allowed(op, value, mode, flags);
         }
     };
 
     public static boolean verify(final LIRInstruction op) {
 
-        op.forEachInput(allowedProc);
-        op.forEachAlive(allowedProc);
-        op.forEachState(allowedProc);
-        op.forEachTemp(allowedProc);
-        op.forEachOutput(allowedProc);
+        op.visitEachInput(allowedConsumer);
+        op.visitEachAlive(allowedConsumer);
+        op.visitEachState(allowedConsumer);
+        op.visitEachTemp(allowedConsumer);
+        op.visitEachOutput(allowedConsumer);
 
         op.verify();
         return true;
@@ -105,18 +103,18 @@ public final class LIRVerifier {
     private BitSet curRegistersDefined;
 
     private void verify() {
-        ValueProcedure useProc = new ValueProcedure() {
+        ValueConsumer useConsumer = new ValueConsumer() {
 
             @Override
-            public Value doValue(Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
-                return use(value, mode, flags);
+            public void visitValue(Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
+                use(value, mode, flags);
             }
         };
-        ValueProcedure defProc = new ValueProcedure() {
+        ValueConsumer defConsumer = new ValueConsumer() {
 
             @Override
-            public Value doValue(Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
-                return def(value, mode, flags);
+            public void visitValue(Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
+                def(value, mode, flags);
             }
         };
 
@@ -141,17 +139,17 @@ public final class LIRVerifier {
             for (LIRInstruction op : lir.getLIRforBlock(block)) {
                 curInstruction = op;
 
-                op.forEachInput(useProc);
+                op.visitEachInput(useConsumer);
                 if (op.destroysCallerSavedRegisters()) {
                     for (Register register : frameMap.registerConfig.getCallerSaveRegisters()) {
                         curRegistersLive[register.number] = null;
                     }
                 }
                 curRegistersDefined.clear();
-                op.forEachAlive(useProc);
-                op.forEachState(useProc);
-                op.forEachTemp(defProc);
-                op.forEachOutput(defProc);
+                op.visitEachAlive(useConsumer);
+                op.visitEachState(useConsumer);
+                op.visitEachTemp(defConsumer);
+                op.visitEachOutput(defConsumer);
 
                 curInstruction = null;
             }
@@ -160,7 +158,7 @@ public final class LIRVerifier {
         }
     }
 
-    private Value use(Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
+    private void use(Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
         allowed(curInstruction, value, mode, flags);
 
         if (isVariable(value)) {
@@ -190,10 +188,9 @@ public final class LIRVerifier {
                 throw GraalInternalError.shouldNotReachHere();
             }
         }
-        return value;
     }
 
-    private Value def(Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
+    private void def(Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
         allowed(curInstruction, value, mode, flags);
 
         if (isVariable(value)) {
@@ -231,17 +228,16 @@ public final class LIRVerifier {
                 }
             }
         }
-        return value;
     }
 
     // @formatter:off
-    private static Value allowed(Object op, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
+    private static void allowed(Object op, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
         if ((isVariable(value) && flags.contains(OperandFlag.REG)) ||
             (isRegister(value) && flags.contains(OperandFlag.REG)) ||
             (isStackSlot(value) && flags.contains(OperandFlag.STACK)) ||
             (isConstant(value) && flags.contains(OperandFlag.CONST) && mode != OperandMode.DEF) ||
             (isIllegal(value) && flags.contains(OperandFlag.ILLEGAL))) {
-            return value;
+            return;
         }
         throw new GraalInternalError("Invalid LIR%n  Instruction: %s%n  Mode: %s%n  Flags: %s%n  Unexpected value: %s %s",
                         op, mode, flags, value.getClass().getSimpleName(), value);

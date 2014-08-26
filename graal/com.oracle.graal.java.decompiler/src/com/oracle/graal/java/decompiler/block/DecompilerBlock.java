@@ -25,9 +25,9 @@ package com.oracle.graal.java.decompiler.block;
 import java.io.*;
 import java.util.*;
 
-import com.oracle.graal.graph.Node.Verbosity;
 import com.oracle.graal.java.decompiler.*;
 import com.oracle.graal.java.decompiler.lines.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.phases.schedule.*;

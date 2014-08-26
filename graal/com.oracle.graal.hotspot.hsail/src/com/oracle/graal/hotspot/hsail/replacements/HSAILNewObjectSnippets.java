@@ -97,7 +97,7 @@ public class HSAILNewObjectSnippets extends NewObjectSnippets {
         Word alignReserveBytes = readAllocInfoTlabAlignReserveBytes(allocInfo);
         writeTlabInfoEnd(newTlabInfo, tlabStart.add(newTlabSize.subtract(alignReserveBytes)));
         writeTlabInfoAllocInfo(newTlabInfo, allocInfo);
-        writeTlabInfoDonorThread(newTlabInfo, readTlabInfoDonorThread(oldTlabInfo));
+        writeTlabInfoTlab(newTlabInfo, readTlabInfoTlab(oldTlabInfo));
         return (newTlabInfo);
     }
 

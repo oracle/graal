@@ -24,6 +24,7 @@ package com.oracle.graal.nodes.java;
 
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
@@ -37,7 +38,11 @@ public class MonitorIdNode extends ValueNode implements IterableNodeType, LIRLow
 
     private int lockDepth;
 
-    public MonitorIdNode(int lockDepth) {
+    public static MonitorIdNode create(int lockDepth) {
+        return USE_GENERATED_NODES ? new MonitorIdNodeGen(lockDepth) : new MonitorIdNode(lockDepth);
+    }
+
+    MonitorIdNode(int lockDepth) {
         super(StampFactory.forVoid());
         this.lockDepth = lockDepth;
     }

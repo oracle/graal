@@ -27,6 +27,7 @@ import java.util.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
@@ -36,11 +37,11 @@ import com.oracle.graal.nodes.util.*;
  * The {@code InvokeNode} represents all kinds of method calls.
  */
 @NodeInfo(nameTemplate = "Invoke#{p#targetMethod/s}", allowedUsageTypes = {InputType.Memory})
-public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke, LIRLowerable, MemoryCheckpoint.Single, IterableNodeType {
+public class InvokeNode extends AbstractMemoryCheckpoint implements Invoke, LIRLowerable, MemoryCheckpoint.Single, IterableNodeType {
 
-    @Input(InputType.Extension) private CallTargetNode callTarget;
-    @OptionalInput(InputType.State) private FrameState stateDuring;
-    @OptionalInput(InputType.Guard) private GuardingNode guard;
+    @Input(InputType.Extension) CallTargetNode callTarget;
+    @OptionalInput(InputType.State) FrameState stateDuring;
+    @OptionalInput(InputType.Guard) GuardingNode guard;
     private final int bci;
     private boolean polymorphic;
     private boolean useForInlining;
@@ -51,7 +52,11 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
      * @param callTarget the target method being called
      * @param bci the bytecode index of the original invoke (used for debug infos)
      */
-    public InvokeNode(CallTargetNode callTarget, int bci) {
+    public static InvokeNode create(CallTargetNode callTarget, int bci) {
+        return USE_GENERATED_NODES ? new InvokeNodeGen(callTarget, bci) : new InvokeNode(callTarget, bci);
+    }
+
+    protected InvokeNode(CallTargetNode callTarget, int bci) {
         this(callTarget, bci, callTarget.returnStamp());
     }
 
@@ -62,7 +67,11 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
      * @param bci the bytecode index of the original invoke (used for debug infos)
      * @param stamp the stamp to be used for this value
      */
-    public InvokeNode(CallTargetNode callTarget, int bci, Stamp stamp) {
+    public static InvokeNode create(CallTargetNode callTarget, int bci, Stamp stamp) {
+        return USE_GENERATED_NODES ? new InvokeNodeGen(callTarget, bci, stamp) : new InvokeNode(callTarget, bci, stamp);
+    }
+
+    protected InvokeNode(CallTargetNode callTarget, int bci, Stamp stamp) {
         super(stamp);
         this.callTarget = callTarget;
         this.bci = bci;
@@ -150,10 +159,10 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
     public void intrinsify(Node node) {
         assert !(node instanceof ValueNode) || node.isAllowedUsageType(InputType.Value) == isAllowedUsageType(InputType.Value) : "replacing " + this + " with " + node;
         CallTargetNode call = callTarget;
-        FrameState stateAfter = stateAfter();
+        FrameState currentStateAfter = stateAfter();
         if (node instanceof StateSplit) {
             StateSplit stateSplit = (StateSplit) node;
-            stateSplit.setStateAfter(stateAfter);
+            stateSplit.setStateAfter(currentStateAfter);
         }
         if (node instanceof FixedWithNextNode) {
             graph().replaceFixedWithFixed(this, (FixedWithNextNode) node);
@@ -166,8 +175,8 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
             graph().replaceFixed(this, node);
         }
         GraphUtil.killWithUnusedFloatingInputs(call);
-        if (stateAfter.usages().isEmpty()) {
-            GraphUtil.killWithUnusedFloatingInputs(stateAfter);
+        if (currentStateAfter.usages().isEmpty()) {
+            GraphUtil.killWithUnusedFloatingInputs(currentStateAfter);
         }
     }
 

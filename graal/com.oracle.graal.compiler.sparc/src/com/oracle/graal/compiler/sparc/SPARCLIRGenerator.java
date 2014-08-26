@@ -243,8 +243,6 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     @Override
     public void emitOverflowCheckBranch(LabelRef overflow, LabelRef noOverflow, double overflowProbability) {
         append(new BranchOp(ConditionFlag.CarrySet, overflow, noOverflow, Kind.Long));
-        // append(new BranchOp(negated ? ConditionFlag.NoOverflow : ConditionFlag.Overflow, label));
-// throw GraalInternalError.unimplemented();
     }
 
     @Override

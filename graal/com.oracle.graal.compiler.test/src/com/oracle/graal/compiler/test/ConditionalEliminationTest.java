@@ -90,7 +90,7 @@ public class ConditionalEliminationTest extends GraalCompilerTest {
 
     @Test
     public void testRedundantCompares() {
-        StructuredGraph graph = parse("testRedundantComparesSnippet");
+        StructuredGraph graph = parseEager("testRedundantComparesSnippet");
         CanonicalizerPhase canonicalizer = new CanonicalizerPhase(true);
         PhaseContext context = new PhaseContext(getProviders(), null);
 
@@ -113,7 +113,7 @@ public class ConditionalEliminationTest extends GraalCompilerTest {
     @Test
     @Ignore
     public void testInstanceOfCheckCastLowered() {
-        StructuredGraph graph = parse("testInstanceOfCheckCastSnippet");
+        StructuredGraph graph = parseEager("testInstanceOfCheckCastSnippet");
 
         CanonicalizerPhase canonicalizer = new CanonicalizerPhase(true);
         PhaseContext context = new PhaseContext(getProviders(), null);

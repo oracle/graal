@@ -46,8 +46,8 @@ import com.oracle.graal.nodes.util.*;
  * Such evaluator comes handy when visiting a {@link com.oracle.graal.nodes.FixedNode} N, just
  * before updating the state for N. At the pre-state, an {@link EquationalReasoner} can be used to
  * reduce N's inputs (actually only those inputs of Value and Condition
- * {@link com.oracle.graal.graph.InputType InputType}). For an explanation of where it's warranted
- * to replace "old input" with "reduced input", see the inline comments in method
+ * {@link com.oracle.graal.nodeinfo.InputType InputType}). For an explanation of where it's
+ * warranted to replace "old input" with "reduced input", see the inline comments in method
  * {@link EquationalReasoner#deverbosify(com.oracle.graal.graph.Node n) deverbosify(Node n)}
  * </p>
  *
@@ -664,7 +664,7 @@ public final class EquationalReasoner {
         try (Debug.Scope s = Debug.scope("Downcast", payload)) {
             assert payload != anchor : payload.graph().toString();
             metricDowncasting.increment();
-            PiNode result = graph.unique(new PiNode(payload, newStamp, anchor.asNode()));
+            PiNode result = graph.unique(PiNode.create(payload, newStamp, anchor.asNode()));
             // we've possibly got a new node in the graph --- bookkeeping is in order.
             added.add(result);
             if (remember) {

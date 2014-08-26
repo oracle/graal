@@ -26,6 +26,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.extended.*;
 
 /**
@@ -43,13 +44,17 @@ import com.oracle.graal.nodes.extended.*;
 @NodeInfo(nameTemplate = "Guard(!={p#negated}) {p#reason/s}", allowedUsageTypes = {InputType.Guard})
 public class GuardNode extends FloatingAnchoredNode implements Canonicalizable, IterableNodeType, GuardingNode {
 
-    @Input(InputType.Condition) private LogicNode condition;
+    @Input(InputType.Condition) LogicNode condition;
     private final DeoptimizationReason reason;
     private Constant speculation;
     private DeoptimizationAction action;
     private boolean negated;
 
-    public GuardNode(LogicNode condition, AnchoringNode anchor, DeoptimizationReason reason, DeoptimizationAction action, boolean negated, Constant speculation) {
+    public static GuardNode create(LogicNode condition, AnchoringNode anchor, DeoptimizationReason reason, DeoptimizationAction action, boolean negated, Constant speculation) {
+        return USE_GENERATED_NODES ? new GuardNodeGen(condition, anchor, reason, action, negated, speculation) : new GuardNode(condition, anchor, reason, action, negated, speculation);
+    }
+
+    protected GuardNode(LogicNode condition, AnchoringNode anchor, DeoptimizationReason reason, DeoptimizationAction action, boolean negated, Constant speculation) {
         super(StampFactory.forVoid(), anchor);
         this.condition = condition;
         this.reason = reason;
@@ -98,7 +103,7 @@ public class GuardNode extends FloatingAnchoredNode implements Canonicalizable, 
     public Node canonical(CanonicalizerTool tool) {
         if (condition() instanceof LogicNegationNode) {
             LogicNegationNode negation = (LogicNegationNode) condition();
-            return new GuardNode(negation.getValue(), getAnchor(), reason, action, !negated, speculation);
+            return GuardNode.create(negation.getValue(), getAnchor(), reason, action, !negated, speculation);
         }
         if (condition() instanceof LogicConstantNode) {
             LogicConstantNode c = (LogicConstantNode) condition();

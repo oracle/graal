@@ -27,9 +27,9 @@ import java.util.function.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
@@ -38,11 +38,19 @@ import com.oracle.truffle.api.*;
 @NodeInfo(shortName = "*H")
 public class IntegerMulHighNode extends IntegerArithmeticNode {
 
-    public IntegerMulHighNode(ValueNode x, ValueNode y) {
+    public static IntegerMulHighNode create(ValueNode x, ValueNode y) {
+        return USE_GENERATED_NODES ? new IntegerMulHighNodeGen(x, y) : new IntegerMulHighNode(x, y);
+    }
+
+    protected IntegerMulHighNode(ValueNode x, ValueNode y) {
         this(x.stamp().unrestricted(), x, y);
     }
 
-    public IntegerMulHighNode(Stamp stamp, ValueNode x, ValueNode y) {
+    public static IntegerMulHighNode create(Stamp stamp, ValueNode x, ValueNode y) {
+        return USE_GENERATED_NODES ? new IntegerMulHighNodeGen(stamp, x, y) : new IntegerMulHighNode(stamp, x, y);
+    }
+
+    protected IntegerMulHighNode(Stamp stamp, ValueNode x, ValueNode y) {
         super(stamp, x, y);
     }
 

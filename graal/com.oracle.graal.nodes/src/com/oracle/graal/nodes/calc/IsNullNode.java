@@ -25,6 +25,7 @@ package com.oracle.graal.nodes.calc;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
@@ -32,14 +33,19 @@ import com.oracle.graal.nodes.type.*;
 /**
  * An IsNullNode will be true if the supplied value is null, and false if it is non-null.
  */
-public final class IsNullNode extends UnaryOpLogicNode implements LIRLowerable, Virtualizable, PiPushable {
+@NodeInfo
+public class IsNullNode extends UnaryOpLogicNode implements LIRLowerable, Virtualizable, PiPushable {
 
     /**
      * Constructs a new IsNullNode instruction.
      *
      * @param object the instruction producing the object to check against null
      */
-    public IsNullNode(ValueNode object) {
+    public static IsNullNode create(ValueNode object) {
+        return USE_GENERATED_NODES ? new IsNullNodeGen(object) : new IsNullNode(object);
+    }
+
+    protected IsNullNode(ValueNode object) {
         super(object);
     }
 

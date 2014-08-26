@@ -24,7 +24,7 @@ package com.oracle.graal.nodes.java;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
@@ -32,10 +32,11 @@ import com.oracle.graal.nodes.type.*;
 /**
  * The {@code StoreIndexedNode} represents a write to an array element.
  */
-public final class StoreIndexedNode extends AccessIndexedNode implements StateSplit, Lowerable, Virtualizable {
+@NodeInfo
+public class StoreIndexedNode extends AccessIndexedNode implements StateSplit, Lowerable, Virtualizable {
 
-    @Input private ValueNode value;
-    @OptionalInput(InputType.State) private FrameState stateAfter;
+    @Input ValueNode value;
+    @OptionalInput(InputType.State) FrameState stateAfter;
 
     public FrameState stateAfter() {
         return stateAfter;
@@ -63,7 +64,11 @@ public final class StoreIndexedNode extends AccessIndexedNode implements StateSp
      * @param elementKind the element type
      * @param value the value to store into the array
      */
-    public StoreIndexedNode(ValueNode array, ValueNode index, Kind elementKind, ValueNode value) {
+    public static StoreIndexedNode create(ValueNode array, ValueNode index, Kind elementKind, ValueNode value) {
+        return USE_GENERATED_NODES ? new StoreIndexedNodeGen(array, index, elementKind, value) : new StoreIndexedNode(array, index, elementKind, value);
+    }
+
+    StoreIndexedNode(ValueNode array, ValueNode index, Kind elementKind, ValueNode value) {
         super(StampFactory.forVoid(), array, index, elementKind);
         this.value = value;
     }
@@ -73,12 +78,12 @@ public final class StoreIndexedNode extends AccessIndexedNode implements StateSp
         State arrayState = tool.getObjectState(array());
         if (arrayState != null && arrayState.getState() == EscapeState.Virtual) {
             ValueNode indexValue = tool.getReplacedValue(index());
-            int index = indexValue.isConstant() ? indexValue.asConstant().asInt() : -1;
-            if (index >= 0 && index < arrayState.getVirtualObject().entryCount()) {
+            int idx = indexValue.isConstant() ? indexValue.asConstant().asInt() : -1;
+            if (idx >= 0 && idx < arrayState.getVirtualObject().entryCount()) {
                 ResolvedJavaType componentType = arrayState.getVirtualObject().type().getComponentType();
                 if (componentType.isPrimitive() || StampTool.isObjectAlwaysNull(value) || componentType.getSuperclass() == null ||
                                 (StampTool.typeOrNull(value) != null && componentType.isAssignableFrom(StampTool.typeOrNull(value)))) {
-                    tool.setVirtualEntry(arrayState, index, value(), false);
+                    tool.setVirtualEntry(arrayState, idx, value(), false);
                     tool.delete();
                 }
             }

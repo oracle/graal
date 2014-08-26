@@ -186,7 +186,7 @@ public class FloatingReadPhase extends Phase {
                     } else {
                         MemoryPhiNode phi = null;
                         if (existingPhis == null || (phi = existingPhis.remove(key)) == null) {
-                            phi = merge.graph().addWithoutUnique(new MemoryPhiNode(merge, key));
+                            phi = merge.graph().addWithoutUnique(MemoryPhiNode.create(merge, key));
                         }
                         for (int j = 0; j < mergedStatesCount; j++) {
                             phi.addInput(ValueNodeUtil.asNode(merged));
@@ -291,7 +291,7 @@ public class FloatingReadPhase extends Phase {
             assert MemoryCheckpoint.TypeAssertion.correctType(node) : node;
 
             if (createMemoryMapNodes && node instanceof ReturnNode) {
-                ((ReturnNode) node).setMemoryMap(node.graph().unique(new MemoryMapNode(state.lastMemorySnapshot)));
+                ((ReturnNode) node).setMemoryMap(node.graph().unique(MemoryMapNode.create(state.lastMemorySnapshot)));
             }
             return state;
         }
@@ -331,7 +331,7 @@ public class FloatingReadPhase extends Phase {
                 ValueAnchorNode anchor = null;
                 GuardingNode guard = accessNode.getGuard();
                 if (guard != null) {
-                    anchor = graph.add(new ValueAnchorNode(guard.asNode()));
+                    anchor = graph.add(ValueAnchorNode.create(guard.asNode()));
                     graph.addAfterFixed(accessNode, anchor);
                 }
                 graph.replaceFixedWithFloating(accessNode, floatingNode);
@@ -385,7 +385,7 @@ public class FloatingReadPhase extends Phase {
 
             for (LocationIdentity location : modifiedLocations) {
                 if (!updateExistingPhis || !phis.containsKey(location)) {
-                    MemoryPhiNode phi = loop.graph().addWithoutUnique(new MemoryPhiNode(loop, location));
+                    MemoryPhiNode phi = loop.graph().addWithoutUnique(MemoryPhiNode.create(loop, location));
                     phi.addInput(ValueNodeUtil.asNode(initialState.getLastLocationAccess(location)));
                     phis.put(location, phi);
                 }

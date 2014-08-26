@@ -26,8 +26,8 @@ import static com.oracle.graal.nodes.java.ForeignCallDescriptors.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
@@ -35,12 +35,17 @@ import com.oracle.graal.nodes.spi.*;
  * This node is used to perform the finalizer registration at the end of the java.lang.Object
  * constructor.
  */
-public final class RegisterFinalizerNode extends AbstractStateSplit implements Canonicalizable.Unary<ValueNode>, LIRLowerable, Virtualizable, DeoptimizingNode.DeoptAfter {
+@NodeInfo
+public class RegisterFinalizerNode extends AbstractStateSplit implements Canonicalizable.Unary<ValueNode>, LIRLowerable, Virtualizable, DeoptimizingNode.DeoptAfter {
 
-    @OptionalInput(InputType.State) private FrameState deoptState;
-    @Input private ValueNode value;
+    @OptionalInput(InputType.State) FrameState deoptState;
+    @Input ValueNode value;
 
-    public RegisterFinalizerNode(ValueNode value) {
+    public static RegisterFinalizerNode create(ValueNode value) {
+        return USE_GENERATED_NODES ? new RegisterFinalizerNodeGen(value) : new RegisterFinalizerNode(value);
+    }
+
+    RegisterFinalizerNode(ValueNode value) {
         super(StampFactory.forVoid());
         this.value = value;
     }

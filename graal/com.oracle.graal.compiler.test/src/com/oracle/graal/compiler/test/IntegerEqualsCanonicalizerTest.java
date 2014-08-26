@@ -112,7 +112,7 @@ public class IntegerEqualsCanonicalizerTest extends GraalCompilerTest {
     }
 
     private StructuredGraph getCanonicalizedGraph(String snippet) {
-        StructuredGraph graph = parse(snippet);
+        StructuredGraph graph = parseEager(snippet);
         new CanonicalizerPhase(false).apply(graph, new PhaseContext(getProviders(), null));
         for (FrameState state : graph.getNodes(FrameState.class).snapshot()) {
             state.replaceAtUsages(null);

@@ -23,15 +23,14 @@
 package com.oracle.graal.nodes.java;
 
 import static com.oracle.graal.compiler.common.UnsafeAccess.*;
+import sun.misc.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
-
-import sun.misc.*;
 
 /**
  * Represents an atomic read-and-add operation like {@link Unsafe#getAndAddInt(Object, long, int)}.
@@ -39,13 +38,17 @@ import sun.misc.*;
 @NodeInfo(allowedUsageTypes = {InputType.Memory})
 public class AtomicReadAndAddNode extends AbstractMemoryCheckpoint implements LIRLowerable, MemoryCheckpoint.Single {
 
-    @Input private ValueNode object;
-    @Input private ValueNode offset;
-    @Input private ValueNode delta;
+    @Input ValueNode object;
+    @Input ValueNode offset;
+    @Input ValueNode delta;
 
     private final LocationIdentity locationIdentity;
 
-    public AtomicReadAndAddNode(ValueNode object, ValueNode offset, ValueNode delta, LocationIdentity locationIdentity) {
+    public static AtomicReadAndAddNode create(ValueNode object, ValueNode offset, ValueNode delta, LocationIdentity locationIdentity) {
+        return USE_GENERATED_NODES ? new AtomicReadAndAddNodeGen(object, offset, delta, locationIdentity) : new AtomicReadAndAddNode(object, offset, delta, locationIdentity);
+    }
+
+    AtomicReadAndAddNode(ValueNode object, ValueNode offset, ValueNode delta, LocationIdentity locationIdentity) {
         super(StampFactory.forKind(delta.getKind()));
         this.object = object;
         this.offset = offset;

@@ -26,13 +26,18 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo(shortName = "/")
-public final class FloatDivNode extends FloatArithmeticNode {
+public class FloatDivNode extends FloatArithmeticNode {
 
-    public FloatDivNode(ValueNode x, ValueNode y, boolean isStrictFP) {
+    public static FloatDivNode create(ValueNode x, ValueNode y, boolean isStrictFP) {
+        return USE_GENERATED_NODES ? new FloatDivNodeGen(x, y, isStrictFP) : new FloatDivNode(x, y, isStrictFP);
+    }
+
+    protected FloatDivNode(ValueNode x, ValueNode y, boolean isStrictFP) {
         super(x.stamp().unrestricted(), x, y, isStrictFP);
     }
 
@@ -53,6 +58,7 @@ public final class FloatDivNode extends FloatArithmeticNode {
             return ConstantNode.forPrimitive(evalConst(forX.asConstant(), forY.asConstant()));
         }
         if (forY.isConstant()) {
+            @SuppressWarnings("hiding")
             Constant y = forY.asConstant();
             switch (y.getKind()) {
                 case Float:

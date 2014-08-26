@@ -30,21 +30,31 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 
 /**
  * The {@code DynamicNewArrayNode} is used for allocation of arrays when the type is not a
  * compile-time constant.
  */
+@NodeInfo
 public class DynamicNewArrayNode extends AbstractNewArrayNode {
 
-    @Input private ValueNode elementType;
+    @Input ValueNode elementType;
 
-    public DynamicNewArrayNode(ValueNode elementType, ValueNode length) {
+    public static DynamicNewArrayNode create(ValueNode elementType, ValueNode length) {
+        return USE_GENERATED_NODES ? new DynamicNewArrayNodeGen(elementType, length) : new DynamicNewArrayNode(elementType, length);
+    }
+
+    DynamicNewArrayNode(ValueNode elementType, ValueNode length) {
         this(elementType, length, true);
     }
 
-    public DynamicNewArrayNode(ValueNode elementType, ValueNode length, boolean fillContents) {
+    public static DynamicNewArrayNode create(ValueNode elementType, ValueNode length, boolean fillContents) {
+        return USE_GENERATED_NODES ? new DynamicNewArrayNodeGen(elementType, length, fillContents) : new DynamicNewArrayNode(elementType, length, fillContents);
+    }
+
+    DynamicNewArrayNode(ValueNode elementType, ValueNode length, boolean fillContents) {
         super(StampFactory.objectNonNull(), length, fillContents);
         this.elementType = elementType;
     }
@@ -58,8 +68,8 @@ public class DynamicNewArrayNode extends AbstractNewArrayNode {
         if (isAlive() && elementType.isConstant()) {
             ResolvedJavaType javaType = tool.getConstantReflection().asJavaType(elementType.asConstant());
             if (javaType != null && !javaType.equals(tool.getMetaAccess().lookupJavaType(void.class))) {
-                ValueNode length = length();
-                NewArrayNode newArray = graph().add(new NewArrayNode(javaType, length.isAlive() ? length : graph().addOrUniqueWithInputs(length), fillContents()));
+                ValueNode len = length();
+                NewArrayNode newArray = graph().add(NewArrayNode.create(javaType, len.isAlive() ? len : graph().addOrUniqueWithInputs(len), fillContents()));
                 List<Node> snapshot = inputs().snapshot();
                 graph().replaceFixedWithFixed(this, newArray);
                 for (Node input : snapshot) {

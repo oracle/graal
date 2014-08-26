@@ -27,6 +27,7 @@ import java.util.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.GuardsStage;
 import com.oracle.graal.nodes.calc.*;
@@ -161,7 +162,7 @@ public class UseTrappingNullChecksPhase extends BasePhase<LowTierContext> {
         IsNullNode isNullNode = (IsNullNode) condition;
         BeginNode nonTrappingContinuation = ifNode.falseSuccessor();
         BeginNode trappingContinuation = ifNode.trueSuccessor();
-        NullCheckNode trappingNullCheck = deopt.graph().add(new NullCheckNode(isNullNode.getValue()));
+        NullCheckNode trappingNullCheck = deopt.graph().add(NullCheckNode.create(isNullNode.getValue()));
         trappingNullCheck.setStateBefore(deopt.stateBefore());
         deopt.graph().replaceSplit(ifNode, trappingNullCheck, nonTrappingContinuation);
 

@@ -37,7 +37,7 @@ public class LoopSafepointInsertionPhase extends Phase {
         if (GenLoopSafepoints.getValue()) {
             for (LoopEndNode loopEndNode : graph.getNodes(LoopEndNode.class)) {
                 if (loopEndNode.canSafepoint()) {
-                    SafepointNode safepointNode = graph.add(new SafepointNode());
+                    SafepointNode safepointNode = graph.add(SafepointNode.create());
                     graph.addBeforeFixed(loopEndNode, safepointNode);
                 }
             }

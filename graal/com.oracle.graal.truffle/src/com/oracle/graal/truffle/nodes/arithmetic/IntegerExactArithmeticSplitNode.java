@@ -24,16 +24,18 @@ package com.oracle.graal.truffle.nodes.arithmetic;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 
+@NodeInfo
 public abstract class IntegerExactArithmeticSplitNode extends ControlSplitNode implements LIRLowerable {
 
-    @Successor private BeginNode overflowSuccessor;
-    @Successor private BeginNode next;
-    @Input private ValueNode x;
-    @Input private ValueNode y;
+    @Successor BeginNode overflowSuccessor;
+    @Successor BeginNode next;
+    @Input ValueNode x;
+    @Input ValueNode y;
 
     public IntegerExactArithmeticSplitNode(Stamp stamp, ValueNode x, ValueNode y, BeginNode next, BeginNode overflowSuccessor) {
         super(stamp);
@@ -78,8 +80,8 @@ public abstract class IntegerExactArithmeticSplitNode extends ControlSplitNode i
             FixedWithNextNode previous = tool.lastFixedNode();
             FixedNode next = previous.next();
             previous.setNext(null);
-            DeoptimizeNode deopt = floatingNode.graph().add(new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.ArithmeticException));
-            BeginNode normalBegin = floatingNode.graph().add(new BeginNode());
+            DeoptimizeNode deopt = floatingNode.graph().add(DeoptimizeNode.create(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.ArithmeticException));
+            BeginNode normalBegin = floatingNode.graph().add(BeginNode.create());
             normalBegin.setNext(next);
             IntegerExactArithmeticSplitNode split = node.createSplit(normalBegin, BeginNode.begin(deopt));
             previous.setNext(split);

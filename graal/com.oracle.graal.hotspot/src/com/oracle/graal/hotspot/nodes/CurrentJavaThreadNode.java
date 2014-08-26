@@ -29,6 +29,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.hotspot.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.word.*;
@@ -36,11 +37,16 @@ import com.oracle.graal.word.*;
 /**
  * Gets the address of the C++ JavaThread object for the current thread.
  */
-public final class CurrentJavaThreadNode extends FloatingNode implements LIRLowerable {
+@NodeInfo
+public class CurrentJavaThreadNode extends FloatingNode implements LIRLowerable {
 
     private LIRKind wordKind;
 
-    private CurrentJavaThreadNode(Kind kind) {
+    public static CurrentJavaThreadNode create(Kind kind) {
+        return USE_GENERATED_NODES ? new CurrentJavaThreadNodeGen(kind) : new CurrentJavaThreadNode(kind);
+    }
+
+    CurrentJavaThreadNode(Kind kind) {
         super(StampFactory.forKind(kind));
         this.wordKind = LIRKind.value(kind);
     }

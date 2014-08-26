@@ -23,8 +23,8 @@
 package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
@@ -40,14 +40,19 @@ import com.oracle.graal.word.*;
 @NodeInfo(allowedUsageTypes = {InputType.Memory})
 public class DirectCompareAndSwapNode extends FixedWithNextNode implements LIRLowerable, MemoryCheckpoint.Single {
 
-    @Input private ValueNode object;
-    @Input private ValueNode offset;
-    @Input private ValueNode expectedValue;
-    @Input private ValueNode newValue;
+    @Input ValueNode object;
+    @Input ValueNode offset;
+    @Input ValueNode expectedValue;
+    @Input ValueNode newValue;
 
     private final LocationIdentity locationIdentity;
 
-    public DirectCompareAndSwapNode(ValueNode object, ValueNode offset, ValueNode expected, ValueNode newValue, LocationIdentity locationIdentity) {
+    public static DirectCompareAndSwapNode create(ValueNode object, ValueNode offset, ValueNode expected, ValueNode newValue, LocationIdentity locationIdentity) {
+        return USE_GENERATED_NODES ? new DirectCompareAndSwapNodeGen(object, offset, expected, newValue, locationIdentity) : new DirectCompareAndSwapNode(object, offset, expected, newValue,
+                        locationIdentity);
+    }
+
+    protected DirectCompareAndSwapNode(ValueNode object, ValueNode offset, ValueNode expected, ValueNode newValue, LocationIdentity locationIdentity) {
         super(expected.stamp());
         this.object = object;
         this.offset = offset;

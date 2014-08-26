@@ -23,28 +23,34 @@
 package com.oracle.graal.virtual.nodes;
 
 import com.oracle.graal.graph.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.virtual.*;
 
 /**
  * This class encapsulated the materialized state of an escape analyzed object.
  */
-public final class MaterializedObjectState extends EscapeObjectState implements Node.ValueNumberable {
+@NodeInfo
+public class MaterializedObjectState extends EscapeObjectState implements Node.ValueNumberable {
 
-    @Input private ValueNode materializedValue;
+    @Input ValueNode materializedValue;
 
     public ValueNode materializedValue() {
         return materializedValue;
     }
 
-    public MaterializedObjectState(VirtualObjectNode object, ValueNode materializedValue) {
+    public static MaterializedObjectState create(VirtualObjectNode object, ValueNode materializedValue) {
+        return USE_GENERATED_NODES ? new MaterializedObjectStateGen(object, materializedValue) : new MaterializedObjectState(object, materializedValue);
+    }
+
+    protected MaterializedObjectState(VirtualObjectNode object, ValueNode materializedValue) {
         super(object);
         this.materializedValue = materializedValue;
     }
 
     @Override
     public MaterializedObjectState duplicateWithVirtualState() {
-        return graph().addWithoutUnique(new MaterializedObjectState(object(), materializedValue));
+        return graph().addWithoutUnique(MaterializedObjectState.create(object(), materializedValue));
     }
 
     @Override

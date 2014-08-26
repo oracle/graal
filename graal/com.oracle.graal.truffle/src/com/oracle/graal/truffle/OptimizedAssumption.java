@@ -22,9 +22,14 @@
  */
 package com.oracle.graal.truffle;
 
+import static com.oracle.graal.truffle.TruffleCompilerOptions.*;
+
 import java.lang.ref.*;
+import java.util.*;
+import java.util.stream.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.debug.*;
 import com.oracle.truffle.api.impl.*;
 import com.oracle.truffle.api.nodes.*;
 
@@ -52,16 +57,28 @@ public final class OptimizedAssumption extends AbstractAssumption {
     @Override
     public synchronized void invalidate() {
         if (isValid) {
+            boolean invalidatedInstalledCode = false;
             Entry e = first;
             while (e != null) {
                 InstalledCode installedCode = e.installedCode.get();
                 if (installedCode != null && installedCode.getVersion() == e.version) {
                     installedCode.invalidate();
+
+                    invalidatedInstalledCode = true;
+                    if (TraceTruffleAssumptions.getValue()) {
+                        logInvalidatedInstalledCode(installedCode);
+                    }
                 }
                 e = e.next;
             }
             first = null;
             isValid = false;
+
+            if (TraceTruffleAssumptions.getValue()) {
+                if (invalidatedInstalledCode) {
+                    logStackTrace();
+                }
+            }
         }
     }
 
@@ -80,5 +97,17 @@ public final class OptimizedAssumption extends AbstractAssumption {
     @Override
     public boolean isValid() {
         return isValid;
+    }
+
+    private void logInvalidatedInstalledCode(InstalledCode installedCode) {
+        TTY.out().out().printf("assumption '%s' invalidated installed code '%s'\n", name, installedCode);
+    }
+
+    private static void logStackTrace() {
+        final int skip = 1;
+        final int limit = 20;
+        StackTraceElement[] stackTrace = new Throwable().getStackTrace();
+        String suffix = stackTrace.length > skip + limit ? "\n  ..." : "";
+        TTY.out().out().println(Arrays.stream(stackTrace).skip(skip).limit(limit).map(StackTraceElement::toString).collect(Collectors.joining("\n  ", "", suffix)));
     }
 }

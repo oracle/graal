@@ -28,6 +28,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
@@ -37,31 +38,47 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(nameTemplate = "ForeignCall#{p#descriptor/s}", allowedUsageTypes = {InputType.Memory})
 public class ForeignCallNode extends AbstractMemoryCheckpoint implements LIRLowerable, DeoptimizingNode.DeoptDuring, MemoryCheckpoint.Multi {
 
-    @Input private final NodeInputList<ValueNode> arguments;
-    @OptionalInput(InputType.State) private FrameState stateDuring;
+    @Input protected NodeInputList<ValueNode> arguments;
+    @OptionalInput(InputType.State) protected FrameState stateDuring;
     private final ForeignCallsProvider foreignCalls;
 
     private final ForeignCallDescriptor descriptor;
 
-    public ForeignCallNode(@InjectedNodeParameter ForeignCallsProvider foreignCalls, ForeignCallDescriptor descriptor, ValueNode... arguments) {
+    public static ForeignCallNode create(@InjectedNodeParameter ForeignCallsProvider foreignCalls, ForeignCallDescriptor descriptor, ValueNode... arguments) {
+        return USE_GENERATED_NODES ? new ForeignCallNodeGen(foreignCalls, descriptor, arguments) : new ForeignCallNode(foreignCalls, descriptor, arguments);
+    }
+
+    ForeignCallNode(ForeignCallsProvider foreignCalls, ForeignCallDescriptor descriptor, ValueNode... arguments) {
         super(StampFactory.forKind(Kind.fromJavaClass(descriptor.getResultType())));
         this.arguments = new NodeInputList<>(this, arguments);
         this.descriptor = descriptor;
         this.foreignCalls = foreignCalls;
     }
 
-    public ForeignCallNode(@InjectedNodeParameter ForeignCallsProvider foreignCalls, ForeignCallDescriptor descriptor, List<ValueNode> arguments) {
+    public static ForeignCallNode create(ForeignCallsProvider foreignCalls, ForeignCallDescriptor descriptor, List<ValueNode> arguments) {
+        return USE_GENERATED_NODES ? new ForeignCallNodeGen(foreignCalls, descriptor, arguments) : new ForeignCallNode(foreignCalls, descriptor, arguments);
+    }
+
+    ForeignCallNode(ForeignCallsProvider foreignCalls, ForeignCallDescriptor descriptor, List<ValueNode> arguments) {
         this(foreignCalls, descriptor, StampFactory.forKind(Kind.fromJavaClass(descriptor.getResultType())), arguments);
     }
 
-    public ForeignCallNode(@InjectedNodeParameter ForeignCallsProvider foreignCalls, ForeignCallDescriptor descriptor, Stamp stamp, List<ValueNode> arguments) {
+    public static ForeignCallNode create(@InjectedNodeParameter ForeignCallsProvider foreignCalls, ForeignCallDescriptor descriptor, Stamp stamp, List<ValueNode> arguments) {
+        return USE_GENERATED_NODES ? new ForeignCallNodeGen(foreignCalls, descriptor, stamp, arguments) : new ForeignCallNode(foreignCalls, descriptor, stamp, arguments);
+    }
+
+    ForeignCallNode(ForeignCallsProvider foreignCalls, ForeignCallDescriptor descriptor, Stamp stamp, List<ValueNode> arguments) {
         super(stamp);
         this.arguments = new NodeInputList<>(this, arguments);
         this.descriptor = descriptor;
         this.foreignCalls = foreignCalls;
     }
 
-    protected ForeignCallNode(@InjectedNodeParameter ForeignCallsProvider foreignCalls, ForeignCallDescriptor descriptor, Stamp stamp) {
+    public static ForeignCallNode create(@InjectedNodeParameter ForeignCallsProvider foreignCalls, ForeignCallDescriptor descriptor, Stamp stamp) {
+        return USE_GENERATED_NODES ? new ForeignCallNodeGen(foreignCalls, descriptor, stamp) : new ForeignCallNode(foreignCalls, descriptor, stamp);
+    }
+
+    protected ForeignCallNode(ForeignCallsProvider foreignCalls, ForeignCallDescriptor descriptor, Stamp stamp) {
         super(stamp);
         this.arguments = new NodeInputList<>(this);
         this.descriptor = descriptor;
@@ -112,12 +129,13 @@ public class ForeignCallNode extends AbstractMemoryCheckpoint implements LIRLowe
     }
 
     @Override
-    public void computeStateDuring(FrameState stateAfter) {
+    public void computeStateDuring(FrameState currentStateAfter) {
         FrameState newStateDuring;
-        if ((stateAfter.stackSize() > 0 && stateAfter.stackAt(stateAfter.stackSize() - 1) == this) || (stateAfter.stackSize() > 1 && stateAfter.stackAt(stateAfter.stackSize() - 2) == this)) {
-            newStateDuring = stateAfter.duplicateModified(stateAfter.bci, stateAfter.rethrowException(), this.getKind());
+        if ((currentStateAfter.stackSize() > 0 && currentStateAfter.stackAt(currentStateAfter.stackSize() - 1) == this) ||
+                        (currentStateAfter.stackSize() > 1 && currentStateAfter.stackAt(currentStateAfter.stackSize() - 2) == this)) {
+            newStateDuring = currentStateAfter.duplicateModified(currentStateAfter.bci, currentStateAfter.rethrowException(), this.getKind());
         } else {
-            newStateDuring = stateAfter;
+            newStateDuring = currentStateAfter;
         }
         setStateDuring(newStateDuring);
     }

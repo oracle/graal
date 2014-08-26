@@ -32,7 +32,6 @@ import org.junit.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
-import com.oracle.graal.lir.LIRInstruction.ValuePositionProcedure;
 import com.oracle.graal.lir.asm.*;
 
 public class ValuePositionTest2 {

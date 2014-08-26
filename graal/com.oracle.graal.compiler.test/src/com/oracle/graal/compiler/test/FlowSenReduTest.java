@@ -22,24 +22,20 @@
  */
 package com.oracle.graal.compiler.test;
 
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugConfig;
-import com.oracle.graal.debug.DebugConfigScope;
-import com.oracle.graal.debug.internal.DebugScope;
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.nodes.calc.ObjectEqualsNode;
-import com.oracle.graal.nodes.util.GraphUtil;
-import com.oracle.graal.phases.common.cfs.FlowSensitiveReductionPhase;
+import java.util.*;
 
 import org.junit.*;
 
+import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.internal.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.common.*;
+import com.oracle.graal.phases.common.cfs.*;
 import com.oracle.graal.phases.tiers.*;
-
-import java.util.Iterator;
-import java.util.List;
 
 /**
  * Tests whether {@link com.oracle.graal.phases.common.cfs.FlowSensitiveReductionPhase} actually
@@ -376,7 +372,7 @@ public class FlowSenReduTest extends GraalCompilerTest {
     }
 
     public StructuredGraph afterFlowSensitiveReduce(String snippet) {
-        StructuredGraph before = canonicalize(parse(snippet));
+        StructuredGraph before = canonicalize(parseEager(snippet));
         // visualize(before, snippet + "-before");
         StructuredGraph result = flowSensitiveReduce(before);
         // visualize(result, snippet + "-after");

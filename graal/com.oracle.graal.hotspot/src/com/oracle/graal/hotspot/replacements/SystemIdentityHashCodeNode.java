@@ -26,12 +26,18 @@ import static com.oracle.graal.compiler.common.GraalOptions.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.replacements.nodes.*;
 
+@NodeInfo
 public class SystemIdentityHashCodeNode extends PureFunctionMacroNode {
 
-    public SystemIdentityHashCodeNode(Invoke invoke) {
+    public static SystemIdentityHashCodeNode create(Invoke invoke) {
+        return USE_GENERATED_NODES ? new SystemIdentityHashCodeNodeGen(invoke) : new SystemIdentityHashCodeNode(invoke);
+    }
+
+    protected SystemIdentityHashCodeNode(Invoke invoke) {
         super(invoke);
     }
 

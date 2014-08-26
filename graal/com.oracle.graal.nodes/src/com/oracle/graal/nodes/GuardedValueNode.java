@@ -26,6 +26,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 
@@ -35,18 +36,27 @@ import com.oracle.graal.nodes.spi.*;
  *
  * A GuardedValueNode will only go away if its guard is null or {@link StructuredGraph#start()}.
  */
+@NodeInfo
 public class GuardedValueNode extends FloatingGuardedNode implements LIRLowerable, Virtualizable, IterableNodeType, Canonicalizable, ValueProxy {
 
-    @Input private ValueNode object;
+    @Input ValueNode object;
     private final Stamp piStamp;
 
-    public GuardedValueNode(ValueNode object, GuardingNode guard, Stamp stamp) {
+    public static GuardedValueNode create(ValueNode object, GuardingNode guard, Stamp stamp) {
+        return USE_GENERATED_NODES ? new GuardedValueNodeGen(object, guard, stamp) : new GuardedValueNode(object, guard, stamp);
+    }
+
+    protected GuardedValueNode(ValueNode object, GuardingNode guard, Stamp stamp) {
         super(stamp, guard);
         this.object = object;
         this.piStamp = stamp;
     }
 
-    public GuardedValueNode(ValueNode object, GuardingNode guard) {
+    public static GuardedValueNode create(ValueNode object, GuardingNode guard) {
+        return USE_GENERATED_NODES ? new GuardedValueNodeGen(object, guard) : new GuardedValueNode(object, guard);
+    }
+
+    protected GuardedValueNode(ValueNode object, GuardingNode guard) {
         this(object, guard, object.stamp());
     }
 
@@ -83,7 +93,7 @@ public class GuardedValueNode extends FloatingGuardedNode implements LIRLowerabl
             if (stamp().equals(object().stamp())) {
                 return object();
             } else {
-                return new PiNode(object(), stamp());
+                return PiNode.create(object(), stamp());
             }
         }
         return this;

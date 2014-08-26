@@ -23,15 +23,21 @@
 package com.oracle.graal.hotspot.hsail.replacements;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.hotspot.hsail.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.replacements.nodes.*;
-import com.oracle.graal.hotspot.hsail.*;
 import com.oracle.graal.word.*;
 
+@NodeInfo
 public class HSAILDirectStoreReleaseNode extends DirectStoreNode {
 
-    public HSAILDirectStoreReleaseNode(ValueNode address, ValueNode value, Kind kind) {
+    public static HSAILDirectStoreReleaseNode create(ValueNode address, ValueNode value, Kind kind) {
+        return USE_GENERATED_NODES ? new HSAILDirectStoreReleaseNodeGen(address, value, kind) : new HSAILDirectStoreReleaseNode(address, value, kind);
+    }
+
+    protected HSAILDirectStoreReleaseNode(ValueNode address, ValueNode value, Kind kind) {
         super(address, value, kind);
     }
 

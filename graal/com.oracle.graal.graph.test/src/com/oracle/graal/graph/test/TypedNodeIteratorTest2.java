@@ -27,14 +27,20 @@ import static org.junit.Assert.*;
 import org.junit.*;
 
 import com.oracle.graal.graph.*;
+import com.oracle.graal.nodeinfo.*;
 
 public class TypedNodeIteratorTest2 {
 
-    private static class NodeA extends Node implements TestNodeInterface {
+    @NodeInfo
+    static class NodeA extends Node implements TestNodeInterface {
 
         private final String name;
 
-        public NodeA(String name) {
+        public static NodeA create(String name) {
+            return USE_GENERATED_NODES ? new TypedNodeIteratorTest2_NodeAGen(name) : new NodeA(name);
+        }
+
+        NodeA(String name) {
             this.name = name;
         }
 
@@ -43,23 +49,36 @@ public class TypedNodeIteratorTest2 {
         }
     }
 
-    private static class NodeB extends NodeA implements IterableNodeType {
+    @NodeInfo
+    static class NodeB extends NodeA implements IterableNodeType {
 
-        public NodeB(String name) {
+        public static NodeB create(String name) {
+            return USE_GENERATED_NODES ? new TypedNodeIteratorTest2_NodeBGen(name) : new NodeB(name);
+        }
+
+        NodeB(String name) {
             super(name);
         }
     }
 
-    private static class NodeC extends NodeB {
+    @NodeInfo
+    static class NodeC extends NodeB {
+        public static NodeC create(String name) {
+            return USE_GENERATED_NODES ? new TypedNodeIteratorTest2_NodeCGen(name) : new NodeC(name);
+        }
 
-        public NodeC(String name) {
+        NodeC(String name) {
             super(name);
         }
     }
 
-    private static class NodeD extends NodeC {
+    @NodeInfo
+    static class NodeD extends NodeC {
+        public static NodeD create(String name) {
+            return USE_GENERATED_NODES ? new TypedNodeIteratorTest2_NodeDGen(name) : new NodeD(name);
+        }
 
-        public NodeD(String name) {
+        NodeD(String name) {
             super(name);
         }
     }
@@ -67,8 +86,8 @@ public class TypedNodeIteratorTest2 {
     @Test
     public void simpleSubclassTest() {
         Graph graph = new Graph();
-        graph.add(new NodeB("b"));
-        graph.add(new NodeD("d"));
+        graph.add(NodeB.create("b"));
+        graph.add(NodeD.create("d"));
 
         Assert.assertEquals("bd", TypedNodeIteratorTest.toString(graph.getNodes(NodeB.class)));
         Assert.assertEquals("d", TypedNodeIteratorTest.toString(graph.getNodes(NodeD.class)));
@@ -77,19 +96,19 @@ public class TypedNodeIteratorTest2 {
     @Test
     public void addingNodeDuringIterationTest() {
         Graph graph = new Graph();
-        graph.add(new NodeB("b1"));
-        NodeD d1 = graph.add(new NodeD("d1"));
+        graph.add(NodeB.create("b1"));
+        NodeD d1 = graph.add(NodeD.create("d1"));
         StringBuilder sb = new StringBuilder();
         for (NodeB tn : graph.getNodes(NodeB.class)) {
             if (tn == d1) {
-                graph.add(new NodeB("b2"));
+                graph.add(NodeB.create("b2"));
             }
             sb.append(tn.getName());
         }
         assertEquals("b1d1b2", sb.toString());
         for (NodeB tn : graph.getNodes(NodeB.class)) {
             if (tn == d1) {
-                graph.add(new NodeB("b3"));
+                graph.add(NodeB.create("b3"));
             }
             assertNotNull(tn);
         }

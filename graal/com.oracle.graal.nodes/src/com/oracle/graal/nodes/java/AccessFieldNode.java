@@ -24,15 +24,17 @@ package com.oracle.graal.nodes.java;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
 /**
  * The base class of all instructions that access fields.
  */
+@NodeInfo
 public abstract class AccessFieldNode extends FixedWithNextNode implements Lowerable {
 
-    @OptionalInput private ValueNode object;
+    @OptionalInput ValueNode object;
 
     protected final ResolvedJavaField field;
 

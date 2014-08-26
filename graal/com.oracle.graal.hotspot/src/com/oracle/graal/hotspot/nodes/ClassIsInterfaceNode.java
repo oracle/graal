@@ -26,6 +26,7 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.replacements.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.replacements.nodes.*;
 
@@ -34,9 +35,14 @@ import com.oracle.graal.replacements.nodes.*;
  *
  * @see ClassSubstitutions#isInterface(Class)
  */
+@NodeInfo
 public class ClassIsInterfaceNode extends MacroNode implements Canonicalizable {
 
-    public ClassIsInterfaceNode(Invoke invoke) {
+    public static ClassIsInterfaceNode create(Invoke invoke) {
+        return USE_GENERATED_NODES ? new ClassIsInterfaceNodeGen(invoke) : new ClassIsInterfaceNode(invoke);
+    }
+
+    protected ClassIsInterfaceNode(Invoke invoke) {
         super(invoke);
     }
 

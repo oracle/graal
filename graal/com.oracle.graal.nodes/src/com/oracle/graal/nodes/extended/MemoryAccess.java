@@ -32,7 +32,14 @@ public interface MemoryAccess {
 
     LocationIdentity getLocationIdentity();
 
-    MemoryNode getLastLocationAccess();
+    default MemoryNode getLastLocationAccess() {
+        return null;
+    }
 
-    void setLastLocationAccess(MemoryNode lla);
+    /**
+     * @param lla the {@link MemoryNode} that represents the last kill of the location
+     */
+    default void setLastLocationAccess(MemoryNode lla) {
+        // empty
+    }
 }

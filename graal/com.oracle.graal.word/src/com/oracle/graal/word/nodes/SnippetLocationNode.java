@@ -31,6 +31,7 @@ import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
@@ -42,27 +43,38 @@ import com.oracle.graal.nodes.spi.*;
  * nodes. Both scale and disp must eventually canonicalize to {@link ConstantNode constants} so that
  * this node can be canonicalized to a {@link IndexedLocationNode} or {@link ConstantLocationNode}.
  */
-public final class SnippetLocationNode extends LocationNode implements Canonicalizable {
+@NodeInfo
+public class SnippetLocationNode extends LocationNode implements Canonicalizable {
 
     private final SnippetReflectionProvider snippetReflection;
 
-    @Input private ValueNode valueKind;
-    @Input(InputType.Association) private ValueNode locationIdentity;
-    @Input private ValueNode displacement;
-    @Input private ValueNode index;
-    @Input private ValueNode indexScaling;
+    @Input ValueNode valueKind;
+    @Input(InputType.Association) ValueNode locationIdentity;
+    @Input ValueNode displacement;
+    @Input ValueNode index;
+    @Input ValueNode indexScaling;
 
-    public static SnippetLocationNode create(SnippetReflectionProvider snippetReflection, ValueNode identity, ValueNode kind, ValueNode displacement, ValueNode index, ValueNode indexScaling,
-                    Graph graph) {
-        return graph.unique(new SnippetLocationNode(snippetReflection, identity, kind, displacement, index, indexScaling));
+    public static SnippetLocationNode create(@InjectedNodeParameter SnippetReflectionProvider snippetReflection, ValueNode identity, ValueNode kind, ValueNode displacement, ValueNode index,
+                    ValueNode indexScaling, Graph graph) {
+        return graph.unique(SnippetLocationNode.create(snippetReflection, identity, kind, displacement, index, indexScaling));
     }
 
-    private SnippetLocationNode(@InjectedNodeParameter SnippetReflectionProvider snippetReflection, ValueNode locationIdentity, ValueNode kind, ValueNode displacement) {
+    public static SnippetLocationNode create(@InjectedNodeParameter SnippetReflectionProvider snippetReflection, ValueNode locationIdentity, ValueNode kind, ValueNode displacement) {
+        return USE_GENERATED_NODES ? new SnippetLocationNodeGen(snippetReflection, locationIdentity, kind, displacement) : new SnippetLocationNode(snippetReflection, locationIdentity, kind,
+                        displacement);
+    }
+
+    SnippetLocationNode(@InjectedNodeParameter SnippetReflectionProvider snippetReflection, ValueNode locationIdentity, ValueNode kind, ValueNode displacement) {
         this(snippetReflection, locationIdentity, kind, displacement, null, null);
     }
 
-    private SnippetLocationNode(@InjectedNodeParameter SnippetReflectionProvider snippetReflection, ValueNode locationIdentity, ValueNode kind, ValueNode displacement, ValueNode index,
+    public static SnippetLocationNode create(@InjectedNodeParameter SnippetReflectionProvider snippetReflection, ValueNode locationIdentity, ValueNode kind, ValueNode displacement, ValueNode index,
                     ValueNode indexScaling) {
+        return USE_GENERATED_NODES ? new SnippetLocationNodeGen(snippetReflection, locationIdentity, kind, displacement, index, indexScaling) : new SnippetLocationNode(snippetReflection,
+                        locationIdentity, kind, displacement, index, indexScaling);
+    }
+
+    SnippetLocationNode(SnippetReflectionProvider snippetReflection, ValueNode locationIdentity, ValueNode kind, ValueNode displacement, ValueNode index, ValueNode indexScaling) {
         super(StampFactory.object());
         this.snippetReflection = snippetReflection;
         this.valueKind = kind;

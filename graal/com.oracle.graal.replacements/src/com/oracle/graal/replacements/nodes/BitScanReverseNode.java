@@ -25,6 +25,7 @@ package com.oracle.graal.replacements.nodes;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
@@ -33,9 +34,14 @@ import com.oracle.graal.nodes.spi.*;
  * Determines the index of the most significant "1" bit. Note that the result is undefined if the
  * input is zero.
  */
+@NodeInfo
 public class BitScanReverseNode extends UnaryNode implements LIRLowerable {
 
-    public BitScanReverseNode(ValueNode value) {
+    public static BitScanReverseNode create(ValueNode value) {
+        return USE_GENERATED_NODES ? new BitScanReverseNodeGen(value) : new BitScanReverseNode(value);
+    }
+
+    protected BitScanReverseNode(ValueNode value) {
         super(StampFactory.forInteger(Kind.Int, 0, ((PrimitiveStamp) value.stamp()).getBits()), value);
         assert value.getKind() == Kind.Int || value.getKind() == Kind.Long;
     }

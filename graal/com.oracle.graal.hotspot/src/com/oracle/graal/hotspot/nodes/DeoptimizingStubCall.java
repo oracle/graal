@@ -23,11 +23,17 @@
 package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 
+@NodeInfo
 public class DeoptimizingStubCall extends DeoptimizingFixedWithNextNode {
 
-    public DeoptimizingStubCall(Stamp stamp) {
+    public static DeoptimizingStubCall create(Stamp stamp) {
+        return USE_GENERATED_NODES ? new DeoptimizingStubCallGen(stamp) : new DeoptimizingStubCall(stamp);
+    }
+
+    protected DeoptimizingStubCall(Stamp stamp) {
         super(stamp);
     }
 

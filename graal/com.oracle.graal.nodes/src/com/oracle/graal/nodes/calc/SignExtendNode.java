@@ -26,6 +26,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
@@ -33,9 +34,14 @@ import com.oracle.graal.nodes.type.*;
 /**
  * The {@code SignExtendNode} converts an integer to a wider integer using sign extension.
  */
+@NodeInfo
 public class SignExtendNode extends IntegerConvertNode {
 
-    public SignExtendNode(ValueNode input, int resultBits) {
+    public static SignExtendNode create(ValueNode input, int resultBits) {
+        return USE_GENERATED_NODES ? new SignExtendNodeGen(input, resultBits) : new SignExtendNode(input, resultBits);
+    }
+
+    protected SignExtendNode(ValueNode input, int resultBits) {
         super(StampTool.signExtend(input.stamp(), resultBits), input, resultBits);
     }
 
@@ -77,13 +83,13 @@ public class SignExtendNode extends IntegerConvertNode {
             // sxxx -(sign-extend)-> ssss sxxx -(sign-extend)-> ssssssss sssssxxx
             // ==> sxxx -(sign-extend)-> ssssssss sssssxxx
             SignExtendNode other = (SignExtendNode) forValue;
-            return new SignExtendNode(other.getValue(), getResultBits());
+            return SignExtendNode.create(other.getValue(), getResultBits());
         } else if (forValue instanceof ZeroExtendNode) {
             ZeroExtendNode other = (ZeroExtendNode) forValue;
             if (other.getResultBits() > other.getInputBits()) {
                 // sxxx -(zero-extend)-> 0000 sxxx -(sign-extend)-> 00000000 0000sxxx
                 // ==> sxxx -(zero-extend)-> 00000000 0000sxxx
-                return new ZeroExtendNode(other.getValue(), getResultBits());
+                return ZeroExtendNode.create(other.getValue(), getResultBits());
             }
         }
 
@@ -92,7 +98,7 @@ public class SignExtendNode extends IntegerConvertNode {
             if ((inputStamp.upMask() & (1L << (getInputBits() - 1))) == 0L) {
                 // 0xxx -(sign-extend)-> 0000 0xxx
                 // ==> 0xxx -(zero-extend)-> 0000 0xxx
-                return new ZeroExtendNode(forValue, getResultBits());
+                return ZeroExtendNode.create(forValue, getResultBits());
             }
         }
 

@@ -25,6 +25,7 @@ package com.oracle.graal.truffle.nodes.typesystem;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.truffle.nodes.*;
@@ -34,6 +35,7 @@ import com.oracle.truffle.api.*;
 /**
  * Macro node for method {@link CompilerDirectives#unsafeCast(Object, Class, boolean)}.
  */
+@NodeInfo
 public class CustomizedUnsafeStoreMacroNode extends NeverPartOfCompilationNode implements Canonicalizable, StateSplit {
     private static final int ARGUMENT_COUNT = 4;
     private static final int OBJECT_ARGUMENT_INDEX = 0;
@@ -41,7 +43,11 @@ public class CustomizedUnsafeStoreMacroNode extends NeverPartOfCompilationNode i
     private static final int VALUE_ARGUMENT_INDEX = 2;
     private static final int LOCATION_ARGUMENT_INDEX = 3;
 
-    public CustomizedUnsafeStoreMacroNode(Invoke invoke) {
+    public static CustomizedUnsafeStoreMacroNode create(Invoke invoke) {
+        return USE_GENERATED_NODES ? new CustomizedUnsafeStoreMacroNodeGen(invoke) : new CustomizedUnsafeStoreMacroNode(invoke);
+    }
+
+    protected CustomizedUnsafeStoreMacroNode(Invoke invoke) {
         super(invoke, "The location argument could not be resolved to a constant.");
         assert arguments.size() == ARGUMENT_COUNT;
     }
@@ -60,7 +66,7 @@ public class CustomizedUnsafeStoreMacroNode extends NeverPartOfCompilationNode i
                 locationIdentity = ObjectLocationIdentity.create(locationArgument.asConstant());
             }
 
-            return new UnsafeStoreNode(objectArgument, offsetArgument, valueArgument, this.getTargetMethod().getSignature().getParameterKind(VALUE_ARGUMENT_INDEX), locationIdentity, stateAfter());
+            return UnsafeStoreNode.create(objectArgument, offsetArgument, valueArgument, this.getTargetMethod().getSignature().getParameterKind(VALUE_ARGUMENT_INDEX), locationIdentity, stateAfter());
         }
         return this;
     }

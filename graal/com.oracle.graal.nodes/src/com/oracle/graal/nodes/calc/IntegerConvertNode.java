@@ -23,12 +23,14 @@
 package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
 /**
  * An {@code IntegerConvert} converts an integer to an integer of different width.
  */
+@NodeInfo
 public abstract class IntegerConvertNode extends ConvertNode implements ArithmeticLIRLowerable {
 
     private final int resultBits;
@@ -58,7 +60,7 @@ public abstract class IntegerConvertNode extends ConvertNode implements Arithmet
         }
     }
 
-    protected ValueNode canonicalConvert(ValueNode value) {
+    protected ValueNode canonicalConvert(@SuppressWarnings("hiding") ValueNode value) {
         if (value.stamp() instanceof IntegerStamp) {
             int inputBits = ((IntegerStamp) value.stamp()).getBits();
             if (inputBits == resultBits) {
@@ -95,13 +97,13 @@ public abstract class IntegerConvertNode extends ConvertNode implements Arithmet
         if (toStamp.getBits() == fromStamp.getBits()) {
             result = input;
         } else if (toStamp.getBits() < fromStamp.getBits()) {
-            result = new NarrowNode(input, toStamp.getBits());
+            result = NarrowNode.create(input, toStamp.getBits());
         } else if (zeroExtend) {
             // toStamp.getBits() > fromStamp.getBits()
-            result = new ZeroExtendNode(input, toStamp.getBits());
+            result = ZeroExtendNode.create(input, toStamp.getBits());
         } else {
             // toStamp.getBits() > fromStamp.getBits()
-            result = new SignExtendNode(input, toStamp.getBits());
+            result = SignExtendNode.create(input, toStamp.getBits());
         }
 
         IntegerStamp resultStamp = (IntegerStamp) result.stamp();

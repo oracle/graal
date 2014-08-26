@@ -26,16 +26,22 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
 
+@NodeInfo
 public class MethodCallTargetNode extends CallTargetNode implements IterableNodeType, Canonicalizable {
     private final JavaType returnType;
 
     /**
      * @param arguments
      */
-    public MethodCallTargetNode(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, JavaType returnType) {
+    public static MethodCallTargetNode create(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, JavaType returnType) {
+        return USE_GENERATED_NODES ? new MethodCallTargetNodeGen(invokeKind, targetMethod, arguments, returnType) : new MethodCallTargetNode(invokeKind, targetMethod, arguments, returnType);
+    }
+
+    MethodCallTargetNode(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, JavaType returnType) {
         super(arguments, targetMethod, invokeKind);
         this.returnType = returnType;
     }

@@ -23,10 +23,18 @@
 package com.oracle.graal.nodes.extended;
 
 import com.oracle.graal.graph.iterators.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
+@NodeInfo
 public class OSRStartNode extends StartNode implements Lowerable {
+    public static OSRStartNode create() {
+        return USE_GENERATED_NODES ? new OSRStartNodeGen() : new OSRStartNode();
+    }
+
+    OSRStartNode() {
+    }
 
     @Override
     public void lower(LoweringTool tool) {

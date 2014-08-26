@@ -85,8 +85,8 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
     public static class Options {
 
         // @formatter:off
-        @Option(help = "Number of donor threads for HSAIL kernel dispatch")
-        static public final OptionValue<Integer> HsailDonorThreads = new OptionValue<>(4);
+        @Option(help = "Number of TLABs used for HSAIL kernels which allocate")
+        static public final OptionValue<Integer> HsailKernelTlabs = new OptionValue<>(4);
         // @formatter:on
     }
 
@@ -369,25 +369,18 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
         return result;
     }
 
-    private static final ThreadLocal<DonorThreadPool> donorThreadPool = new ThreadLocal<DonorThreadPool>() {
-        @Override
-        protected DonorThreadPool initialValue() {
-            return new DonorThreadPool();
-        }
-    };
-
     public boolean executeKernel(HotSpotInstalledCode kernel, int jobSize, Object[] args) throws InvalidInstalledCodeException {
         if (!deviceInitialized) {
             throw new GraalInternalError("Cannot execute GPU kernel if device is not initialized");
         }
         int[] oopMapArray = ((HSAILHotSpotNmethod) kernel).getOopMapArray();
 
-        // Pass donorThreadPoolArray if this kernel uses allocation, otherwise null
-        Thread[] donorThreadArray = ((HSAILHotSpotNmethod) kernel).getUsesAllocationFlag() ? donorThreadPool.get().getThreads() : null;
-        return executeKernel0(kernel, jobSize, args, donorThreadArray, HsailAllocBytesPerWorkitem.getValue(), oopMapArray);
+        // Pass HsailKernelTlabs number if this kernel uses allocation, otherwise 0
+        int numTlabs = ((HSAILHotSpotNmethod) kernel).getUsesAllocationFlag() ? HsailKernelTlabs.getValue() : 0;
+        return executeKernel0(kernel, jobSize, args, numTlabs, HsailAllocBytesPerWorkitem.getValue(), oopMapArray);
     }
 
-    private static native boolean executeKernel0(HotSpotInstalledCode kernel, int jobSize, Object[] args, Thread[] donorThreads, int allocBytesPerWorkitem, int[] oopMapArray)
+    private static native boolean executeKernel0(HotSpotInstalledCode kernel, int jobSize, Object[] args, int numTlabs, int allocBytesPerWorkitem, int[] oopMapArray)
                     throws InvalidInstalledCodeException;
 
     /**
@@ -633,12 +626,12 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
             RegisterValue d16_deoptInfo = HSAIL.d16.asValue(wordLIRKind);
 
             // Aliases for d17
-            RegisterValue d17_donorThreadIndex = HSAIL.d17.asValue(wordLIRKind);
-            RegisterValue d17_safepointFlagAddrIndex = d17_donorThreadIndex;
+            RegisterValue d17_tlabIndex = HSAIL.d17.asValue(wordLIRKind);
+            RegisterValue d17_safepointFlagAddrIndex = d17_tlabIndex;
 
             // Aliases for s34
             RegisterValue s34_deoptOccurred = HSAIL.s34.asValue(LIRKind.value(Kind.Int));
-            RegisterValue s34_donorThreadIndex = s34_deoptOccurred;
+            RegisterValue s34_tlabIndex = s34_deoptOccurred;
 
             asm.emitLoadKernelArg(d16_deoptInfo, asm.getDeoptInfoName(), "u64");
             asm.emitComment("// Check if a deopt or safepoint has occurred and abort if true before doing any work");
@@ -657,15 +650,15 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
             // load thread register if this kernel performs allocation
             if (usesAllocation) {
                 RegisterValue threadReg = getProviders().getRegisters().getThreadRegister().asValue(wordLIRKind);
-                assert HsailDonorThreads.getValue() > 0;
+                assert HsailKernelTlabs.getValue() > 0;
                 asm.emitLoad(wordKind, threadReg, new HSAILAddressValue(wordLIRKind, d16_deoptInfo, config.hsailCurTlabInfoOffset).toAddress());
-                if (HsailDonorThreads.getValue() != 1) {
-                    asm.emitComment("// map workitem to a donor thread");
-                    asm.emitString(String.format("rem_u32  $%s, %s, %d;", s34_donorThreadIndex.getRegister(), workItemReg, HsailDonorThreads.getValue()));
-                    asm.emitConvert(d17_donorThreadIndex, s34_donorThreadIndex, wordKind, Kind.Int);
-                    asm.emit("mad", threadReg, d17_donorThreadIndex, Constant.forInt(8), threadReg);
+                if (HsailKernelTlabs.getValue() != 1) {
+                    asm.emitComment("// map workitem to a tlab");
+                    asm.emitString(String.format("rem_u32  $%s, %s, %d;", s34_tlabIndex.getRegister(), workItemReg, HsailKernelTlabs.getValue()));
+                    asm.emitConvert(d17_tlabIndex, s34_tlabIndex, wordKind, Kind.Int);
+                    asm.emit("mad", threadReg, d17_tlabIndex, Constant.forInt(8), threadReg);
                 } else {
-                    // workitem is already mapped to solitary donor thread
+                    // workitem is already mapped to solitary tlab
                 }
                 asm.emitComment("// $" + getProviders().getRegisters().getThreadRegister() + " will point to holder of tlab thread info for this workitem");
             }
@@ -686,7 +679,9 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
             String iterationObjArgReg = HSAIL.mapRegister(cc.getArgument(nonConstantParamCount - 1));
             /*
              * iterationObjArgReg will be the highest $d register in use (it is the last parameter)
-             * so tempReg can be the next higher $d register
+             * so tempReg can be the next higher $d register. As of 1.0 spec, we cannot use
+             * ld_global_u32 $dxx, [addr]; so we need a temporary $s register. We can use
+             * workItemReg+1;
              */
             String tmpReg = "$d" + (asRegister(cc.getArgument(nonConstantParamCount - 1)).encoding() + 1);
             // Convert gid to long.
@@ -699,9 +694,13 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
             asm.emitString("add_u64 " + tmpReg + ", " + tmpReg + ", " + iterationObjArgReg + "; // Add to array ref ptr");
             // Load the object into the parameter reg.
             if (useCompressedOops) {
+                int workItemRegEncoding = asRegister(cc.getArgument(nonConstantParamCount)).encoding();
+                String tmpReg32 = "$s" + Integer.toString(workItemRegEncoding + 1);
 
-                // Load u32 into the d 64 reg since it will become an object address
-                asm.emitString("ld_global_u32 " + tmpReg + ", " + "[" + tmpReg + "]" + "; // Load compressed ptr from array");
+                // Load u32 into the temporary $s reg since it will become an object address
+
+                asm.emitString("ld_global_u32 " + tmpReg32 + ", " + "[" + tmpReg + "]" + "; // Load compressed ptr from array");
+                asm.emitString("cvt_u64_u32 " + tmpReg + ", " + tmpReg32 + ";      // cvt to 64 bits");
 
                 long narrowOopBase = config.narrowOopBase;
                 long narrowOopShift = config.narrowOopShift;
@@ -1069,10 +1068,10 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
             return null;
         }
         StructuredGraph hostGraph = new StructuredGraph(method, -2);
-        ParameterNode deoptId = hostGraph.unique(new ParameterNode(0, StampFactory.intValue()));
-        ParameterNode hsailFrame = hostGraph.unique(new ParameterNode(1, StampFactory.forKind(providers.getCodeCache().getTarget().wordKind)));
-        ParameterNode reasonAndAction = hostGraph.unique(new ParameterNode(2, StampFactory.intValue()));
-        ParameterNode speculation = hostGraph.unique(new ParameterNode(3, StampFactory.object()));
+        ParameterNode deoptId = hostGraph.unique(ParameterNode.create(0, StampFactory.intValue()));
+        ParameterNode hsailFrame = hostGraph.unique(ParameterNode.create(1, StampFactory.forKind(providers.getCodeCache().getTarget().wordKind)));
+        ParameterNode reasonAndAction = hostGraph.unique(ParameterNode.create(2, StampFactory.intValue()));
+        ParameterNode speculation = hostGraph.unique(ParameterNode.create(3, StampFactory.object()));
         BeginNode[] branches = new BeginNode[deopts.size() + 1];
         int[] keys = new int[deopts.size()];
         int[] keySuccessors = new int[deopts.size() + 1];
@@ -1095,7 +1094,7 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
         keyProbabilities[deopts.size()] = 0; // default
         keySuccessors[deopts.size()] = deopts.size();
         branches[deopts.size()] = createHostCrashBranch(hostGraph, deoptId);
-        IntegerSwitchNode switchNode = hostGraph.add(new IntegerSwitchNode(deoptId, branches, keys, keyProbabilities, keySuccessors));
+        IntegerSwitchNode switchNode = hostGraph.add(IntegerSwitchNode.create(deoptId, branches, keys, keyProbabilities, keySuccessors));
         StartNode start = hostGraph.start();
         start.setNext(switchNode);
         /*
@@ -1106,16 +1105,16 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
     }
 
     private static BeginNode createHostCrashBranch(StructuredGraph hostGraph, ValueNode deoptId) {
-        VMErrorNode vmError = hostGraph.add(new VMErrorNode("Error in HSAIL deopt. DeoptId=%d", deoptId));
+        VMErrorNode vmError = hostGraph.add(VMErrorNode.create("Error in HSAIL deopt. DeoptId=%d", deoptId));
         // ConvertNode.convert(hostGraph, Kind.Long, deoptId)));
-        vmError.setNext(hostGraph.add(new ReturnNode(ConstantNode.defaultForKind(hostGraph.method().getSignature().getReturnKind(), hostGraph))));
+        vmError.setNext(hostGraph.add(ReturnNode.create(ConstantNode.defaultForKind(hostGraph.method().getSignature().getReturnKind(), hostGraph))));
         return BeginNode.begin(vmError);
     }
 
     private static BeginNode createHostDeoptBranch(DeoptimizingOp deopt, ParameterNode hsailFrame, ValueNode reasonAndAction, ValueNode speculation, HotSpotProviders providers,
                     HotSpotVMConfig config, int numSRegs, int numDRegs) {
-        BeginNode branch = hsailFrame.graph().add(new BeginNode());
-        DynamicDeoptimizeNode deoptimization = hsailFrame.graph().add(new DynamicDeoptimizeNode(reasonAndAction, speculation));
+        BeginNode branch = hsailFrame.graph().add(BeginNode.create());
+        DynamicDeoptimizeNode deoptimization = hsailFrame.graph().add(DynamicDeoptimizeNode.create(reasonAndAction, speculation));
         deoptimization.setStateBefore(createFrameState(deopt.getFrameState().topFrame, hsailFrame, providers, config, numSRegs, numDRegs));
         branch.setNext(deoptimization);
         return branch;
@@ -1148,7 +1147,7 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
             locks[i] = lirValueToHirNode.apply(lockValue);
             monitorIds[i] = getMonitorIdForHotSpotMonitorValueFromFrame(lockValue, hsailFrame, hostGraph);
         }
-        FrameState frameState = hostGraph.add(new FrameState(lowLevelFrame.getMethod(), lowLevelFrame.getBCI(), locals, stack, locks, monitorIds, lowLevelFrame.rethrowException, false));
+        FrameState frameState = hostGraph.add(FrameState.create(lowLevelFrame.getMethod(), lowLevelFrame.getBCI(), locals, stack, locks, monitorIds, lowLevelFrame.rethrowException, false));
         if (outterFrameState != null) {
             frameState.setOuterFrameState(outterFrameState);
         }
@@ -1163,7 +1162,7 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
                 VirtualObject virtualObject = entry.getKey();
                 VirtualObjectNode virtualObjectNode = entry.getValue();
                 List<ValueNode> fieldValues = Arrays.stream(virtualObject.getValues()).map(lirValueToHirNode).collect(Collectors.toList());
-                virtualStates.add(new VirtualObjectState(virtualObjectNode, fieldValues));
+                virtualStates.add(VirtualObjectState.create(virtualObjectNode, fieldValues));
             }
             // New virtual objects may have been discovered while processing the previous set.
             // Wait until a fixed point is reached
@@ -1208,9 +1207,9 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
     private static ValueNode getNodeForVirtualObjectFromFrame(VirtualObject virtualObject, Map<VirtualObject, VirtualObjectNode> virtualObjects, StructuredGraph hostGraph) {
         return virtualObjects.computeIfAbsent(virtualObject, vo -> {
             if (vo.getType().isArray()) {
-                return hostGraph.add(new VirtualArrayNode(vo.getType().getComponentType(), vo.getValues().length));
+                return hostGraph.add(VirtualArrayNode.create(vo.getType().getComponentType(), vo.getValues().length));
             } else {
-                return hostGraph.add(new VirtualInstanceNode(vo.getType(), true));
+                return hostGraph.add(VirtualInstanceNode.create(vo.getType(), true));
             }
         });
     }
@@ -1230,7 +1229,7 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
         } else {
             throw GraalInternalError.shouldNotReachHere("unknown hsail register: " + regNumber);
         }
-        valueNode = hostGraph.unique(new FloatingReadNode(hsailFrame, location, null, StampFactory.forKind(valueKind)));
+        valueNode = hostGraph.unique(FloatingReadNode.create(hsailFrame, location, null, StampFactory.forKind(valueKind)));
         return valueNode;
     }
 
@@ -1242,7 +1241,7 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
             int intSize = providers.getCodeCache().getTarget().arch.getSizeInBytes(Kind.Int);
             long offset = config.hsailFrameHeaderSize + (intSize * numSRegs) + (longSize * numDRegs) + HSAIL.getStackOffsetStart(slot, slotSizeInBits);
             LocationNode location = ConstantLocationNode.create(FINAL_LOCATION, valueKind, offset, hostGraph);
-            ValueNode valueNode = hostGraph.unique(new FloatingReadNode(hsailFrame, location, null, StampFactory.forKind(valueKind)));
+            ValueNode valueNode = hostGraph.unique(FloatingReadNode.create(hsailFrame, location, null, StampFactory.forKind(valueKind)));
             return valueNode;
         } else {
             throw GraalInternalError.shouldNotReachHere("unsupported stack slot kind: " + valueKind);

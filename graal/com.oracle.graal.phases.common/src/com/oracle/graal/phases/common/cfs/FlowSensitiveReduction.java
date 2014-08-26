@@ -499,9 +499,9 @@ public class FlowSensitiveReduction extends FixedGuardReduction {
          * state-tracking. TODO the assumption here is that the code emitted for the resulting
          * FixedGuardNode is as efficient as for NullCheckNode.
          */
-        IsNullNode isNN = graph.unique(new IsNullNode(object));
+        IsNullNode isNN = graph.unique(IsNullNode.create(object));
         reasoner.added.add(isNN);
-        FixedGuardNode nullCheck = graph.add(new FixedGuardNode(isNN, UnreachedCode, InvalidateReprofile, true));
+        FixedGuardNode nullCheck = graph.add(FixedGuardNode.create(isNN, UnreachedCode, InvalidateReprofile, true));
         graph.replaceFixedWithFixed(ncn, nullCheck);
 
         state.trackNN(object, nullCheck);

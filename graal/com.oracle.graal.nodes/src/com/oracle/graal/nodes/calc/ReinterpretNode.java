@@ -27,6 +27,7 @@ import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
@@ -35,13 +36,22 @@ import com.oracle.graal.nodes.spi.*;
  * of a primitive value to some other incompatible stamp. The new stamp must have the same width as
  * the old stamp.
  */
+@NodeInfo
 public class ReinterpretNode extends UnaryNode implements ArithmeticLIRLowerable {
 
-    private ReinterpretNode(Kind to, ValueNode value) {
+    public static ReinterpretNode create(Kind to, ValueNode value) {
+        return USE_GENERATED_NODES ? new ReinterpretNodeGen(to, value) : new ReinterpretNode(to, value);
+    }
+
+    ReinterpretNode(Kind to, ValueNode value) {
         this(StampFactory.forKind(to), value);
     }
 
-    public ReinterpretNode(Stamp to, ValueNode value) {
+    public static ReinterpretNode create(Stamp to, ValueNode value) {
+        return USE_GENERATED_NODES ? new ReinterpretNodeGen(to, value) : new ReinterpretNode(to, value);
+    }
+
+    protected ReinterpretNode(Stamp to, ValueNode value) {
         super(to, value);
         assert to instanceof PrimitiveStamp;
     }
@@ -89,7 +99,7 @@ public class ReinterpretNode extends UnaryNode implements ArithmeticLIRLowerable
         }
         if (forValue instanceof ReinterpretNode) {
             ReinterpretNode reinterpret = (ReinterpretNode) forValue;
-            return new ReinterpretNode(stamp(), reinterpret.getValue());
+            return ReinterpretNode.create(stamp(), reinterpret.getValue());
         }
         return this;
     }
@@ -101,7 +111,7 @@ public class ReinterpretNode extends UnaryNode implements ArithmeticLIRLowerable
     }
 
     public static ValueNode reinterpret(Kind toKind, ValueNode value) {
-        return value.graph().unique(new ReinterpretNode(toKind, value));
+        return value.graph().unique(ReinterpretNode.create(toKind, value));
     }
 
     @NodeIntrinsic

@@ -141,7 +141,7 @@ public abstract class GuardingPiReduction extends BaseReduction {
          * FixedGuardNode allows tracking the condition via a GuardingNode, thus potentially
          * triggering simplifications down the road.
          */
-        FixedGuardNode fixedGuard = graph.add(new FixedGuardNode(envelope.condition(), envelope.getReason(), envelope.getAction(), envelope.isNegated()));
+        FixedGuardNode fixedGuard = graph.add(FixedGuardNode.create(envelope.condition(), envelope.getReason(), envelope.getAction(), envelope.isNegated()));
         graph.addBeforeFixed(envelope, fixedGuard);
 
         /*
@@ -152,7 +152,7 @@ public abstract class GuardingPiReduction extends BaseReduction {
 
         if (!FlowUtil.lacksUsages(envelope)) {
             // not calling wrapInPiNode() because we don't want to rememberSubstitution()
-            PiNode replacement = graph.unique(new PiNode(envelope.object(), envelope.stamp(), fixedGuard));
+            PiNode replacement = graph.unique(PiNode.create(envelope.object(), envelope.stamp(), fixedGuard));
             reasoner.added.add(replacement);
             // before removing the GuardingPiNode replace its usages
             envelope.replaceAtUsages(replacement);
@@ -182,8 +182,8 @@ public abstract class GuardingPiReduction extends BaseReduction {
      * Provided a condition as above can be reduced to a constant (and an anchor obtained in the
      * process), this method replaces all usages of the
      * {@link com.oracle.graal.nodes.GuardingPiNode} (necessarily of
-     * {@link com.oracle.graal.graph.InputType#Value}) with a {@link com.oracle.graal.nodes.PiNode}
-     * that wraps the payload and the anchor in question.
+     * {@link com.oracle.graal.nodeinfo.InputType#Value}) with a
+     * {@link com.oracle.graal.nodes.PiNode} that wraps the payload and the anchor in question.
      * </p>
      * 
      * <p>
@@ -281,7 +281,7 @@ public abstract class GuardingPiReduction extends BaseReduction {
                  * TODO The GuardingPiNode has an outgoing stamp whose narrowing goes beyond what
                  * the condition checks. That's suspicious.
                  */
-                PiNode replacement = graph.unique(new PiNode(payload, envelope.stamp()));
+                PiNode replacement = graph.unique(PiNode.create(payload, envelope.stamp()));
                 reasoner.added.add(replacement);
                 removeGuardingPiNode(envelope, replacement);
                 return true;
@@ -295,7 +295,7 @@ public abstract class GuardingPiReduction extends BaseReduction {
         Witness w = state.typeInfo(payload);
         GuardingNode nonNullAnchor = (w != null && w.isNonNull()) ? w.guard() : null;
         if (nonNullAnchor != null) {
-            PiNode replacement = graph.unique(new PiNode(payload, envelope.stamp(), nonNullAnchor.asNode()));
+            PiNode replacement = graph.unique(PiNode.create(payload, envelope.stamp(), nonNullAnchor.asNode()));
             reasoner.added.add(replacement);
             removeGuardingPiNode(envelope, replacement);
             return true;

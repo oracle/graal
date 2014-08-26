@@ -28,6 +28,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
@@ -35,13 +36,14 @@ import com.oracle.graal.nodes.type.*;
 /**
  * A node that attaches a type profile to a proxied input node.
  */
-public final class TypeProfileProxyNode extends UnaryNode implements IterableNodeType, ValueProxy {
+@NodeInfo
+public class TypeProfileProxyNode extends UnaryNode implements IterableNodeType, ValueProxy {
 
     private final JavaTypeProfile profile;
     private transient ResolvedJavaType lastCheckedType;
     private transient JavaTypeProfile lastCheckedProfile;
 
-    public static ValueNode create(ValueNode object, JavaTypeProfile profile) {
+    public static ValueNode proxify(ValueNode object, JavaTypeProfile profile) {
         if (StampTool.isExactType(object)) {
             return object;
         }
@@ -53,10 +55,14 @@ public final class TypeProfileProxyNode extends UnaryNode implements IterableNod
             // Only null profiling is not beneficial enough to keep the node around.
             return object;
         }
-        return object.graph().addWithoutUnique(new TypeProfileProxyNode(object, profile));
+        return object.graph().addWithoutUnique(create(object, profile));
     }
 
-    private TypeProfileProxyNode(ValueNode value, JavaTypeProfile profile) {
+    public static ValueNode create(ValueNode object, JavaTypeProfile profile) {
+        return USE_GENERATED_NODES ? new TypeProfileProxyNodeGen(object, profile) : new TypeProfileProxyNode(object, profile);
+    }
+
+    TypeProfileProxyNode(ValueNode value, JavaTypeProfile profile) {
         super(value.stamp(), value);
         this.profile = profile;
     }
@@ -91,7 +97,7 @@ public final class TypeProfileProxyNode extends UnaryNode implements IterableNod
             }
             if (newProfile != this.profile) {
                 Debug.log("Improved profile via other profile.");
-                return new TypeProfileProxyNode(forValue, newProfile);
+                return TypeProfileProxyNode.create(forValue, newProfile);
             }
         } else if (StampTool.typeOrNull(forValue) != null) {
             ResolvedJavaType type = StampTool.typeOrNull(forValue);
@@ -113,7 +119,7 @@ public final class TypeProfileProxyNode extends UnaryNode implements IterableNod
                     // Only null profiling is not beneficial enough to keep the node around.
                     return forValue;
                 }
-                return new TypeProfileProxyNode(forValue, newProfile);
+                return TypeProfileProxyNode.create(forValue, newProfile);
             }
         }
         return this;

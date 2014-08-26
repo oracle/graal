@@ -26,15 +26,17 @@ import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 
 /**
  * The {@code BinaryNode} class is the base of arithmetic and logic operations with two inputs.
  */
+@NodeInfo
 public abstract class BinaryNode extends FloatingNode implements Canonicalizable.Binary<ValueNode> {
 
-    @Input private ValueNode x;
-    @Input private ValueNode y;
+    @Input protected ValueNode x;
+    @Input protected ValueNode y;
 
     public ValueNode getX() {
         return x;
@@ -90,7 +92,7 @@ public abstract class BinaryNode extends FloatingNode implements Canonicalizable
         if (stamp instanceof IntegerStamp) {
             return IntegerArithmeticNode.add(graph, x, y);
         } else if (stamp instanceof FloatStamp) {
-            return graph.unique(new FloatAddNode(x, y, false));
+            return graph.unique(FloatAddNode.create(x, y, false));
         } else {
             throw GraalInternalError.shouldNotReachHere();
         }
@@ -102,7 +104,7 @@ public abstract class BinaryNode extends FloatingNode implements Canonicalizable
         if (stamp instanceof IntegerStamp) {
             return IntegerArithmeticNode.sub(graph, x, y);
         } else if (stamp instanceof FloatStamp) {
-            return graph.unique(new FloatSubNode(x, y, false));
+            return graph.unique(FloatSubNode.create(x, y, false));
         } else {
             throw GraalInternalError.shouldNotReachHere();
         }
@@ -114,7 +116,7 @@ public abstract class BinaryNode extends FloatingNode implements Canonicalizable
         if (stamp instanceof IntegerStamp) {
             return IntegerArithmeticNode.mul(graph, x, y);
         } else if (stamp instanceof FloatStamp) {
-            return graph.unique(new FloatMulNode(x, y, false));
+            return graph.unique(FloatMulNode.create(x, y, false));
         } else {
             throw GraalInternalError.shouldNotReachHere();
         }

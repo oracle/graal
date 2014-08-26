@@ -24,7 +24,7 @@ package com.oracle.graal.nodes.java;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 
@@ -37,9 +37,9 @@ import com.oracle.graal.nodes.extended.*;
 @NodeInfo(allowedUsageTypes = {InputType.Memory})
 public abstract class AccessMonitorNode extends AbstractMemoryCheckpoint implements MemoryCheckpoint, DeoptimizingNode.DeoptBefore, DeoptimizingNode.DeoptAfter {
 
-    @OptionalInput(InputType.State) private FrameState stateBefore;
-    @Input private ValueNode object;
-    @Input(InputType.Association) private MonitorIdNode monitorId;
+    @OptionalInput(InputType.State) FrameState stateBefore;
+    @Input ValueNode object;
+    @Input(InputType.Association) MonitorIdNode monitorId;
 
     @Override
     public boolean canDeoptimize() {

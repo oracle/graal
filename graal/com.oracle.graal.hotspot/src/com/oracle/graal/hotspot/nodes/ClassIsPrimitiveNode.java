@@ -26,6 +26,7 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.replacements.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.replacements.nodes.*;
 
@@ -34,9 +35,14 @@ import com.oracle.graal.replacements.nodes.*;
  *
  * @see ClassSubstitutions#isPrimitive(Class)
  */
+@NodeInfo
 public class ClassIsPrimitiveNode extends MacroNode implements Canonicalizable {
 
-    public ClassIsPrimitiveNode(Invoke invoke) {
+    public static ClassIsPrimitiveNode create(Invoke invoke) {
+        return USE_GENERATED_NODES ? new ClassIsPrimitiveNodeGen(invoke) : new ClassIsPrimitiveNode(invoke);
+    }
+
+    protected ClassIsPrimitiveNode(Invoke invoke) {
         super(invoke);
     }
 

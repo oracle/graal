@@ -23,16 +23,21 @@
 package com.oracle.graal.nodes;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.graph.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.spi.*;
 
 /**
  * Nodes of this type are inserted into the graph to denote points of interest to debugging.
  */
+@NodeInfo
 public class FullInfopointNode extends InfopointNode implements LIRLowerable, NodeWithState {
-    @Input(InputType.State) private FrameState state;
+    @Input(InputType.State) FrameState state;
 
-    public FullInfopointNode(InfopointReason reason, FrameState state) {
+    public static FullInfopointNode create(InfopointReason reason, FrameState state) {
+        return USE_GENERATED_NODES ? new FullInfopointNodeGen(reason, state) : new FullInfopointNode(reason, state);
+    }
+
+    protected FullInfopointNode(InfopointReason reason, FrameState state) {
         super(reason);
         this.state = state;
     }

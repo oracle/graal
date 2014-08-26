@@ -26,6 +26,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
@@ -33,7 +34,8 @@ import com.oracle.graal.nodes.type.*;
 /**
  * The {@code NegateNode} node negates its operand.
  */
-public final class NegateNode extends UnaryNode implements ArithmeticLIRLowerable, NarrowableArithmeticNode {
+@NodeInfo
+public class NegateNode extends UnaryNode implements ArithmeticLIRLowerable, NarrowableArithmeticNode {
 
     @Override
     public boolean inferStamp() {
@@ -45,7 +47,11 @@ public final class NegateNode extends UnaryNode implements ArithmeticLIRLowerabl
      *
      * @param value the instruction producing the value that is input to this instruction
      */
-    public NegateNode(ValueNode value) {
+    public static NegateNode create(ValueNode value) {
+        return USE_GENERATED_NODES ? new NegateNodeGen(value) : new NegateNode(value);
+    }
+
+    protected NegateNode(ValueNode value) {
         super(StampTool.negate(value.stamp()), value);
     }
 
@@ -76,7 +82,7 @@ public final class NegateNode extends UnaryNode implements ArithmeticLIRLowerabl
         }
         if (forValue instanceof IntegerSubNode) {
             IntegerSubNode sub = (IntegerSubNode) forValue;
-            return new IntegerSubNode(sub.getY(), sub.getX());
+            return IntegerSubNode.create(sub.getY(), sub.getX());
         }
         return this;
     }

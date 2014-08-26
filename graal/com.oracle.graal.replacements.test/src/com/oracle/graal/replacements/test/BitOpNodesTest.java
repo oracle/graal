@@ -247,7 +247,7 @@ public class BitOpNodesTest extends GraalCompilerTest {
      * @return the returned value or null if {@code expectedClass} is not found in the graph.
      */
     private ValueNode parseAndInline(String name, Class<? extends ValueNode> expectedClass) {
-        StructuredGraph graph = parse(name);
+        StructuredGraph graph = parseEager(name);
         HighTierContext context = new HighTierContext(getProviders(), new Assumptions(false), null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.NONE);
         CanonicalizerPhase canonicalizer = new CanonicalizerPhase(true);
         canonicalizer.apply(graph, context);

@@ -29,19 +29,25 @@ import java.util.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.util.*;
 
+@NodeInfo
 public class LoopBeginNode extends MergeNode implements IterableNodeType, LIRLowerable {
 
     private double loopFrequency;
     private int nextEndIndex;
     private int unswitches;
-    @OptionalInput(InputType.Guard) private GuardingNode overflowGuard;
+    @OptionalInput(InputType.Guard) GuardingNode overflowGuard;
 
-    public LoopBeginNode() {
+    public static LoopBeginNode create() {
+        return USE_GENERATED_NODES ? new LoopBeginNodeGen() : new LoopBeginNode();
+    }
+
+    protected LoopBeginNode() {
         loopFrequency = 1;
     }
 
@@ -187,10 +193,10 @@ public class LoopBeginNode extends MergeNode implements IterableNodeType, LIRLow
     public void removeExits() {
         for (LoopExitNode loopexit : loopExits().snapshot()) {
             loopexit.removeProxies();
-            FrameState stateAfter = loopexit.stateAfter();
-            graph().replaceFixedWithFixed(loopexit, graph().add(new BeginNode()));
-            if (stateAfter != null && stateAfter.isAlive() && stateAfter.usages().isEmpty()) {
-                GraphUtil.killWithUnusedFloatingInputs(stateAfter);
+            FrameState loopStateAfter = loopexit.stateAfter();
+            graph().replaceFixedWithFixed(loopexit, graph().add(BeginNode.create()));
+            if (loopStateAfter != null && loopStateAfter.isAlive() && loopStateAfter.usages().isEmpty()) {
+                GraphUtil.killWithUnusedFloatingInputs(loopStateAfter);
             }
         }
     }

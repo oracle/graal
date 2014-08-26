@@ -194,6 +194,7 @@ public final class OptimizedCallTargetLog {
                     if (kind == NodeCost.POLYMORPHIC || kind == NodeCost.MEGAMORPHIC) {
                         Map<String, Object> props = new LinkedHashMap<>();
                         props.put("simpleName", node.getClass().getSimpleName());
+                        props.put("subtree", "\n" + NodeUtil.printCompactTreeToString(node));
                         String msg = kind == NodeCost.MEGAMORPHIC ? "megamorphic" : "polymorphic";
                         log(0, msg, node.toString(), props);
                     }

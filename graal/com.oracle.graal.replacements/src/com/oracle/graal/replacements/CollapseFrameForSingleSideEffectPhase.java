@@ -228,7 +228,7 @@ public class CollapseFrameForSingleSideEffectPhase extends Phase {
             assert bci == AFTER_BCI || bci == AFTER_EXCEPTION_BCI || bci == INVALID_FRAMESTATE_BCI;
             FrameState currentStateAfter = node.stateAfter();
             if (currentStateAfter != null || !replaceOnly) {
-                node.setStateAfter(graph.add(new FrameState(bci)));
+                node.setStateAfter(graph.add(FrameState.create(bci)));
                 if (currentStateAfter != null && currentStateAfter.usages().isEmpty()) {
                     GraphUtil.killWithUnusedFloatingInputs(currentStateAfter);
                 }
