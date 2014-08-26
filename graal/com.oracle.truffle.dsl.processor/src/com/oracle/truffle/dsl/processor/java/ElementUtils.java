@@ -34,6 +34,7 @@ import javax.lang.model.util.*;
 import com.oracle.truffle.dsl.processor.*;
 import com.oracle.truffle.dsl.processor.java.model.*;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.DeclaredCodeTypeMirror;
+import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.WildcardTypeMirror;
 
 /**
  * THIS IS NOT PUBLIC API.
@@ -1032,6 +1033,37 @@ public class ElementUtils {
 
     public static boolean isObject(TypeMirror actualType) {
         return actualType.getKind() == TypeKind.DECLARED && getQualifiedName(actualType).equals("java.lang.Object");
+    }
+
+    public static TypeMirror fillInGenericWildcards(TypeMirror type) {
+        if (type.getKind() != TypeKind.DECLARED) {
+            return type;
+        }
+        DeclaredType declaredType = (DeclaredType) type;
+        TypeElement element = (TypeElement) declaredType.asElement();
+        if (element == null) {
+            return type;
+        }
+        int typeParameters = element.getTypeParameters().size();
+        if (typeParameters > 0 && declaredType.getTypeArguments().size() != typeParameters) {
+            List<TypeMirror> genericTypes = new ArrayList<>();
+            for (int i = 0; i < typeParameters; i++) {
+                genericTypes.add(new WildcardTypeMirror(null, null));
+            }
+            return new DeclaredCodeTypeMirror(element, genericTypes);
+        }
+        return type;
+    }
+
+    public static TypeMirror eraseGenericTypes(TypeMirror type) {
+        if (type.getKind() != TypeKind.DECLARED) {
+            return type;
+        }
+        DeclaredType declaredType = (DeclaredType) type;
+        if (declaredType.getTypeArguments().size() == 0) {
+            return type;
+        }
+        return new DeclaredCodeTypeMirror((TypeElement) declaredType.asElement());
     }
 
 }

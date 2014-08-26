@@ -183,10 +183,12 @@ public class TypeSystemParser extends AbstractParser<TypeSystemData> {
 
         int index = 0;
         for (TypeMirror primitiveType : typeMirrors) {
-            TypeMirror boxedType = ElementUtils.boxType(context, primitiveType);
-            TypeData typeData = new TypeData(typeSystem, index, annotationValue, primitiveType, boxedType);
+            TypeMirror primitive = ElementUtils.fillInGenericWildcards(primitiveType);
 
-            if (isPrimitiveWrapper(primitiveType)) {
+            TypeMirror boxedType = ElementUtils.boxType(context, primitive);
+            TypeData typeData = new TypeData(typeSystem, index, annotationValue, primitive, boxedType);
+
+            if (isPrimitiveWrapper(primitive)) {
                 typeData.addError("Types must not contain primitive wrapper types.");
             }
 

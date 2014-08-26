@@ -46,6 +46,27 @@ public class CodeTypeMirror implements TypeMirror {
         throw new UnsupportedOperationException();
     }
 
+    public static class WildcardTypeMirror extends CodeTypeMirror implements WildcardType {
+
+        private final TypeMirror extendsBounds;
+        private final TypeMirror superBounds;
+
+        public WildcardTypeMirror(TypeMirror extendsBounds, TypeMirror superBounds) {
+            super(TypeKind.WILDCARD);
+            this.extendsBounds = extendsBounds;
+            this.superBounds = superBounds;
+        }
+
+        public TypeMirror getExtendsBound() {
+            return extendsBounds;
+        }
+
+        public TypeMirror getSuperBound() {
+            return superBounds;
+        }
+
+    }
+
     public static class ArrayCodeTypeMirror extends CodeTypeMirror implements ArrayType {
 
         private final TypeMirror component;
@@ -65,13 +86,13 @@ public class CodeTypeMirror implements TypeMirror {
     public static class DeclaredCodeTypeMirror extends CodeTypeMirror implements DeclaredType {
 
         private final TypeElement clazz;
-        private final List<? extends TypeMirror> typeArguments;
+        private final List<TypeMirror> typeArguments;
 
         public DeclaredCodeTypeMirror(TypeElement clazz) {
             this(clazz, Collections.<TypeMirror> emptyList());
         }
 
-        public DeclaredCodeTypeMirror(TypeElement clazz, List<? extends TypeMirror> typeArguments) {
+        public DeclaredCodeTypeMirror(TypeElement clazz, List<TypeMirror> typeArguments) {
             super(TypeKind.DECLARED);
             this.clazz = clazz;
             this.typeArguments = typeArguments;
@@ -88,7 +109,7 @@ public class CodeTypeMirror implements TypeMirror {
         }
 
         @Override
-        public List<? extends TypeMirror> getTypeArguments() {
+        public List<TypeMirror> getTypeArguments() {
             return typeArguments;
         }
 
