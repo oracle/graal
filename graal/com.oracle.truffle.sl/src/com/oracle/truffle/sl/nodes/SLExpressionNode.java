@@ -24,7 +24,6 @@ package com.oracle.truffle.sl.nodes;
 
 import java.math.*;
 
-import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.instrument.*;
@@ -92,7 +91,7 @@ public abstract class SLExpressionNode extends SLStatementNode {
     }
 
     @Override
-    public Probe probe(ExecutionContext context) {
+    public Probe probe() {
         Node parent = getParent();
 
         if (parent == null)
@@ -101,7 +100,7 @@ public abstract class SLExpressionNode extends SLStatementNode {
         if (parent instanceof SLExpressionWrapper)
             return ((SLExpressionWrapper) parent).getProbe();
 
-        SLExpressionWrapper wrapper = new SLExpressionWrapper((SLContext) context, this);
+        SLExpressionWrapper wrapper = new SLExpressionWrapper(getRootNodeSLContext(this), this);
         this.replace(wrapper);
         wrapper.insertChild();
         return wrapper.getProbe();

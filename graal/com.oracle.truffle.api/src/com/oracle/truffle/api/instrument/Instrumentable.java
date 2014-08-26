@@ -31,7 +31,8 @@ public interface Instrumentable {
     /**
      * Optionally applies <em>instrumentation</em> at a Truffle AST node, depending on guest
      * language characteristics and use-case policy. Ideally, the parent node of the guest language
-     * implements this interface.
+     * implements this interface. This interfaces assumes that the instrumented node has access to
+     * the {@link ExecutionContext} for the guest language.
      * <ul>
      * <li>if no instrumentation is to be applied, returns the AST node unmodified;</li>
      * <li>if an AST node is to be instrumented, then creates a new Wrapper that <em>decorates</em>
@@ -40,9 +41,7 @@ public interface Instrumentable {
      * wrapped AST node.</li>
      * </ul>
      *
-     * @param context The {@link ExecutionContext} of the guest language used to create probes on
-     *            the wrapper.
      * @return The probe that was created.
      */
-    public Probe probe(ExecutionContext context);
+    public Probe probe();
 }

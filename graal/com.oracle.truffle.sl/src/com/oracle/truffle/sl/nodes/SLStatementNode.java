@@ -24,7 +24,6 @@ package com.oracle.truffle.sl.nodes;
 
 import java.io.*;
 
-import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.instrument.*;
 import com.oracle.truffle.api.nodes.*;
@@ -87,7 +86,7 @@ public abstract class SLStatementNode extends Node implements Instrumentable {
     }
 
     @Override
-    public Probe probe(ExecutionContext context) {
+    public Probe probe() {
         Node parent = getParent();
 
         if (parent == null)
@@ -96,9 +95,17 @@ public abstract class SLStatementNode extends Node implements Instrumentable {
         if (parent instanceof SLStatementWrapper)
             return ((SLStatementWrapper) parent).getProbe();
 
-        SLStatementWrapper wrapper = new SLStatementWrapper((SLContext) context, this);
+        SLStatementWrapper wrapper = new SLStatementWrapper(getRootNodeSLContext(this), this);
         this.replace(wrapper);
         wrapper.insertChild();
         return wrapper.getProbe();
+    }
+
+    protected SLContext getRootNodeSLContext(Node node) {
+        assert node != null;
+
+        if (node instanceof SLRootNode)
+            return ((SLRootNode) node).getSLContext();
+        return getRootNodeSLContext(node.getParent());
     }
 }

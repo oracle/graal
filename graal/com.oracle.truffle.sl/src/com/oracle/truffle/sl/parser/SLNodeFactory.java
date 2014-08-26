@@ -115,7 +115,7 @@ public class SLNodeFactory {
         assert lexicalScope == null : "Wrong scoping of blocks in parser";
 
         final SLFunctionBodyNode functionBodyNode = new SLFunctionBodyNode(functionSrc, methodBlock);
-        final SLRootNode rootNode = new SLRootNode(frameDescriptor, functionBodyNode, functionName);
+        final SLRootNode rootNode = new SLRootNode(this.context, frameDescriptor, functionBodyNode, functionName);
 
         context.getFunctionRegistry().register(functionName, rootNode);
 
