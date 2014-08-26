@@ -39,4 +39,8 @@ public class BC_ddiv extends JTTTest {
         runTest("test", 311.0D, 10D);
     }
 
+    @Test
+    public void run1() throws Throwable {
+        runTest("test", 311.0D, 0D);
+    }
 }
