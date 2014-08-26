@@ -57,10 +57,8 @@ class GraphNodeIterator implements Iterator<Node> {
     }
 
     private void checkForDeletedNode() {
-        if (index < graph.nodesSize) {
-            while (index < graph.nodesSize && graph.nodes[index] == null) {
-                index++;
-            }
+        while (index < graph.nodesSize && graph.nodes[index] == null) {
+            index++;
         }
     }
 
