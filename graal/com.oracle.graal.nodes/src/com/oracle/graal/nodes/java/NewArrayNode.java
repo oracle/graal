@@ -51,7 +51,7 @@ public class NewArrayNode extends AbstractNewArrayNode implements VirtualizableA
         return USE_GENERATED_NODES ? new NewArrayNodeGen(elementType, length, fillContents) : new NewArrayNode(elementType, length, fillContents);
     }
 
-    NewArrayNode(ResolvedJavaType elementType, ValueNode length, boolean fillContents) {
+    protected NewArrayNode(ResolvedJavaType elementType, ValueNode length, boolean fillContents) {
         super(StampFactory.exactNonNull(elementType.getArrayClass()), length, fillContents);
     }
 

@@ -47,10 +47,10 @@ public class MergeNode extends BeginStateSplitNode implements IterableNodeType, 
         return USE_GENERATED_NODES ? MergeNodeGen.class : MergeNode.class;
     }
 
-    MergeNode() {
+    protected MergeNode() {
     }
 
-    @Input(InputType.Association) NodeInputList<AbstractEndNode> ends = new NodeInputList<>(this);
+    @Input(InputType.Association) protected NodeInputList<AbstractEndNode> ends = new NodeInputList<>(this);
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
