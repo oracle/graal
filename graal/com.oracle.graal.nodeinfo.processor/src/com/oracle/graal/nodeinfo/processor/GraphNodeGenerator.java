@@ -379,7 +379,7 @@ public class GraphNodeGenerator {
                 callArgs.format("%s%s", sep, v.getSimpleName());
                 sep = ", ";
             }
-            f.format(") { return new %s(%s); }", genClassName, callArgs);
+            f.format(") { return USE_GENERATED_NODES ? new %s(%s) : new %s(%s); }", genClassName, callArgs, node.getSimpleName(), callArgs);
             throw new ElementException(constructor, "Missing Node class factory method '%s'", f);
         }
         if (!create.getModifiers().containsAll(asList(PUBLIC, STATIC))) {
