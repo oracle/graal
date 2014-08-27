@@ -52,7 +52,7 @@ public class JDTCompiler extends AbstractCompiler {
     private static List<? extends Element> sortBySourceOrder(List<Element> elements) {
         final Map<TypeElement, List<Object>> declarationOrders = new HashMap<>();
 
-        Collections.sort(elements, new Comparator<Element>() {
+        Comparator<Element> comparator = new Comparator<Element>() {
             public int compare(Element o1, Element o2) {
                 try {
                     TypeMirror enclosing1 = o1.getEnclosingElement().asType();
@@ -60,6 +60,7 @@ public class JDTCompiler extends AbstractCompiler {
 
                     if (ElementUtils.typeEquals(enclosing1, enclosing2)) {
                         List<Object> declarationOrder = lookupDeclarationOrder(declarationOrders, (TypeElement) o1.getEnclosingElement());
+
                         if (declarationOrder == null) {
                             return 0;
                         }
@@ -69,21 +70,25 @@ public class JDTCompiler extends AbstractCompiler {
                         int i1 = declarationOrder.indexOf(o1Binding);
                         int i2 = declarationOrder.indexOf(o2Binding);
 
+                        if (i1 == -1 || i2 == -1) {
+                            return 0;
+                        }
+
                         return i1 - i2;
                     } else {
                         if (ElementUtils.isSubtype(enclosing1, enclosing2)) {
                             return 1;
-                        } else if (ElementUtils.isSubtype(enclosing2, enclosing1)) {
-                            return -1;
                         } else {
-                            return 0;
+                            return -1;
                         }
                     }
                 } catch (Exception e) {
                     throw new RuntimeException(e);
                 }
             }
-        });
+        };
+
+        Collections.sort(elements, comparator);
         return elements;
     }
 
