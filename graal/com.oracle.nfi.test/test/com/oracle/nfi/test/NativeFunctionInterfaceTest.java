@@ -347,46 +347,50 @@ public class NativeFunctionInterfaceTest {
     @Test
     public void test15() {
         assumeTrue(nfi.isDefaultLibrarySearchSupported());
-        try {
-            nfi.getFunctionHandle("an invalid function name", int.class);
+        NativeFunctionHandle functionHandle = nfi.getFunctionHandle("an invalid function name", int.class);
+        if (functionHandle != null) {
             fail();
-        } catch (UnsatisfiedLinkError e) {
         }
     }
 
     @Test
     public void test16() {
         NativeLibraryHandle javaLib = nfi.getLibraryHandle(getJavaLibPath());
-        try {
-
-            nfi.getFunctionHandle(javaLib, "an invalid function name", int.class);
+        NativeFunctionHandle functionHandle = nfi.getFunctionHandle(javaLib, "an invalid function name", int.class);
+        if (functionHandle != null) {
             fail();
-        } catch (UnsatisfiedLinkError e) {
         }
     }
 
     @Test
     public void test17() {
         NativeLibraryHandle[] libs = {nfi.getLibraryHandle(getVMLibPath()), nfi.getLibraryHandle(getJavaLibPath())};
-        try {
-            nfi.getFunctionPointer(libs, "an invalid function name");
+        NativeFunctionHandle functionHandle = nfi.getFunctionHandle(libs, "an invalid function name", int.class);
+        if (functionHandle != null) {
             fail();
-        } catch (UnsatisfiedLinkError e) {
         }
     }
 
     @Test
     public void test18() {
         NativeLibraryHandle[] libs = {nfi.getLibraryHandle(getVMLibPath()), nfi.getLibraryHandle(getJavaLibPath())};
-        try {
-            nfi.getFunctionHandle(libs, "an invalid function name", int.class);
+        NativeFunctionHandle functionHandle = nfi.getFunctionHandle(libs, "an invalid function name", int.class);
+        if (functionHandle != null) {
             fail();
-        } catch (UnsatisfiedLinkError e) {
         }
     }
 
     @Test
     public void test19() {
+        NativeLibraryHandle[] libs = {nfi.getLibraryHandle(getVMLibPath()), nfi.getLibraryHandle(getJavaLibPath())};
+        NativeFunctionPointer functionPointer = nfi.getFunctionPointer(libs, "an invalid function name");
+        if (functionPointer != null) {
+            fail();
+        }
+    }
+
+    @Test
+    public void test20() {
         try {
             nfi.getLibraryHandle("an invalid library name");
             fail();
