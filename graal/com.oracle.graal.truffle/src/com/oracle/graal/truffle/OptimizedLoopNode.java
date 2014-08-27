@@ -23,7 +23,6 @@
 package com.oracle.graal.truffle;
 
 import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.CompilerDirectives.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 
@@ -33,36 +32,24 @@ import com.oracle.truffle.api.nodes.*;
  */
 public final class OptimizedLoopNode extends LoopNode {
 
-    @CompilationFinal private int loopCount;
-
     public OptimizedLoopNode(RepeatingNode body) {
         super(body);
     }
 
     @Override
     public void executeLoop(VirtualFrame frame) {
+        int loopCount = 0;
         try {
-            do {
-            } while (executeBody(frame));
+            while (executeRepeatingNode(frame)) {
+                if (CompilerDirectives.inInterpreter()) {
+                    loopCount++;
+                }
+            }
         } finally {
-            loopDone();
-        }
-    }
-
-    private final boolean executeBody(VirtualFrame frame) {
-        boolean result = executeRepeatNode(frame);
-        if (CompilerDirectives.inInterpreter()) {
-            if (result) {
-                loopCount++;
+            if (CompilerDirectives.inInterpreter()) {
+                getRootNode().reportLoopCount(loopCount);
             }
         }
-        return result;
     }
 
-    private void loopDone() {
-        if (CompilerDirectives.inInterpreter()) {
-            getRootNode().reportLoopCount(loopCount);
-            loopCount = 0;
-        }
-    }
 }
