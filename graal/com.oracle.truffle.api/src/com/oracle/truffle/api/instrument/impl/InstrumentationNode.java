@@ -343,18 +343,18 @@ public abstract class InstrumentationNode extends Node implements ExecutionEvent
          * {@link Node#getSourceSection()}, which is {@code null} for all instances of
          * {@link InstrumentationNode} since they have no corresponding source of their own.
          */
-        private final SourceSection source;
+        private final SourceSection probedSourceSection;
 
         /**
          * Constructor.
          *
-         * @param source The {@link SourceSection} associated with this probe.
+         * @param probedSourceSection The {@link SourceSection} associated with this probe.
          * @param probeCallback The {@link ProbeCallback} to inform when tags have been added to
          *            this probe.
          */
-        private ProbeImpl(SourceSection source, ProbeCallback probeCallback) {
+        private ProbeImpl(SourceSection probedSourceSection, ProbeCallback probeCallback) {
             this.probeCallback = probeCallback;
-            this.source = source;
+            this.probedSourceSection = probedSourceSection;
             this.probeUnchanged = Truffle.getRuntime().createAssumption();
             this.next = null;
         }
@@ -363,7 +363,7 @@ public abstract class InstrumentationNode extends Node implements ExecutionEvent
          * Returns the {@link SourceSection} associated with this probe.
          */
         public SourceSection getSourceLocation() {
-            return source;
+            return probedSourceSection;
         }
 
         /**
