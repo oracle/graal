@@ -36,17 +36,17 @@ public abstract class LoopNode extends Node {
      */
     @Child protected Node repeatingNode;
 
-    public LoopNode(RepeatingNode repeatintNode) {
-        this.repeatingNode = (Node) repeatintNode;
+    public LoopNode(RepeatingNode repeatingNode) {
+        this.repeatingNode = (Node) repeatingNode;
     }
 
     public abstract void executeLoop(VirtualFrame frame);
 
-    protected final boolean executeRepeatNode(VirtualFrame frame) {
-        return getRepeatNode().executeRepeating(frame);
+    protected final boolean executeRepeatingNode(VirtualFrame frame) {
+        return getRepeatingNode().executeRepeating(frame);
     }
 
-    public final RepeatingNode getRepeatNode() {
+    public final RepeatingNode getRepeatingNode() {
         return (RepeatingNode) repeatingNode;
     }
 
