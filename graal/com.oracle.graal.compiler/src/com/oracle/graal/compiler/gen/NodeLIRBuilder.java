@@ -94,7 +94,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
     private ValueNode currentInstruction;
     private ValueNode lastInstructionPrinted; // Debugging only
 
-    private Map<Class<? extends ValueNode>, List<MatchStatement>> matchRules;
+    private Map<NodeClass, List<MatchStatement>> matchRules;
 
     public NodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool gen) {
         this.gen = gen;
@@ -277,7 +277,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
                         continue;
                     }
                     // See if this node is the root of any MatchStatements
-                    List<MatchStatement> statements = matchRules.get(node.getClass());
+                    List<MatchStatement> statements = matchRules.get(node.getNodeClass());
                     if (statements != null) {
                         for (MatchStatement statement : statements) {
                             if (statement.generate(this, index, node, nodes)) {

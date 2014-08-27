@@ -79,7 +79,7 @@ public class MatchRuleRegistry {
         return result;
     }
 
-    private static final HashMap<Class<? extends NodeLIRBuilder>, Map<Class<? extends ValueNode>, List<MatchStatement>>> registry = new HashMap<>();
+    private static final HashMap<Class<? extends NodeLIRBuilder>, Map<NodeClass, List<MatchStatement>>> registry = new HashMap<>();
 
     /**
      * Collect all the {@link MatchStatement}s defined by the superclass chain of theClass.
@@ -87,12 +87,12 @@ public class MatchRuleRegistry {
      * @param theClass
      * @return the set of {@link MatchStatement}s applicable to theClass.
      */
-    public synchronized static Map<Class<? extends ValueNode>, List<MatchStatement>> lookup(Class<? extends NodeLIRBuilder> theClass) {
-        Map<Class<? extends ValueNode>, List<MatchStatement>> result = registry.get(theClass);
+    public synchronized static Map<NodeClass, List<MatchStatement>> lookup(Class<? extends NodeLIRBuilder> theClass) {
+        Map<NodeClass, List<MatchStatement>> result = registry.get(theClass);
 
         if (result == null) {
             NodeClassLookup lookup = new DefaultNodeClassLookup();
-            Map<Class<? extends ValueNode>, List<MatchStatement>> rules = createRules(theClass, lookup);
+            Map<NodeClass, List<MatchStatement>> rules = createRules(theClass, lookup);
             registry.put(theClass, rules);
             assert registry.get(theClass) == rules;
             result = rules;
@@ -100,7 +100,7 @@ public class MatchRuleRegistry {
             if (LogVerbose.getValue()) {
                 try (Scope s = Debug.scope("MatchComplexExpressions")) {
                     Debug.log("Match rules for %s", theClass.getSimpleName());
-                    for (Entry<Class<? extends ValueNode>, List<MatchStatement>> entry : result.entrySet()) {
+                    for (Entry<NodeClass, List<MatchStatement>> entry : result.entrySet()) {
                         Debug.log("  For node class: %s", entry.getKey());
                         for (MatchStatement statement : entry.getValue()) {
                             Debug.log("    %s", statement.getPattern());
@@ -120,7 +120,7 @@ public class MatchRuleRegistry {
      * This is a separate, public method so that external clients can create rules with a custom
      * lookup and without the default caching behavior.
      */
-    public static Map<Class<? extends ValueNode>, List<MatchStatement>> createRules(Class<? extends NodeLIRBuilder> theClass, NodeClassLookup lookup) {
+    public static Map<NodeClass, List<MatchStatement>> createRules(Class<? extends NodeLIRBuilder> theClass, NodeClassLookup lookup) {
         HashMap<Class<? extends NodeLIRBuilder>, MatchStatementSet> matchSets = new HashMap<>();
         Iterable<MatchStatementSet> sl = Services.load(MatchStatementSet.class);
         for (MatchStatementSet rules : sl) {
@@ -129,14 +129,14 @@ public class MatchRuleRegistry {
 
         // Walk the class hierarchy collecting lists and merge them together. The subclass
         // rules are first which gives them preference over earlier rules.
-        Map<Class<? extends ValueNode>, List<MatchStatement>> rules = new HashMap<>();
+        Map<NodeClass, List<MatchStatement>> rules = new HashMap<>();
         Class<?> currentClass = theClass;
         do {
             MatchStatementSet matchSet = matchSets.get(currentClass);
             if (matchSet != null) {
                 List<MatchStatement> statements = matchSet.statements(lookup);
                 for (MatchStatement statement : statements) {
-                    Class<? extends ValueNode> nodeClass = statement.getPattern().nodeClass();
+                    NodeClass nodeClass = NodeClass.get(statement.getPattern().nodeClass());
                     List<MatchStatement> current = rules.get(nodeClass);
                     if (current == null) {
                         current = new ArrayList<>();
