@@ -51,8 +51,8 @@ public interface NativeFunctionInterface {
      *
      * @param libraries the ordered list of libraries to search for the function
      * @param name the name of the function to be resolved
-     * @return a pointer to the native function
-     * @throws UnsatisfiedLinkError if the function could not be resolved
+     * @return a pointer to the native function, or <code>null</code> if the function pointer could
+     *         not be resolved
      */
     NativeFunctionPointer getFunctionPointer(NativeLibraryHandle[] libraries, String name);
 
@@ -65,8 +65,8 @@ public interface NativeFunctionInterface {
      * @param name the name of the function to be resolved
      * @param returnType the type of the return value
      * @param argumentTypes the types of the arguments
-     * @return the function handle of the native function
-     * @throws UnsatisfiedLinkError if the function handle could not be resolved
+     * @return the function handle of the native function, or <code>null</code> if the function
+     *         handle could not be resolved
      */
     NativeFunctionHandle getFunctionHandle(NativeLibraryHandle library, String name, Class<?> returnType, Class<?>... argumentTypes);
 
@@ -78,8 +78,8 @@ public interface NativeFunctionInterface {
      * @param functionPointer a function pointer
      * @param returnType the type of the return value
      * @param argumentTypes the types of the arguments
-     * @return the function handle of the native function
-     * @throws UnsatisfiedLinkError the function handle could not be created
+     * @return the function handle of the native function, or <code>null</code> if the function
+     *         handle could not be resolved
      */
     NativeFunctionHandle getFunctionHandle(NativeFunctionPointer functionPointer, Class<?> returnType, Class<?>... argumentTypes);
 
@@ -92,8 +92,8 @@ public interface NativeFunctionInterface {
      * @param name the name of the function to be resolved
      * @param returnType the type of the return value
      * @param argumentTypes the types of the arguments
-     * @return the function handle of the native function
-     * @throws UnsatisfiedLinkError if the function handle could not be created
+     * @return the function handle of the native function, or <code>null</code> if the function
+     *         handle could not be resolved
      */
     NativeFunctionHandle getFunctionHandle(NativeLibraryHandle[] libraries, String name, Class<?> returnType, Class<?>... argumentTypes);
 
@@ -105,10 +105,9 @@ public interface NativeFunctionInterface {
      * @param name the name of the function to be resolved
      * @param returnType the type of the return value
      * @param argumentTypes the types of the arguments
-     * @return the function handle of the native function
-     * @throws UnsatisfiedLinkError if default library searching is not
-     *             {@linkplain #isDefaultLibrarySearchSupported() supported} or if the function
-     *             could not be resolved
+     * @return the function handle of the native function, or <code>null</code> if default library
+     *         searching is not {@linkplain #isDefaultLibrarySearchSupported() supported} or if the
+     *         function could not be resolved
      */
     NativeFunctionHandle getFunctionHandle(String name, Class<?> returnType, Class<?>... argumentTypes);
 
