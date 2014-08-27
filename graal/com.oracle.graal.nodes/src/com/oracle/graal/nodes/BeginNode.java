@@ -42,10 +42,6 @@ public class BeginNode extends FixedWithNextNode implements LIRLowerable, Simpli
         return USE_GENERATED_NODES ? new BeginNodeGen() : new BeginNode();
     }
 
-    public static Class<? extends BeginNode> getGenClass() {
-        return USE_GENERATED_NODES ? BeginNodeGen.class : BeginNode.class;
-    }
-
     protected BeginNode() {
         super(StampFactory.forVoid());
     }

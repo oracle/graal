@@ -220,7 +220,7 @@ public class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerab
         do {
             BeginNode trueSucc = trueSuccessor();
             BeginNode falseSucc = falseSuccessor();
-            if (trueSucc.getClass() == BeginNode.getGenClass() && falseSucc.getClass() == BeginNode.getGenClass() && trueSucc.next() instanceof FixedWithNextNode &&
+            if (trueSucc.getNodeClass().is(BeginNode.class) && falseSucc.getNodeClass().is(BeginNode.class) && trueSucc.next() instanceof FixedWithNextNode &&
                             falseSucc.next() instanceof FixedWithNextNode) {
                 FixedWithNextNode trueNext = (FixedWithNextNode) trueSucc.next();
                 FixedWithNextNode falseNext = (FixedWithNextNode) falseSucc.next();

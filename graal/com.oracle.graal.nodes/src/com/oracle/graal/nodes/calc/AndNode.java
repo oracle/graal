@@ -39,10 +39,6 @@ public class AndNode extends BitLogicNode implements NarrowableArithmeticNode {
         return USE_GENERATED_NODES ? new AndNodeGen(x, y) : new AndNode(x, y);
     }
 
-    public static Class<? extends AndNode> getGenClass() {
-        return USE_GENERATED_NODES ? AndNodeGen.class : AndNode.class;
-    }
-
     AndNode(ValueNode x, ValueNode y) {
         super(StampTool.and(x.stamp(), y.stamp()), x, y);
         assert x.stamp().isCompatible(y.stamp());

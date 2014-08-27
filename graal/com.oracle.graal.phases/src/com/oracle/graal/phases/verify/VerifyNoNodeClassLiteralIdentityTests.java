@@ -38,8 +38,8 @@ import com.oracle.graal.phases.tiers.*;
  * Since only {@linkplain GeneratedNode generated} {@link Node} types can be instantiated (which is
  * checked by an assertion in {@link Node#Node()}), any identity test of a node's
  * {@linkplain Object#getClass() class} against a class literal of a non-generated node types will
- * always return false. Instead, a static {@code getGenClass()} helper method should be used for
- * such identity tests. For example, instead of:
+ * always return false. Instead, the {@link NodeClass#is(Class)} method should be used. For example,
+ * instead of:
  *
  * <pre>
  *     if (operation.getClass() == IntegerAddNode.class) { ... }
@@ -48,7 +48,7 @@ import com.oracle.graal.phases.tiers.*;
  * this should be used:
  *
  * <pre>
- *     if (operation.getClass() == IntegerAddNode.getGenClass()) { ... }
+ *     if (operation.getNodeClass().is(IntegerAddNode.class)) { ... }
  * </pre>
  *
  * This phase verifies there are no identity tests against class literals for non-generated Node
@@ -60,8 +60,10 @@ public class VerifyNoNodeClassLiteralIdentityTests extends VerifyPhase<PhaseCont
     protected boolean verify(StructuredGraph graph, PhaseContext context) {
         Map<String, String> errors = new HashMap<>();
 
+        MetaAccessProvider metaAccess = context.getMetaAccess();
+        ResolvedJavaType nodeClassType = metaAccess.lookupJavaType(Node.class);
+
         for (ConstantNode c : ConstantNode.getConstantNodes(graph)) {
-            ResolvedJavaType nodeClassType = context.getMetaAccess().lookupJavaType(Node.class);
             ResolvedJavaType nodeType = context.getConstantReflection().asJavaType(c.asConstant());
             if (nodeType != null && nodeClassType.isAssignableFrom(nodeType)) {
                 NodeIterable<Node> usages = c.usages();
@@ -69,10 +71,7 @@ public class VerifyNoNodeClassLiteralIdentityTests extends VerifyPhase<PhaseCont
                     if (!(n instanceof ObjectEqualsNode)) {
                         continue;
                     }
-                    String loc = GraphUtil.approxSourceLocation(n);
-                    if (loc == null) {
-                        loc = graph.method().asStackTraceElement(0).toString() + "  " + n;
-                    }
+                    String loc = getLocation(n, graph);
                     errors.put(nodeType.toJavaName(false), loc);
                 }
             }
@@ -91,5 +90,16 @@ public class VerifyNoNodeClassLiteralIdentityTests extends VerifyPhase<PhaseCont
             f.format("Found illegal use of Node class literal %s near:%n    %s", e.getKey(), e.getValue());
         }
         throw new VerificationError(f.toString());
+    }
+
+    private static String getLocation(Node node, StructuredGraph graph) {
+        String loc = GraphUtil.approxSourceLocation(node);
+        StackTraceElement ste = graph.method().asStackTraceElement(0);
+        if (loc == null) {
+            loc = ste.toString();
+        } else {
+            loc = ste.getClassName() + "." + ste.getMethodName() + "(" + loc + ")";
+        }
+        return loc;
     }
 }

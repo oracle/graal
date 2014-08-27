@@ -39,10 +39,6 @@ public class XorNode extends BitLogicNode {
         return USE_GENERATED_NODES ? new XorNodeGen(x, y) : new XorNode(x, y);
     }
 
-    public static Class<? extends XorNode> getGenClass() {
-        return USE_GENERATED_NODES ? XorNodeGen.class : XorNode.class;
-    }
-
     protected XorNode(ValueNode x, ValueNode y) {
         super(StampTool.xor(x.stamp(), y.stamp()), x, y);
         assert x.stamp().isCompatible(y.stamp());

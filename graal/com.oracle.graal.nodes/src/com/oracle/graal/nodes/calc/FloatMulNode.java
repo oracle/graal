@@ -37,10 +37,6 @@ public class FloatMulNode extends FloatArithmeticNode {
         return USE_GENERATED_NODES ? new FloatMulNodeGen(x, y, isStrictFP) : new FloatMulNode(x, y, isStrictFP);
     }
 
-    public static Class<? extends FloatMulNode> getGenClass() {
-        return USE_GENERATED_NODES ? FloatMulNodeGen.class : FloatMulNode.class;
-    }
-
     protected FloatMulNode(ValueNode x, ValueNode y, boolean isStrictFP) {
         super(x.stamp().unrestricted(), x, y, isStrictFP);
     }

@@ -38,10 +38,6 @@ public class FloatSubNode extends FloatArithmeticNode {
         return USE_GENERATED_NODES ? new FloatSubNodeGen(x, y, isStrictFP) : new FloatSubNode(x, y, isStrictFP);
     }
 
-    public static Class<? extends FloatSubNode> getGenClass() {
-        return USE_GENERATED_NODES ? FloatSubNodeGen.class : FloatSubNode.class;
-    }
-
     protected FloatSubNode(ValueNode x, ValueNode y, boolean isStrictFP) {
         super(x.stamp().unrestricted(), x, y, isStrictFP);
     }
