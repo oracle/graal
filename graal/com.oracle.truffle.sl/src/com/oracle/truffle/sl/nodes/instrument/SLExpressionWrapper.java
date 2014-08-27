@@ -151,10 +151,4 @@ public final class SLExpressionWrapper extends SLExpressionNode implements Wrapp
         return SLTypesGen.SLTYPES.expectSLNull(executeGeneric(frame));
     }
 
-    /**
-     * Sets the parent pointer of this wrapper's child.
-     */
-    public void insertChild() {
-        insert(this.child);
-    }
 }

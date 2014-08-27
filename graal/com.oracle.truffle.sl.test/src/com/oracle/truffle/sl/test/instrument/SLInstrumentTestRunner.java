@@ -213,7 +213,7 @@ public final class SLInstrumentTestRunner extends ParentRunner<InstrumentTestCas
 
                 for (SLFunction function : functionList) {
                     RootCallTarget rootCallTarget = function.getCallTarget();
-                    rootCallTarget.getRootNode().accept(new SLInstrumenter(slContext));
+                    rootCallTarget.getRootNode().accept(new SLInstrumenter());
                 }
 
                 // We iterate over all tags the SLInsturmenter tagged as assignments and attach our

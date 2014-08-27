@@ -23,6 +23,7 @@
 package com.oracle.truffle.sl.runtime;
 
 import java.io.*;
+import java.util.*;
 
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.dsl.*;
@@ -33,6 +34,7 @@ import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.sl.*;
 import com.oracle.truffle.sl.builtins.*;
 import com.oracle.truffle.sl.nodes.*;
+import com.oracle.truffle.sl.nodes.instrument.*;
 import com.oracle.truffle.sl.nodes.local.*;
 import com.oracle.truffle.sl.parser.*;
 
@@ -130,7 +132,7 @@ public final class SLContext extends ExecutionContext {
         /* The name of the builtin function is specified via an annotation on the node class. */
         String name = builtinBodyNode.getClass().getAnnotation(NodeInfo.class).shortName();
         /* Wrap the builtin in a RootNode. Truffle requires all AST to start with a RootNode. */
-        SLRootNode rootNode = new SLRootNode(new FrameDescriptor(), builtinBodyNode, name);
+        SLRootNode rootNode = new SLRootNode(this, new FrameDescriptor(), builtinBodyNode, name);
 
         /* Register the builtin function in our function registry. */
         getFunctionRegistry().register(name, rootNode);
@@ -153,6 +155,17 @@ public final class SLContext extends ExecutionContext {
         }
 
         Parser.parseSL(this, source);
+
+        List<SLFunction> functionList = getFunctionRegistry().getFunctions();
+
+        // Since only functions can be global in SL, this guarantees that we instrument
+        // everything of interest. Parsing must occur before accepting the visitors since
+        // the visitor which creates our instrumentation points expects a complete AST.
+
+        for (SLFunction function : functionList) {
+            RootCallTarget rootCallTarget = function.getCallTarget();
+            rootCallTarget.getRootNode().accept(new SLInstrumenter());
+        }
 
         if (sourceCallback != null) {
             sourceCallback.endLoading(source);

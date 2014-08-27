@@ -24,8 +24,6 @@
  */
 package com.oracle.truffle.api.instrument;
 
-import com.oracle.truffle.api.*;
-
 /**
  * Any Truffle node implementing this interface can be "instrumented" by installing a {@link Probe}
  * that intercepts {@link ExecutionEvents} at the node and routes them to any {@link Instrument}s
@@ -39,9 +37,7 @@ public interface Instrumentable {
      * part (and not the root of) of a well-formed Truffle AST that is not being executed. The AST
      * may be modified.
      *
-     * @param context access to language implementation context
-     * @return a {@link Probe} to which tools may attach {@link Instrument}s that will receive
-     *         {@link ExecutionEvents}
+     * @return The probe that was created.
      */
-    public Probe probe(ExecutionContext context);
+    Probe probe();
 }
