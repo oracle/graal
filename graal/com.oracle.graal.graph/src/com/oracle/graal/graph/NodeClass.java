@@ -239,10 +239,12 @@ public final class NodeClass extends FieldIntrospection {
 
     /**
      * Determines if a given {@link Node} class is described by the {@link NodeClass} object.
+     *
+     * @param nodeClass a {@linkplain GeneratedNode non-generated} {@link Node} class
      */
     public boolean is(Class<? extends Node> nodeClass) {
-        assert nodeClass.getAnnotation(GeneratedNode.class) == null;
-        return nodeClass.equals(getClazz());
+        assert nodeClass.getAnnotation(GeneratedNode.class) == null : "cannot test NodeClas against generated " + nodeClass;
+        return nodeClass == getClazz();
     }
 
     public String shortName() {
