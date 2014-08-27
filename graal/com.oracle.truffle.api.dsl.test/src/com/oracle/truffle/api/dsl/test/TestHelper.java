@@ -24,7 +24,6 @@ package com.oracle.truffle.api.dsl.test;
 
 import static org.junit.Assert.*;
 
-import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.truffle.api.*;
@@ -47,41 +46,32 @@ class TestHelper {
         return nodes;
     }
 
-    static <E extends ValueNode> E createNode(NodeFactory<E> factory, Object... constants) {
+    static <E extends ValueNode> E createNode(NodeFactory<E> factory, boolean prefixConstants, Object... constants) {
         ArgumentNode[] argumentNodes = arguments(factory.getExecutionSignature().size());
 
         List<Object> argumentList = new ArrayList<>();
+        if (prefixConstants) {
+            argumentList.addAll(Arrays.asList(constants));
+        }
         if (ChildrenNode.class.isAssignableFrom(factory.getNodeClass())) {
             argumentList.add(argumentNodes);
         } else {
             argumentList.addAll(Arrays.asList(argumentNodes));
         }
-        argumentList.addAll(Arrays.asList(constants));
+        if (!prefixConstants) {
+            argumentList.addAll(Arrays.asList(constants));
+        }
         return factory.createNode(argumentList.toArray(new Object[argumentList.size()]));
     }
 
-    static <E extends ValueNode> E createGenericNode(NodeFactory<E> factory, Object... constants) {
-        Method createGenericMethod;
-        try {
-            createGenericMethod = factory.getClass().getMethod("createGeneric", factory.getNodeClass());
-        } catch (NoSuchMethodException e) {
-            throw new RuntimeException(e);
-        }
-        try {
-            return factory.getNodeClass().cast(createGenericMethod.invoke(null, createNode(factory, constants)));
-        } catch (IllegalAccessException | InvocationTargetException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
     static <E extends ValueNode> TestRootNode<E> createRoot(NodeFactory<E> factory, Object... constants) {
-        TestRootNode<E> rootNode = new TestRootNode<>(createNode(factory, constants));
+        TestRootNode<E> rootNode = new TestRootNode<>(createNode(factory, false, constants));
         rootNode.adoptChildren();
         return rootNode;
     }
 
-    static <E extends ValueNode> TestRootNode<E> createGenericRoot(NodeFactory<E> factory, Object... constants) {
-        TestRootNode<E> rootNode = new TestRootNode<>(createGenericNode(factory, constants));
+    static <E extends ValueNode> TestRootNode<E> createRootPrefix(NodeFactory<E> factory, boolean prefixConstants, Object... constants) {
+        TestRootNode<E> rootNode = new TestRootNode<>(createNode(factory, prefixConstants, constants));
         rootNode.adoptChildren();
         return rootNode;
     }

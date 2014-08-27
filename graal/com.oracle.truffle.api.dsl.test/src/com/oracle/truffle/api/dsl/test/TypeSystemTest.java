@@ -28,6 +28,7 @@ import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.source.*;
 
 public class TypeSystemTest {
 
@@ -67,6 +68,10 @@ public class TypeSystemTest {
 
         public ValueNode() {
             super(null);
+        }
+
+        public ValueNode(SourceSection sourceSection) {
+            super(sourceSection);
         }
 
         public int executeInt(VirtualFrame frame) throws UnexpectedResultException {
