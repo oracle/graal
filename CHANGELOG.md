@@ -5,7 +5,7 @@
 * ...
 
 ### Truffle
-* ...
+* Added TruffleRuntime#getCallTargets() to get all call targets that were created and are still referenced.
 
 ## Version 0.4
 19-Aug-2014, [Repository Revision](http://hg.openjdk.java.net/graal/graal/rev/graal-0.4)

@@ -41,6 +41,7 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
 
     private ThreadLocal<LinkedList<FrameInstance>> stackTraces = new ThreadLocal<>();
     private ThreadLocal<FrameInstance> currentFrames = new ThreadLocal<>();
+    private final Map<RootCallTarget, Void> callTargets = Collections.synchronizedMap(new WeakHashMap<RootCallTarget, Void>());
 
     public DefaultTruffleRuntime() {
         if (Truffle.getRuntime() != null) {
@@ -55,7 +56,9 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
 
     @Override
     public RootCallTarget createCallTarget(RootNode rootNode) {
-        return new DefaultCallTarget(rootNode, this);
+        DefaultCallTarget target = new DefaultCallTarget(rootNode, this);
+        callTargets.put(target, null);
+        return target;
     }
 
     public DirectCallNode createDirectCallNode(CallTarget target) {
@@ -129,6 +132,11 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
     @Override
     public FrameInstance getCallerFrame() {
         return getThreadLocalStackTrace().peekFirst();
+    }
+
+    @Override
+    public List<RootCallTarget> getCallTargets() {
+        return new ArrayList<>(callTargets.keySet());
     }
 
     @Override

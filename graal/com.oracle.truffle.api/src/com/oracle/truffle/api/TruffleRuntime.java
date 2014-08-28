@@ -24,6 +24,8 @@
  */
 package com.oracle.truffle.api;
 
+import java.util.*;
+
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 
@@ -135,6 +137,12 @@ public interface TruffleRuntime {
      * important to note that this {@link FrameInstance} supports only slow path access.
      */
     FrameInstance getCurrentFrame();
+
+    /**
+     * Returns a list of all still referenced {@link RootCallTarget} instances that were created
+     * using {@link #createCallTarget(RootNode)}.
+     */
+    List<RootCallTarget> getCallTargets();
 
     /**
      * Internal API method. Do not use.
