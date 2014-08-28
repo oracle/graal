@@ -185,7 +185,7 @@ public class MatchPattern {
     }
 
     private Result matchType(ValueNode node) {
-        if (nodeClass != null && node.getNodeClass().is(nodeClass)) {
+        if (nodeClass != null && !node.getNodeClass().is(nodeClass)) {
             return Result.WRONG_CLASS(node, this);
         }
         return Result.OK;
