@@ -81,6 +81,7 @@ public final class HotSpotTruffleRuntime implements GraalTruffleRuntime {
     private final ResolvedJavaMethod[] callNodeMethod;
     private final ResolvedJavaMethod[] callTargetMethod;
     private final ResolvedJavaMethod[] anyFrameMethod;
+    private final Map<RootCallTarget, Void> callTargets = Collections.synchronizedMap(new WeakHashMap<RootCallTarget, Void>());
 
     private HotSpotTruffleRuntime() {
         installOptimizedCallTargetCallMethod();
@@ -115,7 +116,10 @@ public final class HotSpotTruffleRuntime implements GraalTruffleRuntime {
         } else {
             compilationPolicy = new InterpreterOnlyCompilationPolicy();
         }
-        return new OptimizedCallTarget(rootNode, this, TruffleMinInvokeThreshold.getValue(), TruffleCompilationThreshold.getValue(), compilationPolicy, new HotSpotSpeculationLog());
+        OptimizedCallTarget target = new OptimizedCallTarget(rootNode, this, TruffleMinInvokeThreshold.getValue(), TruffleCompilationThreshold.getValue(), compilationPolicy,
+                        new HotSpotSpeculationLog());
+        callTargets.put(target, null);
+        return target;
     }
 
     public LoopNode createLoopNode(RepeatingNode repeating) {
@@ -359,6 +363,11 @@ public final class HotSpotTruffleRuntime implements GraalTruffleRuntime {
 
     public void reinstallStubs() {
         installOptimizedCallTargetCallMethod();
+    }
+
+    @Override
+    public List<RootCallTarget> getCallTargets() {
+        return new ArrayList<>(callTargets.keySet());
     }
 
     public void notifyTransferToInterpreter() {
