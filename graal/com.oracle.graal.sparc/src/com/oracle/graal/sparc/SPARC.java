@@ -161,12 +161,32 @@ public class SPARC extends Architecture {
     public static final Register f30 = new Register(62, 30, "f30", FPU);
     public static final Register f31 = new Register(63, 31, "f31", FPU);
 
+    public static final Register d32 = new Register(64, getDoubleEncoding(32), "d32", FPU);
+    public static final Register d34 = new Register(65, getDoubleEncoding(34), "d34", FPU);
+    public static final Register d36 = new Register(66, getDoubleEncoding(36), "d36", FPU);
+    public static final Register d38 = new Register(67, getDoubleEncoding(38), "d38", FPU);
+    public static final Register d40 = new Register(68, getDoubleEncoding(40), "d40", FPU);
+    public static final Register d42 = new Register(69, getDoubleEncoding(42), "d42", FPU);
+    public static final Register d44 = new Register(70, getDoubleEncoding(44), "d44", FPU);
+    public static final Register d46 = new Register(71, getDoubleEncoding(46), "d46", FPU);
+
+    public static final Register d48 = new Register(72, getDoubleEncoding(48), "d48", FPU);
+    public static final Register d50 = new Register(73, getDoubleEncoding(50), "d50", FPU);
+    public static final Register d52 = new Register(74, getDoubleEncoding(52), "d52", FPU);
+    public static final Register d54 = new Register(75, getDoubleEncoding(54), "d54", FPU);
+    public static final Register d56 = new Register(76, getDoubleEncoding(56), "d56", FPU);
+    public static final Register d58 = new Register(77, getDoubleEncoding(58), "d58", FPU);
+    public static final Register d60 = new Register(78, getDoubleEncoding(60), "d60", FPU);
+    public static final Register d62 = new Register(79, getDoubleEncoding(62), "d62", FPU);
+
     // @formatter:off
     public static final Register[] fpuRegisters = {
         f0,  f1,  f2,  f3,  f4,  f5,  f6,  f7,
         f8,  f9,  f10, f11, f12, f13, f14, f15,
         f16, f17, f18, f19, f20, f21, f22, f23,
-        f24, f25, f26, f27, f28, f29, f30, f31
+        f24, f25, f26, f27, f28, f29, f30, f31,
+        d32, d34, d36, d38, d40, d42, d44, d46,
+        d48, d50, d52, d54, d56, d58, d60, d62
     };
     // @formatter:on
 
@@ -181,7 +201,9 @@ public class SPARC extends Architecture {
         f0,  f1,  f2,  f3,  f4,  f5,  f6,  f7,
         f8,  f9,  f10, f11, f12, f13, f14, f15,
         f16, f17, f18, f19, f20, f21, f22, f23,
-        f24, f25, f26, f27, f28, f29, f30, f31
+        f24, f25, f26, f27, f28, f29, f30, f31,
+        d32, d34, d36, d38, d40, d42, d44, d46,
+        d48, d50, d52, d54, d56, d58, d60, d62
     };
     // @formatter:on
 
@@ -245,5 +267,19 @@ public class SPARC extends Architecture {
 
     public static int spillSlotSize(TargetDescription td, PlatformKind kind) {
         return Math.max(td.getSizeInBytes(kind), MEMORY_ACCESS_ALIGN);
+    }
+
+    public static int getDoubleEncoding(int reg) {
+        assert reg < 64 && ((reg & 1) == 0);
+        // ignore v8 assertion for now
+        return (reg & 0x1e) | ((reg & 0x20) >> 5);
+    }
+
+    public static boolean isSingleFloatRegister(Register r) {
+        return r.name.startsWith("f");
+    }
+
+    public static boolean isDoubleFloatRegister(Register r) {
+        return r.name.startsWith("d");
     }
 }

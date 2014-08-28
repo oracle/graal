@@ -250,11 +250,15 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
         Register[] savedRegisters = {
                         // CPU
                         g1, g3, g4, g5,
-                        // FPU
-                        f0,  f1,  f2,  f3,  f4,  f5,  f6,  f7,
-                        f8,  f9,  f10, f11, f12, f13, f14, f15,
-                        f16, f17, f18, f19, f20, f21, f22, f23,
-                        f24, f25, f26, f27, f28, f29, f30, f31
+                        // FPU, use only every second register as doubles are stored anyways
+                        f0,  /*f1, */ f2,  /*f3, */ f4,  /*f5, */ f6,  /*f7, */
+                        f8,  /*f9, */ f10, /*f11,*/ f12, /*f13,*/ f14, /*f15,*/
+                        f16, /*f17,*/ f18, /*f19,*/ f20, /*f21,*/ f22, /*f23,*/
+                        f24, /*f25,*/ f26, /*f27,*/ f28, /*f29,*/ f30, /*f31 */
+                        d32,          d34,          d36,          d38,
+                        d40,          d42,          d44,          d46,
+                        d48,          d50,          d52,          d54,
+                        d56,          d58,          d60,          d62
         };
         // @formatter:on
         StackSlot[] savedRegisterLocations = new StackSlot[savedRegisters.length];

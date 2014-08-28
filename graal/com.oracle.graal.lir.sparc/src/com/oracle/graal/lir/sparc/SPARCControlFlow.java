@@ -68,6 +68,7 @@ public class SPARCControlFlow {
         protected final LabelRef trueDestination;
         protected final LabelRef falseDestination;
         protected final Kind kind;
+        protected final boolean unorderedIsTrue;
 
         public BranchOp(ConditionFlag condition, LabelRef trueDestination, LabelRef falseDestination, Kind kind) {
             this.conditionFlag = condition;
@@ -75,6 +76,7 @@ public class SPARCControlFlow {
             this.falseDestination = falseDestination;
             this.kind = kind;
             this.condition = null;
+            this.unorderedIsTrue = true;
         }
 
         public BranchOp(Condition condition, LabelRef trueDestination, LabelRef falseDestination, Kind kind) {
@@ -83,6 +85,16 @@ public class SPARCControlFlow {
             this.falseDestination = falseDestination;
             this.kind = kind;
             this.conditionFlag = null;
+            this.unorderedIsTrue = true;
+        }
+
+        public BranchOp(Condition finalCondition, LabelRef trueDestination, LabelRef falseDestination, Kind kind, boolean unorderedIsTrue) {
+            this.trueDestination = trueDestination;
+            this.falseDestination = falseDestination;
+            this.kind = kind;
+            this.conditionFlag = null;
+            this.unorderedIsTrue = unorderedIsTrue;
+            this.condition = finalCondition;
         }
 
         @Override
@@ -91,21 +103,24 @@ public class SPARCControlFlow {
             Label actualTarget;
             Condition actualCondition;
             ConditionFlag actualConditionFlag;
+            boolean branchOnUnordered;
             boolean needJump;
             if (crb.isSuccessorEdge(trueDestination)) {
                 actualCondition = condition != null ? condition.negate() : null;
                 actualConditionFlag = conditionFlag != null ? conditionFlag.negate() : null;
                 actualTarget = falseDestination.label();
                 needJump = false;
+                branchOnUnordered = !unorderedIsTrue;
             } else {
                 actualCondition = condition;
                 actualConditionFlag = conditionFlag;
                 actualTarget = trueDestination.label();
                 needJump = !crb.isSuccessorEdge(falseDestination);
+                branchOnUnordered = unorderedIsTrue;
             }
             assert kind == Kind.Int || kind == Kind.Long || kind == Kind.Object || kind == Kind.Double || kind == Kind.Float : kind;
             if (kind == Kind.Double || kind == Kind.Float) {
-                emitFloatCompare(masm, actualTarget, actualCondition);
+                emitFloatCompare(masm, actualTarget, actualCondition, branchOnUnordered);
             } else {
                 CC cc = kind == Kind.Int ? CC.Icc : CC.Xcc;
                 if (actualCondition != null) {
@@ -123,7 +138,11 @@ public class SPARCControlFlow {
         }
     }
 
-    private static void emitFloatCompare(SPARCMacroAssembler masm, Label target, Condition actualCondition) {
+    private static void emitFloatCompare(SPARCMacroAssembler masm, Label target, Condition actualCondition, boolean branchOnUnordered) {
+        if (branchOnUnordered) {
+// new Fbu(false, target).emit(masm);
+// new Nop().emit(masm);
+        }
         switch (actualCondition) {
             case EQ:
                 new Fbe(false, target).emit(masm);

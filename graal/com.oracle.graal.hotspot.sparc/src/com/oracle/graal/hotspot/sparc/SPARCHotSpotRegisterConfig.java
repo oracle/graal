@@ -61,9 +61,12 @@ public class SPARCHotSpotRegisterConfig implements RegisterConfig {
             if (architecture.canStoreValue(reg.getRegisterCategory(), kind)) {
                 // Special treatment for double precision
                 // TODO: This is wasteful it uses only half of the registers as float.
-                if (kind == Kind.Double || kind == Kind.Float) {
-                    // Only even register numbers are valid double precision regs
-                    if (reg.number % 2 == 0) {
+                if (kind == Kind.Double) {
+                    if (reg.name.startsWith("d")) {
+                        list.add(reg);
+                    }
+                } else if (kind == Kind.Float) {
+                    if (reg.name.startsWith("f")) {
                         list.add(reg);
                     }
                 } else {
@@ -92,7 +95,9 @@ public class SPARCHotSpotRegisterConfig implements RegisterConfig {
                     f0,  f1,  f2,  f3,  f4,  f5,  f6,  f7,
                     f8,  f9,  f10, f11, f12, f13, f14, f15,
                     f16, f17, f18, f19, f20, f21, f22, f23,
-                    f24, f25, f26, f27, f28, f29, f30, f31};
+                    f24, f25, f26, f27, f28, f29, f30, f31,
+                    d32, d34, d36, d38, d40, d42, d44, d46,
+                    d48, d50, d52, d54, d56, d58, d60, d62};
     // @formatter:on
 
     /**
@@ -125,7 +130,12 @@ public class SPARCHotSpotRegisterConfig implements RegisterConfig {
                         o0, o1, o2, o3, o4, o5, /*o6, o7,*/
                         l0, l1, l2, l3, l4, l5, l6, l7,
                         i0, i1, i2, i3, i4, i5, /*i6,*/ /*i7,*/
-                        f0, f1, f2, f3, f4, f5, f6, f7
+                        //f0, f1, f2, f3, f4, f5, f6, f7,
+                        f8,  f9,  f10, f11, f12, f13, f14, f15,
+                        f16, f17, f18, f19, f20, f21, f22, f23,
+                        f24, f25, f26, f27, f28, f29, f30, f31,
+                        d32, d34, d36, d38, d40, d42, d44, d46,
+                        d48, d50, d52, d54, d56, d58, d60, d62
             };
             // @formatter:on
         } else {
@@ -135,7 +145,12 @@ public class SPARCHotSpotRegisterConfig implements RegisterConfig {
                         o0, o1, o2, o3, o4, o5, /*o6, o7,*/
                         l0, l1, l2, l3, l4, l5, l6, l7,
                         i0, i1, i2, i3, i4, i5, /*i6,*/ /*i7,*/
-                        f0, f1, f2, f3, f4, f5, f6, f7
+//                        f0, f1, f2, f3, f4, f5, f6, f7
+                        f8,  f9,  f10, f11, f12, f13, f14, f15,
+                        f16, f17, f18, f19, f20, f21, f22, f23,
+                        f24, f25, f26, f27, f28, f29, f30, f31,
+                        d32, d34, d36, d38, d40, d42, d44, d46,
+                        d48, d50, d52, d54, d56, d58, d60, d62
             };
             // @formatter:on
         }
