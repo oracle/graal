@@ -25,6 +25,7 @@ package com.oracle.graal.graph;
 import static com.oracle.graal.graph.Graph.*;
 import static com.oracle.graal.graph.Node.*;
 import static com.oracle.graal.graph.util.CollectionsAccess.*;
+import static java.lang.reflect.Modifier.*;
 
 import java.lang.reflect.*;
 import java.util.*;
@@ -67,9 +68,14 @@ public final class NodeClass extends FieldIntrospection {
                 if (value == null) {
                     GeneratedNode gen = c.getAnnotation(GeneratedNode.class);
                     if (gen != null) {
-                        Class<? extends Node> genKey = (Class<? extends Node>) gen.value();
-                        value = (NodeClass) allClasses.get(genKey);
+                        Class<? extends Node> originalNodeClass = (Class<? extends Node>) gen.value();
+                        value = (NodeClass) allClasses.get(originalNodeClass);
                         assert value != null;
+                        if (value.genClass == null) {
+                            value.genClass = (Class<? extends Node>) c;
+                        } else {
+                            assert value.genClass == c;
+                        }
                     } else {
                         value = new NodeClass(key);
                     }
@@ -101,6 +107,13 @@ public final class NodeClass extends FieldIntrospection {
     private final int iterableId;
     private final EnumSet<InputType> allowedUsageTypes;
     private int[] iterableIds;
+
+    /**
+     * The {@linkplain GeneratedNode generated} node class denoted by this object. This value is
+     * lazily initialized to avoid class initialization circularity issues. A sentinel value of
+     * {@code Node.class} is used to denote absence of a generated class.
+     */
+    private Class<? extends Node> genClass;
 
     private static final DebugMetric ITERABLE_NODE_TYPES = Debug.metric("IterableNodeTypes");
     private final DebugMetric nodeIterableCount;
@@ -221,6 +234,30 @@ public final class NodeClass extends FieldIntrospection {
         }
         isLeafNode = (this.inputOffsets.length == 0 && this.successorOffsets.length == 0);
         nodeIterableCount = Debug.metric("NodeIterable_%s", shortName);
+    }
+
+    /**
+     * Gets the {@linkplain GeneratedNode generated} node class (if any) described by the object.
+     */
+    @SuppressWarnings("unchecked")
+    public Class<? extends Node> getGenClass() {
+        if (USE_GENERATED_NODES) {
+            if (genClass == null) {
+                if (!isAbstract(getClazz().getModifiers())) {
+                    String genClassName = getClazz().getName().replace('$', '_') + "Gen";
+                    try {
+                        genClass = (Class<? extends Node>) Class.forName(genClassName);
+                    } catch (ClassNotFoundException e) {
+                        throw new GraalInternalError("Could not find generated class " + genClassName + " for " + getClazz());
+                    }
+                } else {
+                    // Sentinel value denoting no generated class
+                    genClass = Node.class;
+                }
+            }
+            return genClass.equals(Node.class) ? null : genClass;
+        }
+        return null;
     }
 
     private static boolean containsId(int iterableId, int[] iterableIds) {
