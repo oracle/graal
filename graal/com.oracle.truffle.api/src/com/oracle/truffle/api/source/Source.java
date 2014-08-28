@@ -73,7 +73,7 @@ public abstract class Source {
     // TOOD (mlvdv) connect SourceSections into a spatial tree for fast geometric lookup
 
     // Files and pseudo files are indexed.
-    private static final Map<String, WeakReference<Source>> filePathToSource = new HashMap<>();
+    private static final Map<String, WeakReference<Source>> filePathToSource = new Hashtable<>();
 
     private static boolean fileCacheEnabled = true;
 
@@ -171,6 +171,7 @@ public abstract class Source {
         return source;
     }
 
+    // TODO (mlvdv) enable per-file choice whether to cache?
     /**
      * Enables/disables caching of file contents, <em>disabled</em> by default. Caching of sources
      * created from literal text or readers is always enabled.
