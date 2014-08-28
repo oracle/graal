@@ -37,6 +37,7 @@ import com.oracle.truffle.api.nodes.*;
  */
 public interface Visualizer {
 
+    // TODO (mlvdv) "Visualizer" is misleading: rename.
     /**
      * Gets a printer for Truffle ASTs, possibly specialized to be helpful for a specific guest
      * language implementation.
