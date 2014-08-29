@@ -139,28 +139,44 @@ public class SPARCControlFlow {
     }
 
     private static void emitFloatCompare(SPARCMacroAssembler masm, Label target, Condition actualCondition, boolean branchOnUnordered) {
-        if (branchOnUnordered) {
-            // new Fbu(false, target).emit(masm);
-            // new Nop().emit(masm);
-        }
         switch (actualCondition) {
             case EQ:
-                new Fbe(false, target).emit(masm);
+                if (branchOnUnordered) {
+                    new Fbue(false, target).emit(masm);
+                } else {
+                    new Fbe(false, target).emit(masm);
+                }
                 break;
             case NE:
-                new Fbne(false, target).emit(masm);
+                new Fbne(false, target).emit(masm); // Is also unordered
                 break;
             case LT:
-                new Fbl(false, target).emit(masm);
+                if (branchOnUnordered) {
+                    new Fbul(false, target).emit(masm);
+                } else {
+                    new Fbl(false, target).emit(masm);
+                }
                 break;
             case LE:
-                new Fble(false, target).emit(masm);
+                if (branchOnUnordered) {
+                    new Fbule(false, target).emit(masm);
+                } else {
+                    new Fble(false, target).emit(masm);
+                }
                 break;
             case GT:
-                new Fbg(false, target).emit(masm);
+                if (branchOnUnordered) {
+                    new Fbug(false, target).emit(masm);
+                } else {
+                    new Fbg(false, target).emit(masm);
+                }
                 break;
             case GE:
-                new Fbge(false, target).emit(masm);
+                if (branchOnUnordered) {
+                    new Fbuge(false, target).emit(masm);
+                } else {
+                    new Fbge(false, target).emit(masm);
+                }
                 break;
             case AE:
             case AT:
