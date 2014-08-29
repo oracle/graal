@@ -755,10 +755,10 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
         Variable result = newVariable(LIRKind.derive(a, b));
         switch (a.getKind().getStackKind()) {
             case Int:
-                append(new Op2Stack(IXOR, result, a, loadNonConst(b)));
+                append(new Op2Stack(IXOR, result, load(a), loadNonConst(b)));
                 break;
             case Long:
-                append(new Op2Stack(LXOR, result, a, loadNonConst(b)));
+                append(new Op2Stack(LXOR, result, load(a), loadNonConst(b)));
                 break;
             default:
                 throw GraalInternalError.shouldNotReachHere();
