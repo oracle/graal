@@ -20,36 +20,59 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle;
+package com.oracle.graal.graph;
 
-import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.nodes.*;
+import java.util.*;
 
 /**
- * Temporary node for legacy loop count reporting support as it was most likely done in other
- * implementations.
+ * Iterates over the nodes in a given graph.
  */
-public final class OptimizedLoopNode extends LoopNode {
+class GraphNodeIterator implements Iterator<Node> {
 
-    public OptimizedLoopNode(RepeatingNode body) {
-        super(body);
+    private final Graph graph;
+    private int index;
+
+    public GraphNodeIterator(Graph graph) {
+        this(graph, 0);
     }
 
-    @Override
-    public void executeLoop(VirtualFrame frame) {
-        int loopCount = 0;
-        try {
-            while (executeRepeatingNode(frame)) {
-                if (CompilerDirectives.inInterpreter()) {
-                    loopCount++;
-                }
-            }
-        } finally {
-            if (CompilerDirectives.inInterpreter()) {
-                getRootNode().reportLoopCount(loopCount);
-            }
+    public GraphNodeIterator(Graph graph, int index) {
+        this.graph = graph;
+        this.index = index - 1;
+        forward();
+    }
+
+    private void forward() {
+        if (index < graph.nodesSize) {
+            do {
+                index++;
+            } while (index < graph.nodesSize && graph.nodes[index] == null);
         }
     }
 
+    @Override
+    public boolean hasNext() {
+        checkForDeletedNode();
+        return index < graph.nodesSize;
+    }
+
+    private void checkForDeletedNode() {
+        while (index < graph.nodesSize && graph.nodes[index] == null) {
+            index++;
+        }
+    }
+
+    @Override
+    public Node next() {
+        try {
+            return graph.nodes[index];
+        } finally {
+            forward();
+        }
+    }
+
+    @Override
+    public void remove() {
+        throw new UnsupportedOperationException();
+    }
 }

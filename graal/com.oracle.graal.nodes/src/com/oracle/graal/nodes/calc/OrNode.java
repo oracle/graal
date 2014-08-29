@@ -39,10 +39,6 @@ public class OrNode extends BitLogicNode {
         return USE_GENERATED_NODES ? new OrNodeGen(x, y) : new OrNode(x, y);
     }
 
-    public static Class<? extends OrNode> getGenClass() {
-        return USE_GENERATED_NODES ? OrNodeGen.class : OrNode.class;
-    }
-
     OrNode(ValueNode x, ValueNode y) {
         super(StampTool.or(x.stamp(), y.stamp()), x, y);
         assert x.stamp().isCompatible(y.stamp());

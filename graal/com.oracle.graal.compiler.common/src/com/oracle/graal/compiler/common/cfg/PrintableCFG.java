@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,33 +20,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes;
+package com.oracle.graal.compiler.common.cfg;
 
-import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.nodeinfo.*;
-import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.extended.*;
+import java.util.*;
+import java.util.function.*;
 
-@NodeInfo
-public abstract class FloatingAnchoredNode extends FloatingNode {
+/**
+ * Represents a control-flow graph where each node can be annotated with arbitrary property pairs of
+ * the form ({@linkplain String name}, {@linkplain String value}).
+ */
+public interface PrintableCFG {
 
-    @Input(InputType.Anchor) protected AnchoringNode anchor;
+    List<? extends AbstractBlock<?>> getBlocks();
 
-    public FloatingAnchoredNode(Stamp stamp) {
-        super(stamp);
-    }
-
-    public FloatingAnchoredNode(Stamp stamp, AnchoringNode anchor) {
-        super(stamp);
-        this.anchor = anchor;
-    }
-
-    public AnchoringNode getAnchor() {
-        return anchor;
-    }
-
-    public void setAnchor(AnchoringNode x) {
-        updateUsagesInterface(this.anchor, x);
-        this.anchor = x;
+    /**
+     * Applies {@code action} to all extra property pairs (name, value) of {@code block}.
+     *
+     * @param block a block from {@link #getBlocks()}.
+     * @param action a {@link BiConsumer consumer}.
+     */
+    default void forEachPropertyPair(AbstractBlock<?> block, BiConsumer<String, String> action) {
+        // no extra properties per default
     }
 }

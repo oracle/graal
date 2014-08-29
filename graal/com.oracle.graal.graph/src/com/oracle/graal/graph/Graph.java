@@ -42,12 +42,12 @@ public class Graph {
     /**
      * The set of nodes in the graph, ordered by {@linkplain #register(Node) registration} time.
      */
-    private Node[] nodes;
+    Node[] nodes;
 
     /**
      * The number of valid entries in {@link #nodes}.
      */
-    private int nodesSize;
+    int nodesSize;
 
     /**
      * Records the modification count for nodes. This is only used in assertions.
@@ -562,56 +562,6 @@ public class Graph {
         return new Mark(this);
     }
 
-    private class NodeIterator implements Iterator<Node> {
-
-        private int index;
-
-        public NodeIterator() {
-            this(0);
-        }
-
-        public NodeIterator(int index) {
-            this.index = index - 1;
-            forward();
-        }
-
-        private void forward() {
-            if (index < nodesSize) {
-                do {
-                    index++;
-                } while (index < nodesSize && nodes[index] == null);
-            }
-        }
-
-        @Override
-        public boolean hasNext() {
-            checkForDeletedNode();
-            return index < nodesSize;
-        }
-
-        private void checkForDeletedNode() {
-            if (index < nodesSize) {
-                while (index < nodesSize && nodes[index] == null) {
-                    index++;
-                }
-            }
-        }
-
-        @Override
-        public Node next() {
-            try {
-                return nodes[index];
-            } finally {
-                forward();
-            }
-        }
-
-        @Override
-        public void remove() {
-            throw new UnsupportedOperationException();
-        }
-    }
-
     /**
      * Returns an {@link Iterable} providing all nodes added since the last {@link Graph#getMark()
      * mark}.
@@ -622,7 +572,7 @@ public class Graph {
 
             @Override
             public Iterator<Node> iterator() {
-                return new NodeIterator(index);
+                return new GraphNodeIterator(Graph.this, index);
             }
         };
     }
@@ -637,7 +587,7 @@ public class Graph {
 
             @Override
             public Iterator<Node> iterator() {
-                return new NodeIterator();
+                return new GraphNodeIterator(Graph.this);
             }
 
             @Override
@@ -658,7 +608,7 @@ public class Graph {
         }
     }
 
-    private static final Node PLACE_HOLDER = USE_GENERATED_NODES ? new Graph_PlaceHolderNodeGen() : new PlaceHolderNode();
+    static final Node PLACE_HOLDER = USE_GENERATED_NODES ? new Graph_PlaceHolderNodeGen() : new PlaceHolderNode();
 
     /**
      * When the percent of live nodes in {@link #nodes} fall below this number, a call to
@@ -709,107 +659,6 @@ public class Graph {
         return true;
     }
 
-    private static class TypedNodeIterator<T extends IterableNodeType> implements Iterator<T> {
-
-        private final Graph graph;
-        private final int[] ids;
-        private final Node[] current;
-
-        private int currentIdIndex;
-        private boolean needsForward;
-
-        public TypedNodeIterator(NodeClass clazz, Graph graph) {
-            this.graph = graph;
-            ids = clazz.iterableIds();
-            currentIdIndex = 0;
-            current = new Node[ids.length];
-            Arrays.fill(current, PLACE_HOLDER);
-            needsForward = true;
-        }
-
-        private Node findNext() {
-            if (needsForward) {
-                forward();
-            } else {
-                Node c = current();
-                Node afterDeleted = skipDeleted(c);
-                if (afterDeleted == null) {
-                    needsForward = true;
-                } else if (c != afterDeleted) {
-                    setCurrent(afterDeleted);
-                }
-            }
-            if (needsForward) {
-                return null;
-            }
-            return current();
-        }
-
-        private static Node skipDeleted(Node node) {
-            Node n = node;
-            while (n != null && n.isDeleted()) {
-                n = n.typeCacheNext;
-            }
-            return n;
-        }
-
-        private void forward() {
-            needsForward = false;
-            int startIdx = currentIdIndex;
-            while (true) {
-                Node next;
-                if (current() == PLACE_HOLDER) {
-                    next = graph.getStartNode(ids[currentIdIndex]);
-                } else {
-                    next = current().typeCacheNext;
-                }
-                next = skipDeleted(next);
-                if (next == null) {
-                    currentIdIndex++;
-                    if (currentIdIndex >= ids.length) {
-                        currentIdIndex = 0;
-                    }
-                    if (currentIdIndex == startIdx) {
-                        needsForward = true;
-                        return;
-                    }
-                } else {
-                    setCurrent(next);
-                    break;
-                }
-            }
-        }
-
-        private Node current() {
-            return current[currentIdIndex];
-        }
-
-        private void setCurrent(Node n) {
-            current[currentIdIndex] = n;
-        }
-
-        @Override
-        public boolean hasNext() {
-            return findNext() != null;
-        }
-
-        @Override
-        @SuppressWarnings("unchecked")
-        public T next() {
-            Node result = findNext();
-            if (result == null) {
-                throw new NoSuchElementException();
-            }
-            needsForward = true;
-            return (T) result;
-        }
-
-        @Override
-        public void remove() {
-            throw new UnsupportedOperationException();
-        }
-    }
-
     /**
      * Returns an {@link Iterable} providing all the live nodes whose type is compatible with
      * {@code type}.
@@ -823,7 +672,7 @@ public class Graph {
 
             @Override
             public Iterator<T> iterator() {
-                return new TypedNodeIterator<>(nodeClass, Graph.this);
+                return new TypedGraphNodeIterator<>(nodeClass, Graph.this);
             }
         };
     }
@@ -838,7 +687,7 @@ public class Graph {
         return getNodes(type).iterator().hasNext();
     }
 
-    private Node getStartNode(int iterableId) {
+    Node getStartNode(int iterableId) {
         Node start = nodeCacheFirst.size() <= iterableId ? null : nodeCacheFirst.get(iterableId);
         return start;
     }

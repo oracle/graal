@@ -56,7 +56,7 @@ import com.oracle.graal.nodeinfo.*;
 @NodeInfo
 public abstract class Node implements Cloneable, Formattable {
 
-    public final static boolean USE_GENERATED_NODES = Boolean.getBoolean("graal.useGeneratedNodes");
+    public final static boolean USE_GENERATED_NODES = Boolean.parseBoolean(System.getProperty("graal.useGeneratedNodes", "true"));
 
     static final int DELETED_ID_START = -1000000000;
     static final int INITIAL_ID = -1;

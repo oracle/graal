@@ -151,8 +151,22 @@ public class MatchPattern {
         this(null, name, singleUser);
     }
 
+    /**
+     * Gets the {@link Node} class instantiated for a given canonical {@link Node} class depending
+     * on whether or not generated node classes are enabled.
+     */
+    @SuppressWarnings("unchecked")
+    private static Class<? extends ValueNode> asInstantiatedClass(Class<? extends ValueNode> nodeClass) {
+        if (nodeClass != null && Node.USE_GENERATED_NODES) {
+            Class<? extends ValueNode> res = (Class<? extends ValueNode>) NodeClass.get(nodeClass).getGenClass();
+            assert res != null : nodeClass;
+            return res;
+        }
+        return nodeClass;
+    }
+
     public MatchPattern(Class<? extends ValueNode> nodeClass, String name, boolean singleUser) {
-        this.nodeClass = nodeClass;
+        this.nodeClass = asInstantiatedClass(nodeClass);
         this.name = name;
         this.singleUser = singleUser;
         this.patterns = EMPTY_PATTERNS;
@@ -161,7 +175,7 @@ public class MatchPattern {
 
     private MatchPattern(Class<? extends ValueNode> nodeClass, String name, boolean singleUser, MatchPattern[] patterns, Position[] inputs) {
         assert inputs == null || inputs.length == patterns.length;
-        this.nodeClass = nodeClass;
+        this.nodeClass = asInstantiatedClass(nodeClass);
         this.name = name;
         this.singleUser = singleUser;
         this.patterns = patterns;

@@ -333,6 +333,9 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     public final Object callInlined(Object[] arguments) {
         if (CompilerDirectives.inInterpreter()) {
             compilationProfile.reportInlinedCall();
+            if (isValid()) {
+                return callDirect(arguments);
+            }
         }
         VirtualFrame frame = createFrame(getRootNode().getFrameDescriptor(), arguments);
         return callProxy(frame);

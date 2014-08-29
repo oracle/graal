@@ -146,8 +146,12 @@ public class HotSpotNativeFunctionInterface implements NativeFunctionInterface {
 
     private HotSpotNativeFunctionHandle createHandle(NativeFunctionPointer functionPointer, Class<?> returnType, Class<?>... argumentTypes) {
         HotSpotNativeFunctionPointer hs = (HotSpotNativeFunctionPointer) functionPointer;
-        InstalledCode code = installNativeFunctionStub(hs.value, returnType, argumentTypes);
-        return new HotSpotNativeFunctionHandle(code, hs.name, argumentTypes);
+        if (hs != null) {
+            InstalledCode code = installNativeFunctionStub(hs.value, returnType, argumentTypes);
+            return new HotSpotNativeFunctionHandle(code, hs.name, argumentTypes);
+        } else {
+            return null;
+        }
     }
 
     /**

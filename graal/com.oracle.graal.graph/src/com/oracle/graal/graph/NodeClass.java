@@ -25,6 +25,7 @@ package com.oracle.graal.graph;
 import static com.oracle.graal.graph.Graph.*;
 import static com.oracle.graal.graph.Node.*;
 import static com.oracle.graal.graph.util.CollectionsAccess.*;
+import static java.lang.reflect.Modifier.*;
 
 import java.lang.reflect.*;
 import java.util.*;
@@ -54,8 +55,7 @@ public final class NodeClass extends FieldIntrospection {
      */
     @SuppressWarnings("unchecked")
     public static NodeClass get(Class<?> c) {
-        GeneratedNode gen = c.getAnnotation(GeneratedNode.class);
-        Class<? extends Node> key = gen == null ? (Class<? extends Node>) c : (Class<? extends Node>) gen.value();
+        Class<? extends Node> key = (Class<? extends Node>) c;
 
         NodeClass value = (NodeClass) allClasses.get(key);
         // The fact that {@link ConcurrentHashMap#put} and {@link ConcurrentHashMap#get}
@@ -66,7 +66,19 @@ public final class NodeClass extends FieldIntrospection {
             synchronized (GetNodeClassLock) {
                 value = (NodeClass) allClasses.get(key);
                 if (value == null) {
-                    value = new NodeClass(key);
+                    GeneratedNode gen = c.getAnnotation(GeneratedNode.class);
+                    if (gen != null) {
+                        Class<? extends Node> originalNodeClass = (Class<? extends Node>) gen.value();
+                        value = (NodeClass) allClasses.get(originalNodeClass);
+                        assert value != null;
+                        if (value.genClass == null) {
+                            value.genClass = (Class<? extends Node>) c;
+                        } else {
+                            assert value.genClass == c;
+                        }
+                    } else {
+                        value = new NodeClass(key);
+                    }
                     Object old = allClasses.putIfAbsent(key, value);
                     assert old == null : old + "   " + key;
                 }
@@ -95,6 +107,13 @@ public final class NodeClass extends FieldIntrospection {
     private final int iterableId;
     private final EnumSet<InputType> allowedUsageTypes;
     private int[] iterableIds;
+
+    /**
+     * The {@linkplain GeneratedNode generated} node class denoted by this object. This value is
+     * lazily initialized to avoid class initialization circularity issues. A sentinel value of
+     * {@code Node.class} is used to denote absence of a generated class.
+     */
+    private Class<? extends Node> genClass;
 
     private static final DebugMetric ITERABLE_NODE_TYPES = Debug.metric("IterableNodeTypes");
     private final DebugMetric nodeIterableCount;
@@ -158,15 +177,12 @@ public final class NodeClass extends FieldIntrospection {
         }
         String newNameTemplate = null;
         NodeInfo info = clazz.getAnnotation(NodeInfo.class);
-        if (info != null) {
-            if (!info.shortName().isEmpty()) {
-                newShortName = info.shortName();
-            }
-            if (!info.nameTemplate().isEmpty()) {
-                newNameTemplate = info.nameTemplate();
-            }
-        } else {
-            System.out.println("No NodeInfo for " + clazz);
+        assert info != null : "missing " + NodeInfo.class.getSimpleName() + " annotation on " + clazz;
+        if (!info.shortName().isEmpty()) {
+            newShortName = info.shortName();
+        }
+        if (!info.nameTemplate().isEmpty()) {
+            newNameTemplate = info.nameTemplate();
         }
         EnumSet<InputType> newAllowedUsageTypes = EnumSet.noneOf(InputType.class);
         Class<?> current = clazz;
@@ -190,13 +206,19 @@ public final class NodeClass extends FieldIntrospection {
             this.iterableId = nextIterableId++;
             List<NodeClass> existingClasses = new LinkedList<>();
             for (FieldIntrospection nodeClass : allClasses.values()) {
+                // There are duplicate entries in allClasses when using generated nodes
+                // hence the extra logic below guarded by USE_GENERATED_NODES
                 if (clazz.isAssignableFrom(nodeClass.getClazz())) {
-                    existingClasses.add((NodeClass) nodeClass);
+                    if (!USE_GENERATED_NODES || !existingClasses.contains(nodeClass)) {
+                        existingClasses.add((NodeClass) nodeClass);
+                    }
                 }
                 if (nodeClass.getClazz().isAssignableFrom(clazz) && IterableNodeType.class.isAssignableFrom(nodeClass.getClazz())) {
                     NodeClass superNodeClass = (NodeClass) nodeClass;
-                    superNodeClass.iterableIds = Arrays.copyOf(superNodeClass.iterableIds, superNodeClass.iterableIds.length + 1);
-                    superNodeClass.iterableIds[superNodeClass.iterableIds.length - 1] = this.iterableId;
+                    if (!USE_GENERATED_NODES || !containsId(this.iterableId, superNodeClass.iterableIds)) {
+                        superNodeClass.iterableIds = Arrays.copyOf(superNodeClass.iterableIds, superNodeClass.iterableIds.length + 1);
+                        superNodeClass.iterableIds[superNodeClass.iterableIds.length - 1] = this.iterableId;
+                    }
                 }
             }
             int[] ids = new int[existingClasses.size() + 1];
@@ -212,6 +234,39 @@ public final class NodeClass extends FieldIntrospection {
         }
         isLeafNode = (this.inputOffsets.length == 0 && this.successorOffsets.length == 0);
         nodeIterableCount = Debug.metric("NodeIterable_%s", shortName);
+    }
+
+    /**
+     * Gets the {@linkplain GeneratedNode generated} node class (if any) described by the object.
+     */
+    @SuppressWarnings("unchecked")
+    public Class<? extends Node> getGenClass() {
+        if (USE_GENERATED_NODES) {
+            if (genClass == null) {
+                if (!isAbstract(getClazz().getModifiers())) {
+                    String genClassName = getClazz().getName().replace('$', '_') + "Gen";
+                    try {
+                        genClass = (Class<? extends Node>) Class.forName(genClassName);
+                    } catch (ClassNotFoundException e) {
+                        throw new GraalInternalError("Could not find generated class " + genClassName + " for " + getClazz());
+                    }
+                } else {
+                    // Sentinel value denoting no generated class
+                    genClass = Node.class;
+                }
+            }
+            return genClass.equals(Node.class) ? null : genClass;
+        }
+        return null;
+    }
+
+    private static boolean containsId(int iterableId, int[] iterableIds) {
+        for (int i : iterableIds) {
+            if (i == iterableId) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
@@ -234,14 +289,14 @@ public final class NodeClass extends FieldIntrospection {
         fieldTypes.putAll(scanner.fieldTypes);
     }
 
-    private boolean isNodeClassFor(Node n) {
-        if (Node.USE_GENERATED_NODES) {
-            GeneratedNode gen = n.getClass().getAnnotation(GeneratedNode.class);
-            assert gen != null;
-            return gen.value() == getClazz();
-        } else {
-            return n.getNodeClass().getClazz() == n.getClass();
-        }
+    /**
+     * Determines if a given {@link Node} class is described by the {@link NodeClass} object.
+     *
+     * @param nodeClass a {@linkplain GeneratedNode non-generated} {@link Node} class
+     */
+    public boolean is(Class<? extends Node> nodeClass) {
+        assert nodeClass.getAnnotation(GeneratedNode.class) == null : "cannot test NodeClas against generated " + nodeClass;
+        return nodeClass == getClazz();
     }
 
     public String shortName() {
@@ -1214,7 +1269,7 @@ public final class NodeClass extends FieldIntrospection {
      * @param newNode the node to which the inputs should be copied.
      */
     public void copyInputs(Node node, Node newNode) {
-        assert isNodeClassFor(node) && isNodeClassFor(newNode);
+        assert node.getNodeClass() == this && newNode.getNodeClass() == this;
 
         int index = 0;
         while (index < directInputCount) {
@@ -1236,7 +1291,7 @@ public final class NodeClass extends FieldIntrospection {
      * @param newNode the node to which the successors should be copied.
      */
     public void copySuccessors(Node node, Node newNode) {
-        assert isNodeClassFor(node) && isNodeClassFor(newNode);
+        assert node.getNodeClass() == this && newNode.getNodeClass() == this;
 
         int index = 0;
         while (index < directSuccessorCount) {
@@ -1255,7 +1310,7 @@ public final class NodeClass extends FieldIntrospection {
     }
 
     public boolean inputsEqual(Node node, Node other) {
-        assert isNodeClassFor(node) && isNodeClassFor(other);
+        assert node.getNodeClass() == this && other.getNodeClass() == this;
         int index = 0;
         while (index < directInputCount) {
             if (getNode(other, inputOffsets[index]) != getNode(node, inputOffsets[index])) {
@@ -1274,7 +1329,7 @@ public final class NodeClass extends FieldIntrospection {
     }
 
     public boolean successorsEqual(Node node, Node other) {
-        assert isNodeClassFor(node) && isNodeClassFor(other);
+        assert node.getNodeClass() == this && other.getNodeClass() == this;
         int index = 0;
         while (index < directSuccessorCount) {
             if (getNode(other, successorOffsets[index]) != getNode(node, successorOffsets[index])) {
@@ -1293,7 +1348,7 @@ public final class NodeClass extends FieldIntrospection {
     }
 
     public boolean inputContains(Node node, Node other) {
-        assert isNodeClassFor(node);
+        assert node.getNodeClass() == this;
 
         int index = 0;
         while (index < directInputCount) {
@@ -1313,7 +1368,7 @@ public final class NodeClass extends FieldIntrospection {
     }
 
     public boolean successorContains(Node node, Node other) {
-        assert isNodeClassFor(node);
+        assert node.getNodeClass() == this;
 
         int index = 0;
         while (index < directSuccessorCount) {

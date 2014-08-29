@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,36 +20,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle;
+package com.oracle.graal.compiler.common.cfg;
 
-import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.nodes.*;
+import java.util.function.*;
 
 /**
- * Temporary node for legacy loop count reporting support as it was most likely done in other
- * implementations.
+ * A {@linkplain PrintableCFG printable} {@link DominatorOptimizationProblem}.
  */
-public final class OptimizedLoopNode extends LoopNode {
+public abstract class PrintableDominatorOptimizationProblem<E extends Enum<E>, C extends PropertyConsumable> extends DominatorOptimizationProblem<E, C> implements PrintableCFG {
 
-    public OptimizedLoopNode(RepeatingNode body) {
-        super(body);
+    protected PrintableDominatorOptimizationProblem(Class<E> keyType, AbstractControlFlowGraph<?> cfg) {
+        super(keyType, cfg);
     }
 
-    @Override
-    public void executeLoop(VirtualFrame frame) {
-        int loopCount = 0;
-        try {
-            while (executeRepeatingNode(frame)) {
-                if (CompilerDirectives.inInterpreter()) {
-                    loopCount++;
-                }
-            }
-        } finally {
-            if (CompilerDirectives.inInterpreter()) {
-                getRootNode().reportLoopCount(loopCount);
-            }
+    public void forEachPropertyPair(AbstractBlock<?> block, BiConsumer<String, String> action) {
+        // for each flag
+        getFlags().forEach(flag -> ((BiConsumer<String, Boolean>) (name, value) -> action.accept(name, value ? "true" : "false")).accept(getName(flag), get(flag, block)));
+        // for each property
+        C cost = getCost(block);
+        if (cost != null) {
+            cost.forEachProperty((name, value) -> action.accept(name, value));
         }
     }
-
 }

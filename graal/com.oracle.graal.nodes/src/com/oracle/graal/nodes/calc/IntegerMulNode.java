@@ -38,10 +38,6 @@ public class IntegerMulNode extends IntegerArithmeticNode implements NarrowableA
         return USE_GENERATED_NODES ? new IntegerMulNodeGen(x, y) : new IntegerMulNode(x, y);
     }
 
-    public static Class<? extends IntegerMulNode> getGenClass() {
-        return USE_GENERATED_NODES ? IntegerMulNodeGen.class : IntegerMulNode.class;
-    }
-
     protected IntegerMulNode(ValueNode x, ValueNode y) {
         super(x.stamp().unrestricted(), x, y);
         assert x.stamp().isCompatible(y.stamp());

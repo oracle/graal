@@ -38,10 +38,6 @@ public class IntegerAddNode extends IntegerArithmeticNode implements NarrowableA
         return USE_GENERATED_NODES ? new IntegerAddNodeGen(x, y) : new IntegerAddNode(x, y);
     }
 
-    public static Class<? extends IntegerAddNode> getGenClass() {
-        return USE_GENERATED_NODES ? IntegerAddNodeGen.class : IntegerAddNode.class;
-    }
-
     protected IntegerAddNode(ValueNode x, ValueNode y) {
         super(StampTool.add(x.stamp(), y.stamp()), x, y);
     }

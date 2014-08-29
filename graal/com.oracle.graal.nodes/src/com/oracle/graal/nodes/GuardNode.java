@@ -44,7 +44,7 @@ import com.oracle.graal.nodes.extended.*;
 @NodeInfo(nameTemplate = "Guard(!={p#negated}) {p#reason/s}", allowedUsageTypes = {InputType.Guard})
 public class GuardNode extends FloatingAnchoredNode implements Canonicalizable, IterableNodeType, GuardingNode {
 
-    @Input(InputType.Condition) LogicNode condition;
+    @Input(InputType.Condition) protected LogicNode condition;
     private final DeoptimizationReason reason;
     private Constant speculation;
     private DeoptimizationAction action;
