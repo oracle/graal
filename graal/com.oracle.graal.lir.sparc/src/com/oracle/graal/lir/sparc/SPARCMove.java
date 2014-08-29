@@ -505,11 +505,9 @@ public class SPARCMove {
                 new Stx(src, dst).emit(masm);
                 break;
             case Float:
-                // assert isSingleFloatRegister(src);
                 new Stf(src, dst).emit(masm);
                 break;
             case Double:
-                // assert isDoubleFloatRegister(src);
                 new Stdf(src, dst).emit(masm);
                 break;
             default:
@@ -540,11 +538,9 @@ public class SPARCMove {
                 new Ldx(src, dst).emit(masm);
                 break;
             case Float:
-//                assert isSingleFloatRegister(dst);
                 new Ldf(src, dst).emit(masm);
                 break;
             case Double:
-//                assert isDoubleFloatRegister(dst);
                 new Lddf(src, dst).emit(masm);
                 break;
             default:

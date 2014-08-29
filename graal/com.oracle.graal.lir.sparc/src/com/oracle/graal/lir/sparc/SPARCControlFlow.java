@@ -140,8 +140,8 @@ public class SPARCControlFlow {
 
     private static void emitFloatCompare(SPARCMacroAssembler masm, Label target, Condition actualCondition, boolean branchOnUnordered) {
         if (branchOnUnordered) {
-// new Fbu(false, target).emit(masm);
-// new Nop().emit(masm);
+            // new Fbu(false, target).emit(masm);
+            // new Nop().emit(masm);
         }
         switch (actualCondition) {
             case EQ:
