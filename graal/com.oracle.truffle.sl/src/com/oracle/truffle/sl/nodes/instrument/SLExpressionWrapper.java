@@ -73,18 +73,6 @@ public final class SLExpressionWrapper extends SLExpressionNode implements Wrapp
         return probe;
     }
 
-    @Override
-    @SlowPath
-    public boolean isTaggedAs(SyntaxTag tag) {
-        return probe.isTaggedAs(tag);
-    }
-
-    @Override
-    @SlowPath
-    public Iterable<SyntaxTag> getSyntaxTags() {
-        return probe.getSyntaxTags();
-    }
-
     @SlowPath
     public void tagAs(SyntaxTag tag) {
         probe.tagAs(tag);

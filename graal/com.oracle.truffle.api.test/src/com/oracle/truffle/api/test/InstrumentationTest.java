@@ -191,14 +191,6 @@ public class InstrumentationTest {
             this.probe = context.createProbe(child.getSourceSection());
         }
 
-        public boolean isTaggedAs(SyntaxTag tag) {
-            return false;
-        }
-
-        public Iterable<SyntaxTag> getSyntaxTags() {
-            return null;
-        }
-
         public Node getChild() {
             return child;
         }

@@ -62,7 +62,7 @@ import com.oracle.truffle.api.nodes.*;
  * @see Probe
  * @see ExecutionEvents
  */
-public interface Wrapper extends SyntaxTagged {
+public interface Wrapper {
 
     /**
      * Gets the AST node being instrumented, which should never be an instance of {@link Wrapper}.

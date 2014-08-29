@@ -62,16 +62,6 @@ public final class SLStatementWrapper extends SLStatementNode implements Wrapper
     }
 
     @SlowPath
-    public boolean isTaggedAs(SyntaxTag tag) {
-        return probe.isTaggedAs(tag);
-    }
-
-    @SlowPath
-    public Iterable<SyntaxTag> getSyntaxTags() {
-        return probe.getSyntaxTags();
-    }
-
-    @SlowPath
     public void tagAs(SyntaxTag tag) {
         probe.tagAs(tag);
     }
