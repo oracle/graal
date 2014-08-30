@@ -38,6 +38,7 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.SwitchStrategy.BaseSwitchClosure;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.sparc.*;
 
 public class SPARCControlFlow {
 
@@ -321,32 +322,38 @@ public class SPARCControlFlow {
             if (isSimm13(lowKey)) {
                 new Sub(value, lowKey, scratchReg).emit(masm);
             } else {
-                new Setx(lowKey, g3).emit(masm);
-                new Sub(value, g3, scratchReg).emit(masm);
+                try (SPARCScratchRegister sc = SPARCScratchRegister.get()) {
+                    Register scratch2 = sc.getRegister();
+                    new Setx(lowKey, scratch2).emit(masm);
+                    new Sub(value, scratch2, scratchReg).emit(masm);
+                }
             }
             int upperLimit = highKey - lowKey;
-            if (isSimm13(upperLimit)) {
-                new Cmp(scratchReg, upperLimit).emit(masm);
-            } else {
-                new Setx(upperLimit, g3).emit(masm);
-                new Cmp(scratchReg, upperLimit).emit(masm);
+            try (SPARCScratchRegister sc = SPARCScratchRegister.get()) {
+                Register scratch2 = sc.getRegister();
+                if (isSimm13(upperLimit)) {
+                    new Cmp(scratchReg, upperLimit).emit(masm);
+                } else {
+                    new Setx(upperLimit, scratch2).emit(masm);
+                    new Cmp(scratchReg, upperLimit).emit(masm);
+                }
+
+                // Jump to default target if index is not within the jump table
+                if (defaultTarget != null) {
+                    new Bpgu(CC.Icc, defaultTarget.label()).emit(masm);
+                    new Nop().emit(masm);  // delay slot
+                }
+
+                // Load jump table entry into scratch and jump to it
+                new Sll(scratchReg, 3, scratchReg).emit(masm); // Multiply by 8
+                // Zero the left bits sll with shcnt>0 does not mask upper 32 bits
+                new Srl(scratchReg, 0, scratchReg).emit(masm);
+                new Rdpc(scratch2).emit(masm);
+
+                // The jump table follows four instructions after rdpc
+                new Add(scratchReg, 4 * 4, scratchReg).emit(masm);
+                new Jmpl(scratch2, scratchReg, g0).emit(masm);
             }
-
-            // Jump to default target if index is not within the jump table
-            if (defaultTarget != null) {
-                new Bpgu(CC.Icc, defaultTarget.label()).emit(masm);
-                new Nop().emit(masm);  // delay slot
-            }
-
-            // Load jump table entry into scratch and jump to it
-            new Sll(scratchReg, 3, scratchReg).emit(masm); // Multiply by 8
-            // Zero the left bits sll with shcnt>0 does not mask upper 32 bits
-            new Srl(scratchReg, 0, scratchReg).emit(masm);
-            new Rdpc(g3).emit(masm);
-
-            // The jump table follows four instructions after rdpc
-            new Add(scratchReg, 4 * 4, scratchReg).emit(masm);
-            new Jmpl(g3, scratchReg, g0).emit(masm);
             new Nop().emit(masm);
             // new Sra(value, 3, value).emit(masm); // delay slot, correct the value (division by 8)
 

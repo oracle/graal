@@ -54,6 +54,7 @@ import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.sparc.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.sparc.*;
 
 /**
  * HotSpot SPARC specific backend.
@@ -113,8 +114,11 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
                     if (SPARCAssembler.isSimm13(address.getDisplacement())) {
                         new Stx(g0, address).emit(masm);
                     } else {
-                        new Setx(address.getDisplacement(), g3).emit(masm);
-                        new Stx(g0, new SPARCAddress(sp, g3)).emit(masm);
+                        try (SPARCScratchRegister sc = SPARCScratchRegister.get()) {
+                            Register scratch = sc.getRegister();
+                            new Setx(address.getDisplacement(), scratch).emit(masm);
+                            new Stx(g0, new SPARCAddress(sp, scratch)).emit(masm);
+                        }
                     }
                 }
             }
@@ -145,8 +149,11 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
             if (SPARCAssembler.isSimm13(stackpoinerChange)) {
                 new Save(sp, stackpoinerChange, sp).emit(masm);
             } else {
-                new Setx(stackpoinerChange, g3).emit(masm);
-                new Save(sp, g3, sp).emit(masm);
+                try (SPARCScratchRegister sc = SPARCScratchRegister.get()) {
+                    Register scratch = sc.getRegister();
+                    new Setx(stackpoinerChange, scratch).emit(masm);
+                    new Save(sp, scratch, sp).emit(masm);
+                }
             }
 
             if (ZapStackOnMethodEntry.getValue()) {
@@ -213,12 +220,15 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
             // We need to use JavaCall here because we haven't entered the frame yet.
             CallingConvention cc = regConfig.getCallingConvention(JavaCall, null, new JavaType[]{getProviders().getMetaAccess().lookupJavaType(Object.class)}, getTarget(), false);
             Register inlineCacheKlass = g5; // see MacroAssembler::ic_call
-            Register scratch = g3;
-            Register receiver = asRegister(cc.getArgument(0));
-            SPARCAddress src = new SPARCAddress(receiver, config.hubOffset);
 
-            new Ldx(src, scratch).emit(masm);
-            new Cmp(scratch, inlineCacheKlass).emit(masm);
+            try (SPARCScratchRegister sc = SPARCScratchRegister.get()) {
+                Register scratch = sc.getRegister();
+                Register receiver = asRegister(cc.getArgument(0));
+                SPARCAddress src = new SPARCAddress(receiver, config.hubOffset);
+
+                new Ldx(src, scratch).emit(masm);
+                new Cmp(scratch, inlineCacheKlass).emit(masm);
+            }
             new Bpne(CC.Xcc, unverifiedStub).emit(masm);
             new Nop().emit(masm);  // delay slot
         }
@@ -244,8 +254,10 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
 
         if (unverifiedStub != null) {
             masm.bind(unverifiedStub);
-            Register scratch = g3;
-            SPARCCall.indirectJmp(crb, masm, scratch, foreignCalls.lookupForeignCall(IC_MISS_HANDLER));
+            try (SPARCScratchRegister sc = SPARCScratchRegister.get()) {
+                Register scratch = sc.getRegister();
+                SPARCCall.indirectJmp(crb, masm, scratch, foreignCalls.lookupForeignCall(IC_MISS_HANDLER));
+            }
         }
     }
 

@@ -23,13 +23,13 @@
 package com.oracle.graal.hotspot.sparc;
 
 import static com.oracle.graal.hotspot.HotSpotHostBackend.*;
-import static com.oracle.graal.sparc.SPARC.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.sparc.*;
+import com.oracle.graal.sparc.*;
 
 /**
  * Removes the current frame and tail calls the uncommon trap routine.
@@ -46,8 +46,11 @@ final class SPARCHotSpotDeoptimizeCallerOp extends SPARCHotSpotEpilogueOp {
         // final boolean isStub = true;
         // HotSpotFrameContext frameContext = backend.new HotSpotFrameContext(isStub);
         // frameContext.enter(crb);
-        Register scratch = g3;
-        SPARCCall.indirectJmp(crb, masm, scratch, crb.foreignCalls.lookupForeignCall(UNCOMMON_TRAP_HANDLER));
+
+        try (SPARCScratchRegister sc = SPARCScratchRegister.get()) {
+            Register scratch = sc.getRegister();
+            SPARCCall.indirectJmp(crb, masm, scratch, crb.foreignCalls.lookupForeignCall(UNCOMMON_TRAP_HANDLER));
+        }
 
         // frameContext.leave(crb);
     }

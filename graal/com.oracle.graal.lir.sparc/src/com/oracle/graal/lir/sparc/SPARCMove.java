@@ -38,6 +38,7 @@ import com.oracle.graal.lir.StandardOp.ImplicitNullCheck;
 import com.oracle.graal.lir.StandardOp.MoveOp;
 import com.oracle.graal.lir.StandardOp.NullCheck;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.sparc.*;
 
 public class SPARCMove {
 
@@ -137,36 +138,39 @@ public class SPARCMove {
 
         @Override
         public void emitMemAccess(SPARCMacroAssembler masm) {
-            final SPARCAddress addr = guaranueeLoadable(address.toAddress(), masm);
-            final Register dst = asRegister(result);
-            switch (kind) {
-                case Boolean:
-                case Byte:
-                    new Ldsb(addr, dst).emit(masm);
-                    break;
-                case Short:
-                    new Ldsh(addr, dst).emit(masm);
-                    break;
-                case Char:
-                    new Lduh(addr, dst).emit(masm);
-                    break;
-                case Int:
-                    new Ldsw(addr, dst).emit(masm);
-                    break;
-                case Long:
-                    new Ldx(addr, dst).emit(masm);
-                    break;
-                case Float:
-                    new Ldf(addr, dst).emit(masm);
-                    break;
-                case Double:
-                    new Lddf(addr, dst).emit(masm);
-                    break;
-                case Object:
-                    new Ldx(addr, dst).emit(masm);
-                    break;
-                default:
-                    throw GraalInternalError.shouldNotReachHere();
+            try (SPARCScratchRegister sc = SPARCScratchRegister.get()) {
+                Register scratch = sc.getRegister();
+                final SPARCAddress addr = guaranueeLoadable(address.toAddress(), masm, scratch);
+                final Register dst = asRegister(result);
+                switch (kind) {
+                    case Boolean:
+                    case Byte:
+                        new Ldsb(addr, dst).emit(masm);
+                        break;
+                    case Short:
+                        new Ldsh(addr, dst).emit(masm);
+                        break;
+                    case Char:
+                        new Lduh(addr, dst).emit(masm);
+                        break;
+                    case Int:
+                        new Ldsw(addr, dst).emit(masm);
+                        break;
+                    case Long:
+                        new Ldx(addr, dst).emit(masm);
+                        break;
+                    case Float:
+                        new Ldf(addr, dst).emit(masm);
+                        break;
+                    case Double:
+                        new Lddf(addr, dst).emit(masm);
+                        break;
+                    case Object:
+                        new Ldx(addr, dst).emit(masm);
+                        break;
+                    default:
+                        throw GraalInternalError.shouldNotReachHere();
+                }
             }
         }
     }
@@ -311,33 +315,36 @@ public class SPARCMove {
         @Override
         public void emitMemAccess(SPARCMacroAssembler masm) {
             assert isRegister(input);
-            SPARCAddress addr = guaranueeLoadable(address.toAddress(), masm);
-            switch (kind) {
-                case Boolean:
-                case Byte:
-                    new Stb(asRegister(input), addr).emit(masm);
-                    break;
-                case Short:
-                case Char:
-                    new Sth(asRegister(input), addr).emit(masm);
-                    break;
-                case Int:
-                    new Stw(asRegister(input), addr).emit(masm);
-                    break;
-                case Long:
-                    new Stx(asRegister(input), addr).emit(masm);
-                    break;
-                case Object:
-                    new Stx(asRegister(input), addr).emit(masm);
-                    break;
-                case Float:
-                    new Stf(asRegister(input), addr).emit(masm);
-                    break;
-                case Double:
-                    new Stdf(asRegister(input), addr).emit(masm);
-                    break;
-                default:
-                    throw GraalInternalError.shouldNotReachHere("missing: " + kind);
+            try (SPARCScratchRegister sc = SPARCScratchRegister.get()) {
+                Register scratch = sc.getRegister();
+                SPARCAddress addr = guaranueeLoadable(address.toAddress(), masm, scratch);
+                switch (kind) {
+                    case Boolean:
+                    case Byte:
+                        new Stb(asRegister(input), addr).emit(masm);
+                        break;
+                    case Short:
+                    case Char:
+                        new Sth(asRegister(input), addr).emit(masm);
+                        break;
+                    case Int:
+                        new Stw(asRegister(input), addr).emit(masm);
+                        break;
+                    case Long:
+                        new Stx(asRegister(input), addr).emit(masm);
+                        break;
+                    case Object:
+                        new Stx(asRegister(input), addr).emit(masm);
+                        break;
+                    case Float:
+                        new Stf(asRegister(input), addr).emit(masm);
+                        break;
+                    case Double:
+                        new Stdf(asRegister(input), addr).emit(masm);
+                        break;
+                    default:
+                        throw GraalInternalError.shouldNotReachHere("missing: " + kind);
+                }
             }
         }
     }
@@ -356,28 +363,31 @@ public class SPARCMove {
 
         @Override
         public void emitMemAccess(SPARCMacroAssembler masm) {
-            SPARCAddress addr = guaranueeLoadable(address.toAddress(), masm);
-            switch (kind) {
-                case Boolean:
-                case Byte:
-                    new Stb(g0, addr).emit(masm);
-                    break;
-                case Short:
-                case Char:
-                    new Sth(g0, addr).emit(masm);
-                    break;
-                case Int:
-                    new Stw(g0, addr).emit(masm);
-                    break;
-                case Long:
-                case Object:
-                    new Stx(g0, addr).emit(masm);
-                    break;
-                case Float:
-                case Double:
-                    throw GraalInternalError.shouldNotReachHere("Cannot store float constants to memory");
-                default:
-                    throw GraalInternalError.shouldNotReachHere();
+            try (SPARCScratchRegister sc = SPARCScratchRegister.get()) {
+                Register scratch = sc.getRegister();
+                SPARCAddress addr = guaranueeLoadable(address.toAddress(), masm, scratch);
+                switch (kind) {
+                    case Boolean:
+                    case Byte:
+                        new Stb(g0, addr).emit(masm);
+                        break;
+                    case Short:
+                    case Char:
+                        new Sth(g0, addr).emit(masm);
+                        break;
+                    case Int:
+                        new Stw(g0, addr).emit(masm);
+                        break;
+                    case Long:
+                    case Object:
+                        new Stx(g0, addr).emit(masm);
+                        break;
+                    case Float:
+                    case Double:
+                        throw GraalInternalError.shouldNotReachHere("Cannot store float constants to memory");
+                    default:
+                        throw GraalInternalError.shouldNotReachHere();
+                }
             }
         }
     }
@@ -401,10 +411,14 @@ public class SPARCMove {
             if (isRegister(result)) {
                 const2reg(crb, masm, result, (Constant) input);
             } else if (isStackSlot(result)) {
-                // Move a Constant to a stack slot (Probably a 7th output parameter)
-                Value scratch = input.getKind() == Kind.Float || input.getKind() == Kind.Double ? f30.asValue(input.getLIRKind()) : g5.asValue(input.getLIRKind());
-                const2reg(crb, masm, scratch, (Constant) input);
-                reg2stack(crb, masm, result, scratch);
+                Register scratch = g1;
+                Constant constant = asConstant(input);
+                if (constant.isNull()) {
+                    new Clr(scratch).emit(masm);
+                } else {
+                    new Setx(constant.asLong(), scratch).emit(masm);
+                }
+                reg2stack(crb, masm, result, scratch.asValue(LIRKind.derive(input)));
             } else {
                 throw GraalInternalError.shouldNotReachHere("Result is a: " + result);
             }
@@ -473,10 +487,9 @@ public class SPARCMove {
      * @param masm assembler to output the prior stx command
      * @return a loadable SPARCAddress
      */
-    public static SPARCAddress guaranueeLoadable(SPARCAddress addr, SPARCMacroAssembler masm) {
+    public static SPARCAddress guaranueeLoadable(SPARCAddress addr, SPARCMacroAssembler masm, Register scratch) {
         boolean displacementOutOfBound = addr.getIndex().equals(Register.None) && !SPARCAssembler.isSimm13(addr.getDisplacement());
         if (displacementOutOfBound) {
-            Register scratch = g3;
             new Setx(addr.getDisplacement(), scratch, false).emit(masm);
             return new SPARCAddress(addr.getBase(), scratch);
         } else {
@@ -486,109 +499,117 @@ public class SPARCMove {
 
     private static void reg2stack(CompilationResultBuilder crb, SPARCMacroAssembler masm, Value result, Value input) {
         SPARCAddress dst = (SPARCAddress) crb.asAddress(result);
-        dst = guaranueeLoadable(dst, masm);
-        Register src = asRegister(input);
-        switch (input.getKind()) {
-            case Byte:
-            case Boolean:
-                new Stb(src, dst).emit(masm);
-                break;
-            case Char:
-            case Short:
-                new Sth(src, dst).emit(masm);
-                break;
-            case Int:
-                new Stw(src, dst).emit(masm);
-                break;
-            case Long:
-            case Object:
-                new Stx(src, dst).emit(masm);
-                break;
-            case Float:
-                new Stf(src, dst).emit(masm);
-                break;
-            case Double:
-                new Stdf(src, dst).emit(masm);
-                break;
-            default:
-                throw GraalInternalError.shouldNotReachHere("Input is a: " + input.getKind() + "(" + input + ")");
+        try (SPARCScratchRegister sc = SPARCScratchRegister.get()) {
+            Register scratch = sc.getRegister();
+            dst = guaranueeLoadable(dst, masm, scratch);
+            Register src = asRegister(input);
+            switch (input.getKind()) {
+                case Byte:
+                case Boolean:
+                    new Stb(src, dst).emit(masm);
+                    break;
+                case Char:
+                case Short:
+                    new Sth(src, dst).emit(masm);
+                    break;
+                case Int:
+                    new Stw(src, dst).emit(masm);
+                    break;
+                case Long:
+                case Object:
+                    new Stx(src, dst).emit(masm);
+                    break;
+                case Float:
+                    new Stf(src, dst).emit(masm);
+                    break;
+                case Double:
+                    new Stdf(src, dst).emit(masm);
+                    break;
+                default:
+                    throw GraalInternalError.shouldNotReachHere("Input is a: " + input.getKind() + "(" + input + ")");
+            }
         }
     }
 
     private static void stack2reg(CompilationResultBuilder crb, SPARCMacroAssembler masm, Value result, Value input) {
         SPARCAddress src = (SPARCAddress) crb.asAddress(input);
-        src = guaranueeLoadable(src, masm);
-        Register dst = asRegister(result);
-        switch (input.getKind()) {
-            case Boolean:
-            case Byte:
-                new Ldsb(src, dst).emit(masm);
-                break;
-            case Short:
-                new Ldsh(src, dst).emit(masm);
-                break;
-            case Char:
-                new Lduh(src, dst).emit(masm);
-                break;
-            case Int:
-                new Ldsw(src, dst).emit(masm);
-                break;
-            case Long:
-            case Object:
-                new Ldx(src, dst).emit(masm);
-                break;
-            case Float:
-                new Ldf(src, dst).emit(masm);
-                break;
-            case Double:
-                new Lddf(src, dst).emit(masm);
-                break;
-            default:
-                throw GraalInternalError.shouldNotReachHere("Input is a: " + input.getKind());
+        try (SPARCScratchRegister sc = SPARCScratchRegister.get()) {
+            Register scratch = sc.getRegister();
+            src = guaranueeLoadable(src, masm, scratch);
+            Register dst = asRegister(result);
+            switch (input.getKind()) {
+                case Boolean:
+                case Byte:
+                    new Ldsb(src, dst).emit(masm);
+                    break;
+                case Short:
+                    new Ldsh(src, dst).emit(masm);
+                    break;
+                case Char:
+                    new Lduh(src, dst).emit(masm);
+                    break;
+                case Int:
+                    new Ldsw(src, dst).emit(masm);
+                    break;
+                case Long:
+                case Object:
+                    new Ldx(src, dst).emit(masm);
+                    break;
+                case Float:
+                    new Ldf(src, dst).emit(masm);
+                    break;
+                case Double:
+                    new Lddf(src, dst).emit(masm);
+                    break;
+                default:
+                    throw GraalInternalError.shouldNotReachHere("Input is a: " + input.getKind());
+            }
         }
     }
 
     private static void const2reg(CompilationResultBuilder crb, SPARCMacroAssembler masm, Value result, Constant input) {
-        Register scratch = g5;
-        switch (input.getKind().getStackKind()) {
-            case Int:
-                new Setx(input.asLong(), asIntReg(result)).emit(masm);
-                break;
-            case Long:
-                new Setx(input.asLong(), asLongReg(result)).emit(masm);
-                break;
-            case Float:
-                // TODO: Handle it the same way, as in the double case with Movwtos
-                crb.asFloatConstRef(input);
-                // First load the address into the scratch register
-                new Setx(0, scratch, true).emit(masm);
-                // Now load the float value
-                new Ldf(scratch, asFloatReg(result)).emit(masm);
-                break;
-            case Double:
-                // instead loading this from memory and do the complicated lookup,
-                // just load it directly into a scratch register
-                // First load the address into the scratch register
-                new Setx(Double.doubleToLongBits(input.asDouble()), scratch, true).emit(masm);
-                // Now load the float value
-                new Movxtod(scratch, asDoubleReg(result)).emit(masm);
-                break;
-            case Object:
-                if (input.isNull()) {
-                    new Clr(asRegister(result)).emit(masm);
-                } else if (crb.target.inlineObjects) {
-                    crb.recordInlineDataInCode(input);
-                    new Setx(0xDEADDEADDEADDEADL, asRegister(result), true).emit(masm);
-                } else {
-                    Register dst = asRegister(result);
-                    new Rdpc(dst).emit(masm);
-                    crb.asObjectConstRef(input);
-                    new Ldx(new SPARCAddress(dst, 0), dst).emit(masm);
-                    throw GraalInternalError.shouldNotReachHere("the patched offset might be too big for the load");
-                }
-                break;
-            default:
-                throw GraalInternalError.shouldNotReachHere("missing: " + input.getKind());
+        try (SPARCScratchRegister sc = SPARCScratchRegister.get()) {
+            Register scratch = sc.getRegister();
+            switch (input.getKind().getStackKind()) {
+                case Int:
+                    new Setx(input.asLong(), asIntReg(result)).emit(masm);
+                    break;
+                case Long:
+                    new Setx(input.asLong(), asLongReg(result)).emit(masm);
+                    break;
+                case Float:
+                    // TODO: Handle it the same way, as in the double case with Movwtos
+                    crb.asFloatConstRef(input);
+                    // First load the address into the scratch register
+                    new Setx(0, scratch, true).emit(masm);
+                    // Now load the float value
+                    new Ldf(scratch, asFloatReg(result)).emit(masm);
+                    break;
+                case Double:
+                    // instead loading this from memory and do the complicated lookup,
+                    // just load it directly into a scratch register
+                    // First load the address into the scratch register
+                    new Setx(Double.doubleToLongBits(input.asDouble()), scratch, true).emit(masm);
+                    // Now load the float value
+                    new Movxtod(scratch, asDoubleReg(result)).emit(masm);
+                    break;
+                case Object:
+                    if (input.isNull()) {
+                        new Clr(asRegister(result)).emit(masm);
+                    } else if (crb.target.inlineObjects) {
+                        crb.recordInlineDataInCode(input);
+                        new Setx(0xDEADDEADDEADDEADL, asRegister(result), true).emit(masm);
+                    } else {
+                        Register dst = asRegister(result);
+                        new Rdpc(dst).emit(masm);
+                        crb.asObjectConstRef(input);
+                        new Ldx(new SPARCAddress(dst, 0), dst).emit(masm);
+                        throw GraalInternalError.shouldNotReachHere("the patched offset might be too big for the load");
+                    }
+                    break;
+                default:
+                    throw GraalInternalError.shouldNotReachHere("missing: " + input.getKind());
+            }
         }
     }
 
