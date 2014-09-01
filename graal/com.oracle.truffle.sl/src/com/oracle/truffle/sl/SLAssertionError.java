@@ -20,38 +20,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.sl.builtins;
-
-import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.dsl.*;
-import com.oracle.truffle.api.nodes.*;
-import com.oracle.truffle.api.source.*;
-import com.oracle.truffle.sl.*;
-import com.oracle.truffle.sl.runtime.*;
+package com.oracle.truffle.sl;
 
 /**
- * Asserts a given value to be <code>false</code> and throws an {@link AssertionError} if the value
- * was <code>true</code>.
+ * An implementation of an {@link AssertionError} also containing the guest language stack trace.
  */
-@NodeInfo(shortName = "assertFalse")
-public abstract class SLAssertFalseBuiltin extends SLBuiltinNode {
+public class SLAssertionError extends AssertionError {
 
-    public SLAssertFalseBuiltin() {
-        super(new NullSourceSection("SL builtin", "assertFalse"));
+    private static final long serialVersionUID = -9138475336963945873L;
+
+    public SLAssertionError(String message) {
+        super(message);
+        initCause(new AssertionError("Java stack trace"));
     }
 
-    @Specialization
-    public boolean doAssert(boolean value, String message) {
-        if (value) {
-            CompilerDirectives.transferToInterpreter();
-            throw new SLAssertionError(message == null ? "" : message);
-        }
-        return value;
-    }
-
-    @Specialization
-    public boolean doAssertNull(boolean value, @SuppressWarnings("unused") SLNull message) {
-        return doAssert(value, null);
+    @Override
+    public synchronized Throwable fillInStackTrace() {
+        return SLException.fillInSLStackTrace(this);
     }
 
 }

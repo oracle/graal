@@ -67,6 +67,10 @@ public final class SLRootNode extends RootNode {
         return bodyNode.executeGeneric(frame);
     }
 
+    public String getName() {
+        return name;
+    }
+
     @Override
     public boolean isSplittable() {
         return true;
