@@ -45,7 +45,7 @@ import com.oracle.truffle.sl.test.SLTestRunner.TestCase;
 
 public final class SLTestRunner extends ParentRunner<TestCase> {
 
-    private static int repeats = 10;
+    private static int repeats = 1;
 
     private static final String SOURCE_SUFFIX = ".sl";
     private static final String INPUT_SUFFIX = ".input";
