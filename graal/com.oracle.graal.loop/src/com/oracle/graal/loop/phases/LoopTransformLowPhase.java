@@ -28,7 +28,7 @@ import java.util.*;
 
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
-import com.oracle.graal.graph.NodeClass.NodeClassIterator;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.loop.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
@@ -84,7 +84,7 @@ public class LoopTransformLowPhase extends Phase {
         sb.append(loop).append(" at ");
         for (ControlSplitNode controlSplit : controlSplits) {
             sb.append(controlSplit).append(" [");
-            NodeClassIterator it = controlSplit.successors().iterator();
+            NodePosIterator it = controlSplit.successors().iterator();
             while (it.hasNext()) {
                 sb.append(controlSplit.probability((BeginNode) it.next()));
                 if (it.hasNext()) {

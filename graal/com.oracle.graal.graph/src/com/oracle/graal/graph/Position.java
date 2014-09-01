@@ -56,27 +56,47 @@ public final class Position {
     }
 
     public Node get(Node node) {
+        if (Node.USE_GENERATED_NODES) {
+            return node.getNodeAt(this);
+        }
         return node.getNodeClass().get(node, this);
     }
 
     public InputType getInputType(Node node) {
+        if (Node.USE_GENERATED_NODES) {
+            return node.getInputTypeAt(this);
+        }
         return node.getNodeClass().getInputType(this);
     }
 
     public String getInputName(Node node) {
+        if (Node.USE_GENERATED_NODES) {
+            return node.getNameOf(this);
+        }
         return node.getNodeClass().getName(this);
     }
 
     public boolean isInputOptional(Node node) {
+        if (Node.USE_GENERATED_NODES) {
+            return node.isOptionalInputAt(this);
+        }
         return node.getNodeClass().isInputOptional(this);
     }
 
     public void set(Node node, Node value) {
-        node.getNodeClass().set(node, this, value);
+        if (Node.USE_GENERATED_NODES) {
+            node.updateNodeAt(this, value);
+        } else {
+            node.getNodeClass().set(node, this, value);
+        }
     }
 
     public void initialize(Node node, Node value) {
-        node.getNodeClass().initializePosition(node, this, value);
+        if (Node.USE_GENERATED_NODES) {
+            node.initializeNodeAt(this, value);
+        } else {
+            node.getNodeClass().initializePosition(node, this, value);
+        }
     }
 
     @Override

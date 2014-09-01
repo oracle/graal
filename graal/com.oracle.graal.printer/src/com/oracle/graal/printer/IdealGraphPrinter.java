@@ -30,7 +30,6 @@ import java.util.Map.Entry;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.graph.NodeClass.NodeClassIterator;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
@@ -213,7 +212,7 @@ public class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPr
 
             // successors
             int fromIndex = 0;
-            NodeClassIterator succIter = node.successors().iterator();
+            NodePosIterator succIter = node.successors().iterator();
             while (succIter.hasNext()) {
                 Position position = succIter.nextPosition();
                 Node successor = node.getNodeClass().get(node, position);
@@ -225,7 +224,7 @@ public class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPr
 
             // inputs
             int toIndex = 1;
-            NodeClassIterator inputIter = node.inputs().iterator();
+            NodePosIterator inputIter = node.inputs().iterator();
             while (inputIter.hasNext()) {
                 Position position = inputIter.nextPosition();
                 Node input = node.getNodeClass().get(node, position);

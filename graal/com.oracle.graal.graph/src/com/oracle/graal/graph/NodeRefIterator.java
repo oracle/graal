@@ -34,7 +34,7 @@ import com.oracle.graal.graph.Node.Successor;
  * An iterator of this type will not return null values, unless the field values are modified
  * concurrently. Concurrent modifications are detected by an assertion on a best-effort basis.
  */
-public class NodeRefIterator implements Iterator<Node> {
+public class NodeRefIterator implements NodePosIterator {
 
     public static final NodeRefIterator Empty = new NodeRefIterator(0, 0, false);
 

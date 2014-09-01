@@ -29,7 +29,6 @@ import java.util.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.graph.Graph.Mark;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.graph.NodeClass.NodeClassIterator;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
@@ -86,7 +85,7 @@ public abstract class LoopTransformations {
          * The code below assumes that all of the control split nodes have the same successor
          * structure, which should have been enforced by findUnswitchable.
          */
-        NodeClassIterator successors = firstNode.successors().iterator();
+        NodePosIterator successors = firstNode.successors().iterator();
         assert successors.hasNext();
         // original loop is used as first successor
         Position firstPosition = successors.nextPosition();
