@@ -23,6 +23,7 @@
 package com.oracle.graal.nodeinfo.processor;
 
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.*;
+import static java.util.Collections.*;
 
 import java.io.*;
 import java.util.*;
@@ -66,7 +67,9 @@ public class GraphNodeProcessor extends AbstractProcessor {
     void message(Kind kind, Element element, String format, Object... args) {
         if (scope != null && !isEnclosedIn(element, scope)) {
             // See https://bugs.eclipse.org/bugs/show_bug.cgi?id=428357#c1
-            String loc = getElementHierarchy(element).stream().map(Object::toString).collect(Collectors.joining("."));
+            List<Element> elementHierarchy = getElementHierarchy(element);
+            reverse(elementHierarchy);
+            String loc = elementHierarchy.stream().filter(e -> e.getKind() != ElementKind.PACKAGE).map(Object::toString).collect(Collectors.joining("."));
             processingEnv.getMessager().printMessage(kind, String.format(loc + ": " + format, args), scope);
         } else {
             processingEnv.getMessager().printMessage(kind, String.format(format, args), element);
@@ -134,14 +137,16 @@ public class GraphNodeProcessor extends AbstractProcessor {
                 }
 
                 if (!typeElement.equals(gen.Node) && !typeElement.getModifiers().contains(Modifier.ABSTRACT)) {
-                    CodeCompilationUnit unit = gen.process(typeElement);
-                    unit.setGeneratorElement(typeElement);
-
-                    DeclaredType overrideType = (DeclaredType) ElementUtils.getType(processingEnv, Override.class);
-                    DeclaredType unusedType = (DeclaredType) ElementUtils.getType(processingEnv, SuppressWarnings.class);
-                    unit.accept(new GenerateOverrideVisitor(overrideType), null);
-                    unit.accept(new FixWarningsVisitor(processingEnv, unusedType, overrideType), null);
-                    unit.accept(new CodeWriter(processingEnv, typeElement), null);
+                    try {
+                        CodeCompilationUnit unit = gen.process(typeElement, false);
+                        emitCode(typeElement, unit);
+                    } catch (ElementException ee) {
+                        // Try to generate the class with just the constructors so that
+                        // spurious errors related to a missing class are not emitted
+                        CodeCompilationUnit unit = gen.process(typeElement, true);
+                        emitCode(typeElement, unit);
+                        throw ee;
+                    }
                 }
             } catch (ElementException ee) {
                 errorMessage(ee.element, ee.getMessage());
@@ -152,6 +157,16 @@ public class GraphNodeProcessor extends AbstractProcessor {
             }
         }
         return false;
+    }
+
+    private void emitCode(TypeElement typeElement, CodeCompilationUnit unit) {
+        unit.setGeneratorElement(typeElement);
+
+        DeclaredType overrideType = (DeclaredType) ElementUtils.getType(processingEnv, Override.class);
+        DeclaredType unusedType = (DeclaredType) ElementUtils.getType(processingEnv, SuppressWarnings.class);
+        unit.accept(new GenerateOverrideVisitor(overrideType), null);
+        unit.accept(new FixWarningsVisitor(processingEnv, unusedType, overrideType), null);
+        unit.accept(new CodeWriter(processingEnv, typeElement), null);
     }
 
     /**
@@ -166,9 +181,9 @@ public class GraphNodeProcessor extends AbstractProcessor {
                     return true;
                 }
             }
-            if (t.getCause() != null) {
-                return isBug367599(t.getCause());
-            }
+        }
+        if (t.getCause() != null) {
+            return isBug367599(t.getCause());
         }
         return false;
     }

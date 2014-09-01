@@ -278,15 +278,15 @@ public class GraphNodeGenerator {
         Successors;
     }
 
-    CodeCompilationUnit process(TypeElement node) {
+    CodeCompilationUnit process(TypeElement node, boolean constructorsOnly) {
         try {
-            return process0(node);
+            return process0(node, constructorsOnly);
         } finally {
             reset();
         }
     }
 
-    private CodeCompilationUnit process0(TypeElement node) {
+    private CodeCompilationUnit process0(TypeElement node, boolean constructorsOnly) {
 
         CodeCompilationUnit compilationUnit = new CodeCompilationUnit();
 
@@ -308,55 +308,56 @@ public class GraphNodeGenerator {
             genClass.add(subConstructor);
         }
 
-        DeclaredType generatedNode = (DeclaredType) getType(GeneratedNode.class);
-        CodeAnnotationMirror generatedNodeMirror = new CodeAnnotationMirror(generatedNode);
-        generatedNodeMirror.setElementValue(generatedNodeMirror.findExecutableElement("value"), new CodeAnnotationValue(node.asType()));
-        genClass.getAnnotationMirrors().add(generatedNodeMirror);
+        if (!constructorsOnly) {
+            DeclaredType generatedNode = (DeclaredType) getType(GeneratedNode.class);
+            CodeAnnotationMirror generatedNodeMirror = new CodeAnnotationMirror(generatedNode);
+            generatedNodeMirror.setElementValue(generatedNodeMirror.findExecutableElement("value"), new CodeAnnotationValue(node.asType()));
+            genClass.getAnnotationMirrors().add(generatedNodeMirror);
 
-        scanFields(node);
+            scanFields(node);
 
-        boolean hasInputs = !inputFields.isEmpty() || !inputListFields.isEmpty();
-        boolean hasSuccessors = !successorFields.isEmpty() || !successorListFields.isEmpty();
+            boolean hasInputs = !inputFields.isEmpty() || !inputListFields.isEmpty();
+            boolean hasSuccessors = !successorFields.isEmpty() || !successorListFields.isEmpty();
 
-        if (hasInputs || hasSuccessors) {
-            createGetNodeAtMethod();
-            createGetInputTypeAtMethod();
-            createGetNameOfMethod();
-            createUpdateOrInitializeNodeAtMethod(false);
-            createUpdateOrInitializeNodeAtMethod(true);
-            createIsLeafNodeMethod(genClass);
+            if (hasInputs || hasSuccessors) {
+                createGetNodeAtMethod();
+                createGetInputTypeAtMethod();
+                createGetNameOfMethod();
+                createUpdateOrInitializeNodeAtMethod(false);
+                createUpdateOrInitializeNodeAtMethod(true);
+                createIsLeafNodeMethod(genClass);
 
-            if (!inputListFields.isEmpty() || !successorListFields.isEmpty()) {
-                createGetNodeListAtMethod();
-                createSetNodeListAtMethod();
+                if (!inputListFields.isEmpty() || !successorListFields.isEmpty()) {
+                    createGetNodeListAtMethod();
+                    createSetNodeListAtMethod();
+                }
+            }
+
+            if (hasInputs) {
+                createIsOptionalInputAtMethod();
+                createGetFirstLevelPositionsMethod(Inputs, inputFields, inputListFields);
+
+                createContainsMethod(Inputs, inputFields, inputListFields);
+                createIterableMethod(Inputs);
+
+                CodeTypeElement inputsIteratorClass = createIteratorClass(Inputs, packageElement, inputFields, inputListFields);
+                createAllIteratorClass(Inputs, inputsIteratorClass.asType(), packageElement, inputFields, inputListFields);
+                createWithModCountIteratorClass(Inputs, inputsIteratorClass.asType(), packageElement);
+                createIterableClass(Inputs, packageElement);
+            }
+
+            if (hasSuccessors) {
+                createGetFirstLevelPositionsMethod(Successors, successorFields, successorListFields);
+
+                createContainsMethod(Successors, successorFields, successorListFields);
+                createIterableMethod(Successors);
+
+                CodeTypeElement successorsIteratorClass = createIteratorClass(Successors, packageElement, successorFields, successorListFields);
+                createAllIteratorClass(Successors, successorsIteratorClass.asType(), packageElement, successorFields, successorListFields);
+                createWithModCountIteratorClass(Successors, successorsIteratorClass.asType(), packageElement);
+                createIterableClass(Successors, packageElement);
             }
         }
-
-        if (hasInputs) {
-            createIsOptionalInputAtMethod();
-            createGetFirstLevelPositionsMethod(Inputs, inputFields, inputListFields);
-
-            createContainsMethod(Inputs, inputFields, inputListFields);
-            createIterableMethod(Inputs);
-
-            CodeTypeElement inputsIteratorClass = createIteratorClass(Inputs, packageElement, inputFields, inputListFields);
-            createAllIteratorClass(Inputs, inputsIteratorClass.asType(), packageElement, inputFields, inputListFields);
-            createWithModCountIteratorClass(Inputs, inputsIteratorClass.asType(), packageElement);
-            createIterableClass(Inputs, packageElement);
-        }
-
-        if (hasSuccessors) {
-            createGetFirstLevelPositionsMethod(Successors, successorFields, successorListFields);
-
-            createContainsMethod(Successors, successorFields, successorListFields);
-            createIterableMethod(Successors);
-
-            CodeTypeElement successorsIteratorClass = createIteratorClass(Successors, packageElement, successorFields, successorListFields);
-            createAllIteratorClass(Successors, successorsIteratorClass.asType(), packageElement, successorFields, successorListFields);
-            createWithModCountIteratorClass(Successors, successorsIteratorClass.asType(), packageElement);
-            createIterableClass(Successors, packageElement);
-        }
-
         compilationUnit.add(genClass);
         return compilationUnit;
     }
