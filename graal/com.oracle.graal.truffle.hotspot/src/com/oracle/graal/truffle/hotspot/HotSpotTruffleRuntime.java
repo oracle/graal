@@ -345,6 +345,17 @@ public final class HotSpotTruffleRuntime implements GraalTruffleRuntime {
         return false;
     }
 
+    public void waitForCompilation(OptimizedCallTarget optimizedCallTarget, long timeout) throws ExecutionException, TimeoutException {
+        Future<?> codeTask = this.compilations.get(optimizedCallTarget);
+        if (codeTask != null && isCompiling(optimizedCallTarget)) {
+            try {
+                codeTask.get(timeout, TimeUnit.MILLISECONDS);
+            } catch (InterruptedException e) {
+                // ignore interrupted
+            }
+        }
+    }
+
     public boolean isCompiling(OptimizedCallTarget optimizedCallTarget) {
         Future<?> codeTask = this.compilations.get(optimizedCallTarget);
         if (codeTask != null) {
