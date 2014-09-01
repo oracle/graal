@@ -36,14 +36,16 @@ import org.junit.runner.notification.*;
 import org.junit.runners.*;
 import org.junit.runners.model.*;
 
+import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.sl.*;
+import com.oracle.truffle.sl.builtins.*;
 import com.oracle.truffle.sl.runtime.*;
 import com.oracle.truffle.sl.test.SLTestRunner.TestCase;
 
 public final class SLTestRunner extends ParentRunner<TestCase> {
 
-    private static final int REPEATS = 10;
+    private static int repeats = 10;
 
     private static final String SOURCE_SUFFIX = ".sl";
     private static final String INPUT_SUFFIX = ".input";
@@ -147,6 +149,16 @@ public final class SLTestRunner extends ParentRunner<TestCase> {
         return outFile.toString();
     }
 
+    public static void setRepeats(int repeats) {
+        SLTestRunner.repeats = repeats;
+    }
+
+    private static final List<NodeFactory<? extends SLBuiltinNode>> builtins = new ArrayList<>();
+
+    public static void installBuiltin(NodeFactory<? extends SLBuiltinNode> builtin) {
+        builtins.add(builtin);
+    }
+
     @Override
     protected void runChild(TestCase testCase, RunNotifier notifier) {
         notifier.fireTestStarted(testCase.name);
@@ -154,12 +166,15 @@ public final class SLTestRunner extends ParentRunner<TestCase> {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         PrintStream printer = new PrintStream(out);
         try {
-            SLContext context = new SLContext(new BufferedReader(new StringReader(repeat(testCase.testInput, REPEATS))), printer);
+            SLContext context = new SLContext(new BufferedReader(new StringReader(repeat(testCase.testInput, repeats))), printer);
+            for (NodeFactory<? extends SLBuiltinNode> builtin : builtins) {
+                context.installBuiltin(builtin);
+            }
             final Source source = Source.fromText(readAllLines(testCase.path), testCase.sourceName);
-            SLMain.run(context, source, null, REPEATS);
+            SLMain.run(context, source, null, repeats);
 
             String actualOutput = new String(out.toByteArray());
-            Assert.assertEquals(repeat(testCase.expectedOutput, REPEATS), actualOutput);
+            Assert.assertEquals(repeat(testCase.expectedOutput, repeats), actualOutput);
         } catch (Throwable ex) {
             notifier.fireTestFailure(new Failure(testCase.name, ex));
         } finally {
