@@ -41,6 +41,9 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.DeclaredCodeTy
 public class ElementUtils {
 
     public static TypeMirror getType(ProcessingEnvironment processingEnv, Class<?> element) {
+        if (element.isArray()) {
+            return processingEnv.getTypeUtils().getArrayType(getType(processingEnv, element.getComponentType()));
+        }
         if (element.isPrimitive()) {
             if (element == void.class) {
                 return processingEnv.getTypeUtils().getNoType(TypeKind.VOID);
