@@ -22,15 +22,74 @@
  */
 package com.oracle.truffle.sl;
 
+import java.util.*;
+
+import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.source.*;
+import com.oracle.truffle.sl.nodes.*;
+
 /**
  * SL does not need a sophisticated error checking and reporting mechanism, so all unexpected
  * conditions just abort execution. This exception class is used when we abort from within the SL
  * implementation.
  */
 public class SLException extends RuntimeException {
+
     private static final long serialVersionUID = -6799734410727348507L;
 
     public SLException(String message) {
         super(message);
+        initCause(new Throwable("Java stack trace"));
+    }
+
+    @Override
+    public synchronized Throwable fillInStackTrace() {
+        return fillInSLStackTrace(this);
+    }
+
+    /**
+     * Uses the Truffle API to iterate the stack frames and to create and set Java
+     * {@link StackTraceElement} elements based on the source sections of the call nodes on the
+     * stack.
+     */
+    static Throwable fillInSLStackTrace(Throwable t) {
+        final List<StackTraceElement> stackTrace = new ArrayList<>();
+        Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Void>() {
+            public Void visitFrame(FrameInstance frame) {
+                Node callNode = frame.getCallNode();
+                if (callNode == null) {
+                    return null;
+                }
+                RootNode root = callNode.getRootNode();
+
+                /*
+                 * There should be no RootNodes other than SLRootNodes on the stack. Just for the
+                 * case if this would change.
+                 */
+                String methodName = "$unknownFunction";
+                if (root instanceof SLRootNode) {
+                    methodName = ((SLRootNode) root).getName();
+                }
+
+                SourceSection sourceSection = callNode.getEncapsulatingSourceSection();
+                Source source = sourceSection != null ? sourceSection.getSource() : null;
+                String sourceName = source != null ? source.getName() : null;
+                int lineNumber;
+                try {
+                    lineNumber = sourceSection != null ? sourceSection.getLineLocation().getLineNumber() : -1;
+                } catch (UnsupportedOperationException e) {
+                    /*
+                     * SourceSection#getLineLocation() may throw an UnsupportedOperationException.
+                     */
+                    lineNumber = -1;
+                }
+                stackTrace.add(new StackTraceElement("SL", methodName, sourceName, lineNumber));
+                return null;
+            }
+        });
+        t.setStackTrace(stackTrace.toArray(new StackTraceElement[stackTrace.size()]));
+        return t;
     }
 }
