@@ -38,6 +38,8 @@ import javax.tools.Diagnostic.Kind;
 
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.truffle.dsl.processor.java.*;
+import com.oracle.truffle.dsl.processor.java.compiler.*;
+import com.oracle.truffle.dsl.processor.java.compiler.Compiler;
 import com.oracle.truffle.dsl.processor.java.model.*;
 
 /**
@@ -162,9 +164,10 @@ public class GraphNodeGenerator {
     }
 
     private void scanFields(TypeElement node) {
+        Compiler compiler = CompilerFactory.getCompiler(node);
         TypeElement currentClazz = node;
         do {
-            for (VariableElement field : ElementFilter.fieldsIn(currentClazz.getEnclosedElements())) {
+            for (VariableElement field : ElementFilter.fieldsIn(compiler.getEnclosedElementsInDeclarationOrder(currentClazz))) {
                 Set<Modifier> modifiers = field.getModifiers();
                 if (modifiers.contains(STATIC) || modifiers.contains(TRANSIENT)) {
                     continue;
