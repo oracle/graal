@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,26 +20,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle;
+package com.oracle.graal.truffle.test.builtins;
 
-import java.util.concurrent.*;
+import com.oracle.graal.truffle.*;
+import com.oracle.truffle.api.CompilerDirectives.SlowPath;
+import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.sl.runtime.*;
 
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.truffle.api.*;
+/**
+ * Checks whether or not a function is optimized by the Graal runtime.
+ */
+@NodeInfo(shortName = "isOptimized")
+public abstract class SLIsOptimizedBuiltin extends SLGraalRuntimeBuiltin {
 
-public interface GraalTruffleRuntime extends TruffleRuntime {
-
-    Replacements getReplacements();
-
-    void compile(OptimizedCallTarget optimizedCallTarget, boolean mayBeAsynchronous);
-
-    boolean cancelInstalledTask(OptimizedCallTarget optimizedCallTarget);
-
-    void waitForCompilation(OptimizedCallTarget optimizedCallTarget, long timeout) throws ExecutionException, TimeoutException;
-
-    boolean isCompiling(OptimizedCallTarget optimizedCallTarget);
-
-    void invalidateInstalledCode(OptimizedCallTarget optimizedCallTarget);
-
-    void reinstallStubs();
+    @Specialization
+    @SlowPath
+    public boolean isOptimized(SLFunction function) {
+        OptimizedCallTarget target = (OptimizedCallTarget) function.getCallTarget();
+        for (OptimizedCallTarget foundTarget : findDuplicateCallTargets(target)) {
+            if (foundTarget.isValid()) {
+                return true;
+            }
+        }
+        return false;
+    }
 }
