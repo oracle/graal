@@ -278,7 +278,7 @@ public final class NodeClass extends FieldIntrospection {
         if (USE_GENERATED_NODES && !isAbstract(clazz.getModifiers()) && !isLeafNode) {
             String name = clazz.getName().replace('$', '_') + "Gen$FieldOrder";
             try {
-                return (PositionFieldOrder) Class.forName(name).newInstance();
+                return (PositionFieldOrder) Class.forName(name, true, getClazz().getClassLoader()).newInstance();
             } catch (Exception e) {
                 throw new GraalInternalError("Could not find generated class " + name + " for " + getClazz());
             }
