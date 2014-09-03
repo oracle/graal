@@ -2842,11 +2842,6 @@ public abstract class SPARCAssembler extends Assembler {
 
         public Fmovd(Register src, Register dst) {
             super(Ops.ArithOp, Op3s.Fpop1, Opfs.Fmovd, g0, src, dst);
-            // Except for argument register it is not allowed to use f registers for double values
-            // assert !(src == f0 || src == f2 || src == f4 || src == f6) ||
-// isDoubleFloatRegister(src);
-            // When we move return value to d0 we may use f0 for it
-            // assert f0 != dst || isDoubleFloatRegister(dst);
         }
     }
 

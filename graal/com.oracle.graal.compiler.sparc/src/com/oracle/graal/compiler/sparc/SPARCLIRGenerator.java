@@ -704,7 +704,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
         Value actualB = b;
         switch (a.getKind().getStackKind()) {
             case Int:
-                op = IUDIV;
+                op = LUDIV;
                 actualA = emitZeroExtend(actualA, 32, 64);
                 actualB = emitZeroExtend(actualB, 32, 64);
                 break;
@@ -828,9 +828,6 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     @Override
     public Value emitFloatConvert(FloatConvert op, Value inputVal) {
         AllocatableValue input = asAllocatable(inputVal);
-        Kind fromRegisterKind = null;
-        Kind toRegisterKind = null;
-        SPARCArithmetic conversionInstruction = null;
         switch (op) {
             case D2F:
                 return emitConvert2Op(LIRKind.derive(inputVal).changeType(Kind.Float), D2F, input);
