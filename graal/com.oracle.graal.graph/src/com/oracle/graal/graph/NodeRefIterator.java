@@ -36,7 +36,9 @@ import com.oracle.graal.graph.Node.Successor;
  */
 public class NodeRefIterator implements NodePosIterator {
 
-    public static final NodeRefIterator Empty = new NodeRefIterator(0, 0, false);
+    public static final NodeRefIterator Empty = new NodeRefIterator(null, 0, 0, false);
+
+    protected final Node node;
 
     /**
      * The total number of {@link Node} and {@link NodeList} fields.
@@ -52,7 +54,7 @@ public class NodeRefIterator implements NodePosIterator {
      * Specifies if this iterator iterates over {@linkplain Input inputs} or {@linkplain Successor
      * successors}.
      */
-    private final boolean isInputs;
+    protected final boolean isInputs;
 
     /**
      * Current field iteration index.
@@ -65,6 +67,8 @@ public class NodeRefIterator implements NodePosIterator {
      */
     protected int subIndex;
 
+    protected NodeList<? extends Node> list;
+
     /**
      * Creates an iterator over a node's references (i.e., {@linkplain Input inputs} or
      * {@linkplain Successor successors}) to other nodes. The {@link Node} fields are iterated
@@ -76,7 +80,8 @@ public class NodeRefIterator implements NodePosIterator {
      * @param nodeListFields the number of {@link NodeList} fields in the class hierarchy of the
      *            node being iterated
      */
-    protected NodeRefIterator(int nodeFields, int nodeListFields, boolean isInputs) {
+    protected NodeRefIterator(Node node, int nodeFields, int nodeListFields, boolean isInputs) {
+        this.node = node;
         this.allNodeRefFields = nodeListFields + nodeFields;
         this.nodeFields = nodeFields;
         this.isInputs = isInputs;
@@ -91,7 +96,7 @@ public class NodeRefIterator implements NodePosIterator {
      *            be between 0 and the {@code nodeFields} value this iterator was constructed with
      */
     protected Node getNode(int at) {
-        throw new NoSuchElementException();
+        return isInputs ? node.getInputNodeAt(at) : node.getSuccessorNodeAt(at);
     }
 
     /**
@@ -102,15 +107,14 @@ public class NodeRefIterator implements NodePosIterator {
      *            constructed with
      */
     protected NodeList<? extends Node> getNodeList(int at) {
-        throw new NoSuchElementException();
+        return isInputs ? node.getInputNodeListAt(at) : node.getSuccessorNodeListAt(at);
     }
 
     protected void forward() {
         if (index < nodeFields) {
             index++;
             while (index < nodeFields) {
-                Node element = getNode(index);
-                if (element != null) {
+                if (getNode(index) != null) {
                     return;
                 }
                 index++;
@@ -119,7 +123,10 @@ public class NodeRefIterator implements NodePosIterator {
             subIndex++;
         }
         while (index < allNodeRefFields) {
-            NodeList<? extends Node> list = getNodeList(index - nodeFields);
+            if (subIndex == 0) {
+                list = getNodeList(index - nodeFields);
+            }
+            assert list == getNodeList(index - nodeFields);
             while (subIndex < list.size()) {
                 if (list.get(subIndex) != null) {
                     return;
@@ -136,7 +143,7 @@ public class NodeRefIterator implements NodePosIterator {
         if (index < nodeFields) {
             return getNode(index);
         } else if (index < allNodeRefFields) {
-            NodeList<? extends Node> list = getNodeList(index - nodeFields);
+            assert getNodeList(index - nodeFields) == list;
             return list.get(subIndex);
         }
         throw new NoSuchElementException();

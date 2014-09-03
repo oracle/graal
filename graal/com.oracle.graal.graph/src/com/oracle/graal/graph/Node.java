@@ -189,6 +189,8 @@ public abstract class Node implements Cloneable, Formattable {
         return graph;
     }
 
+    private static final boolean USE_GENERATED_NODE_ITERATORS = Boolean.getBoolean("graal.useGeneratedNodeIterators");
+
     /**
      * Returns an {@link NodeClassIterable iterable} which can be used to traverse all non-null
      * input edges of this node.
@@ -197,6 +199,9 @@ public abstract class Node implements Cloneable, Formattable {
      */
     public NodeClassIterable inputs() {
         if (USE_GENERATED_NODES) {
+            if (!USE_GENERATED_NODE_ITERATORS) {
+                return new NodeRefIterable(this, true);
+            }
             return inputsV2();
         }
         return getNodeClass().getInputIterable(this);
@@ -210,6 +215,9 @@ public abstract class Node implements Cloneable, Formattable {
      */
     public NodeClassIterable successors() {
         if (USE_GENERATED_NODES) {
+            if (!USE_GENERATED_NODE_ITERATORS) {
+                return new NodeRefIterable(this, false);
+            }
             return successorsV2();
         }
         return getNodeClass().getSuccessorIterable(this);
@@ -1034,6 +1042,24 @@ public abstract class Node implements Cloneable, Formattable {
         return NodeClassIterable.Empty;
     }
 
+    /**
+     * Determines if this node's inputs contain a given node.
+     *
+     * @param other
+     */
+    public boolean inputsContains(Node other) {
+        return false;
+    }
+
+    /**
+     * Determines if this node's successors contain a given node.
+     *
+     * @param other
+     */
+    public boolean successorsContains(Node other) {
+        return false;
+    }
+
     public NodeClassIterable successorsV2() {
         return NodeClassIterable.Empty;
     }
@@ -1052,6 +1078,68 @@ public abstract class Node implements Cloneable, Formattable {
      * @param pos
      */
     public Node getNodeAt(Position pos) {
+        throw new NoSuchElementException();
+    }
+
+    /**
+     * Gets the number of {@link Node} and {@link NodeList} fields in this node that are
+     * {@link Input}s or {@link OptionalInput}s.
+     *
+     * @return {@code L << 16 | N} where {@code N} is the number of {@link Node} fields and
+     *         {@code L} is the number of {@link NodeList} fields
+     */
+    public int getInputsCount() {
+        return 0;
+    }
+
+    /**
+     * Gets the number of {@link Node} and {@link NodeList} fields in this node that are
+     * {@link Successor}s.
+     *
+     * @return {@code L << 16 | N} where {@code N} is the number of {@link Node} fields and
+     *         {@code L} is the number of {@link NodeList} fields
+     */
+    public int getSuccessorsCount() {
+        return 0;
+    }
+
+    /**
+     * Gets an input of this node at a given index.
+     *
+     * @param index index of an input {@link Node} field. This value must be in the range of the
+     *            number of {@link Node} fields returned by {@link #getInputsCount()}.
+     */
+    public Node getInputNodeAt(int index) {
+        throw new NoSuchElementException();
+    }
+
+    /**
+     * Gets a successor of this node at a given index.
+     *
+     * @param index index of a successor {@link Node} field. This value must be in the range of the
+     *            number of {@link Node} fields returned by {@link #getSuccessorsCount()}.
+     */
+    public Node getSuccessorNodeAt(int index) {
+        throw new NoSuchElementException();
+    }
+
+    /**
+     * Gets an input list at a given index.
+     *
+     * @param index index of an input {@link NodeList} field. This value must be in the range of the
+     *            number of {@link NodeList} fields returned by {@link #getInputsCount()}.
+     */
+    public NodeList<? extends Node> getInputNodeListAt(int index) {
+        throw new NoSuchElementException();
+    }
+
+    /**
+     * Gets a successor list at a given index.
+     *
+     * @param index index of a successor {@link NodeList} field. This value must be in the range of
+     *            the number of {@link NodeList} fields returned by {@link #getSuccessorsCount()}.
+     */
+    public NodeList<? extends Node> getSuccessorNodeListAt(int index) {
         throw new NoSuchElementException();
     }
 
