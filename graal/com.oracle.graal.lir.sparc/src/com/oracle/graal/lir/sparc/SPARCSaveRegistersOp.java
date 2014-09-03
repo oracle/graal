@@ -39,7 +39,7 @@ import com.oracle.graal.sparc.*;
  */
 @Opcode("SAVE_REGISTER")
 public class SPARCSaveRegistersOp extends SPARCLIRInstruction implements SaveRegistersOp {
-
+    public static Register RETURN_REGISTER_STORAGE = SPARC.d62;
     /**
      * The registers (potentially) saved by this operation.
      */
@@ -80,7 +80,7 @@ public class SPARCSaveRegistersOp extends SPARCLIRInstruction implements SaveReg
                 saveRegister(crb, masm, slots[i], savedRegisters[i]);
             }
         }
-        new Movxtod(SPARC.i0, SPARC.f31).emit(masm);
+        new Movxtod(SPARC.i0, RETURN_REGISTER_STORAGE).emit(masm);
     }
 
     public StackSlot[] getSlots() {
