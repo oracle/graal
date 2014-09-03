@@ -104,11 +104,10 @@ public class FixedNodeProbabilityCache implements ToDoubleFunction<FixedNode> {
             if (current instanceof MergeNode) {
                 MergeNode currentMerge = (MergeNode) current;
                 NodeInputList<AbstractEndNode> currentForwardEnds = currentMerge.forwardEnds();
+                // Using simple iteration instead of lambda as the lambda blows up the stack
                 for (AbstractEndNode endNode : currentForwardEnds) {
                     probability += applyAsDouble(endNode);
                 }
-                // probability = ((MergeNode)
-// current).forwardEnds().stream().mapToDouble(this::applyAsDouble).sum();
                 if (current instanceof LoopBeginNode) {
                     probability *= ((LoopBeginNode) current).loopFrequency();
                 }
