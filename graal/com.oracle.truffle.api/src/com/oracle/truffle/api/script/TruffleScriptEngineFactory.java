@@ -38,7 +38,7 @@ public abstract class TruffleScriptEngineFactory implements ScriptEngineFactory 
      *
      * @param engine a just-created engine
      */
-    protected void engineCreated(ScriptEngine engine) {
+    protected final void engineCreated(ScriptEngine engine) {
     }
 
 }
