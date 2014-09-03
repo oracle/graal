@@ -38,6 +38,8 @@ import javax.tools.Diagnostic.Kind;
 
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.truffle.dsl.processor.java.*;
+import com.oracle.truffle.dsl.processor.java.compiler.*;
+import com.oracle.truffle.dsl.processor.java.compiler.Compiler;
 import com.oracle.truffle.dsl.processor.java.model.*;
 
 /**
@@ -119,12 +121,16 @@ public class GraphNodeGenerator {
         return typeElement;
     }
 
+    public TypeElement getTypeElement(Class<?> cls) {
+        return getTypeElement(cls.getName());
+    }
+
     public TypeMirror getType(String name) {
         return getTypeElement(name).asType();
     }
 
-    public TypeMirror getType(Class<?> primitiveClass) {
-        return ElementUtils.getType(getProcessingEnv(), primitiveClass);
+    public TypeMirror getType(Class<?> cls) {
+        return ElementUtils.getType(getProcessingEnv(), cls);
     }
 
     public ProcessingEnvironment getProcessingEnv() {
@@ -158,9 +164,10 @@ public class GraphNodeGenerator {
     }
 
     private void scanFields(TypeElement node) {
+        Compiler compiler = CompilerFactory.getCompiler(node);
         TypeElement currentClazz = node;
         do {
-            for (VariableElement field : ElementFilter.fieldsIn(currentClazz.getEnclosedElements())) {
+            for (VariableElement field : ElementFilter.fieldsIn(compiler.getEnclosedElementsInDeclarationOrder(currentClazz))) {
                 Set<Modifier> modifiers = field.getModifiers();
                 if (modifiers.contains(STATIC) || modifiers.contains(TRANSIENT)) {
                     continue;
@@ -278,15 +285,15 @@ public class GraphNodeGenerator {
         Successors;
     }
 
-    CodeCompilationUnit process(TypeElement node) {
+    CodeCompilationUnit process(TypeElement node, boolean constructorsOnly) {
         try {
-            return process0(node);
+            return process0(node, constructorsOnly);
         } finally {
             reset();
         }
     }
 
-    private CodeCompilationUnit process0(TypeElement node) {
+    private CodeCompilationUnit process0(TypeElement node, boolean constructorsOnly) {
 
         CodeCompilationUnit compilationUnit = new CodeCompilationUnit();
 
@@ -308,55 +315,57 @@ public class GraphNodeGenerator {
             genClass.add(subConstructor);
         }
 
-        DeclaredType generatedNode = (DeclaredType) getType(GeneratedNode.class);
-        CodeAnnotationMirror generatedNodeMirror = new CodeAnnotationMirror(generatedNode);
-        generatedNodeMirror.setElementValue(generatedNodeMirror.findExecutableElement("value"), new CodeAnnotationValue(node.asType()));
-        genClass.getAnnotationMirrors().add(generatedNodeMirror);
+        if (!constructorsOnly) {
+            DeclaredType generatedNode = (DeclaredType) getType(GeneratedNode.class);
+            CodeAnnotationMirror generatedNodeMirror = new CodeAnnotationMirror(generatedNode);
+            generatedNodeMirror.setElementValue(generatedNodeMirror.findExecutableElement("value"), new CodeAnnotationValue(node.asType()));
+            genClass.getAnnotationMirrors().add(generatedNodeMirror);
 
-        scanFields(node);
+            scanFields(node);
 
-        boolean hasInputs = !inputFields.isEmpty() || !inputListFields.isEmpty();
-        boolean hasSuccessors = !successorFields.isEmpty() || !successorListFields.isEmpty();
+            boolean hasInputs = !inputFields.isEmpty() || !inputListFields.isEmpty();
+            boolean hasSuccessors = !successorFields.isEmpty() || !successorListFields.isEmpty();
 
-        if (hasInputs || hasSuccessors) {
-            createGetNodeAtMethod();
-            createGetInputTypeAtMethod();
-            createGetNameOfMethod();
-            createUpdateOrInitializeNodeAtMethod(false);
-            createUpdateOrInitializeNodeAtMethod(true);
-            createIsLeafNodeMethod(genClass);
+            if (hasInputs || hasSuccessors) {
+                createGetNodeAtMethod();
+                createGetInputTypeAtMethod();
+                createGetNameOfMethod();
+                createUpdateOrInitializeNodeAtMethod(false);
+                createUpdateOrInitializeNodeAtMethod(true);
+                createIsLeafNodeMethod();
+                createPositionAccessibleFieldOrderClass(packageElement);
 
-            if (!inputListFields.isEmpty() || !successorListFields.isEmpty()) {
-                createGetNodeListAtMethod();
-                createSetNodeListAtMethod();
+                if (!inputListFields.isEmpty() || !successorListFields.isEmpty()) {
+                    createGetNodeListAtMethod();
+                    createSetNodeListAtMethod();
+                }
+            }
+
+            if (hasInputs) {
+                createIsOptionalInputAtMethod();
+                createGetFirstLevelPositionsMethod(Inputs, inputFields, inputListFields);
+
+                createContainsMethod(Inputs, inputFields, inputListFields);
+                createIterableMethod(Inputs);
+
+                CodeTypeElement inputsIteratorClass = createIteratorClass(Inputs, packageElement, inputFields, inputListFields);
+                createAllIteratorClass(Inputs, inputsIteratorClass.asType(), packageElement, inputFields, inputListFields);
+                createWithModCountIteratorClass(Inputs, inputsIteratorClass.asType(), packageElement);
+                createIterableClass(Inputs, packageElement);
+            }
+
+            if (hasSuccessors) {
+                createGetFirstLevelPositionsMethod(Successors, successorFields, successorListFields);
+
+                createContainsMethod(Successors, successorFields, successorListFields);
+                createIterableMethod(Successors);
+
+                CodeTypeElement successorsIteratorClass = createIteratorClass(Successors, packageElement, successorFields, successorListFields);
+                createAllIteratorClass(Successors, successorsIteratorClass.asType(), packageElement, successorFields, successorListFields);
+                createWithModCountIteratorClass(Successors, successorsIteratorClass.asType(), packageElement);
+                createIterableClass(Successors, packageElement);
             }
         }
-
-        if (hasInputs) {
-            createIsOptionalInputAtMethod();
-            createGetFirstLevelPositionsMethod(Inputs, inputFields, inputListFields);
-
-            createContainsMethod(Inputs, inputFields, inputListFields);
-            createIterableMethod(Inputs);
-
-            CodeTypeElement inputsIteratorClass = createIteratorClass(Inputs, packageElement, inputFields, inputListFields);
-            createAllIteratorClass(Inputs, inputsIteratorClass.asType(), packageElement, inputFields, inputListFields);
-            createWithModCountIteratorClass(Inputs, inputsIteratorClass.asType(), packageElement);
-            createIterableClass(Inputs, packageElement);
-        }
-
-        if (hasSuccessors) {
-            createGetFirstLevelPositionsMethod(Successors, successorFields, successorListFields);
-
-            createContainsMethod(Successors, successorFields, successorListFields);
-            createIterableMethod(Successors);
-
-            CodeTypeElement successorsIteratorClass = createIteratorClass(Successors, packageElement, successorFields, successorListFields);
-            createAllIteratorClass(Successors, successorsIteratorClass.asType(), packageElement, successorFields, successorListFields);
-            createWithModCountIteratorClass(Successors, successorsIteratorClass.asType(), packageElement);
-            createIterableClass(Successors, packageElement);
-        }
-
         compilationUnit.add(genClass);
         return compilationUnit;
     }
@@ -430,10 +439,10 @@ public class GraphNodeGenerator {
         }
     }
 
-    private void createIsLeafNodeMethod(CodeTypeElement cls) {
+    private void createIsLeafNodeMethod() {
         CodeExecutableElement method = new CodeExecutableElement(modifiers(PUBLIC), getType(boolean.class), "isLeafNode");
         method.createBuilder().startReturn().string("false").end();
-        cls.add(method);
+        genClass.add(method);
         checkOnlyInGenNode(method);
     }
 
@@ -608,6 +617,29 @@ public class GraphNodeGenerator {
         b.end();
     }
 
+    private void createPositionAccessibleFieldOrderClass(PackageElement packageElement) {
+        CodeTypeElement cls = new CodeTypeElement(modifiers(PUBLIC, STATIC), ElementKind.CLASS, packageElement, "FieldOrder");
+        cls.getImplements().add(getType("com.oracle.graal.graph.NodeClass.PositionFieldOrder"));
+
+        CodeExecutableElement method = new CodeExecutableElement(modifiers(PUBLIC), getType(String[].class), "getOrderedFieldNames");
+
+        method.addParameter(new CodeVariableElement(getType(boolean.class), "input"));
+
+        CodeTreeBuilder b = method.createBuilder();
+        b.startIf().string("input").end().startBlock();
+        String initializer = concat(inputFields, inputListFields).stream().map(v -> v.getSimpleName().toString()).collect(Collectors.joining("\", \"", "\"", "\""));
+        b.startStatement().string("return new String[] {", initializer, "}").end();
+        b.end();
+        b.startElseBlock();
+        initializer = concat(successorFields, successorListFields).stream().map(v -> v.getSimpleName().toString()).collect(Collectors.joining("\", \"", "\"", "\""));
+        b.startStatement().string("return new String[] {", initializer, "}").end();
+        b.end();
+        cls.add(method);
+
+        genClass.add(cls);
+
+    }
+
     private void createAllIteratorClass(NodeRefsType nodeRefsType, TypeMirror inputsIteratorType, PackageElement packageElement, List<VariableElement> nodeFields, List<VariableElement> nodeListFields) {
 
         String name = "All" + nodeRefsType + "Iterator";
@@ -696,7 +728,7 @@ public class GraphNodeGenerator {
 
         String name = nodeRefsType + "Iterable";
         CodeTypeElement cls = new CodeTypeElement(modifiers(PRIVATE), ElementKind.CLASS, packageElement, name);
-        cls.getImplements().add(getType("com.oracle.graal.graph.NodeRefIterable"));
+        cls.getImplements().add(getType("com.oracle.graal.graph.NodeClassIterable"));
 
         // iterator() method
         CodeExecutableElement method = new CodeExecutableElement(modifiers(PUBLIC, FINAL), getType("com.oracle.graal.graph.NodeRefIterator"), "iterator");
@@ -710,7 +742,7 @@ public class GraphNodeGenerator {
         cls.add(method);
 
         // withNullIterator() method
-        method = new CodeExecutableElement(modifiers(PUBLIC, FINAL), getType("com.oracle.graal.graph.NodeRefIterator"), "withNullIterator");
+        method = new CodeExecutableElement(modifiers(PUBLIC, FINAL), getType("com.oracle.graal.graph.NodePosIterator"), "withNullIterator");
         b = method.createBuilder();
         b.startStatement().string("return new All" + nodeRefsType + "Iterator()").end();
         cls.add(method);
@@ -746,7 +778,7 @@ public class GraphNodeGenerator {
     private static final String API_TAG = "V2";
 
     private void createIterableMethod(NodeRefsType nodeRefsType) {
-        CodeExecutableElement method = new CodeExecutableElement(modifiers(PUBLIC, FINAL), getType("com.oracle.graal.graph.NodeRefIterable"), (nodeRefsType == Inputs ? "inputs" : "successors") +
+        CodeExecutableElement method = new CodeExecutableElement(modifiers(PUBLIC, FINAL), getType("com.oracle.graal.graph.NodeClassIterable"), (nodeRefsType == Inputs ? "inputs" : "successors") +
                         API_TAG);
         CodeTreeBuilder b = method.createBuilder();
         b.startStatement().string("return new " + nodeRefsType + "Iterable()").end();
@@ -783,7 +815,7 @@ public class GraphNodeGenerator {
     }
 
     private void createSetNodeListAtMethod() {
-        CodeExecutableElement method = new CodeExecutableElement(modifiers(PUBLIC, FINAL), getType(void.class), "SetNodeListAt");
+        CodeExecutableElement method = new CodeExecutableElement(modifiers(PUBLIC, FINAL), getType(void.class), "setNodeListAt");
 
         DeclaredType suppress = (DeclaredType) getType(SuppressWarnings.class);
         CodeAnnotationMirror suppressMirror = new CodeAnnotationMirror(suppress);

@@ -34,7 +34,6 @@ import com.oracle.graal.compiler.alloc.Interval.UsePosList;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.graph.NodeClass.NodeClassIterator;
 import com.oracle.graal.java.*;
 import com.oracle.graal.java.BciBlockMapping.BciBlock;
 import com.oracle.graal.lir.*;
@@ -367,7 +366,7 @@ class CFGPrinter extends CompilationPrinter {
         out.print(COLUMN_END).print(' ').println(COLUMN_END);
     }
 
-    private void printNamedNodes(Node node, NodeClassIterator iter, String prefix, String suffix, String hideSuffix) {
+    private void printNamedNodes(Node node, NodePosIterator iter, String prefix, String suffix, String hideSuffix) {
         int lastIndex = -1;
         while (iter.hasNext()) {
             Position pos = iter.nextPosition();

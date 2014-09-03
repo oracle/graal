@@ -29,7 +29,6 @@ import java.util.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.Node.ValueNumberable;
-import com.oracle.graal.graph.NodeClass.NodeClassIterator;
 import com.oracle.graal.graph.iterators.*;
 
 /**
@@ -278,7 +277,7 @@ public class Graph {
     }
 
     public <T extends Node> T addOrUniqueWithInputs(T node) {
-        NodeClassIterator iterator = node.inputs().iterator();
+        NodePosIterator iterator = node.inputs().iterator();
         while (iterator.hasNext()) {
             Position pos = iterator.nextPosition();
             Node input = pos.get(node);

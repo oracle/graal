@@ -28,7 +28,6 @@ import java.lang.annotation.*;
 import java.util.*;
 
 import com.oracle.graal.graph.Graph.NodeEventListener;
-import com.oracle.graal.graph.NodeClass.NodeClassIterator;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
@@ -197,6 +196,9 @@ public abstract class Node implements Cloneable, Formattable {
      * @return an {@link NodeClassIterable iterable} for all non-null input edges.
      */
     public NodeClassIterable inputs() {
+        if (USE_GENERATED_NODES) {
+            return inputsV2();
+        }
         return getNodeClass().getInputIterable(this);
     }
 
@@ -207,6 +209,9 @@ public abstract class Node implements Cloneable, Formattable {
      * @return an {@link NodeClassIterable iterable} for all non-null successor edges.
      */
     public NodeClassIterable successors() {
+        if (USE_GENERATED_NODES) {
+            return successorsV2();
+        }
         return getNodeClass().getSuccessorIterable(this);
     }
 
@@ -610,7 +615,7 @@ public abstract class Node implements Cloneable, Formattable {
     public void replaceAtUsages(InputType type, Node other) {
         assert checkReplaceWith(other);
         for (Node usage : usages().snapshot()) {
-            NodeClassIterator iter = usage.inputs().iterator();
+            NodePosIterator iter = usage.inputs().iterator();
             while (iter.hasNext()) {
                 Position pos = iter.nextPosition();
                 if (pos.getInputType(usage) == type && pos.get(usage) == this) {
@@ -822,7 +827,7 @@ public abstract class Node implements Cloneable, Formattable {
             for (Node usage : usages()) {
                 assertFalse(usage.isDeleted(), "usage %s must never be deleted", usage);
                 assertTrue(usage.inputs().contains(this), "missing input in usage %s", usage);
-                NodeClassIterator iterator = usage.inputs().iterator();
+                NodePosIterator iterator = usage.inputs().iterator();
                 while (iterator.hasNext()) {
                     Position pos = iterator.nextPosition();
                     if (pos.get(usage) == this && pos.getInputType(usage) != InputType.Unchecked) {
@@ -832,7 +837,7 @@ public abstract class Node implements Cloneable, Formattable {
                 }
             }
         }
-        NodeClassIterator iterator = inputs().withNullIterator();
+        NodePosIterator iterator = inputs().withNullIterator();
         while (iterator.hasNext()) {
             Position pos = iterator.nextPosition();
             assert pos.isInputOptional(this) || pos.get(this) != null : "non-optional input " + pos.getInputName(this) + " cannot be null in " + this + " (fix nullness or use @OptionalInput)";
@@ -980,7 +985,7 @@ public abstract class Node implements Cloneable, Formattable {
                 formatter.format("}");
             }
 
-            NodeClassIterator inputIter = inputs().iterator();
+            NodePosIterator inputIter = inputs().iterator();
             while (inputIter.hasNext()) {
                 Position position = inputIter.nextPosition();
                 Node input = nodeClass.get(this, position);
@@ -1008,7 +1013,7 @@ public abstract class Node implements Cloneable, Formattable {
                 formatter.format("}");
             }
 
-            NodeClassIterator succIter = successors().iterator();
+            NodePosIterator succIter = successors().iterator();
             while (succIter.hasNext()) {
                 Position position = succIter.nextPosition();
                 Node successor = nodeClass.get(this, position);
@@ -1025,8 +1030,12 @@ public abstract class Node implements Cloneable, Formattable {
 
     // NEW API IMPLEMENTED BY GENERATED METHODS - NOT YET USED
 
-    public NodeRefIterable inputsV2() {
-        return NodeRefIterable.Empty;
+    public NodeClassIterable inputsV2() {
+        return NodeClassIterable.Empty;
+    }
+
+    public NodeClassIterable successorsV2() {
+        return NodeClassIterable.Empty;
     }
 
     public Collection<Position> getFirstLevelInputs() {
@@ -1035,6 +1044,57 @@ public abstract class Node implements Cloneable, Formattable {
 
     public Collection<Position> getFirstLevelSuccessors() {
         return Collections.emptyList();
+    }
+
+    /**
+     * Gets an input or successor of this node at a given position.
+     *
+     * @param pos
+     */
+    public Node getNodeAt(Position pos) {
+        throw new NoSuchElementException();
+    }
+
+    /**
+     * Gets an input or successor list at a given position.
+     *
+     * @param position
+     */
+    public NodeList<? extends Node> getNodeListAt(Position position) {
+        throw new NoSuchElementException();
+    }
+
+    /**
+     * Sets an input or successor list at a given position.
+     *
+     * @param position
+     * @param list
+     */
+    public void setNodeListAt(Position position, NodeList<? extends Node> list) {
+        throw new NoSuchElementException();
+    }
+
+    /**
+     * Updates an input or successor of this node at a given position. The existing, non-null input
+     * or successor at {@code position} is notified of the change via
+     * {@link #updateUsages(Node, Node)} or {@link #updatePredecessor(Node, Node)}.
+     *
+     * @param position
+     * @param value
+     */
+    public void updateNodeAt(Position position, Node value) {
+        throw new NoSuchElementException();
+    }
+
+    /**
+     * Sets an input or successor of this node at a given position without notifying the existing
+     * input or successor at {@code position} of the change.
+     *
+     * @param position
+     * @param value
+     */
+    public void initializeNodeAt(Position position, Node value) {
+        throw new NoSuchElementException();
     }
 
     /**

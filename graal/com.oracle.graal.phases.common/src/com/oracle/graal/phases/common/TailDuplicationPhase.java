@@ -33,7 +33,6 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.Graph.DuplicationReplacement;
 import com.oracle.graal.graph.Graph.Mark;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.graph.NodeClass.NodeClassIterator;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.VirtualState.NodeClosure;
@@ -497,7 +496,7 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
             Node newOutsideClone = null;
             for (Node usage : unique) {
                 if (!duplicatedNodes.contains(usage)) {
-                    NodeClassIterator iter = usage.inputs().iterator();
+                    NodePosIterator iter = usage.inputs().iterator();
                     while (iter.hasNext()) {
                         Position pos = iter.nextPosition();
                         if (pos.get(usage) == duplicated) {
@@ -545,7 +544,7 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
 
         private void processInputs(Node duplicated, HashSet<Node> duplicatedNodes, Deque<Node> worklist) {
             // check if this node has an input that lies outside and cannot be shared
-            NodeClassIterator iter = duplicated.inputs().iterator();
+            NodePosIterator iter = duplicated.inputs().iterator();
             while (iter.hasNext()) {
                 Position pos = iter.nextPosition();
                 Node input = pos.get(duplicated);

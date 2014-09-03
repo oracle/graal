@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,35 +20,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.graph;
+package com.oracle.graal.truffle.test.builtins;
 
-import com.oracle.graal.graph.iterators.*;
+import com.oracle.graal.truffle.*;
+import com.oracle.truffle.api.CompilerDirectives.SlowPath;
+import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.sl.runtime.*;
 
 /**
- * The iterator returned by this iterable can be used to access {@link Position Positions} during
- * iteration using {@link NodePosIterator#nextPosition()}.
+ * Checks whether or not a function is optimized by the Graal runtime.
  */
-public interface NodeClassIterable extends NodeIterable<Node> {
+@NodeInfo(shortName = "isOptimized")
+public abstract class SLIsOptimizedBuiltin extends SLGraalRuntimeBuiltin {
 
-    /**
-     * Returns an iterator that produces all non-null values.
-     */
-    @Override
-    NodePosIterator iterator();
-
-    /**
-     * Returns an iterator that produces all values, including null values.
-     */
-    NodePosIterator withNullIterator();
-
-    NodeClassIterable Empty = new NodeClassIterable() {
-
-        public NodeRefIterator withNullIterator() {
-            return NodeRefIterator.Empty;
+    @Specialization
+    @SlowPath
+    public boolean isOptimized(SLFunction function) {
+        OptimizedCallTarget target = (OptimizedCallTarget) function.getCallTarget();
+        for (OptimizedCallTarget foundTarget : findDuplicateCallTargets(target)) {
+            if (foundTarget.isValid()) {
+                return true;
+            }
         }
-
-        public NodeRefIterator iterator() {
-            return NodeRefIterator.Empty;
-        }
-    };
+        return false;
+    }
 }

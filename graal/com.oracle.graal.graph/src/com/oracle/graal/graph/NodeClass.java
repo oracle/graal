@@ -133,6 +133,39 @@ public final class NodeClass extends FieldIntrospection {
         this(clazz, new DefaultCalcOffset(), null, 0);
     }
 
+    /**
+     * Defines the order of fields in a node class that accessed via {@link Position}s.
+     */
+    public interface PositionFieldOrder {
+        /**
+         * Gets a field ordering specified by an ordered field name list. The only guarantee
+         * provided by this method is that all {@link NodeList} fields are preceded by all non
+         * {@link NodeList} fields.
+         *
+         * @param input specified whether input or successor field order is being requested
+         */
+        String[] getOrderedFieldNames(boolean input);
+    }
+
+    private static long[] sortedOffsets(boolean input, PositionFieldOrder pfo, Map<Long, String> names, ArrayList<Long> list1, ArrayList<Long> list2) {
+        if (list1.isEmpty() && list2.isEmpty()) {
+            return new long[0];
+        }
+        if (pfo != null) {
+            List<String> fields = Arrays.asList(pfo.getOrderedFieldNames(input));
+            long[] offsets = new long[fields.size()];
+            assert list1.size() + list2.size() == fields.size();
+            for (Map.Entry<Long, String> e : names.entrySet()) {
+                int index = fields.indexOf(e.getValue());
+                if (index != -1) {
+                    offsets[index] = e.getKey();
+                }
+            }
+            return offsets;
+        }
+        return sortedLongCopy(list1, list2);
+    }
+
     public NodeClass(Class<?> clazz, CalcOffset calcOffset, int[] presetIterableIds, int presetIterableId) {
         super(clazz);
         assert NODE_CLASS.isAssignableFrom(clazz);
@@ -148,7 +181,13 @@ public final class NodeClass extends FieldIntrospection {
         scanner.scan(clazz);
 
         directInputCount = scanner.inputOffsets.size();
-        inputOffsets = sortedLongCopy(scanner.inputOffsets, scanner.inputListOffsets);
+
+        isLeafNode = scanner.inputOffsets.isEmpty() && scanner.inputListOffsets.isEmpty() && scanner.successorOffsets.isEmpty() && scanner.successorListOffsets.isEmpty();
+
+        PositionFieldOrder pfo = lookupPositionFieldOrder(clazz);
+
+        inputOffsets = sortedOffsets(true, pfo, scanner.fieldNames, scanner.inputOffsets, scanner.inputListOffsets);
+
         inputTypes = new InputType[inputOffsets.length];
         inputOptional = new boolean[inputOffsets.length];
         for (int i = 0; i < inputOffsets.length; i++) {
@@ -157,7 +196,7 @@ public final class NodeClass extends FieldIntrospection {
             inputOptional[i] = scanner.optionalInputs.contains(inputOffsets[i]);
         }
         directSuccessorCount = scanner.successorOffsets.size();
-        successorOffsets = sortedLongCopy(scanner.successorOffsets, scanner.successorListOffsets);
+        successorOffsets = sortedOffsets(false, pfo, scanner.fieldNames, scanner.successorOffsets, scanner.successorListOffsets);
 
         dataOffsets = sortedLongCopy(scanner.dataOffsets);
         dataTypes = new Class[dataOffsets.length];
@@ -232,8 +271,19 @@ public final class NodeClass extends FieldIntrospection {
             this.iterableId = Node.NOT_ITERABLE;
             this.iterableIds = null;
         }
-        isLeafNode = (this.inputOffsets.length == 0 && this.successorOffsets.length == 0);
         nodeIterableCount = Debug.metric("NodeIterable_%s", shortName);
+    }
+
+    private PositionFieldOrder lookupPositionFieldOrder(Class<?> clazz) throws GraalInternalError {
+        if (USE_GENERATED_NODES && !isAbstract(clazz.getModifiers()) && !isLeafNode) {
+            String name = clazz.getName().replace('$', '_') + "Gen$FieldOrder";
+            try {
+                return (PositionFieldOrder) Class.forName(name, true, getClazz().getClassLoader()).newInstance();
+            } catch (Exception e) {
+                throw new GraalInternalError("Could not find generated class " + name + " for " + getClazz());
+            }
+        }
+        return null;
     }
 
     /**
@@ -345,7 +395,6 @@ public final class NodeClass extends FieldIntrospection {
         public final ArrayList<Long> successorOffsets = new ArrayList<>();
         public final ArrayList<Long> successorListOffsets = new ArrayList<>();
         public final HashMap<Long, InputType> types = new HashMap<>();
-        public final HashMap<Long, String> names = new HashMap<>();
         public final HashSet<Long> optionalInputs = new HashSet<>();
 
         protected FieldScanner(CalcOffset calc) {
@@ -373,7 +422,6 @@ public final class NodeClass extends FieldIntrospection {
                 } else {
                     types.put(offset, field.getAnnotation(Node.OptionalInput.class).value());
                 }
-                names.put(offset, field.getName());
                 if (field.isAnnotationPresent(Node.OptionalInput.class)) {
                     optionalInputs.add(offset);
                 }
@@ -389,7 +437,6 @@ public final class NodeClass extends FieldIntrospection {
                     GraalInternalError.guarantee(!Modifier.isFinal(field.getModifiers()), "Node successor field %s should not be final", field);
                     successorOffsets.add(offset);
                 }
-                names.put(offset, field.getName());
             } else {
                 GraalInternalError.guarantee(!NODE_CLASS.isAssignableFrom(type) || field.getName().equals("Null"), "suspicious node field: %s", field);
                 GraalInternalError.guarantee(!INPUT_LIST_CLASS.isAssignableFrom(type), "suspicious node input list field: %s", field);
@@ -445,7 +492,7 @@ public final class NodeClass extends FieldIntrospection {
      * An iterator of this type will not return null values, unless the field values are modified
      * concurrently. Concurrent modifications are detected by an assertion on a best-effort basis.
      */
-    public abstract static class NodeClassIterator implements Iterator<Node> {
+    public abstract static class NodeClassIterator implements NodePosIterator {
         protected final Node node;
         protected int index;
         protected int subIndex;
@@ -912,6 +959,9 @@ public final class NodeClass extends FieldIntrospection {
     }
 
     public Node get(Node node, Position pos) {
+        if (Node.USE_GENERATED_NODES) {
+            return node.getNodeAt(pos);
+        }
         long offset = pos.isInput() ? inputOffsets[pos.getIndex()] : successorOffsets[pos.getIndex()];
         if (pos.getSubIndex() == NOT_ITERABLE) {
             return getNode(node, offset);
@@ -931,6 +981,9 @@ public final class NodeClass extends FieldIntrospection {
     }
 
     public NodeList<?> getNodeList(Node node, Position pos) {
+        if (Node.USE_GENERATED_NODES) {
+            return node.getNodeListAt(pos);
+        }
         long offset = pos.isInput() ? inputOffsets[pos.getIndex()] : successorOffsets[pos.getIndex()];
         assert pos.getSubIndex() == Node.NODE_LIST;
         return getNodeList(node, offset);
@@ -1090,6 +1143,11 @@ public final class NodeClass extends FieldIntrospection {
     }
 
     public void set(Node node, Position pos, Node x) {
+        if (Node.USE_GENERATED_NODES) {
+            node.updateNodeAt(pos, x);
+            return;
+        }
+
         long offset = pos.isInput() ? inputOffsets[pos.getIndex()] : successorOffsets[pos.getIndex()];
         if (pos.getSubIndex() == NOT_ITERABLE) {
             Node old = getNode(node, offset);
@@ -1114,6 +1172,10 @@ public final class NodeClass extends FieldIntrospection {
     }
 
     public void initializePosition(Node node, Position pos, Node x) {
+        if (Node.USE_GENERATED_NODES) {
+            node.initializeNodeAt(pos, x);
+            return;
+        }
         long offset = pos.isInput() ? inputOffsets[pos.getIndex()] : successorOffsets[pos.getIndex()];
         if (pos.getSubIndex() == NOT_ITERABLE) {
             assert x == null || fieldTypes.get((pos.isInput() ? inputOffsets : successorOffsets)[pos.getIndex()]).isAssignableFrom(x.getClass()) : this + ".set(node, pos, " + x + ")";
@@ -1586,7 +1648,7 @@ public final class NodeClass extends FieldIntrospection {
 
     private static void transferValuesDifferentNodeClass(final Graph graph, final DuplicationReplacement replacements, final Map<Node, Node> newNodes, Node oldNode, Node node, NodeClass oldNodeClass,
                     NodeClass nodeClass) {
-        for (NodeClassIterator iter = oldNode.inputs().iterator(); iter.hasNext();) {
+        for (NodePosIterator iter = oldNode.inputs().iterator(); iter.hasNext();) {
             Position pos = iter.nextPosition();
             if (!nodeClass.isValid(pos, oldNodeClass)) {
                 continue;
@@ -1608,7 +1670,7 @@ public final class NodeClass extends FieldIntrospection {
             nodeClass.set(node, pos, target);
         }
 
-        for (NodeClassIterator iter = oldNode.successors().iterator(); iter.hasNext();) {
+        for (NodePosIterator iter = oldNode.successors().iterator(); iter.hasNext();) {
             Position pos = iter.nextPosition();
             if (!nodeClass.isValid(pos, oldNodeClass)) {
                 continue;

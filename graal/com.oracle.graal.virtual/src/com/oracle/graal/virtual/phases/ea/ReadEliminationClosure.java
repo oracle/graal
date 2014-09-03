@@ -81,41 +81,39 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                     state.addCacheEntry(identifier, value);
                 }
             }
-        } else if (node instanceof FixedAccessNode) {
-            if (node instanceof ReadNode) {
-                ReadNode read = (ReadNode) node;
-                if (read.location() instanceof ConstantLocationNode) {
-                    ValueNode object = GraphUtil.unproxify(read.object());
-                    ReadCacheEntry identifier = new ReadCacheEntry(object, read.location());
-                    ValueNode cachedValue = state.getCacheEntry(identifier);
-                    if (cachedValue != null) {
-                        if (read.getGuard() != null && !(read.getGuard() instanceof FixedNode)) {
-                            effects.addFixedNodeBefore(ValueAnchorNode.create((ValueNode) read.getGuard()), read);
-                        }
-                        effects.replaceAtUsages(read, cachedValue);
-                        addScalarAlias(read, cachedValue);
-                        deleted = true;
-                    } else {
-                        state.addCacheEntry(identifier, read);
+        } else if (node instanceof ReadNode) {
+            ReadNode read = (ReadNode) node;
+            if (read.location() instanceof ConstantLocationNode) {
+                ValueNode object = GraphUtil.unproxify(read.object());
+                ReadCacheEntry identifier = new ReadCacheEntry(object, read.location());
+                ValueNode cachedValue = state.getCacheEntry(identifier);
+                if (cachedValue != null) {
+                    if (read.getGuard() != null && !(read.getGuard() instanceof FixedNode)) {
+                        effects.addFixedNodeBefore(ValueAnchorNode.create((ValueNode) read.getGuard()), read);
                     }
-                }
-            } else if (node instanceof WriteNode) {
-                WriteNode write = (WriteNode) node;
-                if (write.location() instanceof ConstantLocationNode) {
-                    ValueNode object = GraphUtil.unproxify(write.object());
-                    ReadCacheEntry identifier = new ReadCacheEntry(object, write.location());
-                    ValueNode cachedValue = state.getCacheEntry(identifier);
-
-                    ValueNode value = getScalarAlias(write.value());
-                    if (GraphUtil.unproxify(value) == GraphUtil.unproxify(cachedValue)) {
-                        effects.deleteFixedNode(write);
-                        deleted = true;
-                    }
-                    processIdentity(state, write.location().getLocationIdentity());
-                    state.addCacheEntry(identifier, value);
+                    effects.replaceAtUsages(read, cachedValue);
+                    addScalarAlias(read, cachedValue);
+                    deleted = true;
                 } else {
-                    processIdentity(state, write.location().getLocationIdentity());
+                    state.addCacheEntry(identifier, read);
                 }
+            }
+        } else if (node instanceof WriteNode) {
+            WriteNode write = (WriteNode) node;
+            if (write.location() instanceof ConstantLocationNode) {
+                ValueNode object = GraphUtil.unproxify(write.object());
+                ReadCacheEntry identifier = new ReadCacheEntry(object, write.location());
+                ValueNode cachedValue = state.getCacheEntry(identifier);
+
+                ValueNode value = getScalarAlias(write.value());
+                if (GraphUtil.unproxify(value) == GraphUtil.unproxify(cachedValue)) {
+                    effects.deleteFixedNode(write);
+                    deleted = true;
+                }
+                processIdentity(state, write.location().getLocationIdentity());
+                state.addCacheEntry(identifier, value);
+            } else {
+                processIdentity(state, write.location().getLocationIdentity());
             }
         } else if (node instanceof UnsafeAccessNode) {
             if (node instanceof UnsafeLoadNode) {

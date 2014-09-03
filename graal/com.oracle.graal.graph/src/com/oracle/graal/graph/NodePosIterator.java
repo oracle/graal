@@ -22,32 +22,11 @@
  */
 package com.oracle.graal.graph;
 
-import com.oracle.graal.graph.iterators.*;
+import java.util.*;
 
 /**
- * The iterator returned by this iterable can be used to access {@link Position Positions} during
- * iteration using {@link NodeRefIterator#nextPosition()}.
+ * Describes an edge slot for a {@link NodeClass}.
  */
-public interface NodeRefIterable extends NodeIterable<Node> {
-    /**
-     * Returns an iterator that produces all non-null values.
-     */
-    @Override
-    NodeRefIterator iterator();
-
-    /**
-     * Returns an iterator that produces all values, including null values.
-     */
-    NodeRefIterator withNullIterator();
-
-    NodeRefIterable Empty = new NodeRefIterable() {
-
-        public NodeRefIterator withNullIterator() {
-            return NodeRefIterator.Empty;
-        }
-
-        public NodeRefIterator iterator() {
-            return NodeRefIterator.Empty;
-        }
-    };
+public interface NodePosIterator extends Iterator<Node> {
+    Position nextPosition();
 }

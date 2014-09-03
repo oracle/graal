@@ -26,7 +26,7 @@ import static com.oracle.graal.graph.util.CollectionsAccess.*;
 
 import java.util.*;
 
-import com.oracle.graal.graph.NodeClass.NodeClassIterator;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 
 public final class ReentrantNodeIterator {
@@ -110,7 +110,7 @@ public final class ReentrantNodeIterator {
                 state = closure.processNode(current, state);
 
                 if (closure.continueIteration(state)) {
-                    NodeClassIterator successors = current.successors().iterator();
+                    NodePosIterator successors = current.successors().iterator();
                     if (!successors.hasNext()) {
                         if (current instanceof LoopEndNode) {
                             blockEndStates.put(current, state);
