@@ -834,52 +834,46 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
         switch (op) {
             case D2F:
                 return emitConvert2Op(LIRKind.derive(inputVal).changeType(Kind.Float), D2F, input);
-            case D2I:
-                fromRegisterKind = Kind.Double;
-                toRegisterKind = Kind.Int;
-                conversionInstruction = D2I;
-                break;
-            case F2L:
-                Variable v = newVariable(LIRKind.derive(inputVal).changeType(Kind.Double));
-                emitMove(v, input);
-                input = v;
-            case D2L:
-                fromRegisterKind = Kind.Double;
-                toRegisterKind = Kind.Long;
-                conversionInstruction = D2L;
-                break;
             case F2D:
                 return emitConvert2Op(LIRKind.derive(inputVal).changeType(Kind.Double), F2D, input);
-            case F2I:
-                fromRegisterKind = Kind.Float;
-                toRegisterKind = Kind.Int;
-                conversionInstruction = F2I;
-                break;
-            case I2D:
-            // Implemented in two steps, as this consists of sign extension and then move the
-            // bits over to the double register and then convert to double, in fact this does
-            // not generate any overhead in generated code
-            {
-                AllocatableValue tmp = emitConvert2Op(LIRKind.derive(inputVal).changeType(Kind.Long), I2L, input);
-                return emitConvert2Op(LIRKind.derive(inputVal).changeType(Kind.Double), L2D, tmp);
-            }
             case I2F:
                 return emitConvert2Op(LIRKind.derive(inputVal).changeType(Kind.Float), I2F, input);
             case L2D:
                 return emitConvert2Op(LIRKind.derive(inputVal).changeType(Kind.Double), L2D, input);
+            case D2I: {
+                AllocatableValue convertedFloatReg = emitConvert2Op(LIRKind.derive(input).changeType(Kind.Float), D2I, input);
+                AllocatableValue convertedIntReg = newVariable(LIRKind.derive(convertedFloatReg).changeType(Kind.Int));
+                emitMove(convertedIntReg, convertedFloatReg);
+                return convertedIntReg;
+            }
+            case F2L: {
+                AllocatableValue convertedDoubleReg = emitConvert2Op(LIRKind.derive(input).changeType(Kind.Double), F2L, input);
+                AllocatableValue convertedLongReg = newVariable(LIRKind.derive(convertedDoubleReg).changeType(Kind.Long));
+                emitMove(convertedLongReg, convertedDoubleReg);
+                return convertedLongReg;
+            }
+            case F2I: {
+                AllocatableValue convertedFloatReg = emitConvert2Op(LIRKind.derive(input).changeType(Kind.Float), F2I, input);
+                AllocatableValue convertedIntReg = newVariable(LIRKind.derive(convertedFloatReg).changeType(Kind.Int));
+                emitMove(convertedIntReg, convertedFloatReg);
+                return convertedIntReg;
+            }
+            case D2L: {
+                AllocatableValue convertedDoubleReg = emitConvert2Op(LIRKind.derive(input).changeType(Kind.Double), D2L, input);
+                AllocatableValue convertedLongReg = newVariable(LIRKind.derive(convertedDoubleReg).changeType(Kind.Long));
+                emitMove(convertedLongReg, convertedDoubleReg);
+                return convertedLongReg;
+            }
+            case I2D: {
+                AllocatableValue tmp = emitConvert2Op(LIRKind.derive(inputVal).changeType(Kind.Long), I2L, input);
+                return emitConvert2Op(LIRKind.derive(inputVal).changeType(Kind.Double), L2D, tmp);
+            }
             case L2F: {
                 AllocatableValue tmp = emitConvert2Op(LIRKind.derive(inputVal).changeType(Kind.Double), L2D, input);
                 return emitConvert2Op(LIRKind.derive(inputVal).changeType(Kind.Float), D2F, tmp);
             }
             default:
                 throw GraalInternalError.shouldNotReachHere();
-        }
-        if (fromRegisterKind != null) {
-            AllocatableValue var = newVariable(LIRKind.derive(inputVal).changeType(toRegisterKind));
-            emitMove(var, emitConvert2Op(LIRKind.derive(inputVal).changeType(fromRegisterKind), conversionInstruction, input));
-            return var;
-        } else {
-            throw GraalInternalError.shouldNotReachHere();
         }
     }
 

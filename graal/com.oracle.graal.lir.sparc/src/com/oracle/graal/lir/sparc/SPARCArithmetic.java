@@ -68,7 +68,7 @@ public enum SPARCArithmetic {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-            emit(crb, masm, opcode, result, x, null);
+            emitUnary(crb, masm, opcode, result, x, null);
         }
     }
 
@@ -86,7 +86,7 @@ public enum SPARCArithmetic {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-            emit(crb, masm, opcode, result, x, null);
+            emitUnary(crb, masm, opcode, result, x, null);
         }
     }
 
@@ -689,7 +689,7 @@ public enum SPARCArithmetic {
         }
     }
 
-    public static void emit(CompilationResultBuilder crb, SPARCAssembler masm, SPARCArithmetic opcode, Value dst, Value src, LIRFrameState info) {
+    public static void emitUnary(CompilationResultBuilder crb, SPARCAssembler masm, SPARCArithmetic opcode, Value dst, Value src, LIRFrameState info) {
         int exceptionOffset = -1;
         Label notOrdered = new Label();
         if (isRegister(src)) {
@@ -756,15 +756,14 @@ public enum SPARCArithmetic {
                     break;
                 case F2L:
                     new Fcmp(CC.Fcc0, Opfs.Fcmps, asFloatReg(src), asFloatReg(src)).emit(masm);
-                    new Fbo(false, notOrdered).emit(masm);
-                    new Fstox(asFloatReg(src), asFloatReg(dst)).emit(masm);
-                    new Fitos(asFloatReg(dst), asFloatReg(dst)).emit(masm);
-                    new Fsubs(asFloatReg(dst), asFloatReg(dst), asFloatReg(dst)).emit(masm);
+                    new Fbo(true, notOrdered).emit(masm);
+                    new Fstox(asFloatReg(src), asDoubleReg(dst)).emit(masm);
+                    new Fsubd(asDoubleReg(dst), asDoubleReg(dst), asDoubleReg(dst)).emit(masm);
                     masm.bind(notOrdered);
                     break;
                 case F2I:
                     new Fcmp(CC.Fcc0, Opfs.Fcmps, asFloatReg(src), asFloatReg(src)).emit(masm);
-                    new Fbo(false, notOrdered).emit(masm);
+                    new Fbo(true, notOrdered).emit(masm);
                     new Fstoi(asFloatReg(src), asFloatReg(dst)).emit(masm);
                     new Fitos(asFloatReg(dst), asFloatReg(dst)).emit(masm);
                     new Fsubs(asFloatReg(dst), asFloatReg(dst), asFloatReg(dst)).emit(masm);
@@ -792,10 +791,10 @@ public enum SPARCArithmetic {
                     break;
                 case D2I:
                     new Fcmp(CC.Fcc0, Opfs.Fcmpd, asDoubleReg(src), asDoubleReg(src)).emit(masm);
-                    new Fbo(false, notOrdered).emit(masm);
-                    new Fdtoi(asDoubleReg(src), asDoubleReg(dst)).emit(masm);
-                    new Fitod(asDoubleReg(dst), asDoubleReg(dst)).emit(masm);
-                    new Fsubd(asDoubleReg(dst), asDoubleReg(dst), asDoubleReg(dst)).emit(masm);
+                    new Fbo(true, notOrdered).emit(masm);
+                    new Fdtoi(asDoubleReg(src), asFloatReg(dst)).emit(masm);
+                    new Fsubs(asFloatReg(dst), asFloatReg(dst), asFloatReg(dst)).emit(masm);
+                    new Fstoi(asFloatReg(dst), asFloatReg(dst)).emit(masm);
                     masm.bind(notOrdered);
                     break;
                 case FNEG:
