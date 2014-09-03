@@ -145,4 +145,19 @@ public class LineLocationToProbeCollectionMap implements ProbeListener {
 
         return probes;
     }
+
+    public void forget(Source source) {
+        final Set<LineLocation> mappedLines = lineToProbesMap.keySet();
+        if (mappedLines.size() > 0) {
+            List<LineLocation> forgetLines = new ArrayList<>();
+            for (LineLocation line : mappedLines) {
+                if (line.getSource().equals(source)) {
+                    forgetLines.add(line);
+                }
+            }
+            for (LineLocation line : forgetLines) {
+                lineToProbesMap.remove(line);
+            }
+        }
+    }
 }
