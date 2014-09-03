@@ -135,8 +135,8 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
     }
 
     @Override
-    public List<RootCallTarget> getCallTargets() {
-        return new ArrayList<>(callTargets.keySet());
+    public Collection<RootCallTarget> getCallTargets() {
+        return Collections.unmodifiableSet(callTargets.keySet());
     }
 
     @Override

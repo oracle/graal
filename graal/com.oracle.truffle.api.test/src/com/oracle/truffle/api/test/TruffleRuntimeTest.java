@@ -86,7 +86,7 @@ public class TruffleRuntimeTest {
     public void testGetCallTargets1() {
         RootNode rootNode = createTestRootNode();
         RootCallTarget target = runtime.createCallTarget(rootNode);
-        assertTrue(runtime.getCallTargets().indexOf(target) != -1);
+        assertTrue(runtime.getCallTargets().contains(target));
     }
 
     @Test
@@ -94,8 +94,8 @@ public class TruffleRuntimeTest {
         RootNode rootNode = createTestRootNode();
         RootCallTarget target1 = runtime.createCallTarget(rootNode);
         RootCallTarget target2 = runtime.createCallTarget(rootNode);
-        assertTrue(runtime.getCallTargets().indexOf(target1) != -1);
-        assertTrue(runtime.getCallTargets().indexOf(target2) != -1);
+        assertTrue(runtime.getCallTargets().contains(target1));
+        assertTrue(runtime.getCallTargets().contains(target2));
     }
 
     /*

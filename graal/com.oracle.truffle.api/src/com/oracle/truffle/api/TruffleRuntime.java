@@ -142,7 +142,7 @@ public interface TruffleRuntime {
      * Returns a list of all still referenced {@link RootCallTarget} instances that were created
      * using {@link #createCallTarget(RootNode)}.
      */
-    List<RootCallTarget> getCallTargets();
+    Collection<RootCallTarget> getCallTargets();
 
     /**
      * Internal API method. Do not use.
