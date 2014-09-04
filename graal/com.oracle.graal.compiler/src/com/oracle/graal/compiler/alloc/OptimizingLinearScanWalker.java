@@ -74,34 +74,39 @@ public class OptimizingLinearScanWalker extends LinearScanWalker {
     void walk() {
         try (Scope s = Debug.scope("OptimizingLinearScanWalker")) {
             for (AbstractBlock<?> block : allocator.sortedBlocks) {
-                if (block.getPredecessorCount() == 1) {
-                    int nextBlock = allocator.getFirstLirInstructionId(block);
-                    try (Scope s1 = Debug.scope("LSRAOptimization")) {
-                        Debug.log("next block: %s (%d)", block, nextBlock);
-                    }
-                    try (Indent indent0 = Debug.indent()) {
-                        walkTo(nextBlock);
+                optimizeBlock(block);
+            }
+        }
+        super.walk();
+    }
 
-                        try (Scope s1 = Debug.scope("LSRAOptimization")) {
-                            boolean changed = true;
-                            // we need to do this because the active lists might change
-                            loop: while (changed) {
-                                changed = false;
-                                try (Indent indent1 = Debug.logAndIndent("Active intervals: (block %s [%d])", block, nextBlock)) {
-                                    for (Interval active = activeLists.get(RegisterBinding.Any); active != Interval.EndMarker; active = active.next) {
-                                        Debug.log("active   (any): %s", active);
-                                        if (optimize(nextBlock, block, active, RegisterBinding.Any)) {
-                                            changed = true;
-                                            break loop;
-                                        }
-                                    }
-                                    for (Interval active = activeLists.get(RegisterBinding.Stack); active != Interval.EndMarker; active = active.next) {
-                                        Debug.log("active (stack): %s", active);
-                                        if (optimize(nextBlock, block, active, RegisterBinding.Stack)) {
-                                            changed = true;
-                                            break loop;
-                                        }
-                                    }
+    private void optimizeBlock(AbstractBlock<?> block) {
+        if (block.getPredecessorCount() == 1) {
+            int nextBlock = allocator.getFirstLirInstructionId(block);
+            try (Scope s1 = Debug.scope("LSRAOptimization")) {
+                Debug.log("next block: %s (%d)", block, nextBlock);
+            }
+            try (Indent indent0 = Debug.indent()) {
+                walkTo(nextBlock);
+
+                try (Scope s1 = Debug.scope("LSRAOptimization")) {
+                    boolean changed = true;
+                    // we need to do this because the active lists might change
+                    loop: while (changed) {
+                        changed = false;
+                        try (Indent indent1 = Debug.logAndIndent("Active intervals: (block %s [%d])", block, nextBlock)) {
+                            for (Interval active = activeLists.get(RegisterBinding.Any); active != Interval.EndMarker; active = active.next) {
+                                Debug.log("active   (any): %s", active);
+                                if (optimize(nextBlock, block, active, RegisterBinding.Any)) {
+                                    changed = true;
+                                    break loop;
+                                }
+                            }
+                            for (Interval active = activeLists.get(RegisterBinding.Stack); active != Interval.EndMarker; active = active.next) {
+                                Debug.log("active (stack): %s", active);
+                                if (optimize(nextBlock, block, active, RegisterBinding.Stack)) {
+                                    changed = true;
+                                    break loop;
                                 }
                             }
                         }
@@ -109,7 +114,6 @@ public class OptimizingLinearScanWalker extends LinearScanWalker {
                 }
             }
         }
-        super.walk();
     }
 
     private boolean optimize(int currentPos, AbstractBlock<?> currentBlock, Interval currentInterval, RegisterBinding binding) {
