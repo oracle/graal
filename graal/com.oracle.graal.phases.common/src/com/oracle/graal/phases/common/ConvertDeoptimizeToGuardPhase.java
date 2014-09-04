@@ -147,11 +147,11 @@ public class ConvertDeoptimizeToGuardPhase extends Phase {
                     }
                 }
             }
-            survivingSuccessor.simplify(simplifierTool);
             Debug.log("Converting deopt on %-5s branch of %s to guard for remaining branch %s.", deoptBegin == ifNode.trueSuccessor() ? "true" : "false", ifNode, otherBegin);
             FixedNode next = pred.next();
             pred.setNext(guard);
             guard.setNext(next);
+            survivingSuccessor.simplify(simplifierTool);
             return;
         }
 
