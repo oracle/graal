@@ -340,7 +340,17 @@ public final class NodeClass extends FieldIntrospection {
     }
 
     /**
-     * Determines if a given {@link Node} class is described by the {@link NodeClass} object.
+     * Determines if a given {@link Node} class is described by this {@link NodeClass} object. This
+     * is useful for doing an exact type test (as opposed to an instanceof test) on a node. For
+     * example:
+     *
+     * <pre>
+     *     if (node.getNodeClass().is(BeginNode.class)) { ... }
+     *
+     *     // Due to generated Node classes, the test below
+     *     // is *not* the same as the test above:
+     *     if (node.getClass() == BeginNode.class) { ... }
+     * </pre>
      *
      * @param nodeClass a {@linkplain GeneratedNode non-generated} {@link Node} class
      */
