@@ -26,6 +26,7 @@ import static org.junit.Assert.*;
 
 import org.junit.*;
 
+import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 
@@ -47,6 +48,9 @@ public class NodeMapTest {
 
     @Before
     public void before() {
+        // Need to initialize HotSpotGraalRuntime before any Node class is initialized.
+        Graal.getRuntime();
+
         graph = new Graph();
         for (int i = 0; i < nodes.length; i++) {
             nodes[i] = graph.add(TestNode.create());
@@ -97,24 +101,45 @@ public class NodeMapTest {
         }
     }
 
-    @Test(expected = AssertionError.class)
+    @SuppressWarnings("all")
+    private static boolean assertionsEnabled() {
+        boolean assertionsEnabled = false;
+        assert assertionsEnabled = true;
+        return assertionsEnabled;
+    }
+
+    @Test
     public void testNewGet() {
         /*
          * Failing here is not required, but if this behavior changes, usages of get need to be
          * checked for compatibility.
          */
         TestNode newNode = graph.add(TestNode.create());
-        map.get(newNode);
+        try {
+            map.get(newNode);
+            fail("expected " + (assertionsEnabled() ? AssertionError.class.getSimpleName() : ArrayIndexOutOfBoundsException.class.getSimpleName()));
+        } catch (AssertionError ae) {
+            // thrown when assertions are enabled
+        } catch (ArrayIndexOutOfBoundsException e) {
+            // thrown when assertions are disabled
+        }
     }
 
-    @Test(expected = AssertionError.class)
+    @Test
     public void testNewSet() {
         /*
          * Failing here is not required, but if this behavior changes, usages of set need to be
          * checked for compatibility.
          */
         TestNode newNode = graph.add(TestNode.create());
-        map.set(newNode, 1);
+        try {
+            map.set(newNode, 1);
+            fail("expected " + (assertionsEnabled() ? AssertionError.class.getSimpleName() : ArrayIndexOutOfBoundsException.class.getSimpleName()));
+        } catch (AssertionError ae) {
+            // thrown when assertions are enabled
+        } catch (ArrayIndexOutOfBoundsException e) {
+            // thrown when assertions are disabled
+        }
     }
 
     @Test
