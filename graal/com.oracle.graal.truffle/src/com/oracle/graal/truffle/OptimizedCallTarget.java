@@ -206,13 +206,13 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     @Override
     public void invalidate() {
         this.runtime.invalidateInstalledCode(this);
-        invalidateInlining();
     }
 
     protected void invalidate(Node oldNode, Node newNode, CharSequence reason) {
         if (isValid()) {
             CompilerAsserts.neverPartOfCompilation();
             invalidate();
+            invalidateInlining();
             compilationProfile.reportInvalidated();
             logOptimizedInvalidated(this, oldNode, newNode, reason);
         }
