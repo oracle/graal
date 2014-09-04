@@ -524,7 +524,6 @@ public class GraphNodeGenerator {
 
         // Constructor
         CodeExecutableElement ctor = new CodeExecutableElement(Collections.emptySet(), null, name);
-        addParameter(ctor, getType(boolean.class), "callForward");
         CodeTreeBuilder b = ctor.createBuilder();
         b.startStatement().startSuperCall();
         b.string(genClassName, ".this");
@@ -532,9 +531,6 @@ public class GraphNodeGenerator {
         b.string(String.valueOf(nodeListFields.size()));
         b.string(String.valueOf(nodeRefsType == NodeRefsType.Inputs));
         b.end().end();
-        b.startIf().string("callForward").end().startBlock();
-        b.startStatement().string("forward()").end();
-        b.end();
         cls.add(ctor);
 
         // Methods overriding those in NodeRefIterator
@@ -681,23 +677,20 @@ public class GraphNodeGenerator {
         CodeTypeElement cls = new CodeTypeElement(modifiers(PRIVATE, FINAL), ElementKind.CLASS, packageElement, name);
         cls.setSuperClass(inputsIteratorType);
 
-        // Constructor
-        CodeExecutableElement ctor = new CodeExecutableElement(Collections.emptySet(), null, name);
-        CodeTreeBuilder b = ctor.createBuilder();
-        b.startStatement().startSuperCall();
-        b.string("true");
-        b.end().end();
-        cls.add(ctor);
-
         // forward() method
         CodeExecutableElement method = new CodeExecutableElement(modifiers(PROTECTED), getType(void.class), "forward");
-        b = method.createBuilder();
+        CodeTreeBuilder b = method.createBuilder();
         int nodeFieldsSize = nodeFields.size();
         int nodeListFieldsSize = nodeListFields.size();
         String cond = "index < " + nodeFieldsSize;
+        if (GENERATE_ASSERTIONS) {
+            b.startAssert().string("needsForward").end();
+        }
+        b.startStatement().string("needsForward = false").end();
         b.startIf().string(cond).end().startBlock();
         b.startStatement().string("index++").end();
         b.startIf().string(cond).end().startBlock();
+        b.startStatement().string("nextElement = getNode(index)").end();
         b.startStatement().string("return").end();
         b.end();
         b.end();
@@ -710,6 +703,7 @@ public class GraphNodeGenerator {
         b.startStatement().string("list = getNodeList(index - " + nodeFieldsSize + ")").end();
         b.end();
         b.startIf().string("subIndex < list.size()").end().startBlock();
+        b.startStatement().string("nextElement = list.get(subIndex)").end();
         b.startStatement().string("return").end();
         b.end();
         b.startStatement().string("subIndex = 0").end();
@@ -733,12 +727,8 @@ public class GraphNodeGenerator {
         // Constructor
         CodeExecutableElement ctor = new CodeExecutableElement(Collections.emptySet(), null, name);
         CodeTreeBuilder b = ctor.createBuilder();
-        b.startStatement().startSuperCall();
-        b.string("false");
-        b.end().end();
         b.startAssert().staticReference(getType("com.oracle.graal.graph.Graph"), "MODIFICATION_COUNTS_ENABLED").end();
         b.startStatement().string("this.modCount = modCount()").end();
-        b.startStatement().string("forward()").end();
         cls.add(ctor);
 
         // hasNext, next and nextPosition methods
@@ -773,7 +763,7 @@ public class GraphNodeGenerator {
         b.startStatement().string("return new " + nodeRefsType + "WithModCountIterator()").end();
         b.end();
         b.startElseBlock();
-        b.startStatement().string("return new " + nodeRefsType + "Iterator(true)").end();
+        b.startStatement().string("return new " + nodeRefsType + "Iterator()").end();
         b.end();
         cls.add(method);
 

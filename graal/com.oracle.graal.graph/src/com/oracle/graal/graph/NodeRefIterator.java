@@ -67,6 +67,8 @@ public class NodeRefIterator implements NodePosIterator {
      */
     protected int subIndex;
 
+    protected Node nextElement;
+    protected boolean needsForward;
     protected NodeList<? extends Node> list;
 
     /**
@@ -85,7 +87,8 @@ public class NodeRefIterator implements NodePosIterator {
         this.allNodeRefFields = nodeListFields + nodeFields;
         this.nodeFields = nodeFields;
         this.isInputs = isInputs;
-        index = Node.NOT_ITERABLE;
+        this.needsForward = true;
+        index = -1;
         subIndex = 0;
     }
 
@@ -111,10 +114,12 @@ public class NodeRefIterator implements NodePosIterator {
     }
 
     protected void forward() {
+        needsForward = false;
         if (index < nodeFields) {
             index++;
             while (index < nodeFields) {
-                if (getNode(index) != null) {
+                nextElement = getNode(index);
+                if (nextElement != null) {
                     return;
                 }
                 index++;
@@ -128,7 +133,8 @@ public class NodeRefIterator implements NodePosIterator {
             }
             assert list == getNodeList(index - nodeFields);
             while (subIndex < list.size()) {
-                if (list.get(subIndex) != null) {
+                nextElement = list.get(subIndex);
+                if (nextElement != null) {
                     return;
                 }
                 subIndex++;
@@ -140,38 +146,38 @@ public class NodeRefIterator implements NodePosIterator {
     }
 
     private Node nextElement() {
-        if (index < nodeFields) {
-            return getNode(index);
-        } else if (index < allNodeRefFields) {
-            assert getNodeList(index - nodeFields) == list;
-            return list.get(subIndex);
+        if (needsForward) {
+            forward();
+        }
+        needsForward = true;
+        if (index < allNodeRefFields) {
+            return nextElement;
         }
         throw new NoSuchElementException();
     }
 
     @Override
     public boolean hasNext() {
-        return index >= 0 && index < allNodeRefFields;
+        if (needsForward) {
+            forward();
+        }
+        return index < allNodeRefFields;
     }
 
     @Override
     public Node next() {
-        try {
-            return nextElement();
-        } finally {
-            forward();
-        }
+        return nextElement();
     }
 
     public Position nextPosition() {
-        try {
-            if (index < nodeFields) {
-                return new Position(isInputs, index, Node.NOT_ITERABLE);
-            } else {
-                return new Position(isInputs, index, subIndex);
-            }
-        } finally {
+        if (needsForward) {
             forward();
+        }
+        needsForward = true;
+        if (index < nodeFields) {
+            return new Position(isInputs, index, Node.NOT_ITERABLE);
+        } else {
+            return new Position(isInputs, index, subIndex);
         }
     }
 

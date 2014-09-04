@@ -40,7 +40,6 @@ public final class NodeRefWithModCountIterator extends NodeRefIterator {
         super(node, nodeFields, nodeListFields, isInputs);
         assert MODIFICATION_COUNTS_ENABLED;
         this.modCount = node.modCount();
-        forward();
     }
 
     @Override
