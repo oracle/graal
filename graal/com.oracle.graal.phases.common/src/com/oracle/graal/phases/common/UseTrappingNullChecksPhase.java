@@ -172,10 +172,14 @@ public class UseTrappingNullChecksPhase extends BasePhase<LowTierContext> {
          * then remove the Begin from the graph.
          */
         nonTrappingContinuation.replaceAtUsages(InputType.Guard, trappingNullCheck);
-        FixedNode next = nonTrappingContinuation.next();
-        nonTrappingContinuation.clearSuccessors();
-        trappingNullCheck.setNext(next);
-        nonTrappingContinuation.safeDelete();
+        if (nonTrappingContinuation.getNodeClass().is(BeginNode.class)) {
+            FixedNode next = nonTrappingContinuation.next();
+            nonTrappingContinuation.clearSuccessors();
+            trappingNullCheck.setNext(next);
+            nonTrappingContinuation.safeDelete();
+        } else {
+            trappingNullCheck.setNext(nonTrappingContinuation);
+        }
 
         GraphUtil.killCFG(trappingContinuation);
         if (isNullNode.usages().isEmpty()) {
