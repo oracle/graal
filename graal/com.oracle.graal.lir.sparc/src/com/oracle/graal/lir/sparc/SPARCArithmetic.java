@@ -595,10 +595,11 @@ public enum SPARCArithmetic {
                     assert !src2.equals(scratch1);
                     // But src2 can be scratch2
                     assert isSimm13(crb.asIntConst(src2));
+                    new Sra(asIntReg(src1), 0, asIntReg(dst)).emit(masm);
                     exceptionOffset = masm.position();
-                    new Sdivx(asIntReg(src1), crb.asIntConst(src2), asIntReg(scratch1)).emit(masm);
+                    new Sdivx(asIntReg(dst), crb.asIntConst(src2), asIntReg(scratch1)).emit(masm);
                     new Mulx(asIntReg(scratch1), crb.asIntConst(src2), asIntReg(scratch2)).emit(masm);
-                    new Sub(asIntReg(src1), asIntReg(scratch2), asIntReg(dst)).emit(masm);
+                    new Sub(asIntReg(dst), asIntReg(scratch2), asIntReg(dst)).emit(masm);
                     break;
                 case IUREM:
                     GraalInternalError.unimplemented();
@@ -663,10 +664,12 @@ public enum SPARCArithmetic {
                     }
                     assert !asIntReg(srcLeft).equals(asIntReg(scratch1));
                     assert !asIntReg(src2).equals(asIntReg(scratch1));
+                    new Sra(asIntReg(src1), 0, asIntReg(scratch1)).emit(masm);
+                    new Sra(asIntReg(src2), 0, asIntReg(scratch2)).emit(masm);
                     exceptionOffset = masm.position();
-                    new Sdivx(asIntReg(srcLeft), asIntReg(src2), asIntReg(scratch1)).emit(masm);
-                    new Mulx(asIntReg(scratch1), asIntReg(src2), asIntReg(scratch1)).emit(masm);
-                    new Sub(asIntReg(srcLeft), asIntReg(scratch1), asIntReg(dst)).emit(masm);
+                    new Sdivx(asIntReg(scratch1), asIntReg(scratch2), asIntReg(dst)).emit(masm);
+                    new Mulx(asIntReg(dst), asIntReg(scratch2), asIntReg(dst)).emit(masm);
+                    new Sub(asIntReg(scratch1), asIntReg(dst), asIntReg(dst)).emit(masm);
                     break;
                 case IUREM:
                     assert !asIntReg(dst).equals(asIntReg(scratch1));

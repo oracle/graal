@@ -653,10 +653,10 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
         Variable q = null;
         switch (a.getKind().getStackKind()) {
             case Int:
-                append(new RemOp(IREM, result, a, loadNonConst(b), state, this));
+                append(new RemOp(IREM, result, load(a), loadNonConst(b), state, this));
                 break;
             case Long:
-                append(new RemOp(LREM, result, a, loadNonConst(b), state, this));
+                append(new RemOp(LREM, result, load(a), loadNonConst(b), state, this));
                 break;
             case Float:
                 q = newVariable(LIRKind.value(Kind.Float));
