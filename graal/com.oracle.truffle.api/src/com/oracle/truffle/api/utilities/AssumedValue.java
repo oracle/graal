@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,12 +35,19 @@ import com.oracle.truffle.api.nodes.*;
  */
 public class AssumedValue<T> {
 
+    private final String name;
+
     @CompilationFinal private T value;
-    private final CyclicAssumption assumption;
+    @CompilationFinal private Assumption assumption;
+
+    public AssumedValue(T initialValue) {
+        this(null, initialValue);
+    }
 
     public AssumedValue(String name, T initialValue) {
-        assumption = new CyclicAssumption(name);
+        this.name = name;
         value = initialValue;
+        assumption = Truffle.getRuntime().createAssumption(name);
     }
 
     /**
@@ -49,9 +56,9 @@ public class AssumedValue<T> {
      */
     public T get() {
         try {
-            assumption.getAssumption().check();
+            assumption.check();
         } catch (InvalidAssumptionException e) {
-            // No need to rewrite anything - just pick up the new value
+            // No need to rewrite anything - just pick up the new values
         }
 
         return value;
@@ -61,8 +68,12 @@ public class AssumedValue<T> {
      * Set a new value, which will be picked up the next time {@link #get} is called.
      */
     public void set(T newValue) {
+        CompilerDirectives.transferToInterpreter();
+
         value = newValue;
-        assumption.invalidate();
+        final Assumption oldAssumption = assumption;
+        assumption = Truffle.getRuntime().createAssumption(name);
+        oldAssumption.invalidate();
     }
 
 }
