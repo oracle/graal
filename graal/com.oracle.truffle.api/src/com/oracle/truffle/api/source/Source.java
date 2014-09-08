@@ -158,6 +158,37 @@ public abstract class Source {
     }
 
     /**
+     * Creates a source from raw bytes. This can be used if the encoding of strings in your language
+     * is not compatible with Java strings, or if your parser returns byte indices instead of
+     * character indices. The returned source is then indexed by byte, not by character.
+     *
+     * @param bytes the raw bytes of the source
+     * @param description a note about the origin, possibly useful for debugging
+     * @param decoder how to decode the bytes into Java strings
+     * @return a newly created, non-indexed source representation
+     */
+    public static Source fromBytes(byte[] bytes, String description, BytesDecoder decoder) {
+        return fromBytes(bytes, 0, bytes.length, description, decoder);
+    }
+
+    /**
+     * Creates a source from raw bytes. This can be used if the encoding of strings in your language
+     * is not compatible with Java strings, or if your parser returns byte indices instead of
+     * character indices. The returned source is then indexed by byte, not by character. Offsets are
+     * relative to byteIndex.
+     *
+     * @param bytes the raw bytes of the source
+     * @param byteIndex where the string starts in the byte array
+     * @param length the length of the string in the byte array
+     * @param description a note about the origin, possibly useful for debugging
+     * @param decoder how to decode the bytes into Java strings
+     * @return a newly created, non-indexed source representation
+     */
+    public static Source fromBytes(byte[] bytes, int byteIndex, int length, String description, BytesDecoder decoder) {
+        return new BytesSource(description, bytes, byteIndex, length, decoder);
+    }
+
+    /**
      * Creates a source from literal text, but which acts as a file and can be retrieved by name
      * (unlike other literal sources); intended for testing.
      *
@@ -245,6 +276,10 @@ public abstract class Source {
      * Return the complete text of the code.
      */
     public abstract String getCode();
+
+    public String getCode(int charIndex, int charLength) {
+        return getCode().substring(charIndex, charIndex + charLength);
+    }
 
     /**
      * Gets the text (not including a possible terminating newline) in a (1-based) numbered line.
@@ -368,15 +403,18 @@ public abstract class Source {
      * @throws IllegalStateException if the source is one of the "null" instances
      */
     public final SourceSection createSection(String identifier, int charIndex, int length) throws IllegalArgumentException {
-        final int codeLength = getCode().length();
-        if (!(charIndex >= 0 && length >= 0 && charIndex + length <= codeLength)) {
-            throw new IllegalArgumentException("text positions out of range");
-        }
+        checkRange(charIndex, length);
         checkTextMap();
         final int startLine = getLineNumber(charIndex);
         final int startColumn = charIndex - getLineStartOffset(startLine) + 1;
 
         return new DefaultSourceSection(this, identifier, startLine, startColumn, charIndex, length);
+    }
+
+    protected void checkRange(int charIndex, int length) {
+        if (!(charIndex >= 0 && length >= 0 && charIndex + length <= getCode().length())) {
+            throw new IllegalArgumentException("text positions out of range");
+        }
     }
 
     /**
@@ -409,13 +447,17 @@ public abstract class Source {
 
     private TextMap checkTextMap() {
         if (textMap == null) {
-            final String code = getCode();
-            if (code == null) {
-                throw new RuntimeException("can't read file " + getName());
-            }
-            textMap = new TextMap(code);
+            textMap = createTextMap();
         }
         return textMap;
+    }
+
+    protected TextMap createTextMap() {
+        final String code = getCode();
+        if (code == null) {
+            throw new RuntimeException("can't read file " + getName());
+        }
+        return TextMap.fromString(code);
     }
 
     private static final class LiteralSource extends Source {
@@ -621,6 +663,74 @@ public abstract class Source {
 
     }
 
+    private static final class BytesSource extends Source {
+
+        private final String name;
+        private final byte[] bytes;
+        private final int byteIndex;
+        private final int length;
+        private final BytesDecoder decoder;
+
+        public BytesSource(String name, byte[] bytes, int byteIndex, int length, BytesDecoder decoder) {
+            this.name = name;
+            this.bytes = bytes;
+            this.byteIndex = byteIndex;
+            this.length = length;
+            this.decoder = decoder;
+        }
+
+        @Override
+        protected void reset() {
+        }
+
+        @Override
+        public String getName() {
+            return name;
+        }
+
+        @Override
+        public String getShortName() {
+            return name;
+        }
+
+        @Override
+        public String getPath() {
+            return name;
+        }
+
+        @Override
+        public URL getURL() {
+            return null;
+        }
+
+        @Override
+        public Reader getReader() {
+            return null;
+        }
+
+        @Override
+        public String getCode() {
+            return decoder.decode(bytes, byteIndex, length);
+        }
+
+        @Override
+        public String getCode(int byteOffset, int codeLength) {
+            return decoder.decode(bytes, byteIndex + byteOffset, codeLength);
+        }
+
+        @Override
+        protected void checkRange(int charIndex, int rangeLength) {
+            if (!(charIndex >= 0 && rangeLength >= 0 && charIndex + rangeLength <= length)) {
+                throw new IllegalArgumentException("text positions out of range");
+            }
+        }
+
+        @Override
+        protected TextMap createTextMap() {
+            return TextMap.fromBytes(bytes, byteIndex, length, decoder);
+        }
+    }
+
     private static final class DefaultSourceSection implements SourceSection {
 
         private final Source source;
@@ -704,7 +814,7 @@ public abstract class Source {
 
         @Override
         public final String getCode() {
-            return getSource().getCode().substring(charIndex, charIndex + charLength);
+            return getSource().getCode(charIndex, charLength);
         }
 
         @Override
@@ -866,12 +976,18 @@ public abstract class Source {
         // Is the final text character a newline?
         final boolean finalNL;
 
+        public TextMap(int[] nlOffsets, int textLength, boolean finalNL) {
+            this.nlOffsets = nlOffsets;
+            this.textLength = textLength;
+            this.finalNL = finalNL;
+        }
+
         /**
          * Constructs map permitting translation between 0-based character offsets and 1-based
          * lines/columns.
          */
-        public TextMap(String text) {
-            this.textLength = text.length();
+        public static TextMap fromString(String text) {
+            final int textLength = text.length();
             final ArrayList<Integer> lines = new ArrayList<>();
             lines.add(0);
             int offset = 0;
@@ -887,12 +1003,37 @@ public abstract class Source {
             }
             lines.add(Integer.MAX_VALUE);
 
-            nlOffsets = new int[lines.size()];
+            final int[] nlOffsets = new int[lines.size()];
             for (int line = 0; line < lines.size(); line++) {
                 nlOffsets[line] = lines.get(line);
             }
 
-            finalNL = textLength > 0 && (textLength == nlOffsets[nlOffsets.length - 2]);
+            final boolean finalNL = textLength > 0 && (textLength == nlOffsets[nlOffsets.length - 2]);
+
+            return new TextMap(nlOffsets, textLength, finalNL);
+        }
+
+        public static TextMap fromBytes(byte[] bytes, int byteIndex, int length, BytesDecoder bytesDecoder) {
+            final ArrayList<Integer> lines = new ArrayList<>();
+            lines.add(0);
+
+            bytesDecoder.decodeLines(bytes, byteIndex, length, new BytesDecoder.LineMarker() {
+
+                public void markLine(int index) {
+                    lines.add(index);
+                }
+            });
+
+            lines.add(Integer.MAX_VALUE);
+
+            final int[] nlOffsets = new int[lines.size()];
+            for (int line = 0; line < lines.size(); line++) {
+                nlOffsets[line] = lines.get(line);
+            }
+
+            final boolean finalNL = length > 0 && (length == nlOffsets[nlOffsets.length - 2]);
+
+            return new TextMap(nlOffsets, length, finalNL);
         }
 
         /**
