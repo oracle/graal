@@ -102,6 +102,8 @@ public class NodeRefIterator implements NodePosIterator {
         // This must be set here to prevent multiple threads racing to
         // call forward() which never needs to be done for Empty.
         this.needsForward = false;
+        // Ensure hasNext() will always return false.
+        this.index = 0;
     }
 
     /**
