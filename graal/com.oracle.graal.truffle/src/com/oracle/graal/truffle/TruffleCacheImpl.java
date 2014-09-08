@@ -243,7 +243,7 @@ public final class TruffleCacheImpl implements TruffleCache {
         Mark beforeInvokeMark = graph.getMark();
         expandInvoke(methodCallTarget);
         for (Node arg : argumentSnapshot) {
-            if (arg != null && arg.recordsUsages()) {
+            if (arg != null) {
                 for (Node argUsage : arg.usages()) {
                     if (graph.isNew(beforeInvokeMark, argUsage) && argUsage instanceof Canonicalizable) {
                         canonicalizerUsages.add(argUsage);
