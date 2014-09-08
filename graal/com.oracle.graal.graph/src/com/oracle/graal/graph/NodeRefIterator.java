@@ -36,7 +36,7 @@ import com.oracle.graal.graph.Node.Successor;
  */
 public class NodeRefIterator implements NodePosIterator {
 
-    public static final NodeRefIterator Empty = new NodeRefIterator(null, 0, 0, false);
+    public static final NodeRefIterator Empty = new NodeRefIterator();
 
     protected final Node node;
 
@@ -90,6 +90,18 @@ public class NodeRefIterator implements NodePosIterator {
         this.needsForward = true;
         index = -1;
         subIndex = 0;
+    }
+
+    /**
+     * Constructor for {@link #Empty}.
+     */
+    private NodeRefIterator() {
+        this(null, 0, 0, false);
+        // This constructor must only be used to construct Empty
+        assert Empty == null;
+        // This must be set here to prevent multiple threads racing to
+        // call forward() which never needs to be done for Empty.
+        this.needsForward = false;
     }
 
     /**

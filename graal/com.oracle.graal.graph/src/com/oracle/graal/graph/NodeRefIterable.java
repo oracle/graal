@@ -30,7 +30,7 @@ import com.oracle.graal.graph.Node.*;
  * An iterator over the references to a given {@link Node}'s {@linkplain Input inputs} or
  * {@linkplain Successor successors}.
  */
-public class NodeRefIterable implements NodeClassIterable {
+public final class NodeRefIterable implements NodeClassIterable {
 
     protected final Node node;
 
