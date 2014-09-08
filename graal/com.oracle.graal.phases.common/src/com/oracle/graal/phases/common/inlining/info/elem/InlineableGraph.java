@@ -22,21 +22,20 @@
  */
 package com.oracle.graal.phases.common.inlining.info.elem;
 
+import static com.oracle.graal.compiler.common.GraalOptions.*;
+import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionality.*;
+
 import java.util.*;
 
-import com.oracle.graal.api.meta.Constant;
-import com.oracle.graal.api.meta.ResolvedJavaMethod;
-import com.oracle.graal.compiler.common.type.Stamp;
-import com.oracle.graal.debug.Debug;
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.phases.common.CanonicalizerPhase;
-import com.oracle.graal.phases.common.DeadCodeEliminationPhase;
-import com.oracle.graal.phases.common.cfs.FlowUtil;
-import com.oracle.graal.phases.common.inlining.InliningUtil;
-import com.oracle.graal.phases.tiers.HighTierContext;
-
-import static com.oracle.graal.compiler.common.GraalOptions.OptCanonicalizer;
+import com.oracle.graal.phases.common.*;
+import com.oracle.graal.phases.common.cfs.*;
+import com.oracle.graal.phases.common.inlining.*;
+import com.oracle.graal.phases.tiers.*;
 
 /**
  * <p>
@@ -245,7 +244,7 @@ public class InlineableGraph implements Inlineable {
             }
             assert newGraph.start().next() != null : "graph needs to be populated by the GraphBuilderSuite";
 
-            new DeadCodeEliminationPhase().apply(newGraph);
+            new DeadCodeEliminationPhase(OPTIONAL).apply(newGraph);
 
             if (OptCanonicalizer.getValue()) {
                 canonicalizer.apply(newGraph, context);

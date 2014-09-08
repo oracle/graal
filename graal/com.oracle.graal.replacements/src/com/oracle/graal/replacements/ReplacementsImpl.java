@@ -25,6 +25,7 @@ package com.oracle.graal.replacements;
 import static com.oracle.graal.api.meta.MetaUtil.*;
 import static com.oracle.graal.compiler.GraalCompiler.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
+import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionality.*;
 
 import java.lang.reflect.*;
 import java.util.*;
@@ -511,7 +512,7 @@ public class ReplacementsImpl implements Replacements {
                     new CollapseFrameForSingleSideEffectPhase().apply(graph);
                     break;
             }
-            new DeadCodeEliminationPhase().apply(graph);
+            new DeadCodeEliminationPhase(REQUIRED).apply(graph);
         }
 
         /**
@@ -613,7 +614,7 @@ public class ReplacementsImpl implements Replacements {
          */
         protected void afterInlining(StructuredGraph graph) {
             new NodeIntrinsificationPhase(providers, snippetReflection).apply(graph);
-            new DeadCodeEliminationPhase().apply(graph);
+            new DeadCodeEliminationPhase(OPTIONAL).apply(graph);
             if (OptCanonicalizer.getValue()) {
                 new CanonicalizerPhase(true).apply(graph, new PhaseContext(providers, assumptions));
             }
@@ -686,7 +687,7 @@ public class ReplacementsImpl implements Replacements {
                     end.disableSafepoint();
                 }
 
-                new DeadCodeEliminationPhase().apply(graph);
+                new DeadCodeEliminationPhase(REQUIRED).apply(graph);
             } catch (Throwable e) {
                 throw Debug.handle(e);
             }

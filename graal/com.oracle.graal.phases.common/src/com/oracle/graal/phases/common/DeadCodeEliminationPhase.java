@@ -22,18 +22,54 @@
  */
 package com.oracle.graal.phases.common;
 
+import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Options.*;
+
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.options.*;
 import com.oracle.graal.phases.*;
 
 public class DeadCodeEliminationPhase extends Phase {
 
+    public static class Options {
+        // @formatter:off
+        @Option(help = "Disable optional dead code eliminations")
+        public static final OptionValue<Boolean> ReduceDCE = new OptionValue<>(true);
+        // @formatter:on
+    }
+
     // Metrics
     private static final DebugMetric metricNodesRemoved = Debug.metric("NodesRemoved");
 
+    public enum Optionality {
+        OPTIONAL,
+        REQUIRED;
+    }
+
+    /**
+     * Creates a dead code elimination phase that will be run irrespective of
+     * {@link Options#ReduceDCE}.
+     */
+    public DeadCodeEliminationPhase() {
+        this(Optionality.REQUIRED);
+    }
+
+    /**
+     * Creates a dead code elimination phase that will be run only if it is
+     * {@linkplain Optionality#REQUIRED non-optional} or {@link Options#ReduceDCE} is false.
+     */
+    public DeadCodeEliminationPhase(Optionality optionality) {
+        this.optional = optionality == Optionality.OPTIONAL;
+    }
+
+    private final boolean optional;
+
     @Override
     public void run(StructuredGraph graph) {
+        if (optional && ReduceDCE.getValue()) {
+            return;
+        }
         NodeFlood flood = graph.createNodeFlood();
 
         flood.add(graph.start());

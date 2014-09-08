@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.phases.common;
 
+import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionality.*;
+
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
@@ -101,7 +103,7 @@ public class ConvertDeoptimizeToGuardPhase extends Phase {
             }
         }
 
-        new DeadCodeEliminationPhase().apply(graph);
+        new DeadCodeEliminationPhase(OPTIONAL).apply(graph);
     }
 
     private void visitDeoptBegin(BeginNode deoptBegin, DeoptimizationAction deoptAction, DeoptimizationReason deoptReason, StructuredGraph graph) {

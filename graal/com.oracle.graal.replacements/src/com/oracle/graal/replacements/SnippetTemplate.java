@@ -26,6 +26,7 @@ import static com.oracle.graal.api.meta.LocationIdentity.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.debug.Debug.*;
 import static com.oracle.graal.graph.util.CollectionsAccess.*;
+import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionality.*;
 import static com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates.*;
 import static java.util.FormattableFlags.*;
 
@@ -670,7 +671,7 @@ public class SnippetTemplate {
             }
         }
 
-        new DeadCodeEliminationPhase().apply(snippetCopy);
+        new DeadCodeEliminationPhase(REQUIRED).apply(snippetCopy);
 
         assert checkAllVarargPlaceholdersAreDeleted(parameterCount, placeholders);
 
