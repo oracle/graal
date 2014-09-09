@@ -24,10 +24,19 @@
  */
 package com.oracle.truffle.api;
 
+import com.oracle.truffle.api.nodes.*;
+
 public class OptimizationFailedException extends RuntimeException {
 
-    public OptimizationFailedException(Throwable cause) {
+    private final RootNode rootNode;
+
+    public OptimizationFailedException(Throwable cause, RootNode rootNode) {
         super(cause);
+        this.rootNode = rootNode;
+    }
+
+    public RootNode getRootNode() {
+        return rootNode;
     }
 
     private static final long serialVersionUID = -8797188744430210785L;
