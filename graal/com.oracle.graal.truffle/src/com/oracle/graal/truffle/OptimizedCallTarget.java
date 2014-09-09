@@ -281,7 +281,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
                 t.printStackTrace(OUT);
                 System.exit(-1);
             } else if (TruffleCompilationExceptionsAreThrown.getValue()) {
-                throw new OptimizationFailedException(t);
+                throw new OptimizationFailedException(t, rootNode);
             }
         }
     }
