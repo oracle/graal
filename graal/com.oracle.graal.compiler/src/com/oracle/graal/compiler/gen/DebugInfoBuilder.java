@@ -34,6 +34,7 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.virtual.nodes.*;
 
@@ -203,20 +204,24 @@ public class DebugInfoBuilder {
                     STATE_VIRTUAL_OBJECTS.increment();
                     return vobject;
                 }
-            } else if (value instanceof ConstantNode) {
-                STATE_CONSTANTS.increment();
-                return ((ConstantNode) value).getValue();
-
-            } else if (value != null) {
-                STATE_VARIABLES.increment();
-                Value operand = nodeOperands.get(value);
-                assert operand != null && (operand instanceof Variable || operand instanceof Constant) : operand + " for " + value;
-                return operand;
-
             } else {
-                // return a dummy value because real value not needed
-                STATE_ILLEGALS.increment();
-                return Value.ILLEGAL;
+                // Remove proxies from constants so the constant can be directly embedded.
+                ValueNode unproxied = GraphUtil.unproxify(value);
+                if (unproxied instanceof ConstantNode) {
+                    STATE_CONSTANTS.increment();
+                    return ((ConstantNode) unproxied).getValue();
+
+                } else if (value != null) {
+                    STATE_VARIABLES.increment();
+                    Value operand = nodeOperands.get(value);
+                    assert operand != null && (operand instanceof Variable || operand instanceof Constant) : operand + " for " + value;
+                    return operand;
+
+                } else {
+                    // return a dummy value because real value not needed
+                    STATE_ILLEGALS.increment();
+                    return Value.ILLEGAL;
+                }
             }
         } catch (GraalInternalError e) {
             throw e.addContext("toValue: ", value);
