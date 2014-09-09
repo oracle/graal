@@ -116,6 +116,8 @@ public class TruffleCompilerOptions {
     @Option(help = "")
     public static final OptionValue<Boolean> TruffleCompilationExceptionsAreFatal = new OptionValue<>(false);
     @Option(help = "")
+    public static final OptionValue<Boolean> TruffleCompilationExceptionsAreThrown = new OptionValue<>(false);
+    @Option(help = "")
     public static final OptionValue<Boolean> TraceTruffleInlining = new OptionValue<>(false);
     @Option(help = "")
     public static final OptionValue<Boolean> TraceTruffleSplitting = new OptionValue<>(false);
