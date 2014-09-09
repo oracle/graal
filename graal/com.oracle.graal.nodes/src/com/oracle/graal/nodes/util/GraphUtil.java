@@ -135,17 +135,13 @@ public class GraphUtil {
     }
 
     public static void killWithUnusedFloatingInputs(Node node) {
-        if (node.recordsUsages()) {
-            List<Node> floatingInputs = node.inputs().filter(isFloatingNode()).snapshot();
-            node.safeDelete();
+        List<Node> floatingInputs = node.inputs().filter(isFloatingNode()).snapshot();
+        node.safeDelete();
 
-            for (Node in : floatingInputs) {
-                if (in.isAlive() && (!in.recordsUsages() || in.usages().isEmpty())) {
-                    killWithUnusedFloatingInputs(in);
-                }
+        for (Node in : floatingInputs) {
+            if (in.isAlive() && in.usages().isEmpty()) {
+                killWithUnusedFloatingInputs(in);
             }
-        } else {
-            assert node.inputs().isEmpty();
         }
     }
 
@@ -358,7 +354,7 @@ public class GraphUtil {
     }
 
     public static boolean tryKillUnused(Node node) {
-        if (node.isAlive() && isFloatingNode().apply(node) && node.recordsUsages() && node.usages().isEmpty()) {
+        if (node.isAlive() && isFloatingNode().apply(node) && node.usages().isEmpty()) {
             killWithUnusedFloatingInputs(node);
             return true;
         }

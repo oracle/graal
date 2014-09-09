@@ -107,8 +107,32 @@ public class ConstantLoadOptimization {
 
                 // insert moves, delete null instructions and reset instruction ids
                 lir.getControlFlowGraph().getBlocks().forEach(this::rewriteBlock);
+
+                assert verifyStates();
             } catch (Throwable e) {
                 throw Debug.handle(e);
+            }
+        }
+    }
+
+    private boolean verifyStates() {
+        map.forEach(this::verifyStateUsage);
+        return true;
+    }
+
+    private void verifyStateUsage(DefUseTree tree) {
+        Variable var = tree.getVariable();
+        ValueConsumer stateConsumer = new ValueConsumer() {
+
+            @Override
+            public void visitValue(Value operand) {
+                assert !operand.equals(var) : "constant usage through variable in frame state " + var;
+            }
+        };
+        for (AbstractBlock<?> block : lir.getControlFlowGraph().getBlocks()) {
+            for (LIRInstruction inst : lir.getLIRforBlock(block)) {
+                // set instruction id to the index in the lir instruction list
+                inst.visitEachState(stateConsumer);
             }
         }
     }

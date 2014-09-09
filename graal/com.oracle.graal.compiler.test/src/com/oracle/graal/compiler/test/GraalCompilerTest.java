@@ -269,7 +269,7 @@ public abstract class GraalCompilerTest extends GraalTest {
             }
             result.append("\n");
             for (Node node : schedule.getBlockToNodesMap().get(block)) {
-                if (node.isAlive() && node.recordsUsages()) {
+                if (node.isAlive()) {
                     if (!excludeVirtual || !(node instanceof VirtualObjectNode || node instanceof ProxyNode)) {
                         int id;
                         if (canonicalId.get(node) != null) {

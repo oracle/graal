@@ -6,6 +6,9 @@
 
 ### Truffle
 * Added TruffleRuntime#getCallTargets() to get all call targets that were created and are still referenced.
+* Added `NeverValidAssumption` to complement `AlwaysValidAssumption`.
+* Fixed a bug in `AssumedValue` that may not invalidate correctly.
+* New option, TruffleCompilationExceptionsAreThrown, that will throw a OptimizationFailedException for compiler errors.
 
 ## Version 0.4
 19-Aug-2014, [Repository Revision](http://hg.openjdk.java.net/graal/graal/rev/graal-0.4)

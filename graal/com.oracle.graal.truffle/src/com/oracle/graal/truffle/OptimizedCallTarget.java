@@ -206,13 +206,13 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     @Override
     public void invalidate() {
         this.runtime.invalidateInstalledCode(this);
-        invalidateInlining();
     }
 
     protected void invalidate(Node oldNode, Node newNode, CharSequence reason) {
         if (isValid()) {
             CompilerAsserts.neverPartOfCompilation();
             invalidate();
+            invalidateInlining();
             compilationProfile.reportInvalidated();
             logOptimizedInvalidated(this, oldNode, newNode, reason);
         }
@@ -273,14 +273,15 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
             // Compilation was successful.
         } else {
             compilationPolicy.recordCompilationFailure(t);
-            logOptimizingFailed(this, t.getMessage());
             if (t instanceof BailoutException) {
+                logOptimizingFailed(this, t.getMessage());
                 // Bailout => move on.
-            } else {
-                if (TruffleCompilationExceptionsAreFatal.getValue()) {
-                    t.printStackTrace(OUT);
-                    System.exit(-1);
-                }
+            } else if (TruffleCompilationExceptionsAreFatal.getValue()) {
+                logOptimizingFailed(this, t.getMessage());
+                t.printStackTrace(OUT);
+                System.exit(-1);
+            } else if (TruffleCompilationExceptionsAreThrown.getValue()) {
+                throw new OptimizationFailedException(t, rootNode);
             }
         }
     }

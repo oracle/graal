@@ -340,7 +340,17 @@ public final class NodeClass extends FieldIntrospection {
     }
 
     /**
-     * Determines if a given {@link Node} class is described by the {@link NodeClass} object.
+     * Determines if a given {@link Node} class is described by this {@link NodeClass} object. This
+     * is useful for doing an exact type test (as opposed to an instanceof test) on a node. For
+     * example:
+     *
+     * <pre>
+     *     if (node.getNodeClass().is(BeginNode.class)) { ... }
+     *
+     *     // Due to generated Node classes, the test below
+     *     // is *not* the same as the test above:
+     *     if (node.getClass() == BeginNode.class) { ... }
+     * </pre>
      *
      * @param nodeClass a {@linkplain GeneratedNode non-generated} {@link Node} class
      */
@@ -496,6 +506,9 @@ public final class NodeClass extends FieldIntrospection {
         protected final Node node;
         protected int index;
         protected int subIndex;
+        NodeList<Node> list;
+        protected boolean needsForward;
+        protected Node nextElement;
 
         /**
          * Creates an iterator that will iterate over fields in the given node.
@@ -506,14 +519,16 @@ public final class NodeClass extends FieldIntrospection {
             this.node = node;
             index = NOT_ITERABLE;
             subIndex = 0;
+            needsForward = true;
         }
 
         void forward() {
+            needsForward = false;
             if (index < getDirectCount()) {
                 index++;
                 while (index < getDirectCount()) {
-                    Node element = getNode(node, getOffsets()[index]);
-                    if (element != null) {
+                    nextElement = getNode(node, getOffsets()[index]);
+                    if (nextElement != null) {
                         return;
                     }
                     index++;
@@ -522,9 +537,12 @@ public final class NodeClass extends FieldIntrospection {
                 subIndex++;
             }
             while (index < getOffsets().length) {
-                NodeList<Node> list = getNodeList(node, getOffsets()[index]);
+                if (subIndex == 0) {
+                    list = getNodeList(node, getOffsets()[index]);
+                }
                 while (subIndex < list.size()) {
-                    if (list.get(subIndex) != null) {
+                    nextElement = list.get(subIndex);
+                    if (nextElement != null) {
                         return;
                     }
                     subIndex++;
@@ -535,38 +553,38 @@ public final class NodeClass extends FieldIntrospection {
         }
 
         private Node nextElement() {
-            if (index < getDirectCount()) {
-                return getNode(node, getOffsets()[index]);
-            } else if (index < getOffsets().length) {
-                NodeList<Node> list = getNodeList(node, getOffsets()[index]);
-                return list.get(subIndex);
+            if (needsForward) {
+                forward();
+            }
+            needsForward = true;
+            if (index < getOffsets().length) {
+                return nextElement;
             }
             throw new NoSuchElementException();
         }
 
         @Override
         public boolean hasNext() {
+            if (needsForward) {
+                forward();
+            }
             return index < getOffsets().length;
         }
 
         @Override
         public Node next() {
-            try {
-                return nextElement();
-            } finally {
-                forward();
-            }
+            return nextElement();
         }
 
         public Position nextPosition() {
-            try {
-                if (index < getDirectCount()) {
-                    return new Position(getOffsets() == getNodeClass().inputOffsets, index, NOT_ITERABLE);
-                } else {
-                    return new Position(getOffsets() == getNodeClass().inputOffsets, index, subIndex);
-                }
-            } finally {
+            if (needsForward) {
                 forward();
+            }
+            needsForward = true;
+            if (index < getDirectCount()) {
+                return new Position(getOffsets() == getNodeClass().inputOffsets, index, NOT_ITERABLE);
+            } else {
+                return new Position(getOffsets() == getNodeClass().inputOffsets, index, subIndex);
             }
         }
 
@@ -583,16 +601,10 @@ public final class NodeClass extends FieldIntrospection {
     }
 
     private class NodeClassInputsIterator extends NodeClassIterator {
-        NodeClassInputsIterator(Node node) {
-            this(node, true);
-        }
 
-        NodeClassInputsIterator(Node node, boolean forward) {
+        NodeClassInputsIterator(Node node) {
             super(node);
             assert NodeClass.this == node.getNodeClass();
-            if (forward) {
-                forward();
-            }
         }
 
         @Override
@@ -613,22 +625,27 @@ public final class NodeClass extends FieldIntrospection {
 
     private class NodeClassAllInputsIterator extends NodeClassInputsIterator {
         NodeClassAllInputsIterator(Node node) {
-            super(node, true);
+            super(node);
         }
 
         @Override
         void forward() {
+            needsForward = false;
             if (index < getDirectCount()) {
                 index++;
                 if (index < getDirectCount()) {
+                    nextElement = getNode(node, getOffsets()[index]);
                     return;
                 }
             } else {
                 subIndex++;
             }
             while (index < getOffsets().length) {
-                NodeList<Node> list = getNodeList(node, getOffsets()[index]);
+                if (subIndex == 0) {
+                    list = getNodeList(node, getOffsets()[index]);
+                }
                 if (subIndex < list.size()) {
+                    nextElement = list.get(subIndex);
                     return;
                 }
                 subIndex = 0;
@@ -639,22 +656,27 @@ public final class NodeClass extends FieldIntrospection {
 
     private class NodeClassAllSuccessorsIterator extends NodeClassSuccessorsIterator {
         NodeClassAllSuccessorsIterator(Node node) {
-            super(node, true);
+            super(node);
         }
 
         @Override
         void forward() {
+            needsForward = false;
             if (index < getDirectCount()) {
                 index++;
                 if (index < getDirectCount()) {
+                    nextElement = getNode(node, getOffsets()[index]);
                     return;
                 }
             } else {
                 subIndex++;
             }
             while (index < getOffsets().length) {
-                NodeList<Node> list = getNodeList(node, getOffsets()[index]);
+                if (subIndex == 0) {
+                    list = getNodeList(node, getOffsets()[index]);
+                }
                 if (subIndex < list.size()) {
+                    nextElement = list.get(subIndex);
                     return;
                 }
                 subIndex = 0;
@@ -667,10 +689,9 @@ public final class NodeClass extends FieldIntrospection {
         private final int modCount;
 
         private NodeClassInputsWithModCountIterator(Node node) {
-            super(node, false);
+            super(node);
             assert MODIFICATION_COUNTS_ENABLED;
             this.modCount = node.modCount();
-            forward();
         }
 
         @Override
@@ -702,16 +723,10 @@ public final class NodeClass extends FieldIntrospection {
     }
 
     private class NodeClassSuccessorsIterator extends NodeClassIterator {
-        NodeClassSuccessorsIterator(Node node) {
-            this(node, true);
-        }
 
-        NodeClassSuccessorsIterator(Node node, boolean forward) {
+        NodeClassSuccessorsIterator(Node node) {
             super(node);
             assert NodeClass.this == node.getNodeClass();
-            if (forward) {
-                forward();
-            }
         }
 
         @Override
@@ -734,10 +749,9 @@ public final class NodeClass extends FieldIntrospection {
         private final int modCount;
 
         private NodeClassSuccessorsWithModCountIterator(Node node) {
-            super(node, false);
+            super(node);
             assert MODIFICATION_COUNTS_ENABLED;
             this.modCount = node.modCount();
-            forward();
         }
 
         @Override

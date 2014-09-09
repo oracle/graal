@@ -24,6 +24,7 @@ package com.oracle.graal.virtual.phases.ea;
 
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.debug.Debug.*;
+import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionality.*;
 
 import java.util.*;
 
@@ -70,7 +71,7 @@ public class IterativeInliningPhase extends AbstractInliningPhase {
                 inlining.apply(graph, context);
                 progress |= inlining.getInliningCount() > 0;
 
-                new DeadCodeEliminationPhase().apply(graph);
+                new DeadCodeEliminationPhase(OPTIONAL).apply(graph);
 
                 boolean reduceOrEliminate = FlowSensitiveReduction.getValue() || ConditionalElimination.getValue();
                 if (reduceOrEliminate && OptCanonicalizer.getValue()) {

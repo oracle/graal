@@ -832,9 +832,6 @@ public class ConditionalEliminationPhase extends Phase {
         }
 
         private GuardingNode searchAnchor(ValueNode value, ResolvedJavaType type) {
-            if (!value.recordsUsages()) {
-                return null;
-            }
             for (Node n : value.usages()) {
                 if (n instanceof InstanceOfNode) {
                     InstanceOfNode instanceOfNode = (InstanceOfNode) n;

@@ -189,6 +189,8 @@ public abstract class Node implements Cloneable, Formattable {
         return graph;
     }
 
+    private static final boolean USE_GENERATED_NODE_ITERATORS = Boolean.getBoolean("graal.useGeneratedNodeIterators");
+
     /**
      * Returns an {@link NodeClassIterable iterable} which can be used to traverse all non-null
      * input edges of this node.
@@ -197,6 +199,9 @@ public abstract class Node implements Cloneable, Formattable {
      */
     public NodeClassIterable inputs() {
         if (USE_GENERATED_NODES) {
+            if (!USE_GENERATED_NODE_ITERATORS) {
+                return new NodeRefIterable(this, true);
+            }
             return inputsV2();
         }
         return getNodeClass().getInputIterable(this);
@@ -210,13 +215,18 @@ public abstract class Node implements Cloneable, Formattable {
      */
     public NodeClassIterable successors() {
         if (USE_GENERATED_NODES) {
+            if (!USE_GENERATED_NODE_ITERATORS) {
+                return new NodeRefIterable(this, false);
+            }
             return successorsV2();
         }
         return getNodeClass().getSuccessorIterable(this);
     }
 
+    /**
+     * Gets the maximum number of usages this node has had at any point in time.
+     */
     int getUsageCountUpperBound() {
-        assert recordsUsages();
         if (usage0 == null) {
             return 0;
         }
@@ -230,17 +240,7 @@ public abstract class Node implements Cloneable, Formattable {
      * Gets the list of nodes that use this node (i.e., as an input).
      */
     public final NodeIterable<Node> usages() {
-        assert recordsUsages() : this;
         return new NodeUsageIterable(this);
-    }
-
-    /**
-     * Determines if this node records its usages (i.e. the nodes for which it is an input). All
-     * methods in {@link Node} that pertain to querying or updating usage information must not be
-     * called for a {@link Node} instance that returns false for this method.
-     */
-    public boolean recordsUsages() {
-        return true;
     }
 
     /**
@@ -283,7 +283,6 @@ public abstract class Node implements Cloneable, Formattable {
      * @param node the node to add
      */
     private void addUsage(Node node) {
-        assert recordsUsages();
         incUsageModCount();
         if (usage0 == null) {
             usage0 = node;
@@ -390,7 +389,6 @@ public abstract class Node implements Cloneable, Formattable {
      * @return whether or not {@code usage} was in the usage list
      */
     private boolean removeUsage(Node node) {
-        assert recordsUsages();
         assert node != null;
         // It is critical that this method maintains the invariant that
         // the usage list has no null element preceding a non-null element
@@ -441,7 +439,6 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     private void clearUsages() {
-        assert recordsUsages();
         incUsageModCount();
         usage0 = null;
         usage1 = null;
@@ -494,18 +491,14 @@ public abstract class Node implements Cloneable, Formattable {
         assert isAlive() && (newInput == null || newInput.isAlive()) : "adding " + newInput + " to " + this + " instead of " + oldInput;
         if (oldInput != newInput) {
             if (oldInput != null) {
-                if (oldInput.recordsUsages()) {
-                    boolean result = removeThisFromUsages(oldInput);
-                    assert assertTrue(result, "not found in usages, old input: %s", oldInput);
-                }
+                boolean result = removeThisFromUsages(oldInput);
+                assert assertTrue(result, "not found in usages, old input: %s", oldInput);
             }
             maybeNotifyInputChanged(this);
             if (newInput != null) {
-                if (newInput.recordsUsages()) {
-                    newInput.addUsage(this);
-                }
+                newInput.addUsage(this);
             }
-            if (oldInput != null && oldInput.recordsUsages() && oldInput.usages().isEmpty()) {
+            if (oldInput != null && oldInput.usages().isEmpty()) {
                 maybeNotifyZeroUsages(oldInput);
             }
         }
@@ -570,9 +563,7 @@ public abstract class Node implements Cloneable, Formattable {
             assert assertTrue(result, "not found in inputs, usage: %s", usage);
             if (other != null) {
                 maybeNotifyInputChanged(usage);
-                if (other.recordsUsages()) {
-                    other.addUsage(usage);
-                }
+                other.addUsage(usage);
             }
         }
         clearUsages();
@@ -592,9 +583,7 @@ public abstract class Node implements Cloneable, Formattable {
                 assert assertTrue(result, "not found in inputs, usage: %s", usage);
                 if (other != null) {
                     maybeNotifyInputChanged(usage);
-                    if (other.recordsUsages()) {
-                        other.addUsage(usage);
-                    }
+                    other.addUsage(usage);
                 }
             } else {
                 if (removeStart >= 0) {
@@ -678,11 +667,9 @@ public abstract class Node implements Cloneable, Formattable {
 
     private void unregisterInputs() {
         for (Node input : inputs()) {
-            if (input.recordsUsages()) {
-                removeThisFromUsages(input);
-                if (input.usages().isEmpty()) {
-                    maybeNotifyZeroUsages(input);
-                }
+            removeThisFromUsages(input);
+            if (input.usages().isEmpty()) {
+                maybeNotifyZeroUsages(input);
             }
         }
     }
@@ -713,9 +700,7 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     private boolean checkDeletion() {
-        if (recordsUsages()) {
-            assertTrue(usages().isEmpty(), "cannot delete node %s because of usages: %s", this, usages());
-        }
+        assertTrue(usages().isEmpty(), "cannot delete node %s because of usages: %s", this, usages());
         assertTrue(predecessor == null, "cannot delete node %s because of predecessor: %s", this, predecessor);
         return true;
     }
@@ -743,9 +728,7 @@ public abstract class Node implements Cloneable, Formattable {
         clazz.copyInputs(this, newNode);
         if (addToGraph) {
             for (Node input : inputs()) {
-                if (input.recordsUsages()) {
-                    input.addUsage(newNode);
-                }
+                input.addUsage(newNode);
             }
         }
         return newNode;
@@ -817,23 +800,20 @@ public abstract class Node implements Cloneable, Formattable {
         assertTrue(isAlive(), "cannot verify inactive nodes (id=%d)", id);
         assertTrue(graph() != null, "null graph");
         for (Node input : inputs()) {
-            assertTrue(!input.recordsUsages() || input.usages().contains(this), "missing usage in input %s", input);
+            assertTrue(input.usages().contains(this), "missing usage in input %s", input);
         }
         for (Node successor : successors()) {
             assertTrue(successor.predecessor() == this, "missing predecessor in %s (actual: %s)", successor, successor.predecessor());
             assertTrue(successor.graph() == graph(), "mismatching graph in successor %s", successor);
         }
-        if (recordsUsages()) {
-            for (Node usage : usages()) {
-                assertFalse(usage.isDeleted(), "usage %s must never be deleted", usage);
-                assertTrue(usage.inputs().contains(this), "missing input in usage %s", usage);
-                NodePosIterator iterator = usage.inputs().iterator();
-                while (iterator.hasNext()) {
-                    Position pos = iterator.nextPosition();
-                    if (pos.get(usage) == this && pos.getInputType(usage) != InputType.Unchecked) {
-                        assert isAllowedUsageType(pos.getInputType(usage)) : "invalid input of type " + pos.getInputType(usage) + " from " + usage + " to " + this + " (" + pos.getInputName(usage) +
-                                        ")";
-                    }
+        for (Node usage : usages()) {
+            assertFalse(usage.isDeleted(), "usage %s must never be deleted", usage);
+            assertTrue(usage.inputs().contains(this), "missing input in usage %s", usage);
+            NodePosIterator iterator = usage.inputs().iterator();
+            while (iterator.hasNext()) {
+                Position pos = iterator.nextPosition();
+                if (pos.get(usage) == this && pos.getInputType(usage) != InputType.Unchecked) {
+                    assert isAllowedUsageType(pos.getInputType(usage)) : "invalid input of type " + pos.getInputType(usage) + " from " + usage + " to " + this + " (" + pos.getInputName(usage) + ")";
                 }
             }
         }
@@ -1034,6 +1014,24 @@ public abstract class Node implements Cloneable, Formattable {
         return NodeClassIterable.Empty;
     }
 
+    /**
+     * Determines if this node's inputs contain a given node.
+     *
+     * @param other
+     */
+    public boolean inputsContains(Node other) {
+        return false;
+    }
+
+    /**
+     * Determines if this node's successors contain a given node.
+     *
+     * @param other
+     */
+    public boolean successorsContains(Node other) {
+        return false;
+    }
+
     public NodeClassIterable successorsV2() {
         return NodeClassIterable.Empty;
     }
@@ -1052,6 +1050,68 @@ public abstract class Node implements Cloneable, Formattable {
      * @param pos
      */
     public Node getNodeAt(Position pos) {
+        throw new NoSuchElementException();
+    }
+
+    /**
+     * Gets the number of {@link Node} and {@link NodeList} fields in this node that are
+     * {@link Input}s or {@link OptionalInput}s.
+     *
+     * @return {@code L << 16 | N} where {@code N} is the number of {@link Node} fields and
+     *         {@code L} is the number of {@link NodeList} fields
+     */
+    public int getInputsCount() {
+        return 0;
+    }
+
+    /**
+     * Gets the number of {@link Node} and {@link NodeList} fields in this node that are
+     * {@link Successor}s.
+     *
+     * @return {@code L << 16 | N} where {@code N} is the number of {@link Node} fields and
+     *         {@code L} is the number of {@link NodeList} fields
+     */
+    public int getSuccessorsCount() {
+        return 0;
+    }
+
+    /**
+     * Gets an input of this node at a given index.
+     *
+     * @param index index of an input {@link Node} field. This value must be in the range of the
+     *            number of {@link Node} fields returned by {@link #getInputsCount()}.
+     */
+    public Node getInputNodeAt(int index) {
+        throw new NoSuchElementException();
+    }
+
+    /**
+     * Gets a successor of this node at a given index.
+     *
+     * @param index index of a successor {@link Node} field. This value must be in the range of the
+     *            number of {@link Node} fields returned by {@link #getSuccessorsCount()}.
+     */
+    public Node getSuccessorNodeAt(int index) {
+        throw new NoSuchElementException();
+    }
+
+    /**
+     * Gets an input list at a given index.
+     *
+     * @param index index of an input {@link NodeList} field. This value must be in the range of the
+     *            number of {@link NodeList} fields returned by {@link #getInputsCount()}.
+     */
+    public NodeList<? extends Node> getInputNodeListAt(int index) {
+        throw new NoSuchElementException();
+    }
+
+    /**
+     * Gets a successor list at a given index.
+     *
+     * @param index index of a successor {@link NodeList} field. This value must be in the range of
+     *            the number of {@link NodeList} fields returned by {@link #getSuccessorsCount()}.
+     */
+    public NodeList<? extends Node> getSuccessorNodeListAt(int index) {
         throw new NoSuchElementException();
     }
 

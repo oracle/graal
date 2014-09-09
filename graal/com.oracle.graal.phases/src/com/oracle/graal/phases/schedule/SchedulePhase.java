@@ -625,10 +625,8 @@ public final class SchedulePhase extends Phase {
             cdbc.apply(cfg.getNodeToBlock().get(succ));
         }
         ensureScheduledUsages(node, strategy);
-        if (node.recordsUsages()) {
-            for (Node usage : node.usages()) {
-                blocksForUsage(node, usage, cdbc, strategy);
-            }
+        for (Node usage : node.usages()) {
+            blocksForUsage(node, usage, cdbc, strategy);
         }
 
         if (assertionEnabled()) {
@@ -820,10 +818,8 @@ public final class SchedulePhase extends Phase {
     }
 
     private void ensureScheduledUsages(Node node, SchedulingStrategy strategy) {
-        if (node.recordsUsages()) {
-            for (Node usage : node.usages().filter(ScheduledNode.class)) {
-                assignBlockToNode((ScheduledNode) usage, strategy);
-            }
+        for (Node usage : node.usages().filter(ScheduledNode.class)) {
+            assignBlockToNode((ScheduledNode) usage, strategy);
         }
         // now true usages are ready
     }
@@ -1149,16 +1145,14 @@ public final class SchedulePhase extends Phase {
             }
 
             visited.mark(instruction);
-            if (instruction.recordsUsages()) {
-                for (Node usage : instruction.usages()) {
-                    if (usage instanceof VirtualState) {
-                        // only fixed nodes can have VirtualState -> no need to schedule them
+            for (Node usage : instruction.usages()) {
+                if (usage instanceof VirtualState) {
+                    // only fixed nodes can have VirtualState -> no need to schedule them
+                } else {
+                    if (instruction instanceof LoopExitNode && usage instanceof ProxyNode) {
+                        // value proxies should be scheduled before the loopexit, not after
                     } else {
-                        if (instruction instanceof LoopExitNode && usage instanceof ProxyNode) {
-                            // value proxies should be scheduled before the loopexit, not after
-                        } else {
-                            addToEarliestSorting(b, (ScheduledNode) usage, sortedInstructions, visited);
-                        }
+                        addToEarliestSorting(b, (ScheduledNode) usage, sortedInstructions, visited);
                     }
                 }
             }

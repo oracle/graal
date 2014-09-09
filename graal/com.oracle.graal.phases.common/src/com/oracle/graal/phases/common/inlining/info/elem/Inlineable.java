@@ -45,4 +45,6 @@ public interface Inlineable {
     int getNodeCount();
 
     Iterable<Invoke> getInvokes();
+
+    double getProbability(Invoke invoke);
 }

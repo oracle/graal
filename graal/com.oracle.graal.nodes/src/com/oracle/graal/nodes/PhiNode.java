@@ -193,7 +193,13 @@ public abstract class PhiNode extends FloatingNode implements Simplifiable {
 
     @Override
     public void simplify(SimplifierTool tool) {
-        ValueNode singleValue = singleValue();
+        ValueNode singleValue;
+
+        if (isLoopPhi() && singleBackValue() == this) {
+            singleValue = firstValue();
+        } else {
+            singleValue = singleValue();
+        }
 
         if (singleValue != MULTIPLE_VALUES) {
             for (Node node : usages().snapshot()) {

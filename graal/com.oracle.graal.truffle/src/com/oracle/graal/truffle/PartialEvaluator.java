@@ -132,17 +132,27 @@ public class PartialEvaluator {
             }
             HighTierContext tierContext = new HighTierContext(providers, assumptions, graphCache, new PhaseSuite<HighTierContext>(), OptimisticOptimizations.NONE);
 
-            for (NeverPartOfCompilationNode neverPartOfCompilationNode : graph.getNodes(NeverPartOfCompilationNode.class)) {
-                Throwable exception = new VerificationError(neverPartOfCompilationNode.getMessage());
-                throw GraphUtil.approxSourceException(neverPartOfCompilationNode, exception);
-            }
-
             // EA frame and clean up.
             try (Scope pe = Debug.scope("TrufflePartialEscape", graph)) {
                 new PartialEscapePhase(true, canonicalizer).apply(graph, tierContext);
             } catch (Throwable t) {
                 Debug.handle(t);
             }
+
+            // to make frame propagations visible retry expandTree
+            while (expandTree(graph, assumptions)) {
+                try (Scope pe = Debug.scope("TrufflePartialEscape", graph)) {
+                    new PartialEscapePhase(true, canonicalizer).apply(graph, tierContext);
+                } catch (Throwable t) {
+                    Debug.handle(t);
+                }
+            }
+
+            for (NeverPartOfCompilationNode neverPartOfCompilationNode : graph.getNodes(NeverPartOfCompilationNode.class)) {
+                Throwable exception = new VerificationError(neverPartOfCompilationNode.getMessage());
+                throw GraphUtil.approxSourceException(neverPartOfCompilationNode, exception);
+            }
+
             new VerifyNoIntrinsicsLeftPhase().apply(graph, false);
             for (MaterializeFrameNode materializeNode : graph.getNodes(MaterializeFrameNode.class).snapshot()) {
                 materializeNode.replaceAtUsages(materializeNode.getFrame());
@@ -184,15 +194,16 @@ public class PartialEvaluator {
         new DebugHistogramAsciiPrinter(TTY.out().out()).print(histogram);
     }
 
-    private void expandTree(StructuredGraph graph, Assumptions assumptions) {
+    private boolean expandTree(StructuredGraph graph, Assumptions assumptions) {
         PhaseContext phaseContext = new PhaseContext(providers, assumptions);
         TruffleExpansionLogger expansionLogger = null;
         if (TraceTruffleExpansion.getValue()) {
             expansionLogger = new TruffleExpansionLogger(providers, graph);
         }
-        boolean changed;
+        boolean changed = false;
+        boolean changedInIteration;
         do {
-            changed = false;
+            changedInIteration = false;
             for (MethodCallTargetNode methodCallTargetNode : graph.getNodes(MethodCallTargetNode.class)) {
                 InvokeKind kind = methodCallTargetNode.invokeKind();
                 try (Indent id1 = Debug.logAndIndent("try inlining %s, kind = %s", methodCallTargetNode.targetMethod(), kind)) {
@@ -205,7 +216,7 @@ public class PartialEvaluator {
                         Class<? extends FixedWithNextNode> macroSubstitution = replacements.getMacroSubstitution(methodCallTargetNode.targetMethod());
                         if (macroSubstitution != null) {
                             InliningUtil.inlineMacroNode(methodCallTargetNode.invoke(), methodCallTargetNode.targetMethod(), macroSubstitution);
-                            changed = true;
+                            changed = changedInIteration = true;
                             continue;
                         }
 
@@ -215,7 +226,8 @@ public class PartialEvaluator {
                         }
 
                         if (inlineGraph != null) {
-                            changed = expandTreeInline(graph, phaseContext, expansionLogger, methodCallTargetNode, inlineGraph);
+                            expandTreeInline(graph, phaseContext, expansionLogger, methodCallTargetNode, inlineGraph);
+                            changed = changedInIteration = true;
                         }
                     }
                 }
@@ -224,14 +236,15 @@ public class PartialEvaluator {
                     throw new BailoutException("Truffle compilation is exceeding maximum node count: " + graph.getNodeCount());
                 }
             }
-        } while (changed);
+        } while (changedInIteration);
 
         if (TraceTruffleExpansion.getValue()) {
             expansionLogger.print();
         }
+        return changed;
     }
 
-    private boolean expandTreeInline(StructuredGraph graph, PhaseContext phaseContext, TruffleExpansionLogger expansionLogger, MethodCallTargetNode methodCallTargetNode, StructuredGraph inlineGraph) {
+    private void expandTreeInline(StructuredGraph graph, PhaseContext phaseContext, TruffleExpansionLogger expansionLogger, MethodCallTargetNode methodCallTargetNode, StructuredGraph inlineGraph) {
         try (Indent indent = Debug.logAndIndent("inline graph %s", methodCallTargetNode.targetMethod())) {
             int nodeCountBefore = graph.getNodeCount();
             if (TraceTruffleExpansion.getValue()) {
@@ -248,8 +261,6 @@ public class PartialEvaluator {
             }
             AbstractInlineInfo.getInlinedParameterUsages(canonicalizedNodes, inlineGraph, inlined);
             canonicalizer.applyIncremental(graph, phaseContext, canonicalizedNodes);
-
-            return true;
         }
     }
 
