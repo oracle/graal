@@ -33,6 +33,7 @@ import java.util.function.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.cfg.*;
+import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
@@ -128,7 +129,8 @@ public class BinaryGraphPrinter implements GraphPrinter {
     private void writeGraph(Graph graph, SchedulePhase predefinedSchedule) throws IOException {
         SchedulePhase schedule = predefinedSchedule;
         if (schedule == null) {
-            if (PrintIdealGraphSchedule.getValue()) {
+            // Also provide a schedule when an error occurs
+            if (PrintIdealGraphSchedule.getValue() || Debug.contextLookup(Throwable.class) != null) {
                 try {
                     schedule = new SchedulePhase();
                     schedule.apply((StructuredGraph) graph);
