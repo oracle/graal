@@ -35,6 +35,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.common.cfs.*;
 import com.oracle.graal.phases.common.inlining.*;
+import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.tiers.*;
 
 /**
@@ -54,6 +55,8 @@ import com.oracle.graal.phases.tiers.*;
 public class InlineableGraph implements Inlineable {
 
     private final StructuredGraph graph;
+
+    private FixedNodeProbabilityCache probabilites = new FixedNodeProbabilityCache();
 
     public InlineableGraph(final ResolvedJavaMethod method, final Invoke invoke, final HighTierContext context, CanonicalizerPhase canonicalizer) {
         StructuredGraph original = getOriginalGraph(method, context, canonicalizer);
@@ -267,6 +270,11 @@ public class InlineableGraph implements Inlineable {
     @Override
     public Iterable<Invoke> getInvokes() {
         return graph.getInvokes();
+    }
+
+    @Override
+    public double getProbability(Invoke invoke) {
+        return probabilites.applyAsDouble(invoke.asNode());
     }
 
     public StructuredGraph getGraph() {

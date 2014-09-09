@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.phases.common.inlining.info.elem;
 
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.Invoke;
 
@@ -47,5 +48,9 @@ public class InlineableMacroNode implements Inlineable {
 
     public Class<? extends FixedWithNextNode> getMacroNodeClass() {
         return macroNodeClass;
+    }
+
+    public double getProbability(Invoke invoke) {
+        throw GraalInternalError.shouldNotReachHere("No invokes in inlineable");
     }
 }
