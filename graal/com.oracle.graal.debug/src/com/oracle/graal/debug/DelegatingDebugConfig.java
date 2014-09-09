@@ -39,17 +39,9 @@ public class DelegatingDebugConfig implements DebugConfig {
      */
     public enum Feature {
         /**
-         * @see Debug#isLogEnabled()
-         */
-        LOG,
-        /**
          * @see Debug#isLogEnabledForMethod()
          */
         LOG_METHOD,
-        /**
-         * @see Debug#isDumpEnabled()
-         */
-        DUMP,
         /**
          * @see Debug#isDumpEnabledForMethod()
          */
