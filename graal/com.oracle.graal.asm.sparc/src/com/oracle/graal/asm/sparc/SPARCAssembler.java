@@ -3136,6 +3136,15 @@ public abstract class SPARCAssembler extends Assembler {
         }
     }
 
+    public static class Fxtos extends Fmt3n {
+
+        public Fxtos(Register src2, Register dst) {
+            super(Ops.ArithOp.getValue(), Op3s.Fpop1.getValue(), Opfs.Fxtos.getValue(), src2.encoding(), dst.encoding());
+            assert isDoubleFloatRegister(src2);
+            assert isSingleFloatRegister(dst);
+        }
+    }
+
     public static class Fxtod extends Fmt3n {
 
         public Fxtod(Register src2, Register dst) {

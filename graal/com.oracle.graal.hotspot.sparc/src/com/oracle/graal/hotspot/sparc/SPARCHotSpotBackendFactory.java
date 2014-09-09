@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.hotspot.sparc;
 
+import java.util.*;
+
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.runtime.*;
@@ -30,24 +32,25 @@ import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.sparc.*;
+import com.oracle.graal.sparc.SPARC.*;
 
 @ServiceProvider(HotSpotBackendFactory.class)
 public class SPARCHotSpotBackendFactory implements HotSpotBackendFactory {
 
-    protected static Architecture createArchitecture() {
-        return new SPARC();
+    protected Architecture createArchitecture(HotSpotVMConfig config) {
+        return new SPARC(computeFeatures(config));
     }
 
-    protected TargetDescription createTarget() {
+    protected TargetDescription createTarget(HotSpotVMConfig config) {
         final int stackFrameAlignment = 16;
         final int implicitNullCheckLimit = 4096;
         final boolean inlineObjects = true;
-        return new HotSpotTargetDescription(createArchitecture(), true, stackFrameAlignment, implicitNullCheckLimit, inlineObjects);
+        return new HotSpotTargetDescription(createArchitecture(config), true, stackFrameAlignment, implicitNullCheckLimit, inlineObjects);
     }
 
     public HotSpotBackend createBackend(HotSpotGraalRuntime runtime, HotSpotBackend host) {
         assert host == null;
-        TargetDescription target = createTarget();
+        TargetDescription target = createTarget(runtime.getConfig());
 
         HotSpotRegistersProvider registers = createRegisters();
         HotSpotMetaAccessProvider metaAccess = new HotSpotMetaAccessProvider(runtime);
@@ -69,6 +72,20 @@ public class SPARCHotSpotBackendFactory implements HotSpotBackendFactory {
                         methodHandleAccess);
 
         return new SPARCHotSpotBackend(runtime, providers);
+    }
+
+    protected Set<CPUFeature> computeFeatures(HotSpotVMConfig config) {
+        Set<CPUFeature> features = EnumSet.noneOf(CPUFeature.class);
+        if (config.vis1Instructions != 0) {
+            features.add(CPUFeature.VIS1);
+        }
+        if (config.vis2Instructions != 0) {
+            features.add(CPUFeature.VIS2);
+        }
+        if (config.vis3Instructions != 0) {
+            features.add(CPUFeature.VIS3);
+        }
+        return features;
     }
 
     protected HotSpotRegistersProvider createRegisters() {

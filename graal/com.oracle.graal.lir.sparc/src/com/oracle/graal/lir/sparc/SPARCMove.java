@@ -96,6 +96,74 @@ public class SPARCMove {
         }
     }
 
+    /**
+     * Move between floating-point and general purpose register domain (WITHOUT VIS3)
+     */
+    @Opcode("MOVE")
+    public static class MoveFpGp extends SPARCLIRInstruction implements MoveOp {
+
+        @Def({REG}) protected AllocatableValue result;
+        @Use({REG}) protected AllocatableValue input;
+        @Use({STACK}) protected StackSlot temp;
+
+        public MoveFpGp(AllocatableValue result, AllocatableValue input, StackSlot temp) {
+            super();
+            this.result = result;
+            this.input = input;
+            this.temp = temp;
+        }
+
+        public Value getInput() {
+            return input;
+        }
+
+        public AllocatableValue getResult() {
+            return result;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
+            PlatformKind inputKind = input.getPlatformKind();
+            PlatformKind resultKind = result.getPlatformKind();
+            try (SPARCScratchRegister sc = SPARCScratchRegister.get()) {
+                Register scratch = sc.getRegister();
+                SPARCAddress tempAddress = guaranueeLoadable((SPARCAddress) crb.asAddress(temp), masm, scratch);
+                if (inputKind == Kind.Float) {
+                    new Stf(asFloatReg(input), tempAddress).emit(masm);
+                } else if (inputKind == Kind.Double) {
+                    new Stdf(asDoubleReg(input), tempAddress).emit(masm);
+                } else if (inputKind == Kind.Int) {
+                    new Stw(asIntReg(input), tempAddress).emit(masm);
+                } else if (inputKind == Kind.Short || inputKind == Kind.Char) {
+                    new Sth(asIntReg(input), tempAddress).emit(masm);
+                } else if (inputKind == Kind.Byte) {
+                    new Stb(asIntReg(input), tempAddress).emit(masm);
+                } else if (inputKind == Kind.Long) {
+                    new Stx(asLongReg(input), tempAddress).emit(masm);
+                } else {
+                    GraalInternalError.shouldNotReachHere();
+                }
+                if (resultKind == Kind.Int) {
+                    new Ldsw(tempAddress, asIntReg(result)).emit(masm);
+                } else if (inputKind == Kind.Short) {
+                    new Ldsh(tempAddress, asIntReg(input)).emit(masm);
+                } else if (inputKind == Kind.Char) {
+                    new Lduh(tempAddress, asIntReg(input)).emit(masm);
+                } else if (inputKind == Kind.Byte) {
+                    new Ldsb(tempAddress, asIntReg(input)).emit(masm);
+                } else if (resultKind == Kind.Float) {
+                    new Ldf(tempAddress, asFloatReg(result)).emit(masm);
+                } else if (resultKind == Kind.Long) {
+                    new Ldx(tempAddress, asLongReg(result)).emit(masm);
+                } else if (resultKind == Kind.Double) {
+                    new Lddf(tempAddress, asDoubleReg(result)).emit(masm);
+                } else {
+                    GraalInternalError.shouldNotReachHere();
+                }
+            }
+        }
+    }
+
     public abstract static class MemOp extends SPARCLIRInstruction implements ImplicitNullCheck {
 
         protected final Kind kind;
@@ -408,18 +476,23 @@ public class SPARCMove {
                 throw GraalInternalError.shouldNotReachHere();
             }
         } else if (isConstant(input)) {
+            Constant constant = asConstant(input);
             if (isRegister(result)) {
-                const2reg(crb, masm, result, (Constant) input);
+                const2reg(crb, masm, result, constant);
             } else if (isStackSlot(result)) {
-                try (SPARCScratchRegister sc = SPARCScratchRegister.get()) {
-                    Register scratch = sc.getRegister();
-                    Constant constant = asConstant(input);
-                    if (constant.isNull()) {
-                        new Clr(scratch).emit(masm);
-                    } else {
-                        new Setx(constant.asLong(), scratch).emit(masm);
+                if (constant.isDefaultForKind() || constant.isNull()) {
+                    reg2stack(crb, masm, result, g0.asValue(LIRKind.derive(input)));
+                } else {
+                    try (SPARCScratchRegister sc = SPARCScratchRegister.get()) {
+                        Register scratch = sc.getRegister();
+                        long value = constant.asLong();
+                        if (isSimm13(value)) {
+                            new Or(g0, (int) value, scratch).emit(masm);
+                        } else {
+                            new Setx(value, scratch).emit(masm);
+                        }
+                        reg2stack(crb, masm, result, scratch.asValue(LIRKind.derive(input)));
                     }
-                    reg2stack(crb, masm, result, scratch.asValue(LIRKind.derive(input)));
                 }
             } else {
                 throw GraalInternalError.shouldNotReachHere("Result is a: " + result);
@@ -432,10 +505,7 @@ public class SPARCMove {
     private static void reg2reg(SPARCAssembler masm, Value result, Value input) {
         final Register src = asRegister(input);
         final Register dst = asRegister(result);
-        // implicit conversions between double and float registers can happen in the "same Register"
-        // f0->d0
-        boolean isFloatToDoubleConversion = result.getKind() == Kind.Double && input.getKind() == Kind.Float;
-        if (src.equals(dst) && !isFloatToDoubleConversion) {
+        if (src.equals(dst)) {
             return;
         }
         switch (input.getKind()) {
@@ -449,30 +519,17 @@ public class SPARCMove {
                 new Mov(src, dst).emit(masm);
                 break;
             case Float:
-                switch (result.getKind()) {
-                    case Long:
-                        new Movstosw(src, dst).emit(masm);
-                        break;
-                    case Int:
-                        new Movstouw(src, dst).emit(masm);
-                        break;
-                    case Float:
-                        new Fmovs(src, dst).emit(masm);
-                        break;
-                    case Double:
-                        new Fstod(src, dst).emit(masm);
-                        break;
-                    default:
-                        throw GraalInternalError.shouldNotReachHere();
+                if (result.getPlatformKind() == Kind.Float) {
+                    new Fmovs(src, dst).emit(masm);
+                } else {
+                    throw GraalInternalError.shouldNotReachHere();
                 }
                 break;
             case Double:
-                if (result.getPlatformKind() == Kind.Long) {
-                    new Movdtox(src, dst).emit(masm);
-                } else if (result.getPlatformKind() == Kind.Int) {
-                    new Movstouw(src, dst).emit(masm);
-                } else {
+                if (result.getPlatformKind() == Kind.Double) {
                     new Fmovd(src, dst).emit(masm);
+                } else {
+                    throw GraalInternalError.shouldNotReachHere();
                 }
                 break;
             default:
@@ -574,10 +631,22 @@ public class SPARCMove {
             Register scratch = sc.getRegister();
             switch (input.getKind().getStackKind()) {
                 case Int:
-                    new Setx(input.asLong(), asIntReg(result)).emit(masm);
+                    if (input.isDefaultForKind()) {
+                        new Clr(asIntReg(result)).emit(masm);
+                    } else if (isSimm13(input.asLong())) {
+                        new Or(g0, input.asInt(), asIntReg(result)).emit(masm);
+                    } else {
+                        new Setx(input.asLong(), asIntReg(result)).emit(masm);
+                    }
                     break;
                 case Long:
-                    new Setx(input.asLong(), asLongReg(result)).emit(masm);
+                    if (input.isDefaultForKind()) {
+                        new Clr(asLongReg(result)).emit(masm);
+                    } else if (isSimm13(input.asLong())) {
+                        new Or(g0, input.asInt(), asLongReg(result)).emit(masm);
+                    } else {
+                        new Setx(input.asLong(), asLongReg(result)).emit(masm);
+                    }
                     break;
                 case Float:
                     // TODO: Handle it the same way, as in the double case with Movwtos
@@ -591,9 +660,15 @@ public class SPARCMove {
                     // instead loading this from memory and do the complicated lookup,
                     // just load it directly into a scratch register
                     // First load the address into the scratch register
-                    new Setx(Double.doubleToLongBits(input.asDouble()), scratch, true).emit(masm);
+                    // new Setx(Double.doubleToLongBits(input.asDouble()), scratch,
+                    // true).emit(masm);
                     // Now load the float value
-                    new Movxtod(scratch, asDoubleReg(result)).emit(masm);
+                    // new Movxtod(scratch, asDoubleReg(result)).emit(masm);
+                    crb.asDoubleConstRef(input);
+                    // First load the address into the scratch register
+                    new Setx(0, scratch, true).emit(masm);
+                    // Now load the float value
+                    new Lddf(scratch, asDoubleReg(result)).emit(masm);
                     break;
                 case Object:
                     if (input.isNull()) {

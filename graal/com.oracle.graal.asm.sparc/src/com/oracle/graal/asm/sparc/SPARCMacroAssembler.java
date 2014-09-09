@@ -27,6 +27,9 @@ import static com.oracle.graal.sparc.SPARC.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.asm.*;
+import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.sparc.*;
+import com.oracle.graal.sparc.SPARC.CPUFeature;
 
 public class SPARCMacroAssembler extends SPARCAssembler {
 
@@ -62,6 +65,10 @@ public class SPARCMacroAssembler extends SPARCAssembler {
         Fmt00 fmt = Fmt00.read(this, branch);
         fmt.setImm(disp);
         fmt.write(this, branch);
+    }
+
+    protected boolean hasFeature(CPUFeature feature) {
+        return ((SPARC) this.target.arch).features.contains(feature);
     }
 
     @Override
@@ -334,6 +341,27 @@ public class SPARCMacroAssembler extends SPARCAssembler {
             } else {
                 new Sethi(hi22(value), dst).emit(masm);
                 new Or(dst, lo10(value), dst).emit(masm);
+            }
+        }
+    }
+
+    public static class MoveXtoDouble {
+        private final Register src;
+        private final Register dst;
+        private final StackSlot tmp;
+
+        public MoveXtoDouble(Register src, Register dst, StackSlot tmp) {
+            super();
+            this.src = src;
+            this.dst = dst;
+            this.tmp = tmp;
+        }
+
+        public void emit(SPARCMacroAssembler masm) {
+            if (masm.hasFeature(CPUFeature.VIS3)) {
+                new Movxtod(src, dst).emit(masm);
+            } else {
+                GraalInternalError.unimplemented();
             }
         }
     }

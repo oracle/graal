@@ -27,8 +27,11 @@ import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Lddf;
 import com.oracle.graal.asm.sparc.SPARCAssembler.Movxtod;
 import com.oracle.graal.asm.sparc.*;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Stx;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 import com.oracle.graal.lir.asm.*;
@@ -75,12 +78,20 @@ public class SPARCSaveRegistersOp extends SPARCLIRInstruction implements SaveReg
 
     @Override
     public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
+        // Can be used with VIS3
+        // new Movxtod(SPARC.i0, RETURN_REGISTER_STORAGE).emit(masm);
+        // We abuse the first stackslot for transferring i0 to return_register_storage
+        // assert slots.length >= 1;
+        SPARCAddress slot0Address = (SPARCAddress) crb.asAddress(slots[0]);
+        new Stx(SPARC.i0, slot0Address).emit(masm);
+        new Lddf(slot0Address, RETURN_REGISTER_STORAGE).emit(masm);
+
+        // Now save the registers
         for (int i = 0; i < savedRegisters.length; i++) {
             if (savedRegisters[i] != null) {
                 saveRegister(crb, masm, slots[i], savedRegisters[i]);
             }
         }
-        new Movxtod(SPARC.i0, RETURN_REGISTER_STORAGE).emit(masm);
     }
 
     public StackSlot[] getSlots() {

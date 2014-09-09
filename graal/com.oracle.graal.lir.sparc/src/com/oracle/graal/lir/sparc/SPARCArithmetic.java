@@ -47,8 +47,7 @@ public enum SPARCArithmetic {
     L2I, B2I, S2I, B2L, S2L, I2L,
     F2D, D2F,
     I2F, I2D, F2I, D2I,
-    L2F, L2D, F2L, D2L,
-    MOV_I2F, MOV_L2D, MOV_F2I, MOV_D2L;
+    L2F, L2D, F2L, D2L;
     // @formatter:on
 
     /**
@@ -72,50 +71,6 @@ public enum SPARCArithmetic {
         }
     }
 
-    public static class Op1Stack extends SPARCLIRInstruction {
-
-        @Opcode private final SPARCArithmetic opcode;
-        @Def({REG, HINT}) protected Value result;
-        @Use({REG, STACK, CONST}) protected Value x;
-
-        public Op1Stack(SPARCArithmetic opcode, Value result, Value x) {
-            this.opcode = opcode;
-            this.result = result;
-            this.x = x;
-        }
-
-        @Override
-        public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-            emitUnary(crb, masm, opcode, result, x, null);
-        }
-    }
-
-    public static class Op2Stack extends SPARCLIRInstruction {
-
-        @Opcode private final SPARCArithmetic opcode;
-        @Def({REG}) protected Value result;
-        @Use({REG, CONST}) protected Value x;
-        @Alive({REG, CONST}) protected Value y;
-
-        public Op2Stack(SPARCArithmetic opcode, Value result, Value x, Value y) {
-            this.opcode = opcode;
-            this.result = result;
-            this.x = x;
-            this.y = y;
-        }
-
-        @Override
-        public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-            emit(crb, masm, opcode, result, x, y, null);
-        }
-
-        @Override
-        public void verify() {
-            super.verify();
-            verifyKind(opcode, result, x, y);
-        }
-    }
-
     /**
      * Binary operation with two operands. The first source operand is combined with the
      * destination. The second source operand must be a register.
@@ -124,8 +79,8 @@ public enum SPARCArithmetic {
 
         @Opcode private final SPARCArithmetic opcode;
         @Def({REG}) protected Value result;
-        @Use({REG, CONST}) protected Value x;
-        @Alive({REG, CONST}) protected Value y;
+        @Use({REG}) protected Value x;
+        @Alive({REG}) protected Value y;
         @State LIRFrameState state;
 
         public BinaryRegReg(SPARCArithmetic opcode, Value result, Value x, Value y) {
@@ -182,41 +137,6 @@ public enum SPARCArithmetic {
 
         @Override
         public void verify() {
-            super.verify();
-            verifyKind(opcode, result, x, y);
-        }
-    }
-
-    /**
-     * Commutative binary operation with two operands.
-     */
-    public static class BinaryCommutative extends SPARCLIRInstruction {
-
-        @Opcode private final SPARCArithmetic opcode;
-        @Def({REG, HINT}) protected AllocatableValue result;
-        @Use({REG}) protected AllocatableValue x;
-        @Use({REG}) protected AllocatableValue y;
-        @State protected LIRFrameState state;
-
-        public BinaryCommutative(SPARCArithmetic opcode, AllocatableValue result, AllocatableValue x, AllocatableValue y) {
-            this(opcode, result, x, y, null);
-        }
-
-        public BinaryCommutative(SPARCArithmetic opcode, AllocatableValue result, AllocatableValue x, AllocatableValue y, LIRFrameState state) {
-            this.opcode = opcode;
-            this.result = result;
-            this.x = x;
-            this.y = y;
-            this.state = state;
-        }
-
-        @Override
-        public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-            emit(crb, masm, opcode, result, x, y, null);
-        }
-
-        @Override
-        protected void verify() {
             super.verify();
             verifyKind(opcode, result, x, y);
         }
@@ -713,14 +633,13 @@ public enum SPARCArithmetic {
                     new Fdtos(asDoubleReg(src), asFloatReg(dst)).emit(masm);
                     break;
                 case L2D:
-                    if (src.getPlatformKind() == Kind.Long) {
-                        new Movxtod(asLongReg(src), asDoubleReg(dst)).emit(masm);
-                        new Fxtod(asDoubleReg(dst), asDoubleReg(dst)).emit(masm);
-                    } else if (src.getPlatformKind() == Kind.Double) {
-                        new Fxtod(asDoubleReg(src), asDoubleReg(dst)).emit(masm);
-                    } else {
-                        throw GraalInternalError.shouldNotReachHere("cannot handle source register " + src.getPlatformKind());
-                    }
+                    new Fxtod(asDoubleReg(src), asDoubleReg(dst)).emit(masm);
+                    break;
+                case L2F:
+                    new Fxtos(asDoubleReg(src), asFloatReg(dst)).emit(masm);
+                    break;
+                case I2D:
+                    new Fitod(asFloatReg(src), asDoubleReg(dst)).emit(masm);
                     break;
                 case I2L:
                     new Signx(asIntReg(src), asLongReg(dst)).emit(masm);
@@ -745,14 +664,7 @@ public enum SPARCArithmetic {
                     new Sra(asIntReg(dst), 16, asIntReg(dst)).emit(masm);
                     break;
                 case I2F:
-                    if (src.getPlatformKind() == Kind.Int || src.getPlatformKind() == Kind.Char || src.getPlatformKind() == Kind.Short || src.getPlatformKind() == Kind.Byte) {
-                        new Movwtos(asIntReg(src), asFloatReg(dst)).emit(masm);
-                        new Fitos(asFloatReg(dst), asFloatReg(dst)).emit(masm);
-                    } else if (src.getPlatformKind() == Kind.Float) {
-                        new Fitos(asFloatReg(src), asFloatReg(dst)).emit(masm);
-                    } else {
-                        throw GraalInternalError.shouldNotReachHere("cannot handle source register " + src.getPlatformKind());
-                    }
+                    new Fitos(asFloatReg(src), asFloatReg(dst)).emit(masm);
                     break;
                 case F2D:
                     new Fstod(asFloatReg(src), asDoubleReg(dst)).emit(masm);
@@ -772,18 +684,18 @@ public enum SPARCArithmetic {
                     new Fsubs(asFloatReg(dst), asFloatReg(dst), asFloatReg(dst)).emit(masm);
                     masm.bind(notOrdered);
                     break;
-                case MOV_D2L:
-                    new Movdtox(asDoubleReg(src), asLongReg(dst)).emit(masm);
-                    break;
-                case MOV_L2D:
-                    new Movxtod(asLongReg(src), asDoubleReg(dst)).emit(masm);
-                    break;
-                case MOV_F2I:
-                    new Movstosw(asFloatReg(src), asIntReg(dst)).emit(masm);
-                    break;
-                case MOV_I2F:
-                    new Movwtos(asIntReg(src), asFloatReg(dst)).emit(masm);
-                    break;
+// case MOV_D2L:
+// new Movdtox(asDoubleReg(src), asLongReg(dst)).emit(masm);
+// break;
+// case MOV_L2D:
+// new Movxtod(asLongReg(src), asDoubleReg(dst)).emit(masm);
+// break;
+// case MOV_F2I:
+// new Movstosw(asFloatReg(src), asIntReg(dst)).emit(masm);
+// break;
+// case MOV_I2F:
+// new Movwtos(asIntReg(src), asFloatReg(dst)).emit(masm);
+// break;
                 case D2L:
                     new Fcmp(CC.Fcc0, Opfs.Fcmpd, asDoubleReg(src), asDoubleReg(src)).emit(masm);
                     new Fbo(false, notOrdered).emit(masm);
