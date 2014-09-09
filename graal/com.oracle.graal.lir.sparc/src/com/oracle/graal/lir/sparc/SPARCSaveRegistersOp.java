@@ -27,11 +27,8 @@ import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Lddf;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Movxtod;
+import com.oracle.graal.asm.sparc.SPARCAssembler.*;
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Stx;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 import com.oracle.graal.lir.asm.*;

@@ -684,18 +684,6 @@ public enum SPARCArithmetic {
                     new Fsubs(asFloatReg(dst), asFloatReg(dst), asFloatReg(dst)).emit(masm);
                     masm.bind(notOrdered);
                     break;
-// case MOV_D2L:
-// new Movdtox(asDoubleReg(src), asLongReg(dst)).emit(masm);
-// break;
-// case MOV_L2D:
-// new Movxtod(asLongReg(src), asDoubleReg(dst)).emit(masm);
-// break;
-// case MOV_F2I:
-// new Movstosw(asFloatReg(src), asIntReg(dst)).emit(masm);
-// break;
-// case MOV_I2F:
-// new Movwtos(asIntReg(src), asFloatReg(dst)).emit(masm);
-// break;
                 case D2L:
                     new Fcmp(CC.Fcc0, Opfs.Fcmpd, asDoubleReg(src), asDoubleReg(src)).emit(masm);
                     new Fbo(false, notOrdered).emit(masm);

@@ -643,7 +643,7 @@ public class SPARCMove {
                     if (input.isDefaultForKind()) {
                         new Clr(asLongReg(result)).emit(masm);
                     } else if (isSimm13(input.asLong())) {
-                        new Or(g0, input.asInt(), asLongReg(result)).emit(masm);
+                        new Or(g0, (int) input.asLong(), asLongReg(result)).emit(masm);
                     } else {
                         new Setx(input.asLong(), asLongReg(result)).emit(masm);
                     }
