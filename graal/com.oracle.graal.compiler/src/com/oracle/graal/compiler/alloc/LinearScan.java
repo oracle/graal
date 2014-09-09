@@ -894,15 +894,26 @@ public final class LinearScan {
                 BitSet startBlockLiveIn = blockData.get(ir.getControlFlowGraph().getStartBlock()).liveIn;
                 try (Indent indent2 = Debug.logAndIndent("Error: liveIn set of first block must be empty (when this fails, variables are used before they are defined):")) {
                     for (int operandNum = startBlockLiveIn.nextSetBit(0); operandNum >= 0; operandNum = startBlockLiveIn.nextSetBit(operandNum + 1)) {
-                        Value operand = intervalFor(operandNum).operand;
-                        Debug.log("var %d; operand=%s; node=%s", operandNum, operand, getValueForOperandFromDebugContext(operand));
+                        Interval interval = intervalFor(operandNum);
+                        if (interval != null) {
+                            Value operand = interval.operand;
+                            Debug.log("var %d; operand=%s; node=%s", operandNum, operand, getValueForOperandFromDebugContext(operand));
+                        } else {
+                            Debug.log("var %d; missing operand", operandNum);
+                        }
                     }
                 }
 
                 // print some additional information to simplify debugging
                 for (int operandNum = startBlockLiveIn.nextSetBit(0); operandNum >= 0; operandNum = startBlockLiveIn.nextSetBit(operandNum + 1)) {
-                    Value operand = intervalFor(operandNum).operand;
-                    try (Indent indent2 = Debug.logAndIndent("---- Detailed information for var %d; operand=%s; node=%s ----", operandNum, operand, getValueForOperandFromDebugContext(operand))) {
+                    Interval interval = intervalFor(operandNum);
+                    Value operand = null;
+                    ValueNode valueForOperandFromDebugContext = null;
+                    if (interval != null) {
+                        operand = interval.operand;
+                        valueForOperandFromDebugContext = getValueForOperandFromDebugContext(operand);
+                    }
+                    try (Indent indent2 = Debug.logAndIndent("---- Detailed information for var %d; operand=%s; node=%s ----", operandNum, operand, valueForOperandFromDebugContext)) {
 
                         Deque<AbstractBlock<?>> definedIn = new ArrayDeque<>();
                         HashSet<AbstractBlock<?>> usedIn = new HashSet<>();
