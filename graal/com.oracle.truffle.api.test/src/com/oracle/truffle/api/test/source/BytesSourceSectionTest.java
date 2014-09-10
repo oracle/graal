@@ -34,7 +34,7 @@ public class BytesSourceSectionTest {
 
     @Test
     public void testSectionsFromLineNumberASCII() {
-        final byte[] bytes = "foo\nbar\nbaz\n".getBytes(StandardCharsets.UTF_8);
+        final byte[] bytes = "foo\nbar\nbaz\n".getBytes(StandardCharsets.US_ASCII);
         final Source source = Source.fromBytes(bytes, "description", new BytesDecoder.UTF8BytesDecoder());
         assertEquals("foo", source.createSection("identifier", 1).getCode());
         assertEquals("bar", source.createSection("identifier", 2).getCode());
@@ -43,7 +43,7 @@ public class BytesSourceSectionTest {
 
     @Test
     public void testSectionsFromOffsetsASCII() {
-        final byte[] bytes = "foo\nbar\nbaz\n".getBytes(StandardCharsets.UTF_8);
+        final byte[] bytes = "foo\nbar\nbaz\n".getBytes(StandardCharsets.US_ASCII);
         final Source source = Source.fromBytes(bytes, "description", new BytesDecoder.UTF8BytesDecoder());
         assertEquals("foo", source.createSection("identifier", 0, 3).getCode());
         assertEquals("bar", source.createSection("identifier", 4, 3).getCode());
@@ -51,28 +51,8 @@ public class BytesSourceSectionTest {
     }
 
     @Test
-    public void testSectionsFromLineNumberUTF8() {
-        // ☃ is three bytes in UTF8
-        final byte[] bytes = "foo\n☃\nbaz\n".getBytes(StandardCharsets.UTF_8);
-        final Source source = Source.fromBytes(bytes, "description", new BytesDecoder.UTF8BytesDecoder());
-        assertEquals("foo", source.createSection("identifier", 1).getCode());
-        assertEquals("☃", source.createSection("identifier", 2).getCode());
-        assertEquals("baz", source.createSection("identifier", 3).getCode());
-    }
-
-    @Test
-    public void testSectionsFromOffsetsUTF8() {
-        // ☃ is three bytes in UTF8
-        final byte[] bytes = "foo\n☃\nbaz\n".getBytes(StandardCharsets.UTF_8);
-        final Source source = Source.fromBytes(bytes, "description", new BytesDecoder.UTF8BytesDecoder());
-        assertEquals("foo", source.createSection("identifier", 0, 3).getCode());
-        assertEquals("☃", source.createSection("identifier", 4, 3).getCode());
-        assertEquals("baz", source.createSection("identifier", 8, 3).getCode());
-    }
-
-    @Test
     public void testOffset() {
-        final byte[] bytes = "xxxfoo\nbar\nbaz\nxxx".getBytes(StandardCharsets.UTF_8);
+        final byte[] bytes = "xxxfoo\nbar\nbaz\nxxx".getBytes(StandardCharsets.US_ASCII);
         final Source source = Source.fromBytes(bytes, 3, bytes.length - 6, "description", new BytesDecoder.UTF8BytesDecoder());
         assertEquals("foo", source.createSection("identifier", 0, 3).getCode());
         assertEquals("bar", source.createSection("identifier", 4, 3).getCode());
