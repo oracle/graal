@@ -129,7 +129,7 @@ public class SPARCMove {
             int resultKindSize = crb.target.getSizeInBytes(resultKind);
             try (SPARCScratchRegister sc = SPARCScratchRegister.get()) {
                 Register scratch = sc.getRegister();
-                SPARCAddress tempAddress = guaranueeLoadable((SPARCAddress) crb.asAddress(temp), masm, scratch);
+                SPARCAddress tempAddress = generateSimm13OffsetLoad((SPARCAddress) crb.asAddress(temp), masm, scratch);
                 switch (inputKind) {
                     case Float:
                         assert resultKindSize == 4;
@@ -233,7 +233,7 @@ public class SPARCMove {
         public void emitMemAccess(SPARCMacroAssembler masm) {
             try (SPARCScratchRegister sc = SPARCScratchRegister.get()) {
                 Register scratch = sc.getRegister();
-                final SPARCAddress addr = guaranueeLoadable(address.toAddress(), masm, scratch);
+                final SPARCAddress addr = generateSimm13OffsetLoad(address.toAddress(), masm, scratch);
                 final Register dst = asRegister(result);
                 switch (kind) {
                     case Boolean:
@@ -410,7 +410,7 @@ public class SPARCMove {
             assert isRegister(input);
             try (SPARCScratchRegister sc = SPARCScratchRegister.get()) {
                 Register scratch = sc.getRegister();
-                SPARCAddress addr = guaranueeLoadable(address.toAddress(), masm, scratch);
+                SPARCAddress addr = generateSimm13OffsetLoad(address.toAddress(), masm, scratch);
                 switch (kind) {
                     case Boolean:
                     case Byte:
@@ -458,7 +458,7 @@ public class SPARCMove {
         public void emitMemAccess(SPARCMacroAssembler masm) {
             try (SPARCScratchRegister sc = SPARCScratchRegister.get()) {
                 Register scratch = sc.getRegister();
-                SPARCAddress addr = guaranueeLoadable(address.toAddress(), masm, scratch);
+                SPARCAddress addr = generateSimm13OffsetLoad(address.toAddress(), masm, scratch);
                 switch (kind) {
                     case Boolean:
                     case Byte:
@@ -563,15 +563,16 @@ public class SPARCMove {
     }
 
     /**
-     * Guarantees that the given SPARCAddress given before is loadable by subsequent call. If the
-     * displacement exceeds the imm13 value, the value is put into a scratch register o7, which must
-     * be used as soon as possible.
+     * Guarantees that the given SPARCAddress given before is loadable by subsequent load/store
+     * instruction. If the displacement exceeds the simm13 value range, the value is put into a
+     * scratch register.
      *
      * @param addr Address to modify
-     * @param masm assembler to output the prior stx command
+     * @param masm assembler to output the potential code to store the value in the scratch register
+     * @param scratch The register as scratch to use
      * @return a loadable SPARCAddress
      */
-    public static SPARCAddress guaranueeLoadable(SPARCAddress addr, SPARCMacroAssembler masm, Register scratch) {
+    public static SPARCAddress generateSimm13OffsetLoad(SPARCAddress addr, SPARCMacroAssembler masm, Register scratch) {
         boolean displacementOutOfBound = addr.getIndex().equals(Register.None) && !SPARCAssembler.isSimm13(addr.getDisplacement());
         if (displacementOutOfBound) {
             new Setx(addr.getDisplacement(), scratch, false).emit(masm);
@@ -585,7 +586,7 @@ public class SPARCMove {
         SPARCAddress dst = (SPARCAddress) crb.asAddress(result);
         try (SPARCScratchRegister sc = SPARCScratchRegister.get()) {
             Register scratch = sc.getRegister();
-            dst = guaranueeLoadable(dst, masm, scratch);
+            dst = generateSimm13OffsetLoad(dst, masm, scratch);
             Register src = asRegister(input);
             switch (input.getKind()) {
                 case Byte:
@@ -619,7 +620,7 @@ public class SPARCMove {
         SPARCAddress src = (SPARCAddress) crb.asAddress(input);
         try (SPARCScratchRegister sc = SPARCScratchRegister.get()) {
             Register scratch = sc.getRegister();
-            src = guaranueeLoadable(src, masm, scratch);
+            src = generateSimm13OffsetLoad(src, masm, scratch);
             Register dst = asRegister(result);
             switch (input.getKind()) {
                 case Boolean:

@@ -346,7 +346,7 @@ public enum SPARCArithmetic {
                     SPARCAddress addr = (SPARCAddress) crb.recordDataReferenceInCode(asConstant(src2), 4);
                     try (SPARCScratchRegister sc = SPARCScratchRegister.get()) {
                         Register scratch = sc.getRegister();
-                        addr = SPARCMove.guaranueeLoadable(addr, masm, scratch);
+                        addr = SPARCMove.generateSimm13OffsetLoad(addr, masm, scratch);
                         new Lddf(addr, asDoubleReg(dst)).emit(masm);
                     }
                     new Fandd(asDoubleReg(src1), asDoubleReg(dst), asDoubleReg(dst)).emit(masm);
