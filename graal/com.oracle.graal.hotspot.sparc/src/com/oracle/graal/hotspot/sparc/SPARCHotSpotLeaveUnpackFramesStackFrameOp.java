@@ -59,11 +59,15 @@ final class SPARCHotSpotLeaveUnpackFramesStackFrameOp extends SPARCLIRInstructio
          */
         new Mov(l7, thread).emit(masm);
 
-        // Clear last Java frame values.
-        new Stx(g0, new SPARCAddress(thread, threadLastJavaSpOffset)).emit(masm);
-        new Stx(g0, new SPARCAddress(thread, threadLastJavaPcOffset)).emit(masm);
-        new Stw(g0, new SPARCAddress(thread, threadJavaFrameAnchorFlagsOffset)).emit(masm);
+        SPARCAddress lastJavaPc = new SPARCAddress(thread, threadLastJavaPcOffset);
 
-        new Movdtox(SPARCSaveRegistersOp.RETURN_REGISTER_STORAGE, i0).emit(masm);
+        // We borrow the threads lastJavaPC to transfer the value from float to i0
+        new Stdf(SPARCSaveRegistersOp.RETURN_REGISTER_STORAGE, lastJavaPc).emit(masm);
+        new Ldx(lastJavaPc, i0).emit(masm);
+
+        // Clear last Java frame values.
+        new Stx(g0, lastJavaPc).emit(masm);
+        new Stx(g0, new SPARCAddress(thread, threadLastJavaSpOffset)).emit(masm);
+        new Stw(g0, new SPARCAddress(thread, threadJavaFrameAnchorFlagsOffset)).emit(masm);
     }
 }
