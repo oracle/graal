@@ -111,6 +111,6 @@ public class OnStackReplacementPhase extends Phase {
         GraphUtil.killCFG(start);
 
         Debug.dump(graph, "OnStackReplacement result");
-        new DeadCodeEliminationPhase(OPTIONAL).apply(graph);
+        new DeadCodeEliminationPhase(Optional).apply(graph);
     }
 }

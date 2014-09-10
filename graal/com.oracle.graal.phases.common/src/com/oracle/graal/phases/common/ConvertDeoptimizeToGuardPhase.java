@@ -103,7 +103,7 @@ public class ConvertDeoptimizeToGuardPhase extends Phase {
             }
         }
 
-        new DeadCodeEliminationPhase(OPTIONAL).apply(graph);
+        new DeadCodeEliminationPhase(Optional).apply(graph);
     }
 
     private void visitDeoptBegin(BeginNode deoptBegin, DeoptimizationAction deoptAction, DeoptimizationReason deoptReason, StructuredGraph graph) {

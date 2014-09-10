@@ -151,7 +151,7 @@ public class FlowSensitiveReduction extends FixedGuardReduction {
             for (PostponedDeopt postponed : postponedDeopts) {
                 postponed.doRewrite(falseConstant);
             }
-            new DeadCodeEliminationPhase(OPTIONAL).apply(graph);
+            new DeadCodeEliminationPhase(Optional).apply(graph);
         }
         for (MethodCallTargetNode mcn : graph.getNodes().filter(MethodCallTargetNode.class)) {
             if (mcn.isAlive() && FlowUtil.lacksUsages(mcn)) {
