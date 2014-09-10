@@ -111,6 +111,7 @@ public class SPARCMove {
             this.result = result;
             this.input = input;
             this.temp = temp;
+            assert this.temp.getPlatformKind() == Kind.Long;
         }
 
         public Value getInput() {
@@ -123,42 +124,66 @@ public class SPARCMove {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-            PlatformKind inputKind = input.getPlatformKind();
-            PlatformKind resultKind = result.getPlatformKind();
+            Kind inputKind = (Kind) input.getPlatformKind();
+            Kind resultKind = (Kind) result.getPlatformKind();
+            int resultKindSize = crb.target.getSizeInBytes(resultKind);
             try (SPARCScratchRegister sc = SPARCScratchRegister.get()) {
                 Register scratch = sc.getRegister();
                 SPARCAddress tempAddress = guaranueeLoadable((SPARCAddress) crb.asAddress(temp), masm, scratch);
-                if (inputKind == Kind.Float) {
-                    new Stf(asFloatReg(input), tempAddress).emit(masm);
-                } else if (inputKind == Kind.Double) {
-                    new Stdf(asDoubleReg(input), tempAddress).emit(masm);
-                } else if (inputKind == Kind.Int) {
-                    new Stw(asIntReg(input), tempAddress).emit(masm);
-                } else if (inputKind == Kind.Short || inputKind == Kind.Char) {
-                    new Sth(asIntReg(input), tempAddress).emit(masm);
-                } else if (inputKind == Kind.Byte) {
-                    new Stb(asIntReg(input), tempAddress).emit(masm);
-                } else if (inputKind == Kind.Long) {
-                    new Stx(asLongReg(input), tempAddress).emit(masm);
-                } else {
-                    GraalInternalError.shouldNotReachHere();
+                switch (inputKind) {
+                    case Float:
+                        assert resultKindSize == 4;
+                        new Stf(asFloatReg(input), tempAddress).emit(masm);
+                        break;
+                    case Double:
+                        assert resultKindSize == 8;
+                        new Stdf(asDoubleReg(input), tempAddress).emit(masm);
+                        break;
+                    case Long:
+                    case Int:
+                    case Short:
+                    case Char:
+                    case Byte:
+                        if (resultKindSize == 8) {
+                            new Stx(asLongReg(input), tempAddress).emit(masm);
+                        } else if (resultKindSize == 4) {
+                            new Stw(asIntReg(input), tempAddress).emit(masm);
+                        } else if (resultKindSize == 2) {
+                            new Sth(asIntReg(input), tempAddress).emit(masm);
+                        } else if (resultKindSize == 1) {
+                            new Stb(asIntReg(input), tempAddress).emit(masm);
+                        } else {
+                            throw GraalInternalError.shouldNotReachHere();
+                        }
+                        break;
+                    default:
+                        GraalInternalError.shouldNotReachHere();
                 }
-                if (resultKind == Kind.Int) {
-                    new Ldsw(tempAddress, asIntReg(result)).emit(masm);
-                } else if (inputKind == Kind.Short) {
-                    new Ldsh(tempAddress, asIntReg(input)).emit(masm);
-                } else if (inputKind == Kind.Char) {
-                    new Lduh(tempAddress, asIntReg(input)).emit(masm);
-                } else if (inputKind == Kind.Byte) {
-                    new Ldsb(tempAddress, asIntReg(input)).emit(masm);
-                } else if (resultKind == Kind.Float) {
-                    new Ldf(tempAddress, asFloatReg(result)).emit(masm);
-                } else if (resultKind == Kind.Long) {
-                    new Ldx(tempAddress, asLongReg(result)).emit(masm);
-                } else if (resultKind == Kind.Double) {
-                    new Lddf(tempAddress, asDoubleReg(result)).emit(masm);
-                } else {
-                    GraalInternalError.shouldNotReachHere();
+                switch (resultKind) {
+                    case Long:
+                        new Ldx(tempAddress, asLongReg(result)).emit(masm);
+                        break;
+                    case Int:
+                        new Ldsw(tempAddress, asIntReg(result)).emit(masm);
+                        break;
+                    case Short:
+                        new Ldsh(tempAddress, asIntReg(input)).emit(masm);
+                        break;
+                    case Char:
+                        new Lduh(tempAddress, asIntReg(input)).emit(masm);
+                        break;
+                    case Byte:
+                        new Ldsb(tempAddress, asIntReg(input)).emit(masm);
+                        break;
+                    case Float:
+                        new Ldf(tempAddress, asFloatReg(result)).emit(masm);
+                        break;
+                    case Double:
+                        new Lddf(tempAddress, asDoubleReg(result)).emit(masm);
+                        break;
+                    default:
+                        GraalInternalError.shouldNotReachHere();
+                        break;
                 }
             }
         }
