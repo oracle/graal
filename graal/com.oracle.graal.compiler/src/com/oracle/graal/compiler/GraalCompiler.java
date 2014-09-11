@@ -168,7 +168,7 @@ public class GraalCompiler {
             HighTierContext highTierContext = new HighTierContext(providers, assumptions, cache, graphBuilderSuite, optimisticOpts);
             if (graph.start().next() == null) {
                 graphBuilderSuite.apply(graph, highTierContext);
-                new DeadCodeEliminationPhase(OPTIONAL).apply(graph);
+                new DeadCodeEliminationPhase(Optional).apply(graph);
             } else {
                 Debug.dump(graph, "initial state");
             }

@@ -58,7 +58,7 @@ public class HighTier extends PhaseSuite<HighTierContext> {
                 appendPhase(new IterativeInliningPhase(canonicalizer));
             } else {
                 appendPhase(new InliningPhase(canonicalizer));
-                appendPhase(new DeadCodeEliminationPhase(OPTIONAL));
+                appendPhase(new DeadCodeEliminationPhase(Optional));
 
                 boolean reduceOrEliminate = FlowSensitiveReduction.getValue() || ConditionalElimination.getValue();
                 if (reduceOrEliminate && OptCanonicalizer.getValue()) {

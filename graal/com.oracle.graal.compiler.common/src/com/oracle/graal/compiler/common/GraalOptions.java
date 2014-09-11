@@ -91,7 +91,7 @@ public final class GraalOptions {
 
     // graph caching
     @Option(help = "")
-    public static final OptionValue<Boolean> CacheGraphs = new OptionValue<>(true);
+    public static final OptionValue<Boolean> CacheGraphs = new OptionValue<>(false);
 
     //loop transform settings TODO (gd) tune
     @Option(help = "")

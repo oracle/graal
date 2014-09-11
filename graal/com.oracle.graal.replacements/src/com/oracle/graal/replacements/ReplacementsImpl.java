@@ -512,7 +512,7 @@ public class ReplacementsImpl implements Replacements {
                     new CollapseFrameForSingleSideEffectPhase().apply(graph);
                     break;
             }
-            new DeadCodeEliminationPhase(REQUIRED).apply(graph);
+            new DeadCodeEliminationPhase(Required).apply(graph);
         }
 
         /**
@@ -614,7 +614,7 @@ public class ReplacementsImpl implements Replacements {
          */
         protected void afterInlining(StructuredGraph graph) {
             new NodeIntrinsificationPhase(providers, snippetReflection).apply(graph);
-            new DeadCodeEliminationPhase(OPTIONAL).apply(graph);
+            new DeadCodeEliminationPhase(Optional).apply(graph);
             if (OptCanonicalizer.getValue()) {
                 new CanonicalizerPhase(true).apply(graph, new PhaseContext(providers, assumptions));
             }
@@ -687,7 +687,7 @@ public class ReplacementsImpl implements Replacements {
                     end.disableSafepoint();
                 }
 
-                new DeadCodeEliminationPhase(REQUIRED).apply(graph);
+                new DeadCodeEliminationPhase(Required).apply(graph);
             } catch (Throwable e) {
                 throw Debug.handle(e);
             }
