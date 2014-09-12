@@ -28,6 +28,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 
@@ -46,7 +47,7 @@ public class DirectReadNode extends FixedWithNextNode implements LIRLowerable {
     }
 
     protected DirectReadNode(ValueNode address, Kind readKind) {
-        super(StampFactory.forKind(readKind));
+        super(StampFactory.forKind(readKind.getStackKind()));
         this.address = address;
         this.readKind = readKind;
     }
@@ -55,10 +56,33 @@ public class DirectReadNode extends FixedWithNextNode implements LIRLowerable {
         return address;
     }
 
+    /**
+     * If we are sub it sizes, we try to sign/zero extend the value to at least int as it is done in
+     * the {@link com.oracle.graal.replacements.DefaultJavaLoweringProvider#implicitLoadConvert} and
+     * {@link com.oracle.graal.replacements.DefaultJavaLoweringProvider#createUnsafeRead}
+     *
+     * @see com.oracle.graal.replacements.DefaultJavaLoweringProvider#implicitLoadConvert
+     * @see com.oracle.graal.replacements.DefaultJavaLoweringProvider#createUnsafeRead
+     */
     @Override
     public void generate(NodeLIRBuilderTool gen) {
         LIRKind kind = gen.getLIRGeneratorTool().target().getLIRKind(readKind);
-        gen.setResult(this, gen.getLIRGeneratorTool().emitLoad(kind, gen.operand(address), null));
+        Value loaded = gen.getLIRGeneratorTool().emitLoad(kind, gen.operand(address), null);
+        switch ((Kind) kind.getPlatformKind()) {
+            case Byte:
+                loaded = gen.getLIRGeneratorTool().emitSignExtend(loaded, 8, 32);
+                break;
+            case Short:
+                loaded = gen.getLIRGeneratorTool().emitSignExtend(loaded, 16, 32);
+                break;
+            case Boolean:
+                loaded = gen.getLIRGeneratorTool().emitZeroExtend(loaded, 8, 32);
+                break;
+            case Char:
+                loaded = gen.getLIRGeneratorTool().emitZeroExtend(loaded, 16, 32);
+                break;
+        }
+        gen.setResult(this, loaded);
     }
 
     @SuppressWarnings("unchecked")
