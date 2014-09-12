@@ -26,7 +26,6 @@ import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.sparc.*;
@@ -35,7 +34,6 @@ import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.gen.*;
-import com.oracle.graal.sparc.*;
 
 public enum SPARCArithmetic {
     // @formatter:off
@@ -97,7 +95,7 @@ public enum SPARCArithmetic {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-            emit(crb, masm, opcode, result, x, y, state);
+            emitRegReg(crb, masm, opcode, result, x, y, state);
         }
 
         @Override
@@ -114,15 +112,15 @@ public enum SPARCArithmetic {
 
         @Opcode private final SPARCArithmetic opcode;
         @Def({REG}) protected AllocatableValue result;
-        @Use({REG}) protected AllocatableValue x;
+        @Use({REG}) protected Value x;
         @State protected LIRFrameState state;
         protected Constant y;
 
-        public BinaryRegConst(SPARCArithmetic opcode, AllocatableValue result, AllocatableValue x, Constant y) {
+        public BinaryRegConst(SPARCArithmetic opcode, AllocatableValue result, Value x, Constant y) {
             this(opcode, result, x, y, null);
         }
 
-        public BinaryRegConst(SPARCArithmetic opcode, AllocatableValue result, AllocatableValue x, Constant y, LIRFrameState state) {
+        public BinaryRegConst(SPARCArithmetic opcode, AllocatableValue result, Value x, Constant y, LIRFrameState state) {
             this.opcode = opcode;
             this.result = result;
             this.x = x;
@@ -132,7 +130,7 @@ public enum SPARCArithmetic {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-            emit(crb, masm, opcode, result, x, y, null);
+            emitRegConstant(crb, masm, opcode, result, x, y, null);
         }
 
         @Override
@@ -142,34 +140,9 @@ public enum SPARCArithmetic {
         }
     }
 
-    public static class ShiftOp extends SPARCLIRInstruction {
-
-        @Opcode private final SPARCArithmetic opcode;
-        @Def({REG}) protected Value result;
-        @Use({REG, CONST}) protected Value x;
-        @Alive({REG, CONST}) protected Value y;
-
-        public ShiftOp(SPARCArithmetic opcode, Value result, Value x, Value y) {
-            this.opcode = opcode;
-            this.result = result;
-            this.x = x;
-            this.y = y;
-        }
-
-        @Override
-        public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-            assert !(x instanceof SPARCAddressValue);
-            emit(crb, masm, opcode, result, x, y, null);
-        }
-
-        @Override
-        public void verify() {
-            super.verify();
-            verifyKind(opcode, result, x, x);
-            assert y.getKind().getStackKind() == Kind.Int;
-        }
-    }
-
+    /**
+     * Special LIR instruction as it requires a bunch of scratch registers.
+     */
     public static class RemOp extends SPARCLIRInstruction {
 
         @Opcode private final SPARCArithmetic opcode;
@@ -192,7 +165,7 @@ public enum SPARCArithmetic {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-            emit(crb, masm, opcode, result, x, y, scratch1, scratch2, state);
+            emitRem(crb, masm, opcode, result, x, y, scratch1, scratch2, state);
         }
 
         @Override
@@ -202,275 +175,88 @@ public enum SPARCArithmetic {
         }
     }
 
-    public static void emit(CompilationResultBuilder crb, SPARCMacroAssembler masm, SPARCArithmetic opcode, Value dst, Value src1, Value src2, LIRFrameState info) {
+    private static void emitRegConstant(CompilationResultBuilder crb, SPARCMacroAssembler masm, SPARCArithmetic opcode, Value dst, Value src1, Constant src2, LIRFrameState info) {
+        assert isSimm13(crb.asIntConst(src2)) : src2;
+        int constant = crb.asIntConst(src2);
         int exceptionOffset = -1;
-        if (isConstant(src1) && !isConstant(src2)) {
-            switch (opcode) {
-                case ISUB:
-                    assert isSimm13(crb.asIntConst(src1));
-                    new Sub(SPARC.g0, asIntReg(src2), asIntReg(dst)).emit(masm);
-                    new Add(asIntReg(dst), crb.asIntConst(src1), asIntReg(dst)).emit(masm);
-                    break;
-                case LSUB: {
-                    long c = crb.asLongConst(src1);
-                    assert isSimm13(c);
-                    new Sub(SPARC.g0, asLongReg(src2), asLongReg(dst)).emit(masm);
-                    new Add(asLongReg(dst), (int) c, asLongReg(dst)).emit(masm);
-                    break;
-                }
-                case IAND:
-                    throw GraalInternalError.unimplemented();
-                case IDIV:
-                    new Setx(((PrimitiveConstant) src1).asInt(), asIntReg(dst), false).emit(masm);
-                    exceptionOffset = masm.position();
-                    new Sdivx(asIntReg(dst), asIntReg(src2), asIntReg(dst)).emit(masm);
-                    break;
-                case LDIV: {
-                    int c = crb.asIntConst(src1);
-                    assert isSimm13(c);
-                    exceptionOffset = masm.position();
-                    new Sdivx(asLongReg(src2), c, asLongReg(dst)).emit(masm);
-                    new Mulx(asLongReg(src1), asLongReg(dst), asLongReg(dst)).emit(masm);
-                    break;
-                }
-                case FSUB:
-                case FDIV:
-                case DSUB:
-                case DDIV:
-                default:
-                    throw GraalInternalError.shouldNotReachHere();
-            }
-        } else if (!isConstant(src1) && isConstant(src2)) {
-            switch (opcode) {
-                case IADD:
-                    assert isSimm13(crb.asIntConst(src2));
-                    new Add(asIntReg(src1), crb.asIntConst(src2), asIntReg(dst)).emit(masm);
-                    break;
-                case ISUB:
-                    assert isSimm13(crb.asIntConst(src2));
-                    new Sub(asIntReg(src1), crb.asIntConst(src2), asIntReg(dst)).emit(masm);
-                    break;
-                case IMUL:
-                    assert isSimm13(crb.asIntConst(src2));
-                    new Mulx(asIntReg(src1), crb.asIntConst(src2), asIntReg(dst)).emit(masm);
-                    break;
-                case IDIV:
-                    assert isSimm13(crb.asIntConst(src2));
-                    new Sdivx(asIntReg(src1), crb.asIntConst(src2), asIntReg(dst)).emit(masm);
-                    break;
-                case IUDIV:
-                    assert isSimm13(crb.asIntConst(src2));
-                    new Udivx(asIntReg(src1), crb.asIntConst(src2), asIntReg(dst)).emit(masm);
-                    break;
-                case IAND:
-                    assert isSimm13(crb.asIntConst(src2)) : src2;
-                    new And(asIntReg(src1), crb.asIntConst(src2), asIntReg(dst)).emit(masm);
-                    break;
-                case ISHL:
-                    assert isSimm13(crb.asIntConst(src2));
-                    new Sll(asIntReg(src1), crb.asIntConst(src2), asIntReg(dst)).emit(masm);
-                    break;
-                case ISHR:
-                    assert isSimm13(crb.asIntConst(src2));
-                    new Sra(asIntReg(src1), crb.asIntConst(src2), asIntReg(dst)).emit(masm);
-                    break;
-                case IUSHR:
-                    assert isSimm13(crb.asIntConst(src2));
-                    new Srl(asIntReg(src1), crb.asIntConst(src2), asIntReg(dst)).emit(masm);
-                    break;
-                case IOR:
-                    assert isSimm13(crb.asIntConst(src2));
-                    new Or(asIntReg(src1), crb.asIntConst(src2), asIntReg(dst)).emit(masm);
-                    break;
-                case IXOR:
-                    assert isSimm13(crb.asIntConst(src2));
-                    new Xor(asIntReg(src1), crb.asIntConst(src2), asIntReg(dst)).emit(masm);
-                    break;
-                case LADD:
-                    assert isSimm13(crb.asIntConst(src2));
-                    new Add(asLongReg(src1), crb.asIntConst(src2), asLongReg(dst)).emit(masm);
-                    break;
-                case LSUB:
-                    assert isSimm13(crb.asIntConst(src2));
-                    new Sub(asLongReg(src1), crb.asIntConst(src2), asLongReg(dst)).emit(masm);
-                    break;
-                case LMUL:
-                    assert isSimm13(crb.asIntConst(src2));
-                    new Mulx(asLongReg(src1), crb.asIntConst(src2), asLongReg(dst)).emit(masm);
-                    break;
-                case LDIV: {
-                    int c = crb.asIntConst(src2);
-                    exceptionOffset = masm.position();
-                    if (c == 0) { // Generate div by zero trap
-                        new Sdivx(SPARC.g0, 0, asLongReg(dst)).emit(masm);
-                    } else if (isConstant(src1)) { // Both are const, therefore just load the const
-                        new Setx(crb.asIntConst(src1) / c, asLongReg(dst), false).emit(masm);
-                    } else { // Otherwise try to divide
-                        assert isSimm13(crb.asLongConst(src2));
-                        new Sdivx(asLongReg(src1), crb.asIntConst(src2), asLongReg(dst)).emit(masm);
-                    }
-                    break;
-                }
-                case LUDIV: {
-                    int c = crb.asIntConst(src2);
-                    assert isSimm13(c);
-                    exceptionOffset = masm.position();
-                    new Udivx(asLongReg(src1), c, asLongReg(dst)).emit(masm);
-                    break;
-                }
-                case LAND:
-                    assert isSimm13(crb.asIntConst(src2));
-                    new And(asLongReg(src1), crb.asIntConst(src2), asLongReg(dst)).emit(masm);
-                    break;
-                case LOR:
-                    assert isSimm13(crb.asIntConst(src2));
-                    new Or(asLongReg(src1), crb.asIntConst(src2), asLongReg(dst)).emit(masm);
-                    break;
-                case LXOR:
-                    assert isSimm13(crb.asIntConst(src2));
-                    new Xor(asLongReg(src1), crb.asIntConst(src2), asLongReg(dst)).emit(masm);
-                    break;
-                case LSHL:
-                    assert isSimm13(crb.asIntConst(src2));
-                    new Sllx(asLongReg(src1), crb.asIntConst(src2), asLongReg(dst)).emit(masm);
-                    break;
-                case LSHR:
-                    assert isSimm13(crb.asIntConst(src2));
-                    new Srax(asLongReg(src1), crb.asIntConst(src2), asLongReg(dst)).emit(masm);
-                    break;
-                case LUSHR:
-                    assert isSimm13(crb.asIntConst(src2));
-                    new Srlx(asLongReg(src1), crb.asIntConst(src2), asLongReg(dst)).emit(masm);
-                    break;
-                case DAND:
-                    SPARCAddress addr = (SPARCAddress) crb.recordDataReferenceInCode(asConstant(src2), 4);
-                    try (SPARCScratchRegister sc = SPARCScratchRegister.get()) {
-                        Register scratch = sc.getRegister();
-                        addr = SPARCMove.generateSimm13OffsetLoad(addr, masm, scratch);
-                        new Lddf(addr, asDoubleReg(dst)).emit(masm);
-                    }
-                    new Fandd(asDoubleReg(src1), asDoubleReg(dst), asDoubleReg(dst)).emit(masm);
-                    break;
-                case FADD:
-                case FMUL:
-                case FDIV:
-                case DADD:
-                case DMUL:
-                case DDIV:
-                default:
-                    throw GraalInternalError.shouldNotReachHere();
-            }
-        } else {
-            switch (opcode) {
-                case IADD:
-                    new Add(asIntReg(src1), asIntReg(src2), asIntReg(dst)).emit(masm);
-                    break;
-                case ISUB:
-                    new Sub(asIntReg(src1), asIntReg(src2), asIntReg(dst)).emit(masm);
-                    break;
-                case IMUL:
-                    new Mulx(asIntReg(src1), asIntReg(src2), asIntReg(dst)).emit(masm);
-                    break;
-                case IDIV:
-                    new Signx(asIntReg(src1), asIntReg(src1)).emit(masm);
-                    new Signx(asIntReg(src2), asIntReg(src2)).emit(masm);
-                    exceptionOffset = masm.position();
-                    new Sdivx(asIntReg(src1), asIntReg(src2), asIntReg(dst)).emit(masm);
-                    break;
-                case IUDIV:
-                    exceptionOffset = masm.position();
-                    new Udivx(asIntReg(src1), asIntReg(src2), asIntReg(dst)).emit(masm);
-                    break;
-                case IAND:
-                    new And(asIntReg(src1), asIntReg(src2), asIntReg(dst)).emit(masm);
-                    break;
-                case IOR:
-                    new Or(asIntReg(src1), asIntReg(src2), asIntReg(dst)).emit(masm);
-                    break;
-                case IXOR:
-                    new Xor(asIntReg(src1), asIntReg(src2), asIntReg(dst)).emit(masm);
-                    break;
-                case ISHL:
-                    new Sll(asIntReg(src1), asIntReg(src2), asIntReg(dst)).emit(masm);
-                    break;
-                case ISHR:
-                    new Sra(asIntReg(src1), asIntReg(src2), asIntReg(dst)).emit(masm);
-                    break;
-                case IUSHR:
-                    new Srl(asIntReg(src1), asIntReg(src2), asIntReg(dst)).emit(masm);
-                    break;
-                case IREM:
-                    throw GraalInternalError.unimplemented();
-                case LADD:
-                    new Add(asLongReg(src1), asLongReg(src2), asLongReg(dst)).emit(masm);
-                    break;
-                case LSUB:
-                    new Sub(asLongReg(src1), asLongReg(src2), asLongReg(dst)).emit(masm);
-                    break;
-                case LMUL:
-                    new Mulx(asLongReg(src1), asLongReg(src2), asLongReg(dst)).emit(masm);
-                    break;
-                case LDIV:
-                    exceptionOffset = masm.position();
-                    new Sdivx(asLongReg(src1), asLongReg(src2), asLongReg(dst)).emit(masm);
-                    break;
-                case LUDIV:
-                    exceptionOffset = masm.position();
-                    new Udivx(asLongReg(src1), asLongReg(src2), asLongReg(dst)).emit(masm);
-                    break;
-                case LAND:
-                    new And(asLongReg(src1), asLongReg(src2), asLongReg(dst)).emit(masm);
-                    break;
-                case LOR:
-                    new Or(asLongReg(src1), asLongReg(src2), asLongReg(dst)).emit(masm);
-                    break;
-                case LXOR:
-                    new Xor(asLongReg(src1), asLongReg(src2), asLongReg(dst)).emit(masm);
-                    break;
-                case LSHL:
-                    new Sllx(asLongReg(src1), asIntReg(src2), asLongReg(dst)).emit(masm);
-                    break;
-                case LSHR:
-                    new Srax(asLongReg(src1), asIntReg(src2), asLongReg(dst)).emit(masm);
-                    break;
-                case LUSHR:
-                    new Srlx(asLongReg(src1), asIntReg(src2), asLongReg(dst)).emit(masm);
-                    break;
-                case FADD:
-                    new Fadds(asFloatReg(src1), asFloatReg(src2), asFloatReg(dst)).emit(masm);
-                    break;
-                case FSUB:
-                    new Fsubs(asFloatReg(src1), asFloatReg(src2), asFloatReg(dst)).emit(masm);
-                    break;
-                case FMUL:
-                    if (dst.getPlatformKind() == Kind.Double) {
-                        new Fsmuld(asFloatReg(src1), asFloatReg(src2), asDoubleReg(dst)).emit(masm);
-                    } else if (dst.getPlatformKind() == Kind.Float) {
-                        new Fmuls(asFloatReg(src1), asFloatReg(src2), asFloatReg(dst)).emit(masm);
-                    }
-                    break;
-                case FDIV:
-                    new Fdivs(asFloatReg(src1), asFloatReg(src2), asFloatReg(dst)).emit(masm);
-                    break;
-                case FREM:
-                    throw GraalInternalError.unimplemented();
-                case DADD:
-                    new Faddd(asDoubleReg(src1), asDoubleReg(src2), asDoubleReg(dst)).emit(masm);
-                    break;
-                case DSUB:
-                    new Fsubd(asDoubleReg(src1), asDoubleReg(src2), asDoubleReg(dst)).emit(masm);
-                    break;
-                case DMUL:
-                    new Fmuld(asDoubleReg(src1), asDoubleReg(src2), asDoubleReg(dst)).emit(masm);
-                    break;
-                case DDIV:
-                    new Fdivd(asDoubleReg(src1), asDoubleReg(src2), asDoubleReg(dst)).emit(masm);
-                    break;
-                case DREM:
-                    throw GraalInternalError.unimplemented();
-                default:
-                    throw GraalInternalError.shouldNotReachHere();
-            }
+        switch (opcode) {
+            case IADD:
+                new Add(asIntReg(src1), constant, asIntReg(dst)).emit(masm);
+                break;
+            case ISUB:
+                new Sub(asIntReg(src1), constant, asIntReg(dst)).emit(masm);
+                break;
+            case IMUL:
+                new Mulx(asIntReg(src1), constant, asIntReg(dst)).emit(masm);
+                break;
+            case IDIV:
+                new Sdivx(asIntReg(src1), constant, asIntReg(dst)).emit(masm);
+                break;
+            case IUDIV:
+                new Udivx(asIntReg(src1), constant, asIntReg(dst)).emit(masm);
+                break;
+            case IAND:
+                new And(asIntReg(src1), constant, asIntReg(dst)).emit(masm);
+                break;
+            case ISHL:
+                new Sll(asIntReg(src1), constant, asIntReg(dst)).emit(masm);
+                break;
+            case ISHR:
+                new Sra(asIntReg(src1), constant, asIntReg(dst)).emit(masm);
+                break;
+            case IUSHR:
+                new Srl(asIntReg(src1), constant, asIntReg(dst)).emit(masm);
+                break;
+            case IOR:
+                new Or(asIntReg(src1), constant, asIntReg(dst)).emit(masm);
+                break;
+            case IXOR:
+                new Xor(asIntReg(src1), constant, asIntReg(dst)).emit(masm);
+                break;
+            case LADD:
+                new Add(asLongReg(src1), constant, asLongReg(dst)).emit(masm);
+                break;
+            case LSUB:
+                new Sub(asLongReg(src1), constant, asLongReg(dst)).emit(masm);
+                break;
+            case LMUL:
+                new Mulx(asLongReg(src1), constant, asLongReg(dst)).emit(masm);
+                break;
+            case LDIV:
+                exceptionOffset = masm.position();
+                new Sdivx(asLongReg(src1), constant, asLongReg(dst)).emit(masm);
+                break;
+            case LUDIV:
+                exceptionOffset = masm.position();
+                new Udivx(asLongReg(src1), constant, asLongReg(dst)).emit(masm);
+                break;
+            case LAND:
+                new And(asLongReg(src1), constant, asLongReg(dst)).emit(masm);
+                break;
+            case LOR:
+                new Or(asLongReg(src1), constant, asLongReg(dst)).emit(masm);
+                break;
+            case LXOR:
+                new Xor(asLongReg(src1), constant, asLongReg(dst)).emit(masm);
+                break;
+            case LSHL:
+                new Sllx(asLongReg(src1), constant, asLongReg(dst)).emit(masm);
+                break;
+            case LSHR:
+                new Srax(asLongReg(src1), constant, asLongReg(dst)).emit(masm);
+                break;
+            case LUSHR:
+                new Srlx(asLongReg(src1), constant, asLongReg(dst)).emit(masm);
+                break;
+            case DAND: // Has no constant implementation in SPARC
+            case FADD:
+            case FMUL:
+            case FDIV:
+            case DADD:
+            case DMUL:
+            case DDIV:
+            default:
+                throw GraalInternalError.shouldNotReachHere();
         }
         if (info != null) {
             assert exceptionOffset != -1;
@@ -478,78 +264,167 @@ public enum SPARCArithmetic {
         }
     }
 
-    public static void emit(CompilationResultBuilder crb, SPARCMacroAssembler masm, SPARCArithmetic opcode, Value dst, Value src1, Value src2, Value scratch1, Value scratch2, LIRFrameState info) {
+    public static void emitRegReg(CompilationResultBuilder crb, SPARCMacroAssembler masm, SPARCArithmetic opcode, Value dst, Value src1, Value src2, LIRFrameState info) {
         int exceptionOffset = -1;
-        if (isConstant(src1) && isConstant(src2)) {
-            switch (opcode) {
-                case IREM: {
-                    int a = crb.asIntConst(src1);
-                    int b = crb.asIntConst(src2);
-                    if (b == 0) {
-                        exceptionOffset = masm.position();
-                        new Sdivx(SPARC.g0, 0, asIntReg(dst)).emit(masm);
-                    } else {
-                        new Setx(a % b, asIntReg(dst), false).emit(masm);
-                    }
-                    break;
+        assert !isConstant(src1) : src1;
+        assert !isConstant(src2) : src2;
+        switch (opcode) {
+            case IADD:
+                new Add(asIntReg(src1), asIntReg(src2), asIntReg(dst)).emit(masm);
+                break;
+            case ISUB:
+                new Sub(asIntReg(src1), asIntReg(src2), asIntReg(dst)).emit(masm);
+                break;
+            case IMUL:
+                new Mulx(asIntReg(src1), asIntReg(src2), asIntReg(dst)).emit(masm);
+                break;
+            case IDIV:
+                new Signx(asIntReg(src1), asIntReg(src1)).emit(masm);
+                new Signx(asIntReg(src2), asIntReg(src2)).emit(masm);
+                exceptionOffset = masm.position();
+                new Sdivx(asIntReg(src1), asIntReg(src2), asIntReg(dst)).emit(masm);
+                break;
+            case IUDIV:
+                new Signx(asIntReg(src1), asIntReg(src1)).emit(masm);
+                new Signx(asIntReg(src2), asIntReg(src2)).emit(masm);
+                exceptionOffset = masm.position();
+                new Udivx(asIntReg(src1), asIntReg(src2), asIntReg(dst)).emit(masm);
+                break;
+            case IAND:
+                new And(asIntReg(src1), asIntReg(src2), asIntReg(dst)).emit(masm);
+                break;
+            case IOR:
+                new Or(asIntReg(src1), asIntReg(src2), asIntReg(dst)).emit(masm);
+                break;
+            case IXOR:
+                new Xor(asIntReg(src1), asIntReg(src2), asIntReg(dst)).emit(masm);
+                break;
+            case ISHL:
+                new Sll(asIntReg(src1), asIntReg(src2), asIntReg(dst)).emit(masm);
+                break;
+            case ISHR:
+                new Sra(asIntReg(src1), asIntReg(src2), asIntReg(dst)).emit(masm);
+                break;
+            case IUSHR:
+                new Srl(asIntReg(src1), asIntReg(src2), asIntReg(dst)).emit(masm);
+                break;
+            case IREM:
+                throw GraalInternalError.unimplemented();
+            case LADD:
+                new Add(asLongReg(src1), asLongReg(src2), asLongReg(dst)).emit(masm);
+                break;
+            case LSUB:
+                new Sub(asLongReg(src1), asLongReg(src2), asLongReg(dst)).emit(masm);
+                break;
+            case LMUL:
+                new Mulx(asLongReg(src1), asLongReg(src2), asLongReg(dst)).emit(masm);
+                break;
+            case LDIV:
+                exceptionOffset = masm.position();
+                new Sdivx(asLongReg(src1), asLongReg(src2), asLongReg(dst)).emit(masm);
+                break;
+            case LUDIV:
+                exceptionOffset = masm.position();
+                new Udivx(asLongReg(src1), asLongReg(src2), asLongReg(dst)).emit(masm);
+                break;
+            case LAND:
+                new And(asLongReg(src1), asLongReg(src2), asLongReg(dst)).emit(masm);
+                break;
+            case LOR:
+                new Or(asLongReg(src1), asLongReg(src2), asLongReg(dst)).emit(masm);
+                break;
+            case LXOR:
+                new Xor(asLongReg(src1), asLongReg(src2), asLongReg(dst)).emit(masm);
+                break;
+            case LSHL:
+                new Sllx(asLongReg(src1), asIntReg(src2), asLongReg(dst)).emit(masm);
+                break;
+            case LSHR:
+                new Srax(asLongReg(src1), asIntReg(src2), asLongReg(dst)).emit(masm);
+                break;
+            case LUSHR:
+                new Srlx(asLongReg(src1), asIntReg(src2), asLongReg(dst)).emit(masm);
+                break;
+            case FADD:
+                new Fadds(asFloatReg(src1), asFloatReg(src2), asFloatReg(dst)).emit(masm);
+                break;
+            case FSUB:
+                new Fsubs(asFloatReg(src1), asFloatReg(src2), asFloatReg(dst)).emit(masm);
+                break;
+            case FMUL:
+                if (dst.getPlatformKind() == Kind.Double) {
+                    new Fsmuld(asFloatReg(src1), asFloatReg(src2), asDoubleReg(dst)).emit(masm);
+                } else if (dst.getPlatformKind() == Kind.Float) {
+                    new Fmuls(asFloatReg(src1), asFloatReg(src2), asFloatReg(dst)).emit(masm);
                 }
-                case LREM: {
-                    long a = crb.asLongConst(src1);
-                    long b = crb.asLongConst(src2);
-                    if (b == 0) {
-                        exceptionOffset = masm.position();
-                        new Sdivx(SPARC.g0, 0, asLongReg(dst)).emit(masm);
-                    } else {
-                        new Setx(a % b, asLongReg(dst), false).emit(masm);
-                    }
-                    break;
-                }
-                default:
-                    throw GraalInternalError.shouldNotReachHere("not implemented");
-            }
-        } else if (isConstant(src2)) {
+                break;
+            case FDIV:
+                exceptionOffset = masm.position();
+                new Fdivs(asFloatReg(src1), asFloatReg(src2), asFloatReg(dst)).emit(masm);
+                break;
+            case FREM:
+                throw GraalInternalError.unimplemented();
+            case DADD:
+                new Faddd(asDoubleReg(src1), asDoubleReg(src2), asDoubleReg(dst)).emit(masm);
+                break;
+            case DSUB:
+                new Fsubd(asDoubleReg(src1), asDoubleReg(src2), asDoubleReg(dst)).emit(masm);
+                break;
+            case DMUL:
+                new Fmuld(asDoubleReg(src1), asDoubleReg(src2), asDoubleReg(dst)).emit(masm);
+                break;
+            case DDIV:
+                exceptionOffset = masm.position();
+                new Fdivd(asDoubleReg(src1), asDoubleReg(src2), asDoubleReg(dst)).emit(masm);
+                break;
+            case DREM:
+                throw GraalInternalError.unimplemented();
+            case DAND:
+                new Fandd(asDoubleReg(src1), asDoubleReg(src2), asDoubleReg(dst)).emit(masm);
+                break;
+            default:
+                throw GraalInternalError.shouldNotReachHere();
+        }
+        if (info != null) {
+            assert exceptionOffset != -1;
+            crb.recordImplicitException(exceptionOffset, info);
+        }
+    }
+
+    public static void emitRem(CompilationResultBuilder crb, SPARCMacroAssembler masm, SPARCArithmetic opcode, Value dst, Value src1, Value src2, Value scratch1, Value scratch2, LIRFrameState info) {
+        int exceptionOffset = -1;
+        if (!isConstant(src1) && isConstant(src2)) {
+            assert isSimm13(crb.asIntConst(src2));
+            assert !src1.equals(scratch1);
+            assert !src1.equals(scratch2);
+            assert !src2.equals(scratch1);
             switch (opcode) {
                 case IREM:
-                    assert !src1.equals(scratch1);
-                    assert !src1.equals(scratch2);
-                    assert !src2.equals(scratch1);
-                    // But src2 can be scratch2
-                    assert isSimm13(crb.asIntConst(src2));
                     new Sra(asIntReg(src1), 0, asIntReg(dst)).emit(masm);
                     exceptionOffset = masm.position();
                     new Sdivx(asIntReg(dst), crb.asIntConst(src2), asIntReg(scratch1)).emit(masm);
                     new Mulx(asIntReg(scratch1), crb.asIntConst(src2), asIntReg(scratch2)).emit(masm);
                     new Sub(asIntReg(dst), asIntReg(scratch2), asIntReg(dst)).emit(masm);
                     break;
-                case IUREM:
-                    GraalInternalError.unimplemented();
-                    break;
                 case LREM:
-                    assert isSimm13(crb.asIntConst(src2));
-                    assert !src1.equals(scratch1);
-                    assert !src1.equals(scratch2);
-                    assert !src2.equals(scratch1);
-                    // But src2 can be scratch2
                     exceptionOffset = masm.position();
                     new Sdivx(asLongReg(src1), crb.asIntConst(src2), asLongReg(scratch1)).emit(masm);
                     new Mulx(asLongReg(scratch1), crb.asIntConst(src2), asLongReg(scratch2)).emit(masm);
                     new Sub(asLongReg(src1), asLongReg(scratch2), asLongReg(dst)).emit(masm);
                     break;
                 case LUREM:
-                    assert isSimm13(crb.asIntConst(src2));
-                    assert !src1.equals(scratch1);
-                    assert !src1.equals(scratch2);
-                    assert !src2.equals(scratch1);
-                    // But src2 can be scratch2
                     exceptionOffset = masm.position();
                     new Udivx(asLongReg(src1), crb.asIntConst(src2), asLongReg(scratch1)).emit(masm);
                     new Mulx(asLongReg(scratch1), crb.asIntConst(src2), asLongReg(scratch2)).emit(masm);
                     new Sub(asLongReg(src1), asLongReg(scratch2), asLongReg(dst)).emit(masm);
                     break;
+                case IUREM:
+                    GraalInternalError.unimplemented();
+                    break;
                 default:
                     throw GraalInternalError.shouldNotReachHere();
             }
-        } else {
+        } else if (isRegister(src1) && isRegister(src2)) {
             Value srcLeft = src1;
             switch (opcode) {
                 case LREM:
@@ -604,8 +479,9 @@ public enum SPARCArithmetic {
                 default:
                     throw GraalInternalError.shouldNotReachHere();
             }
+        } else {
+            throw GraalInternalError.shouldNotReachHere();
         }
-
         if (info != null) {
             assert exceptionOffset != -1;
             crb.recordImplicitException(exceptionOffset, info);
@@ -615,112 +491,99 @@ public enum SPARCArithmetic {
     public static void emitUnary(CompilationResultBuilder crb, SPARCAssembler masm, SPARCArithmetic opcode, Value dst, Value src, LIRFrameState info) {
         int exceptionOffset = -1;
         Label notOrdered = new Label();
-        if (isRegister(src)) {
-            switch (opcode) {
-                case INEG:
-                    new Neg(asIntReg(src), asIntReg(dst)).emit(masm);
-                    break;
-                case LNEG:
-                    new Neg(asLongReg(src), asLongReg(dst)).emit(masm);
-                    break;
-                case INOT:
-                    new Not(asIntReg(src), asIntReg(dst)).emit(masm);
-                    break;
-                case LNOT:
-                    new Not(asLongReg(src), asLongReg(dst)).emit(masm);
-                    break;
-                case D2F:
-                    new Fdtos(asDoubleReg(src), asFloatReg(dst)).emit(masm);
-                    break;
-                case L2D:
-                    new Fxtod(asDoubleReg(src), asDoubleReg(dst)).emit(masm);
-                    break;
-                case L2F:
-                    new Fxtos(asDoubleReg(src), asFloatReg(dst)).emit(masm);
-                    break;
-                case I2D:
-                    new Fitod(asFloatReg(src), asDoubleReg(dst)).emit(masm);
-                    break;
-                case I2L:
-                    new Signx(asIntReg(src), asLongReg(dst)).emit(masm);
-                    break;
-                case L2I:
-                    new Signx(asLongReg(src), asIntReg(dst)).emit(masm);
-                    break;
-                case B2L:
-                    new Sllx(asIntReg(src), 56, asLongReg(dst)).emit(masm);
-                    new Srax(asLongReg(dst), 56, asLongReg(dst)).emit(masm);
-                    break;
-                case S2L:
-                    new Sllx(asIntReg(src), 48, asLongReg(dst)).emit(masm);
-                    new Srax(asLongReg(dst), 48, asLongReg(dst)).emit(masm);
-                    break;
-                case B2I:
-                    new Sll(asIntReg(src), 24, asIntReg(dst)).emit(masm);
-                    new Sra(asIntReg(dst), 24, asIntReg(dst)).emit(masm);
-                    break;
-                case S2I:
-                    new Sll(asIntReg(src), 16, asIntReg(dst)).emit(masm);
-                    new Sra(asIntReg(dst), 16, asIntReg(dst)).emit(masm);
-                    break;
-                case I2F:
-                    new Fitos(asFloatReg(src), asFloatReg(dst)).emit(masm);
-                    break;
-                case F2D:
-                    new Fstod(asFloatReg(src), asDoubleReg(dst)).emit(masm);
-                    break;
-                case F2L:
-                    new Fcmp(CC.Fcc0, Opfs.Fcmps, asFloatReg(src), asFloatReg(src)).emit(masm);
-                    new Fbo(true, notOrdered).emit(masm);
-                    new Fstox(asFloatReg(src), asDoubleReg(dst)).emit(masm);
-                    new Fsubd(asDoubleReg(dst), asDoubleReg(dst), asDoubleReg(dst)).emit(masm);
-                    masm.bind(notOrdered);
-                    break;
-                case F2I:
-                    new Fcmp(CC.Fcc0, Opfs.Fcmps, asFloatReg(src), asFloatReg(src)).emit(masm);
-                    new Fbo(true, notOrdered).emit(masm);
-                    new Fstoi(asFloatReg(src), asFloatReg(dst)).emit(masm);
-                    new Fitos(asFloatReg(dst), asFloatReg(dst)).emit(masm);
-                    new Fsubs(asFloatReg(dst), asFloatReg(dst), asFloatReg(dst)).emit(masm);
-                    masm.bind(notOrdered);
-                    break;
-                case D2L:
-                    new Fcmp(CC.Fcc0, Opfs.Fcmpd, asDoubleReg(src), asDoubleReg(src)).emit(masm);
-                    new Fbo(false, notOrdered).emit(masm);
-                    new Fdtox(asDoubleReg(src), asDoubleReg(dst)).emit(masm);
-                    new Fxtod(asDoubleReg(dst), asDoubleReg(dst)).emit(masm);
-                    new Fsubd(asDoubleReg(dst), asDoubleReg(dst), asDoubleReg(dst)).emit(masm);
-                    masm.bind(notOrdered);
-                    break;
-                case D2I:
-                    new Fcmp(CC.Fcc0, Opfs.Fcmpd, asDoubleReg(src), asDoubleReg(src)).emit(masm);
-                    new Fbo(true, notOrdered).emit(masm);
-                    new Fdtoi(asDoubleReg(src), asFloatReg(dst)).emit(masm);
-                    new Fsubs(asFloatReg(dst), asFloatReg(dst), asFloatReg(dst)).emit(masm);
-                    new Fstoi(asFloatReg(dst), asFloatReg(dst)).emit(masm);
-                    masm.bind(notOrdered);
-                    break;
-                case FNEG:
-                    new Fnegs(asFloatReg(src), asFloatReg(dst)).emit(masm);
-                    break;
-                case DNEG:
-                    new Fnegd(asDoubleReg(src), asDoubleReg(dst)).emit(masm);
-                    break;
-                default:
-                    throw GraalInternalError.shouldNotReachHere("missing: " + opcode);
-            }
-        } else if (isConstant(src)) {
-            switch (opcode) {
-                default:
-                    throw GraalInternalError.shouldNotReachHere("missing: " + opcode);
-            }
-        } else {
-            switch (opcode) {
-                default:
-                    throw GraalInternalError.shouldNotReachHere("missing: " + opcode + " " + src);
-            }
+        switch (opcode) {
+            case INEG:
+                new Neg(asIntReg(src), asIntReg(dst)).emit(masm);
+                break;
+            case LNEG:
+                new Neg(asLongReg(src), asLongReg(dst)).emit(masm);
+                break;
+            case INOT:
+                new Not(asIntReg(src), asIntReg(dst)).emit(masm);
+                break;
+            case LNOT:
+                new Not(asLongReg(src), asLongReg(dst)).emit(masm);
+                break;
+            case D2F:
+                new Fdtos(asDoubleReg(src), asFloatReg(dst)).emit(masm);
+                break;
+            case L2D:
+                new Fxtod(asDoubleReg(src), asDoubleReg(dst)).emit(masm);
+                break;
+            case L2F:
+                new Fxtos(asDoubleReg(src), asFloatReg(dst)).emit(masm);
+                break;
+            case I2D:
+                new Fitod(asFloatReg(src), asDoubleReg(dst)).emit(masm);
+                break;
+            case I2L:
+                new Signx(asIntReg(src), asLongReg(dst)).emit(masm);
+                break;
+            case L2I:
+                new Signx(asLongReg(src), asIntReg(dst)).emit(masm);
+                break;
+            case B2L:
+                new Sllx(asIntReg(src), 56, asLongReg(dst)).emit(masm);
+                new Srax(asLongReg(dst), 56, asLongReg(dst)).emit(masm);
+                break;
+            case B2I:
+                new Sllx(asIntReg(src), 56, asIntReg(dst)).emit(masm);
+                new Srax(asIntReg(dst), 56, asIntReg(dst)).emit(masm);
+                break;
+            case S2L:
+                new Sllx(asIntReg(src), 48, asLongReg(dst)).emit(masm);
+                new Srax(asLongReg(dst), 48, asLongReg(dst)).emit(masm);
+                break;
+            case S2I:
+                new Sllx(asIntReg(src), 48, asIntReg(dst)).emit(masm);
+                new Srax(asIntReg(dst), 48, asIntReg(dst)).emit(masm);
+                break;
+            case I2F:
+                new Fitos(asFloatReg(src), asFloatReg(dst)).emit(masm);
+                break;
+            case F2D:
+                new Fstod(asFloatReg(src), asDoubleReg(dst)).emit(masm);
+                break;
+            case F2L:
+                new Fcmp(CC.Fcc0, Opfs.Fcmps, asFloatReg(src), asFloatReg(src)).emit(masm);
+                new Fbo(true, notOrdered).emit(masm);
+                new Fstox(asFloatReg(src), asDoubleReg(dst)).emit(masm);
+                new Fsubd(asDoubleReg(dst), asDoubleReg(dst), asDoubleReg(dst)).emit(masm);
+                masm.bind(notOrdered);
+                break;
+            case F2I:
+                new Fcmp(CC.Fcc0, Opfs.Fcmps, asFloatReg(src), asFloatReg(src)).emit(masm);
+                new Fbo(true, notOrdered).emit(masm);
+                new Fstoi(asFloatReg(src), asFloatReg(dst)).emit(masm);
+                new Fitos(asFloatReg(dst), asFloatReg(dst)).emit(masm);
+                new Fsubs(asFloatReg(dst), asFloatReg(dst), asFloatReg(dst)).emit(masm);
+                masm.bind(notOrdered);
+                break;
+            case D2L:
+                new Fcmp(CC.Fcc0, Opfs.Fcmpd, asDoubleReg(src), asDoubleReg(src)).emit(masm);
+                new Fbo(false, notOrdered).emit(masm);
+                new Fdtox(asDoubleReg(src), asDoubleReg(dst)).emit(masm);
+                new Fxtod(asDoubleReg(dst), asDoubleReg(dst)).emit(masm);
+                new Fsubd(asDoubleReg(dst), asDoubleReg(dst), asDoubleReg(dst)).emit(masm);
+                masm.bind(notOrdered);
+                break;
+            case D2I:
+                new Fcmp(CC.Fcc0, Opfs.Fcmpd, asDoubleReg(src), asDoubleReg(src)).emit(masm);
+                new Fbo(true, notOrdered).emit(masm);
+                new Fdtoi(asDoubleReg(src), asFloatReg(dst)).emit(masm);
+                new Fsubs(asFloatReg(dst), asFloatReg(dst), asFloatReg(dst)).emit(masm);
+                new Fstoi(asFloatReg(dst), asFloatReg(dst)).emit(masm);
+                masm.bind(notOrdered);
+                break;
+            case FNEG:
+                new Fnegs(asFloatReg(src), asFloatReg(dst)).emit(masm);
+                break;
+            case DNEG:
+                new Fnegd(asDoubleReg(src), asDoubleReg(dst)).emit(masm);
+                break;
+            default:
+                throw GraalInternalError.shouldNotReachHere("missing: " + opcode);
         }
-
         if (info != null) {
             assert exceptionOffset != -1;
             crb.recordImplicitException(exceptionOffset, info);

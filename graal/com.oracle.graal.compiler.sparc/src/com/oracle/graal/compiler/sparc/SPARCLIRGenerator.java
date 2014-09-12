@@ -44,7 +44,7 @@ import com.oracle.graal.lir.sparc.SPARCArithmetic.BinaryRegConst;
 import com.oracle.graal.lir.sparc.SPARCArithmetic.BinaryRegReg;
 import com.oracle.graal.lir.sparc.SPARCArithmetic.MulHighOp;
 import com.oracle.graal.lir.sparc.SPARCArithmetic.RemOp;
-import com.oracle.graal.lir.sparc.SPARCArithmetic.ShiftOp;
+//import com.oracle.graal.lir.sparc.SPARCArithmetic.ShiftOp;
 import com.oracle.graal.lir.sparc.SPARCArithmetic.Unary2Op;
 import com.oracle.graal.lir.sparc.SPARCCompare.CompareOp;
 import com.oracle.graal.lir.sparc.SPARCControlFlow.BranchOp;
@@ -408,7 +408,9 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     @Override
     public Value emitMathAbs(Value input) {
         Variable result = newVariable(LIRKind.derive(input));
-        append(new BinaryRegConst(DAND, result, asAllocatable(input), Constant.forDouble(Double.longBitsToDouble(0x7FFFFFFFFFFFFFFFL)), null));
+        AllocatableValue mask = newVariable(LIRKind.value(Kind.Double));
+        emitMove(mask, Constant.forDouble(Double.longBitsToDouble(0x7FFFFFFFFFFFFFFFL)));
+        append(new BinaryRegReg(DAND, result, asAllocatable(input), mask));
         return result;
     }
 
@@ -646,7 +648,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
                 break;
             case Float:
                 q = newVariable(LIRKind.value(Kind.Float));
-                append(new BinaryRegReg(FDIV, q, a, b));
+                append(new BinaryRegReg(FDIV, q, a, b, state));
                 append(new Unary2Op(F2I, q, q));
                 append(new Unary2Op(I2F, q, q));
                 append(new BinaryRegReg(FMUL, q, q, b));
@@ -654,7 +656,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
                 break;
             case Double:
                 q = newVariable(LIRKind.value(Kind.Double));
-                append(new BinaryRegReg(DDIV, q, a, b));
+                append(new BinaryRegReg(DDIV, q, a, b, state));
                 append(new Unary2Op(D2L, q, q));
                 append(new Unary2Op(L2D, q, q));
                 append(new BinaryRegReg(DMUL, q, q, b));
@@ -935,7 +937,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
             long mask = IntegerStamp.defaultMask(fromBits);
             Constant constant = Constant.forInt((int) mask);
             if (fromBits == 32) {
-                append(new ShiftOp(IUSHR, result, inputVal, Constant.forInt(0)));
+                append(new BinaryRegConst(IUSHR, result, inputVal, Constant.forInt(0)));
             } else if (canInlineConstant(constant)) {
                 append(new BinaryRegConst(SPARCArithmetic.IAND, result, asAllocatable(inputVal), constant, null));
             } else {
