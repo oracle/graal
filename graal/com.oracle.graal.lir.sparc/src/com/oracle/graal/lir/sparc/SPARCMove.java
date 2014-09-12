@@ -125,7 +125,6 @@ public class SPARCMove {
         @Override
         public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
             Kind inputKind = (Kind) input.getPlatformKind();
-            int inputKindSize = crb.target.getSizeInBytes(inputKind);
             Kind resultKind = (Kind) result.getPlatformKind();
             int resultKindSize = crb.target.getSizeInBytes(resultKind);
             try (SPARCScratchRegister sc = SPARCScratchRegister.get()) {
