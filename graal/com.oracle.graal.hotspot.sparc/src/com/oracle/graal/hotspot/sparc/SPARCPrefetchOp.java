@@ -42,7 +42,7 @@ public class SPARCPrefetchOp extends SPARCLIRInstruction {
 
     @Override
     public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-        assert instr == 0 : "only supported value is 0";
-        new Prefetch(address.toAddress(), Prefetch.Fcn.SeveralWritesAndPossiblyReads).emit(masm);
+        assert instr >= 0 && instr < Prefetch.Fcn.values().length : instr;
+        new Prefetch(address.toAddress(), Prefetch.Fcn.values()[instr]).emit(masm);
     }
 }

@@ -3297,6 +3297,13 @@ public abstract class SPARCAssembler extends Assembler {
         }
     }
 
+    public static class Fsqrts extends Fmt3p {
+
+        public Fsqrts(Register src2, Register dst) {
+            super(Ops.ArithOp, Op3s.Fpop1, Opfs.Fsqrts, SPARC.r0, src2, dst);
+        }
+    }
+
     public static class Fsrc1d extends Fmt3p {
 
         public Fsrc1d(Register src1, Register dst) {
@@ -3755,11 +3762,16 @@ public abstract class SPARCAssembler extends Assembler {
     public static class Prefetch extends Fmt11 {
 
         public enum Fcn {
-            SeveralReads(0),
-            OneRead(1),
             SeveralWritesAndPossiblyReads(2),
+            SeveralReadsWeak(0),
+            OneRead(1),
             OneWrite(3),
-            Page(4);
+            Page(4),
+            NearestUnifiedCache(17),
+            SeveralReadsStrong(20),
+            OneReadStrong(21),
+            SeveralWritesAndPossiblyReadsStrong(22),
+            OneWriteStrong(23);
 
             private final int value;
 
