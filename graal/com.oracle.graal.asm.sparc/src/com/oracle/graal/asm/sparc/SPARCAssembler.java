@@ -85,6 +85,8 @@ public abstract class SPARCAssembler extends Assembler {
                     return Fmt00a.read(masm, pos);
                 case Bp:
                     return Fmt00c.read(masm, pos);
+                case Bpr:
+                    return Fmt00d.read(masm, pos);
                 default:
                     throw GraalInternalError.shouldNotReachHere("Unknown op2 " + op2);
             }
@@ -481,16 +483,112 @@ public abstract class SPARCAssembler extends Assembler {
         }
     }
 
-    public static class Fmt00d {
+    // @formatter:off
+    /**
+     * Instruction format for Branch on Integer Register with Prediction.
+     *
+     * |00   |a |- |rcond | 011 |d16hi|p | rs1 |          d16lo           |
+     * |31 30|29|28|27  25|24 22|21 20|19|18 14|                         0|
+     */
+    // @formatter:on
+    public static class Fmt00d extends Fmt00 {
 
-        public Fmt00d(SPARCAssembler masm, int op, int a, int rcond, int op2, int d16hi, int predict, int rs1, int d16lo) {
-            assert predict == 0 || predict == 1;
-            assert rcond >= 0 && rcond < 0x8;
-            assert op == 0;
-            assert op2 >= 0 && op2 < 0x8;
-            assert rs1 >= 0 && rs1 < 0x20;
+        private static final int A_SHIFT = 29;
+        private static final int RCOND_SHIFT = 25;
+        private static final int D16HI_SHIFT = 20;
+        private static final int P_SHIFT = 19;
+        private static final int RS1_SHIFT = 14;
+        private static final int D16LO_SHIFT = 0;
 
-            masm.emitInt(op << 30 | a << 29 | rcond << 25 | op2 << 22 | d16hi & 3 | predict << 18 | rs1 << 14 | (d16lo & 0x003fff));
+        // @formatter:off
+        private static final int A_MASK        = 0b0010_0000_0000_0000_0000_0000_0000_0000;
+        private static final int RCOND_MASK    = 0b0000_1110_0000_0000_0000_0000_0000_0000;
+        private static final int D16HI_MASK    = 0b0000_0000_0011_0000_0000_0000_0000_0000;
+        private static final int P_MASK        = 0b0000_0000_0000_1000_0000_0000_0000_0000;
+        private static final int RS1_MASK      = 0b0000_0000_0000_0111_1100_0000_0000_0000;
+        private static final int D16LO_MASK    = 0b0000_0000_0000_0000_0011_1111_1111_1111;
+        // @formatter:on
+
+        private int annul;
+        private int rCondition;
+        private int disp16;
+        private int predictTaken;
+        private int rs1;
+        private Label label;
+
+        public Fmt00d(int op2, int rCondition, int predictTaken, int annul, int d16, int rs1, Label label) {
+            super(op2);
+            this.annul = annul;
+            this.rCondition = rCondition;
+            this.disp16 = d16;
+            this.predictTaken = predictTaken;
+            this.rs1 = rs1;
+            this.label = label;
+        }
+
+        @Override
+        public void setImm(int imm) {
+            setDisp16(imm);
+        }
+
+        public void setDisp16(int disp16) {
+            this.disp16 = disp16 >> 2;
+        }
+
+        public void emit(SPARCAssembler masm) {
+            if (label != null) {
+                final int pos = label.isBound() ? label.position() : patchUnbound(masm, label);
+                final int disp = pos - masm.position();
+                setDisp16(disp);
+            }
+            verify();
+            masm.emitInt(getInstructionBits());
+        }
+
+        private static int patchUnbound(SPARCAssembler masm, Label label) {
+            label.addPatchAt(masm.position());
+            return 0;
+        }
+
+        @Override
+        protected int getInstructionBits() {
+            int d16Split = 0;
+            d16Split |= (disp16 & 0b1100_0000_0000_0000) << D16HI_SHIFT - 14;
+            d16Split |= (disp16 & 0b0011_1111_1111_1111) << D16LO_SHIFT;
+            return super.getInstructionBits() | annul << A_SHIFT | rCondition << RCOND_SHIFT | d16Split | predictTaken << P_SHIFT | rs1 << RS1_SHIFT;
+        }
+
+        public static Fmt00d read(SPARCAssembler masm, int pos) {
+            final int inst = masm.getInt(pos);
+
+            // Make sure it's the right instruction:
+            final int op = (inst & OP_MASK) >> OP_SHIFT;
+            assert op == Ops.BranchOp.getValue();
+
+            // Get the instruction fields:
+            final int a = (inst & A_MASK) >> A_SHIFT;
+            final int cond = (inst & RCOND_MASK) >> RCOND_SHIFT;
+            final int op2 = (inst & OP2_MASK) >> OP2_SHIFT;
+            final int p = (inst & P_MASK) >> P_SHIFT;
+            final int rs1 = (inst & RS1_MASK) >> RS1_SHIFT;
+            final int d16hi = (inst & D16HI_MASK) >> D16HI_SHIFT;
+            assert (d16hi & ~0b11) == 0;
+            final int d16lo = (inst & D16LO_MASK) >> D16LO_SHIFT;
+            assert (d16lo & ~((1 << 14) - 1)) == 0;
+            final int d16 = (short) (((d16hi << 14) | d16lo) << 2); // sign extend
+            Fmt00d fmt = new Fmt00d(op2, cond, p, a, d16, rs1, null);
+            fmt.verify();
+            return fmt;
+        }
+
+        @Override
+        public void verify() {
+            super.verify();
+            assert (annul & ~1) == 0 : annul;
+            assert (rCondition & ~0b111) == 0 : rCondition;
+            assert isSimm(disp16, 16) : disp16;
+            assert (predictTaken & ~1) == 0 : predictTaken;
+            assert (rs1 & ~((1 << 5) - 1)) == 0 : rs1;
         }
     }
 
@@ -1710,12 +1808,12 @@ public abstract class SPARCAssembler extends Assembler {
     public enum RCondition {
         // @formatter:off
 
-        Rc_z(1, "rc_z"),
-        Rc_lez(2, "rc_lez"),
-        Rc_lz(3, "rc_lz"),
-        Rc_nz(5, "rc_nz"),
-        Rc_gz(6, "rc_gz"),
-        Rc_gez(7, "rc_gez"),
+        Rc_z(0b001, "rc_z"),
+        Rc_lez(0b010, "rc_lez"),
+        Rc_lz(0b011, "rc_lz"),
+        Rc_nz(0b101, "rc_nz"),
+        Rc_gz(0b110, "rc_gz"),
+        Rc_gez(0b111, "rc_gez"),
         Rc_last(Rc_gez.getValue(), "rc_last");
 
         // @formatter:on
@@ -2050,6 +2148,12 @@ public abstract class SPARCAssembler extends Assembler {
         }
     }
 
+    public static class Bpr extends Fmt00d {
+        public Bpr(RCondition rcond, boolean annul, boolean predictTaken, Register rs1, Label label) {
+            super(Op2s.Bpr.getValue(), rcond.getValue(), predictTaken ? 1 : 0, annul ? 1 : 0, 0, rs1.encoding(), label);
+        }
+    }
+
     public static class Bpa extends Fmt00c {
 
         public Bpa(int simm19) {
@@ -2087,6 +2191,14 @@ public abstract class SPARCAssembler extends Assembler {
 
         public Bpe(CC cc, int simm19) {
             super(0, ConditionFlag.Equal, Op2s.Bp, cc, 1, simm19);
+        }
+
+        public Bpe(CC cc, Label label, boolean predictTaken) {
+            super(0, ConditionFlag.Equal, Op2s.Bp, cc, predictTaken ? 1 : 0, label);
+        }
+
+        public Bpe(boolean annul, CC cc, Label label, boolean predictTaken) {
+            super(annul ? 1 : 0, ConditionFlag.Equal, Op2s.Bp, cc, predictTaken ? 1 : 0, label);
         }
 
         public Bpe(CC cc, Label label) {
@@ -2136,6 +2248,10 @@ public abstract class SPARCAssembler extends Assembler {
         public Bpl(CC cc, Label label) {
             super(0, ConditionFlag.Less, Op2s.Bp, cc, 1, label);
         }
+
+        public Bpl(CC cc, boolean annul, boolean predictTaken, Label label) {
+            super(annul ? 1 : 0, ConditionFlag.Less, Op2s.Bp, cc, predictTaken ? 1 : 0, label);
+        }
     }
 
     public static class Bple extends Fmt00c {
@@ -2146,6 +2262,10 @@ public abstract class SPARCAssembler extends Assembler {
 
         public Bple(CC cc, Label label) {
             super(0, ConditionFlag.LessEqual, Op2s.Bp, cc, 1, label);
+        }
+
+        public Bple(CC cc, boolean annul, boolean predictTaken, Label label) {
+            super(annul ? 1 : 0, ConditionFlag.LessEqual, Op2s.Bp, cc, predictTaken ? 1 : 0, label);
         }
     }
 
@@ -2179,6 +2299,10 @@ public abstract class SPARCAssembler extends Assembler {
 
         public Bpne(CC cc, Label label) {
             super(0, ConditionFlag.NotZero, Op2s.Bp, cc, 1, label);
+        }
+
+        public Bpne(CC cc, boolean annul, boolean predictTaken, Label label) {
+            super(annul ? 1 : 0, ConditionFlag.NotZero, Op2s.Bp, cc, predictTaken ? 1 : 0, label);
         }
     }
 
@@ -3612,6 +3736,13 @@ public abstract class SPARCAssembler extends Assembler {
 
         public Lduh(SPARCAddress src, Register dst) {
             super(Op3s.Lduh, src, dst);
+        }
+    }
+
+    public static class Ldub extends Fmt11 {
+
+        public Ldub(SPARCAddress src, Register dst) {
+            super(Op3s.Ldub, src, dst);
         }
     }
 

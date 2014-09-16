@@ -28,7 +28,7 @@ import com.oracle.graal.replacements.nodes.*;
 /**
  * Substitutions for {@link java.util.Arrays} methods.
  */
-@ClassSubstitution(value = java.util.Arrays.class, defaultGuard = UnsafeSubstitutions.GetAndSetGuard.class)
+@ClassSubstitution(value = java.util.Arrays.class)
 public class ArraysSubstitutions {
 
     @MethodSubstitution
