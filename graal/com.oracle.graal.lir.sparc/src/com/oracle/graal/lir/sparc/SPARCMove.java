@@ -26,6 +26,7 @@ import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 import static com.oracle.graal.sparc.SPARC.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.*;
+import static com.oracle.graal.api.meta.Kind.*;
 
 import com.oracle.graal.api.code.CompilationResult.RawData;
 import com.oracle.graal.api.code.*;
@@ -184,6 +185,61 @@ public class SPARCMove {
                     default:
                         GraalInternalError.shouldNotReachHere();
                         break;
+                }
+            }
+        }
+    }
+
+    /**
+     * Move between floating-point and general purpose register domain (WITH VIS3)
+     */
+    @Opcode("MOVE")
+    public static class MoveFpGpVIS3 extends SPARCLIRInstruction implements MoveOp {
+
+        @Def({REG}) protected AllocatableValue result;
+        @Use({REG}) protected AllocatableValue input;
+
+        public MoveFpGpVIS3(AllocatableValue result, AllocatableValue input) {
+            super();
+            this.result = result;
+            this.input = input;
+        }
+
+        public Value getInput() {
+            return input;
+        }
+
+        public AllocatableValue getResult() {
+            return result;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
+            Kind inputKind = (Kind) input.getPlatformKind();
+            Kind resultKind = (Kind) result.getPlatformKind();
+            if (resultKind == Float) {
+                if (inputKind == Int || inputKind == Short || inputKind == Char || inputKind == Byte) {
+                    new Movwtos(asIntReg(input), asFloatReg(result)).emit(masm);
+                } else {
+                    throw GraalInternalError.shouldNotReachHere();
+                }
+            } else if (resultKind == Double) {
+                if (inputKind == Int || inputKind == Short || inputKind == Char || inputKind == Byte) {
+                    new Movxtod(asIntReg(input), asDoubleReg(result)).emit(masm);
+                } else {
+                    new Movxtod(asLongReg(input), asDoubleReg(result)).emit(masm);
+                }
+            } else if (inputKind == Float) {
+                if (resultKind == Int || resultKind == Short || resultKind == Byte) {
+                    new Movstosw(asFloatReg(input), asIntReg(result)).emit(masm);
+                } else {
+                    new Movstouw(asFloatReg(input), asIntReg(result)).emit(masm);
+                }
+            } else if (inputKind == Double) {
+                if (resultKind == Long) {
+                    new Movdtox(asDoubleReg(input), asLongReg(result)).emit(masm);
+                } else {
+                    throw GraalInternalError.shouldNotReachHere();
                 }
             }
         }
@@ -655,6 +711,7 @@ public class SPARCMove {
     private static void const2reg(CompilationResultBuilder crb, SPARCMacroAssembler masm, Value result, Constant input) {
         try (SPARCScratchRegister sc = SPARCScratchRegister.get()) {
             Register scratch = sc.getRegister();
+            boolean hasVIS3 = ((SPARC) masm.target.arch).getFeatures().contains(CPUFeature.VIS3);
             switch (input.getKind().getStackKind()) {
                 case Int:
                     if (input.isDefaultForKind()) {
@@ -674,28 +731,54 @@ public class SPARCMove {
                         new Setx(input.asLong(), asLongReg(result)).emit(masm);
                     }
                     break;
-                case Float:
-                    // TODO: Handle it the same way, as in the double case with Movwtos
-                    crb.asFloatConstRef(input);
-                    // First load the address into the scratch register
-                    new Setx(0, scratch, true).emit(masm);
-                    // Now load the float value
-                    new Ldf(scratch, asFloatReg(result)).emit(masm);
+                case Float: {
+                    float constant = input.asFloat();
+                    int constantBits = java.lang.Float.floatToIntBits(constant);
+                    if (constant == 0.0) {
+                        new Fsubs(asFloatReg(result), asFloatReg(result), asFloatReg(result)).emit(masm);
+                    } else {
+                        if (hasVIS3) {
+                            if (isSimm13(constantBits)) {
+                                new Or(g0, constantBits, scratch).emit(masm);
+                            } else {
+                                new Setx(constantBits, scratch, false).emit(masm);
+                            }
+                            // Now load the float value
+                            new Movwtos(scratch, asFloatReg(result)).emit(masm);
+                        } else {
+                            crb.asFloatConstRef(input);
+                            // First load the address into the scratch register
+                            new Setx(0, scratch, true).emit(masm);
+                            // Now load the float value
+                            new Ldf(scratch, asFloatReg(result)).emit(masm);
+                        }
+                    }
                     break;
-                case Double:
-                    // instead loading this from memory and do the complicated lookup,
-                    // just load it directly into a scratch register
-                    // First load the address into the scratch register
-                    // new Setx(Double.doubleToLongBits(input.asDouble()), scratch,
-                    // true).emit(masm);
-                    // Now load the float value
-                    // new Movxtod(scratch, asDoubleReg(result)).emit(masm);
-                    crb.asDoubleConstRef(input);
-                    // First load the address into the scratch register
-                    new Setx(0, scratch, true).emit(masm);
-                    // Now load the float value
-                    new Lddf(scratch, asDoubleReg(result)).emit(masm);
+                }
+                case Double: {
+                    double constant = input.asDouble();
+                    long constantBits = java.lang.Double.doubleToLongBits(constant);
+                    if (constant == 0.0d) {
+                        new Fsubd(asDoubleReg(result), asDoubleReg(result), asDoubleReg(result)).emit(masm);
+                    } else {
+                        if (hasVIS3) {
+                            if (isSimm13(constantBits)) {
+                                new Or(g0, (int) constantBits, scratch).emit(masm);
+                            } else {
+                                new Setx(constantBits, scratch, false).emit(masm);
+                            }
+                            // Now load the float value
+                            new Movxtod(scratch, asDoubleReg(result)).emit(masm);
+                        } else {
+                            crb.asDoubleConstRef(input);
+                            // First load the address into the scratch register
+                            new Setx(0, scratch, true).emit(masm);
+                            // Now load the float value
+                            new Lddf(scratch, asDoubleReg(result)).emit(masm);
+                        }
+                    }
                     break;
+                }
                 case Object:
                     if (input.isNull()) {
                         new Clr(asRegister(result)).emit(masm);
