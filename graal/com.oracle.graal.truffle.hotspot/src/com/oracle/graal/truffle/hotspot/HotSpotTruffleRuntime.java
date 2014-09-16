@@ -44,6 +44,7 @@ import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.java.*;
+import com.oracle.graal.java.GraphBuilderConfiguration.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -246,7 +247,7 @@ public final class HotSpotTruffleRuntime implements GraalTruffleRuntime {
         removeInliningPhase(suites);
         StructuredGraph graph = new StructuredGraph(javaMethod);
         new GraphBuilderPhase.Instance(metaAccess, GraphBuilderConfiguration.getEagerDefault(), OptimisticOptimizations.ALL).apply(graph);
-        PhaseSuite<HighTierContext> graphBuilderSuite = suitesProvider.getDefaultGraphBuilderSuite();
+        PhaseSuite<HighTierContext> graphBuilderSuite = getGraphBuilderSuite(suitesProvider);
         CallingConvention cc = getCallingConvention(providers.getCodeCache(), Type.JavaCallee, graph.method(), false);
         Backend backend = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend();
         CompilationResultBuilderFactory factory = getOptimizedCallTargetInstrumentationFactory(backend.getTarget().arch.getName(), javaMethod);
@@ -257,6 +258,19 @@ public final class HotSpotTruffleRuntime implements GraalTruffleRuntime {
     private static Providers getGraalProviders() {
         RuntimeProvider runtimeProvider = Graal.getRequiredCapability(RuntimeProvider.class);
         return runtimeProvider.getHostBackend().getProviders();
+    }
+
+    private static PhaseSuite<HighTierContext> getGraphBuilderSuite(SuitesProvider suitesProvider) {
+        PhaseSuite<HighTierContext> graphBuilderSuite = suitesProvider.getDefaultGraphBuilderSuite();
+        if (HotSpotGraalRuntime.runtime().getCompilerToVM().shouldDebugNonSafepoints()) {
+            // need to tweak the graph builder config
+            graphBuilderSuite = graphBuilderSuite.copy();
+            GraphBuilderPhase graphBuilderPhase = (GraphBuilderPhase) graphBuilderSuite.findPhase(GraphBuilderPhase.class).previous();
+            GraphBuilderConfiguration graphBuilderConfig = graphBuilderPhase.getGraphBuilderConfig();
+            GraphBuilderPhase newGraphBuilderPhase = new GraphBuilderPhase(graphBuilderConfig.withDebugInfoMode(DebugInfoMode.Simple));
+            graphBuilderSuite.findPhase(GraphBuilderPhase.class).set(newGraphBuilderPhase);
+        }
+        return graphBuilderSuite;
     }
 
     private static void removeInliningPhase(Suites suites) {
