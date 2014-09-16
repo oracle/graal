@@ -23,16 +23,46 @@
 package com.oracle.graal.lir.sparc;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
+import static com.oracle.graal.api.meta.Kind.*;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 import static com.oracle.graal.sparc.SPARC.*;
-import static com.oracle.graal.asm.sparc.SPARCAssembler.*;
-import static com.oracle.graal.api.meta.Kind.*;
 
 import com.oracle.graal.api.code.CompilationResult.RawData;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.*;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Add;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Fmovd;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Fmovs;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Fxord;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Fxors;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Lddf;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Ldf;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Ldsb;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Ldsh;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Ldsw;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Lduh;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Ldx;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Membar;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Movdtox;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Movstosw;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Movstouw;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Movwtos;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Movxtod;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Or;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Rdpc;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Stb;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Stdf;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Stf;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Sth;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Stw;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Stx;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Cas;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Casx;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Clr;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Mov;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Setx;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.ImplicitNullCheck;
@@ -40,6 +70,7 @@ import com.oracle.graal.lir.StandardOp.MoveOp;
 import com.oracle.graal.lir.StandardOp.NullCheck;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.sparc.*;
+import com.oracle.graal.sparc.SPARC.CPUFeature;
 
 public class SPARCMove {
 
@@ -734,8 +765,8 @@ public class SPARCMove {
                 case Float: {
                     float constant = input.asFloat();
                     int constantBits = java.lang.Float.floatToIntBits(constant);
-                    if (constant == 0.0) {
-                        new Fsubs(asFloatReg(result), asFloatReg(result), asFloatReg(result)).emit(masm);
+                    if (constantBits == 0) {
+                        new Fxors(asFloatReg(result), asFloatReg(result), asFloatReg(result)).emit(masm);
                     } else {
                         if (hasVIS3) {
                             if (isSimm13(constantBits)) {
@@ -758,8 +789,8 @@ public class SPARCMove {
                 case Double: {
                     double constant = input.asDouble();
                     long constantBits = java.lang.Double.doubleToLongBits(constant);
-                    if (constant == 0.0d) {
-                        new Fsubd(asDoubleReg(result), asDoubleReg(result), asDoubleReg(result)).emit(masm);
+                    if (constantBits == 0) {
+                        new Fxord(asDoubleReg(result), asDoubleReg(result), asDoubleReg(result)).emit(masm);
                     } else {
                         if (hasVIS3) {
                             if (isSimm13(constantBits)) {

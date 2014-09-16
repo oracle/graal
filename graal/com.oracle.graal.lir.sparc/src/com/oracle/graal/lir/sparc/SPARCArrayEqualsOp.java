@@ -129,7 +129,7 @@ public class SPARCArrayEqualsOp extends SPARCLIRInstruction {
     private void emit8ByteCompare(SPARCMacroAssembler masm, Register result, Register array1, Register array2, Register length, Label trueLabel, Label falseLabel) {
         Label loop = new Label();
         Label compareTail = new Label();
-
+        // new Ldx(new SPARCAddress(o6, 3), g0).emit(masm);
         Register tempReg1 = asRegister(temp4);
         Register tempReg2 = asRegister(temp5);
         new And(result, VECTOR_SIZE - 1, result).emit(masm); // tail count (in bytes)
@@ -137,26 +137,40 @@ public class SPARCArrayEqualsOp extends SPARCLIRInstruction {
         new Bpe(CC.Xcc, compareTail).emit(masm);
         new Nop().emit(masm);
 
+        Label compareTailCorrectVectorEnd = new Label();
+        new Sub(length, VECTOR_SIZE, length).emit(masm);
         new Add(array1, length, array1).emit(masm);
         new Add(array2, length, array2).emit(masm);
         new Sub(g0, length, length).emit(masm);
+
+        // Compare the last element first
+        new Ldx(new SPARCAddress(array1, 0), tempReg1).emit(masm);
+        new Ldx(new SPARCAddress(array2, 0), tempReg2).emit(masm);
+        new Cmp(tempReg1, tempReg2).emit(masm);
+        new Bpne(Xcc, true, false, falseLabel).emit(masm);
+        new Nop().emit(masm);
+        new Bpr(RCondition.Rc_z, false, false, length, compareTailCorrectVectorEnd).emit(masm);
+        new Nop().emit(masm);
 
         // Load the first value from array 1 (Later done in back branch delay-slot)
         new Ldx(new SPARCAddress(array1, length), tempReg1).emit(masm);
         masm.bind(loop);
         new Ldx(new SPARCAddress(array2, length), tempReg2).emit(masm);
-
         new Cmp(tempReg1, tempReg2).emit(masm);
         new Bpne(Xcc, false, false, falseLabel).emit(masm);
         // Delay slot, not annul, add for next iteration
-        new Add(length, VECTOR_SIZE, length).emit(masm);
-
-        new Bpr(RCondition.Rc_nz, true, true, length, loop).emit(masm);
+        new Addcc(length, VECTOR_SIZE, length).emit(masm);
+        new Bpne(Xcc, true, true, loop).emit(masm); // Annul, to prevent access past the array
         new Ldx(new SPARCAddress(array1, length), tempReg1).emit(masm); // Load in delay slot
 
         // Tail count zero, therefore we can go to the end
         new Bpr(RCondition.Rc_z, true, true, result, trueLabel).emit(masm);
         new Nop().emit(masm);
+
+        masm.bind(compareTailCorrectVectorEnd);
+        // Correct the array pointers
+        new Add(array1, VECTOR_SIZE, array1).emit(masm);
+        new Add(array2, VECTOR_SIZE, array2).emit(masm);
 
         masm.bind(compareTail);
     }
