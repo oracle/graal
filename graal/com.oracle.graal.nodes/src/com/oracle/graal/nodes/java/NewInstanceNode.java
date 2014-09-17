@@ -51,7 +51,7 @@ public class NewInstanceNode extends AbstractNewObjectNode implements Virtualiza
         return USE_GENERATED_NODES ? new NewInstanceNodeGen(type, fillContents) : new NewInstanceNode(type, fillContents);
     }
 
-    NewInstanceNode(ResolvedJavaType type, boolean fillContents) {
+    protected NewInstanceNode(ResolvedJavaType type, boolean fillContents) {
         super(StampFactory.exactNonNull(type), fillContents);
         assert !type.isArray() && !type.isInterface() && !type.isPrimitive();
         this.instanceClass = type;
@@ -73,7 +73,7 @@ public class NewInstanceNode extends AbstractNewObjectNode implements Virtualiza
          * they're excluded from escape analysis.
          */
         if (!tool.getMetaAccessProvider().lookupJavaType(Reference.class).isAssignableFrom(instanceClass)) {
-            VirtualInstanceNode virtualObject = VirtualInstanceNode.create(instanceClass(), true);
+            VirtualInstanceNode virtualObject = createVirtualInstanceNode(true);
             ResolvedJavaField[] fields = virtualObject.getFields();
             ValueNode[] state = new ValueNode[fields.length];
             for (int i = 0; i < state.length; i++) {
@@ -82,6 +82,10 @@ public class NewInstanceNode extends AbstractNewObjectNode implements Virtualiza
             tool.createVirtualObject(virtualObject, state, Collections.<MonitorIdNode> emptyList());
             tool.replaceWithVirtual(virtualObject);
         }
+    }
+
+    protected VirtualInstanceNode createVirtualInstanceNode(boolean hasIdentity) {
+        return VirtualInstanceNode.create(instanceClass(), hasIdentity);
     }
 
     /* Factored out in a separate method so that subclasses can override it. */
