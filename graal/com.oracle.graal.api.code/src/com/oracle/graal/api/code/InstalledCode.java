@@ -44,6 +44,11 @@ public class InstalledCode {
         this.name = name;
     }
 
+    public final void setAddress(long address) {
+        this.address = address;
+        version++;
+    }
+
     /**
      * @return the address of this code blob
      */
@@ -63,6 +68,13 @@ public class InstalledCode {
      * otherwise.
      */
     public long getStart() {
+        return 0;
+    }
+
+    /**
+     * Returns the number of instruction bytes for this code.
+     */
+    public long getCodeSize() {
         return 0;
     }
 
