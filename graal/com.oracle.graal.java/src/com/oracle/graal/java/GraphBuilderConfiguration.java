@@ -25,6 +25,7 @@ package com.oracle.graal.java;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.nodes.*;
 
 public class GraphBuilderConfiguration {
@@ -34,6 +35,7 @@ public class GraphBuilderConfiguration {
     private final boolean omitAllExceptionEdges;
     private final ResolvedJavaType[] skippedExceptionTypes;
     private final DebugInfoMode debugInfoMode;
+    private final boolean doLivenessAnalysis;
 
     public static enum DebugInfoMode {
         SafePointsOnly,
@@ -59,20 +61,25 @@ public class GraphBuilderConfiguration {
         Full,
     }
 
-    protected GraphBuilderConfiguration(boolean eagerResolving, boolean omitAllExceptionEdges, DebugInfoMode debugInfoMode, ResolvedJavaType[] skippedExceptionTypes) {
+    protected GraphBuilderConfiguration(boolean eagerResolving, boolean omitAllExceptionEdges, DebugInfoMode debugInfoMode, ResolvedJavaType[] skippedExceptionTypes, boolean doLivenessAnalysis) {
         this.eagerResolving = eagerResolving;
         this.omitAllExceptionEdges = omitAllExceptionEdges;
         this.debugInfoMode = debugInfoMode;
         this.skippedExceptionTypes = skippedExceptionTypes;
+        this.doLivenessAnalysis = doLivenessAnalysis;
     }
 
     public GraphBuilderConfiguration withSkippedExceptionTypes(ResolvedJavaType[] newSkippedExceptionTypes) {
-        return new GraphBuilderConfiguration(eagerResolving, omitAllExceptionEdges, debugInfoMode, newSkippedExceptionTypes);
+        return new GraphBuilderConfiguration(eagerResolving, omitAllExceptionEdges, debugInfoMode, newSkippedExceptionTypes, doLivenessAnalysis);
     }
 
     public GraphBuilderConfiguration withDebugInfoMode(DebugInfoMode newDebugInfoMode) {
         ResolvedJavaType[] newSkippedExceptionTypes = skippedExceptionTypes == EMPTY ? EMPTY : Arrays.copyOf(skippedExceptionTypes, skippedExceptionTypes.length);
-        return new GraphBuilderConfiguration(eagerResolving, omitAllExceptionEdges, newDebugInfoMode, newSkippedExceptionTypes);
+        return new GraphBuilderConfiguration(eagerResolving, omitAllExceptionEdges, newDebugInfoMode, newSkippedExceptionTypes, doLivenessAnalysis);
+    }
+
+    public GraphBuilderConfiguration withDoLivenessAnalysis(boolean newLivenessAnalysis) {
+        return new GraphBuilderConfiguration(eagerResolving, omitAllExceptionEdges, debugInfoMode, skippedExceptionTypes, newLivenessAnalysis);
     }
 
     public ResolvedJavaType[] getSkippedExceptionTypes() {
@@ -95,20 +102,24 @@ public class GraphBuilderConfiguration {
         return debugInfoMode.ordinal() >= DebugInfoMode.Full.ordinal();
     }
 
+    public boolean doLivenessAnalysis() {
+        return doLivenessAnalysis;
+    }
+
     public static GraphBuilderConfiguration getDefault() {
-        return new GraphBuilderConfiguration(false, false, DebugInfoMode.SafePointsOnly, EMPTY);
+        return new GraphBuilderConfiguration(false, false, DebugInfoMode.SafePointsOnly, EMPTY, GraalOptions.OptLivenessAnalysis.getValue());
     }
 
     public static GraphBuilderConfiguration getEagerDefault() {
-        return new GraphBuilderConfiguration(true, false, DebugInfoMode.SafePointsOnly, EMPTY);
+        return new GraphBuilderConfiguration(true, false, DebugInfoMode.SafePointsOnly, EMPTY, GraalOptions.OptLivenessAnalysis.getValue());
     }
 
     public static GraphBuilderConfiguration getSnippetDefault() {
-        return new GraphBuilderConfiguration(true, true, DebugInfoMode.SafePointsOnly, EMPTY);
+        return new GraphBuilderConfiguration(true, true, DebugInfoMode.SafePointsOnly, EMPTY, GraalOptions.OptLivenessAnalysis.getValue());
     }
 
     public static GraphBuilderConfiguration getFullDebugDefault() {
-        return new GraphBuilderConfiguration(true, false, DebugInfoMode.Full, EMPTY);
+        return new GraphBuilderConfiguration(true, false, DebugInfoMode.Full, EMPTY, GraalOptions.OptLivenessAnalysis.getValue());
     }
 
     /**

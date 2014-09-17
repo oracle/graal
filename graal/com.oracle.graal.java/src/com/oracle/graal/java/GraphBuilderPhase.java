@@ -230,7 +230,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 try (Indent indent = Debug.logAndIndent("build graph for %s", method)) {
 
                     // compute the block map, setup exception handlers and get the entrypoint(s)
-                    BciBlockMapping blockMap = BciBlockMapping.create(method);
+                    BciBlockMapping blockMap = BciBlockMapping.create(method, graphBuilderConfig.doLivenessAnalysis());
                     loopHeaders = blockMap.loopHeaders;
                     liveness = blockMap.liveness;
 
