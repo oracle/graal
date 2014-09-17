@@ -29,7 +29,7 @@ import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo
-public class DynamicDeoptimizeNode extends AbstractDeoptimizeNode implements LIRLowerable, Canonicalizable {
+public class DynamicDeoptimizeNode extends AbstractDeoptimizeNode implements LIRLowerable, Lowerable, Canonicalizable {
     @Input ValueNode actionAndReason;
     @Input ValueNode speculation;
 
@@ -58,6 +58,11 @@ public class DynamicDeoptimizeNode extends AbstractDeoptimizeNode implements LIR
     @Override
     public ValueNode getSpeculation(MetaAccessProvider metaAccess) {
         return getSpeculation();
+    }
+
+    @Override
+    public void lower(LoweringTool tool) {
+        tool.getLowerer().lower(this, tool);
     }
 
     public void generate(NodeLIRBuilderTool generator) {
