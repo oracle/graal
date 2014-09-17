@@ -48,7 +48,7 @@ public class ForeignCallNode extends AbstractMemoryCheckpoint implements LIRLowe
         return USE_GENERATED_NODES ? new ForeignCallNodeGen(foreignCalls, descriptor, arguments) : new ForeignCallNode(foreignCalls, descriptor, arguments);
     }
 
-    ForeignCallNode(ForeignCallsProvider foreignCalls, ForeignCallDescriptor descriptor, ValueNode... arguments) {
+    protected ForeignCallNode(ForeignCallsProvider foreignCalls, ForeignCallDescriptor descriptor, ValueNode... arguments) {
         super(StampFactory.forKind(Kind.fromJavaClass(descriptor.getResultType())));
         this.arguments = new NodeInputList<>(this, arguments);
         this.descriptor = descriptor;

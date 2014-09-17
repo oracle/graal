@@ -41,6 +41,10 @@ public class VirtualBoxingNode extends VirtualInstanceNode {
         this.boxingKind = boxingKind;
     }
 
+    public Kind getBoxingKind() {
+        return boxingKind;
+    }
+
     @Override
     public VirtualBoxingNode duplicate() {
         return VirtualBoxingNode.create(type(), boxingKind);

@@ -41,7 +41,7 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
         return USE_GENERATED_NODES ? new MethodCallTargetNodeGen(invokeKind, targetMethod, arguments, returnType) : new MethodCallTargetNode(invokeKind, targetMethod, arguments, returnType);
     }
 
-    MethodCallTargetNode(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, JavaType returnType) {
+    protected MethodCallTargetNode(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, JavaType returnType) {
         super(arguments, targetMethod, invokeKind);
         this.returnType = returnType;
     }
