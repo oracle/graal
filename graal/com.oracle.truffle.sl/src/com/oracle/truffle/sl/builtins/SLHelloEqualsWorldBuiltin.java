@@ -23,6 +23,7 @@
 package com.oracle.truffle.sl.builtins;
 
 import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.CompilerDirectives.*;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
@@ -40,6 +41,7 @@ public abstract class SLHelloEqualsWorldBuiltin extends SLBuiltinNode {
     }
 
     @Specialization
+    @SlowPath
     public String change() {
         FrameInstance frameInstance = Truffle.getRuntime().getCallerFrame();
         Frame frame = frameInstance.getFrame(FrameAccess.READ_WRITE, false);

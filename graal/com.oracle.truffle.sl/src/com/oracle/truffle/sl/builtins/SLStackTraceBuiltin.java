@@ -52,17 +52,17 @@ public abstract class SLStackTraceBuiltin extends SLBuiltinNode {
         StringBuilder str = new StringBuilder();
 
         Truffle.getRuntime().iterateFrames(frameInstance -> {
-            dumpFrame(str, frameInstance.getCallTarget(), frameInstance.getFrame(FrameAccess.READ_ONLY, true), frameInstance.isVirtualFrame());
+            dumpFrame(str, frameInstance.getCallTarget(), frameInstance.getFrame(FrameAccess.READ_ONLY, true));
             return null;
         });
         return str.toString();
     }
 
-    private static void dumpFrame(StringBuilder str, CallTarget callTarget, Frame frame, boolean isVirtual) {
+    private static void dumpFrame(StringBuilder str, CallTarget callTarget, Frame frame) {
         if (str.length() > 0) {
             str.append("\n");
         }
-        str.append("Frame: ").append(callTarget).append(isVirtual ? " (virtual)" : "");
+        str.append("Frame: ").append(((RootCallTarget) callTarget).getRootNode().toString());
         FrameDescriptor frameDescriptor = frame.getFrameDescriptor();
         for (FrameSlot s : frameDescriptor.getSlots()) {
             str.append(", ").append(s.getIdentifier()).append("=").append(frame.getValue(s));
