@@ -461,6 +461,16 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     }
 
     @Override
+    public Annotation[] getAnnotations() {
+        if (isConstructor()) {
+            Constructor<?> javaConstructor = toJavaConstructor();
+            return javaConstructor == null ? new Annotation[0] : javaConstructor.getAnnotations();
+        }
+        Method javaMethod = toJava();
+        return javaMethod == null ? new Annotation[0] : javaMethod.getAnnotations();
+    }
+
+    @Override
     public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
         if (isConstructor()) {
             Constructor<?> javaConstructor = toJavaConstructor();
