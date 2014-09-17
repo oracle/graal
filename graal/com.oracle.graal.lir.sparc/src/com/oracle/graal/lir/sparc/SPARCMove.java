@@ -23,15 +23,46 @@
 package com.oracle.graal.lir.sparc;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
+import static com.oracle.graal.api.meta.Kind.*;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 import static com.oracle.graal.sparc.SPARC.*;
-import static com.oracle.graal.asm.sparc.SPARCAssembler.*;
 
 import com.oracle.graal.api.code.CompilationResult.RawData;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.*;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Add;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Fmovd;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Fmovs;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Fxord;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Fxors;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Lddf;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Ldf;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Ldsb;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Ldsh;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Ldsw;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Lduh;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Ldx;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Membar;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Movdtox;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Movstosw;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Movstouw;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Movwtos;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Movxtod;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Or;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Rdpc;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Stb;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Stdf;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Stf;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Sth;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Stw;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Stx;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Cas;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Casx;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Clr;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Mov;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Setx;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.ImplicitNullCheck;
@@ -39,6 +70,7 @@ import com.oracle.graal.lir.StandardOp.MoveOp;
 import com.oracle.graal.lir.StandardOp.NullCheck;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.sparc.*;
+import com.oracle.graal.sparc.SPARC.CPUFeature;
 
 public class SPARCMove {
 
@@ -184,6 +216,61 @@ public class SPARCMove {
                     default:
                         GraalInternalError.shouldNotReachHere();
                         break;
+                }
+            }
+        }
+    }
+
+    /**
+     * Move between floating-point and general purpose register domain (WITH VIS3)
+     */
+    @Opcode("MOVE")
+    public static class MoveFpGpVIS3 extends SPARCLIRInstruction implements MoveOp {
+
+        @Def({REG}) protected AllocatableValue result;
+        @Use({REG}) protected AllocatableValue input;
+
+        public MoveFpGpVIS3(AllocatableValue result, AllocatableValue input) {
+            super();
+            this.result = result;
+            this.input = input;
+        }
+
+        public Value getInput() {
+            return input;
+        }
+
+        public AllocatableValue getResult() {
+            return result;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
+            Kind inputKind = (Kind) input.getPlatformKind();
+            Kind resultKind = (Kind) result.getPlatformKind();
+            if (resultKind == Float) {
+                if (inputKind == Int || inputKind == Short || inputKind == Char || inputKind == Byte) {
+                    new Movwtos(asIntReg(input), asFloatReg(result)).emit(masm);
+                } else {
+                    throw GraalInternalError.shouldNotReachHere();
+                }
+            } else if (resultKind == Double) {
+                if (inputKind == Int || inputKind == Short || inputKind == Char || inputKind == Byte) {
+                    new Movxtod(asIntReg(input), asDoubleReg(result)).emit(masm);
+                } else {
+                    new Movxtod(asLongReg(input), asDoubleReg(result)).emit(masm);
+                }
+            } else if (inputKind == Float) {
+                if (resultKind == Int || resultKind == Short || resultKind == Byte) {
+                    new Movstosw(asFloatReg(input), asIntReg(result)).emit(masm);
+                } else {
+                    new Movstouw(asFloatReg(input), asIntReg(result)).emit(masm);
+                }
+            } else if (inputKind == Double) {
+                if (resultKind == Long) {
+                    new Movdtox(asDoubleReg(input), asLongReg(result)).emit(masm);
+                } else {
+                    throw GraalInternalError.shouldNotReachHere();
                 }
             }
         }
@@ -655,6 +742,7 @@ public class SPARCMove {
     private static void const2reg(CompilationResultBuilder crb, SPARCMacroAssembler masm, Value result, Constant input) {
         try (SPARCScratchRegister sc = SPARCScratchRegister.get()) {
             Register scratch = sc.getRegister();
+            boolean hasVIS3 = ((SPARC) masm.target.arch).getFeatures().contains(CPUFeature.VIS3);
             switch (input.getKind().getStackKind()) {
                 case Int:
                     if (input.isDefaultForKind()) {
@@ -674,28 +762,54 @@ public class SPARCMove {
                         new Setx(input.asLong(), asLongReg(result)).emit(masm);
                     }
                     break;
-                case Float:
-                    // TODO: Handle it the same way, as in the double case with Movwtos
-                    crb.asFloatConstRef(input);
-                    // First load the address into the scratch register
-                    new Setx(0, scratch, true).emit(masm);
-                    // Now load the float value
-                    new Ldf(scratch, asFloatReg(result)).emit(masm);
+                case Float: {
+                    float constant = input.asFloat();
+                    int constantBits = java.lang.Float.floatToIntBits(constant);
+                    if (constantBits == 0) {
+                        new Fxors(asFloatReg(result), asFloatReg(result), asFloatReg(result)).emit(masm);
+                    } else {
+                        if (hasVIS3) {
+                            if (isSimm13(constantBits)) {
+                                new Or(g0, constantBits, scratch).emit(masm);
+                            } else {
+                                new Setx(constantBits, scratch, false).emit(masm);
+                            }
+                            // Now load the float value
+                            new Movwtos(scratch, asFloatReg(result)).emit(masm);
+                        } else {
+                            crb.asFloatConstRef(input);
+                            // First load the address into the scratch register
+                            new Setx(0, scratch, true).emit(masm);
+                            // Now load the float value
+                            new Ldf(scratch, asFloatReg(result)).emit(masm);
+                        }
+                    }
                     break;
-                case Double:
-                    // instead loading this from memory and do the complicated lookup,
-                    // just load it directly into a scratch register
-                    // First load the address into the scratch register
-                    // new Setx(Double.doubleToLongBits(input.asDouble()), scratch,
-                    // true).emit(masm);
-                    // Now load the float value
-                    // new Movxtod(scratch, asDoubleReg(result)).emit(masm);
-                    crb.asDoubleConstRef(input);
-                    // First load the address into the scratch register
-                    new Setx(0, scratch, true).emit(masm);
-                    // Now load the float value
-                    new Lddf(scratch, asDoubleReg(result)).emit(masm);
+                }
+                case Double: {
+                    double constant = input.asDouble();
+                    long constantBits = java.lang.Double.doubleToLongBits(constant);
+                    if (constantBits == 0) {
+                        new Fxord(asDoubleReg(result), asDoubleReg(result), asDoubleReg(result)).emit(masm);
+                    } else {
+                        if (hasVIS3) {
+                            if (isSimm13(constantBits)) {
+                                new Or(g0, (int) constantBits, scratch).emit(masm);
+                            } else {
+                                new Setx(constantBits, scratch, false).emit(masm);
+                            }
+                            // Now load the float value
+                            new Movxtod(scratch, asDoubleReg(result)).emit(masm);
+                        } else {
+                            crb.asDoubleConstRef(input);
+                            // First load the address into the scratch register
+                            new Setx(0, scratch, true).emit(masm);
+                            // Now load the float value
+                            new Lddf(scratch, asDoubleReg(result)).emit(masm);
+                        }
+                    }
                     break;
+                }
                 case Object:
                     if (input.isNull()) {
                         new Clr(asRegister(result)).emit(masm);

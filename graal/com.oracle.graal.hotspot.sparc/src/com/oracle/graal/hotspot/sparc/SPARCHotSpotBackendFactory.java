@@ -76,13 +76,13 @@ public class SPARCHotSpotBackendFactory implements HotSpotBackendFactory {
 
     protected Set<CPUFeature> computeFeatures(HotSpotVMConfig config) {
         Set<CPUFeature> features = EnumSet.noneOf(CPUFeature.class);
-        if (config.vis1Instructions != 0) {
+        if ((config.sparcFeatures & config.vis1Instructions) != 0) {
             features.add(CPUFeature.VIS1);
         }
-        if (config.vis2Instructions != 0) {
+        if ((config.sparcFeatures & config.vis2Instructions) != 0) {
             features.add(CPUFeature.VIS2);
         }
-        if (config.vis3Instructions != 0) {
+        if ((config.sparcFeatures & config.vis3Instructions) != 0) {
             features.add(CPUFeature.VIS3);
         }
         return features;

@@ -33,7 +33,7 @@ import com.oracle.graal.replacements.nodes.MathIntrinsicNode.Operation;
 /**
  * Substitutions for {@link java.lang.Math} methods.
  */
-@ClassSubstitution(value = java.lang.Math.class, defaultGuard = UnsafeSubstitutions.GetAndSetGuard.class)
+@ClassSubstitution(value = java.lang.Math.class)
 public class MathSubstitutionsX86 {
 
     private static final double PI_4 = Math.PI / 4;
@@ -48,12 +48,12 @@ public class MathSubstitutionsX86 {
         return MathIntrinsicNode.compute(x, Operation.SQRT);
     }
 
-    @MethodSubstitution
+    @MethodSubstitution(guard = UnsafeSubstitutions.GetAndSetGuard.class)
     public static double log(double x) {
         return MathIntrinsicNode.compute(x, Operation.LOG);
     }
 
-    @MethodSubstitution
+    @MethodSubstitution(guard = UnsafeSubstitutions.GetAndSetGuard.class)
     public static double log10(double x) {
         return MathIntrinsicNode.compute(x, Operation.LOG10);
     }
@@ -61,7 +61,7 @@ public class MathSubstitutionsX86 {
     /**
      * Special cases from {@link Math#pow} and __ieee754_pow (in sharedRuntimeTrans.cpp).
      */
-    @MethodSubstitution
+    @MethodSubstitution(guard = UnsafeSubstitutions.GetAndSetGuard.class)
     public static double pow(double x, double y) {
         // If the second argument is positive or negative zero, then the result is 1.0.
         if (y == 0) {
@@ -107,7 +107,7 @@ public class MathSubstitutionsX86 {
     // accurate within [-pi/4, pi/4]. Examine the passed value and provide
     // a slow path for inputs outside of that interval.
 
-    @MethodSubstitution
+    @MethodSubstitution(guard = UnsafeSubstitutions.GetAndSetGuard.class)
     public static double sin(double x) {
         if (abs(x) < PI_4) {
             return MathIntrinsicNode.compute(x, Operation.SIN);
@@ -116,7 +116,7 @@ public class MathSubstitutionsX86 {
         }
     }
 
-    @MethodSubstitution
+    @MethodSubstitution(guard = UnsafeSubstitutions.GetAndSetGuard.class)
     public static double cos(double x) {
         if (abs(x) < PI_4) {
             return MathIntrinsicNode.compute(x, Operation.COS);
@@ -125,7 +125,7 @@ public class MathSubstitutionsX86 {
         }
     }
 
-    @MethodSubstitution
+    @MethodSubstitution(guard = UnsafeSubstitutions.GetAndSetGuard.class)
     public static double tan(double x) {
         if (abs(x) < PI_4) {
             return MathIntrinsicNode.compute(x, Operation.TAN);
