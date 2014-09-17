@@ -3430,6 +3430,18 @@ public abstract class SPARCAssembler extends Assembler {
         }
     }
 
+    public static class Fabss extends Fmt3p {
+        public Fabss(Register src2, Register dst) {
+            super(Ops.ArithOp, Op3s.Fpop1, Opfs.Fabss, SPARC.r0, src2, dst);
+        }
+    }
+
+    public static class Fabsd extends Fmt3p {
+        public Fabsd(Register src2, Register dst) {
+            super(Ops.ArithOp, Op3s.Fpop1, Opfs.Fabsd, SPARC.r0, src2, dst);
+        }
+    }
+
     public static class Fsrc1d extends Fmt3p {
 
         public Fsrc1d(Register src1, Register dst) {
