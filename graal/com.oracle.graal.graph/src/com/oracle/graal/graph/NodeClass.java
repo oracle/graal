@@ -254,7 +254,7 @@ public final class NodeClass extends FieldIntrospection {
                 }
                 if (nodeClass.getClazz().isAssignableFrom(clazz) && IterableNodeType.class.isAssignableFrom(nodeClass.getClazz())) {
                     NodeClass superNodeClass = (NodeClass) nodeClass;
-                    if (!USE_GENERATED_NODES || !containsId(this.iterableId, superNodeClass.iterableIds)) {
+                    if (!containsId(this.iterableId, superNodeClass.iterableIds)) {
                         superNodeClass.iterableIds = Arrays.copyOf(superNodeClass.iterableIds, superNodeClass.iterableIds.length + 1);
                         superNodeClass.iterableIds[superNodeClass.iterableIds.length - 1] = this.iterableId;
                     }
@@ -346,7 +346,7 @@ public final class NodeClass extends FieldIntrospection {
      *
      * <pre>
      *     if (node.getNodeClass().is(BeginNode.class)) { ... }
-     *
+     * 
      *     // Due to generated Node classes, the test below
      *     // is *not* the same as the test above:
      *     if (node.getClass() == BeginNode.class) { ... }
