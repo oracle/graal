@@ -38,7 +38,7 @@ public class GraphBuilderConfiguration {
     public static enum DebugInfoMode {
         SafePointsOnly,
         /**
-         * This mode inserts {@link FullInfopointNode}s in places where no safepoints would be
+         * This mode inserts {@link SimpleInfopointNode}s in places where no safepoints would be
          * inserted: inlining boundaries, and line number switches.
          * <p>
          * In this mode the infopoint only have a location (method and bytecode index) and no
@@ -50,11 +50,11 @@ public class GraphBuilderConfiguration {
          */
         Simple,
         /**
-         * In this mode, infopoints are generated in the same locations as in {@link #Simple} mode
-         * but the infopoints have access to the runtime values.
+         * In this mode, {@link FullInfopointNode}s are generated in the same locations as in
+         * {@link #Simple} mode but the infopoints have access to the runtime values.
          * <p>
          * This is relevant when code is to be generated for native, machine-code level debugging
-         * but can have a limit the amount of optimisation applied to the code.
+         * but can have a limit the amount of optimization applied to the code.
          */
         Full,
     }
