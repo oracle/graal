@@ -35,13 +35,11 @@ import com.oracle.truffle.api.nodes.*;
 public class DefaultCallTarget implements RootCallTarget {
 
     private final RootNode rootNode;
-    private final DefaultTruffleRuntime defaultTruffleRuntime;
 
-    public DefaultCallTarget(RootNode function, DefaultTruffleRuntime defaultTruffleRuntime) {
+    public DefaultCallTarget(RootNode function) {
         this.rootNode = function;
         this.rootNode.adoptChildren();
         this.rootNode.setCallTarget(this);
-        this.defaultTruffleRuntime = defaultTruffleRuntime;
     }
 
     @Override
@@ -56,7 +54,7 @@ public class DefaultCallTarget implements RootCallTarget {
     @Override
     public Object call(Object... args) {
         final VirtualFrame frame = new DefaultVirtualFrame(getRootNode().getFrameDescriptor(), args);
-        FrameInstance oldCurrentFrame = defaultTruffleRuntime.setCurrentFrame(new FrameInstance() {
+        FrameInstance oldCurrentFrame = defaultTruffleRuntime().setCurrentFrame(new FrameInstance() {
 
             public Frame getFrame(FrameAccess access, boolean slowPath) {
                 return frame;
@@ -77,7 +75,11 @@ public class DefaultCallTarget implements RootCallTarget {
         try {
             return getRootNode().execute(frame);
         } finally {
-            defaultTruffleRuntime.setCurrentFrame(oldCurrentFrame);
+            defaultTruffleRuntime().setCurrentFrame(oldCurrentFrame);
         }
+    }
+
+    private static DefaultTruffleRuntime defaultTruffleRuntime() {
+        return (DefaultTruffleRuntime) Truffle.getRuntime();
     }
 }
