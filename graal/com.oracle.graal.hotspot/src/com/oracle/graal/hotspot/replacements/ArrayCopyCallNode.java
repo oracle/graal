@@ -185,6 +185,10 @@ public class ArrayCopyCallNode extends AbstractMemoryCheckpoint implements Lower
         return uninitialized;
     }
 
+    static boolean isHeapWordAligned(Constant value, Kind kind) {
+        return (arrayBaseOffset(kind) + (long) value.asInt() * arrayIndexScale(kind)) % heapWordSize() == 0;
+    }
+
     public void updateAlignedDisjoint() {
         Kind componentKind = elementKind;
         if (srcPos == destPos) {
@@ -195,7 +199,7 @@ public class ArrayCopyCallNode extends AbstractMemoryCheckpoint implements Lower
         Constant constantDst = destPos.stamp().asConstant();
         if (constantSrc != null && constantDst != null) {
             if (!aligned) {
-                aligned = ArrayCopyNode.isHeapWordAligned(constantSrc, componentKind) && ArrayCopyNode.isHeapWordAligned(constantDst, componentKind);
+                aligned = isHeapWordAligned(constantSrc, componentKind) && isHeapWordAligned(constantDst, componentKind);
             }
             if (constantSrc.asInt() >= constantDst.asInt()) {
                 // low to high copy so treat as disjoint
