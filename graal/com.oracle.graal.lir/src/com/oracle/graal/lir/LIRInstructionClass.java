@@ -33,7 +33,7 @@ import com.oracle.graal.lir.LIRInstruction.OperandMode;
 
 public class LIRInstructionClass extends LIRIntrospection {
 
-    static final LIRInstructionClass get(Class<? extends LIRInstruction> c) {
+    public static final LIRInstructionClass get(Class<? extends LIRInstruction> c) {
         LIRInstructionClass clazz = (LIRInstructionClass) allClasses.get(c);
         if (clazz != null) {
             return clazz;
@@ -76,7 +76,7 @@ public class LIRInstructionClass extends LIRIntrospection {
     }
 
     @SuppressWarnings("unchecked")
-    private LIRInstructionClass(Class<? extends LIRInstruction> clazz, CalcOffset calcOffset) {
+    public LIRInstructionClass(Class<? extends LIRInstruction> clazz, CalcOffset calcOffset) {
         super(clazz);
         assert INSTRUCTION_CLASS.isAssignableFrom(clazz);
 
