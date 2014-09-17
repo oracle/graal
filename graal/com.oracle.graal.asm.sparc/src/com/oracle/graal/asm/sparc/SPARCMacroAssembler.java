@@ -44,11 +44,8 @@ public class SPARCMacroAssembler extends SPARCAssembler {
 
     @Override
     public void align(int modulus) {
-        if (position() % modulus != 0) {
-            final int count = modulus - (position() % modulus);
-            for (int i = 0; i < count; i++) {
-                new Nop().emit(this);
-            }
+        while (position() % modulus != 0) {
+            new Nop().emit(this);
         }
     }
 
