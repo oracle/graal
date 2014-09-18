@@ -165,9 +165,9 @@ public interface ResolvedJavaType extends JavaType, ModifiersProvider {
     ResolvedJavaType asExactType();
 
     /**
-     * Gets the super class of this type. If this type represents either the {@code Object} class, a
-     * primitive type, or void, then null is returned. If this object represents an array class or
-     * an interface then the type object representing the {@code Object} class is returned.
+     * Gets the super class of this type. If this type represents either the {@code Object} class,
+     * an interface, a primitive type, or void, then null is returned. If this object represents an
+     * array class then the type object representing the {@code Object} class is returned.
      */
     ResolvedJavaType getSuperclass();
 

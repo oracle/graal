@@ -206,7 +206,7 @@ public abstract class CheckCastReduction extends GuardingPiReduction {
 
         ObjectStamp subjectStamp = (ObjectStamp) subject.stamp();
         final ResolvedJavaType toType = checkCast.type();
-        ObjectStamp resultStamp = (ObjectStamp) StampFactory.declared(toType);
+        ObjectStamp resultStamp = (ObjectStamp) StampFactory.declared(toType, false, true);
         JavaTypeProfile profile = checkCast.profile();
 
         assert FlowUtil.isLegalObjectStamp(subjectStamp);
@@ -214,13 +214,13 @@ public abstract class CheckCastReduction extends GuardingPiReduction {
 
         /*
          * Depending on what is known about the subject:
-         * 
+         *
          * (a) definitely-non-null
-         * 
+         *
          * (b) null-not-seen-in-profiling
-         * 
+         *
          * (c) runtime-null-check-needed
-         * 
+         *
          * the condition (of the cast-guard to be emitted) and the stamp (of the PiNode to be
          * emitted) are going to be different. Each of the three branches below deals with one of
          * the cases above.

@@ -67,7 +67,7 @@ public class LoadIndexedFinalNode extends AccessIndexedNode implements Canonical
     private static Stamp createStamp(ValueNode array, Kind kind) {
         ResolvedJavaType type = StampTool.typeOrNull(array);
         if (kind == Kind.Object && type != null) {
-            return StampFactory.declared(type.getComponentType());
+            return StampFactory.declared(type.getComponentType(), false, true);
         } else {
             return StampFactory.forKind(kind);
         }
