@@ -179,9 +179,8 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
 
         // If we don't have an index register we can use a displacement, otherwise load the
         // displacement into a register and add it to the base.
-        if (indexRegister.equals(Value.ILLEGAL)) {
+        if (indexRegister.equals(Value.ILLEGAL) && SPARCAssembler.isSimm13(finalDisp)) {
             displacementInt = (int) finalDisp;
-            assert SPARCAssembler.isSimm13(displacementInt) : displacementInt;
         } else {
             displacementInt = 0;
             if (baseRegister.equals(Value.ILLEGAL)) {
