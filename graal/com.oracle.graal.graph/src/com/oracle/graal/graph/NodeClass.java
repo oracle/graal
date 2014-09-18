@@ -81,6 +81,11 @@ public final class NodeClass extends FieldIntrospection {
                                 assert value.genClass == c;
                             }
                         } else {
+                            Class<?> superclass = c.getSuperclass();
+                            if (superclass != NODE_CLASS) {
+                                // Ensure NodeClass for superclass exists
+                                get(superclass);
+                            }
                             value = new NodeClass(key);
                         }
                         Object old = allClasses.putIfAbsent(key, value);
@@ -248,30 +253,19 @@ public final class NodeClass extends FieldIntrospection {
         } else if (IterableNodeType.class.isAssignableFrom(clazz)) {
             ITERABLE_NODE_TYPES.increment();
             this.iterableId = nextIterableId++;
-            List<NodeClass> existingClasses = new LinkedList<>();
-            for (FieldIntrospection nodeClass : allClasses.values()) {
-                // There are duplicate entries in allClasses when using generated nodes
-                // hence the extra logic below guarded by USE_GENERATED_NODES
-                if (clazz.isAssignableFrom(nodeClass.getClazz())) {
-                    if (!USE_GENERATED_NODES || !existingClasses.contains(nodeClass)) {
-                        existingClasses.add((NodeClass) nodeClass);
-                    }
+
+            Class<?> superclass = clazz.getSuperclass();
+            while (superclass != NODE_CLASS) {
+                if (IterableNodeType.class.isAssignableFrom(superclass)) {
+                    NodeClass superNodeClass = NodeClass.get(superclass);
+                    assert !containsId(this.iterableId, superNodeClass.iterableIds);
+                    superNodeClass.iterableIds = Arrays.copyOf(superNodeClass.iterableIds, superNodeClass.iterableIds.length + 1);
+                    superNodeClass.iterableIds[superNodeClass.iterableIds.length - 1] = this.iterableId;
                 }
-                if (nodeClass.getClazz().isAssignableFrom(clazz) && IterableNodeType.class.isAssignableFrom(nodeClass.getClazz())) {
-                    NodeClass superNodeClass = (NodeClass) nodeClass;
-                    if (!containsId(this.iterableId, superNodeClass.iterableIds)) {
-                        superNodeClass.iterableIds = Arrays.copyOf(superNodeClass.iterableIds, superNodeClass.iterableIds.length + 1);
-                        superNodeClass.iterableIds[superNodeClass.iterableIds.length - 1] = this.iterableId;
-                    }
-                }
+                superclass = superclass.getSuperclass();
             }
-            int[] ids = new int[existingClasses.size() + 1];
-            ids[0] = iterableId;
-            int i = 1;
-            for (NodeClass other : existingClasses) {
-                ids[i++] = other.iterableId;
-            }
-            this.iterableIds = ids;
+
+            this.iterableIds = new int[]{iterableId};
         } else {
             this.iterableId = Node.NOT_ITERABLE;
             this.iterableIds = null;
