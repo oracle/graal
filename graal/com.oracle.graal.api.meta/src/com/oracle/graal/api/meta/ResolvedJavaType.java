@@ -336,4 +336,10 @@ public interface ResolvedJavaType extends JavaType, ModifiersProvider {
      * method is similar to {@link Array#newInstance(Class, int)}.
      */
     Constant newArray(int length);
+
+    /**
+     * Returns true if this type represents and interface and it should be trusted even in places
+     * where the JVM verifier would not give any guarantees other than {@link Object}.
+     */
+    boolean isTrustedInterfaceType();
 }

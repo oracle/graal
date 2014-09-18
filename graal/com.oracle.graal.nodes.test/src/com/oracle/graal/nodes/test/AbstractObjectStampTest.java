@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,25 +26,49 @@ import org.junit.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.compiler.test.*;
 
-public class ObjectStampTest extends AbstractObjectStampTest {
-    @Test
-    public void testInterfaceTrust0() {
-        Stamp notTrusted = StampFactory.declared(getType(I.class));
-        Assert.assertEquals(StampFactory.object(), notTrusted);
-    }
+public abstract class AbstractObjectStampTest extends GraalCompilerTest {
 
-    private static interface TrustedI extends TrustedInterface {
+    protected static class A {
 
     }
 
-    @Test
-    public void testInterfaceTrust1() {
-        Stamp trusted = StampFactory.declared(getType(TrustedI.class));
-        Assert.assertNotEquals(StampFactory.object(), trusted);
-        Assert.assertTrue("Should be an AbstractObjectStamp", trusted instanceof AbstractObjectStamp);
-        AbstractObjectStamp trustedObjectStamp = (AbstractObjectStamp) trusted;
-        Assert.assertNotNull(trustedObjectStamp.type());
-        Assert.assertTrue("Should be an interface", trustedObjectStamp.type().isInterface());
+    protected static class B extends A {
+
+    }
+
+    protected static class C extends B implements I {
+
+    }
+
+    protected static class D extends A {
+
+    }
+
+    protected abstract static class E extends A {
+
+    }
+
+    protected interface I {
+
+    }
+
+    protected static Stamp join(Stamp a, Stamp b) {
+        Stamp ab = a.join(b);
+        Stamp ba = b.join(a);
+        Assert.assertEquals(ab, ba);
+        return ab;
+    }
+
+    protected static Stamp meet(Stamp a, Stamp b) {
+        Stamp ab = a.meet(b);
+        Stamp ba = b.meet(a);
+        Assert.assertEquals(ab, ba);
+        return ab;
+    }
+
+    protected ResolvedJavaType getType(Class<?> clazz) {
+        return getMetaAccess().lookupJavaType(clazz);
     }
 }

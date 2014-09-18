@@ -853,4 +853,11 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
     public String toString() {
         return "HotSpotType<" + getName() + ", resolved>";
     }
+
+    private static final ResolvedJavaType trustedInterfaceType = fromClass(TrustedInterface.class);
+
+    @Override
+    public boolean isTrustedInterfaceType() {
+        return trustedInterfaceType.isAssignableFrom(this);
+    }
 }

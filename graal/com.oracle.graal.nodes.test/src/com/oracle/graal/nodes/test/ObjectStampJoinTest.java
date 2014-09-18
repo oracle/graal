@@ -28,7 +28,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.nodes.type.*;
 
-public class ObjectStampJoinTest extends ObjectStampTest {
+public class ObjectStampJoinTest extends AbstractObjectStampTest {
 
     // class A
     // class B extends A
@@ -124,14 +124,14 @@ public class ObjectStampJoinTest extends ObjectStampTest {
     @Test
     public void testJoinInterface0() {
         Stamp a = StampFactory.declared(getType(A.class));
-        Stamp i = StampFactory.declared(getType(I.class));
+        Stamp i = StampFactory.declared(getType(I.class), false, true);
         Assert.assertNotSame(StampFactory.illegal(Kind.Object), join(a, i));
     }
 
     @Test
     public void testJoinInterface1() {
         Stamp aNonNull = StampFactory.declaredNonNull(getType(A.class));
-        Stamp i = StampFactory.declared(getType(I.class));
+        Stamp i = StampFactory.declared(getType(I.class), false, true);
         Stamp join = join(aNonNull, i);
         Assert.assertTrue(join instanceof ObjectStamp);
         Assert.assertTrue(((ObjectStamp) join).nonNull());
@@ -140,9 +140,16 @@ public class ObjectStampJoinTest extends ObjectStampTest {
     @Test
     public void testJoinInterface2() {
         Stamp bExact = StampFactory.exactNonNull(getType(B.class));
-        Stamp i = StampFactory.declared(getType(I.class));
+        Stamp i = StampFactory.declared(getType(I.class), false, true);
         Stamp join = join(i, bExact);
         Assert.assertEquals(StampFactory.illegal(Kind.Object), join);
     }
 
+    @Test
+    public void testJoinInterface3() {
+        Stamp bExact = StampFactory.exactNonNull(getType(B.class));
+        Stamp i = StampFactory.declared(getType(I.class)); // not trusted
+        Stamp join = join(i, bExact);
+        Assert.assertEquals(bExact, join);
+    }
 }
