@@ -27,8 +27,6 @@ import static com.oracle.graal.sparc.SPARC.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.asm.*;
-import com.oracle.graal.sparc.*;
-import com.oracle.graal.sparc.SPARC.CPUFeature;
 
 public class SPARCMacroAssembler extends SPARCAssembler {
 
@@ -61,10 +59,6 @@ public class SPARCMacroAssembler extends SPARCAssembler {
         Fmt00 fmt = Fmt00.read(this, branch);
         fmt.setImm(disp);
         fmt.write(this, branch);
-    }
-
-    protected boolean hasFeature(CPUFeature feature) {
-        return ((SPARC) this.target.arch).features.contains(feature);
     }
 
     @Override

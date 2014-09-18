@@ -60,11 +60,13 @@ public abstract class SPARCAssembler extends Assembler {
     public static abstract class Fmt00 {
 
         protected static final int OP_SHIFT = 30;
+        protected static final int CBCOND_SHIFT = 28;
         protected static final int OP2_SHIFT = 22;
 
         // @formatter:off
-        protected static final int OP_MASK  = 0b1100_0000_0000_0000_0000_0000_0000_0000;
-        protected static final int OP2_MASK = 0b0000_0001_1100_0000_0000_0000_0000_0000;
+        protected static final int OP_MASK     = 0b1100_0000_0000_0000_0000_0000_0000_0000;
+        protected static final int CBCOND_MASK = 0b0001_0000_0000_0000_0000_0000_0000_0000; // Used for distinguish CBcond and BPr instructions
+        protected static final int OP2_MASK    = 0b0000_0001_1100_0000_0000_0000_0000_0000;
         // @formatter:off
 
         private int op2;
@@ -86,7 +88,12 @@ public abstract class SPARCAssembler extends Assembler {
                 case Bp:
                     return Fmt00c.read(masm, pos);
                 case Bpr:
-                    return Fmt00d.read(masm, pos);
+                    boolean isCBcond = (inst & CBCOND_MASK) != 0;
+                    if(isCBcond) {
+                        return Fmt00e.read(masm, pos);
+                    } else {
+                        return Fmt00d.read(masm, pos);
+                    }
                 default:
                     throw GraalInternalError.shouldNotReachHere("Unknown op2 " + op2);
             }
@@ -106,7 +113,7 @@ public abstract class SPARCAssembler extends Assembler {
         }
 
         public void verify() {
-            assert ((op2 << OP2_SHIFT) & OP2_MASK) == (op2 << OP2_SHIFT);
+            assert ((op2 << OP2_SHIFT) & OP2_MASK) == (op2 << OP2_SHIFT) : Integer.toHexString(op2);
             assert Op2s.byValue(op2) != null : op2;
         }
         /**
@@ -520,7 +527,7 @@ public abstract class SPARCAssembler extends Assembler {
             super(op2);
             this.annul = annul;
             this.rCondition = rCondition;
-            this.disp16 = d16;
+            setDisp16(d16);
             this.predictTaken = predictTaken;
             this.rs1 = rs1;
             this.label = label;
@@ -563,19 +570,20 @@ public abstract class SPARCAssembler extends Assembler {
 
             // Make sure it's the right instruction:
             final int op = (inst & OP_MASK) >> OP_SHIFT;
-            assert op == Ops.BranchOp.getValue();
+            final int op2 = (inst & OP2_MASK) >> OP2_SHIFT;
+            final int condFlag = (inst & CBCOND_MASK) >> CBCOND_SHIFT;
+            assert op2 == Op2s.Bpr.getValue() && op == Ops.BranchOp.getValue() && condFlag == 0 : "0x" + Integer.toHexString(inst);
 
             // Get the instruction fields:
             final int a = (inst & A_MASK) >> A_SHIFT;
             final int cond = (inst & RCOND_MASK) >> RCOND_SHIFT;
-            final int op2 = (inst & OP2_MASK) >> OP2_SHIFT;
             final int p = (inst & P_MASK) >> P_SHIFT;
             final int rs1 = (inst & RS1_MASK) >> RS1_SHIFT;
             final int d16hi = (inst & D16HI_MASK) >> D16HI_SHIFT;
             assert (d16hi & ~0b11) == 0;
             final int d16lo = (inst & D16LO_MASK) >> D16LO_SHIFT;
             assert (d16lo & ~((1 << 14) - 1)) == 0;
-            final int d16 = (short) (((d16hi << 14) | d16lo) << 2); // sign extend
+            final int d16 = (short) (((d16hi << 14) | d16lo) << 2); // times 4 and sign extend
             Fmt00d fmt = new Fmt00d(op2, cond, p, a, d16, rs1, null);
             fmt.verify();
             return fmt;
@@ -592,18 +600,138 @@ public abstract class SPARCAssembler extends Assembler {
         }
     }
 
-    public static class Fmt00e {
+    // @formatter:off
+    /**
+     * Instruction format CBcond
+     *
+     * |00   |chi|1 | clo | 011 |cc2|d10hi|rs1  |i |d10lo|rs2/simm5|
+     * |31 30|29 |28|27 25|24 22|21 |20 19|18 14|13|12  5|4       0|
+     */
+    // @formatter:on
+    public static class Fmt00e extends Fmt00 {
+        private static final int CHI_SHIFT = 29;
+        private static final int CLO_SHIFT = 25;
+        private static final int CC2_SHIFT = 21;
+        private static final int D10HI_SHIFT = 19;
+        private static final int RS1_SHIFT = 14;
+        private static final int I_SHIFT = 13;
+        private static final int D10LO_SHIFT = 5;
+        private static final int RS2_SHIFT = 0;
 
-        public Fmt00e(SPARCAssembler asm, int op, int c4lo, int cc2, int rs1, int d10lo, int regOrImmediate) {
-            assert op == 0;
-            assert (cc2 & 0xFFFFFFFE) == 0;
-            assert c4lo >= 0 && rs1 < 0x10;
-            assert rs1 >= 0 && rs1 < 0x20;
-            assert (regOrImmediate & 0x1F) < 0x20;
-            assert (regOrImmediate & 0xFFFFC000) == 0;
-            assert (d10lo & 0xFFFFFC00) == 0;
+        // @formatter:off
+        private static final int CHI_MASK      = 0b0010_0000_0000_0000_0000_0000_0000_0000;
+        private static final int CLO_MASK      = 0b0000_1110_0000_0000_0000_0000_0000_0000;
+        private static final int CC2_MASK      = 0b0000_0000_0010_0000_0000_0000_0000_0000;
+        private static final int D10HI_MASK    = 0b0000_0000_0001_1000_0000_0000_0000_0000;
+        private static final int RS1_MASK      = 0b0000_0000_0000_0111_1100_0000_0000_0000;
+        private static final int I_MASK        = 0b0000_0000_0000_0000_0010_0000_0000_0000;
+        private static final int D10LO_MASK    = 0b0000_0000_0000_0000_0001_1111_1110_0000;
+        private static final int RS2_MASK      = 0b0000_0000_0000_0000_0000_0000_0001_1111;
+        // @formatter:on
 
-            asm.emitInt(op << 30 | 1 << 28 | 3 << 22 | cc2 << 21 | (d10lo >> 8) << 19 | rs1 << 14 | (d10lo & 0xff) << 5 | regOrImmediate);
+        private int c;
+        private int cc2;
+        private int disp10;
+        private int rs1;
+        private int i;
+        private int regOrImmediate;
+        private Label label;
+
+        public Fmt00e(int c, int cc2, int rs1, int disp10, int i, int regOrImmediate, Label label) {
+            super(Op2s.Bpr.getValue());
+            this.c = c;
+            this.cc2 = cc2;
+            this.rs1 = rs1;
+            setDisp10(disp10);
+            this.i = i;
+            this.regOrImmediate = regOrImmediate;
+            this.label = label;
+        }
+
+        @Override
+        public void setImm(int imm) {
+            setDisp10(imm);
+        }
+
+        public void setDisp10(int disp10) {
+            this.disp10 = disp10 >> 2;
+        }
+
+        public void emit(SPARCAssembler masm) {
+            assert masm.hasFeature(CPUFeature.CBCOND);
+            if (label != null) {
+                final int pos = label.isBound() ? label.position() : patchUnbound(masm, label);
+                if (label.isBound()) {
+                    final int disp = pos - masm.position();
+                    setDisp10(disp);
+                } else {
+                    setDisp10(0);
+                }
+            }
+            verify();
+            masm.emitInt(getInstructionBits());
+        }
+
+        private static int patchUnbound(SPARCAssembler masm, Label label) {
+            label.addPatchAt(masm.position());
+            return 0;
+        }
+
+        @Override
+        protected int getInstructionBits() {
+            int cSplit = 0;
+            cSplit |= (c & 0b1000) << CHI_SHIFT - 3;
+            cSplit |= (c & 0b0111) << CLO_SHIFT;
+            int d10Split = 0;
+            d10Split |= (disp10 & 0b11_0000_0000) << D10HI_SHIFT - 8;
+            d10Split |= (disp10 & 0b00_1111_1111) << D10LO_SHIFT;
+            return super.getInstructionBits() | 1 << 28 | cSplit | cc2 << CC2_SHIFT | d10Split | rs1 << RS1_SHIFT | i << I_SHIFT | regOrImmediate << RS2_SHIFT;
+        }
+
+        public static Fmt00e read(SPARCAssembler masm, int pos) {
+            assert masm.hasFeature(CPUFeature.CBCOND);
+            final int inst = masm.getInt(pos);
+
+            // Make sure it's the right instruction:
+            final int op = (inst & OP_MASK) >> OP_SHIFT;
+            final int op2 = (inst & OP2_MASK) >> OP2_SHIFT;
+            final int condFlag = (inst & CBCOND_MASK) >> CBCOND_SHIFT;
+            assert op2 == Op2s.Bpr.getValue() && op == Ops.BranchOp.getValue() && condFlag == 1 : "0x" + Integer.toHexString(inst);
+
+            // @formatter:off
+            // Get the instruction fields:
+            final int chi =            (inst & CHI_MASK)   >> CHI_SHIFT;
+            final int clo =            (inst & CLO_MASK)   >> CLO_SHIFT;
+            final int cc2 =            (inst & CC2_MASK)   >> CC2_SHIFT;
+            final int d10hi =          (inst & D10HI_MASK) >> D10HI_SHIFT;
+            final int rs1 =            (inst & RS1_MASK)   >> RS1_SHIFT;
+            final int i =              (inst & I_MASK)     >> I_SHIFT;
+            final int d10lo =          (inst & D10LO_MASK) >> D10LO_SHIFT;
+            final int regOrImmediate = (inst & RS2_MASK)   >> RS2_SHIFT;
+            // @formatter:on
+
+            int c = chi << 3 | clo;
+
+            assert (d10lo & ~((1 << 8) - 1)) == 0;
+            final int d10 = ((short) (((d10hi << 8) | d10lo) << 6)) >> 4; // Times 4 and sign extend
+            Fmt00e fmt = new Fmt00e(c, cc2, rs1, d10, i, regOrImmediate, null);
+            fmt.verify();
+            return fmt;
+        }
+
+        @Override
+        public void verify() {
+            super.verify();
+            assert (c & ~0b1111) == 0 : c;
+            assert (cc2 & ~1) == 0 : cc2;
+            assert isSimm(disp10, 10) : disp10;
+            assert (rs1 & ~0b1_1111) == 0 : rs1;
+            assert (i & ~1) == 0 : i;
+            if (i == 1) {
+                assert isSimm(regOrImmediate, 5) : regOrImmediate;
+            } else {
+                assert (regOrImmediate & ~0b1_1111) == 0 : regOrImmediate;
+            }
         }
     }
 
@@ -1869,6 +1997,10 @@ public abstract class SPARCAssembler extends Assembler {
         }
     }
 
+    public boolean hasFeature(CPUFeature feature) {
+        return ((SPARC) this.target.arch).features.contains(feature);
+    }
+
     public static int getFloatEncoding(int reg) {
         assert reg < 32;
         return reg;
@@ -2426,353 +2558,23 @@ public abstract class SPARCAssembler extends Assembler {
         }
     }
 
-    /**
-     * Compare and Branch if Carry Clear ( Greater not C Than or Equal, Unsigned )
-     */
-    public static class Cwbcc extends Fmt00e {
-
-        public Cwbcc(SPARCAssembler asm, Register src1, Register src2, int simm10) {
-            super(asm, Ops.BranchOp.getValue(), ConditionFlag.CarryClear.getValue(), 0, src1.encoding(), simm10, src2.encoding());
+    public static class CBcondw extends Fmt00e {
+        public CBcondw(ConditionFlag flag, Register src1, Register src2, Label label) {
+            super(flag.getValue(), 0, src1.encoding(), -1, 0, src2.encoding(), label);
         }
 
-        public Cwbcc(SPARCAssembler asm, Register src1, int immed5, int simm10) {
-            super(asm, Ops.BranchOp.getValue(), ConditionFlag.Equal.getValue(), 0, src1.encoding(), simm10, immed5 | ImmedTrue);
+        public CBcondw(ConditionFlag flag, Register src1, int simm5, Label label) {
+            super(flag.getValue(), 0, src1.encoding(), -1, 1, simm5, label);
         }
     }
 
-    /**
-     * Compare and Branch if Carry Set (Less Than, Unsigned)
-     */
-    public static class Cwbcs extends Fmt00e {
-
-        public Cwbcs(SPARCAssembler asm, Register src1, Register src2, int simm10) {
-            super(asm, Ops.BranchOp.getValue(), ConditionFlag.CarrySet.getValue(), 0, src1.encoding(), simm10, src2.encoding());
+    public static class CBcondx extends Fmt00e {
+        public CBcondx(ConditionFlag flag, Register src1, Register src2, Label label) {
+            super(flag.getValue(), 1, src1.encoding(), -1, 0, src2.encoding(), label);
         }
 
-        public Cwbcs(SPARCAssembler asm, Register src1, int immed5, int simm10) {
-            super(asm, Ops.BranchOp.getValue(), ConditionFlag.CarrySet.getValue(), 0, src1.encoding(), simm10, immed5 | ImmedTrue);
-        }
-    }
-
-    /**
-     * Compare and Branch if Equal
-     */
-    public static class Cwbe extends Fmt00e {
-
-        public Cwbe(SPARCAssembler asm, Register src1, Register src2, int simm10) {
-            super(asm, Ops.BranchOp.getValue(), ConditionFlag.CarryClear.getValue(), 0, src1.encoding(), simm10, src2.encoding());
-        }
-
-        public Cwbe(SPARCAssembler asm, Register src1, int immed5, int simm10) {
-            super(asm, Ops.BranchOp.getValue(), ConditionFlag.Equal.getValue(), 0, src1.encoding(), simm10, immed5 | ImmedTrue);
-        }
-    }
-
-    /**
-     * Compare and Branch if Greater
-     */
-    public static class Cwbg extends Fmt00e {
-
-        public Cwbg(SPARCAssembler asm, Register src1, Register src2, int simm10) {
-            super(asm, Ops.BranchOp.getValue(), ConditionFlag.Greater.getValue(), 0, src1.encoding(), simm10, src2.encoding());
-        }
-
-        public Cwbg(SPARCAssembler asm, Register src1, int immed5, int simm10) {
-            super(asm, Ops.BranchOp.getValue(), ConditionFlag.Greater.getValue(), 0, src1.encoding(), simm10, immed5 | ImmedTrue);
-        }
-    }
-
-    /**
-     * Compare and Branch if Greater or Equal
-     */
-    public static class Cwbge extends Fmt00e {
-
-        public Cwbge(SPARCAssembler asm, Register src1, Register src2, int simm10) {
-            super(asm, Ops.BranchOp.getValue(), ConditionFlag.GreaterEqual.getValue(), 0, src1.encoding(), simm10, src2.encoding());
-        }
-
-        public Cwbge(SPARCAssembler asm, Register src1, int immed5, int simm10) {
-            super(asm, Ops.BranchOp.getValue(), ConditionFlag.GreaterEqual.getValue(), 0, src1.encoding(), simm10, immed5 | ImmedTrue);
-        }
-    }
-
-    /**
-     * Compare and Branch if Greater Unsigned
-     */
-    public static class Cwbgu extends Fmt00e {
-
-        public Cwbgu(SPARCAssembler asm, Register src1, Register src2, int simm10) {
-            super(asm, Ops.BranchOp.getValue(), ConditionFlag.GreaterUnsigned.getValue(), 0, src1.encoding(), simm10, src2.encoding());
-        }
-
-        public Cwbgu(SPARCAssembler asm, Register src1, int immed5, int simm10) {
-            super(asm, Ops.BranchOp.getValue(), ConditionFlag.GreaterUnsigned.getValue(), 0, src1.encoding(), simm10, immed5 | ImmedTrue);
-        }
-    }
-
-    /**
-     * Compare and Branch if Less
-     */
-    public static class Cwbl extends Fmt00e {
-
-        public Cwbl(SPARCAssembler asm, Register src1, Register src2, int simm10) {
-            super(asm, Ops.BranchOp.getValue(), ConditionFlag.Less.getValue(), 0, src1.encoding(), simm10, src2.encoding());
-        }
-
-        public Cwbl(SPARCAssembler asm, Register src1, int immed5, int simm10) {
-            super(asm, Ops.BranchOp.getValue(), ConditionFlag.Less.getValue(), 0, src1.encoding(), simm10, immed5 | ImmedTrue);
-        }
-    }
-
-    /**
-     * Compare and Branch if Less or Equal
-     */
-    public static class Cwble extends Fmt00e {
-
-        public Cwble(SPARCAssembler asm, Register src1, Register src2, int simm10) {
-            super(asm, Ops.BranchOp.getValue(), ConditionFlag.LessEqual.getValue(), 0, src1.encoding(), simm10, src2.encoding());
-        }
-
-        public Cwble(SPARCAssembler asm, Register src1, int immed5, int simm10) {
-            super(asm, Ops.BranchOp.getValue(), ConditionFlag.LessEqual.getValue(), 0, src1.encoding(), simm10, immed5 | ImmedTrue);
-        }
-    }
-
-    /**
-     * Compare and Branch if Less or Equal Unsigned
-     */
-    public static class Cwbleu extends Fmt00e {
-
-        public Cwbleu(SPARCAssembler asm, Register src1, Register src2, int simm10) {
-            super(asm, Ops.BranchOp.getValue(), ConditionFlag.LessEqualUnsigned.getValue(), 0, src1.encoding(), simm10, src2.encoding());
-        }
-
-        public Cwbleu(SPARCAssembler asm, Register src1, int immed5, int simm10) {
-            super(asm, Ops.BranchOp.getValue(), ConditionFlag.LessEqualUnsigned.getValue(), 0, src1.encoding(), simm10, immed5 | ImmedTrue);
-        }
-    }
-
-    /**
-     * Compare and Branch if Not Equal
-     */
-    public static class Cwbne extends Fmt00e {
-
-        public Cwbne(SPARCAssembler asm, Register src1, Register src2, int simm10) {
-            super(asm, Ops.BranchOp.getValue(), ConditionFlag.NotEqual.getValue(), 0, src1.encoding(), simm10, src2.encoding());
-        }
-
-        public Cwbne(SPARCAssembler asm, Register src1, int immed5, int simm10) {
-            super(asm, Ops.BranchOp.getValue(), ConditionFlag.NotEqual.getValue(), 0, src1.encoding(), simm10, immed5 | ImmedTrue);
-        }
-    }
-
-    /**
-     * Compare and Branch if Negative
-     */
-    public static class Cwbneg extends Fmt00e {
-
-        public Cwbneg(SPARCAssembler asm, Register src1, Register src2, int simm10) {
-            super(asm, Ops.BranchOp.getValue(), ConditionFlag.Negative.getValue(), 0, src1.encoding(), simm10, src2.encoding());
-        }
-
-        public Cwbneg(SPARCAssembler asm, Register src1, int immed5, int simm10) {
-            super(asm, Ops.BranchOp.getValue(), ConditionFlag.Negative.getValue(), 0, src1.encoding(), simm10, immed5 | ImmedTrue);
-        }
-    }
-
-    /**
-     * Compare and Branch if Positive
-     */
-    public static class Cwbpos extends Fmt00e {
-
-        public Cwbpos(SPARCAssembler asm, Register src1, Register src2, int simm10) {
-            super(asm, Ops.BranchOp.getValue(), ConditionFlag.Positive.getValue(), 0, src1.encoding(), simm10, src2.encoding());
-        }
-
-        public Cwbpos(SPARCAssembler asm, Register src1, int immed5, int simm10) {
-            super(asm, Ops.BranchOp.getValue(), ConditionFlag.Positive.getValue(), 0, src1.encoding(), simm10, immed5 | ImmedTrue);
-        }
-    }
-
-    /**
-     * Compare and Branch if Overflow Clear
-     */
-    public static class Cwbvc extends Fmt00e {
-
-        public Cwbvc(SPARCAssembler asm, Register src1, Register src2, int simm10) {
-            super(asm, Ops.BranchOp.getValue(), ConditionFlag.OverflowClear.getValue(), 0, src1.encoding(), simm10, src2.encoding());
-        }
-
-        public Cwbvc(SPARCAssembler asm, Register src1, int immed5, int simm10) {
-            super(asm, Ops.BranchOp.getValue(), ConditionFlag.OverflowClear.getValue(), 0, src1.encoding(), simm10, immed5 | ImmedTrue);
-        }
-    }
-
-    /**
-     * Compare and Branch if Overflow Set
-     */
-    public static class Cwbvs extends Fmt00e {
-
-        public Cwbvs(SPARCAssembler asm, Register src1, Register src2, int simm10) {
-            super(asm, Ops.BranchOp.getValue(), ConditionFlag.OverflowSet.getValue(), 0, src1.encoding(), simm10, src2.encoding());
-        }
-
-        public Cwbvs(SPARCAssembler asm, Register src1, int immed5, int simm10) {
-            super(asm, Ops.BranchOp.getValue(), ConditionFlag.OverflowSet.getValue(), 0, src1.encoding(), simm10, immed5 | ImmedTrue);
-        }
-    }
-
-    public static class Cxbcc extends Fmt00e {
-
-        public Cxbcc(SPARCAssembler asm, Register src1, Register src2, int simm10) {
-            super(asm, Ops.BranchOp.getValue(), ConditionFlag.CarryClear.getValue(), 1, src1.encoding(), simm10, src2.encoding());
-        }
-
-        public Cxbcc(SPARCAssembler asm, Register src1, int immed5, int simm10) {
-            super(asm, Ops.BranchOp.getValue(), ConditionFlag.Equal.getValue(), 1, src1.encoding(), simm10, immed5 | ImmedTrue);
-        }
-    }
-
-    public static class Cxbcs extends Fmt00e {
-
-        public Cxbcs(SPARCAssembler asm, Register src1, Register src2, int simm10) {
-            super(asm, Ops.BranchOp.getValue(), ConditionFlag.CarrySet.getValue(), 1, src1.encoding(), simm10, src2.encoding());
-        }
-
-        public Cxbcs(SPARCAssembler asm, Register src1, int immed5, int simm10) {
-            super(asm, Ops.BranchOp.getValue(), ConditionFlag.CarrySet.getValue(), 1, src1.encoding(), simm10, immed5 | ImmedTrue);
-        }
-    }
-
-    public static class Cxbe extends Fmt00e {
-
-        public Cxbe(SPARCAssembler asm, Register src1, Register src2, int simm10) {
-            super(asm, Ops.BranchOp.getValue(), ConditionFlag.CarryClear.getValue(), 1, src1.encoding(), simm10, src2.encoding());
-        }
-
-        public Cxbe(SPARCAssembler asm, Register src1, int immed5, int simm10) {
-            super(asm, Ops.BranchOp.getValue(), ConditionFlag.Equal.getValue(), 1, src1.encoding(), simm10, immed5 | ImmedTrue);
-        }
-    }
-
-    public static class Cxbg extends Fmt00e {
-
-        public Cxbg(SPARCAssembler asm, Register src1, Register src2, int simm10) {
-            super(asm, Ops.BranchOp.getValue(), ConditionFlag.Greater.getValue(), 1, src1.encoding(), simm10, src2.encoding());
-        }
-
-        public Cxbg(SPARCAssembler asm, Register src1, int immed5, int simm10) {
-            super(asm, Ops.BranchOp.getValue(), ConditionFlag.Greater.getValue(), 1, src1.encoding(), simm10, immed5 | ImmedTrue);
-        }
-    }
-
-    public static class Cxbge extends Fmt00e {
-
-        public Cxbge(SPARCAssembler asm, Register src1, Register src2, int simm10) {
-            super(asm, Ops.BranchOp.getValue(), ConditionFlag.GreaterEqual.getValue(), 1, src1.encoding(), simm10, src2.encoding());
-        }
-
-        public Cxbge(SPARCAssembler asm, Register src1, int immed5, int simm10) {
-            super(asm, Ops.BranchOp.getValue(), ConditionFlag.GreaterEqual.getValue(), 1, src1.encoding(), simm10, immed5 | ImmedTrue);
-        }
-    }
-
-    public static class Cxbgu extends Fmt00e {
-
-        public Cxbgu(SPARCAssembler asm, Register src1, Register src2, int simm10) {
-            super(asm, Ops.BranchOp.getValue(), ConditionFlag.GreaterUnsigned.getValue(), 1, src1.encoding(), simm10, src2.encoding());
-        }
-
-        public Cxbgu(SPARCAssembler asm, Register src1, int immed5, int simm10) {
-            super(asm, Ops.BranchOp.getValue(), ConditionFlag.GreaterUnsigned.getValue(), 1, src1.encoding(), simm10, immed5 | ImmedTrue);
-        }
-    }
-
-    public static class Cxbl extends Fmt00e {
-
-        public Cxbl(SPARCAssembler asm, Register src1, Register src2, int simm10) {
-            super(asm, Ops.BranchOp.getValue(), ConditionFlag.Less.getValue(), 1, src1.encoding(), simm10, src2.encoding());
-        }
-
-        public Cxbl(SPARCAssembler asm, Register src1, int immed5, int simm10) {
-            super(asm, Ops.BranchOp.getValue(), ConditionFlag.Less.getValue(), 1, src1.encoding(), simm10, immed5 | ImmedTrue);
-        }
-    }
-
-    public static class Cxble extends Fmt00e {
-
-        public Cxble(SPARCAssembler asm, Register src1, Register src2, int simm10) {
-            super(asm, Ops.BranchOp.getValue(), ConditionFlag.LessEqual.getValue(), 1, src1.encoding(), simm10, src2.encoding());
-        }
-
-        public Cxble(SPARCAssembler asm, Register src1, int immed5, int simm10) {
-            super(asm, Ops.BranchOp.getValue(), ConditionFlag.LessEqual.getValue(), 1, src1.encoding(), simm10, immed5 | ImmedTrue);
-        }
-    }
-
-    public static class Cxbleu extends Fmt00e {
-
-        public Cxbleu(SPARCAssembler asm, Register src1, Register src2, int simm10) {
-            super(asm, Ops.BranchOp.getValue(), ConditionFlag.LessEqualUnsigned.getValue(), 1, src1.encoding(), simm10, src2.encoding());
-        }
-
-        public Cxbleu(SPARCAssembler asm, Register src1, int immed5, int simm10) {
-            super(asm, Ops.BranchOp.getValue(), ConditionFlag.LessEqualUnsigned.getValue(), 1, src1.encoding(), simm10, immed5 | ImmedTrue);
-        }
-    }
-
-    public static class Cxbne extends Fmt00e {
-
-        public Cxbne(SPARCAssembler asm, Register src1, Register src2, int simm10) {
-            super(asm, Ops.BranchOp.getValue(), ConditionFlag.NotEqual.getValue(), 1, src1.encoding(), simm10, src2.encoding());
-        }
-
-        public Cxbne(SPARCAssembler asm, Register src1, int immed5, int simm10) {
-            super(asm, Ops.BranchOp.getValue(), ConditionFlag.NotEqual.getValue(), 1, src1.encoding(), simm10, immed5 | ImmedTrue);
-        }
-    }
-
-    public static class Cxbneg extends Fmt00e {
-
-        public Cxbneg(SPARCAssembler asm, Register src1, Register src2, int simm10) {
-            super(asm, Ops.BranchOp.getValue(), ConditionFlag.Negative.getValue(), 1, src1.encoding(), simm10, src2.encoding());
-        }
-
-        public Cxbneg(SPARCAssembler asm, Register src1, int immed5, int simm10) {
-            super(asm, Ops.BranchOp.getValue(), ConditionFlag.Negative.getValue(), 1, src1.encoding(), simm10, immed5 | ImmedTrue);
-        }
-    }
-
-    public static class Cxbpos extends Fmt00e {
-
-        public Cxbpos(SPARCAssembler asm, Register src1, Register src2, int simm10) {
-            super(asm, Ops.BranchOp.getValue(), ConditionFlag.Positive.getValue(), 1, src1.encoding(), simm10, src2.encoding());
-        }
-
-        public Cxbpos(SPARCAssembler asm, Register src1, int immed5, int simm10) {
-            super(asm, Ops.BranchOp.getValue(), ConditionFlag.Positive.getValue(), 1, src1.encoding(), simm10, immed5 | ImmedTrue);
-        }
-    }
-
-    public static class Cxbvc extends Fmt00e {
-
-        public Cxbvc(SPARCAssembler asm, Register src1, Register src2, int simm10) {
-            super(asm, Ops.BranchOp.getValue(), ConditionFlag.OverflowClear.getValue(), 1, src1.encoding(), simm10, src2.encoding());
-        }
-
-        public Cxbvc(SPARCAssembler asm, Register src1, int immed5, int simm10) {
-            super(asm, Ops.BranchOp.getValue(), ConditionFlag.OverflowClear.getValue(), 1, src1.encoding(), simm10, immed5 | ImmedTrue);
-        }
-    }
-
-    public static class Cxbvs extends Fmt00e {
-
-        public Cxbvs(SPARCAssembler asm, Register src1, Register src2, int simm10) {
-            super(asm, Ops.BranchOp.getValue(), ConditionFlag.OverflowSet.getValue(), 1, src1.encoding(), simm10, src2.encoding());
-        }
-
-        public Cxbvs(SPARCAssembler asm, Register src1, int immed5, int simm10) {
-            super(asm, Ops.BranchOp.getValue(), ConditionFlag.OverflowSet.getValue(), 1, src1.encoding(), simm10, immed5 | ImmedTrue);
+        public CBcondx(ConditionFlag flag, Register src1, int simm5, Label label) {
+            super(flag.getValue(), 1, src1.encoding(), -1, 1, simm5, label);
         }
     }
 

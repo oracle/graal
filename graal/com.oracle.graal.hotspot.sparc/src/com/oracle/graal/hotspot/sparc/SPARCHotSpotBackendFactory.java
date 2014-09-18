@@ -85,6 +85,9 @@ public class SPARCHotSpotBackendFactory implements HotSpotBackendFactory {
         if ((config.sparcFeatures & config.vis3Instructions) != 0) {
             features.add(CPUFeature.VIS3);
         }
+        if ((config.sparcFeatures & config.cbcondInstructions) != 0) {
+            features.add(CPUFeature.CBCOND);
+        }
         return features;
     }
 
