@@ -655,16 +655,17 @@ public abstract class SPARCAssembler extends Assembler {
 
         public void setDisp10(int disp10) {
             this.disp10 = disp10 >> 2;
+            assert isSimm10(this.disp10) : this.disp10;
         }
 
         public void emit(SPARCAssembler masm) {
             assert masm.hasFeature(CPUFeature.CBCOND);
             if (label != null) {
-                final int pos = label.isBound() ? label.position() : patchUnbound(masm, label);
                 if (label.isBound()) {
-                    final int disp = pos - masm.position();
+                    final int disp = label.position() - masm.position();
                     setDisp10(disp);
                 } else {
+                    patchUnbound(masm, label);
                     setDisp10(0);
                 }
             }
@@ -685,7 +686,12 @@ public abstract class SPARCAssembler extends Assembler {
             int d10Split = 0;
             d10Split |= (disp10 & 0b11_0000_0000) << D10HI_SHIFT - 8;
             d10Split |= (disp10 & 0b00_1111_1111) << D10LO_SHIFT;
-            return super.getInstructionBits() | 1 << 28 | cSplit | cc2 << CC2_SHIFT | d10Split | rs1 << RS1_SHIFT | i << I_SHIFT | regOrImmediate << RS2_SHIFT;
+            int bits = super.getInstructionBits() | 1 << 28 | cSplit | cc2 << CC2_SHIFT | d10Split | rs1 << RS1_SHIFT | i << I_SHIFT | (regOrImmediate & 0b1_1111) << RS2_SHIFT;
+            int hibits = (bits & 0xFF000000);
+            if (hibits == 0xFF000000 || hibits == 0) {
+                throw GraalInternalError.shouldNotReachHere();
+            }
+            return bits;
         }
 
         public static Fmt00e read(SPARCAssembler masm, int pos) {
@@ -707,9 +713,12 @@ public abstract class SPARCAssembler extends Assembler {
             final int rs1 =            (inst & RS1_MASK)   >> RS1_SHIFT;
             final int i =              (inst & I_MASK)     >> I_SHIFT;
             final int d10lo =          (inst & D10LO_MASK) >> D10LO_SHIFT;
-            final int regOrImmediate = (inst & RS2_MASK)   >> RS2_SHIFT;
+                  int regOrImmediate = (inst & RS2_MASK)   >> RS2_SHIFT;
             // @formatter:on
-
+            if (i == 1) { // if immediate, we do sign extend
+                int shiftcnt = 31 - 4;
+                regOrImmediate = (regOrImmediate << shiftcnt) >> shiftcnt;
+            }
             int c = chi << 3 | clo;
 
             assert (d10lo & ~((1 << 8) - 1)) == 0;
@@ -1644,7 +1653,7 @@ public abstract class SPARCAssembler extends Assembler {
         Fandd(0b0_0111_0000, "fandd"),
         Fands(0b0_0111_0001, "fands"),
         Fxord(0b0_0110_1100, "fxord"),
-        Fxors(0b0_0110_1101, "fxord"),
+        Fxors(0b0_0110_1101, "fxors"),
         // end VIS1
 
         // start VIS2
@@ -1884,34 +1893,44 @@ public abstract class SPARCAssembler extends Assembler {
 
         // for integers
         Never(0, "never"),
-        Equal(1, "equal"),
+        Equal(1, "equal", true),
         Zero(1, "zero"),
-        LessEqual(2, "lessEqual"),
-        Less(3, "less"),
-        LessEqualUnsigned(4, "lessEqualUnsigned"),
-        LessUnsigned(5, "lessUnsigned"),
+        LessEqual(2, "lessEqual", true),
+        Less(3, "less", true),
+        LessEqualUnsigned(4, "lessEqualUnsigned", true),
+        LessUnsigned(5, "lessUnsigned", true),
         CarrySet(5, "carrySet"),
-        Negative(6, "negative"),
-        OverflowSet(7, "overflowSet"),
+        Negative(6, "negative", true),
+        OverflowSet(7, "overflowSet", true),
         Always(8, "always"),
-        NotEqual(9, "notEqual"),
+        NotEqual(9, "notEqual", true),
         NotZero(9, "notZero"),
-        Greater(10, "greater"),
-        GreaterEqual(11, "greaterEqual"),
-        GreaterUnsigned(12, "greaterUnsigned"),
-        GreaterEqualUnsigned(13, "greaterEqualUnsigned"),
+        Greater(10, "greater", true),
+        GreaterEqual(11, "greaterEqual", true),
+        GreaterUnsigned(12, "greaterUnsigned", true),
+        GreaterEqualUnsigned(13, "greaterEqualUnsigned", true),
         CarryClear(13, "carryClear"),
-        Positive(14, "positive"),
-        OverflowClear(15, "overflowClear");
+        Positive(14, "positive", true),
+        OverflowClear(15, "overflowClear", true);
 
         // @formatter:on
 
         private final int value;
         private final String operator;
+        private boolean forCBcond = false;
 
         private ConditionFlag(int value, String op) {
+            this(value, op, false);
+        }
+
+        private ConditionFlag(int value, String op, boolean cbcond) {
             this.value = value;
             this.operator = op;
+            this.forCBcond = cbcond;
+        }
+
+        public boolean isCBCond() {
+            return forCBcond;
         }
 
         public int getValue() {
@@ -2044,6 +2063,10 @@ public abstract class SPARCAssembler extends Assembler {
      */
     public static boolean isSimm(long imm, int nbits) {
         return minSimm(nbits) <= imm && imm <= maxSimm(nbits);
+    }
+
+    public static boolean isSimm10(long imm) {
+        return isSimm(imm, 10);
     }
 
     public static boolean isSimm11(int imm) {
