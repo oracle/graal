@@ -30,11 +30,17 @@ import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.Node.ValueNumberable;
 import com.oracle.graal.graph.iterators.*;
+import com.oracle.graal.options.*;
 
 /**
  * This class is a graph container, it contains the set of nodes that belong to this graph.
  */
 public class Graph {
+
+    static class Options {
+        @Option(help = "Verify graphs often during compilation when assertions are turned on")//
+        public static final OptionValue<Boolean> VerifyGraalGraphs = new OptionValue<>(true);
+    }
 
     public final String name;
 
@@ -566,7 +572,7 @@ public class Graph {
      * mark}.
      */
     public NodeIterable<Node> getNewNodes(Mark mark) {
-        final int index = mark.getValue();
+        final int index = mark == null ? 0 : mark.getValue();
         return new NodeIterable<Node>() {
 
             @Override
@@ -752,17 +758,19 @@ public class Graph {
     }
 
     public boolean verify() {
-        for (Node node : getNodes()) {
-            try {
+        if (Options.VerifyGraalGraphs.getValue()) {
+            for (Node node : getNodes()) {
                 try {
-                    assert node.verify();
-                } catch (AssertionError t) {
-                    throw new GraalInternalError(t);
-                } catch (RuntimeException t) {
-                    throw new GraalInternalError(t);
+                    try {
+                        assert node.verify();
+                    } catch (AssertionError t) {
+                        throw new GraalInternalError(t);
+                    } catch (RuntimeException t) {
+                        throw new GraalInternalError(t);
+                    }
+                } catch (GraalInternalError e) {
+                    throw GraalGraphInternalError.transformAndAddContext(e, node).addContext(this);
                 }
-            } catch (GraalInternalError e) {
-                throw GraalGraphInternalError.transformAndAddContext(e, node).addContext(this);
             }
         }
         return true;

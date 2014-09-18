@@ -25,11 +25,8 @@ package com.oracle.graal.hotspot.replacements;
 import static com.oracle.graal.compiler.GraalCompiler.*;
 
 import java.lang.reflect.*;
-import java.util.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.nodeinfo.*;
@@ -37,11 +34,10 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.replacements.nodes.*;
 
 @NodeInfo
-public class ObjectCloneNode extends MacroStateSplitNode implements VirtualizableAllocation, ArrayLengthProvider {
+public class ObjectCloneNode extends BasicObjectCloneNode implements VirtualizableAllocation, ArrayLengthProvider {
 
     public static ObjectCloneNode create(Invoke invoke) {
         return USE_GENERATED_NODES ? new ObjectCloneNodeGen(invoke) : new ObjectCloneNode(invoke);
@@ -49,15 +45,6 @@ public class ObjectCloneNode extends MacroStateSplitNode implements Virtualizabl
 
     protected ObjectCloneNode(Invoke invoke) {
         super(invoke);
-    }
-
-    @Override
-    public boolean inferStamp() {
-        return updateStamp(getObject().stamp());
-    }
-
-    private ValueNode getObject() {
-        return arguments.get(0);
     }
 
     @Override
@@ -104,82 +91,5 @@ public class ObjectCloneNode extends MacroStateSplitNode implements Virtualizabl
             }
         }
         return null;
-    }
-
-    private static boolean isCloneableType(ResolvedJavaType type, MetaAccessProvider metaAccess) {
-        return metaAccess.lookupJavaType(Cloneable.class).isAssignableFrom(type);
-    }
-
-    /*
-     * Looks at the given stamp and determines if it is an exact type (or can be assumed to be an
-     * exact type) and if it is a cloneable type.
-     * 
-     * If yes, then the exact type is returned, otherwise it returns null.
-     */
-    private static ResolvedJavaType getConcreteType(Stamp stamp, Assumptions assumptions, MetaAccessProvider metaAccess) {
-        if (!(stamp instanceof ObjectStamp)) {
-            return null;
-        }
-        ObjectStamp objectStamp = (ObjectStamp) stamp;
-        if (objectStamp.type() == null) {
-            return null;
-        } else if (objectStamp.isExactType()) {
-            return isCloneableType(objectStamp.type(), metaAccess) ? objectStamp.type() : null;
-        } else {
-            ResolvedJavaType type = objectStamp.type().findUniqueConcreteSubtype();
-            if (type != null && isCloneableType(type, metaAccess)) {
-                assumptions.recordConcreteSubtype(objectStamp.type(), type);
-                return type;
-            } else {
-                return null;
-            }
-        }
-    }
-
-    @Override
-    public void virtualize(VirtualizerTool tool) {
-        State originalState = tool.getObjectState(getObject());
-        if (originalState != null && originalState.getState() == EscapeState.Virtual) {
-            VirtualObjectNode originalVirtual = originalState.getVirtualObject();
-            if (isCloneableType(originalVirtual.type(), tool.getMetaAccessProvider())) {
-                ValueNode[] newEntryState = new ValueNode[originalVirtual.entryCount()];
-                for (int i = 0; i < newEntryState.length; i++) {
-                    newEntryState[i] = originalState.getEntry(i);
-                }
-                VirtualObjectNode newVirtual = originalVirtual.duplicate();
-                tool.createVirtualObject(newVirtual, newEntryState, Collections.<MonitorIdNode> emptyList());
-                tool.replaceWithVirtual(newVirtual);
-            }
-        } else {
-            ValueNode obj;
-            if (originalState != null) {
-                obj = originalState.getMaterializedValue();
-            } else {
-                obj = tool.getReplacedValue(getObject());
-            }
-            ResolvedJavaType type = getConcreteType(obj.stamp(), tool.getAssumptions(), tool.getMetaAccessProvider());
-            if (type != null && !type.isArray()) {
-                VirtualInstanceNode newVirtual = VirtualInstanceNode.create(type, true);
-                ResolvedJavaField[] fields = newVirtual.getFields();
-
-                ValueNode[] state = new ValueNode[fields.length];
-                final LoadFieldNode[] loads = new LoadFieldNode[fields.length];
-                for (int i = 0; i < fields.length; i++) {
-                    state[i] = loads[i] = LoadFieldNode.create(obj, fields[i]);
-                    tool.addNode(loads[i]);
-                }
-                tool.createVirtualObject(newVirtual, state, Collections.<MonitorIdNode> emptyList());
-                tool.replaceWithVirtual(newVirtual);
-            }
-        }
-    }
-
-    @Override
-    public ValueNode length() {
-        if (getObject() instanceof ArrayLengthProvider) {
-            return ((ArrayLengthProvider) getObject()).length();
-        } else {
-            return null;
-        }
     }
 }

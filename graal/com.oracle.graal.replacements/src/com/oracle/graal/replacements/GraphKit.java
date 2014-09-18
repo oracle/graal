@@ -137,7 +137,7 @@ public class GraphKit {
             if (invoke.getKind() != Kind.Void) {
                 frameStateBuilder.push(invoke.getKind(), invoke);
             }
-            invoke.setStateAfter(frameStateBuilder.create(0));
+            invoke.setStateAfter(frameStateBuilder.create(bci));
             if (invoke.getKind() != Kind.Void) {
                 frameStateBuilder.pop(invoke.getKind());
             }

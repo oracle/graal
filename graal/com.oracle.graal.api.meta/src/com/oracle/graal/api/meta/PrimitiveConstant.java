@@ -123,7 +123,7 @@ public class PrimitiveConstant extends Constant {
         if (getKind() == Kind.Illegal) {
             return "illegal";
         } else {
-            return getKind().getJavaName() + "[" + getKind().format(asBoxedPrimitive()) + "|0x" + Long.toHexString(primitive) + "]";
+            return getKind().getJavaName() + "[" + asBoxedPrimitive() + "|0x" + Long.toHexString(primitive) + "]";
         }
     }
 }

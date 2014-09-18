@@ -80,6 +80,7 @@ public abstract class HotSpotInstalledCode extends InstalledCode {
         return codeStart;
     }
 
+    @Override
     public long getCodeSize() {
         return codeSize;
     }

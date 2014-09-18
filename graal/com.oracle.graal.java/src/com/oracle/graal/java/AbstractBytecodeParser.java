@@ -64,7 +64,7 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
 
     protected F frameState;
     protected BytecodeStream stream;
-    private GraphBuilderConfiguration graphBuilderConfig;
+    protected GraphBuilderConfiguration graphBuilderConfig;
     protected ResolvedJavaMethod method;
     protected BciBlock currentBlock;
     protected ProfilingInfo profilingInfo;

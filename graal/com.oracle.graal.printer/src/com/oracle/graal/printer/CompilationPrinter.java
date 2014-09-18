@@ -50,7 +50,7 @@ public class CompilationPrinter implements Closeable {
      * Gets a global output stream on a file in the current working directory. This stream is first
      * opened if necessary. The name of the file is
      * {@code "compilations-" + System.currentTimeMillis() + ".cfg"}.
-     * 
+     *
      * @return the global output stream or {@code null} if there was an error opening the file for
      *         writing
      */
@@ -70,7 +70,7 @@ public class CompilationPrinter implements Closeable {
 
     /**
      * Creates a control flow graph printer.
-     * 
+     *
      * @param os where the output generated via this printer will be sent
      */
     public CompilationPrinter(OutputStream os) {
@@ -101,7 +101,7 @@ public class CompilationPrinter implements Closeable {
 
     /**
      * Prints a compilation timestamp for a given method.
-     * 
+     *
      * @param method the method for which a timestamp will be printed
      */
     public void printCompilation(JavaMethod method) {
@@ -227,7 +227,7 @@ public class CompilationPrinter implements Closeable {
     }
 
     public void printBytecodes(String code) {
-        if (code.length() == 0) {
+        if (code == null || code.length() == 0) {
             return;
         }
         begin("bytecodes");

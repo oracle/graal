@@ -43,7 +43,7 @@ import com.oracle.graal.nodes.type.*;
 @NodeInfo
 public class CheckCastNode extends FixedWithNextNode implements Canonicalizable, Simplifiable, Lowerable, Virtualizable, ValueProxy {
 
-    @Input ValueNode object;
+    @Input protected ValueNode object;
     private final ResolvedJavaType type;
     private final JavaTypeProfile profile;
 
@@ -63,7 +63,7 @@ public class CheckCastNode extends FixedWithNextNode implements Canonicalizable,
         return USE_GENERATED_NODES ? new CheckCastNodeGen(type, object, profile, forStoreCheck) : new CheckCastNode(type, object, profile, forStoreCheck);
     }
 
-    CheckCastNode(ResolvedJavaType type, ValueNode object, JavaTypeProfile profile, boolean forStoreCheck) {
+    protected CheckCastNode(ResolvedJavaType type, ValueNode object, JavaTypeProfile profile, boolean forStoreCheck) {
         super(StampFactory.declared(type));
         assert type != null;
         this.type = type;

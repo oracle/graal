@@ -214,6 +214,15 @@ public class TestResolvedJavaMethod extends MethodUniverse {
         assertEquals(1000L, annotation.timeout());
     }
 
+    @Test(timeout = 1000L)
+    public void getAnnotationsTest() throws NoSuchMethodException {
+        ResolvedJavaMethod method = metaAccess.lookupJavaMethod(getClass().getDeclaredMethod("getAnnotationsTest"));
+        Annotation[] annotations = method.getAnnotations();
+        assertNotNull(annotations);
+        assertEquals(1, annotations.length);
+        assertEquals(1000L, ((Test) annotations[0]).timeout());
+    }
+
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.PARAMETER)
     @interface NonNull {

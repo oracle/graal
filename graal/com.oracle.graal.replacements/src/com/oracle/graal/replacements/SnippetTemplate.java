@@ -74,12 +74,14 @@ import com.oracle.graal.word.*;
  */
 public class SnippetTemplate {
 
+    public static boolean LAZY_SNIPPETS = true;
+
     /**
      * Holds the {@link ResolvedJavaMethod} of the snippet, together with some information about the
      * method that needs to be computed only once. The {@link SnippetInfo} should be created once
      * per snippet and then cached.
      */
-    public static class SnippetInfo {
+    public abstract static class SnippetInfo {
 
         protected final ResolvedJavaMethod method;
 
@@ -126,8 +128,6 @@ public class SnippetTemplate {
 
         }
 
-        protected final AtomicReference<Lazy> lazy = new AtomicReference<>(null);
-
         /**
          * Times instantiations of all templates derived form this snippet.
          *
@@ -142,12 +142,7 @@ public class SnippetTemplate {
          */
         private final DebugMetric instantiationCounter;
 
-        private Lazy lazy() {
-            if (lazy.get() == null) {
-                lazy.compareAndSet(null, new Lazy(method));
-            }
-            return lazy.get();
-        }
+        protected abstract Lazy lazy();
 
         protected SnippetInfo(ResolvedJavaMethod method) {
             this.method = method;
@@ -189,6 +184,36 @@ public class SnippetTemplate {
                 return names[paramIdx];
             }
             return null;
+        }
+    }
+
+    protected static class LazySnippetInfo extends SnippetInfo {
+        protected final AtomicReference<Lazy> lazy = new AtomicReference<>(null);
+
+        protected LazySnippetInfo(ResolvedJavaMethod method) {
+            super(method);
+        }
+
+        @Override
+        protected Lazy lazy() {
+            if (lazy.get() == null) {
+                lazy.compareAndSet(null, new Lazy(method));
+            }
+            return lazy.get();
+        }
+    }
+
+    protected static class EagerSnippetInfo extends SnippetInfo {
+        protected final Lazy lazy;
+
+        protected EagerSnippetInfo(ResolvedJavaMethod method) {
+            super(method);
+            lazy = new Lazy(method);
+        }
+
+        @Override
+        protected Lazy lazy() {
+            return lazy;
         }
     }
 
@@ -473,7 +498,11 @@ public class SnippetTemplate {
             assert findMethod(declaringClass, methodName, method) == null : "found more than one method named " + methodName + " in " + declaringClass;
             ResolvedJavaMethod javaMethod = providers.getMetaAccess().lookupJavaMethod(method);
             providers.getReplacements().registerSnippet(javaMethod);
-            return new SnippetInfo(javaMethod);
+            if (LAZY_SNIPPETS) {
+                return new LazySnippetInfo(javaMethod);
+            } else {
+                return new EagerSnippetInfo(javaMethod);
+            }
         }
 
         /**
@@ -955,6 +984,10 @@ public class SnippetTemplate {
     private boolean checkSnippetKills(ScheduledNode replacee) {
         if (!replacee.graph().isAfterFloatingReadPhase()) {
             // no floating reads yet, ignore locations created while lowering
+            return true;
+        }
+        if (returnNode == null) {
+            // The snippet terminates control flow
             return true;
         }
         MemoryMapNode memoryMap = returnNode.getMemoryMap();

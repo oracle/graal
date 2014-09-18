@@ -49,7 +49,7 @@ public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable, Virtu
         return USE_GENERATED_NODES ? new InstanceOfNodeGen(type, object, profile) : new InstanceOfNode(type, object, profile);
     }
 
-    InstanceOfNode(ResolvedJavaType type, ValueNode object, JavaTypeProfile profile) {
+    protected InstanceOfNode(ResolvedJavaType type, ValueNode object, JavaTypeProfile profile) {
         super(object);
         this.type = type;
         this.profile = profile;

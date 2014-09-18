@@ -346,9 +346,9 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                 int entryCount = virtual.entryCount();
                 AbstractNewObjectNode newObject;
                 if (virtual instanceof VirtualInstanceNode) {
-                    newObject = graph.add(NewInstanceNode.create(virtual.type(), true));
+                    newObject = graph.add(createNewInstanceFromVirtual(virtual));
                 } else {
-                    newObject = graph.add(NewArrayNode.create(((VirtualArrayNode) virtual).componentType(), ConstantNode.forInt(entryCount, graph), true));
+                    newObject = graph.add(createNewArrayFromVirtual(virtual, ConstantNode.forInt(entryCount, graph)));
                 }
                 recursiveLowerings.add(newObject);
                 graph.addBeforeFixed(commit, newObject);
@@ -431,6 +431,14 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                 recursiveLowering.lower(tool);
             }
         }
+    }
+
+    public NewInstanceNode createNewInstanceFromVirtual(VirtualObjectNode virtual) {
+        return NewInstanceNode.create(virtual.type(), true);
+    }
+
+    protected NewArrayNode createNewArrayFromVirtual(VirtualObjectNode virtual, ValueNode length) {
+        return NewArrayNode.create(((VirtualArrayNode) virtual).componentType(), length, true);
     }
 
     public static void finishAllocatedObjects(LoweringTool tool, CommitAllocationNode commit, ValueNode[] allocations) {
