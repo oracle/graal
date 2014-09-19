@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,11 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.word;
+package com.oracle.graal.api.meta;
 
-import com.oracle.graal.api.meta.*;
+/**
+ * Interfaces extanding this interface should be trusted by the compiler. See
+ * {@link ResolvedJavaType#isTrustedInterfaceType()}.
+ *
+ */
+public interface TrustedInterface {
 
-public interface WordBase extends TrustedInterface {
-
-    long rawValue();
 }

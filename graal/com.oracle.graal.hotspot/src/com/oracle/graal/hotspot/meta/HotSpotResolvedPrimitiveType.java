@@ -272,4 +272,9 @@ public final class HotSpotResolvedPrimitiveType extends HotSpotResolvedJavaType 
     public Constant newArray(int length) {
         return HotSpotObjectConstant.forObject(Array.newInstance(mirror(), length));
     }
+
+    @Override
+    public boolean isTrustedInterfaceType() {
+        return false;
+    }
 }

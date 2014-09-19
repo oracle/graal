@@ -76,7 +76,7 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
     }
 
     protected PiNode(ValueNode object, ResolvedJavaType toType, boolean exactType, boolean nonNull) {
-        this(object, StampFactory.object(toType, exactType, nonNull || StampTool.isObjectNonNull(object.stamp())));
+        this(object, StampFactory.object(toType, exactType, nonNull || StampTool.isObjectNonNull(object.stamp()), true));
     }
 
     @Override

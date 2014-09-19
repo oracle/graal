@@ -29,6 +29,7 @@ import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.compiler.common.UnsafeAccess.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.hotspot.InitTimer.*;
+import static com.oracle.graal.hotspot.meta.HotSpotSuitesProvider.*;
 import static com.oracle.graal.nodes.StructuredGraph.*;
 import static com.oracle.graal.phases.common.inlining.InliningUtil.*;
 
@@ -129,7 +130,8 @@ public class CompilationTask {
     }
 
     protected PhaseSuite<HighTierContext> getGraphBuilderSuite(HotSpotProviders providers) {
-        PhaseSuite<HighTierContext> suite = providers.getSuites().getDefaultGraphBuilderSuite();
+        PhaseSuite<HighTierContext> suite = withSimpleDebugInfoIfRequested(providers.getSuites().getDefaultGraphBuilderSuite());
+
         boolean osrCompilation = entryBCI != StructuredGraph.INVOCATION_ENTRY_BCI;
         if (osrCompilation) {
             suite = suite.copy();

@@ -224,19 +224,48 @@ public class StampFactory {
     }
 
     public static Stamp declared(ResolvedJavaType type, boolean nonNull) {
-        return object(type, false, nonNull);
+        return object(type, false, nonNull, false);
     }
 
-    public static Stamp object(ResolvedJavaType type, boolean exactType, boolean nonNull) {
+    public static Stamp declaredNonNull(ResolvedJavaType type, boolean trustInterfaces) {
+        return declared(type, true, trustInterfaces);
+    }
+
+    public static Stamp declared(ResolvedJavaType type, boolean nonNull, boolean trustInterfaces) {
+        return object(type, false, nonNull, trustInterfaces);
+    }
+
+    private static ResolvedJavaType filterInterfaceTypesOut(ResolvedJavaType type) {
+        if (type.isArray()) {
+            ResolvedJavaType componentType = filterInterfaceTypesOut(type.getComponentType());
+            if (componentType != null) {
+                return componentType.getArrayClass();
+            }
+            return type.getSuperclass().getArrayClass(); // arrayType.getSuperClass() == Object type
+        }
+        if (type.isInterface() && !type.isTrustedInterfaceType()) {
+            return null;
+        }
+        return type;
+    }
+
+    public static Stamp object(ResolvedJavaType type, boolean exactType, boolean nonNull, boolean trustInterfaces) {
         assert type != null;
         assert type.getKind() == Kind.Object;
-        ResolvedJavaType exact = type.asExactType();
-        if (exact != null) {
-            assert !exactType || type.equals(exact);
-            return new ObjectStamp(exact, true, nonNull, false);
+        ResolvedJavaType trustedtype;
+        if (!trustInterfaces) {
+            trustedtype = filterInterfaceTypesOut(type);
+            assert !exactType || trustedtype.equals(type);
         } else {
-            return new ObjectStamp(type, exactType, nonNull, false);
+            trustedtype = type;
         }
+        ResolvedJavaType exact = trustedtype != null ? trustedtype.asExactType() : null;
+        if (exact != null) {
+            assert !exactType || trustedtype.equals(exact);
+            return new ObjectStamp(exact, true, nonNull, false);
+        }
+        assert !exactType || AbstractObjectStamp.isConcreteType(trustedtype);
+        return new ObjectStamp(trustedtype, exactType, nonNull, false);
     }
 
     public static Stamp exactNonNull(ResolvedJavaType type) {

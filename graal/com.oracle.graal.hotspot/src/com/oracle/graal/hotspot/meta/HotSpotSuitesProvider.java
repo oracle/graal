@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot.meta;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 
 import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.phases.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.java.GraphBuilderConfiguration.*;
@@ -77,10 +78,28 @@ public class HotSpotSuitesProvider implements SuitesProvider {
     protected PhaseSuite<HighTierContext> createGraphBuilderSuite() {
         PhaseSuite<HighTierContext> suite = new PhaseSuite<>();
         GraphBuilderConfiguration config = GraphBuilderConfiguration.getDefault();
-        if (runtime.getCompilerToVM().shouldDebugNonSafepoints()) {
-            config = config.withDebugInfoMode(DebugInfoMode.Simple);
-        }
         suite.appendPhase(new GraphBuilderPhase(config));
         return suite;
     }
+
+    /**
+     * Modifies the {@link GraphBuilderConfiguration} to build extra
+     * {@linkplain DebugInfoMode#Simple debug info} if the VM
+     * {@linkplain CompilerToVM#shouldDebugNonSafepoints() requests} it.
+     *
+     * @param gbs the current graph builder suite
+     * @return a possibly modified graph builder suite
+     */
+    public static PhaseSuite<HighTierContext> withSimpleDebugInfoIfRequested(PhaseSuite<HighTierContext> gbs) {
+        if (HotSpotGraalRuntime.runtime().getCompilerToVM().shouldDebugNonSafepoints()) {
+            PhaseSuite<HighTierContext> newGbs = gbs.copy();
+            GraphBuilderPhase graphBuilderPhase = (GraphBuilderPhase) newGbs.findPhase(GraphBuilderPhase.class).previous();
+            GraphBuilderConfiguration graphBuilderConfig = graphBuilderPhase.getGraphBuilderConfig();
+            GraphBuilderPhase newGraphBuilderPhase = new GraphBuilderPhase(graphBuilderConfig.withDebugInfoMode(DebugInfoMode.Simple));
+            newGbs.findPhase(GraphBuilderPhase.class).set(newGraphBuilderPhase);
+            return newGbs;
+        }
+        return gbs;
+    }
+
 }

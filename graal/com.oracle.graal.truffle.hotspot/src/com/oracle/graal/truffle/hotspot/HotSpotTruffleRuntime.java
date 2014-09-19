@@ -25,6 +25,7 @@ package com.oracle.graal.truffle.hotspot;
 import static com.oracle.graal.api.code.CodeUtil.*;
 import static com.oracle.graal.compiler.GraalCompiler.*;
 import static com.oracle.graal.graph.util.CollectionsAccess.*;
+import static com.oracle.graal.hotspot.meta.HotSpotSuitesProvider.*;
 import static com.oracle.graal.truffle.TruffleCompilerOptions.*;
 
 import java.util.*;
@@ -44,7 +45,6 @@ import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.java.*;
-import com.oracle.graal.java.GraphBuilderConfiguration.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -262,15 +262,7 @@ public final class HotSpotTruffleRuntime implements GraalTruffleRuntime {
 
     private static PhaseSuite<HighTierContext> getGraphBuilderSuite(SuitesProvider suitesProvider) {
         PhaseSuite<HighTierContext> graphBuilderSuite = suitesProvider.getDefaultGraphBuilderSuite();
-        if (HotSpotGraalRuntime.runtime().getCompilerToVM().shouldDebugNonSafepoints()) {
-            // need to tweak the graph builder config
-            graphBuilderSuite = graphBuilderSuite.copy();
-            GraphBuilderPhase graphBuilderPhase = (GraphBuilderPhase) graphBuilderSuite.findPhase(GraphBuilderPhase.class).previous();
-            GraphBuilderConfiguration graphBuilderConfig = graphBuilderPhase.getGraphBuilderConfig();
-            GraphBuilderPhase newGraphBuilderPhase = new GraphBuilderPhase(graphBuilderConfig.withDebugInfoMode(DebugInfoMode.Simple));
-            graphBuilderSuite.findPhase(GraphBuilderPhase.class).set(newGraphBuilderPhase);
-        }
-        return graphBuilderSuite;
+        return withSimpleDebugInfoIfRequested(graphBuilderSuite);
     }
 
     private static void removeInliningPhase(Suites suites) {
@@ -342,11 +334,15 @@ public final class HotSpotTruffleRuntime implements GraalTruffleRuntime {
                 }
             }
         };
-        if (mayBeAsynchronous) {
-            Future<?> future = compileQueue.submit(r);
-            this.compilations.put(optimizedCallTarget, future);
-        } else {
-            r.run();
+        Future<?> future = compileQueue.submit(r);
+        this.compilations.put(optimizedCallTarget, future);
+
+        if (!mayBeAsynchronous) {
+            try {
+                future.get();
+            } catch (InterruptedException | ExecutionException e) {
+                // silently ignored
+            }
         }
     }
 
