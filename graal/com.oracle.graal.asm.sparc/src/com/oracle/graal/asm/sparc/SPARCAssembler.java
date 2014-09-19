@@ -3330,7 +3330,7 @@ public abstract class SPARCAssembler extends Assembler {
 
         public Fzeros(Register dst) {
             /* VIS1 only */
-            super(Ops.ArithOp.getValue(), Op3s.Fpop1.getValue(), Opfs.Fzeros.getValue(), 0, dst.encoding());
+            super(Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.Fzeros.getValue(), 0, dst.encoding());
             assert isSingleFloatRegister(dst);
         }
     }
@@ -3339,7 +3339,7 @@ public abstract class SPARCAssembler extends Assembler {
 
         public Fzerod(Register dst) {
             /* VIS1 only */
-            super(Ops.ArithOp.getValue(), Op3s.Fpop1.getValue(), Opfs.Fzerod.getValue(), 0, dst.encoding());
+            super(Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.Fzerod.getValue(), 0, dst.encoding());
             assert isDoubleFloatRegister(dst);
         }
     }
