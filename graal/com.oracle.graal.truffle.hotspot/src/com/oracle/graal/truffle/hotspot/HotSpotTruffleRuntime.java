@@ -334,11 +334,15 @@ public final class HotSpotTruffleRuntime implements GraalTruffleRuntime {
                 }
             }
         };
-        if (mayBeAsynchronous) {
-            Future<?> future = compileQueue.submit(r);
-            this.compilations.put(optimizedCallTarget, future);
-        } else {
-            r.run();
+        Future<?> future = compileQueue.submit(r);
+        this.compilations.put(optimizedCallTarget, future);
+
+        if (!mayBeAsynchronous) {
+            try {
+                future.get();
+            } catch (InterruptedException | ExecutionException e) {
+                // silently ignored
+            }
         }
     }
 
