@@ -52,14 +52,6 @@ public abstract class IntegerConvertNode extends ConvertNode implements Arithmet
         }
     }
 
-    public static long convert(long value, int bits, boolean unsigned) {
-        if (unsigned) {
-            return ZeroExtendNode.zeroExtend(value, bits);
-        } else {
-            return SignExtendNode.signExtend(value, bits);
-        }
-    }
-
     protected ValueNode canonicalConvert(@SuppressWarnings("hiding") ValueNode value) {
         if (value.stamp() instanceof IntegerStamp) {
             int inputBits = ((IntegerStamp) value.stamp()).getBits();

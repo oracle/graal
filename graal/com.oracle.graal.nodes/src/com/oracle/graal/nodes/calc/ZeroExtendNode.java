@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes.calc;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
@@ -46,22 +47,14 @@ public class ZeroExtendNode extends IntegerConvertNode {
         super(StampTool.zeroExtend(input.stamp(), resultBits), input, resultBits);
     }
 
-    public static long zeroExtend(long value, int inputBits) {
-        if (inputBits < 64) {
-            return value & ~(-1L << inputBits);
-        } else {
-            return value;
-        }
-    }
-
     @Override
     public Constant convert(Constant c) {
-        return Constant.forPrimitiveInt(getResultBits(), zeroExtend(c.asLong(), getInputBits()));
+        return Constant.forPrimitiveInt(getResultBits(), CodeUtil.zeroExtend(c.asLong(), getInputBits()));
     }
 
     @Override
     public Constant reverse(Constant c) {
-        return Constant.forPrimitiveInt(getInputBits(), NarrowNode.narrow(c.asLong(), getInputBits()));
+        return Constant.forPrimitiveInt(getInputBits(), CodeUtil.narrow(c.asLong(), getInputBits()));
     }
 
     @Override
@@ -100,7 +93,7 @@ public class ZeroExtendNode extends IntegerConvertNode {
             Stamp inputStamp = narrow.getValue().stamp();
             if (inputStamp instanceof IntegerStamp && inputStamp.isCompatible(stamp())) {
                 IntegerStamp istamp = (IntegerStamp) inputStamp;
-                long mask = IntegerStamp.defaultMask(PrimitiveStamp.getBits(narrow.stamp()));
+                long mask = CodeUtil.mask(PrimitiveStamp.getBits(narrow.stamp()));
                 if (((istamp.upMask() | istamp.downMask()) & ~mask) == 0) {
                     // The original value is in the range of the masked zero extended result so
                     // simply return the original input.

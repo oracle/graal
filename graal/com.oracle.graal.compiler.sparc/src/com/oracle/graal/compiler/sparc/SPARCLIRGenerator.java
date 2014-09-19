@@ -36,7 +36,6 @@ import com.oracle.graal.asm.sparc.SPARCAssembler.CC;
 import com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
-import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.sparc.*;
@@ -997,13 +996,13 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
         } else if (fromBits > 32) {
             assert inputVal.getKind() == Kind.Long;
             Variable result = newVariable(LIRKind.derive(inputVal).changeType(Kind.Long));
-            long mask = IntegerStamp.defaultMask(fromBits);
+            long mask = CodeUtil.mask(fromBits);
             append(new BinaryRegConst(SPARCArithmetic.LAND, result, asAllocatable(inputVal), Constant.forLong(mask), null));
             return result;
         } else {
             assert inputVal.getKind() == Kind.Int || inputVal.getKind() == Kind.Short || inputVal.getKind() == Kind.Byte || inputVal.getKind() == Kind.Char : inputVal.getKind();
             Variable result = newVariable(LIRKind.derive(inputVal).changeType(Kind.Int));
-            long mask = IntegerStamp.defaultMask(fromBits);
+            long mask = CodeUtil.mask(fromBits);
             Constant constant = Constant.forInt((int) mask);
             if (fromBits == 32) {
                 append(new BinaryRegConst(IUSHR, result, inputVal, Constant.forInt(0)));

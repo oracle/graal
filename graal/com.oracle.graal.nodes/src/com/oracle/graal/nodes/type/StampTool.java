@@ -24,10 +24,10 @@ package com.oracle.graal.nodes.type;
 
 import java.util.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
 
 /**
  * Helper class that is used to keep all stamp-related operations in one place.
@@ -38,7 +38,7 @@ public class StampTool {
         if (stamp instanceof IntegerStamp) {
             IntegerStamp integerStamp = (IntegerStamp) stamp;
             int bits = integerStamp.getBits();
-            if (integerStamp.lowerBound() != IntegerStamp.defaultMinValue(bits)) {
+            if (integerStamp.lowerBound() != CodeUtil.minValue(bits)) {
                 // TODO(ls) check if the mask calculation is correct...
                 return StampFactory.forInteger(bits, -integerStamp.upperBound(), -integerStamp.lowerBound());
             }
@@ -54,7 +54,7 @@ public class StampTool {
         if (stamp instanceof IntegerStamp) {
             IntegerStamp integerStamp = (IntegerStamp) stamp;
             int bits = integerStamp.getBits();
-            long defaultMask = IntegerStamp.defaultMask(bits);
+            long defaultMask = CodeUtil.mask(bits);
             return new IntegerStamp(bits, ~integerStamp.upperBound(), ~integerStamp.lowerBound(), (~integerStamp.upMask()) & defaultMask, (~integerStamp.downMask()) & defaultMask);
         }
         return stamp.unrestricted();
@@ -119,9 +119,9 @@ public class StampTool {
         long upperBound = Math.max(stamp1.upperBound(), 0);
 
         long magnitude; // the maximum absolute value of the result, derived from stamp2
-        if (stamp2.lowerBound() == IntegerStamp.defaultMinValue(stamp2.getBits())) {
+        if (stamp2.lowerBound() == CodeUtil.minValue(stamp2.getBits())) {
             // Math.abs(...) - 1 does not work in this case
-            magnitude = IntegerStamp.defaultMaxValue(stamp2.getBits());
+            magnitude = CodeUtil.maxValue(stamp2.getBits());
         } else {
             magnitude = Math.max(Math.abs(stamp2.lowerBound()), Math.abs(stamp2.upperBound())) - 1;
         }
@@ -136,7 +136,7 @@ public class StampTool {
         if (bits == 64) {
             return (~x & ~y & result) < 0;
         } else {
-            return result > IntegerStamp.defaultMaxValue(bits);
+            return result > CodeUtil.maxValue(bits);
         }
     }
 
@@ -145,7 +145,7 @@ public class StampTool {
         if (bits == 64) {
             return (x & y & ~result) < 0;
         } else {
-            return result < IntegerStamp.defaultMinValue(bits);
+            return result < CodeUtil.minValue(bits);
         }
     }
 
@@ -158,7 +158,7 @@ public class StampTool {
         } else if (stamp2.isUnrestricted()) {
             return stamp2;
         }
-        long defaultMask = IntegerStamp.defaultMask(bits);
+        long defaultMask = CodeUtil.mask(bits);
         long variableBits = (stamp1.downMask() ^ stamp1.upMask()) | (stamp2.downMask() ^ stamp2.upMask());
         long variableBitsWithCarry = variableBits | (carryBits(stamp1.downMask(), stamp2.downMask()) ^ carryBits(stamp1.upMask(), stamp2.upMask()));
         long newDownMask = (stamp1.downMask() + stamp2.downMask()) & ~variableBitsWithCarry;
@@ -174,15 +174,15 @@ public class StampTool {
         boolean lowerOverflowsNegatively = addOverflowsNegatively(stamp1.lowerBound(), stamp2.lowerBound(), bits);
         boolean upperOverflowsNegatively = addOverflowsNegatively(stamp1.upperBound(), stamp2.upperBound(), bits);
         if ((lowerOverflowsNegatively && !upperOverflowsNegatively) || (!lowerOverflowsPositively && upperOverflowsPositively)) {
-            lowerBound = IntegerStamp.defaultMinValue(bits);
-            upperBound = IntegerStamp.defaultMaxValue(bits);
+            lowerBound = CodeUtil.minValue(bits);
+            upperBound = CodeUtil.maxValue(bits);
         } else {
-            lowerBound = SignExtendNode.signExtend((stamp1.lowerBound() + stamp2.lowerBound()) & defaultMask, bits);
-            upperBound = SignExtendNode.signExtend((stamp1.upperBound() + stamp2.upperBound()) & defaultMask, bits);
+            lowerBound = CodeUtil.signExtend((stamp1.lowerBound() + stamp2.lowerBound()) & defaultMask, bits);
+            upperBound = CodeUtil.signExtend((stamp1.upperBound() + stamp2.upperBound()) & defaultMask, bits);
         }
         IntegerStamp limit = StampFactory.forInteger(bits, lowerBound, upperBound);
         newUpMask &= limit.upMask();
-        upperBound = SignExtendNode.signExtend(upperBound & newUpMask, bits);
+        upperBound = CodeUtil.signExtend(upperBound & newUpMask, bits);
         newDownMask |= limit.downMask();
         lowerBound |= newDownMask;
         return new IntegerStamp(bits, lowerBound, upperBound, newDownMask, newUpMask);
@@ -206,10 +206,10 @@ public class StampTool {
             upperBound = upMask;
         } else {
             lowerBound = downMask | (-1L << (bits - 1));
-            upperBound = IntegerStamp.defaultMaxValue(bits) & upMask;
+            upperBound = CodeUtil.maxValue(bits) & upMask;
         }
-        lowerBound = IntegerConvertNode.convert(lowerBound, bits, false);
-        upperBound = IntegerConvertNode.convert(upperBound, bits, false);
+        lowerBound = CodeUtil.convert(lowerBound, bits, false);
+        upperBound = CodeUtil.convert(upperBound, bits, false);
         return new IntegerStamp(bits, lowerBound, upperBound, downMask, upMask);
     }
 
@@ -265,7 +265,7 @@ public class StampTool {
             int extraBits = 64 - bits;
             long shiftMask = bits > 32 ? 0x3FL : 0x1FL;
             long shiftCount = shift.lowerBound() & shiftMask;
-            long defaultMask = IntegerStamp.defaultMask(bits);
+            long defaultMask = CodeUtil.mask(bits);
             // shifting back and forth performs sign extension
             long downMask = (value.downMask() << extraBits) >> (shiftCount + extraBits) & defaultMask;
             long upMask = (value.upMask() << extraBits) >> (shiftCount + extraBits) & defaultMask;
@@ -308,7 +308,7 @@ public class StampTool {
 
     public static Stamp leftShift(IntegerStamp value, IntegerStamp shift) {
         int bits = value.getBits();
-        long defaultMask = IntegerStamp.defaultMask(bits);
+        long defaultMask = CodeUtil.mask(bits);
         if (value.upMask() == 0) {
             return value;
         }
@@ -347,9 +347,9 @@ public class StampTool {
             int inputBits = inputStamp.getBits();
             assert inputBits <= resultBits;
 
-            long defaultMask = IntegerStamp.defaultMask(resultBits);
-            long downMask = SignExtendNode.signExtend(inputStamp.downMask(), inputBits) & defaultMask;
-            long upMask = SignExtendNode.signExtend(inputStamp.upMask(), inputBits) & defaultMask;
+            long defaultMask = CodeUtil.mask(resultBits);
+            long downMask = CodeUtil.signExtend(inputStamp.downMask(), inputBits) & defaultMask;
+            long upMask = CodeUtil.signExtend(inputStamp.upMask(), inputBits) & defaultMask;
 
             return new IntegerStamp(resultBits, inputStamp.lowerBound(), inputStamp.upperBound(), downMask, upMask);
         } else {
@@ -363,8 +363,8 @@ public class StampTool {
             int inputBits = inputStamp.getBits();
             assert inputBits <= resultBits;
 
-            long downMask = ZeroExtendNode.zeroExtend(inputStamp.downMask(), inputBits);
-            long upMask = ZeroExtendNode.zeroExtend(inputStamp.upMask(), inputBits);
+            long downMask = CodeUtil.zeroExtend(inputStamp.downMask(), inputBits);
+            long upMask = CodeUtil.zeroExtend(inputStamp.upMask(), inputBits);
 
             if (inputStamp.lowerBound() < 0 && inputStamp.upperBound() >= 0) {
                 // signed range including 0 and -1
@@ -372,8 +372,8 @@ public class StampTool {
                 return stampForMask(resultBits, downMask, upMask);
             }
 
-            long lowerBound = ZeroExtendNode.zeroExtend(inputStamp.lowerBound(), inputBits);
-            long upperBound = ZeroExtendNode.zeroExtend(inputStamp.upperBound(), inputBits);
+            long lowerBound = CodeUtil.zeroExtend(inputStamp.lowerBound(), inputBits);
+            long upperBound = CodeUtil.zeroExtend(inputStamp.upperBound(), inputBits);
 
             return new IntegerStamp(resultBits, lowerBound, upperBound, downMask, upMask);
         } else {
@@ -391,23 +391,23 @@ public class StampTool {
             }
 
             final long upperBound;
-            if (inputStamp.lowerBound() < IntegerStamp.defaultMinValue(resultBits)) {
-                upperBound = IntegerStamp.defaultMaxValue(resultBits);
+            if (inputStamp.lowerBound() < CodeUtil.minValue(resultBits)) {
+                upperBound = CodeUtil.maxValue(resultBits);
             } else {
                 upperBound = saturate(inputStamp.upperBound(), resultBits);
             }
             final long lowerBound;
-            if (inputStamp.upperBound() > IntegerStamp.defaultMaxValue(resultBits)) {
-                lowerBound = IntegerStamp.defaultMinValue(resultBits);
+            if (inputStamp.upperBound() > CodeUtil.maxValue(resultBits)) {
+                lowerBound = CodeUtil.minValue(resultBits);
             } else {
                 lowerBound = saturate(inputStamp.lowerBound(), resultBits);
             }
 
-            long defaultMask = IntegerStamp.defaultMask(resultBits);
+            long defaultMask = CodeUtil.mask(resultBits);
             long newDownMask = inputStamp.downMask() & defaultMask;
             long newUpMask = inputStamp.upMask() & defaultMask;
-            long newLowerBound = SignExtendNode.signExtend((lowerBound | newDownMask) & newUpMask, resultBits);
-            long newUpperBound = SignExtendNode.signExtend((upperBound | newDownMask) & newUpMask, resultBits);
+            long newLowerBound = CodeUtil.signExtend((lowerBound | newDownMask) & newUpMask, resultBits);
+            long newUpperBound = CodeUtil.signExtend((upperBound | newDownMask) & newUpMask, resultBits);
             return new IntegerStamp(resultBits, newLowerBound, newUpperBound, newDownMask, newUpMask);
         } else {
             return input.illegal();
@@ -429,8 +429,8 @@ public class StampTool {
             lowerBound = saturate(fromStamp.lowerBound(), toKind);
         }
 
-        long defaultMask = IntegerStamp.defaultMask(toKind.getBitCount());
-        long intMask = IntegerStamp.defaultMask(32);
+        long defaultMask = CodeUtil.mask(toKind.getBitCount());
+        long intMask = CodeUtil.mask(32);
         long newUpMask = signExtend(fromStamp.upMask() & defaultMask, toKind) & intMask;
         long newDownMask = signExtend(fromStamp.downMask() & defaultMask, toKind) & intMask;
         return new IntegerStamp(toKind.getStackKind().getBitCount(), (int) ((lowerBound | newDownMask) & newUpMask), (int) ((upperBound | newDownMask) & newUpMask), newDownMask, newUpMask);
@@ -446,11 +446,11 @@ public class StampTool {
 
     private static long saturate(long v, int bits) {
         if (bits < 64) {
-            long max = IntegerStamp.defaultMaxValue(bits);
+            long max = CodeUtil.maxValue(bits);
             if (v > max) {
                 return max;
             }
-            long min = IntegerStamp.defaultMinValue(bits);
+            long min = CodeUtil.minValue(bits);
             if (v < min) {
                 return min;
             }

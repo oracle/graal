@@ -37,7 +37,6 @@ import com.oracle.graal.asm.amd64.AMD64Address.Scale;
 import com.oracle.graal.asm.amd64.AMD64Assembler.ConditionFlag;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
-import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.JumpOp;
 import com.oracle.graal.lir.amd64.*;
@@ -49,6 +48,7 @@ import com.oracle.graal.lir.amd64.AMD64Arithmetic.BinaryRegStack;
 import com.oracle.graal.lir.amd64.AMD64Arithmetic.BinaryRegStackConst;
 import com.oracle.graal.lir.amd64.AMD64Arithmetic.DivRemOp;
 import com.oracle.graal.lir.amd64.AMD64Arithmetic.FPDivRemOp;
+import com.oracle.graal.lir.amd64.AMD64Arithmetic.MulHighOp;
 import com.oracle.graal.lir.amd64.AMD64Arithmetic.Unary1Op;
 import com.oracle.graal.lir.amd64.AMD64Arithmetic.Unary2MemoryOp;
 import com.oracle.graal.lir.amd64.AMD64Arithmetic.Unary2Op;
@@ -958,13 +958,13 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         } else if (fromBits > 32) {
             assert inputVal.getKind() == Kind.Long;
             Variable result = newVariable(LIRKind.derive(inputVal).changeType(Kind.Long));
-            long mask = IntegerStamp.defaultMask(fromBits);
+            long mask = CodeUtil.mask(fromBits);
             append(new BinaryRegConst(AMD64Arithmetic.LAND, result, asAllocatable(inputVal), Constant.forLong(mask)));
             return result;
         } else {
             assert inputVal.getKind().getStackKind() == Kind.Int;
             Variable result = newVariable(LIRKind.derive(inputVal).changeType(Kind.Int));
-            int mask = (int) IntegerStamp.defaultMask(fromBits);
+            int mask = (int) CodeUtil.mask(fromBits);
             append(new BinaryRegConst(AMD64Arithmetic.IAND, result, asAllocatable(inputVal), Constant.forInt(mask)));
             if (toBits > 32) {
                 Variable longResult = newVariable(LIRKind.derive(inputVal).changeType(Kind.Long));

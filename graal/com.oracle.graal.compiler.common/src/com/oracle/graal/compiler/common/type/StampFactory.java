@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.compiler.common.type;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 
@@ -45,9 +46,9 @@ public class StampFactory {
         int bits = kind.getStackKind().getBitCount();
         long mask;
         if (kind.isUnsigned()) {
-            mask = IntegerStamp.defaultMask(kind.getBitCount());
+            mask = CodeUtil.mask(kind.getBitCount());
         } else {
-            mask = IntegerStamp.defaultMask(bits);
+            mask = CodeUtil.mask(bits);
         }
         setCache(kind, new IntegerStamp(bits, kind.getMinValue(), kind.getMaxValue(), 0, mask));
     }
@@ -128,11 +129,11 @@ public class StampFactory {
     }
 
     public static IntegerStamp forInteger(int bits) {
-        return new IntegerStamp(bits, IntegerStamp.defaultMinValue(bits), IntegerStamp.defaultMaxValue(bits), 0, IntegerStamp.defaultMask(bits));
+        return new IntegerStamp(bits, CodeUtil.minValue(bits), CodeUtil.maxValue(bits), 0, CodeUtil.mask(bits));
     }
 
     public static IntegerStamp forInteger(int bits, long lowerBound, long upperBound) {
-        long defaultMask = IntegerStamp.defaultMask(bits);
+        long defaultMask = CodeUtil.mask(bits);
         if (lowerBound == upperBound) {
             return new IntegerStamp(bits, lowerBound, lowerBound, lowerBound & defaultMask, lowerBound & defaultMask);
         }
@@ -175,7 +176,7 @@ public class StampFactory {
             case Short:
             case Int:
             case Long:
-                long mask = value.asLong() & IntegerStamp.defaultMask(kind.getBitCount());
+                long mask = value.asLong() & CodeUtil.mask(kind.getBitCount());
                 return forInteger(kind.getStackKind(), value.asLong(), value.asLong(), mask, mask);
             case Float:
                 return forFloat(kind, value.asFloat(), value.asFloat(), !Float.isNaN(value.asFloat()));

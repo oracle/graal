@@ -47,7 +47,7 @@ public class CodeUtil {
 
     /**
      * Checks whether the specified integer is a power of two.
-     * 
+     *
      * @param val the value to check
      * @return {@code true} if the value is a power of two; {@code false} otherwise
      */
@@ -57,7 +57,7 @@ public class CodeUtil {
 
     /**
      * Checks whether the specified long is a power of two.
-     * 
+     *
      * @param val the value to check
      * @return {@code true} if the value is a power of two; {@code false} otherwise
      */
@@ -68,7 +68,7 @@ public class CodeUtil {
     /**
      * Computes the log (base 2) of the specified integer, rounding down. (E.g {@code log2(8) = 3},
      * {@code log2(21) = 4} )
-     * 
+     *
      * @param val the value
      * @return the log base 2 of the value
      */
@@ -80,7 +80,7 @@ public class CodeUtil {
     /**
      * Computes the log (base 2) of the specified long, rounding down. (E.g {@code log2(8) = 3},
      * {@code log2(21) = 4})
-     * 
+     *
      * @param val the value
      * @return the log base 2 of the value
      */
@@ -90,8 +90,100 @@ public class CodeUtil {
     }
 
     /**
+     * Narrow an integer value to a given bit width, and return the result as a signed long.
+     *
+     * @param value the value
+     * @param resultBits the result bit width
+     * @return {@code value} interpreted as {@code resultBits} bit number, encoded as signed long
+     */
+    public static long narrow(long value, int resultBits) {
+        long ret = value & mask(resultBits);
+        return signExtend(ret, resultBits);
+    }
+
+    /**
+     * Sign extend an integer.
+     *
+     * @param value the input value
+     * @param inputBits the bit width of the input value
+     * @return a signed long with the same value as the signed {@code inputBits}-bit number
+     *         {@code value}
+     */
+    public static long signExtend(long value, int inputBits) {
+        if (inputBits < 64) {
+            if ((value >>> (inputBits - 1) & 1) == 1) {
+                return value | (-1L << inputBits);
+            } else {
+                return value & ~(-1L << inputBits);
+            }
+        } else {
+            return value;
+        }
+    }
+
+    /**
+     * Zero extend an integer.
+     *
+     * @param value the input value
+     * @param inputBits the bit width of the input value
+     * @return an unsigned long with the same value as the unsigned {@code inputBits}-bit number
+     *         {@code value}
+     */
+    public static long zeroExtend(long value, int inputBits) {
+        if (inputBits < 64) {
+            return value & ~(-1L << inputBits);
+        } else {
+            return value;
+        }
+    }
+
+    /**
+     * Convert an integer to long.
+     *
+     * @param value the input value
+     * @param inputBits the bit width of the input value
+     * @param unsigned whether the values should be interpreted as signed or unsigned
+     * @return a long with the same value as the {@code inputBits}-bit number {@code value}
+     */
+    public static long convert(long value, int inputBits, boolean unsigned) {
+        if (unsigned) {
+            return zeroExtend(value, inputBits);
+        } else {
+            return signExtend(value, inputBits);
+        }
+    }
+
+    /**
+     * Get a bitmask with the low {@code bits} bit set and the high {@code 64 - bits} bit clear.
+     */
+    public static long mask(int bits) {
+        assert 0 <= bits && bits <= 64;
+        if (bits == 64) {
+            return 0xffffffffffffffffL;
+        } else {
+            return (1L << bits) - 1;
+        }
+    }
+
+    /**
+     * Get the minimum value representable in a {@code bits} bit signed integer.
+     */
+    public static long minValue(int bits) {
+        assert 0 < bits && bits <= 64;
+        return -1L << (bits - 1);
+    }
+
+    /**
+     * Get the maximum value representable in a {@code bits} bit signed integer.
+     */
+    public static long maxValue(int bits) {
+        assert 0 < bits && bits <= 64;
+        return mask(bits - 1);
+    }
+
+    /**
      * Formats the values in a frame as a tabulated string.
-     * 
+     *
      * @param frame
      * @return the values in {@code frame} as a tabulated string
      */
@@ -131,7 +223,7 @@ public class CodeUtil {
     /**
      * Formats a given table as a string. The value of each cell is produced by
      * {@link String#valueOf(Object)}.
-     * 
+     *
      * @param cells the cells of the table in row-major order
      * @param cols the number of columns per row
      * @param lpad the number of space padding inserted before each formatted cell value
@@ -179,7 +271,7 @@ public class CodeUtil {
 
     /**
      * Appends a formatted code position to a {@link StringBuilder}.
-     * 
+     *
      * @param sb the {@link StringBuilder} to append to
      * @param pos the code position to format and append to {@code sb}
      * @return the value of {@code sb}
@@ -195,7 +287,7 @@ public class CodeUtil {
 
     /**
      * Appends a formatted frame to a {@link StringBuilder}.
-     * 
+     *
      * @param sb the {@link StringBuilder} to append to
      * @param frame the frame to format and append to {@code sb}
      * @return the value of {@code sb}
@@ -293,7 +385,7 @@ public class CodeUtil {
 
     /**
      * Appends a formatted debug info to a {@link StringBuilder}.
-     * 
+     *
      * @param sb the {@link StringBuilder} to append to
      * @param info the debug info to format and append to {@code sb}
      * @return the value of {@code sb}

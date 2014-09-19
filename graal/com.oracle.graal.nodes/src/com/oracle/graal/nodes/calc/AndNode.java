@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes.calc;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.spi.*;
@@ -67,7 +68,7 @@ public class AndNode extends BitLogicNode implements NarrowableArithmeticNode {
             return ConstantNode.forPrimitive(stamp(), evalConst(forX.asConstant(), forY.asConstant()));
         } else if (forY.isConstant()) {
             long rawY = forY.asConstant().asLong();
-            long mask = IntegerStamp.defaultMask(PrimitiveStamp.getBits(stamp()));
+            long mask = CodeUtil.mask(PrimitiveStamp.getBits(stamp()));
             if ((rawY & mask) == mask) {
                 return forX;
             }
