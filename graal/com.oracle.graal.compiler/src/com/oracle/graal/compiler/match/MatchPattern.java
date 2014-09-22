@@ -312,7 +312,7 @@ public class MatchPattern {
             return name;
         } else {
             String nodeName = nodeClass.getSimpleName();
-            nodeName = nodeName.substring(0, nodeName.length() - 4);
+            nodeName = nodeName.substring(0, nodeName.length() - (Node.USE_GENERATED_NODES ? 7 : 4));
             if (patterns.length == 0) {
                 return nodeName + (name != null ? "=" + name : "");
             } else {
