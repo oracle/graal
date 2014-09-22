@@ -22,14 +22,11 @@
  */
 package com.oracle.graal.truffle;
 
-import static com.oracle.graal.compiler.common.GraalOptions.*;
-
 import java.util.*;
 import java.util.Map.Entry;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.Graph.Mark;
@@ -98,8 +95,7 @@ public final class TruffleCacheImpl implements TruffleCache {
         return graph;
     }
 
-    public StructuredGraph lookup(final ResolvedJavaMethod method, final NodeInputList<ValueNode> arguments, final Assumptions assumptions, final CanonicalizerPhase finalCanonicalizer,
-                    boolean ignoreSlowPath) {
+    public StructuredGraph lookup(ResolvedJavaMethod method, NodeInputList<ValueNode> arguments, Assumptions assumptions, CanonicalizerPhase canonicalizer, boolean ignoreSlowPath) {
 
         if (!ignoreSlowPath && method.getAnnotation(CompilerDirectives.SlowPath.class) != null) {
             return null;
@@ -149,8 +145,7 @@ public final class TruffleCacheImpl implements TruffleCache {
             // Convert deopt to guards.
             new ConvertDeoptimizeToGuardPhase().apply(graph);
 
-            CanonicalizerPhase canonicalizerPhase = new CanonicalizerPhase(!ImmutableCode.getValue());
-            PartialEscapePhase partialEscapePhase = new PartialEscapePhase(false, canonicalizerPhase);
+            PartialEscapePhase partialEscapePhase = new PartialEscapePhase(false, canonicalizer);
 
             while (true) {
 
@@ -161,7 +156,7 @@ public final class TruffleCacheImpl implements TruffleCache {
                 conditionalEliminationPhase.apply(graph);
 
                 // Canonicalize / constant propagate.
-                canonicalizerPhase.apply(graph, phaseContext);
+                canonicalizer.apply(graph, phaseContext);
 
                 boolean inliningProgress = false;
                 for (MethodCallTargetNode methodCallTarget : graph.getNodes(MethodCallTargetNode.class)) {
@@ -170,14 +165,14 @@ public final class TruffleCacheImpl implements TruffleCache {
                     }
                     if (methodCallTarget.isAlive() && methodCallTarget.invoke() != null && shouldInline(methodCallTarget)) {
                         inliningProgress = true;
-                        lookupDoInline(graph, phaseContext, canonicalizerPhase, methodCallTarget);
+                        lookupDoInline(graph, phaseContext, canonicalizer, methodCallTarget);
                     }
                 }
 
                 // Convert deopt to guards.
                 new ConvertDeoptimizeToGuardPhase().apply(graph);
 
-                new EarlyReadEliminationPhase(canonicalizerPhase).apply(graph, phaseContext);
+                new EarlyReadEliminationPhase(canonicalizer).apply(graph, phaseContext);
 
                 if (!inliningProgress) {
                     break;
@@ -215,7 +210,7 @@ public final class TruffleCacheImpl implements TruffleCache {
         }
     }
 
-    private Mark lookupProcessMacroSubstitutions(final StructuredGraph graph, Mark mark) throws GraalInternalError {
+    private Mark lookupProcessMacroSubstitutions(StructuredGraph graph, Mark mark) {
         // Make sure macro substitutions such as
         // CompilerDirectives.transferToInterpreter get processed first.
         for (Node newNode : graph.getNewNodes(mark)) {
@@ -232,7 +227,7 @@ public final class TruffleCacheImpl implements TruffleCache {
         return graph.getMark();
     }
 
-    private void lookupDoInline(final StructuredGraph graph, final PhaseContext phaseContext, CanonicalizerPhase canonicalizerPhase, MethodCallTargetNode methodCallTarget) {
+    private void lookupDoInline(StructuredGraph graph, PhaseContext phaseContext, CanonicalizerPhase canonicalizer, MethodCallTargetNode methodCallTarget) {
         List<Node> canonicalizerUsages = new ArrayList<>();
         for (Node n : methodCallTarget.invoke().asNode().usages()) {
             if (n instanceof Canonicalizable) {
@@ -241,7 +236,7 @@ public final class TruffleCacheImpl implements TruffleCache {
         }
         List<ValueNode> argumentSnapshot = methodCallTarget.arguments().snapshot();
         Mark beforeInvokeMark = graph.getMark();
-        expandInvoke(methodCallTarget);
+        expandInvoke(methodCallTarget, canonicalizer);
         for (Node arg : argumentSnapshot) {
             if (arg != null) {
                 for (Node argUsage : arg.usages()) {
@@ -251,13 +246,13 @@ public final class TruffleCacheImpl implements TruffleCache {
                 }
             }
         }
-        canonicalizerPhase.applyIncremental(graph, phaseContext, canonicalizerUsages);
+        canonicalizer.applyIncremental(graph, phaseContext, canonicalizerUsages);
     }
 
-    private void expandInvoke(MethodCallTargetNode methodCallTargetNode) {
+    private void expandInvoke(MethodCallTargetNode methodCallTargetNode, CanonicalizerPhase canonicalizer) {
         StructuredGraph inlineGraph = providers.getReplacements().getMethodSubstitution(methodCallTargetNode.targetMethod());
         if (inlineGraph == null) {
-            inlineGraph = TruffleCacheImpl.this.lookup(methodCallTargetNode.targetMethod(), methodCallTargetNode.arguments(), null, null, false);
+            inlineGraph = TruffleCacheImpl.this.lookup(methodCallTargetNode.targetMethod(), methodCallTargetNode.arguments(), null, canonicalizer, false);
         }
         if (inlineGraph == this.markerGraph) {
             // Can happen for recursive calls.
@@ -286,7 +281,7 @@ public final class TruffleCacheImpl implements TruffleCache {
         return false;
     }
 
-    private boolean shouldInline(final MethodCallTargetNode methodCallTargetNode) {
+    private boolean shouldInline(MethodCallTargetNode methodCallTargetNode) {
         boolean result = (methodCallTargetNode.invokeKind() == InvokeKind.Special || methodCallTargetNode.invokeKind() == InvokeKind.Static) && methodCallTargetNode.targetMethod().canBeInlined() &&
                         !methodCallTargetNode.targetMethod().isNative() && methodCallTargetNode.targetMethod().getAnnotation(ExplodeLoop.class) == null &&
                         methodCallTargetNode.targetMethod().getAnnotation(CompilerDirectives.SlowPath.class) == null &&
