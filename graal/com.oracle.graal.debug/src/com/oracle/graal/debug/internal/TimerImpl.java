@@ -43,17 +43,33 @@ public final class TimerImpl extends DebugValue implements DebugTimer {
      */
     private static final ThreadLocal<AbstractTimer> currentTimer = new ThreadLocal<>();
 
-    private final DebugValue flat;
+    private final FlatTimer flat;
+
+    static class FlatTimer extends DebugValue implements DebugTimer {
+        private final TimerImpl accm;
+
+        public FlatTimer(TimerImpl accm, String name) {
+            super(name + "_Flat", accm.isConditional());
+            this.accm = accm;
+        }
+
+        @Override
+        public String toString(long value) {
+            return valueToString(value);
+        }
+
+        public TimeUnit getTimeUnit() {
+            return accm.getTimeUnit();
+        }
+
+        public TimerCloseable start() {
+            return accm.start();
+        }
+    }
 
     public TimerImpl(String name, boolean conditional) {
         super(name + "_Accm", conditional);
-        this.flat = new DebugValue(name + "_Flat", conditional) {
-
-            @Override
-            public String toString(long value) {
-                return valueToString(value);
-            }
-        };
+        this.flat = new FlatTimer(this, name);
     }
 
     @Override
@@ -68,9 +84,9 @@ public final class TimerImpl extends DebugValue implements DebugTimer {
 
             AbstractTimer result;
             if (threadMXBean.isCurrentThreadCpuTimeSupported()) {
-                result = new CpuTimeTimer(startTime);
+                result = new CpuTimeTimer(this, startTime);
             } else {
-                result = new SystemNanosTimer(startTime);
+                result = new SystemNanosTimer(this, startTime);
             }
             currentTimer.set(result);
             return result;
@@ -83,6 +99,10 @@ public final class TimerImpl extends DebugValue implements DebugTimer {
         return String.format("%d.%d ms", value / 1000000, (value / 100000) % 10);
     }
 
+    public DebugTimer getFlat() {
+        return flat;
+    }
+
     @Override
     public String toString(long value) {
         return valueToString(value);
@@ -92,14 +112,16 @@ public final class TimerImpl extends DebugValue implements DebugTimer {
         return TimeUnit.NANOSECONDS;
     }
 
-    private abstract class AbstractTimer implements TimerCloseable {
+    private static abstract class AbstractTimer implements TimerCloseable {
 
         private final AbstractTimer parent;
+        private final TimerImpl timer;
         private final long startTime;
         private long nestedTimeToSubtract;
 
-        private AbstractTimer(long startTime) {
+        private AbstractTimer(TimerImpl timer, long startTime) {
             this.parent = currentTimer.get();
+            this.timer = timer;
             this.startTime = startTime;
         }
 
@@ -108,12 +130,25 @@ public final class TimerImpl extends DebugValue implements DebugTimer {
             long endTime = currentTime();
             long timeSpan = endTime - startTime;
             if (parent != null) {
-                parent.nestedTimeToSubtract += timeSpan;
+                if (timer != parent.timer) {
+                    parent.nestedTimeToSubtract += timeSpan;
+
+                    // Look for our timer in an outer timing scope and fix up
+                    // the adjustment to the flat time
+                    AbstractTimer ancestor = parent.parent;
+                    while (ancestor != null) {
+                        if (ancestor.timer == timer) {
+                            ancestor.nestedTimeToSubtract -= timeSpan;
+                            break;
+                        }
+                        ancestor = ancestor.parent;
+                    }
+                }
             }
             currentTimer.set(parent);
             long flatTime = timeSpan - nestedTimeToSubtract;
-            TimerImpl.this.addToCurrentValue(timeSpan);
-            flat.addToCurrentValue(flatTime);
+            timer.addToCurrentValue(timeSpan);
+            timer.flat.addToCurrentValue(flatTime);
         }
 
         protected abstract long currentTime();
@@ -121,8 +156,8 @@ public final class TimerImpl extends DebugValue implements DebugTimer {
 
     private final class SystemNanosTimer extends AbstractTimer {
 
-        public SystemNanosTimer(long startTime) {
-            super(startTime);
+        public SystemNanosTimer(TimerImpl timer, long startTime) {
+            super(timer, startTime);
         }
 
         @Override
@@ -133,8 +168,8 @@ public final class TimerImpl extends DebugValue implements DebugTimer {
 
     private final class CpuTimeTimer extends AbstractTimer {
 
-        public CpuTimeTimer(long startTime) {
-            super(startTime);
+        public CpuTimeTimer(TimerImpl timer, long startTime) {
+            super(timer, startTime);
         }
 
         @Override
