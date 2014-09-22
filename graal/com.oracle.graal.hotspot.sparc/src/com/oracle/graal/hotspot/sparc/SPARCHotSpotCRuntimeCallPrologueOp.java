@@ -35,12 +35,13 @@ import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.sparc.*;
 
 @Opcode("CRUNTIME_CALL_PROLOGUE")
-final class SPARCHotSpotCRuntimeCallPrologueOp extends SPARCLIRInstruction {
+final class SPARCHotSpotCRuntimeCallPrologueOp extends SPARCLIRInstruction implements TailDelayedLIRInstruction {
 
     private final int threadLastJavaSpOffset;
     private final Register thread;
     private final Register stackPointer;
     @Def({REG, STACK}) protected Value threadTemp;
+    private DelaySlotHolder delayHolder = DelaySlotHolder.DUMMY;
 
     public SPARCHotSpotCRuntimeCallPrologueOp(int threadLastJavaSpOffset, Register thread, Register stackPointer, Value threadTemp) {
         this.threadLastJavaSpOffset = threadLastJavaSpOffset;
@@ -56,6 +57,10 @@ final class SPARCHotSpotCRuntimeCallPrologueOp extends SPARCLIRInstruction {
         new Stx(g4, new SPARCAddress(thread, threadLastJavaSpOffset)).emit(masm);
 
         // Save the thread register when calling out to the runtime.
-        SPARCMove.move(crb, masm, threadTemp, thread.asValue(LIRKind.value(Kind.Long)));
+        SPARCMove.move(crb, masm, threadTemp, thread.asValue(LIRKind.value(Kind.Long)), delayHolder);
+    }
+
+    public void setDelaySlotHolder(DelaySlotHolder holder) {
+        this.delayHolder = holder;
     }
 }

@@ -46,8 +46,7 @@ final class SPARCHotspotDirectStaticCallOp extends DirectCallOp {
     }
 
     @Override
-    public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
+    public void emitCallPrefixCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
         MarkId.recordMark(crb, invokeKind == InvokeKind.Static ? MarkId.INVOKESTATIC : MarkId.INVOKESPECIAL);
-        super.emitCode(crb, masm);
     }
 }

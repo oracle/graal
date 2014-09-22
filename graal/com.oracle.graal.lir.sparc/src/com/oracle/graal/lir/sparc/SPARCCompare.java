@@ -99,13 +99,13 @@ public enum SPARCCompare {
         } else {
             assert isConstant(y);
             switch (opcode) {
+                case LCMP:
+                    assert isSimm13(crb.asLongConst(y));
+                    new Cmp(asLongReg(x), (int) crb.asLongConst(y)).emit(masm);
+                    break;
                 case ICMP:
                     assert isSimm13(crb.asIntConst(y));
                     new Cmp(asIntReg(x), crb.asIntConst(y)).emit(masm);
-                    break;
-                case LCMP:
-                    assert isSimm13(crb.asIntConst(y));
-                    new Cmp(asLongReg(x), crb.asIntConst(y)).emit(masm);
                     break;
                 case ACMP:
                     if (((Constant) y).isNull()) {

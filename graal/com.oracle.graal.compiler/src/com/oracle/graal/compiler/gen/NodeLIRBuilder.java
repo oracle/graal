@@ -369,7 +369,11 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
         }
         resolver.dispose();
 
-        append(new JumpOp(getLIRBlock(merge)));
+        append(newJumpOp(getLIRBlock(merge)));
+    }
+
+    protected JumpOp newJumpOp(LabelRef ref) {
+        return new JumpOp(ref);
     }
 
     protected LIRKind getPhiKind(PhiNode phi) {

@@ -31,7 +31,7 @@ import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 
-public class SPARCMathIntrinsicOp extends SPARCLIRInstruction {
+public class SPARCMathIntrinsicOp extends SPARCLIRInstruction implements TailDelayedLIRInstruction {
 
     public enum IntrinsicOpcode {
         SQRT,
@@ -46,6 +46,7 @@ public class SPARCMathIntrinsicOp extends SPARCLIRInstruction {
     @Opcode private final IntrinsicOpcode opcode;
     @Def protected Value result;
     @Use protected Value input;
+    private DelaySlotHolder delaySlotHolder = DelaySlotHolder.DUMMY;
 
     public SPARCMathIntrinsicOp(IntrinsicOpcode opcode, Value result, Value input) {
         this.opcode = opcode;
@@ -56,6 +57,7 @@ public class SPARCMathIntrinsicOp extends SPARCLIRInstruction {
     @Override
     public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
         Kind inputKind = (Kind) input.getLIRKind().getPlatformKind();
+        delaySlotHolder.emitForDelay(crb, masm);
         switch (opcode) {
             case SQRT:
                 switch (inputKind) {
@@ -90,4 +92,9 @@ public class SPARCMathIntrinsicOp extends SPARCLIRInstruction {
                 throw GraalInternalError.shouldNotReachHere();
         }
     }
+
+    public void setDelaySlotHolder(DelaySlotHolder holder) {
+        this.delaySlotHolder = holder;
+    }
+
 }

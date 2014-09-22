@@ -35,7 +35,7 @@ import com.oracle.graal.asm.sparc.SPARCMacroAssembler.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.StandardOp.BlockEndOp;
+import com.oracle.graal.lir.StandardOp.*;
 import com.oracle.graal.lir.SwitchStrategy.BaseSwitchClosure;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.sparc.*;
@@ -59,6 +59,86 @@ public class SPARCControlFlow {
             new Ret().emit(masm);
             // On SPARC we always leave the frame (in the delay slot).
             crb.frameContext.leave(crb);
+        }
+    }
+
+    public static class CompareBranchOp extends SPARCLIRInstruction implements BlockEndOp, DelaySlotHolder {
+
+        private final SPARCCompare opcode;
+        @Use({REG}) protected Value x;
+        @Use({REG, CONST}) protected Value y;
+        protected final Condition condition;
+        protected final LabelRef trueDestination;
+        protected final LabelRef falseDestination;
+        protected final Kind kind;
+        protected final boolean unorderedIsTrue;
+        private boolean emitted = false;
+        private double trueDestinationProbability;
+
+        public CompareBranchOp(SPARCCompare opcode, Value x, Value y, Condition condition, LabelRef trueDestination, LabelRef falseDestination, Kind kind, boolean unorderedIsTrue,
+                        double trueDestinationProbability) {
+            this.opcode = opcode;
+            this.x = x;
+            this.y = y;
+            this.condition = condition;
+            this.trueDestination = trueDestination;
+            this.falseDestination = falseDestination;
+            this.kind = kind;
+            this.unorderedIsTrue = unorderedIsTrue;
+            this.trueDestinationProbability = trueDestinationProbability;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
+            if (!emitted) {
+                SPARCCompare.emit(crb, masm, opcode, x, y);
+                emitted = emitBranch(crb, masm, true);
+            }
+            assert emitted;
+        }
+
+        public void emitForDelay(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
+            SPARCCompare.emit(crb, masm, opcode, x, y);
+            emitted = emitBranch(crb, masm, false);
+        }
+
+        public boolean emitBranch(CompilationResultBuilder crb, SPARCMacroAssembler masm, boolean withDelayedNop) {
+            Label actualTarget;
+            Condition actualCondition;
+            boolean branchOnUnordered;
+            boolean needJump;
+            boolean predictBranchTaken;
+            if (crb.isSuccessorEdge(trueDestination)) {
+                actualCondition = condition != null ? condition.negate() : null;
+                actualTarget = falseDestination.label();
+                predictBranchTaken = trueDestinationProbability < .5; // false branch needs jump
+                needJump = false;
+                branchOnUnordered = !unorderedIsTrue;
+            } else {
+                actualCondition = condition;
+                actualTarget = trueDestination.label();
+                needJump = !crb.isSuccessorEdge(falseDestination);
+                predictBranchTaken = trueDestinationProbability >= .5;
+                branchOnUnordered = unorderedIsTrue;
+            }
+            if (!withDelayedNop && needJump) {
+                // We cannot make use of the delay slot when we jump in true-case and false-case
+                return false;
+            }
+            if (kind == Kind.Double || kind == Kind.Float) {
+                emitFloatBranch(masm, actualTarget, actualCondition, branchOnUnordered);
+            } else {
+                CC cc = kind == Kind.Int ? CC.Icc : CC.Xcc;
+                assert actualCondition != null;
+                SPARCControlFlow.emitBranch(masm, actualTarget, actualCondition, cc, predictBranchTaken);
+            }
+            if (withDelayedNop) {
+                new Nop().emit(masm);  // delay slot
+            }
+            if (needJump) {
+                masm.jmp(falseDestination.label());
+            }
+            return true; // emitted
         }
     }
 
@@ -121,25 +201,25 @@ public class SPARCControlFlow {
             }
             assert kind == Kind.Int || kind == Kind.Long || kind == Kind.Object || kind == Kind.Double || kind == Kind.Float : kind;
             if (kind == Kind.Double || kind == Kind.Float) {
-                emitFloatCompare(masm, actualTarget, actualCondition, branchOnUnordered);
+                emitFloatBranch(masm, actualTarget, actualCondition, branchOnUnordered);
             } else {
                 CC cc = kind == Kind.Int ? CC.Icc : CC.Xcc;
                 if (actualCondition != null) {
-                    emitCompare(masm, actualTarget, actualCondition, cc);
+                    emitBranch(masm, actualTarget, actualCondition, cc, false);
                 } else if (actualConditionFlag != null) {
-                    emitCompare(masm, actualTarget, actualConditionFlag);
+                    emitBranch(masm, actualTarget, actualConditionFlag);
                 } else {
                     GraalInternalError.shouldNotReachHere();
                 }
-                new Nop().emit(masm);  // delay slot
             }
+            new Nop().emit(masm);  // delay slot
             if (needJump) {
                 masm.jmp(falseDestination.label());
             }
         }
     }
 
-    private static void emitFloatCompare(SPARCMacroAssembler masm, Label target, Condition actualCondition, boolean branchOnUnordered) {
+    private static void emitFloatBranch(SPARCMacroAssembler masm, Label target, Condition actualCondition, boolean branchOnUnordered) {
         switch (actualCondition) {
             case EQ:
                 if (branchOnUnordered) {
@@ -187,44 +267,44 @@ public class SPARCControlFlow {
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }
-        new Nop().emit(masm);
     }
 
-    private static void emitCompare(SPARCMacroAssembler masm, Label target, ConditionFlag actualCondition) {
+    private static void emitBranch(SPARCMacroAssembler masm, Label target, ConditionFlag actualCondition) {
         new Fmt00b(false, actualCondition, Op2s.Br, target).emit(masm);
     }
 
-    private static void emitCompare(SPARCMacroAssembler masm, Label target, Condition actualCondition, CC cc) {
+    private static void emitBranch(SPARCMacroAssembler masm, Label target, Condition actualCondition, CC cc, boolean predictTaken) {
+
         switch (actualCondition) {
             case EQ:
-                new Bpe(cc, target).emit(masm);
+                new Bpe(cc, false, predictTaken, target).emit(masm);
                 break;
             case NE:
-                new Bpne(cc, target).emit(masm);
+                new Bpne(cc, false, predictTaken, target).emit(masm);
                 break;
             case BT:
-                new Bplu(cc, target).emit(masm);
+                new Bplu(cc, false, predictTaken, target).emit(masm);
                 break;
             case LT:
-                new Bpl(cc, target).emit(masm);
+                new Bpl(cc, false, predictTaken, target).emit(masm);
                 break;
             case BE:
-                new Bpleu(cc, target).emit(masm);
+                new Bpleu(cc, false, predictTaken, target).emit(masm);
                 break;
             case LE:
-                new Bple(cc, target).emit(masm);
+                new Bple(cc, false, predictTaken, target).emit(masm);
                 break;
             case GE:
-                new Bpge(cc, target).emit(masm);
+                new Bpge(cc, false, predictTaken, target).emit(masm);
                 break;
             case AE:
-                new Bpgeu(cc, target).emit(masm);
+                new Bpgeu(cc, false, predictTaken, target).emit(masm);
                 break;
             case GT:
-                new Bpg(cc, target).emit(masm);
+                new Bpg(cc, false, predictTaken, target).emit(masm);
                 break;
             case AT:
-                new Bpgu(cc, target).emit(masm);
+                new Bpgu(cc, false, predictTaken, target).emit(masm);
                 break;
             default:
                 throw GraalInternalError.shouldNotReachHere();
@@ -273,18 +353,18 @@ public class SPARCControlFlow {
                                 new Setx(lc, asIntReg(scratch)).emit(masm);
                                 new Cmp(keyRegister, asIntReg(scratch)).emit(masm);
                             }
-                            emitCompare(masm, target, condition, CC.Icc);
+                            emitBranch(masm, target, condition, CC.Icc, false);
                             break;
                         case Long: {
-                            SPARCMove.move(crb, masm, scratch, keyConstants[index]);
+                            SPARCMove.move(crb, masm, scratch, keyConstants[index], DelaySlotHolder.DUMMY);
                             new Cmp(keyRegister, asLongReg(scratch)).emit(masm);
-                            emitCompare(masm, target, condition, CC.Xcc);
+                            emitBranch(masm, target, condition, CC.Xcc, false);
                             break;
                         }
                         case Object: {
-                            SPARCMove.move(crb, masm, scratch, keyConstants[index]);
+                            SPARCMove.move(crb, masm, scratch, keyConstants[index], DelaySlotHolder.DUMMY);
                             new Cmp(keyRegister, asObjectReg(scratch)).emit(masm);
-                            emitCompare(masm, target, condition, CC.Ptrcc);
+                            emitBranch(masm, target, condition, CC.Ptrcc, false);
                             break;
                         }
                         default:
@@ -374,157 +454,82 @@ public class SPARCControlFlow {
         private final Kind kind;
 
         @Def({REG, HINT}) protected Value result;
-        @Alive({REG}) protected Value trueValue;
-        @Use({REG, STACK, CONST}) protected Value falseValue;
+        @Use({REG, CONST}) protected Value trueValue;
+        @Use({REG, CONST}) protected Value falseValue;
 
         private final ConditionFlag condition;
+        private final CC cc;
 
-        public CondMoveOp(Kind kind, Variable result, Condition condition, Variable trueValue, Value falseValue) {
+        public CondMoveOp(Kind kind, Variable result, CC cc, ConditionFlag condition, Value trueValue, Value falseValue) {
             this.kind = kind;
             this.result = result;
-            this.condition = intCond(condition);
+            this.condition = condition;
             this.trueValue = trueValue;
             this.falseValue = falseValue;
+            this.cc = cc;
         }
 
         @Override
         public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
             // check that we don't overwrite an input operand before it is used.
-            assert !result.equals(trueValue);
-
-            SPARCMove.move(crb, masm, result, falseValue);
-            cmove(crb, masm, kind, result, condition, trueValue);
-        }
-    }
-
-    @Opcode("CMOVE")
-    public static class FloatCondMoveOp extends SPARCLIRInstruction {
-
-        private final Kind kind;
-
-        @Def({REG}) protected Value result;
-        @Alive({REG}) protected Value trueValue;
-        @Alive({REG}) protected Value falseValue;
-
-        private final ConditionFlag condition;
-        private final boolean unorderedIsTrue;
-
-        public FloatCondMoveOp(Kind kind, Variable result, Condition condition, boolean unorderedIsTrue, Variable trueValue, Variable falseValue) {
-            this.kind = kind;
-            this.result = result;
-            this.condition = floatCond(condition);
-            this.unorderedIsTrue = unorderedIsTrue;
-            this.trueValue = trueValue;
-            this.falseValue = falseValue;
-        }
-
-        @Override
-        public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-            // check that we don't overwrite an input operand before it is used.
-            assert !result.equals(trueValue);
-
-            SPARCMove.move(crb, masm, result, trueValue);
-            cmove(crb, masm, kind, result, condition, falseValue);
-            // TODO: This may be omitted, when doing the right check beforehand (There are
-            // instructions which control the unordered behavior as well)
-            if (!unorderedIsTrue) {
-                cmove(crb, masm, kind, result, ConditionFlag.F_Unordered, falseValue);
+            // assert !result.equals(trueValue);
+            if (result.equals(trueValue)) { // We have the true value in place, do he opposite
+                cmove(masm, cc, kind, result, condition.negate(), falseValue);
+            } else if (result.equals(falseValue)) {
+                cmove(masm, cc, kind, result, condition, trueValue);
+            } else { // We have to move one of the input values to the result
+                ConditionFlag actualCondition = condition;
+                Value actualTrueValue = trueValue;
+                Value actualFalseValue = falseValue;
+                if (isConstant(falseValue) && isSimm11(asConstant(falseValue))) {
+                    actualCondition = condition.negate();
+                    actualTrueValue = falseValue;
+                    actualFalseValue = trueValue;
+                }
+                SPARCMove.move(crb, masm, result, actualFalseValue, DelaySlotHolder.DUMMY);
+                cmove(masm, cc, kind, result, actualCondition, actualTrueValue);
             }
         }
     }
 
-    private static void cmove(CompilationResultBuilder crb, SPARCMacroAssembler masm, Kind kind, Value result, ConditionFlag cond, Value other) {
-        if (!isRegister(other)) {
-            SPARCMove.move(crb, masm, result, other);
-            throw GraalInternalError.shouldNotReachHere("result should be scratch");
-        }
-        assert !asRegister(other).equals(asRegister(result)) : "other already overwritten by previous move";
+    private static void cmove(SPARCMacroAssembler masm, CC cc, Kind kind, Value result, ConditionFlag cond, Value other) {
         switch (kind) {
             case Int:
-                new Movcc(cond, CC.Icc, asRegister(other), asRegister(result)).emit(masm);
+                if (isConstant(other)) {
+                    int constant;
+                    if (asConstant(other).isNull()) {
+                        constant = 0;
+                    } else {
+                        constant = asConstant(other).asInt();
+                    }
+                    new Movcc(cond, cc, constant, asRegister(result)).emit(masm);
+                } else {
+                    new Movcc(cond, cc, asRegister(other), asRegister(result)).emit(masm);
+                }
                 break;
             case Long:
             case Object:
-                new Movcc(cond, CC.Xcc, asRegister(other), asRegister(result)).emit(masm);
+                if (isConstant(other)) {
+                    long constant;
+                    if (asConstant(other).isNull()) {
+                        constant = 0;
+                    } else {
+                        constant = asConstant(other).asLong();
+                    }
+                    assert isSimm11(constant);
+                    new Movcc(cond, cc, (int) constant, asRegister(result)).emit(masm);
+                } else {
+                    new Movcc(cond, cc, asRegister(other), asRegister(result)).emit(masm);
+                }
                 break;
             case Float:
+                new Fmovscc(cond, cc, asFloatReg(other), asFloatReg(result)).emit(masm);
+                break;
             case Double:
-                switch (cond) {
-                    case Equal:
-                        new Fbne(true, 2 * 4).emit(masm);
-                        break;
-                    case Greater:
-                        new Fble(true, 2 * 4).emit(masm);
-                        break;
-                    case GreaterEqual:
-                        new Fbl(true, 2 * 4).emit(masm);
-                        break;
-                    case Less:
-                        new Fbge(true, 2 * 4).emit(masm);
-                        break;
-                    case LessEqual:
-                        new Fbg(true, 2 * 4).emit(masm);
-                        break;
-                    case F_Ordered:
-                        new Fbo(true, 2 * 4).emit(masm);
-                        break;
-                    case F_Unordered:
-                        new Fbu(true, 2 * 4).emit(masm);
-                        break;
-                    default:
-                        GraalInternalError.shouldNotReachHere("Unknown condition code " + cond);
-                        break;
-                }
-                SPARCMove.move(crb, masm, result, other);
+                new Fmovdcc(cond, cc, asDoubleReg(other), asDoubleReg(result)).emit(masm);
                 break;
             default:
                 throw GraalInternalError.shouldNotReachHere();
-        }
-    }
-
-    private static ConditionFlag intCond(Condition cond) {
-        switch (cond) {
-            case EQ:
-                return ConditionFlag.Equal;
-            case NE:
-                return ConditionFlag.NotEqual;
-            case BT:
-                return ConditionFlag.LessUnsigned;
-            case LT:
-                return ConditionFlag.Less;
-            case BE:
-                return ConditionFlag.LessEqualUnsigned;
-            case LE:
-                return ConditionFlag.LessEqual;
-            case AE:
-                return ConditionFlag.GreaterEqualUnsigned;
-            case GE:
-                return ConditionFlag.GreaterEqual;
-            case AT:
-                return ConditionFlag.GreaterUnsigned;
-            case GT:
-                return ConditionFlag.Greater;
-            default:
-                throw GraalInternalError.shouldNotReachHere("Unimplemented for: " + cond);
-        }
-    }
-
-    private static ConditionFlag floatCond(Condition cond) {
-        switch (cond) {
-            case EQ:
-                return ConditionFlag.Equal;
-            case NE:
-                return ConditionFlag.NotEqual;
-            case LT:
-                return ConditionFlag.Less;
-            case LE:
-                return ConditionFlag.LessEqual;
-            case GE:
-                return ConditionFlag.GreaterEqual;
-            case GT:
-                return ConditionFlag.Greater;
-            default:
-                throw GraalInternalError.shouldNotReachHere("Unimplemented for " + cond);
         }
     }
 }

@@ -51,12 +51,11 @@ final class SPARCHotspotDirectVirtualCallOp extends DirectCallOp {
     }
 
     @Override
-    public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
+    public void emitCallPrefixCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
         // The mark for an invocation that uses an inline cache must be placed at the
         // instruction that loads the Klass from the inline cache.
         MarkId.recordMark(crb, invokeKind == InvokeKind.Virtual ? MarkId.INVOKEVIRTUAL : MarkId.INVOKEINTERFACE);
         Register scratchRegister = g5;
         new Setx(HotSpotGraalRuntime.runtime().getConfig().nonOopBits, scratchRegister, true).emit(masm);
-        super.emitCode(crb, masm);
     }
 }
