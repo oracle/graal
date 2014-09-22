@@ -29,7 +29,7 @@ import com.oracle.truffle.api.*;
 /**
  * Represents a rough estimate for the cost of a {@link Node}. This estimate can be used by runtime
  * systems or guest languages to implement heuristics based on Truffle ASTs.
- * 
+ *
  * @see Node#getCost()
  */
 public enum NodeCost {
@@ -54,7 +54,7 @@ public enum NodeCost {
 
     /**
      * This node represents a polymorphic version of an operation. For multiple chained polymorphic
-     * nodes the first may return {@link #MONOMORPHIC} and all addtional nodes should return
+     * nodes the first may return {@link #MONOMORPHIC} and all additional nodes should return
      * {@link #POLYMORPHIC}.
      */
     POLYMORPHIC,
