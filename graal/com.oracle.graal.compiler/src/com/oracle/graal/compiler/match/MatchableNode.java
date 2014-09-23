@@ -55,7 +55,7 @@ public @interface MatchableNode {
     boolean commutative() default false;
 
     /**
-     * Can a node with multiple users be safely match by a rule.
+     * Can a node with multiple uses be safely matched by a rule.
      */
     boolean shareable() default false;
 }
