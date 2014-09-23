@@ -53,8 +53,6 @@ public final class NodeClass extends FieldIntrospection {
 
     // Timers for creation of a NodeClass instance
     private static final DebugTimer Init = Debug.timer("NodeClass.Init");
-    private static final DebugTimer Init_PositionFieldOrderLoad = Debug.timer("NodeClass.Init.PositionFieldOrderLoad");
-    private static final DebugTimer Init_PositionFieldOrderSort = Debug.timer("NodeClass.Init.PositionFieldOrderSort");
     private static final DebugTimer Init_FieldScanning = Debug.timer("NodeClass.Init.FieldScanning");
     private static final DebugTimer Init_Offsets = Debug.timer("NodeClass.Init.Offsets");
     private static final DebugTimer Init_Naming = Debug.timer("NodeClass.Init.Naming");
@@ -151,41 +149,9 @@ public final class NodeClass extends FieldIntrospection {
         this(clazz, new DefaultCalcOffset(), null, 0);
     }
 
-    /**
-     * Defines the order of fields in a node class accessed via {@link Position}s.
-     *
-     * This is required so that field positions are consistent in a configuration that mixes
-     * (runtime) field offsets with (annotation processing time) field iterators.
-     */
-    public interface PositionFieldOrder {
-        /**
-         * Gets a field ordering specified by an ordered field name list. The only guarantee
-         * provided by this method is that all {@link NodeList} fields are preceded by all non
-         * {@link NodeList} fields.
-         *
-         * @param input specified whether input or successor field order is being requested
-         */
-        String[] getOrderedFieldNames(boolean input);
-    }
-
-    private static long[] sortedOffsets(boolean input, PositionFieldOrder pfo, Map<Long, String> names, ArrayList<Long> list1, ArrayList<Long> list2) {
+    private static long[] sortedOffsets(ArrayList<Long> list1, ArrayList<Long> list2) {
         if (list1.isEmpty() && list2.isEmpty()) {
             return new long[0];
-        }
-        if (pfo != null) {
-            try (TimerCloseable t = Init_PositionFieldOrderSort.start()) {
-
-                List<String> fields = Arrays.asList(pfo.getOrderedFieldNames(input));
-                long[] offsets = new long[fields.size()];
-                assert list1.size() + list2.size() == fields.size();
-                for (Map.Entry<Long, String> e : names.entrySet()) {
-                    int index = fields.indexOf(e.getValue());
-                    if (index != -1) {
-                        offsets[index] = e.getKey();
-                    }
-                }
-                return offsets;
-            }
         }
         return sortedLongCopy(list1, list2);
     }
@@ -211,9 +177,7 @@ public final class NodeClass extends FieldIntrospection {
 
             isLeafNode = scanner.inputOffsets.isEmpty() && scanner.inputListOffsets.isEmpty() && scanner.successorOffsets.isEmpty() && scanner.successorListOffsets.isEmpty();
 
-            PositionFieldOrder pfo = lookupPositionFieldOrder(clazz);
-
-            inputOffsets = sortedOffsets(true, pfo, scanner.fieldNames, scanner.inputOffsets, scanner.inputListOffsets);
+            inputOffsets = sortedOffsets(scanner.inputOffsets, scanner.inputListOffsets);
 
             inputTypes = new InputType[inputOffsets.length];
             inputOptional = new boolean[inputOffsets.length];
@@ -223,7 +187,7 @@ public final class NodeClass extends FieldIntrospection {
                 inputOptional[i] = scanner.optionalInputs.contains(inputOffsets[i]);
             }
             directSuccessorCount = scanner.successorOffsets.size();
-            successorOffsets = sortedOffsets(false, pfo, scanner.fieldNames, scanner.successorOffsets, scanner.successorListOffsets);
+            successorOffsets = sortedOffsets(scanner.successorOffsets, scanner.successorListOffsets);
 
             dataOffsets = sortedLongCopy(scanner.dataOffsets);
             dataTypes = new Class[dataOffsets.length];
@@ -296,20 +260,6 @@ public final class NodeClass extends FieldIntrospection {
             this.iterableIds = null;
         }
         nodeIterableCount = Debug.metric("NodeIterable_%s", shortName);
-    }
-
-    private PositionFieldOrder lookupPositionFieldOrder(Class<?> clazz) throws GraalInternalError {
-        if (USE_GENERATED_NODES && !isAbstract(clazz.getModifiers()) && !isLeafNode) {
-            try (TimerCloseable t = Init_PositionFieldOrderLoad.start()) {
-                String name = clazz.getName().replace('$', '_') + "Gen$FieldOrder";
-                try {
-                    return (PositionFieldOrder) Class.forName(name, true, getClazz().getClassLoader()).newInstance();
-                } catch (Exception e) {
-                    throw new GraalInternalError("Could not find generated class " + name + " for " + getClazz());
-                }
-            }
-        }
-        return null;
     }
 
     /**
@@ -999,9 +949,6 @@ public final class NodeClass extends FieldIntrospection {
     }
 
     public Node get(Node node, Position pos) {
-        if (Node.USE_GENERATED_NODES) {
-            return node.getNodeAt(pos);
-        }
         long offset = pos.isInput() ? inputOffsets[pos.getIndex()] : successorOffsets[pos.getIndex()];
         if (pos.getSubIndex() == NOT_ITERABLE) {
             return getNode(node, offset);
@@ -1180,11 +1127,6 @@ public final class NodeClass extends FieldIntrospection {
     }
 
     public void set(Node node, Position pos, Node x) {
-        if (Node.USE_GENERATED_NODES) {
-            node.updateNodeAt(pos, x);
-            return;
-        }
-
         long offset = pos.isInput() ? inputOffsets[pos.getIndex()] : successorOffsets[pos.getIndex()];
         if (pos.getSubIndex() == NOT_ITERABLE) {
             Node old = getNode(node, offset);
@@ -1209,10 +1151,6 @@ public final class NodeClass extends FieldIntrospection {
     }
 
     public void initializePosition(Node node, Position pos, Node x) {
-        if (Node.USE_GENERATED_NODES) {
-            node.initializeNodeAt(pos, x);
-            return;
-        }
         long offset = pos.isInput() ? inputOffsets[pos.getIndex()] : successorOffsets[pos.getIndex()];
         if (pos.getSubIndex() == NOT_ITERABLE) {
             assert x == null || fieldTypes.get((pos.isInput() ? inputOffsets : successorOffsets)[pos.getIndex()]).isAssignableFrom(x.getClass()) : this + ".set(node, pos, " + x + ")";

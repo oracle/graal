@@ -189,8 +189,6 @@ public abstract class Node implements Cloneable, Formattable {
         return graph;
     }
 
-    private static final boolean USE_GENERATED_NODE_ITERATORS = Boolean.getBoolean("graal.useGeneratedNodeIterators");
-
     /**
      * Returns an {@link NodeClassIterable iterable} which can be used to traverse all non-null
      * input edges of this node.
@@ -198,12 +196,6 @@ public abstract class Node implements Cloneable, Formattable {
      * @return an {@link NodeClassIterable iterable} for all non-null input edges.
      */
     public NodeClassIterable inputs() {
-        if (USE_GENERATED_NODES) {
-            if (!USE_GENERATED_NODE_ITERATORS) {
-                return new NodeRefIterable(this, true);
-            }
-            return inputsV2();
-        }
         return getNodeClass().getInputIterable(this);
     }
 
@@ -214,12 +206,6 @@ public abstract class Node implements Cloneable, Formattable {
      * @return an {@link NodeClassIterable iterable} for all non-null successor edges.
      */
     public NodeClassIterable successors() {
-        if (USE_GENERATED_NODES) {
-            if (!USE_GENERATED_NODE_ITERATORS) {
-                return new NodeRefIterable(this, false);
-            }
-            return successorsV2();
-        }
         return getNodeClass().getSuccessorIterable(this);
     }
 
@@ -1006,156 +992,5 @@ public abstract class Node implements Cloneable, Formattable {
                 }
             }
         }
-    }
-
-    // NEW API IMPLEMENTED BY GENERATED METHODS - NOT YET USED
-
-    public NodeClassIterable inputsV2() {
-        return NodeClassIterable.Empty;
-    }
-
-    /**
-     * Determines if this node's inputs contain a given node.
-     *
-     * @param other
-     */
-    public boolean inputsContains(Node other) {
-        return false;
-    }
-
-    /**
-     * Determines if this node's successors contain a given node.
-     *
-     * @param other
-     */
-    public boolean successorsContains(Node other) {
-        return false;
-    }
-
-    public NodeClassIterable successorsV2() {
-        return NodeClassIterable.Empty;
-    }
-
-    public Collection<Position> getFirstLevelInputs() {
-        return Collections.emptyList();
-    }
-
-    public Collection<Position> getFirstLevelSuccessors() {
-        return Collections.emptyList();
-    }
-
-    /**
-     * Gets an input or successor of this node at a given position.
-     *
-     * @param pos
-     */
-    public Node getNodeAt(Position pos) {
-        throw new NoSuchElementException();
-    }
-
-    /**
-     * Gets the number of {@link Node} and {@link NodeList} fields in this node that are
-     * {@link Input}s or {@link OptionalInput}s.
-     *
-     * @return {@code L << 16 | N} where {@code N} is the number of {@link Node} fields and
-     *         {@code L} is the number of {@link NodeList} fields
-     */
-    public int getInputsCount() {
-        return 0;
-    }
-
-    /**
-     * Gets the number of {@link Node} and {@link NodeList} fields in this node that are
-     * {@link Successor}s.
-     *
-     * @return {@code L << 16 | N} where {@code N} is the number of {@link Node} fields and
-     *         {@code L} is the number of {@link NodeList} fields
-     */
-    public int getSuccessorsCount() {
-        return 0;
-    }
-
-    /**
-     * Gets an input of this node at a given index.
-     *
-     * @param index index of an input {@link Node} field. This value must be in the range of the
-     *            number of {@link Node} fields returned by {@link #getInputsCount()}.
-     */
-    public Node getInputNodeAt(int index) {
-        throw new NoSuchElementException();
-    }
-
-    /**
-     * Gets a successor of this node at a given index.
-     *
-     * @param index index of a successor {@link Node} field. This value must be in the range of the
-     *            number of {@link Node} fields returned by {@link #getSuccessorsCount()}.
-     */
-    public Node getSuccessorNodeAt(int index) {
-        throw new NoSuchElementException();
-    }
-
-    /**
-     * Gets an input list at a given index.
-     *
-     * @param index index of an input {@link NodeList} field. This value must be in the range of the
-     *            number of {@link NodeList} fields returned by {@link #getInputsCount()}.
-     */
-    public NodeList<? extends Node> getInputNodeListAt(int index) {
-        throw new NoSuchElementException();
-    }
-
-    /**
-     * Gets a successor list at a given index.
-     *
-     * @param index index of a successor {@link NodeList} field. This value must be in the range of
-     *            the number of {@link NodeList} fields returned by {@link #getSuccessorsCount()}.
-     */
-    public NodeList<? extends Node> getSuccessorNodeListAt(int index) {
-        throw new NoSuchElementException();
-    }
-
-    /**
-     * Updates an input or successor of this node at a given position. The existing, non-null input
-     * or successor at {@code position} is notified of the change via
-     * {@link #updateUsages(Node, Node)} or {@link #updatePredecessor(Node, Node)}.
-     *
-     * @param position
-     * @param value
-     */
-    public void updateNodeAt(Position position, Node value) {
-        throw new NoSuchElementException();
-    }
-
-    /**
-     * Sets an input or successor of this node at a given position without notifying the existing
-     * input or successor at {@code position} of the change.
-     *
-     * @param position
-     * @param value
-     */
-    public void initializeNodeAt(Position position, Node value) {
-        throw new NoSuchElementException();
-    }
-
-    /**
-     * @param pos
-     */
-    public InputType getInputTypeAt(Position pos) {
-        throw new NoSuchElementException();
-    }
-
-    /**
-     * @param pos
-     */
-    public String getNameOf(Position pos) {
-        throw new NoSuchElementException();
-    }
-
-    /**
-     * @param pos
-     */
-    public boolean isOptionalInputAt(Position pos) {
-        throw new NoSuchElementException();
     }
 }

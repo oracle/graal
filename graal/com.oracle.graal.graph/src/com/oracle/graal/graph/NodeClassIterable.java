@@ -40,15 +40,4 @@ public interface NodeClassIterable extends NodeIterable<Node> {
      * Returns an iterator that produces all values, including null values.
      */
     NodePosIterator withNullIterator();
-
-    NodeClassIterable Empty = new NodeClassIterable() {
-
-        public NodeRefIterator withNullIterator() {
-            return NodeRefIterator.Empty;
-        }
-
-        public NodeRefIterator iterator() {
-            return NodeRefIterator.Empty;
-        }
-    };
 }

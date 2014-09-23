@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.nodeinfo.processor;
 
-import static com.oracle.graal.nodeinfo.processor.GraphNodeGenerator.NodeRefsType.*;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.*;
 import static java.util.Arrays.*;
 import static javax.lang.model.element.Modifier.*;
@@ -47,7 +46,7 @@ import com.oracle.truffle.dsl.processor.java.model.*;
  */
 public class GraphNodeGenerator {
 
-    private static final boolean GENERATE_ASSERTIONS = false;
+    @SuppressWarnings("unused") private static final boolean GENERATE_ASSERTIONS = false;
 
     private final GraphNodeProcessor env;
     private final Types types;
@@ -58,10 +57,10 @@ public class GraphNodeGenerator {
     private final TypeElement Successor;
 
     final TypeElement Node;
-    private final TypeElement NodeList;
+    @SuppressWarnings("unused") private final TypeElement NodeList;
     private final TypeElement NodeInputList;
     private final TypeElement NodeSuccessorList;
-    private final TypeElement Position;
+    @SuppressWarnings("unused") private final TypeElement Position;
 
     private final List<VariableElement> inputFields = new ArrayList<>();
     private final List<VariableElement> inputListFields = new ArrayList<>();
@@ -333,53 +332,7 @@ public class GraphNodeGenerator {
             boolean hasSuccessors = !successorFields.isEmpty() || !successorListFields.isEmpty();
 
             if (hasInputs || hasSuccessors) {
-                createGetNodeAtMethod();
-                createGetInputTypeAtMethod();
-                createGetNameOfMethod();
-                createUpdateOrInitializeNodeAtMethod(false);
-                createUpdateOrInitializeNodeAtMethod(true);
                 createIsLeafNodeMethod();
-                createPositionAccessibleFieldOrderClass(packageElement);
-
-                if (!inputListFields.isEmpty() || !successorListFields.isEmpty()) {
-                    createGetNodeListAtPositionMethod();
-                    createSetNodeListAtMethod();
-                }
-            }
-
-            if (hasInputs) {
-                createIsOptionalInputAtMethod();
-                createGetFirstLevelPositionsMethod(Inputs, inputFields, inputListFields);
-
-                createContainsMethod(Inputs, inputFields, inputListFields);
-                createIterableMethod(Inputs);
-
-                CodeTypeElement inputsIteratorClass = createIteratorClass(Inputs, packageElement, inputFields, inputListFields);
-                createAllIteratorClass(Inputs, inputsIteratorClass.asType(), packageElement, inputFields, inputListFields);
-                createWithModCountIteratorClass(Inputs, inputsIteratorClass.asType(), packageElement);
-                createIterableClass(Inputs, packageElement);
-                createGetNodeAtMethod(NodeRefsType.Inputs, inputFields);
-                createCountMethod(NodeRefsType.Inputs, inputFields.size(), inputListFields.size());
-                if (!inputListFields.isEmpty()) {
-                    createGetNodeListAtIndexMethod(NodeRefsType.Inputs, inputListFields);
-                }
-            }
-
-            if (hasSuccessors) {
-                createGetFirstLevelPositionsMethod(Successors, successorFields, successorListFields);
-
-                createContainsMethod(Successors, successorFields, successorListFields);
-                createIterableMethod(Successors);
-
-                CodeTypeElement successorsIteratorClass = createIteratorClass(Successors, packageElement, successorFields, successorListFields);
-                createAllIteratorClass(Successors, successorsIteratorClass.asType(), packageElement, successorFields, successorListFields);
-                createWithModCountIteratorClass(Successors, successorsIteratorClass.asType(), packageElement);
-                createIterableClass(Successors, packageElement);
-                createGetNodeAtMethod(NodeRefsType.Successors, successorFields);
-                createCountMethod(NodeRefsType.Successors, successorFields.size(), successorListFields.size());
-                if (!successorListFields.isEmpty()) {
-                    createGetNodeListAtIndexMethod(NodeRefsType.Successors, successorListFields);
-                }
             }
         }
         compilationUnit.add(genClass);
@@ -442,6 +395,7 @@ public class GraphNodeGenerator {
         genClassName = null;
     }
 
+    @SuppressWarnings("unused")
     private CodeVariableElement addParameter(CodeExecutableElement method, TypeMirror type, String name) {
         return addParameter(method, type, name, true);
     }
@@ -478,255 +432,6 @@ public class GraphNodeGenerator {
         checkOnlyInGenNode(method);
     }
 
-    private ExecutableElement createIsOptionalInputAtMethod() {
-        CodeExecutableElement method = new CodeExecutableElement(modifiers(PUBLIC), getType(boolean.class), "isOptionalInputAt");
-        addParameter(method, Position.asType(), "pos");
-        CodeTreeBuilder b = method.createBuilder();
-        if (GENERATE_ASSERTIONS) {
-            b.startAssert().string("pos.isInput()").end();
-        }
-        if (!optionalInputs.isEmpty()) {
-            b.startSwitch().string("pos.getIndex()").end().startBlock();
-            int index = 0;
-            for (VariableElement f : concat(inputFields, inputListFields)) {
-                if (optionalInputs.contains(f)) {
-                    b.startCase().string(String.valueOf(index)).end();
-                }
-                index++;
-            }
-            b.startStatement().string("return true").end();
-            b.end();
-        }
-        b.startReturn().string("false").end();
-        genClass.add(method);
-        checkOnlyInGenNode(method);
-        return method;
-    }
-
-    private ExecutableElement createGetFirstLevelPositionsMethod(NodeRefsType nodeRefsType, List<VariableElement> nodeFields, List<VariableElement> nodeListFields) {
-        DeclaredType collectionOfPosition = types.getDeclaredType((TypeElement) types.asElement(getType(Collection.class)), Position.asType());
-        CodeExecutableElement method = new CodeExecutableElement(modifiers(PUBLIC), collectionOfPosition, "getFirstLevel" + nodeRefsType);
-        CodeTreeBuilder b = method.createBuilder();
-        b.startReturn().startNew(getTypeElement("com.oracle.graal.graph.FirstLevelPositionCollection").asType());
-        b.string(String.valueOf(nodeFields.size()));
-        b.string(String.valueOf(nodeListFields.size()));
-        b.string(String.valueOf(nodeRefsType == NodeRefsType.Inputs));
-        b.end().end();
-        genClass.add(method);
-        checkOnlyInGenNode(method);
-        return method;
-    }
-
-    private CodeTypeElement createIteratorClass(NodeRefsType nodeRefsType, PackageElement packageElement, List<VariableElement> nodeFields, List<VariableElement> nodeListFields) {
-        String name = nodeRefsType + "Iterator";
-        CodeTypeElement cls = new CodeTypeElement(modifiers(PRIVATE), ElementKind.CLASS, packageElement, name);
-        cls.setSuperClass(getType("com.oracle.graal.graph.NodeRefIterator"));
-
-        // Constructor
-        CodeExecutableElement ctor = new CodeExecutableElement(Collections.emptySet(), null, name);
-        CodeTreeBuilder b = ctor.createBuilder();
-        b.startStatement().startSuperCall();
-        b.string(genClassName, ".this");
-        b.string(String.valueOf(nodeFields.size()));
-        b.string(String.valueOf(nodeListFields.size()));
-        b.string(String.valueOf(nodeRefsType == NodeRefsType.Inputs));
-        b.end().end();
-        cls.add(ctor);
-
-        // Methods overriding those in NodeRefIterator
-        createGetFieldMethod(cls, nodeFields, Node.asType(), "getNode");
-        createGetFieldMethod(cls, nodeListFields, types.getDeclaredType(NodeList, types.getWildcardType(Node.asType(), null)), "getNodeList");
-        genClass.add(cls);
-        return cls;
-    }
-
-    private void createContainsMethod(NodeRefsType nodeRefsType, List<VariableElement> nodeFields, List<VariableElement> nodeListFields) {
-        CodeExecutableElement method = new CodeExecutableElement(modifiers(PUBLIC, FINAL), getType(boolean.class), nodeRefsType.name().toLowerCase() + "Contains");
-        addParameter(method, Node.asType(), "n");
-        CodeTreeBuilder b = method.createBuilder();
-        for (VariableElement f : nodeFields) {
-            b.startIf().string("n == " + f).end().startBlock();
-            b.startStatement().string("return true").end();
-            b.end();
-        }
-        for (VariableElement f : nodeListFields) {
-            b.startIf().string(f + ".contains(n)").end().startBlock();
-            b.startStatement().string("return true").end();
-            b.end();
-        }
-        b.startStatement().string("return false").end();
-        genClass.add(method);
-        checkOnlyInGenNode(method);
-    }
-
-    private static final String API_TAG = "V2";
-
-    private void createIterableMethod(NodeRefsType nodeRefsType) {
-        CodeExecutableElement method = new CodeExecutableElement(modifiers(PUBLIC, FINAL), getType("com.oracle.graal.graph.NodeClassIterable"), (nodeRefsType == Inputs ? "inputs" : "successors") +
-                        API_TAG);
-        CodeTreeBuilder b = method.createBuilder();
-        b.startStatement().string("return new " + nodeRefsType + "Iterable()").end();
-        genClass.add(method);
-        checkOnlyInGenNode(method);
-    }
-
-    private void createGetNodeAtMethod() {
-        CodeExecutableElement method = new CodeExecutableElement(modifiers(PUBLIC, FINAL), Node.asType(), "getNodeAt");
-        addParameter(method, Position.asType(), "pos");
-        CodeTreeBuilder b = method.createBuilder();
-        b.startIf().string("pos.isInput()").end().startBlock();
-        createGetNodeAt(b, inputFields, inputListFields);
-        b.end();
-        b.startElseBlock();
-        createGetNodeAt(b, successorFields, successorListFields);
-        b.end();
-        genClass.add(method);
-        checkOnlyInGenNode(method);
-    }
-
-    private void createCountMethod(NodeRefsType nodeRefsType, int nodesCount, int nodeListsCount) {
-        CodeExecutableElement method = new CodeExecutableElement(modifiers(PUBLIC, FINAL), getType(int.class), "get" + nodeRefsType + "Count");
-        CodeTreeBuilder b = method.createBuilder();
-
-        b.startStatement().string("return " + (nodeListsCount << 16 | nodesCount), " /* (" + nodeListsCount + " << 16 | " + nodesCount + ") */").end();
-        genClass.add(method);
-        checkOnlyInGenNode(method);
-    }
-
-    private void createGetNodeAtMethod(NodeRefsType nodeRefsType, List<VariableElement> nodes) {
-        CodeExecutableElement method = new CodeExecutableElement(modifiers(PUBLIC, FINAL), Node.asType(), "get" + nodeRefsType.singular() + "NodeAt");
-        addParameter(method, getType(int.class), "index");
-        CodeTreeBuilder b = method.createBuilder();
-        boolean justOne = nodes.size() == 1;
-        if (!justOne) {
-            b.startSwitch().string("index").end().startBlock();
-        } else if (GENERATE_ASSERTIONS) {
-            b.startAssert().string("index == 0").end();
-        }
-        int index = 0;
-        for (VariableElement f : nodes) {
-            if (!justOne) {
-                b.startCase().string(String.valueOf(index)).end();
-            }
-            b.startReturn();
-            if (!isAssignableWithErasure(f, Node)) {
-                b.cast(((DeclaredType) Node.asType()).asElement().getSimpleName().toString());
-            }
-            b.string(genClassName + ".this." + f.getSimpleName());
-            b.end();
-            index++;
-        }
-        if (!justOne) {
-            b.end();
-            b.startThrow().startNew(getType(NoSuchElementException.class)).end().end();
-        }
-        genClass.add(method);
-        checkOnlyInGenNode(method);
-    }
-
-    private void createGetNodeListAtIndexMethod(NodeRefsType nodeRefsType, List<VariableElement> nodeLists) {
-        CodeExecutableElement method = new CodeExecutableElement(modifiers(PUBLIC, FINAL), types.getDeclaredType(NodeList, types.getWildcardType(Node.asType(), null)), "get" +
-                        nodeRefsType.singular() + "NodeListAt");
-        addParameter(method, getType(int.class), "index");
-        CodeTreeBuilder b = method.createBuilder();
-
-        boolean justOne = nodeLists.size() == 1;
-        if (!justOne) {
-            b.startSwitch().string("index").end().startBlock();
-        } else if (GENERATE_ASSERTIONS) {
-            b.startAssert().string("index == 0").end();
-        }
-        int index = 0;
-        for (VariableElement f : nodeLists) {
-            if (!justOne) {
-                b.startCase().string(String.valueOf(index)).end();
-            }
-            b.startReturn();
-            b.string(genClassName + ".this." + f.getSimpleName());
-            b.end();
-            index++;
-        }
-        if (!justOne) {
-            b.end();
-            b.startThrow().startNew(getType(NoSuchElementException.class)).end().end();
-        }
-        genClass.add(method);
-        checkOnlyInGenNode(method);
-    }
-
-    private void createGetNodeListAtPositionMethod() {
-        CodeExecutableElement method = new CodeExecutableElement(modifiers(PUBLIC, FINAL), types.getDeclaredType(NodeList, types.getWildcardType(Node.asType(), null)), "getNodeListAt");
-        addParameter(method, Position.asType(), "pos");
-        CodeTreeBuilder b = method.createBuilder();
-        b.startIf().string("pos.isInput()").end().startBlock();
-        createGetNodeListAt(b, inputFields, inputListFields);
-        b.end();
-        b.startElseBlock();
-        createGetNodeListAt(b, successorFields, successorListFields);
-        b.end();
-        genClass.add(method);
-        checkOnlyInGenNode(method);
-    }
-
-    private void createSetNodeListAtMethod() {
-        CodeExecutableElement method = new CodeExecutableElement(modifiers(PUBLIC, FINAL), getType(void.class), "setNodeListAt");
-
-        DeclaredType suppress = (DeclaredType) getType(SuppressWarnings.class);
-        CodeAnnotationMirror suppressMirror = new CodeAnnotationMirror(suppress);
-        suppressMirror.setElementValue(suppressMirror.findExecutableElement("value"), new CodeAnnotationValue("unchecked"));
-        method.getAnnotationMirrors().add(suppressMirror);
-
-        addParameter(method, Position.asType(), "pos");
-        addParameter(method, types.getDeclaredType(NodeList, types.getWildcardType(Node.asType(), null)), "list");
-        CodeTreeBuilder b = method.createBuilder();
-        b.startIf().string("pos.isInput()").end().startBlock();
-        createSetNodeListAt(b, inputFields, inputListFields);
-        b.end();
-        b.startElseBlock();
-        createSetNodeListAt(b, successorFields, successorListFields);
-        b.end();
-        genClass.add(method);
-        checkOnlyInGenNode(method);
-    }
-
-    private void createGetNameOfMethod() {
-        CodeExecutableElement method = new CodeExecutableElement(modifiers(PUBLIC, FINAL), getType(String.class), "getNameOf");
-        addParameter(method, Position.asType(), "pos");
-        CodeTreeBuilder b = method.createBuilder();
-
-        b.startIf().string("pos.isInput()").end().startBlock();
-        createGetNameOf(b, inputFields, inputListFields);
-        b.end();
-        b.startElseBlock();
-        createGetNameOf(b, successorFields, successorListFields);
-        b.end();
-        genClass.add(method);
-        checkOnlyInGenNode(method);
-    }
-
-    private void createGetInputTypeAtMethod() {
-        CodeExecutableElement method = new CodeExecutableElement(modifiers(PUBLIC, FINAL), getType(InputType.class), "getInputTypeAt");
-        addParameter(method, Position.asType(), "pos");
-        CodeTreeBuilder b = method.createBuilder();
-        if (GENERATE_ASSERTIONS) {
-            b.startAssert().string("pos.isInput()").end();
-        }
-        boolean hasNodes = !inputFields.isEmpty();
-        boolean hasNodeLists = !inputListFields.isEmpty();
-        if (hasNodeLists || hasNodes) {
-            int index = 0;
-            for (VariableElement f : concat(inputFields, inputListFields)) {
-                b.startIf().string("pos.getIndex() == " + index).end().startBlock();
-                b.startStatement().string("return ").staticReference(getType(InputType.class), inputTypes.get(f).getSimpleName().toString()).end();
-                b.end();
-                index++;
-            }
-        }
-        b.startThrow().startNew(getType(NoSuchElementException.class)).end().end();
-        genClass.add(method);
-        checkOnlyInGenNode(method);
-    }
-
     private boolean hidesField(String name) {
         for (VariableElement field : concat(inputFields, inputListFields, successorFields, successorListFields, dataFields)) {
             if (field.getSimpleName().contentEquals(name)) {
@@ -734,143 +439,5 @@ public class GraphNodeGenerator {
             }
         }
         return false;
-    }
-
-    private void createUpdateOrInitializeNodeAtMethod(boolean isInitialization) {
-        CodeExecutableElement method = new CodeExecutableElement(modifiers(PUBLIC, FINAL), getType(void.class), (isInitialization ? "initialize" : "update") + "NodeAt");
-        addParameter(method, Position.asType(), "pos");
-        addParameter(method, Node.asType(), "newValue");
-        CodeTreeBuilder b = method.createBuilder();
-        b.startIf().string("pos.isInput()").end().startBlock();
-        createUpdateOrInitializeNodeAt(b, inputFields, inputListFields, isInitialization);
-        b.end();
-        b.startElseBlock();
-        createUpdateOrInitializeNodeAt(b, successorFields, successorListFields, isInitialization);
-        b.end();
-        genClass.add(method);
-        checkOnlyInGenNode(method);
-    }
-
-    private void createGetNodeAt(CodeTreeBuilder b, List<VariableElement> nodes, List<VariableElement> nodeLists) {
-        boolean hasNodes = !nodes.isEmpty();
-        boolean hasNodeLists = !nodeLists.isEmpty();
-        if (!hasNodeLists && !hasNodes) {
-            b.startThrow().startNew(getType(NoSuchElementException.class)).end().end();
-        } else {
-            if (hasNodes) {
-                if (!hasNodeLists) {
-                    if (GENERATE_ASSERTIONS) {
-                        b.startAssert().string("pos.getSubIndex() == NOT_ITERABLE").end();
-                    }
-                } else {
-                    b.startIf().string("pos.getSubIndex() == NOT_ITERABLE").end().startBlock();
-                }
-                b.declaration("int", "at", "pos.getIndex()");
-                createGetFieldCases(b, nodes, Node.asType(), null);
-                if (hasNodeLists) {
-                    b.end();
-                }
-            }
-
-            if (hasNodeLists) {
-                if (!hasNodes) {
-                    if (GENERATE_ASSERTIONS) {
-                        b.startAssert().string("pos.getSubIndex() != NOT_ITERABLE").end();
-                    }
-                } else {
-                    b.startElseBlock();
-                }
-                b.declaration("int", "at", "pos.getIndex() - " + nodes.size());
-                createGetFieldCases(b, nodeLists, Node.asType(), ".get(pos.getSubIndex())");
-                if (hasNodes) {
-                    b.end();
-                }
-            }
-        }
-    }
-
-    private void createGetNodeListAt(CodeTreeBuilder b, List<VariableElement> nodes, List<VariableElement> nodeLists) {
-        boolean hasNodeLists = !nodeLists.isEmpty();
-        if (!hasNodeLists) {
-            b.startThrow().startNew(getType(NoSuchElementException.class)).end().end();
-        } else {
-            if (GENERATE_ASSERTIONS) {
-                b.startAssert().string("pos.getSubIndex() == NODE_LIST").end();
-            }
-            b.declaration("int", "at", "pos.getIndex() - " + nodes.size());
-            createGetFieldCases(b, nodeLists, Node.asType(), "");
-        }
-    }
-
-    private void createSetNodeListAt(CodeTreeBuilder b, List<VariableElement> nodes, List<VariableElement> nodeLists) {
-        boolean hasNodeLists = !nodeLists.isEmpty();
-        if (!hasNodeLists) {
-            b.startThrow().startNew(getType(NoSuchElementException.class)).end().end();
-        } else {
-            if (GENERATE_ASSERTIONS) {
-                b.startAssert().string("pos.getSubIndex() == NODE_LIST").end();
-            }
-            b.declaration("int", "at", "pos.getIndex() - " + nodes.size());
-            createSetNodeListAtCases(b, nodeLists, Node.asType(), "");
-        }
-    }
-
-    private void createGetNameOf(CodeTreeBuilder b, List<VariableElement> nodes, List<VariableElement> nodeLists) {
-        boolean hasNodes = !nodes.isEmpty();
-        boolean hasNodeLists = !nodeLists.isEmpty();
-        if (hasNodeLists || hasNodes) {
-            int index = 0;
-            for (VariableElement f : nodes) {
-                b.startIf().string("pos.getIndex() == " + index).end().startBlock();
-                b.startStatement().string("return \"" + f.getSimpleName() + "\"").end();
-                b.end();
-                index++;
-            }
-            for (VariableElement f : nodeLists) {
-                b.startIf().string("pos.getIndex() == " + index).end().startBlock();
-                b.startStatement().string("return \"" + f.getSimpleName() + "\"").end();
-                b.end();
-                index++;
-            }
-        }
-        b.startThrow().startNew(getType(NoSuchElementException.class)).end().end();
-    }
-
-    private void createUpdateOrInitializeNodeAt(CodeTreeBuilder b, List<VariableElement> nodes, List<VariableElement> nodeLists, boolean isInitialization) {
-        boolean hasNodes = !nodes.isEmpty();
-        boolean hasNodeLists = !nodeLists.isEmpty();
-        if (nodes.isEmpty() && nodeLists.isEmpty()) {
-            b.startThrow().startNew(getType(NoSuchElementException.class)).end().end();
-        } else {
-            if (hasNodes) {
-                if (!hasNodeLists) {
-                    if (GENERATE_ASSERTIONS) {
-                        b.startAssert().string("pos.getSubIndex() == NOT_ITERABLE").end();
-                    }
-                } else {
-                    b.startIf().string("pos.getSubIndex() == NOT_ITERABLE").end().startBlock();
-                }
-                b.declaration("int", "at", "pos.getIndex()");
-                createUpdateOrInitializeFieldCases(b, nodes, isInitialization, false);
-                if (hasNodeLists) {
-                    b.end();
-                }
-            }
-
-            if (hasNodeLists) {
-                if (!hasNodes) {
-                    if (GENERATE_ASSERTIONS) {
-                        b.startAssert().string("pos.getSubIndex() != NOT_ITERABLE").end();
-                    }
-                } else {
-                    b.startElseBlock();
-                }
-                b.declaration("int", "at", "pos.getIndex() - " + nodes.size());
-                createUpdateOrInitializeFieldCases(b, nodeLists, isInitialization, true);
-                if (hasNodes) {
-                    b.end();
-                }
-            }
-        }
     }
 }
