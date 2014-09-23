@@ -2,6 +2,7 @@
 
 ## `tip`
 ### Graal
+* Changed name suite specification from `mx/projects.py` to `mx/suite.py`.
 * ...
 
 ### Truffle

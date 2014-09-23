@@ -372,7 +372,7 @@ public final class NodeClass extends FieldIntrospection {
      *
      * <pre>
      *     if (node.getNodeClass().is(BeginNode.class)) { ... }
-     *
+     * 
      *     // Due to generated Node classes, the test below
      *     // is *not* the same as the test above:
      *     if (node.getClass() == BeginNode.class) { ... }
@@ -1021,9 +1021,6 @@ public final class NodeClass extends FieldIntrospection {
     }
 
     public NodeList<?> getNodeList(Node node, Position pos) {
-        if (Node.USE_GENERATED_NODES) {
-            return node.getNodeListAt(pos);
-        }
         long offset = pos.isInput() ? inputOffsets[pos.getIndex()] : successorOffsets[pos.getIndex()];
         assert pos.getSubIndex() == Node.NODE_LIST;
         return getNodeList(node, offset);

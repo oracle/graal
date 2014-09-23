@@ -1116,25 +1116,6 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     /**
-     * Gets an input or successor list at a given position.
-     *
-     * @param position
-     */
-    public NodeList<? extends Node> getNodeListAt(Position position) {
-        throw new NoSuchElementException();
-    }
-
-    /**
-     * Sets an input or successor list at a given position.
-     *
-     * @param position
-     * @param list
-     */
-    public void setNodeListAt(Position position, NodeList<? extends Node> list) {
-        throw new NoSuchElementException();
-    }
-
-    /**
      * Updates an input or successor of this node at a given position. The existing, non-null input
      * or successor at {@code position} is notified of the change via
      * {@link #updateUsages(Node, Node)} or {@link #updatePredecessor(Node, Node)}.
