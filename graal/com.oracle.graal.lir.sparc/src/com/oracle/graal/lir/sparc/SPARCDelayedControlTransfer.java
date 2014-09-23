@@ -27,16 +27,15 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 
 /**
- * This interface can be used for {@link LIRInstruction}s which may provide a delay slot. If a delay
- * slot for this LIRInstruction is requrested, the requester just calls the method
- * {@link #emitForDelay(CompilationResultBuilder, SPARCMacroAssembler)}.
+ * This interface is used for {@link LIRInstruction}s which provide a delay slot for one instruction
+ * from another {@link LIRInstruction}.
  *
- * @see TailDelayedLIRInstruction
+ * @see SPARCTailDelayedLIRInstruction
  */
-public interface DelaySlotHolder {
+public interface SPARCDelayedControlTransfer {
 
-    DelaySlotHolder DUMMY = new DelaySlotHolder() {
-        public void emitForDelay(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
+    SPARCDelayedControlTransfer DUMMY = new SPARCDelayedControlTransfer() {
+        public void emitControlTransfer(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
             // do nothing
         }
 
@@ -46,6 +45,12 @@ public interface DelaySlotHolder {
         }
     };
 
-    public void emitForDelay(CompilationResultBuilder crb, SPARCMacroAssembler masm);
-
+    /**
+     * This method must be called, to generate the control transfer, but without any Nop in the
+     * delay slot.
+     *
+     * @param crb
+     * @param masm
+     */
+    public void emitControlTransfer(CompilationResultBuilder crb, SPARCMacroAssembler masm);
 }

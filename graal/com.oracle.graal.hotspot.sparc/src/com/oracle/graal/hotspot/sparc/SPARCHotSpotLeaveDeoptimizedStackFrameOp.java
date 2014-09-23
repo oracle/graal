@@ -47,4 +47,9 @@ final class SPARCHotSpotLeaveDeoptimizedStackFrameOp extends SPARCLIRInstruction
 
         new RestoreWindow().emit(masm);
     }
+
+    @Override
+    public boolean leavesRegisterWindow() {
+        return true;
+    }
 }

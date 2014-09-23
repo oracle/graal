@@ -30,6 +30,7 @@ import com.oracle.graal.lir.asm.*;
  * Convenience class to provide SPARCMacroAssembler for the {@link #emitCode} method.
  */
 public abstract class SPARCLIRInstruction extends LIRInstruction {
+    protected SPARCDelayedControlTransfer delayedControlTransfer = SPARCDelayedControlTransfer.DUMMY;
 
     @Override
     public final void emitCode(CompilationResultBuilder crb) {
@@ -37,4 +38,12 @@ public abstract class SPARCLIRInstruction extends LIRInstruction {
     }
 
     public abstract void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm);
+
+    public boolean leavesRegisterWindow() {
+        return false;
+    }
+
+    public void setDelayedControlTransfer(SPARCDelayedControlTransfer holder) {
+        this.delayedControlTransfer = holder;
+    }
 }

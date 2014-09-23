@@ -53,7 +53,6 @@ import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.sparc.*;
-import com.oracle.graal.lir.sparc.SPARCCall.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.sparc.*;
@@ -209,7 +208,7 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
 
     @Override
     public void emitCode(CompilationResultBuilder crb, LIR lir, ResolvedJavaMethod installedCodeOwner) {
-        fixupDelayedInstructions(lir);
+        stuffDelayedControlTransfers(lir);
         SPARCMacroAssembler masm = (SPARCMacroAssembler) crb.asm;
         FrameMap frameMap = crb.frameMap;
         RegisterConfig regConfig = frameMap.registerConfig;
@@ -264,82 +263,105 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
         }
     }
 
-    private static void fixupDelayedInstructions(LIR l) {
+    /**
+     * Fix-up over whole LIR.
+     *
+     * @see #stuffDelayedControlTransfers(LIR, AbstractBlock)
+     * @param l
+     */
+    private static void stuffDelayedControlTransfers(LIR l) {
         for (AbstractBlock<?> b : l.codeEmittingOrder()) {
-            fixupDelayedInstructions(l, b);
+            stuffDelayedControlTransfers(l, b);
         }
     }
 
-    private static void fixupDelayedInstructions(LIR l, AbstractBlock<?> block) {
-        TailDelayedLIRInstruction lastDelayable = null;
-        for (LIRInstruction inst : l.getLIRforBlock(block)) {
-            if (lastDelayable != null && inst instanceof DelaySlotHolder) {
-                if (isDelayable(inst, (LIRInstruction) lastDelayable)) {
-                    lastDelayable.setDelaySlotHolder((DelaySlotHolder) inst);
+    /**
+     * Tries to put DelayedControlTransfer instructions and DelayableLIRInstructions together. Also
+     * it tries to move the DelayedLIRInstruction to the DelayedControlTransfer instruction, if
+     * possible.
+     */
+    private static void stuffDelayedControlTransfers(LIR l, AbstractBlock<?> block) {
+        List<LIRInstruction> instructions = l.getLIRforBlock(block);
+        if (instructions.size() >= 2) {
+            LIRDependencyAccumulator acc = new LIRDependencyAccumulator();
+            SPARCDelayedControlTransfer delayedTransfer = null;
+            int delayTransferPosition = -1;
+            for (int i = instructions.size() - 1; i >= 0; i--) {
+                LIRInstruction inst = instructions.get(i);
+                boolean adjacent = delayTransferPosition - i == 1;
+
+                if ((!adjacent && inst.hasState()) || inst.destroysCallerSavedRegisters() || leavesRegisterWindow(inst)) {
+                    delayedTransfer = null;
                 }
-                lastDelayable = null; // We must not pull over other delay slot holder.
-            } else if (inst instanceof TailDelayedLIRInstruction) {
-                lastDelayable = (TailDelayedLIRInstruction) inst;
-            } else {
-                lastDelayable = null;
+                if (inst instanceof SPARCDelayedControlTransfer) {
+                    delayedTransfer = (SPARCDelayedControlTransfer) inst;
+                    acc.start(inst);
+                    delayTransferPosition = i;
+                } else if (delayedTransfer != null) {
+                    boolean overlap = acc.add(inst);
+                    if (inst instanceof SPARCTailDelayedLIRInstruction && !overlap) {
+                        // We have found a non overlapping LIR instruction which can be delayed
+                        ((SPARCTailDelayedLIRInstruction) inst).setDelayedControlTransfer(delayedTransfer);
+                        delayedTransfer = null;
+                        if (!adjacent) {
+                            // If not adjacent, we make it adjacent
+                            instructions.remove(i);
+                            instructions.add(delayTransferPosition - 1, inst);
+                        }
+                    }
+                }
             }
         }
     }
 
-    public static boolean isDelayable(final LIRInstruction delaySlotHolder, final LIRInstruction other) {
-        final Set<Value> delaySlotHolderInputs = new HashSet<>(2);
-        final Set<LIRFrameState> otherFrameStates = new HashSet<>(2);
-        other.forEachState(new InstructionStateProcedure() {
+    private static boolean leavesRegisterWindow(LIRInstruction inst) {
+        return inst instanceof SPARCLIRInstruction && ((SPARCLIRInstruction) inst).leavesRegisterWindow();
+    }
+
+    /**
+     * Accumulates inputs/outputs/temp/alive in a set along we walk back the LIRInstructions and
+     * detects, if there is any overlap. In this way LIRInstructions can be detected, which can be
+     * moved nearer to the DelayedControlTransfer instruction.
+     */
+    private static class LIRDependencyAccumulator {
+        private final Set<Object> inputs = new HashSet<>(10);
+        private boolean overlap = false;
+
+        private final InstructionValueConsumer valueConsumer = new InstructionValueConsumer() {
             @Override
-            protected void doState(LIRInstruction instruction, LIRFrameState state) {
-                otherFrameStates.add(state);
+            protected void visitValue(LIRInstruction instruction, Value value) {
+                Object valueObject = value;
+                if (isRegister(value)) { // Canonicalize registers
+                    valueObject = asRegister(value);
+                }
+                if (!inputs.add(valueObject)) {
+                    overlap = true;
+                }
             }
-        });
-        int frameStatesBefore = otherFrameStates.size();
-        delaySlotHolder.forEachState(new InstructionStateProcedure() {
-            @Override
-            protected void doState(LIRInstruction instruction, LIRFrameState state) {
-                otherFrameStates.add(state);
-            }
-        });
-        if (frameStatesBefore != otherFrameStates.size() && otherFrameStates.size() >= 2) {
-            // both have framestates, the instruction is not delayable
-            return false;
+        };
+
+        public void start(LIRInstruction initial) {
+            inputs.clear();
+            overlap = false;
+            initial.visitEachInput(valueConsumer);
+            initial.visitEachTemp(valueConsumer);
+            initial.visitEachAlive(valueConsumer);
         }
-        // Direct calls do not have dependencies to data before
-        if (delaySlotHolder instanceof DirectCallOp) {
-            return true;
+
+        /**
+         * Adds the inputs of lir instruction to the accumulator and returns, true if there was any
+         * overlap of parameters.
+         *
+         * @param inst
+         * @return true if an overlap was found
+         */
+        public boolean add(LIRInstruction inst) {
+            overlap = false;
+            inst.visitEachOutput(valueConsumer);
+            inst.visitEachTemp(valueConsumer);
+            inst.visitEachInput(valueConsumer);
+            inst.visitEachAlive(valueConsumer);
+            return overlap;
         }
-        delaySlotHolder.visitEachInput(new InstructionValueConsumer() {
-            @Override
-            protected void visitValue(LIRInstruction instruction, Value value) {
-                delaySlotHolderInputs.add(value);
-            }
-        });
-        delaySlotHolder.visitEachTemp(new InstructionValueConsumer() {
-            @Override
-            protected void visitValue(LIRInstruction instruction, Value value) {
-                delaySlotHolderInputs.add(value);
-            }
-        });
-        if (delaySlotHolderInputs.size() == 0) {
-            return true;
-        }
-        final Set<Value> otherOutputs = new HashSet<>();
-        other.visitEachOutput(new InstructionValueConsumer() {
-            @Override
-            protected void visitValue(LIRInstruction instruction, Value value) {
-                otherOutputs.add(value);
-            }
-        });
-        other.visitEachTemp(new InstructionValueConsumer() {
-            @Override
-            protected void visitValue(LIRInstruction instruction, Value value) {
-                otherOutputs.add(value);
-            }
-        });
-        int sizeBefore = otherOutputs.size();
-        otherOutputs.removeAll(delaySlotHolderInputs);
-        return otherOutputs.size() == sizeBefore;
     }
 }

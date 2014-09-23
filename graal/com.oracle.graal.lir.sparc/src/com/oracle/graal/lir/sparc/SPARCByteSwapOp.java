@@ -35,13 +35,12 @@ import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.gen.*;
 
 @Opcode("BSWAP")
-public class SPARCByteSwapOp extends SPARCLIRInstruction implements TailDelayedLIRInstruction {
+public class SPARCByteSwapOp extends SPARCLIRInstruction implements SPARCTailDelayedLIRInstruction {
 
     @Def({REG, HINT}) protected Value result;
     @Use({REG}) protected Value input;
     @Temp({REG}) protected Value tempIndex;
     @Use({STACK}) protected StackSlot tmpSlot;
-    private DelaySlotHolder delaySlotLir = DelaySlotHolder.DUMMY;
 
     public SPARCByteSwapOp(LIRGeneratorTool tool, Value result, Value input) {
         this.result = result;
@@ -52,14 +51,14 @@ public class SPARCByteSwapOp extends SPARCLIRInstruction implements TailDelayedL
 
     @Override
     public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-        SPARCMove.move(crb, masm, tmpSlot, input, DelaySlotHolder.DUMMY);
+        SPARCMove.move(crb, masm, tmpSlot, input, SPARCDelayedControlTransfer.DUMMY);
         SPARCAddress addr = (SPARCAddress) crb.asAddress(tmpSlot);
         if (addr.getIndex().equals(Register.None)) {
             Register tempReg = ValueUtil.asLongReg(tempIndex);
             new SPARCMacroAssembler.Setx(addr.getDisplacement(), tempReg, false).emit(masm);
             addr = new SPARCAddress(addr.getBase(), tempReg);
         }
-        delaySlotLir.emitForDelay(crb, masm);
+        delayedControlTransfer.emitControlTransfer(crb, masm);
         switch (input.getKind()) {
             case Int:
                 new SPARCAssembler.Lduwa(addr.getBase(), addr.getIndex(), asIntReg(result), Asi.ASI_PRIMARY_LITTLE).emit(masm);
@@ -70,9 +69,5 @@ public class SPARCByteSwapOp extends SPARCLIRInstruction implements TailDelayedL
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }
-    }
-
-    public void setDelaySlotHolder(DelaySlotHolder holder) {
-        this.delaySlotLir = holder;
     }
 }

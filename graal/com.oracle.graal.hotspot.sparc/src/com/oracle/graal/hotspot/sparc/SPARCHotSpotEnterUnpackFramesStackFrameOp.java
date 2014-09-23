@@ -93,4 +93,9 @@ final class SPARCHotSpotEnterUnpackFramesStackFrameOp extends SPARCLIRInstructio
          */
         new Mov(thread, l7).emit(masm);
     }
+
+    @Override
+    public boolean leavesRegisterWindow() {
+        return true;
+    }
 }

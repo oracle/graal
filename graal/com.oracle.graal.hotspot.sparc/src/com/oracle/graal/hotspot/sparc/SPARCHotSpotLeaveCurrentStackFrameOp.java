@@ -50,4 +50,9 @@ final class SPARCHotSpotLeaveCurrentStackFrameOp extends SPARCLIRInstruction {
 
         crb.frameContext.leave(crb);
     }
+
+    @Override
+    public boolean leavesRegisterWindow() {
+        return true;
+    }
 }

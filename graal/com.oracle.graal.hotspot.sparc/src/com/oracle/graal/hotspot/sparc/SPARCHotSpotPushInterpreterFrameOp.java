@@ -75,4 +75,9 @@ final class SPARCHotSpotPushInterpreterFrameOp extends SPARCLIRInstruction {
         // Move frame's new PC into i7
         new Mov(framePcRegister, i7).emit(masm);
     }
+
+    @Override
+    public boolean leavesRegisterWindow() {
+        return true;
+    }
 }

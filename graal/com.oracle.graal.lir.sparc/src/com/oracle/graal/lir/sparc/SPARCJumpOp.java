@@ -29,18 +29,20 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.JumpOp;
 import com.oracle.graal.lir.asm.*;
 
-public class SPARCJumpOp extends JumpOp implements DelaySlotHolder {
+public class SPARCJumpOp extends JumpOp implements SPARCDelayedControlTransfer {
     private boolean emitDone = false;
+    private int delaySlotPosition = -1;
 
     public SPARCJumpOp(LabelRef destination) {
         super(destination);
     }
 
-    public void emitForDelay(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
+    public void emitControlTransfer(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
         assert !emitDone;
         if (!crb.isSuccessorEdge(destination())) {
             new Bpa(destination().label()).emit(masm);
         }
+        delaySlotPosition = masm.position();
         emitDone = true;
     }
 
@@ -52,6 +54,8 @@ public class SPARCJumpOp extends JumpOp implements DelaySlotHolder {
                 new Bpa(destination().label()).emit(masm);
                 new Nop().emit(masm);
             }
+        } else {
+            assert crb.asm.position() - delaySlotPosition == 4;
         }
     }
 }

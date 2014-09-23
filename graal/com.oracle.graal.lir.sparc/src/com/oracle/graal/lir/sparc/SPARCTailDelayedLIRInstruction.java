@@ -25,28 +25,24 @@ package com.oracle.graal.lir.sparc;
 import com.oracle.graal.lir.*;
 
 /**
- * Implementors of this interface are able to place the last instruction to the delay slot of the
- * given {@link DelaySlotHolder}.
+ * Implementors of this interface are able to place its last instruction into the delay slot of a
+ * {@link SPARCDelayedControlTransfer} instruction.
  *
- * This LIR instruction is still emitted in the usual way. But when emitting code for this LIR
- * instruction before the last instruction, it can transfer control over to the delay slot holder
- * LIR instruction, which then can emit code in order to get to the delay slot.
- *
- * Steps for emit delayed code
+ * The implementor has to do following steps to emit code into the delay slot for the
+ * DelayedControlTransfer instruction:
  * <ol>
- * <li>If this instruction contains more than one instruction, emit everything up to the second last
- * instruction.</li>
- * <li>Then call the
- * {@link DelaySlotHolder#emitForDelay(com.oracle.graal.lir.asm.CompilationResultBuilder, com.oracle.graal.asm.sparc.SPARCMacroAssembler)}
- * to let the delay-slot holder emit its code.</li>
+ * <li>Emit everything up to the second last instruction.</li>
+ * <li>Call
+ * {@link SPARCDelayedControlTransfer#emitControlTransfer(com.oracle.graal.lir.asm.CompilationResultBuilder, com.oracle.graal.asm.sparc.SPARCMacroAssembler)}
+ * to let the DelayedControlTransfer instruction emit its own code (But must not stuff the delay
+ * slot with Nop)</li>
  * <li>emit the last instruction for this {@link LIRInstruction}</li>
  * </ol>
  *
  * Note: If this instruction decides not to use the delay slot, it can skip the call of
- * {@link DelaySlotHolder#emitForDelay(com.oracle.graal.lir.asm.CompilationResultBuilder, com.oracle.graal.asm.sparc.SPARCMacroAssembler)}
- * and the code generation will continue without using the delay slot. Nothing other steps are
- * required.
+ * {@link SPARCDelayedControlTransfer#emitControlTransfer(com.oracle.graal.lir.asm.CompilationResultBuilder, com.oracle.graal.asm.sparc.SPARCMacroAssembler)}
+ * . The DelayedControlTransfer instruction will emit the code just with Nop in the delay slot.
  */
-public interface TailDelayedLIRInstruction {
-    public void setDelaySlotHolder(DelaySlotHolder holder);
+public interface SPARCTailDelayedLIRInstruction {
+    public void setDelayedControlTransfer(SPARCDelayedControlTransfer holder);
 }

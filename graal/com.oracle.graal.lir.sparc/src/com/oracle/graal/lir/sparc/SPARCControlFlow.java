@@ -62,7 +62,7 @@ public class SPARCControlFlow {
         }
     }
 
-    public static class CompareBranchOp extends SPARCLIRInstruction implements BlockEndOp, DelaySlotHolder {
+    public static class CompareBranchOp extends SPARCLIRInstruction implements BlockEndOp, SPARCDelayedControlTransfer {
 
         private final SPARCCompare opcode;
         @Use({REG}) protected Value x;
@@ -73,6 +73,7 @@ public class SPARCControlFlow {
         protected final Kind kind;
         protected final boolean unorderedIsTrue;
         private boolean emitted = false;
+        private int delaySlotPosition = -1;
         private double trueDestinationProbability;
 
         public CompareBranchOp(SPARCCompare opcode, Value x, Value y, Condition condition, LabelRef trueDestination, LabelRef falseDestination, Kind kind, boolean unorderedIsTrue,
@@ -90,14 +91,18 @@ public class SPARCControlFlow {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
+            if (emitted) { // Only if delayed control transfer is used we must check this
+                assert masm.position() - delaySlotPosition == 4 : "Only one instruction can be stuffed into the delay slot";
+            }
             if (!emitted) {
                 SPARCCompare.emit(crb, masm, opcode, x, y);
                 emitted = emitBranch(crb, masm, true);
             }
+
             assert emitted;
         }
 
-        public void emitForDelay(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
+        public void emitControlTransfer(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
             SPARCCompare.emit(crb, masm, opcode, x, y);
             emitted = emitBranch(crb, masm, false);
         }
@@ -132,6 +137,7 @@ public class SPARCControlFlow {
                 assert actualCondition != null;
                 SPARCControlFlow.emitBranch(masm, actualTarget, actualCondition, cc, predictBranchTaken);
             }
+            delaySlotPosition = masm.position();
             if (withDelayedNop) {
                 new Nop().emit(masm);  // delay slot
             }
@@ -356,13 +362,13 @@ public class SPARCControlFlow {
                             emitBranch(masm, target, condition, CC.Icc, false);
                             break;
                         case Long: {
-                            SPARCMove.move(crb, masm, scratch, keyConstants[index], DelaySlotHolder.DUMMY);
+                            SPARCMove.move(crb, masm, scratch, keyConstants[index], SPARCDelayedControlTransfer.DUMMY);
                             new Cmp(keyRegister, asLongReg(scratch)).emit(masm);
                             emitBranch(masm, target, condition, CC.Xcc, false);
                             break;
                         }
                         case Object: {
-                            SPARCMove.move(crb, masm, scratch, keyConstants[index], DelaySlotHolder.DUMMY);
+                            SPARCMove.move(crb, masm, scratch, keyConstants[index], SPARCDelayedControlTransfer.DUMMY);
                             new Cmp(keyRegister, asObjectReg(scratch)).emit(masm);
                             emitBranch(masm, target, condition, CC.Ptrcc, false);
                             break;
@@ -486,7 +492,7 @@ public class SPARCControlFlow {
                     actualTrueValue = falseValue;
                     actualFalseValue = trueValue;
                 }
-                SPARCMove.move(crb, masm, result, actualFalseValue, DelaySlotHolder.DUMMY);
+                SPARCMove.move(crb, masm, result, actualFalseValue, SPARCDelayedControlTransfer.DUMMY);
                 cmove(masm, cc, kind, result, actualCondition, actualTrueValue);
             }
         }

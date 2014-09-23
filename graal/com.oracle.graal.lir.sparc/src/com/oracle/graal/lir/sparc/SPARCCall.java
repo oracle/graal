@@ -73,7 +73,7 @@ public class SPARCCall {
     }
 
     @Opcode("CALL_DIRECT")
-    public static class DirectCallOp extends MethodCallOp implements DelaySlotHolder {
+    public static class DirectCallOp extends MethodCallOp implements SPARCDelayedControlTransfer {
         private boolean emitted = false;
         private int before = -1;
 
@@ -107,7 +107,7 @@ public class SPARCCall {
             //
         }
 
-        public void emitForDelay(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
+        public void emitControlTransfer(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
             assert !emitted;
             emitCallPrefixCode(crb, masm);
             before = masm.position();
