@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.nodes.calc;
 
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
@@ -56,41 +55,5 @@ public abstract class BinaryNode extends FloatingNode implements Canonicalizable
         super(stamp);
         this.x = x;
         this.y = y;
-    }
-
-    public static BinaryNode add(StructuredGraph graph, ValueNode x, ValueNode y) {
-        assert x.stamp().isCompatible(y.stamp());
-        Stamp stamp = x.stamp();
-        if (stamp instanceof IntegerStamp) {
-            return BinaryArithmeticNode.add(graph, x, y);
-        } else if (stamp instanceof FloatStamp) {
-            return graph.unique(FloatAddNode.create(x, y, false));
-        } else {
-            throw GraalInternalError.shouldNotReachHere();
-        }
-    }
-
-    public static BinaryNode sub(StructuredGraph graph, ValueNode x, ValueNode y) {
-        assert x.stamp().isCompatible(y.stamp());
-        Stamp stamp = x.stamp();
-        if (stamp instanceof IntegerStamp) {
-            return BinaryArithmeticNode.sub(graph, x, y);
-        } else if (stamp instanceof FloatStamp) {
-            return graph.unique(FloatSubNode.create(x, y, false));
-        } else {
-            throw GraalInternalError.shouldNotReachHere();
-        }
-    }
-
-    public static BinaryNode mul(StructuredGraph graph, ValueNode x, ValueNode y) {
-        assert x.stamp().isCompatible(y.stamp());
-        Stamp stamp = x.stamp();
-        if (stamp instanceof IntegerStamp) {
-            return BinaryArithmeticNode.mul(graph, x, y);
-        } else if (stamp instanceof FloatStamp) {
-            return graph.unique(FloatMulNode.create(x, y, false));
-        } else {
-            throw GraalInternalError.shouldNotReachHere();
-        }
     }
 }

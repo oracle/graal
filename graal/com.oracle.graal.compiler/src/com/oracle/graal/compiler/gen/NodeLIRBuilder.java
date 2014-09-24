@@ -56,7 +56,6 @@ import com.oracle.graal.nodes.virtual.*;
  */
 @MatchableNode(nodeClass = ConstantNode.class, shareable = true)
 @MatchableNode(nodeClass = FloatConvertNode.class, inputs = {"value"})
-@MatchableNode(nodeClass = FloatSubNode.class, inputs = {"x", "y"})
 @MatchableNode(nodeClass = FloatingReadNode.class, inputs = {"object", "location"})
 @MatchableNode(nodeClass = IfNode.class, inputs = {"condition"})
 @MatchableNode(nodeClass = SubNode.class, inputs = {"x", "y"})
@@ -69,10 +68,8 @@ import com.oracle.graal.nodes.virtual.*;
 @MatchableNode(nodeClass = WriteNode.class, inputs = {"object", "location", "value"})
 @MatchableNode(nodeClass = ZeroExtendNode.class, inputs = {"value"})
 @MatchableNode(nodeClass = AndNode.class, inputs = {"x", "y"}, commutative = true)
-@MatchableNode(nodeClass = FloatAddNode.class, inputs = {"x", "y"}, commutative = true)
 @MatchableNode(nodeClass = FloatEqualsNode.class, inputs = {"x", "y"}, commutative = true)
 @MatchableNode(nodeClass = FloatLessThanNode.class, inputs = {"x", "y"}, commutative = true)
-@MatchableNode(nodeClass = FloatMulNode.class, inputs = {"x", "y"}, commutative = true)
 @MatchableNode(nodeClass = AddNode.class, inputs = {"x", "y"}, commutative = true)
 @MatchableNode(nodeClass = IntegerBelowNode.class, inputs = {"x", "y"}, commutative = true)
 @MatchableNode(nodeClass = IntegerEqualsNode.class, inputs = {"x", "y"}, commutative = true)

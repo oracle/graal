@@ -136,9 +136,9 @@ public class ProfileCompiledMethodsPhase extends Phase {
             return 2;
         } else if (node instanceof LogicNode || node instanceof ConvertNode || node instanceof BinaryNode || node instanceof NotNode) {
             return 1;
-        } else if (node instanceof IntegerDivNode || node instanceof FloatDivNode || node instanceof IntegerRemNode || node instanceof FloatRemNode) {
+        } else if (node instanceof IntegerDivNode || node instanceof DivNode || node instanceof IntegerRemNode || node instanceof RemNode) {
             return 10;
-        } else if (node instanceof MulNode || node instanceof FloatMulNode) {
+        } else if (node instanceof MulNode) {
             return 3;
         } else if (node instanceof Invoke) {
             return 5;

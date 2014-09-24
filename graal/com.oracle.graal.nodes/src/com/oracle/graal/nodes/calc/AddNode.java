@@ -94,7 +94,7 @@ public class AddNode extends BinaryArithmeticNode implements NarrowableArithmeti
         Value op1 = builder.operand(getX());
         assert op1 != null : getX() + ", this=" + this;
         Value op2 = builder.operand(getY());
-        if (!getY().isConstant() && !FloatAddNode.livesLonger(this, getY(), builder)) {
+        if (!getY().isConstant() && !BinaryArithmeticNode.livesLonger(this, getY(), builder)) {
             Value op = op1;
             op1 = op2;
             op2 = op;

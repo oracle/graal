@@ -83,7 +83,7 @@ public class MulNode extends BinaryArithmeticNode implements NarrowableArithmeti
     public void generate(NodeMappableLIRBuilder builder, ArithmeticLIRGenerator gen) {
         Value op1 = builder.operand(getX());
         Value op2 = builder.operand(getY());
-        if (!getY().isConstant() && !FloatAddNode.livesLonger(this, getY(), builder)) {
+        if (!getY().isConstant() && !BinaryArithmeticNode.livesLonger(this, getY(), builder)) {
             Value op = op1;
             op1 = op2;
             op2 = op;

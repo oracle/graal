@@ -281,9 +281,6 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
                     return IADD;
                 case Long:
                     return LADD;
-            }
-        } else if (operation.getNodeClass().is(FloatAddNode.class)) {
-            switch (memoryKind) {
                 case Float:
                     return FADD;
                 case Double:
@@ -316,9 +313,6 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
                     return ISUB;
                 case Long:
                     return LSUB;
-            }
-        } else if (operation.getNodeClass().is(FloatSubNode.class)) {
-            switch (memoryKind) {
                 case Float:
                     return FSUB;
                 case Double:
@@ -330,9 +324,6 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
                     return IMUL;
                 case Long:
                     return LMUL;
-            }
-        } else if (operation.getNodeClass().is(FloatMulNode.class)) {
-            switch (memoryKind) {
                 case Float:
                     return FMUL;
                 case Double:
@@ -389,18 +380,12 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
     @MatchRule("(Add value Read=access)")
     @MatchRule("(Sub value Read=access)")
     @MatchRule("(Mul value Read=access)")
-    @MatchRule("(FloatAdd value Read=access)")
-    @MatchRule("(FloatSub value Read=access)")
-    @MatchRule("(FloatMul value Read=access)")
     @MatchRule("(Or value Read=access)")
     @MatchRule("(Xor value Read=access)")
     @MatchRule("(And value Read=access)")
     @MatchRule("(Add value FloatingRead=access)")
     @MatchRule("(Sub value FloatingRead=access)")
     @MatchRule("(Mul value FloatingRead=access)")
-    @MatchRule("(FloatAdd value FloatingRead=access)")
-    @MatchRule("(FloatSub value FloatingRead=access)")
-    @MatchRule("(FloatMul value FloatingRead=access)")
     @MatchRule("(Or value FloatingRead=access)")
     @MatchRule("(Xor value FloatingRead=access)")
     @MatchRule("(And value FloatingRead=access)")

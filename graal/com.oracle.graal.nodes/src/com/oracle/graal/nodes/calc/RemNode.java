@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,27 +23,29 @@
 package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
-@NodeInfo
-public abstract class FloatArithmeticNode extends BinaryNode implements ArithmeticLIRLowerable {
+@NodeInfo(shortName = "%")
+public class RemNode extends BinaryArithmeticNode implements Lowerable {
 
-    private final boolean isStrictFP;
-
-    public FloatArithmeticNode(Stamp stamp, ValueNode x, ValueNode y, boolean isStrictFP) {
-        super(stamp, x, y);
-        assert stamp instanceof FloatStamp;
-        this.isStrictFP = isStrictFP;
+    public static RemNode create(ValueNode x, ValueNode y) {
+        return USE_GENERATED_NODES ? new RemNodeGen(x, y) : new RemNode(x, y);
     }
 
-    /**
-     * Checks whether this instruction has strict fp semantics.
-     * 
-     * @return {@code true} if this instruction has strict fp semantics
-     */
-    public boolean isStrictFP() {
-        return isStrictFP;
+    protected RemNode(ValueNode x, ValueNode y) {
+        super(ArithmeticOpTable.forStamp(x.stamp()).getRem(), x, y);
+    }
+
+    @Override
+    public void lower(LoweringTool tool) {
+        tool.getLowerer().lower(this, tool);
+    }
+
+    @Override
+    public void generate(NodeMappableLIRBuilder builder, ArithmeticLIRGenerator gen) {
+        builder.setResult(this, gen.emitRem(builder.operand(getX()), builder.operand(getY()), null));
     }
 }

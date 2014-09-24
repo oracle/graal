@@ -26,6 +26,7 @@ import static com.oracle.graal.graph.util.CollectionsAccess.*;
 
 import java.util.*;
 
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
@@ -93,7 +94,7 @@ public class InductionVariables {
     }
 
     private ValueNode addSub(ValueNode op, ValueNode base) {
-        if (op instanceof AddNode || op instanceof SubNode) {
+        if (op.stamp() instanceof IntegerStamp && (op instanceof AddNode || op instanceof SubNode)) {
             BinaryArithmeticNode aritOp = (BinaryArithmeticNode) op;
             if (aritOp.getX() == base && loop.isOutsideLoop(aritOp.getY())) {
                 return aritOp.getY();

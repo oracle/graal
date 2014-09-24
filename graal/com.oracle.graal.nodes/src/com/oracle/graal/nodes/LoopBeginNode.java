@@ -26,6 +26,7 @@ import static com.oracle.graal.graph.iterators.NodePredicates.*;
 
 import java.util.*;
 
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.graph.spi.*;
@@ -247,7 +248,7 @@ public class LoopBeginNode extends MergeNode implements IterableNodeType, LIRLow
         for (int i = 0; i < phi.valueCount(); i++) {
             ValueNode input = phi.valueAt(i);
             long increment = NO_INCREMENT;
-            if (input != null && input instanceof AddNode) {
+            if (input != null && input instanceof AddNode && input.stamp() instanceof IntegerStamp) {
                 AddNode add = (AddNode) input;
                 if (add.getX() == phi && add.getY().isConstant()) {
                     increment = add.getY().asConstant().asLong();
