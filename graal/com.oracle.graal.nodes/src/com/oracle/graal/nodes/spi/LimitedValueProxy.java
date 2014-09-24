@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,11 +22,15 @@
  */
 package com.oracle.graal.nodes.spi;
 
+import com.oracle.graal.nodes.*;
+
 /**
- * This interface marks nodes whose result is the same as one of their inputs, and whose stamp is
- * the same as one of their inputs.
- * 
- * For some algorithms it is necessary or advantageous to see through these proxies.
+ * This interface is like the derived {@link ValueProxy}. The difference is that only the graph
+ * builder should see through the proxy for doing some checks. Optimizations should not see through
+ * this proxy and therefore should only test for {@link ValueProxy}.
  */
-public interface ValueAndStampProxy extends ValueProxy {
+public interface LimitedValueProxy extends Proxy {
+
+    ValueNode getOriginalNode();
+
 }

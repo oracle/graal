@@ -28,7 +28,7 @@ import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo
-public class ValueProxyNode extends ProxyNode implements Canonicalizable, Virtualizable, ValueAndStampProxy {
+public class ValueProxyNode extends ProxyNode implements Canonicalizable, Virtualizable, ValueProxy {
 
     @Input ValueNode value;
 
