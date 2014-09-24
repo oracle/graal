@@ -472,17 +472,17 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             @Override
             protected ValueNode genIntegerAdd(Kind kind, ValueNode x, ValueNode y) {
-                return IntegerAddNode.create(x, y);
+                return AddNode.create(x, y);
             }
 
             @Override
             protected ValueNode genIntegerSub(Kind kind, ValueNode x, ValueNode y) {
-                return IntegerSubNode.create(x, y);
+                return SubNode.create(x, y);
             }
 
             @Override
             protected ValueNode genIntegerMul(Kind kind, ValueNode x, ValueNode y) {
-                return IntegerMulNode.create(x, y);
+                return MulNode.create(x, y);
             }
 
             @Override

@@ -32,49 +32,49 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo(shortName = "*")
-public class IntegerMulNode extends IntegerArithmeticNode implements NarrowableArithmeticNode {
+public class MulNode extends BinaryArithmeticNode implements NarrowableArithmeticNode {
 
-    public static IntegerMulNode create(ValueNode x, ValueNode y) {
-        return USE_GENERATED_NODES ? new IntegerMulNodeGen(x, y) : new IntegerMulNode(x, y);
+    public static MulNode create(ValueNode x, ValueNode y) {
+        return USE_GENERATED_NODES ? new MulNodeGen(x, y) : new MulNode(x, y);
     }
 
-    protected IntegerMulNode(ValueNode x, ValueNode y) {
-        super(x.stamp().unrestricted(), x, y);
-        assert x.stamp().isCompatible(y.stamp());
-    }
-
-    @Override
-    public Constant evalConst(Constant... inputs) {
-        assert inputs.length == 2;
-        return Constant.forPrimitiveInt(PrimitiveStamp.getBits(stamp()), inputs[0].asLong() * inputs[1].asLong());
+    protected MulNode(ValueNode x, ValueNode y) {
+        super(ArithmeticOpTable.forStamp(x.stamp()).getMul(), x, y);
     }
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
-        if (forX.isConstant() && !forY.isConstant()) {
-            return IntegerMulNode.create(forY, forX);
+        ValueNode ret = super.canonical(tool, forX, forY);
+        if (ret != this) {
+            return ret;
         }
-        if (forX.isConstant()) {
-            return ConstantNode.forPrimitive(evalConst(forX.asConstant(), forY.asConstant()));
-        } else if (forY.isConstant()) {
-            long c = forY.asConstant().asLong();
-            if (c == 1) {
+
+        if (forX.isConstant() && !forY.isConstant()) {
+            return MulNode.create(forY, forX);
+        }
+        if (forY.isConstant()) {
+            Constant c = forY.asConstant();
+            if (getOp().isNeutral(c)) {
                 return forX;
             }
-            if (c == 0) {
-                return ConstantNode.forIntegerStamp(stamp(), 0);
-            }
-            long abs = Math.abs(c);
-            if (abs > 0 && CodeUtil.isPowerOf2(abs)) {
-                LeftShiftNode shift = LeftShiftNode.create(forX, ConstantNode.forInt(CodeUtil.log2(abs)));
-                if (c < 0) {
-                    return NegateNode.create(shift);
-                } else {
-                    return shift;
+
+            if (c.getKind().isNumericInteger()) {
+                long i = c.asLong();
+                long abs = Math.abs(i);
+                if (abs > 0 && CodeUtil.isPowerOf2(abs)) {
+                    LeftShiftNode shift = LeftShiftNode.create(forX, ConstantNode.forInt(CodeUtil.log2(abs)));
+                    if (i < 0) {
+                        return NegateNode.create(shift);
+                    } else {
+                        return shift;
+                    }
                 }
             }
-            // canonicalize expressions like "(a * 1) * 2"
-            return BinaryNode.reassociate(this, ValueNode.isConstantPredicate(), forX, forY);
+
+            if (getOp().isAssociative()) {
+                // canonicalize expressions like "(a * 1) * 2"
+                return reassociate(this, ValueNode.isConstantPredicate(), forX, forY);
+            }
         }
         return this;
     }

@@ -56,7 +56,7 @@ public class InductionVariables {
             }
             ValueNode stride = addSub(backValue, phi);
             if (stride != null) {
-                BasicInductionVariable biv = new BasicInductionVariable(loop, (ValuePhiNode) phi, phi.valueAt(forwardEnd), stride, (IntegerArithmeticNode) backValue);
+                BasicInductionVariable biv = new BasicInductionVariable(loop, (ValuePhiNode) phi, phi.valueAt(forwardEnd), stride, (BinaryArithmeticNode) backValue);
                 ivs.put(phi, biv);
                 bivs.add(biv);
             }
@@ -77,7 +77,7 @@ public class InductionVariables {
                 ValueNode offset = addSub(op, baseIvNode);
                 ValueNode scale;
                 if (offset != null) {
-                    iv = new DerivedOffsetInductionVariable(loop, baseIv, offset, (IntegerArithmeticNode) op);
+                    iv = new DerivedOffsetInductionVariable(loop, baseIv, offset, (BinaryArithmeticNode) op);
                 } else if (op instanceof NegateNode) {
                     iv = new DerivedScaledInductionVariable(loop, baseIv, (NegateNode) op);
                 } else if ((scale = mul(op, baseIvNode)) != null) {
@@ -93,8 +93,8 @@ public class InductionVariables {
     }
 
     private ValueNode addSub(ValueNode op, ValueNode base) {
-        if (op instanceof IntegerAddNode || op instanceof IntegerSubNode) {
-            IntegerArithmeticNode aritOp = (IntegerArithmeticNode) op;
+        if (op instanceof AddNode || op instanceof SubNode) {
+            BinaryArithmeticNode aritOp = (BinaryArithmeticNode) op;
             if (aritOp.getX() == base && loop.isOutsideLoop(aritOp.getY())) {
                 return aritOp.getY();
             } else if (aritOp.getY() == base && loop.isOutsideLoop(aritOp.getX())) {
@@ -105,8 +105,8 @@ public class InductionVariables {
     }
 
     private ValueNode mul(ValueNode op, ValueNode base) {
-        if (op instanceof IntegerMulNode) {
-            IntegerMulNode mul = (IntegerMulNode) op;
+        if (op instanceof MulNode) {
+            MulNode mul = (MulNode) op;
             if (mul.getX() == base && loop.isOutsideLoop(mul.getY())) {
                 return mul.getY();
             } else if (mul.getY() == base && loop.isOutsideLoop(mul.getX())) {

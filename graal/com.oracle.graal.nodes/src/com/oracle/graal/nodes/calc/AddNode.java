@@ -29,66 +29,62 @@ import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 
 @NodeInfo(shortName = "+")
-public class IntegerAddNode extends IntegerArithmeticNode implements NarrowableArithmeticNode {
+public class AddNode extends BinaryArithmeticNode implements NarrowableArithmeticNode {
 
-    public static IntegerAddNode create(ValueNode x, ValueNode y) {
-        return USE_GENERATED_NODES ? new IntegerAddNodeGen(x, y) : new IntegerAddNode(x, y);
+    public static AddNode create(ValueNode x, ValueNode y) {
+        return USE_GENERATED_NODES ? new AddNodeGen(x, y) : new AddNode(x, y);
     }
 
-    protected IntegerAddNode(ValueNode x, ValueNode y) {
-        super(StampTool.add(x.stamp(), y.stamp()), x, y);
-    }
-
-    @Override
-    public boolean inferStamp() {
-        return updateStamp(StampTool.add(getX().stamp(), getY().stamp()));
-    }
-
-    @Override
-    public Constant evalConst(Constant... inputs) {
-        assert inputs.length == 2;
-        return Constant.forPrimitiveInt(PrimitiveStamp.getBits(stamp()), inputs[0].asLong() + inputs[1].asLong());
+    protected AddNode(ValueNode x, ValueNode y) {
+        super(ArithmeticOpTable.forStamp(x.stamp()).getAdd(), x, y);
     }
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
+        ValueNode ret = super.canonical(tool, forX, forY);
+        if (ret != this) {
+            return ret;
+        }
+
         if (forX.isConstant() && !forY.isConstant()) {
-            return IntegerAddNode.create(forY, forX);
+            return AddNode.create(forY, forX);
         }
-        if (forX instanceof IntegerSubNode) {
-            IntegerSubNode sub = (IntegerSubNode) forX;
-            if (sub.getY() == forY) {
-                // (a - b) + b
-                return sub.getX();
+        boolean associative = getOp().isAssociative();
+        if (associative) {
+            if (forX instanceof SubNode) {
+                SubNode sub = (SubNode) forX;
+                if (sub.getY() == forY) {
+                    // (a - b) + b
+                    return sub.getX();
+                }
+            }
+            if (forY instanceof SubNode) {
+                SubNode sub = (SubNode) forY;
+                if (sub.getY() == forX) {
+                    // b + (a - b)
+                    return sub.getX();
+                }
             }
         }
-        if (forY instanceof IntegerSubNode) {
-            IntegerSubNode sub = (IntegerSubNode) forY;
-            if (sub.getY() == forX) {
-                // b + (a - b)
-                return sub.getX();
-            }
-        }
-        if (forX.isConstant()) {
-            return ConstantNode.forPrimitive(evalConst(forX.asConstant(), forY.asConstant()));
-        } else if (forY.isConstant()) {
-            long c = forY.asConstant().asLong();
-            if (c == 0) {
+        if (forY.isConstant()) {
+            Constant c = forY.asConstant();
+            if (getOp().isNeutral(c)) {
                 return forX;
             }
-            // canonicalize expressions like "(a + 1) + 2"
-            BinaryNode reassociated = BinaryNode.reassociate(this, ValueNode.isConstantPredicate(), forX, forY);
-            if (reassociated != this) {
-                return reassociated;
+            if (associative) {
+                // canonicalize expressions like "(a + 1) + 2"
+                BinaryNode reassociated = reassociate(this, ValueNode.isConstantPredicate(), forX, forY);
+                if (reassociated != this) {
+                    return reassociated;
+                }
             }
         }
         if (forX instanceof NegateNode) {
-            return IntegerArithmeticNode.sub(forY, ((NegateNode) forX).getValue());
+            return BinaryArithmeticNode.sub(forY, ((NegateNode) forX).getValue());
         } else if (forY instanceof NegateNode) {
-            return IntegerArithmeticNode.sub(forX, ((NegateNode) forY).getValue());
+            return BinaryArithmeticNode.sub(forX, ((NegateNode) forY).getValue());
         }
         return this;
     }

@@ -74,7 +74,7 @@ public class XorNode extends BitLogicNode {
             } else if ((rawY & mask) == mask) {
                 return NotNode.create(forX);
             }
-            return BinaryNode.reassociate(this, ValueNode.isConstantPredicate(), forX, forY);
+            return BinaryArithmeticNode.reassociate(this, ValueNode.isConstantPredicate(), forX, forY);
         }
         return this;
     }

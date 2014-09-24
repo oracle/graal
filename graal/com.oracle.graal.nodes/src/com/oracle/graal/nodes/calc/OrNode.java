@@ -75,7 +75,7 @@ public class OrNode extends BitLogicNode {
             if ((rawY & mask) == 0) {
                 return forX;
             }
-            return BinaryNode.reassociate(this, ValueNode.isConstantPredicate(), forX, forY);
+            return BinaryArithmeticNode.reassociate(this, ValueNode.isConstantPredicate(), forX, forY);
         }
         return this;
     }

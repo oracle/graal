@@ -73,12 +73,12 @@ public class DerivedScaledInductionVariable extends InductionVariable {
 
     @Override
     public ValueNode initNode() {
-        return IntegerArithmeticNode.mul(graph(), base.initNode(), scale);
+        return BinaryArithmeticNode.mul(graph(), base.initNode(), scale);
     }
 
     @Override
     public ValueNode strideNode() {
-        return IntegerArithmeticNode.mul(graph(), base.strideNode(), scale);
+        return BinaryArithmeticNode.mul(graph(), base.strideNode(), scale);
     }
 
     @Override
@@ -103,12 +103,12 @@ public class DerivedScaledInductionVariable extends InductionVariable {
 
     @Override
     public ValueNode extremumNode(boolean assumePositiveTripCount, Stamp stamp) {
-        return IntegerArithmeticNode.mul(graph(), base.extremumNode(assumePositiveTripCount, stamp), IntegerConvertNode.convert(scale, stamp, graph()));
+        return BinaryArithmeticNode.mul(graph(), base.extremumNode(assumePositiveTripCount, stamp), IntegerConvertNode.convert(scale, stamp, graph()));
     }
 
     @Override
     public ValueNode exitValueNode() {
-        return IntegerArithmeticNode.mul(graph(), base.exitValueNode(), scale);
+        return BinaryArithmeticNode.mul(graph(), base.exitValueNode(), scale);
     }
 
     @Override

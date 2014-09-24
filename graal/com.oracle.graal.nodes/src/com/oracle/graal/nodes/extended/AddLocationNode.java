@@ -88,7 +88,7 @@ public class AddLocationNode extends LocationNode implements Canonicalizable.Bin
             IndexedLocationNode yIdx = (IndexedLocationNode) forY;
             if (xIdx.getIndexScaling() == yIdx.getIndexScaling()) {
                 long displacement = xIdx.getDisplacement() + yIdx.getDisplacement();
-                ValueNode index = IntegerArithmeticNode.add(xIdx.getIndex(), yIdx.getIndex());
+                ValueNode index = BinaryArithmeticNode.add(xIdx.getIndex(), yIdx.getIndex());
                 return IndexedLocationNode.create(getLocationIdentity(), getValueKind(), displacement, index, xIdx.getIndexScaling());
             }
         }

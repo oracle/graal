@@ -23,13 +23,13 @@
 package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.UnaryOp;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 
 /**
  * The {@code NegateNode} node negates its operand.
@@ -37,9 +37,11 @@ import com.oracle.graal.nodes.type.*;
 @NodeInfo
 public class NegateNode extends UnaryNode implements ArithmeticLIRLowerable, NarrowableArithmeticNode {
 
+    private final UnaryOp op;
+
     @Override
     public boolean inferStamp() {
-        return updateStamp(StampTool.negate(getValue().stamp()));
+        return updateStamp(op.foldStamp(getValue().stamp()));
     }
 
     /**
@@ -48,41 +50,34 @@ public class NegateNode extends UnaryNode implements ArithmeticLIRLowerable, Nar
      * @param value the instruction producing the value that is input to this instruction
      */
     public static NegateNode create(ValueNode value) {
-        return USE_GENERATED_NODES ? new NegateNodeGen(value) : new NegateNode(value);
+        return create(ArithmeticOpTable.forStamp(value.stamp()).getNeg(), value);
     }
 
-    protected NegateNode(ValueNode value) {
-        super(StampTool.negate(value.stamp()), value);
+    public static NegateNode create(UnaryOp op, ValueNode value) {
+        return USE_GENERATED_NODES ? new NegateNodeGen(op, value) : new NegateNode(op, value);
+    }
+
+    protected NegateNode(UnaryOp op, ValueNode value) {
+        super(op.foldStamp(value.stamp()), value);
+        this.op = op;
     }
 
     public Constant evalConst(Constant... inputs) {
         assert inputs.length == 1;
-        Constant constant = inputs[0];
-        switch (constant.getKind()) {
-            case Int:
-                return Constant.forInt(-(constant.asInt()));
-            case Long:
-                return Constant.forLong(-(constant.asLong()));
-            case Float:
-                return Constant.forFloat(-(constant.asFloat()));
-            case Double:
-                return Constant.forDouble(-(constant.asDouble()));
-            default:
-                throw GraalInternalError.shouldNotReachHere("unknown kind " + constant.getKind());
-        }
+        return op.foldConstant(inputs[0]);
     }
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
         if (forValue.isConstant()) {
-            return ConstantNode.forConstant(evalConst(forValue.asConstant()), null);
+            return ConstantNode.forPrimitive(stamp(), op.foldConstant(forValue.asConstant()));
         }
         if (forValue instanceof NegateNode) {
             return ((NegateNode) forValue).getValue();
         }
-        if (forValue instanceof IntegerSubNode) {
-            IntegerSubNode sub = (IntegerSubNode) forValue;
-            return IntegerSubNode.create(sub.getY(), sub.getX());
+        if (forValue instanceof SubNode) {
+            SubNode sub = (SubNode) forValue;
+            return SubNode.create(sub.getY(), sub.getX());
         }
         return this;
     }

@@ -38,7 +38,7 @@ import com.oracle.truffle.api.*;
  * case the addition would overflow the 32 bit range.
  */
 @NodeInfo
-public class IntegerSubExactNode extends IntegerSubNode implements IntegerExactArithmeticNode {
+public class IntegerSubExactNode extends SubNode implements IntegerExactArithmeticNode {
 
     public static IntegerSubExactNode create(ValueNode x, ValueNode y) {
         return USE_GENERATED_NODES ? new IntegerSubExactNodeGen(x, y) : new IntegerSubExactNode(x, y);

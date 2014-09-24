@@ -181,70 +181,70 @@ public abstract class Word implements Signed, Unsigned, Pointer {
     public native Object toObject();
 
     @Override
-    @Operation(node = IntegerAddNode.class)
+    @Operation(node = AddNode.class)
     public Word add(Signed val) {
         return add((Word) val);
     }
 
     @Override
-    @Operation(node = IntegerAddNode.class)
+    @Operation(node = AddNode.class)
     public Word add(Unsigned val) {
         return add((Word) val);
     }
 
     @Override
-    @Operation(node = IntegerAddNode.class)
+    @Operation(node = AddNode.class)
     public Word add(int val) {
         return add(intParam(val));
     }
 
-    @Operation(node = IntegerAddNode.class)
+    @Operation(node = AddNode.class)
     public Word add(Word val) {
         return box(unbox() + val.unbox());
     }
 
     @Override
-    @Operation(node = IntegerSubNode.class)
+    @Operation(node = SubNode.class)
     public Word subtract(Signed val) {
         return subtract((Word) val);
     }
 
     @Override
-    @Operation(node = IntegerSubNode.class)
+    @Operation(node = SubNode.class)
     public Word subtract(Unsigned val) {
         return subtract((Word) val);
     }
 
     @Override
-    @Operation(node = IntegerSubNode.class)
+    @Operation(node = SubNode.class)
     public Word subtract(int val) {
         return subtract(intParam(val));
     }
 
-    @Operation(node = IntegerSubNode.class)
+    @Operation(node = SubNode.class)
     public Word subtract(Word val) {
         return box(unbox() - val.unbox());
     }
 
     @Override
-    @Operation(node = IntegerMulNode.class)
+    @Operation(node = MulNode.class)
     public Word multiply(Signed val) {
         return multiply((Word) val);
     }
 
     @Override
-    @Operation(node = IntegerMulNode.class)
+    @Operation(node = MulNode.class)
     public Word multiply(Unsigned val) {
         return multiply((Word) val);
     }
 
     @Override
-    @Operation(node = IntegerMulNode.class)
+    @Operation(node = MulNode.class)
     public Word multiply(int val) {
         return multiply(intParam(val));
     }
 
-    @Operation(node = IntegerMulNode.class)
+    @Operation(node = MulNode.class)
     public Word multiply(Word val) {
         return box(unbox() * val.unbox());
     }

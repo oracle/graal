@@ -23,37 +23,25 @@
 package com.oracle.graal.compiler.common.type;
 
 /**
- * Type describing primitive values.
+ * Type describing values that support arithmetic operations.
  */
-public abstract class PrimitiveStamp extends ArithmeticStamp {
+public abstract class ArithmeticStamp extends Stamp {
 
-    private final int bits;
+    private final ArithmeticOpTable ops;
 
-    protected PrimitiveStamp(int bits, ArithmeticOpTable ops) {
-        super(ops);
-        this.bits = bits;
+    protected ArithmeticStamp(ArithmeticOpTable ops) {
+        this.ops = ops;
     }
 
-    /**
-     * The width in bits of the value described by this stamp.
-     */
-    public int getBits() {
-        return bits;
-    }
-
-    public static int getBits(Stamp stamp) {
-        if (stamp instanceof PrimitiveStamp) {
-            return ((PrimitiveStamp) stamp).getBits();
-        } else {
-            return 0;
-        }
+    public ArithmeticOpTable getOps() {
+        return ops;
     }
 
     @Override
     public int hashCode() {
         final int prime = 31;
-        int result = super.hashCode();
-        result = prime * result + bits;
+        int result = 1;
+        result = prime * result + ops.hashCode();
         return result;
     }
 
@@ -62,13 +50,10 @@ public abstract class PrimitiveStamp extends ArithmeticStamp {
         if (this == obj) {
             return true;
         }
-        if (!(obj instanceof PrimitiveStamp)) {
+        if (!(obj instanceof ArithmeticStamp)) {
             return false;
         }
-        PrimitiveStamp other = (PrimitiveStamp) obj;
-        if (bits != other.bits) {
-            return false;
-        }
-        return super.equals(obj);
+        ArithmeticStamp other = (ArithmeticStamp) obj;
+        return this.ops == other.ops;
     }
 }

@@ -275,7 +275,7 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
 
     protected AMD64Arithmetic getOp(ValueNode operation, Access access) {
         Kind memoryKind = getMemoryKind(access);
-        if (operation.getNodeClass().is(IntegerAddNode.class)) {
+        if (operation.getNodeClass().is(AddNode.class)) {
             switch (memoryKind) {
                 case Int:
                     return IADD;
@@ -310,7 +310,7 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
                 case Long:
                     return LXOR;
             }
-        } else if (operation.getNodeClass().is(IntegerSubNode.class)) {
+        } else if (operation.getNodeClass().is(SubNode.class)) {
             switch (memoryKind) {
                 case Int:
                     return ISUB;
@@ -324,7 +324,7 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
                 case Double:
                     return DSUB;
             }
-        } else if (operation.getNodeClass().is(IntegerMulNode.class)) {
+        } else if (operation.getNodeClass().is(MulNode.class)) {
             switch (memoryKind) {
                 case Int:
                     return IMUL;
@@ -370,7 +370,7 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
         return null;
     }
 
-    @MatchRule("(Or (LeftShift value (IntegerSub Constant=delta shiftAmount)) (UnsignedRightShift value shiftAmount))")
+    @MatchRule("(Or (LeftShift value (Sub Constant=delta shiftAmount)) (UnsignedRightShift value shiftAmount))")
     public ComplexMatchResult rotateRightVariable(ValueNode value, ConstantNode delta, ValueNode shiftAmount) {
         if (delta.asConstant().asLong() == 0 || delta.asConstant().asLong() == 32) {
             return builder -> getLIRGeneratorTool().emitRor(operand(value), operand(shiftAmount));
@@ -378,7 +378,7 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
         return null;
     }
 
-    @MatchRule("(Or (LeftShift value shiftAmount) (UnsignedRightShift value (IntegerSub Constant=delta shiftAmount)))")
+    @MatchRule("(Or (LeftShift value shiftAmount) (UnsignedRightShift value (Sub Constant=delta shiftAmount)))")
     public ComplexMatchResult rotateLeftVariable(ValueNode value, ValueNode shiftAmount, ConstantNode delta) {
         if (delta.asConstant().asLong() == 0 || delta.asConstant().asLong() == 32) {
             return builder -> getLIRGeneratorTool().emitRol(operand(value), operand(shiftAmount));
@@ -386,18 +386,18 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
         return null;
     }
 
-    @MatchRule("(IntegerAdd value Read=access)")
-    @MatchRule("(IntegerSub value Read=access)")
-    @MatchRule("(IntegerMul value Read=access)")
+    @MatchRule("(Add value Read=access)")
+    @MatchRule("(Sub value Read=access)")
+    @MatchRule("(Mul value Read=access)")
     @MatchRule("(FloatAdd value Read=access)")
     @MatchRule("(FloatSub value Read=access)")
     @MatchRule("(FloatMul value Read=access)")
     @MatchRule("(Or value Read=access)")
     @MatchRule("(Xor value Read=access)")
     @MatchRule("(And value Read=access)")
-    @MatchRule("(IntegerAdd value FloatingRead=access)")
-    @MatchRule("(IntegerSub value FloatingRead=access)")
-    @MatchRule("(IntegerMul value FloatingRead=access)")
+    @MatchRule("(Add value FloatingRead=access)")
+    @MatchRule("(Sub value FloatingRead=access)")
+    @MatchRule("(Mul value FloatingRead=access)")
     @MatchRule("(FloatAdd value FloatingRead=access)")
     @MatchRule("(FloatSub value FloatingRead=access)")
     @MatchRule("(FloatMul value FloatingRead=access)")

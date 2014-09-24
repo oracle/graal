@@ -138,7 +138,7 @@ public class ProfileCompiledMethodsPhase extends Phase {
             return 1;
         } else if (node instanceof IntegerDivNode || node instanceof FloatDivNode || node instanceof IntegerRemNode || node instanceof FloatRemNode) {
             return 10;
-        } else if (node instanceof IntegerMulNode || node instanceof FloatMulNode) {
+        } else if (node instanceof MulNode || node instanceof FloatMulNode) {
             return 3;
         } else if (node instanceof Invoke) {
             return 5;

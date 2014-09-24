@@ -36,21 +36,21 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.truffle.api.*;
 
 @NodeInfo(shortName = "|*H|")
-public class UnsignedMulHighNode extends IntegerArithmeticNode {
+public class UnsignedMulHighNode extends BinaryNode implements ArithmeticLIRLowerable {
 
     public static UnsignedMulHighNode create(ValueNode x, ValueNode y) {
         return USE_GENERATED_NODES ? new UnsignedMulHighNodeGen(x, y) : new UnsignedMulHighNode(x, y);
     }
 
     protected UnsignedMulHighNode(ValueNode x, ValueNode y) {
-        this(x.stamp().unrestricted(), x, y);
+        this((IntegerStamp) x.stamp().unrestricted(), x, y);
     }
 
-    public static UnsignedMulHighNode create(Stamp stamp, ValueNode x, ValueNode y) {
+    public static UnsignedMulHighNode create(IntegerStamp stamp, ValueNode x, ValueNode y) {
         return USE_GENERATED_NODES ? new UnsignedMulHighNodeGen(stamp, x, y) : new UnsignedMulHighNode(stamp, x, y);
     }
 
-    protected UnsignedMulHighNode(Stamp stamp, ValueNode x, ValueNode y) {
+    protected UnsignedMulHighNode(IntegerStamp stamp, ValueNode x, ValueNode y) {
         super(stamp, x, y);
     }
 

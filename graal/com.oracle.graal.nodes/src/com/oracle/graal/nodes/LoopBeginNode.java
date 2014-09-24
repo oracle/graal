@@ -247,8 +247,8 @@ public class LoopBeginNode extends MergeNode implements IterableNodeType, LIRLow
         for (int i = 0; i < phi.valueCount(); i++) {
             ValueNode input = phi.valueAt(i);
             long increment = NO_INCREMENT;
-            if (input != null && input instanceof IntegerAddNode) {
-                IntegerAddNode add = (IntegerAddNode) input;
+            if (input != null && input instanceof AddNode) {
+                AddNode add = (AddNode) input;
                 if (add.getX() == phi && add.getY().isConstant()) {
                     increment = add.getY().asConstant().asLong();
                 } else if (add.getY() == phi && add.getX().isConstant()) {

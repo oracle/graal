@@ -74,7 +74,7 @@ public class IntegerDivNode extends FixedBinaryNode implements Lowerable, LIRLow
                     int bits = PrimitiveStamp.getBits(stamp());
                     RightShiftNode sign = RightShiftNode.create(forX, ConstantNode.forInt(bits - 1));
                     UnsignedRightShiftNode round = UnsignedRightShiftNode.create(sign, ConstantNode.forInt(bits - log2));
-                    dividend = IntegerArithmeticNode.add(dividend, round);
+                    dividend = BinaryArithmeticNode.add(dividend, round);
                 }
                 RightShiftNode shift = RightShiftNode.create(dividend, ConstantNode.forInt(log2));
                 if (c < 0) {
@@ -85,8 +85,8 @@ public class IntegerDivNode extends FixedBinaryNode implements Lowerable, LIRLow
         }
 
         // Convert the expression ((a - a % b) / b) into (a / b).
-        if (forX instanceof IntegerSubNode) {
-            IntegerSubNode integerSubNode = (IntegerSubNode) forX;
+        if (forX instanceof SubNode) {
+            SubNode integerSubNode = (SubNode) forX;
             if (integerSubNode.getY() instanceof IntegerRemNode) {
                 IntegerRemNode integerRemNode = (IntegerRemNode) integerSubNode.getY();
                 if (integerSubNode.stamp().isCompatible(this.stamp()) && integerRemNode.stamp().isCompatible(this.stamp()) && integerSubNode.getX() == integerRemNode.getX() &&
