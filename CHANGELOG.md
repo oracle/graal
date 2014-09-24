@@ -2,16 +2,29 @@
 
 ## `tip`
 ### Graal
+* Changed name suite specification from `mx/projects.py` to `mx/suite.py`.
 * ...
 
 ### Truffle
-* Added TruffleRuntime#getCallTargets() to get all call targets that were created and are still referenced.
+* ...
+
+## Version 0.5
+23-Sep-2014, [Repository Revision](http://hg.openjdk.java.net/graal/graal/shortlog/graal-0.5)
+### Graal
+* New register allocator optimization: `-G:+ConstantLoadOptimization`.
+* SPARC backend is able to run benchmark and passing most of the JTTs.
+* Fix: Stamp: interface types can not be trusted except after explicit runtime checks.
+* Changed format of suite specification from a properties file (`mx/projects`) to a Python file (`mx/projects.py`).
+
+
+### Truffle
+* Added `TruffleRuntime#getCallTargets()` to get all call targets that were created and are still referenced.
 * Added `NeverValidAssumption` to complement `AlwaysValidAssumption`.
 * Fixed a bug in `AssumedValue` that may not invalidate correctly.
-* New option, TruffleCompilationExceptionsAreThrown, that will throw a OptimizationFailedException for compiler errors.
+* New option, `-G:+/-TruffleCompilationExceptionsAreThrown`, that will throw an `OptimizationFailedException` for compiler errors.
 
 ## Version 0.4
-19-Aug-2014, [Repository Revision](http://hg.openjdk.java.net/graal/graal/rev/graal-0.4)
+19-Aug-2014, [Repository Revision](http://hg.openjdk.java.net/graal/graal/shortlog/graal-0.4)
 ### Graal
 * Made initialization of Graal runtime lazy in hosted mode.
 * Added supported for new `jrelibrary` dependency type in `mx/projects`.
@@ -36,7 +49,7 @@
 * Added new `ConditionProfile`, `BinaryConditionProfile` and `CountingConditionProfile` utility classes to profile if conditions.
 
 ## Version 0.3
-9-May-2014, [Repository Revision](http://hg.openjdk.java.net/graal/graal/rev/graal-0.3)
+9-May-2014, [Repository Revision](http://hg.openjdk.java.net/graal/graal/shortlog/graal-0.3)
 
 ### Graal
 * Explicit support for oop compression/uncompression in high level graph.
@@ -58,7 +71,7 @@
 * Removed deprecated `Node#adoptChild`.
 
 ## Version 0.2
-25-Mar-2014, [Repository Revision](http://hg.openjdk.java.net/graal/graal/rev/graal-0.2)
+25-Mar-2014, [Repository Revision](http://hg.openjdk.java.net/graal/graal/shortlog/graal-0.2)
 
 ### Graal
 * Use HotSpot stubs for certain array copy operations.
@@ -89,7 +102,7 @@
 
 
 ## Version 0.1
-5-Feb-2014, [Repository Revision](http://hg.openjdk.java.net/graal/graal/rev/graal-0.1)
+5-Feb-2014, [Repository Revision](http://hg.openjdk.java.net/graal/graal/shortlog/graal-0.1)
 
 ### Graal
 

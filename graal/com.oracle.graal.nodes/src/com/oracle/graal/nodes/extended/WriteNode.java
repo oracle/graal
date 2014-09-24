@@ -63,16 +63,8 @@ public class WriteNode extends AbstractWriteNode implements LIRLowerable, Simpli
     @Override
     public void generate(NodeLIRBuilderTool gen) {
         Value address = location().generateAddress(gen, gen.getLIRGeneratorTool(), gen.operand(object()));
-        // It's possible a constant was forced for other usages so inspect the value directly and
-        // use a constant if it can be directly stored.
-        Value v;
-        if (value().isConstant() && gen.getLIRGeneratorTool().canStoreConstant(value().asConstant())) {
-            v = value().asConstant();
-        } else {
-            v = gen.operand(value());
-        }
         LIRKind writeKind = gen.getLIRGeneratorTool().getLIRKind(value().stamp());
-        gen.getLIRGeneratorTool().emitStore(writeKind, address, v, gen.state(this));
+        gen.getLIRGeneratorTool().emitStore(writeKind, address, gen.operand(value()), gen.state(this));
     }
 
     @Override

@@ -20,23 +20,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.hotspot;
+package com.oracle.graal.truffle;
 
 import java.lang.reflect.*;
 
 import com.oracle.graal.api.code.stack.*;
 import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.truffle.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.CompilerDirectives.SlowPath;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 
-public abstract class HotSpotFrameInstance implements FrameInstance {
+public abstract class GraalFrameInstance implements FrameInstance {
 
     protected final InspectedFrame stackFrame;
 
-    public HotSpotFrameInstance(InspectedFrame stackFrame) {
+    public GraalFrameInstance(InspectedFrame stackFrame) {
         this.stackFrame = stackFrame;
     }
 
@@ -91,7 +90,7 @@ public abstract class HotSpotFrameInstance implements FrameInstance {
      * {@link OptimizedDirectCallNode#callProxy(MaterializedFrameNotify, CallTarget, VirtualFrame, Object[], boolean, boolean)}
      * method.
      */
-    public static final class CallNodeFrame extends HotSpotFrameInstance {
+    public static final class CallNodeFrame extends GraalFrameInstance {
         public static final Method METHOD;
         static {
             try {
@@ -136,7 +135,7 @@ public abstract class HotSpotFrameInstance implements FrameInstance {
      * This class represents a frame that is taken from the {@link OptimizedCallTarget#callProxy}
      * method.
      */
-    public static final class CallTargetFrame extends HotSpotFrameInstance {
+    public static final class CallTargetFrame extends GraalFrameInstance {
         public static final Method METHOD;
         static {
             try {

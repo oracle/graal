@@ -22,25 +22,18 @@
  */
 package com.oracle.graal.nodes.calc;
 
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 
 /**
  * The {@code NegateNode} node negates its operand.
  */
 @NodeInfo
-public class NegateNode extends UnaryNode implements ArithmeticLIRLowerable, NarrowableArithmeticNode {
-
-    @Override
-    public boolean inferStamp() {
-        return updateStamp(StampTool.negate(getValue().stamp()));
-    }
+public class NegateNode extends UnaryArithmeticNode implements NarrowableArithmeticNode {
 
     /**
      * Creates new NegateNode instance.
@@ -51,38 +44,22 @@ public class NegateNode extends UnaryNode implements ArithmeticLIRLowerable, Nar
         return USE_GENERATED_NODES ? new NegateNodeGen(value) : new NegateNode(value);
     }
 
-    protected NegateNode(ValueNode value) {
-        super(StampTool.negate(value.stamp()), value);
-    }
-
-    public Constant evalConst(Constant... inputs) {
-        assert inputs.length == 1;
-        Constant constant = inputs[0];
-        switch (constant.getKind()) {
-            case Int:
-                return Constant.forInt(-(constant.asInt()));
-            case Long:
-                return Constant.forLong(-(constant.asLong()));
-            case Float:
-                return Constant.forFloat(-(constant.asFloat()));
-            case Double:
-                return Constant.forDouble(-(constant.asDouble()));
-            default:
-                throw GraalInternalError.shouldNotReachHere("unknown kind " + constant.getKind());
-        }
+    NegateNode(ValueNode value) {
+        super(ArithmeticOpTable.forStamp(value.stamp()).getNeg(), value);
     }
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
-        if (forValue.isConstant()) {
-            return ConstantNode.forConstant(evalConst(forValue.asConstant()), null);
+        ValueNode ret = super.canonical(tool, forValue);
+        if (ret != this) {
+            return ret;
         }
         if (forValue instanceof NegateNode) {
             return ((NegateNode) forValue).getValue();
         }
-        if (forValue instanceof IntegerSubNode) {
-            IntegerSubNode sub = (IntegerSubNode) forValue;
-            return IntegerSubNode.create(sub.getY(), sub.getX());
+        if (forValue instanceof SubNode) {
+            SubNode sub = (SubNode) forValue;
+            return SubNode.create(sub.getY(), sub.getX());
         }
         return this;
     }

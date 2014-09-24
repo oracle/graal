@@ -31,9 +31,9 @@ public class DerivedOffsetInductionVariable extends InductionVariable {
 
     private InductionVariable base;
     private ValueNode offset;
-    private IntegerArithmeticNode value;
+    private BinaryArithmeticNode value;
 
-    public DerivedOffsetInductionVariable(LoopEx loop, InductionVariable base, ValueNode offset, IntegerArithmeticNode value) {
+    public DerivedOffsetInductionVariable(LoopEx loop, InductionVariable base, ValueNode offset, BinaryArithmeticNode value) {
         super(loop);
         this.base = base;
         this.offset = offset;
@@ -72,7 +72,7 @@ public class DerivedOffsetInductionVariable extends InductionVariable {
 
     @Override
     public long constantStride() {
-        if (value instanceof IntegerSubNode && base.valueNode() == value.getY()) {
+        if (value instanceof SubNode && base.valueNode() == value.getY()) {
             return -base.constantStride();
         }
         return base.constantStride();
@@ -85,7 +85,7 @@ public class DerivedOffsetInductionVariable extends InductionVariable {
 
     @Override
     public ValueNode strideNode() {
-        if (value instanceof IntegerSubNode && base.valueNode() == value.getY()) {
+        if (value instanceof SubNode && base.valueNode() == value.getY()) {
             return graph().unique(NegateNode.create(base.strideNode()));
         }
         return base.strideNode();
@@ -112,10 +112,10 @@ public class DerivedOffsetInductionVariable extends InductionVariable {
     }
 
     private long op(long b, long o) {
-        if (value instanceof IntegerAddNode) {
+        if (value instanceof AddNode) {
             return b + o;
         }
-        if (value instanceof IntegerSubNode) {
+        if (value instanceof SubNode) {
             if (base.valueNode() == value.getX()) {
                 return b - o;
             } else {
@@ -127,15 +127,15 @@ public class DerivedOffsetInductionVariable extends InductionVariable {
     }
 
     private ValueNode op(ValueNode b, ValueNode o) {
-        if (value instanceof IntegerAddNode) {
-            return IntegerArithmeticNode.add(graph(), b, o);
+        if (value instanceof AddNode) {
+            return BinaryArithmeticNode.add(graph(), b, o);
         }
-        if (value instanceof IntegerSubNode) {
+        if (value instanceof SubNode) {
             if (base.valueNode() == value.getX()) {
-                return IntegerArithmeticNode.sub(graph(), b, o);
+                return BinaryArithmeticNode.sub(graph(), b, o);
             } else {
                 assert base.valueNode() == value.getY();
-                return IntegerArithmeticNode.sub(graph(), o, b);
+                return BinaryArithmeticNode.sub(graph(), o, b);
             }
         }
         throw GraalInternalError.shouldNotReachHere();

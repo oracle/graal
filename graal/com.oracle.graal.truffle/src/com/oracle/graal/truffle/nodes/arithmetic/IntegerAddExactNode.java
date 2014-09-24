@@ -29,7 +29,6 @@ import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 import com.oracle.truffle.api.*;
 
 /**
@@ -37,7 +36,7 @@ import com.oracle.truffle.api.*;
  * case the addition would overflow the 32 bit range.
  */
 @NodeInfo
-public class IntegerAddExactNode extends IntegerAddNode implements IntegerExactArithmeticNode {
+public class IntegerAddExactNode extends AddNode implements IntegerExactArithmeticNode {
 
     public static IntegerAddExactNode create(ValueNode x, ValueNode y) {
         return USE_GENERATED_NODES ? new IntegerAddExactNodeGen(x, y) : new IntegerAddExactNode(x, y);
@@ -51,7 +50,7 @@ public class IntegerAddExactNode extends IntegerAddNode implements IntegerExactA
     @Override
     public boolean inferStamp() {
         // TODO Should probably use a specialized version which understands that it can't overflow
-        return updateStamp(StampTool.add(getX().stamp(), getY().stamp()));
+        return super.inferStamp();
     }
 
     @Override

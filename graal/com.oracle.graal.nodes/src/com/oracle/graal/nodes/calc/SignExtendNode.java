@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes.calc;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.spi.*;
@@ -45,26 +46,14 @@ public class SignExtendNode extends IntegerConvertNode {
         super(StampTool.signExtend(input.stamp(), resultBits), input, resultBits);
     }
 
-    public static long signExtend(long value, int inputBits) {
-        if (inputBits < 64) {
-            if ((value >>> (inputBits - 1) & 1) == 1) {
-                return value | (-1L << inputBits);
-            } else {
-                return value & ~(-1L << inputBits);
-            }
-        } else {
-            return value;
-        }
-    }
-
     @Override
     public Constant convert(Constant c) {
-        return Constant.forPrimitiveInt(getResultBits(), signExtend(c.asLong(), getInputBits()));
+        return Constant.forPrimitiveInt(getResultBits(), CodeUtil.signExtend(c.asLong(), getInputBits()));
     }
 
     @Override
     public Constant reverse(Constant c) {
-        return Constant.forPrimitiveInt(getInputBits(), NarrowNode.narrow(c.asLong(), getInputBits()));
+        return Constant.forPrimitiveInt(getInputBits(), CodeUtil.narrow(c.asLong(), getInputBits()));
     }
 
     @Override

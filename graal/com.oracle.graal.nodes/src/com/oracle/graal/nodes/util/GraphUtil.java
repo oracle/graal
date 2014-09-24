@@ -335,8 +335,8 @@ public class GraphUtil {
     public static ValueNode originalValue(ValueNode proxy) {
         ValueNode v = proxy;
         do {
-            if (v instanceof ValueProxy) {
-                v = ((ValueProxy) v).getOriginalNode();
+            if (v instanceof LimitedValueProxy) {
+                v = ((LimitedValueProxy) v).getOriginalNode();
             } else if (v instanceof PhiNode) {
                 v = ((PhiNode) v).singleValue();
                 if (v == PhiNode.MULTIPLE_VALUES) {
@@ -372,8 +372,8 @@ public class GraphUtil {
             NodeWorkList worklist = proxy.graph().createNodeWorkList();
             worklist.add(proxy);
             for (Node node : worklist) {
-                if (node instanceof ValueProxy) {
-                    ValueNode originalValue = ((ValueProxy) node).getOriginalNode();
+                if (node instanceof LimitedValueProxy) {
+                    ValueNode originalValue = ((LimitedValueProxy) node).getOriginalNode();
                     if (!process(originalValue, worklist)) {
                         return;
                     }

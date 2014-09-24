@@ -32,9 +32,9 @@ public class BasicInductionVariable extends InductionVariable {
     private ValuePhiNode phi;
     private ValueNode init;
     private ValueNode rawStride;
-    private IntegerArithmeticNode op;
+    private BinaryArithmeticNode op;
 
-    public BasicInductionVariable(LoopEx loop, ValuePhiNode phi, ValueNode init, ValueNode rawStride, IntegerArithmeticNode op) {
+    public BasicInductionVariable(LoopEx loop, ValuePhiNode phi, ValueNode init, ValueNode rawStride, BinaryArithmeticNode op) {
         super(loop);
         this.phi = phi;
         this.init = init;
@@ -59,10 +59,10 @@ public class BasicInductionVariable extends InductionVariable {
                 dir = Direction.Down;
             }
             if (dir != null) {
-                if (op instanceof IntegerAddNode) {
+                if (op instanceof AddNode) {
                     return dir;
                 } else {
-                    assert op instanceof IntegerSubNode;
+                    assert op instanceof SubNode;
                     return dir.opposite();
                 }
             }
@@ -82,10 +82,10 @@ public class BasicInductionVariable extends InductionVariable {
 
     @Override
     public ValueNode strideNode() {
-        if (op instanceof IntegerAddNode) {
+        if (op instanceof AddNode) {
             return rawStride;
         }
-        if (op instanceof IntegerSubNode) {
+        if (op instanceof SubNode) {
             return graph().unique(NegateNode.create(rawStride));
         }
         throw GraalInternalError.shouldNotReachHere();
@@ -108,10 +108,10 @@ public class BasicInductionVariable extends InductionVariable {
 
     @Override
     public long constantStride() {
-        if (op instanceof IntegerAddNode) {
+        if (op instanceof AddNode) {
             return rawStride.asConstant().asLong();
         }
-        if (op instanceof IntegerSubNode) {
+        if (op instanceof SubNode) {
             return -rawStride.asConstant().asLong();
         }
         throw GraalInternalError.shouldNotReachHere();
@@ -131,7 +131,7 @@ public class BasicInductionVariable extends InductionVariable {
         if (!maxTripCount.stamp().isCompatible(stamp)) {
             maxTripCount = IntegerConvertNode.convert(maxTripCount, stamp, graph());
         }
-        return IntegerArithmeticNode.add(graph, IntegerArithmeticNode.mul(graph, stride, IntegerArithmeticNode.sub(graph, maxTripCount, ConstantNode.forIntegerStamp(stamp, 1, graph))), initNode);
+        return BinaryArithmeticNode.add(graph, BinaryArithmeticNode.mul(graph, stride, BinaryArithmeticNode.sub(graph, maxTripCount, ConstantNode.forIntegerStamp(stamp, 1, graph))), initNode);
     }
 
     @Override
@@ -141,7 +141,7 @@ public class BasicInductionVariable extends InductionVariable {
         if (!maxTripCount.stamp().isCompatible(stamp)) {
             maxTripCount = IntegerConvertNode.convert(maxTripCount, stamp, graph());
         }
-        return IntegerArithmeticNode.add(graph(), IntegerArithmeticNode.mul(graph(), strideNode(), maxTripCount), initNode());
+        return BinaryArithmeticNode.add(graph(), BinaryArithmeticNode.mul(graph(), strideNode(), maxTripCount), initNode());
     }
 
     @Override

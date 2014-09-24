@@ -182,7 +182,7 @@ public final class OptimizedCallTargetLog {
         log(0, "opt fail", callSite.toString(), properties);
     }
 
-    static void logOptimizingDone(OptimizedCallTarget target, Map<String, Object> properties) {
+    public static void logOptimizingDone(OptimizedCallTarget target, Map<String, Object> properties) {
         if (TraceTruffleCompilationDetails.getValue() || TraceTruffleCompilation.getValue()) {
             log(0, "opt done", target.toString(), properties);
         }
@@ -223,7 +223,7 @@ public final class OptimizedCallTargetLog {
         }
     }
 
-    static void addASTSizeProperty(OptimizedCallTarget target, Map<String, Object> properties) {
+    public static void addASTSizeProperty(OptimizedCallTarget target, Map<String, Object> properties) {
         int polymorphicCount = NodeUtil.countNodes(target.getRootNode(), new NodeCountFilter() {
             public boolean isCounted(Node node) {
                 return node.getCost() == NodeCost.POLYMORPHIC;

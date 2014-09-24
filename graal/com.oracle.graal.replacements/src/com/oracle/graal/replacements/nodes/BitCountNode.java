@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.replacements.nodes;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.spi.*;
@@ -45,8 +46,8 @@ public class BitCountNode extends UnaryNode implements LIRLowerable {
     @Override
     public boolean inferStamp() {
         IntegerStamp valueStamp = (IntegerStamp) getValue().stamp();
-        assert (valueStamp.downMask() & IntegerStamp.defaultMask(valueStamp.getBits())) == valueStamp.downMask();
-        assert (valueStamp.upMask() & IntegerStamp.defaultMask(valueStamp.getBits())) == valueStamp.upMask();
+        assert (valueStamp.downMask() & CodeUtil.mask(valueStamp.getBits())) == valueStamp.downMask();
+        assert (valueStamp.upMask() & CodeUtil.mask(valueStamp.getBits())) == valueStamp.upMask();
         return updateStamp(StampFactory.forInteger(Kind.Int, bitCount(valueStamp.downMask()), bitCount(valueStamp.upMask())));
     }
 

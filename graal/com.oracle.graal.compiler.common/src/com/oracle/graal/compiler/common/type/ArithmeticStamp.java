@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,30 +20,40 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.calc;
+package com.oracle.graal.compiler.common.type;
 
-import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.nodeinfo.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.spi.*;
+/**
+ * Type describing values that support arithmetic operations.
+ */
+public abstract class ArithmeticStamp extends Stamp {
 
-@NodeInfo
-public abstract class FloatArithmeticNode extends BinaryNode implements ArithmeticLIRLowerable {
+    private final ArithmeticOpTable ops;
 
-    private final boolean isStrictFP;
-
-    public FloatArithmeticNode(Stamp stamp, ValueNode x, ValueNode y, boolean isStrictFP) {
-        super(stamp, x, y);
-        assert stamp instanceof FloatStamp;
-        this.isStrictFP = isStrictFP;
+    protected ArithmeticStamp(ArithmeticOpTable ops) {
+        this.ops = ops;
     }
 
-    /**
-     * Checks whether this instruction has strict fp semantics.
-     * 
-     * @return {@code true} if this instruction has strict fp semantics
-     */
-    public boolean isStrictFP() {
-        return isStrictFP;
+    public ArithmeticOpTable getOps() {
+        return ops;
+    }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + ops.hashCode();
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (!(obj instanceof ArithmeticStamp)) {
+            return false;
+        }
+        ArithmeticStamp other = (ArithmeticStamp) obj;
+        return this.ops == other.ops;
     }
 }

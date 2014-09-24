@@ -27,6 +27,8 @@ import java.util.function.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.spi.*;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.UnaryOp;
 
 public class FloatStamp extends PrimitiveStamp {
 
@@ -39,7 +41,7 @@ public class FloatStamp extends PrimitiveStamp {
     }
 
     public FloatStamp(int bits, double lowerBound, double upperBound, boolean nonNaN) {
-        super(bits);
+        super(bits, OPS);
         this.lowerBound = lowerBound;
         this.upperBound = upperBound;
         this.nonNaN = nonNaN;
@@ -234,7 +236,7 @@ public class FloatStamp extends PrimitiveStamp {
         if (nonNaN != other.nonNaN) {
             return false;
         }
-        return true;
+        return super.equals(other);
     }
 
     @Override
@@ -248,5 +250,190 @@ public class FloatStamp extends PrimitiveStamp {
             }
         }
         return null;
+    }
+
+    private static final ArithmeticOpTable OPS = new ArithmeticOpTable();
+
+    static {
+        OPS.neg = new UnaryOp() {
+
+            @Override
+            public Constant foldConstant(Constant value) {
+                switch (value.getKind()) {
+                    case Float:
+                        return Constant.forFloat(-value.asFloat());
+                    case Double:
+                        return Constant.forDouble(-value.asDouble());
+                    default:
+                        throw GraalInternalError.shouldNotReachHere();
+                }
+            }
+
+            @Override
+            public Stamp foldStamp(Stamp s) {
+                FloatStamp stamp = (FloatStamp) s;
+                return new FloatStamp(stamp.getBits(), -stamp.upperBound(), -stamp.lowerBound(), stamp.isNonNaN());
+            }
+        };
+
+        OPS.add = new BinaryOp(false, true) {
+
+            @Override
+            public Constant foldConstant(Constant a, Constant b) {
+                assert a.getKind() == b.getKind();
+                switch (a.getKind()) {
+                    case Float:
+                        return Constant.forFloat(a.asFloat() + b.asFloat());
+                    case Double:
+                        return Constant.forDouble(a.asDouble() + b.asDouble());
+                    default:
+                        throw GraalInternalError.shouldNotReachHere();
+                }
+            }
+
+            @Override
+            public Stamp foldStamp(Stamp stamp1, Stamp stamp2) {
+                // TODO
+                return stamp1.unrestricted();
+            }
+
+            @Override
+            public boolean isNeutral(Constant n) {
+                switch (n.getKind()) {
+                    case Float:
+                        return Float.compare(n.asFloat(), -0.0f) == 0;
+                    case Double:
+                        return Double.compare(n.asDouble(), -0.0) == 0;
+                    default:
+                        throw GraalInternalError.shouldNotReachHere();
+                }
+            }
+        };
+
+        OPS.sub = new BinaryOp(false, false) {
+
+            @Override
+            public Constant foldConstant(Constant a, Constant b) {
+                assert a.getKind() == b.getKind();
+                switch (a.getKind()) {
+                    case Float:
+                        return Constant.forFloat(a.asFloat() - b.asFloat());
+                    case Double:
+                        return Constant.forDouble(a.asDouble() - b.asDouble());
+                    default:
+                        throw GraalInternalError.shouldNotReachHere();
+                }
+            }
+
+            @Override
+            public Stamp foldStamp(Stamp stamp1, Stamp stamp2) {
+                // TODO
+                return stamp1.unrestricted();
+            }
+
+            @Override
+            public boolean isNeutral(Constant n) {
+                switch (n.getKind()) {
+                    case Float:
+                        return Float.compare(n.asFloat(), 0.0f) == 0;
+                    case Double:
+                        return Double.compare(n.asDouble(), 0.0) == 0;
+                    default:
+                        throw GraalInternalError.shouldNotReachHere();
+                }
+            }
+        };
+
+        OPS.mul = new BinaryOp(false, true) {
+
+            @Override
+            public Constant foldConstant(Constant a, Constant b) {
+                assert a.getKind() == b.getKind();
+                switch (a.getKind()) {
+                    case Float:
+                        return Constant.forFloat(a.asFloat() * b.asFloat());
+                    case Double:
+                        return Constant.forDouble(a.asDouble() * b.asDouble());
+                    default:
+                        throw GraalInternalError.shouldNotReachHere();
+                }
+            }
+
+            @Override
+            public Stamp foldStamp(Stamp a, Stamp b) {
+                // TODO
+                return a.unrestricted();
+            }
+
+            @Override
+            public boolean isNeutral(Constant n) {
+                switch (n.getKind()) {
+                    case Float:
+                        return Float.compare(n.asFloat(), 1.0f) == 0;
+                    case Double:
+                        return Double.compare(n.asDouble(), 1.0) == 0;
+                    default:
+                        throw GraalInternalError.shouldNotReachHere();
+                }
+            }
+
+            // there is no multiplicative zero, since both 0.0 and -0.0 can flip sign
+        };
+
+        OPS.div = new BinaryOp(false, false) {
+
+            @Override
+            public Constant foldConstant(Constant a, Constant b) {
+                assert a.getKind() == b.getKind();
+                switch (a.getKind()) {
+                    case Float:
+                        return Constant.forFloat(a.asFloat() / b.asFloat());
+                    case Double:
+                        return Constant.forDouble(a.asDouble() / b.asDouble());
+                    default:
+                        throw GraalInternalError.shouldNotReachHere();
+                }
+            }
+
+            @Override
+            public Stamp foldStamp(Stamp stamp1, Stamp stamp2) {
+                // TODO
+                return stamp1.unrestricted();
+            }
+
+            @Override
+            public boolean isNeutral(Constant n) {
+                switch (n.getKind()) {
+                    case Float:
+                        return Float.compare(n.asFloat(), 1.0f) == 0;
+                    case Double:
+                        return Double.compare(n.asDouble(), 1.0) == 0;
+                    default:
+                        throw GraalInternalError.shouldNotReachHere();
+                }
+            }
+        };
+
+        OPS.rem = new BinaryOp(false, false) {
+
+            @Override
+            public Constant foldConstant(Constant a, Constant b) {
+                assert a.getKind() == b.getKind();
+                switch (a.getKind()) {
+                    case Float:
+                        return Constant.forFloat(a.asFloat() % b.asFloat());
+                    case Double:
+                        return Constant.forDouble(a.asDouble() % b.asDouble());
+                    default:
+                        throw GraalInternalError.shouldNotReachHere();
+                }
+            }
+
+            @Override
+            public Stamp foldStamp(Stamp stamp1, Stamp stamp2) {
+                // TODO
+                return stamp1.unrestricted();
+            }
+        };
     }
 }

@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.nodes.calc;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodeinfo.*;
@@ -45,19 +45,14 @@ public class NarrowNode extends IntegerConvertNode {
         super(StampTool.narrowingConversion(input.stamp(), resultBits), input, resultBits);
     }
 
-    public static long narrow(long value, int resultBits) {
-        long ret = value & IntegerStamp.defaultMask(resultBits);
-        return SignExtendNode.signExtend(ret, resultBits);
-    }
-
     @Override
     public Constant convert(Constant c) {
-        return Constant.forPrimitiveInt(getResultBits(), narrow(c.asLong(), getResultBits()));
+        return Constant.forPrimitiveInt(getResultBits(), CodeUtil.narrow(c.asLong(), getResultBits()));
     }
 
     @Override
     public Constant reverse(Constant input) {
-        long result = SignExtendNode.signExtend(input.asLong(), getResultBits());
+        long result = CodeUtil.signExtend(input.asLong(), getResultBits());
         return Constant.forPrimitiveInt(getInputBits(), result);
     }
 

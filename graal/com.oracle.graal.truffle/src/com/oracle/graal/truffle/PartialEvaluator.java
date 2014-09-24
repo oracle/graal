@@ -222,7 +222,7 @@ public class PartialEvaluator {
 
                         StructuredGraph inlineGraph = replacements.getMethodSubstitution(methodCallTargetNode.targetMethod());
                         if (inlineGraph == null && !methodCallTargetNode.targetMethod().isNative() && methodCallTargetNode.targetMethod().canBeInlined()) {
-                            inlineGraph = parseGraph(methodCallTargetNode.targetMethod(), methodCallTargetNode.arguments(), assumptions, phaseContext, false);
+                            inlineGraph = parseGraph(methodCallTargetNode.targetMethod(), methodCallTargetNode.arguments(), assumptions, phaseContext);
                         }
 
                         if (inlineGraph != null) {
@@ -264,10 +264,9 @@ public class PartialEvaluator {
         }
     }
 
-    private StructuredGraph parseGraph(final ResolvedJavaMethod targetMethod, final NodeInputList<ValueNode> arguments, final Assumptions assumptions, final PhaseContext phaseContext,
-                    boolean ignoreSlowPath) {
+    private StructuredGraph parseGraph(final ResolvedJavaMethod targetMethod, final NodeInputList<ValueNode> arguments, final Assumptions assumptions, final PhaseContext phaseContext) {
 
-        StructuredGraph graph = truffleCache.lookup(targetMethod, arguments, assumptions, canonicalizer, ignoreSlowPath);
+        StructuredGraph graph = truffleCache.lookup(targetMethod, arguments, assumptions, canonicalizer);
 
         if (graph != null && targetMethod.getAnnotation(ExplodeLoop.class) != null) {
             assert graph.hasLoops() : graph + " does not contain a loop";

@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.replacements.nodes;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.spi.*;
@@ -51,7 +52,7 @@ public class BitScanReverseNode extends UnaryNode implements LIRLowerable {
         IntegerStamp valueStamp = (IntegerStamp) getValue().stamp();
         int min;
         int max;
-        long mask = IntegerStamp.defaultMask(valueStamp.getBits());
+        long mask = CodeUtil.mask(valueStamp.getBits());
         int lastAlwaysSetBit = scan(valueStamp.downMask() & mask);
         if (lastAlwaysSetBit == -1) {
             min = -1;

@@ -24,6 +24,7 @@ package com.oracle.graal.nodes;
 
 import java.util.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
@@ -318,7 +319,7 @@ public class ConstantNode extends FloatingNode implements LIRLowerable {
 
     private static ConstantNode forIntegerBits(int bits, Constant constant, StructuredGraph graph) {
         long value = constant.asLong();
-        long bounds = SignExtendNode.signExtend(value, bits);
+        long bounds = CodeUtil.signExtend(value, bits);
         return unique(graph, ConstantNode.create(constant, StampFactory.forInteger(bits, bounds, bounds)));
     }
 
@@ -332,7 +333,7 @@ public class ConstantNode extends FloatingNode implements LIRLowerable {
 
     private static ConstantNode forIntegerBits(int bits, Constant constant) {
         long value = constant.asLong();
-        long bounds = SignExtendNode.signExtend(value, bits);
+        long bounds = CodeUtil.signExtend(value, bits);
         return ConstantNode.create(constant, StampFactory.forInteger(bits, bounds, bounds));
     }
 

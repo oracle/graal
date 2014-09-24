@@ -25,11 +25,12 @@ package com.oracle.graal.compiler.common.type;
 /**
  * Type describing primitive values.
  */
-public abstract class PrimitiveStamp extends Stamp {
+public abstract class PrimitiveStamp extends ArithmeticStamp {
 
     private final int bits;
 
-    protected PrimitiveStamp(int bits) {
+    protected PrimitiveStamp(int bits, ArithmeticOpTable ops) {
+        super(ops);
         this.bits = bits;
     }
 
@@ -51,7 +52,7 @@ public abstract class PrimitiveStamp extends Stamp {
     @Override
     public int hashCode() {
         final int prime = 31;
-        int result = 1;
+        int result = super.hashCode();
         result = prime * result + bits;
         return result;
     }
@@ -61,10 +62,13 @@ public abstract class PrimitiveStamp extends Stamp {
         if (this == obj) {
             return true;
         }
-        if (obj instanceof PrimitiveStamp) {
-            PrimitiveStamp other = (PrimitiveStamp) obj;
-            return bits == other.bits;
+        if (!(obj instanceof PrimitiveStamp)) {
+            return false;
         }
-        return false;
+        PrimitiveStamp other = (PrimitiveStamp) obj;
+        if (bits != other.bits) {
+            return false;
+        }
+        return super.equals(obj);
     }
 }

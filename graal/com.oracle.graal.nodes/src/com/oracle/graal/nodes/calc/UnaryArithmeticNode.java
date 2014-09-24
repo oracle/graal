@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,55 +20,44 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes;
+package com.oracle.graal.nodes.calc;
 
-import com.oracle.graal.graph.*;
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.UnaryOp;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
+import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo
-public class ValueProxyNode extends ProxyNode implements Canonicalizable, Virtualizable, ValueProxy {
+public abstract class UnaryArithmeticNode extends UnaryNode implements ArithmeticLIRLowerable {
 
-    @Input ValueNode value;
+    private final UnaryOp op;
 
-    public static ValueProxyNode create(ValueNode value, BeginNode proxyPoint) {
-        return USE_GENERATED_NODES ? new ValueProxyNodeGen(value, proxyPoint) : new ValueProxyNode(value, proxyPoint);
+    protected UnaryArithmeticNode(UnaryOp op, ValueNode value) {
+        super(op.foldStamp(value.stamp()), value);
+        this.op = op;
     }
 
-    protected ValueProxyNode(ValueNode value, BeginNode proxyPoint) {
-        super(value.stamp(), proxyPoint);
-        this.value = value;
+    public UnaryOp getOp() {
+        return op;
     }
 
-    @Override
-    public ValueNode value() {
-        return value;
+    public Constant evalConst(Constant... inputs) {
+        assert inputs.length == 1;
+        return op.foldConstant(inputs[0]);
     }
 
     @Override
     public boolean inferStamp() {
-        return updateStamp(value.stamp());
+        return updateStamp(op.foldStamp(getValue().stamp()));
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
-        if (value.isConstant()) {
-            return value;
+    public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
+        if (forValue.isConstant()) {
+            return ConstantNode.forPrimitive(stamp(), op.foldConstant(forValue.asConstant()));
         }
         return this;
-    }
-
-    @Override
-    public void virtualize(VirtualizerTool tool) {
-        State state = tool.getObjectState(value);
-        if (state != null && state.getState() == EscapeState.Virtual) {
-            tool.replaceWithVirtual(state.getVirtualObject());
-        }
-    }
-
-    @Override
-    public ValueNode getOriginalNode() {
-        return value();
     }
 }

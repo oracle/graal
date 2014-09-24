@@ -29,7 +29,6 @@ import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 
 @NodeInfo(shortName = "/")
 public class IntegerDivNode extends FixedBinaryNode implements Lowerable, LIRLowerable {
@@ -39,12 +38,12 @@ public class IntegerDivNode extends FixedBinaryNode implements Lowerable, LIRLow
     }
 
     protected IntegerDivNode(ValueNode x, ValueNode y) {
-        super(StampTool.div(x.stamp(), y.stamp()), x, y);
+        super(IntegerStamp.OPS.getDiv().foldStamp(x.stamp(), y.stamp()), x, y);
     }
 
     @Override
     public boolean inferStamp() {
-        return updateStamp(StampTool.div(getX().stamp(), getY().stamp()));
+        return updateStamp(IntegerStamp.OPS.getDiv().foldStamp(getX().stamp(), getY().stamp()));
     }
 
     @Override
@@ -74,7 +73,7 @@ public class IntegerDivNode extends FixedBinaryNode implements Lowerable, LIRLow
                     int bits = PrimitiveStamp.getBits(stamp());
                     RightShiftNode sign = RightShiftNode.create(forX, ConstantNode.forInt(bits - 1));
                     UnsignedRightShiftNode round = UnsignedRightShiftNode.create(sign, ConstantNode.forInt(bits - log2));
-                    dividend = IntegerArithmeticNode.add(dividend, round);
+                    dividend = BinaryArithmeticNode.add(dividend, round);
                 }
                 RightShiftNode shift = RightShiftNode.create(dividend, ConstantNode.forInt(log2));
                 if (c < 0) {
@@ -85,8 +84,8 @@ public class IntegerDivNode extends FixedBinaryNode implements Lowerable, LIRLow
         }
 
         // Convert the expression ((a - a % b) / b) into (a / b).
-        if (forX instanceof IntegerSubNode) {
-            IntegerSubNode integerSubNode = (IntegerSubNode) forX;
+        if (forX instanceof SubNode) {
+            SubNode integerSubNode = (SubNode) forX;
             if (integerSubNode.getY() instanceof IntegerRemNode) {
                 IntegerRemNode integerRemNode = (IntegerRemNode) integerSubNode.getY();
                 if (integerSubNode.stamp().isCompatible(this.stamp()) && integerRemNode.stamp().isCompatible(this.stamp()) && integerSubNode.getX() == integerRemNode.getX() &&

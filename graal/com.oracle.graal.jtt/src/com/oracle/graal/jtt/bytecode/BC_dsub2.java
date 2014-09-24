@@ -39,4 +39,17 @@ public class BC_dsub2 extends JTTTest {
         runTest("test", 0.0d);
     }
 
+    public static double test2(double a) {
+        return a - a;
+    }
+
+    @Test
+    public void run1() {
+        runTest("test2", 17.3);
+    }
+
+    @Test
+    public void run2() {
+        runTest("test2", Double.NaN);
+    }
 }

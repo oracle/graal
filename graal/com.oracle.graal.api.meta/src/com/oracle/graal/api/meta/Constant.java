@@ -255,6 +255,12 @@ public abstract class Constant extends Value {
      */
     public static Constant forIntegerKind(Kind kind, long i) {
         switch (kind) {
+            case Byte:
+                return new PrimitiveConstant(kind, (byte) i);
+            case Short:
+                return new PrimitiveConstant(kind, (short) i);
+            case Char:
+                return new PrimitiveConstant(kind, (char) i);
             case Int:
                 return new PrimitiveConstant(kind, (int) i);
             case Long:

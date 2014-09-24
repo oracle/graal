@@ -115,4 +115,8 @@ public abstract class Stamp {
     public Constant asConstant() {
         return null;
     }
+
+    public final Stamp asStamp() {
+        return this;
+    }
 }

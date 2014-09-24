@@ -1916,6 +1916,7 @@ public final class LinearScan {
                 } catch (Throwable e) {
                     throw Debug.handle(e);
                 }
+                printLir("After spill move elimination", true);
 
                 try (Scope s1 = Debug.scope("AssignLocations")) {
                     assignLocations();

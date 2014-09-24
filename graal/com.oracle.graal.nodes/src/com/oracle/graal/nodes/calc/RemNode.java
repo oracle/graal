@@ -23,39 +23,29 @@
 package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
-@NodeInfo
-public abstract class IntegerArithmeticNode extends BinaryNode implements ArithmeticLIRLowerable {
+@NodeInfo(shortName = "%")
+public class RemNode extends BinaryArithmeticNode implements Lowerable {
 
-    public IntegerArithmeticNode(Stamp stamp, ValueNode x, ValueNode y) {
-        super(stamp, x, y);
-        assert stamp instanceof IntegerStamp;
+    public static RemNode create(ValueNode x, ValueNode y) {
+        return USE_GENERATED_NODES ? new RemNodeGen(x, y) : new RemNode(x, y);
     }
 
-    public static IntegerAddNode add(StructuredGraph graph, ValueNode v1, ValueNode v2) {
-        return graph.unique(IntegerAddNode.create(v1, v2));
+    protected RemNode(ValueNode x, ValueNode y) {
+        super(ArithmeticOpTable.forStamp(x.stamp()).getRem(), x, y);
     }
 
-    public static IntegerAddNode add(ValueNode v1, ValueNode v2) {
-        return IntegerAddNode.create(v1, v2);
+    @Override
+    public void lower(LoweringTool tool) {
+        tool.getLowerer().lower(this, tool);
     }
 
-    public static IntegerMulNode mul(StructuredGraph graph, ValueNode v1, ValueNode v2) {
-        return graph.unique(IntegerMulNode.create(v1, v2));
-    }
-
-    public static IntegerMulNode mul(ValueNode v1, ValueNode v2) {
-        return IntegerMulNode.create(v1, v2);
-    }
-
-    public static IntegerSubNode sub(StructuredGraph graph, ValueNode v1, ValueNode v2) {
-        return graph.unique(IntegerSubNode.create(v1, v2));
-    }
-
-    public static IntegerSubNode sub(ValueNode v1, ValueNode v2) {
-        return IntegerSubNode.create(v1, v2);
+    @Override
+    public void generate(NodeMappableLIRBuilder builder, ArithmeticLIRGenerator gen) {
+        builder.setResult(this, gen.emitRem(builder.operand(getX()), builder.operand(getY()), null));
     }
 }
