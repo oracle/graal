@@ -95,9 +95,9 @@ public class TruffleCacheImpl implements TruffleCache {
         return graph;
     }
 
-    public StructuredGraph lookup(ResolvedJavaMethod method, NodeInputList<ValueNode> arguments, Assumptions assumptions, CanonicalizerPhase canonicalizer, boolean ignoreSlowPath) {
+    public StructuredGraph lookup(ResolvedJavaMethod method, NodeInputList<ValueNode> arguments, Assumptions assumptions, CanonicalizerPhase canonicalizer) {
 
-        if (!ignoreSlowPath && method.getAnnotation(CompilerDirectives.SlowPath.class) != null) {
+        if (method.getAnnotation(CompilerDirectives.SlowPath.class) != null) {
             return null;
         }
 
@@ -262,7 +262,7 @@ public class TruffleCacheImpl implements TruffleCache {
     private void expandInvoke(MethodCallTargetNode methodCallTargetNode, CanonicalizerPhase canonicalizer) {
         StructuredGraph inlineGraph = providers.getReplacements().getMethodSubstitution(methodCallTargetNode.targetMethod());
         if (inlineGraph == null) {
-            inlineGraph = TruffleCacheImpl.this.lookup(methodCallTargetNode.targetMethod(), methodCallTargetNode.arguments(), null, canonicalizer, false);
+            inlineGraph = TruffleCacheImpl.this.lookup(methodCallTargetNode.targetMethod(), methodCallTargetNode.arguments(), null, canonicalizer);
         }
         if (inlineGraph == null) {
             return;

@@ -37,8 +37,6 @@ public interface TruffleCache {
 
     /**
      * Returns a cached graph for a method with given arguments.
-     *
-     * @param ignoreSlowPath TODO
      */
-    StructuredGraph lookup(final ResolvedJavaMethod method, final NodeInputList<ValueNode> arguments, final Assumptions assumptions, final CanonicalizerPhase finalCanonicalizer, boolean ignoreSlowPath);
+    StructuredGraph lookup(final ResolvedJavaMethod method, final NodeInputList<ValueNode> arguments, final Assumptions assumptions, final CanonicalizerPhase finalCanonicalizer);
 }
