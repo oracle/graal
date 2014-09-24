@@ -29,7 +29,6 @@ import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 
 @NodeInfo(shortName = "/")
 public class IntegerDivNode extends FixedBinaryNode implements Lowerable, LIRLowerable {
@@ -39,12 +38,12 @@ public class IntegerDivNode extends FixedBinaryNode implements Lowerable, LIRLow
     }
 
     protected IntegerDivNode(ValueNode x, ValueNode y) {
-        super(StampTool.div(x.stamp(), y.stamp()), x, y);
+        super(IntegerStamp.OPS.getDiv().foldStamp(x.stamp(), y.stamp()), x, y);
     }
 
     @Override
     public boolean inferStamp() {
-        return updateStamp(StampTool.div(getX().stamp(), getY().stamp()));
+        return updateStamp(IntegerStamp.OPS.getDiv().foldStamp(getX().stamp(), getY().stamp()));
     }
 
     @Override

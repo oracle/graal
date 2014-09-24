@@ -28,7 +28,6 @@ import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 
 @NodeInfo(shortName = "%")
 public class IntegerRemNode extends FixedBinaryNode implements Lowerable, LIRLowerable {
@@ -38,12 +37,12 @@ public class IntegerRemNode extends FixedBinaryNode implements Lowerable, LIRLow
     }
 
     protected IntegerRemNode(ValueNode x, ValueNode y) {
-        super(StampTool.rem(x.stamp(), y.stamp()), x, y);
+        super(IntegerStamp.OPS.getRem().foldStamp(x.stamp(), y.stamp()), x, y);
     }
 
     @Override
     public boolean inferStamp() {
-        return updateStamp(StampTool.rem(getX().stamp(), getY().stamp()));
+        return updateStamp(IntegerStamp.OPS.getRem().foldStamp(getX().stamp(), getY().stamp()));
     }
 
     @Override

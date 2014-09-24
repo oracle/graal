@@ -38,6 +38,10 @@ public class IntegerStampTest {
 
     private StructuredGraph graph;
 
+    private static Stamp addIntStamp(Stamp a, Stamp b) {
+        return IntegerStamp.OPS.getAdd().foldStamp(a, b);
+    }
+
     @Before
     public void before() {
         graph = new StructuredGraph();
@@ -173,86 +177,86 @@ public class IntegerStampTest {
 
     @Test
     public void testAddIntSimple() {
-        assertEquals(StampFactory.forInteger(Kind.Int, 0, 30, 0, 31), StampTool.add(StampFactory.forInteger(Kind.Int, 0, 10), StampFactory.forInteger(Kind.Int, 0, 20)));
+        assertEquals(StampFactory.forInteger(Kind.Int, 0, 30, 0, 31), addIntStamp(StampFactory.forInteger(Kind.Int, 0, 10), StampFactory.forInteger(Kind.Int, 0, 20)));
     }
 
     @Test
     public void testAddNegativeOverFlowInt1() {
         assertEquals(StampFactory.forInteger(Kind.Int, Integer.MIN_VALUE, Integer.MAX_VALUE, 0, 0xffff_ffffL),
-                        StampTool.add(StampFactory.forInteger(Kind.Int, Integer.MIN_VALUE, 0), StampFactory.forInteger(Kind.Int, -1, 0)));
+                        addIntStamp(StampFactory.forInteger(Kind.Int, Integer.MIN_VALUE, 0), StampFactory.forInteger(Kind.Int, -1, 0)));
     }
 
     @Test
     public void testAddNegativeOverFlowInt2() {
         assertEquals(StampFactory.forInteger(Kind.Int, Integer.MAX_VALUE - 2, Integer.MAX_VALUE, 0x7fff_fffcL, 0x7fff_ffffL),
-                        StampTool.add(StampFactory.forInteger(Kind.Int, Integer.MIN_VALUE, Integer.MIN_VALUE + 1), StampFactory.forInteger(Kind.Int, -3, -2)));
+                        addIntStamp(StampFactory.forInteger(Kind.Int, Integer.MIN_VALUE, Integer.MIN_VALUE + 1), StampFactory.forInteger(Kind.Int, -3, -2)));
     }
 
     @Test
     public void testAddPositiveOverFlowInt1() {
-        assertEquals(StampFactory.forKind(Kind.Int), StampTool.add(StampFactory.forInteger(Kind.Int, 0, 1), StampFactory.forInteger(Kind.Int, 0, Integer.MAX_VALUE)));
+        assertEquals(StampFactory.forKind(Kind.Int), addIntStamp(StampFactory.forInteger(Kind.Int, 0, 1), StampFactory.forInteger(Kind.Int, 0, Integer.MAX_VALUE)));
     }
 
     @Test
     public void testAddPositiveOverFlowInt2() {
         assertEquals(StampFactory.forInteger(Kind.Int, Integer.MIN_VALUE, Integer.MIN_VALUE + 2),
-                        StampTool.add(StampFactory.forInteger(Kind.Int, Integer.MAX_VALUE - 1, Integer.MAX_VALUE), StampFactory.forInteger(Kind.Int, 2, 3)));
+                        addIntStamp(StampFactory.forInteger(Kind.Int, Integer.MAX_VALUE - 1, Integer.MAX_VALUE), StampFactory.forInteger(Kind.Int, 2, 3)));
     }
 
     @Test
     public void testAddOverFlowsInt() {
-        assertEquals(StampFactory.forKind(Kind.Int), StampTool.add(StampFactory.forInteger(Kind.Int, -1, 1), StampFactory.forInteger(Kind.Int, Integer.MIN_VALUE, Integer.MAX_VALUE)));
+        assertEquals(StampFactory.forKind(Kind.Int), addIntStamp(StampFactory.forInteger(Kind.Int, -1, 1), StampFactory.forInteger(Kind.Int, Integer.MIN_VALUE, Integer.MAX_VALUE)));
     }
 
     @Test
     public void testAddLongSimple() {
-        assertEquals(StampFactory.forInteger(Kind.Long, 0, 30, 0, 31), StampTool.add(StampFactory.forInteger(Kind.Long, 0, 10), StampFactory.forInteger(Kind.Long, 0, 20)));
+        assertEquals(StampFactory.forInteger(Kind.Long, 0, 30, 0, 31), addIntStamp(StampFactory.forInteger(Kind.Long, 0, 10), StampFactory.forInteger(Kind.Long, 0, 20)));
     }
 
     @Test
     public void testAddNegativOverFlowLong1() {
         assertEquals(StampFactory.forInteger(Kind.Long, Long.MIN_VALUE, Long.MAX_VALUE, 0, 0xffff_ffff_ffff_ffffL),
-                        StampTool.add(StampFactory.forInteger(Kind.Long, Long.MIN_VALUE, Long.MIN_VALUE + 1), StampFactory.forInteger(Kind.Long, Integer.MIN_VALUE, Integer.MAX_VALUE)));
+                        addIntStamp(StampFactory.forInteger(Kind.Long, Long.MIN_VALUE, Long.MIN_VALUE + 1), StampFactory.forInteger(Kind.Long, Integer.MIN_VALUE, Integer.MAX_VALUE)));
     }
 
     @Test
     public void testAddNegativeOverFlowLong2() {
         assertEquals(StampFactory.forInteger(Kind.Long, Long.MAX_VALUE - 2, Long.MAX_VALUE),
-                        StampTool.add(StampFactory.forInteger(Kind.Long, Long.MIN_VALUE, Long.MIN_VALUE + 1), StampFactory.forInteger(Kind.Long, -3, -2)));
+                        addIntStamp(StampFactory.forInteger(Kind.Long, Long.MIN_VALUE, Long.MIN_VALUE + 1), StampFactory.forInteger(Kind.Long, -3, -2)));
     }
 
     @Test
     public void testAddPositiveOverFlowLong1() {
-        assertEquals(StampFactory.forKind(Kind.Long), StampTool.add(StampFactory.forInteger(Kind.Long, 0, 1), StampFactory.forInteger(Kind.Long, 0, Long.MAX_VALUE)));
+        assertEquals(StampFactory.forKind(Kind.Long), addIntStamp(StampFactory.forInteger(Kind.Long, 0, 1), StampFactory.forInteger(Kind.Long, 0, Long.MAX_VALUE)));
     }
 
     @Test
     public void testAddPositiveOverFlowLong2() {
         assertEquals(StampFactory.forInteger(Kind.Long, Long.MIN_VALUE, Long.MIN_VALUE + 2),
-                        StampTool.add(StampFactory.forInteger(Kind.Long, Long.MAX_VALUE - 1, Long.MAX_VALUE), StampFactory.forInteger(Kind.Long, 2, 3)));
+                        addIntStamp(StampFactory.forInteger(Kind.Long, Long.MAX_VALUE - 1, Long.MAX_VALUE), StampFactory.forInteger(Kind.Long, 2, 3)));
     }
 
     @Test
     public void testAddOverFlowsLong() {
-        assertEquals(StampFactory.forKind(Kind.Long), StampTool.add(StampFactory.forInteger(Kind.Long, -1, 1), StampFactory.forInteger(Kind.Long, Long.MIN_VALUE, Long.MAX_VALUE)));
+        assertEquals(StampFactory.forKind(Kind.Long), addIntStamp(StampFactory.forInteger(Kind.Long, -1, 1), StampFactory.forInteger(Kind.Long, Long.MIN_VALUE, Long.MAX_VALUE)));
     }
 
     @Test
     public void testAdd1() {
         assertEquals(StampFactory.forInteger(Kind.Int, Integer.MIN_VALUE + 1, 31 + (Integer.MIN_VALUE + 1)),
-                        StampTool.add(StampFactory.forInteger(Kind.Int, 0, 31), StampFactory.forInteger(Kind.Int, Integer.MIN_VALUE + 1, Integer.MIN_VALUE + 1)));
+                        addIntStamp(StampFactory.forInteger(Kind.Int, 0, 31), StampFactory.forInteger(Kind.Int, Integer.MIN_VALUE + 1, Integer.MIN_VALUE + 1)));
     }
 
     @Test
     public void testAdd2() {
         assertEquals(StampFactory.forInteger(Kind.Int, 0x8000_007e, 0x8000_007f, 0x8000_007eL, 0x8000_007fL),
-                        StampTool.add(StampFactory.forInteger(Kind.Int, 0x7fff_fffe, 0x7fff_ffff, 0x7fff_fffeL, 0x7ffff_fffL), StampFactory.forInteger(Kind.Int, 128, 128)));
+                        addIntStamp(StampFactory.forInteger(Kind.Int, 0x7fff_fffe, 0x7fff_ffff, 0x7fff_fffeL, 0x7ffff_fffL), StampFactory.forInteger(Kind.Int, 128, 128)));
     }
 
     @Test
     public void testAdd3() {
         assertEquals(StampFactory.forInteger(Kind.Long, Long.MIN_VALUE, Long.MAX_VALUE - 1, 0, 0xffff_ffff_ffff_fffeL),
-                        StampTool.add(StampFactory.forInteger(Kind.Long, Long.MIN_VALUE, Long.MAX_VALUE - 1, 0, 0xffff_ffff_ffff_fffeL),
+                        addIntStamp(StampFactory.forInteger(Kind.Long, Long.MIN_VALUE, Long.MAX_VALUE - 1, 0, 0xffff_ffff_ffff_fffeL),
                                         StampFactory.forInteger(Kind.Long, Long.MIN_VALUE, Long.MAX_VALUE - 1, 0, 0xffff_ffff_ffff_fffeL)));
 
     }

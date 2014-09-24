@@ -31,7 +31,6 @@ import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 
 /**
  * Location node that is the sum of two other location nodes. Can represent locations in the form of
@@ -120,7 +119,7 @@ public class AddLocationNode extends LocationNode implements Canonicalizable.Bin
 
     @Override
     public IntegerStamp getDisplacementStamp() {
-        return StampTool.add(getX().getDisplacementStamp(), getY().getDisplacementStamp());
+        return (IntegerStamp) IntegerStamp.OPS.getAdd().foldStamp(getX().getDisplacementStamp(), getY().getDisplacementStamp());
     }
 
     @NodeIntrinsic
