@@ -26,7 +26,7 @@ import java.util.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.cfg.*;
-import com.oracle.graal.lir.StandardOp.BlockEndOp;
+import com.oracle.graal.lir.StandardOp.*;
 
 /**
  * This class implements the overall container for the LIR graph and directs its construction,
@@ -209,5 +209,16 @@ public class LIR {
 
     public void setSpillMoveFactory(SpillMoveFactory spillMoveFactory) {
         this.spillMoveFactory = spillMoveFactory;
+    }
+
+    public void resetLabels() {
+
+        for (AbstractBlock<?> block : codeEmittingOrder()) {
+            for (LIRInstruction inst : lirInstructions.get(block)) {
+                if (inst instanceof LabelOp) {
+                    ((LabelOp) inst).getLabel().reset();
+                }
+            }
+        }
     }
 }

@@ -358,4 +358,9 @@ public class CompilationResultBuilder {
             throw new GraalInternalError(t);
         }
     }
+
+    public void reset() {
+        asm.reset();
+        compilationResult.reset();
+    }
 }

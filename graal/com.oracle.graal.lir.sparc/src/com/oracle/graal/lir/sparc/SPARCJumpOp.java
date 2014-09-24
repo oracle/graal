@@ -41,21 +41,26 @@ public class SPARCJumpOp extends JumpOp implements SPARCDelayedControlTransfer {
         assert !emitDone;
         if (!crb.isSuccessorEdge(destination())) {
             new Bpa(destination().label()).emit(masm);
+            delaySlotPosition = masm.position();
         }
-        delaySlotPosition = masm.position();
         emitDone = true;
     }
 
     @Override
     public void emitCode(CompilationResultBuilder crb) {
-        if (!emitDone) {
-            SPARCMacroAssembler masm = (SPARCMacroAssembler) crb.asm;
-            if (!crb.isSuccessorEdge(destination())) {
+        if (!crb.isSuccessorEdge(destination())) {
+            if (!emitDone) {
+                SPARCMacroAssembler masm = (SPARCMacroAssembler) crb.asm;
                 new Bpa(destination().label()).emit(masm);
                 new Nop().emit(masm);
+            } else {
+                assert crb.asm.position() - delaySlotPosition == 4;
             }
-        } else {
-            assert crb.asm.position() - delaySlotPosition == 4;
         }
+    }
+
+    public void resetState() {
+        delaySlotPosition = -1;
+        emitDone = false;
     }
 }

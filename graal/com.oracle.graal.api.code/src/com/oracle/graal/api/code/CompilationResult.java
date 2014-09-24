@@ -785,4 +785,14 @@ public class CompilationResult implements Serializable {
     public String getName() {
         return name;
     }
+
+    public void reset() {
+        infopoints.clear();
+        dataReferences.clear();
+        exceptionHandlers.clear();
+        marks.clear();
+        if (annotations != null) {
+            annotations.clear();
+        }
+    }
 }

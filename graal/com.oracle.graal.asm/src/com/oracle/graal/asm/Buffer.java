@@ -232,4 +232,8 @@ abstract class Buffer {
             return (data[pos + 3] & 0xff) << 24 | (data[pos + 2] & 0xff) << 16 | (data[pos + 1] & 0xff) << 8 | (data[pos + 0] & 0xff) << 0;
         }
     }
+
+    public void reset() {
+        position = 0;
+    }
 }

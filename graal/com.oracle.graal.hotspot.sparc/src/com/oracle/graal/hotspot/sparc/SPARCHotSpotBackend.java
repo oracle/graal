@@ -215,32 +215,40 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
         HotSpotVMConfig config = getRuntime().getConfig();
         Label unverifiedStub = installedCodeOwner == null || installedCodeOwner.isStatic() ? null : new Label();
 
-        // Emit the prefix
-
-        if (unverifiedStub != null) {
-            MarkId.recordMark(crb, MarkId.UNVERIFIED_ENTRY);
-            // We need to use JavaCall here because we haven't entered the frame yet.
-            CallingConvention cc = regConfig.getCallingConvention(JavaCall, null, new JavaType[]{getProviders().getMetaAccess().lookupJavaType(Object.class)}, getTarget(), false);
-            Register inlineCacheKlass = g5; // see MacroAssembler::ic_call
-
-            try (SPARCScratchRegister sc = SPARCScratchRegister.get()) {
-                Register scratch = sc.getRegister();
-                Register receiver = asRegister(cc.getArgument(0));
-                SPARCAddress src = new SPARCAddress(receiver, config.hubOffset);
-
-                new Ldx(src, scratch).emit(masm);
-                new Cmp(scratch, inlineCacheKlass).emit(masm);
+        int i = 0;
+        do {
+            if (i > 0) {
+                crb.reset();
+                lir.resetLabels();
+                resetDelayedControlTransfers(lir);
             }
-            new Bpne(CC.Xcc, unverifiedStub).emit(masm);
-            new Nop().emit(masm);  // delay slot
-        }
 
-        masm.align(config.codeEntryAlignment);
-        MarkId.recordMark(crb, MarkId.OSR_ENTRY);
-        MarkId.recordMark(crb, MarkId.VERIFIED_ENTRY);
+            // Emit the prefix
+            if (unverifiedStub != null) {
+                MarkId.recordMark(crb, MarkId.UNVERIFIED_ENTRY);
+                // We need to use JavaCall here because we haven't entered the frame yet.
+                CallingConvention cc = regConfig.getCallingConvention(JavaCall, null, new JavaType[]{getProviders().getMetaAccess().lookupJavaType(Object.class)}, getTarget(), false);
+                Register inlineCacheKlass = g5; // see MacroAssembler::ic_call
 
-        // Emit code for the LIR
-        crb.emit(lir);
+                try (SPARCScratchRegister sc = SPARCScratchRegister.get()) {
+                    Register scratch = sc.getRegister();
+                    Register receiver = asRegister(cc.getArgument(0));
+                    SPARCAddress src = new SPARCAddress(receiver, config.hubOffset);
+
+                    new Ldx(src, scratch).emit(masm);
+                    new Cmp(scratch, inlineCacheKlass).emit(masm);
+                }
+                new Bpne(CC.Xcc, unverifiedStub).emit(masm);
+                new Nop().emit(masm);  // delay slot
+            }
+
+            masm.align(config.codeEntryAlignment);
+            MarkId.recordMark(crb, MarkId.OSR_ENTRY);
+            MarkId.recordMark(crb, MarkId.VERIFIED_ENTRY);
+
+            // Emit code for the LIR
+            crb.emit(lir);
+        } while (i++ < 1);
 
         HotSpotFrameContext frameContext = (HotSpotFrameContext) crb.frameContext;
         HotSpotForeignCallsProvider foreignCalls = getProviders().getForeignCalls();
@@ -259,6 +267,16 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
             try (SPARCScratchRegister sc = SPARCScratchRegister.get()) {
                 Register scratch = sc.getRegister();
                 SPARCCall.indirectJmp(crb, masm, scratch, foreignCalls.lookupForeignCall(IC_MISS_HANDLER));
+            }
+        }
+    }
+
+    private static void resetDelayedControlTransfers(LIR lir) {
+        for (AbstractBlock<?> block : lir.codeEmittingOrder()) {
+            for (LIRInstruction inst : lir.getLIRforBlock(block)) {
+                if (inst instanceof SPARCDelayedControlTransfer) {
+                    ((SPARCDelayedControlTransfer) inst).resetState();
+                }
             }
         }
     }
@@ -299,7 +317,7 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
                     delayTransferPosition = i;
                 } else if (delayedTransfer != null) {
                     boolean overlap = acc.add(inst);
-                    if (inst instanceof SPARCTailDelayedLIRInstruction && !overlap) {
+                    if (!overlap && inst instanceof SPARCTailDelayedLIRInstruction) {
                         // We have found a non overlapping LIR instruction which can be delayed
                         ((SPARCTailDelayedLIRInstruction) inst).setDelayedControlTransfer(delayedTransfer);
                         delayedTransfer = null;

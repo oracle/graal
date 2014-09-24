@@ -73,7 +73,7 @@ public class SPARCCall {
     }
 
     @Opcode("CALL_DIRECT")
-    public static class DirectCallOp extends MethodCallOp implements SPARCDelayedControlTransfer {
+    public static class DirectCallOp extends MethodCallOp /* implements SPARCDelayedControlTransfer */{
         private boolean emitted = false;
         private int before = -1;
 
@@ -113,6 +113,11 @@ public class SPARCCall {
             before = masm.position();
             new Call(0).emit(masm);
             emitted = true;
+        }
+
+        public void resetState() {
+            emitted = false;
+            before = -1;
         }
     }
 

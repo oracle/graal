@@ -43,6 +43,9 @@ public interface SPARCDelayedControlTransfer {
         public String toString() {
             return "null";
         }
+
+        public void resetState() {
+        }
     };
 
     /**
@@ -53,4 +56,6 @@ public interface SPARCDelayedControlTransfer {
      * @param masm
      */
     public void emitControlTransfer(CompilationResultBuilder crb, SPARCMacroAssembler masm);
+
+    public void resetState();
 }

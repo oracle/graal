@@ -69,12 +69,17 @@ public class SPARCControlFlow {
         @Use({REG, CONST}) protected Value y;
         protected final Condition condition;
         protected final LabelRef trueDestination;
+        protected LabelHint trueDestinationHint;
         protected final LabelRef falseDestination;
+        protected LabelHint falseDestinationHint;
         protected final Kind kind;
         protected final boolean unorderedIsTrue;
         private boolean emitted = false;
         private int delaySlotPosition = -1;
         private double trueDestinationProbability;
+        // This describes the maximum offset between the first emitted (load constant in to scratch,
+        // if does not fit into simm5 of cbcond) instruction and the final branch instruction
+        private static int maximumSelfOffsetInstructions = 4;
 
         public CompareBranchOp(SPARCCompare opcode, Value x, Value y, Condition condition, LabelRef trueDestination, LabelRef falseDestination, Kind kind, boolean unorderedIsTrue,
                         double trueDestinationProbability) {
@@ -95,16 +100,159 @@ public class SPARCControlFlow {
                 assert masm.position() - delaySlotPosition == 4 : "Only one instruction can be stuffed into the delay slot";
             }
             if (!emitted) {
-                SPARCCompare.emit(crb, masm, opcode, x, y);
-                emitted = emitBranch(crb, masm, true);
+                requestHints(masm);
+                if (canUseShortBranch(crb, masm, masm.position() + maximumSelfOffsetInstructions * masm.target.wordSize)) {
+                    emitted = emitShortCompareBranch(crb, masm);
+                }
+                if (!emitted) {
+                    SPARCCompare.emit(crb, masm, opcode, x, y);
+                    emitted = emitBranch(crb, masm, true);
+                }
             }
 
             assert emitted;
         }
 
         public void emitControlTransfer(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-            SPARCCompare.emit(crb, masm, opcode, x, y);
-            emitted = emitBranch(crb, masm, false);
+            requestHints(masm);
+            // When we use short branches, no delay slot is available
+            if (!canUseShortBranch(crb, masm, masm.position() + maximumSelfOffsetInstructions * masm.target.wordSize)) {
+                SPARCCompare.emit(crb, masm, opcode, x, y);
+                emitted = emitBranch(crb, masm, false);
+            }
+        }
+
+        private void requestHints(SPARCMacroAssembler masm) {
+            if (trueDestinationHint == null) {
+                this.trueDestinationHint = masm.requestLabelHint(trueDestination.label());
+            }
+            if (falseDestinationHint == null) {
+                this.falseDestinationHint = masm.requestLabelHint(falseDestination.label());
+            }
+
+        }
+
+        /**
+         * Tries to use the emit the compare/branch instruction.
+         * <p>
+         * CBcond has follwing limitations
+         * <ul>
+         * <li>Immediate field is only 5 bit and is on the right
+         * <li>Jump offset is maximum of -+512 instruction
+         *
+         * <p>
+         * We get from outside
+         * <ul>
+         * <li>at least one of trueDestination falseDestination is within reach of +-512
+         * instructions
+         * <li>two registers OR one register and a constant which fits simm13
+         *
+         * <p>
+         * We do:
+         * <ul>
+         * <li>find out which target needs to be branched conditionally
+         * <li>find out if fall-through is possible, if not, a unconditional branch is needed after
+         * cbcond (needJump=true)
+         * <li>if no fall through: we need to put the closer jump into the cbcond branch and the
+         * farther into the jmp (unconditional branch)
+         * <li>if constant on the left side, mirror to be on the right
+         * <li>if constant on right does not fit into simm5, put it into a scratch register
+         *
+         * @param crb
+         * @param masm
+         * @return true if the branch could be emitted
+         */
+        private boolean emitShortCompareBranch(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
+            Value tmpValue;
+            Value actualX = x;
+            Value actualY = y;
+            Condition actualCondition = condition;
+            Label actualTrueTarget = trueDestination.label();
+            Label actualFalseTarget = falseDestination.label();
+            Label tmpTarget;
+            boolean needJump;
+            if (crb.isSuccessorEdge(trueDestination)) {
+                actualCondition = actualCondition.negate();
+                tmpTarget = actualTrueTarget;
+                actualTrueTarget = actualFalseTarget;
+                actualFalseTarget = tmpTarget;
+                needJump = false;
+            } else {
+                needJump = !crb.isSuccessorEdge(falseDestination);
+                if (needJump && !isShortBranch(masm, masm.position() + maximumSelfOffsetInstructions * masm.target.wordSize, trueDestinationHint, actualTrueTarget)) {
+                    // we have to jump in either way, so we must put the shorter
+                    // branch into the actualTarget as only one of the two jump targets
+                    // is guaranteed to be simm10
+                    actualCondition = actualCondition.negate();
+                    tmpTarget = actualTrueTarget;
+                    actualTrueTarget = actualFalseTarget;
+                    actualFalseTarget = tmpTarget;
+                }
+            }
+            // Keep the constant on the right
+            if (isConstant(actualX)) {
+                tmpValue = actualX;
+                actualX = actualY;
+                actualY = tmpValue;
+                actualCondition = actualCondition.mirror();
+            }
+            ConditionFlag conditionFlag = ConditionFlag.fromCondtition(CC.Icc, actualCondition, false);
+            boolean isValidConstant = isConstant(actualY) && isSimm5(asConstant(actualY));
+            SPARCScratchRegister scratch = null;
+            try {
+                if (isConstant(actualY) && !isValidConstant) { // Make sure, the y value is loaded
+                    scratch = SPARCScratchRegister.get();
+                    Value scratchValue = scratch.getRegister().asValue(actualY.getLIRKind());
+                    SPARCMove.move(crb, masm, scratchValue, actualY, SPARCDelayedControlTransfer.DUMMY);
+                    actualY = scratchValue;
+                }
+                emitCBCond(masm, actualX, actualY, actualTrueTarget, conditionFlag);
+                new Nop().emit(masm);
+            } finally {
+                if (scratch != null) {// release the scratch if used
+                    scratch.close();
+                }
+            }
+            if (needJump) {
+                masm.jmp(actualFalseTarget);
+                new Nop().emit(masm);
+            }
+            return true;
+        }
+
+        private static void emitCBCond(SPARCMacroAssembler masm, Value actualX, Value actualY, Label actualTrueTarget, ConditionFlag conditionFlag) {
+            switch ((Kind) actualX.getLIRKind().getPlatformKind()) {
+                case Byte:
+                case Char:
+                case Short:
+                case Int:
+                    if (isConstant(actualY)) {
+                        int constantY = asConstant(actualY).asInt();
+                        new CBcondw(conditionFlag, asIntReg(actualX), constantY, actualTrueTarget).emit(masm);
+                    } else {
+                        new CBcondw(conditionFlag, asIntReg(actualX), asIntReg(actualY), actualTrueTarget).emit(masm);
+                    }
+                    break;
+                case Long:
+                    if (isConstant(actualY)) {
+                        int constantY = (int) asConstant(actualY).asLong();
+                        new CBcondx(conditionFlag, asLongReg(actualX), constantY, actualTrueTarget).emit(masm);
+                    } else {
+                        new CBcondx(conditionFlag, asLongReg(actualX), asLongReg(actualY), actualTrueTarget).emit(masm);
+                    }
+                    break;
+                case Object:
+                    if (isConstant(actualY)) {
+                        // Object constant valid can only be null
+                        assert asConstant(actualY).isNull();
+                        new CBcondx(conditionFlag, asObjectReg(actualX), 0, actualTrueTarget).emit(masm);
+                    } else { // this is already loaded
+                        new CBcondx(conditionFlag, asObjectReg(actualX), asObjectReg(actualY), actualTrueTarget).emit(masm);
+                    }
+                    break;
+                default:
+                    GraalInternalError.shouldNotReachHere();
+            }
         }
 
         public boolean emitBranch(CompilationResultBuilder crb, SPARCMacroAssembler masm, boolean withDelayedNop) {
@@ -146,10 +294,61 @@ public class SPARCControlFlow {
             }
             return true; // emitted
         }
+
+        private boolean canUseShortBranch(CompilationResultBuilder crb, SPARCAssembler asm, int position) {
+            if (!asm.hasFeature(CPUFeature.CBCOND)) {
+                return false;
+            }
+            switch ((Kind) x.getPlatformKind()) {
+                case Byte:
+                case Char:
+                case Short:
+                case Int:
+                case Long:
+                case Object:
+                    break;
+                default:
+                    return false;
+            }
+            boolean hasShortJumpTarget = false;
+            if (!crb.isSuccessorEdge(trueDestination)) {
+                hasShortJumpTarget |= isShortBranch(asm, position, trueDestinationHint, trueDestination.label());
+            }
+            if (!crb.isSuccessorEdge(falseDestination)) {
+                hasShortJumpTarget |= isShortBranch(asm, position, falseDestinationHint, falseDestination.label());
+            }
+            return hasShortJumpTarget;
+        }
+
+        private static boolean isShortBranch(SPARCAssembler asm, int position, LabelHint hint, Label label) {
+            int disp = 0;
+            if (label.isBound()) {
+                disp = label.position() - position;
+
+            } else if (hint != null && hint.isValid()) {
+                disp = hint.getTarget() - hint.getPosition();
+            }
+            if (disp != 0) {
+                if (disp < 0) {
+                    disp -= maximumSelfOffsetInstructions * asm.target.wordSize;
+                } else {
+                    disp += maximumSelfOffsetInstructions * asm.target.wordSize;
+                }
+                return isSimm10(disp >> 2);
+            } else if (hint == null) {
+                asm.requestLabelHint(label);
+            }
+            return false;
+        }
+
+        public void resetState() {
+            emitted = false;
+            delaySlotPosition = -1;
+        }
     }
 
     public static class BranchOp extends SPARCLIRInstruction implements StandardOp.BranchOp {
-        // TODO: Conditioncode/flag handling needs to be improved;
+        // TODO: Condition code/flag handling needs to be improved;
         protected final Condition condition;
         protected final ConditionFlag conditionFlag;
         protected final LabelRef trueDestination;

@@ -33,6 +33,7 @@ import com.oracle.graal.api.code.*;
 public abstract class Assembler {
 
     public final TargetDescription target;
+    private Set<LabelHint> jumpDisplacementHints;
 
     /**
      * Backing code buffer.
@@ -50,7 +51,7 @@ public abstract class Assembler {
 
     /**
      * Returns the current position of the underlying code buffer.
-     * 
+     *
      * @return current position in code buffer
      */
     public int position() {
@@ -123,7 +124,7 @@ public abstract class Assembler {
 
     /**
      * Closes this assembler. No extra data can be written to this assembler after this call.
-     * 
+     *
      * @param trimmedCopy if {@code true}, then a copy of the underlying byte array up to (but not
      *            including) {@code position()} is returned
      * @return the data in this buffer or a trimmed copy if {@code trimmedCopy} is {@code true}
@@ -148,7 +149,7 @@ public abstract class Assembler {
 
     /**
      * Creates a name for a label.
-     * 
+     *
      * @param l the label for which a name is being created
      * @param id a label identifier that is unique with the scope of this assembler
      * @return a label name in the form of "L123"
@@ -188,4 +189,59 @@ public abstract class Assembler {
      * Emits a NOP instruction to advance the current PC.
      */
     public abstract void ensureUniquePC();
+
+    public void reset() {
+        codeBuffer.reset();
+        captureLabelPositions();
+    }
+
+    private void captureLabelPositions() {
+        if (jumpDisplacementHints == null) {
+            return;
+        }
+        for (LabelHint request : this.jumpDisplacementHints) {
+            request.capture();
+        }
+    }
+
+    public LabelHint requestLabelHint(Label label) {
+        if (jumpDisplacementHints == null) {
+            jumpDisplacementHints = new HashSet<>();
+        }
+        LabelHint hint = new LabelHint(label, position());
+        this.jumpDisplacementHints.add(hint);
+        return hint;
+    }
+
+    public static class LabelHint {
+        private Label label;
+        private int forPosition;
+        private int capturedTarget;
+        private boolean captured = false;
+
+        protected LabelHint(Label label, int lastPosition) {
+            super();
+            this.label = label;
+            this.forPosition = lastPosition;
+        }
+
+        protected void capture() {
+            this.capturedTarget = label.position();
+            this.captured = true;
+        }
+
+        public int getTarget() {
+            assert isValid();
+            return capturedTarget;
+        }
+
+        public int getPosition() {
+            assert isValid();
+            return forPosition;
+        }
+
+        public boolean isValid() {
+            return captured;
+        }
+    }
 }

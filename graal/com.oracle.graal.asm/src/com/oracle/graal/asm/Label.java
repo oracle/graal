@@ -40,7 +40,7 @@ public final class Label {
 
     /**
      * Returns the position of this label in the code buffer.
-     * 
+     *
      * @return the position
      */
     public int position() {
@@ -61,7 +61,7 @@ public final class Label {
 
     /**
      * Binds the label to the specified position.
-     * 
+     *
      * @param pos the position
      */
     protected void bind(int pos) {
@@ -90,6 +90,13 @@ public final class Label {
                 masm.patchJumpTarget(pos, target);
             }
         }
+    }
+
+    public void reset() {
+        if (this.patchPositions != null) {
+            this.patchPositions.clear();
+        }
+        this.position = -1;
     }
 
     @Override

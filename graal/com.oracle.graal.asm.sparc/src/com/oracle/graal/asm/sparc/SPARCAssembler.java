@@ -687,6 +687,9 @@ public abstract class SPARCAssembler extends Assembler {
 
         public void setDisp10(int disp10) {
             this.disp10 = disp10 >> 2;
+            if (!isSimm10(this.disp10)) {
+                throw GraalInternalError.shouldNotReachHere("" + this.disp10);
+            }
             assert isSimm10(this.disp10) : this.disp10;
         }
 
@@ -2273,7 +2276,11 @@ public abstract class SPARCAssembler extends Assembler {
     }
 
     public static boolean isSimm11(Constant constant) {
-        return isSimm11(constant.asLong());
+        return constant.isNull() || isSimm11(constant.asLong());
+    }
+
+    public static boolean isSimm5(Constant constant) {
+        return constant.isNull() || isSimm(constant.asLong(), 5);
     }
 
     public static boolean isSimm13(int imm) {
@@ -2426,6 +2433,12 @@ public abstract class SPARCAssembler extends Assembler {
             /* VIS1 only */
             super(Ops.ArithOp, Op3s.Impdep1, Opfs.Array8, src1, src2, dst);
         }
+
+        @Override
+        public void emit(SPARCAssembler masm) {
+            assert masm.hasFeature(CPUFeature.VIS1);
+            super.emit(masm);
+        }
     }
 
     public static class Array16 extends Fmt3p {
@@ -2433,6 +2446,12 @@ public abstract class SPARCAssembler extends Assembler {
         public Array16(Register src1, Register src2, Register dst) {
             /* VIS1 only */
             super(Ops.ArithOp, Op3s.Impdep1, Opfs.Array16, src1, src2, dst);
+        }
+
+        @Override
+        public void emit(SPARCAssembler masm) {
+            assert masm.hasFeature(CPUFeature.VIS1);
+            super.emit(masm);
         }
     }
 
@@ -2442,6 +2461,12 @@ public abstract class SPARCAssembler extends Assembler {
             /* VIS1 only */
             super(Ops.ArithOp, Op3s.Impdep1, Opfs.Array32, src1, src2, dst);
         }
+
+        @Override
+        public void emit(SPARCAssembler masm) {
+            assert masm.hasFeature(CPUFeature.VIS2);
+            super.emit(masm);
+        }
     }
 
     public static class Bmask extends Fmt3p {
@@ -2449,6 +2474,12 @@ public abstract class SPARCAssembler extends Assembler {
         public Bmask(Register src1, Register src2, Register dst) {
             /* VIS2 only */
             super(Ops.ArithOp, Op3s.Impdep1, Opfs.Bmask, src1, src2, dst);
+        }
+
+        @Override
+        public void emit(SPARCAssembler masm) {
+            assert masm.hasFeature(CPUFeature.VIS2);
+            super.emit(masm);
         }
     }
 
@@ -2458,12 +2489,24 @@ public abstract class SPARCAssembler extends Assembler {
             super(Ops.ArithOp, Op3s.Impdep1, Opfs.Movwtos, g0, src, dst);
             assert isSingleFloatRegister(dst);
         }
+
+        @Override
+        public void emit(SPARCAssembler masm) {
+            assert masm.hasFeature(CPUFeature.VIS3);
+            super.emit(masm);
+        }
     }
 
     public static class Umulxhi extends Fmt3p {
         public Umulxhi(Register src1, Register src2, Register dst) {
             /* VIS3 only */
             super(Ops.ArithOp, Op3s.Impdep1, Opfs.UMulxhi, src1, src2, dst);
+        }
+
+        @Override
+        public void emit(SPARCAssembler masm) {
+            assert masm.hasFeature(CPUFeature.VIS3);
+            super.emit(masm);
         }
     }
 
@@ -2473,6 +2516,12 @@ public abstract class SPARCAssembler extends Assembler {
             super(Ops.ArithOp, Op3s.Impdep1, Opfs.Movxtod, g0, src, dst);
             assert isDoubleFloatRegister(dst);
         }
+
+        @Override
+        public void emit(SPARCAssembler masm) {
+            assert masm.hasFeature(CPUFeature.VIS3);
+            super.emit(masm);
+        }
     }
 
     public static class Movdtox extends Fmt3p {
@@ -2480,6 +2529,12 @@ public abstract class SPARCAssembler extends Assembler {
             /* VIS3 only */
             super(Ops.ArithOp, Op3s.Impdep1, Opfs.Movdtox, g0, src, dst);
             assert isDoubleFloatRegister(src);
+        }
+
+        @Override
+        public void emit(SPARCAssembler masm) {
+            assert masm.hasFeature(CPUFeature.VIS3);
+            super.emit(masm);
         }
     }
 
@@ -2489,6 +2544,12 @@ public abstract class SPARCAssembler extends Assembler {
             super(Ops.ArithOp, Op3s.Impdep1, Opfs.Movstosw, g0, src, dst);
             assert isSingleFloatRegister(src);
         }
+
+        @Override
+        public void emit(SPARCAssembler masm) {
+            assert masm.hasFeature(CPUFeature.VIS3);
+            super.emit(masm);
+        }
     }
 
     public static class Movstouw extends Fmt3p {
@@ -2497,11 +2558,16 @@ public abstract class SPARCAssembler extends Assembler {
             super(Ops.ArithOp, Op3s.Impdep1, Opfs.Movstouw, g0, src, dst);
             assert isSingleFloatRegister(src);
         }
+
+        @Override
+        public void emit(SPARCAssembler masm) {
+            assert masm.hasFeature(CPUFeature.VIS3);
+            super.emit(masm);
+        }
     }
 
     public static class Fdtos extends Fmt3p {
         public Fdtos(Register src, Register dst) {
-            /* VIS3 only */
             super(Ops.ArithOp, Op3s.Fpop1, Opfs.Fdtos, g0, src, dst);
             assert isSingleFloatRegister(dst);
             assert isDoubleFloatRegister(src);
