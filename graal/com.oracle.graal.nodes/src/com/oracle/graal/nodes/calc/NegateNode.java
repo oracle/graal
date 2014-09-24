@@ -22,9 +22,7 @@
  */
 package com.oracle.graal.nodes.calc;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.compiler.common.type.ArithmeticOpTable.UnaryOp;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodeinfo.*;
@@ -35,14 +33,7 @@ import com.oracle.graal.nodes.spi.*;
  * The {@code NegateNode} node negates its operand.
  */
 @NodeInfo
-public class NegateNode extends UnaryNode implements ArithmeticLIRLowerable, NarrowableArithmeticNode {
-
-    private final UnaryOp op;
-
-    @Override
-    public boolean inferStamp() {
-        return updateStamp(op.foldStamp(getValue().stamp()));
-    }
+public class NegateNode extends UnaryArithmeticNode implements NarrowableArithmeticNode {
 
     /**
      * Creates new NegateNode instance.
@@ -50,27 +41,18 @@ public class NegateNode extends UnaryNode implements ArithmeticLIRLowerable, Nar
      * @param value the instruction producing the value that is input to this instruction
      */
     public static NegateNode create(ValueNode value) {
-        return create(ArithmeticOpTable.forStamp(value.stamp()).getNeg(), value);
+        return USE_GENERATED_NODES ? new NegateNodeGen(value) : new NegateNode(value);
     }
 
-    public static NegateNode create(UnaryOp op, ValueNode value) {
-        return USE_GENERATED_NODES ? new NegateNodeGen(op, value) : new NegateNode(op, value);
-    }
-
-    protected NegateNode(UnaryOp op, ValueNode value) {
-        super(op.foldStamp(value.stamp()), value);
-        this.op = op;
-    }
-
-    public Constant evalConst(Constant... inputs) {
-        assert inputs.length == 1;
-        return op.foldConstant(inputs[0]);
+    NegateNode(ValueNode value) {
+        super(ArithmeticOpTable.forStamp(value.stamp()).getNeg(), value);
     }
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
-        if (forValue.isConstant()) {
-            return ConstantNode.forPrimitive(stamp(), op.foldConstant(forValue.asConstant()));
+        ValueNode ret = super.canonical(tool, forValue);
+        if (ret != this) {
+            return ret;
         }
         if (forValue instanceof NegateNode) {
             return ((NegateNode) forValue).getValue();

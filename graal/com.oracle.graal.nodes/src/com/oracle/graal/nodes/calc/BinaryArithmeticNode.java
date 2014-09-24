@@ -116,11 +116,7 @@ public abstract class BinaryArithmeticNode extends BinaryNode implements Arithme
         }
     }
 
-    public static boolean canTryReassociate(BinaryNode node) {
-        return (node instanceof BinaryArithmeticNode && ((BinaryArithmeticNode) node).getOp().isAssociative()) || node instanceof AndNode || node instanceof OrNode || node instanceof XorNode;
-    }
-
-    public static ReassociateMatch findReassociate(BinaryNode binary, NodePredicate criterion) {
+    private static ReassociateMatch findReassociate(BinaryNode binary, NodePredicate criterion) {
         boolean resultX = criterion.apply(binary.getX());
         boolean resultY = criterion.apply(binary.getY());
         if (resultX && !resultY) {
@@ -152,14 +148,14 @@ public abstract class BinaryArithmeticNode extends BinaryNode implements Arithme
      * Tries to re-associate values which satisfy the criterion. For example with a constantness
      * criterion: {@code (a + 2) + 1 => a + (1 + 2)}
      * <p>
-     * This method accepts only {@linkplain #canTryReassociate(BinaryNode) reassociable} operations
-     * such as +, -, *, &amp;, | and ^
+     * This method accepts only {@linkplain BinaryOp#isAssociative() associative} operations such as
+     * +, -, *, &amp;, | and ^
      *
      * @param forY
      * @param forX
      */
-    public static BinaryNode reassociate(BinaryNode node, NodePredicate criterion, ValueNode forX, ValueNode forY) {
-        assert canTryReassociate(node);
+    public static BinaryArithmeticNode reassociate(BinaryArithmeticNode node, NodePredicate criterion, ValueNode forX, ValueNode forY) {
+        assert node.getOp().isAssociative();
         ReassociateMatch match1 = findReassociate(node, criterion);
         if (match1 == null) {
             return node;
@@ -220,11 +216,11 @@ public abstract class BinaryArithmeticNode extends BinaryNode implements Arithme
         } else if (node instanceof MulNode) {
             return BinaryArithmeticNode.mul(a, AddNode.mul(m1, m2));
         } else if (node instanceof AndNode) {
-            return BitLogicNode.and(a, BitLogicNode.and(m1, m2));
+            return AndNode.create(a, AndNode.create(m1, m2));
         } else if (node instanceof OrNode) {
-            return BitLogicNode.or(a, BitLogicNode.or(m1, m2));
+            return OrNode.create(a, OrNode.create(m1, m2));
         } else if (node instanceof XorNode) {
-            return BitLogicNode.xor(a, BitLogicNode.xor(m1, m2));
+            return XorNode.create(a, XorNode.create(m1, m2));
         } else {
             throw GraalInternalError.shouldNotReachHere();
         }

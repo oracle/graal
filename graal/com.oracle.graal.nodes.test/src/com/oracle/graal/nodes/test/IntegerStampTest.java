@@ -164,15 +164,15 @@ public class IntegerStampTest {
 
     @Test
     public void testXor() {
-        assertEquals(new IntegerStamp(32, 0, 0xff, 0, 0xff), StampTool.xor(new IntegerStamp(32, 0, 0, 0, 0), new IntegerStamp(32, 0, 0xff, 0, 0xff)));
-        assertEquals(new IntegerStamp(32, 0x10, 0x1f, 0x10, 0x1f), StampTool.xor(new IntegerStamp(32, 0, 0, 0, 0), new IntegerStamp(32, 0x10, 0x1f, 0x10, 0x1f)));
-        assertEquals(new IntegerStamp(32, 0x0, 0xf, 0x0, 0xf), StampTool.xor(new IntegerStamp(32, 0x10, 0x10, 0x10, 0x10), new IntegerStamp(32, 0x10, 0x1f, 0x10, 0x1f)));
-        assertEquals(new IntegerStamp(32, 0x10, 0x1f, 0x10, 0x1f), StampTool.xor(new IntegerStamp(32, 0x10, 0x10, 0x10, 0x10), new IntegerStamp(32, 0x0, 0xf, 0x0, 0xf)));
+        assertEquals(new IntegerStamp(32, 0, 0xff, 0, 0xff), IntegerStamp.OPS.getXor().foldStamp(new IntegerStamp(32, 0, 0, 0, 0), new IntegerStamp(32, 0, 0xff, 0, 0xff)));
+        assertEquals(new IntegerStamp(32, 0x10, 0x1f, 0x10, 0x1f), IntegerStamp.OPS.getXor().foldStamp(new IntegerStamp(32, 0, 0, 0, 0), new IntegerStamp(32, 0x10, 0x1f, 0x10, 0x1f)));
+        assertEquals(new IntegerStamp(32, 0x0, 0xf, 0x0, 0xf), IntegerStamp.OPS.getXor().foldStamp(new IntegerStamp(32, 0x10, 0x10, 0x10, 0x10), new IntegerStamp(32, 0x10, 0x1f, 0x10, 0x1f)));
+        assertEquals(new IntegerStamp(32, 0x10, 0x1f, 0x10, 0x1f), IntegerStamp.OPS.getXor().foldStamp(new IntegerStamp(32, 0x10, 0x10, 0x10, 0x10), new IntegerStamp(32, 0x0, 0xf, 0x0, 0xf)));
     }
 
     @Test
     public void testNot() {
-        assertEquals(new IntegerStamp(32, -11, -1, 0xffff_fff0L, 0xffff_ffffL), StampTool.not(new IntegerStamp(32, 0, 10, 0, 0xf)));
+        assertEquals(new IntegerStamp(32, -11, -1, 0xffff_fff0L, 0xffff_ffffL), IntegerStamp.OPS.getNot().foldStamp(new IntegerStamp(32, 0, 10, 0, 0xf)));
     }
 
     @Test
@@ -263,7 +263,8 @@ public class IntegerStampTest {
 
     @Test
     public void testAnd() {
-        assertEquals(new IntegerStamp(32, Integer.MIN_VALUE, 0x40000000L, 0, 0xc0000000L), StampTool.and(StampFactory.forKind(Kind.Int), StampFactory.forConstant(Constant.forInt(0xc0000000))));
+        assertEquals(new IntegerStamp(32, Integer.MIN_VALUE, 0x40000000L, 0, 0xc0000000L),
+                        IntegerStamp.OPS.getAnd().foldStamp(StampFactory.forKind(Kind.Int), StampFactory.forConstant(Constant.forInt(0xc0000000))));
     }
 
     private static void testSignExtendShort(long lower, long upper) {

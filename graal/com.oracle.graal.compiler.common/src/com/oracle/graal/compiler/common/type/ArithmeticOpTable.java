@@ -37,6 +37,11 @@ public final class ArithmeticOpTable {
     protected BinaryOp div;
     protected BinaryOp rem;
 
+    protected UnaryOp not;
+    protected BinaryOp and;
+    protected BinaryOp or;
+    protected BinaryOp xor;
+
     public static ArithmeticOpTable forStamp(Stamp s) {
         return ((ArithmeticStamp) s).getOps();
     }
@@ -81,6 +86,34 @@ public final class ArithmeticOpTable {
      */
     public final BinaryOp getRem() {
         return rem;
+    }
+
+    /**
+     * Describes the bitwise not operation.
+     */
+    public final UnaryOp getNot() {
+        return not;
+    }
+
+    /**
+     * Describes the bitwise and operation.
+     */
+    public final BinaryOp getAnd() {
+        return and;
+    }
+
+    /**
+     * Describes the bitwise or operation.
+     */
+    public final BinaryOp getOr() {
+        return or;
+    }
+
+    /**
+     * Describes the bitwise xor operation.
+     */
+    public final BinaryOp getXor() {
+        return xor;
     }
 
     /**

@@ -34,16 +34,6 @@ import com.oracle.graal.nodes.*;
  */
 public class StampTool {
 
-    public static Stamp not(Stamp stamp) {
-        if (stamp instanceof IntegerStamp) {
-            IntegerStamp integerStamp = (IntegerStamp) stamp;
-            int bits = integerStamp.getBits();
-            long defaultMask = CodeUtil.mask(bits);
-            return new IntegerStamp(bits, ~integerStamp.upperBound(), ~integerStamp.lowerBound(), (~integerStamp.upMask()) & defaultMask, (~integerStamp.downMask()) & defaultMask);
-        }
-        return stamp.unrestricted();
-    }
-
     public static Stamp meet(Collection<? extends StampProvider> values) {
         Iterator<? extends StampProvider> iterator = values.iterator();
         if (iterator.hasNext()) {
@@ -55,63 +45,6 @@ public class StampTool {
         } else {
             return StampFactory.forVoid();
         }
-    }
-
-    public static Stamp stampForMask(int bits, long downMask, long upMask) {
-        long lowerBound;
-        long upperBound;
-        if (((upMask >>> (bits - 1)) & 1) == 0) {
-            lowerBound = downMask;
-            upperBound = upMask;
-        } else if (((downMask >>> (bits - 1)) & 1) == 1) {
-            lowerBound = downMask;
-            upperBound = upMask;
-        } else {
-            lowerBound = downMask | (-1L << (bits - 1));
-            upperBound = CodeUtil.maxValue(bits) & upMask;
-        }
-        lowerBound = CodeUtil.convert(lowerBound, bits, false);
-        upperBound = CodeUtil.convert(upperBound, bits, false);
-        return new IntegerStamp(bits, lowerBound, upperBound, downMask, upMask);
-    }
-
-    public static Stamp and(Stamp stamp1, Stamp stamp2) {
-        if (stamp1 instanceof IntegerStamp && stamp2 instanceof IntegerStamp) {
-            return and((IntegerStamp) stamp1, (IntegerStamp) stamp2);
-        }
-        return StampFactory.illegal();
-    }
-
-    public static Stamp and(IntegerStamp stamp1, IntegerStamp stamp2) {
-        assert stamp1.getBits() == stamp2.getBits();
-        return stampForMask(stamp1.getBits(), stamp1.downMask() & stamp2.downMask(), stamp1.upMask() & stamp2.upMask());
-    }
-
-    public static Stamp or(Stamp stamp1, Stamp stamp2) {
-        if (stamp1 instanceof IntegerStamp && stamp2 instanceof IntegerStamp) {
-            return or((IntegerStamp) stamp1, (IntegerStamp) stamp2);
-        }
-        return StampFactory.illegal();
-    }
-
-    public static Stamp or(IntegerStamp stamp1, IntegerStamp stamp2) {
-        assert stamp1.getBits() == stamp2.getBits();
-        return stampForMask(stamp1.getBits(), stamp1.downMask() | stamp2.downMask(), stamp1.upMask() | stamp2.upMask());
-    }
-
-    public static Stamp xor(Stamp stamp1, Stamp stamp2) {
-        if (stamp1 instanceof IntegerStamp && stamp2 instanceof IntegerStamp) {
-            return xor((IntegerStamp) stamp1, (IntegerStamp) stamp2);
-        }
-        return StampFactory.illegal();
-    }
-
-    public static Stamp xor(IntegerStamp stamp1, IntegerStamp stamp2) {
-        assert stamp1.getBits() == stamp2.getBits();
-        long variableBits = (stamp1.downMask() ^ stamp1.upMask()) | (stamp2.downMask() ^ stamp2.upMask());
-        long newDownMask = (stamp1.downMask() ^ stamp2.downMask()) & ~variableBits;
-        long newUpMask = (stamp1.downMask() ^ stamp2.downMask()) | variableBits;
-        return stampForMask(stamp1.getBits(), newDownMask, newUpMask);
     }
 
     public static Stamp rightShift(Stamp value, Stamp shift) {
@@ -134,7 +67,7 @@ public class StampTool {
             return new IntegerStamp(bits, value.lowerBound() >> shiftCount, value.upperBound() >> shiftCount, downMask, upMask);
         }
         long mask = IntegerStamp.upMaskFor(bits, value.lowerBound(), value.upperBound());
-        return stampForMask(bits, 0, mask);
+        return IntegerStamp.stampForMask(bits, 0, mask);
     }
 
     public static Stamp unsignedRightShift(Stamp value, Stamp shift) {
@@ -158,7 +91,7 @@ public class StampTool {
             }
         }
         long mask = IntegerStamp.upMaskFor(bits, value.lowerBound(), value.upperBound());
-        return stampForMask(bits, 0, mask);
+        return IntegerStamp.stampForMask(bits, 0, mask);
     }
 
     public static Stamp leftShift(Stamp value, Stamp shift) {
@@ -197,7 +130,7 @@ public class StampTool {
                     upMask |= value.upMask() << (i & shiftMask);
                 }
             }
-            Stamp result = stampForMask(bits, downMask, upMask & defaultMask);
+            Stamp result = IntegerStamp.stampForMask(bits, downMask, upMask & defaultMask);
             return result;
         }
         return value.unrestricted();
@@ -231,7 +164,7 @@ public class StampTool {
             if (inputStamp.lowerBound() < 0 && inputStamp.upperBound() >= 0) {
                 // signed range including 0 and -1
                 // after sign extension, the whole range from 0 to MAX_INT is possible
-                return stampForMask(resultBits, downMask, upMask);
+                return IntegerStamp.stampForMask(resultBits, downMask, upMask);
             }
 
             long lowerBound = CodeUtil.zeroExtend(inputStamp.lowerBound(), inputBits);

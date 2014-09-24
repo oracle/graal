@@ -30,7 +30,6 @@ import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 
 @NodeInfo
 public class ReverseBytesNode extends UnaryNode implements LIRLowerable {
@@ -50,9 +49,9 @@ public class ReverseBytesNode extends UnaryNode implements LIRLowerable {
         Stamp newStamp;
         if (getKind() == Kind.Int) {
             long mask = CodeUtil.mask(Kind.Int.getBitCount());
-            newStamp = StampTool.stampForMask(valueStamp.getBits(), reverse((int) valueStamp.downMask()) & mask, reverse((int) valueStamp.upMask()) & mask);
+            newStamp = IntegerStamp.stampForMask(valueStamp.getBits(), reverse((int) valueStamp.downMask()) & mask, reverse((int) valueStamp.upMask()) & mask);
         } else if (getKind() == Kind.Long) {
-            newStamp = StampTool.stampForMask(valueStamp.getBits(), reverse(valueStamp.downMask()), reverse(valueStamp.upMask()));
+            newStamp = IntegerStamp.stampForMask(valueStamp.getBits(), reverse(valueStamp.downMask()), reverse(valueStamp.upMask()));
         } else {
             return false;
         }

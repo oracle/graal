@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,58 +30,50 @@ import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 
 @NodeInfo(shortName = "&")
-public class AndNode extends BitLogicNode implements NarrowableArithmeticNode {
+public class AndNode extends BinaryArithmeticNode implements NarrowableArithmeticNode {
 
     public static AndNode create(ValueNode x, ValueNode y) {
         return USE_GENERATED_NODES ? new AndNodeGen(x, y) : new AndNode(x, y);
     }
 
     AndNode(ValueNode x, ValueNode y) {
-        super(StampTool.and(x.stamp(), y.stamp()), x, y);
-        assert x.stamp().isCompatible(y.stamp());
-    }
-
-    @Override
-    public boolean inferStamp() {
-        return updateStamp(StampTool.and(getX().stamp(), getY().stamp()));
-    }
-
-    @Override
-    public Constant evalConst(Constant... inputs) {
-        assert inputs.length == 2;
-        return Constant.forPrimitiveInt(PrimitiveStamp.getBits(stamp()), inputs[0].asLong() & inputs[1].asLong());
+        super(ArithmeticOpTable.forStamp(x.stamp()).getAnd(), x, y);
     }
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
+        ValueNode ret = super.canonical(tool, forX, forY);
+        if (ret != this) {
+            return ret;
+        }
+
         if (GraphUtil.unproxify(forX) == GraphUtil.unproxify(forY)) {
             return forX;
         }
         if (forX.isConstant() && !forY.isConstant()) {
             return AndNode.create(forY, forX);
         }
-        if (forX.isConstant()) {
-            return ConstantNode.forPrimitive(stamp(), evalConst(forX.asConstant(), forY.asConstant()));
-        } else if (forY.isConstant()) {
-            long rawY = forY.asConstant().asLong();
-            long mask = CodeUtil.mask(PrimitiveStamp.getBits(stamp()));
-            if ((rawY & mask) == mask) {
+        if (forY.isConstant()) {
+            Constant c = forY.asConstant();
+            if (getOp().isNeutral(c)) {
                 return forX;
             }
-            if ((rawY & mask) == 0) {
-                return ConstantNode.forIntegerStamp(stamp(), 0);
-            }
-            if (forX instanceof SignExtendNode) {
-                SignExtendNode ext = (SignExtendNode) forX;
-                if (rawY == ((1L << ext.getInputBits()) - 1)) {
-                    return ZeroExtendNode.create(ext.getValue(), ext.getResultBits());
+
+            if (c.getKind().isNumericInteger()) {
+                long rawY = c.asLong();
+                long mask = CodeUtil.mask(PrimitiveStamp.getBits(stamp()));
+                if ((rawY & mask) == 0) {
+                    return ConstantNode.forIntegerStamp(stamp(), 0);
                 }
-            }
-            if (forX.stamp() instanceof IntegerStamp) {
+                if (forX instanceof SignExtendNode) {
+                    SignExtendNode ext = (SignExtendNode) forX;
+                    if (rawY == ((1L << ext.getInputBits()) - 1)) {
+                        return ZeroExtendNode.create(ext.getValue(), ext.getResultBits());
+                    }
+                }
                 IntegerStamp xStamp = (IntegerStamp) forX.stamp();
                 if (((xStamp.upMask() | xStamp.downMask()) & ~rawY) == 0) {
                     // No bits are set which are outside the mask, so the mask will have no effect.
@@ -89,7 +81,7 @@ public class AndNode extends BitLogicNode implements NarrowableArithmeticNode {
                 }
             }
 
-            return BinaryArithmeticNode.reassociate(this, ValueNode.isConstantPredicate(), forX, forY);
+            return reassociate(this, ValueNode.isConstantPredicate(), forX, forY);
         }
         return this;
     }
