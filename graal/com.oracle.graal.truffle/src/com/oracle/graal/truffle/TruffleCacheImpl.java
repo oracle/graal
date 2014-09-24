@@ -52,7 +52,7 @@ import com.oracle.truffle.api.nodes.*;
 /**
  * Implementation of a cache for Truffle graphs for improving partial evaluation time.
  */
-public final class TruffleCacheImpl implements TruffleCache {
+public class TruffleCacheImpl implements TruffleCache {
 
     private final Providers providers;
     private final GraphBuilderConfiguration config;
@@ -123,14 +123,18 @@ public final class TruffleCacheImpl implements TruffleCache {
             lookupExceedsMaxSize();
         }
 
-        lastUsed.put(key, counter++);
-        cache.put(key, markerGraph);
         try (Scope s = Debug.scope("TruffleCache", providers.getMetaAccess(), method)) {
 
-            final StructuredGraph graph = new StructuredGraph(method);
             final PhaseContext phaseContext = new PhaseContext(providers, new Assumptions(false));
-            Mark mark = graph.getMark();
-            new GraphBuilderPhase.Instance(phaseContext.getMetaAccess(), config, optimisticOptimizations).apply(graph);
+            Mark mark = null;
+
+            final StructuredGraph graph = parseGraph(method, phaseContext);
+            if (graph == null) {
+                return null;
+            }
+
+            lastUsed.put(key, counter++);
+            cache.put(key, markerGraph);
 
             for (ParameterNode param : graph.getNodes(ParameterNode.class)) {
                 if (param.getKind() == Kind.Object) {
@@ -249,10 +253,19 @@ public final class TruffleCacheImpl implements TruffleCache {
         canonicalizer.applyIncremental(graph, phaseContext, canonicalizerUsages);
     }
 
+    protected StructuredGraph parseGraph(final ResolvedJavaMethod method, final PhaseContext phaseContext) {
+        final StructuredGraph graph = new StructuredGraph(method);
+        new GraphBuilderPhase.Instance(phaseContext.getMetaAccess(), config, optimisticOptimizations).apply(graph);
+        return graph;
+    }
+
     private void expandInvoke(MethodCallTargetNode methodCallTargetNode, CanonicalizerPhase canonicalizer) {
         StructuredGraph inlineGraph = providers.getReplacements().getMethodSubstitution(methodCallTargetNode.targetMethod());
         if (inlineGraph == null) {
             inlineGraph = TruffleCacheImpl.this.lookup(methodCallTargetNode.targetMethod(), methodCallTargetNode.arguments(), null, canonicalizer, false);
+        }
+        if (inlineGraph == null) {
+            return;
         }
         if (inlineGraph == this.markerGraph) {
             // Can happen for recursive calls.
@@ -281,7 +294,7 @@ public final class TruffleCacheImpl implements TruffleCache {
         return false;
     }
 
-    private boolean shouldInline(MethodCallTargetNode methodCallTargetNode) {
+    protected boolean shouldInline(MethodCallTargetNode methodCallTargetNode) {
         boolean result = (methodCallTargetNode.invokeKind() == InvokeKind.Special || methodCallTargetNode.invokeKind() == InvokeKind.Static) && methodCallTargetNode.targetMethod().canBeInlined() &&
                         !methodCallTargetNode.targetMethod().isNative() && methodCallTargetNode.targetMethod().getAnnotation(ExplodeLoop.class) == null &&
                         methodCallTargetNode.targetMethod().getAnnotation(CompilerDirectives.SlowPath.class) == null &&

@@ -29,7 +29,7 @@ import com.oracle.truffle.api.nodes.NodeUtil.NodeClass;
 import com.oracle.truffle.api.nodes.NodeUtil.NodeCountFilter;
 import com.oracle.truffle.api.nodes.NodeUtil.NodeField;
 
-class OptimizedCallUtils {
+public class OptimizedCallUtils {
 
     public static int countCalls(OptimizedCallTarget target) {
         return NodeUtil.countNodes(target.getRootNode(), new NodeCountFilter() {
