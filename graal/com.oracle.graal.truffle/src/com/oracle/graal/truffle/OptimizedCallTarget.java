@@ -118,12 +118,12 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
             profiledArgumentTypesAssumption.invalidate();
             profiledArgumentTypes = null;
         }
-        return callBoundary(args);
+        return doInvoke(args);
     }
 
     public Object callDirect(Object... args) {
         profileArguments(args);
-        Object result = callBoundary(args);
+        Object result = doInvoke(args);
         Class<?> klass = profiledReturnType;
         if (klass != null && CompilerDirectives.inCompiledCode() && profiledReturnTypeAssumption.isValid()) {
             result = CompilerDirectives.unsafeCast(result, klass, true, true);
@@ -191,8 +191,12 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         }
     }
 
+    protected Object doInvoke(Object[] args) {
+        return callBoundary(args);
+    }
+
     @TruffleCallBoundary
-    private Object callBoundary(Object[] args) {
+    protected final Object callBoundary(Object[] args) {
         if (CompilerDirectives.inInterpreter()) {
             // We are called and we are still in Truffle interpreter mode.
             interpreterCall();
