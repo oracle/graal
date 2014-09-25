@@ -40,7 +40,7 @@ public abstract class InstructionValueConsumer extends InstructionValueProcedure
      * @param instruction The current instruction.
      * @param value The value that is iterated.
      */
-    protected void visitValue(LIRInstruction instruction, Value value) {
+    public void visitValue(LIRInstruction instruction, Value value) {
         throw GraalInternalError.shouldNotReachHere("One of the visitValue() methods must be overwritten");
     }
 
@@ -53,7 +53,7 @@ public abstract class InstructionValueConsumer extends InstructionValueProcedure
      * @param mode The operand mode for the value.
      * @param flags A set of flags for the value.
      */
-    protected void visitValue(LIRInstruction instruction, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
+    public void visitValue(LIRInstruction instruction, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
         visitValue(instruction, value);
     }
 

@@ -43,7 +43,7 @@ public abstract class InstructionValueProcedure extends InstructionValueProcedur
      * @param value The value that is iterated.
      * @return The new value to replace the value that was passed in.
      */
-    protected Value doValue(LIRInstruction instruction, Value value) {
+    public Value doValue(LIRInstruction instruction, Value value) {
         throw GraalInternalError.shouldNotReachHere("One of the doValue() methods must be overwritten");
     }
 
@@ -57,7 +57,7 @@ public abstract class InstructionValueProcedure extends InstructionValueProcedur
      * @param flags A set of flags for the value.
      * @return The new value to replace the value that was passed in.
      */
-    protected Value doValue(LIRInstruction instruction, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
+    public Value doValue(LIRInstruction instruction, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
         return doValue(instruction, value);
     }
 

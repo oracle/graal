@@ -39,7 +39,7 @@ public abstract class ValueConsumer extends InstructionValueConsumer {
      *
      * @param value The value that is iterated.
      */
-    protected void visitValue(Value value) {
+    public void visitValue(Value value) {
         throw GraalInternalError.shouldNotReachHere("One of the visitValue() methods must be overwritten");
     }
 
@@ -51,17 +51,17 @@ public abstract class ValueConsumer extends InstructionValueConsumer {
      * @param mode The operand mode for the value.
      * @param flags A set of flags for the value.
      */
-    protected void visitValue(Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
+    public void visitValue(Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
         visitValue(value);
     }
 
     @Override
-    protected final void visitValue(LIRInstruction instruction, Value value) {
+    public final void visitValue(LIRInstruction instruction, Value value) {
         throw GraalInternalError.shouldNotReachHere("This visitValue() method should never be called");
     }
 
     @Override
-    protected void visitValue(LIRInstruction instruction, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
+    public void visitValue(LIRInstruction instruction, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
         visitValue(value, mode, flags);
     }
 }

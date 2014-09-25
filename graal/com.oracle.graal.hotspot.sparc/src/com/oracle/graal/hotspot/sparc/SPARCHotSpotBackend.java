@@ -347,7 +347,7 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
 
         private final InstructionValueConsumer valueConsumer = new InstructionValueConsumer() {
             @Override
-            protected void visitValue(LIRInstruction instruction, Value value) {
+            public void visitValue(LIRInstruction instruction, Value value) {
                 Object valueObject = value;
                 if (isRegister(value)) { // Canonicalize registers
                     valueObject = asRegister(value);

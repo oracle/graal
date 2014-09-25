@@ -681,7 +681,7 @@ public final class LinearScan {
                 ValueConsumer useConsumer = new ValueConsumer() {
 
                     @Override
-                    protected void visitValue(Value operand) {
+                    public void visitValue(Value operand) {
                         if (isVariable(operand)) {
                             int operandNum = operandNumber(operand);
                             if (!liveKill.get(operandNum)) {
@@ -1127,7 +1127,7 @@ public final class LinearScan {
             op.forEachRegisterHint(targetValue, mode, new ValueProcedure() {
 
                 @Override
-                protected Value doValue(Value registerHint) {
+                public Value doValue(Value registerHint) {
                     if (isVariableOrRegister(registerHint)) {
                         Interval from = getOrCreateInterval((AllocatableValue) registerHint);
                         Interval to = getOrCreateInterval((AllocatableValue) targetValue);
@@ -2214,7 +2214,7 @@ public final class LinearScan {
         Interval curInterval;
 
         @Override
-        protected void visitValue(Value operand) {
+        public void visitValue(Value operand) {
             if (isRegister(operand)) {
                 if (intervalFor(operand) == curInterval) {
                     ok = true;
