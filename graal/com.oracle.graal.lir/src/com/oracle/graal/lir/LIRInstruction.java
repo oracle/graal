@@ -218,20 +218,20 @@ public abstract class LIRInstruction {
     }
 
     // ValuePositionProcedures
-    public final void forEachInput(ValuePositionProcedure proc) {
-        instructionClass.forEachUse(this, proc);
+    public final void forEachInputPos(ValuePositionProcedure proc) {
+        instructionClass.forEachUsePos(this, proc);
     }
 
-    public final void forEachAlive(ValuePositionProcedure proc) {
-        instructionClass.forEachAlive(this, proc);
+    public final void forEachAlivePos(ValuePositionProcedure proc) {
+        instructionClass.forEachAlivePos(this, proc);
     }
 
     public final void forEachTemp(ValuePositionProcedure proc) {
-        instructionClass.forEachTemp(this, proc);
+        instructionClass.forEachTempPos(this, proc);
     }
 
     public final void forEachOutput(ValuePositionProcedure proc) {
-        instructionClass.forEachDef(this, proc);
+        instructionClass.forEachDefPos(this, proc);
     }
 
     // InstructionValueProcedures

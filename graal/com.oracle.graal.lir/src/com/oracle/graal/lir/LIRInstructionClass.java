@@ -218,19 +218,19 @@ public class LIRInstructionClass extends LIRIntrospection {
         return false;
     }
 
-    final void forEachUse(LIRInstruction obj, ValuePositionProcedure proc) {
+    final void forEachUsePos(LIRInstruction obj, ValuePositionProcedure proc) {
         forEach(obj, obj, uses, OperandMode.USE, proc, ValuePosition.ROOT_VALUE_POSITION);
     }
 
-    final void forEachAlive(LIRInstruction obj, ValuePositionProcedure proc) {
+    final void forEachAlivePos(LIRInstruction obj, ValuePositionProcedure proc) {
         forEach(obj, obj, alives, OperandMode.ALIVE, proc, ValuePosition.ROOT_VALUE_POSITION);
     }
 
-    final void forEachTemp(LIRInstruction obj, ValuePositionProcedure proc) {
+    final void forEachTempPos(LIRInstruction obj, ValuePositionProcedure proc) {
         forEach(obj, obj, temps, OperandMode.TEMP, proc, ValuePosition.ROOT_VALUE_POSITION);
     }
 
-    final void forEachDef(LIRInstruction obj, ValuePositionProcedure proc) {
+    final void forEachDefPos(LIRInstruction obj, ValuePositionProcedure proc) {
         forEach(obj, obj, defs, OperandMode.DEF, proc, ValuePosition.ROOT_VALUE_POSITION);
     }
 

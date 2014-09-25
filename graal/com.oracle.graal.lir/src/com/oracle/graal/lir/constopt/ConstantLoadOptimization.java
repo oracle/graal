@@ -217,8 +217,8 @@ public class ConstantLoadOptimization {
                 // set instruction id to the index in the lir instruction list
                 inst.setId(opId++);
                 inst.visitEachOutput(loadConsumer);
-                inst.forEachInput(useProcedure);
-                inst.forEachAlive(useProcedure);
+                inst.forEachInputPos(useProcedure);
+                inst.forEachAlivePos(useProcedure);
 
             }
         }

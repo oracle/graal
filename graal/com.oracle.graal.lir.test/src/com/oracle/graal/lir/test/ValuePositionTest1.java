@@ -117,7 +117,7 @@ public class ValuePositionTest1 {
 
         List<ValuePosition> positions = new ArrayList<>();
 
-        op.forEachInput(new ValuePositionProcedure() {
+        op.forEachInputPos(new ValuePositionProcedure() {
 
             @Override
             public void doValue(LIRInstruction instruction, ValuePosition position) {
@@ -136,7 +136,7 @@ public class ValuePositionTest1 {
 
         List<ValuePosition> positions = new ArrayList<>();
 
-        op.forEachInput(new ValuePositionProcedure() {
+        op.forEachInputPos(new ValuePositionProcedure() {
 
             @Override
             public void doValue(LIRInstruction instruction, ValuePosition position) {
@@ -155,7 +155,7 @@ public class ValuePositionTest1 {
 
         List<ValuePosition> positions = new ArrayList<>();
 
-        op.forEachInput(new ValuePositionProcedure() {
+        op.forEachInputPos(new ValuePositionProcedure() {
 
             @Override
             public void doValue(LIRInstruction instruction, ValuePosition position) {

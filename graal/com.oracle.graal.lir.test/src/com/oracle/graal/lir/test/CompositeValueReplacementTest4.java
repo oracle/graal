@@ -127,7 +127,7 @@ public class CompositeValueReplacementTest4 {
         LIRInstruction op1 = new TestOp(compValue1);
         LIRInstruction op2 = new TestOp(compValue1);
 
-        op1.forEachInput(new ValuePositionProcedure() {
+        op1.forEachInputPos(new ValuePositionProcedure() {
 
             @Override
             public void doValue(LIRInstruction instruction, ValuePosition position) {
@@ -137,7 +137,7 @@ public class CompositeValueReplacementTest4 {
             }
         });
 
-        op2.forEachInput(new ValuePositionProcedure() {
+        op2.forEachInputPos(new ValuePositionProcedure() {
             @Override
             public void doValue(LIRInstruction instruction, ValuePosition position) {
                 Value value = position.get(instruction);
@@ -146,7 +146,7 @@ public class CompositeValueReplacementTest4 {
             }
         });
 
-        op1.forEachInput(new ValuePositionProcedure() {
+        op1.forEachInputPos(new ValuePositionProcedure() {
             @Override
             public void doValue(LIRInstruction instruction, ValuePosition position) {
                 Value value = position.get(instruction);
@@ -154,7 +154,7 @@ public class CompositeValueReplacementTest4 {
             }
         });
 
-        op2.forEachInput(new ValuePositionProcedure() {
+        op2.forEachInputPos(new ValuePositionProcedure() {
             @Override
             public void doValue(LIRInstruction instruction, ValuePosition position) {
                 Value value = position.get(instruction);
@@ -172,7 +172,7 @@ public class CompositeValueReplacementTest4 {
         LIRInstruction op1 = new TestOp(compValue1);
         LIRInstruction op2 = new TestOp(compValue1);
 
-        op1.forEachInput(new ValuePositionProcedure() {
+        op1.forEachInputPos(new ValuePositionProcedure() {
 
             @Override
             public void doValue(LIRInstruction instruction, ValuePosition position) {
@@ -182,7 +182,7 @@ public class CompositeValueReplacementTest4 {
             }
         });
 
-        op2.forEachInput(new ValuePositionProcedure() {
+        op2.forEachInputPos(new ValuePositionProcedure() {
             @Override
             public void doValue(LIRInstruction instruction, ValuePosition position) {
                 Value value = position.get(instruction);
@@ -191,7 +191,7 @@ public class CompositeValueReplacementTest4 {
             }
         });
 
-        op1.forEachInput(new ValuePositionProcedure() {
+        op1.forEachInputPos(new ValuePositionProcedure() {
             @Override
             public void doValue(LIRInstruction instruction, ValuePosition position) {
                 Value value = position.get(instruction);
@@ -199,7 +199,7 @@ public class CompositeValueReplacementTest4 {
             }
         });
 
-        op2.forEachInput(new ValuePositionProcedure() {
+        op2.forEachInputPos(new ValuePositionProcedure() {
             @Override
             public void doValue(LIRInstruction instruction, ValuePosition position) {
                 Value value = position.get(instruction);
