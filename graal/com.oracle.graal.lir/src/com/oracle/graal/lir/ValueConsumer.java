@@ -56,11 +56,6 @@ public abstract class ValueConsumer extends InstructionValueConsumer {
     }
 
     @Override
-    public final void visitValue(LIRInstruction instruction, Value value) {
-        throw GraalInternalError.shouldNotReachHere("This visitValue() method should never be called");
-    }
-
-    @Override
     public void visitValue(LIRInstruction instruction, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
         visitValue(value, mode, flags);
     }

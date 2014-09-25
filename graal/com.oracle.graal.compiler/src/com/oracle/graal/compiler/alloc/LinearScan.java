@@ -1204,7 +1204,7 @@ public final class LinearScan {
             InstructionValueConsumer stateProc = new InstructionValueConsumer() {
 
                 @Override
-                public void visitValue(LIRInstruction op, Value operand) {
+                public void visitValue(LIRInstruction op, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
                     final int opId = op.id();
                     final int blockFrom = getFirstLirInstructionId((blockForId(opId)));
                     addUse((AllocatableValue) operand, blockFrom, opId + 1, RegisterPriority.None, operand.getLIRKind());

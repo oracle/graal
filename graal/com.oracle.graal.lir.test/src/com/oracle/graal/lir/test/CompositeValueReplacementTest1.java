@@ -147,14 +147,14 @@ public class CompositeValueReplacementTest1 {
 
         op1.visitEachInput(new InstructionValueConsumer() {
             @Override
-            public void visitValue(LIRInstruction instruction, Value value) {
+            public void visitValue(LIRInstruction instruction, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
                 assertEquals(dummyValue2, value);
             }
         });
 
         op2.visitEachInput(new InstructionValueConsumer() {
             @Override
-            public void visitValue(LIRInstruction instruction, Value value) {
+            public void visitValue(LIRInstruction instruction, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
                 assertEquals(dummyValue3, value);
             }
         });
@@ -187,14 +187,14 @@ public class CompositeValueReplacementTest1 {
 
         op1.visitEachInput(new InstructionValueConsumer() {
             @Override
-            public void visitValue(LIRInstruction instruction, Value value) {
+            public void visitValue(LIRInstruction instruction, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
                 assertEquals(dummyValue2, value);
             }
         });
 
         op2.visitEachInput(new InstructionValueConsumer() {
             @Override
-            public void visitValue(LIRInstruction instruction, Value value) {
+            public void visitValue(LIRInstruction instruction, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
                 assertEquals(dummyValue3, value);
             }
         });
