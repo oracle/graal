@@ -25,11 +25,14 @@ package com.oracle.graal.lir.test;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 import static org.junit.Assert.*;
 
+import java.util.*;
+
 import org.junit.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
+import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.asm.*;
 
 /**
@@ -128,7 +131,7 @@ public class CompositeValueReplacementTest1 {
 
         op1.forEachInput(new InstructionValueProcedure() {
             @Override
-            public Value doValue(LIRInstruction instruction, Value value) {
+            public Value doValue(LIRInstruction instruction, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
                 assertEquals(dummyValue1, value);
                 return dummyValue2;
             }
@@ -136,7 +139,7 @@ public class CompositeValueReplacementTest1 {
 
         op2.forEachInput(new InstructionValueProcedure() {
             @Override
-            public Value doValue(LIRInstruction instruction, Value value) {
+            public Value doValue(LIRInstruction instruction, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
                 assertEquals(dummyValue1, value);
                 return dummyValue3;
             }
@@ -168,7 +171,7 @@ public class CompositeValueReplacementTest1 {
 
         op1.forEachInput(new InstructionValueProcedure() {
             @Override
-            public Value doValue(LIRInstruction instruction, Value value) {
+            public Value doValue(LIRInstruction instruction, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
                 assertEquals(dummyValue1, value);
                 return dummyValue2;
             }
@@ -176,7 +179,7 @@ public class CompositeValueReplacementTest1 {
 
         op2.forEachInput(new InstructionValueProcedure() {
             @Override
-            public Value doValue(LIRInstruction instruction, Value value) {
+            public Value doValue(LIRInstruction instruction, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
                 assertEquals(dummyValue1, value);
                 return dummyValue3;
             }

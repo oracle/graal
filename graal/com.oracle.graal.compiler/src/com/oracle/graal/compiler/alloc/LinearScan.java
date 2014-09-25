@@ -1740,7 +1740,7 @@ public final class LinearScan {
     private InstructionValueProcedure debugInfoProc = new InstructionValueProcedure() {
 
         @Override
-        public Value doValue(LIRInstruction op, Value operand) {
+        public Value doValue(LIRInstruction op, Value operand, OperandMode valueMode, EnumSet<OperandFlag> flags) {
             int tempOpId = op.id();
             OperandMode mode = OperandMode.USE;
             AbstractBlock<?> block = blockForId(tempOpId);
