@@ -615,7 +615,7 @@ public final class LinearScan {
         ValueConsumer setVariableConsumer = new ValueConsumer() {
 
             @Override
-            public void visitValue(Value value) {
+            public void visitValue(Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
                 if (isVariable(value)) {
                     getOrCreateInterval(asVariable(value));
                 }
@@ -681,7 +681,7 @@ public final class LinearScan {
                 ValueConsumer useConsumer = new ValueConsumer() {
 
                     @Override
-                    public void visitValue(Value operand) {
+                    public void visitValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
                         if (isVariable(operand)) {
                             int operandNum = operandNumber(operand);
                             if (!liveKill.get(operandNum)) {
@@ -701,7 +701,7 @@ public final class LinearScan {
                 ValueConsumer stateConsumer = new ValueConsumer() {
 
                     @Override
-                    public void visitValue(Value operand) {
+                    public void visitValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
                         int operandNum = operandNumber(operand);
                         if (!liveKill.get(operandNum)) {
                             liveGen.set(operandNum);
@@ -712,7 +712,7 @@ public final class LinearScan {
                 ValueConsumer defConsumer = new ValueConsumer() {
 
                     @Override
-                    public void visitValue(Value operand) {
+                    public void visitValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
                         if (isVariable(operand)) {
                             int varNum = operandNumber(operand);
                             liveKill.set(varNum);
@@ -2214,7 +2214,7 @@ public final class LinearScan {
         Interval curInterval;
 
         @Override
-        public void visitValue(Value operand) {
+        public void visitValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
             if (isRegister(operand)) {
                 if (intervalFor(operand) == curInterval) {
                     ok = true;

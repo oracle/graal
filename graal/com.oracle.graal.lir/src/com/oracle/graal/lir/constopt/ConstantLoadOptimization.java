@@ -127,7 +127,7 @@ public class ConstantLoadOptimization {
         ValueConsumer stateConsumer = new ValueConsumer() {
 
             @Override
-            public void visitValue(Value operand) {
+            public void visitValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
                 assert !operand.equals(var) : "constant usage through variable in frame state " + var;
             }
         };
