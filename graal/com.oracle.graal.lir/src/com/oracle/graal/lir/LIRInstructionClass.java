@@ -268,7 +268,7 @@ public class LIRInstructionClass extends LIRIntrospection {
         }
     }
 
-    final Value forEachRegisterHint(LIRInstruction obj, OperandMode mode, InstructionValueProcedure proc) {
+    final Value forEachRegisterHint(LIRInstruction obj, OperandMode mode, InstructionValueProcedureBase proc) {
         Values hints;
         if (mode == OperandMode.USE) {
             hints = defs;

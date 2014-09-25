@@ -34,7 +34,9 @@ import com.oracle.graal.lir.LIRInstruction.*;
  * {@link InstructionValueConsumer} instead.
  *
  * @see InstructionValueProcedure
+ * @see ValueProcedure
  * @see InstructionValueConsumer
+ * @see ValueConsumer
  */
 public abstract class InstructionValueProcedureBase {
 
@@ -49,4 +51,62 @@ public abstract class InstructionValueProcedureBase {
      * @return The new value to replace the value that was passed in.
      */
     abstract public Value processValue(LIRInstruction instruction, Value value, OperandMode mode, EnumSet<OperandFlag> flags);
+
+    /**
+     * Wraps an {@link InstructionValueProcedure} into an {@link InstructionValueProcedureBase}.
+     */
+    public static InstructionValueProcedureBase wrap(InstructionValueProcedure proc) {
+        return new InstructionValueProcedureBase() {
+
+            @Override
+            public Value processValue(LIRInstruction instruction, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
+                return proc.doValue(instruction, value, mode, flags);
+            }
+        };
+
+    }
+
+    /**
+     * Wraps a {@link ValueProcedure} into an {@link InstructionValueProcedureBase}.
+     */
+    public static InstructionValueProcedureBase wrap(ValueProcedure proc) {
+        return new InstructionValueProcedureBase() {
+
+            @Override
+            public Value processValue(LIRInstruction instruction, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
+                return proc.doValue(value, mode, flags);
+            }
+        };
+
+    }
+
+    /**
+     * Wraps an {@link InstructionValueConsumer} into an {@link InstructionValueProcedureBase}.
+     */
+    public static InstructionValueProcedureBase wrap(InstructionValueConsumer proc) {
+        return new InstructionValueProcedureBase() {
+
+            @Override
+            public Value processValue(LIRInstruction instruction, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
+                proc.visitValue(instruction, value, mode, flags);
+                return value;
+            }
+        };
+
+    }
+
+    /**
+     * Wraps a {@link ValueConsumer} into an {@link InstructionValueProcedureBase}.
+     */
+    public static InstructionValueProcedureBase wrap(ValueConsumer proc) {
+        return new InstructionValueProcedureBase() {
+
+            @Override
+            public Value processValue(LIRInstruction instruction, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
+                proc.visitValue(value, mode, flags);
+                return value;
+            }
+        };
+
+    }
 }

@@ -2208,7 +2208,7 @@ public final class LinearScan {
         }
     }
 
-    class CheckConsumer extends ValueConsumer {
+    class CheckConsumer implements ValueConsumer {
 
         boolean ok;
         Interval curInterval;

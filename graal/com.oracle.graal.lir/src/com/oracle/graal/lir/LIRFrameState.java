@@ -62,7 +62,11 @@ public class LIRFrameState {
      *
      * @param proc The procedure called for variables.
      */
-    public void forEachState(LIRInstruction inst, InstructionValueProcedureBase proc) {
+    public void forEachState(LIRInstruction inst, InstructionValueProcedure proc) {
+        forEachState(inst, InstructionValueProcedureBase.wrap(proc));
+    }
+
+    void forEachState(LIRInstruction inst, InstructionValueProcedureBase proc) {
         for (BytecodeFrame cur = topFrame; cur != null; cur = cur.caller()) {
             processValues(inst, cur.values, proc);
         }

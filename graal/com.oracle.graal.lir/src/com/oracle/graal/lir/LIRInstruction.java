@@ -236,49 +236,91 @@ public abstract class LIRInstruction {
 
     // InstructionValueProcedures
     public final void forEachInput(InstructionValueProcedure proc) {
-        instructionClass.forEachUse(this, proc);
+        instructionClass.forEachUse(this, InstructionValueProcedureBase.wrap(proc));
     }
 
     public final void forEachAlive(InstructionValueProcedure proc) {
-        instructionClass.forEachAlive(this, proc);
+        instructionClass.forEachAlive(this, InstructionValueProcedureBase.wrap(proc));
     }
 
     public final void forEachTemp(InstructionValueProcedure proc) {
-        instructionClass.forEachTemp(this, proc);
+        instructionClass.forEachTemp(this, InstructionValueProcedureBase.wrap(proc));
     }
 
     public final void forEachOutput(InstructionValueProcedure proc) {
-        instructionClass.forEachDef(this, proc);
+        instructionClass.forEachDef(this, InstructionValueProcedureBase.wrap(proc));
+    }
+
+    public final void forEachState(InstructionValueProcedure proc) {
+        instructionClass.forEachState(this, InstructionValueProcedureBase.wrap(proc));
+    }
+
+    // ValueProcedures
+    public final void forEachInput(ValueProcedure proc) {
+        instructionClass.forEachUse(this, InstructionValueProcedureBase.wrap(proc));
+    }
+
+    public final void forEachAlive(ValueProcedure proc) {
+        instructionClass.forEachAlive(this, InstructionValueProcedureBase.wrap(proc));
+    }
+
+    public final void forEachTemp(ValueProcedure proc) {
+        instructionClass.forEachTemp(this, InstructionValueProcedureBase.wrap(proc));
+    }
+
+    public final void forEachOutput(ValueProcedure proc) {
+        instructionClass.forEachDef(this, InstructionValueProcedureBase.wrap(proc));
+    }
+
+    public final void forEachState(ValueProcedure proc) {
+        instructionClass.forEachState(this, InstructionValueProcedureBase.wrap(proc));
     }
 
     // States
-    public final void forEachState(InstructionValueProcedure proc) {
-        instructionClass.forEachState(this, proc);
-    }
-
     public final void forEachState(InstructionStateProcedure proc) {
         instructionClass.forEachState(this, proc);
     }
 
-    // Consumers
+    // InstructionValueConsumers
     public final void visitEachInput(InstructionValueConsumer proc) {
-        instructionClass.forEachUse(this, proc);
+        instructionClass.forEachUse(this, InstructionValueProcedureBase.wrap(proc));
     }
 
     public final void visitEachAlive(InstructionValueConsumer proc) {
-        instructionClass.forEachAlive(this, proc);
+        instructionClass.forEachAlive(this, InstructionValueProcedureBase.wrap(proc));
     }
 
     public final void visitEachTemp(InstructionValueConsumer proc) {
-        instructionClass.forEachTemp(this, proc);
+        instructionClass.forEachTemp(this, InstructionValueProcedureBase.wrap(proc));
     }
 
     public final void visitEachOutput(InstructionValueConsumer proc) {
-        instructionClass.forEachDef(this, proc);
+        instructionClass.forEachDef(this, InstructionValueProcedureBase.wrap(proc));
     }
 
     public final void visitEachState(InstructionValueConsumer proc) {
-        instructionClass.forEachState(this, proc);
+        instructionClass.forEachState(this, InstructionValueProcedureBase.wrap(proc));
+    }
+
+    // ValueConsumers
+    public final void visitEachInput(ValueConsumer proc) {
+        instructionClass.forEachUse(this, InstructionValueProcedureBase.wrap(proc));
+    }
+
+    public final void visitEachAlive(ValueConsumer proc) {
+        instructionClass.forEachAlive(this, InstructionValueProcedureBase.wrap(proc));
+    }
+
+    public final void visitEachTemp(ValueConsumer proc) {
+        instructionClass.forEachTemp(this, InstructionValueProcedureBase.wrap(proc));
+    }
+
+    public final void visitEachOutput(ValueConsumer proc) {
+        instructionClass.forEachDef(this, InstructionValueProcedureBase.wrap(proc));
+    }
+
+    public final void visitEachState(ValueConsumer proc) {
+        instructionClass.forEachState(this, InstructionValueProcedureBase.wrap(proc));
     }
 
     /**
@@ -297,7 +339,20 @@ public abstract class LIRInstruction {
      * @return The non-null value returned by the procedure, or null.
      */
     public Value forEachRegisterHint(Value value, OperandMode mode, InstructionValueProcedure proc) {
-        return instructionClass.forEachRegisterHint(this, mode, proc);
+        return instructionClass.forEachRegisterHint(this, mode, InstructionValueProcedureBase.wrap(proc));
+    }
+
+    /**
+     * @see #forEachRegisterHint(Value, OperandMode, InstructionValueProcedure)
+     * @param value The value the hints are needed for.
+     * @param mode The operand mode of the value.
+     * @param proc The procedure invoked for all the hints. If the procedure returns a non-null
+     *            value, the iteration is stopped and the value is returned by this method, i.e.,
+     *            clients can stop the iteration once a suitable hint has been found.
+     * @return The non-null value returned by the procedure, or null.
+     */
+    public Value forEachRegisterHint(Value value, OperandMode mode, ValueProcedure proc) {
+        return instructionClass.forEachRegisterHint(this, mode, InstructionValueProcedureBase.wrap(proc));
     }
 
     protected void verify() {
