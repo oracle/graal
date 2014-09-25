@@ -22,7 +22,8 @@
  */
 package com.oracle.graal.lir;
 
-public abstract class InstructionStateProcedure {
+@FunctionalInterface
+public interface InstructionStateProcedure {
 
-    protected abstract void doState(LIRInstruction instruction, LIRFrameState state);
+    void doState(LIRInstruction instruction, LIRFrameState state);
 }

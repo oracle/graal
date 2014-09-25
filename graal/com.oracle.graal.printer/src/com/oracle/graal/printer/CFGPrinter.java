@@ -460,7 +460,7 @@ class CFGPrinter extends CompilationPrinter {
                 inst.forEachState(new StateProcedure() {
 
                     @Override
-                    protected void doState(LIRFrameState state) {
+                    public void doState(LIRFrameState state) {
                         if (state.hasDebugInfo()) {
                             DebugInfo di = state.debugInfo();
                             stateString.append(debugInfoToString(di.getBytecodePosition(), di.getReferenceMap(), di.getCalleeSaveInfo(), target.arch));
