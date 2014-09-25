@@ -95,11 +95,11 @@ public class FlowUtil {
         } else {
             /*
              * Not comparable, two cases:
-             * 
+             *
              * Example 1: 'a' standing for j.l.Number and 'b' for j.l.String We return null for lack
              * of a value representing NullType, the right answer. Same goes when both arguments are
              * non-comparable interfaces.
-             * 
+             *
              * Example 2: 'a' standing for sun/nio/ch/DirectBuffer (an interface) and b for
              * java/nio/Buffer (an abstract class). The class always takes precedence.
              */
@@ -232,7 +232,7 @@ public class FlowUtil {
         NodePosIterator iter = n.inputs().iterator();
         while (iter.hasNext()) {
             Position pos = iter.nextPosition();
-            InputType inputType = pos.getInputType(n);
+            InputType inputType = pos.getInputType();
             boolean isReducibleInput = (inputType == InputType.Value || inputType == InputType.Condition);
             if (isReducibleInput) {
                 ValueNode i = (ValueNode) pos.get(n);

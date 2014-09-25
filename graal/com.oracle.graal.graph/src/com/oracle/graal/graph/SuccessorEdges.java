@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,40 +26,14 @@ import static com.oracle.graal.graph.Edges.Type.*;
 
 import java.util.*;
 
-import com.oracle.graal.graph.Edges.*;
+public final class SuccessorEdges extends Edges {
 
-public final class NodeInputList<T extends Node> extends NodeList<T> {
-
-    public NodeInputList(Node self, int initialSize) {
-        super(self, initialSize);
-    }
-
-    public NodeInputList(Node self) {
-        super(self);
-    }
-
-    public NodeInputList(Node self, T[] elements) {
-        super(self, elements);
-        assert self.usages().isEmpty();
-    }
-
-    public NodeInputList(Node self, List<? extends T> elements) {
-        super(self, elements);
-        assert self.usages().isEmpty();
-    }
-
-    public NodeInputList(Node self, Collection<? extends NodeInterface> elements) {
-        super(self, elements);
-        assert self.usages().isEmpty();
+    public SuccessorEdges(Class<?> nodeClass, int directCount, long[] offsets, Map<Long, String> names, Map<Long, Class<?>> types) {
+        super(nodeClass, Successors, directCount, offsets, names, types);
     }
 
     @Override
-    protected void update(T oldNode, T newNode) {
-        self.updateUsages(oldNode, newNode);
-    }
-
-    @Override
-    public Type getEdgesType() {
-        return Inputs;
+    protected void update(Node node, Node oldValue, Node newValue) {
+        node.updatePredecessor(oldValue, newValue);
     }
 }

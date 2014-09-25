@@ -215,9 +215,9 @@ public class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPr
             NodePosIterator succIter = node.successors().iterator();
             while (succIter.hasNext()) {
                 Position position = succIter.nextPosition();
-                Node successor = node.getNodeClass().get(node, position);
+                Node successor = position.get(node);
                 if (successor != null) {
-                    edges.add(new Edge(node.toString(Verbosity.Id), fromIndex, successor.toString(Verbosity.Id), 0, node.getNodeClass().getName(position)));
+                    edges.add(new Edge(node.toString(Verbosity.Id), fromIndex, successor.toString(Verbosity.Id), 0, position.getName()));
                 }
                 fromIndex++;
             }
@@ -227,9 +227,9 @@ public class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPr
             NodePosIterator inputIter = node.inputs().iterator();
             while (inputIter.hasNext()) {
                 Position position = inputIter.nextPosition();
-                Node input = node.getNodeClass().get(node, position);
+                Node input = position.get(node);
                 if (input != null) {
-                    edges.add(new Edge(input.toString(Verbosity.Id), input.successors().count(), node.toString(Verbosity.Id), toIndex, node.getNodeClass().getName(position)));
+                    edges.add(new Edge(input.toString(Verbosity.Id), input.successors().count(), node.toString(Verbosity.Id), toIndex, position.getName()));
                 }
                 toIndex++;
             }

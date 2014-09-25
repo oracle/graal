@@ -27,8 +27,9 @@ import org.junit.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.calc.*;
 
-public class NodeRefIteratorTest extends GraalCompilerTest {
+public class NodePosIteratorTest extends GraalCompilerTest {
 
     @NodeInfo
     static class TestNode extends Node {
@@ -37,11 +38,11 @@ public class NodeRefIteratorTest extends GraalCompilerTest {
         @Successor NodeSuccessorList<Node> stail;
 
         @Input NodeInputList<ValueNode> itail;
-        @Input ValueNode i1;
-        @Input ValueNode i2;
+        @Input ConstantNode i1;
+        @Input FloatingNode i2;
 
         public static TestNode create() {
-            return USE_GENERATED_NODES ? new NodeRefIteratorTest_TestNodeGen() : new TestNode();
+            return USE_GENERATED_NODES ? new NodePosIteratorTest_TestNodeGen() : new TestNode();
         }
     }
 
@@ -78,16 +79,16 @@ public class NodeRefIteratorTest extends GraalCompilerTest {
         iterator = inputs.iterator();
         Assert.assertTrue(iterator.hasNext());
         Assert.assertTrue(iterator.hasNext());
-        Assert.assertEquals(iterator.nextPosition().toString(), "input 0/-1");
+        Assert.assertEquals("ConstantNode:i1", iterator.nextPosition().toString());
         Assert.assertTrue(iterator.hasNext());
         Assert.assertTrue(iterator.hasNext());
-        Assert.assertEquals(iterator.nextPosition().toString(), "input 1/-1");
+        Assert.assertEquals("FloatingNode:i2", iterator.nextPosition().toString());
         Assert.assertTrue(iterator.hasNext());
         Assert.assertTrue(iterator.hasNext());
-        Assert.assertEquals(iterator.nextPosition().toString(), "input 2/0");
+        Assert.assertEquals("NodeInputList:itail[0]", iterator.nextPosition().toString());
         Assert.assertTrue(iterator.hasNext());
         Assert.assertTrue(iterator.hasNext());
-        Assert.assertEquals(iterator.nextPosition().toString(), "input 2/1");
+        Assert.assertEquals("NodeInputList:itail[1]", iterator.nextPosition().toString());
         Assert.assertFalse(iterator.hasNext());
         Assert.assertFalse(iterator.hasNext());
 
@@ -163,16 +164,16 @@ public class NodeRefIteratorTest extends GraalCompilerTest {
         iterator = successors.iterator();
         Assert.assertTrue(iterator.hasNext());
         Assert.assertTrue(iterator.hasNext());
-        Assert.assertEquals(iterator.nextPosition().toString(), "successor 0/-1");
+        Assert.assertEquals(Node.class.getSimpleName() + ":s1", iterator.nextPosition().toString());
         Assert.assertTrue(iterator.hasNext());
         Assert.assertTrue(iterator.hasNext());
-        Assert.assertEquals(iterator.nextPosition().toString(), "successor 1/-1");
+        Assert.assertEquals(Node.class.getSimpleName() + ":s2", iterator.nextPosition().toString());
         Assert.assertTrue(iterator.hasNext());
         Assert.assertTrue(iterator.hasNext());
-        Assert.assertEquals(iterator.nextPosition().toString(), "successor 2/0");
+        Assert.assertEquals(NodeSuccessorList.class.getSimpleName() + ":stail[0]", iterator.nextPosition().toString());
         Assert.assertTrue(iterator.hasNext());
         Assert.assertTrue(iterator.hasNext());
-        Assert.assertEquals(iterator.nextPosition().toString(), "successor 2/1");
+        Assert.assertEquals(NodeSuccessorList.class.getSimpleName() + ":stail[1]", iterator.nextPosition().toString());
         Assert.assertFalse(iterator.hasNext());
         Assert.assertFalse(iterator.hasNext());
 
