@@ -399,6 +399,8 @@ public class InliningData {
             throw new GraalInternalError(e).addContext(calleeInfo.toString());
         } catch (GraalInternalError e) {
             throw e.addContext(calleeInfo.toString());
+        } catch (Throwable e) {
+            throw Debug.handle(e);
         }
     }
 

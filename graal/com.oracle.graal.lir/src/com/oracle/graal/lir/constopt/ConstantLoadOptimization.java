@@ -64,12 +64,12 @@ public class ConstantLoadOptimization {
     private BlockMap<List<UseEntry>> blockMap;
     private BlockMap<LIRInsertionBuffer> insertionBuffers;
 
-    private static DebugMetric constantsTotal = Debug.metric("ConstantLoadOptimization[total]");
-    private static DebugMetric phiConstantsSkipped = Debug.metric("ConstantLoadOptimization[PhisSkipped]");
-    private static DebugMetric singleUsageConstantsSkipped = Debug.metric("ConstantLoadOptimization[SingleUsageSkipped]");
-    private static DebugMetric usageAtDefinitionSkipped = Debug.metric("ConstantLoadOptimization[UsageAtDefinitionSkipped]");
-    private static DebugMetric materializeAtDefinitionSkipped = Debug.metric("ConstantLoadOptimization[MaterializeAtDefinitionSkipped]");
-    private static DebugMetric constantsOptimized = Debug.metric("ConstantLoadOptimization[optimized]");
+    private static final DebugMetric constantsTotal = Debug.metric("ConstantLoadOptimization[total]");
+    private static final DebugMetric phiConstantsSkipped = Debug.metric("ConstantLoadOptimization[PhisSkipped]");
+    private static final DebugMetric singleUsageConstantsSkipped = Debug.metric("ConstantLoadOptimization[SingleUsageSkipped]");
+    private static final DebugMetric usageAtDefinitionSkipped = Debug.metric("ConstantLoadOptimization[UsageAtDefinitionSkipped]");
+    private static final DebugMetric materializeAtDefinitionSkipped = Debug.metric("ConstantLoadOptimization[MaterializeAtDefinitionSkipped]");
+    private static final DebugMetric constantsOptimized = Debug.metric("ConstantLoadOptimization[optimized]");
 
     private ConstantLoadOptimization(LIR lir, LIRGeneratorTool lirGen) {
         this.lir = lir;

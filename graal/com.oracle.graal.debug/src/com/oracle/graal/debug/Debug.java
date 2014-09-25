@@ -217,8 +217,25 @@ public class Debug {
      * </pre>
      *
      * @param name the name of the new scope
+     * @param contextObjects an array of object to be appended to the {@linkplain #context()
+     *            current} debug context
+     * @throws Throwable used to enforce a catch block.
      * @return the scope entered by this method which will be exited when its {@link Scope#close()}
      *         method is called
+     */
+    public static Scope scope(Object name, Object[] contextObjects) throws Throwable {
+        if (ENABLED) {
+            return DebugScope.getInstance().scope(convertFormatArg(name).toString(), null, contextObjects);
+        } else {
+            return null;
+        }
+    }
+
+    /**
+     * Similar to {@link #scope(Object, Object[])} but without context objects. Therefore the catch
+     * block can be omitted.
+     *
+     * @see #scope(Object, Object[])
      */
     public static Scope scope(Object name) {
         if (ENABLED) {
@@ -229,23 +246,10 @@ public class Debug {
     }
 
     /**
-     * @see #scope(Object)
-     * @param contextObjects an array of object to be appended to the {@linkplain #context()
-     *            current} debug context
-     */
-    public static Scope scope(Object name, Object[] contextObjects) {
-        if (ENABLED) {
-            return DebugScope.getInstance().scope(convertFormatArg(name).toString(), null, contextObjects);
-        } else {
-            return null;
-        }
-    }
-
-    /**
-     * @see #scope(Object)
+     * @see #scope(Object, Object[])
      * @param context an object to be appended to the {@linkplain #context() current} debug context
      */
-    public static Scope scope(Object name, Object context) {
+    public static Scope scope(Object name, Object context) throws Throwable {
         if (ENABLED) {
             return DebugScope.getInstance().scope(convertFormatArg(name).toString(), null, context);
         } else {
@@ -254,13 +258,13 @@ public class Debug {
     }
 
     /**
-     * @see #scope(Object)
+     * @see #scope(Object, Object[])
      * @param context1 first object to be appended to the {@linkplain #context() current} debug
      *            context
      * @param context2 second object to be appended to the {@linkplain #context() current} debug
      *            context
      */
-    public static Scope scope(Object name, Object context1, Object context2) {
+    public static Scope scope(Object name, Object context1, Object context2) throws Throwable {
         if (ENABLED) {
             return DebugScope.getInstance().scope(convertFormatArg(name).toString(), null, context1, context2);
         } else {
@@ -269,7 +273,7 @@ public class Debug {
     }
 
     /**
-     * @see #scope(Object)
+     * @see #scope(Object, Object[])
      * @param context1 first object to be appended to the {@linkplain #context() current} debug
      *            context
      * @param context2 second object to be appended to the {@linkplain #context() current} debug
@@ -277,7 +281,7 @@ public class Debug {
      * @param context3 third object to be appended to the {@linkplain #context() current} debug
      *            context
      */
-    public static Scope scope(Object name, Object context1, Object context2, Object context3) {
+    public static Scope scope(Object name, Object context1, Object context2, Object context3) throws Throwable {
         if (ENABLED) {
             return DebugScope.getInstance().scope(convertFormatArg(name).toString(), null, context1, context2, context3);
         } else {
@@ -305,7 +309,7 @@ public class Debug {
      * @return the scope entered by this method which will be exited when its {@link Scope#close()}
      *         method is called
      */
-    public static Scope sandbox(CharSequence name, DebugConfig config, Object... context) {
+    public static Scope sandbox(CharSequence name, DebugConfig config, Object... context) throws Throwable {
         if (ENABLED) {
             DebugConfig sandboxConfig = config == null ? silentConfig() : config;
             return DebugScope.getInstance().scope(name, sandboxConfig, context);
@@ -314,7 +318,7 @@ public class Debug {
         }
     }
 
-    public static Scope forceLog() {
+    public static Scope forceLog() throws Throwable {
         ArrayList<Object> context = new ArrayList<>();
         for (Object obj : context()) {
             context.add(obj);
@@ -346,7 +350,7 @@ public class Debug {
      * pattern recommended by {@link #scope(Object)} and
      * {@link #sandbox(CharSequence, DebugConfig, Object...)} is used
      *
-     * @see #scope(Object)
+     * @see #scope(Object, Object[])
      * @see #sandbox(CharSequence, DebugConfig, Object...)
      */
     public static RuntimeException handle(Throwable exception) {
