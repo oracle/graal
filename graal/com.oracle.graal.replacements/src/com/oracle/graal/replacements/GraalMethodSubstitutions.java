@@ -30,6 +30,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.api.runtime.*;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.nodes.spi.*;
 
 /**
@@ -50,6 +51,7 @@ public class GraalMethodSubstitutions implements ReplacementsProvider {
             replacements.registerSubstitutions(Character.class, CharacterSubstitutions.class);
             replacements.registerSubstitutions(Short.class, ShortSubstitutions.class);
             replacements.registerSubstitutions(UnsignedMath.class, UnsignedMathSubstitutions.class);
+            replacements.registerSubstitutions(Fields.class, FieldsSubstitutions.class);
         }
     }
 }

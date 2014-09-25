@@ -28,6 +28,7 @@ import static com.oracle.graal.graph.Graph.*;
 import java.lang.annotation.*;
 import java.util.*;
 
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.graph.Graph.NodeEventListener;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.graph.spi.*;
@@ -471,8 +472,9 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     /**
-     * Updates the usages sets of the given nodes after an input slot is changed from oldInput to
-     * newInput: removes this node from oldInput's usages and adds this node to newInput's usages.
+     * Updates the usages sets of the given nodes after an input slot is changed from
+     * {@code oldInput} to {@code newInput} by removing this node from {@code oldInput}'s usages and
+     * adds this node to {@code newInput}'s usages.
      */
     protected void updateUsages(Node oldInput, Node newInput) {
         assert isAlive() && (newInput == null || newInput.isAlive()) : "adding " + newInput + " to " + this + " instead of " + oldInput;
@@ -883,9 +885,9 @@ public abstract class Node implements Cloneable, Formattable {
      */
     public Map<Object, Object> getDebugProperties(Map<Object, Object> map) {
         NodeClass nodeClass = getNodeClass();
-        for (Integer pos : nodeClass.getPropertyPositions()) {
-            map.put(nodeClass.getPropertyName(pos), nodeClass.getProperty(this, pos));
-
+        Fields properties = nodeClass.getProperties();
+        for (int i = 0; i < properties.getCount(); i++) {
+            map.put(properties.getName(i), properties.get(this, i));
         }
         return map;
     }
