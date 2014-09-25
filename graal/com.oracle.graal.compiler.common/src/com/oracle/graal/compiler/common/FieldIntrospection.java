@@ -29,8 +29,7 @@ import java.util.concurrent.*;
 public abstract class FieldIntrospection extends UnsafeAccess {
 
     /**
-     * Interface used by {@link #rescanAllFieldOffsets(CalcOffset)} to determine the offset (in
-     * bytes) of a field.
+     * Interface used to determine the offset (in bytes) of a field.
      */
     public interface CalcOffset {
 
@@ -59,14 +58,6 @@ public abstract class FieldIntrospection extends UnsafeAccess {
     public Class<?> getClazz() {
         return clazz;
     }
-
-    public static void rescanAllFieldOffsets(CalcOffset calc) {
-        for (FieldIntrospection nodeClass : allClasses.values()) {
-            nodeClass.rescanFieldOffsets(calc);
-        }
-    }
-
-    protected abstract void rescanFieldOffsets(CalcOffset calc);
 
     public abstract static class BaseFieldScanner {
 

@@ -113,32 +113,6 @@ public class LIRInstructionClass extends LIRIntrospection {
         opcodeOffset = scanner.opcodeOffset;
     }
 
-    @Override
-    protected void rescanFieldOffsets(CalcOffset calc) {
-        InstructionFieldScanner scanner = new InstructionFieldScanner(calc);
-        scanner.scan(getClazz());
-
-        OperandModeAnnotation mode = scanner.valueAnnotations.get(LIRInstruction.Use.class);
-        copyInto(useOffsets, sortedLongCopy(mode.scalarOffsets, mode.arrayOffsets));
-        mode = scanner.valueAnnotations.get(LIRInstruction.Alive.class);
-        copyInto(aliveOffsets, sortedLongCopy(mode.scalarOffsets, mode.arrayOffsets));
-        mode = scanner.valueAnnotations.get(LIRInstruction.Temp.class);
-        copyInto(tempOffsets, sortedLongCopy(mode.scalarOffsets, mode.arrayOffsets));
-        mode = scanner.valueAnnotations.get(LIRInstruction.Def.class);
-        copyInto(defOffsets, sortedLongCopy(mode.scalarOffsets, mode.arrayOffsets));
-
-        copyInto(stateOffsets, sortedLongCopy(scanner.stateOffsets));
-        copyInto(dataOffsets, sortedLongCopy(scanner.dataOffsets));
-
-        fieldNames.clear();
-        fieldNames.putAll(scanner.fieldNames);
-        fieldTypes.clear();
-        fieldTypes.putAll(scanner.fieldTypes);
-
-        opcodeConstant = scanner.opcodeConstant;
-        opcodeOffset = scanner.opcodeOffset;
-    }
-
     private static class InstructionFieldScanner extends FieldScanner {
 
         private String opcodeConstant;

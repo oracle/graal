@@ -281,11 +281,6 @@ public final class NodeClass extends FieldIntrospection {
         return false;
     }
 
-    @Override
-    protected void rescanFieldOffsets(CalcOffset calc) {
-        throw new UnsupportedOperationException();
-    }
-
     /**
      * Determines if a given {@link Node} class is described by this {@link NodeClass} object. This
      * is useful for doing an exact type test (as opposed to an instanceof test) on a node. For
@@ -293,7 +288,7 @@ public final class NodeClass extends FieldIntrospection {
      *
      * <pre>
      *     if (node.getNodeClass().is(BeginNode.class)) { ... }
-     *
+     * 
      *     // Due to generated Node classes, the test below
      *     // is *not* the same as the test above:
      *     if (node.getClass() == BeginNode.class) { ... }
