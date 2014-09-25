@@ -266,7 +266,8 @@ public enum SPARCArithmetic {
         }
     }
 
-    public static void emitRegReg(CompilationResultBuilder crb, SPARCMacroAssembler masm, SPARCArithmetic opcode, Value dst, Value src1, Value src2, LIRFrameState info, SPARCDelayedControlTransfer delaySlotLir) {
+    public static void emitRegReg(CompilationResultBuilder crb, SPARCMacroAssembler masm, SPARCArithmetic opcode, Value dst, Value src1, Value src2, LIRFrameState info,
+                    SPARCDelayedControlTransfer delaySlotLir) {
         int exceptionOffset = -1;
         assert !isConstant(src1) : src1;
         assert !isConstant(src2) : src2;
