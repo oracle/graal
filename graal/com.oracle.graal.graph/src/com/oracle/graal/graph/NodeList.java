@@ -30,22 +30,26 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
 
     protected static final Node[] EMPTY_NODE_ARRAY = new Node[0];
 
+    protected final Node self;
     protected Node[] nodes;
     private int size;
     protected final int initialSize;
 
-    protected NodeList() {
+    protected NodeList(Node self) {
+        this.self = self;
         this.nodes = EMPTY_NODE_ARRAY;
         this.initialSize = 0;
     }
 
-    protected NodeList(int initialSize) {
+    protected NodeList(Node self, int initialSize) {
+        this.self = self;
         this.size = initialSize;
         this.initialSize = initialSize;
         this.nodes = new Node[initialSize];
     }
 
-    protected NodeList(T[] elements) {
+    protected NodeList(Node self, T[] elements) {
+        this.self = self;
         if (elements == null || elements.length == 0) {
             this.size = 0;
             this.nodes = EMPTY_NODE_ARRAY;
@@ -61,7 +65,8 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
         }
     }
 
-    protected NodeList(List<? extends T> elements) {
+    protected NodeList(Node self, List<? extends T> elements) {
+        this.self = self;
         if (elements == null || elements.isEmpty()) {
             this.size = 0;
             this.nodes = EMPTY_NODE_ARRAY;
@@ -77,7 +82,8 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
         }
     }
 
-    protected NodeList(Collection<? extends NodeInterface> elements) {
+    protected NodeList(Node self, Collection<? extends NodeInterface> elements) {
+        this.self = self;
         if (elements == null || elements.isEmpty()) {
             this.size = 0;
             this.nodes = EMPTY_NODE_ARRAY;
@@ -95,7 +101,13 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
         }
     }
 
+    public boolean isList() {
+        return true;
+    }
+
     protected abstract void update(T oldNode, T newNode);
+
+    public abstract Edges.Type getEdgesType();
 
     @Override
     public final int size() {
@@ -124,6 +136,8 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
     @SuppressWarnings("unchecked")
     @Override
     public boolean add(Node node) {
+        assert node == null || !node.isDeleted();
+        self.incModCount();
         incModCount();
         if (size == nodes.length) {
             nodes = Arrays.copyOf(nodes, nodes.length * 2 + 1);
@@ -162,6 +176,7 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
     }
 
     void copy(NodeList<? extends Node> other) {
+        self.incModCount();
         incModCount();
         nodes = Arrays.copyOf(other.nodes, other.size);
         size = other.size;
@@ -182,6 +197,7 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
     @SuppressWarnings("unchecked")
     @Override
     public void clear() {
+        self.incModCount();
         incModCount();
         for (int i = 0; i < size; i++) {
             update((T) nodes[i], null);
@@ -193,6 +209,7 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
     @Override
     @SuppressWarnings("unchecked")
     public boolean remove(Object node) {
+        self.incModCount();
         int i = 0;
         incModCount();
         while (i < size && nodes[i] != node) {
@@ -216,6 +233,7 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
     @Override
     @SuppressWarnings("unchecked")
     public T remove(int index) {
+        self.incModCount();
         T oldValue = (T) nodes[index];
         int i = index + 1;
         incModCount();
@@ -290,6 +308,7 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
 
     @SuppressWarnings("unchecked")
     public void setAll(NodeList<T> values) {
+        self.incModCount();
         incModCount();
         for (int i = 0; i < size(); i++) {
             update((T) nodes[i], null);

@@ -370,7 +370,7 @@ class CFGPrinter extends CompilationPrinter {
         int lastIndex = -1;
         while (iter.hasNext()) {
             Position pos = iter.nextPosition();
-            if (hideSuffix != null && node.getNodeClass().getName(pos).endsWith(hideSuffix)) {
+            if (hideSuffix != null && pos.getName().endsWith(hideSuffix)) {
                 continue;
             }
 
@@ -378,10 +378,10 @@ class CFGPrinter extends CompilationPrinter {
                 if (lastIndex != -1) {
                     out.print(suffix);
                 }
-                out.print(prefix).print(node.getNodeClass().getName(pos)).print(": ");
+                out.print(prefix).print(pos.getName()).print(": ");
                 lastIndex = pos.getIndex();
             }
-            out.print(nodeToString(node.getNodeClass().get(node, pos))).print(" ");
+            out.print(nodeToString(pos.get(node))).print(" ");
         }
         if (lastIndex != -1) {
             out.print(suffix);

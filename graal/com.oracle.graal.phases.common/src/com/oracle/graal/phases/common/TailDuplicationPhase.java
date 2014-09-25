@@ -500,7 +500,7 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
                     while (iter.hasNext()) {
                         Position pos = iter.nextPosition();
                         if (pos.get(usage) == duplicated) {
-                            switch (pos.getInputType(usage)) {
+                            switch (pos.getInputType()) {
                                 case Extension:
                                 case Condition:
                                 case State:
@@ -549,7 +549,7 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
                 Position pos = iter.nextPosition();
                 Node input = pos.get(duplicated);
                 if (input != null && !duplicatedNodes.contains(input)) {
-                    switch (pos.getInputType(duplicated)) {
+                    switch (pos.getInputType()) {
                         case Extension:
                         case Condition:
                         case State:

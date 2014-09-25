@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.graph;
 
-import static com.oracle.graal.graph.Graph.*;
 import static com.oracle.graal.graph.Node.*;
 import static com.oracle.graal.graph.util.CollectionsAccess.*;
 import static java.lang.reflect.Modifier.*;
@@ -54,7 +53,8 @@ public final class NodeClass extends FieldIntrospection {
     // Timers for creation of a NodeClass instance
     private static final DebugTimer Init = Debug.timer("NodeClass.Init");
     private static final DebugTimer Init_FieldScanning = Debug.timer("NodeClass.Init.FieldScanning");
-    private static final DebugTimer Init_Offsets = Debug.timer("NodeClass.Init.Offsets");
+    private static final DebugTimer Init_Edges = Debug.timer("NodeClass.Init.Edges");
+    private static final DebugTimer Init_Data = Debug.timer("NodeClass.Init.Data");
     private static final DebugTimer Init_Naming = Debug.timer("NodeClass.Init.Naming");
     private static final DebugTimer Init_AllowedUsages = Debug.timer("NodeClass.Init.AllowedUsages");
     private static final DebugTimer Init_IterableIds = Debug.timer("NodeClass.Init.IterableIds");
@@ -109,12 +109,9 @@ public final class NodeClass extends FieldIntrospection {
 
     private static int nextIterableId = 0;
 
-    private final int directInputCount;
-    private final long[] inputOffsets;
-    private final InputType[] inputTypes;
-    private final boolean[] inputOptional;
-    private final int directSuccessorCount;
-    private final long[] successorOffsets;
+    private final Edges inputs;
+    private final Edges successors;
+
     private final Class<?>[] dataTypes;
     private final boolean canGVN;
     private final int startGVNNumber;
@@ -167,37 +164,26 @@ public final class NodeClass extends FieldIntrospection {
 
         this.isSimplifiable = Simplifiable.class.isAssignableFrom(clazz);
 
-        FieldScanner scanner = new FieldScanner(calcOffset);
+        FieldScanner fs = new FieldScanner(calcOffset);
         try (TimerCloseable t = Init_FieldScanning.start()) {
-            scanner.scan(clazz);
+            fs.scan(clazz);
         }
 
-        try (TimerCloseable t1 = Init_Offsets.start()) {
-            directInputCount = scanner.inputOffsets.size();
-
-            isLeafNode = scanner.inputOffsets.isEmpty() && scanner.inputListOffsets.isEmpty() && scanner.successorOffsets.isEmpty() && scanner.successorListOffsets.isEmpty();
-
-            inputOffsets = sortedOffsets(scanner.inputOffsets, scanner.inputListOffsets);
-
-            inputTypes = new InputType[inputOffsets.length];
-            inputOptional = new boolean[inputOffsets.length];
-            for (int i = 0; i < inputOffsets.length; i++) {
-                inputTypes[i] = scanner.types.get(inputOffsets[i]);
-                assert inputTypes[i] != null;
-                inputOptional[i] = scanner.optionalInputs.contains(inputOffsets[i]);
-            }
-            directSuccessorCount = scanner.successorOffsets.size();
-            successorOffsets = sortedOffsets(scanner.successorOffsets, scanner.successorListOffsets);
-
-            dataOffsets = sortedLongCopy(scanner.dataOffsets);
+        try (TimerCloseable t1 = Init_Edges.start()) {
+            successors = new SuccessorEdges(clazz, fs.successorOffsets.size(), sortedOffsets(fs.successorOffsets, fs.successorListOffsets), fs.fieldNames, fs.fieldTypes);
+            inputs = new InputEdges(clazz, fs.inputOffsets.size(), sortedOffsets(fs.inputOffsets, fs.inputListOffsets), fs.fieldNames, fs.fieldTypes, fs.types, fs.optionalInputs);
+        }
+        try (TimerCloseable t1 = Init_Data.start()) {
+            dataOffsets = sortedLongCopy(fs.dataOffsets);
             dataTypes = new Class[dataOffsets.length];
             for (int i = 0; i < dataOffsets.length; i++) {
-                dataTypes[i] = scanner.fieldTypes.get(dataOffsets[i]);
+                dataTypes[i] = fs.fieldTypes.get(dataOffsets[i]);
             }
         }
 
-        fieldNames = scanner.fieldNames;
-        fieldTypes = scanner.fieldTypes;
+        isLeafNode = inputs.getCount() + successors.getCount() == 0;
+        fieldNames = fs.fieldNames;
+        fieldTypes = fs.fieldTypes;
 
         canGVN = Node.ValueNumberable.class.isAssignableFrom(clazz);
         startGVNNumber = clazz.hashCode();
@@ -297,22 +283,7 @@ public final class NodeClass extends FieldIntrospection {
 
     @Override
     protected void rescanFieldOffsets(CalcOffset calc) {
-        FieldScanner scanner = new FieldScanner(calc);
-        scanner.scan(getClazz());
-        assert directInputCount == scanner.inputOffsets.size();
-        copyInto(inputOffsets, sortedLongCopy(scanner.inputOffsets, scanner.inputListOffsets));
-        assert directSuccessorCount == scanner.successorOffsets.size();
-        copyInto(successorOffsets, sortedLongCopy(scanner.successorOffsets, scanner.successorListOffsets));
-        copyInto(dataOffsets, sortedLongCopy(scanner.dataOffsets));
-
-        for (int i = 0; i < dataOffsets.length; i++) {
-            dataTypes[i] = scanner.fieldTypes.get(dataOffsets[i]);
-        }
-
-        fieldNames.clear();
-        fieldNames.putAll(scanner.fieldNames);
-        fieldTypes.clear();
-        fieldTypes.putAll(scanner.fieldTypes);
+        throw new UnsupportedOperationException();
     }
 
     /**
@@ -322,7 +293,7 @@ public final class NodeClass extends FieldIntrospection {
      *
      * <pre>
      *     if (node.getNodeClass().is(BeginNode.class)) { ... }
-     * 
+     *
      *     // Due to generated Node classes, the test below
      *     // is *not* the same as the test above:
      *     if (node.getClass() == BeginNode.class) { ... }
@@ -436,326 +407,15 @@ public final class NodeClass extends FieldIntrospection {
     public String toString() {
         StringBuilder str = new StringBuilder();
         str.append("NodeClass ").append(getClazz().getSimpleName()).append(" [");
-        for (int i = 0; i < inputOffsets.length; i++) {
-            str.append(i == 0 ? "" : ", ").append(inputOffsets[i]);
-        }
+        inputs.appendOffsets(str);
         str.append("] [");
-        for (int i = 0; i < successorOffsets.length; i++) {
-            str.append(i == 0 ? "" : ", ").append(successorOffsets[i]);
-        }
+        successors.appendOffsets(str);
         str.append("] [");
         for (int i = 0; i < dataOffsets.length; i++) {
             str.append(i == 0 ? "" : ", ").append(dataOffsets[i]);
         }
         str.append("]");
         return str.toString();
-    }
-
-    private static Node getNode(Node node, long offset) {
-        return (Node) unsafe.getObject(node, offset);
-    }
-
-    @SuppressWarnings("unchecked")
-    private static NodeList<Node> getNodeList(Node node, long offset) {
-        return (NodeList<Node>) unsafe.getObject(node, offset);
-    }
-
-    private static void putNode(Node node, long offset, Node value) {
-        unsafe.putObject(node, offset, value);
-    }
-
-    private static void putNodeList(Node node, long offset, NodeList<?> value) {
-        unsafe.putObject(node, offset, value);
-    }
-
-    /**
-     * An iterator that will iterate over the fields given in {@link #getOffsets()}. The first
-     * {@link #getDirectCount()} offsets are treated as fields of type {@link Node}, while the rest
-     * of the fields are treated as {@link NodeList}s. All elements of these NodeLists will be
-     * visited by the iterator as well. This iterator can be used to iterate over the inputs or
-     * successors of a node.
-     *
-     * An iterator of this type will not return null values, unless the field values are modified
-     * concurrently. Concurrent modifications are detected by an assertion on a best-effort basis.
-     */
-    public abstract static class NodeClassIterator implements NodePosIterator {
-        protected final Node node;
-        protected int index;
-        protected int subIndex;
-        NodeList<Node> list;
-        protected boolean needsForward;
-        protected Node nextElement;
-
-        /**
-         * Creates an iterator that will iterate over fields in the given node.
-         *
-         * @param node the node which contains the fields.
-         */
-        NodeClassIterator(Node node) {
-            this.node = node;
-            index = NOT_ITERABLE;
-            subIndex = 0;
-            needsForward = true;
-        }
-
-        void forward() {
-            needsForward = false;
-            if (index < getDirectCount()) {
-                index++;
-                while (index < getDirectCount()) {
-                    nextElement = getNode(node, getOffsets()[index]);
-                    if (nextElement != null) {
-                        return;
-                    }
-                    index++;
-                }
-            } else {
-                subIndex++;
-            }
-            while (index < getOffsets().length) {
-                if (subIndex == 0) {
-                    list = getNodeList(node, getOffsets()[index]);
-                }
-                while (subIndex < list.size()) {
-                    nextElement = list.get(subIndex);
-                    if (nextElement != null) {
-                        return;
-                    }
-                    subIndex++;
-                }
-                subIndex = 0;
-                index++;
-            }
-        }
-
-        private Node nextElement() {
-            if (needsForward) {
-                forward();
-            }
-            needsForward = true;
-            if (index < getOffsets().length) {
-                return nextElement;
-            }
-            throw new NoSuchElementException();
-        }
-
-        @Override
-        public boolean hasNext() {
-            if (needsForward) {
-                forward();
-            }
-            return index < getOffsets().length;
-        }
-
-        @Override
-        public Node next() {
-            return nextElement();
-        }
-
-        public Position nextPosition() {
-            if (needsForward) {
-                forward();
-            }
-            needsForward = true;
-            if (index < getDirectCount()) {
-                return new Position(getOffsets() == getNodeClass().inputOffsets, index, NOT_ITERABLE);
-            } else {
-                return new Position(getOffsets() == getNodeClass().inputOffsets, index, subIndex);
-            }
-        }
-
-        @Override
-        public void remove() {
-            throw new UnsupportedOperationException();
-        }
-
-        protected abstract int getDirectCount();
-
-        protected abstract long[] getOffsets();
-
-        protected abstract NodeClass getNodeClass();
-    }
-
-    private class NodeClassInputsIterator extends NodeClassIterator {
-
-        NodeClassInputsIterator(Node node) {
-            super(node);
-            assert NodeClass.this == node.getNodeClass();
-        }
-
-        @Override
-        protected int getDirectCount() {
-            return directInputCount;
-        }
-
-        @Override
-        protected long[] getOffsets() {
-            return inputOffsets;
-        }
-
-        @Override
-        protected NodeClass getNodeClass() {
-            return NodeClass.this;
-        }
-    }
-
-    private class NodeClassAllInputsIterator extends NodeClassInputsIterator {
-        NodeClassAllInputsIterator(Node node) {
-            super(node);
-        }
-
-        @Override
-        void forward() {
-            needsForward = false;
-            if (index < getDirectCount()) {
-                index++;
-                if (index < getDirectCount()) {
-                    nextElement = getNode(node, getOffsets()[index]);
-                    return;
-                }
-            } else {
-                subIndex++;
-            }
-            while (index < getOffsets().length) {
-                if (subIndex == 0) {
-                    list = getNodeList(node, getOffsets()[index]);
-                }
-                if (subIndex < list.size()) {
-                    nextElement = list.get(subIndex);
-                    return;
-                }
-                subIndex = 0;
-                index++;
-            }
-        }
-    }
-
-    private class NodeClassAllSuccessorsIterator extends NodeClassSuccessorsIterator {
-        NodeClassAllSuccessorsIterator(Node node) {
-            super(node);
-        }
-
-        @Override
-        void forward() {
-            needsForward = false;
-            if (index < getDirectCount()) {
-                index++;
-                if (index < getDirectCount()) {
-                    nextElement = getNode(node, getOffsets()[index]);
-                    return;
-                }
-            } else {
-                subIndex++;
-            }
-            while (index < getOffsets().length) {
-                if (subIndex == 0) {
-                    list = getNodeList(node, getOffsets()[index]);
-                }
-                if (subIndex < list.size()) {
-                    nextElement = list.get(subIndex);
-                    return;
-                }
-                subIndex = 0;
-                index++;
-            }
-        }
-    }
-
-    private final class NodeClassInputsWithModCountIterator extends NodeClassInputsIterator {
-        private final int modCount;
-
-        private NodeClassInputsWithModCountIterator(Node node) {
-            super(node);
-            assert MODIFICATION_COUNTS_ENABLED;
-            this.modCount = node.modCount();
-        }
-
-        @Override
-        public boolean hasNext() {
-            try {
-                return super.hasNext();
-            } finally {
-                assert modCount == node.modCount() : "must not be modified";
-            }
-        }
-
-        @Override
-        public Node next() {
-            try {
-                return super.next();
-            } finally {
-                assert modCount == node.modCount() : "must not be modified";
-            }
-        }
-
-        @Override
-        public Position nextPosition() {
-            try {
-                return super.nextPosition();
-            } finally {
-                assert modCount == node.modCount();
-            }
-        }
-    }
-
-    private class NodeClassSuccessorsIterator extends NodeClassIterator {
-
-        NodeClassSuccessorsIterator(Node node) {
-            super(node);
-            assert NodeClass.this == node.getNodeClass();
-        }
-
-        @Override
-        protected int getDirectCount() {
-            return directSuccessorCount;
-        }
-
-        @Override
-        protected long[] getOffsets() {
-            return successorOffsets;
-        }
-
-        @Override
-        protected NodeClass getNodeClass() {
-            return NodeClass.this;
-        }
-    }
-
-    private final class NodeClassSuccessorsWithModCountIterator extends NodeClassSuccessorsIterator {
-        private final int modCount;
-
-        private NodeClassSuccessorsWithModCountIterator(Node node) {
-            super(node);
-            assert MODIFICATION_COUNTS_ENABLED;
-            this.modCount = node.modCount();
-        }
-
-        @Override
-        public boolean hasNext() {
-            try {
-                return super.hasNext();
-            } finally {
-                assert modCount == node.modCount() : "must not be modified";
-            }
-        }
-
-        @Override
-        public Node next() {
-            try {
-                return super.next();
-            } finally {
-                assert modCount == node.modCount() : "must not be modified";
-            }
-        }
-
-        @Override
-        public Position nextPosition() {
-            try {
-                return super.nextPosition();
-            } finally {
-                assert modCount == node.modCount();
-            }
-        }
     }
 
     private static int deepHashCode0(Object o) {
@@ -933,48 +593,18 @@ public final class NodeClass extends FieldIntrospection {
         return true;
     }
 
-    public boolean isValid(Position pos, NodeClass from) {
+    public boolean isValid(Position pos, NodeClass from, Edges fromEdges) {
         if (this == from) {
             return true;
         }
-        long[] offsets = pos.isInput() ? inputOffsets : successorOffsets;
-        if (pos.getIndex() >= offsets.length) {
+        Edges toEdges = getEdges(fromEdges.type());
+        if (pos.getIndex() >= toEdges.getCount()) {
             return false;
         }
-        long[] fromOffsets = pos.isInput() ? from.inputOffsets : from.successorOffsets;
-        if (pos.getIndex() >= fromOffsets.length) {
+        if (pos.getIndex() >= fromEdges.getCount()) {
             return false;
         }
-        return offsets[pos.getIndex()] == fromOffsets[pos.getIndex()];
-    }
-
-    public Node get(Node node, Position pos) {
-        long offset = pos.isInput() ? inputOffsets[pos.getIndex()] : successorOffsets[pos.getIndex()];
-        if (pos.getSubIndex() == NOT_ITERABLE) {
-            return getNode(node, offset);
-        } else {
-            return getNodeList(node, offset).get(pos.getSubIndex());
-        }
-    }
-
-    public InputType getInputType(Position pos) {
-        assert pos.isInput();
-        return inputTypes[pos.getIndex()];
-    }
-
-    public boolean isInputOptional(Position pos) {
-        assert pos.isInput();
-        return inputOptional[pos.getIndex()];
-    }
-
-    public NodeList<?> getNodeList(Node node, Position pos) {
-        long offset = pos.isInput() ? inputOffsets[pos.getIndex()] : successorOffsets[pos.getIndex()];
-        assert pos.getSubIndex() == Node.NODE_LIST;
-        return getNodeList(node, offset);
-    }
-
-    public String getName(Position pos) {
-        return fieldNames.get(pos.isInput() ? inputOffsets[pos.getIndex()] : successorOffsets[pos.getIndex()]);
+        return toEdges.isSameEdge(fromEdges, pos.getIndex());
     }
 
     public String getPropertyName(int pos) {
@@ -1044,446 +674,54 @@ public final class NodeClass extends FieldIntrospection {
         }
     }
 
+    static void updateEdgesInPlace(Node node, InplaceUpdateClosure duplicationReplacement, Edges edges) {
+        int index = 0;
+        while (index < edges.getDirectCount()) {
+            Node edge = edges.getNode(node, index);
+            if (edge != null) {
+                Node newEdge = duplicationReplacement.replacement(edge, edges.type());
+                if (edges.type() == Edges.Type.Inputs) {
+                    node.updateUsages(null, newEdge);
+                } else {
+                    node.updatePredecessor(null, newEdge);
+                }
+                assert newEdge == null || edges.getType(index).isAssignableFrom(newEdge.getClass()) : "Can not assign " + newEdge.getClass() + " to " + edges.getType(index) + " in " + node;
+                edges.initializeNode(node, index, newEdge);
+            }
+            index++;
+        }
+
+        while (index < edges.getCount()) {
+            NodeList<Node> list = edges.getNodeList(node, index);
+            assert list != null : edges;
+            edges.initializeList(node, index, updateEdgeListCopy(node, list, duplicationReplacement, edges.type()));
+            index++;
+        }
+    }
+
     void updateInputSuccInPlace(Node node, InplaceUpdateClosure duplicationReplacement) {
-        int index = 0;
-        while (index < directInputCount) {
-            Node input = getNode(node, inputOffsets[index]);
-            if (input != null) {
-                Node newInput = duplicationReplacement.replacement(input, true);
-                node.updateUsages(null, newInput);
-                assert newInput == null || fieldTypes.get(inputOffsets[index]).isAssignableFrom(newInput.getClass()) : "Can not assign " + newInput.getClass() + " to " +
-                                fieldTypes.get(inputOffsets[index]) + " in " + node;
-                putNode(node, inputOffsets[index], newInput);
-            }
-            index++;
-        }
-
-        if (index < inputOffsets.length) {
-            updateInputLists(node, duplicationReplacement, index);
-        }
-
-        index = 0;
-        while (index < directSuccessorCount) {
-            Node successor = getNode(node, successorOffsets[index]);
-            if (successor != null) {
-                Node newSucc = duplicationReplacement.replacement(successor, false);
-                node.updatePredecessor(null, newSucc);
-                assert newSucc == null || fieldTypes.get(successorOffsets[index]).isAssignableFrom(newSucc.getClass()) : fieldTypes.get(successorOffsets[index]) + " is not compatible with " +
-                                newSucc.getClass();
-                putNode(node, successorOffsets[index], newSucc);
-            }
-            index++;
-        }
-
-        if (index < successorOffsets.length) {
-            updateSuccLists(node, duplicationReplacement, index);
-        }
+        updateEdgesInPlace(node, duplicationReplacement, inputs);
+        updateEdgesInPlace(node, duplicationReplacement, successors);
     }
 
-    private void updateInputLists(Node node, InplaceUpdateClosure duplicationReplacement, int startIndex) {
-        int index = startIndex;
-        while (index < inputOffsets.length) {
-            NodeList<Node> list = getNodeList(node, inputOffsets[index]);
-            assert list != null : getClazz();
-            putNodeList(node, inputOffsets[index], updateInputListCopy(list, node, duplicationReplacement));
-            index++;
-        }
-    }
+    private static NodeList<Node> updateEdgeListCopy(Node node, NodeList<Node> list, InplaceUpdateClosure duplicationReplacement, Edges.Type type) {
+        NodeList<Node> result = type == Edges.Type.Inputs ? new NodeInputList<>(node, list.size()) : new NodeSuccessorList<>(node, list.size());
 
-    private void updateSuccLists(Node node, InplaceUpdateClosure duplicationReplacement, int startIndex) {
-        int index = startIndex;
-        while (index < successorOffsets.length) {
-            NodeList<Node> list = getNodeList(node, successorOffsets[index]);
-            assert list != null : getClazz();
-            putNodeList(node, successorOffsets[index], updateSuccListCopy(list, node, duplicationReplacement));
-            index++;
-        }
-    }
-
-    private static NodeInputList<Node> updateInputListCopy(NodeList<Node> list, Node node, InplaceUpdateClosure duplicationReplacement) {
-        int size = list.size();
-        NodeInputList<Node> result = new NodeInputList<>(node, size);
         for (int i = 0; i < list.count(); ++i) {
             Node oldNode = list.get(i);
             if (oldNode != null) {
-                Node newNode = duplicationReplacement.replacement(oldNode, true);
+                Node newNode = duplicationReplacement.replacement(oldNode, type);
                 result.set(i, newNode);
             }
         }
         return result;
     }
 
-    private static NodeSuccessorList<Node> updateSuccListCopy(NodeList<Node> list, Node node, InplaceUpdateClosure duplicationReplacement) {
-        int size = list.size();
-        NodeSuccessorList<Node> result = new NodeSuccessorList<>(node, size);
-        for (int i = 0; i < list.count(); ++i) {
-            Node oldNode = list.get(i);
-            if (oldNode != null) {
-                Node newNode = duplicationReplacement.replacement(oldNode, false);
-                result.set(i, newNode);
-            }
-        }
-        return result;
-    }
-
-    public void set(Node node, Position pos, Node x) {
-        long offset = pos.isInput() ? inputOffsets[pos.getIndex()] : successorOffsets[pos.getIndex()];
-        if (pos.getSubIndex() == NOT_ITERABLE) {
-            Node old = getNode(node, offset);
-            assert x == null || fieldTypes.get((pos.isInput() ? inputOffsets : successorOffsets)[pos.getIndex()]).isAssignableFrom(x.getClass()) : this + ".set(node, pos, " + x + ")";
-            putNode(node, offset, x);
-            if (pos.isInput()) {
-                node.updateUsages(old, x);
-            } else {
-                node.updatePredecessor(old, x);
-            }
-        } else {
-            NodeList<Node> list = getNodeList(node, offset);
-            if (pos.getSubIndex() < list.size()) {
-                list.set(pos.getSubIndex(), x);
-            } else {
-                while (list.size() < pos.getSubIndex()) {
-                    list.add(null);
-                }
-                list.add(x);
-            }
-        }
-    }
-
-    public void initializePosition(Node node, Position pos, Node x) {
-        long offset = pos.isInput() ? inputOffsets[pos.getIndex()] : successorOffsets[pos.getIndex()];
-        if (pos.getSubIndex() == NOT_ITERABLE) {
-            assert x == null || fieldTypes.get((pos.isInput() ? inputOffsets : successorOffsets)[pos.getIndex()]).isAssignableFrom(x.getClass()) : this + ".set(node, pos, " + x + ")";
-            putNode(node, offset, x);
-        } else {
-            NodeList<Node> list = getNodeList(node, offset);
-            while (list.size() <= pos.getSubIndex()) {
-                list.add(null);
-            }
-            list.initialize(pos.getSubIndex(), x);
-        }
-    }
-
-    public NodeClassIterable getInputIterable(final Node node) {
-        assert getClazz().isInstance(node);
-        return new NodeClassIterable() {
-
-            @Override
-            public NodeClassIterator iterator() {
-                if (MODIFICATION_COUNTS_ENABLED) {
-                    return new NodeClassInputsWithModCountIterator(node);
-                } else {
-                    return new NodeClassInputsIterator(node);
-                }
-            }
-
-            public NodeClassIterator withNullIterator() {
-                return new NodeClassAllInputsIterator(node);
-            }
-
-            @Override
-            public boolean contains(Node other) {
-                return inputContains(node, other);
-            }
-        };
-    }
-
-    public NodeClassIterable getSuccessorIterable(final Node node) {
-        assert getClazz().isInstance(node);
-        return new NodeClassIterable() {
-
-            @Override
-            public NodeClassIterator iterator() {
-                if (MODIFICATION_COUNTS_ENABLED) {
-                    return new NodeClassSuccessorsWithModCountIterator(node);
-                } else {
-                    return new NodeClassSuccessorsIterator(node);
-                }
-            }
-
-            public NodeClassIterator withNullIterator() {
-                return new NodeClassAllSuccessorsIterator(node);
-            }
-
-            @Override
-            public boolean contains(Node other) {
-                return successorContains(node, other);
-            }
-        };
-    }
-
-    public boolean replaceFirstInput(Node node, Node old, Node other) {
-        int index = 0;
-        while (index < directInputCount) {
-            Node input = getNode(node, inputOffsets[index]);
-            if (input == old) {
-                assert other == null || fieldTypes.get(inputOffsets[index]).isAssignableFrom(other.getClass()) : "Can not assign " + other.getClass() + " to " + fieldTypes.get(inputOffsets[index]) +
-                                " in " + node;
-                putNode(node, inputOffsets[index], other);
-                return true;
-            }
-            index++;
-        }
-        while (index < inputOffsets.length) {
-            NodeList<Node> list = getNodeList(node, inputOffsets[index]);
-            assert list != null : getClazz();
-            if (list.replaceFirst(old, other)) {
-                return true;
-            }
-            index++;
-        }
-        return false;
-    }
-
-    public boolean replaceFirstSuccessor(Node node, Node old, Node other) {
-        int index = 0;
-        while (index < directSuccessorCount) {
-            Node successor = getNode(node, successorOffsets[index]);
-            if (successor == old) {
-                assert other == null || fieldTypes.get(successorOffsets[index]).isAssignableFrom(other.getClass()) : fieldTypes.get(successorOffsets[index]) + " is not compatible with " +
-                                other.getClass();
-                putNode(node, successorOffsets[index], other);
-                return true;
-            }
-            index++;
-        }
-        while (index < successorOffsets.length) {
-            NodeList<Node> list = getNodeList(node, successorOffsets[index]);
-            assert list != null : getClazz() + " " + successorOffsets[index] + " " + node;
-            if (list.replaceFirst(old, other)) {
-                return true;
-            }
-            index++;
-        }
-        return false;
-    }
-
     /**
-     * Clear all inputs in the given node. This is accomplished by setting input fields to null and
-     * replacing input lists with new lists. (which is important so that this method can be used to
-     * clear the inputs of cloned nodes.)
-     *
-     * @param node the node to be cleared
+     * Gets the input or successor edges defined by this node class.
      */
-    public void clearInputs(Node node) {
-        int index = 0;
-        while (index < directInputCount) {
-            putNode(node, inputOffsets[index++], null);
-        }
-        while (index < inputOffsets.length) {
-            long curOffset = inputOffsets[index++];
-            int size = (getNodeList(node, curOffset)).initialSize;
-            // replacing with a new list object is the expected behavior!
-            putNodeList(node, curOffset, new NodeInputList<>(node, size));
-        }
-    }
-
-    /**
-     * Clear all successors in the given node. This is accomplished by setting successor fields to
-     * null and replacing successor lists with new lists. (which is important so that this method
-     * can be used to clear the successors of cloned nodes.)
-     *
-     * @param node the node to be cleared
-     */
-    public void clearSuccessors(Node node) {
-        int index = 0;
-        while (index < directSuccessorCount) {
-            putNode(node, successorOffsets[index++], null);
-        }
-        while (index < successorOffsets.length) {
-            long curOffset = successorOffsets[index++];
-            int size = getNodeList(node, curOffset).initialSize;
-            // replacing with a new list object is the expected behavior!
-            putNodeList(node, curOffset, new NodeSuccessorList<>(node, size));
-        }
-    }
-
-    /**
-     * Copies the inputs from node to newNode. The nodes are expected to be of the exact same
-     * NodeClass type.
-     *
-     * @param node the node from which the inputs should be copied.
-     * @param newNode the node to which the inputs should be copied.
-     */
-    public void copyInputs(Node node, Node newNode) {
-        assert node.getNodeClass() == this && newNode.getNodeClass() == this;
-
-        int index = 0;
-        while (index < directInputCount) {
-            putNode(newNode, inputOffsets[index], getNode(node, inputOffsets[index]));
-            index++;
-        }
-        while (index < inputOffsets.length) {
-            NodeList<Node> list = getNodeList(newNode, inputOffsets[index]);
-            list.copy(getNodeList(node, inputOffsets[index]));
-            index++;
-        }
-    }
-
-    /**
-     * Copies the successors from node to newNode. The nodes are expected to be of the exact same
-     * NodeClass type.
-     *
-     * @param node the node from which the successors should be copied.
-     * @param newNode the node to which the successors should be copied.
-     */
-    public void copySuccessors(Node node, Node newNode) {
-        assert node.getNodeClass() == this && newNode.getNodeClass() == this;
-
-        int index = 0;
-        while (index < directSuccessorCount) {
-            putNode(newNode, successorOffsets[index], getNode(node, successorOffsets[index]));
-            index++;
-        }
-        while (index < successorOffsets.length) {
-            NodeList<Node> list = getNodeList(newNode, successorOffsets[index]);
-            list.copy(getNodeList(node, successorOffsets[index]));
-            index++;
-        }
-    }
-
-    public boolean edgesEqual(Node node, Node other) {
-        return inputsEqual(node, other) && successorsEqual(node, other);
-    }
-
-    public boolean inputsEqual(Node node, Node other) {
-        assert node.getNodeClass() == this && other.getNodeClass() == this;
-        int index = 0;
-        while (index < directInputCount) {
-            if (getNode(other, inputOffsets[index]) != getNode(node, inputOffsets[index])) {
-                return false;
-            }
-            index++;
-        }
-        while (index < inputOffsets.length) {
-            NodeList<Node> list = getNodeList(other, inputOffsets[index]);
-            if (!list.equals(getNodeList(node, inputOffsets[index]))) {
-                return false;
-            }
-            index++;
-        }
-        return true;
-    }
-
-    public boolean successorsEqual(Node node, Node other) {
-        assert node.getNodeClass() == this && other.getNodeClass() == this;
-        int index = 0;
-        while (index < directSuccessorCount) {
-            if (getNode(other, successorOffsets[index]) != getNode(node, successorOffsets[index])) {
-                return false;
-            }
-            index++;
-        }
-        while (index < successorOffsets.length) {
-            NodeList<Node> list = getNodeList(other, successorOffsets[index]);
-            if (!list.equals(getNodeList(node, successorOffsets[index]))) {
-                return false;
-            }
-            index++;
-        }
-        return true;
-    }
-
-    public boolean inputContains(Node node, Node other) {
-        assert node.getNodeClass() == this;
-
-        int index = 0;
-        while (index < directInputCount) {
-            if (getNode(node, inputOffsets[index]) == other) {
-                return true;
-            }
-            index++;
-        }
-        while (index < inputOffsets.length) {
-            NodeList<Node> list = getNodeList(node, inputOffsets[index]);
-            if (list.contains(other)) {
-                return true;
-            }
-            index++;
-        }
-        return false;
-    }
-
-    public boolean successorContains(Node node, Node other) {
-        assert node.getNodeClass() == this;
-
-        int index = 0;
-        while (index < directSuccessorCount) {
-            if (getNode(node, successorOffsets[index]) == other) {
-                return true;
-            }
-            index++;
-        }
-        while (index < successorOffsets.length) {
-            NodeList<Node> list = getNodeList(node, successorOffsets[index]);
-            if (list.contains(other)) {
-                return true;
-            }
-            index++;
-        }
-        return false;
-    }
-
-    public Collection<Position> getFirstLevelInputPositions() {
-        return new AbstractCollection<Position>() {
-            @Override
-            public Iterator<Position> iterator() {
-                return new Iterator<Position>() {
-                    int i = 0;
-
-                    @Override
-                    public void remove() {
-                        throw new UnsupportedOperationException();
-                    }
-
-                    public Position next() {
-                        Position pos = new Position(true, i, i >= directInputCount ? Node.NODE_LIST : Node.NOT_ITERABLE);
-                        i++;
-                        return pos;
-                    }
-
-                    public boolean hasNext() {
-                        return i < inputOffsets.length;
-                    }
-                };
-            }
-
-            @Override
-            public int size() {
-                return inputOffsets.length;
-            }
-        };
-    }
-
-    public Collection<Position> getFirstLevelSuccessorPositions() {
-        return new AbstractCollection<Position>() {
-            @Override
-            public Iterator<Position> iterator() {
-                return new Iterator<Position>() {
-                    int i = 0;
-
-                    @Override
-                    public void remove() {
-                        throw new UnsupportedOperationException();
-                    }
-
-                    public Position next() {
-                        Position pos = new Position(false, i, i >= directSuccessorCount ? Node.NODE_LIST : Node.NOT_ITERABLE);
-                        i++;
-                        return pos;
-                    }
-
-                    public boolean hasNext() {
-                        return i < successorOffsets.length;
-                    }
-                };
-            }
-
-            @Override
-            public int size() {
-                return successorOffsets.length;
-            }
-        };
+    public Edges getEdges(Edges.Type type) {
+        return type == Edges.Type.Inputs ? inputs : successors;
     }
 
     public Collection<Integer> getPropertyPositions() {
@@ -1522,14 +760,15 @@ public final class NodeClass extends FieldIntrospection {
      */
     public void initRawNode(Node node) {
         node.init();
-        for (int inputPos = directInputCount; inputPos < inputOffsets.length; inputPos++) {
-            if (getNodeList(node, inputOffsets[inputPos]) == null) {
-                putNodeList(node, inputOffsets[inputPos], new NodeInputList<>(node));
-            }
-        }
-        for (int successorPos = directSuccessorCount; successorPos < successorOffsets.length; successorPos++) {
-            if (getNodeList(node, successorOffsets[successorPos]) == null) {
-                putNodeList(node, successorOffsets[successorPos], new NodeSuccessorList<>(node));
+        initNullEdgeLists(node, Edges.Type.Inputs);
+        initNullEdgeLists(node, Edges.Type.Successors);
+    }
+
+    private void initNullEdgeLists(Node node, Edges.Type type) {
+        Edges edges = getEdges(type);
+        for (int inputPos = edges.getDirectCount(); inputPos < edges.getCount(); inputPos++) {
+            if (edges.getNodeList(node, inputPos) == null) {
+                edges.initializeList(node, inputPos, type == Edges.Type.Inputs ? new NodeInputList<>(node) : new NodeSuccessorList<>(node));
             }
         }
     }
@@ -1548,7 +787,7 @@ public final class NodeClass extends FieldIntrospection {
 
     interface InplaceUpdateClosure {
 
-        Node replacement(Node node, boolean isInput);
+        Node replacement(Node node, Edges.Type type);
     }
 
     static Map<Node, Node> addGraphDuplicate(final Graph graph, final Graph oldGraph, int estimatedNodeCount, Iterable<Node> nodes, final DuplicationReplacement replacements) {
@@ -1565,7 +804,7 @@ public final class NodeClass extends FieldIntrospection {
 
         InplaceUpdateClosure replacementClosure = new InplaceUpdateClosure() {
 
-            public Node replacement(Node node, boolean isInput) {
+            public Node replacement(Node node, Edges.Type type) {
                 Node target = newNodes.get(node);
                 if (target == null) {
                     Node replacement = node;
@@ -1574,7 +813,7 @@ public final class NodeClass extends FieldIntrospection {
                     }
                     if (replacement != node) {
                         target = replacement;
-                    } else if (node.graph() == graph && isInput) {
+                    } else if (node.graph() == graph && type == Edges.Type.Inputs) {
                         // patch to the outer world
                         target = node;
                     }
@@ -1588,12 +827,11 @@ public final class NodeClass extends FieldIntrospection {
         // re-wire inputs
         for (Node oldNode : nodes) {
             Node node = newNodes.get(oldNode);
-            NodeClass oldNodeClass = oldNode.getNodeClass();
             NodeClass nodeClass = node.getNodeClass();
             if (replacements == null || replacements.replacement(oldNode) == oldNode) {
                 nodeClass.updateInputSuccInPlace(node, replacementClosure);
             } else {
-                transferValuesDifferentNodeClass(graph, replacements, newNodes, oldNode, node, oldNodeClass, nodeClass);
+                transferEdgesDifferentNodeClass(graph, replacements, newNodes, oldNode, node);
             }
         }
 
@@ -1621,50 +859,36 @@ public final class NodeClass extends FieldIntrospection {
         }
     }
 
-    private static void transferValuesDifferentNodeClass(final Graph graph, final DuplicationReplacement replacements, final Map<Node, Node> newNodes, Node oldNode, Node node, NodeClass oldNodeClass,
-                    NodeClass nodeClass) {
-        for (NodePosIterator iter = oldNode.inputs().iterator(); iter.hasNext();) {
-            Position pos = iter.nextPosition();
-            if (!nodeClass.isValid(pos, oldNodeClass)) {
-                continue;
-            }
-            Node input = oldNodeClass.get(oldNode, pos);
-            Node target = newNodes.get(input);
-            if (target == null) {
-                Node replacement = input;
-                if (replacements != null) {
-                    replacement = replacements.replacement(input);
-                }
-                if (replacement != input) {
-                    assert isAssignable(nodeClass.fieldTypes.get(nodeClass.inputOffsets[pos.getIndex()]), replacement);
-                    target = replacement;
-                } else if (input.graph() == graph) { // patch to the outer world
-                    target = input;
-                }
-            }
-            nodeClass.set(node, pos, target);
-        }
-
-        for (NodePosIterator iter = oldNode.successors().iterator(); iter.hasNext();) {
-            Position pos = iter.nextPosition();
-            if (!nodeClass.isValid(pos, oldNodeClass)) {
-                continue;
-            }
-            Node succ = oldNodeClass.get(oldNode, pos);
-            Node target = newNodes.get(succ);
-            if (target == null) {
-                Node replacement = replacements.replacement(succ);
-                if (replacement != succ) {
-                    assert isAssignable(nodeClass.fieldTypes.get(node.getNodeClass().successorOffsets[pos.getIndex()]), replacement);
-                    target = replacement;
-                }
-            }
-            nodeClass.set(node, pos, target);
-        }
+    private static void transferEdgesDifferentNodeClass(final Graph graph, final DuplicationReplacement replacements, final Map<Node, Node> newNodes, Node oldNode, Node node) {
+        transferEdges(graph, replacements, newNodes, oldNode, node, Edges.Type.Inputs);
+        transferEdges(graph, replacements, newNodes, oldNode, node, Edges.Type.Successors);
     }
 
-    private static boolean isAssignable(Class<?> fieldType, Node replacement) {
-        return replacement == null || !NODE_CLASS.isAssignableFrom(fieldType) || fieldType.isAssignableFrom(replacement.getClass());
+    private static void transferEdges(final Graph graph, final DuplicationReplacement replacements, final Map<Node, Node> newNodes, Node oldNode, Node node, Edges.Type type) {
+        NodeClass nodeClass = node.getNodeClass();
+        NodeClass oldNodeClass = oldNode.getNodeClass();
+        Edges oldEdges = oldNodeClass.getEdges(type);
+        for (NodePosIterator oldIter = oldEdges.getIterable(oldNode).iterator(); oldIter.hasNext();) {
+            Position pos = oldIter.nextPosition();
+            if (!nodeClass.isValid(pos, oldNodeClass, oldEdges)) {
+                continue;
+            }
+            Node oldEdge = pos.get(oldNode);
+            Node target = newNodes.get(oldEdge);
+            if (target == null) {
+                Node replacement = oldEdge;
+                if (replacements != null) {
+                    replacement = replacements.replacement(oldEdge);
+                }
+                if (replacement != oldEdge) {
+                    target = replacement;
+                } else if (type == Edges.Type.Inputs && oldEdge.graph() == graph) {
+                    // patch to the outer world
+                    target = oldEdge;
+                }
+            }
+            pos.set(node, target);
+        }
     }
 
     public boolean isLeafNode() {

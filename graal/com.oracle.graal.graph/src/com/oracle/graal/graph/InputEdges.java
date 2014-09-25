@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,40 +26,34 @@ import static com.oracle.graal.graph.Edges.Type.*;
 
 import java.util.*;
 
-import com.oracle.graal.graph.Edges.*;
+import com.oracle.graal.nodeinfo.*;
 
-public final class NodeInputList<T extends Node> extends NodeList<T> {
+public final class InputEdges extends Edges {
 
-    public NodeInputList(Node self, int initialSize) {
-        super(self, initialSize);
+    private final InputType[] inputTypes;
+    private final boolean[] isOptional;
+
+    public InputEdges(Class<?> nodeClass, int directCount, long[] offsets, Map<Long, String> names, Map<Long, Class<?>> types, Map<Long, InputType> inputTypes, Set<Long> isOptional) {
+        super(nodeClass, Inputs, directCount, offsets, names, types);
+
+        this.inputTypes = new InputType[offsets.length];
+        this.isOptional = new boolean[offsets.length];
+        for (int i = 0; i < offsets.length; i++) {
+            this.inputTypes[i] = inputTypes.get(offsets[i]);
+            this.isOptional[i] = isOptional.contains(offsets[i]);
+        }
     }
 
-    public NodeInputList(Node self) {
-        super(self);
+    public InputType getInputType(int index) {
+        return inputTypes[index];
     }
 
-    public NodeInputList(Node self, T[] elements) {
-        super(self, elements);
-        assert self.usages().isEmpty();
-    }
-
-    public NodeInputList(Node self, List<? extends T> elements) {
-        super(self, elements);
-        assert self.usages().isEmpty();
-    }
-
-    public NodeInputList(Node self, Collection<? extends NodeInterface> elements) {
-        super(self, elements);
-        assert self.usages().isEmpty();
-    }
-
-    @Override
-    protected void update(T oldNode, T newNode) {
-        self.updateUsages(oldNode, newNode);
+    public boolean isOptional(int index) {
+        return isOptional[index];
     }
 
     @Override
-    public Type getEdgesType() {
-        return Inputs;
+    protected void update(Node node, Node oldValue, Node newValue) {
+        node.updateUsages(oldValue, newValue);
     }
 }

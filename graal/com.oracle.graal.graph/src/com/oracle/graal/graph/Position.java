@@ -22,21 +22,17 @@
  */
 package com.oracle.graal.graph;
 
-import com.oracle.graal.graph.Node.Input;
-import com.oracle.graal.graph.Node.OptionalInput;
 import com.oracle.graal.nodeinfo.*;
 
 /**
  * Describes an edge slot for a {@link NodeClass}.
- *
- * @see NodeClass#getName(Position)
  */
 public final class Position {
 
     /**
-     * Specifies if this position denotes an {@link Input} or {@link OptionalInput} field.
+     * The edges in which this position lies.
      */
-    private final boolean input;
+    private final Edges edges;
 
     /**
      * Index of the {@link Node} or {@link NodeList} field denoted by this position.
@@ -49,39 +45,55 @@ public final class Position {
      */
     private final int subIndex;
 
-    public Position(boolean input, int index, int subIndex) {
-        this.input = input;
+    public Position(Edges edges, int index, int subIndex) {
+        this.edges = edges;
         this.index = index;
         this.subIndex = subIndex;
     }
 
     public Node get(Node node) {
-        return node.getNodeClass().get(node, this);
+        if (index < edges.getDirectCount()) {
+            return edges.getNode(node, index);
+        } else {
+            return edges.getNodeList(node, index).get(subIndex);
+        }
     }
 
-    public InputType getInputType(Node node) {
-        return node.getNodeClass().getInputType(this);
+    public InputType getInputType() {
+        return ((InputEdges) edges).getInputType(index);
     }
 
-    public String getInputName(Node node) {
-        return node.getNodeClass().getName(this);
+    public String getName() {
+        return edges.getName(index);
     }
 
-    public boolean isInputOptional(Node node) {
-        return node.getNodeClass().isInputOptional(this);
+    public boolean isInputOptional() {
+        return ((InputEdges) edges).isOptional(index);
     }
 
     public void set(Node node, Node value) {
-        node.getNodeClass().set(node, this, value);
+        if (index < edges.getDirectCount()) {
+            edges.setNode(node, index, value);
+        } else {
+            edges.getNodeList(node, index).set(subIndex, value);
+        }
     }
 
     public void initialize(Node node, Node value) {
-        node.getNodeClass().initializePosition(node, this, value);
+        if (index < edges.getDirectCount()) {
+            edges.initializeNode(node, index, value);
+        } else {
+            edges.getNodeList(node, index).initialize(subIndex, value);
+        }
     }
 
     @Override
     public String toString() {
-        return (input ? "input " : "successor ") + index + "/" + subIndex;
+        String res = edges.getType(index).getSimpleName() + ":" + edges.getName(index);
+        if (subIndex != Node.NOT_ITERABLE) {
+            res += "[" + subIndex + "]";
+        }
+        return res;
     }
 
     @Override
@@ -89,7 +101,7 @@ public final class Position {
         final int prime = 31;
         int result = 1;
         result = prime * result + index;
-        result = prime * result + (input ? 1231 : 1237);
+        result = prime * result + edges.hashCode();
         result = prime * result + subIndex;
         return result;
     }
@@ -109,7 +121,7 @@ public final class Position {
         if (index != other.index) {
             return false;
         }
-        if (input != other.input) {
+        if (edges != other.edges) {
             return false;
         }
         if (subIndex != other.subIndex) {
@@ -131,13 +143,5 @@ public final class Position {
      */
     public int getIndex() {
         return index;
-    }
-
-    /**
-     * Returns true if this position denotes an {@link Input} or {@link OptionalInput} field, false
-     * otherwise.
-     */
-    public boolean isInput() {
-        return input;
     }
 }

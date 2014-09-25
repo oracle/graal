@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.nodes;
 
+import static com.oracle.graal.graph.Edges.Type.*;
+
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
@@ -226,7 +228,7 @@ public class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerab
                 FixedWithNextNode falseNext = (FixedWithNextNode) falseSucc.next();
                 NodeClass nodeClass = trueNext.getNodeClass();
                 if (trueNext.getClass() == falseNext.getClass()) {
-                    if (nodeClass.inputsEqual(trueNext, falseNext) && nodeClass.valueEqual(trueNext, falseNext)) {
+                    if (nodeClass.getEdges(Inputs).areEqualIn(trueNext, falseNext) && nodeClass.valueEqual(trueNext, falseNext)) {
                         falseNext.replaceAtUsages(trueNext);
                         graph().removeFixed(falseNext);
                         GraphUtil.unlinkFixedNode(trueNext);

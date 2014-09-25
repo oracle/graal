@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.graph;
 
+import static com.oracle.graal.graph.Edges.Type.*;
 import static com.oracle.graal.graph.Node.*;
 
 import java.util.*;
@@ -497,7 +498,8 @@ public class Graph {
             }
             if (minCountNode != null) {
                 for (Node usage : minCountNode.usages()) {
-                    if (usage != node && nodeClass == usage.getNodeClass() && nodeClass.valueEqual(node, usage) && nodeClass.edgesEqual(node, usage)) {
+                    if (usage != node && nodeClass == usage.getNodeClass() && nodeClass.valueEqual(node, usage) && nodeClass.getEdges(Inputs).areEqualIn(node, usage) &&
+                                    nodeClass.getEdges(Successors).areEqualIn(node, usage)) {
                         return usage;
                     }
                 }
