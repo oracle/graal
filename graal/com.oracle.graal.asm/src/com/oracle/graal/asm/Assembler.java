@@ -33,7 +33,7 @@ import com.oracle.graal.api.code.*;
 public abstract class Assembler {
 
     public final TargetDescription target;
-    private Set<LabelHint> jumpDisplacementHints;
+    private List<LabelHint> jumpDisplacementHints;
 
     /**
      * Backing code buffer.
@@ -206,7 +206,7 @@ public abstract class Assembler {
 
     public LabelHint requestLabelHint(Label label) {
         if (jumpDisplacementHints == null) {
-            jumpDisplacementHints = new HashSet<>();
+            jumpDisplacementHints = new ArrayList<>();
         }
         LabelHint hint = new LabelHint(label, position());
         this.jumpDisplacementHints.add(hint);
