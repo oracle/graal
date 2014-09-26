@@ -46,7 +46,7 @@ public class SPARCAllocatorTest extends AllocatorTest {
 
     @Test
     public void test2() {
-        test("test2snippet", 1, 0, 0);
+        test("test2snippet", 2, 0, 0);
     }
 
     public static long test2snippet(long x) {
@@ -55,7 +55,7 @@ public class SPARCAllocatorTest extends AllocatorTest {
 
     @Test
     public void test3() {
-        test("test3snippet", 3, 0, 0);
+        test("test3snippet", 3, 1, 0);
     }
 
     public static long test3snippet(long x) {
