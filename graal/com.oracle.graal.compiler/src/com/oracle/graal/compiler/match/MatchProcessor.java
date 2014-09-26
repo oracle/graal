@@ -498,6 +498,7 @@ public class MatchProcessor extends AbstractProcessor {
                 out.println("import " + p + ".*;");
             }
             out.println("");
+            out.println("@SuppressWarnings(\"unused\")");
             out.println("public class " + matchStatementClassName + " implements " + MatchStatementSet.class.getSimpleName() + " {");
 
             out.println();
