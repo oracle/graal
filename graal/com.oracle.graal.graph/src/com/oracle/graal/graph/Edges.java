@@ -28,11 +28,13 @@ import static com.oracle.graal.graph.Node.*;
 
 import java.util.*;
 
+import com.oracle.graal.compiler.common.*;
+
 /**
  * Describes {@link Node} fields representing the set of inputs for the node or the set of the
  * node's successors.
  */
-public abstract class Edges {
+public abstract class Edges extends Fields {
 
     /**
      * Constants denoting whether a set of edges are inputs or successors.
@@ -42,41 +44,13 @@ public abstract class Edges {
         Successors;
     }
 
-    private final Class<? extends Node> nodeClass;
     private final int directCount;
-    private final long[] offsets;
-    private final String[] names;
-    private final Class<?>[] types;
     private final Type type;
 
-    @SuppressWarnings("unchecked")
     public Edges(Class<?> nodeClass, Type type, int directCount, long[] offsets, Map<Long, String> names, Map<Long, Class<?>> types) {
-        this.nodeClass = (Class<? extends Node>) nodeClass;
+        super(nodeClass, offsets, names, types);
         this.type = type;
         this.directCount = directCount;
-        this.offsets = offsets;
-
-        this.names = new String[offsets.length];
-        this.types = new Class[offsets.length];
-        for (int i = 0; i < offsets.length; i++) {
-            this.names[i] = names.get(offsets[i]);
-            this.types[i] = types.get(offsets[i]);
-        }
-    }
-
-    /**
-     * Gets the number of edges represented by this object.
-     */
-    public int getCount() {
-        return offsets.length;
-    }
-
-    /**
-     * Get the number of direct edges represented by this object. A direct edge goes directly to
-     * another {@link Node}. An indirect edge goes via a {@link NodeList}.
-     */
-    public int getDirectCount() {
-        return directCount;
     }
 
     private static Node getNode(Node node, long offset) {
@@ -94,6 +68,14 @@ public abstract class Edges {
 
     private static void putNodeList(Node node, long offset, NodeList<?> value) {
         unsafe.putObject(node, offset, value);
+    }
+
+    /**
+     * Get the number of direct edges represented by this object. A direct edge goes directly to
+     * another {@link Node}. An indirect edge goes via a {@link NodeList}.
+     */
+    public int getDirectCount() {
+        return directCount;
     }
 
     /**
@@ -117,7 +99,7 @@ public abstract class Edges {
      * @return the {@link NodeList} at the other edge of the requested edge
      */
     public NodeList<Node> getNodeList(Node node, int index) {
-        assert index >= directCount && index < offsets.length;
+        assert index >= directCount && index < getCount();
         return getNodeList(node, offsets[index]);
     }
 
@@ -152,7 +134,7 @@ public abstract class Edges {
      * @param toNode the node to which the edges should be copied.
      */
     public void copy(Node fromNode, Node toNode) {
-        assert fromNode.getNodeClass().getClazz() == nodeClass && toNode.getNodeClass().getClazz() == nodeClass;
+        assert fromNode.getNodeClass().getClazz() == clazz && toNode.getNodeClass().getClazz() == clazz;
         int index = 0;
         while (index < getDirectCount()) {
             initializeNode(toNode, index, getNode(fromNode, index));
@@ -187,7 +169,7 @@ public abstract class Edges {
         }
         while (index < getCount()) {
             NodeList<Node> list = getNodeList(node, index);
-            assert list != null : nodeClass;
+            assert list != null : clazz;
             if (list.replaceFirst(key, replacement)) {
                 return true;
             }
@@ -196,36 +178,20 @@ public abstract class Edges {
         return false;
     }
 
-    public boolean isSameEdge(Edges other, int index) {
-        return offsets[index] == other.offsets[index];
+    @Override
+    public void set(Object node, int index, Object value) {
+        throw new IllegalArgumentException("Cannot call set on " + this);
     }
 
     /**
-     * Gets the name of an edge.
+     * Sets the value of a given edge without notifying the new and old nodes on the other end of
+     * the edge of the change.
      *
-     * @param index index of an edge
+     * @param node the node whose edge is to be updated
+     * @param index the index of the edge (between 0 and {@link #getCount()})
+     * @param value the node to be written to the edge
      */
-    public String getName(int index) {
-        return names[index];
-    }
-
-    /**
-     * Gets the type of the field storing the end point of an edge.
-     *
-     * @param index index of an edge
-     */
-    public Class<?> getType(int index) {
-        return types[index];
-    }
-
-    private boolean checkAssignable(int index, Node value) {
-        assert value == null || getType(index).isAssignableFrom(value.getClass()) : String.format("%s.%s of type %s is not assignable from %s", nodeClass.getSimpleName(), getName(index),
-                        getType(index).getSimpleName(), value.getClass().getSimpleName());
-        return true;
-    }
-
     public void initializeNode(Node node, int index, Node value) {
-        assert checkAssignable(index, value);
         putNode(node, offsets[index], value);
     }
 
@@ -234,12 +200,18 @@ public abstract class Edges {
         putNodeList(node, offsets[index], value);
     }
 
+    /**
+     * Sets the value of a given edge and notifies the new and old nodes on the other end of the
+     * edge of the change.
+     *
+     * @param node the node whose edge is to be updated
+     * @param index the index of the edge (between 0 and {@link #getCount()})
+     * @param value the node to be written to the edge
+     */
     public void setNode(Node node, int index, Node value) {
         assert index < directCount;
-        long offset = offsets[index];
-        Node old = getNode(node, offset);
-        assert checkAssignable(index, value);
-        putNode(node, offset, value);
+        Node old = getNode(node, offsets[index]);
+        putNode(node, offsets[index], value);
         update(node, old, value);
     }
 
@@ -263,7 +235,7 @@ public abstract class Edges {
      * Determines if the edges of two given nodes are the same.
      */
     public boolean areEqualIn(Node node, Node other) {
-        assert node.getNodeClass().getClazz() == nodeClass && other.getNodeClass().getClazz() == nodeClass;
+        assert node.getNodeClass().getClazz() == clazz && other.getNodeClass().getClazz() == clazz;
         int index = 0;
         while (index < directCount) {
             if (getNode(other, index) != getNode(node, index)) {
@@ -476,12 +448,6 @@ public abstract class Edges {
 
     @Override
     public String toString() {
-        return nodeClass.getSimpleName() + ":" + type;
-    }
-
-    void appendOffsets(StringBuilder sb) {
-        for (int i = 0; i < offsets.length; i++) {
-            sb.append(i == 0 ? "" : ", ").append(offsets[i]);
-        }
+        return super.toString() + ":" + type;
     }
 }

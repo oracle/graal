@@ -83,22 +83,6 @@ public class CompositeValueClass extends LIRIntrospection {
         fieldTypes = scanner.fieldTypes;
     }
 
-    @Override
-    protected void rescanFieldOffsets(CalcOffset calc) {
-        ValueFieldScanner scanner = new ValueFieldScanner(calc);
-        scanner.scan(getClazz());
-
-        OperandModeAnnotation mode = scanner.valueAnnotations.get(CompositeValue.Component.class);
-        copyInto(componentOffsets, sortedLongCopy(mode.scalarOffsets, mode.arrayOffsets));
-
-        copyInto(dataOffsets, sortedLongCopy(scanner.dataOffsets));
-
-        fieldNames.clear();
-        fieldNames.putAll(scanner.fieldNames);
-        fieldTypes.clear();
-        fieldTypes.putAll(scanner.fieldTypes);
-    }
-
     private static class ValueFieldScanner extends FieldScanner {
 
         public ValueFieldScanner(CalcOffset calc) {
