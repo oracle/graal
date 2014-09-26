@@ -89,6 +89,8 @@ public class MatchProcessor extends AbstractProcessor {
 
         private final Set<Element> originatingElements = new HashSet<>();
 
+        private Set<String> requiredPackages = new HashSet<>();
+
         RuleParser(String rule) {
             Matcher m = tokenizer.matcher(rule);
             List<String> list = new ArrayList<>();
@@ -168,6 +170,7 @@ public class MatchProcessor extends AbstractProcessor {
                     name = next();
                 }
                 originatingElements.addAll(type.originatingElements);
+                requiredPackages.add(type.nodePackage);
             } else if (Character.isLowerCase(peek("name").charAt(0))) {
                 name = next();
                 type = valueType;
@@ -330,11 +333,6 @@ public class MatchProcessor extends AbstractProcessor {
     Map<String, TypeDescriptor> knownTypes = new HashMap<>();
 
     /**
-     * The set of packages which must be imported to refer to the known classes.
-     */
-    List<String> requiredPackages = new ArrayList<>();
-
-    /**
      * The mapping between elements with MatchRules and the wrapper class used invoke the code
      * generation after the match.
      */
@@ -354,9 +352,6 @@ public class MatchProcessor extends AbstractProcessor {
         TypeDescriptor descriptor = new TypeDescriptor(mirror, shortName, nodeClass, nodePackage, inputs, commutative, shareable);
         descriptor.originatingElements.add(element);
         knownTypes.put(shortName, descriptor);
-        if (!requiredPackages.contains(descriptor.nodePackage)) {
-            requiredPackages.add(descriptor.nodePackage);
-        }
     }
 
     private String findPackage(Element type) {
@@ -494,16 +489,11 @@ public class MatchProcessor extends AbstractProcessor {
             out.println("import " + MatchStatementSet.class.getPackage().getName() + ".*;");
             out.println("import " + NodeLIRBuilder.class.getName() + ";");
             out.println("import " + Position.class.getName() + ";");
-            for (String p : requiredPackages) {
+            for (String p : info.requiredPackages) {
                 out.println("import " + p + ".*;");
             }
             out.println("");
 
-            // FIXME: Ugly hack, don't know how to work this problem around (import
-            // com.oracle.graal.nodes.*; is unused, but cannot be avoided
-            if (matchStatementClassName.contains("SPARCNodeLIRBuilder")) {
-                out.println("@SuppressWarnings(\"unused\")");
-            }
             out.println("public class " + matchStatementClassName + " implements " + MatchStatementSet.class.getSimpleName() + " {");
 
             out.println();
@@ -653,6 +643,11 @@ public class MatchProcessor extends AbstractProcessor {
         final List<MatchRuleItem> matchRules = new ArrayList<>();
         private final Set<Element> originatingElements = new HashSet<>();
         public Set<String> positionDeclarations = new LinkedHashSet<>();
+
+        /**
+         * The set of packages which must be imported to refer the classes mention in matchRules.
+         */
+        Set<String> requiredPackages = new HashSet<>();
 
         public MatchRuleDescriptor(TypeElement topDeclaringType) {
             this.topDeclaringType = topDeclaringType;
@@ -955,6 +950,7 @@ public class MatchProcessor extends AbstractProcessor {
             }
 
             originatingElementsList.addAll(parser.originatingElements);
+            info.requiredPackages.addAll(parser.requiredPackages);
 
             // Accumulate any position declarations.
             parser.generatePositionDeclarations(info.positionDeclarations);
