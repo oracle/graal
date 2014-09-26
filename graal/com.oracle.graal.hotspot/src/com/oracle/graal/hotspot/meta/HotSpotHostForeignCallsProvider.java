@@ -86,28 +86,32 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         }
     }
 
-    private static ForeignCallDescriptor registerArraycopyDescriptor(Kind kind, boolean aligned, boolean disjoint, boolean uninit) {
-        String name = kind + (aligned ? "Aligned" : "") + (disjoint ? "Disjoint" : "") + (uninit ? "Uninit" : "") + "Arraycopy";
-        ForeignCallDescriptor desc = new ForeignCallDescriptor(name, void.class, Word.class, Word.class, Word.class);
+    private void registerArraycopyDescriptor(Map<Long, ForeignCallDescriptor> descMap, Kind kind, boolean aligned, boolean disjoint, boolean uninit, long routine) {
+        ForeignCallDescriptor desc = descMap.get(routine);
+        if (desc == null) {
+            String name = kind + (aligned ? "Aligned" : "") + (disjoint ? "Disjoint" : "") + (uninit ? "Uninit" : "") + "Arraycopy";
+            desc = new ForeignCallDescriptor(name, void.class, Word.class, Word.class, Word.class);
+            LocationIdentity killed = NamedLocationIdentity.getArrayLocation(kind);
+            registerForeignCall(desc, routine, NativeCall, DESTROYS_REGISTERS, LEAF_NOFP, NOT_REEXECUTABLE, killed);
+            descMap.put(routine, desc);
+        }
         if (uninit) {
             assert kind == Kind.Object;
             uninitObjectArraycopyDescriptors[aligned ? 1 : 0][disjoint ? 1 : 0] = desc;
         } else {
             arraycopyDescriptors[aligned ? 1 : 0][disjoint ? 1 : 0].put(kind, desc);
         }
-        return desc;
     }
 
-    private void registerArrayCopy(Kind kind, long routine, long alignedRoutine, long disjointRoutine, long alignedDisjointRoutine) {
-        registerArrayCopy(kind, routine, alignedRoutine, disjointRoutine, alignedDisjointRoutine, false);
+    private void registerArrayCopy(Map<Long, ForeignCallDescriptor> descMap, Kind kind, long routine, long alignedRoutine, long disjointRoutine, long alignedDisjointRoutine) {
+        registerArrayCopy(descMap, kind, routine, alignedRoutine, disjointRoutine, alignedDisjointRoutine, false);
     }
 
-    private void registerArrayCopy(Kind kind, long routine, long alignedRoutine, long disjointRoutine, long alignedDisjointRoutine, boolean uninit) {
-        LocationIdentity killed = NamedLocationIdentity.getArrayLocation(kind);
-        registerForeignCall(registerArraycopyDescriptor(kind, false, false, uninit), routine, NativeCall, DESTROYS_REGISTERS, LEAF_NOFP, NOT_REEXECUTABLE, killed);
-        registerForeignCall(registerArraycopyDescriptor(kind, true, false, uninit), alignedRoutine, NativeCall, DESTROYS_REGISTERS, LEAF_NOFP, NOT_REEXECUTABLE, killed);
-        registerForeignCall(registerArraycopyDescriptor(kind, false, true, uninit), disjointRoutine, NativeCall, DESTROYS_REGISTERS, LEAF_NOFP, NOT_REEXECUTABLE, killed);
-        registerForeignCall(registerArraycopyDescriptor(kind, true, true, uninit), alignedDisjointRoutine, NativeCall, DESTROYS_REGISTERS, LEAF_NOFP, NOT_REEXECUTABLE, killed);
+    private void registerArrayCopy(Map<Long, ForeignCallDescriptor> descMap, Kind kind, long routine, long alignedRoutine, long disjointRoutine, long alignedDisjointRoutine, boolean uninit) {
+        registerArraycopyDescriptor(descMap, kind, false, false, uninit, routine);
+        registerArraycopyDescriptor(descMap, kind, true, false, uninit, alignedRoutine);
+        registerArraycopyDescriptor(descMap, kind, false, true, uninit, disjointRoutine);
+        registerArraycopyDescriptor(descMap, kind, true, true, uninit, alignedDisjointRoutine);
     }
 
     public void initialize(HotSpotProviders providers, HotSpotVMConfig c) {
@@ -168,16 +172,19 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         linkForeignCall(providers, G1WBPOSTCALL, c.writeBarrierPostAddress, PREPEND_THREAD, LEAF_NOFP, REEXECUTABLE, NO_LOCATIONS);
         linkForeignCall(providers, VALIDATE_OBJECT, c.validateObject, PREPEND_THREAD, LEAF_NOFP, REEXECUTABLE, NO_LOCATIONS);
 
-        registerArrayCopy(Kind.Byte, c.jbyteArraycopy, c.jbyteAlignedArraycopy, c.jbyteDisjointArraycopy, c.jbyteAlignedDisjointArraycopy);
-        registerArrayCopy(Kind.Boolean, c.jbyteArraycopy, c.jbyteAlignedArraycopy, c.jbyteDisjointArraycopy, c.jbyteAlignedDisjointArraycopy);
-        registerArrayCopy(Kind.Char, c.jshortArraycopy, c.jshortAlignedArraycopy, c.jshortDisjointArraycopy, c.jshortAlignedDisjointArraycopy);
-        registerArrayCopy(Kind.Short, c.jshortArraycopy, c.jshortAlignedArraycopy, c.jshortDisjointArraycopy, c.jshortAlignedDisjointArraycopy);
-        registerArrayCopy(Kind.Int, c.jintArraycopy, c.jintAlignedArraycopy, c.jintDisjointArraycopy, c.jintAlignedDisjointArraycopy);
-        registerArrayCopy(Kind.Float, c.jintArraycopy, c.jintAlignedArraycopy, c.jintDisjointArraycopy, c.jintAlignedDisjointArraycopy);
-        registerArrayCopy(Kind.Long, c.jlongArraycopy, c.jlongAlignedArraycopy, c.jlongDisjointArraycopy, c.jlongAlignedDisjointArraycopy);
-        registerArrayCopy(Kind.Double, c.jlongArraycopy, c.jlongAlignedArraycopy, c.jlongDisjointArraycopy, c.jlongAlignedDisjointArraycopy);
-        registerArrayCopy(Kind.Object, c.oopArraycopy, c.oopAlignedArraycopy, c.oopDisjointArraycopy, c.oopAlignedDisjointArraycopy);
-        registerArrayCopy(Kind.Object, c.oopArraycopyUninit, c.oopAlignedArraycopyUninit, c.oopDisjointArraycopyUninit, c.oopAlignedDisjointArraycopyUninit, true);
+        // sometimes the same function is used for different kinds of arraycopy so check for
+        // duplicates using a map.
+        Map<Long, ForeignCallDescriptor> descMap = new HashMap<>();
+        registerArrayCopy(descMap, Kind.Byte, c.jbyteArraycopy, c.jbyteAlignedArraycopy, c.jbyteDisjointArraycopy, c.jbyteAlignedDisjointArraycopy);
+        registerArrayCopy(descMap, Kind.Boolean, c.jbyteArraycopy, c.jbyteAlignedArraycopy, c.jbyteDisjointArraycopy, c.jbyteAlignedDisjointArraycopy);
+        registerArrayCopy(descMap, Kind.Char, c.jshortArraycopy, c.jshortAlignedArraycopy, c.jshortDisjointArraycopy, c.jshortAlignedDisjointArraycopy);
+        registerArrayCopy(descMap, Kind.Short, c.jshortArraycopy, c.jshortAlignedArraycopy, c.jshortDisjointArraycopy, c.jshortAlignedDisjointArraycopy);
+        registerArrayCopy(descMap, Kind.Int, c.jintArraycopy, c.jintAlignedArraycopy, c.jintDisjointArraycopy, c.jintAlignedDisjointArraycopy);
+        registerArrayCopy(descMap, Kind.Float, c.jintArraycopy, c.jintAlignedArraycopy, c.jintDisjointArraycopy, c.jintAlignedDisjointArraycopy);
+        registerArrayCopy(descMap, Kind.Long, c.jlongArraycopy, c.jlongAlignedArraycopy, c.jlongDisjointArraycopy, c.jlongAlignedDisjointArraycopy);
+        registerArrayCopy(descMap, Kind.Double, c.jlongArraycopy, c.jlongAlignedArraycopy, c.jlongDisjointArraycopy, c.jlongAlignedDisjointArraycopy);
+        registerArrayCopy(descMap, Kind.Object, c.oopArraycopy, c.oopAlignedArraycopy, c.oopDisjointArraycopy, c.oopAlignedDisjointArraycopy);
+        registerArrayCopy(descMap, Kind.Object, c.oopArraycopyUninit, c.oopAlignedArraycopyUninit, c.oopDisjointArraycopyUninit, c.oopAlignedDisjointArraycopyUninit, true);
     }
 
     public HotSpotForeignCallLinkage getForeignCall(ForeignCallDescriptor descriptor) {
