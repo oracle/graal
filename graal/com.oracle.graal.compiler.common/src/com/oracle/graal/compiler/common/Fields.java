@@ -34,7 +34,7 @@ import sun.misc.*;
 public class Fields {
 
     protected final Class<?> clazz;
-    private final long[] offsets;
+    protected final long[] offsets;
     private final String[] names;
     private final Class<?>[] types;
 
@@ -212,48 +212,8 @@ public class Fields {
         return unsafe.getDouble(n, offsets[i]);
     }
 
-    /**
-     * Gets the value of an object field.
-     *
-     * @param object the object whose field is to be read
-     * @param index the index of the field (between 0 and {@link #getCount()})
-     * @return the value of the specified field cast to {@code c}
-     */
-    public Object getObject(Object object, int index) {
-        return getObject(object, offsets[index], Object.class);
-    }
-
-    /**
-     * Gets the value of an object field and casts it to a given type.
-     *
-     * NOTE: All callers of this method should use a class literal for the last argument.
-     *
-     * @param object the object whose field is to be read
-     * @param index the index of the field (between 0 and {@link #getCount()})
-     * @param asType the type to which the returned object is cast
-     * @return the value of the specified field cast to {@code c}
-     */
-    protected <T> T getObject(Object object, int index, Class<T> asType) {
-        return getObject(object, offsets[index], asType);
-    }
-
-    private static <T> T getObject(Object object, long offset, Class<T> asType) {
-        return asType.cast(unsafe.getObject(object, offset));
-    }
-
-    /**
-     * Sets the value of an object field.
-     *
-     * @param object the object whose field is to be written
-     * @param index the index of the field (between 0 and {@link #getCount()})
-     * @param value the value to be written to the field
-     */
-    protected void putObject(Object object, int index, Object value) {
-        assert checkAssignableFrom(index, value);
-        putObject(object, offsets[index], value);
-    }
-
-    private static void putObject(Object object, long offset, Object value) {
-        unsafe.putObject(object, offset, value);
+    public Object getObject(Object object, int i) {
+        assert !types[i].isPrimitive();
+        return unsafe.getObject(object, offsets[i]);
     }
 }

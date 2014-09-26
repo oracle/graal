@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.graph;
 
+import static com.oracle.graal.compiler.common.UnsafeAccess.*;
 import static com.oracle.graal.graph.Graph.*;
 import static com.oracle.graal.graph.Node.*;
 
@@ -52,6 +53,23 @@ public abstract class Edges extends Fields {
         this.directCount = directCount;
     }
 
+    private static Node getNode(Node node, long offset) {
+        return (Node) unsafe.getObject(node, offset);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static NodeList<Node> getNodeList(Node node, long offset) {
+        return (NodeList<Node>) unsafe.getObject(node, offset);
+    }
+
+    private static void putNode(Node node, long offset, Node value) {
+        unsafe.putObject(node, offset, value);
+    }
+
+    private static void putNodeList(Node node, long offset, NodeList<?> value) {
+        unsafe.putObject(node, offset, value);
+    }
+
     /**
      * Get the number of direct edges represented by this object. A direct edge goes directly to
      * another {@link Node}. An indirect edge goes via a {@link NodeList}.
@@ -69,7 +87,7 @@ public abstract class Edges extends Fields {
      */
     public Node getNode(Node node, int index) {
         assert index >= 0 && index < directCount;
-        return getObject(node, index, Node.class);
+        return getNode(node, offsets[index]);
     }
 
     /**
@@ -80,10 +98,9 @@ public abstract class Edges extends Fields {
      *            {@link #getDirectCount()})
      * @return the {@link NodeList} at the other edge of the requested edge
      */
-    @SuppressWarnings("unchecked")
     public NodeList<Node> getNodeList(Node node, int index) {
         assert index >= directCount && index < getCount();
-        return getObject(node, index, NodeList.class);
+        return getNodeList(node, offsets[index]);
     }
 
     /**
@@ -175,12 +192,12 @@ public abstract class Edges extends Fields {
      * @param value the node to be written to the edge
      */
     public void initializeNode(Node node, int index, Node value) {
-        putObject(node, index, value);
+        putNode(node, offsets[index], value);
     }
 
     public void initializeList(Node node, int index, NodeList<Node> value) {
         assert index >= directCount;
-        putObject(node, index, value);
+        putNodeList(node, offsets[index], value);
     }
 
     /**
@@ -193,8 +210,8 @@ public abstract class Edges extends Fields {
      */
     public void setNode(Node node, int index, Node value) {
         assert index < directCount;
-        Node old = getObject(node, index, Node.class);
-        putObject(node, index, value);
+        Node old = getNode(node, offsets[index]);
+        putNode(node, offsets[index], value);
         update(node, old, value);
     }
 

@@ -24,39 +24,38 @@ package com.oracle.graal.replacements;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.replacements.nodes.*;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-
 /**
- * Substitutions for improving the performance of some critical methods in {@link Fields}. These
+ * Substitutions for improving the performance of some critical methods in {@link Edges}. These
  * substitutions improve the performance by forcing the relevant methods to be inlined
  * (intrinsification being a special form of inlining) and removing a checked cast. The latter
  * cannot be done directly in Java code as {@link DeferredPiNode} is not available to the project
- * containing {@link Fields}.
+ * containing {@link Edges}.
  */
-@ClassSubstitution(Fields.class)
-public class FieldsSubstitutions {
+@ClassSubstitution(Edges.class)
+public class EdgesSubstitutions {
 
-    /**
-     * This substitution exists to force inline {@link Fields#getObject(Object, int, Class)}.
-     */
-    @SuppressWarnings("javadoc")
-    @SuppressFBWarnings
-    @MethodSubstitution(isStatic = false)
-    private static <T> T getObject(Fields thisObj, Object object, int index, Class<T> asType) {
-        return getObject(thisObj, object, index, asType);
+    @MethodSubstitution
+    private static Node getNode(Node node, long offset) {
+        return PiNode.piCast(UnsafeLoadNode.load(node, offset, Kind.Object, LocationIdentity.ANY_LOCATION), Node.class);
     }
 
     @MethodSubstitution
-    private static <T> T getObject(Object object, long offset, Class<T> c) {
-        return DeferredPiNode.piCast(c, UnsafeLoadNode.load(object, offset, Kind.Object, LocationIdentity.ANY_LOCATION));
+    private static NodeList<?> getNodeList(Node node, long offset) {
+        return PiNode.piCast(UnsafeLoadNode.load(node, offset, Kind.Object, LocationIdentity.ANY_LOCATION), NodeList.class);
     }
 
     @MethodSubstitution
-    private static void putObject(Object node, long offset, Object value) {
+    private static void putNode(Node node, long offset, Node value) {
+        UnsafeStoreNode.store(node, offset, value, Kind.Object, LocationIdentity.ANY_LOCATION);
+    }
+
+    @MethodSubstitution
+    private static void putNodeList(Node node, long offset, NodeList<?> value) {
         UnsafeStoreNode.store(node, offset, value, Kind.Object, LocationIdentity.ANY_LOCATION);
     }
 }

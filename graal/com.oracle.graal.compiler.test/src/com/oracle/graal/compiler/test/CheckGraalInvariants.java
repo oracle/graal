@@ -211,7 +211,6 @@ public class CheckGraalInvariants extends GraalTest {
             new VerifyUsageWithEquals(JavaMethod.class).apply(graph, context);
             new VerifyUsageWithEquals(JavaField.class).apply(graph, context);
             new VerifyUsageWithEquals(LIRKind.class).apply(graph, context);
-            new VerifyFieldsGetNode().apply(graph, context);
         }
         new VerifyDebugUsage().apply(graph, context);
     }
