@@ -74,7 +74,7 @@ public abstract class SPARCNodeLIRBuilder extends NodeLIRBuilder {
         return null;
     }
 
-    private ComplexMatchResult emitSignExtendMemory(Access access, int fromBits, int toBits) {
+    private ComplexMatchResult emitSignExtendMemory(Access access, int fromBits, int toBits, ValueNode addressNode) {
         assert fromBits <= toBits && toBits <= 64;
         Kind toKind = null;
         Kind fromKind = null;
@@ -104,7 +104,7 @@ public abstract class SPARCNodeLIRBuilder extends NodeLIRBuilder {
             Kind localFromKind = fromKind;
             Kind localToKind = toKind;
             return builder -> {
-                Value address = access.accessLocation().generateAddress(builder, gen, operand(access.object()));
+                Value address = access.accessLocation().generateAddress(builder, gen, operand(addressNode));
                 Value v = getLIRGeneratorTool().emitLoad(LIRKind.value(localFromKind), address, getState(access));
                 return getLIRGeneratorTool().emitReinterpret(LIRKind.value(localToKind), v);
             };
@@ -113,7 +113,7 @@ public abstract class SPARCNodeLIRBuilder extends NodeLIRBuilder {
 
     @MatchRule("(SignExtend Read=access)")
     @MatchRule("(SignExtend FloatingRead=access)")
-    public ComplexMatchResult removeSignExtend(SignExtendNode root, Access access) {
-        return emitSignExtendMemory(access, root.getInputBits(), root.getResultBits());
+    public ComplexMatchResult signExtend(SignExtendNode root, Access access) {
+        return emitSignExtendMemory(access, root.getInputBits(), root.getResultBits(), access.object());
     }
 }
