@@ -284,7 +284,7 @@ public final class NodeClass extends FieldIntrospection {
      *
      * <pre>
      *     if (node.getNodeClass().is(BeginNode.class)) { ... }
-     *
+     * 
      *     // Due to generated Node classes, the test below
      *     // is *not* the same as the test above:
      *     if (node.getClass() == BeginNode.class) { ... }
@@ -471,7 +471,7 @@ public final class NodeClass extends FieldIntrospection {
                         assert false : "unhandled property type: " + type;
                     }
                 } else {
-                    Object o = properties.getObject(n, i, Object.class);
+                    Object o = properties.getObject(n, i);
                     number += deepHashCode0(o);
                 }
                 number *= 13;
@@ -566,8 +566,8 @@ public final class NodeClass extends FieldIntrospection {
                     assert false : "unhandled type: " + type;
                 }
             } else {
-                Object objectA = properties.getObject(a, i, Object.class);
-                Object objectB = properties.getObject(b, i, Object.class);
+                Object objectA = properties.getObject(a, i);
+                Object objectB = properties.getObject(b, i);
                 if (objectA != objectB) {
                     if (objectA != null && objectB != null) {
                         if (!deepEquals0(objectA, objectB)) {

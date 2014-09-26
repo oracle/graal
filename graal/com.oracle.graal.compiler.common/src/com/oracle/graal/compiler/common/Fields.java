@@ -120,7 +120,13 @@ public class Fields {
         return types[index];
     }
 
-    private boolean checkAssignable(int index, Object value) {
+    /**
+     * Checks that a given field is assignable from a given value.
+     *
+     * @param index the index of the field to check
+     * @param value a value that will be assigned to the field
+     */
+    private boolean checkAssignableFrom(int index, Object value) {
         assert value == null || getType(index).isAssignableFrom(value.getClass()) : String.format("%s.%s of type %s is not assignable from %s", clazz.getSimpleName(), getName(index),
                         getType(index).getSimpleName(), value.getClass().getSimpleName());
         return true;
@@ -150,7 +156,7 @@ public class Fields {
                 assert false : "unhandled property type: " + type;
             }
         } else {
-            assert checkAssignable(index, value);
+            assert checkAssignableFrom(index, value);
             unsafe.putObject(object, dataOffset, value);
         }
     }
@@ -211,10 +217,23 @@ public class Fields {
      *
      * @param object the object whose field is to be read
      * @param index the index of the field (between 0 and {@link #getCount()})
+     * @return the value of the specified field cast to {@code c}
+     */
+    public Object getObject(Object object, int index) {
+        return getObject(object, offsets[index], Object.class);
+    }
+
+    /**
+     * Gets the value of an object field and casts it to a given type.
+     *
+     * NOTE: All callers of this method should use a class literal for the last argument.
+     *
+     * @param object the object whose field is to be read
+     * @param index the index of the field (between 0 and {@link #getCount()})
      * @param asType the type to which the returned object is cast
      * @return the value of the specified field cast to {@code c}
      */
-    public <T> T getObject(Object object, int index, Class<T> asType) {
+    protected <T> T getObject(Object object, int index, Class<T> asType) {
         return getObject(object, offsets[index], asType);
     }
 
@@ -230,12 +249,11 @@ public class Fields {
      * @param value the value to be written to the field
      */
     protected void putObject(Object object, int index, Object value) {
-        assert checkAssignable(index, value);
+        assert checkAssignableFrom(index, value);
         putObject(object, offsets[index], value);
     }
 
     private static void putObject(Object object, long offset, Object value) {
         unsafe.putObject(object, offset, value);
     }
-
 }

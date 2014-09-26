@@ -25,8 +25,10 @@ package com.oracle.graal.replacements;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.replacements.nodes.*;
+
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
 /**
  * Substitutions for improving the performance of some critical methods in {@link Fields}. These
@@ -37,6 +39,16 @@ import com.oracle.graal.nodes.extended.*;
  */
 @ClassSubstitution(Fields.class)
 public class FieldsSubstitutions {
+
+    /**
+     * This substitution exists to force inline {@link Fields#getObject(Object, int, Class)}.
+     */
+    @SuppressWarnings("javadoc")
+    @SuppressFBWarnings
+    @MethodSubstitution(isStatic = false)
+    private static <T> T getObject(Fields thisObj, Object object, int index, Class<T> asType) {
+        return getObject(thisObj, object, index, asType);
+    }
 
     @MethodSubstitution
     private static <T> T getObject(Object object, long offset, Class<T> c) {

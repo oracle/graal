@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes;
+package com.oracle.graal.replacements.nodes;
 
 //JaCoCo Exclude
 
@@ -29,11 +29,14 @@ import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
+import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.replacements.*;
 
 /**
- * A node that changes the type of its input where the type is not immediately available at node
- * intrinsification time. It is replaced by a {@link PiNode} once the type becomes constant.
+ * A node for use in method substitutions or snippets that changes the type of its input where the
+ * type is not immediately available at {@link NodeIntrinsificationPhase intrinsification} time. It
+ * is replaced by a {@link PiNode} once the type becomes constant (which <b>must</b> happen).
  */
 @NodeInfo
 public class DeferredPiNode extends FloatingNode implements Canonicalizable {
