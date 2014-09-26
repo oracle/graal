@@ -54,7 +54,7 @@ public enum SPARCArithmetic {
     public static class Unary2Op extends SPARCLIRInstruction implements SPARCTailDelayedLIRInstruction {
 
         @Opcode private final SPARCArithmetic opcode;
-        @Def({REG}) protected AllocatableValue result;
+        @Def({REG, HINT}) protected AllocatableValue result;
         @Use({REG}) protected AllocatableValue x;
 
         public Unary2Op(SPARCArithmetic opcode, AllocatableValue result, AllocatableValue x) {
@@ -76,7 +76,7 @@ public enum SPARCArithmetic {
     public static class BinaryRegReg extends SPARCLIRInstruction implements SPARCTailDelayedLIRInstruction {
 
         @Opcode private final SPARCArithmetic opcode;
-        @Def({REG}) protected Value result;
+        @Def({REG, HINT}) protected Value result;
         @Use({REG}) protected Value x;
         @Alive({REG}) protected Value y;
         @State LIRFrameState state;
@@ -111,7 +111,7 @@ public enum SPARCArithmetic {
     public static class BinaryRegConst extends SPARCLIRInstruction implements SPARCTailDelayedLIRInstruction {
 
         @Opcode private final SPARCArithmetic opcode;
-        @Def({REG}) protected AllocatableValue result;
+        @Def({REG, HINT}) protected AllocatableValue result;
         @Use({REG}) protected Value x;
         @State protected LIRFrameState state;
         protected Constant y;
