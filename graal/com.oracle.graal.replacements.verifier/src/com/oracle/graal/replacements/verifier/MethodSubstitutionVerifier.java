@@ -89,18 +89,18 @@ public final class MethodSubstitutionVerifier extends AbstractVerifier {
         }
 
         String originalName = originalName(substitutionMethod, annotation);
-        TypeMirror[] originalSignature = originalSignature(originalType, substitutionMethod, annotation);
+        boolean isStatic = resolveAnnotationValue(Boolean.class, findAnnotationValue(annotation, ORIGINAL_IS_STATIC));
+        TypeMirror[] originalSignature = originalSignature(originalType, substitutionMethod, annotation, isStatic);
         if (originalSignature == null) {
             return;
         }
-        ExecutableElement originalMethod = originalMethod(substitutionMethod, annotation, originalType, originalName, originalSignature);
+        ExecutableElement originalMethod = originalMethod(substitutionMethod, annotation, originalType, originalName, originalSignature, isStatic);
         if (DEBUG && originalMethod != null) {
             env.getMessager().printMessage(Kind.NOTE, String.format("Found original method %s in type %s.", originalMethod, findEnclosingClass(originalMethod)));
         }
     }
 
-    private TypeMirror[] originalSignature(TypeElement originalType, ExecutableElement method, AnnotationMirror annotation) {
-        boolean isStatic = resolveAnnotationValue(Boolean.class, findAnnotationValue(annotation, ORIGINAL_IS_STATIC));
+    private TypeMirror[] originalSignature(TypeElement originalType, ExecutableElement method, AnnotationMirror annotation, boolean isStatic) {
         AnnotationValue signatureValue = findAnnotationValue(annotation, ORIGINAL_SIGNATURE);
         String signatureString = resolveAnnotationValue(String.class, signatureValue);
         List<TypeMirror> parameters = new ArrayList<>();
@@ -150,7 +150,7 @@ public final class MethodSubstitutionVerifier extends AbstractVerifier {
     }
 
     private ExecutableElement originalMethod(ExecutableElement substitutionMethod, AnnotationMirror substitutionAnnotation, TypeElement originalType, String originalName,
-                    TypeMirror[] originalSignature) {
+                    TypeMirror[] originalSignature, boolean isStatic) {
         TypeMirror signatureReturnType = originalSignature[0];
         TypeMirror[] signatureParameters = Arrays.copyOfRange(originalSignature, 1, originalSignature.length);
         List<ExecutableElement> searchElements;
@@ -178,6 +178,14 @@ public final class MethodSubstitutionVerifier extends AbstractVerifier {
             if (!optional) {
                 env.getMessager().printMessage(Kind.ERROR, String.format("Could not find the original method with name '%s' and parameters '%s'.", originalName, Arrays.toString(signatureParameters)),
                                 substitutionMethod, substitutionAnnotation);
+            }
+            return null;
+        }
+
+        if (originalMethod.getModifiers().contains(Modifier.STATIC) != isStatic) {
+            boolean optional = resolveAnnotationValue(Boolean.class, findAnnotationValue(substitutionAnnotation, "optional"));
+            if (!optional) {
+                env.getMessager().printMessage(Kind.ERROR, String.format("The %s element must be set to %s.", ORIGINAL_IS_STATIC, !isStatic), substitutionMethod, substitutionAnnotation);
             }
             return null;
         }
