@@ -54,7 +54,7 @@ public enum SPARCArithmetic {
     public static class Unary2Op extends SPARCLIRInstruction implements SPARCTailDelayedLIRInstruction {
 
         @Opcode private final SPARCArithmetic opcode;
-        @Def({REG}) protected AllocatableValue result;
+        @Def({REG, HINT}) protected AllocatableValue result;
         @Use({REG}) protected AllocatableValue x;
 
         public Unary2Op(SPARCArithmetic opcode, AllocatableValue result, AllocatableValue x) {
@@ -76,7 +76,7 @@ public enum SPARCArithmetic {
     public static class BinaryRegReg extends SPARCLIRInstruction implements SPARCTailDelayedLIRInstruction {
 
         @Opcode private final SPARCArithmetic opcode;
-        @Def({REG}) protected Value result;
+        @Def({REG, HINT}) protected Value result;
         @Use({REG}) protected Value x;
         @Alive({REG}) protected Value y;
         @State LIRFrameState state;
@@ -111,7 +111,7 @@ public enum SPARCArithmetic {
     public static class BinaryRegConst extends SPARCLIRInstruction implements SPARCTailDelayedLIRInstruction {
 
         @Opcode private final SPARCArithmetic opcode;
-        @Def({REG}) protected AllocatableValue result;
+        @Def({REG, HINT}) protected AllocatableValue result;
         @Use({REG}) protected Value x;
         @State protected LIRFrameState state;
         protected Constant y;
@@ -575,24 +575,24 @@ public enum SPARCArithmetic {
                 new Signx(asLongReg(src), asIntReg(dst)).emit(masm);
                 break;
             case B2L:
-                new Sllx(asIntReg(src), 56, asLongReg(dst)).emit(masm);
+                new Sll(asIntReg(src), 24, asLongReg(dst)).emit(masm);
                 delaySlotLir.emitControlTransfer(crb, masm);
-                new Srax(asLongReg(dst), 56, asLongReg(dst)).emit(masm);
+                new Sra(asLongReg(dst), 24, asLongReg(dst)).emit(masm);
                 break;
             case B2I:
-                new Sllx(asIntReg(src), 56, asIntReg(dst)).emit(masm);
+                new Sll(asIntReg(src), 24, asIntReg(dst)).emit(masm);
                 delaySlotLir.emitControlTransfer(crb, masm);
-                new Srax(asIntReg(dst), 56, asIntReg(dst)).emit(masm);
+                new Sra(asIntReg(dst), 24, asIntReg(dst)).emit(masm);
                 break;
             case S2L:
-                new Sllx(asIntReg(src), 48, asLongReg(dst)).emit(masm);
+                new Sll(asIntReg(src), 16, asLongReg(dst)).emit(masm);
                 delaySlotLir.emitControlTransfer(crb, masm);
-                new Srax(asLongReg(dst), 48, asLongReg(dst)).emit(masm);
+                new Sra(asLongReg(dst), 16, asLongReg(dst)).emit(masm);
                 break;
             case S2I:
-                new Sllx(asIntReg(src), 48, asIntReg(dst)).emit(masm);
+                new Sll(asIntReg(src), 16, asIntReg(dst)).emit(masm);
                 delaySlotLir.emitControlTransfer(crb, masm);
-                new Srax(asIntReg(dst), 48, asIntReg(dst)).emit(masm);
+                new Sra(asIntReg(dst), 16, asIntReg(dst)).emit(masm);
                 break;
             case I2F:
                 delaySlotLir.emitControlTransfer(crb, masm);

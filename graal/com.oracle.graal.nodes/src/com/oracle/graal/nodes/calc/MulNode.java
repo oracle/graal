@@ -60,13 +60,32 @@ public class MulNode extends BinaryArithmeticNode implements NarrowableArithmeti
 
             if (c.getKind().isNumericInteger()) {
                 long i = c.asLong();
-                long abs = Math.abs(i);
-                if (abs > 0 && CodeUtil.isPowerOf2(abs)) {
-                    LeftShiftNode shift = LeftShiftNode.create(forX, ConstantNode.forInt(CodeUtil.log2(abs)));
-                    if (i < 0) {
-                        return NegateNode.create(shift);
-                    } else {
-                        return shift;
+                boolean signFlip = false;
+                if (i < 0) {
+                    i = -i;
+                    signFlip = true;
+                }
+                if (i > 0) {
+                    ValueNode mulResult = null;
+                    long bit1 = i & -i;
+                    long bit2 = i - bit1;
+                    bit2 = bit2 & -bit2;    // Extract 2nd bit
+                    if (CodeUtil.isPowerOf2(i)) { //
+                        mulResult = LeftShiftNode.create(forX, ConstantNode.forInt(CodeUtil.log2(i)));
+                    } else if (bit2 + bit1 == i) { // We can work with two shifts and add
+                        ValueNode shift1 = LeftShiftNode.create(forX, ConstantNode.forInt(CodeUtil.log2(bit1)));
+                        ValueNode shift2 = LeftShiftNode.create(forX, ConstantNode.forInt(CodeUtil.log2(bit2)));
+                        mulResult = AddNode.create(shift1, shift2);
+                    } else if (CodeUtil.isPowerOf2(i + 1)) { // shift and subtract
+                        ValueNode shift1 = LeftShiftNode.create(forX, ConstantNode.forInt(CodeUtil.log2(i + 1)));
+                        mulResult = SubNode.create(shift1, forX);
+                    }
+                    if (mulResult != null) {
+                        if (signFlip) {
+                            return NegateNode.create(mulResult);
+                        } else {
+                            return mulResult;
+                        }
                     }
                 }
             }

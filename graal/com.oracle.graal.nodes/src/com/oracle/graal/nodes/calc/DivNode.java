@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes.calc;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.spi.*;
@@ -52,6 +53,25 @@ public class DivNode extends BinaryArithmeticNode {
             Constant c = forY.asConstant();
             if (getOp().isNeutral(c)) {
                 return forX;
+            }
+            if (c.getKind().isNumericInteger()) {
+                long i = c.asLong();
+                boolean signFlip = false;
+                if (i < 0) {
+                    i = -i;
+                    signFlip = true;
+                }
+                ValueNode divResult = null;
+                if (CodeUtil.isPowerOf2(i)) {
+                    divResult = RightShiftNode.create(forX, ConstantNode.forInt(CodeUtil.log2(i)));
+                }
+                if (divResult != null) {
+                    if (signFlip) {
+                        return NegateNode.create(divResult);
+                    } else {
+                        return divResult;
+                    }
+                }
             }
         }
         return this;

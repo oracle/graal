@@ -498,6 +498,12 @@ public class MatchProcessor extends AbstractProcessor {
                 out.println("import " + p + ".*;");
             }
             out.println("");
+
+            // FIXME: Ugly hack, don't know how to work this problem around (import
+            // com.oracle.graal.nodes.*; is unused, but cannot be avoided
+            if (matchStatementClassName.contains("SPARCNodeLIRBuilder")) {
+                out.println("@SuppressWarnings(\"unused\")");
+            }
             out.println("public class " + matchStatementClassName + " implements " + MatchStatementSet.class.getSimpleName() + " {");
 
             out.println();
