@@ -75,28 +75,31 @@ public class CheckGraalInvariants extends GraalTest {
 
         bootclasspath.split(File.pathSeparator);
 
-        String graalJar = null;
-        for (String e : bootclasspath.split(File.pathSeparator)) {
-            if (e.endsWith("graal.jar")) {
-                graalJar = e;
-                break;
-            }
-        }
-        Assert.assertNotNull("Could not find graal.jar on boot class path: " + bootclasspath, graalJar);
-
         final List<String> classNames = new ArrayList<>();
-        try {
-            final ZipFile zipFile = new ZipFile(new File(graalJar));
-            for (final Enumeration<? extends ZipEntry> e = zipFile.entries(); e.hasMoreElements();) {
-                final ZipEntry zipEntry = e.nextElement();
-                String name = zipEntry.getName();
-                if (name.endsWith(".class")) {
-                    String className = name.substring(0, name.length() - ".class".length()).replace('/', '.');
-                    classNames.add(className);
+        for (String jarName : new String[]{"graal.jar", "graal-truffle.jar"}) {
+
+            String jar = null;
+            for (String e : bootclasspath.split(File.pathSeparator)) {
+                if (e.endsWith(jarName)) {
+                    jar = e;
+                    break;
                 }
             }
-        } catch (IOException e) {
-            Assert.fail(e.toString());
+            Assert.assertNotNull("Could not find graal.jar on boot class path: " + bootclasspath, jar);
+
+            try {
+                final ZipFile zipFile = new ZipFile(new File(jar));
+                for (final Enumeration<? extends ZipEntry> e = zipFile.entries(); e.hasMoreElements();) {
+                    final ZipEntry zipEntry = e.nextElement();
+                    String name = zipEntry.getName();
+                    if (name.endsWith(".class")) {
+                        String className = name.substring(0, name.length() - ".class".length()).replace('/', '.');
+                        classNames.add(className);
+                    }
+                }
+            } catch (IOException e) {
+                Assert.fail(e.toString());
+            }
         }
 
         // Allows a subset of methods to be checked through use of a system property
@@ -131,8 +134,9 @@ public class CheckGraalInvariants extends GraalTest {
                         boolean verifyEquals = !m.isAnnotationPresent(ExcludeFromIdentityComparisonVerification.class);
                         if (matches(filters, methodName)) {
                             executor.execute(() -> {
-                                StructuredGraph graph = new StructuredGraph(metaAccess.lookupJavaMethod(m));
-                                try (DebugConfigScope s = Debug.setConfig(new DelegatingDebugConfig().disable(INTERCEPT))) {
+                                ResolvedJavaMethod method = metaAccess.lookupJavaMethod(m);
+                                StructuredGraph graph = new StructuredGraph(method);
+                                try (DebugConfigScope s = Debug.setConfig(new DelegatingDebugConfig().disable(INTERCEPT)); Debug.Scope ds = Debug.scope("CheckingGraph", graph, method)) {
                                     graphBuilderSuite.apply(graph, context);
                                     // update phi stamps
                                     graph.getNodes().filter(PhiNode.class).forEach(PhiNode::inferStamp);
