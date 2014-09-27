@@ -25,14 +25,15 @@ package com.oracle.graal.lir;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.lir.LIRInstruction.*;
+import com.oracle.graal.lir.LIRInstruction.OperandFlag;
+import com.oracle.graal.lir.LIRIntrospection.Values;
 
 /**
  * Describes an operand slot for a {@link LIRInstructionClass}.
  */
 public final class ValuePosition {
 
-    private final OperandMode mode;
+    private final Values values;
     private final int index;
     private final int subIndex;
     private final ValuePosition outerPosition;
@@ -40,8 +41,8 @@ public final class ValuePosition {
     public static final int NO_SUBINDEX = -1;
     public static final ValuePosition ROOT_VALUE_POSITION = null;
 
-    public ValuePosition(OperandMode mode, int index, int subIndex, ValuePosition outerPosition) {
-        this.mode = mode;
+    public ValuePosition(Values values, int index, int subIndex, ValuePosition outerPosition) {
+        this.values = values;
         this.index = index;
         this.subIndex = subIndex;
         this.outerPosition = outerPosition;
@@ -51,20 +52,12 @@ public final class ValuePosition {
         return outerPosition != ROOT_VALUE_POSITION;
     }
 
-    public Value get(LIRInstruction inst) {
+    public Value get(Object inst) {
         if (isCompositePosition()) {
             CompositeValue compValue = (CompositeValue) outerPosition.get(inst);
             return compValue.getValueClass().getValue(compValue, this);
         }
-        return inst.getLIRInstructionClass().getValue(inst, this);
-    }
-
-    public EnumSet<OperandFlag> getFlags(LIRInstruction inst) {
-        if (isCompositePosition()) {
-            CompositeValue compValue = (CompositeValue) outerPosition.get(inst);
-            return compValue.getValueClass().getFlags(this);
-        }
-        return inst.getLIRInstructionClass().getFlags(this);
+        return getValue(inst);
     }
 
     public void set(LIRInstruction inst, Value value) {
@@ -73,7 +66,7 @@ public final class ValuePosition {
             CompositeValue newCompValue = compValue.getValueClass().createUpdatedValue(compValue, this, value);
             outerPosition.set(inst, newCompValue);
         } else {
-            inst.getLIRInstructionClass().setValue(inst, this, value);
+            setValue(inst, value);
         }
     }
 
@@ -85,8 +78,23 @@ public final class ValuePosition {
         return index;
     }
 
-    public OperandMode getMode() {
-        return mode;
+    public EnumSet<OperandFlag> getFlags() {
+        return values.getFlags(index);
+    }
+
+    public Value getValue(Object obj) {
+        if (index < values.getDirectCount()) {
+            return values.getValue(obj, index);
+        }
+        return values.getValueArray(obj, index)[subIndex];
+    }
+
+    public void setValue(Object obj, Value value) {
+        if (index < values.getDirectCount()) {
+            values.setValue(obj, index, value);
+        } else {
+            values.getValueArray(obj, index)[subIndex] = value;
+        }
     }
 
     public ValuePosition getSuperPosition() {
@@ -96,9 +104,9 @@ public final class ValuePosition {
     @Override
     public String toString() {
         if (outerPosition == ROOT_VALUE_POSITION) {
-            return mode.toString() + "(" + index + (subIndex < 0 ? "" : "/" + subIndex) + ")";
+            return values.getMode() + "(" + index + (subIndex < 0 ? "" : "/" + subIndex) + ")";
         }
-        return outerPosition.toString() + "[" + mode.toString() + "(" + index + (subIndex < 0 ? "" : "/" + subIndex) + ")]";
+        return outerPosition.toString() + "[" + values.getMode() + "(" + index + (subIndex < 0 ? "" : "/" + subIndex) + ")]";
     }
 
     @Override
@@ -106,7 +114,7 @@ public final class ValuePosition {
         final int prime = 31;
         int result = 1;
         result = prime * result + index;
-        result = prime * result + ((mode == null) ? 0 : mode.hashCode());
+        result = prime * result + ((values.getMode() == null) ? 0 : values.getMode().hashCode());
         result = prime * result + subIndex;
         result = prime * result + ((outerPosition == null) ? 0 : outerPosition.hashCode());
         return result;
@@ -127,7 +135,7 @@ public final class ValuePosition {
         if (index != other.index) {
             return false;
         }
-        if (mode != other.mode) {
+        if (values.getMode() != other.values.getMode()) {
             return false;
         }
         if (subIndex != other.subIndex) {

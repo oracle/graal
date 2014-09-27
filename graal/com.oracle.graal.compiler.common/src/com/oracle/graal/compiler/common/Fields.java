@@ -28,25 +28,39 @@ import java.util.*;
 
 import sun.misc.*;
 
+import com.oracle.graal.compiler.common.FieldIntrospection.FieldInfo;
+
 /**
  * Describes fields in a class, primarily for access via {@link Unsafe}.
  */
 public class Fields {
 
-    protected final Class<?> clazz;
+    /**
+     * Offsets used with {@link Unsafe} to access the fields.
+     */
     protected final long[] offsets;
+
+    /**
+     * The names of the fields.
+     */
     private final String[] names;
+
+    /**
+     * The types of the fields.
+     */
     private final Class<?>[] types;
 
-    public Fields(Class<?> clazz, long[] offsets, Map<Long, String> names, Map<Long, Class<?>> types) {
-        this.clazz = clazz;
-        this.offsets = offsets;
-
+    public Fields(ArrayList<? extends FieldInfo> fields) {
+        Collections.sort(fields);
+        this.offsets = new long[fields.size()];
         this.names = new String[offsets.length];
         this.types = new Class[offsets.length];
-        for (int i = 0; i < offsets.length; i++) {
-            this.names[i] = names.get(offsets[i]);
-            this.types[i] = types.get(offsets[i]);
+        int index = 0;
+        for (FieldInfo f : fields) {
+            offsets[index] = f.offset;
+            names[index] = f.name;
+            types[index] = f.type;
+            index++;
         }
     }
 
@@ -126,44 +140,46 @@ public class Fields {
      * @param index the index of the field to check
      * @param value a value that will be assigned to the field
      */
-    private boolean checkAssignableFrom(int index, Object value) {
-        assert value == null || getType(index).isAssignableFrom(value.getClass()) : String.format("%s.%s of type %s is not assignable from %s", clazz.getSimpleName(), getName(index),
-                        getType(index).getSimpleName(), value.getClass().getSimpleName());
+    private boolean checkAssignableFrom(Object object, int index, Object value) {
+        assert value == null || getType(index).isAssignableFrom(value.getClass()) : String.format("Field %s.%s of type %s is not assignable from %s", object.getClass().getSimpleName(),
+                        getName(index), getType(index).getSimpleName(), value.getClass().getSimpleName());
         return true;
     }
 
     public void set(Object object, int index, Object value) {
-        long dataOffset = offsets[index];
+        long offset = offsets[index];
         Class<?> type = types[index];
         if (type.isPrimitive()) {
             if (type == Integer.TYPE) {
-                unsafe.putInt(object, dataOffset, (Integer) value);
+                unsafe.putInt(object, offset, (Integer) value);
             } else if (type == Long.TYPE) {
-                unsafe.putLong(object, dataOffset, (Long) value);
+                unsafe.putLong(object, offset, (Long) value);
             } else if (type == Boolean.TYPE) {
-                unsafe.putBoolean(object, dataOffset, (Boolean) value);
+                unsafe.putBoolean(object, offset, (Boolean) value);
             } else if (type == Float.TYPE) {
-                unsafe.putFloat(object, dataOffset, (Float) value);
+                unsafe.putFloat(object, offset, (Float) value);
             } else if (type == Double.TYPE) {
-                unsafe.putDouble(object, dataOffset, (Double) value);
+                unsafe.putDouble(object, offset, (Double) value);
             } else if (type == Short.TYPE) {
-                unsafe.putShort(object, dataOffset, (Short) value);
+                unsafe.putShort(object, offset, (Short) value);
             } else if (type == Character.TYPE) {
-                unsafe.putChar(object, dataOffset, (Character) value);
+                unsafe.putChar(object, offset, (Character) value);
             } else if (type == Byte.TYPE) {
-                unsafe.putByte(object, dataOffset, (Byte) value);
+                unsafe.putByte(object, offset, (Byte) value);
             } else {
                 assert false : "unhandled property type: " + type;
             }
         } else {
-            assert checkAssignableFrom(index, value);
-            unsafe.putObject(object, dataOffset, value);
+            assert checkAssignableFrom(object, index, value);
+            unsafe.putObject(object, offset, value);
         }
     }
 
     @Override
     public String toString() {
-        return clazz.getSimpleName();
+        StringBuilder sb = new StringBuilder(getClass().getSimpleName()).append('[');
+        appendFields(sb);
+        return sb.append(']').toString();
     }
 
     public void appendFields(StringBuilder sb) {
@@ -215,5 +231,10 @@ public class Fields {
     public Object getObject(Object object, int i) {
         assert !types[i].isPrimitive();
         return unsafe.getObject(object, offsets[i]);
+    }
+
+    public void putObject(Object object, int i, Object value) {
+        assert checkAssignableFrom(object, i, value);
+        unsafe.putObject(object, offsets[i], value);
     }
 }

@@ -32,6 +32,7 @@ import java.util.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.internal.*;
+import com.oracle.graal.graph.Edges.Type;
 import com.oracle.graal.graph.Graph.DuplicationReplacement;
 import com.oracle.graal.graph.Node.Input;
 import com.oracle.graal.graph.Node.Successor;
@@ -111,7 +112,6 @@ public final class NodeClass extends FieldIntrospection {
 
     private final Edges inputs;
     private final Edges successors;
-    private final Fields properties;
 
     private final boolean canGVN;
     private final int startGVNNumber;
@@ -146,13 +146,6 @@ public final class NodeClass extends FieldIntrospection {
         this(clazz, new DefaultCalcOffset(), null, 0);
     }
 
-    private static long[] sortedOffsets(ArrayList<Long> list1, ArrayList<Long> list2) {
-        if (list1.isEmpty() && list2.isEmpty()) {
-            return new long[0];
-        }
-        return sortedLongCopy(list1, list2);
-    }
-
     public NodeClass(Class<?> clazz, CalcOffset calcOffset, int[] presetIterableIds, int presetIterableId) {
         super(clazz);
         assert NODE_CLASS.isAssignableFrom(clazz);
@@ -170,16 +163,14 @@ public final class NodeClass extends FieldIntrospection {
         }
 
         try (TimerCloseable t1 = Init_Edges.start()) {
-            successors = new SuccessorEdges(clazz, fs.successorOffsets.size(), sortedOffsets(fs.successorOffsets, fs.successorListOffsets), fs.fieldNames, fs.fieldTypes);
-            inputs = new InputEdges(clazz, fs.inputOffsets.size(), sortedOffsets(fs.inputOffsets, fs.inputListOffsets), fs.fieldNames, fs.fieldTypes, fs.types, fs.optionalInputs);
+            successors = new SuccessorEdges(fs.directSuccessors, fs.successors);
+            inputs = new InputEdges(fs.directInputs, fs.inputs);
         }
         try (TimerCloseable t1 = Init_Data.start()) {
-            properties = new Fields(clazz, sortedLongCopy(fs.dataOffsets), fs.fieldNames, fs.fieldTypes);
+            data = new Fields(fs.data);
         }
 
         isLeafNode = inputs.getCount() + successors.getCount() == 0;
-        fieldNames = fs.fieldNames;
-        fieldTypes = fs.fieldTypes;
 
         canGVN = Node.ValueNumberable.class.isAssignableFrom(clazz);
         startGVNNumber = clazz.hashCode();
@@ -336,21 +327,66 @@ public final class NodeClass extends FieldIntrospection {
         return allowedUsageTypes;
     }
 
+    /**
+     * Describes a field representing an input or successor edge in a node.
+     */
+    protected static class EdgeFieldInfo extends FieldInfo {
+
+        public EdgeFieldInfo(long offset, String name, Class<?> type) {
+            super(offset, name, type);
+        }
+
+        /**
+         * Sorts non-list edges before list edges.
+         */
+        @Override
+        public int compareTo(FieldInfo o) {
+            if (NodeList.class.isAssignableFrom(o.type)) {
+                if (!NodeList.class.isAssignableFrom(type)) {
+                    return -1;
+                }
+            } else {
+                if (NodeList.class.isAssignableFrom(type)) {
+                    return 1;
+                }
+            }
+            return super.compareTo(o);
+        }
+    }
+
+    /**
+     * Describes a field representing an {@linkplain Type#Inputs input} edge in a node.
+     */
+    protected static class InputFieldInfo extends EdgeFieldInfo {
+        final InputType inputType;
+        final boolean optional;
+
+        public InputFieldInfo(long offset, String name, Class<?> type, InputType inputType, boolean optional) {
+            super(offset, name, type);
+            this.inputType = inputType;
+            this.optional = optional;
+        }
+
+        @Override
+        public String toString() {
+            return super.toString() + "{inputType=" + inputType + ", optional=" + optional + "}";
+        }
+    }
+
     protected static class FieldScanner extends BaseFieldScanner {
 
-        public final ArrayList<Long> inputOffsets = new ArrayList<>();
-        public final ArrayList<Long> inputListOffsets = new ArrayList<>();
-        public final ArrayList<Long> successorOffsets = new ArrayList<>();
-        public final ArrayList<Long> successorListOffsets = new ArrayList<>();
-        public final HashMap<Long, InputType> types = new HashMap<>();
-        public final HashSet<Long> optionalInputs = new HashSet<>();
+        public final ArrayList<InputFieldInfo> inputs = new ArrayList<>();
+        public final ArrayList<FieldInfo> successors = new ArrayList<>();
+        int directInputs;
+        int directSuccessors;
 
         protected FieldScanner(CalcOffset calc) {
             super(calc);
         }
 
         @Override
-        protected void scanField(Field field, Class<?> type, long offset) {
+        protected void scanField(Field field, long offset) {
+            Class<?> type = field.getType();
             if (field.isAnnotationPresent(Node.Input.class) || field.isAnnotationPresent(Node.OptionalInput.class)) {
                 assert !field.isAnnotationPresent(Node.Successor.class) : "field cannot be both input and successor";
                 assert field.isAnnotationPresent(Node.Input.class) ^ field.isAnnotationPresent(Node.OptionalInput.class) : "inputs can either be optional or non-optional";
@@ -359,37 +395,35 @@ public final class NodeClass extends FieldIntrospection {
                     // written (via Unsafe) in clearInputs()
                     GraalInternalError.guarantee(!Modifier.isFinal(field.getModifiers()), "NodeInputList input field %s should not be final", field);
                     GraalInternalError.guarantee(!Modifier.isPublic(field.getModifiers()), "NodeInputList input field %s should not be public", field);
-                    inputListOffsets.add(offset);
                 } else {
                     GraalInternalError.guarantee(NODE_CLASS.isAssignableFrom(type) || type.isInterface(), "invalid input type: %s", type);
                     GraalInternalError.guarantee(!Modifier.isFinal(field.getModifiers()), "Node input field %s should not be final", field);
-                    inputOffsets.add(offset);
+                    directInputs++;
                 }
+                InputType inputType;
                 if (field.isAnnotationPresent(Node.Input.class)) {
-                    types.put(offset, field.getAnnotation(Node.Input.class).value());
+                    inputType = field.getAnnotation(Node.Input.class).value();
                 } else {
-                    types.put(offset, field.getAnnotation(Node.OptionalInput.class).value());
+                    inputType = field.getAnnotation(Node.OptionalInput.class).value();
                 }
-                if (field.isAnnotationPresent(Node.OptionalInput.class)) {
-                    optionalInputs.add(offset);
-                }
+                inputs.add(new InputFieldInfo(offset, field.getName(), type, inputType, field.isAnnotationPresent(Node.OptionalInput.class)));
             } else if (field.isAnnotationPresent(Node.Successor.class)) {
                 if (SUCCESSOR_LIST_CLASS.isAssignableFrom(type)) {
                     // NodeSuccessorList fields should not be final since they are
                     // written (via Unsafe) in clearSuccessors()
                     GraalInternalError.guarantee(!Modifier.isFinal(field.getModifiers()), "NodeSuccessorList successor field % should not be final", field);
                     GraalInternalError.guarantee(!Modifier.isPublic(field.getModifiers()), "NodeSuccessorList successor field %s should not be public", field);
-                    successorListOffsets.add(offset);
                 } else {
                     GraalInternalError.guarantee(NODE_CLASS.isAssignableFrom(type), "invalid successor type: %s", type);
                     GraalInternalError.guarantee(!Modifier.isFinal(field.getModifiers()), "Node successor field %s should not be final", field);
-                    successorOffsets.add(offset);
+                    directSuccessors++;
                 }
+                successors.add(new FieldInfo(offset, field.getName(), type));
             } else {
                 GraalInternalError.guarantee(!NODE_CLASS.isAssignableFrom(type) || field.getName().equals("Null"), "suspicious node field: %s", field);
                 GraalInternalError.guarantee(!INPUT_LIST_CLASS.isAssignableFrom(type), "suspicious node input list field: %s", field);
                 GraalInternalError.guarantee(!SUCCESSOR_LIST_CLASS.isAssignableFrom(type), "suspicious node successor list field: %s", field);
-                dataOffsets.add(offset);
+                data.add(new FieldInfo(offset, field.getName(), type));
             }
         }
     }
@@ -402,7 +436,7 @@ public final class NodeClass extends FieldIntrospection {
         str.append("] [");
         successors.appendFields(str);
         str.append("] [");
-        properties.appendFields(str);
+        data.appendFields(str);
         str.append("]");
         return str.toString();
     }
@@ -437,41 +471,41 @@ public final class NodeClass extends FieldIntrospection {
         int number = 0;
         if (canGVN) {
             number = startGVNNumber;
-            for (int i = 0; i < properties.getCount(); ++i) {
-                Class<?> type = properties.getType(i);
+            for (int i = 0; i < data.getCount(); ++i) {
+                Class<?> type = data.getType(i);
                 if (type.isPrimitive()) {
                     if (type == Integer.TYPE) {
-                        int intValue = properties.getInt(n, i);
+                        int intValue = data.getInt(n, i);
                         number += intValue;
                     } else if (type == Long.TYPE) {
-                        long longValue = properties.getLong(n, i);
+                        long longValue = data.getLong(n, i);
                         number += longValue ^ (longValue >>> 32);
                     } else if (type == Boolean.TYPE) {
-                        boolean booleanValue = properties.getBoolean(n, i);
+                        boolean booleanValue = data.getBoolean(n, i);
                         if (booleanValue) {
                             number += 7;
                         }
                     } else if (type == Float.TYPE) {
-                        float floatValue = properties.getFloat(n, i);
+                        float floatValue = data.getFloat(n, i);
                         number += Float.floatToRawIntBits(floatValue);
                     } else if (type == Double.TYPE) {
-                        double doubleValue = properties.getDouble(n, i);
+                        double doubleValue = data.getDouble(n, i);
                         long longValue = Double.doubleToRawLongBits(doubleValue);
                         number += longValue ^ (longValue >>> 32);
                     } else if (type == Short.TYPE) {
-                        short shortValue = properties.getShort(n, i);
+                        short shortValue = data.getShort(n, i);
                         number += shortValue;
                     } else if (type == Character.TYPE) {
-                        char charValue = properties.getChar(n, i);
+                        char charValue = data.getChar(n, i);
                         number += charValue;
                     } else if (type == Byte.TYPE) {
-                        byte byteValue = properties.getByte(n, i);
+                        byte byteValue = data.getByte(n, i);
                         number += byteValue;
                     } else {
                         assert false : "unhandled property type: " + type;
                     }
                 } else {
-                    Object o = properties.getObject(n, i);
+                    Object o = data.getObject(n, i);
                     number += deepHashCode0(o);
                 }
                 number *= 13;
@@ -511,54 +545,54 @@ public final class NodeClass extends FieldIntrospection {
         if (a.getClass() != b.getClass()) {
             return a == b;
         }
-        for (int i = 0; i < properties.getCount(); ++i) {
-            Class<?> type = properties.getType(i);
+        for (int i = 0; i < data.getCount(); ++i) {
+            Class<?> type = data.getType(i);
             if (type.isPrimitive()) {
                 if (type == Integer.TYPE) {
-                    int aInt = properties.getInt(a, i);
-                    int bInt = properties.getInt(b, i);
+                    int aInt = data.getInt(a, i);
+                    int bInt = data.getInt(b, i);
                     if (aInt != bInt) {
                         return false;
                     }
                 } else if (type == Boolean.TYPE) {
-                    boolean aBoolean = properties.getBoolean(a, i);
-                    boolean bBoolean = properties.getBoolean(b, i);
+                    boolean aBoolean = data.getBoolean(a, i);
+                    boolean bBoolean = data.getBoolean(b, i);
                     if (aBoolean != bBoolean) {
                         return false;
                     }
                 } else if (type == Long.TYPE) {
-                    long aLong = properties.getLong(a, i);
-                    long bLong = properties.getLong(b, i);
+                    long aLong = data.getLong(a, i);
+                    long bLong = data.getLong(b, i);
                     if (aLong != bLong) {
                         return false;
                     }
                 } else if (type == Float.TYPE) {
-                    float aFloat = properties.getFloat(a, i);
-                    float bFloat = properties.getFloat(b, i);
+                    float aFloat = data.getFloat(a, i);
+                    float bFloat = data.getFloat(b, i);
                     if (aFloat != bFloat) {
                         return false;
                     }
                 } else if (type == Double.TYPE) {
-                    double aDouble = properties.getDouble(a, i);
-                    double bDouble = properties.getDouble(b, i);
+                    double aDouble = data.getDouble(a, i);
+                    double bDouble = data.getDouble(b, i);
                     if (aDouble != bDouble) {
                         return false;
                     }
                 } else if (type == Short.TYPE) {
-                    short aShort = properties.getShort(a, i);
-                    short bShort = properties.getShort(b, i);
+                    short aShort = data.getShort(a, i);
+                    short bShort = data.getShort(b, i);
                     if (aShort != bShort) {
                         return false;
                     }
                 } else if (type == Character.TYPE) {
-                    char aChar = properties.getChar(a, i);
-                    char bChar = properties.getChar(b, i);
+                    char aChar = data.getChar(a, i);
+                    char bChar = data.getChar(b, i);
                     if (aChar != bChar) {
                         return false;
                     }
                 } else if (type == Byte.TYPE) {
-                    byte aByte = properties.getByte(a, i);
-                    byte bByte = properties.getByte(b, i);
+                    byte aByte = data.getByte(a, i);
+                    byte bByte = data.getByte(b, i);
                     if (aByte != bByte) {
                         return false;
                     }
@@ -566,8 +600,8 @@ public final class NodeClass extends FieldIntrospection {
                     assert false : "unhandled type: " + type;
                 }
             } else {
-                Object objectA = properties.getObject(a, i);
-                Object objectB = properties.getObject(b, i);
+                Object objectA = data.getObject(a, i);
+                Object objectB = data.getObject(b, i);
                 if (objectA != objectB) {
                     if (objectA != null && objectB != null) {
                         if (!deepEquals0(objectA, objectB)) {
@@ -594,13 +628,6 @@ public final class NodeClass extends FieldIntrospection {
             return false;
         }
         return toEdges.isSame(fromEdges, pos.getIndex());
-    }
-
-    /**
-     * Gets the non-edge properties defined by this node class.
-     */
-    public Fields getProperties() {
-        return properties;
     }
 
     static void updateEdgesInPlace(Node node, InplaceUpdateClosure duplicationReplacement, Edges edges) {

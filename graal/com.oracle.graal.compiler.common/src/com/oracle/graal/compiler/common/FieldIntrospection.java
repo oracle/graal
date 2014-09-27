@@ -47,9 +47,11 @@ public abstract class FieldIntrospection extends UnsafeAccess {
     protected static final ConcurrentHashMap<Class<?>, FieldIntrospection> allClasses = new ConcurrentHashMap<>();
 
     private final Class<?> clazz;
-    protected long[] dataOffsets;
-    protected Map<Long, String> fieldNames;
-    protected Map<Long, Class<?>> fieldTypes;
+
+    /**
+     * The set of fields in {@link #clazz} that do long belong to a more specific category.
+     */
+    protected Fields data;
 
     public FieldIntrospection(Class<?> clazz) {
         this.clazz = clazz;
@@ -59,20 +61,57 @@ public abstract class FieldIntrospection extends UnsafeAccess {
         return clazz;
     }
 
+    /**
+     * Gets the fields in {@link #getClazz()} that do long belong to specific category.
+     */
+    public Fields getData() {
+        return data;
+    }
+
+    /**
+     * Describes a field in a class during scanning.
+     */
+    public static class FieldInfo implements Comparable<FieldInfo> {
+        public final long offset;
+        public final String name;
+        public final Class<?> type;
+
+        public FieldInfo(long offset, String name, Class<?> type) {
+            this.offset = offset;
+            this.name = name;
+            this.type = type;
+        }
+
+        /**
+         * Sorts fields in ascending order by their {@link #offset}s.
+         */
+        public int compareTo(FieldInfo o) {
+            return offset < o.offset ? -1 : (offset > o.offset ? 1 : 0);
+        }
+
+        @Override
+        public String toString() {
+            return "[" + offset + "]" + name + ":" + type.getSimpleName();
+        }
+    }
+
     public abstract static class BaseFieldScanner {
 
         private final CalcOffset calc;
 
-        /** The offsets of fields that are not specially handled by subclasses. */
-        public final ArrayList<Long> dataOffsets = new ArrayList<>();
-
-        public final Map<Long, String> fieldNames = new HashMap<>();
-        public final Map<Long, Class<?>> fieldTypes = new HashMap<>();
+        /**
+         * Fields not belonging to a more specific category defined by scanner subclasses are added
+         * to this list.
+         */
+        public final ArrayList<FieldInfo> data = new ArrayList<>();
 
         protected BaseFieldScanner(CalcOffset calc) {
             this.calc = calc;
         }
 
+        /**
+         * Scans the fields in a class hierarchy.
+         */
         public void scan(Class<?> clazz) {
             Class<?> currentClazz = clazz;
             do {
@@ -80,69 +119,13 @@ public abstract class FieldIntrospection extends UnsafeAccess {
                     if (Modifier.isStatic(field.getModifiers()) || Modifier.isTransient(field.getModifiers())) {
                         continue;
                     }
-                    Class<?> type = field.getType();
                     long offset = calc.getOffset(field);
-
-                    // scanField() may overwrite the name with a customized name.
-                    fieldNames.put(offset, field.getName());
-                    fieldTypes.put(offset, type);
-
-                    scanField(field, type, offset);
+                    scanField(field, offset);
                 }
                 currentClazz = currentClazz.getSuperclass();
             } while (currentClazz.getSuperclass() != Object.class);
         }
 
-        protected abstract void scanField(Field field, Class<?> type, long offset);
-    }
-
-    protected static void copyInto(long[] dest, long[] src) {
-        assert dest.length == src.length;
-        for (int i = 0; i < dest.length; i++) {
-            dest[i] = src[i];
-        }
-    }
-
-    protected static <T> void copyInto(T[] dest, T[] src) {
-        assert dest.length == src.length;
-        for (int i = 0; i < dest.length; i++) {
-            dest[i] = src[i];
-        }
-    }
-
-    protected static <T> void copyInto(T[] dest, List<T> src) {
-        assert dest.length == src.size();
-        for (int i = 0; i < dest.length; i++) {
-            dest[i] = src.get(i);
-        }
-    }
-
-    protected static <T> T[] arrayUsingSortedOffsets(Map<Long, T> map, long[] sortedOffsets, T[] result) {
-        for (int i = 0; i < sortedOffsets.length; i++) {
-            result[i] = map.get(sortedOffsets[i]);
-        }
-        return result;
-    }
-
-    protected static long[] sortedLongCopy(ArrayList<Long> list1) {
-        Collections.sort(list1);
-        long[] result = new long[list1.size()];
-        for (int i = 0; i < list1.size(); i++) {
-            result[i] = list1.get(i);
-        }
-        return result;
-    }
-
-    protected static long[] sortedLongCopy(ArrayList<Long> list1, ArrayList<Long> list2) {
-        Collections.sort(list1);
-        Collections.sort(list2);
-        long[] result = new long[list1.size() + list2.size()];
-        for (int i = 0; i < list1.size(); i++) {
-            result[i] = list1.get(i);
-        }
-        for (int i = 0; i < list2.size(); i++) {
-            result[list1.size() + i] = list2.get(i);
-        }
-        return result;
+        protected abstract void scanField(Field field, long offset);
     }
 }

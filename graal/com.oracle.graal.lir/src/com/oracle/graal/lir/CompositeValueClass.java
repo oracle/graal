@@ -57,37 +57,24 @@ public class CompositeValueClass extends LIRIntrospection {
         }
     }
 
-    private final int directComponentCount;
-    private final long[] componentOffsets;
-    private final EnumSet<OperandFlag>[] componentFlags;
-
     public CompositeValueClass(Class<? extends CompositeValue> clazz) {
         this(clazz, new DefaultCalcOffset());
     }
 
-    @SuppressWarnings("unchecked")
     public CompositeValueClass(Class<? extends CompositeValue> clazz, CalcOffset calcOffset) {
         super(clazz);
 
-        ValueFieldScanner scanner = new ValueFieldScanner(calcOffset);
-        scanner.scan(clazz);
+        ValueFieldScanner vfs = new ValueFieldScanner(calcOffset);
+        vfs.scan(clazz);
 
-        OperandModeAnnotation mode = scanner.valueAnnotations.get(CompositeValue.Component.class);
-        directComponentCount = mode.scalarOffsets.size();
-        componentOffsets = sortedLongCopy(mode.scalarOffsets, mode.arrayOffsets);
-        componentFlags = arrayUsingSortedOffsets(mode.flags, componentOffsets, new EnumSet[componentOffsets.length]);
-
-        dataOffsets = sortedLongCopy(scanner.dataOffsets);
-
-        fieldNames = scanner.fieldNames;
-        fieldTypes = scanner.fieldTypes;
+        values = new Values(vfs.valueAnnotations.get(CompositeValue.Component.class));
+        data = new Fields(vfs.data);
     }
 
     private static class ValueFieldScanner extends FieldScanner {
 
         public ValueFieldScanner(CalcOffset calc) {
             super(calc);
-
             valueAnnotations.put(CompositeValue.Component.class, new OperandModeAnnotation());
         }
 
@@ -111,57 +98,53 @@ public class CompositeValueClass extends LIRIntrospection {
     @Override
     public String toString() {
         StringBuilder str = new StringBuilder();
-        str.append(getClass().getSimpleName()).append(" ").append(getClazz().getSimpleName()).append(" component[");
-        for (int i = 0; i < componentOffsets.length; i++) {
-            str.append(i == 0 ? "" : ", ").append(componentOffsets[i]);
-        }
+        str.append(getClass().getSimpleName()).append(" ").append(getClazz().getSimpleName()).append(" components[");
+        values.appendFields(str);
         str.append("] data[");
-        for (int i = 0; i < dataOffsets.length; i++) {
-            str.append(i == 0 ? "" : ", ").append(dataOffsets[i]);
-        }
+        data.appendFields(str);
         str.append("]");
         return str.toString();
     }
 
     final CompositeValue forEachComponent(LIRInstruction inst, CompositeValue obj, OperandMode mode, InstructionValueProcedureBase proc) {
-        return forEachComponent(inst, obj, directComponentCount, componentOffsets, mode, componentFlags, proc);
+        return super.forEachComponent(inst, obj, values, mode, proc);
     }
 
     final void forEachComponent(LIRInstruction inst, CompositeValue obj, OperandMode mode, ValuePositionProcedure proc, ValuePosition outerPosition) {
-        forEach(inst, obj, directComponentCount, componentOffsets, mode, componentFlags, proc, outerPosition);
+        forEach(inst, obj, values, mode, proc, outerPosition);
     }
 
     public String toString(CompositeValue obj) {
         StringBuilder result = new StringBuilder();
 
-        appendValues(result, obj, "", "", "{", "}", new String[]{""}, componentOffsets);
+        appendValues(result, obj, "", "", "{", "}", new String[]{""}, values);
 
-        for (int i = 0; i < dataOffsets.length; i++) {
-            result.append(" ").append(fieldNames.get(dataOffsets[i])).append(": ").append(getFieldString(obj, dataOffsets[i]));
+        for (int i = 0; i < data.getCount(); i++) {
+            result.append(" ").append(data.getName(i)).append(": ").append(getFieldString(obj, i, data));
         }
 
         return result.toString();
     }
 
     Value getValue(CompositeValue obj, ValuePosition pos) {
-        return getValueForPosition(obj, componentOffsets, directComponentCount, pos);
+        return getValueForPosition(obj, values, pos);
     }
 
     CompositeValue createUpdatedValue(CompositeValue compValue, ValuePosition pos, Value value) {
         CompositeValue newCompValue = compValue.clone();
-        setValueForPosition(newCompValue, componentOffsets, directComponentCount, pos, value);
+        setValueForPosition(newCompValue, values, pos, value);
         return newCompValue;
     }
 
     EnumSet<OperandFlag> getFlags(ValuePosition pos) {
-        return componentFlags[pos.getIndex()];
+        return values.getFlags(pos.getIndex());
     }
 
     void copyValueArrays(CompositeValue compositeValue) {
-        for (int i = directComponentCount; i < componentOffsets.length; i++) {
-            Value[] valueArray = getValueArray(compositeValue, componentOffsets[i]);
+        for (int i = values.getDirectCount(); i < values.getCount(); i++) {
+            Value[] valueArray = values.getValueArray(compositeValue, i);
             Value[] newValueArray = Arrays.copyOf(valueArray, valueArray.length);
-            setValueArray(compositeValue, componentOffsets[i], newValueArray);
+            values.setValueArray(compositeValue, i, newValueArray);
         }
     }
 }

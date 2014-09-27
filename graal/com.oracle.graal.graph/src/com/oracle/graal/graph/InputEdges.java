@@ -26,6 +26,7 @@ import static com.oracle.graal.graph.Edges.Type.*;
 
 import java.util.*;
 
+import com.oracle.graal.graph.NodeClass.InputFieldInfo;
 import com.oracle.graal.nodeinfo.*;
 
 public final class InputEdges extends Edges {
@@ -33,14 +34,14 @@ public final class InputEdges extends Edges {
     private final InputType[] inputTypes;
     private final boolean[] isOptional;
 
-    public InputEdges(Class<?> nodeClass, int directCount, long[] offsets, Map<Long, String> names, Map<Long, Class<?>> types, Map<Long, InputType> inputTypes, Set<Long> isOptional) {
-        super(nodeClass, Inputs, directCount, offsets, names, types);
+    public InputEdges(int directCount, ArrayList<InputFieldInfo> fields) {
+        super(Inputs, directCount, fields);
 
-        this.inputTypes = new InputType[offsets.length];
-        this.isOptional = new boolean[offsets.length];
-        for (int i = 0; i < offsets.length; i++) {
-            this.inputTypes[i] = inputTypes.get(offsets[i]);
-            this.isOptional[i] = isOptional.contains(offsets[i]);
+        this.inputTypes = new InputType[fields.size()];
+        this.isOptional = new boolean[fields.size()];
+        for (int i = 0; i < fields.size(); i++) {
+            this.inputTypes[i] = fields.get(i).inputType;
+            this.isOptional[i] = fields.get(i).optional;
         }
     }
 

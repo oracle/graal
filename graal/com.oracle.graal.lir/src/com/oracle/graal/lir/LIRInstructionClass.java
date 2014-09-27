@@ -53,70 +53,50 @@ public class LIRInstructionClass extends LIRIntrospection {
     private static final Class<LIRInstruction> INSTRUCTION_CLASS = LIRInstruction.class;
     private static final Class<LIRFrameState> STATE_CLASS = LIRFrameState.class;
 
-    private final int directUseCount;
-    private final long[] useOffsets;
-    private final EnumSet<OperandFlag>[] useFlags;
-    private final int directAliveCount;
-    private final long[] aliveOffsets;
-    private final EnumSet<OperandFlag>[] aliveFlags;
-    private final int directTempCount;
-    private final long[] tempOffsets;
-    private final EnumSet<OperandFlag>[] tempFlags;
-    private final int directDefCount;
-    private final long[] defOffsets;
-    private final EnumSet<OperandFlag>[] defFlags;
-
-    private final long[] stateOffsets;
+    private final Values uses;
+    private final Values alives;
+    private final Values temps;
+    private final Values defs;
+    private final Fields states;
 
     private String opcodeConstant;
-    private long opcodeOffset;
+    private int opcodeIndex;
 
     private LIRInstructionClass(Class<? extends LIRInstruction> clazz) {
         this(clazz, new DefaultCalcOffset());
     }
 
-    @SuppressWarnings("unchecked")
     public LIRInstructionClass(Class<? extends LIRInstruction> clazz, CalcOffset calcOffset) {
         super(clazz);
         assert INSTRUCTION_CLASS.isAssignableFrom(clazz);
 
-        InstructionFieldScanner scanner = new InstructionFieldScanner(calcOffset);
-        scanner.scan(clazz);
+        InstructionFieldScanner ifs = new InstructionFieldScanner(calcOffset);
+        ifs.scan(clazz);
 
-        OperandModeAnnotation mode = scanner.valueAnnotations.get(LIRInstruction.Use.class);
-        directUseCount = mode.scalarOffsets.size();
-        useOffsets = sortedLongCopy(mode.scalarOffsets, mode.arrayOffsets);
-        useFlags = arrayUsingSortedOffsets(mode.flags, useOffsets, new EnumSet[useOffsets.length]);
+        uses = new Values(ifs.valueAnnotations.get(LIRInstruction.Use.class));
+        alives = new Values(ifs.valueAnnotations.get(LIRInstruction.Alive.class));
+        temps = new Values(ifs.valueAnnotations.get(LIRInstruction.Temp.class));
+        defs = new Values(ifs.valueAnnotations.get(LIRInstruction.Def.class));
 
-        mode = scanner.valueAnnotations.get(LIRInstruction.Alive.class);
-        directAliveCount = mode.scalarOffsets.size();
-        aliveOffsets = sortedLongCopy(mode.scalarOffsets, mode.arrayOffsets);
-        aliveFlags = arrayUsingSortedOffsets(mode.flags, aliveOffsets, new EnumSet[aliveOffsets.length]);
+        states = new Fields(ifs.states);
+        data = new Fields(ifs.data);
 
-        mode = scanner.valueAnnotations.get(LIRInstruction.Temp.class);
-        directTempCount = mode.scalarOffsets.size();
-        tempOffsets = sortedLongCopy(mode.scalarOffsets, mode.arrayOffsets);
-        tempFlags = arrayUsingSortedOffsets(mode.flags, tempOffsets, new EnumSet[tempOffsets.length]);
-
-        mode = scanner.valueAnnotations.get(LIRInstruction.Def.class);
-        directDefCount = mode.scalarOffsets.size();
-        defOffsets = sortedLongCopy(mode.scalarOffsets, mode.arrayOffsets);
-        defFlags = arrayUsingSortedOffsets(mode.flags, defOffsets, new EnumSet[defOffsets.length]);
-
-        stateOffsets = sortedLongCopy(scanner.stateOffsets);
-        dataOffsets = sortedLongCopy(scanner.dataOffsets);
-
-        fieldNames = scanner.fieldNames;
-        fieldTypes = scanner.fieldTypes;
-
-        opcodeConstant = scanner.opcodeConstant;
-        opcodeOffset = scanner.opcodeOffset;
+        opcodeConstant = ifs.opcodeConstant;
+        if (ifs.opcodeField == null) {
+            opcodeIndex = -1;
+        } else {
+            opcodeIndex = ifs.data.indexOf(ifs.opcodeField);
+        }
     }
 
     private static class InstructionFieldScanner extends FieldScanner {
 
         private String opcodeConstant;
-        private long opcodeOffset;
+
+        /**
+         * Field (if any) annotated by {@link Opcode}.
+         */
+        private FieldInfo opcodeField;
 
         public InstructionFieldScanner(CalcOffset calc) {
             super(calc);
@@ -153,11 +133,11 @@ public class LIRInstructionClass extends LIRIntrospection {
             if (clazz.getAnnotation(Opcode.class) != null) {
                 opcodeConstant = clazz.getAnnotation(Opcode.class).value();
             }
-            opcodeOffset = -1;
+            opcodeField = null;
 
             super.scan(clazz);
 
-            if (opcodeConstant == null && opcodeOffset == -1) {
+            if (opcodeConstant == null && opcodeField == null) {
                 opcodeConstant = clazz.getSimpleName();
                 if (opcodeConstant.endsWith("Op")) {
                     opcodeConstant = opcodeConstant.substring(0, opcodeConstant.length() - 2);
@@ -166,18 +146,20 @@ public class LIRInstructionClass extends LIRIntrospection {
         }
 
         @Override
-        protected void scanField(Field field, Class<?> type, long offset) {
+        protected void scanField(Field field, long offset) {
+            Class<?> type = field.getType();
             if (STATE_CLASS.isAssignableFrom(type)) {
                 assert getOperandModeAnnotation(field) == null : "Field must not have operand mode annotation: " + field;
                 assert field.getAnnotation(LIRInstruction.State.class) != null : "Field must have state annotation: " + field;
-                stateOffsets.add(offset);
+                states.add(new FieldInfo(offset, field.getName(), type));
             } else {
-                super.scanField(field, type, offset);
+                super.scanField(field, offset);
             }
 
             if (field.getAnnotation(Opcode.class) != null) {
-                assert opcodeConstant == null && opcodeOffset == -1 : "Can have only one Opcode definition: " + field.getType();
-                opcodeOffset = offset;
+                assert opcodeConstant == null && opcodeField == null : "Can have only one Opcode definition: " + type;
+                assert data.get(data.size() - 1).offset == offset;
+                opcodeField = data.get(data.size() - 1);
             }
         }
     }
@@ -186,97 +168,33 @@ public class LIRInstructionClass extends LIRIntrospection {
     public String toString() {
         StringBuilder str = new StringBuilder();
         str.append(getClass().getSimpleName()).append(" ").append(getClazz().getSimpleName()).append(" use[");
-        for (int i = 0; i < useOffsets.length; i++) {
-            str.append(i == 0 ? "" : ", ").append(useOffsets[i]);
-        }
+        uses.appendFields(str);
         str.append("] alive[");
-        for (int i = 0; i < aliveOffsets.length; i++) {
-            str.append(i == 0 ? "" : ", ").append(aliveOffsets[i]);
-        }
+        alives.appendFields(str);
         str.append("] temp[");
-        for (int i = 0; i < tempOffsets.length; i++) {
-            str.append(i == 0 ? "" : ", ").append(tempOffsets[i]);
-        }
+        temps.appendFields(str);
         str.append("] def[");
-        for (int i = 0; i < defOffsets.length; i++) {
-            str.append(i == 0 ? "" : ", ").append(defOffsets[i]);
-        }
+        defs.appendFields(str);
         str.append("] state[");
-        for (int i = 0; i < stateOffsets.length; i++) {
-            str.append(i == 0 ? "" : ", ").append(stateOffsets[i]);
-        }
+        states.appendFields(str);
         str.append("] data[");
-        for (int i = 0; i < dataOffsets.length; i++) {
-            str.append(i == 0 ? "" : ", ").append(dataOffsets[i]);
-        }
+        data.appendFields(str);
         str.append("]");
         return str.toString();
     }
 
-    Value getValue(LIRInstruction obj, ValuePosition pos) {
-        long[] offsets;
-        int directCount;
-        switch (pos.getMode()) {
+    Values getValues(OperandMode mode) {
+        switch (mode) {
             case USE:
-                directCount = directUseCount;
-                offsets = useOffsets;
-                break;
+                return uses;
             case ALIVE:
-                directCount = directAliveCount;
-                offsets = aliveOffsets;
-                break;
+                return alives;
             case TEMP:
-                directCount = directTempCount;
-                offsets = tempOffsets;
-                break;
+                return temps;
             case DEF:
-                directCount = directDefCount;
-                offsets = defOffsets;
-                break;
+                return defs;
             default:
-                throw GraalInternalError.shouldNotReachHere("unkown OperandMode: " + pos.getMode());
-        }
-        return getValueForPosition(obj, offsets, directCount, pos);
-    }
-
-    void setValue(LIRInstruction obj, ValuePosition pos, Value value) {
-        long[] offsets;
-        int directCount;
-        switch (pos.getMode()) {
-            case USE:
-                directCount = directUseCount;
-                offsets = useOffsets;
-                break;
-            case ALIVE:
-                directCount = directAliveCount;
-                offsets = aliveOffsets;
-                break;
-            case TEMP:
-                directCount = directTempCount;
-                offsets = tempOffsets;
-                break;
-            case DEF:
-                directCount = directDefCount;
-                offsets = defOffsets;
-                break;
-            default:
-                throw GraalInternalError.shouldNotReachHere("unkown OperandMode: " + pos.getMode());
-        }
-        setValueForPosition(obj, offsets, directCount, pos, value);
-    }
-
-    EnumSet<OperandFlag> getFlags(ValuePosition pos) {
-        switch (pos.getMode()) {
-            case USE:
-                return useFlags[pos.getIndex()];
-            case ALIVE:
-                return aliveFlags[pos.getIndex()];
-            case TEMP:
-                return tempFlags[pos.getIndex()];
-            case DEF:
-                return defFlags[pos.getIndex()];
-            default:
-                throw GraalInternalError.shouldNotReachHere("unkown OperandMode: " + pos.getMode());
+                throw GraalInternalError.shouldNotReachHere("unknown OperandMode: " + mode);
         }
     }
 
@@ -284,17 +202,17 @@ public class LIRInstructionClass extends LIRIntrospection {
         if (opcodeConstant != null) {
             return opcodeConstant;
         }
-        assert opcodeOffset != -1;
-        return unsafe.getObject(obj, opcodeOffset).toString();
+        assert opcodeIndex != -1;
+        return data.getObject(obj, opcodeIndex).toString();
     }
 
     final boolean hasOperands() {
-        return useOffsets.length > 0 || aliveOffsets.length > 0 || tempOffsets.length > 0 || defOffsets.length > 0;
+        return uses.getCount() > 0 || alives.getCount() > 0 || temps.getCount() > 0 || defs.getCount() > 0;
     }
 
     final boolean hasState(LIRInstruction obj) {
-        for (int i = 0; i < stateOffsets.length; i++) {
-            if (getState(obj, stateOffsets[i]) != null) {
+        for (int i = 0; i < states.getCount(); i++) {
+            if (states.getObject(obj, i) != null) {
                 return true;
             }
         }
@@ -302,40 +220,40 @@ public class LIRInstructionClass extends LIRIntrospection {
     }
 
     final void forEachUse(LIRInstruction obj, ValuePositionProcedure proc) {
-        forEach(obj, obj, directUseCount, useOffsets, OperandMode.USE, useFlags, proc, ValuePosition.ROOT_VALUE_POSITION);
+        forEach(obj, obj, uses, OperandMode.USE, proc, ValuePosition.ROOT_VALUE_POSITION);
     }
 
     final void forEachAlive(LIRInstruction obj, ValuePositionProcedure proc) {
-        forEach(obj, obj, directAliveCount, aliveOffsets, OperandMode.ALIVE, aliveFlags, proc, ValuePosition.ROOT_VALUE_POSITION);
+        forEach(obj, obj, alives, OperandMode.ALIVE, proc, ValuePosition.ROOT_VALUE_POSITION);
     }
 
     final void forEachTemp(LIRInstruction obj, ValuePositionProcedure proc) {
-        forEach(obj, obj, directTempCount, tempOffsets, OperandMode.TEMP, tempFlags, proc, ValuePosition.ROOT_VALUE_POSITION);
+        forEach(obj, obj, temps, OperandMode.TEMP, proc, ValuePosition.ROOT_VALUE_POSITION);
     }
 
     final void forEachDef(LIRInstruction obj, ValuePositionProcedure proc) {
-        forEach(obj, obj, directDefCount, defOffsets, OperandMode.DEF, defFlags, proc, ValuePosition.ROOT_VALUE_POSITION);
+        forEach(obj, obj, defs, OperandMode.DEF, proc, ValuePosition.ROOT_VALUE_POSITION);
     }
 
     final void forEachUse(LIRInstruction obj, InstructionValueProcedureBase proc) {
-        forEach(obj, directUseCount, useOffsets, OperandMode.USE, useFlags, proc);
+        forEach(obj, uses, OperandMode.USE, proc);
     }
 
     final void forEachAlive(LIRInstruction obj, InstructionValueProcedureBase proc) {
-        forEach(obj, directAliveCount, aliveOffsets, OperandMode.ALIVE, aliveFlags, proc);
+        forEach(obj, alives, OperandMode.ALIVE, proc);
     }
 
     final void forEachTemp(LIRInstruction obj, InstructionValueProcedureBase proc) {
-        forEach(obj, directTempCount, tempOffsets, OperandMode.TEMP, tempFlags, proc);
+        forEach(obj, temps, OperandMode.TEMP, proc);
     }
 
     final void forEachDef(LIRInstruction obj, InstructionValueProcedureBase proc) {
-        forEach(obj, directDefCount, defOffsets, OperandMode.DEF, defFlags, proc);
+        forEach(obj, defs, OperandMode.DEF, proc);
     }
 
     final void forEachState(LIRInstruction obj, InstructionValueProcedureBase proc) {
-        for (int i = 0; i < stateOffsets.length; i++) {
-            LIRFrameState state = getState(obj, stateOffsets[i]);
+        for (int i = 0; i < states.getCount(); i++) {
+            LIRFrameState state = (LIRFrameState) states.getObject(obj, i);
             if (state != null) {
                 state.forEachState(obj, proc);
             }
@@ -343,8 +261,8 @@ public class LIRInstructionClass extends LIRIntrospection {
     }
 
     final void forEachState(LIRInstruction obj, InstructionStateProcedure proc) {
-        for (int i = 0; i < stateOffsets.length; i++) {
-            LIRFrameState state = getState(obj, stateOffsets[i]);
+        for (int i = 0; i < states.getCount(); i++) {
+            LIRFrameState state = (LIRFrameState) states.getObject(obj, i);
             if (state != null) {
                 proc.doState(obj, state);
             }
@@ -352,27 +270,24 @@ public class LIRInstructionClass extends LIRIntrospection {
     }
 
     final Value forEachRegisterHint(LIRInstruction obj, OperandMode mode, InstructionValueProcedure proc) {
-        int hintDirectCount = 0;
-        long[] hintOffsets = null;
+        Values hints;
         if (mode == OperandMode.USE) {
-            hintDirectCount = directDefCount;
-            hintOffsets = defOffsets;
+            hints = defs;
         } else if (mode == OperandMode.DEF) {
-            hintDirectCount = directUseCount;
-            hintOffsets = useOffsets;
+            hints = uses;
         } else {
             return null;
         }
 
-        for (int i = 0; i < hintOffsets.length; i++) {
-            if (i < hintDirectCount) {
-                Value hintValue = getValue(obj, hintOffsets[i]);
+        for (int i = 0; i < hints.getCount(); i++) {
+            if (i < hints.getDirectCount()) {
+                Value hintValue = hints.getValue(obj, i);
                 Value result = proc.processValue(obj, hintValue, null, null);
                 if (result != null) {
                     return result;
                 }
             } else {
-                Value[] hintValues = getValueArray(obj, hintOffsets[i]);
+                Value[] hintValues = hints.getValueArray(obj, i);
                 for (int j = 0; j < hintValues.length; j++) {
                     Value hintValue = hintValues[j];
                     Value result = proc.processValue(obj, hintValue, null, null);
@@ -385,29 +300,25 @@ public class LIRInstructionClass extends LIRIntrospection {
         return null;
     }
 
-    private static LIRFrameState getState(LIRInstruction obj, long offset) {
-        return (LIRFrameState) unsafe.getObject(obj, offset);
-    }
-
     String toString(LIRInstruction obj) {
         StringBuilder result = new StringBuilder();
 
-        appendValues(result, obj, "", " = ", "(", ")", new String[]{""}, defOffsets);
-        result.append(getOpcode(obj).toUpperCase());
-        appendValues(result, obj, " ", "", "(", ")", new String[]{"", "~"}, useOffsets, aliveOffsets);
-        appendValues(result, obj, " ", "", "{", "}", new String[]{""}, tempOffsets);
+        appendValues(result, obj, "", " = ", "(", ")", new String[]{""}, defs);
+        result.append(String.valueOf(getOpcode(obj)).toUpperCase());
+        appendValues(result, obj, " ", "", "(", ")", new String[]{"", "~"}, uses, alives);
+        appendValues(result, obj, " ", "", "{", "}", new String[]{""}, temps);
 
-        for (int i = 0; i < dataOffsets.length; i++) {
-            if (dataOffsets[i] == opcodeOffset) {
+        for (int i = 0; i < data.getCount(); i++) {
+            if (i == opcodeIndex) {
                 continue;
             }
-            result.append(" ").append(fieldNames.get(dataOffsets[i])).append(": ").append(getFieldString(obj, dataOffsets[i]));
+            result.append(" ").append(data.getName(i)).append(": ").append(getFieldString(obj, i, data));
         }
 
-        for (int i = 0; i < stateOffsets.length; i++) {
-            LIRFrameState state = getState(obj, stateOffsets[i]);
+        for (int i = 0; i < states.getCount(); i++) {
+            LIRFrameState state = (LIRFrameState) states.getObject(obj, i);
             if (state != null) {
-                result.append(" ").append(fieldNames.get(stateOffsets[i])).append(" [bci:");
+                result.append(" ").append(states.getName(i)).append(" [bci:");
                 String sep = "";
                 for (BytecodeFrame cur = state.topFrame; cur != null; cur = cur.caller()) {
                     result.append(sep).append(cur.getBCI());
