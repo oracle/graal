@@ -281,6 +281,10 @@ public abstract class LIRInstruction {
         instructionClass.forEachState(this, proc);
     }
 
+    public final void forEachState(StateProcedure proc) {
+        instructionClass.forEachState(this, proc);
+    }
+
     // InstructionValueConsumers
     public final void visitEachInput(InstructionValueConsumer proc) {
         instructionClass.forEachUse(this, proc);

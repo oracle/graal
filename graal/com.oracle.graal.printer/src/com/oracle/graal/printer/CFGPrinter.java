@@ -457,16 +457,12 @@ class CFGPrinter extends CompilationPrinter {
                 out.printf("nr %4d ", inst.id()).print(COLUMN_END);
 
                 final StringBuilder stateString = new StringBuilder();
-                inst.forEachState(new StateProcedure() {
-
-                    @Override
-                    public void doState(LIRFrameState state) {
-                        if (state.hasDebugInfo()) {
-                            DebugInfo di = state.debugInfo();
-                            stateString.append(debugInfoToString(di.getBytecodePosition(), di.getReferenceMap(), di.getCalleeSaveInfo(), target.arch));
-                        } else {
-                            stateString.append(debugInfoToString(state.topFrame, null, null, target.arch));
-                        }
+                inst.forEachState(state -> {
+                    if (state.hasDebugInfo()) {
+                        DebugInfo di = state.debugInfo();
+                        stateString.append(debugInfoToString(di.getBytecodePosition(), di.getReferenceMap(), di.getCalleeSaveInfo(), target.arch));
+                    } else {
+                        stateString.append(debugInfoToString(state.topFrame, null, null, target.arch));
                     }
                 });
                 if (stateString.length() > 0) {
