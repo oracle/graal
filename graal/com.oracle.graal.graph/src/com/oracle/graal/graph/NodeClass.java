@@ -62,7 +62,6 @@ public final class NodeClass extends FieldIntrospection {
     private static final DebugTimer Init_AnnotationParsing = Debug.timer("NodeClass.Init.AnnotationParsing");
     private static final DebugTimer Init_Edges = Debug.timer("NodeClass.Init.Edges");
     private static final DebugTimer Init_Data = Debug.timer("NodeClass.Init.Data");
-    private static final DebugTimer Init_Naming = Debug.timer("NodeClass.Init.Naming");
     private static final DebugTimer Init_AllowedUsages = Debug.timer("NodeClass.Init.AllowedUsages");
     private static final DebugTimer Init_IterableIds = Debug.timer("NodeClass.Init.IterableIds");
 
@@ -129,8 +128,6 @@ public final class NodeClass extends FieldIntrospection {
 
     private final boolean canGVN;
     private final int startGVNNumber;
-    private final String shortName;
-    private final String nameTemplate;
     private final int iterableId;
     private final EnumSet<InputType> allowedUsageTypes;
     private int[] iterableIds;
@@ -191,22 +188,6 @@ public final class NodeClass extends FieldIntrospection {
         startGVNNumber = clazz.hashCode();
 
         NodeInfo info = getAnnotation(clazz, NodeInfo.class);
-        try (TimerCloseable t1 = Init_Naming.start()) {
-            String newNameTemplate = null;
-            String newShortName = clazz.getSimpleName();
-            if (newShortName.endsWith("Node") && !newShortName.equals("StartNode") && !newShortName.equals("EndNode")) {
-                newShortName = newShortName.substring(0, newShortName.length() - 4);
-            }
-            assert info != null : "missing " + NodeInfo.class.getSimpleName() + " annotation on " + clazz;
-            if (!info.shortName().isEmpty()) {
-                newShortName = info.shortName();
-            }
-            if (!info.nameTemplate().isEmpty()) {
-                newNameTemplate = info.nameTemplate();
-            }
-            this.nameTemplate = newNameTemplate == null ? newShortName : newNameTemplate;
-            this.shortName = newShortName;
-        }
         try (TimerCloseable t1 = Init_AllowedUsages.start()) {
             allowedUsageTypes = superNodeClass == null ? EnumSet.noneOf(InputType.class) : superNodeClass.allowedUsageTypes.clone();
             allowedUsageTypes.addAll(Arrays.asList(info.allowedUsageTypes()));
@@ -234,7 +215,7 @@ public final class NodeClass extends FieldIntrospection {
             this.iterableId = Node.NOT_ITERABLE;
             this.iterableIds = null;
         }
-        nodeIterableCount = Debug.metric("NodeIterable_%s", shortName);
+        nodeIterableCount = Debug.metric("NodeIterable_%s", clazz);
     }
 
     /**
@@ -277,7 +258,7 @@ public final class NodeClass extends FieldIntrospection {
      *
      * <pre>
      *     if (node.getNodeClass().is(BeginNode.class)) { ... }
-     *
+     * 
      *     // Due to generated Node classes, the test below
      *     // is *not* the same as the test above:
      *     if (node.getClass() == BeginNode.class) { ... }
@@ -288,10 +269,6 @@ public final class NodeClass extends FieldIntrospection {
     public boolean is(Class<? extends Node> nodeClass) {
         assert getAnnotation(nodeClass, GeneratedNode.class) == null : "cannot test NodeClas against generated " + nodeClass;
         return nodeClass == getClazz();
-    }
-
-    public String shortName() {
-        return shortName;
     }
 
     public int[] iterableIds() {
@@ -719,16 +696,7 @@ public final class NodeClass extends FieldIntrospection {
         return getClazz();
     }
 
-    /**
-     * The template used to build the {@link Verbosity#Name} version. Variable part are specified
-     * using &#123;i#inputName&#125; or &#123;p#propertyName&#125;.
-     */
-    public String getNameTemplate() {
-        return nameTemplate;
-    }
-
     interface InplaceUpdateClosure {
-
         Node replacement(Node node, Edges.Type type);
     }
 

@@ -42,4 +42,12 @@ public class StartNode extends BeginStateSplitNode implements MemoryCheckpoint.S
     public LocationIdentity getLocationIdentity() {
         return LocationIdentity.ANY_LOCATION;
     }
+
+    @Override
+    public String getShortName() {
+        if (getNodeClass().is(StartNode.class)) {
+            return getClass().getSimpleName();
+        }
+        return super.getShortName();
+    }
 }

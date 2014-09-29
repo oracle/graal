@@ -334,6 +334,9 @@ public class GraphNodeGenerator {
             if (hasInputs || hasSuccessors) {
                 createIsLeafNodeMethod();
             }
+
+            createGetShortNameMethod(node);
+            createGetNameTemplateMethod(node);
         }
         compilationUnit.add(genClass);
         return compilationUnit;
@@ -420,7 +423,7 @@ public class GraphNodeGenerator {
         List<ExecutableElement> overriddenMethods = getDeclaredMethodsInSuperTypes(method.getEnclosingClass(), method.getSimpleName().toString(), method.getParameterTypes());
         for (ExecutableElement overriddenMethod : overriddenMethods) {
             if (!overriddenMethod.getEnclosingElement().equals(Node)) {
-                env.message(Kind.WARNING, overriddenMethod, "This method is overridden in a generated subclass will never be called");
+                env.message(Kind.WARNING, overriddenMethod, "This method is overridden in a generated subclass and will never be called");
             }
         }
     }
@@ -430,6 +433,26 @@ public class GraphNodeGenerator {
         method.createBuilder().startReturn().string("false").end();
         genClass.add(method);
         checkOnlyInGenNode(method);
+    }
+
+    private void createGetShortNameMethod(TypeElement node) {
+        NodeInfo nodeInfo = node.getAnnotation(NodeInfo.class);
+        if (!nodeInfo.shortName().isEmpty()) {
+            CodeExecutableElement method = new CodeExecutableElement(modifiers(PUBLIC), getType(String.class), "getShortName");
+            method.createBuilder().startReturn().string("\"" + nodeInfo.shortName() + "\"").end();
+            genClass.add(method);
+            checkOnlyInGenNode(method);
+        }
+    }
+
+    private void createGetNameTemplateMethod(TypeElement node) {
+        NodeInfo nodeInfo = node.getAnnotation(NodeInfo.class);
+        if (!nodeInfo.nameTemplate().isEmpty()) {
+            CodeExecutableElement method = new CodeExecutableElement(modifiers(PUBLIC), getType(String.class), "getNameTemplate");
+            method.createBuilder().startReturn().string("\"" + nodeInfo.nameTemplate() + "\"").end();
+            genClass.add(method);
+            checkOnlyInGenNode(method);
+        }
     }
 
     private boolean hidesField(String name) {
