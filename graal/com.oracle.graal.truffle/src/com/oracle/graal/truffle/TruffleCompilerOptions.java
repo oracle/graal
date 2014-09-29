@@ -53,6 +53,10 @@ public class TruffleCompilerOptions {
     public static final OptionValue<Integer> TruffleReplaceReprofileCount = new OptionValue<>(10);
     @Option(help = "Enable automatic inlining of call targets")
     public static final OptionValue<Boolean> TruffleFunctionInlining = new OptionValue<>(true);
+    @Option(help = "Experimental: Enable context senstive inlining decisions.")
+    public static final StableOptionValue<Boolean> TruffleContextSensitiveInlining = new StableOptionValue<>(false);
+    @Option(help = "Experimental: Enable an expansion cache per CallTarget. Only functionable with TruffleContextSensitiveInlining enabled.")
+    public static final OptionValue<Boolean> TruffleCallTargetExpansionCache = new OptionValue<>(true);
     @Option(help = "Maximum number of Graal IR nodes during partial evaluation")
     public static final OptionValue<Integer> TruffleGraphMaxNodes = new OptionValue<>(200000);
     @Option(help = "Stop inlining if caller's cumulative tree size would exceed this limit")
@@ -95,6 +99,8 @@ public class TruffleCompilerOptions {
     public static final OptionValue<Boolean> TruffleArgumentTypeSpeculation = new StableOptionValue<>(true);
 
     // tracing
+    @Option(help = "Prints potential performance problems of the guest language implementation.")
+    public static final OptionValue<Boolean> PrintTrufflePerformanceWarnings = new OptionValue<>(false);
     @Option(help = "")
     public static final OptionValue<Boolean> TraceTruffleCompilation = new OptionValue<>(false);
     @Option(help = "")

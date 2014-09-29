@@ -33,6 +33,7 @@ public class TruffleInliningProfile {
     private final boolean recursiveCall;
     private final TruffleInliningDecision recursiveResult;
 
+    private int graalDeepNodeCount = -1;
     private String failedReason;
     private int queryIndex = -1;
     private double score;
@@ -104,11 +105,23 @@ public class TruffleInliningProfile {
 
     public Map<String, Object> getDebugProperties() {
         Map<String, Object> properties = new LinkedHashMap<>();
-        properties.put("nodeCount", String.format("%5d/%5d", deepNodeCount, nodeCount));
-        properties.put("frequency", frequency);
+        properties.put("ASTSize", String.format("%5d/%5d", nodeCount, deepNodeCount));
+        properties.put("frequency", String.format("%8.4f", getFrequency()));
         properties.put("score", String.format("%8.4f", getScore()));
         properties.put(String.format("index=%3d, force=%s, callSites=%2d", queryIndex, (isForced() ? "Y" : "N"), getCallSites()), "");
+        if (graalDeepNodeCount != -1) {
+            properties.put("graalCount", String.format("%5d", graalDeepNodeCount));
+        }
         properties.put("reason", failedReason);
         return properties;
     }
+
+    public void setGraalDeepNodeCount(int graalDeepNodeCount) {
+        this.graalDeepNodeCount = graalDeepNodeCount;
+    }
+
+    public int getGraalDeepNodeCount() {
+        return graalDeepNodeCount;
+    }
+
 }

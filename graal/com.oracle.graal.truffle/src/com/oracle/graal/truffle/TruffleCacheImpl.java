@@ -56,7 +56,7 @@ public class TruffleCacheImpl implements TruffleCache {
 
     private final Providers providers;
     private final GraphBuilderConfiguration config;
-    private final GraphBuilderConfiguration configForRootGraph;
+    private final GraphBuilderConfiguration configForRoot;
     private final OptimisticOptimizations optimisticOptimizations;
 
     private final HashMap<List<Object>, StructuredGraph> cache = new HashMap<>();
@@ -69,12 +69,14 @@ public class TruffleCacheImpl implements TruffleCache {
     private final ResolvedJavaType controlFlowExceptionClass;
 
     private final ResolvedJavaMethod callBoundaryMethod;
+    private final ResolvedJavaMethod inlineCallBoundaryMethod;
+
     private long counter;
 
-    public TruffleCacheImpl(Providers providers, GraphBuilderConfiguration config, GraphBuilderConfiguration configForRootGraph, OptimisticOptimizations optimisticOptimizations) {
+    public TruffleCacheImpl(Providers providers, GraphBuilderConfiguration config, GraphBuilderConfiguration configForRoot, OptimisticOptimizations optimisticOptimizations) {
         this.providers = providers;
         this.config = config;
-        this.configForRootGraph = configForRootGraph;
+        this.configForRoot = configForRoot;
         this.optimisticOptimizations = optimisticOptimizations;
 
         this.stringBuilderClass = providers.getMetaAccess().lookupJavaType(StringBuilder.class);
@@ -83,15 +85,26 @@ public class TruffleCacheImpl implements TruffleCache {
         this.controlFlowExceptionClass = providers.getMetaAccess().lookupJavaType(ControlFlowException.class);
 
         try {
-            callBoundaryMethod = providers.getMetaAccess().lookupJavaMethod(OptimizedCallTarget.class.getDeclaredMethod("callRoot", Object[].class));
+            callBoundaryMethod = providers.getMetaAccess().lookupJavaMethod(OptimizedCallTarget.class.getDeclaredMethod("callBoundary", Object[].class));
+        } catch (NoSuchMethodException ex) {
+            throw new RuntimeException(ex);
+        }
+        try {
+            inlineCallBoundaryMethod = providers.getMetaAccess().lookupJavaMethod(OptimizedCallTarget.class.getDeclaredMethod("callRoot", Object[].class));
         } catch (NoSuchMethodException ex) {
             throw new RuntimeException(ex);
         }
     }
 
+    public StructuredGraph createInlineGraph(String name) {
+        StructuredGraph graph = new StructuredGraph(name, inlineCallBoundaryMethod);
+        new GraphBuilderPhase.Instance(providers.getMetaAccess(), config, TruffleCompilerImpl.Optimizations).apply(graph);
+        return graph;
+    }
+
     public StructuredGraph createRootGraph(String name) {
         StructuredGraph graph = new StructuredGraph(name, callBoundaryMethod);
-        new GraphBuilderPhase.Instance(providers.getMetaAccess(), configForRootGraph, TruffleCompilerImpl.Optimizations).apply(graph);
+        new GraphBuilderPhase.Instance(providers.getMetaAccess(), configForRoot, TruffleCompilerImpl.Optimizations).apply(graph);
         return graph;
     }
 

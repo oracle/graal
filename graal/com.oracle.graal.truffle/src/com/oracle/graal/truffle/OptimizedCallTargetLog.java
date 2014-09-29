@@ -28,6 +28,7 @@ import java.io.*;
 import java.util.*;
 
 import com.oracle.graal.debug.*;
+import com.oracle.graal.truffle.ContextSensitiveInlining.InliningDecision;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.nodes.NodeUtil.NodeCountFilter;
 
@@ -51,6 +52,29 @@ public final class OptimizedCallTargetLog {
     }
 
     private OptimizedCallTargetLog() {
+    }
+
+    public static void logInliningDecision(OptimizedCallTarget target) {
+        ContextSensitiveInlining inlining = target.getInliningDecision();
+        if (!TraceTruffleInlining.getValue() || inlining == null) {
+            return;
+        }
+
+        logInliningStart(target);
+        logInliningDecisionRecursive(inlining, 1);
+        logInliningDone(target);
+    }
+
+    private static void logInliningDecisionRecursive(ContextSensitiveInlining result, int depth) {
+        for (InliningDecision decision : result) {
+            TruffleInliningProfile profile = decision.getProfile();
+            boolean inlined = decision.isInline();
+            String msg = inlined ? "inline success" : "inline failed";
+            logInlinedImpl(msg, decision.getProfile().getCallNode(), profile, depth);
+            if (inlined) {
+                logInliningDecisionRecursive(decision, depth + 1);
+            }
+        }
     }
 
     public static void logInliningDecision(TruffleInliningDecision result) {
@@ -119,7 +143,6 @@ public final class OptimizedCallTargetLog {
 
     private static void logInlinedImpl(String status, OptimizedDirectCallNode callNode, TruffleInliningProfile profile, int depth) {
         Map<String, Object> properties = new LinkedHashMap<>();
-        addASTSizeProperty(callNode.getCurrentCallTarget(), properties);
         if (profile != null) {
             properties.putAll(profile.getDebugProperties());
         }
@@ -224,20 +247,27 @@ public final class OptimizedCallTargetLog {
     }
 
     public static void addASTSizeProperty(OptimizedCallTarget target, Map<String, Object> properties) {
-        int polymorphicCount = NodeUtil.countNodes(target.getRootNode(), new NodeCountFilter() {
-            public boolean isCounted(Node node) {
-                return node.getCost() == NodeCost.POLYMORPHIC;
-            }
-        }, true);
+        if (TruffleContextSensitiveInlining.getValue() && target.getInliningDecision() != null) {
+            int deepCount = target.getInliningDecision().getCallSites().stream().filter(callSite -> callSite.isInline()).mapToInt(callSite -> callSite.getProfile().getDeepNodeCount()).sum();
+            long nodeCount = OptimizedCallUtils.countNonTrivialNodes(target, false);
+            properties.put("ASTSize", String.format("%5d/%5d", nodeCount, nodeCount + deepCount));
+        } else {
+            int polymorphicCount = NodeUtil.countNodes(target.getRootNode(), new NodeCountFilter() {
+                public boolean isCounted(Node node) {
+                    return node.getCost() == NodeCost.POLYMORPHIC;
+                }
+            }, true);
 
-        int megamorphicCount = NodeUtil.countNodes(target.getRootNode(), new NodeCountFilter() {
-            public boolean isCounted(Node node) {
-                return node.getCost() == NodeCost.MEGAMORPHIC;
-            }
-        }, true);
+            int megamorphicCount = NodeUtil.countNodes(target.getRootNode(), new NodeCountFilter() {
+                public boolean isCounted(Node node) {
+                    return node.getCost() == NodeCost.MEGAMORPHIC;
+                }
+            }, true);
 
-        String value = String.format("%4d (%d/%d)", OptimizedCallUtils.countNonTrivialNodes(target, true), polymorphicCount, megamorphicCount);
-        properties.put("ASTSize", value);
+            String value = String.format("%4d (%d/%d)", OptimizedCallUtils.countNonTrivialNodes(target, true), polymorphicCount, megamorphicCount);
+            properties.put("ASTSize", value);
+        }
+
     }
 
     static void log(int indent, String msg, String details, Map<String, Object> properties) {

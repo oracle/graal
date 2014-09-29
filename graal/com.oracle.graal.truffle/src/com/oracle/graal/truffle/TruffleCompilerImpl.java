@@ -80,7 +80,6 @@ public class TruffleCompilerImpl {
         ResolvedJavaType[] skippedExceptionTypes = getSkippedExceptionTypes(providers.getMetaAccess());
         GraphBuilderConfiguration eagerConfig = GraphBuilderConfiguration.getEagerDefault().withSkippedExceptionTypes(skippedExceptionTypes);
         this.config = GraphBuilderConfiguration.getDefault().withSkippedExceptionTypes(skippedExceptionTypes);
-
         this.truffleCache = new TruffleCacheImpl(providers, eagerConfig, config, TruffleCompilerImpl.Optimizations);
 
         this.partialEvaluator = new PartialEvaluator(providers, truffleCache);
@@ -122,8 +121,9 @@ public class TruffleCompilerImpl {
 
         long timeCompilationStarted = System.nanoTime();
         Assumptions assumptions = new Assumptions(true);
+        ContextSensitiveInlining inlining = TruffleCompilerOptions.TruffleContextSensitiveInlining.getValue() ? new ContextSensitiveInlining(compilable, new DefaultInliningPolicy()) : null;
         try (TimerCloseable a = PartialEvaluationTime.start(); Closeable c = PartialEvaluationMemUse.start()) {
-            graph = partialEvaluator.createGraph(compilable, assumptions);
+            graph = partialEvaluator.createGraph(compilable, assumptions, inlining);
         }
 
         if (Thread.currentThread().isInterrupted()) {
@@ -136,13 +136,15 @@ public class TruffleCompilerImpl {
         long timeCompilationFinished = System.nanoTime();
         int nodeCountLowered = graph.getNodeCount();
 
-        if (Thread.currentThread().isInterrupted()) {
-            return;
-        }
+        compilable.setInliningDecision(inlining);
 
+        if (TraceTruffleInlining.getValue() && inlining != null) {
+            OptimizedCallTargetLog.logInliningDecision(compilable);
+        }
         if (TraceTruffleCompilation.getValue()) {
             printTruffleCompilation(compilable, timeCompilationStarted, timePartialEvaluationFinished, nodeCountPartialEval, compilationResult, timeCompilationFinished, nodeCountLowered);
         }
+
     }
 
     private static void printTruffleCompilation(final OptimizedCallTarget compilable, long timeCompilationStarted, long timePartialEvaluationFinished, int nodeCountPartialEval,
