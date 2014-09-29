@@ -38,8 +38,6 @@ import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.LIRInstruction.OperandFlag;
-import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.StandardOp.MoveOp;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodes.*;
@@ -81,16 +79,12 @@ public class AllocatorTest extends GraalCompilerTest {
             }
         }
 
-        private ValueProcedure collectStatsProc = new ValueProcedure() {
-
-            @Override
-            public Value doValue(Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
-                if (ValueUtil.isRegister(value)) {
-                    final Register reg = ValueUtil.asRegister(value);
-                    registers.add(reg);
-                }
-                return value;
+        private ValueProcedure collectStatsProc = (value, mode, flags) -> {
+            if (ValueUtil.isRegister(value)) {
+                final Register reg = ValueUtil.asRegister(value);
+                registers.add(reg);
             }
+            return value;
         };
 
         private void collectStats(final LIRInstruction instr) {
