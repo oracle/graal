@@ -287,12 +287,19 @@ public final class SpecializationData extends TemplateMethod {
         return String.format("%s [id = %s, method = %s, guards = %s, signature = %s]", getClass().getSimpleName(), getId(), getMethod(), getGuards(), getTypeSignature());
     }
 
-    public boolean hasFrame(ProcessorContext context) {
-        for (Parameter param : getParameters()) {
-            if (ElementUtils.typeEquals(param.getType(), context.getTruffleTypes().getFrame())) {
-                return true;
+    public boolean isFrameUsedByGuard(ProcessorContext context) {
+        for (GuardExpression guard : getGuards()) {
+            if (guard.getResolvedGuard() == null) {
+                continue;
+            }
+
+            for (Parameter param : guard.getResolvedGuard().getParameters()) {
+                if (ElementUtils.typeEquals(param.getType(), context.getTruffleTypes().getFrame())) {
+                    return true;
+                }
             }
         }
+
         return false;
     }
 

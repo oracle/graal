@@ -1249,7 +1249,7 @@ public class NodeCodeGenerator extends AbstractCompilationUnitFactory<NodeData> 
 
             CodeTreeBuilder createSpecializationCall = builder.create();
             createSpecializationCall.startCall(SPECIALIZE);
-            addInternalValueParameterNames(createSpecializationCall, generic, generic, null, node.needsFrame(getContext()), null);
+            addInternalValueParameterNames(createSpecializationCall, generic, generic, null, node.isFrameUsedByAnyGuard(getContext()), null);
             createSpecializationCall.end();
             builder.declaration(baseClassName(node), "newNode", createSpecializationCall);
 
@@ -1302,7 +1302,7 @@ public class NodeCodeGenerator extends AbstractCompilationUnitFactory<NodeData> 
             String baseClassName = baseClassName(getModel().getNode());
             CodeTreeBuilder createSpecializationCall = builder.create();
             createSpecializationCall.startCall(SPECIALIZE);
-            addInternalValueParameterNames(createSpecializationCall, generic, generic, null, node.needsFrame(getContext()), null);
+            addInternalValueParameterNames(createSpecializationCall, generic, generic, null, node.isFrameUsedByAnyGuard(getContext()), null);
             createSpecializationCall.end();
             builder.declaration(baseClassName, "newNode", createSpecializationCall);
 
@@ -1356,16 +1356,19 @@ public class NodeCodeGenerator extends AbstractCompilationUnitFactory<NodeData> 
         private CodeExecutableElement createCreateSpecializationMethod(NodeData node, SpecializationGroup group) {
             CodeExecutableElement method = new CodeExecutableElement(modifiers(PROTECTED, FINAL), new GeneratedTypeMirror(ElementUtils.getPackageName(node.getTemplateType()), baseClassName(node)),
                             SPECIALIZE);
-            if (!node.needsFrame(getContext())) {
+
+            final boolean needsFrame = node.isFrameUsedByAnyGuard(getContext());
+
+            if (!needsFrame) {
                 method.getAnnotationMirrors().add(new CodeAnnotationMirror(getContext().getTruffleTypes().getSlowPath()));
             }
 
-            addInternalValueParameters(method, node.getGenericSpecialization(), node.needsFrame(getContext()), false);
+            addInternalValueParameters(method, node.getGenericSpecialization(), needsFrame, false);
             final CodeTreeBuilder builder = method.createBuilder();
             builder.tree(createExecuteTree(builder, node.getGenericSpecialization(), group, new CodeBlock<SpecializationData>() {
 
                 public CodeTree create(CodeTreeBuilder b, SpecializationData current) {
-                    return createCreateSpecializationMethodBody0(builder, current);
+                    return createCreateSpecializationMethodBody0(builder, current, needsFrame);
                 }
             }, null, false, true, false, true));
 
@@ -1374,7 +1377,7 @@ public class NodeCodeGenerator extends AbstractCompilationUnitFactory<NodeData> 
             return method;
         }
 
-        protected CodeTree createCreateSpecializationMethodBody0(CodeTreeBuilder parent, SpecializationData current) {
+        protected CodeTree createCreateSpecializationMethodBody0(CodeTreeBuilder parent, SpecializationData current, boolean useDeoptimize) {
             CodeTreeBuilder builder = new CodeTreeBuilder(parent);
             if (current.isGeneric()) {
                 builder.startReturn().nullLiteral().end();
@@ -1386,7 +1389,7 @@ public class NodeCodeGenerator extends AbstractCompilationUnitFactory<NodeData> 
                     builder.startBlock();
                 }
 
-                if (current.getNode().getGenericSpecialization().isReachable()) {
+                if (current.getNode().getGenericSpecialization().isReachable() && useDeoptimize) {
                     builder.tree(createDeoptimize(builder));
                 }
                 builder.startReturn();
