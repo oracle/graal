@@ -25,14 +25,11 @@ package com.oracle.graal.lir.test;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 import static org.junit.Assert.*;
 
-import java.util.*;
-
 import org.junit.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
-import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.asm.*;
 
 /**
@@ -129,35 +126,18 @@ public class CompositeValueReplacementTest1 {
         LIRInstruction op1 = new TestOp(compValue1);
         LIRInstruction op2 = new TestOp(compValue1);
 
-        op1.forEachInput(new InstructionValueProcedure() {
-            @Override
-            public Value doValue(LIRInstruction instruction, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
-                assertEquals(dummyValue1, value);
-                return dummyValue2;
-            }
+        op1.forEachInput((instruction, value, mode, flags) -> {
+            assertEquals(dummyValue1, value);
+            return dummyValue2;
         });
 
-        op2.forEachInput(new InstructionValueProcedure() {
-            @Override
-            public Value doValue(LIRInstruction instruction, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
-                assertEquals(dummyValue1, value);
-                return dummyValue3;
-            }
+        op2.forEachInput((instruction, value, mode, flags) -> {
+            assertEquals(dummyValue1, value);
+            return dummyValue3;
         });
 
-        op1.visitEachInput(new InstructionValueConsumer() {
-            @Override
-            public void visitValue(LIRInstruction instruction, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
-                assertEquals(dummyValue2, value);
-            }
-        });
-
-        op2.visitEachInput(new InstructionValueConsumer() {
-            @Override
-            public void visitValue(LIRInstruction instruction, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
-                assertEquals(dummyValue3, value);
-            }
-        });
+        op1.visitEachInput((instruction, value, mode, flags) -> assertEquals(dummyValue2, value));
+        op2.visitEachInput((instruction, value, mode, flags) -> assertEquals(dummyValue3, value));
     }
 
     @Test
@@ -169,34 +149,17 @@ public class CompositeValueReplacementTest1 {
         LIRInstruction op1 = new TestOp(compValue1);
         LIRInstruction op2 = new TestOp(compValue1);
 
-        op1.forEachInput(new InstructionValueProcedure() {
-            @Override
-            public Value doValue(LIRInstruction instruction, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
-                assertEquals(dummyValue1, value);
-                return dummyValue2;
-            }
+        op1.forEachInput((instruction, value, mode, flags) -> {
+            assertEquals(dummyValue1, value);
+            return dummyValue2;
         });
 
-        op2.forEachInput(new InstructionValueProcedure() {
-            @Override
-            public Value doValue(LIRInstruction instruction, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
-                assertEquals(dummyValue1, value);
-                return dummyValue3;
-            }
+        op2.forEachInput((instruction, value, mode, flags) -> {
+            assertEquals(dummyValue1, value);
+            return dummyValue3;
         });
 
-        op1.visitEachInput(new InstructionValueConsumer() {
-            @Override
-            public void visitValue(LIRInstruction instruction, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
-                assertEquals(dummyValue2, value);
-            }
-        });
-
-        op2.visitEachInput(new InstructionValueConsumer() {
-            @Override
-            public void visitValue(LIRInstruction instruction, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
-                assertEquals(dummyValue3, value);
-            }
-        });
+        op1.visitEachInput((instruction, value, mode, flags) -> assertEquals(dummyValue2, value));
+        op2.visitEachInput((instruction, value, mode, flags) -> assertEquals(dummyValue3, value));
     }
 }
