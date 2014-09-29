@@ -1143,64 +1143,44 @@ public final class LinearScan {
     void buildIntervals() {
 
         try (Indent indent = Debug.logAndIndent("build intervals")) {
-            InstructionValueConsumer outputConsumer = new InstructionValueConsumer() {
-
-                @Override
-                public void visitValue(LIRInstruction op, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
-                    if (isVariableOrRegister(operand)) {
-                        addDef((AllocatableValue) operand, op, registerPriorityOfOutputOperand(op), operand.getLIRKind());
-                        addRegisterHint(op, operand, mode, flags, true);
-                    }
+            InstructionValueConsumer outputConsumer = (op, operand, mode, flags) -> {
+                if (isVariableOrRegister(operand)) {
+                    addDef((AllocatableValue) operand, op, registerPriorityOfOutputOperand(op), operand.getLIRKind());
+                    addRegisterHint(op, operand, mode, flags, true);
                 }
             };
 
-            InstructionValueConsumer tempConsumer = new InstructionValueConsumer() {
-
-                @Override
-                public void visitValue(LIRInstruction op, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
-                    if (isVariableOrRegister(operand)) {
-                        addTemp((AllocatableValue) operand, op.id(), RegisterPriority.MustHaveRegister, operand.getLIRKind());
-                        addRegisterHint(op, operand, mode, flags, false);
-                    }
+            InstructionValueConsumer tempConsumer = (op, operand, mode, flags) -> {
+                if (isVariableOrRegister(operand)) {
+                    addTemp((AllocatableValue) operand, op.id(), RegisterPriority.MustHaveRegister, operand.getLIRKind());
+                    addRegisterHint(op, operand, mode, flags, false);
                 }
             };
 
-            InstructionValueConsumer aliveConsumer = new InstructionValueConsumer() {
-
-                @Override
-                public void visitValue(LIRInstruction op, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
-                    if (isVariableOrRegister(operand)) {
-                        RegisterPriority p = registerPriorityOfInputOperand(flags);
-                        final int opId = op.id();
-                        final int blockFrom = getFirstLirInstructionId((blockForId(opId)));
-                        addUse((AllocatableValue) operand, blockFrom, opId + 1, p, operand.getLIRKind());
-                        addRegisterHint(op, operand, mode, flags, false);
-                    }
+            InstructionValueConsumer aliveConsumer = (op, operand, mode, flags) -> {
+                if (isVariableOrRegister(operand)) {
+                    RegisterPriority p = registerPriorityOfInputOperand(flags);
+                    int opId = op.id();
+                    int blockFrom = getFirstLirInstructionId((blockForId(opId)));
+                    addUse((AllocatableValue) operand, blockFrom, opId + 1, p, operand.getLIRKind());
+                    addRegisterHint(op, operand, mode, flags, false);
                 }
             };
 
-            InstructionValueConsumer inputConsumer = new InstructionValueConsumer() {
-
-                @Override
-                public void visitValue(LIRInstruction op, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
-                    if (isVariableOrRegister(operand)) {
-                        final int opId = op.id();
-                        final int blockFrom = getFirstLirInstructionId((blockForId(opId)));
-                        RegisterPriority p = registerPriorityOfInputOperand(flags);
-                        addUse((AllocatableValue) operand, blockFrom, opId, p, operand.getLIRKind());
-                        addRegisterHint(op, operand, mode, flags, false);
-                    }
+            InstructionValueConsumer inputConsumer = (op, operand, mode, flags) -> {
+                if (isVariableOrRegister(operand)) {
+                    int opId = op.id();
+                    int blockFrom = getFirstLirInstructionId((blockForId(opId)));
+                    RegisterPriority p = registerPriorityOfInputOperand(flags);
+                    addUse((AllocatableValue) operand, blockFrom, opId, p, operand.getLIRKind());
+                    addRegisterHint(op, operand, mode, flags, false);
                 }
             };
 
-            InstructionValueConsumer stateProc = new InstructionValueConsumer() {
-
-                @Override
-                public void visitValue(LIRInstruction op, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
-                    final int opId = op.id();
-                    final int blockFrom = getFirstLirInstructionId((blockForId(opId)));
-                    addUse((AllocatableValue) operand, blockFrom, opId + 1, RegisterPriority.None, operand.getLIRKind());
-                }
+            InstructionValueConsumer stateProc = (op, operand, mode, flags) -> {
+                int opId = op.id();
+                int blockFrom = getFirstLirInstructionId((blockForId(opId)));
+                addUse((AllocatableValue) operand, blockFrom, opId + 1, RegisterPriority.None, operand.getLIRKind());
             };
 
             // create a list with all caller-save registers (cpu, fpu, xmm)
