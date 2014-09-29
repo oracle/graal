@@ -1737,37 +1737,33 @@ public final class LinearScan {
         return attributes(asRegister(operand)).isCallerSave();
     }
 
-    private InstructionValueProcedure debugInfoProc = new InstructionValueProcedure() {
-
-        @Override
-        public Value doValue(LIRInstruction op, Value operand, OperandMode valueMode, EnumSet<OperandFlag> flags) {
-            int tempOpId = op.id();
-            OperandMode mode = OperandMode.USE;
-            AbstractBlock<?> block = blockForId(tempOpId);
-            if (block.getSuccessorCount() == 1 && tempOpId == getLastLirInstructionId(block)) {
-                // generating debug information for the last instruction of a block.
-                // if this instruction is a branch, spill moves are inserted before this branch
-                // and so the wrong operand would be returned (spill moves at block boundaries
-                // are not
-                // considered in the live ranges of intervals)
-                // Solution: use the first opId of the branch target block instead.
-                final LIRInstruction instr = ir.getLIRforBlock(block).get(ir.getLIRforBlock(block).size() - 1);
-                if (instr instanceof StandardOp.JumpOp) {
-                    if (blockData.get(block).liveOut.get(operandNumber(operand))) {
-                        tempOpId = getFirstLirInstructionId(block.getSuccessors().iterator().next());
-                        mode = OperandMode.DEF;
-                    }
+    private InstructionValueProcedure debugInfoProc = (op, operand, valueMode, flags) -> {
+        int tempOpId = op.id();
+        OperandMode mode = OperandMode.USE;
+        AbstractBlock<?> block = blockForId(tempOpId);
+        if (block.getSuccessorCount() == 1 && tempOpId == getLastLirInstructionId(block)) {
+            // generating debug information for the last instruction of a block.
+            // if this instruction is a branch, spill moves are inserted before this branch
+            // and so the wrong operand would be returned (spill moves at block boundaries
+            // are not
+            // considered in the live ranges of intervals)
+            // Solution: use the first opId of the branch target block instead.
+            final LIRInstruction instr = ir.getLIRforBlock(block).get(ir.getLIRforBlock(block).size() - 1);
+            if (instr instanceof StandardOp.JumpOp) {
+                if (blockData.get(block).liveOut.get(operandNumber(operand))) {
+                    tempOpId = getFirstLirInstructionId(block.getSuccessors().iterator().next());
+                    mode = OperandMode.DEF;
                 }
             }
-
-            // Get current location of operand
-            // The operand must be live because debug information is considered when building
-            // the intervals
-            // if the interval is not live, colorLirOperand will cause an assert on failure
-            Value result = colorLirOperand((Variable) operand, tempOpId, mode);
-            assert !hasCall(tempOpId) || isStackSlot(result) || isConstant(result) || !isCallerSave(result) : "cannot have caller-save register operands at calls";
-            return result;
         }
+
+        // Get current location of operand
+        // The operand must be live because debug information is considered when building
+        // the intervals
+        // if the interval is not live, colorLirOperand will cause an assert on failure
+        Value result = colorLirOperand((Variable) operand, tempOpId, mode);
+        assert !hasCall(tempOpId) || isStackSlot(result) || isConstant(result) || !isCallerSave(result) : "cannot have caller-save register operands at calls";
+        return result;
     };
 
     private void computeDebugInfo(IntervalWalker iw, final LIRInstruction op, LIRFrameState info) {
@@ -1782,23 +1778,8 @@ public final class LinearScan {
         int numInst = instructions.size();
         boolean hasDead = false;
 
-        InstructionValueProcedure assignProc = new InstructionValueProcedure() {
-
-            @Override
-            public Value doValue(LIRInstruction op, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
-                if (isVariable(operand)) {
-                    return colorLirOperand((Variable) operand, op.id(), mode);
-                }
-                return operand;
-            }
-        };
-        InstructionStateProcedure stateProc = new InstructionStateProcedure() {
-
-            @Override
-            public void doState(LIRInstruction op, LIRFrameState state) {
-                computeDebugInfo(iw, op, state);
-            }
-        };
+        InstructionValueProcedure assignProc = (op, operand, mode, flags) -> isVariable(operand) ? colorLirOperand((Variable) operand, op.id(), mode) : operand;
+        InstructionStateProcedure stateProc = (op, state) -> computeDebugInfo(iw, op, state);
 
         for (int j = 0; j < numInst; j++) {
             final LIRInstruction op = instructions.get(j);
