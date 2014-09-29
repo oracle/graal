@@ -341,7 +341,7 @@ abstract class LIRIntrospection extends FieldIntrospection {
         }
     }
 
-    protected void appendValues(StringBuilder result, Object obj, String start, String end, String startMultiple, String endMultiple, String[] prefix, Fields... fieldsList) {
+    protected void appendValues(StringBuilder sb, Object obj, String start, String end, String startMultiple, String endMultiple, String[] prefix, Fields... fieldsList) {
         int total = 0;
         for (Fields fields : fieldsList) {
             total += fields.getCount();
@@ -350,27 +350,27 @@ abstract class LIRIntrospection extends FieldIntrospection {
             return;
         }
 
-        result.append(start);
+        sb.append(start);
         if (total > 1) {
-            result.append(startMultiple);
+            sb.append(startMultiple);
         }
         String sep = "";
         int i = 0;
         for (Fields fields : fieldsList) {
-
             for (int j = 0; j < fields.getCount(); j++) {
-                result.append(sep).append(prefix[i++]);
+                sb.append(sep).append(prefix[i]);
                 if (total > 1) {
-                    result.append(fields.getName(j)).append(": ");
+                    sb.append(fields.getName(j)).append(": ");
                 }
-                result.append(getFieldString(obj, j, fields));
+                sb.append(getFieldString(obj, j, fields));
                 sep = ", ";
             }
+            i++;
         }
         if (total > 1) {
-            result.append(endMultiple);
+            sb.append(endMultiple);
         }
-        result.append(end);
+        sb.append(end);
     }
 
     protected String getFieldString(Object obj, int index, Fields fields) {
