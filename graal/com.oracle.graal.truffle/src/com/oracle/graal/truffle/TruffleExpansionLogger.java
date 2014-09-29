@@ -137,15 +137,16 @@ public class TruffleExpansionLogger {
                 className = className.substring(lastIndex + 1, className.length());
             }
 
-            lastIndex = className.lastIndexOf('$');
-            if (lastIndex != -1) {
-                className = className.substring(lastIndex + 1, className.length());
-            }
+            className = extractInnerClassName(className);
 
             String constantType = "";
             if (targetReceiverType != null) {
-                if (!targetReceiverType.getName().equals(className)) {
-                    constantType = "<" + targetReceiverType.getName() + ">";
+                String javaName = targetReceiverType.toJavaName(false);
+
+                javaName = extractInnerClassName(javaName);
+
+                if (!javaName.equals(className)) {
+                    constantType = "<" + javaName + ">";
                 }
             }
 
@@ -162,6 +163,14 @@ public class TruffleExpansionLogger {
             for (ExpansionTree child : children) {
                 child.print(p, indent + "  ");
             }
+        }
+
+        private static String extractInnerClassName(String className) {
+            int lastIndex = className.lastIndexOf('$');
+            if (lastIndex != -1) {
+                return className.substring(lastIndex + 1, className.length());
+            }
+            return className;
         }
 
         private static String formatSource(StackTraceElement e) {
