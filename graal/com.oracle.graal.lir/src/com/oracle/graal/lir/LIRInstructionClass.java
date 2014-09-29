@@ -128,14 +128,13 @@ public class LIRInstructionClass extends LIRIntrospection {
             return result;
         }
 
-        @Override
         public void scan(Class<?> clazz) {
             if (clazz.getAnnotation(Opcode.class) != null) {
                 opcodeConstant = clazz.getAnnotation(Opcode.class).value();
             }
             opcodeField = null;
 
-            super.scan(clazz);
+            super.scan(clazz, true);
 
             if (opcodeConstant == null && opcodeField == null) {
                 opcodeConstant = clazz.getSimpleName();

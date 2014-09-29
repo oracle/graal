@@ -71,6 +71,12 @@ public class Fields {
         return offsets.length;
     }
 
+    public static void translateInto(Fields fields, ArrayList<FieldInfo> infos) {
+        for (int index = 0; index < fields.getCount(); index++) {
+            infos.add(new FieldInfo(fields.offsets[index], fields.names[index], fields.types[index]));
+        }
+    }
+
     /**
      * Gets the value of a field for a given object.
      *

@@ -65,7 +65,7 @@ public class CompositeValueClass extends LIRIntrospection {
         super(clazz);
 
         ValueFieldScanner vfs = new ValueFieldScanner(calcOffset);
-        vfs.scan(clazz);
+        vfs.scan(clazz, true);
 
         values = new Values(vfs.valueAnnotations.get(CompositeValue.Component.class));
         data = new Fields(vfs.data);
@@ -76,11 +76,6 @@ public class CompositeValueClass extends LIRIntrospection {
         public ValueFieldScanner(CalcOffset calc) {
             super(calc);
             valueAnnotations.put(CompositeValue.Component.class, new OperandModeAnnotation());
-        }
-
-        @Override
-        public void scan(Class<?> clazz) {
-            super.scan(clazz);
         }
 
         @Override

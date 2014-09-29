@@ -112,7 +112,7 @@ public abstract class FieldIntrospection extends UnsafeAccess {
         /**
          * Scans the fields in a class hierarchy.
          */
-        public void scan(Class<?> clazz) {
+        public void scan(Class<?> clazz, boolean includeSuperclasses) {
             Class<?> currentClazz = clazz;
             do {
                 for (Field field : currentClazz.getDeclaredFields()) {
@@ -123,7 +123,7 @@ public abstract class FieldIntrospection extends UnsafeAccess {
                     scanField(field, offset);
                 }
                 currentClazz = currentClazz.getSuperclass();
-            } while (currentClazz.getSuperclass() != Object.class);
+            } while (includeSuperclasses && currentClazz.getSuperclass() != Object.class);
         }
 
         protected abstract void scanField(Field field, long offset);
