@@ -54,7 +54,7 @@ public abstract class SLWaitForOptimizationBuiltin extends SLGraalRuntimeBuiltin
 
     @Specialization
     public SLFunction waitForCompilation(SLFunction function, @SuppressWarnings("unused") SLNull timeout) {
-        return waitForOptimization(function, 120000);
+        return waitForOptimization(function, 640000);
     }
 
 }
