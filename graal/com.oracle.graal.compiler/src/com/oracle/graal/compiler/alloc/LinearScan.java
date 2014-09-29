@@ -612,13 +612,9 @@ public final class LinearScan {
         intervalsSize = operandSize();
         intervals = new Interval[intervalsSize + (intervalsSize >> SPLIT_INTERVALS_CAPACITY_RIGHT_SHIFT)];
 
-        ValueConsumer setVariableConsumer = new ValueConsumer() {
-
-            @Override
-            public void visitValue(Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
-                if (isVariable(value)) {
-                    getOrCreateInterval(asVariable(value));
-                }
+        ValueConsumer setVariableConsumer = (value, mode, flags) -> {
+            if (isVariable(value)) {
+                getOrCreateInterval(asVariable(value));
             }
         };
 
@@ -678,56 +674,44 @@ public final class LinearScan {
                 List<LIRInstruction> instructions = ir.getLIRforBlock(block);
                 int numInst = instructions.size();
 
-                ValueConsumer useConsumer = new ValueConsumer() {
-
-                    @Override
-                    public void visitValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
-                        if (isVariable(operand)) {
-                            int operandNum = operandNumber(operand);
-                            if (!liveKill.get(operandNum)) {
-                                liveGen.set(operandNum);
-                                Debug.log("liveGen for operand %d", operandNum);
-                            }
-                            if (block.getLoop() != null) {
-                                intervalInLoop.setBit(operandNum, block.getLoop().getIndex());
-                            }
-                        }
-
-                        if (DetailedAsserts.getValue()) {
-                            verifyInput(block, liveKill, operand);
-                        }
-                    }
-                };
-                ValueConsumer stateConsumer = new ValueConsumer() {
-
-                    @Override
-                    public void visitValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
+                ValueConsumer useConsumer = (operand, mode, flags) -> {
+                    if (isVariable(operand)) {
                         int operandNum = operandNumber(operand);
                         if (!liveKill.get(operandNum)) {
                             liveGen.set(operandNum);
-                            Debug.log("liveGen in state for operand %d", operandNum);
+                            Debug.log("liveGen for operand %d", operandNum);
+                        }
+                        if (block.getLoop() != null) {
+                            intervalInLoop.setBit(operandNum, block.getLoop().getIndex());
                         }
                     }
+
+                    if (DetailedAsserts.getValue()) {
+                        verifyInput(block, liveKill, operand);
+                    }
                 };
-                ValueConsumer defConsumer = new ValueConsumer() {
-
-                    @Override
-                    public void visitValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
-                        if (isVariable(operand)) {
-                            int varNum = operandNumber(operand);
-                            liveKill.set(varNum);
-                            Debug.log("liveKill for operand %d", varNum);
-                            if (block.getLoop() != null) {
-                                intervalInLoop.setBit(varNum, block.getLoop().getIndex());
-                            }
+                ValueConsumer stateConsumer = (operand, mode, flags) -> {
+                    int operandNum = operandNumber(operand);
+                    if (!liveKill.get(operandNum)) {
+                        liveGen.set(operandNum);
+                        Debug.log("liveGen in state for operand %d", operandNum);
+                    }
+                };
+                ValueConsumer defConsumer = (operand, mode, flags) -> {
+                    if (isVariable(operand)) {
+                        int varNum = operandNumber(operand);
+                        liveKill.set(varNum);
+                        Debug.log("liveKill for operand %d", varNum);
+                        if (block.getLoop() != null) {
+                            intervalInLoop.setBit(varNum, block.getLoop().getIndex());
                         }
+                    }
 
-                        if (DetailedAsserts.getValue()) {
-                            // fixed intervals are never live at block boundaries, so
-                            // they need not be processed in live sets
-                            // process them only in debug mode so that this can be checked
-                            verifyTemp(liveKill, operand);
-                        }
+                    if (DetailedAsserts.getValue()) {
+                        // fixed intervals are never live at block boundaries, so
+                        // they need not be processed in live sets
+                        // process them only in debug mode so that this can be checked
+                        verifyTemp(liveKill, operand);
                     }
                 };
 
