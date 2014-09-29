@@ -56,6 +56,8 @@ public final class DataSection {
         int patchCount = 0;
         List<DataPatch> externalDataList = new ArrayList<>();
 
+        Map<Data, Integer> dataMap = new HashMap<>();
+
         // find all external data items and determine total size of data section
         for (Site site : sites) {
             if (site instanceof DataPatch) {
@@ -64,12 +66,16 @@ public final class DataSection {
                 if (dataPatch.inline) {
                     assert d instanceof PatchedData : "unnecessary data patch";
                 } else {
-                    size = NumUtil.roundUp(size, d.getAlignment());
-                    size += d.getSize(target);
-                    externalDataList.add(dataPatch);
-                    if (d instanceof PatchedData) {
-                        patchCount++;
+                    Integer existingPos = dataMap.get(d);
+                    if (existingPos == null) {
+                        size = NumUtil.roundUp(size, d.getAlignment());
+                        size += d.getSize(target);
+                        if (d instanceof PatchedData) {
+                            patchCount++;
+                        }
+                        dataMap.put(d, externalDataList.size());
                     }
+                    externalDataList.add(dataPatch);
                 }
             }
         }
@@ -82,23 +88,29 @@ public final class DataSection {
         int alignment = 0;
 
         // build data section
-        for (DataPatch dataPatch : externalDataList) {
+        for (int i = 0; i < externalDataList.size(); i++) {
+            DataPatch dataPatch = externalDataList.get(i);
             assert !dataPatch.inline;
             Data d = dataPatch.data;
 
-            alignment = Math.max(alignment, d.getAlignment());
-            index = NumUtil.roundUp(index, d.getAlignment());
-            buffer.position(index);
+            Integer existingPos = dataMap.get(d);
+            if (existingPos == i) {
+                alignment = Math.max(alignment, d.getAlignment());
+                index = NumUtil.roundUp(index, d.getAlignment());
+                buffer.position(index);
 
-            DataSectionReference reference = new DataSectionReference(index);
-            if (d instanceof PatchedData) {
-                // record patch location
-                patches[patchIndex++] = new DataPatch(index, d, true);
+                DataSectionReference reference = new DataSectionReference(index);
+                if (d instanceof PatchedData) {
+                    // record patch location
+                    patches[patchIndex++] = new DataPatch(index, d, true);
+                }
+                dataPatch.data = reference;
+
+                index += d.getSize(target);
+                d.emit(target, buffer);
+            } else {
+                dataPatch.data = externalDataList.get(existingPos).data;
             }
-            dataPatch.data = reference;
-
-            index += d.getSize(target);
-            d.emit(target, buffer);
         }
 
         this.sectionAlignment = alignment;
