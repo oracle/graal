@@ -63,7 +63,7 @@ public class LIRFrameState {
      * @param proc The procedure called for variables.
      */
     public void forEachState(LIRInstruction inst, InstructionValueProcedure proc) {
-        forEachState(inst, InstructionValueProcedureBase.wrap(proc));
+        forEachState(inst, proc);
     }
 
     void forEachState(LIRInstruction inst, InstructionValueProcedureBase proc) {
