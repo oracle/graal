@@ -65,7 +65,7 @@ public final class NodeClass extends FieldIntrospection {
     private static final DebugTimer Init_AllowedUsages = Debug.timer("NodeClass.Init.AllowedUsages");
     private static final DebugTimer Init_IterableIds = Debug.timer("NodeClass.Init.IterableIds");
 
-    private static <T extends Annotation> T getAnnotation(AnnotatedElement e, Class<T> annotationClass) {
+    private static <T extends Annotation> T getAnnotationTimed(AnnotatedElement e, Class<T> annotationClass) {
         try (TimerCloseable s = Init_AnnotationParsing.start()) {
             return e.getAnnotation(annotationClass);
         }
@@ -88,7 +88,7 @@ public final class NodeClass extends FieldIntrospection {
                 try (TimerCloseable t = Init.start()) {
                     value = (NodeClass) allClasses.get(key);
                     if (value == null) {
-                        GeneratedNode gen = getAnnotation(c, GeneratedNode.class);
+                        GeneratedNode gen = getAnnotationTimed(c, GeneratedNode.class);
                         if (gen != null) {
                             Class<? extends Node> originalNodeClass = (Class<? extends Node>) gen.value();
                             value = (NodeClass) allClasses.get(originalNodeClass);
@@ -188,7 +188,7 @@ public final class NodeClass extends FieldIntrospection {
         canGVN = Node.ValueNumberable.class.isAssignableFrom(clazz);
         startGVNNumber = clazz.hashCode();
 
-        NodeInfo info = getAnnotation(clazz, NodeInfo.class);
+        NodeInfo info = getAnnotationTimed(clazz, NodeInfo.class);
         this.nameTemplate = info.nameTemplate();
 
         try (TimerCloseable t1 = Init_AllowedUsages.start()) {
@@ -270,12 +270,12 @@ public final class NodeClass extends FieldIntrospection {
      * @param nodeClass a {@linkplain GeneratedNode non-generated} {@link Node} class
      */
     public boolean is(Class<? extends Node> nodeClass) {
-        assert getAnnotation(nodeClass, GeneratedNode.class) == null : "cannot test NodeClas against generated " + nodeClass;
+        assert nodeClass.getAnnotation(GeneratedNode.class) == null : "cannot test NodeClas against generated " + nodeClass;
         return nodeClass == getClazz();
     }
 
     public String shortName() {
-        NodeInfo info = getAnnotation(getClazz(), NodeInfo.class);
+        NodeInfo info = getClazz().getAnnotation(NodeInfo.class);
         String shortName;
         if (!info.shortName().isEmpty()) {
             shortName = info.shortName();
@@ -389,9 +389,9 @@ public final class NodeClass extends FieldIntrospection {
 
         @Override
         protected void scanField(Field field, long offset) {
-            Input inputAnnotation = getAnnotation(field, Node.Input.class);
-            OptionalInput optionalInputAnnotation = getAnnotation(field, Node.OptionalInput.class);
-            Successor successorAnnotation = getAnnotation(field, Successor.class);
+            Input inputAnnotation = getAnnotationTimed(field, Node.Input.class);
+            OptionalInput optionalInputAnnotation = getAnnotationTimed(field, Node.OptionalInput.class);
+            Successor successorAnnotation = getAnnotationTimed(field, Successor.class);
             try (TimerCloseable s = Init_FieldScanningInner.start()) {
                 Class<?> type = field.getType();
                 int modifiers = field.getModifiers();
