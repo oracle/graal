@@ -54,7 +54,7 @@ public abstract class CompositeValue extends Value implements Cloneable {
         valueClass = CompositeValueClass.get(getClass());
     }
 
-    final CompositeValue forEachComponent(LIRInstruction inst, OperandMode mode, InstructionValueProcedureBase proc) {
+    final CompositeValue forEachComponent(LIRInstruction inst, OperandMode mode, InstructionValueProcedure proc) {
         return valueClass.forEachComponent(inst, this, mode, proc);
     }
 

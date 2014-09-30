@@ -32,7 +32,7 @@ import com.oracle.graal.lir.LIRInstruction.OperandMode;
  * Non-modifying version of {@link InstructionValueProcedure}.
  */
 @FunctionalInterface
-public interface InstructionValueConsumer extends InstructionValueProcedureBase {
+public interface InstructionValueConsumer extends InstructionValueProcedure {
 
     /**
      * Iterator method to be overwritten.
@@ -44,7 +44,7 @@ public interface InstructionValueConsumer extends InstructionValueProcedureBase 
      */
     void visitValue(LIRInstruction instruction, Value value, OperandMode mode, EnumSet<OperandFlag> flags);
 
-    default Value processValue(LIRInstruction instruction, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
+    default Value doValue(LIRInstruction instruction, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
         visitValue(instruction, value, mode, flags);
         return value;
     }
