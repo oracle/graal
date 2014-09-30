@@ -23,24 +23,25 @@
 package com.oracle.graal.compiler.common.type;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.*;
 
 /**
  * Information about arithmetic operations.
  */
 public final class ArithmeticOpTable {
 
-    protected UnaryOp neg;
-    protected BinaryOp add;
-    protected BinaryOp sub;
+    private final UnaryOp neg;
+    private final BinaryOp add;
+    private final BinaryOp sub;
 
-    protected BinaryOp mul;
-    protected BinaryOp div;
-    protected BinaryOp rem;
+    private final BinaryOp mul;
+    private final BinaryOp div;
+    private final BinaryOp rem;
 
-    protected UnaryOp not;
-    protected BinaryOp and;
-    protected BinaryOp or;
-    protected BinaryOp xor;
+    private final UnaryOp not;
+    private final BinaryOp and;
+    private final BinaryOp or;
+    private final BinaryOp xor;
 
     public static ArithmeticOpTable forStamp(Stamp s) {
         if (s instanceof ArithmeticStamp) {
@@ -50,7 +51,97 @@ public final class ArithmeticOpTable {
         }
     }
 
-    public static final ArithmeticOpTable EMPTY = new ArithmeticOpTable();
+    public static final ArithmeticOpTable EMPTY = create();
+
+    public static ArithmeticOpTable create(Op... ops) {
+        UnaryOp neg = null;
+        BinaryOp add = null;
+        BinaryOp sub = null;
+
+        BinaryOp mul = null;
+        BinaryOp div = null;
+        BinaryOp rem = null;
+
+        UnaryOp not = null;
+        BinaryOp and = null;
+        BinaryOp or = null;
+        BinaryOp xor = null;
+
+        for (Op op : ops) {
+            if (op == null) {
+                continue;
+            }
+
+            if (op instanceof UnaryOp) {
+                UnaryOp unary = (UnaryOp) op;
+                switch (unary.getOperator()) {
+                    case '-':
+                        assert neg == null;
+                        neg = unary;
+                        break;
+                    case '~':
+                        assert not == null;
+                        not = unary;
+                        break;
+                    default:
+                        throw GraalInternalError.shouldNotReachHere("unknown unary operator " + unary.getOperator());
+                }
+            } else {
+                BinaryOp binary = (BinaryOp) op;
+                switch (binary.getOperator()) {
+                    case '+':
+                        assert add == null;
+                        add = binary;
+                        break;
+                    case '-':
+                        assert sub == null;
+                        sub = binary;
+                        break;
+                    case '*':
+                        assert mul == null;
+                        mul = binary;
+                        break;
+                    case '/':
+                        assert div == null;
+                        div = binary;
+                        break;
+                    case '%':
+                        assert rem == null;
+                        rem = binary;
+                        break;
+                    case '&':
+                        assert and == null;
+                        and = binary;
+                        break;
+                    case '|':
+                        assert or == null;
+                        or = binary;
+                        break;
+                    case '^':
+                        assert xor == null;
+                        xor = binary;
+                        break;
+                    default:
+                        throw GraalInternalError.shouldNotReachHere("unknown binary operator " + binary.getOperator());
+                }
+            }
+        }
+
+        return new ArithmeticOpTable(neg, add, sub, mul, div, rem, not, and, or, xor);
+    }
+
+    private ArithmeticOpTable(UnaryOp neg, BinaryOp add, BinaryOp sub, BinaryOp mul, BinaryOp div, BinaryOp rem, UnaryOp not, BinaryOp and, BinaryOp or, BinaryOp xor) {
+        this.neg = neg;
+        this.add = add;
+        this.sub = sub;
+        this.mul = mul;
+        this.div = div;
+        this.rem = rem;
+        this.not = not;
+        this.and = and;
+        this.or = or;
+        this.xor = xor;
+    }
 
     /**
      * Describes the unary negation operation.
@@ -122,10 +213,32 @@ public final class ArithmeticOpTable {
         return xor;
     }
 
+    public abstract static class Op {
+
+        private final char operator;
+
+        protected Op(char operator) {
+            this.operator = operator;
+        }
+
+        public char getOperator() {
+            return operator;
+        }
+
+        @Override
+        public String toString() {
+            return Character.toString(operator);
+        }
+    }
+
     /**
      * Describes a unary arithmetic operation.
      */
-    public abstract static class UnaryOp {
+    public abstract static class UnaryOp extends Op {
+
+        protected UnaryOp(char operation) {
+            super(operation);
+        }
 
         /**
          * Apply the operation to a {@link Constant}.
@@ -141,12 +254,13 @@ public final class ArithmeticOpTable {
     /**
      * Describes a binary arithmetic operation.
      */
-    public abstract static class BinaryOp {
+    public abstract static class BinaryOp extends Op {
 
         private final boolean associative;
         private final boolean commutative;
 
-        protected BinaryOp(boolean associative, boolean commutative) {
+        protected BinaryOp(char operation, boolean associative, boolean commutative) {
+            super(operation);
             this.associative = associative;
             this.commutative = commutative;
         }
