@@ -231,23 +231,6 @@ public class BinaryGraphPrinter implements GraphPrinter {
         }
     }
 
-    private void writeNodeClass(Node node, NodeClass nodeClass) throws IOException {
-        Character id = constantPool.get(nodeClass);
-        if (id == null) {
-            char index = constantPool.add(nodeClass);
-            writeByte(POOL_NEW);
-            writeShort(index);
-            writeByte(POOL_NODE_CLASS);
-            writeString(nodeClass.getJavaClass().getSimpleName());
-            writeString(node.getNameTemplate());
-            writeEdgesInfo(nodeClass, Inputs);
-            writeEdgesInfo(nodeClass, Successors);
-        } else {
-            writeByte(POOL_NODE_CLASS);
-            writeShort(id.charValue());
-        }
-    }
-
     private void writePoolObject(Object object) throws IOException {
         if (object == null) {
             writeByte(POOL_NULL);
@@ -261,6 +244,8 @@ public class BinaryGraphPrinter implements GraphPrinter {
                 writeByte(POOL_ENUM);
             } else if (object instanceof Class<?> || object instanceof JavaType) {
                 writeByte(POOL_CLASS);
+            } else if (object instanceof NodeClass) {
+                writeByte(POOL_NODE_CLASS);
             } else if (object instanceof ResolvedJavaMethod) {
                 writeByte(POOL_METHOD);
             } else if (object instanceof ResolvedJavaField) {
@@ -282,7 +267,6 @@ public class BinaryGraphPrinter implements GraphPrinter {
     }
 
     private void addPoolEntry(Object object) throws IOException {
-        assert !(object instanceof NodeClass);
         char index = constantPool.add(object);
         writeByte(POOL_NEW);
         writeShort(index);
@@ -309,6 +293,13 @@ public class BinaryGraphPrinter implements GraphPrinter {
             writeByte(POOL_CLASS);
             writeString(type.toJavaName());
             writeByte(KLASS);
+        } else if (object instanceof NodeClass) {
+            NodeClass nodeClass = (NodeClass) object;
+            writeByte(POOL_NODE_CLASS);
+            writeString(nodeClass.getJavaClass().getSimpleName());
+            writeString(nodeClass.getNameTemplate());
+            writeEdgesInfo(nodeClass, Inputs);
+            writeEdgesInfo(nodeClass, Successors);
         } else if (object instanceof ResolvedJavaMethod) {
             writeByte(POOL_METHOD);
             ResolvedJavaMethod method = ((ResolvedJavaMethod) object);
@@ -431,7 +422,7 @@ public class BinaryGraphPrinter implements GraphPrinter {
                 }
             }
             writeInt(getNodeId(node));
-            writeNodeClass(node, nodeClass);
+            writePoolObject(nodeClass);
             writeByte(node.predecessor() == null ? 0 : 1);
             // properties
             writeShort((char) props.size());

@@ -354,7 +354,7 @@ class CFGPrinter extends CompilationPrinter {
         out.print(HOVER_END).println(COLUMN_END);
 
         out.print("instruction ");
-        out.print(HOVER_START).print(node.getShortName()).print(HOVER_SEP).print(node.getClass().getName()).print(HOVER_END).print(" ");
+        out.print(HOVER_START).print(node.getNodeClass().shortName()).print(HOVER_SEP).print(node.getClass().getName()).print(HOVER_END).print(" ");
         printNamedNodes(node, node.inputs().iterator(), "", "", "#NDF");
         printNamedNodes(node, node.successors().iterator(), "#", "", "#NDF");
         for (Map.Entry<Object, Object> entry : props.entrySet()) {

@@ -32,12 +32,4 @@ public class EndNode extends AbstractEndNode {
 
     EndNode() {
     }
-
-    @Override
-    public String getShortName() {
-        if (getNodeClass().is(EndNode.class)) {
-            return getClass().getSimpleName();
-        }
-        return super.getShortName();
-    }
 }

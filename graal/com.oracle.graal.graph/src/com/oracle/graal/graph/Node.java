@@ -782,28 +782,6 @@ public abstract class Node implements Cloneable, Formattable {
         return USE_GENERATED_NODES || getNodeClass().isLeafNode();
     }
 
-    /**
-     * Gets the value used by {@link #toString(Verbosity)} to build a {@linkplain Verbosity#Name
-     * short} name.
-     */
-    public String getShortName() {
-        String shortName = getClass().getSimpleName().toString();
-        if (shortName.endsWith("Node")) {
-            shortName = shortName.substring(0, shortName.length() - 4);
-        }
-        return shortName;
-    }
-
-    /**
-     * The template used to build the {@link Verbosity#Name} version. Variable parts are specified
-     * using &#123;i#inputName&#125; or &#123;p#propertyName&#125;.
-     *
-     * The default implementation of this method in {@link Node} returns {@code getShortName()}.
-     */
-    public String getNameTemplate() {
-        return getShortName();
-    }
-
     protected void afterClone(@SuppressWarnings("unused") Node other) {
     }
 
@@ -930,7 +908,7 @@ public abstract class Node implements Cloneable, Formattable {
             case Id:
                 return Integer.toString(id);
             case Name:
-                return getShortName();
+                return getNodeClass().shortName();
             case Short:
                 return toString(Verbosity.Id) + "|" + toString(Verbosity.Name);
             case Long:

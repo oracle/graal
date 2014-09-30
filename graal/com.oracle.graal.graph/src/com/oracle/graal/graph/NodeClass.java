@@ -128,6 +128,7 @@ public final class NodeClass extends FieldIntrospection {
 
     private final boolean canGVN;
     private final int startGVNNumber;
+    private final String nameTemplate;
     private final int iterableId;
     private final EnumSet<InputType> allowedUsageTypes;
     private int[] iterableIds;
@@ -188,6 +189,8 @@ public final class NodeClass extends FieldIntrospection {
         startGVNNumber = clazz.hashCode();
 
         NodeInfo info = getAnnotation(clazz, NodeInfo.class);
+        this.nameTemplate = info.nameTemplate();
+
         try (TimerCloseable t1 = Init_AllowedUsages.start()) {
             allowedUsageTypes = superNodeClass == null ? EnumSet.noneOf(InputType.class) : superNodeClass.allowedUsageTypes.clone();
             allowedUsageTypes.addAll(Arrays.asList(info.allowedUsageTypes()));
@@ -269,6 +272,20 @@ public final class NodeClass extends FieldIntrospection {
     public boolean is(Class<? extends Node> nodeClass) {
         assert getAnnotation(nodeClass, GeneratedNode.class) == null : "cannot test NodeClas against generated " + nodeClass;
         return nodeClass == getClazz();
+    }
+
+    public String shortName() {
+        NodeInfo info = getAnnotation(getClazz(), NodeInfo.class);
+        String shortName;
+        if (!info.shortName().isEmpty()) {
+            shortName = info.shortName();
+        } else {
+            shortName = getClazz().getSimpleName();
+            if (shortName.endsWith("Node") && !shortName.equals("StartNode") && !shortName.equals("EndNode")) {
+                shortName = shortName.substring(0, shortName.length() - 4);
+            }
+        }
+        return shortName;
     }
 
     public int[] iterableIds() {
@@ -696,7 +713,16 @@ public final class NodeClass extends FieldIntrospection {
         return getClazz();
     }
 
+    /**
+     * The template used to build the {@link Verbosity#Name} version. Variable parts are specified
+     * using &#123;i#inputName&#125; or &#123;p#propertyName&#125;.
+     */
+    public String getNameTemplate() {
+        return nameTemplate.isEmpty() ? shortName() : nameTemplate;
+    }
+
     interface InplaceUpdateClosure {
+
         Node replacement(Node node, Edges.Type type);
     }
 
