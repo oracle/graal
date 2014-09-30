@@ -43,8 +43,14 @@ public final class ArithmeticOpTable {
     protected BinaryOp xor;
 
     public static ArithmeticOpTable forStamp(Stamp s) {
-        return ((ArithmeticStamp) s).getOps();
+        if (s instanceof ArithmeticStamp) {
+            return ((ArithmeticStamp) s).getOps();
+        } else {
+            return EMPTY;
+        }
     }
+
+    public static final ArithmeticOpTable EMPTY = new ArithmeticOpTable();
 
     /**
      * Describes the unary negation operation.
