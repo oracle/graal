@@ -83,10 +83,12 @@ public class FloatConvertNode extends ConvertNode implements Lowerable, Arithmet
                 return StampFactory.forKind(Kind.Long);
             case I2F:
             case L2F:
+                return StampFactory.forFloat(Kind.Float, ((IntegerStamp) input.stamp()).lowerBound(), ((IntegerStamp) input.stamp()).upperBound(), true);
             case D2F:
                 return StampFactory.forKind(Kind.Float);
             case I2D:
             case L2D:
+                return StampFactory.forFloat(Kind.Double, ((IntegerStamp) input.stamp()).lowerBound(), ((IntegerStamp) input.stamp()).upperBound(), true);
             case F2D:
                 return StampFactory.forKind(Kind.Double);
             default:
