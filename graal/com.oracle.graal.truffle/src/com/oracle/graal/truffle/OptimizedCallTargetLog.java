@@ -270,6 +270,10 @@ public final class OptimizedCallTargetLog {
 
     }
 
+    public static void logPerformanceWarning(String details, Map<String, Object> properties) {
+        log(0, "perf warn", details, properties);
+    }
+
     static void log(int indent, String msg, String details, Map<String, Object> properties) {
         StringBuilder sb = new StringBuilder();
         sb.append(String.format("[truffle] %-16s ", msg));

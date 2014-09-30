@@ -196,6 +196,16 @@ public class TruffleCacheImpl implements TruffleCache {
                 }
             }
 
+            if (TruffleCompilerOptions.PrintTrufflePerformanceWarnings.getValue()) {
+                int warnNodeCount = TruffleCompilerOptions.TrufflePerformanceWarningGraalNodeCount.getValue();
+                if (graph.getNodeCount() > warnNodeCount) {
+                    Map<String, Object> map = new LinkedHashMap<>();
+                    map.put("nodeCount", graph.getNodeCount());
+                    map.put("method", method.toString());
+                    OptimizedCallTargetLog.logPerformanceWarning(String.format("Method on fast path contains more than %d graal nodes.", warnNodeCount), map);
+                }
+            }
+
             cache.put(key, graph);
             if (TruffleCompilerOptions.TraceTruffleCacheDetails.getValue()) {
                 TTY.println(String.format("[truffle] added to graph cache method %s with %d nodes.", method, graph.getNodeCount()));

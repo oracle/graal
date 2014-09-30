@@ -68,6 +68,9 @@ public class TruffleCompilerOptions {
     @Option(help = "Allow inlining of less hot candidates if tree size is small")
     public static final OptionValue<Integer> TruffleInliningTrivialSize = new OptionValue<>(10);
 
+    @Option(help = "Defines the number of graal nodes that triggers a performance warning.")
+    public static final OptionValue<Integer> TrufflePerformanceWarningGraalNodeCount = new OptionValue<>(1000);
+
     @Option(help = "Enable call target splitting")
     public static final OptionValue<Boolean> TruffleSplitting = new OptionValue<>(true);
     @Option(help = "Experimental: Enable the new version of truffle splitting.")

@@ -61,6 +61,7 @@ import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.nodes.Node.Child;
 import com.oracle.truffle.api.nodes.Node.Children;
+import static com.oracle.graal.truffle.OptimizedCallTargetLog.*;
 
 /**
  * Class performing the partial evaluation starting from the root node of an AST.
@@ -280,8 +281,7 @@ public class PartialEvaluator {
         InliningDecision decision = inlining.findByCall(callNode);
         if (decision == null) {
             if (TruffleCompilerOptions.PrintTrufflePerformanceWarnings.getValue()) {
-                OptimizedCallTargetLog.log(0, "perf warn", String.format(
-                                "%s '%s' is reached using partial evaluation but it is not reachable in the Truffle AST.  Did you miss @%s or @%s annotation on a node field?. ",
+                logPerformanceWarning(String.format("%s '%s' is reached using partial evaluation but it is not reachable in the Truffle AST.  Did you miss @%s or @%s annotation on a node field?. ",
                                 DirectCallNode.class.getSimpleName(), callNode, Child.class.getSimpleName(), Children.class.getSimpleName()), callNode.getRootNode().getDebugProperties());
             }
             return null;
@@ -296,7 +296,7 @@ public class PartialEvaluator {
         OptimizedCallTarget currentTarget = decision.getProfile().getCallNode().getCurrentCallTarget();
         if (decision.getTarget() != currentTarget) {
             if (TruffleCompilerOptions.PrintTrufflePerformanceWarnings.getValue()) {
-                OptimizedCallTargetLog.log(0, "perf warn",
+                logPerformanceWarning(
                                 String.format("CallTarget '%s' changed to '%s' during compilation for call node '%s'. Call node was not inlined.", decision.getTarget(), currentTarget, callNode), null);
 
             }
