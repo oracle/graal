@@ -234,6 +234,9 @@ public class BinaryGraphPrinter implements GraphPrinter {
     private void writeNodeClass(Node node, NodeClass nodeClass) throws IOException {
         Character id = constantPool.get(nodeClass);
         if (id == null) {
+            char index = constantPool.add(nodeClass);
+            writeByte(POOL_NEW);
+            writeShort(index);
             writeByte(POOL_NODE_CLASS);
             writeString(nodeClass.getJavaClass().getSimpleName());
             writeString(node.getNameTemplate());
