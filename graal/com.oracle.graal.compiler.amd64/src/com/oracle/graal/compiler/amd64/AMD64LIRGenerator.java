@@ -114,18 +114,8 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
                 return NumUtil.isInt(c.asLong()) && !getCodeCache().needsDataPatch(c);
             case Object:
                 return c.isNull();
-            case Boolean:
-            case Byte:
-            case Char:
-            case Int:
-            case Short:
-            case Illegal:
-                return true;
-            case Double:
-            case Float:
-                return false;
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                return true;
         }
     }
 
