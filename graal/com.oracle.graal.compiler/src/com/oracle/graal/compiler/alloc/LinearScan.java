@@ -1693,45 +1693,41 @@ public final class LinearScan {
         return attributes(asRegister(operand)).isCallerSave();
     }
 
-    // NOTE that this is an anonymous class rather than a lambda to avoid javac from complaining
-    // about uninitialized variables.
-    private InstructionValueProcedure debugInfoProc = new InstructionValueProcedure() {
-
-        public Value doValue(LIRInstruction op, Value operand, OperandMode valueMode, EnumSet<OperandFlag> flags) {
-            int tempOpId = op.id();
-            OperandMode mode = OperandMode.USE;
-            AbstractBlock<?> block = blockForId(tempOpId);
-            if (block.getSuccessorCount() == 1 && tempOpId == getLastLirInstructionId(block)) {
-                // generating debug information for the last instruction of a block.
-                // if this instruction is a branch, spill moves are inserted before this branch
-                // and so the wrong operand would be returned (spill moves at block boundaries
-                // are not
-                // considered in the live ranges of intervals)
-                // Solution: use the first opId of the branch target block instead.
-                final LIRInstruction instr = ir.getLIRforBlock(block).get(ir.getLIRforBlock(block).size() - 1);
-                if (instr instanceof StandardOp.JumpOp) {
-                    if (blockData.get(block).liveOut.get(operandNumber(operand))) {
-                        tempOpId = getFirstLirInstructionId(block.getSuccessors().iterator().next());
-                        mode = OperandMode.DEF;
-                    }
+    @SuppressWarnings("unused")
+    private Value debugInfoProcedure(LIRInstruction op, Value operand, OperandMode valueMode, EnumSet<OperandFlag> flags) {
+        int tempOpId = op.id();
+        OperandMode mode = OperandMode.USE;
+        AbstractBlock<?> block = blockForId(tempOpId);
+        if (block.getSuccessorCount() == 1 && tempOpId == getLastLirInstructionId(block)) {
+            // generating debug information for the last instruction of a block.
+            // if this instruction is a branch, spill moves are inserted before this branch
+            // and so the wrong operand would be returned (spill moves at block boundaries
+            // are not
+            // considered in the live ranges of intervals)
+            // Solution: use the first opId of the branch target block instead.
+            final LIRInstruction instr = ir.getLIRforBlock(block).get(ir.getLIRforBlock(block).size() - 1);
+            if (instr instanceof StandardOp.JumpOp) {
+                if (blockData.get(block).liveOut.get(operandNumber(operand))) {
+                    tempOpId = getFirstLirInstructionId(block.getSuccessors().iterator().next());
+                    mode = OperandMode.DEF;
                 }
             }
-
-            // Get current location of operand
-            // The operand must be live because debug information is considered when building
-            // the intervals
-            // if the interval is not live, colorLirOperand will cause an assert on failure
-            Value result = colorLirOperand((Variable) operand, tempOpId, mode);
-            assert !hasCall(tempOpId) || isStackSlot(result) || isConstant(result) || !isCallerSave(result) : "cannot have caller-save register operands at calls";
-            return result;
         }
-    };
+
+        // Get current location of operand
+        // The operand must be live because debug information is considered when building
+        // the intervals
+        // if the interval is not live, colorLirOperand will cause an assert on failure
+        Value result = colorLirOperand((Variable) operand, tempOpId, mode);
+        assert !hasCall(tempOpId) || isStackSlot(result) || isConstant(result) || !isCallerSave(result) : "cannot have caller-save register operands at calls";
+        return result;
+    }
 
     private void computeDebugInfo(IntervalWalker iw, final LIRInstruction op, LIRFrameState info) {
         info.initDebugInfo(frameMap, !op.destroysCallerSavedRegisters() || !callKillsRegisters);
         markFrameLocations(iw, op, info);
 
-        info.forEachState(op, debugInfoProc);
+        info.forEachState(op, this::debugInfoProcedure);
         info.finish(op, frameMap);
     }
 
