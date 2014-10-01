@@ -88,9 +88,9 @@ public final class NodeClass extends FieldIntrospection {
                 try (TimerCloseable t = Init.start()) {
                     value = (NodeClass) allClasses.get(key);
                     if (value == null) {
-                        GeneratedNode gen = getAnnotationTimed(c, GeneratedNode.class);
-                        if (gen != null) {
-                            Class<? extends Node> originalNodeClass = (Class<? extends Node>) gen.value();
+                        Class<?> superclass = c.getSuperclass();
+                        if (GeneratedNode.class.isAssignableFrom(c)) {
+                            Class<? extends Node> originalNodeClass = (Class<? extends Node>) superclass;
                             value = (NodeClass) allClasses.get(originalNodeClass);
                             assert value != null;
                             if (value.genClass == null) {
@@ -99,7 +99,6 @@ public final class NodeClass extends FieldIntrospection {
                                 assert value.genClass == c;
                             }
                         } else {
-                            Class<?> superclass = c.getSuperclass();
                             NodeClass superNodeClass = null;
                             if (superclass != NODE_CLASS) {
                                 // Ensure NodeClass for superclass exists
@@ -261,7 +260,7 @@ public final class NodeClass extends FieldIntrospection {
      *
      * <pre>
      *     if (node.getNodeClass().is(BeginNode.class)) { ... }
-     * 
+     *
      *     // Due to generated Node classes, the test below
      *     // is *not* the same as the test above:
      *     if (node.getClass() == BeginNode.class) { ... }
@@ -270,7 +269,7 @@ public final class NodeClass extends FieldIntrospection {
      * @param nodeClass a {@linkplain GeneratedNode non-generated} {@link Node} class
      */
     public boolean is(Class<? extends Node> nodeClass) {
-        assert nodeClass.getAnnotation(GeneratedNode.class) == null : "cannot test NodeClas against generated " + nodeClass;
+        assert !GeneratedNode.class.isAssignableFrom(nodeClass) : "cannot test NodeClass against generated " + nodeClass;
         return nodeClass == getClazz();
     }
 

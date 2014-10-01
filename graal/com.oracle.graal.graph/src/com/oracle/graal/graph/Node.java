@@ -170,8 +170,7 @@ public abstract class Node implements Cloneable, Formattable {
     public static final int NOT_ITERABLE = -1;
 
     public Node() {
-        assert USE_GENERATED_NODES == (getClass().getAnnotation(GeneratedNode.class) != null) : getClass() + " is not a generated Node class - forgot @" + NodeInfo.class.getSimpleName() +
-                        " on class declaration?";
+        assert USE_GENERATED_NODES == this instanceof GeneratedNode : getClass() + " is not a generated Node class - forgot @" + NodeInfo.class.getSimpleName() + " on class declaration?";
         init();
     }
 

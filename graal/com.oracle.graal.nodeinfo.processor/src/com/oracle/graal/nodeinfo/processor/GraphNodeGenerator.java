@@ -327,9 +327,7 @@ public class GraphNodeGenerator {
 
         if (!constructorsOnly) {
             DeclaredType generatedNode = (DeclaredType) getType(GeneratedNode.class);
-            CodeAnnotationMirror generatedNodeMirror = new CodeAnnotationMirror(generatedNode);
-            generatedNodeMirror.setElementValue(generatedNodeMirror.findExecutableElement("value"), new CodeAnnotationValue(node.asType()));
-            genClass.getAnnotationMirrors().add(generatedNodeMirror);
+            genClass.getImplements().add(generatedNode);
 
             scanFields(node);
 
