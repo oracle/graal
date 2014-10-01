@@ -211,8 +211,8 @@ public final class GraphOrder {
                         if (node instanceof AbstractEndNode) {
                             MergeNode merge = ((AbstractEndNode) node).merge();
                             for (PhiNode phi : merge.phis()) {
-                                assert currentState.isMarked(phi.valueAt((AbstractEndNode) node)) : phi.valueAt((AbstractEndNode) node) + " not available at phi " + phi + " / end " + node +
-                                                " in block " + block;
+                                ValueNode phiValue = phi.valueAt((AbstractEndNode) node);
+                                assert phiValue == null || currentState.isMarked(phiValue) : phiValue + " not available at phi " + phi + " / end " + node + " in block " + block;
                             }
                         }
                         if (stateAfter != null) {
