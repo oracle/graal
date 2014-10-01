@@ -132,6 +132,11 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider,
                         throw new GraalInternalError("Unsupported value for DebugSummaryValue: %s", summary);
                 }
             }
+            if (Debug.areUnconditionalMetricsEnabled() || Debug.areUnconditionalTimersEnabled() || (Debug.isEnabled() && areMetricsOrTimersEnabled())) {
+                // This must be created here to avoid loading the DebugValuesPrinter class
+                // during shutdown() which in turn can cause a deadlock
+                debugValuesPrinter = new DebugValuesPrinter();
+            }
         }
 
         // Complete initialization of backends
@@ -247,6 +252,7 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider,
 
     protected final HotSpotVMConfig config;
     private final HotSpotBackend hostBackend;
+    private DebugValuesPrinter debugValuesPrinter;
 
     /**
      * Graal mirrors are stored as a {@link ClassValue} associated with the {@link Class} of the
@@ -581,7 +587,9 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider,
      */
     @SuppressWarnings("unused")
     private void shutdown() throws Exception {
-        new DebugValuesPrinter().printDebugValues(ResetDebugValuesAfterBootstrap.getValue() ? "application" : null, false);
+        if (debugValuesPrinter != null) {
+            debugValuesPrinter.printDebugValues(ResetDebugValuesAfterBootstrap.getValue() ? "application" : null, false);
+        }
         phaseTransition("final");
 
         SnippetCounter.printGroups(TTY.out().out());
