@@ -473,6 +473,13 @@ public class GraphNodeGenerator {
                         b.startStatement().string("long longValue = Double.doubleToRawLongBits(", fname, ")").end();
                         b.startStatement().string("number += 23 * longValue ^ (longValue >>> 32)").end();
                         break;
+                    case ARRAY:
+                        if (((ArrayType) f.asType()).getComponentType().getKind().isPrimitive()) {
+                            b.startStatement().string("number += 31 * Arrays.hashCode(", fname, ")").end();
+                        } else {
+                            b.startStatement().string("number += 31 * Arrays.deepHashCode(", fname, ")").end();
+                        }
+                        break;
                     default:
                         b.startIf().string(fname, " != null").end().startBlock();
                         b.startStatement().string("number += 29 * ", fname + ".hashCode()").end();
