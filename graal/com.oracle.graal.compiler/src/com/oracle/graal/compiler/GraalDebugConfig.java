@@ -60,8 +60,6 @@ public class GraalDebugConfig implements DebugConfig {
     public static final OptionValue<String> DebugValueSummary = new OptionValue<>("Name");
     @Option(help = "Omit reporting 0-value metrics")
     public static final OptionValue<Boolean> SuppressZeroDebugValues = new OptionValue<>(false);
-    @Option(help = "Report and reset metrics after bootstrapping")
-    public static final OptionValue<Boolean> ResetDebugValuesAfterBootstrap = new OptionValue<>(true);
     @Option(help = "Send Graal IR to dump handlers on error")
     public static final OptionValue<Boolean> DumpOnError = new OptionValue<>(false);
     @Option(help = "Enable expensive assertions")
