@@ -46,8 +46,6 @@ import com.oracle.truffle.dsl.processor.java.model.*;
  */
 public class GraphNodeGenerator {
 
-    @SuppressWarnings("unused") private static final boolean GENERATE_ASSERTIONS = false;
-
     private final GraphNodeProcessor env;
     private final Types types;
     private final Elements elements;
@@ -57,11 +55,11 @@ public class GraphNodeGenerator {
     private final TypeElement Successor;
 
     final TypeElement Node;
-    @SuppressWarnings("unused") private final TypeElement NodeList;
     private final TypeElement NodeInputList;
     private final TypeElement NodeSuccessorList;
     private final TypeElement ValueNumberable;
-    @SuppressWarnings("unused") private final TypeElement Position;
+    private final TypeElement DebugMetric;
+    private final TypeElement Debug;
 
     private final List<VariableElement> inputFields = new ArrayList<>();
     private final List<VariableElement> inputListFields = new ArrayList<>();
@@ -84,11 +82,11 @@ public class GraphNodeGenerator {
         this.OptionalInput = getTypeElement("com.oracle.graal.graph.Node.OptionalInput");
         this.Successor = getTypeElement("com.oracle.graal.graph.Node.Successor");
         this.Node = getTypeElement("com.oracle.graal.graph.Node");
-        this.NodeList = getTypeElement("com.oracle.graal.graph.NodeList");
         this.NodeInputList = getTypeElement("com.oracle.graal.graph.NodeInputList");
         this.NodeSuccessorList = getTypeElement("com.oracle.graal.graph.NodeSuccessorList");
-        this.Position = getTypeElement("com.oracle.graal.graph.Position");
         this.ValueNumberable = getTypeElement("com.oracle.graal.graph.Node.ValueNumberable");
+        this.DebugMetric = getTypeElement("com.oracle.graal.debug.DebugMetric");
+        this.Debug = getTypeElement("com.oracle.graal.debug.Debug");
     }
 
     @SafeVarargs
@@ -443,7 +441,15 @@ public class GraphNodeGenerator {
 
     private void createValueNumberMethod(TypeElement node) {
         if (isAssignableWithErasure(node, ValueNumberable)) {
+            String simpleName = node.getSimpleName().toString();
+            CodeVariableElement cacheHitMetric = new CodeVariableElement(modifiers(PRIVATE, STATIC, FINAL), DebugMetric.asType(), "ValueNumberableCache_" + simpleName + "_Hit");
+            CodeVariableElement cacheMissMetric = new CodeVariableElement(modifiers(PRIVATE, STATIC, FINAL), DebugMetric.asType(), "ValueNumberableCache_" + simpleName + "_Miss");
+            cacheHitMetric.createInitBuilder().type(Debug.asType()).string(".metric(\"", cacheHitMetric.getName().replace('_', '.') + "\")").end();
+            cacheMissMetric.createInitBuilder().type(Debug.asType()).string(".metric(\"", cacheMissMetric.getName().replace('_', '.') + "\")").end();
+
             genClass.add(new CodeVariableElement(modifiers(PRIVATE), getType(int.class), "valueNumber"));
+            genClass.add(cacheHitMetric);
+            genClass.add(cacheMissMetric);
 
             CodeExecutableElement method = new CodeExecutableElement(modifiers(PUBLIC), getType(int.class), "getValueNumber");
             CodeTreeBuilder b = method.createBuilder();
@@ -488,7 +494,9 @@ public class GraphNodeGenerator {
                 }
             }
             b.startStatement().string("valueNumber = number").end();
+            b.startStatement().string("ValueNumberableCache_" + simpleName + "_Miss", ".increment()").end();
             b.end();
+            b.startElseBlock().startStatement().string("ValueNumberableCache_" + simpleName + "_Hit", ".increment()").end().end();
             b.startReturn().string("valueNumber").end();
             genClass.add(method);
             checkOnlyInGenNode(method);
