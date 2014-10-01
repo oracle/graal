@@ -453,9 +453,4 @@ public abstract class Edges extends Fields {
     public Type type() {
         return type;
     }
-
-    @Override
-    public String toString() {
-        return super.toString() + ":" + type;
-    }
 }

@@ -34,7 +34,7 @@ public abstract class WriteBarrier extends FixedWithNextNode implements Lowerabl
     @Input protected ValueNode object;
     @OptionalInput protected ValueNode value;
     @OptionalInput(InputType.Association) protected LocationNode location;
-    private final boolean precise;
+    protected final boolean precise;
 
     public WriteBarrier(ValueNode object, ValueNode value, LocationNode location, boolean precise) {
         super(StampFactory.forVoid());

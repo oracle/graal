@@ -37,7 +37,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public class NormalizeCompareNode extends BinaryNode implements Lowerable {
 
-    public final boolean isUnorderedLess;
+    protected final boolean isUnorderedLess;
 
     /**
      * Creates a new compare operation.

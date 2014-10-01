@@ -38,20 +38,20 @@ public class ReadRegisterNode extends FixedWithNextNode implements LIRLowerable 
     /**
      * The fixed register to access.
      */
-    private final Register register;
+    protected final Register register;
 
     /**
      * When true, subsequent uses of this node use the fixed register; when false, the value is
      * moved into a new virtual register so that the fixed register is not seen by uses.
      */
-    private final boolean directUse;
+    protected final boolean directUse;
 
     /**
      * When true, this node is also an implicit definition of the value for the register allocator,
      * i.e., the register is an implicit incoming value; when false, the register must be defined in
      * the same method or must be an register excluded from register allocation.
      */
-    private final boolean incoming;
+    protected final boolean incoming;
 
     public static ReadRegisterNode create(Register register, Kind kind, boolean directUse, boolean incoming) {
         return USE_GENERATED_NODES ? new ReadRegisterNodeGen(register, kind, directUse, incoming) : new ReadRegisterNode(register, kind, directUse, incoming);

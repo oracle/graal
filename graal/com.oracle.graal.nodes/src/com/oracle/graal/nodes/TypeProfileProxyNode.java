@@ -39,9 +39,9 @@ import com.oracle.graal.nodes.type.*;
 @NodeInfo
 public class TypeProfileProxyNode extends UnaryNode implements IterableNodeType, ValueProxy {
 
-    private final JavaTypeProfile profile;
-    private transient ResolvedJavaType lastCheckedType;
-    private transient JavaTypeProfile lastCheckedProfile;
+    protected final JavaTypeProfile profile;
+    protected transient ResolvedJavaType lastCheckedType;
+    protected transient JavaTypeProfile lastCheckedProfile;
 
     public static ValueNode proxify(ValueNode object, JavaTypeProfile profile) {
         if (StampTool.isExactType(object)) {

@@ -42,7 +42,7 @@ import com.oracle.graal.word.*;
 public class DeoptimizationFetchUnrollInfoCallNode extends FixedWithNextNode implements LIRLowerable, MemoryCheckpoint.Multi {
 
     @Input SaveAllRegistersNode registerSaver;
-    private final ForeignCallsProvider foreignCalls;
+    protected final ForeignCallsProvider foreignCalls;
 
     public static DeoptimizationFetchUnrollInfoCallNode create(@InjectedNodeParameter ForeignCallsProvider foreignCalls, ValueNode registerSaver) {
         return USE_GENERATED_NODES ? new DeoptimizationFetchUnrollInfoCallNodeGen(foreignCalls, registerSaver) : new DeoptimizationFetchUnrollInfoCallNode(foreignCalls, registerSaver);

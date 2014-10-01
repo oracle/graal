@@ -42,7 +42,7 @@ public class AtomicReadAndAddNode extends AbstractMemoryCheckpoint implements LI
     @Input ValueNode offset;
     @Input ValueNode delta;
 
-    private final LocationIdentity locationIdentity;
+    protected final LocationIdentity locationIdentity;
 
     public static AtomicReadAndAddNode create(ValueNode object, ValueNode offset, ValueNode delta, LocationIdentity locationIdentity) {
         return USE_GENERATED_NODES ? new AtomicReadAndAddNodeGen(object, offset, delta, locationIdentity) : new AtomicReadAndAddNode(object, offset, delta, locationIdentity);

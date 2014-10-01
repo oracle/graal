@@ -34,7 +34,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public class JavaReadNode extends FixedAccessNode implements Lowerable, GuardingNode {
 
-    private final boolean compressible;
+    protected final boolean compressible;
 
     public static JavaReadNode create(ValueNode object, LocationNode location, BarrierType barrierType, boolean compressible) {
         return USE_GENERATED_NODES ? new JavaReadNodeGen(object, location, barrierType, compressible) : new JavaReadNode(object, location, barrierType, compressible);

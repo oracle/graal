@@ -32,9 +32,9 @@ import com.oracle.graal.nodeinfo.*;
 @NodeInfo
 public abstract class LoweredCallTargetNode extends CallTargetNode {
 
-    private final Stamp returnStamp;
-    private final JavaType[] signature;
-    private final CallingConvention.Type callType;
+    protected final Stamp returnStamp;
+    protected final JavaType[] signature;
+    protected final CallingConvention.Type callType;
 
     public LoweredCallTargetNode(List<ValueNode> arguments, Stamp returnStamp, JavaType[] signature, ResolvedJavaMethod target, CallingConvention.Type callType, InvokeKind invokeKind) {
         super(arguments, target, invokeKind);

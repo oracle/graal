@@ -33,7 +33,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public abstract class IntegerConvertNode extends ConvertNode implements ArithmeticLIRLowerable {
 
-    private final int resultBits;
+    protected final int resultBits;
 
     protected IntegerConvertNode(Stamp stamp, ValueNode input, int resultBits) {
         super(stamp, input);

@@ -43,10 +43,10 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Invoke,
     @OptionalInput(InputType.State) FrameState stateDuring;
     @OptionalInput(InputType.State) FrameState stateAfter;
     @OptionalInput(InputType.Guard) GuardingNode guard;
-    private final int bci;
-    private boolean polymorphic;
-    private boolean useForInlining;
-    private double exceptionProbability;
+    protected final int bci;
+    protected boolean polymorphic;
+    protected boolean useForInlining;
+    protected double exceptionProbability;
 
     public static InvokeWithExceptionNode create(CallTargetNode callTarget, BeginNode exceptionEdge, int bci) {
         return USE_GENERATED_NODES ? new InvokeWithExceptionNodeGen(callTarget, exceptionEdge, bci) : new InvokeWithExceptionNode(callTarget, exceptionEdge, bci);

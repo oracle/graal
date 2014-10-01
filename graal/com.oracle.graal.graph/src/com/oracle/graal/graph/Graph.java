@@ -91,14 +91,14 @@ public class Graph {
         private final Node node;
 
         public CacheEntry(Node node) {
-            assert node.getNodeClass().valueNumberable();
+            assert node instanceof ValueNumberable;
             assert node.isLeafNode();
             this.node = node;
         }
 
         @Override
         public int hashCode() {
-            return node.getNodeClass().valueNumber(node);
+            return Node.USE_GENERATED_NODES ? node.getValueNumber() : node.getNodeClass().valueNumber(node);
         }
 
         @Override
@@ -108,9 +108,8 @@ public class Graph {
             }
             if (obj instanceof CacheEntry) {
                 CacheEntry other = (CacheEntry) obj;
-                NodeClass nodeClass = node.getNodeClass();
                 if (other.node.getClass() == node.getClass()) {
-                    return nodeClass.valueEqual(node, other.node);
+                    return node.valueEquals(other.node);
                 }
             }
             return false;
@@ -498,7 +497,7 @@ public class Graph {
             }
             if (minCountNode != null) {
                 for (Node usage : minCountNode.usages()) {
-                    if (usage != node && nodeClass == usage.getNodeClass() && nodeClass.valueEqual(node, usage) && nodeClass.getEdges(Inputs).areEqualIn(node, usage) &&
+                    if (usage != node && nodeClass == usage.getNodeClass() && node.valueEquals(usage) && nodeClass.getEdges(Inputs).areEqualIn(node, usage) &&
                                     nodeClass.getEdges(Successors).areEqualIn(node, usage)) {
                         return usage;
                     }

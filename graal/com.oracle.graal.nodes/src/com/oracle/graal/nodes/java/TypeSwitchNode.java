@@ -41,7 +41,7 @@ import com.oracle.graal.nodes.util.*;
 @NodeInfo
 public class TypeSwitchNode extends SwitchNode implements LIRLowerable, Simplifiable {
 
-    private final ResolvedJavaType[] keys;
+    protected final ResolvedJavaType[] keys;
 
     /**
      * Constructs a type switch instruction. The keyProbabilities array contain key.length + 1
@@ -152,11 +152,11 @@ public class TypeSwitchNode extends SwitchNode implements LIRLowerable, Simplifi
             graph().removeSplit(this, blockSuccessor(survivingEdge));
         }
         if (value() instanceof LoadHubNode && ((LoadHubNode) value()).getValue().stamp() instanceof ObjectStamp) {
-            ObjectStamp stamp = (ObjectStamp) ((LoadHubNode) value()).getValue().stamp();
-            if (stamp.type() != null) {
+            ObjectStamp objectStamp = (ObjectStamp) ((LoadHubNode) value()).getValue().stamp();
+            if (objectStamp.type() != null) {
                 int validKeys = 0;
                 for (int i = 0; i < keyCount(); i++) {
-                    if (stamp.type().isAssignableFrom(keys[i])) {
+                    if (objectStamp.type().isAssignableFrom(keys[i])) {
                         validKeys++;
                     }
                 }
@@ -171,7 +171,7 @@ public class TypeSwitchNode extends SwitchNode implements LIRLowerable, Simplifi
                     double totalProbability = 0;
                     int current = 0;
                     for (int i = 0; i < keyCount() + 1; i++) {
-                        if (i == keyCount() || stamp.type().isAssignableFrom(keys[i])) {
+                        if (i == keyCount() || objectStamp.type().isAssignableFrom(keys[i])) {
                             int index = newSuccessors.indexOf(keySuccessor(i));
                             if (index == -1) {
                                 index = newSuccessors.size();

@@ -35,7 +35,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public class MathIntrinsicNode extends UnaryNode implements ArithmeticLIRLowerable {
 
-    private final Operation operation;
+    protected final Operation operation;
 
     public enum Operation {
         ABS,

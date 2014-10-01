@@ -75,15 +75,15 @@ public class LoadHubNode extends FloatingGuardedNode implements Lowerable, Canon
     public ValueNode canonical(CanonicalizerTool tool) {
         MetaAccessProvider metaAccess = tool.getMetaAccess();
         if (metaAccess != null && getValue().stamp() instanceof ObjectStamp) {
-            ObjectStamp stamp = (ObjectStamp) getValue().stamp();
+            ObjectStamp objectStamp = (ObjectStamp) getValue().stamp();
 
             ResolvedJavaType exactType;
-            if (stamp.isExactType()) {
-                exactType = stamp.type();
-            } else if (stamp.type() != null && tool.assumptions().useOptimisticAssumptions()) {
-                exactType = stamp.type().findUniqueConcreteSubtype();
+            if (objectStamp.isExactType()) {
+                exactType = objectStamp.type();
+            } else if (objectStamp.type() != null && tool.assumptions().useOptimisticAssumptions()) {
+                exactType = objectStamp.type().findUniqueConcreteSubtype();
                 if (exactType != null) {
-                    tool.assumptions().recordConcreteSubtype(stamp.type(), exactType);
+                    tool.assumptions().recordConcreteSubtype(objectStamp.type(), exactType);
                 }
             } else {
                 exactType = null;

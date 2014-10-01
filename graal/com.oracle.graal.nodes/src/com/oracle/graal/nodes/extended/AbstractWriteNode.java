@@ -35,7 +35,7 @@ public abstract class AbstractWriteNode extends FixedAccessNode implements State
     @OptionalInput(InputType.State) FrameState stateAfter;
     @OptionalInput(InputType.Memory) Node lastLocationAccess;
 
-    private final boolean initialization;
+    protected final boolean initialization;
 
     public FrameState stateAfter() {
         return stateAfter;

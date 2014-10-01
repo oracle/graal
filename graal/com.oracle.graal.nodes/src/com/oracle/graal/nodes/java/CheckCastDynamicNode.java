@@ -43,7 +43,7 @@ public class CheckCastDynamicNode extends FixedWithNextNode implements Canonical
      * Determines the exception thrown by this node if the check fails: {@link ClassCastException}
      * if false; {@link ArrayStoreException} if true.
      */
-    private final boolean forStoreCheck;
+    protected final boolean forStoreCheck;
 
     /**
      * @param hub the type being cast to

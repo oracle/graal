@@ -36,7 +36,7 @@ public class TypedNodeIteratorTest {
     @NodeInfo
     static class TestNode extends Node implements IterableNodeType, TestNodeInterface {
 
-        private final String name;
+        protected final String name;
 
         public static TestNode create(String name) {
             return USE_GENERATED_NODES ? new TypedNodeIteratorTest_TestNodeGen(name) : new TestNode(name);

@@ -37,7 +37,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(allowedUsageTypes = {InputType.Extension})
 public class MemoryMapNode extends FloatingNode implements MemoryMap, LIRLowerable {
 
-    private final List<LocationIdentity> locationIdentities;
+    protected final List<LocationIdentity> locationIdentities;
     @Input(InputType.Memory) NodeInputList<ValueNode> nodes;
 
     private boolean checkOrder(Map<LocationIdentity, MemoryNode> mmap) {

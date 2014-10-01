@@ -103,9 +103,9 @@ public class MulNode extends BinaryArithmeticNode implements NarrowableArithmeti
         Value op1 = builder.operand(getX());
         Value op2 = builder.operand(getY());
         if (!getY().isConstant() && !BinaryArithmeticNode.livesLonger(this, getY(), builder)) {
-            Value op = op1;
+            Value tmp = op1;
             op1 = op2;
-            op2 = op;
+            op2 = tmp;
         }
         builder.setResult(this, gen.emitMul(op1, op2));
     }

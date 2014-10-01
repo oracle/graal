@@ -995,4 +995,40 @@ public abstract class Node implements Cloneable, Formattable {
             }
         }
     }
+
+    /**
+     * If this node is {@link ValueNumberable}, gets a digest for this node based on the current
+     * value of it's {@link NodeClass#getData() data} fields. If this node is not
+     * {@link ValueNumberable}, 0 is returned.
+     *
+     * Overridden by a method generated for {@link ValueNumberable} subclasses.
+     */
+    public int getValueNumber() {
+        assert !(this instanceof ValueNumberable);
+        return 0;
+    }
+
+    /**
+     * Overridden by a generated method.
+     *
+     * @param other
+     */
+    protected boolean valueEqualsGen(Node other) {
+        return true;
+    }
+
+    /**
+     * Determines if this node's {@link NodeClass#getData() data} fields are equal to the data
+     * fields of another node of the same type. Primitive fields are compared by value and
+     * non-primitive fields are compared by {@link Objects#equals(Object, Object)}.
+     *
+     * The result of this method undefined if {@code other.getClass() != this.getClass()} or if this
+     * node is not {@link ValueNumberable}
+     *
+     * @param other a node of exactly the same type as this node
+     * @return true if the data fields of this object and {@code other} are equal
+     */
+    public boolean valueEquals(Node other) {
+        return USE_GENERATED_NODES ? valueEqualsGen(other) : getNodeClass().valueEqual(this, other);
+    }
 }

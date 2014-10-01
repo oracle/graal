@@ -40,7 +40,7 @@ import com.oracle.graal.word.*;
 @NodeInfo
 public class CurrentJavaThreadNode extends FloatingNode implements LIRLowerable {
 
-    private LIRKind wordKind;
+    protected LIRKind wordKind;
 
     public static CurrentJavaThreadNode create(Kind kind) {
         return USE_GENERATED_NODES ? new CurrentJavaThreadNodeGen(kind) : new CurrentJavaThreadNode(kind);

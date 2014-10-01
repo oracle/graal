@@ -39,7 +39,7 @@ import com.oracle.graal.nodes.util.*;
 @NodeInfo
 public class IntegerSwitchNode extends SwitchNode implements LIRLowerable, Simplifiable {
 
-    private final int[] keys;
+    protected final int[] keys;
 
     /**
      * Constructs a integer switch instruction. The keyProbabilities and keySuccessors array contain
@@ -148,11 +148,11 @@ public class IntegerSwitchNode extends SwitchNode implements LIRLowerable, Simpl
             tool.addToWorkList(blockSuccessor(survivingEdge));
             graph().removeSplit(this, blockSuccessor(survivingEdge));
         } else if (value().stamp() instanceof IntegerStamp) {
-            IntegerStamp stamp = (IntegerStamp) value().stamp();
-            if (!stamp.isUnrestricted()) {
+            IntegerStamp integerStamp = (IntegerStamp) value().stamp();
+            if (!integerStamp.isUnrestricted()) {
                 int validKeys = 0;
                 for (int i = 0; i < keyCount(); i++) {
-                    if (stamp.contains(keys[i])) {
+                    if (integerStamp.contains(keys[i])) {
                         validKeys++;
                     }
                 }
@@ -167,7 +167,7 @@ public class IntegerSwitchNode extends SwitchNode implements LIRLowerable, Simpl
                     double totalProbability = 0;
                     int current = 0;
                     for (int i = 0; i < keyCount() + 1; i++) {
-                        if (i == keyCount() || stamp.contains(keys[i])) {
+                        if (i == keyCount() || integerStamp.contains(keys[i])) {
                             int index = newSuccessors.indexOf(keySuccessor(i));
                             if (index == -1) {
                                 index = newSuccessors.size();

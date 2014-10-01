@@ -43,7 +43,7 @@ public class ConstantNode extends FloatingNode implements LIRLowerable {
 
     private static final DebugMetric ConstantNodes = Debug.metric("ConstantNodes");
 
-    private final Constant value;
+    protected final Constant value;
 
     private static ConstantNode createPrimitive(Constant value) {
         assert value.getKind() != Kind.Object;

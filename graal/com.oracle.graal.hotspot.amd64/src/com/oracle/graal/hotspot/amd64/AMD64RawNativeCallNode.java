@@ -35,7 +35,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public class AMD64RawNativeCallNode extends FixedWithNextNode implements LIRLowerable {
 
-    private final Constant functionPointer;
+    protected final Constant functionPointer;
     @Input NodeInputList<ValueNode> args;
 
     public static AMD64RawNativeCallNode create(Kind returnType, Constant functionPointer, ValueNode[] args) {

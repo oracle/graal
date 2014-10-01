@@ -39,7 +39,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public class FloatConvertNode extends ConvertNode implements Lowerable, ArithmeticLIRLowerable {
 
-    private final FloatConvert op;
+    protected final FloatConvert op;
 
     public static FloatConvertNode create(FloatConvert op, ValueNode input) {
         return USE_GENERATED_NODES ? new FloatConvertNodeGen(op, input) : new FloatConvertNode(op, input);

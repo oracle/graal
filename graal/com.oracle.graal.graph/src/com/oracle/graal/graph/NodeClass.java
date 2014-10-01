@@ -274,15 +274,18 @@ public final class NodeClass extends FieldIntrospection {
         return nodeClass == getClazz();
     }
 
+    private String shortName;
+
     public String shortName() {
-        NodeInfo info = getClazz().getAnnotation(NodeInfo.class);
-        String shortName;
-        if (!info.shortName().isEmpty()) {
-            shortName = info.shortName();
-        } else {
-            shortName = getClazz().getSimpleName();
-            if (shortName.endsWith("Node") && !shortName.equals("StartNode") && !shortName.equals("EndNode")) {
-                shortName = shortName.substring(0, shortName.length() - 4);
+        if (shortName == null) {
+            NodeInfo info = getClazz().getAnnotation(NodeInfo.class);
+            if (!info.shortName().isEmpty()) {
+                shortName = info.shortName();
+            } else {
+                shortName = getClazz().getSimpleName();
+                if (shortName.endsWith("Node") && !shortName.equals("StartNode") && !shortName.equals("EndNode")) {
+                    shortName = shortName.substring(0, shortName.length() - 4);
+                }
             }
         }
         return shortName;
@@ -552,9 +555,7 @@ public final class NodeClass extends FieldIntrospection {
     }
 
     public boolean valueEqual(Node a, Node b) {
-        if (a.getClass() != b.getClass()) {
-            return a == b;
-        }
+        assert a.getClass() == b.getClass();
         for (int i = 0; i < data.getCount(); ++i) {
             Class<?> type = data.getType(i);
             if (type.isPrimitive()) {

@@ -38,7 +38,7 @@ public abstract class ValueNode extends ScheduledNode implements StampProvider, 
      * The kind of this value. This is {@link Kind#Void} for instructions that produce no value.
      * This kind is guaranteed to be a {@linkplain Kind#getStackKind() stack kind}.
      */
-    private Stamp stamp;
+    protected Stamp stamp;
 
     public ValueNode(Stamp stamp) {
         this.stamp = stamp;

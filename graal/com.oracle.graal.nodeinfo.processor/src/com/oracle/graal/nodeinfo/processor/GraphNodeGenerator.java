@@ -60,6 +60,7 @@ public class GraphNodeGenerator {
     @SuppressWarnings("unused") private final TypeElement NodeList;
     private final TypeElement NodeInputList;
     private final TypeElement NodeSuccessorList;
+    private final TypeElement ValueNumberable;
     @SuppressWarnings("unused") private final TypeElement Position;
 
     private final List<VariableElement> inputFields = new ArrayList<>();
@@ -87,6 +88,7 @@ public class GraphNodeGenerator {
         this.NodeInputList = getTypeElement("com.oracle.graal.graph.NodeInputList");
         this.NodeSuccessorList = getTypeElement("com.oracle.graal.graph.NodeSuccessorList");
         this.Position = getTypeElement("com.oracle.graal.graph.Position");
+        this.ValueNumberable = getTypeElement("com.oracle.graal.graph.Node.ValueNumberable");
     }
 
     @SafeVarargs
@@ -243,6 +245,11 @@ public class GraphNodeGenerator {
                     if (isAssignableWithErasure(field, NodeSuccessorList)) {
                         throw new ElementException(field, "NodeSuccessorList field must be annotated with @" + Successor.getSimpleName());
                     }
+                    if (modifiers.contains(PUBLIC) && !modifiers.contains(FINAL)) {
+                        throw new ElementException(field, "Data field must be final if public otherwise it must be protected or package-private");
+                    } else if (modifiers.contains(PRIVATE)) {
+                        throw new ElementException(field, "Data field must be protected or package-private");
+                    }
                     dataFields.add(field);
                 }
             }
@@ -334,6 +341,9 @@ public class GraphNodeGenerator {
             if (hasInputs || hasSuccessors) {
                 createIsLeafNodeMethod();
             }
+
+            createValueNumberMethod(node);
+            createValueEqualsMethod();
         }
         compilationUnit.add(genClass);
         return compilationUnit;
@@ -395,7 +405,6 @@ public class GraphNodeGenerator {
         genClassName = null;
     }
 
-    @SuppressWarnings("unused")
     private CodeVariableElement addParameter(CodeExecutableElement method, TypeMirror type, String name) {
         return addParameter(method, type, name, true);
     }
@@ -428,6 +437,98 @@ public class GraphNodeGenerator {
     private void createIsLeafNodeMethod() {
         CodeExecutableElement method = new CodeExecutableElement(modifiers(PUBLIC), getType(boolean.class), "isLeafNode");
         method.createBuilder().startReturn().string("false").end();
+        genClass.add(method);
+        checkOnlyInGenNode(method);
+    }
+
+    private void createValueNumberMethod(TypeElement node) {
+        if (isAssignableWithErasure(node, ValueNumberable)) {
+            genClass.add(new CodeVariableElement(modifiers(PRIVATE), getType(int.class), "valueNumber"));
+
+            CodeExecutableElement method = new CodeExecutableElement(modifiers(PUBLIC), getType(int.class), "getValueNumber");
+            CodeTreeBuilder b = method.createBuilder();
+            b.startIf().string("valueNumber == 0").end().startBlock();
+            b.startStatement().string("int number = " + node.hashCode()).end();
+            for (VariableElement f : dataFields) {
+                String fname = f.getSimpleName().toString();
+                switch (f.asType().getKind()) {
+                    case BOOLEAN:
+                        b.startIf().string(fname).end().startBlock();
+                        b.startStatement().string("number += 7").end();
+                        b.end();
+                        break;
+                    case BYTE:
+                    case SHORT:
+                    case CHAR:
+                    case INT:
+                        b.startStatement().string("number += 13 * ", fname).end();
+                        break;
+                    case FLOAT:
+                        b.startStatement().string("number += 17 * Float.floatToRawIntBits(", fname, ")").end();
+                        break;
+                    case LONG:
+                        b.startStatement().string("number += 19 * ", fname + " ^ (", fname, " >>> 32)").end();
+                        break;
+                    case DOUBLE:
+                        b.startStatement().string("long longValue = Double.doubleToRawLongBits(", fname, ")").end();
+                        b.startStatement().string("number += 23 * longValue ^ (longValue >>> 32)").end();
+                        break;
+                    default:
+                        b.startIf().string(fname, " != null").end().startBlock();
+                        b.startStatement().string("number += 29 * ", fname + ".hashCode()").end();
+                        b.end();
+                        break;
+                }
+            }
+            b.startStatement().string("valueNumber = number").end();
+            b.end();
+            b.startReturn().string("valueNumber").end();
+            genClass.add(method);
+            checkOnlyInGenNode(method);
+        }
+    }
+
+    private void createValueEqualsMethod() {
+        CodeExecutableElement method = new CodeExecutableElement(modifiers(PUBLIC), getType(boolean.class), "valueEqualsGen");
+        addParameter(method, Node.asType(), "other");
+        CodeTreeBuilder b = method.createBuilder();
+        if (!dataFields.isEmpty()) {
+            String other = "o";
+            b.declaration(genClassName, other, "(" + genClassName + ") other");
+
+            for (VariableElement f : dataFields) {
+                String fname = f.getSimpleName().toString();
+                switch (f.asType().getKind()) {
+                    case BOOLEAN:
+                    case BYTE:
+                    case SHORT:
+                    case CHAR:
+                    case INT:
+                    case FLOAT:
+                    case LONG:
+                    case DOUBLE:
+                        b.startIf().string(other, ".", fname, " != ", fname).end().startBlock();
+                        b.startStatement().string("return false").end();
+                        b.end();
+                        break;
+                    case ARRAY:
+                        if (((ArrayType) f.asType()).getComponentType().getKind().isPrimitive()) {
+                            b.startIf().string("!").type(getType(Arrays.class)).string(".equals(", other, ".", fname, ", ", fname, ")").end().startBlock();
+                        } else {
+                            b.startIf().string("!").type(getType(Arrays.class)).string(".deepEquals(", other, ".", fname, ", ", fname, ")").end().startBlock();
+                        }
+                        b.startStatement().string("return false").end();
+                        b.end();
+                        break;
+                    default:
+                        b.startIf().string("!").type(getType(Objects.class)).string(".equals(", other, ".", fname, ", ", fname, ")").end().startBlock();
+                        b.startStatement().string("return false").end();
+                        b.end();
+                        break;
+                }
+            }
+        }
+        b.startReturn().string("true").end();
         genClass.add(method);
         checkOnlyInGenNode(method);
     }

@@ -310,6 +310,9 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
                 if (canonical != null && !canonical.isAlive()) {
                     assert !canonical.isDeleted();
                     canonical = graph.addOrUniqueWithInputs(canonical);
+                    if (canonical == node) {
+                        graph.addOrUniqueWithInputs(newCanonical);
+                    }
                 }
                 if (node instanceof FloatingNode) {
                     if (canonical == null) {

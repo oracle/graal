@@ -42,7 +42,7 @@ import com.oracle.graal.nodes.virtual.*;
 @NodeInfo
 public class BoxNode extends UnaryNode implements VirtualizableAllocation, Lowerable {
 
-    private final Kind boxingKind;
+    protected final Kind boxingKind;
 
     public static BoxNode create(ValueNode value, ResolvedJavaType resultType, Kind boxingKind) {
         return USE_GENERATED_NODES ? new BoxNodeGen(value, resultType, boxingKind) : new BoxNode(value, resultType, boxingKind);

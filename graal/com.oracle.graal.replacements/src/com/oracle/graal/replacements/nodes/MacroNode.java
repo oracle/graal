@@ -61,10 +61,10 @@ public class MacroNode extends FixedWithNextNode implements Lowerable {
 
     @Input protected NodeInputList<ValueNode> arguments;
 
-    private final int bci;
-    private final ResolvedJavaMethod targetMethod;
-    private final JavaType returnType;
-    private final InvokeKind invokeKind;
+    protected final int bci;
+    protected final ResolvedJavaMethod targetMethod;
+    protected final JavaType returnType;
+    protected final InvokeKind invokeKind;
 
     public static MacroNode create(Invoke invoke) {
         return USE_GENERATED_NODES ? new MacroNodeGen(invoke) : new MacroNode(invoke);

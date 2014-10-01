@@ -36,9 +36,9 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(nameTemplate = "Loc {p#locationIdentity/s}")
 public class ConstantLocationNode extends LocationNode {
 
-    private final Kind valueKind;
-    private final LocationIdentity locationIdentity;
-    private final long displacement;
+    protected final Kind valueKind;
+    protected final LocationIdentity locationIdentity;
+    protected final long displacement;
 
     public static ConstantLocationNode create(LocationIdentity identity, Kind kind, long displacement, Graph graph) {
         return graph.unique(ConstantLocationNode.create(identity, kind, displacement));

@@ -42,7 +42,7 @@ public class UnsafeArrayCopyNode extends ArrayRangeWriteNode implements Lowerabl
     @Input ValueNode length;
     @OptionalInput ValueNode layoutHelper;
 
-    private Kind elementKind;
+    protected Kind elementKind;
 
     public static UnsafeArrayCopyNode create(ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, ValueNode layoutHelper, Kind elementKind) {
         return USE_GENERATED_NODES ? new UnsafeArrayCopyNodeGen(src, srcPos, dest, destPos, length, layoutHelper, elementKind) : new UnsafeArrayCopyNode(src, srcPos, dest, destPos, length,

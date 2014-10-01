@@ -40,9 +40,9 @@ public class ForeignCallNode extends AbstractMemoryCheckpoint implements LIRLowe
 
     @Input protected NodeInputList<ValueNode> arguments;
     @OptionalInput(InputType.State) protected FrameState stateDuring;
-    private final ForeignCallsProvider foreignCalls;
+    protected final ForeignCallsProvider foreignCalls;
 
-    private final ForeignCallDescriptor descriptor;
+    protected final ForeignCallDescriptor descriptor;
 
     public static ForeignCallNode create(@InjectedNodeParameter ForeignCallsProvider foreignCalls, ForeignCallDescriptor descriptor, ValueNode... arguments) {
         return USE_GENERATED_NODES ? new ForeignCallNodeGen(foreignCalls, descriptor, arguments) : new ForeignCallNode(foreignCalls, descriptor, arguments);

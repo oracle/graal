@@ -40,8 +40,8 @@ import com.oracle.graal.nodes.spi.*;
 public class SelfReplacingMethodCallTargetNode extends MethodCallTargetNode implements Lowerable {
 
     // Replacement method data
-    private final ResolvedJavaMethod replacementTargetMethod;
-    private final JavaType replacementReturnType;
+    protected final ResolvedJavaMethod replacementTargetMethod;
+    protected final JavaType replacementReturnType;
     @Input NodeInputList<ValueNode> replacementArguments;
 
     public static SelfReplacingMethodCallTargetNode create(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, JavaType returnType,
@@ -72,9 +72,9 @@ public class SelfReplacingMethodCallTargetNode extends MethodCallTargetNode impl
 
     @Override
     public void lower(LoweringTool tool) {
-        InvokeKind invokeKind = replacementTargetMethod.isStatic() ? InvokeKind.Static : InvokeKind.Special;
+        InvokeKind replacementInvokeKind = replacementTargetMethod.isStatic() ? InvokeKind.Static : InvokeKind.Special;
         MethodCallTargetNode replacement = graph().add(
-                        MethodCallTargetNode.create(invokeKind, replacementTargetMethod, replacementArguments.toArray(new ValueNode[replacementArguments.size()]), replacementReturnType));
+                        MethodCallTargetNode.create(replacementInvokeKind, replacementTargetMethod, replacementArguments.toArray(new ValueNode[replacementArguments.size()]), replacementReturnType));
 
         // Replace myself...
         this.replaceAndDelete(replacement);
