@@ -48,7 +48,7 @@ public class BoxNode extends UnaryNode implements VirtualizableAllocation, Lower
         return USE_GENERATED_NODES ? new BoxNodeGen(value, resultType, boxingKind) : new BoxNode(value, resultType, boxingKind);
     }
 
-    BoxNode(ValueNode value, ResolvedJavaType resultType, Kind boxingKind) {
+    protected BoxNode(ValueNode value, ResolvedJavaType resultType, Kind boxingKind) {
         super(StampFactory.exactNonNull(resultType), value);
         this.boxingKind = boxingKind;
     }

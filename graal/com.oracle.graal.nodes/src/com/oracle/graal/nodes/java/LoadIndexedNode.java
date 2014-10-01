@@ -46,7 +46,7 @@ public class LoadIndexedNode extends AccessIndexedNode implements Virtualizable 
         return USE_GENERATED_NODES ? new LoadIndexedNodeGen(array, index, elementKind) : new LoadIndexedNode(array, index, elementKind);
     }
 
-    LoadIndexedNode(ValueNode array, ValueNode index, Kind elementKind) {
+    protected LoadIndexedNode(ValueNode array, ValueNode index, Kind elementKind) {
         super(createStamp(array, elementKind), array, index, elementKind);
     }
 

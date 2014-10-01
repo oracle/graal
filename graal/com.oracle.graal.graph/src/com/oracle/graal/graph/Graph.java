@@ -610,7 +610,7 @@ public class Graph {
             return new PlaceHolderNode();
         }
 
-        PlaceHolderNode() {
+        protected PlaceHolderNode() {
         }
     }
 

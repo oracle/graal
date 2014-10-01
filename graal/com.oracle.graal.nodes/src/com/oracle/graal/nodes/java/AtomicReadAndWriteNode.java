@@ -51,7 +51,7 @@ public class AtomicReadAndWriteNode extends AbstractMemoryCheckpoint implements 
                         locationIdentity);
     }
 
-    AtomicReadAndWriteNode(ValueNode object, ValueNode offset, ValueNode newValue, Kind valueKind, LocationIdentity locationIdentity) {
+    protected AtomicReadAndWriteNode(ValueNode object, ValueNode offset, ValueNode newValue, Kind valueKind, LocationIdentity locationIdentity) {
         super(StampFactory.forKind(newValue.getKind()));
         this.object = object;
         this.offset = offset;

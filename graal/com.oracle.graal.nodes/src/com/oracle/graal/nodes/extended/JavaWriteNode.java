@@ -40,7 +40,7 @@ public class JavaWriteNode extends AbstractWriteNode implements Lowerable, State
                         initialization);
     }
 
-    JavaWriteNode(ValueNode object, ValueNode value, ValueNode location, BarrierType barrierType, boolean compressible, boolean initialization) {
+    protected JavaWriteNode(ValueNode object, ValueNode value, ValueNode location, BarrierType barrierType, boolean compressible, boolean initialization) {
         super(object, value, location, barrierType, initialization);
         this.compressible = compressible;
     }

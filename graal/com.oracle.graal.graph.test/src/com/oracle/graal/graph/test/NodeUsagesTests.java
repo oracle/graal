@@ -35,6 +35,10 @@ public class NodeUsagesTests {
 
     @NodeInfo
     static class Def extends Node {
+        protected Def() {
+            // TODO Auto-generated constructor stub
+        }
+
         public static Def create() {
             return USE_GENERATED_NODES ? new NodeUsagesTests_DefGen() : new Def();
         }
@@ -50,7 +54,7 @@ public class NodeUsagesTests {
             return USE_GENERATED_NODES ? new NodeUsagesTests_UseGen(in0, in1, in2) : new Use(in0, in1, in2);
         }
 
-        Use(Def in0, Def in1, Def in2) {
+        protected Use(Def in0, Def in1, Def in2) {
             this.in0 = in0;
             this.in1 = in1;
             this.in2 = in2;

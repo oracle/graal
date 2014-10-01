@@ -48,7 +48,7 @@ public class ConstantLocationNode extends LocationNode {
         return USE_GENERATED_NODES ? new ConstantLocationNodeGen(identity, kind, displacement) : new ConstantLocationNode(identity, kind, displacement);
     }
 
-    ConstantLocationNode(LocationIdentity identity, Kind kind, long displacement) {
+    protected ConstantLocationNode(LocationIdentity identity, Kind kind, long displacement) {
         super(StampFactory.forVoid());
         assert kind != Kind.Illegal && kind != Kind.Void;
         this.valueKind = kind;

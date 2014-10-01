@@ -46,7 +46,7 @@ public class CurrentJavaThreadNode extends FloatingNode implements LIRLowerable 
         return USE_GENERATED_NODES ? new CurrentJavaThreadNodeGen(kind) : new CurrentJavaThreadNode(kind);
     }
 
-    CurrentJavaThreadNode(Kind kind) {
+    protected CurrentJavaThreadNode(Kind kind) {
         super(StampFactory.forKind(kind));
         this.wordKind = LIRKind.value(kind);
     }

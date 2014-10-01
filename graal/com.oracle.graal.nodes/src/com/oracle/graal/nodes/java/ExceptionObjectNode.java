@@ -40,7 +40,7 @@ public class ExceptionObjectNode extends DispatchBeginNode implements Lowerable,
         return USE_GENERATED_NODES ? new ExceptionObjectNodeGen(metaAccess) : new ExceptionObjectNode(metaAccess);
     }
 
-    ExceptionObjectNode(MetaAccessProvider metaAccess) {
+    protected ExceptionObjectNode(MetaAccessProvider metaAccess) {
         super(StampFactory.declaredNonNull(metaAccess.lookupJavaType(Throwable.class)));
     }
 

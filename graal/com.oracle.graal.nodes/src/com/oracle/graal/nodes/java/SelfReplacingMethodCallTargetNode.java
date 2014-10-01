@@ -50,7 +50,7 @@ public class SelfReplacingMethodCallTargetNode extends MethodCallTargetNode impl
                         : new SelfReplacingMethodCallTargetNode(invokeKind, targetMethod, arguments, returnType, replacementTargetMethod, replacementArguments, replacementReturnType);
     }
 
-    SelfReplacingMethodCallTargetNode(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, JavaType returnType, ResolvedJavaMethod replacementTargetMethod,
+    protected SelfReplacingMethodCallTargetNode(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, JavaType returnType, ResolvedJavaMethod replacementTargetMethod,
                     ValueNode[] replacementArguments, JavaType replacementReturnType) {
         super(invokeKind, targetMethod, arguments, returnType);
         this.replacementTargetMethod = replacementTargetMethod;

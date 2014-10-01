@@ -48,7 +48,7 @@ public class AtomicReadAndAddNode extends AbstractMemoryCheckpoint implements LI
         return USE_GENERATED_NODES ? new AtomicReadAndAddNodeGen(object, offset, delta, locationIdentity) : new AtomicReadAndAddNode(object, offset, delta, locationIdentity);
     }
 
-    AtomicReadAndAddNode(ValueNode object, ValueNode offset, ValueNode delta, LocationIdentity locationIdentity) {
+    protected AtomicReadAndAddNode(ValueNode object, ValueNode offset, ValueNode delta, LocationIdentity locationIdentity) {
         super(StampFactory.forKind(delta.getKind()));
         this.object = object;
         this.offset = offset;

@@ -64,7 +64,7 @@ public class SnippetLocationNode extends LocationNode implements Canonicalizable
                         displacement);
     }
 
-    SnippetLocationNode(@InjectedNodeParameter SnippetReflectionProvider snippetReflection, ValueNode locationIdentity, ValueNode kind, ValueNode displacement) {
+    protected SnippetLocationNode(@InjectedNodeParameter SnippetReflectionProvider snippetReflection, ValueNode locationIdentity, ValueNode kind, ValueNode displacement) {
         this(snippetReflection, locationIdentity, kind, displacement, null, null);
     }
 
@@ -74,7 +74,7 @@ public class SnippetLocationNode extends LocationNode implements Canonicalizable
                         locationIdentity, kind, displacement, index, indexScaling);
     }
 
-    SnippetLocationNode(SnippetReflectionProvider snippetReflection, ValueNode locationIdentity, ValueNode kind, ValueNode displacement, ValueNode index, ValueNode indexScaling) {
+    protected SnippetLocationNode(SnippetReflectionProvider snippetReflection, ValueNode locationIdentity, ValueNode kind, ValueNode displacement, ValueNode index, ValueNode indexScaling) {
         super(StampFactory.object());
         this.snippetReflection = snippetReflection;
         this.valueKind = kind;

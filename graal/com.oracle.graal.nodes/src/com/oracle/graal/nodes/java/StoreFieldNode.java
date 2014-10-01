@@ -67,7 +67,7 @@ public class StoreFieldNode extends AccessFieldNode implements StateSplit, Virtu
         return USE_GENERATED_NODES ? new StoreFieldNodeGen(object, field, value) : new StoreFieldNode(object, field, value);
     }
 
-    StoreFieldNode(ValueNode object, ResolvedJavaField field, ValueNode value) {
+    protected StoreFieldNode(ValueNode object, ResolvedJavaField field, ValueNode value) {
         super(StampFactory.forVoid(), object, field);
         this.value = value;
     }
@@ -76,7 +76,7 @@ public class StoreFieldNode extends AccessFieldNode implements StateSplit, Virtu
         return USE_GENERATED_NODES ? new StoreFieldNodeGen(object, field, value, stateAfter) : new StoreFieldNode(object, field, value, stateAfter);
     }
 
-    StoreFieldNode(ValueNode object, ResolvedJavaField field, ValueNode value, FrameState stateAfter) {
+    protected StoreFieldNode(ValueNode object, ResolvedJavaField field, ValueNode value, FrameState stateAfter) {
         super(StampFactory.forVoid(), object, field);
         this.value = value;
         this.stateAfter = stateAfter;

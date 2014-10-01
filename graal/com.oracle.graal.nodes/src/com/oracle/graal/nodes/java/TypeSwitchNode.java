@@ -57,7 +57,7 @@ public class TypeSwitchNode extends SwitchNode implements LIRLowerable, Simplifi
         return USE_GENERATED_NODES ? new TypeSwitchNodeGen(value, successors, keys, keyProbabilities, keySuccessors) : new TypeSwitchNode(value, successors, keys, keyProbabilities, keySuccessors);
     }
 
-    TypeSwitchNode(ValueNode value, BeginNode[] successors, ResolvedJavaType[] keys, double[] keyProbabilities, int[] keySuccessors) {
+    protected TypeSwitchNode(ValueNode value, BeginNode[] successors, ResolvedJavaType[] keys, double[] keyProbabilities, int[] keySuccessors) {
         super(value, successors, keySuccessors, keyProbabilities);
         assert successors.length <= keys.length + 1;
         assert keySuccessors.length == keyProbabilities.length;

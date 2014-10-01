@@ -42,7 +42,7 @@ public class WeakCounterNode extends DynamicCounterNode implements Simplifiable,
         return USE_GENERATED_NODES ? new WeakCounterNodeGen(group, name, increment, addContext, checkedValue) : new WeakCounterNode(group, name, increment, addContext, checkedValue);
     }
 
-    WeakCounterNode(String group, String name, ValueNode increment, boolean addContext, ValueNode checkedValue) {
+    protected WeakCounterNode(String group, String name, ValueNode increment, boolean addContext, ValueNode checkedValue) {
         super(group, name, increment, addContext);
         this.checkedValue = checkedValue;
     }

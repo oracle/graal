@@ -50,6 +50,10 @@ public class EdgesTest extends GraalCompilerTest {
         public static TestNode create() {
             return USE_GENERATED_NODES ? new EdgesTest_TestNodeGen() : new TestNode();
         }
+
+        protected TestNode() {
+            // TODO Auto-generated constructor stub
+        }
     }
 
     StructuredGraph graph = new StructuredGraph();

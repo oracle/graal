@@ -49,7 +49,7 @@ public class UnsafeArrayCopyNode extends ArrayRangeWriteNode implements Lowerabl
                         layoutHelper, elementKind);
     }
 
-    UnsafeArrayCopyNode(ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, ValueNode layoutHelper, Kind elementKind) {
+    protected UnsafeArrayCopyNode(ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, ValueNode layoutHelper, Kind elementKind) {
         super(StampFactory.forVoid());
         assert layoutHelper == null || elementKind == null;
         this.src = src;
@@ -65,7 +65,7 @@ public class UnsafeArrayCopyNode extends ArrayRangeWriteNode implements Lowerabl
         return USE_GENERATED_NODES ? new UnsafeArrayCopyNodeGen(src, srcPos, dest, destPos, length, elementKind) : new UnsafeArrayCopyNode(src, srcPos, dest, destPos, length, elementKind);
     }
 
-    UnsafeArrayCopyNode(ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, Kind elementKind) {
+    protected UnsafeArrayCopyNode(ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, Kind elementKind) {
         this(src, srcPos, dest, destPos, length, null, elementKind);
     }
 
@@ -73,7 +73,7 @@ public class UnsafeArrayCopyNode extends ArrayRangeWriteNode implements Lowerabl
         return USE_GENERATED_NODES ? new UnsafeArrayCopyNodeGen(src, srcPos, dest, destPos, length, layoutHelper) : new UnsafeArrayCopyNode(src, srcPos, dest, destPos, length, layoutHelper);
     }
 
-    UnsafeArrayCopyNode(ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, ValueNode layoutHelper) {
+    protected UnsafeArrayCopyNode(ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, ValueNode layoutHelper) {
         this(src, srcPos, dest, destPos, length, layoutHelper, null);
     }
 

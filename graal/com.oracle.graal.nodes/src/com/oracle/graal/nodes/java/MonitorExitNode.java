@@ -48,7 +48,7 @@ public class MonitorExitNode extends AccessMonitorNode implements Virtualizable,
         return USE_GENERATED_NODES ? new MonitorExitNodeGen(object, monitorId, escapedReturnValue) : new MonitorExitNode(object, monitorId, escapedReturnValue);
     }
 
-    MonitorExitNode(ValueNode object, MonitorIdNode monitorId, ValueNode escapedReturnValue) {
+    protected MonitorExitNode(ValueNode object, MonitorIdNode monitorId, ValueNode escapedReturnValue) {
         super(object, monitorId);
         this.escapedReturnValue = escapedReturnValue;
     }

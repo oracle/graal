@@ -56,7 +56,7 @@ public class IntegerSwitchNode extends SwitchNode implements LIRLowerable, Simpl
                         keySuccessors);
     }
 
-    IntegerSwitchNode(ValueNode value, BeginNode[] successors, int[] keys, double[] keyProbabilities, int[] keySuccessors) {
+    protected IntegerSwitchNode(ValueNode value, BeginNode[] successors, int[] keys, double[] keyProbabilities, int[] keySuccessors) {
         super(value, successors, keySuccessors, keyProbabilities);
         assert keySuccessors.length == keys.length + 1;
         assert keySuccessors.length == keyProbabilities.length;
@@ -87,7 +87,7 @@ public class IntegerSwitchNode extends SwitchNode implements LIRLowerable, Simpl
                         keySuccessors);
     }
 
-    IntegerSwitchNode(ValueNode value, int successorCount, int[] keys, double[] keyProbabilities, int[] keySuccessors) {
+    protected IntegerSwitchNode(ValueNode value, int successorCount, int[] keys, double[] keyProbabilities, int[] keySuccessors) {
         this(value, new BeginNode[successorCount], keys, keyProbabilities, keySuccessors);
     }
 

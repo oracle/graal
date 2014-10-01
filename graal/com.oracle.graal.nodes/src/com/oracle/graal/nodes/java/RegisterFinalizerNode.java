@@ -45,7 +45,7 @@ public class RegisterFinalizerNode extends AbstractStateSplit implements Canonic
         return USE_GENERATED_NODES ? new RegisterFinalizerNodeGen(value) : new RegisterFinalizerNode(value);
     }
 
-    RegisterFinalizerNode(ValueNode value) {
+    protected RegisterFinalizerNode(ValueNode value) {
         super(StampFactory.forVoid());
         this.value = value;
     }

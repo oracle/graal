@@ -44,7 +44,7 @@ public class CommitAllocationNode extends FixedWithNextNode implements Virtualiz
         return USE_GENERATED_NODES ? new CommitAllocationNodeGen() : new CommitAllocationNode();
     }
 
-    CommitAllocationNode() {
+    protected CommitAllocationNode() {
         super(StampFactory.forVoid());
     }
 

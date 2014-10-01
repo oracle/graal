@@ -42,7 +42,7 @@ public class AllocatedObjectNode extends FloatingNode implements Virtualizable, 
         return USE_GENERATED_NODES ? new AllocatedObjectNodeGen(virtualObject) : new AllocatedObjectNode(virtualObject);
     }
 
-    AllocatedObjectNode(VirtualObjectNode virtualObject) {
+    protected AllocatedObjectNode(VirtualObjectNode virtualObject) {
         super(StampFactory.exactNonNull(virtualObject.type()));
         this.virtualObject = virtualObject;
     }

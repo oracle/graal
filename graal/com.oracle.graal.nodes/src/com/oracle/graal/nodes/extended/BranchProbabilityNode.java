@@ -57,7 +57,7 @@ public class BranchProbabilityNode extends FloatingNode implements Simplifiable,
         return USE_GENERATED_NODES ? new BranchProbabilityNodeGen(probability, condition) : new BranchProbabilityNode(probability, condition);
     }
 
-    BranchProbabilityNode(ValueNode probability, ValueNode condition) {
+    protected BranchProbabilityNode(ValueNode probability, ValueNode condition) {
         super(condition.stamp());
         this.probability = probability;
         this.condition = condition;

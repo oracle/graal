@@ -73,7 +73,7 @@ public class IndexedLocationNode extends LocationNode implements Canonicalizable
         return USE_GENERATED_NODES ? new IndexedLocationNodeGen(identity, kind, displacement, index, indexScaling) : new IndexedLocationNode(identity, kind, displacement, index, indexScaling);
     }
 
-    IndexedLocationNode(LocationIdentity identity, Kind kind, long displacement, ValueNode index, int indexScaling) {
+    protected IndexedLocationNode(LocationIdentity identity, Kind kind, long displacement, ValueNode index, int indexScaling) {
         super(StampFactory.forVoid());
         assert index != null;
         assert indexScaling != 0;

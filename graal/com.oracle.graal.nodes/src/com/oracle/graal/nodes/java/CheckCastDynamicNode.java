@@ -53,7 +53,7 @@ public class CheckCastDynamicNode extends FixedWithNextNode implements Canonical
         return USE_GENERATED_NODES ? new CheckCastDynamicNodeGen(hub, object, forStoreCheck) : new CheckCastDynamicNode(hub, object, forStoreCheck);
     }
 
-    CheckCastDynamicNode(ValueNode hub, ValueNode object, boolean forStoreCheck) {
+    protected CheckCastDynamicNode(ValueNode hub, ValueNode object, boolean forStoreCheck) {
         super(object.stamp());
         this.hub = hub;
         this.object = object;

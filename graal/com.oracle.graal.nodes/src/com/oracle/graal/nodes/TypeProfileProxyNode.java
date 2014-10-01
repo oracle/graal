@@ -62,7 +62,7 @@ public class TypeProfileProxyNode extends UnaryNode implements IterableNodeType,
         return USE_GENERATED_NODES ? new TypeProfileProxyNodeGen(object, profile) : new TypeProfileProxyNode(object, profile);
     }
 
-    TypeProfileProxyNode(ValueNode value, JavaTypeProfile profile) {
+    protected TypeProfileProxyNode(ValueNode value, JavaTypeProfile profile) {
         super(value.stamp(), value);
         this.profile = profile;
     }

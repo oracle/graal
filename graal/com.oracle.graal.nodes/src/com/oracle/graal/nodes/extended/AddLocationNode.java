@@ -59,7 +59,7 @@ public class AddLocationNode extends LocationNode implements Canonicalizable.Bin
         return USE_GENERATED_NODES ? new AddLocationNodeGen(x, y) : new AddLocationNode(x, y);
     }
 
-    AddLocationNode(ValueNode x, ValueNode y) {
+    protected AddLocationNode(ValueNode x, ValueNode y) {
         super(StampFactory.forVoid());
         this.x = x;
         this.y = y;

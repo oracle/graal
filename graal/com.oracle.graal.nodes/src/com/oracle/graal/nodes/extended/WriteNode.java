@@ -40,7 +40,7 @@ public class WriteNode extends AbstractWriteNode implements LIRLowerable, Simpli
         return USE_GENERATED_NODES ? new WriteNodeGen(object, value, location, barrierType) : new WriteNode(object, value, location, barrierType);
     }
 
-    WriteNode(ValueNode object, ValueNode value, ValueNode location, BarrierType barrierType) {
+    protected WriteNode(ValueNode object, ValueNode value, ValueNode location, BarrierType barrierType) {
         super(object, value, location, barrierType);
     }
 
@@ -48,7 +48,7 @@ public class WriteNode extends AbstractWriteNode implements LIRLowerable, Simpli
         return USE_GENERATED_NODES ? new WriteNodeGen(object, value, location, barrierType, initialization) : new WriteNode(object, value, location, barrierType, initialization);
     }
 
-    WriteNode(ValueNode object, ValueNode value, ValueNode location, BarrierType barrierType, boolean initialization) {
+    protected WriteNode(ValueNode object, ValueNode value, ValueNode location, BarrierType barrierType, boolean initialization) {
         super(object, value, location, barrierType, initialization);
     }
 
@@ -56,7 +56,7 @@ public class WriteNode extends AbstractWriteNode implements LIRLowerable, Simpli
         return USE_GENERATED_NODES ? new WriteNodeGen(object, value, location, barrierType, guard, initialization) : new WriteNode(object, value, location, barrierType, guard, initialization);
     }
 
-    WriteNode(ValueNode object, ValueNode value, ValueNode location, BarrierType barrierType, GuardingNode guard, boolean initialization) {
+    protected WriteNode(ValueNode object, ValueNode value, ValueNode location, BarrierType barrierType, GuardingNode guard, boolean initialization) {
         super(object, value, location, barrierType, guard, initialization);
     }
 

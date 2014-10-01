@@ -36,7 +36,7 @@ public class VirtualBoxingNode extends VirtualInstanceNode {
         return USE_GENERATED_NODES ? new VirtualBoxingNodeGen(type, boxingKind) : new VirtualBoxingNode(type, boxingKind);
     }
 
-    VirtualBoxingNode(ResolvedJavaType type, Kind boxingKind) {
+    protected VirtualBoxingNode(ResolvedJavaType type, Kind boxingKind) {
         super(type, false);
         this.boxingKind = boxingKind;
     }

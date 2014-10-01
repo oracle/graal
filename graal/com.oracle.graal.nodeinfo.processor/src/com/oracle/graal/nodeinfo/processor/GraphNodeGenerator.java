@@ -243,10 +243,12 @@ public class GraphNodeGenerator {
                     if (isAssignableWithErasure(field, NodeSuccessorList)) {
                         throw new ElementException(field, "NodeSuccessorList field must be annotated with @" + Successor.getSimpleName());
                     }
-                    if (modifiers.contains(PUBLIC) && !modifiers.contains(FINAL)) {
-                        throw new ElementException(field, "Data field must be final if public otherwise it must be protected or package-private");
-                    } else if (modifiers.contains(PRIVATE)) {
-                        throw new ElementException(field, "Data field must be protected or package-private");
+                    if (modifiers.contains(PUBLIC)) {
+                        if (!modifiers.contains(FINAL)) {
+                            throw new ElementException(field, "Data field must be final if public otherwise it must be protected");
+                        }
+                    } else if (!modifiers.contains(PROTECTED)) {
+                        throw new ElementException(field, "Data field must be protected");
                     }
                     dataFields.add(field);
                 }
@@ -316,6 +318,8 @@ public class GraphNodeGenerator {
         for (ExecutableElement constructor : ElementFilter.constructorsIn(node.getEnclosedElements())) {
             if (constructor.getModifiers().contains(PUBLIC)) {
                 throw new ElementException(constructor, "Node class constructor must not be public");
+            } else if (!constructor.getModifiers().contains(PROTECTED)) {
+                throw new ElementException(constructor, "Node class constructor must be protected");
             }
 
             checkFactoryMethodExists(node, constructor);

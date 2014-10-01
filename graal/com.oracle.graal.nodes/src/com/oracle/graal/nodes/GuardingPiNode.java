@@ -72,7 +72,7 @@ public class GuardingPiNode extends FixedWithNextNode implements Lowerable, Virt
         return USE_GENERATED_NODES ? new GuardingPiNodeGen(object) : new GuardingPiNode(object);
     }
 
-    GuardingPiNode(ValueNode object) {
+    protected GuardingPiNode(ValueNode object) {
         this(object, object.graph().unique(IsNullNode.create(object)), true, DeoptimizationReason.NullCheckException, DeoptimizationAction.None, object.stamp().join(StampFactory.objectNonNull()));
     }
 

@@ -51,7 +51,7 @@ public class MembarNode extends FixedWithNextNode implements LIRLowerable, Memor
         return USE_GENERATED_NODES ? new MembarNodeGen(barriers) : new MembarNode(barriers);
     }
 
-    MembarNode(int barriers) {
+    protected MembarNode(int barriers) {
         super(StampFactory.forVoid());
         this.barriers = barriers;
     }

@@ -42,7 +42,7 @@ public class ReadNode extends FloatableAccessNode implements LIRLowerable, Canon
         return USE_GENERATED_NODES ? new ReadNodeGen(object, location, stamp, barrierType) : new ReadNode(object, location, stamp, barrierType);
     }
 
-    ReadNode(ValueNode object, ValueNode location, Stamp stamp, BarrierType barrierType) {
+    protected ReadNode(ValueNode object, ValueNode location, Stamp stamp, BarrierType barrierType) {
         super(object, location, stamp, null, barrierType);
     }
 
@@ -50,7 +50,7 @@ public class ReadNode extends FloatableAccessNode implements LIRLowerable, Canon
         return USE_GENERATED_NODES ? new ReadNodeGen(object, location, stamp, guard, barrierType) : new ReadNode(object, location, stamp, guard, barrierType);
     }
 
-    ReadNode(ValueNode object, ValueNode location, Stamp stamp, GuardingNode guard, BarrierType barrierType) {
+    protected ReadNode(ValueNode object, ValueNode location, Stamp stamp, GuardingNode guard, BarrierType barrierType) {
         super(object, location, stamp, guard, barrierType);
     }
 
@@ -59,7 +59,7 @@ public class ReadNode extends FloatableAccessNode implements LIRLowerable, Canon
                         stateBefore);
     }
 
-    ReadNode(ValueNode object, ValueNode location, Stamp stamp, GuardingNode guard, BarrierType barrierType, boolean nullCheck, FrameState stateBefore) {
+    protected ReadNode(ValueNode object, ValueNode location, Stamp stamp, GuardingNode guard, BarrierType barrierType, boolean nullCheck, FrameState stateBefore) {
         super(object, location, stamp, guard, barrierType, nullCheck, stateBefore);
     }
 
@@ -67,7 +67,7 @@ public class ReadNode extends FloatableAccessNode implements LIRLowerable, Canon
         return USE_GENERATED_NODES ? new ReadNodeGen(object, location, guard, barrierType) : new ReadNode(object, location, guard, barrierType);
     }
 
-    ReadNode(ValueNode object, ValueNode location, ValueNode guard, BarrierType barrierType) {
+    protected ReadNode(ValueNode object, ValueNode location, ValueNode guard, BarrierType barrierType) {
         /*
          * Used by node intrinsics. Really, you can trust me on that! Since the initial value for
          * location is a parameter, i.e., a ParameterNode, the constructor cannot use the declared

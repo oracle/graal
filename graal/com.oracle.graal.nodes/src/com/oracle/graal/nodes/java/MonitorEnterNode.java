@@ -44,7 +44,7 @@ public class MonitorEnterNode extends AccessMonitorNode implements Virtualizable
         return USE_GENERATED_NODES ? new MonitorEnterNodeGen(object, monitorId) : new MonitorEnterNode(object, monitorId);
     }
 
-    MonitorEnterNode(ValueNode object, MonitorIdNode monitorId) {
+    protected MonitorEnterNode(ValueNode object, MonitorIdNode monitorId) {
         super(object, monitorId);
     }
 

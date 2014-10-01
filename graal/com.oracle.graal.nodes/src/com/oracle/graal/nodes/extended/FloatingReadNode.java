@@ -43,7 +43,7 @@ public class FloatingReadNode extends FloatingAccessNode implements IterableNode
         return USE_GENERATED_NODES ? new FloatingReadNodeGen(object, location, lastLocationAccess, stamp) : new FloatingReadNode(object, location, lastLocationAccess, stamp);
     }
 
-    FloatingReadNode(ValueNode object, LocationNode location, MemoryNode lastLocationAccess, Stamp stamp) {
+    protected FloatingReadNode(ValueNode object, LocationNode location, MemoryNode lastLocationAccess, Stamp stamp) {
         this(object, location, lastLocationAccess, stamp, null, BarrierType.NONE);
     }
 
@@ -51,7 +51,7 @@ public class FloatingReadNode extends FloatingAccessNode implements IterableNode
         return USE_GENERATED_NODES ? new FloatingReadNodeGen(object, location, lastLocationAccess, stamp, guard) : new FloatingReadNode(object, location, lastLocationAccess, stamp, guard);
     }
 
-    FloatingReadNode(ValueNode object, LocationNode location, MemoryNode lastLocationAccess, Stamp stamp, GuardingNode guard) {
+    protected FloatingReadNode(ValueNode object, LocationNode location, MemoryNode lastLocationAccess, Stamp stamp, GuardingNode guard) {
         this(object, location, lastLocationAccess, stamp, guard, BarrierType.NONE);
     }
 
@@ -60,7 +60,7 @@ public class FloatingReadNode extends FloatingAccessNode implements IterableNode
                         guard, barrierType);
     }
 
-    FloatingReadNode(ValueNode object, LocationNode location, MemoryNode lastLocationAccess, Stamp stamp, GuardingNode guard, BarrierType barrierType) {
+    protected FloatingReadNode(ValueNode object, LocationNode location, MemoryNode lastLocationAccess, Stamp stamp, GuardingNode guard, BarrierType barrierType) {
         super(object, location, stamp, guard, barrierType);
         this.lastLocationAccess = lastLocationAccess;
     }

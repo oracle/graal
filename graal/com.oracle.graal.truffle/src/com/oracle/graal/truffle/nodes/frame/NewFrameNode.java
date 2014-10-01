@@ -112,7 +112,7 @@ public class NewFrameNode extends FixedWithNextNode implements IterableNodeType,
             return USE_GENERATED_NODES ? new NewFrameNode_VirtualOnlyInstanceNodeGen(type, fields) : new VirtualOnlyInstanceNode(type, fields);
         }
 
-        VirtualOnlyInstanceNode(ResolvedJavaType type, ResolvedJavaField[] fields) {
+        protected VirtualOnlyInstanceNode(ResolvedJavaType type, ResolvedJavaField[] fields) {
             super(type, fields, false);
         }
 
