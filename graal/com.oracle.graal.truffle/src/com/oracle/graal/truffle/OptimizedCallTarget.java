@@ -226,7 +226,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
                 args1 = castArguments(args1);
             }
         }
-        VirtualFrame frame = createFrame(getRootNode().getFrameDescriptor(), args);
+        VirtualFrame frame = createFrame(getRootNode().getFrameDescriptor(), args1);
         Object result = callProxy(frame);
 
         // Profile call return type
