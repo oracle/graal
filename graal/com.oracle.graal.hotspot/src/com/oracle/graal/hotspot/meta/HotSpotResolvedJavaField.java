@@ -338,8 +338,11 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
      * @return true if field has {@link Stable} annotation, false otherwise
      */
     public boolean isStable() {
-        Annotation annotation = getAnnotation(Stable.class);
-        return annotation != null;
+        if ((runtime().getConfig().jvmAccFieldStable & modifiers) != 0) {
+            return true;
+        }
+        assert getAnnotation(Stable.class) == null;
+        return false;
     }
 
     @Override
