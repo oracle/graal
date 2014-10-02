@@ -235,7 +235,8 @@ public class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerab
                         graph().addBeforeFixed(this, trueNext);
                         for (Node usage : trueNext.usages().snapshot()) {
                             if (usage.isAlive()) {
-                                if (usage.getNodeClass().valueNumberable() && !usage.isLeafNode()) {
+                                NodeClass usageNodeClass = usage.getNodeClass();
+                                if (usageNodeClass.valueNumberable() && !usageNodeClass.isLeafNode()) {
                                     Node newNode = graph().findDuplicate(usage);
                                     if (newNode != null) {
                                         usage.replaceAtUsages(newNode);

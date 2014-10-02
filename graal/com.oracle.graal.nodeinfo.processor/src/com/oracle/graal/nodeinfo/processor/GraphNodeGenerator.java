@@ -334,12 +334,12 @@ public class GraphNodeGenerator {
             boolean hasInputs = !inputFields.isEmpty() || !inputListFields.isEmpty();
             boolean hasSuccessors = !successorFields.isEmpty() || !successorListFields.isEmpty();
 
-            if (hasInputs || hasSuccessors) {
-                createIsLeafNodeMethod();
-            }
+            boolean isLeaf = !(hasInputs || hasSuccessors);
 
-            createValueNumberMethod(node);
-            createValueEqualsMethod();
+            if (isLeaf && isAssignableWithErasure(node, ValueNumberable)) {
+                createValueNumberLeafMethod(node);
+            }
+            createDataEqualsMethod();
         }
         compilationUnit.add(genClass);
         return compilationUnit;
@@ -430,65 +430,56 @@ public class GraphNodeGenerator {
         }
     }
 
-    private void createIsLeafNodeMethod() {
-        CodeExecutableElement method = new CodeExecutableElement(modifiers(PUBLIC), getType(boolean.class), "isLeafNode");
-        method.createBuilder().startReturn().string("false").end();
+    private void createValueNumberLeafMethod(TypeElement node) {
+        CodeExecutableElement method = new CodeExecutableElement(modifiers(PUBLIC), getType(int.class), "valueNumberLeaf");
+        CodeTreeBuilder b = method.createBuilder();
+        b.startStatement().string("int number = " + node.hashCode()).end();
+        for (VariableElement f : dataFields) {
+            String fname = f.getSimpleName().toString();
+            switch (f.asType().getKind()) {
+                case BOOLEAN:
+                    b.startIf().string(fname).end().startBlock();
+                    b.startStatement().string("number += 7").end();
+                    b.end();
+                    break;
+                case BYTE:
+                case SHORT:
+                case CHAR:
+                case INT:
+                    b.startStatement().string("number += 13 * ", fname).end();
+                    break;
+                case FLOAT:
+                    b.startStatement().string("number += 17 * Float.floatToRawIntBits(", fname, ")").end();
+                    break;
+                case LONG:
+                    b.startStatement().string("number += 19 * ", fname + " ^ (", fname, " >>> 32)").end();
+                    break;
+                case DOUBLE:
+                    b.startStatement().string("long longValue = Double.doubleToRawLongBits(", fname, ")").end();
+                    b.startStatement().string("number += 23 * longValue ^ (longValue >>> 32)").end();
+                    break;
+                case ARRAY:
+                    if (((ArrayType) f.asType()).getComponentType().getKind().isPrimitive()) {
+                        b.startStatement().string("number += 31 * Arrays.hashCode(", fname, ")").end();
+                    } else {
+                        b.startStatement().string("number += 31 * Arrays.deepHashCode(", fname, ")").end();
+                    }
+                    break;
+                default:
+                    b.startIf().string(fname, " != null").end().startBlock();
+                    b.startStatement().string("number += 29 * ", fname + ".hashCode()").end();
+                    b.end();
+                    break;
+            }
+        }
+        b.end();
+        b.startReturn().string("number").end();
         genClass.add(method);
         checkOnlyInGenNode(method);
     }
 
-    private void createValueNumberMethod(TypeElement node) {
-        if (isAssignableWithErasure(node, ValueNumberable)) {
-            CodeExecutableElement method = new CodeExecutableElement(modifiers(PUBLIC), getType(int.class), "getValueNumber");
-            CodeTreeBuilder b = method.createBuilder();
-            b.startStatement().string("int number = " + node.hashCode()).end();
-            for (VariableElement f : dataFields) {
-                String fname = f.getSimpleName().toString();
-                switch (f.asType().getKind()) {
-                    case BOOLEAN:
-                        b.startIf().string(fname).end().startBlock();
-                        b.startStatement().string("number += 7").end();
-                        b.end();
-                        break;
-                    case BYTE:
-                    case SHORT:
-                    case CHAR:
-                    case INT:
-                        b.startStatement().string("number += 13 * ", fname).end();
-                        break;
-                    case FLOAT:
-                        b.startStatement().string("number += 17 * Float.floatToRawIntBits(", fname, ")").end();
-                        break;
-                    case LONG:
-                        b.startStatement().string("number += 19 * ", fname + " ^ (", fname, " >>> 32)").end();
-                        break;
-                    case DOUBLE:
-                        b.startStatement().string("long longValue = Double.doubleToRawLongBits(", fname, ")").end();
-                        b.startStatement().string("number += 23 * longValue ^ (longValue >>> 32)").end();
-                        break;
-                    case ARRAY:
-                        if (((ArrayType) f.asType()).getComponentType().getKind().isPrimitive()) {
-                            b.startStatement().string("number += 31 * Arrays.hashCode(", fname, ")").end();
-                        } else {
-                            b.startStatement().string("number += 31 * Arrays.deepHashCode(", fname, ")").end();
-                        }
-                        break;
-                    default:
-                        b.startIf().string(fname, " != null").end().startBlock();
-                        b.startStatement().string("number += 29 * ", fname + ".hashCode()").end();
-                        b.end();
-                        break;
-                }
-            }
-            b.end();
-            b.startReturn().string("number").end();
-            genClass.add(method);
-            checkOnlyInGenNode(method);
-        }
-    }
-
-    private void createValueEqualsMethod() {
-        CodeExecutableElement method = new CodeExecutableElement(modifiers(PUBLIC), getType(boolean.class), "valueEqualsGen");
+    private void createDataEqualsMethod() {
+        CodeExecutableElement method = new CodeExecutableElement(modifiers(PUBLIC), getType(boolean.class), "dataEquals");
         addParameter(method, Node.asType(), "other");
         CodeTreeBuilder b = method.createBuilder();
         if (!dataFields.isEmpty()) {

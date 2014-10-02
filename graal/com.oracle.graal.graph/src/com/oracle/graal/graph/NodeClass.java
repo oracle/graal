@@ -553,7 +553,7 @@ public final class NodeClass extends FieldIntrospection {
         return eq;
     }
 
-    public boolean valueEqual(Node a, Node b) {
+    public boolean dataEquals(Node a, Node b) {
         assert a.getClass() == b.getClass();
         for (int i = 0; i < data.getCount(); ++i) {
             Class<?> type = data.getType(i);
@@ -827,6 +827,9 @@ public final class NodeClass extends FieldIntrospection {
         }
     }
 
+    /**
+     * @returns true if the node has no inputs and no successors
+     */
     public boolean isLeafNode() {
         return isLeafNode;
     }

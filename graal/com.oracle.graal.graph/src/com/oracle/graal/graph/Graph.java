@@ -78,7 +78,12 @@ public class Graph {
     int compressions;
 
     NodeEventListener nodeEventListener;
-    private final HashMap<CacheEntry, Node> cachedNodes = new HashMap<>();
+
+    /**
+     * Used to global value number {@link ValueNumberable} {@linkplain NodeClass#isLeafNode() leaf}
+     * nodes.
+     */
+    private final HashMap<CacheEntry, Node> cachedLeafNodes = new HashMap<>();
 
     /*
      * Indicates that the graph should no longer be modified. Frozen graphs can be used my multiple
@@ -86,19 +91,22 @@ public class Graph {
      */
     private boolean isFrozen = false;
 
+    /**
+     * Entry in {@link Graph#cachedLeafNodes}.
+     */
     private static final class CacheEntry {
 
         private final Node node;
 
         public CacheEntry(Node node) {
-            assert node instanceof ValueNumberable;
-            assert node.isLeafNode();
+            assert node.getNodeClass().valueNumberable();
+            assert node.getNodeClass().isLeafNode();
             this.node = node;
         }
 
         @Override
         public int hashCode() {
-            return Node.USE_GENERATED_NODES ? node.getValueNumber() : node.getNodeClass().valueNumber(node);
+            return Node.USE_GENERATED_NODES ? node.valueNumberLeaf() : node.getNodeClass().valueNumber(node);
         }
 
         @Override
@@ -446,7 +454,7 @@ public class Graph {
             return (T) other;
         } else {
             Node result = addIfMissing ? addHelper(node) : node;
-            if (node.isLeafNode()) {
+            if (node.getNodeClass().isLeafNode()) {
                 putNodeIntoCache(result);
             }
             return (T) result;
@@ -456,15 +464,15 @@ public class Graph {
     void putNodeIntoCache(Node node) {
         assert node.graph() == this || node.graph() == null;
         assert node.getNodeClass().valueNumberable();
-        assert node.isLeafNode() : node.getClass();
-        cachedNodes.put(new CacheEntry(node), node);
+        assert node.getNodeClass().isLeafNode() : node.getClass();
+        cachedLeafNodes.put(new CacheEntry(node), node);
     }
 
     Node findNodeInCache(Node node) {
         CacheEntry key = new CacheEntry(node);
-        Node result = cachedNodes.get(key);
+        Node result = cachedLeafNodes.get(key);
         if (result != null && result.isDeleted()) {
-            cachedNodes.remove(key);
+            cachedLeafNodes.remove(key);
             return null;
         }
         return result;
@@ -473,7 +481,8 @@ public class Graph {
     public Node findDuplicate(Node node) {
         NodeClass nodeClass = node.getNodeClass();
         assert nodeClass.valueNumberable();
-        if (node.isLeafNode()) {
+        if (nodeClass.isLeafNode()) {
+            // Leaf node: look up in cache
             Node cachedNode = findNodeInCache(node);
             if (cachedNode != null) {
                 return cachedNode;
@@ -481,6 +490,10 @@ public class Graph {
                 return null;
             }
         } else {
+            // Non-leaf node: look for another usage of the node's inputs that
+            // has the same data, inputs and successors as the node. To reduce
+            // the cost of this computation, only the input with estimated highest
+            // usage count is considered.
 
             int minCount = Integer.MAX_VALUE;
             Node minCountNode = null;
