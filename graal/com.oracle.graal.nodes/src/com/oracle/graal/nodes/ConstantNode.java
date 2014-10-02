@@ -91,10 +91,10 @@ public class ConstantNode extends FloatingNode implements LIRLowerable {
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        if (gen.getLIRGeneratorTool().canInlineConstant(value) || onlyUsedInVirtualState()) {
+        if (onlyUsedInVirtualState()) {
             gen.setResult(this, value);
         } else {
-            gen.setResult(this, gen.getLIRGeneratorTool().emitMove(value));
+            gen.setResult(this, gen.getLIRGeneratorTool().emitLoadConstant(value));
         }
     }
 

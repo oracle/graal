@@ -111,7 +111,20 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRKindTool {
     }
 
     @Override
-    public abstract Variable emitMove(Value input);
+    public Variable emitMove(Value input) {
+        Variable result = newVariable(input.getLIRKind());
+        emitMove(result, input);
+        return result;
+    }
+
+    @Override
+    public Value emitLoadConstant(Constant constant) {
+        if (canInlineConstant(constant)) {
+            return constant;
+        } else {
+            return emitMove(constant);
+        }
+    }
 
     public AllocatableValue asAllocatable(Value value) {
         if (isAllocatableValue(value)) {
@@ -127,6 +140,16 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRKindTool {
         }
         return (Variable) value;
     }
+
+    /**
+     * Checks whether the supplied constant can be used without loading it into a register for most
+     * operations, i.e., for commonly used arithmetic, logical, and comparison operations.
+     *
+     * @param c The constant to check.
+     * @return True if the constant can be used directly, false if the constant needs to be in a
+     *         register.
+     */
+    protected abstract boolean canInlineConstant(Constant c);
 
     public Value loadNonConst(Value value) {
         if (isConstant(value) && !canInlineConstant((Constant) value)) {

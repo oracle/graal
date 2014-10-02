@@ -62,12 +62,6 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public boolean canStoreConstant(Constant c) {
-        // Operand b must be in the .reg state space.
-        return false;
-    }
-
-    @Override
     public boolean canInlineConstant(Constant c) {
         switch (c.getKind()) {
             case Long:
@@ -77,13 +71,6 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
             default:
                 return true;
         }
-    }
-
-    @Override
-    public Variable emitMove(Value input) {
-        Variable result = newVariable(input.getLIRKind());
-        emitMove(result, input);
-        return result;
     }
 
     protected HSAILLIRInstruction createMove(AllocatableValue dst, Value src) {

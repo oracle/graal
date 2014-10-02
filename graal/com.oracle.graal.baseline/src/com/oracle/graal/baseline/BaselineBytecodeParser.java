@@ -595,10 +595,7 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, Baseli
 
     @Override
     protected Value appendConstant(Constant constant) {
-        if (gen.canInlineConstant(constant)) {
-            return constant;
-        }
-        return gen.emitMove(constant);
+        return gen.emitLoadConstant(constant);
     }
 
     @Override

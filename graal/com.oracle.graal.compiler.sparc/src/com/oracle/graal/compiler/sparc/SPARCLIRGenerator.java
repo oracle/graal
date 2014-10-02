@@ -83,18 +83,6 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public boolean canStoreConstant(Constant c) {
-        // SPARC can only store integer null constants (via g0)
-        switch (c.getKind()) {
-            case Float:
-            case Double:
-                return false;
-            default:
-                return c.isDefaultForKind();
-        }
-    }
-
-    @Override
     public boolean canInlineConstant(Constant c) {
         switch (c.getKind()) {
             case Int:
@@ -106,13 +94,6 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
             default:
                 return false;
         }
-    }
-
-    @Override
-    public Variable emitMove(Value input) {
-        Variable result = newVariable(input.getLIRKind());
-        emitMove(result, input);
-        return result;
     }
 
     protected SPARCLIRInstruction createMove(AllocatableValue dst, Value src) {

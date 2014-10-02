@@ -93,8 +93,7 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator implements HotSp
         return config.narrowKlassBase;
     }
 
-    @Override
-    public boolean canStoreConstant(Constant c) {
+    private static boolean canStoreConstant(Constant c) {
         return !(c instanceof HotSpotObjectConstant);
     }
 
