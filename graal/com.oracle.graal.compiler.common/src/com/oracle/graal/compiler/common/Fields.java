@@ -77,36 +77,6 @@ public class Fields {
         }
     }
 
-    public void copy(Object from, Object to) {
-        for (int index = 0; index < offsets.length; index++) {
-            long offset = offsets[index];
-            Class<?> type = types[index];
-            if (type.isPrimitive()) {
-                if (type == Integer.TYPE) {
-                    unsafe.putInt(to, offset, unsafe.getInt(from, offset));
-                } else if (type == Long.TYPE) {
-                    unsafe.putLong(to, offset, unsafe.getLong(from, offset));
-                } else if (type == Boolean.TYPE) {
-                    unsafe.putBoolean(to, offset, unsafe.getBoolean(from, offset));
-                } else if (type == Float.TYPE) {
-                    unsafe.putFloat(to, offset, unsafe.getFloat(from, offset));
-                } else if (type == Double.TYPE) {
-                    unsafe.putDouble(to, offset, unsafe.getDouble(from, offset));
-                } else if (type == Short.TYPE) {
-                    unsafe.putShort(to, offset, unsafe.getShort(from, offset));
-                } else if (type == Character.TYPE) {
-                    unsafe.putChar(to, offset, unsafe.getChar(from, offset));
-                } else if (type == Byte.TYPE) {
-                    unsafe.putByte(to, offset, unsafe.getByte(from, offset));
-                } else {
-                    assert false : "unhandled property type: " + type;
-                }
-            } else {
-                unsafe.putObject(to, offset, unsafe.getObject(from, offset));
-            }
-        }
-    }
-
     /**
      * Gets the value of a field for a given object.
      *

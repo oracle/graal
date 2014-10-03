@@ -191,7 +191,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
             FixedNode exceptionSux = exceptionEdge.next();
             graph.addBeforeFixed(exceptionSux, exceptionMerge);
             exceptionObjectPhi = graph.addWithoutUnique(ValuePhiNode.create(StampFactory.forKind(Kind.Object), exceptionMerge));
-            exceptionMerge.setStateAfter(exceptionEdge.stateAfter().duplicateModified(invoke.stateAfter().bci(), true, Kind.Object, exceptionObjectPhi));
+            exceptionMerge.setStateAfter(exceptionEdge.stateAfter().duplicateModified(invoke.stateAfter().bci, true, Kind.Object, exceptionObjectPhi));
         }
 
         // create one separate block for each invoked method
@@ -484,7 +484,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
         Kind kind = invoke.asNode().getKind();
         if (kind != Kind.Void) {
             FrameState stateAfter = invoke.stateAfter();
-            stateAfter = stateAfter.duplicate(stateAfter.bci());
+            stateAfter = stateAfter.duplicate(stateAfter.bci);
             stateAfter.replaceFirstInput(invoke.asNode(), result.asNode());
             result.setStateAfter(stateAfter);
         }
@@ -498,7 +498,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
 
             ExceptionObjectNode newExceptionEdge = (ExceptionObjectNode) exceptionEdge.copyWithInputs();
             // set new state (pop old exception object, push new one)
-            newExceptionEdge.setStateAfter(stateAfterException.duplicateModified(stateAfterException.bci(), stateAfterException.rethrowException(), Kind.Object, newExceptionEdge));
+            newExceptionEdge.setStateAfter(stateAfterException.duplicateModified(stateAfterException.bci, stateAfterException.rethrowException(), Kind.Object, newExceptionEdge));
 
             AbstractEndNode endNode = graph.add(EndNode.create());
             newExceptionEdge.setNext(endNode);

@@ -35,7 +35,7 @@ import com.oracle.graal.nodes.extended.*;
 public class MemoryPhiNode extends PhiNode implements MemoryNode {
 
     @Input(InputType.Memory) NodeInputList<ValueNode> values;
-    protected LocationIdentity locationIdentity;
+    protected final LocationIdentity locationIdentity;
 
     public static MemoryPhiNode create(MergeNode merge, LocationIdentity locationIdentity) {
         return USE_GENERATED_NODES ? new MemoryPhiNodeGen(merge, locationIdentity) : new MemoryPhiNode(merge, locationIdentity);

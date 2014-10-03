@@ -58,7 +58,6 @@ public class GraphNodeGenerator {
     private final TypeElement NodeInputList;
     private final TypeElement NodeSuccessorList;
     private final TypeElement ValueNumberable;
-    private final TypeElement UnsafeAccess;
 
     private final List<VariableElement> inputFields = new ArrayList<>();
     private final List<VariableElement> inputListFields = new ArrayList<>();
@@ -84,7 +83,6 @@ public class GraphNodeGenerator {
         this.NodeInputList = getTypeElement("com.oracle.graal.graph.NodeInputList");
         this.NodeSuccessorList = getTypeElement("com.oracle.graal.graph.NodeSuccessorList");
         this.ValueNumberable = getTypeElement("com.oracle.graal.graph.Node.ValueNumberable");
-        this.UnsafeAccess = getTypeElement("com.oracle.graal.compiler.common.UnsafeAccess");
     }
 
     @SafeVarargs
@@ -241,13 +239,10 @@ public class GraphNodeGenerator {
                     if (isAssignableWithErasure(field, NodeSuccessorList)) {
                         throw new ElementException(field, "NodeSuccessorList field must be annotated with @" + Successor.getSimpleName());
                     }
-                    if (modifiers.contains(FINAL)) {
-                        throw new ElementException(field, "Data field must not be final");
-                    }
                     if (modifiers.contains(PUBLIC)) {
-                        // if (!modifiers.contains(FINAL)) {
-                        throw new ElementException(field, "Data field must be final if public otherwise it must be protected");
-                        // }
+                        if (!modifiers.contains(FINAL)) {
+                            throw new ElementException(field, "Data field must be final if public otherwise it must be protected");
+                        }
                     } else if (!modifiers.contains(PROTECTED)) {
                         throw new ElementException(field, "Data field must be protected");
                     }
@@ -345,7 +340,6 @@ public class GraphNodeGenerator {
                 createValueNumberLeafMethod(node);
             }
             createDataEqualsMethod();
-            createCopyMethod();
         }
         compilationUnit.add(genClass);
         return compilationUnit;
@@ -393,40 +387,6 @@ public class GraphNodeGenerator {
         b.end().end();
 
         return executable;
-    }
-
-    private void createCopyMethod() {
-        CodeExecutableElement method = new CodeExecutableElement(modifiers(PROTECTED), genClass.asType(), "copyGen");
-        method.getThrownTypes().add(getType(InstantiationException.class));
-        addParameter(method, getType(boolean.class), "clearInputsAndSuccessors");
-        CodeTreeBuilder b = method.createBuilder();
-        b.startStatement().string(genClassName, " newNode = (", genClassName, ") ").type(UnsafeAccess.asType()).string(".unsafe.allocateInstance(", genClassName, ".class)").end();
-        for (VariableElement f : dataFields) {
-            String fname = f.getSimpleName().toString();
-            b.startStatement().string("newNode.", fname, " = this.", fname).end();
-        }
-        b.startIf().string("!clearInputsAndSuccessors").end().startBlock();
-        for (List<VariableElement> fields : Arrays.asList(inputFields, inputListFields, successorFields, successorListFields)) {
-            for (VariableElement f : fields) {
-                String fname = f.getSimpleName().toString();
-                b.startStatement().string("newNode.", fname, " = this.", fname).end();
-            }
-        }
-        b.end().startElseBlock();
-        for (VariableElement f : inputListFields) {
-            String fname = f.getSimpleName().toString();
-            b.startStatement().string("newNode.", fname, " = new ").type(eraseGenericTypes(NodeInputList.asType())).string("<>(newNode, this.", fname, ".getInitializeSize())").end();
-        }
-        for (VariableElement f : successorListFields) {
-            String fname = f.getSimpleName().toString();
-            b.startStatement().string("newNode.", fname, " = new ").type(eraseGenericTypes(NodeSuccessorList.asType())).string("<>(newNode, this.", fname, ".getInitializeSize())").end();
-        }
-
-        b.end();
-
-        b.startReturn().string("newNode").end();
-        genClass.add(method);
-        checkOnlyInGenNode(method);
     }
 
     private void reset() {

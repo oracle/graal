@@ -44,14 +44,14 @@ import com.oracle.graal.nodes.type.*;
 public class CheckCastNode extends FixedWithNextNode implements Canonicalizable, Simplifiable, Lowerable, Virtualizable, ValueProxy {
 
     @Input protected ValueNode object;
-    protected ResolvedJavaType type;
-    protected JavaTypeProfile profile;
+    protected final ResolvedJavaType type;
+    protected final JavaTypeProfile profile;
 
     /**
      * Determines the exception thrown by this node if the check fails: {@link ClassCastException}
      * if false; {@link ArrayStoreException} if true.
      */
-    protected boolean forStoreCheck;
+    protected final boolean forStoreCheck;
 
     /**
      * Creates a new CheckCast instruction.

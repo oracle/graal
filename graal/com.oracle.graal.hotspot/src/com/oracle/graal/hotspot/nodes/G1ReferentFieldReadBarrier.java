@@ -35,7 +35,7 @@ import com.oracle.graal.nodes.extended.*;
 @NodeInfo
 public class G1ReferentFieldReadBarrier extends WriteBarrier {
 
-    protected boolean doLoad;
+    protected final boolean doLoad;
 
     public static G1ReferentFieldReadBarrier create(ValueNode object, ValueNode expectedObject, LocationNode location, boolean doLoad) {
         return USE_GENERATED_NODES ? new G1ReferentFieldReadBarrierGen(object, expectedObject, location, doLoad) : new G1ReferentFieldReadBarrier(object, expectedObject, location, doLoad);

@@ -43,8 +43,8 @@ public class AtomicReadAndWriteNode extends AbstractMemoryCheckpoint implements 
     @Input ValueNode offset;
     @Input ValueNode newValue;
 
-    protected Kind valueKind;
-    protected LocationIdentity locationIdentity;
+    protected final Kind valueKind;
+    protected final LocationIdentity locationIdentity;
 
     public static AtomicReadAndWriteNode create(ValueNode object, ValueNode offset, ValueNode newValue, Kind valueKind, LocationIdentity locationIdentity) {
         return USE_GENERATED_NODES ? new AtomicReadAndWriteNodeGen(object, offset, newValue, valueKind, locationIdentity) : new AtomicReadAndWriteNode(object, offset, newValue, valueKind,

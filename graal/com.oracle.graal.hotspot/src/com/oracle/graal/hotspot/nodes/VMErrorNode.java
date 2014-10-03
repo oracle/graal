@@ -40,7 +40,7 @@ import com.oracle.graal.replacements.*;
 @NodeInfo
 public class VMErrorNode extends DeoptimizingStubCall implements LIRLowerable {
 
-    protected String format;
+    protected final String format;
     @Input ValueNode value;
 
     public static VMErrorNode create(String format, ValueNode value) {
@@ -61,7 +61,7 @@ public class VMErrorNode extends DeoptimizingStubCall implements LIRLowerable {
             StringBuilder sb = new StringBuilder("in compiled code associated with frame state:");
             FrameState fs = stateBefore();
             while (fs != null) {
-                MetaUtil.appendLocation(sb.append(nl).append("\t"), fs.method(), fs.bci());
+                MetaUtil.appendLocation(sb.append(nl).append("\t"), fs.method(), fs.bci);
                 fs = fs.outerFrameState();
             }
             whereString = sb.toString();

@@ -46,7 +46,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public class SnippetLocationNode extends LocationNode implements Canonicalizable {
 
-    protected SnippetReflectionProvider snippetReflection;
+    protected final SnippetReflectionProvider snippetReflection;
 
     @Input ValueNode valueKind;
     @Input(InputType.Association) ValueNode locationIdentity;

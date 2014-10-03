@@ -245,7 +245,7 @@ public class GraphUtil {
                 while (state != null) {
                     ResolvedJavaMethod method = state.method();
                     if (method != null) {
-                        elements.add(method.asStackTraceElement(state.bci() - 1));
+                        elements.add(method.asStackTraceElement(state.bci - 1));
                     }
                     state = state.outerFrameState();
                 }

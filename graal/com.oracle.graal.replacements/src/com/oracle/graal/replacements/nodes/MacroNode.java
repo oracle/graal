@@ -61,10 +61,10 @@ public class MacroNode extends FixedWithNextNode implements Lowerable {
 
     @Input protected NodeInputList<ValueNode> arguments;
 
-    protected int bci;
-    protected ResolvedJavaMethod targetMethod;
-    protected JavaType returnType;
-    protected InvokeKind invokeKind;
+    protected final int bci;
+    protected final ResolvedJavaMethod targetMethod;
+    protected final JavaType returnType;
+    protected final InvokeKind invokeKind;
 
     public static MacroNode create(Invoke invoke) {
         return USE_GENERATED_NODES ? new MacroNodeGen(invoke) : new MacroNode(invoke);
@@ -115,7 +115,7 @@ public class MacroNode extends FixedWithNextNode implements Lowerable {
         StructuredGraph methodSubstitution = tool.getReplacements().getMethodSubstitution(getTargetMethod());
         if (methodSubstitution != null) {
             methodSubstitution = methodSubstitution.copy();
-            if (stateAfter() == null || stateAfter().bci() == BytecodeFrame.AFTER_BCI) {
+            if (stateAfter() == null || stateAfter().bci == BytecodeFrame.AFTER_BCI) {
                 /*
                  * handles the case of a MacroNode inside a snippet used for another MacroNode
                  * lowering

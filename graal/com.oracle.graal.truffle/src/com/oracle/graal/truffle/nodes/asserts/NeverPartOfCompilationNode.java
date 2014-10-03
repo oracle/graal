@@ -30,7 +30,7 @@ import com.oracle.graal.replacements.nodes.*;
 @NodeInfo
 public class NeverPartOfCompilationNode extends MacroStateSplitNode implements IterableNodeType {
 
-    protected String message;
+    protected final String message;
 
     public static NeverPartOfCompilationNode create(Invoke invoke) {
         return USE_GENERATED_NODES ? new NeverPartOfCompilationNodeGen(invoke) : new NeverPartOfCompilationNode(invoke);

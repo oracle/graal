@@ -34,7 +34,7 @@ public class TypedNodeIteratorTest2 {
     @NodeInfo
     static class NodeA extends Node implements TestNodeInterface {
 
-        protected String name;
+        protected final String name;
 
         public static NodeA create(String name) {
             return USE_GENERATED_NODES ? new TypedNodeIteratorTest2_NodeAGen(name) : new NodeA(name);

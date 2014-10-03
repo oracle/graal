@@ -69,7 +69,7 @@ public class MonitorExitNode extends AccessMonitorNode implements Virtualizable,
 
     @Override
     public void simplify(SimplifierTool tool) {
-        if (escapedReturnValue != null && stateAfter() != null && stateAfter().bci() != BytecodeFrame.AFTER_BCI) {
+        if (escapedReturnValue != null && stateAfter() != null && stateAfter().bci != BytecodeFrame.AFTER_BCI) {
             ValueNode returnValue = escapedReturnValue;
             setEscapedReturnValue(null);
             tool.removeIfUnused(returnValue);
@@ -85,7 +85,7 @@ public class MonitorExitNode extends AccessMonitorNode implements Virtualizable,
     public void virtualize(VirtualizerTool tool) {
         State state = tool.getObjectState(object());
         // the monitor exit for a synchronized method should never be virtualized
-        assert stateAfter().bci() != BytecodeFrame.AFTER_BCI || state == null;
+        assert stateAfter().bci != BytecodeFrame.AFTER_BCI || state == null;
         if (state != null && state.getState() == EscapeState.Virtual && state.getVirtualObject().hasIdentity()) {
             MonitorIdNode removedLock = state.removeLock();
             assert removedLock == getMonitorId() : "mismatch at " + this + ": " + removedLock + " vs. " + getMonitorId();

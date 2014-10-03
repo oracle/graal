@@ -58,8 +58,6 @@ import com.oracle.graal.nodeinfo.*;
 public abstract class Node implements Cloneable, Formattable {
 
     public final static boolean USE_GENERATED_NODES = Boolean.parseBoolean(System.getProperty("graal.useGeneratedNodes", "true"));
-    public final static boolean USE_GENERATED_COPY = Boolean.parseBoolean(System.getProperty("graal.useGeneratedCopy", "true"));
-    public final static boolean USE_NEW_CLONE = Boolean.parseBoolean(System.getProperty("graal.useNewClone", "true"));
 
     static final int DELETED_ID_START = -1000000000;
     static final int INITIAL_ID = -1;
@@ -747,13 +745,6 @@ public abstract class Node implements Cloneable, Formattable {
         throw new UnsupportedOperationException();
     }
 
-    /**
-     * @param clearInputsAndSuccessors
-     */
-    protected Node copyGen(boolean clearInputsAndSuccessors) throws InstantiationException {
-        throw new InstantiationException();
-    }
-
     final Node clone(Graph into, boolean clearInputsAndSuccessors) {
         NodeClass nodeClass = getNodeClass();
         if (into != null && nodeClass.valueNumberable() && nodeClass.isLeafNode()) {
@@ -765,38 +756,24 @@ public abstract class Node implements Cloneable, Formattable {
 
         Node newNode = null;
         try {
-            if (USE_GENERATED_NODES && USE_GENERATED_COPY) {
-                newNode = copyGen(clearInputsAndSuccessors);
-            } else if (USE_NEW_CLONE) {
-                newNode = (Node) UnsafeAccess.unsafe.allocateInstance(getClass());
-                nodeClass.getData().copy(this, newNode);
-                if (clearInputsAndSuccessors) {
-                    nodeClass.getEdges(Inputs).initializeLists(newNode, this);
-                    nodeClass.getEdges(Successors).initializeLists(newNode, this);
-                } else {
-                    nodeClass.getEdges(Inputs).copy(this, newNode);
-                    nodeClass.getEdges(Successors).copy(this, newNode);
-                }
-            } else {
-                newNode = (Node) this.clone();
-                if (clearInputsAndSuccessors) {
-                    nodeClass.getEdges(Inputs).clear(newNode);
-                    nodeClass.getEdges(Successors).clear(newNode);
-                }
-                newNode.typeCacheNext = null;
-                newNode.usage0 = null;
-                newNode.usage1 = null;
-                newNode.predecessor = null;
-            }
-        } catch (Exception e) {
+            newNode = (Node) this.clone();
+        } catch (CloneNotSupportedException e) {
             throw new GraalGraphInternalError(e).addContext(this);
         }
+        if (clearInputsAndSuccessors) {
+            nodeClass.getEdges(Inputs).clear(newNode);
+            nodeClass.getEdges(Successors).clear(newNode);
+        }
         newNode.graph = into;
+        newNode.typeCacheNext = null;
         newNode.id = INITIAL_ID;
         if (into != null) {
             into.register(newNode);
         }
+        newNode.usage0 = null;
+        newNode.usage1 = null;
         newNode.extraUsages = NO_NODES;
+        newNode.predecessor = null;
 
         if (into != null && nodeClass.valueNumberable() && nodeClass.isLeafNode()) {
             into.putNodeIntoCache(newNode);

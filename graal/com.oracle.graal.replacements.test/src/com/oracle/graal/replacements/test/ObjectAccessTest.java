@@ -127,7 +127,7 @@ public class ObjectAccessTest extends GraalCompilerTest implements Snippets {
         JavaWriteNode write = (JavaWriteNode) graph.start().next();
         Assert.assertEquals(graph.getParameter(2), write.value());
         Assert.assertEquals(graph.getParameter(0), write.object());
-        Assert.assertEquals(BytecodeFrame.AFTER_BCI, write.stateAfter().bci());
+        Assert.assertEquals(BytecodeFrame.AFTER_BCI, write.stateAfter().bci);
 
         IndexedLocationNode location = (IndexedLocationNode) write.location();
         Assert.assertEquals(kind, location.getValueKind());

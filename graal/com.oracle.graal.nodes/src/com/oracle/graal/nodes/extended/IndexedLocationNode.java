@@ -41,11 +41,11 @@ import com.oracle.graal.nodes.type.*;
 @NodeInfo(nameTemplate = "IdxLoc {p#locationIdentity/s}")
 public class IndexedLocationNode extends LocationNode implements Canonicalizable {
 
-    protected Kind valueKind;
-    protected LocationIdentity locationIdentity;
-    protected long displacement;
+    protected final Kind valueKind;
+    protected final LocationIdentity locationIdentity;
+    protected final long displacement;
     @Input ValueNode index;
-    protected int indexScaling;
+    protected final int indexScaling;
 
     /**
      * Gets the index or offset of this location.

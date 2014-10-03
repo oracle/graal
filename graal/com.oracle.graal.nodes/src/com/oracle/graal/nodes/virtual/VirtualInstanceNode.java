@@ -29,8 +29,8 @@ import com.oracle.graal.nodes.*;
 @NodeInfo(nameTemplate = "VirtualInstance {p#type/s}")
 public class VirtualInstanceNode extends VirtualObjectNode {
 
-    protected ResolvedJavaType type;
-    protected ResolvedJavaField[] fields;
+    protected final ResolvedJavaType type;
+    protected final ResolvedJavaField[] fields;
 
     public static VirtualInstanceNode create(ResolvedJavaType type, boolean hasIdentity) {
         return USE_GENERATED_NODES ? new VirtualInstanceNodeGen(type, hasIdentity) : new VirtualInstanceNode(type, hasIdentity);

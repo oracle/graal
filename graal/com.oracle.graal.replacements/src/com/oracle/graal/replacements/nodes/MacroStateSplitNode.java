@@ -73,7 +73,7 @@ public class MacroStateSplitNode extends MacroNode implements StateSplit, Memory
             if (!call.targetMethod().equals(getTargetMethod())) {
                 throw new GraalInternalError("unexpected invoke %s in snippet", getClass().getSimpleName());
             }
-            assert invoke.stateAfter().bci() == BytecodeFrame.AFTER_BCI;
+            assert invoke.stateAfter().bci == BytecodeFrame.AFTER_BCI;
             // Here we need to fix the bci of the invoke
             InvokeNode newInvoke = snippetGraph.add(InvokeNode.create(invoke.callTarget(), getBci()));
             newInvoke.setStateAfter(invoke.stateAfter());

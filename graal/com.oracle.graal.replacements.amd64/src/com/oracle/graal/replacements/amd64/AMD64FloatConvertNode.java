@@ -41,7 +41,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public class AMD64FloatConvertNode extends UnaryNode implements ArithmeticLIRLowerable {
 
-    protected FloatConvert op;
+    protected final FloatConvert op;
 
     public static AMD64FloatConvertNode create(Stamp stamp, FloatConvert op, ValueNode value) {
         return USE_GENERATED_NODES ? new AMD64FloatConvertNodeGen(stamp, op, value) : new AMD64FloatConvertNode(stamp, op, value);

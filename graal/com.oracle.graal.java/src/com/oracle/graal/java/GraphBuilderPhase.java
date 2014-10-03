@@ -108,7 +108,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
              * the !NODE_CLASS.isAssignableFrom(type) guarantee in
              * NodeClass.FieldScanner.scanField() to fail.
              */
-            protected Object nextPlaceholder;
+            protected final Object nextPlaceholder;
 
             public static BlockPlaceholderNode create(BytecodeParser builder) {
                 return USE_GENERATED_NODES ? new GraphBuilderPhase_Instance_BlockPlaceholderNodeGen(builder) : new BlockPlaceholderNode(builder);

@@ -135,26 +135,6 @@ public abstract class Edges extends Fields {
     }
 
     /**
-     * Clear edges in a given node. This is accomplished by setting {@linkplain #getDirectCount()
-     * direct} edges to null and replacing the lists containing indirect edges with new lists. The
-     * latter is important so that this method can be used to clear the edges of cloned nodes.
-     *
-     * @param toNode the node whose list edges are to be initialized
-     */
-    public void initializeLists(Node toNode, Node fromNode) {
-        int index = getDirectCount();
-        while (index < getCount()) {
-            NodeList<Node> list = getNodeList(fromNode, index);
-            int size = list.initialSize;
-            NodeList<Node> newList = type == Edges.Type.Inputs ? new NodeInputList<>(toNode, size) : new NodeSuccessorList<>(toNode, size);
-
-            // replacing with a new list object is the expected behavior!
-            initializeList(toNode, index, newList);
-            index++;
-        }
-    }
-
-    /**
      * Copies edges from {@code fromNode} to {@code toNode}. The nodes are expected to be of the
      * exact same type.
      *
@@ -170,13 +150,7 @@ public abstract class Edges extends Fields {
         }
         while (index < getCount()) {
             NodeList<Node> list = getNodeList(toNode, index);
-            if (list == null) {
-                NodeList<Node> fromList = getNodeList(fromNode, index);
-                list = type == Edges.Type.Inputs ? new NodeInputList<>(toNode, fromList) : new NodeSuccessorList<>(toNode, fromList);
-                initializeList(toNode, index, list);
-            } else {
-                list.copy(getNodeList(fromNode, index));
-            }
+            list.copy(getNodeList(fromNode, index));
             index++;
         }
     }

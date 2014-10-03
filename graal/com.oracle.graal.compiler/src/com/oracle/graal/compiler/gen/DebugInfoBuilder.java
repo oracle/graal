@@ -120,12 +120,12 @@ public class DebugInfoBuilder {
 
     protected BytecodeFrame computeFrameForState(FrameState state) {
         try {
-            assert state.bci() != BytecodeFrame.INVALID_FRAMESTATE_BCI;
-            assert state.bci() != BytecodeFrame.UNKNOWN_BCI;
-            assert state.bci() != BytecodeFrame.BEFORE_BCI || state.locksSize() == 0;
-            assert state.bci() != BytecodeFrame.AFTER_BCI || state.locksSize() == 0;
-            assert state.bci() != BytecodeFrame.AFTER_EXCEPTION_BCI || state.locksSize() == 0;
-            assert !(state.method().isSynchronized() && state.bci() != BytecodeFrame.BEFORE_BCI && state.bci() != BytecodeFrame.AFTER_BCI && state.bci() != BytecodeFrame.AFTER_EXCEPTION_BCI) ||
+            assert state.bci != BytecodeFrame.INVALID_FRAMESTATE_BCI;
+            assert state.bci != BytecodeFrame.UNKNOWN_BCI;
+            assert state.bci != BytecodeFrame.BEFORE_BCI || state.locksSize() == 0;
+            assert state.bci != BytecodeFrame.AFTER_BCI || state.locksSize() == 0;
+            assert state.bci != BytecodeFrame.AFTER_EXCEPTION_BCI || state.locksSize() == 0;
+            assert !(state.method().isSynchronized() && state.bci != BytecodeFrame.BEFORE_BCI && state.bci != BytecodeFrame.AFTER_BCI && state.bci != BytecodeFrame.AFTER_EXCEPTION_BCI) ||
                             state.locksSize() > 0;
             assert state.verify();
 
@@ -142,7 +142,7 @@ public class DebugInfoBuilder {
             if (state.outerFrameState() != null) {
                 caller = computeFrameForState(state.outerFrameState());
             }
-            return new BytecodeFrame(caller, state.method(), state.bci(), state.rethrowException(), state.duringCall(), values, numLocals, numStack, numLocks);
+            return new BytecodeFrame(caller, state.method(), state.bci, state.rethrowException(), state.duringCall(), values, numLocals, numStack, numLocks);
         } catch (GraalInternalError e) {
             throw e.addContext("FrameState: ", state);
         }

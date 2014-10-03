@@ -40,8 +40,8 @@ import com.oracle.graal.nodes.spi.*;
 public class SelfReplacingMethodCallTargetNode extends MethodCallTargetNode implements Lowerable {
 
     // Replacement method data
-    protected ResolvedJavaMethod replacementTargetMethod;
-    protected JavaType replacementReturnType;
+    protected final ResolvedJavaMethod replacementTargetMethod;
+    protected final JavaType replacementReturnType;
     @Input NodeInputList<ValueNode> replacementArguments;
 
     public static SelfReplacingMethodCallTargetNode create(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, JavaType returnType,

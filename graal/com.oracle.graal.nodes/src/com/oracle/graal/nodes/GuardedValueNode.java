@@ -40,7 +40,7 @@ import com.oracle.graal.nodes.spi.*;
 public class GuardedValueNode extends FloatingGuardedNode implements LIRLowerable, Virtualizable, IterableNodeType, Canonicalizable, ValueProxy {
 
     @Input ValueNode object;
-    protected Stamp piStamp;
+    protected final Stamp piStamp;
 
     public static GuardedValueNode create(ValueNode object, GuardingNode guard, Stamp stamp) {
         return USE_GENERATED_NODES ? new GuardedValueNodeGen(object, guard, stamp) : new GuardedValueNode(object, guard, stamp);

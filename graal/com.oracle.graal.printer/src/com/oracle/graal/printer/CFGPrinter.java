@@ -392,7 +392,7 @@ class CFGPrinter extends CompilationPrinter {
         StringBuilder buf = new StringBuilder();
         FrameState curState = state;
         do {
-            buf.append(MetaUtil.toLocation(curState.method(), curState.bci())).append('\n');
+            buf.append(MetaUtil.toLocation(curState.method(), curState.bci)).append('\n');
 
             if (curState.stackSize() > 0) {
                 buf.append("stack: ");

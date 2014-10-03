@@ -35,8 +35,8 @@ public abstract class UnsafeAccessNode extends FixedWithNextNode implements Cano
 
     @Input ValueNode object;
     @Input ValueNode offset;
-    protected Kind accessKind;
-    protected LocationIdentity locationIdentity;
+    protected final Kind accessKind;
+    protected final LocationIdentity locationIdentity;
 
     public UnsafeAccessNode(Stamp stamp, ValueNode object, ValueNode offset, Kind accessKind, LocationIdentity locationIdentity) {
         super(stamp);

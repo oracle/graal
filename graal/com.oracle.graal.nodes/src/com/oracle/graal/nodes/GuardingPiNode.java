@@ -40,9 +40,9 @@ public class GuardingPiNode extends FixedWithNextNode implements Lowerable, Virt
 
     @Input ValueNode object;
     @Input(InputType.Condition) LogicNode condition;
-    protected DeoptimizationReason reason;
-    protected DeoptimizationAction action;
-    protected Stamp piStamp;
+    protected final DeoptimizationReason reason;
+    protected final DeoptimizationAction action;
+    protected final Stamp piStamp;
     protected boolean negated;
 
     public ValueNode object() {

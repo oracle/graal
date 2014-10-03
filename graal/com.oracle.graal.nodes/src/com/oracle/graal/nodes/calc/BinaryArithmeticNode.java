@@ -35,7 +35,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public abstract class BinaryArithmeticNode extends BinaryNode implements ArithmeticLIRLowerable {
 
-    protected BinaryOp op;
+    protected final BinaryOp op;
 
     public BinaryArithmeticNode(BinaryOp op, ValueNode x, ValueNode y) {
         super(op.foldStamp(x.stamp(), y.stamp()), x, y);

@@ -193,7 +193,7 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
 
     @Override
     public void visitFullInfopointNode(FullInfopointNode i) {
-        if (i.getState() != null && i.getState().bci() == BytecodeFrame.AFTER_BCI) {
+        if (i.getState() != null && i.getState().bci == BytecodeFrame.AFTER_BCI) {
             Debug.log("Ignoring InfopointNode for AFTER_BCI");
         } else {
             super.visitFullInfopointNode(i);

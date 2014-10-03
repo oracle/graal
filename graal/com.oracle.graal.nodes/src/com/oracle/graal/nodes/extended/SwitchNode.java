@@ -41,8 +41,8 @@ public abstract class SwitchNode extends ControlSplitNode {
     @Input protected ValueNode value;
 
     // do not change the contents of these arrays:
-    protected double[] keyProbabilities;
-    protected int[] keySuccessors;
+    protected final double[] keyProbabilities;
+    protected final int[] keySuccessors;
 
     /**
      * Constructs a new Switch.

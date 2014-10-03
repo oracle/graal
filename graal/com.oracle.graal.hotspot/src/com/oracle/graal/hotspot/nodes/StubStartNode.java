@@ -32,7 +32,7 @@ import com.oracle.graal.nodes.*;
 @NodeInfo
 public class StubStartNode extends StartNode {
 
-    protected Stub stub;
+    protected final Stub stub;
 
     public static StubStartNode create(Stub stub) {
         return USE_GENERATED_NODES ? new StubStartNodeGen(stub) : new StubStartNode(stub);

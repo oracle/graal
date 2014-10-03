@@ -49,7 +49,7 @@ import com.oracle.graal.replacements.nodes.*;
 public class MethodHandleNode extends MacroStateSplitNode implements Simplifiable {
 
     /** The method that this node is representing. */
-    protected IntrinsicMethod intrinsicMethod;
+    protected final IntrinsicMethod intrinsicMethod;
 
     // Replacement method data
     protected ResolvedJavaMethod replacementTargetMethod;

@@ -36,7 +36,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable, Virtualizable {
 
-    protected ResolvedJavaType type;
+    protected final ResolvedJavaType type;
     protected JavaTypeProfile profile;
 
     /**
