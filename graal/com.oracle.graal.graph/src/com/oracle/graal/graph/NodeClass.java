@@ -260,7 +260,7 @@ public final class NodeClass extends FieldIntrospection {
      *
      * <pre>
      *     if (node.getNodeClass().is(BeginNode.class)) { ... }
-     *
+     * 
      *     // Due to generated Node classes, the test below
      *     // is *not* the same as the test above:
      *     if (node.getClass() == BeginNode.class) { ... }
@@ -786,7 +786,7 @@ public final class NodeClass extends FieldIntrospection {
                     assert replacement != null;
                     newNodes.put(node, replacement);
                 } else {
-                    Node newNode = node.clone(graph, false);
+                    Node newNode = node.clone(graph, WithAllEdges);
                     assert newNode.inputs().isEmpty() || newNode.usages().isEmpty();
                     assert newNode.getClass() == node.getClass();
                     newNodes.put(node, newNode);

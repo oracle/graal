@@ -28,6 +28,8 @@ import static com.oracle.graal.graph.Graph.*;
 import java.lang.annotation.*;
 import java.util.*;
 
+import sun.misc.*;
+
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.graph.Graph.NodeEventListener;
 import com.oracle.graal.graph.iterators.*;
@@ -58,7 +60,7 @@ import com.oracle.graal.nodeinfo.*;
 public abstract class Node implements Cloneable, Formattable {
 
     public final static boolean USE_GENERATED_NODES = Boolean.parseBoolean(System.getProperty("graal.useGeneratedNodes", "true"));
-    public final static boolean USE_UNSAFE_CLONE = Boolean.parseBoolean(System.getProperty("graal.useUnsafeClone", "true"));
+    public final static boolean USE_UNSAFE_TO_CLONE = Boolean.parseBoolean(System.getProperty("graal.useUnsafeToClone", "true"));
 
     static final int DELETED_ID_START = -1000000000;
     static final int INITIAL_ID = -1;
@@ -515,7 +517,7 @@ public abstract class Node implements Cloneable, Formattable {
         assert graph == null || !graph.isFrozen();
         if (oldSuccessor != newSuccessor) {
             if (oldSuccessor != null) {
-                assert assertTrue(oldSuccessor.predecessor == this, "wrong predecessor in old successor (%s): %s", oldSuccessor, oldSuccessor.predecessor);
+                assert assertTrue(oldSuccessor.predecessor == this, "wrong predecessor in old successor (%s): %s, should be %s", oldSuccessor, oldSuccessor.predecessor, this);
                 oldSuccessor.predecessor = null;
             }
             if (newSuccessor != null) {
@@ -716,23 +718,11 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     public final Node copyWithInputs() {
-        return copyWithInputs(true);
-    }
-
-    public final Node copyWithInputs(boolean addToGraph) {
-        Node newNode = clone(addToGraph ? graph : null);
-        NodeClass clazz = getNodeClass();
-        clazz.getEdges(Inputs).copy(this, newNode);
-        if (addToGraph) {
-            for (Node input : inputs()) {
-                input.addUsage(newNode);
-            }
+        Node newNode = clone(graph, WithOnlyInputEdges);
+        for (Node input : inputs()) {
+            input.addUsage(newNode);
         }
         return newNode;
-    }
-
-    public final Node clone(Graph into) {
-        return clone(into, true);
     }
 
     /**
@@ -746,9 +736,43 @@ public abstract class Node implements Cloneable, Formattable {
         throw new UnsupportedOperationException();
     }
 
-    final Node clone(Graph into, boolean clearInputsAndSuccessors) {
+    /**
+     * @param newNode the result of cloning this node or {@link Unsafe#allocateInstance(Class) raw
+     *            allocating} a copy of this node
+     * @param type the type of edges to process
+     * @param edgesToCopy if {@code type} is in this set, the edges are copied otherwise they are
+     *            cleared
+     */
+    private void copyOrClearEdgesForClone(NodeClass nodeClass, Node newNode, Edges.Type type, EnumSet<Edges.Type> edgesToCopy) {
+        if (edgesToCopy.contains(type)) {
+            nodeClass.getEdges(type).copy(this, newNode);
+        } else {
+            if (USE_UNSAFE_TO_CLONE) {
+                // The direct edges are already null
+                nodeClass.getEdges(type).initializeLists(newNode, this);
+            } else {
+                nodeClass.getEdges(type).clear(newNode);
+            }
+        }
+    }
+
+    public static final EnumSet<Edges.Type> WithNoEdges = EnumSet.noneOf(Edges.Type.class);
+    public static final EnumSet<Edges.Type> WithAllEdges = EnumSet.allOf(Edges.Type.class);
+    public static final EnumSet<Edges.Type> WithOnlyInputEdges = EnumSet.of(Inputs);
+    public static final EnumSet<Edges.Type> WithOnlySucessorEdges = EnumSet.of(Successors);
+
+    /**
+     * Makes a copy of this node in(to) a given graph.
+     *
+     * @param into the graph in which the copy will be registered (which may be this node's graph)
+     * @param edgesToCopy specifies the edges to be copied. The edges not specified in this set are
+     *            initialized to their default value (i.e., {@code null} for a direct edge, an empty
+     *            list for an edge list)
+     * @return the copy of this node
+     */
+    final Node clone(Graph into, EnumSet<Edges.Type> edgesToCopy) {
         NodeClass nodeClass = getNodeClass();
-        if (into != null && nodeClass.valueNumberable() && nodeClass.isLeafNode()) {
+        if (nodeClass.valueNumberable() && nodeClass.isLeafNode()) {
             Node otherNode = into.findNodeInCache(this);
             if (otherNode != null) {
                 return otherNode;
@@ -757,38 +781,29 @@ public abstract class Node implements Cloneable, Formattable {
 
         Node newNode = null;
         try {
-            if (USE_UNSAFE_CLONE) {
+            if (USE_UNSAFE_TO_CLONE) {
                 newNode = (Node) UnsafeAccess.unsafe.allocateInstance(getClass());
                 nodeClass.getData().copy(this, newNode);
-                if (clearInputsAndSuccessors) {
-                    nodeClass.getEdges(Inputs).initializeLists(newNode, this);
-                    nodeClass.getEdges(Successors).initializeLists(newNode, this);
-                } else {
-                    nodeClass.getEdges(Inputs).copy(this, newNode);
-                    nodeClass.getEdges(Successors).copy(this, newNode);
-                }
+                copyOrClearEdgesForClone(nodeClass, newNode, Inputs, edgesToCopy);
+                copyOrClearEdgesForClone(nodeClass, newNode, Successors, edgesToCopy);
             } else {
                 newNode = (Node) this.clone();
-                if (clearInputsAndSuccessors) {
-                    nodeClass.getEdges(Inputs).clear(newNode);
-                    nodeClass.getEdges(Successors).clear(newNode);
-                }
                 newNode.typeCacheNext = null;
                 newNode.usage0 = null;
                 newNode.usage1 = null;
                 newNode.predecessor = null;
+                copyOrClearEdgesForClone(nodeClass, newNode, Inputs, edgesToCopy);
+                copyOrClearEdgesForClone(nodeClass, newNode, Successors, edgesToCopy);
             }
         } catch (Exception e) {
             throw new GraalGraphInternalError(e).addContext(this);
         }
         newNode.graph = into;
         newNode.id = INITIAL_ID;
-        if (into != null) {
-            into.register(newNode);
-        }
+        into.register(newNode);
         newNode.extraUsages = NO_NODES;
 
-        if (into != null && nodeClass.valueNumberable() && nodeClass.isLeafNode()) {
+        if (nodeClass.valueNumberable() && nodeClass.isLeafNode()) {
             into.putNodeIntoCache(newNode);
         }
         newNode.afterClone(this);
