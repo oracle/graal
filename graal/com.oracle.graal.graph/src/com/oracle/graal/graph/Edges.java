@@ -135,6 +135,24 @@ public abstract class Edges extends Fields {
     }
 
     /**
+     * Initializes the list edges in a given node based on the size of the list edges in a prototype
+     * node.
+     *
+     * @param node the node whose list edges are to be initialized
+     * @param prototype the node whose list edge sizes are used when creating new edge lists
+     */
+    public void initializeLists(Node node, Node prototype) {
+        int index = getDirectCount();
+        while (index < getCount()) {
+            NodeList<Node> list = getNodeList(prototype, index);
+            int size = list.initialSize;
+            NodeList<Node> newList = type == Edges.Type.Inputs ? new NodeInputList<>(node, size) : new NodeSuccessorList<>(node, size);
+            initializeList(node, index, newList);
+            index++;
+        }
+    }
+
+    /**
      * Copies edges from {@code fromNode} to {@code toNode}. The nodes are expected to be of the
      * exact same type.
      *
@@ -150,7 +168,13 @@ public abstract class Edges extends Fields {
         }
         while (index < getCount()) {
             NodeList<Node> list = getNodeList(toNode, index);
-            list.copy(getNodeList(fromNode, index));
+            if (list == null) {
+                NodeList<Node> fromList = getNodeList(fromNode, index);
+                list = type == Edges.Type.Inputs ? new NodeInputList<>(toNode, fromList) : new NodeSuccessorList<>(toNode, fromList);
+                initializeList(toNode, index, list);
+            } else {
+                list.copy(getNodeList(fromNode, index));
+            }
             index++;
         }
     }

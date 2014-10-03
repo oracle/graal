@@ -23,6 +23,7 @@
 package com.oracle.graal.truffle;
 
 import static com.oracle.graal.compiler.common.GraalOptions.*;
+import static com.oracle.graal.truffle.OptimizedCallTargetLog.*;
 import static com.oracle.graal.truffle.TruffleCompilerOptions.*;
 
 import java.util.*;
@@ -59,9 +60,6 @@ import com.oracle.graal.truffle.phases.*;
 import com.oracle.graal.virtual.phases.ea.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.nodes.*;
-import com.oracle.truffle.api.nodes.Node.Child;
-import com.oracle.truffle.api.nodes.Node.Children;
-import static com.oracle.graal.truffle.OptimizedCallTargetLog.*;
 
 /**
  * Class performing the partial evaluation starting from the root node of an AST.
@@ -296,8 +294,9 @@ public class PartialEvaluator {
         InliningDecision decision = inlining.findByCall(callNode);
         if (decision == null) {
             if (TruffleCompilerOptions.PrintTrufflePerformanceWarnings.getValue()) {
-                logPerformanceWarning(String.format("%s '%s' is reached using partial evaluation but it is not reachable in the Truffle AST.  Did you miss @%s or @%s annotation on a node field?. ",
-                                DirectCallNode.class.getSimpleName(), callNode, Child.class.getSimpleName(), Children.class.getSimpleName()), callNode.getRootNode().getDebugProperties());
+                Map<String, Object> properties = new LinkedHashMap<>();
+                properties.put("callNode", callNode);
+                logPerformanceWarning("A direct call within the Truffle AST is not reachable anymore. Call node was not inlined.", properties);
             }
             return null;
         }
@@ -307,9 +306,10 @@ public class PartialEvaluator {
         OptimizedCallTarget currentTarget = decision.getProfile().getCallNode().getCurrentCallTarget();
         if (decision.getTarget() != currentTarget) {
             if (TruffleCompilerOptions.PrintTrufflePerformanceWarnings.getValue()) {
-                logPerformanceWarning(
-                                String.format("CallTarget '%s' changed to '%s' during compilation for call node '%s'. Call node was not inlined.", decision.getTarget(), currentTarget, callNode), null);
-
+                Map<String, Object> properties = new LinkedHashMap<>();
+                properties.put("originalTarget", decision.getTarget());
+                properties.put("callNode", callNode);
+                logPerformanceWarning(String.format("CallTarget changed during compilation. Call node was not inlined."), properties);
             }
             return null;
         }
