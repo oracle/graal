@@ -50,6 +50,7 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
     }
 
     private static void dumpFullTree(final GraphPrintVisitor visitor, final String message, final OptimizedCallTarget oct) {
+
         visitor.setChildSupplier(new ChildSupplier() {
 
             public Object startNode(Object callNode) {

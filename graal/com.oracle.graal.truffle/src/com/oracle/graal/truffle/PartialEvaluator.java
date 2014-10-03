@@ -97,7 +97,7 @@ public class PartialEvaluator {
         final StructuredGraph graph = truffleCache.createRootGraph(callTarget.toString());
         assert graph != null : "no graph for root method";
 
-        try (Scope s = Debug.scope("CreateGraph", graph); Indent indent = Debug.logAndIndent("createGraph %s", graph.method())) {
+        try (Scope s = Debug.scope("CreateGraph", graph); Indent indent = Debug.logAndIndent("createGraph %s", graph)) {
             // Canonicalize / constant propagate.
             PhaseContext baseContext = new PhaseContext(providers, assumptions);
 
@@ -330,12 +330,16 @@ public class PartialEvaluator {
     }
 
     private StructuredGraph createInlineGraph(PhaseContext phaseContext, Assumptions assumptions, TruffleInliningCache cache, InliningDecision decision) {
-        OptimizedCallTarget target = decision.getTarget();
-        StructuredGraph inlineGraph = truffleCache.createInlineGraph(target.toString());
-        injectConstantCallTarget(inlineGraph, decision.getTarget(), phaseContext);
-        expandTree(inlineGraph, assumptions);
-        expandDirectCalls(inlineGraph, assumptions, cache, decision);
-        return inlineGraph;
+        try (Scope s = Debug.scope("GuestLanguageInlinedGraph", new DebugDumpScope(decision.getTarget().toString()))) {
+            OptimizedCallTarget target = decision.getTarget();
+            StructuredGraph inlineGraph = truffleCache.createInlineGraph(target.toString());
+            injectConstantCallTarget(inlineGraph, decision.getTarget(), phaseContext);
+            expandTree(inlineGraph, assumptions);
+            expandDirectCalls(inlineGraph, assumptions, cache, decision);
+            return inlineGraph;
+        } catch (Throwable e) {
+            throw Debug.handle(e);
+        }
     }
 
     private OptimizedDirectCallNode resolveConstantCallNode(MethodCallTargetNode methodCallTargetNode) {
