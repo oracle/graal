@@ -41,7 +41,7 @@ public final class ValuePosition {
     public static final int NO_SUBINDEX = -1;
     public static final ValuePosition ROOT_VALUE_POSITION = null;
 
-    public ValuePosition(Values values, int index, int subIndex, ValuePosition outerPosition) {
+    ValuePosition(Values values, int index, int subIndex, ValuePosition outerPosition) {
         this.values = values;
         this.index = index;
         this.subIndex = subIndex;
@@ -52,12 +52,15 @@ public final class ValuePosition {
         return outerPosition != ROOT_VALUE_POSITION;
     }
 
-    public Value get(Object inst) {
+    public Value get(LIRInstruction inst) {
         if (isCompositePosition()) {
             CompositeValue compValue = (CompositeValue) outerPosition.get(inst);
             return compValue.getValueClass().getValue(compValue, this);
         }
-        return getValue(inst);
+        if (index < values.getDirectCount()) {
+            return values.getValue(inst, index);
+        }
+        return values.getValueArray(inst, index)[subIndex];
     }
 
     public void set(LIRInstruction inst, Value value) {
@@ -66,35 +69,24 @@ public final class ValuePosition {
             CompositeValue newCompValue = compValue.getValueClass().createUpdatedValue(compValue, this, value);
             outerPosition.set(inst, newCompValue);
         } else {
-            setValue(inst, value);
+            if (index < values.getDirectCount()) {
+                values.setValue(inst, index, value);
+            } else {
+                values.getValueArray(inst, index)[subIndex] = value;
+            }
         }
     }
 
-    public int getSubIndex() {
+    int getSubIndex() {
         return subIndex;
     }
 
-    public int getIndex() {
+    int getIndex() {
         return index;
     }
 
     public EnumSet<OperandFlag> getFlags() {
         return values.getFlags(index);
-    }
-
-    public Value getValue(Object obj) {
-        if (index < values.getDirectCount()) {
-            return values.getValue(obj, index);
-        }
-        return values.getValueArray(obj, index)[subIndex];
-    }
-
-    public void setValue(Object obj, Value value) {
-        if (index < values.getDirectCount()) {
-            values.setValue(obj, index, value);
-        } else {
-            values.getValueArray(obj, index)[subIndex] = value;
-        }
     }
 
     public ValuePosition getSuperPosition() {
