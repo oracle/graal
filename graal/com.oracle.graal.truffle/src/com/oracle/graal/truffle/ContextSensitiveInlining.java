@@ -36,41 +36,54 @@ public class ContextSensitiveInlining implements Iterable<InliningDecision> {
     }
 
     public ContextSensitiveInlining(OptimizedCallTarget sourceTarget, TruffleInliningPolicy policy) {
-        this(decideInlining(OptimizedCallUtils.countNonTrivialNodes(sourceTarget, false), exploreCallSites(new ArrayList<>(Arrays.asList(sourceTarget)), policy), policy));
+        this(createDecisions(sourceTarget, policy));
     }
 
-    private static List<InliningDecision> exploreCallSites(List<OptimizedCallTarget> stack, TruffleInliningPolicy policy) {
+    private static List<InliningDecision> createDecisions(OptimizedCallTarget sourceTarget, TruffleInliningPolicy policy) {
+        int nodeCount = OptimizedCallUtils.countNonTrivialNodes(sourceTarget, false);
+        List<InliningDecision> exploredCallSites = exploreCallSites(new ArrayList<>(Arrays.asList(sourceTarget)), nodeCount, policy);
+        return decideInlining(exploredCallSites, policy, nodeCount);
+    }
+
+    private static List<InliningDecision> exploreCallSites(List<OptimizedCallTarget> stack, int callStackNodeCount, TruffleInliningPolicy policy) {
         List<InliningDecision> exploredCallSites = new ArrayList<>();
         OptimizedCallTarget parentTarget = stack.get(stack.size() - 1);
         for (OptimizedDirectCallNode callNode : parentTarget.getCallNodes()) {
             OptimizedCallTarget currentTarget = callNode.getCurrentCallTarget();
             stack.add(currentTarget); // push
-            exploredCallSites.add(exploreCallSite(stack, policy, callNode));
+            exploredCallSites.add(exploreCallSite(stack, callStackNodeCount, policy, callNode));
             stack.remove(stack.size() - 1); // pop
         }
         return exploredCallSites;
     }
 
-    private static InliningDecision exploreCallSite(List<OptimizedCallTarget> callStack, TruffleInliningPolicy policy, OptimizedDirectCallNode callNode) {
+    private static InliningDecision exploreCallSite(List<OptimizedCallTarget> callStack, int callStackNodeCount, TruffleInliningPolicy policy, OptimizedDirectCallNode callNode) {
         OptimizedCallTarget parentTarget = callStack.get(callStack.size() - 2);
         OptimizedCallTarget currentTarget = callStack.get(callStack.size() - 1);
 
         boolean recursive = isRecursiveStack(callStack);
         boolean maxDepth = callStack.size() >= 15;
 
-        List<InliningDecision> childCallSites;
+        List<InliningDecision> childCallSites = Collections.emptyList();
         double frequency = TruffleInliningHandler.calculateFrequency(parentTarget, callNode);
         int nodeCount = OptimizedCallUtils.countNonTrivialNodes(callNode.getCurrentCallTarget(), false);
-        int deepNodeCount;
-        if (recursive || maxDepth) {
-            deepNodeCount = nodeCount;
-            childCallSites = Collections.emptyList();
-        } else {
-            childCallSites = decideInlining(nodeCount, exploreCallSites(callStack, policy), policy);
-            deepNodeCount = nodeCount;
-            for (InliningDecision childCallSite : childCallSites) {
-                if (childCallSite.isInline()) {
-                    deepNodeCount += childCallSite.getProfile().getDeepNodeCount();
+
+        int deepNodeCount = nodeCount;
+        if (!recursive && !maxDepth) {
+            /*
+             * We make a preliminary optimistic inlining decision with best possible characteristics
+             * to avoid the exploration of unnecessary pathes in the inlining tree.
+             */
+            if (policy.isAllowed(new TruffleInliningProfile(callNode, nodeCount, nodeCount, frequency, recursive, null), callStackNodeCount)) {
+                List<InliningDecision> exploredCallSites = exploreCallSites(callStack, callStackNodeCount + nodeCount, policy);
+                childCallSites = decideInlining(exploredCallSites, policy, nodeCount);
+                for (InliningDecision childCallSite : childCallSites) {
+                    if (childCallSite.isInline()) {
+                        deepNodeCount += childCallSite.getProfile().getDeepNodeCount();
+                    } else {
+                        /* we don't need those anymore. */
+                        childCallSite.getCallSites().clear();
+                    }
                 }
             }
         }
@@ -90,7 +103,7 @@ public class ContextSensitiveInlining implements Iterable<InliningDecision> {
         return false;
     }
 
-    private static List<InliningDecision> decideInlining(int nodeCount, List<InliningDecision> callSites, TruffleInliningPolicy policy) {
+    private static List<InliningDecision> decideInlining(List<InliningDecision> callSites, TruffleInliningPolicy policy, int nodeCount) {
         int deepNodeCount = nodeCount;
         int index = 0;
         for (InliningDecision callSite : callSites.stream().sorted().collect(Collectors.toList())) {
@@ -193,6 +206,11 @@ public class ContextSensitiveInlining implements Iterable<InliningDecision> {
                 }
                 return !i1.hasNext() && !i2.hasNext();
             }
+        }
+
+        @Override
+        public String toString() {
+            return String.format("InliningDecision(callNode=%s, inline=%b)", profile.getCallNode(), inline);
         }
 
     }
