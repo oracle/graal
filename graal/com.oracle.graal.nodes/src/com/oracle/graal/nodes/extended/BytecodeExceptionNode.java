@@ -36,7 +36,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public class BytecodeExceptionNode extends AbstractMemoryCheckpoint implements Lowerable, MemoryCheckpoint.Single {
 
-    protected final Class<? extends Throwable> exceptionClass;
+    protected Class<? extends Throwable> exceptionClass;
     @Input NodeInputList<ValueNode> arguments;
 
     public static BytecodeExceptionNode create(MetaAccessProvider metaAccess, Class<? extends Throwable> exceptionClass, ValueNode... arguments) {

@@ -101,8 +101,8 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
         }
     }
 
-    public boolean isList() {
-        return true;
+    public int getInitializeSize() {
+        return initialSize;
     }
 
     protected abstract void update(T oldNode, T newNode);

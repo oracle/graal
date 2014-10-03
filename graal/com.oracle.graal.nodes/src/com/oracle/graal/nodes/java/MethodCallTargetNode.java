@@ -32,7 +32,7 @@ import com.oracle.graal.nodes.type.*;
 
 @NodeInfo
 public class MethodCallTargetNode extends CallTargetNode implements IterableNodeType, Canonicalizable {
-    protected final JavaType returnType;
+    protected JavaType returnType;
 
     /**
      * @param arguments

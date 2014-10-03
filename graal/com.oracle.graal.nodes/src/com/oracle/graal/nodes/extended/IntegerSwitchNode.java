@@ -39,7 +39,7 @@ import com.oracle.graal.nodes.util.*;
 @NodeInfo
 public class IntegerSwitchNode extends SwitchNode implements LIRLowerable, Simplifiable {
 
-    protected final int[] keys;
+    protected int[] keys;
 
     /**
      * Constructs a integer switch instruction. The keyProbabilities and keySuccessors array contain

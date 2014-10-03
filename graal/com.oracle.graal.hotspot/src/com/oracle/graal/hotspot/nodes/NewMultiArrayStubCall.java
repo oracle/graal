@@ -44,7 +44,7 @@ public class NewMultiArrayStubCall extends ForeignCallNode {
 
     @Input ValueNode hub;
     @Input ValueNode dims;
-    protected final int rank;
+    protected int rank;
 
     public static NewMultiArrayStubCall create(@InjectedNodeParameter ForeignCallsProvider foreignCalls, ValueNode hub, int rank, ValueNode dims) {
         return USE_GENERATED_NODES ? new NewMultiArrayStubCallGen(foreignCalls, hub, rank, dims) : new NewMultiArrayStubCall(foreignCalls, hub, rank, dims);

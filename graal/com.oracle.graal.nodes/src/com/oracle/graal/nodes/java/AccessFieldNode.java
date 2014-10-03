@@ -36,7 +36,7 @@ public abstract class AccessFieldNode extends FixedWithNextNode implements Lower
 
     @OptionalInput ValueNode object;
 
-    protected final ResolvedJavaField field;
+    protected ResolvedJavaField field;
 
     public ValueNode object() {
         return object;

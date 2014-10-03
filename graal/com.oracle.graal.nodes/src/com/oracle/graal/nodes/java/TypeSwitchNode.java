@@ -41,7 +41,7 @@ import com.oracle.graal.nodes.util.*;
 @NodeInfo
 public class TypeSwitchNode extends SwitchNode implements LIRLowerable, Simplifiable {
 
-    protected final ResolvedJavaType[] keys;
+    protected ResolvedJavaType[] keys;
 
     /**
      * Constructs a type switch instruction. The keyProbabilities array contain key.length + 1

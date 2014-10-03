@@ -32,7 +32,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public abstract class UnaryArithmeticNode extends UnaryNode implements ArithmeticLIRLowerable {
 
-    protected final UnaryOp op;
+    protected UnaryOp op;
 
     protected UnaryArithmeticNode(UnaryOp op, ValueNode value) {
         super(op.foldStamp(value.stamp()), value);

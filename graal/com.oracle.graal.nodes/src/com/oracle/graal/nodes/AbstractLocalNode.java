@@ -29,7 +29,7 @@ import com.oracle.graal.nodes.calc.*;
 @NodeInfo
 public abstract class AbstractLocalNode extends FloatingNode {
 
-    protected final int index;
+    protected int index;
 
     public AbstractLocalNode(int index, Stamp stamp) {
         super(stamp);

@@ -38,7 +38,7 @@ public class WriteRegisterNode extends FixedWithNextNode implements LIRLowerable
     /**
      * The fixed register to access.
      */
-    protected final Register register;
+    protected Register register;
 
     /**
      * The new value assigned to the register.

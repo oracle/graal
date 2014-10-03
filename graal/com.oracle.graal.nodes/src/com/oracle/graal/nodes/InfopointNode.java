@@ -28,7 +28,7 @@ import com.oracle.graal.nodeinfo.*;
 
 @NodeInfo
 public abstract class InfopointNode extends FixedWithNextNode {
-    protected final InfopointReason reason;
+    protected InfopointReason reason;
 
     public InfopointNode(InfopointReason reason) {
         super(StampFactory.forVoid());

@@ -39,7 +39,7 @@ import com.oracle.graal.nodes.util.*;
 public class ArrayEqualsNode extends FixedWithNextNode implements LIRLowerable, Canonicalizable, Virtualizable, MemoryAccess {
 
     /** {@link Kind} of the arrays to compare. */
-    protected final Kind kind;
+    protected Kind kind;
 
     /** One array to be tested for equality. */
     @Input ValueNode array1;

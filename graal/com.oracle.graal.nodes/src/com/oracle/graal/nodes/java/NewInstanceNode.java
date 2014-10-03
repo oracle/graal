@@ -38,7 +38,7 @@ import com.oracle.graal.nodes.virtual.*;
 @NodeInfo(nameTemplate = "New {p#instanceClass/s}")
 public class NewInstanceNode extends AbstractNewObjectNode implements VirtualizableAllocation {
 
-    protected final ResolvedJavaType instanceClass;
+    protected ResolvedJavaType instanceClass;
 
     /**
      * Constructs a NewInstanceNode.

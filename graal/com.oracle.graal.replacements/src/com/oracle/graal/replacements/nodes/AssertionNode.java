@@ -40,8 +40,8 @@ public class AssertionNode extends FixedWithNextNode implements Lowerable, Canon
 
     @Input ValueNode value;
 
-    protected final boolean compileTimeAssertion;
-    protected final String message;
+    protected boolean compileTimeAssertion;
+    protected String message;
 
     public static AssertionNode create(boolean compileTimeAssertion, ValueNode value, String message) {
         return USE_GENERATED_NODES ? new AssertionNodeGen(compileTimeAssertion, value, message) : new AssertionNode(compileTimeAssertion, value, message);

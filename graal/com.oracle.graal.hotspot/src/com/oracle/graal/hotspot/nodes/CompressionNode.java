@@ -47,8 +47,8 @@ public class CompressionNode extends ConvertNode implements LIRLowerable {
         Uncompress
     }
 
-    protected final CompressionOp op;
-    protected final CompressEncoding encoding;
+    protected CompressionOp op;
+    protected CompressEncoding encoding;
 
     public static CompressionNode create(CompressionOp op, ValueNode input, CompressEncoding encoding) {
         return USE_GENERATED_NODES ? new CompressionNodeGen(op, input, encoding) : new CompressionNode(op, input, encoding);
