@@ -25,31 +25,17 @@ package com.oracle.graal.lir;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.lir.LIRInstruction.*;
+import com.oracle.graal.lir.LIRInstruction.OperandFlag;
+import com.oracle.graal.lir.LIRInstruction.OperandMode;
 
 /**
- * Iterator for iterating over a list of values. Subclasses must overwrite one of the doValue
- * methods. Clients should not use this class directly but call
- * {@link InstructionValueProcedureBase#processValue} instead.
+ * Functional interface for iterating over a list of values.
  */
-public abstract class InstructionValueProcedure extends InstructionValueProcedureBase {
+@FunctionalInterface
+public interface InstructionValueProcedure {
 
     /**
-     * Iterator method to be overwritten. This version of the iterator does not take additional
-     * parameters to keep the signature short.
-     *
-     * @param instruction The current instruction.
-     * @param value The value that is iterated.
-     * @return The new value to replace the value that was passed in.
-     */
-    protected Value doValue(LIRInstruction instruction, Value value) {
-        throw GraalInternalError.shouldNotReachHere("One of the doValue() methods must be overwritten");
-    }
-
-    /**
-     * Iterator method to be overwritten. This version of the iterator gets additional parameters
-     * about the processed value.
+     * Iterator method to be overwritten.
      *
      * @param instruction The current instruction.
      * @param value The value that is iterated.
@@ -57,13 +43,6 @@ public abstract class InstructionValueProcedure extends InstructionValueProcedur
      * @param flags A set of flags for the value.
      * @return The new value to replace the value that was passed in.
      */
-    protected Value doValue(LIRInstruction instruction, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
-        return doValue(instruction, value);
-    }
+    Value doValue(LIRInstruction instruction, Value value, OperandMode mode, EnumSet<OperandFlag> flags);
 
-    @Override
-    public final Value processValue(LIRInstruction instruction, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
-        assert !(value instanceof CompositeValue) : String.format("Must not visit CompositeValues! Instruction: %s Value: %s", instruction, value);
-        return doValue(instruction, value, mode, flags);
-    }
 }

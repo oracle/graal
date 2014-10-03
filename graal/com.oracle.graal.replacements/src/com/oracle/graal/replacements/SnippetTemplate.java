@@ -384,7 +384,7 @@ public class SnippetTemplate {
     @NodeInfo
     static class VarargsPlaceholderNode extends FloatingNode implements ArrayLengthProvider {
 
-        final Varargs varargs;
+        protected final Varargs varargs;
 
         public static VarargsPlaceholderNode create(Varargs varargs, MetaAccessProvider metaAccess) {
             return USE_GENERATED_NODES ? new SnippetTemplate_VarargsPlaceholderNodeGen(varargs, metaAccess) : new VarargsPlaceholderNode(varargs, metaAccess);

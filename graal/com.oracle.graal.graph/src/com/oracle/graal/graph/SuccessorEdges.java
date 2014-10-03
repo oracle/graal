@@ -26,10 +26,12 @@ import static com.oracle.graal.graph.Edges.Type.*;
 
 import java.util.*;
 
+import com.oracle.graal.graph.NodeClass.EdgeInfo;
+
 public final class SuccessorEdges extends Edges {
 
-    public SuccessorEdges(Class<?> nodeClass, int directCount, long[] offsets, Map<Long, String> names, Map<Long, Class<?>> types) {
-        super(nodeClass, Successors, directCount, offsets, names, types);
+    public SuccessorEdges(int directCount, ArrayList<EdgeInfo> edges) {
+        super(Successors, directCount, edges);
     }
 
     @Override

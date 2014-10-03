@@ -39,9 +39,9 @@ import com.oracle.graal.nodes.util.*;
 @NodeInfo
 public class LoopBeginNode extends MergeNode implements IterableNodeType, LIRLowerable {
 
-    private double loopFrequency;
-    private int nextEndIndex;
-    private int unswitches;
+    protected double loopFrequency;
+    protected int nextEndIndex;
+    protected int unswitches;
     @OptionalInput(InputType.Guard) GuardingNode overflowGuard;
 
     public static LoopBeginNode create() {
@@ -283,7 +283,7 @@ public class LoopBeginNode extends MergeNode implements IterableNodeType, LIRLow
                 if (phi != null) {
                     nextPhi: for (int otherPhiIndex = phiIndex + 1; otherPhiIndex < phiCount; otherPhiIndex++) {
                         PhiNode otherPhi = phis[otherPhiIndex];
-                        if (otherPhi == null || phi.getNodeClass() != otherPhi.getNodeClass() || !phi.getNodeClass().valueEqual(phi, otherPhi)) {
+                        if (otherPhi == null || phi.getNodeClass() != otherPhi.getNodeClass() || !phi.valueEquals(otherPhi)) {
                             continue nextPhi;
                         }
                         if (selfIncrement[phiIndex] == null) {

@@ -25,7 +25,8 @@ package com.oracle.graal.lir;
 /**
  * Iterator for iterating over a list of {@linkplain ValuePosition value positions}.
  */
-public abstract class ValuePositionProcedure {
+@FunctionalInterface
+public interface ValuePositionProcedure {
 
     /**
      * Iterator method to be overwritten. This version of the iterator does not take additional
@@ -34,6 +35,5 @@ public abstract class ValuePositionProcedure {
      * @param instruction The current instruction.
      * @param position The position of the value that is iterated.
      */
-
-    public abstract void doValue(LIRInstruction instruction, ValuePosition position);
+    void doValue(LIRInstruction instruction, ValuePosition position);
 }

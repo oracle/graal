@@ -49,14 +49,14 @@ public class ArrayCopyCallNode extends AbstractMemoryCheckpoint implements Lower
     @Input ValueNode destPos;
     @Input ValueNode length;
 
-    private Kind elementKind;
+    protected Kind elementKind;
 
     /**
      * Aligned means that the offset of the copy is heap word aligned.
      */
-    private boolean aligned;
-    private boolean disjoint;
-    private boolean uninitialized;
+    protected boolean aligned;
+    protected boolean disjoint;
+    protected boolean uninitialized;
 
     public static ArrayCopyCallNode create(ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, Kind elementKind, boolean aligned, boolean disjoint,
                     boolean uninitialized) {
@@ -64,7 +64,7 @@ public class ArrayCopyCallNode extends AbstractMemoryCheckpoint implements Lower
                         length, elementKind, aligned, disjoint, uninitialized);
     }
 
-    ArrayCopyCallNode(ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, Kind elementKind, boolean aligned, boolean disjoint, boolean uninitialized) {
+    protected ArrayCopyCallNode(ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, Kind elementKind, boolean aligned, boolean disjoint, boolean uninitialized) {
         super(StampFactory.forVoid());
         assert elementKind != null;
         this.src = src;
@@ -83,7 +83,7 @@ public class ArrayCopyCallNode extends AbstractMemoryCheckpoint implements Lower
                         disjoint);
     }
 
-    ArrayCopyCallNode(ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, Kind elementKind, boolean disjoint) {
+    protected ArrayCopyCallNode(ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, Kind elementKind, boolean disjoint) {
         this(src, srcPos, dest, destPos, length, elementKind, false, disjoint, false);
     }
 

@@ -49,11 +49,11 @@ import com.oracle.graal.replacements.nodes.*;
 public class MethodHandleNode extends MacroStateSplitNode implements Simplifiable {
 
     /** The method that this node is representing. */
-    private final IntrinsicMethod intrinsicMethod;
+    protected final IntrinsicMethod intrinsicMethod;
 
     // Replacement method data
-    private ResolvedJavaMethod replacementTargetMethod;
-    private JavaType replacementReturnType;
+    protected ResolvedJavaMethod replacementTargetMethod;
+    protected JavaType replacementReturnType;
     @Input NodeInputList<ValueNode> replacementArguments;
 
     public static MethodHandleNode create(Invoke invoke) {
@@ -171,11 +171,11 @@ public class MethodHandleNode extends MacroStateSplitNode implements Simplifiabl
      * Helper function to get the {@link InvokeNode} for the targetMethod of a
      * java.lang.invoke.MemberName.
      *
-     * @param targetMethod the target, already loaded from the member name node
+     * @param target the target, already loaded from the member name node
      * @return invoke node for the member name target
      */
-    private InvokeNode getTargetInvokeNode(ResolvedJavaMethod targetMethod) {
-        if (targetMethod == null) {
+    private InvokeNode getTargetInvokeNode(ResolvedJavaMethod target) {
+        if (target == null) {
             return null;
         }
 
@@ -183,19 +183,19 @@ public class MethodHandleNode extends MacroStateSplitNode implements Simplifiabl
         // involving class loaders. When we optimize a method handle invoke
         // to a direct call we must cast the receiver and arguments to its
         // actual types.
-        Signature signature = targetMethod.getSignature();
-        final boolean isStatic = targetMethod.isStatic();
+        Signature signature = target.getSignature();
+        final boolean isStatic = target.isStatic();
         final int receiverSkip = isStatic ? 0 : 1;
 
         // Cast receiver to its type.
         if (!isStatic) {
-            JavaType receiverType = targetMethod.getDeclaringClass();
+            JavaType receiverType = target.getDeclaringClass();
             maybeCastArgument(0, receiverType);
         }
 
         // Cast reference arguments to its type.
         for (int index = 0; index < signature.getParameterCount(false); index++) {
-            JavaType parameterType = signature.getParameterType(index, targetMethod.getDeclaringClass());
+            JavaType parameterType = signature.getParameterType(index, target.getDeclaringClass());
             maybeCastArgument(receiverSkip + index, parameterType);
         }
 
@@ -203,18 +203,18 @@ public class MethodHandleNode extends MacroStateSplitNode implements Simplifiabl
         if (intrinsicMethod == IntrinsicMethod.LINK_TO_VIRTUAL || intrinsicMethod == IntrinsicMethod.LINK_TO_INTERFACE) {
             ResolvedJavaType receiverType = StampTool.typeOrNull(getReceiver().stamp());
             if (receiverType != null) {
-                ResolvedJavaMethod concreteMethod = receiverType.findUniqueConcreteMethod(targetMethod);
+                ResolvedJavaMethod concreteMethod = receiverType.findUniqueConcreteMethod(target);
                 if (concreteMethod != null) {
                     return createTargetInvokeNode(concreteMethod);
                 }
             }
         }
 
-        if (targetMethod.canBeStaticallyBound()) {
-            return createTargetInvokeNode(targetMethod);
+        if (target.canBeStaticallyBound()) {
+            return createTargetInvokeNode(target);
         }
 
-        ResolvedJavaMethod concreteMethod = targetMethod.getDeclaringClass().findUniqueConcreteMethod(targetMethod);
+        ResolvedJavaMethod concreteMethod = target.getDeclaringClass().findUniqueConcreteMethod(target);
         if (concreteMethod != null) {
             return createTargetInvokeNode(concreteMethod);
         }
@@ -247,12 +247,12 @@ public class MethodHandleNode extends MacroStateSplitNode implements Simplifiabl
      * Creates an {@link InvokeNode} for the given target method. The {@link CallTargetNode} passed
      * to the InvokeNode is in fact a {@link SelfReplacingMethodCallTargetNode}.
      *
-     * @param targetMethod the method the be called
+     * @param target the method to be called
      * @return invoke node for the member name target
      */
-    private InvokeNode createTargetInvokeNode(ResolvedJavaMethod targetMethod) {
-        InvokeKind invokeKind = targetMethod.isStatic() ? InvokeKind.Static : InvokeKind.Special;
-        JavaType returnType = targetMethod.getSignature().getReturnType(null);
+    private InvokeNode createTargetInvokeNode(ResolvedJavaMethod target) {
+        InvokeKind targetInvokeKind = target.isStatic() ? InvokeKind.Static : InvokeKind.Special;
+        JavaType targetReturnType = target.getSignature().getReturnType(null);
 
         // MethodHandleLinkTo* nodes have a trailing MemberName argument which
         // needs to be popped.
@@ -275,10 +275,10 @@ public class MethodHandleNode extends MacroStateSplitNode implements Simplifiabl
         // If there is already replacement information, use that instead.
         MethodCallTargetNode callTarget;
         if (replacementTargetMethod == null) {
-            callTarget = SelfReplacingMethodCallTargetNode.create(invokeKind, targetMethod, targetArguments, returnType, getTargetMethod(), originalArguments, getReturnType());
+            callTarget = SelfReplacingMethodCallTargetNode.create(targetInvokeKind, target, targetArguments, targetReturnType, getTargetMethod(), originalArguments, getReturnType());
         } else {
             ValueNode[] args = replacementArguments.toArray(new ValueNode[replacementArguments.size()]);
-            callTarget = SelfReplacingMethodCallTargetNode.create(invokeKind, targetMethod, targetArguments, returnType, replacementTargetMethod, args, replacementReturnType);
+            callTarget = SelfReplacingMethodCallTargetNode.create(targetInvokeKind, target, targetArguments, targetReturnType, replacementTargetMethod, args, replacementReturnType);
         }
         graph().add(callTarget);
 

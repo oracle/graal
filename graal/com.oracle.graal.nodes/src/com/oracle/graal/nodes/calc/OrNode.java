@@ -39,7 +39,7 @@ public class OrNode extends BinaryArithmeticNode {
         return USE_GENERATED_NODES ? new OrNodeGen(x, y) : new OrNode(x, y);
     }
 
-    OrNode(ValueNode x, ValueNode y) {
+    protected OrNode(ValueNode x, ValueNode y) {
         super(ArithmeticOpTable.forStamp(x.stamp()).getOr(), x, y);
     }
 

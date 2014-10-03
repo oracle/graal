@@ -39,7 +39,7 @@ public class AndNode extends BinaryArithmeticNode implements NarrowableArithmeti
         return USE_GENERATED_NODES ? new AndNodeGen(x, y) : new AndNode(x, y);
     }
 
-    AndNode(ValueNode x, ValueNode y) {
+    protected AndNode(ValueNode x, ValueNode y) {
         super(ArithmeticOpTable.forStamp(x.stamp()).getAnd(), x, y);
     }
 

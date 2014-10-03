@@ -79,16 +79,12 @@ public class AllocatorTest extends GraalCompilerTest {
             }
         }
 
-        private ValueProcedure collectStatsProc = new ValueProcedure() {
-
-            @Override
-            public Value doValue(Value value) {
-                if (ValueUtil.isRegister(value)) {
-                    final Register reg = ValueUtil.asRegister(value);
-                    registers.add(reg);
-                }
-                return value;
+        private ValueProcedure collectStatsProc = (value, mode, flags) -> {
+            if (ValueUtil.isRegister(value)) {
+                final Register reg = ValueUtil.asRegister(value);
+                registers.add(reg);
             }
+            return value;
         };
 
         private void collectStats(final LIRInstruction instr) {

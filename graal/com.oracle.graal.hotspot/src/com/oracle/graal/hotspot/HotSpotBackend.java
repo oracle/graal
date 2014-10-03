@@ -36,6 +36,8 @@ import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.LIRInstruction.OperandFlag;
+import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.StandardOp.LabelOp;
 import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 import com.oracle.graal.nodes.*;
@@ -154,7 +156,7 @@ public abstract class HotSpotBackend extends Backend {
         ValueConsumer defConsumer = new ValueConsumer() {
 
             @Override
-            public void visitValue(Value value) {
+            public void visitValue(Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
                 if (ValueUtil.isRegister(value)) {
                     final Register reg = ValueUtil.asRegister(value);
                     definedRegisters.add(reg);

@@ -36,8 +36,8 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable, Virtualizable {
 
-    private final ResolvedJavaType type;
-    private JavaTypeProfile profile;
+    protected final ResolvedJavaType type;
+    protected JavaTypeProfile profile;
 
     /**
      * Constructs a new InstanceOfNode.
@@ -63,11 +63,10 @@ public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable, Virtu
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
-        Stamp stamp = forValue.stamp();
-        if (!(stamp instanceof ObjectStamp)) {
+        if (!(forValue.stamp() instanceof ObjectStamp)) {
             return this;
         }
-        ObjectStamp objectStamp = (ObjectStamp) stamp;
+        ObjectStamp objectStamp = (ObjectStamp) forValue.stamp();
         if (objectStamp.alwaysNull()) {
             return LogicConstantNode.contradiction();
         }

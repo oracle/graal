@@ -31,9 +31,9 @@ public class ShortCircuitOrNode extends LogicNode implements IterableNodeType, C
 
     @Input(InputType.Condition) LogicNode x;
     @Input(InputType.Condition) LogicNode y;
-    private boolean xNegated;
-    private boolean yNegated;
-    private double shortCircuitProbability;
+    protected boolean xNegated;
+    protected boolean yNegated;
+    protected double shortCircuitProbability;
 
     public static ShortCircuitOrNode create(LogicNode x, boolean xNegated, LogicNode y, boolean yNegated, double shortCircuitProbability) {
         return USE_GENERATED_NODES ? new ShortCircuitOrNodeGen(x, xNegated, y, yNegated, shortCircuitProbability) : new ShortCircuitOrNode(x, xNegated, y, yNegated, shortCircuitProbability);

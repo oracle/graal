@@ -45,8 +45,8 @@ public class HSAILDirectStoreReleaseNode extends DirectStoreNode {
     public void generate(NodeLIRBuilderTool gen) {
         HSAILHotSpotLIRGenerator hsailgen = (HSAILHotSpotLIRGenerator) (gen.getLIRGeneratorTool());
         Value v = gen.operand(getValue());
-        LIRKind kind = hsailgen.getLIRKind(getValue().stamp());
-        hsailgen.emitStoreRelease(kind, gen.operand(getAddress()), v, null);
+        LIRKind lirKind = hsailgen.getLIRKind(getValue().stamp());
+        hsailgen.emitStoreRelease(lirKind, gen.operand(getAddress()), v, null);
     }
 
     @NodeIntrinsic

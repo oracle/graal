@@ -202,18 +202,14 @@ final class RegisterVerifier {
             }
         };
 
-        InstructionValueConsumer defConsumer = new InstructionValueConsumer() {
-
-            @Override
-            public void visitValue(LIRInstruction op, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
-                if (LinearScan.isVariableOrRegister(operand) && allocator.isProcessed(operand)) {
-                    Interval interval = intervalAt(operand);
-                    if (op.id() != -1) {
-                        interval = interval.getSplitChildAtOpId(op.id(), mode, allocator);
-                    }
-
-                    statePut(inputState, interval.location(), interval.splitParent());
+        InstructionValueConsumer defConsumer = (op, operand, mode, flags) -> {
+            if (LinearScan.isVariableOrRegister(operand) && allocator.isProcessed(operand)) {
+                Interval interval = intervalAt(operand);
+                if (op.id() != -1) {
+                    interval = interval.getSplitChildAtOpId(op.id(), mode, allocator);
                 }
+
+                statePut(inputState, interval.location(), interval.splitParent());
             }
         };
 

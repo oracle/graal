@@ -52,6 +52,8 @@ public interface LIRGeneratorTool extends ArithmeticLIRGenerator {
 
     void doBlockEnd(AbstractBlock<?> block);
 
+    Value emitLoadConstant(Constant constant);
+
     Value emitLoad(LIRKind kind, Value address, LIRFrameState state);
 
     void emitStore(LIRKind kind, Value address, Value input, LIRFrameState state);
@@ -83,26 +85,6 @@ public interface LIRGeneratorTool extends ArithmeticLIRGenerator {
     void emitDeoptimize(Value actionAndReason, Value failedSpeculation, LIRFrameState state);
 
     Variable emitForeignCall(ForeignCallLinkage linkage, LIRFrameState state, Value... args);
-
-    /**
-     * Checks whether the supplied constant can be used without loading it into a register for most
-     * operations, i.e., for commonly used arithmetic, logical, and comparison operations.
-     *
-     * @param c The constant to check.
-     * @return True if the constant can be used directly, false if the constant needs to be in a
-     *         register.
-     */
-    boolean canInlineConstant(Constant c);
-
-    /**
-     * Checks whether the supplied constant can be used without loading it into a register for store
-     * operations, i.e., on the right hand side of a memory access.
-     *
-     * @param c The constant to check.
-     * @return True if the constant can be used directly, false if the constant needs to be in a
-     *         register.
-     */
-    boolean canStoreConstant(Constant c);
 
     RegisterAttributes attributes(Register register);
 

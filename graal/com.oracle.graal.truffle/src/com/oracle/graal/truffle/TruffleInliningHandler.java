@@ -110,7 +110,7 @@ public final class TruffleInliningHandler {
         return policy;
     }
 
-    private static double calculateFrequency(OptimizedCallTarget target, OptimizedDirectCallNode ocn) {
+    public static double calculateFrequency(OptimizedCallTarget target, OptimizedDirectCallNode ocn) {
         return (double) Math.max(1, ocn.getCallCount()) / (double) Math.max(1, target.getCompilationProfile().getCallCount());
     }
 

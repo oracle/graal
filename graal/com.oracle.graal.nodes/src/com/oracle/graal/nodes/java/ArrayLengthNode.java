@@ -50,7 +50,7 @@ public class ArrayLengthNode extends FixedWithNextNode implements Canonicalizabl
         return USE_GENERATED_NODES ? new ArrayLengthNodeGen(array) : new ArrayLengthNode(array);
     }
 
-    ArrayLengthNode(ValueNode array) {
+    protected ArrayLengthNode(ValueNode array) {
         super(StampFactory.positiveInt());
         this.array = array;
     }

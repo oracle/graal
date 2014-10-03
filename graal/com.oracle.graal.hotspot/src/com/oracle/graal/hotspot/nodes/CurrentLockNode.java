@@ -36,13 +36,13 @@ import com.oracle.graal.word.*;
 @NodeInfo
 public class CurrentLockNode extends FixedWithNextNode implements LIRLowerable {
 
-    private int lockDepth;
+    protected int lockDepth;
 
     public static CurrentLockNode create(int lockDepth) {
         return USE_GENERATED_NODES ? new CurrentLockNodeGen(lockDepth) : new CurrentLockNode(lockDepth);
     }
 
-    CurrentLockNode(int lockDepth) {
+    protected CurrentLockNode(int lockDepth) {
         super(null);
         this.lockDepth = lockDepth;
     }

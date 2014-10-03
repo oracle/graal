@@ -44,8 +44,8 @@ public abstract class CallTargetNode extends ValueNode implements LIRLowerable {
     }
 
     @Input protected NodeInputList<ValueNode> arguments;
-    private ResolvedJavaMethod targetMethod;
-    private InvokeKind invokeKind;
+    protected ResolvedJavaMethod targetMethod;
+    protected InvokeKind invokeKind;
 
     public CallTargetNode(ValueNode[] arguments, ResolvedJavaMethod targetMethod, InvokeKind invokeKind) {
         super(StampFactory.forVoid());

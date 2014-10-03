@@ -40,15 +40,15 @@ public class DynamicCounterNode extends FixedWithNextNode implements Lowerable {
 
     @Input ValueNode increment;
 
-    private final String name;
-    private final String group;
-    private final boolean withContext;
+    protected final String name;
+    protected final String group;
+    protected final boolean withContext;
 
     public static DynamicCounterNode create(String name, String group, ValueNode increment, boolean withContext) {
         return USE_GENERATED_NODES ? new DynamicCounterNodeGen(name, group, increment, withContext) : new DynamicCounterNode(name, group, increment, withContext);
     }
 
-    DynamicCounterNode(String name, String group, ValueNode increment, boolean withContext) {
+    protected DynamicCounterNode(String name, String group, ValueNode increment, boolean withContext) {
         super(StampFactory.forVoid());
         this.name = name;
         this.group = group;

@@ -131,7 +131,7 @@ public class ConditionalNode extends FloatingNode implements Canonicalizable, LI
         return USE_GENERATED_NODES ? new ConditionalNodeGen(graph, condition, x, y) : new ConditionalNode(graph, condition, x, y);
     }
 
-    ConditionalNode(StructuredGraph graph, Condition condition, ValueNode x, ValueNode y) {
+    protected ConditionalNode(StructuredGraph graph, Condition condition, ValueNode x, ValueNode y) {
         this(createCompareNode(graph, condition, x, y));
     }
 
@@ -139,7 +139,7 @@ public class ConditionalNode extends FloatingNode implements Canonicalizable, LI
         return USE_GENERATED_NODES ? new ConditionalNodeGen(type, object) : new ConditionalNode(type, object);
     }
 
-    ConditionalNode(ValueNode type, ValueNode object) {
+    protected ConditionalNode(ValueNode type, ValueNode object) {
         this(type.graph().unique(InstanceOfDynamicNode.create(type, object)));
     }
 

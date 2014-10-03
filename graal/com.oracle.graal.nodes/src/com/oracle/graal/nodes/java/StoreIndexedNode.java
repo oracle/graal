@@ -68,7 +68,7 @@ public class StoreIndexedNode extends AccessIndexedNode implements StateSplit, L
         return USE_GENERATED_NODES ? new StoreIndexedNodeGen(array, index, elementKind, value) : new StoreIndexedNode(array, index, elementKind, value);
     }
 
-    StoreIndexedNode(ValueNode array, ValueNode index, Kind elementKind, ValueNode value) {
+    protected StoreIndexedNode(ValueNode array, ValueNode index, Kind elementKind, ValueNode value) {
         super(StampFactory.forVoid(), array, index, elementKind);
         this.value = value;
     }

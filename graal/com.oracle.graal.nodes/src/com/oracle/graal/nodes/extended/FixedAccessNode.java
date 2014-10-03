@@ -36,8 +36,8 @@ public abstract class FixedAccessNode extends DeoptimizingFixedWithNextNode impl
     @OptionalInput(InputType.Guard) protected GuardingNode guard;
     @Input protected ValueNode object;
     @Input(InputType.Association) protected ValueNode location;
-    private boolean nullCheck;
-    private BarrierType barrierType;
+    protected boolean nullCheck;
+    protected BarrierType barrierType;
 
     public ValueNode object() {
         return object;

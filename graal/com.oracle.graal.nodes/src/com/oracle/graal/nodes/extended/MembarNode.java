@@ -42,7 +42,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(allowedUsageTypes = {InputType.Memory})
 public class MembarNode extends FixedWithNextNode implements LIRLowerable, MemoryCheckpoint.Single {
 
-    private final int barriers;
+    protected final int barriers;
 
     /**
      * @param barriers a mask of the barrier constants defined in {@link MemoryBarriers}
@@ -51,7 +51,7 @@ public class MembarNode extends FixedWithNextNode implements LIRLowerable, Memor
         return USE_GENERATED_NODES ? new MembarNodeGen(barriers) : new MembarNode(barriers);
     }
 
-    MembarNode(int barriers) {
+    protected MembarNode(int barriers) {
         super(StampFactory.forVoid());
         this.barriers = barriers;
     }

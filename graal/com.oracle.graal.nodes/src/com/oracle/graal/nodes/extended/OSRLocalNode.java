@@ -34,7 +34,7 @@ public class OSRLocalNode extends AbstractLocalNode implements IterableNodeType 
         return USE_GENERATED_NODES ? new OSRLocalNodeGen(index, stamp) : new OSRLocalNode(index, stamp);
     }
 
-    OSRLocalNode(int index, Stamp stamp) {
+    protected OSRLocalNode(int index, Stamp stamp) {
         super(index, stamp);
     }
 

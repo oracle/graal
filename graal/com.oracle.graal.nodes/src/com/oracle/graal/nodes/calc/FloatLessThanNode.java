@@ -33,7 +33,7 @@ import com.oracle.graal.nodes.util.*;
 @NodeInfo(shortName = "<")
 public class FloatLessThanNode extends CompareNode {
 
-    private final boolean unorderedIsTrue;
+    protected final boolean unorderedIsTrue;
 
     /**
      * Constructs a new floating point comparison node.

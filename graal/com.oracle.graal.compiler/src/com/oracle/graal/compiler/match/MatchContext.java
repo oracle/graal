@@ -126,8 +126,10 @@ public class MatchContext {
      */
     public void setResult(ComplexMatchResult result) {
         ComplexMatchValue value = new ComplexMatchValue(result);
-        Debug.log("matched %s %s", rule.getName(), rule.getPattern());
-        Debug.log("with nodes %s", rule.formatMatch(root));
+        if (Debug.isLogEnabled()) {
+            Debug.log("matched %s %s", rule.getName(), rule.getPattern());
+            Debug.log("with nodes %s", rule.formatMatch(root));
+        }
         if (consumed != null) {
             for (ValueNode node : consumed) {
                 // All the interior nodes should be skipped during the normal doRoot calls in

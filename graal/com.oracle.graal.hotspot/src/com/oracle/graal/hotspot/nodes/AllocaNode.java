@@ -42,14 +42,14 @@ public class AllocaNode extends FixedWithNextNode implements LIRLowerable {
     /**
      * The number of slots in block.
      */
-    private final int slots;
+    protected final int slots;
 
     /**
      * The indexes of the object pointer slots in the block. Each such object pointer slot must be
      * initialized before any safepoint in the method otherwise the garbage collector will see
      * garbage values when processing these slots.
      */
-    private final BitSet objects;
+    protected final BitSet objects;
 
     public static AllocaNode create(int slots, BitSet objects) {
         return USE_GENERATED_NODES ? new AllocaNodeGen(slots, objects) : new AllocaNode(slots, objects);

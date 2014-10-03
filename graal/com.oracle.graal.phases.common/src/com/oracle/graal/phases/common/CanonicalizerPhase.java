@@ -213,7 +213,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
         }
 
         public static boolean tryGlobalValueNumbering(Node node, NodeClass nodeClass) {
-            if (nodeClass.valueNumberable() && !node.isLeafNode()) {
+            if (nodeClass.valueNumberable() && !nodeClass.isLeafNode()) {
                 Node newNode = node.graph().findDuplicate(node);
                 if (newNode != null) {
                     assert !(node instanceof FixedNode || newNode instanceof FixedNode);
@@ -270,7 +270,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
             }
 
             if (nodeClass.isSimplifiable()) {
-                Debug.log("Canonicalizer: simplifying %s", node);
+                Debug.log(3, "Canonicalizer: simplifying %s", node);
                 METRIC_SIMPLIFICATION_CONSIDERED_NODES.increment();
                 try (Scope s = Debug.scope("SimplifyNode", node)) {
                     node.simplify(tool);
@@ -300,7 +300,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
 // @formatter:on
         private boolean performReplacement(final Node node, Node newCanonical) {
             if (newCanonical == node) {
-                Debug.log("Canonicalizer: work on %1s", node);
+                Debug.log(3, "Canonicalizer: work on %1s", node);
                 return false;
             } else {
                 Node canonical = newCanonical;
@@ -310,6 +310,9 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
                 if (canonical != null && !canonical.isAlive()) {
                     assert !canonical.isDeleted();
                     canonical = graph.addOrUniqueWithInputs(canonical);
+                    if (canonical == node) {
+                        graph.addOrUniqueWithInputs(newCanonical);
+                    }
                 }
                 if (node instanceof FloatingNode) {
                     if (canonical == null) {

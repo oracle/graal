@@ -38,7 +38,7 @@ public class DynamicNewInstanceNode extends AbstractNewObjectNode implements Can
         return USE_GENERATED_NODES ? new DynamicNewInstanceNodeGen(clazz, fillContents) : new DynamicNewInstanceNode(clazz, fillContents);
     }
 
-    DynamicNewInstanceNode(ValueNode clazz, boolean fillContents) {
+    protected DynamicNewInstanceNode(ValueNode clazz, boolean fillContents) {
         super(StampFactory.objectNonNull(), fillContents);
         this.clazz = clazz;
     }

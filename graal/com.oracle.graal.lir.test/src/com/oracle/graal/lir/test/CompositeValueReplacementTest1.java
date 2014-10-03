@@ -126,35 +126,18 @@ public class CompositeValueReplacementTest1 {
         LIRInstruction op1 = new TestOp(compValue1);
         LIRInstruction op2 = new TestOp(compValue1);
 
-        op1.forEachInput(new InstructionValueProcedure() {
-            @Override
-            public Value doValue(LIRInstruction instruction, Value value) {
-                assertEquals(dummyValue1, value);
-                return dummyValue2;
-            }
+        op1.forEachInput((instruction, value, mode, flags) -> {
+            assertEquals(dummyValue1, value);
+            return dummyValue2;
         });
 
-        op2.forEachInput(new InstructionValueProcedure() {
-            @Override
-            public Value doValue(LIRInstruction instruction, Value value) {
-                assertEquals(dummyValue1, value);
-                return dummyValue3;
-            }
+        op2.forEachInput((instruction, value, mode, flags) -> {
+            assertEquals(dummyValue1, value);
+            return dummyValue3;
         });
 
-        op1.visitEachInput(new InstructionValueConsumer() {
-            @Override
-            public void visitValue(LIRInstruction instruction, Value value) {
-                assertEquals(dummyValue2, value);
-            }
-        });
-
-        op2.visitEachInput(new InstructionValueConsumer() {
-            @Override
-            public void visitValue(LIRInstruction instruction, Value value) {
-                assertEquals(dummyValue3, value);
-            }
-        });
+        op1.visitEachInput((instruction, value, mode, flags) -> assertEquals(dummyValue2, value));
+        op2.visitEachInput((instruction, value, mode, flags) -> assertEquals(dummyValue3, value));
     }
 
     @Test
@@ -166,34 +149,17 @@ public class CompositeValueReplacementTest1 {
         LIRInstruction op1 = new TestOp(compValue1);
         LIRInstruction op2 = new TestOp(compValue1);
 
-        op1.forEachInput(new InstructionValueProcedure() {
-            @Override
-            public Value doValue(LIRInstruction instruction, Value value) {
-                assertEquals(dummyValue1, value);
-                return dummyValue2;
-            }
+        op1.forEachInput((instruction, value, mode, flags) -> {
+            assertEquals(dummyValue1, value);
+            return dummyValue2;
         });
 
-        op2.forEachInput(new InstructionValueProcedure() {
-            @Override
-            public Value doValue(LIRInstruction instruction, Value value) {
-                assertEquals(dummyValue1, value);
-                return dummyValue3;
-            }
+        op2.forEachInput((instruction, value, mode, flags) -> {
+            assertEquals(dummyValue1, value);
+            return dummyValue3;
         });
 
-        op1.visitEachInput(new InstructionValueConsumer() {
-            @Override
-            public void visitValue(LIRInstruction instruction, Value value) {
-                assertEquals(dummyValue2, value);
-            }
-        });
-
-        op2.visitEachInput(new InstructionValueConsumer() {
-            @Override
-            public void visitValue(LIRInstruction instruction, Value value) {
-                assertEquals(dummyValue3, value);
-            }
-        });
+        op1.visitEachInput((instruction, value, mode, flags) -> assertEquals(dummyValue2, value));
+        op2.visitEachInput((instruction, value, mode, flags) -> assertEquals(dummyValue3, value));
     }
 }

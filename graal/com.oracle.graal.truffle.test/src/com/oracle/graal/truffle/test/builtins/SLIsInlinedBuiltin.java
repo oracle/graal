@@ -40,28 +40,57 @@ public abstract class SLIsInlinedBuiltin extends SLGraalRuntimeBuiltin {
 
     @Specialization
     @SlowPath
-    public Object isInlined(SLFunction parent, SLFunction inlinedFunction) {
-        boolean allFalse = true;
-        boolean allTrue = true;
-        for (OptimizedCallTarget parentTarget : findDuplicateCallTargets((OptimizedCallTarget) parent.getCallTarget())) {
-            Set<DirectCallNode> callNodes = findCallsTo(parentTarget.getRootNode(), (OptimizedCallTarget) inlinedFunction.getCallTarget());
-            for (DirectCallNode directCall : callNodes) {
-                if (directCall.isInlined()) {
-                    allFalse = false;
-                } else {
-                    allTrue = false;
-                }
+    public Object isInlined(SLFunction rootFunction, SLFunction parentFunction, SLFunction inlinedFunction) {
+        InliningTrace trace = new InliningTrace();
+
+        for (OptimizedCallTarget target : findDuplicateCallTargets((OptimizedCallTarget) rootFunction.getCallTarget())) {
+            if (target.isValid()) {
+                searchInlined(trace, target, new ArrayList<>(), parentFunction, inlinedFunction);
             }
         }
-        if (allFalse && allTrue) {
-            throw new AssertionError(String.format("No calls found from %s to %s .", parent, inlinedFunction));
-        } else if (!allFalse && !allTrue) {
-            throw new AssertionError(String.format("Some calls from %s to %s are inlined and some are not.", parent, inlinedFunction));
+
+        if (trace.allFalse && trace.allTrue) {
+            throw new AssertionError(String.format("No optimized calls found from %s to %s .", parentFunction, inlinedFunction));
+        } else if (!trace.allFalse && !trace.allTrue) {
+            throw new AssertionError(String.format("Some optimized calls from %s to %s are inlined and some are not.", parentFunction, inlinedFunction));
         }
-        if (allTrue) {
+        if (trace.allTrue) {
             return true;
         } else {
             return false;
         }
+    }
+
+    private void searchInlined(InliningTrace trace, OptimizedCallTarget rootTarget, List<OptimizedDirectCallNode> stack, SLFunction parent, SLFunction inlinedFunction) {
+        OptimizedCallTarget root;
+        if (stack.isEmpty()) {
+            root = rootTarget;
+        } else {
+            root = stack.get(stack.size() - 1).getCurrentCallTarget();
+        }
+
+        for (OptimizedDirectCallNode callNode : root.getCallNodes()) {
+            stack.add(callNode);
+
+            boolean inlined = rootTarget.isInlined(stack);
+            if (callNode.getRootNode().getCallTarget() == parent.getCallTarget() && callNode.getCallTarget() == inlinedFunction.getCallTarget()) {
+                if (inlined) {
+                    trace.allFalse = false;
+                } else {
+                    trace.allTrue = false;
+                }
+            }
+
+            if (inlined) {
+                searchInlined(trace, rootTarget, stack, parent, inlinedFunction);
+            }
+
+            stack.remove(stack.size() - 1);
+        }
+    }
+
+    private static final class InliningTrace {
+        boolean allFalse = true;
+        boolean allTrue = true;
     }
 }

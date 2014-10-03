@@ -34,7 +34,7 @@ public class NodeMapTest {
 
     @NodeInfo
     static class TestNode extends Node {
-        TestNode() {
+        protected TestNode() {
         }
 
         public static TestNode create() {

@@ -32,7 +32,7 @@ public abstract class FloatingAccessNode extends FloatingGuardedNode implements 
 
     @Input ValueNode object;
     @Input(InputType.Association) LocationNode location;
-    private BarrierType barrierType;
+    protected BarrierType barrierType;
 
     public ValueNode object() {
         return object;

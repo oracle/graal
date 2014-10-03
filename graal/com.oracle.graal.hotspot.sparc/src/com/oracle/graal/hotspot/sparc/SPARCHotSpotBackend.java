@@ -25,8 +25,8 @@ package com.oracle.graal.hotspot.sparc;
 import static com.oracle.graal.api.code.CallingConvention.Type.*;
 import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
-import static com.oracle.graal.sparc.SPARC.*;
 import static com.oracle.graal.compiler.common.UnsafeAccess.*;
+import static com.oracle.graal.sparc.SPARC.*;
 
 import java.util.*;
 
@@ -345,16 +345,13 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
         private final Set<Object> inputs = new HashSet<>(10);
         private boolean overlap = false;
 
-        private final InstructionValueConsumer valueConsumer = new InstructionValueConsumer() {
-            @Override
-            protected void visitValue(LIRInstruction instruction, Value value) {
-                Object valueObject = value;
-                if (isRegister(value)) { // Canonicalize registers
-                    valueObject = asRegister(value);
-                }
-                if (!inputs.add(valueObject)) {
-                    overlap = true;
-                }
+        private final InstructionValueConsumer valueConsumer = (instruction, value, mode, flags) -> {
+            Object valueObject = value;
+            if (isRegister(value)) { // Canonicalize registers
+                valueObject = asRegister(value);
+            }
+            if (!inputs.add(valueObject)) {
+                overlap = true;
             }
         };
 

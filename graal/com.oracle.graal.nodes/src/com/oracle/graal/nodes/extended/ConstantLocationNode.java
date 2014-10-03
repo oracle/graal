@@ -36,9 +36,9 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(nameTemplate = "Loc {p#locationIdentity/s}")
 public class ConstantLocationNode extends LocationNode {
 
-    private final Kind valueKind;
-    private final LocationIdentity locationIdentity;
-    private final long displacement;
+    protected final Kind valueKind;
+    protected final LocationIdentity locationIdentity;
+    protected final long displacement;
 
     public static ConstantLocationNode create(LocationIdentity identity, Kind kind, long displacement, Graph graph) {
         return graph.unique(ConstantLocationNode.create(identity, kind, displacement));
@@ -48,7 +48,7 @@ public class ConstantLocationNode extends LocationNode {
         return USE_GENERATED_NODES ? new ConstantLocationNodeGen(identity, kind, displacement) : new ConstantLocationNode(identity, kind, displacement);
     }
 
-    ConstantLocationNode(LocationIdentity identity, Kind kind, long displacement) {
+    protected ConstantLocationNode(LocationIdentity identity, Kind kind, long displacement) {
         super(StampFactory.forVoid());
         assert kind != Kind.Illegal && kind != Kind.Void;
         this.valueKind = kind;

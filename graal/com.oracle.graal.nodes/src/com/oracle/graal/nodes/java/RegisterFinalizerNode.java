@@ -45,7 +45,7 @@ public class RegisterFinalizerNode extends AbstractStateSplit implements Canonic
         return USE_GENERATED_NODES ? new RegisterFinalizerNodeGen(value) : new RegisterFinalizerNode(value);
     }
 
-    RegisterFinalizerNode(ValueNode value) {
+    protected RegisterFinalizerNode(ValueNode value) {
         super(StampFactory.forVoid());
         this.value = value;
     }
@@ -66,16 +66,16 @@ public class RegisterFinalizerNode extends AbstractStateSplit implements Canonic
             return this;
         }
 
-        ObjectStamp stamp = (ObjectStamp) forValue.stamp();
+        ObjectStamp objectStamp = (ObjectStamp) forValue.stamp();
 
         boolean needsCheck = true;
-        if (stamp.isExactType()) {
-            needsCheck = stamp.type().hasFinalizer();
-        } else if (stamp.type() != null && !stamp.type().hasFinalizableSubclass()) {
+        if (objectStamp.isExactType()) {
+            needsCheck = objectStamp.type().hasFinalizer();
+        } else if (objectStamp.type() != null && !objectStamp.type().hasFinalizableSubclass()) {
             // if either the declared type of receiver or the holder
             // can be assumed to have no finalizers
             if (tool.assumptions().useOptimisticAssumptions()) {
-                tool.assumptions().recordNoFinalizableSubclassAssumption(stamp.type());
+                tool.assumptions().recordNoFinalizableSubclassAssumption(objectStamp.type());
                 needsCheck = false;
             }
         }

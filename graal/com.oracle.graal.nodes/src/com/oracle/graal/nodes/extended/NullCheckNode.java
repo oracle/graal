@@ -36,7 +36,7 @@ public class NullCheckNode extends DeoptimizingFixedWithNextNode implements LIRL
         return USE_GENERATED_NODES ? new NullCheckNodeGen(object) : new NullCheckNode(object);
     }
 
-    NullCheckNode(ValueNode object) {
+    protected NullCheckNode(ValueNode object) {
         super(StampFactory.forVoid());
         this.object = object;
     }

@@ -191,6 +191,17 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
         return result;
     }
 
+    private static boolean canStoreConstant(Constant c) {
+        // SPARC can only store integer null constants (via g0)
+        switch (c.getKind()) {
+            case Float:
+            case Double:
+                return false;
+            default:
+                return c.isDefaultForKind();
+        }
+    }
+
     @Override
     public void emitStore(LIRKind kind, Value address, Value inputVal, LIRFrameState state) {
         SPARCAddressValue storeAddress = asAddressValue(address);

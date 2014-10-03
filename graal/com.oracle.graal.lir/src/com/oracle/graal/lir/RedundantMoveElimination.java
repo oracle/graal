@@ -362,7 +362,7 @@ public final class RedundantMoveElimination {
             /*
              * Value procedure for the instruction's output and temp values
              */
-            class OutputValueConsumer extends ValueConsumer {
+            class OutputValueConsumer implements ValueConsumer {
 
                 int opValueNum;
 

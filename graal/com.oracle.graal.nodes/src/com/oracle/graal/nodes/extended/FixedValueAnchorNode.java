@@ -40,7 +40,7 @@ public class FixedValueAnchorNode extends FixedWithNextNode implements LIRLowera
         return USE_GENERATED_NODES ? new FixedValueAnchorNodeGen(object) : new FixedValueAnchorNode(object);
     }
 
-    FixedValueAnchorNode(ValueNode object) {
+    protected FixedValueAnchorNode(ValueNode object) {
         super(StampFactory.forNodeIntrinsic());
         this.object = object;
 

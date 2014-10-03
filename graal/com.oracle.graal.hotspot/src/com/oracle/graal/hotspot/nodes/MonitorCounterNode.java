@@ -41,7 +41,7 @@ public class MonitorCounterNode extends FloatingNode implements LIRLowerable {
         return USE_GENERATED_NODES ? new MonitorCounterNodeGen() : new MonitorCounterNode();
     }
 
-    MonitorCounterNode() {
+    protected MonitorCounterNode() {
         super(null);
     }
 

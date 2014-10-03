@@ -43,7 +43,7 @@ public class ReinterpretNode extends UnaryNode implements ArithmeticLIRLowerable
         return USE_GENERATED_NODES ? new ReinterpretNodeGen(to, value) : new ReinterpretNode(to, value);
     }
 
-    ReinterpretNode(Kind to, ValueNode value) {
+    protected ReinterpretNode(Kind to, ValueNode value) {
         this(StampFactory.forKind(to), value);
     }
 

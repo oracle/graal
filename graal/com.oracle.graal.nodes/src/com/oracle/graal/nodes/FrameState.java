@@ -51,9 +51,9 @@ public class FrameState extends VirtualState implements IterableNodeType {
     /**
      * @see BytecodeFrame#rethrowException
      */
-    private boolean rethrowException;
+    protected boolean rethrowException;
 
-    private boolean duringCall;
+    protected boolean duringCall;
 
     @OptionalInput(value = InputType.State) FrameState outerFrameState;
 
@@ -71,7 +71,7 @@ public class FrameState extends VirtualState implements IterableNodeType {
      */
     public final int bci;
 
-    private final ResolvedJavaMethod method;
+    protected final ResolvedJavaMethod method;
 
     /**
      * Creates a {@code FrameState} with the given locals, stack expressions and locked monitors.

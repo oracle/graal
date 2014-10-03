@@ -32,6 +32,8 @@ import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.LIRInstruction.OperandFlag;
+import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.StandardOp.MoveOp;
 import com.oracle.graal.lir.constopt.ConstantTree.Flags;
 import com.oracle.graal.lir.constopt.ConstantTree.NodeCost;
@@ -125,7 +127,7 @@ public class ConstantLoadOptimization {
         ValueConsumer stateConsumer = new ValueConsumer() {
 
             @Override
-            public void visitValue(Value operand) {
+            public void visitValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
                 assert !operand.equals(var) : "constant usage through variable in frame state " + var;
             }
         };
@@ -161,55 +163,46 @@ public class ConstantLoadOptimization {
     private void analyzeBlock(AbstractBlock<?> block) {
         try (Indent indent = Debug.logAndIndent("Block: %s", block)) {
 
-            InstructionValueConsumer loadConsumer = new InstructionValueConsumer() {
-                @Override
-                public void visitValue(LIRInstruction instruction, Value value) {
-                    if (isVariable(value)) {
-                        Variable var = (Variable) value;
+            InstructionValueConsumer loadConsumer = (instruction, value, mode, flags) -> {
+                if (isVariable(value)) {
+                    Variable var = (Variable) value;
 
-                        if (!phiConstants.get(var.index)) {
-                            if (!defined.get(var.index)) {
-                                defined.set(var.index);
-                                if (isConstantLoad(instruction)) {
-                                    Debug.log("constant load: %s", instruction);
-                                    map.put(var, new DefUseTree(instruction, block));
-                                    constantsTotal.increment();
-                                }
-                            } else {
-                                // Variable is redefined, this only happens for constant loads
-                                // introduced by phi resolution -> ignore.
-                                DefUseTree removed = map.remove(var);
-                                if (removed != null) {
-                                    phiConstantsSkipped.increment();
-                                }
-                                phiConstants.set(var.index);
-                                Debug.log(3, "Removing phi variable: %s", var);
+                    if (!phiConstants.get(var.index)) {
+                        if (!defined.get(var.index)) {
+                            defined.set(var.index);
+                            if (isConstantLoad(instruction)) {
+                                Debug.log("constant load: %s", instruction);
+                                map.put(var, new DefUseTree(instruction, block));
+                                constantsTotal.increment();
                             }
                         } else {
-                            assert defined.get(var.index) : "phi but not defined? " + var;
+                            // Variable is redefined, this only happens for constant loads
+                            // introduced by phi resolution -> ignore.
+                            DefUseTree removed = map.remove(var);
+                            if (removed != null) {
+                                phiConstantsSkipped.increment();
+                            }
+                            phiConstants.set(var.index);
+                            Debug.log(3, "Removing phi variable: %s", var);
                         }
-
+                    } else {
+                        assert defined.get(var.index) : "phi but not defined? " + var;
                     }
                 }
-
             };
 
-            ValuePositionProcedure useProcedure = new ValuePositionProcedure() {
-                @Override
-                public void doValue(LIRInstruction instruction, ValuePosition position) {
-                    Value value = position.get(instruction);
-                    if (isVariable(value)) {
-                        Variable var = (Variable) value;
-                        if (!phiConstants.get(var.index)) {
-                            DefUseTree tree = map.get(var);
-                            if (tree != null) {
-                                tree.addUsage(block, instruction, position);
-                                Debug.log("usage of %s : %s", var, instruction);
-                            }
+            ValuePositionProcedure useProcedure = (instruction, position) -> {
+                Value value = position.get(instruction);
+                if (isVariable(value)) {
+                    Variable var = (Variable) value;
+                    if (!phiConstants.get(var.index)) {
+                        DefUseTree tree = map.get(var);
+                        if (tree != null) {
+                            tree.addUsage(block, instruction, position);
+                            Debug.log("usage of %s : %s", var, instruction);
                         }
                     }
                 }
-
             };
 
             int opId = 0;
@@ -217,8 +210,8 @@ public class ConstantLoadOptimization {
                 // set instruction id to the index in the lir instruction list
                 inst.setId(opId++);
                 inst.visitEachOutput(loadConsumer);
-                inst.forEachInput(useProcedure);
-                inst.forEachAlive(useProcedure);
+                inst.forEachInputPos(useProcedure);
+                inst.forEachAlivePos(useProcedure);
 
             }
         }

@@ -42,7 +42,7 @@ public class ValueAnchorNode extends FixedWithNextNode implements LIRLowerable, 
         return USE_GENERATED_NODES ? new ValueAnchorNodeGen(value) : new ValueAnchorNode(value);
     }
 
-    ValueAnchorNode(ValueNode value) {
+    protected ValueAnchorNode(ValueNode value) {
         super(StampFactory.forVoid());
         this.anchored = value;
     }

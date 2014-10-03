@@ -117,13 +117,7 @@ public class ValuePositionTest2 {
         LIRInstruction op = new TestOp(compValue2);
         List<ValuePosition> positions = new ArrayList<>();
 
-        op.forEachInput(new ValuePositionProcedure() {
-
-            @Override
-            public void doValue(LIRInstruction instruction, ValuePosition position) {
-                positions.add(position);
-            }
-        });
+        op.forEachInputPos((instruction, position) -> positions.add(position));
 
         assertEquals(4, positions.size());
 

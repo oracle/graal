@@ -22,17 +22,27 @@
  */
 package com.oracle.graal.nodeinfo;
 
-import java.lang.annotation.*;
-
 /**
- * Denotes a Node subclass generated on the basis of a {@link NodeInfo} annotation on a Node type.
+ * Marker for a Node class generated on the basis of a {@link NodeInfo} annotation on its super
+ * class.
+ *
+ * Testing whether a node class is generated:
+ *
+ * <pre>
+ * Class<? extends Node> c = ...;
+ * if (GeneratedNode.class.isAssignableFrom(c)) { ... }
+ * </pre>
+ *
+ * Since a generated node class always subclasses the node from which it is generated:
+ *
+ * <pre>
+ * if (GeneratedNode.class.isAssignableFrom(c)) {
+ *     Class&lt;?&gt; original = c.getSuperclass();
+ * }
+ * </pre>
+ *
+ * Note: This used to be an annotation but was converted to an interface to avoid annotation parsing
+ * when creating a NodeClass instance.
  */
-@Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.TYPE})
-public @interface GeneratedNode {
-
-    /**
-     * The Node class from which the annotated type was generated.
-     */
-    Class<?> value();
+public interface GeneratedNode {
 }

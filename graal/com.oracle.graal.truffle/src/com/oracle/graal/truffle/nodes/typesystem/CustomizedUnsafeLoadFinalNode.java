@@ -46,7 +46,7 @@ public class CustomizedUnsafeLoadFinalNode extends FixedWithNextNode implements 
     @Input ValueNode offset;
     @Input ValueNode condition;
     @Input ValueNode location;
-    private final Kind accessKind;
+    protected final Kind accessKind;
 
     public static CustomizedUnsafeLoadFinalNode create(ValueNode object, ValueNode offset, ValueNode condition, ValueNode location, Kind accessKind) {
         return USE_GENERATED_NODES ? new CustomizedUnsafeLoadFinalNodeGen(object, offset, condition, location, accessKind) : new CustomizedUnsafeLoadFinalNode(object, offset, condition, location,

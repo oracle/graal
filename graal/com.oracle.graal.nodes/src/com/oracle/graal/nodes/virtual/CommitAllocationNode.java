@@ -38,13 +38,13 @@ public class CommitAllocationNode extends FixedWithNextNode implements Virtualiz
     @Input NodeInputList<VirtualObjectNode> virtualObjects = new NodeInputList<>(this);
     @Input NodeInputList<ValueNode> values = new NodeInputList<>(this);
     @Input(InputType.Association) NodeInputList<MonitorIdNode> locks = new NodeInputList<>(this);
-    private ArrayList<Integer> lockIndexes = new ArrayList<>(Arrays.asList(0));
+    protected ArrayList<Integer> lockIndexes = new ArrayList<>(Arrays.asList(0));
 
     public static CommitAllocationNode create() {
         return USE_GENERATED_NODES ? new CommitAllocationNodeGen() : new CommitAllocationNode();
     }
 
-    CommitAllocationNode() {
+    protected CommitAllocationNode() {
         super(StampFactory.forVoid());
     }
 

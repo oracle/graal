@@ -43,7 +43,7 @@ public class UnsafeLoadNode extends UnsafeAccessNode implements Lowerable, Virtu
         return USE_GENERATED_NODES ? new UnsafeLoadNodeGen(object, offset, accessKind, locationIdentity) : new UnsafeLoadNode(object, offset, accessKind, locationIdentity);
     }
 
-    UnsafeLoadNode(ValueNode object, ValueNode offset, Kind accessKind, LocationIdentity locationIdentity) {
+    protected UnsafeLoadNode(ValueNode object, ValueNode offset, Kind accessKind, LocationIdentity locationIdentity) {
         this(object, offset, accessKind, locationIdentity, null);
     }
 
@@ -51,7 +51,7 @@ public class UnsafeLoadNode extends UnsafeAccessNode implements Lowerable, Virtu
         return USE_GENERATED_NODES ? new UnsafeLoadNodeGen(object, offset, accessKind, locationIdentity, condition) : new UnsafeLoadNode(object, offset, accessKind, locationIdentity, condition);
     }
 
-    UnsafeLoadNode(ValueNode object, ValueNode offset, Kind accessKind, LocationIdentity locationIdentity, LogicNode condition) {
+    protected UnsafeLoadNode(ValueNode object, ValueNode offset, Kind accessKind, LocationIdentity locationIdentity, LogicNode condition) {
         super(StampFactory.forKind(accessKind.getStackKind()), object, offset, accessKind, locationIdentity);
         this.guardingCondition = condition;
     }

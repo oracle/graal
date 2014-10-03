@@ -51,6 +51,7 @@ import com.oracle.graal.lir.amd64.AMD64Move.LoadOp;
 import com.oracle.graal.lir.amd64.AMD64Move.MoveFromRegOp;
 import com.oracle.graal.lir.amd64.AMD64Move.StoreOp;
 import com.oracle.graal.lir.gen.*;
+import com.oracle.graal.phases.util.*;
 
 /**
  * LIR generator specialized for AMD64 HotSpot.
@@ -457,6 +458,28 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         Variable result = newVariable(toStackKind(kind));
         append(new LoadOp((Kind) kind.getPlatformKind(), result, loadAddress, state));
         return result;
+    }
+
+    /**
+     * Checks whether the supplied constant can be used without loading it into a register for store
+     * operations, i.e., on the right hand side of a memory access.
+     *
+     * @param c The constant to check.
+     * @return True if the constant can be used directly, false if the constant needs to be in a
+     *         register.
+     */
+    protected boolean canStoreConstant(Constant c) {
+        // there is no immediate move of 64-bit constants on Intel
+        switch (c.getKind()) {
+            case Long:
+                return Util.isInt(c.asLong()) && !getCodeCache().needsDataPatch(c);
+            case Double:
+                return false;
+            case Object:
+                return c.isNull();
+            default:
+                return true;
+        }
     }
 
     @Override

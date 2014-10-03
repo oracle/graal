@@ -224,7 +224,7 @@ public class PTXHotSpotBackend extends HotSpotBackend {
         return kernel;
     }
 
-    static final class RegisterAnalysis extends ValueConsumer {
+    static final class RegisterAnalysis implements ValueConsumer {
         private final SortedSet<Integer> signed32 = new TreeSet<>();
         private final SortedSet<Integer> signed64 = new TreeSet<>();
 

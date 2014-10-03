@@ -34,7 +34,7 @@ public class LoadExceptionObjectNode extends AbstractStateSplit implements Lower
         return USE_GENERATED_NODES ? new LoadExceptionObjectNodeGen(stamp) : new LoadExceptionObjectNode(stamp);
     }
 
-    LoadExceptionObjectNode(Stamp stamp) {
+    protected LoadExceptionObjectNode(Stamp stamp) {
         super(stamp);
     }
 

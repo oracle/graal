@@ -612,13 +612,9 @@ public final class LinearScan {
         intervalsSize = operandSize();
         intervals = new Interval[intervalsSize + (intervalsSize >> SPLIT_INTERVALS_CAPACITY_RIGHT_SHIFT)];
 
-        ValueConsumer setVariableConsumer = new ValueConsumer() {
-
-            @Override
-            public void visitValue(Value value) {
-                if (isVariable(value)) {
-                    getOrCreateInterval(asVariable(value));
-                }
+        ValueConsumer setVariableConsumer = (value, mode, flags) -> {
+            if (isVariable(value)) {
+                getOrCreateInterval(asVariable(value));
             }
         };
 
@@ -678,56 +674,44 @@ public final class LinearScan {
                 List<LIRInstruction> instructions = ir.getLIRforBlock(block);
                 int numInst = instructions.size();
 
-                ValueConsumer useConsumer = new ValueConsumer() {
-
-                    @Override
-                    protected void visitValue(Value operand) {
-                        if (isVariable(operand)) {
-                            int operandNum = operandNumber(operand);
-                            if (!liveKill.get(operandNum)) {
-                                liveGen.set(operandNum);
-                                Debug.log("liveGen for operand %d", operandNum);
-                            }
-                            if (block.getLoop() != null) {
-                                intervalInLoop.setBit(operandNum, block.getLoop().getIndex());
-                            }
-                        }
-
-                        if (DetailedAsserts.getValue()) {
-                            verifyInput(block, liveKill, operand);
-                        }
-                    }
-                };
-                ValueConsumer stateConsumer = new ValueConsumer() {
-
-                    @Override
-                    public void visitValue(Value operand) {
+                ValueConsumer useConsumer = (operand, mode, flags) -> {
+                    if (isVariable(operand)) {
                         int operandNum = operandNumber(operand);
                         if (!liveKill.get(operandNum)) {
                             liveGen.set(operandNum);
-                            Debug.log("liveGen in state for operand %d", operandNum);
+                            Debug.log("liveGen for operand %d", operandNum);
+                        }
+                        if (block.getLoop() != null) {
+                            intervalInLoop.setBit(operandNum, block.getLoop().getIndex());
                         }
                     }
+
+                    if (DetailedAsserts.getValue()) {
+                        verifyInput(block, liveKill, operand);
+                    }
                 };
-                ValueConsumer defConsumer = new ValueConsumer() {
-
-                    @Override
-                    public void visitValue(Value operand) {
-                        if (isVariable(operand)) {
-                            int varNum = operandNumber(operand);
-                            liveKill.set(varNum);
-                            Debug.log("liveKill for operand %d", varNum);
-                            if (block.getLoop() != null) {
-                                intervalInLoop.setBit(varNum, block.getLoop().getIndex());
-                            }
+                ValueConsumer stateConsumer = (operand, mode, flags) -> {
+                    int operandNum = operandNumber(operand);
+                    if (!liveKill.get(operandNum)) {
+                        liveGen.set(operandNum);
+                        Debug.log("liveGen in state for operand %d", operandNum);
+                    }
+                };
+                ValueConsumer defConsumer = (operand, mode, flags) -> {
+                    if (isVariable(operand)) {
+                        int varNum = operandNumber(operand);
+                        liveKill.set(varNum);
+                        Debug.log("liveKill for operand %d", varNum);
+                        if (block.getLoop() != null) {
+                            intervalInLoop.setBit(varNum, block.getLoop().getIndex());
                         }
+                    }
 
-                        if (DetailedAsserts.getValue()) {
-                            // fixed intervals are never live at block boundaries, so
-                            // they need not be processed in live sets
-                            // process them only in debug mode so that this can be checked
-                            verifyTemp(liveKill, operand);
-                        }
+                    if (DetailedAsserts.getValue()) {
+                        // fixed intervals are never live at block boundaries, so
+                        // they need not be processed in live sets
+                        // process them only in debug mode so that this can be checked
+                        verifyTemp(liveKill, operand);
                     }
                 };
 
@@ -923,13 +907,9 @@ public final class LinearScan {
                                 try (Indent indent3 = Debug.logAndIndent("used in block B%d", block.getId())) {
                                     for (LIRInstruction ins : ir.getLIRforBlock(block)) {
                                         try (Indent indent4 = Debug.logAndIndent("%d: %s", ins.id(), ins)) {
-                                            ins.forEachState(new ValueProcedure() {
-
-                                                @Override
-                                                public Value doValue(Value liveStateOperand) {
-                                                    Debug.log("operand=%s", liveStateOperand);
-                                                    return liveStateOperand;
-                                                }
+                                            ins.forEachState((liveStateOperand, mode, flags) -> {
+                                                Debug.log("operand=%s", liveStateOperand);
+                                                return liveStateOperand;
                                             });
                                         }
                                     }
@@ -1124,26 +1104,22 @@ public final class LinearScan {
     void addRegisterHint(final LIRInstruction op, final Value targetValue, OperandMode mode, EnumSet<OperandFlag> flags, final boolean hintAtDef) {
         if (flags.contains(OperandFlag.HINT) && isVariableOrRegister(targetValue)) {
 
-            op.forEachRegisterHint(targetValue, mode, new ValueProcedure() {
+            op.forEachRegisterHint(targetValue, mode, (registerHint, valueMode, valueFlags) -> {
+                if (isVariableOrRegister(registerHint)) {
+                    Interval from = getOrCreateInterval((AllocatableValue) registerHint);
+                    Interval to = getOrCreateInterval((AllocatableValue) targetValue);
 
-                @Override
-                protected Value doValue(Value registerHint) {
-                    if (isVariableOrRegister(registerHint)) {
-                        Interval from = getOrCreateInterval((AllocatableValue) registerHint);
-                        Interval to = getOrCreateInterval((AllocatableValue) targetValue);
-
-                        // hints always point from def to use
-                        if (hintAtDef) {
-                            to.setLocationHint(from);
-                        } else {
-                            from.setLocationHint(to);
-                        }
-                        Debug.log("operation at opId %d: added hint from interval %d to %d", op.id(), from.operandNumber, to.operandNumber);
-
-                        return registerHint;
+                    /* hints always point from def to use */
+                    if (hintAtDef) {
+                        to.setLocationHint(from);
+                    } else {
+                        from.setLocationHint(to);
                     }
-                    return null;
+                    Debug.log("operation at opId %d: added hint from interval %d to %d", op.id(), from.operandNumber, to.operandNumber);
+
+                    return registerHint;
                 }
+                return null;
             });
         }
     }
@@ -1151,64 +1127,44 @@ public final class LinearScan {
     void buildIntervals() {
 
         try (Indent indent = Debug.logAndIndent("build intervals")) {
-            InstructionValueConsumer outputConsumer = new InstructionValueConsumer() {
-
-                @Override
-                public void visitValue(LIRInstruction op, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
-                    if (isVariableOrRegister(operand)) {
-                        addDef((AllocatableValue) operand, op, registerPriorityOfOutputOperand(op), operand.getLIRKind());
-                        addRegisterHint(op, operand, mode, flags, true);
-                    }
+            InstructionValueConsumer outputConsumer = (op, operand, mode, flags) -> {
+                if (isVariableOrRegister(operand)) {
+                    addDef((AllocatableValue) operand, op, registerPriorityOfOutputOperand(op), operand.getLIRKind());
+                    addRegisterHint(op, operand, mode, flags, true);
                 }
             };
 
-            InstructionValueConsumer tempConsumer = new InstructionValueConsumer() {
-
-                @Override
-                public void visitValue(LIRInstruction op, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
-                    if (isVariableOrRegister(operand)) {
-                        addTemp((AllocatableValue) operand, op.id(), RegisterPriority.MustHaveRegister, operand.getLIRKind());
-                        addRegisterHint(op, operand, mode, flags, false);
-                    }
+            InstructionValueConsumer tempConsumer = (op, operand, mode, flags) -> {
+                if (isVariableOrRegister(operand)) {
+                    addTemp((AllocatableValue) operand, op.id(), RegisterPriority.MustHaveRegister, operand.getLIRKind());
+                    addRegisterHint(op, operand, mode, flags, false);
                 }
             };
 
-            InstructionValueConsumer aliveConsumer = new InstructionValueConsumer() {
-
-                @Override
-                public void visitValue(LIRInstruction op, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
-                    if (isVariableOrRegister(operand)) {
-                        RegisterPriority p = registerPriorityOfInputOperand(flags);
-                        final int opId = op.id();
-                        final int blockFrom = getFirstLirInstructionId((blockForId(opId)));
-                        addUse((AllocatableValue) operand, blockFrom, opId + 1, p, operand.getLIRKind());
-                        addRegisterHint(op, operand, mode, flags, false);
-                    }
+            InstructionValueConsumer aliveConsumer = (op, operand, mode, flags) -> {
+                if (isVariableOrRegister(operand)) {
+                    RegisterPriority p = registerPriorityOfInputOperand(flags);
+                    int opId = op.id();
+                    int blockFrom = getFirstLirInstructionId((blockForId(opId)));
+                    addUse((AllocatableValue) operand, blockFrom, opId + 1, p, operand.getLIRKind());
+                    addRegisterHint(op, operand, mode, flags, false);
                 }
             };
 
-            InstructionValueConsumer inputConsumer = new InstructionValueConsumer() {
-
-                @Override
-                public void visitValue(LIRInstruction op, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
-                    if (isVariableOrRegister(operand)) {
-                        final int opId = op.id();
-                        final int blockFrom = getFirstLirInstructionId((blockForId(opId)));
-                        RegisterPriority p = registerPriorityOfInputOperand(flags);
-                        addUse((AllocatableValue) operand, blockFrom, opId, p, operand.getLIRKind());
-                        addRegisterHint(op, operand, mode, flags, false);
-                    }
+            InstructionValueConsumer inputConsumer = (op, operand, mode, flags) -> {
+                if (isVariableOrRegister(operand)) {
+                    int opId = op.id();
+                    int blockFrom = getFirstLirInstructionId((blockForId(opId)));
+                    RegisterPriority p = registerPriorityOfInputOperand(flags);
+                    addUse((AllocatableValue) operand, blockFrom, opId, p, operand.getLIRKind());
+                    addRegisterHint(op, operand, mode, flags, false);
                 }
             };
 
-            InstructionValueConsumer stateProc = new InstructionValueConsumer() {
-
-                @Override
-                public void visitValue(LIRInstruction op, Value operand) {
-                    final int opId = op.id();
-                    final int blockFrom = getFirstLirInstructionId((blockForId(opId)));
-                    addUse((AllocatableValue) operand, blockFrom, opId + 1, RegisterPriority.None, operand.getLIRKind());
-                }
+            InstructionValueConsumer stateProc = (op, operand, mode, flags) -> {
+                int opId = op.id();
+                int blockFrom = getFirstLirInstructionId((blockForId(opId)));
+                addUse((AllocatableValue) operand, blockFrom, opId + 1, RegisterPriority.None, operand.getLIRKind());
             };
 
             // create a list with all caller-save registers (cpu, fpu, xmm)
@@ -1737,44 +1693,41 @@ public final class LinearScan {
         return attributes(asRegister(operand)).isCallerSave();
     }
 
-    private InstructionValueProcedure debugInfoProc = new InstructionValueProcedure() {
-
-        @Override
-        public Value doValue(LIRInstruction op, Value operand) {
-            int tempOpId = op.id();
-            OperandMode mode = OperandMode.USE;
-            AbstractBlock<?> block = blockForId(tempOpId);
-            if (block.getSuccessorCount() == 1 && tempOpId == getLastLirInstructionId(block)) {
-                // generating debug information for the last instruction of a block.
-                // if this instruction is a branch, spill moves are inserted before this branch
-                // and so the wrong operand would be returned (spill moves at block boundaries
-                // are not
-                // considered in the live ranges of intervals)
-                // Solution: use the first opId of the branch target block instead.
-                final LIRInstruction instr = ir.getLIRforBlock(block).get(ir.getLIRforBlock(block).size() - 1);
-                if (instr instanceof StandardOp.JumpOp) {
-                    if (blockData.get(block).liveOut.get(operandNumber(operand))) {
-                        tempOpId = getFirstLirInstructionId(block.getSuccessors().iterator().next());
-                        mode = OperandMode.DEF;
-                    }
+    @SuppressWarnings("unused")
+    private Value debugInfoProcedure(LIRInstruction op, Value operand, OperandMode valueMode, EnumSet<OperandFlag> flags) {
+        int tempOpId = op.id();
+        OperandMode mode = OperandMode.USE;
+        AbstractBlock<?> block = blockForId(tempOpId);
+        if (block.getSuccessorCount() == 1 && tempOpId == getLastLirInstructionId(block)) {
+            // generating debug information for the last instruction of a block.
+            // if this instruction is a branch, spill moves are inserted before this branch
+            // and so the wrong operand would be returned (spill moves at block boundaries
+            // are not
+            // considered in the live ranges of intervals)
+            // Solution: use the first opId of the branch target block instead.
+            final LIRInstruction instr = ir.getLIRforBlock(block).get(ir.getLIRforBlock(block).size() - 1);
+            if (instr instanceof StandardOp.JumpOp) {
+                if (blockData.get(block).liveOut.get(operandNumber(operand))) {
+                    tempOpId = getFirstLirInstructionId(block.getSuccessors().iterator().next());
+                    mode = OperandMode.DEF;
                 }
             }
-
-            // Get current location of operand
-            // The operand must be live because debug information is considered when building
-            // the intervals
-            // if the interval is not live, colorLirOperand will cause an assert on failure
-            Value result = colorLirOperand((Variable) operand, tempOpId, mode);
-            assert !hasCall(tempOpId) || isStackSlot(result) || isConstant(result) || !isCallerSave(result) : "cannot have caller-save register operands at calls";
-            return result;
         }
-    };
+
+        // Get current location of operand
+        // The operand must be live because debug information is considered when building
+        // the intervals
+        // if the interval is not live, colorLirOperand will cause an assert on failure
+        Value result = colorLirOperand((Variable) operand, tempOpId, mode);
+        assert !hasCall(tempOpId) || isStackSlot(result) || isConstant(result) || !isCallerSave(result) : "cannot have caller-save register operands at calls";
+        return result;
+    }
 
     private void computeDebugInfo(IntervalWalker iw, final LIRInstruction op, LIRFrameState info) {
         info.initDebugInfo(frameMap, !op.destroysCallerSavedRegisters() || !callKillsRegisters);
         markFrameLocations(iw, op, info);
 
-        info.forEachState(op, debugInfoProc);
+        info.forEachState(op, this::debugInfoProcedure);
         info.finish(op, frameMap);
     }
 
@@ -1782,23 +1735,8 @@ public final class LinearScan {
         int numInst = instructions.size();
         boolean hasDead = false;
 
-        InstructionValueProcedure assignProc = new InstructionValueProcedure() {
-
-            @Override
-            public Value doValue(LIRInstruction op, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
-                if (isVariable(operand)) {
-                    return colorLirOperand((Variable) operand, op.id(), mode);
-                }
-                return operand;
-            }
-        };
-        InstructionStateProcedure stateProc = new InstructionStateProcedure() {
-
-            @Override
-            protected void doState(LIRInstruction op, LIRFrameState state) {
-                computeDebugInfo(iw, op, state);
-            }
-        };
+        InstructionValueProcedure assignProc = (op, operand, mode, flags) -> isVariable(operand) ? colorLirOperand((Variable) operand, op.id(), mode) : operand;
+        InstructionStateProcedure stateProc = (op, state) -> computeDebugInfo(iw, op, state);
 
         for (int j = 0; j < numInst; j++) {
             final LIRInstruction op = instructions.get(j);
@@ -2208,13 +2146,13 @@ public final class LinearScan {
         }
     }
 
-    class CheckConsumer extends ValueConsumer {
+    class CheckConsumer implements ValueConsumer {
 
         boolean ok;
         Interval curInterval;
 
         @Override
-        protected void visitValue(Value operand) {
+        public void visitValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
             if (isRegister(operand)) {
                 if (intervalFor(operand) == curInterval) {
                     ok = true;

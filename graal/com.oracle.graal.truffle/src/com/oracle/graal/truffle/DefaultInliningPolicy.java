@@ -40,13 +40,13 @@ public class DefaultInliningPolicy implements TruffleInliningPolicy {
             return false;
         }
 
-        if (profile.isForced()) {
-            return true;
-        }
-
         if (currentNodeCount + profile.getDeepNodeCount() > TruffleInliningMaxCallerSize.getValue()) {
             profile.setFailedReason(REASON_MAXIMUM_TOTAL_NODE_COUNT);
             return false;
+        }
+
+        if (profile.isForced()) {
+            return true;
         }
 
         int cappedCallSites = Math.min(Math.max(profile.getCallSites(), 1), 10);

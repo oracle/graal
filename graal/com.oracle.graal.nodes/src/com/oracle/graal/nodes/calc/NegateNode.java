@@ -44,7 +44,7 @@ public class NegateNode extends UnaryArithmeticNode implements NarrowableArithme
         return USE_GENERATED_NODES ? new NegateNodeGen(value) : new NegateNode(value);
     }
 
-    NegateNode(ValueNode value) {
+    protected NegateNode(ValueNode value) {
         super(ArithmeticOpTable.forStamp(value.stamp()).getNeg(), value);
     }
 

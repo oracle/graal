@@ -45,10 +45,10 @@ import com.oracle.graal.nodes.extended.*;
 public class GuardNode extends FloatingAnchoredNode implements Canonicalizable, IterableNodeType, GuardingNode {
 
     @Input(InputType.Condition) protected LogicNode condition;
-    private final DeoptimizationReason reason;
-    private Constant speculation;
-    private DeoptimizationAction action;
-    private boolean negated;
+    protected final DeoptimizationReason reason;
+    protected Constant speculation;
+    protected DeoptimizationAction action;
+    protected boolean negated;
 
     public static GuardNode create(LogicNode condition, AnchoringNode anchor, DeoptimizationReason reason, DeoptimizationAction action, boolean negated, Constant speculation) {
         return USE_GENERATED_NODES ? new GuardNodeGen(condition, anchor, reason, action, negated, speculation) : new GuardNode(condition, anchor, reason, action, negated, speculation);

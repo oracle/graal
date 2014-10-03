@@ -25,45 +25,26 @@ package com.oracle.graal.lir;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.lir.LIRInstruction.*;
+import com.oracle.graal.lir.LIRInstruction.OperandFlag;
+import com.oracle.graal.lir.LIRInstruction.OperandMode;
 
 /**
  * Similar to {@link InstructionValueProcedure} but without an {@link LIRInstruction} parameter.
  */
-public abstract class ValueProcedure extends InstructionValueProcedure {
+@FunctionalInterface
+public interface ValueProcedure extends InstructionValueProcedure {
 
     /**
-     * Iterator method to be overwritten. This version of the iterator does not take additional
-     * parameters to keep the signature short.
-     *
-     * @param value The value that is iterated.
-     * @return The new value to replace the value that was passed in.
-     */
-    protected Value doValue(Value value) {
-        throw GraalInternalError.shouldNotReachHere("One of the doValue() methods must be overwritten");
-    }
-
-    /**
-     * Iterator method to be overwritten. This version of the iterator gets additional parameters
-     * about the processed value.
+     * Iterator method to be overwritten.
      *
      * @param value The value that is iterated.
      * @param mode The operand mode for the value.
      * @param flags A set of flags for the value.
      * @return The new value to replace the value that was passed in.
      */
-    protected Value doValue(Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
-        return doValue(value);
-    }
+    Value doValue(Value value, OperandMode mode, EnumSet<OperandFlag> flags);
 
-    @Override
-    protected final Value doValue(LIRInstruction instruction, Value value) {
-        throw GraalInternalError.shouldNotReachHere("This doValue() method should never be called");
-    }
-
-    @Override
-    public final Value doValue(LIRInstruction instruction, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
+    default Value doValue(LIRInstruction instruction, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
         return doValue(value, mode, flags);
     }
 }

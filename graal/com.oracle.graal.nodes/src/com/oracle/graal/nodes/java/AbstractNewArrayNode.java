@@ -74,8 +74,8 @@ public class AbstractNewArrayNode extends AbstractNewObjectNode implements Array
 
     @Override
     public void simplify(SimplifierTool tool) {
-        Stamp stamp = length.stamp();
-        if (stamp instanceof IntegerStamp && ((IntegerStamp) stamp).isPositive()) {
+        Stamp lengthStamp = length.stamp();
+        if (lengthStamp instanceof IntegerStamp && ((IntegerStamp) lengthStamp).isPositive()) {
             // otherwise, removing the allocation might swallow a NegativeArraySizeException
             super.simplify(tool);
         }

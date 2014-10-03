@@ -30,6 +30,6 @@ public class EndNode extends AbstractEndNode {
         return USE_GENERATED_NODES ? new EndNodeGen() : new EndNode();
     }
 
-    EndNode() {
+    protected EndNode() {
     }
 }

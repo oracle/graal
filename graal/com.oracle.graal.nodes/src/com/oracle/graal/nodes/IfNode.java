@@ -52,7 +52,7 @@ public class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerab
     @Successor BeginNode trueSuccessor;
     @Successor BeginNode falseSuccessor;
     @Input(InputType.Condition) LogicNode condition;
-    private double trueSuccessorProbability;
+    protected double trueSuccessorProbability;
 
     public LogicNode condition() {
         return condition;
@@ -228,14 +228,15 @@ public class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerab
                 FixedWithNextNode falseNext = (FixedWithNextNode) falseSucc.next();
                 NodeClass nodeClass = trueNext.getNodeClass();
                 if (trueNext.getClass() == falseNext.getClass()) {
-                    if (nodeClass.getEdges(Inputs).areEqualIn(trueNext, falseNext) && nodeClass.valueEqual(trueNext, falseNext)) {
+                    if (nodeClass.getEdges(Inputs).areEqualIn(trueNext, falseNext) && trueNext.valueEquals(falseNext)) {
                         falseNext.replaceAtUsages(trueNext);
                         graph().removeFixed(falseNext);
                         GraphUtil.unlinkFixedNode(trueNext);
                         graph().addBeforeFixed(this, trueNext);
                         for (Node usage : trueNext.usages().snapshot()) {
                             if (usage.isAlive()) {
-                                if (usage.getNodeClass().valueNumberable() && !usage.isLeafNode()) {
+                                NodeClass usageNodeClass = usage.getNodeClass();
+                                if (usageNodeClass.valueNumberable() && !usageNodeClass.isLeafNode()) {
                                     Node newNode = graph().findDuplicate(usage);
                                     if (newNode != null) {
                                         usage.replaceAtUsages(newNode);

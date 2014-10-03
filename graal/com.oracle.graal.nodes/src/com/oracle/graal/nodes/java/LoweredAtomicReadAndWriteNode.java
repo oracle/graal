@@ -44,7 +44,7 @@ public class LoweredAtomicReadAndWriteNode extends FixedAccessNode implements St
         return USE_GENERATED_NODES ? new LoweredAtomicReadAndWriteNodeGen(object, location, newValue, barrierType) : new LoweredAtomicReadAndWriteNode(object, location, newValue, barrierType);
     }
 
-    LoweredAtomicReadAndWriteNode(ValueNode object, LocationNode location, ValueNode newValue, BarrierType barrierType) {
+    protected LoweredAtomicReadAndWriteNode(ValueNode object, LocationNode location, ValueNode newValue, BarrierType barrierType) {
         super(object, location, newValue.stamp().unrestricted(), barrierType);
         this.newValue = newValue;
     }

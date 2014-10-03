@@ -29,7 +29,7 @@ import com.oracle.graal.nodes.extended.*;
 @NodeInfo(allowedUsageTypes = {InputType.Memory})
 public class KillingBeginNode extends BeginNode implements MemoryCheckpoint.Single {
 
-    private LocationIdentity locationIdentity;
+    protected LocationIdentity locationIdentity;
 
     public static KillingBeginNode create(LocationIdentity locationIdentity) {
         return USE_GENERATED_NODES ? new KillingBeginNodeGen(locationIdentity) : new KillingBeginNode(locationIdentity);

@@ -117,13 +117,7 @@ public class ValuePositionTest1 {
 
         List<ValuePosition> positions = new ArrayList<>();
 
-        op.forEachInput(new ValuePositionProcedure() {
-
-            @Override
-            public void doValue(LIRInstruction instruction, ValuePosition position) {
-                positions.add(position);
-            }
-        });
+        op.forEachInputPos((instruction, position) -> positions.add(position));
 
         assertEquals(1, positions.size());
         assertEquals(dummyValue, positions.get(0).get(op));
@@ -136,13 +130,7 @@ public class ValuePositionTest1 {
 
         List<ValuePosition> positions = new ArrayList<>();
 
-        op.forEachInput(new ValuePositionProcedure() {
-
-            @Override
-            public void doValue(LIRInstruction instruction, ValuePosition position) {
-                positions.add(position);
-            }
-        });
+        op.forEachInputPos((instruction, position) -> positions.add(position));
 
         assertEquals(1, positions.size());
         assertEquals(dummyValue, positions.get(0).get(op));
@@ -155,13 +143,7 @@ public class ValuePositionTest1 {
 
         List<ValuePosition> positions = new ArrayList<>();
 
-        op.forEachInput(new ValuePositionProcedure() {
-
-            @Override
-            public void doValue(LIRInstruction instruction, ValuePosition position) {
-                positions.add(position);
-            }
-        });
+        op.forEachInputPos((instruction, position) -> positions.add(position));
 
         assertEquals(1, positions.size());
         assertEquals(dummyValue, positions.get(0).get(op));

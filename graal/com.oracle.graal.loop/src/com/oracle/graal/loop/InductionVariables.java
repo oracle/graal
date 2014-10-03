@@ -50,7 +50,7 @@ public class InductionVariables {
         List<BasicInductionVariable> bivs = new LinkedList<>();
         LoopBeginNode loopBegin = loop.loopBegin();
         AbstractEndNode forwardEnd = loopBegin.forwardEnd();
-        for (PhiNode phi : loopBegin.phis()) {
+        for (PhiNode phi : loopBegin.phis().filter(ValuePhiNode.class)) {
             ValueNode backValue = phi.singleBackValue();
             if (backValue == PhiNode.MULTIPLE_VALUES) {
                 continue;

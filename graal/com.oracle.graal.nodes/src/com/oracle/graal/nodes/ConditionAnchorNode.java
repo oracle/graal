@@ -33,7 +33,7 @@ import com.oracle.graal.nodes.spi.*;
 public class ConditionAnchorNode extends FixedWithNextNode implements Canonicalizable.Unary<Node>, Lowerable, GuardingNode {
 
     @Input(InputType.Condition) LogicNode condition;
-    private boolean negated;
+    protected boolean negated;
 
     public static ConditionAnchorNode create(LogicNode condition) {
         return USE_GENERATED_NODES ? new ConditionAnchorNodeGen(condition) : new ConditionAnchorNode(condition);

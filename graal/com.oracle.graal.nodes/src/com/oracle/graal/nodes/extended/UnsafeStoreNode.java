@@ -45,7 +45,7 @@ public class UnsafeStoreNode extends UnsafeAccessNode implements StateSplit, Low
         return USE_GENERATED_NODES ? new UnsafeStoreNodeGen(object, offset, value, accessKind, locationIdentity) : new UnsafeStoreNode(object, offset, value, accessKind, locationIdentity);
     }
 
-    UnsafeStoreNode(ValueNode object, ValueNode offset, ValueNode value, Kind accessKind, LocationIdentity locationIdentity) {
+    protected UnsafeStoreNode(ValueNode object, ValueNode offset, ValueNode value, Kind accessKind, LocationIdentity locationIdentity) {
         this(object, offset, value, accessKind, locationIdentity, null);
     }
 
@@ -54,7 +54,7 @@ public class UnsafeStoreNode extends UnsafeAccessNode implements StateSplit, Low
                         stateAfter);
     }
 
-    UnsafeStoreNode(ValueNode object, ValueNode offset, ValueNode value, Kind accessKind, LocationIdentity locationIdentity, FrameState stateAfter) {
+    protected UnsafeStoreNode(ValueNode object, ValueNode offset, ValueNode value, Kind accessKind, LocationIdentity locationIdentity, FrameState stateAfter) {
         super(StampFactory.forVoid(), object, offset, accessKind, locationIdentity);
         this.value = value;
         this.stateAfter = stateAfter;

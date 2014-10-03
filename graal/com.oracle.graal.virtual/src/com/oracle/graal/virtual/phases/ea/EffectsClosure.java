@@ -49,7 +49,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
     private final Map<Loop<Block>, GraphEffectList> loopMergeEffects = newIdentityMap();
     private final Map<LoopBeginNode, BlockT> loopEntryStates = newNodeIdentityMap();
 
-    private boolean changed;
+    protected boolean changed;
 
     public EffectsClosure(SchedulePhase schedule, ControlFlowGraph cfg) {
         this.schedule = schedule;

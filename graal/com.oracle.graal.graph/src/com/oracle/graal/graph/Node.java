@@ -143,6 +143,14 @@ public abstract class Node implements Cloneable, Formattable {
         boolean setStampFromReturnType() default false;
     }
 
+    /**
+     * Marker for a node that can be replaced by another node via global value numbering. A
+     * {@linkplain NodeClass#isLeafNode() leaf} node can be replaced by another node of the same
+     * type that has exactly the same {@linkplain NodeClass#getData() data} values. A non-leaf node
+     * can be replaced by another node of the same type that has exactly the same data values as
+     * well as the same {@linkplain Node#inputs() inputs} and {@linkplain Node#successors()
+     * successors}.
+     */
     public interface ValueNumberable {
     }
 
@@ -170,8 +178,7 @@ public abstract class Node implements Cloneable, Formattable {
     public static final int NOT_ITERABLE = -1;
 
     public Node() {
-        assert USE_GENERATED_NODES == (getClass().getAnnotation(GeneratedNode.class) != null) : getClass() + " is not a generated Node class - forgot @" + NodeInfo.class.getSimpleName() +
-                        " on class declaration?";
+        assert USE_GENERATED_NODES == this instanceof GeneratedNode : getClass() + " is not a generated Node class - forgot @" + NodeInfo.class.getSimpleName() + " on class declaration?";
         init();
     }
 
@@ -740,7 +747,7 @@ public abstract class Node implements Cloneable, Formattable {
 
     final Node clone(Graph into, boolean clearInputsAndSuccessors) {
         NodeClass nodeClass = getNodeClass();
-        if (into != null && nodeClass.valueNumberable() && isLeafNode()) {
+        if (into != null && nodeClass.valueNumberable() && nodeClass.isLeafNode()) {
             Node otherNode = into.findNodeInCache(this);
             if (otherNode != null) {
                 return otherNode;
@@ -768,18 +775,11 @@ public abstract class Node implements Cloneable, Formattable {
         newNode.extraUsages = NO_NODES;
         newNode.predecessor = null;
 
-        if (into != null && nodeClass.valueNumberable() && isLeafNode()) {
+        if (into != null && nodeClass.valueNumberable() && nodeClass.isLeafNode()) {
             into.putNodeIntoCache(newNode);
         }
         newNode.afterClone(this);
         return newNode;
-    }
-
-    /**
-     * @returns true if this node has no inputs and no successors
-     */
-    public boolean isLeafNode() {
-        return USE_GENERATED_NODES || getNodeClass().isLeafNode();
     }
 
     protected void afterClone(@SuppressWarnings("unused") Node other) {
@@ -885,7 +885,7 @@ public abstract class Node implements Cloneable, Formattable {
      */
     public Map<Object, Object> getDebugProperties(Map<Object, Object> map) {
         NodeClass nodeClass = getNodeClass();
-        Fields properties = nodeClass.getProperties();
+        Fields properties = nodeClass.getData();
         for (int i = 0; i < properties.getCount(); i++) {
             map.put(properties.getName(i), properties.get(this, i));
         }
@@ -994,5 +994,39 @@ public abstract class Node implements Cloneable, Formattable {
                 }
             }
         }
+    }
+
+    /**
+     * If this node is a {@linkplain NodeClass#isLeafNode() leaf} node, returns a hash for this node
+     * based on its {@linkplain NodeClass#getData() data} fields otherwise return 0.
+     *
+     * Overridden by a method generated for leaf nodes.
+     */
+    protected int valueNumberLeaf() {
+        assert !getNodeClass().isLeafNode();
+        return 0;
+    }
+
+    /**
+     * Overridden by a generated method.
+     *
+     * @param other
+     */
+    protected boolean dataEquals(Node other) {
+        return true;
+    }
+
+    /**
+     * Determines if this node's {@link NodeClass#getData() data} fields are equal to the data
+     * fields of another node of the same type. Primitive fields are compared by value and
+     * non-primitive fields are compared by {@link Objects#equals(Object, Object)}.
+     *
+     * The result of this method undefined if {@code other.getClass() != this.getClass()}.
+     *
+     * @param other a node of exactly the same type as this node
+     * @return true if the data fields of this object and {@code other} are equal
+     */
+    public boolean valueEquals(Node other) {
+        return USE_GENERATED_NODES ? dataEquals(other) : getNodeClass().dataEquals(this, other);
     }
 }

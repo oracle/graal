@@ -33,7 +33,7 @@ public class OSRStartNode extends StartNode implements Lowerable {
         return USE_GENERATED_NODES ? new OSRStartNodeGen() : new OSRStartNode();
     }
 
-    OSRStartNode() {
+    protected OSRStartNode() {
     }
 
     @Override

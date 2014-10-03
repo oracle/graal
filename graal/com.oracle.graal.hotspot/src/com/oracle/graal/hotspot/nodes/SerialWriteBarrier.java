@@ -29,7 +29,7 @@ import com.oracle.graal.nodes.extended.*;
 @NodeInfo
 public class SerialWriteBarrier extends WriteBarrier {
 
-    private final boolean alwaysNull;
+    protected final boolean alwaysNull;
 
     public static SerialWriteBarrier create(ValueNode object, LocationNode location, boolean precise, boolean alwaysNull) {
         return USE_GENERATED_NODES ? new SerialWriteBarrierGen(object, location, precise, alwaysNull) : new SerialWriteBarrier(object, location, precise, alwaysNull);

@@ -93,21 +93,6 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public boolean canStoreConstant(Constant c) {
-        // there is no immediate move of 64-bit constants on Intel
-        switch (c.getKind()) {
-            case Long:
-                return Util.isInt(c.asLong()) && !getCodeCache().needsDataPatch(c);
-            case Double:
-                return false;
-            case Object:
-                return c.isNull();
-            default:
-                return true;
-        }
-    }
-
-    @Override
     public boolean canInlineConstant(Constant c) {
         switch (c.getKind()) {
             case Long:
@@ -117,13 +102,6 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
             default:
                 return true;
         }
-    }
-
-    @Override
-    public Variable emitMove(Value input) {
-        Variable result = newVariable(input.getLIRKind());
-        emitMove(result, input);
-        return result;
     }
 
     protected AMD64LIRInstruction createMove(AllocatableValue dst, Value src) {

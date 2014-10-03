@@ -61,21 +61,13 @@ public final class LIRVerifier {
         return isRegister(value) && frameMap.registerConfig.getAttributesMap()[asRegister(value).number].isAllocatable();
     }
 
-    private static InstructionValueConsumer allowedConsumer = new InstructionValueConsumer() {
-
-        @Override
-        public void visitValue(LIRInstruction op, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
-            allowed(op, value, mode, flags);
-        }
-    };
-
     public static boolean verify(final LIRInstruction op) {
 
-        op.visitEachInput(allowedConsumer);
-        op.visitEachAlive(allowedConsumer);
-        op.visitEachState(allowedConsumer);
-        op.visitEachTemp(allowedConsumer);
-        op.visitEachOutput(allowedConsumer);
+        op.visitEachInput(LIRVerifier::allowed);
+        op.visitEachAlive(LIRVerifier::allowed);
+        op.visitEachState(LIRVerifier::allowed);
+        op.visitEachTemp(LIRVerifier::allowed);
+        op.visitEachOutput(LIRVerifier::allowed);
 
         op.verify();
         return true;

@@ -44,6 +44,10 @@ public class NodePosIteratorTest extends GraalCompilerTest {
         public static TestNode create() {
             return USE_GENERATED_NODES ? new NodePosIteratorTest_TestNodeGen() : new TestNode();
         }
+
+        protected TestNode() {
+            // TODO Auto-generated constructor stub
+        }
     }
 
     @Test

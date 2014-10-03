@@ -19,8 +19,8 @@ function test2() {
 
 function main() {
     waitForOptimization(callUntilOptimized(test1));
-    assertTrue(isInlined(test1, inlinableFunction), "inlinableFunction is not inlined");
+    assertTrue(isInlined(test1, test1, inlinableFunction), "inlinableFunction is not inlined");
     
     waitForOptimization(callUntilOptimized(test2));
-    assertFalse(isInlined(test2, notInlinableFunction), "notInlinableFunction is inlined");
+    assertFalse(isInlined(test2, test2, notInlinableFunction), "notInlinableFunction is inlined");
 }  

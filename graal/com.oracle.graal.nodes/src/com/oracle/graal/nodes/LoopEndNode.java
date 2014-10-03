@@ -32,8 +32,8 @@ import com.oracle.graal.nodes.spi.*;
 public class LoopEndNode extends AbstractEndNode {
 
     @Input(InputType.Association) LoopBeginNode loopBegin;
-    private boolean canSafepoint;
-    private int endIndex;
+    protected boolean canSafepoint;
+    protected int endIndex;
 
     public static LoopEndNode create(LoopBeginNode begin) {
         return USE_GENERATED_NODES ? new LoopEndNodeGen(begin) : new LoopEndNode(begin);

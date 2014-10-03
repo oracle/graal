@@ -43,7 +43,7 @@ public class ConstantNode extends FloatingNode implements LIRLowerable {
 
     private static final DebugMetric ConstantNodes = Debug.metric("ConstantNodes");
 
-    private final Constant value;
+    protected final Constant value;
 
     private static ConstantNode createPrimitive(Constant value) {
         assert value.getKind() != Kind.Object;
@@ -91,10 +91,10 @@ public class ConstantNode extends FloatingNode implements LIRLowerable {
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        if (gen.getLIRGeneratorTool().canInlineConstant(value) || onlyUsedInVirtualState()) {
+        if (onlyUsedInVirtualState()) {
             gen.setResult(this, value);
         } else {
-            gen.setResult(this, gen.getLIRGeneratorTool().emitMove(value));
+            gen.setResult(this, gen.getLIRGeneratorTool().emitLoadConstant(value));
         }
     }
 
