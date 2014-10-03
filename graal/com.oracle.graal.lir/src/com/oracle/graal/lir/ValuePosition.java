@@ -29,13 +29,31 @@ import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRIntrospection.Values;
 
 /**
- * Describes an operand slot for a {@link LIRInstructionClass}.
+ * Describes an operand slot for a {@link LIRInstruction}.
  */
 public final class ValuePosition {
 
+    /**
+     * The {@linkplain Values offsets} to the fields of the containing element (either
+     * {@link LIRInstruction} or {@link CompositeValue}).
+     */
     private final Values values;
+    /**
+     * The index into {@link #values}.
+     *
+     * @see Values#getValue(Object, int)
+     */
     private final int index;
+    /**
+     * The sub-index if {@link #index} points to a value array, otherwise {@link #NO_SUBINDEX}.
+     *
+     * @see Values#getDirectCount()
+     * @see Values#getValueArray(Object, int)
+     */
     private final int subIndex;
+    /**
+     * @see #getOuterPosition()
+     */
     private final ValuePosition outerPosition;
 
     public static final int NO_SUBINDEX = -1;
@@ -48,10 +66,18 @@ public final class ValuePosition {
         this.outerPosition = outerPosition;
     }
 
+    /**
+     * @return True if the value denoted by this {@linkplain ValuePosition position} is part of a
+     *         {@link CompositeValue}.
+     */
     public boolean isCompositePosition() {
         return outerPosition != ROOT_VALUE_POSITION;
     }
 
+    /**
+     * @param inst The instruction this {@linkplain ValuePosition position} belongs to.
+     * @return The value denoted by this {@linkplain ValuePosition position}.
+     */
     public Value get(LIRInstruction inst) {
         if (isCompositePosition()) {
             CompositeValue compValue = (CompositeValue) outerPosition.get(inst);
@@ -63,6 +89,11 @@ public final class ValuePosition {
         return values.getValueArray(inst, index)[subIndex];
     }
 
+    /**
+     * Sets the value denoted by this {@linkplain ValuePosition position}.
+     *
+     * @param inst The instruction this {@linkplain ValuePosition position} belongs to.
+     */
     public void set(LIRInstruction inst, Value value) {
         if (isCompositePosition()) {
             CompositeValue compValue = (CompositeValue) outerPosition.get(inst);
@@ -85,11 +116,21 @@ public final class ValuePosition {
         return index;
     }
 
+    /**
+     * @return The flags associated with the value denoted by this {@linkplain ValuePosition
+     *         position}.
+     */
     public EnumSet<OperandFlag> getFlags() {
         return values.getFlags(index);
     }
 
-    public ValuePosition getSuperPosition() {
+    /**
+     * @return The {@link ValuePosition} of the containing {@link CompositeValue} if this value is
+     *         part of a {@link CompositeValue}, otherwise {@link #ROOT_VALUE_POSITION}.
+     *
+     * @see #isCompositePosition()
+     */
+    public ValuePosition getOuterPosition() {
         return outerPosition;
     }
 
