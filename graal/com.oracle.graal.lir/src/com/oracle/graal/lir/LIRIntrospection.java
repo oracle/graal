@@ -304,19 +304,18 @@ abstract class LIRIntrospection extends FieldIntrospection {
 
             if (i < values.getDirectCount()) {
                 Value value = values.getValue(obj, i);
-                doForValue(inst, mode, proc, outerPosition, i, ValuePosition.NO_SUBINDEX, value);
+                doForValue(inst, values, mode, proc, outerPosition, i, ValuePosition.NO_SUBINDEX, value);
             } else {
                 Value[] valueArray = values.getValueArray(obj, i);
                 for (int j = 0; j < valueArray.length; j++) {
                     Value value = valueArray[j];
-                    doForValue(inst, mode, proc, outerPosition, i, j, value);
+                    doForValue(inst, values, mode, proc, outerPosition, i, j, value);
                 }
             }
         }
     }
 
-    private static void doForValue(LIRInstruction inst, OperandMode mode, ValuePositionProcedure proc, ValuePosition outerPosition, int index, int subIndex, Value value) {
-        Values values = inst.getLIRInstructionClass().getValues(mode);
+    private static void doForValue(LIRInstruction inst, Values values, OperandMode mode, ValuePositionProcedure proc, ValuePosition outerPosition, int index, int subIndex, Value value) {
         ValuePosition position = new ValuePosition(values, index, subIndex, outerPosition);
         if (value instanceof CompositeValue) {
             CompositeValue composite = (CompositeValue) value;
