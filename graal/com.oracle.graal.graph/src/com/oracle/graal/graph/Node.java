@@ -765,6 +765,7 @@ public abstract class Node implements Cloneable, Formattable {
      * Makes a copy of this node in(to) a given graph.
      *
      * @param into the graph in which the copy will be registered (which may be this node's graph)
+     *            or null if the copy should not be registered in a graph
      * @param edgesToCopy specifies the edges to be copied. The edges not specified in this set are
      *            initialized to their default value (i.e., {@code null} for a direct edge, an empty
      *            list for an edge list)
@@ -772,11 +773,14 @@ public abstract class Node implements Cloneable, Formattable {
      */
     final Node clone(Graph into, EnumSet<Edges.Type> edgesToCopy) {
         NodeClass nodeClass = getNodeClass();
-        boolean isValueNumberableLeaf = nodeClass.valueNumberable() && nodeClass.isLeafNode();
-        if (isValueNumberableLeaf) {
-            Node otherNode = into.findNodeInCache(this);
-            if (otherNode != null) {
-                return otherNode;
+        boolean useIntoLeafNodeCache = false;
+        if (into != null) {
+            if (nodeClass.valueNumberable() && nodeClass.isLeafNode()) {
+                useIntoLeafNodeCache = true;
+                Node otherNode = into.findNodeInCache(this);
+                if (otherNode != null) {
+                    return otherNode;
+                }
             }
         }
 
@@ -801,10 +805,12 @@ public abstract class Node implements Cloneable, Formattable {
         }
         newNode.graph = into;
         newNode.id = INITIAL_ID;
-        into.register(newNode);
+        if (into != null) {
+            into.register(newNode);
+        }
         newNode.extraUsages = NO_NODES;
 
-        if (isValueNumberableLeaf) {
+        if (into != null && useIntoLeafNodeCache) {
             into.putNodeIntoCache(newNode);
         }
         newNode.afterClone(this);
@@ -1031,7 +1037,7 @@ public abstract class Node implements Cloneable, Formattable {
      *
      * Overridden by a method generated for leaf nodes.
      */
-    protected int valueNumberLeaf() {
+    public int valueNumberLeaf() {
         assert !getNodeClass().isLeafNode();
         return 0;
     }
@@ -1042,7 +1048,7 @@ public abstract class Node implements Cloneable, Formattable {
      * @param other
      */
     protected boolean dataEquals(Node other) {
-        return true;
+        throw GraalInternalError.shouldNotReachHere();
     }
 
     /**
