@@ -718,9 +718,15 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     public final Node copyWithInputs() {
-        Node newNode = clone(graph, WithOnlyInputEdges);
-        for (Node input : inputs()) {
-            input.addUsage(newNode);
+        return copyWithInputs(true);
+    }
+
+    public final Node copyWithInputs(boolean insertIntoGraph) {
+        Node newNode = clone(insertIntoGraph ? graph : null, WithOnlyInputEdges);
+        if (insertIntoGraph) {
+            for (Node input : inputs()) {
+                input.addUsage(newNode);
+            }
         }
         return newNode;
     }
