@@ -37,7 +37,8 @@ public class DebugHistogramTest {
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
 
         new DebugHistogramAsciiPrinter(new PrintStream(outputStream)).print(histogram);
-        Assert.assertEquals("TestHistogram is empty.\n", outputStream.toString());
+        String line = outputStream.toString().split("\r?\n")[0];
+        Assert.assertEquals("TestHistogram is empty.", line);
 
         outputStream.reset();
         new DebugHistogramRPrinter(new PrintStream(outputStream)).print(histogram);
@@ -51,7 +52,7 @@ public class DebugHistogramTest {
         histogram.add(new Integer(1));
         histogram.add(new Integer(1));
         new DebugHistogramAsciiPrinter(new PrintStream(outputStream)).print(histogram);
-        String[] lines = outputStream.toString().split("\n");
+        String[] lines = outputStream.toString().split("\r?\n");
         // @formatter:off
         String[] expected = {
             "TestHistogram has 1 unique elements and 2 total elements:",
@@ -64,7 +65,7 @@ public class DebugHistogramTest {
 
         outputStream.reset();
         new DebugHistogramRPrinter(new PrintStream(outputStream)).print(histogram);
-        lines = outputStream.toString().split("\n");
+        lines = outputStream.toString().split("\r?\n");
         // @formatter:off
         expected = new String[] {
             "TestHistogram <- c(2);",
@@ -82,7 +83,7 @@ public class DebugHistogramTest {
         histogram.add(new Integer(2));
         histogram.add(new Integer(2));
         new DebugHistogramAsciiPrinter(new PrintStream(outputStream)).print(histogram);
-        String[] lines = outputStream.toString().split("\n");
+        String[] lines = outputStream.toString().split("\r?\n");
         // @formatter:off
         String[] expected = new String[] {
             "TestHistogram has 2 unique elements and 3 total elements:",
@@ -96,7 +97,7 @@ public class DebugHistogramTest {
 
         outputStream.reset();
         new DebugHistogramRPrinter(new PrintStream(outputStream)).print(histogram);
-        lines = outputStream.toString().split("\n");
+        lines = outputStream.toString().split("\r?\n");
         // @formatter:off
         expected = new String[] {
             "TestHistogram <- c(2, 1);",
@@ -112,7 +113,7 @@ public class DebugHistogramTest {
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         histogram.add("MyCustomValue");
         new DebugHistogramAsciiPrinter(new PrintStream(outputStream), Integer.MAX_VALUE, 10, 10, 1).print(histogram);
-        String[] lines = outputStream.toString().split("\n");
+        String[] lines = outputStream.toString().split("\r?\n");
         Assert.assertEquals(4, lines.length);
         Assert.assertEquals("TestHistogram has 1 unique elements and 1 total elements:", lines[0]);
         Assert.assertEquals("----------------------------------------", lines[1]);
