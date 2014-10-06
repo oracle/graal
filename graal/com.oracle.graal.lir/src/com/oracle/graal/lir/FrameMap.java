@@ -190,7 +190,7 @@ public abstract class FrameMap {
         }
         frameSize = currentFrameSize();
         if (frameSize > registerConfig.getMaximumFrameSize()) {
-            throw new BailoutException(String.format("Frame size (%d) exceeded maximum allowed frame size (%d).", frameSize, registerConfig.getMaximumFrameSize()));
+            throw new BailoutException("Frame size (%d) exceeded maximum allowed frame size (%d).", frameSize, registerConfig.getMaximumFrameSize());
         }
     }
 

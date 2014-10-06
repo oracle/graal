@@ -32,33 +32,34 @@ import java.util.*;
 public class BailoutException extends RuntimeException {
 
     public static final long serialVersionUID = 8974598793458772L;
+    private final boolean permanent;
 
     /**
      * Creates a new {@link BailoutException}.
-     * 
-     * @param reason a message indicating the reason
-     */
-    public BailoutException(String reason) {
-        super(reason);
-    }
-
-    /**
-     * Creates a new {@link BailoutException}.
-     * 
+     *
+     *
      * @param args parameters to the formatter
      */
     public BailoutException(String format, Object... args) {
-        this(String.format(Locale.ENGLISH, format, args));
+        super(String.format(Locale.ENGLISH, format, args));
+        this.permanent = false;
     }
 
     /**
-     * Creates a new {@link BailoutException} due to an internal exception being thrown.
-     * 
-     * @param reason a message indicating the reason
-     * @param cause the throwable that was the cause of the bailout
+     * Creates a new {@link BailoutException}.
+     *
+     * @param permanent specifies whether this exception will occur again if compilation is retried
+     * @param args parameters to the formatter
      */
-    public BailoutException(String reason, Throwable cause) {
-        super(reason);
-        initCause(cause);
+    public BailoutException(boolean permanent, String format, Object... args) {
+        super(String.format(Locale.ENGLISH, format, args));
+        this.permanent = permanent;
+    }
+
+    /**
+     * @return whether this exception will occur again if compilation is retried
+     */
+    public boolean isPermanent() {
+        return permanent;
     }
 }

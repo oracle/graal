@@ -70,7 +70,7 @@ public class IterativeFlowSensitiveReductionPhase extends BasePhase<PhaseContext
                 // System.out.println("Bailing out IterativeFlowSensitiveReductionPhase for graph: "
                 // + graph);
                 // FlowUtil.visualize(graph, "Bailout");
-                throw new BailoutException("Number of iterations in FlowSensitiveReductionPhase exceeds " + MAX_ITERATIONS);
+                throw new BailoutException("Number of iterations in FlowSensitiveReductionPhase exceeds %d", MAX_ITERATIONS);
             }
         }
         // histogram.print();

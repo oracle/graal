@@ -61,7 +61,7 @@ public class OnStackReplacementPhase extends Phase {
                 throw new BailoutException("OSR with locks not supported");
             }
             if (osr.stateAfter().stackSize() != 0) {
-                throw new BailoutException("OSR with stack entries not supported: " + osr.stateAfter().toString(Verbosity.Debugger));
+                throw new BailoutException("OSR with stack entries not supported: %s", osr.stateAfter().toString(Verbosity.Debugger));
             }
             LoopEx osrLoop = null;
             LoopsData loops = new LoopsData(graph);

@@ -339,7 +339,9 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
                 dequeueInlinedCallSites(inliningDecision);
             }
         } else {
-            compilationPolicy.recordCompilationFailure(t);
+            if (!(t instanceof BailoutException) || ((BailoutException) t).isPermanent()) {
+                compilationPolicy.recordCompilationFailure(t);
+            }
 
             if (TruffleCompilationExceptionsAreThrown.getValue()) {
                 throw new OptimizationFailedException(t, rootNode);

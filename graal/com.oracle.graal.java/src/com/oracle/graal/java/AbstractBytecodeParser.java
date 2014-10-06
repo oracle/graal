@@ -1132,7 +1132,7 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
         case BREAKPOINT:
             throw new BailoutException("concurrent setting of breakpoint");
         default:
-            throw new BailoutException("Unsupported opcode " + opcode + " (" + nameOf(opcode) + ") [bci=" + bci + "]");
+            throw new BailoutException("Unsupported opcode %d (%s) [bci=%d]", opcode, nameOf(opcode), bci);
     }
     // @formatter:on
         // Checkstyle: resume

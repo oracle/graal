@@ -63,7 +63,7 @@ public class IterativeConditionalEliminationPhase extends BasePhase<PhaseContext
             canonicalizer.applyIncremental(graph, context, listener.getNodes());
             listener.getNodes().clear();
             if (++count > MAX_ITERATIONS) {
-                throw new BailoutException("Number of iterations in ConditionalEliminationPhase phase exceeds " + MAX_ITERATIONS);
+                throw new BailoutException("Number of iterations in ConditionalEliminationPhase phase exceeds %d", MAX_ITERATIONS);
             }
         }
     }
