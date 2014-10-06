@@ -60,7 +60,7 @@ public abstract class SLStackTraceBuiltin extends SLBuiltinNode {
 
     private static void dumpFrame(StringBuilder str, CallTarget callTarget, Frame frame) {
         if (str.length() > 0) {
-            str.append("\n");
+            str.append(System.getProperty("line.separator"));
         }
         str.append("Frame: ").append(((RootCallTarget) callTarget).getRootNode().toString());
         FrameDescriptor frameDescriptor = frame.getFrameDescriptor();
