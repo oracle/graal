@@ -92,14 +92,12 @@ public class ArrayLengthNode extends FixedWithNextNode implements Canonicalizabl
      * @return a node representing the length of {@code array} or null if it is not available
      */
     public static ValueNode readArrayLength(ValueNode originalArray, ConstantReflectionProvider constantReflection) {
-        ValueNode array = GraphUtil.unproxify(originalArray);
-        if (array instanceof ArrayLengthProvider) {
-            ValueNode length = ((ArrayLengthProvider) array).length();
-            if (length != null) {
-                // Ensure that any proxies on the original value end up on the length value
-                return reproxyValue(originalArray, length);
-            }
+        ValueNode length = GraphUtil.arrayLength(originalArray);
+        if (length != null) {
+            // Ensure that any proxies on the original value end up on the length value
+            return reproxyValue(originalArray, length);
         }
+        ValueNode array = GraphUtil.unproxify(originalArray);
         if (constantReflection != null && array.isConstant() && !array.isNullConstant()) {
             Constant constantValue = array.asConstant();
             if (constantValue != null && constantValue.isNonNull()) {

@@ -31,6 +31,7 @@ import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.nodes.virtual.*;
 
 @NodeInfo
@@ -60,7 +61,7 @@ public class BasicObjectCloneNode extends MacroStateSplitNode implements Virtual
     /*
      * Looks at the given stamp and determines if it is an exact type (or can be assumed to be an
      * exact type) and if it is a cloneable type.
-     *
+     * 
      * If yes, then the exact type is returned, otherwise it returns null.
      */
     protected static ResolvedJavaType getConcreteType(Stamp stamp, Assumptions assumptions, MetaAccessProvider metaAccess) {
@@ -127,10 +128,6 @@ public class BasicObjectCloneNode extends MacroStateSplitNode implements Virtual
 
     @Override
     public ValueNode length() {
-        if (getObject() instanceof ArrayLengthProvider) {
-            return ((ArrayLengthProvider) getObject()).length();
-        } else {
-            return null;
-        }
+        return GraphUtil.arrayLength(getObject());
     }
 }

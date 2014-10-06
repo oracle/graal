@@ -28,6 +28,7 @@ import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.util.*;
 
 /**
  * A {@link PiNode} that also provides an array length in addition to a more refined stamp. A usage
@@ -54,7 +55,7 @@ public class PiArrayNode extends PiNode implements ArrayLengthProvider {
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (!(object() instanceof ArrayLengthProvider) || length() != ((ArrayLengthProvider) object()).length()) {
+        if (GraphUtil.arrayLength(object()) != length()) {
             return this;
         }
         return super.canonical(tool);

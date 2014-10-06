@@ -326,6 +326,31 @@ public class GraphUtil {
     }
 
     /**
+     * Looks for an {@link ArrayLengthProvider} while iterating through all {@link ValueProxy
+     * ValueProxies}.
+     *
+     * @param value The start value.
+     * @return The array length if one was found, or null otherwise.
+     */
+    public static ValueNode arrayLength(ValueNode value) {
+        ValueNode current = value;
+        do {
+            if (current instanceof ArrayLengthProvider) {
+                ValueNode length = ((ArrayLengthProvider) current).length();
+                if (length != null) {
+                    return length;
+                }
+            }
+            if (current instanceof ValueProxy) {
+                current = ((ValueProxy) current).getOriginalNode();
+            } else {
+                break;
+            }
+        } while (true);
+        return null;
+    }
+
+    /**
      * Tries to find an original value of the given node by traversing through proxies and
      * unambiguous phis. Note that this method will perform an exhaustive search through phis. It is
      * intended to be used during graph building, when phi nodes aren't yet canonicalized.
