@@ -22,14 +22,12 @@
  */
 package com.oracle.graal.nodes.calc;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 
 /**
  * The {@code NarrowNode} converts an integer to a narrower integer.
@@ -41,19 +39,12 @@ public class NarrowNode extends IntegerConvertNode {
         return USE_GENERATED_NODES ? new NarrowNodeGen(input, resultBits) : new NarrowNode(input, resultBits);
     }
 
+    private NarrowNode(ArithmeticOpTable ops, ValueNode input, int resultBits) {
+        super(ops.getNarrow(), ops.getSignExtend(), resultBits, input);
+    }
+
     protected NarrowNode(ValueNode input, int resultBits) {
-        super(StampTool.narrowingConversion(input.stamp(), resultBits), input, resultBits);
-    }
-
-    @Override
-    public Constant convert(Constant c) {
-        return Constant.forPrimitiveInt(getResultBits(), CodeUtil.narrow(c.asLong(), getResultBits()));
-    }
-
-    @Override
-    public Constant reverse(Constant input) {
-        long result = CodeUtil.signExtend(input.asLong(), getResultBits());
-        return Constant.forPrimitiveInt(getInputBits(), result);
+        this(ArithmeticOpTable.forStamp(input.stamp()), input, resultBits);
     }
 
     @Override
@@ -63,7 +54,7 @@ public class NarrowNode extends IntegerConvertNode {
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
-        ValueNode ret = canonicalConvert(forValue);
+        ValueNode ret = super.canonical(tool, forValue);
         if (ret != this) {
             return ret;
         }
@@ -97,11 +88,6 @@ public class NarrowNode extends IntegerConvertNode {
             }
         }
         return this;
-    }
-
-    @Override
-    public boolean inferStamp() {
-        return updateStamp(StampTool.narrowingConversion(getValue().stamp(), getResultBits()));
     }
 
     @Override

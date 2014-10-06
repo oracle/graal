@@ -24,6 +24,7 @@ package com.oracle.graal.compiler.common.type;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.compiler.common.calc.*;
 
 /**
  * Information about arithmetic operations.
@@ -42,6 +43,12 @@ public final class ArithmeticOpTable {
     private final BinaryOp and;
     private final BinaryOp or;
     private final BinaryOp xor;
+
+    private final IntegerConvertOp zeroExtend;
+    private final IntegerConvertOp signExtend;
+    private final IntegerConvertOp narrow;
+
+    private final FloatConvertOp[] floatConvert;
 
     public static ArithmeticOpTable forStamp(Stamp s) {
         if (s instanceof ArithmeticStamp) {
@@ -67,26 +74,18 @@ public final class ArithmeticOpTable {
         BinaryOp or = null;
         BinaryOp xor = null;
 
+        IntegerConvertOp zeroExtend = null;
+        IntegerConvertOp signExtend = null;
+        IntegerConvertOp narrow = null;
+
+        FloatConvertOp[] floatConvert = new FloatConvertOp[FloatConvert.values().length];
+
         for (Op op : ops) {
             if (op == null) {
                 continue;
             }
 
-            if (op instanceof UnaryOp) {
-                UnaryOp unary = (UnaryOp) op;
-                switch (unary.getOperator()) {
-                    case '-':
-                        assert neg == null;
-                        neg = unary;
-                        break;
-                    case '~':
-                        assert not == null;
-                        not = unary;
-                        break;
-                    default:
-                        throw GraalInternalError.shouldNotReachHere("unknown unary operator " + unary.getOperator());
-                }
-            } else {
+            if (op instanceof BinaryOp) {
                 BinaryOp binary = (BinaryOp) op;
                 switch (binary.getOperator()) {
                     case '+':
@@ -124,13 +123,53 @@ public final class ArithmeticOpTable {
                     default:
                         throw GraalInternalError.shouldNotReachHere("unknown binary operator " + binary.getOperator());
                 }
+            } else if (op instanceof IntegerConvertOp) {
+                IntegerConvertOp convert = (IntegerConvertOp) op;
+                switch (convert.getOperator()) {
+                    case IntegerConvertOp.ZERO_EXTEND:
+                        assert zeroExtend == null;
+                        zeroExtend = convert;
+                        break;
+                    case IntegerConvertOp.SIGN_EXTEND:
+                        assert signExtend == null;
+                        signExtend = convert;
+                        break;
+                    case IntegerConvertOp.NARROW:
+                        assert narrow == null;
+                        narrow = convert;
+                        break;
+                    default:
+                        throw GraalInternalError.shouldNotReachHere("unknown integer conversion operator " + convert.getOperator());
+                }
+            } else if (op instanceof FloatConvertOp) {
+                FloatConvertOp convert = (FloatConvertOp) op;
+                int idx = convert.getFloatConvert().ordinal();
+                assert floatConvert[idx] == null;
+                floatConvert[idx] = convert;
+            } else if (op instanceof UnaryOp) {
+                UnaryOp unary = (UnaryOp) op;
+                switch (unary.getOperator()) {
+                    case '-':
+                        assert neg == null;
+                        neg = unary;
+                        break;
+                    case '~':
+                        assert not == null;
+                        not = unary;
+                        break;
+                    default:
+                        throw GraalInternalError.shouldNotReachHere("unknown unary operator " + unary.getOperator());
+                }
+            } else {
+                throw GraalInternalError.shouldNotReachHere("unknown Op subclass " + op);
             }
         }
 
-        return new ArithmeticOpTable(neg, add, sub, mul, div, rem, not, and, or, xor);
+        return new ArithmeticOpTable(neg, add, sub, mul, div, rem, not, and, or, xor, zeroExtend, signExtend, narrow, floatConvert);
     }
 
-    private ArithmeticOpTable(UnaryOp neg, BinaryOp add, BinaryOp sub, BinaryOp mul, BinaryOp div, BinaryOp rem, UnaryOp not, BinaryOp and, BinaryOp or, BinaryOp xor) {
+    private ArithmeticOpTable(UnaryOp neg, BinaryOp add, BinaryOp sub, BinaryOp mul, BinaryOp div, BinaryOp rem, UnaryOp not, BinaryOp and, BinaryOp or, BinaryOp xor, IntegerConvertOp zeroExtend,
+                    IntegerConvertOp signExtend, IntegerConvertOp narrow, FloatConvertOp[] floatConvert) {
         this.neg = neg;
         this.add = add;
         this.sub = sub;
@@ -141,6 +180,10 @@ public final class ArithmeticOpTable {
         this.and = and;
         this.or = or;
         this.xor = xor;
+        this.zeroExtend = zeroExtend;
+        this.signExtend = signExtend;
+        this.narrow = narrow;
+        this.floatConvert = floatConvert;
     }
 
     /**
@@ -211,6 +254,22 @@ public final class ArithmeticOpTable {
      */
     public final BinaryOp getXor() {
         return xor;
+    }
+
+    public IntegerConvertOp getZeroExtend() {
+        return zeroExtend;
+    }
+
+    public IntegerConvertOp getSignExtend() {
+        return signExtend;
+    }
+
+    public IntegerConvertOp getNarrow() {
+        return narrow;
+    }
+
+    public FloatConvertOp getFloatConvert(FloatConvert op) {
+        return floatConvert[op.ordinal()];
     }
 
     public abstract static class Op {
@@ -316,6 +375,54 @@ public final class ArithmeticOpTable {
          */
         public Constant getZero(Stamp stamp) {
             return null;
+        }
+    }
+
+    public abstract static class FloatConvertOp extends UnaryOp {
+
+        private final FloatConvert op;
+
+        protected FloatConvertOp(FloatConvert op) {
+            super('\0');
+            this.op = op;
+        }
+
+        public FloatConvert getFloatConvert() {
+            return op;
+        }
+
+        @Override
+        public String toString() {
+            return op.name();
+        }
+    }
+
+    public abstract static class IntegerConvertOp extends Op {
+
+        public static final char ZERO_EXTEND = 'z';
+        public static final char SIGN_EXTEND = 's';
+        public static final char NARROW = 'n';
+
+        protected IntegerConvertOp(char op) {
+            super(op);
+        }
+
+        public abstract Constant foldConstant(int inputBits, int resultBits, Constant value);
+
+        public abstract Stamp foldStamp(int resultBits, Stamp stamp);
+
+        @Override
+        public String toString() {
+            switch (getOperator()) {
+                case ZERO_EXTEND:
+                    return "ZeroExtend";
+                case SIGN_EXTEND:
+                    return "SignExtend";
+                case NARROW:
+                    return "Narrow";
+                default:
+                    throw GraalInternalError.shouldNotReachHere();
+            }
         }
     }
 }

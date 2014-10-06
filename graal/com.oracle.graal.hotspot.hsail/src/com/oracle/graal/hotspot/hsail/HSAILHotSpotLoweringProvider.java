@@ -106,7 +106,7 @@ public class HSAILHotSpotLoweringProvider extends DefaultHotSpotLoweringProvider
     private HashMap<NodeClass, LoweringStrategy> strategyMap = new HashMap<>();
 
     void initStrategyMap() {
-        strategyMap.put(NodeClass.get(ConvertNode.class), PassThruStrategy);
+        strategyMap.put(NodeClass.get(IntegerConvertNode.class), PassThruStrategy);
         strategyMap.put(NodeClass.get(FloatConvertNode.class), PassThruStrategy);
         strategyMap.put(NodeClass.get(NewInstanceNode.class), NewObjectStrategy);
         strategyMap.put(NodeClass.get(NewArrayNode.class), NewObjectStrategy);

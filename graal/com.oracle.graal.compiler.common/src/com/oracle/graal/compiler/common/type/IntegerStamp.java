@@ -22,6 +22,9 @@
  */
 package com.oracle.graal.compiler.common.type;
 
+import static com.oracle.graal.compiler.common.calc.FloatConvert.*;
+import static com.oracle.graal.compiler.common.type.ArithmeticOpTable.IntegerConvertOp.*;
+
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
@@ -29,6 +32,8 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.spi.*;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.FloatConvertOp;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.IntegerConvertOp;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.UnaryOp;
 
 /**
@@ -350,6 +355,20 @@ public class IntegerStamp extends PrimitiveStamp {
         return (x + y) ^ x ^ y;
     }
 
+    private static long saturate(long v, int bits) {
+        if (bits < 64) {
+            long max = CodeUtil.maxValue(bits);
+            if (v > max) {
+                return max;
+            }
+            long min = CodeUtil.minValue(bits);
+            if (v < min) {
+                return min;
+            }
+        }
+        return v;
+    }
+
     public static final ArithmeticOpTable OPS = ArithmeticOpTable.create(
 
     new UnaryOp('-') {
@@ -632,6 +651,154 @@ public class IntegerStamp extends PrimitiveStamp {
         public Constant getZero(Stamp s) {
             IntegerStamp stamp = (IntegerStamp) s;
             return Constant.forPrimitiveInt(stamp.getBits(), 0);
+        }
+    },
+
+    new IntegerConvertOp(ZERO_EXTEND) {
+
+        @Override
+        public Constant foldConstant(int inputBits, int resultBits, Constant value) {
+            return Constant.forPrimitiveInt(resultBits, CodeUtil.zeroExtend(value.asLong(), inputBits));
+        }
+
+        @Override
+        public Stamp foldStamp(int resultBits, Stamp input) {
+            IntegerStamp stamp = (IntegerStamp) input;
+            int inputBits = stamp.getBits();
+            assert inputBits <= resultBits;
+
+            long downMask = CodeUtil.zeroExtend(stamp.downMask(), inputBits);
+            long upMask = CodeUtil.zeroExtend(stamp.upMask(), inputBits);
+
+            if (stamp.lowerBound() < 0 && stamp.upperBound() >= 0) {
+                // signed range including 0 and -1
+                // after sign extension, the whole range from 0 to MAX_INT is possible
+                return IntegerStamp.stampForMask(resultBits, downMask, upMask);
+            }
+
+            long lowerBound = CodeUtil.zeroExtend(stamp.lowerBound(), inputBits);
+            long upperBound = CodeUtil.zeroExtend(stamp.upperBound(), inputBits);
+
+            return new IntegerStamp(resultBits, lowerBound, upperBound, downMask, upMask);
+        }
+    },
+
+    new IntegerConvertOp(SIGN_EXTEND) {
+
+        @Override
+        public Constant foldConstant(int inputBits, int resultBits, Constant value) {
+            return Constant.forPrimitiveInt(resultBits, CodeUtil.signExtend(value.asLong(), inputBits));
+        }
+
+        @Override
+        public Stamp foldStamp(int resultBits, Stamp input) {
+            IntegerStamp stamp = (IntegerStamp) input;
+            int inputBits = stamp.getBits();
+            assert inputBits <= resultBits;
+
+            long defaultMask = CodeUtil.mask(resultBits);
+            long downMask = CodeUtil.signExtend(stamp.downMask(), inputBits) & defaultMask;
+            long upMask = CodeUtil.signExtend(stamp.upMask(), inputBits) & defaultMask;
+
+            return new IntegerStamp(resultBits, stamp.lowerBound(), stamp.upperBound(), downMask, upMask);
+        }
+    },
+
+    new IntegerConvertOp(NARROW) {
+
+        @Override
+        public Constant foldConstant(int inputBits, int resultBits, Constant value) {
+            return Constant.forPrimitiveInt(resultBits, CodeUtil.narrow(value.asLong(), resultBits));
+        }
+
+        @Override
+        public Stamp foldStamp(int resultBits, Stamp input) {
+            IntegerStamp stamp = (IntegerStamp) input;
+            int inputBits = stamp.getBits();
+            assert resultBits <= inputBits;
+            if (resultBits == inputBits) {
+                return stamp;
+            }
+
+            final long upperBound;
+            if (stamp.lowerBound() < CodeUtil.minValue(resultBits)) {
+                upperBound = CodeUtil.maxValue(resultBits);
+            } else {
+                upperBound = saturate(stamp.upperBound(), resultBits);
+            }
+            final long lowerBound;
+            if (stamp.upperBound() > CodeUtil.maxValue(resultBits)) {
+                lowerBound = CodeUtil.minValue(resultBits);
+            } else {
+                lowerBound = saturate(stamp.lowerBound(), resultBits);
+            }
+
+            long defaultMask = CodeUtil.mask(resultBits);
+            long newDownMask = stamp.downMask() & defaultMask;
+            long newUpMask = stamp.upMask() & defaultMask;
+            long newLowerBound = CodeUtil.signExtend((lowerBound | newDownMask) & newUpMask, resultBits);
+            long newUpperBound = CodeUtil.signExtend((upperBound | newDownMask) & newUpMask, resultBits);
+            return new IntegerStamp(resultBits, newLowerBound, newUpperBound, newDownMask, newUpMask);
+        }
+    },
+
+    new FloatConvertOp(I2F) {
+
+        @Override
+        public Constant foldConstant(Constant value) {
+            return Constant.forFloat(value.asInt());
+        }
+
+        @Override
+        public Stamp foldStamp(Stamp input) {
+            IntegerStamp stamp = (IntegerStamp) input;
+            assert stamp.getBits() == 32;
+            return StampFactory.forFloat(Kind.Float, stamp.lowerBound(), stamp.upperBound(), true);
+        }
+    },
+
+    new FloatConvertOp(L2F) {
+
+        @Override
+        public Constant foldConstant(Constant value) {
+            return Constant.forFloat(value.asLong());
+        }
+
+        @Override
+        public Stamp foldStamp(Stamp input) {
+            IntegerStamp stamp = (IntegerStamp) input;
+            assert stamp.getBits() == 64;
+            return StampFactory.forFloat(Kind.Float, stamp.lowerBound(), stamp.upperBound(), true);
+        }
+    },
+
+    new FloatConvertOp(I2D) {
+
+        @Override
+        public Constant foldConstant(Constant value) {
+            return Constant.forDouble(value.asInt());
+        }
+
+        @Override
+        public Stamp foldStamp(Stamp input) {
+            IntegerStamp stamp = (IntegerStamp) input;
+            assert stamp.getBits() == 32;
+            return StampFactory.forFloat(Kind.Double, stamp.lowerBound(), stamp.upperBound(), true);
+        }
+    },
+
+    new FloatConvertOp(L2D) {
+
+        @Override
+        public Constant foldConstant(Constant value) {
+            return Constant.forDouble(value.asLong());
+        }
+
+        @Override
+        public Stamp foldStamp(Stamp input) {
+            IntegerStamp stamp = (IntegerStamp) input;
+            assert stamp.getBits() == 64;
+            return StampFactory.forFloat(Kind.Double, stamp.lowerBound(), stamp.upperBound(), true);
         }
     });
 }

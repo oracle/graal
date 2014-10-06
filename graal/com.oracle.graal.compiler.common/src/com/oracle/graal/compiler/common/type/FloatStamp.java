@@ -22,12 +22,15 @@
  */
 package com.oracle.graal.compiler.common.type;
 
+import static com.oracle.graal.compiler.common.calc.FloatConvert.*;
+
 import java.util.function.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.spi.*;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.FloatConvertOp;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.UnaryOp;
 
 public class FloatStamp extends PrimitiveStamp {
@@ -430,6 +433,90 @@ public class FloatStamp extends PrimitiveStamp {
         public Stamp foldStamp(Stamp stamp1, Stamp stamp2) {
             // TODO
             return stamp1.unrestricted();
+        }
+    },
+
+    new FloatConvertOp(F2I) {
+
+        @Override
+        public Constant foldConstant(Constant value) {
+            return Constant.forInt((int) value.asFloat());
+        }
+
+        @Override
+        public Stamp foldStamp(Stamp stamp) {
+            assert stamp instanceof FloatStamp && ((FloatStamp) stamp).getBits() == 32;
+            return StampFactory.forKind(Kind.Int);
+        }
+    },
+
+    new FloatConvertOp(F2L) {
+
+        @Override
+        public Constant foldConstant(Constant value) {
+            return Constant.forLong((long) value.asFloat());
+        }
+
+        @Override
+        public Stamp foldStamp(Stamp stamp) {
+            assert stamp instanceof FloatStamp && ((FloatStamp) stamp).getBits() == 32;
+            return StampFactory.forKind(Kind.Long);
+        }
+    },
+
+    new FloatConvertOp(D2I) {
+
+        @Override
+        public Constant foldConstant(Constant value) {
+            return Constant.forInt((int) value.asDouble());
+        }
+
+        @Override
+        public Stamp foldStamp(Stamp stamp) {
+            assert stamp instanceof FloatStamp && ((FloatStamp) stamp).getBits() == 64;
+            return StampFactory.forKind(Kind.Int);
+        }
+    },
+
+    new FloatConvertOp(D2L) {
+
+        @Override
+        public Constant foldConstant(Constant value) {
+            return Constant.forLong((long) value.asDouble());
+        }
+
+        @Override
+        public Stamp foldStamp(Stamp stamp) {
+            assert stamp instanceof FloatStamp && ((FloatStamp) stamp).getBits() == 64;
+            return StampFactory.forKind(Kind.Long);
+        }
+    },
+
+    new FloatConvertOp(F2D) {
+
+        @Override
+        public Constant foldConstant(Constant value) {
+            return Constant.forDouble(value.asFloat());
+        }
+
+        @Override
+        public Stamp foldStamp(Stamp stamp) {
+            assert stamp instanceof FloatStamp && ((FloatStamp) stamp).getBits() == 32;
+            return StampFactory.forKind(Kind.Double);
+        }
+    },
+
+    new FloatConvertOp(D2F) {
+
+        @Override
+        public Constant foldConstant(Constant value) {
+            return Constant.forFloat((float) value.asDouble());
+        }
+
+        @Override
+        public Stamp foldStamp(Stamp stamp) {
+            assert stamp instanceof FloatStamp && ((FloatStamp) stamp).getBits() == 64;
+            return StampFactory.forKind(Kind.Float);
         }
     });
 }

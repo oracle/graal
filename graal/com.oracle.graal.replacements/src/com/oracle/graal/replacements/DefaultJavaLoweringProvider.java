@@ -534,10 +534,10 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         switch (kind) {
             case Boolean:
             case Byte:
-                return StampTool.narrowingConversion(stamp, 8);
+                return IntegerStamp.OPS.getNarrow().foldStamp(8, stamp);
             case Char:
             case Short:
-                return StampTool.narrowingConversion(stamp, 16);
+                return IntegerStamp.OPS.getNarrow().foldStamp(16, stamp);
         }
         return stamp;
     }

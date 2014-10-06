@@ -23,9 +23,9 @@
 package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.FloatConvertOp;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodeinfo.*;
@@ -37,114 +37,41 @@ import com.oracle.graal.nodes.spi.*;
  * semantics.
  */
 @NodeInfo
-public class FloatConvertNode extends ConvertNode implements Lowerable, ArithmeticLIRLowerable {
+public class FloatConvertNode extends UnaryArithmeticNode implements ConvertNode, Lowerable, ArithmeticLIRLowerable {
 
-    protected final FloatConvert op;
+    protected final FloatConvertOp reverseOp;
 
     public static FloatConvertNode create(FloatConvert op, ValueNode input) {
         return USE_GENERATED_NODES ? new FloatConvertNodeGen(op, input) : new FloatConvertNode(op, input);
     }
 
+    private FloatConvertNode(ArithmeticOpTable table, FloatConvert op, ValueNode input) {
+        super(table.getFloatConvert(op), input);
+        ArithmeticOpTable revTable = ArithmeticOpTable.forStamp(stamp());
+        reverseOp = revTable.getFloatConvert(op.reverse());
+    }
+
     protected FloatConvertNode(FloatConvert op, ValueNode input) {
-        super(createStamp(op, input), input);
-        this.op = op;
+        this(ArithmeticOpTable.forStamp(input.stamp()), op, input);
     }
 
-    private static Stamp createStamp(FloatConvert op, ValueNode input) {
-        switch (op) {
-            case I2F:
-            case I2D:
-                assert input.stamp() instanceof IntegerStamp && ((IntegerStamp) input.stamp()).getBits() == 32;
-                break;
-            case L2F:
-            case L2D:
-                assert input.stamp() instanceof IntegerStamp && ((IntegerStamp) input.stamp()).getBits() == 64;
-                break;
-            case F2I:
-            case F2L:
-            case F2D:
-                assert input.stamp() instanceof FloatStamp && ((FloatStamp) input.stamp()).getBits() == 32;
-                break;
-            case D2I:
-            case D2L:
-            case D2F:
-                assert input.stamp() instanceof FloatStamp && ((FloatStamp) input.stamp()).getBits() == 64;
-                break;
-            default:
-                throw GraalInternalError.shouldNotReachHere();
-        }
-
-        switch (op) {
-            case F2I:
-            case D2I:
-                return StampFactory.forKind(Kind.Int);
-            case F2L:
-            case D2L:
-                return StampFactory.forKind(Kind.Long);
-            case I2F:
-            case L2F:
-                return StampFactory.forFloat(Kind.Float, ((IntegerStamp) input.stamp()).lowerBound(), ((IntegerStamp) input.stamp()).upperBound(), true);
-            case D2F:
-                return StampFactory.forKind(Kind.Float);
-            case I2D:
-            case L2D:
-                return StampFactory.forFloat(Kind.Double, ((IntegerStamp) input.stamp()).lowerBound(), ((IntegerStamp) input.stamp()).upperBound(), true);
-            case F2D:
-                return StampFactory.forKind(Kind.Double);
-            default:
-                throw GraalInternalError.shouldNotReachHere();
-        }
-    }
-
-    public FloatConvert getOp() {
-        return op;
-    }
-
-    @Override
-    public boolean inferStamp() {
-        return updateStamp(createStamp(op, getValue()));
-    }
-
-    private static Constant convert(FloatConvert op, Constant value) {
-        switch (op) {
-            case F2I:
-                return Constant.forInt((int) value.asFloat());
-            case D2I:
-                return Constant.forInt((int) value.asDouble());
-            case F2L:
-                return Constant.forLong((long) value.asFloat());
-            case D2L:
-                return Constant.forLong((long) value.asDouble());
-            case I2F:
-                return Constant.forFloat(value.asInt());
-            case L2F:
-                return Constant.forFloat(value.asLong());
-            case D2F:
-                return Constant.forFloat((float) value.asDouble());
-            case I2D:
-                return Constant.forDouble(value.asInt());
-            case L2D:
-                return Constant.forDouble(value.asLong());
-            case F2D:
-                return Constant.forDouble(value.asFloat());
-            default:
-                throw GraalInternalError.shouldNotReachHere();
-        }
+    public FloatConvert getFloatConvert() {
+        return ((FloatConvertOp) getOp()).getFloatConvert();
     }
 
     @Override
     public Constant convert(Constant c) {
-        return convert(op, c);
+        return op.foldConstant(c);
     }
 
     @Override
     public Constant reverse(Constant c) {
-        return convert(op.reverse(), c);
+        return reverseOp.foldConstant(c);
     }
 
     @Override
     public boolean isLossless() {
-        switch (op) {
+        switch (getFloatConvert()) {
             case F2D:
             case I2D:
                 return true;
@@ -155,11 +82,14 @@ public class FloatConvertNode extends ConvertNode implements Lowerable, Arithmet
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
-        if (forValue.isConstant()) {
-            return ConstantNode.forConstant(evalConst(forValue.asConstant()), null);
-        } else if (forValue instanceof FloatConvertNode) {
+        ValueNode ret = super.canonical(tool, forValue);
+        if (ret != this) {
+            return ret;
+        }
+
+        if (forValue instanceof FloatConvertNode) {
             FloatConvertNode other = (FloatConvertNode) forValue;
-            if (other.isLossless() && other.op == this.op.reverse()) {
+            if (other.isLossless() && other.op == this.reverseOp) {
                 return other.getValue();
             }
         }
@@ -171,6 +101,6 @@ public class FloatConvertNode extends ConvertNode implements Lowerable, Arithmet
     }
 
     public void generate(NodeMappableLIRBuilder builder, ArithmeticLIRGenerator gen) {
-        builder.setResult(this, gen.emitFloatConvert(op, builder.operand(getValue())));
+        builder.setResult(this, gen.emitFloatConvert(getFloatConvert(), builder.operand(getValue())));
     }
 }

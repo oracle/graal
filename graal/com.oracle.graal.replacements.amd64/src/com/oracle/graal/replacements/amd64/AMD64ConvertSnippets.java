@@ -161,7 +161,7 @@ public class AMD64ConvertSnippets implements Snippets {
 
         public void lower(FloatConvertNode convert, LoweringTool tool) {
             SnippetInfo key;
-            switch (convert.getOp()) {
+            switch (convert.getFloatConvert()) {
                 case F2I:
                     key = f2i;
                     break;
@@ -182,7 +182,7 @@ public class AMD64ConvertSnippets implements Snippets {
 
             Arguments args = new Arguments(key, graph.getGuardsStage(), tool.getLoweringStage());
             args.add("input", convert.getValue());
-            args.add("result", graph.unique(AMD64FloatConvertNode.create(convert.stamp(), convert.getOp(), convert.getValue())));
+            args.add("result", graph.unique(AMD64FloatConvertNode.create(convert.getOp(), convert.getValue())));
 
             SnippetTemplate template = template(args);
             Debug.log("Lowering %s in %s: node=%s, template=%s, arguments=%s", convert.getOp(), graph, convert, template, args);

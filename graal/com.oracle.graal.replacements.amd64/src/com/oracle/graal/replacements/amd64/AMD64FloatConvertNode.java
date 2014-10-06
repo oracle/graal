@@ -24,8 +24,8 @@ package com.oracle.graal.replacements.amd64;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.compiler.common.calc.*;
-import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.FloatConvertOp;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.UnaryOp;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodeinfo.*;
@@ -39,19 +39,17 @@ import com.oracle.graal.nodes.spi.*;
  * fixup code that handles the corner cases that differ between AMD64 and Java.
  */
 @NodeInfo
-public class AMD64FloatConvertNode extends UnaryNode implements ArithmeticLIRLowerable {
+public class AMD64FloatConvertNode extends UnaryArithmeticNode implements ArithmeticLIRLowerable {
 
-    protected final FloatConvert op;
-
-    public static AMD64FloatConvertNode create(Stamp stamp, FloatConvert op, ValueNode value) {
-        return USE_GENERATED_NODES ? new AMD64FloatConvertNodeGen(stamp, op, value) : new AMD64FloatConvertNode(stamp, op, value);
+    public static AMD64FloatConvertNode create(UnaryOp op, ValueNode value) {
+        return USE_GENERATED_NODES ? new AMD64FloatConvertNodeGen(op, value) : new AMD64FloatConvertNode(op, value);
     }
 
-    protected AMD64FloatConvertNode(Stamp stamp, FloatConvert op, ValueNode value) {
-        super(stamp, value);
-        this.op = op;
+    protected AMD64FloatConvertNode(UnaryOp op, ValueNode value) {
+        super(op, value);
     }
 
+    @Override
     public Constant evalConst(Constant... inputs) {
         // this node should never have been created if its input is constant
         throw GraalInternalError.shouldNotReachHere();
@@ -64,6 +62,6 @@ public class AMD64FloatConvertNode extends UnaryNode implements ArithmeticLIRLow
     }
 
     public void generate(NodeMappableLIRBuilder builder, ArithmeticLIRGenerator gen) {
-        builder.setResult(this, gen.emitFloatConvert(op, builder.operand(getValue())));
+        builder.setResult(this, gen.emitFloatConvert(((FloatConvertOp) getOp()).getFloatConvert(), builder.operand(getValue())));
     }
 }

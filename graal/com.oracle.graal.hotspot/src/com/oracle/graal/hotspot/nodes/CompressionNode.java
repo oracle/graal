@@ -40,7 +40,7 @@ import com.oracle.graal.nodes.type.*;
  * Compress or uncompress an oop or metaspace pointer.
  */
 @NodeInfo(nameTemplate = "{p#op/s}")
-public class CompressionNode extends ConvertNode implements LIRLowerable {
+public class CompressionNode extends UnaryNode implements ConvertNode, LIRLowerable {
 
     enum CompressionOp {
         Compress,

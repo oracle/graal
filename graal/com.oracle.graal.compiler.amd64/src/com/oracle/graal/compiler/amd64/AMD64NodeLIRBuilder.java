@@ -191,7 +191,7 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
     }
 
     private Value emitFloatConvertMemory(FloatConvertNode op, Access access) {
-        switch (op.getOp()) {
+        switch (op.getFloatConvert()) {
             case D2F:
                 return emitConvert2MemoryOp(Kind.Float, D2F, access);
             case D2I:
