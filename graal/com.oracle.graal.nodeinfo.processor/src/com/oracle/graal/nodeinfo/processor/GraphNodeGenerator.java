@@ -311,18 +311,26 @@ public class GraphNodeGenerator {
         genClass = new CodeTypeElement(modifiers(FINAL), ElementKind.CLASS, packageElement, genClassName);
         genClass.setSuperClass(node.asType());
 
+        boolean foundValidConstructor = false;
         for (ExecutableElement constructor : ElementFilter.constructorsIn(node.getEnclosedElements())) {
-            if (constructor.getModifiers().contains(PUBLIC)) {
+            if (constructor.getModifiers().contains(PRIVATE)) {
+                continue;
+            } else if (constructor.getModifiers().contains(PUBLIC)) {
                 throw new ElementException(constructor, "Node class constructor must not be public");
             } else if (!constructor.getModifiers().contains(PROTECTED)) {
                 throw new ElementException(constructor, "Node class constructor must be protected");
             }
 
             checkFactoryMethodExists(node, constructor);
+            foundValidConstructor = true;
 
             CodeExecutableElement subConstructor = createConstructor(genClass, constructor);
             subConstructor.getModifiers().removeAll(Arrays.asList(PUBLIC, PRIVATE, PROTECTED));
             genClass.add(subConstructor);
+        }
+
+        if (!foundValidConstructor) {
+            throw new ElementException(node, "Node class must have at least one protected constructor");
         }
 
         if (!constructorsOnly) {
