@@ -59,9 +59,9 @@ import com.oracle.graal.nodeinfo.*;
 @NodeInfo
 public abstract class Node implements Cloneable, Formattable {
 
-    public final static boolean USE_GENERATED_VALUE_NUMBER = Boolean.parseBoolean(System.getProperty("graal.node.useGeneratedValueNumber", "true"));
+    public final static boolean USE_GENERATED_VALUE_NUMBER = Boolean.parseBoolean(System.getProperty("graal.node.useGeneratedValueNumber", "false"));
 
-    public final static boolean USE_GENERATED_VALUE_EQUALS = Boolean.parseBoolean(System.getProperty("graal.node.useGeneratedValueEquals", "false"));
+    public final static boolean USE_GENERATED_VALUE_EQUALS = Boolean.parseBoolean(System.getProperty("graal.node.useGeneratedValueEquals", "true"));
 
     public final static boolean USE_UNSAFE_TO_CLONE = Boolean.parseBoolean(System.getProperty("graal.node.useUnsafeToClone", "true"));
 
