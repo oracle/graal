@@ -107,7 +107,7 @@ public class Graph {
 
         @Override
         public int hashCode() {
-            return Node.USE_GENERATED_NODES ? node.valueNumberLeaf() : node.getNodeClass().valueNumber(node);
+            return Node.USE_GENERATED_VALUE_NUMBER ? node.valueNumberLeaf() : node.getNodeClass().valueNumber(node);
         }
 
         @Override
