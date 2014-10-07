@@ -30,6 +30,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.replacements.nodes.*;
 import com.oracle.graal.word.*;
 
+// JaCoCo Exclude
 @NodeInfo
 public class HSAILDirectLoadAcquireNode extends DirectReadNode {
 

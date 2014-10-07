@@ -55,6 +55,7 @@ import com.oracle.graal.api.replacements.*;
  *
  * @author Gustav Trede (port to Java)
  */
+// JaCoCo Exclude
 public final class JStrictMath {
 
     /**
@@ -756,14 +757,14 @@ public final class JStrictMath {
          * asin(x) on [0,0.5] by asin(x) = x + x*x^2*R(x^2) where R(x^2) is a rational approximation
          * of (asin(x)-x)/x^3 and its remez error is bounded by |(asin(x)-x)/x^3 - R(x^2)| <
          * 2^(-58.75)
-         * 
+         *
          * For x in [0.5,1] asin(x) = pi/2-2*asin(sqrt((1-x)/2)) Let y = (1-x), z = y/2, s :=
          * sqrt(z),and pio2_hi+pio2_lo=pi/2; then for x>0.98 asin(x) = pi/2 - 2*(s+s*z*R(z)) =
          * pio2_hi - (2*(s+s*z*R(z)) - pio2_lo) For x<=0.98, let pio4_hi = pio2_hi/2, then f = hi
          * part of s; c = sqrt(z) - f = (z-f*f)/(s+f) ...f+c=sqrt(z) and asin(x) = pi/2 -
          * 2*(s+s*z*R(z)) = pio4_hi+(pio4-2s)-(2s*z*R(z)-pio2_lo) =
          * pio4_hi+(pio4-2f)-(2s*z*R(z)-(pio2_lo+2c))
-         * 
+         *
          * Special cases: if x is NaN, return x itself; if |x|>1, return NaN with invalid signal.
          */
         int hx = __HI(a);
@@ -812,7 +813,7 @@ public final class JStrictMath {
          * where f=hi part of s, and c= (z-f*f)/(s+f) is the correction term for f so that f+c ~
          * sqrt(z). For x<-0.5 acos(x) = pi - 2asin(sqrt((1-|x|)/2)) = pi - 0.5*(s+s*z*R(z)), where
          * z=(1-|x|)/2,s=sqrt(z)
-         * 
+         *
          * Special cases: if x is NaN, return x itself; if |x|>1, return NaN with invalid signal.
          */
 
@@ -879,7 +880,7 @@ public final class JStrictMath {
          * Method 1. Reduce x to positive by atan(x) = -atan(-x). 2. According to the integer
          * k=4t+0.25 chopped, t=x, the argument is further reduced to one of the following intervals
          * and the arctangent of t is evaluated by the corresponding formula:
-         * 
+         *
          * [0,7/16] atan(x) = t-t^3*(a1+t^2*(a2+...(a10+t^2*a11)...) [7/16,11/16] atan(x) =
          * atan(1/2) + atan( (t-0.5)/(1+t/2) ) [11/16.19/16] atan(x) = atan( 1 ) + atan( (t-1)/(1+t)
          * ) [19/16,39/16] atan(x) = atan(3/2) + atan( (t-1.5)/(1+1.5t) ) [39/16,INF] atan(x) =
@@ -979,14 +980,14 @@ public final class JStrictMath {
     public static double exp(double aa) {
         /*
          * exp(x) Returns the exponential of x.
-         * 
+         *
          * Method 1. Argument reduction: Reduce x to an r so that |r| <= 0.5*ln2 ~ 0.34658. Given x,
          * find r and integer k such that
-         * 
+         *
          * x = k*ln2 + r, |r| <= 0.5*ln2.
-         * 
+         *
          * Here r will be represented as r = hi-lo for better accuracy.
-         * 
+         *
          * 2. Approximation of exp(r) by a special rational function on the interval [0,0.34658]:
          * Write R(r**2) = r*(exp(r)+1)/(exp(r)-1) = 2 + r*r/6 - r**4/360 + ... We use a special
          * Reme algorithm on [0,0.34658] to generate a polynomial of degree 5 to approximate R. The
@@ -996,15 +997,15 @@ public final class JStrictMath {
          * computation of exp(r) thus becomes 2*r exp(r) = 1 + ------- R - r r*R1(r) = 1 + r +
          * ----------- (for better accuracy) 2 - R1(r) where 2 4 10 R1(r) = r - (P1*r + P2*r + ... +
          * P5*r ).
-         * 
+         *
          * 3. Scale back to obtain exp(x): From step 1, we have exp(x) = 2^k * exp(r)
-         * 
+         *
          * Special cases: exp(INF) is INF, exp(NaN) is NaN; exp(-INF) is 0, and for finite argument,
          * only exp(0)=1 is exact.
-         * 
+         *
          * Accuracy: according to an error analysis, the error is always less than 1 ulp (unit in
          * the last place).
-         * 
+         *
          * Misc. info. For IEEE double if x > 7.09782712893383973096e+02 then exp(x) overflow if x <
          * -7.45133219101941108420e+02 then exp(x) underflow
          */
@@ -1086,10 +1087,10 @@ public final class JStrictMath {
     public static double log(double xx) {
         /*
          * __ieee754_log(x) Return the logrithm of x
-         * 
+         *
          * Method : 1. Argument Reduction: find k and f such that x = 2^k * (1+f), where sqrt(2)/2 <
          * 1+f < sqrt(2) .
-         * 
+         *
          * 2. Approximation of log(1+f). Let s = f/(2+f) ; based on log(1+f) = log(1+s) - log(1-s) =
          * 2s + 2/3 s**3 + 2/5 s**5 + ....., = 2s + s*R We use a special Reme algorithm on
          * [0,0.1716] to generate a polynomial of degree 14 to approximate R The maximum error of
@@ -1099,14 +1100,14 @@ public final class JStrictMath {
          * 2s = f - s*f = f -hfsq + s*hfsq, where hfsq = f*f/2. In order to guarantee error in log
          * below 1ulp, we compute log by log(1+f) = f - s*(f - R) (if f is not too large) log(1+f) =
          * f - (hfsq - s*(hfsq+R)). (better accuracy)
-         * 
+         *
          * 3. Finally, log(x) =k*ln2 + log(1+f). =k*ln2_hi+(f-(hfsq-(s*(hfsq+R)+k*ln2_lo))) Here ln2
          * is split into two floating point number: ln2_hi + ln2_lo, where n*ln2_hi is always exact
          * for |n| < 2000.
-         * 
+         *
          * Special cases: log(x) is NaN with signal if x < 0 (including -INF) ; log(+INF) is +INF;
          * log(0) is -INF with signal; log(NaN) is that NaN with no signal.
-         * 
+         *
          * Accuracy: according to an error analysis, the error is always less than 1 ulp (unit in
          * the last place).
          */
@@ -1174,15 +1175,15 @@ public final class JStrictMath {
     public static double log10(double aa) {
         /*
          * __ieee754_log10(x) Return the base 10 logarithm of x
-         * 
+         *
          * Method : Let log10_2hi = leading 40 bits of log10(2) and log10_2lo = log10(2) -
          * log10_2hi, ivln10 = 1/log(10) rounded. Then n = ilogb(x), if(n<0) n = n+1; x =
          * scalbn(x,-n); log10(x) := n*log10_2hi + (n*log10_2lo + ivln10*log(x))
-         * 
+         *
          * Note 1: To guarantee log10(10**n)=n, where 10**n is normal, the rounding mode must set to
          * Round-to-Nearest. Note 2: [1/log(10)] rounded to 53 bits has error .198 ulps; log10 is
          * monotonic at all binary break points.
-         * 
+         *
          * Special cases: log10(x) is NaN with signal if x < 0; log10(+INF) is +INF with no signal;
          * log10(0) is -INF with signal; log10(NaN) is that NaN with no signal; log10(10**N) = N for
          * N=0,1,...,22.
@@ -1517,11 +1518,11 @@ public final class JStrictMath {
          * double format does not have enough significand bits for a number that large to have any
          * fractional portion), an infinity, or a NaN. In any of these cases, rint of the argument
          * is the argument.
-         * 
+         *
          * Otherwise, the sum (twoToThe52 + a ) will properly round away any fractional portion of a
          * since ulp(twoToThe52) == 1.0; subtracting out twoToThe52 from this sum will then be exact
          * and leave the rounded integer portion of a.
-         * 
+         *
          * This method does *not* need to be declared strictfp to get fully reproducible results.
          * Whether or not a method is declared strictfp can only make a difference in the returned
          * result if some operation would overflow or underflow with strictfp semantics. The
@@ -1589,9 +1590,9 @@ public final class JStrictMath {
          * __ieee754_atan2(y,x) Method : 1. Reduce y to positive by atan2(y,x)=-atan2(-y,x). 2.
          * Reduce x to positive by (if x and y are unexceptional): ARG (x+iy) = arctan(y/x) ... if x
          * > 0, ARG (x+iy) = pi - arctan[y/(-x)] ... if x < 0,
-         * 
+         *
          * Special cases:
-         * 
+         *
          * ATAN2((anything), NaN ) is NaN; ATAN2(NAN , (anything) ) is NaN; ATAN2(+-0, +(anything
          * but NaN)) is +-0 ; ATAN2(+-0, -(anything but NaN)) is +-pi ; ATAN2(+-(anything but 0 and
          * NaN), 0) is +-pi/2; ATAN2(+-(anything but INF and NaN), +INF) is +-0 ; ATAN2(+-(anything
@@ -1816,11 +1817,11 @@ public final class JStrictMath {
     public static double pow(double x, double y) {
         /*
          * __ieee754_pow(x,y) return x**y
-         * 
+         *
          * n Method: Let x = 2 * (1+f) 1. Compute and return log2(x) in two pieces: log2(x) = w1 +
          * w2, where w1 has 53-24 = 29 bit trailing zeros. 2. Perform y*log2(x) = n+y' by simulating
          * muti-precision arithmetic, where |y'|<=0.5. 3. Return x**y = 2**n*exp(y'*log2)
-         * 
+         *
          * Special cases: 1. (anything) ** 0 is 1 2. (anything) ** 1 is itself 3. (anything) ** NAN
          * is NAN 4. NAN ** (anything except 0) is NAN 5. +-(|x| > 1) ** +INF is +INF 6. +-(|x| > 1)
          * ** -INF is +0 7. +-(|x| < 1) ** +INF is +0 8. +-(|x| < 1) ** -INF is +INF 9. +-1 ** +-INF
@@ -1831,7 +1832,7 @@ public final class JStrictMath {
          * (anything) = -0 ** (-anything) 18. (-anything) ** (integer) is
          * (-1)**(integer)*(+anything**integer) 19. (-anything except 0 and inf) ** (non-integer) is
          * NAN
-         * 
+         *
          * Accuracy: pow(x,y) returns x**y nearly rounded. In particular pow(integer,integer) always
          * returns the correct integer provided it is representable.
          */
@@ -2469,10 +2470,10 @@ public final class JStrictMath {
          * __ieee754_sinh(x) Method : mathematically sinh(x) if defined to be (exp(x)-exp(-x))/2 1.
          * Replace x by |x| (sinh(-x) = -sinh(x)). 2. E + E/(E+1) 0 <= x <= 22 : sinh(x) :=
          * --------------, E=expm1(x) 2
-         * 
+         *
          * 22 <= x <= lnovft : sinh(x) := exp(x)/2 lnovft <= x <= ln2ovft: sinh(x) := exp(x/2)/2 *
          * exp(x/2) ln2ovft < x : sinh(x) := x*shuge (overflow)
-         * 
+         *
          * Special cases: sinh(x) is |x| if x is +INF, -INF, or NaN. only sinh(0)=0 is exact for
          * finite x.
          */
@@ -2535,11 +2536,11 @@ public final class JStrictMath {
          * __ieee754_cosh(x) Method : mathematically cosh(x) if defined to be (exp(x)+exp(-x))/2 1.
          * Replace x by |x| (cosh(x) = cosh(-x)). 2. [ exp(x) - 1 ]^2 0 <= x <= ln2/2 : cosh(x) := 1
          * + ------------------- 2*exp(x)
-         * 
+         *
          * exp(x) + 1/exp(x) ln2/2 <= x <= 22 : cosh(x) := ------------------- 2 22 <= x <= lnovft :
          * cosh(x) := exp(x)/2 lnovft <= x <= ln2ovft: cosh(x) := exp(x/2)/2 * exp(x/2) ln2ovft < x
          * : cosh(x) := huge*huge (overflow)
-         * 
+         *
          * Special cases: cosh(x) is |x| if x is +INF, -INF, or NaN. only cosh(0)=1 is exact for
          * finite x.
          */
@@ -2609,12 +2610,12 @@ public final class JStrictMath {
     public static double tanh(double xx) {
         /*
          * Tanh(x) Return the Hyperbolic Tangent of x
-         * 
+         *
          * Method : x -x e - e 0. tanh(x) is defined to be ----------- x -x e + e 1. reduce x to
          * non-negative by tanh(-x) = -tanh(x). 2. 0 <= x <= 2**-55 : tanh(x) := x*(one+x) -t 2**-55
          * < x <= 1 : tanh(x) := -----; t = expm1(-2x) t + 2 2 1 <= x <= 22.0 : tanh(x) := 1- -----
          * ; t=expm1(2x) t + 2 22.0 < x <= INF : tanh(x) := 1.
-         * 
+         *
          * Special cases: tanh(NaN) is NaN; only tanh(0)=0 is exact for finite argument.
          */
 
@@ -2676,22 +2677,22 @@ public final class JStrictMath {
     public static double hypot(double aa, double bb) {
         /*
          * __ieee754_hypot(x,y)
-         * 
+         *
          * Method : If (assume round-to-nearest) z=x*x+y*y has error less than sqrt(2)/2 ulp, than
          * sqrt(z) has error less than 1 ulp (exercise).
-         * 
+         *
          * So, compute sqrt(x*x+y*y) with some care as follows to get the error below 1 ulp:
-         * 
+         *
          * Assume x>y>0; (if possible, set rounding to round-to-nearest) 1. if x > 2y use
          * x1*x1+(y*y+(x2*(x+x1))) for x*x+y*y where x1 = x with lower 32 bits cleared, x2 = x-x1;
          * else 2. if x <= 2y use t1*y1+((x-y)*(x-y)+(t1*y2+t2*y)) where t1 = 2x with lower 32 bits
          * cleared, t2 = 2x-t1, y1= y with lower 32 bits chopped, y2 = y-y1.
-         * 
+         *
          * NOTE: scaling may be necessary if some argument is too large or too tiny
-         * 
+         *
          * Special cases: hypot(x,y) is INF if x or y is +INF or -INF; else hypot(x,y) is NAN if x
          * or y is NAN.
-         * 
+         *
          * Accuracy: hypot(x,y) returns sqrt(x^2+y^2) with error less than 1 ulps (units in the last
          * place)
          */
@@ -2795,14 +2796,14 @@ public final class JStrictMath {
     public static double expm1(double xx) {
         /*
          * expm1(x) Returns exp(x)-1, the exponential of x minus 1.
-         * 
+         *
          * Method 1. Argument reduction: Given x, find r and integer k such that
-         * 
+         *
          * x = k*ln2 + r, |r| <= 0.5*ln2 ~ 0.34658
-         * 
+         *
          * Here a correction term c will be computed to compensate the error in r when rounded to a
          * floating-point number.
-         * 
+         *
          * 2. Approximating expm1(r) by a special rational function on the interval [0,0.34658]:
          * Since r*(exp(r)+1)/(exp(r)-1) = 2+ r^2/6 - r^4/360 + ... we define R1(r*r) by
          * r*(exp(r)+1)/(exp(r)-1) = 2+ r^2/6 * R1(r*r) That is, R1(r**2) = 6/r
@@ -2814,17 +2815,17 @@ public final class JStrictMath {
          * 3.9682539681370365873E-4, Q3 = -9.9206344733435987357E-6, Q4 = 2.5051361420808517002E-7,
          * Q5 = -6.2843505682382617102E-9; (where z=r*r, and the values of Q1 to Q5 are listed
          * below) with error bounded by | 5 | -61 | 1.0+Q1*z+...+Q5*z - R1(z) | <= 2 | |
-         * 
+         *
          * expm1(r) = exp(r)-1 is then computed by the following specific way which minimize the
          * accumulation rounding error: 2 3 r r [ 3 - (R1 + R1*r/2) ] expm1(r) = r + --- + --- *
          * [--------------------] 2 2 [ 6 - r*(3 - R1*r/2) ]
-         * 
+         *
          * To compensate the error in the argument reduction, we use expm1(r+c) = expm1(r) + c +
          * expm1(r)*c ~ expm1(r) + c + r*c Thus c+r*c will be added in as the correction terms for
          * expm1(r+c). Now rearrange the term to avoid optimization screw up: ( 2 2 ) ({ ( r [ R1 -
          * (3 - R1*r/2) ] ) } r ) expm1(r+c)~r - ({r*(--- * [--------------------]-c)-c} - --- ) ({
          * ( 2 [ 6 - r*(3 - R1*r/2) ] ) } 2 ) ( )
-         * 
+         *
          * = r - E 3. Scale back to obtain expm1(x): From step 1, we have expm1(x) = either
          * 2^k*[expm1(r)+1] - 1 = or 2^k*[expm1(r) + (1-2^-k)] 4. Implementation notes: (A). To save
          * one multiplication, we scale the coefficient Qi to Qi*2^i, and replace z by (x^2)/2. (B).
@@ -2833,15 +2834,15 @@ public final class JStrictMath {
          * (iv) if k=1 if r < -0.25, return 2*((r+0.5)- E) else return 1.0+2.0*(r-E); (v) if
          * (k<-2||k>56) return 2^k(1-(E-r)) - 1 (or exp(x)-1) (vi) if k <= 20, return
          * 2^k((1-2^-k)-(E-r)), else (vii) return 2^k(1-((E+2^-k)-r))
-         * 
+         *
          * Special cases: expm1(INF) is INF, expm1(NaN) is NaN; expm1(-INF) is -1, and for finite
          * argument, only expm1(0)=0 is exact.
-         * 
+         *
          * Accuracy: according to an error analysis, the error is always less than 1 ulp (unit in
          * the last place).
-         * 
+         *
          * Misc. info. For IEEE double if x > 7.09782712893383973096e+02 then expm1(x) overflow
-         * 
+         *
          * Constants: The hexadecimal values are the intended ones for the following constants. The
          * decimal values may be used, provided that the compiler will convert from decimal to
          * binary accurately enough to produce the hexadecimal values shown.
@@ -2959,15 +2960,15 @@ public final class JStrictMath {
     public static double log1p(double x) {
         /*
          * double log1p(double x)
-         * 
+         *
          * Method : 1. Argument Reduction: find k and f such that 1+x = 2^k * (1+f), where sqrt(2)/2
          * < 1+f < sqrt(2) .
-         * 
+         *
          * Note. If k=0, then f=x is exact. However, if k!=0, then f may not be representable
          * exactly. In that case, a correction term is need. Let u=1+x rounded. Let c = (1+x)-u,
          * then log(1+x) - log(u) ~ c/u. Thus, we proceed to compute log(u), and add back the
          * correction term c/u. (Note: when x > 2**53, one can simply return log(x))
-         * 
+         *
          * 2. Approximation of log1p(f). Let s = f/(2+f) ; based on log(1+f) = log(1+s) - log(1-s) =
          * 2s + 2/3 s**3 + 2/5 s**5 + ....., = 2s + s*R We use a special Reme algorithm on
          * [0,0.1716] to generate a polynomial of degree 14 to approximate R The maximum error of
@@ -2976,26 +2977,26 @@ public final class JStrictMath {
          * listed in the program) and | 2 14 | -58.45 | Lp1*s +...+Lp7*s - R(z) | <= 2 | | Note that
          * 2s = f - s*f = f - hfsq + s*hfsq, where hfsq = f*f/2. In order to guarantee error in log
          * below 1ulp, we compute log by log1p(f) = f - (hfsq - s*(hfsq+R)).
-         * 
+         *
          * 3. Finally, log1p(x) = k*ln2 + log1p(f). = k*ln2_hi+(f-(hfsq-(s*(hfsq+R)+k*ln2_lo))) Here
          * ln2 is split into two floating point number: ln2_hi + ln2_lo, where n*ln2_hi is always
          * exact for |n| < 2000.
-         * 
+         *
          * Special cases: log1p(x) is NaN with signal if x < -1 (including -INF) ; log1p(+INF) is
          * +INF; log1p(-1) is -INF with signal; log1p(NaN) is that NaN with no signal.
-         * 
+         *
          * Accuracy: according to an error analysis, the error is always less than 1 ulp (unit in
          * the last place).
-         * 
+         *
          * Constants: The hexadecimal values are the intended ones for the following constants. The
          * decimal values may be used, provided that the compiler will convert from decimal to
          * binary accurately enough to produce the hexadecimal values shown.
-         * 
+         *
          * Note: Assuming log() return accurate answer, the following algorithm can be used to
          * compute log1p(x) to within a few ULP:
-         * 
+         *
          * u = 1+x; if(u==1.0) return x ; else return log(u)*(x/(u-1.0));
-         * 
+         *
          * See HP-15C Advanced Functions Handbook, p.193.
          */
         double f = 0;
