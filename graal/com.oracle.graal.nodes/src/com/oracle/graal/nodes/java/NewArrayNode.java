@@ -36,6 +36,7 @@ import com.oracle.graal.nodes.virtual.*;
  * The {@code NewArrayNode} is used for all array allocations where the element type is know at
  * compile time.
  */
+// JaCoCo Exclude
 @NodeInfo
 public class NewArrayNode extends AbstractNewArrayNode implements VirtualizableAllocation {
 

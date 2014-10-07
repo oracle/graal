@@ -24,6 +24,7 @@ package com.oracle.graal.replacements;
 
 import com.oracle.graal.replacements.nodes.*;
 
+// JaCoCo Exclude
 public class ReplacementsUtil {
     private ReplacementsUtil() {
         // empty
