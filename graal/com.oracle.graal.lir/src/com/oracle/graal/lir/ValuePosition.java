@@ -136,10 +136,11 @@ public final class ValuePosition {
 
     @Override
     public String toString() {
-        if (outerPosition == ROOT_VALUE_POSITION) {
-            return values.getMode() + "(" + index + (subIndex < 0 ? "" : "/" + subIndex) + ")";
+        String str = "(" + index + (subIndex < 0 ? "" : "/" + subIndex) + ")";
+        if (isCompositePosition()) {
+            return outerPosition.toString() + "[" + str + "]";
         }
-        return outerPosition.toString() + "[" + values.getMode() + "(" + index + (subIndex < 0 ? "" : "/" + subIndex) + ")]";
+        return str;
     }
 
     @Override
@@ -147,9 +148,9 @@ public final class ValuePosition {
         final int prime = 31;
         int result = 1;
         result = prime * result + index;
-        result = prime * result + ((values.getMode() == null) ? 0 : values.getMode().hashCode());
         result = prime * result + subIndex;
         result = prime * result + ((outerPosition == null) ? 0 : outerPosition.hashCode());
+        result = prime * result + ((values == null) ? 0 : values.hashCode());
         return result;
     }
 
@@ -168,9 +169,6 @@ public final class ValuePosition {
         if (index != other.index) {
             return false;
         }
-        if (values.getMode() != other.values.getMode()) {
-            return false;
-        }
         if (subIndex != other.subIndex) {
             return false;
         }
@@ -179,6 +177,13 @@ public final class ValuePosition {
                 return false;
             }
         } else if (!outerPosition.equals(other.outerPosition)) {
+            return false;
+        }
+        if (values == null) {
+            if (other.values != null) {
+                return false;
+            }
+        } else if (!values.equals(other.values)) {
             return false;
         }
         return true;

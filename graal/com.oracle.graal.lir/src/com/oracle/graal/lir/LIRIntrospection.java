@@ -50,17 +50,15 @@ abstract class LIRIntrospection extends FieldIntrospection {
 
     protected static class Values extends Fields {
         private final int directCount;
-        private final OperandMode mode;
         private final EnumSet<OperandFlag>[] flags;
 
         public Values(OperandModeAnnotation mode) {
-            this(mode.directCount, null, mode.values);
+            this(mode.directCount, mode.values);
         }
 
         @SuppressWarnings("unchecked")
-        public Values(int directCount, OperandMode mode, ArrayList<ValueFieldInfo> fields) {
+        public Values(int directCount, ArrayList<ValueFieldInfo> fields) {
             super(fields);
-            this.mode = mode;
             this.directCount = directCount;
             flags = new EnumSet[fields.size()];
             for (int i = 0; i < fields.size(); i++) {
@@ -70,10 +68,6 @@ abstract class LIRIntrospection extends FieldIntrospection {
 
         public int getDirectCount() {
             return directCount;
-        }
-
-        public OperandMode getMode() {
-            return mode;
         }
 
         public EnumSet<OperandFlag> getFlags(int i) {
@@ -98,9 +92,6 @@ abstract class LIRIntrospection extends FieldIntrospection {
 
         @Override
         public String toString() {
-            if (mode != null) {
-                return super.toString() + ":" + mode;
-            }
             return super.toString();
         }
     }

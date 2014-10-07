@@ -226,11 +226,11 @@ public abstract class LIRInstruction {
         instructionClass.forEachAlivePos(this, proc);
     }
 
-    public final void forEachTemp(ValuePositionProcedure proc) {
+    public final void forEachTempPos(ValuePositionProcedure proc) {
         instructionClass.forEachTempPos(this, proc);
     }
 
-    public final void forEachOutput(ValuePositionProcedure proc) {
+    public final void forEachOutputPos(ValuePositionProcedure proc) {
         instructionClass.forEachDefPos(this, proc);
     }
 
