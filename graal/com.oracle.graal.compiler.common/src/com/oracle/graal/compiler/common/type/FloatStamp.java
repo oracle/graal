@@ -666,8 +666,19 @@ public class FloatStamp extends PrimitiveStamp {
 
         @Override
         public Stamp foldStamp(Stamp stamp) {
-            assert stamp instanceof FloatStamp && ((FloatStamp) stamp).getBits() == 32;
-            return StampFactory.forKind(Kind.Int);
+            FloatStamp floatStamp = (FloatStamp) stamp;
+            assert floatStamp.getBits() == 32;
+            boolean mustHaveZero = !floatStamp.isNonNaN();
+            int lowerBound = (int) floatStamp.lowerBound();
+            int upperBound = (int) floatStamp.upperBound();
+            if (mustHaveZero) {
+                if (lowerBound > 0) {
+                    lowerBound = 0;
+                } else if (upperBound < 0) {
+                    upperBound = 0;
+                }
+            }
+            return StampFactory.forInteger(Kind.Int, lowerBound, upperBound);
         }
     },
 
@@ -681,8 +692,19 @@ public class FloatStamp extends PrimitiveStamp {
 
         @Override
         public Stamp foldStamp(Stamp stamp) {
-            assert stamp instanceof FloatStamp && ((FloatStamp) stamp).getBits() == 32;
-            return StampFactory.forKind(Kind.Long);
+            FloatStamp floatStamp = (FloatStamp) stamp;
+            assert floatStamp.getBits() == 32;
+            boolean mustHaveZero = !floatStamp.isNonNaN();
+            long lowerBound = (long) floatStamp.lowerBound();
+            long upperBound = (long) floatStamp.upperBound();
+            if (mustHaveZero) {
+                if (lowerBound > 0) {
+                    lowerBound = 0;
+                } else if (upperBound < 0) {
+                    upperBound = 0;
+                }
+            }
+            return StampFactory.forInteger(Kind.Long, lowerBound, upperBound);
         }
     },
 
@@ -696,8 +718,19 @@ public class FloatStamp extends PrimitiveStamp {
 
         @Override
         public Stamp foldStamp(Stamp stamp) {
-            assert stamp instanceof FloatStamp && ((FloatStamp) stamp).getBits() == 64;
-            return StampFactory.forKind(Kind.Int);
+            FloatStamp floatStamp = (FloatStamp) stamp;
+            assert floatStamp.getBits() == 64;
+            boolean mustHaveZero = !floatStamp.isNonNaN();
+            int lowerBound = (int) floatStamp.lowerBound();
+            int upperBound = (int) floatStamp.upperBound();
+            if (mustHaveZero) {
+                if (lowerBound > 0) {
+                    lowerBound = 0;
+                } else if (upperBound < 0) {
+                    upperBound = 0;
+                }
+            }
+            return StampFactory.forInteger(Kind.Int, lowerBound, upperBound);
         }
     },
 
@@ -711,8 +744,19 @@ public class FloatStamp extends PrimitiveStamp {
 
         @Override
         public Stamp foldStamp(Stamp stamp) {
-            assert stamp instanceof FloatStamp && ((FloatStamp) stamp).getBits() == 64;
-            return StampFactory.forKind(Kind.Long);
+            FloatStamp floatStamp = (FloatStamp) stamp;
+            assert floatStamp.getBits() == 64;
+            boolean mustHaveZero = !floatStamp.isNonNaN();
+            long lowerBound = (long) floatStamp.lowerBound();
+            long upperBound = (long) floatStamp.upperBound();
+            if (mustHaveZero) {
+                if (lowerBound > 0) {
+                    lowerBound = 0;
+                } else if (upperBound < 0) {
+                    upperBound = 0;
+                }
+            }
+            return StampFactory.forInteger(Kind.Long, lowerBound, upperBound);
         }
     },
 
@@ -726,8 +770,9 @@ public class FloatStamp extends PrimitiveStamp {
 
         @Override
         public Stamp foldStamp(Stamp stamp) {
-            assert stamp instanceof FloatStamp && ((FloatStamp) stamp).getBits() == 32;
-            return StampFactory.forKind(Kind.Double);
+            FloatStamp floatStamp = (FloatStamp) stamp;
+            assert floatStamp.getBits() == 32;
+            return StampFactory.forFloat(Kind.Double, floatStamp.lowerBound(), floatStamp.upperBound(), floatStamp.isNonNaN());
         }
     },
 
@@ -741,8 +786,9 @@ public class FloatStamp extends PrimitiveStamp {
 
         @Override
         public Stamp foldStamp(Stamp stamp) {
-            assert stamp instanceof FloatStamp && ((FloatStamp) stamp).getBits() == 64;
-            return StampFactory.forKind(Kind.Float);
+            FloatStamp floatStamp = (FloatStamp) stamp;
+            assert floatStamp.getBits() == 64;
+            return StampFactory.forFloat(Kind.Float, (float) floatStamp.lowerBound(), (float) floatStamp.upperBound(), floatStamp.isNonNaN());
         }
     });
 }
