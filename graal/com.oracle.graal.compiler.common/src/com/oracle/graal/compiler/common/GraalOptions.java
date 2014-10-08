@@ -217,9 +217,6 @@ public final class GraalOptions {
     @Option(help = "")
     public static final OptionValue<Boolean> CanOmitFrame = new OptionValue<>(true);
 
-    @Option(help = "")
-    public static final OptionValue<Boolean> MemoryAwareScheduling = new OptionValue<>(true);
-
     // Translating tableswitch instructions
     @Option(help = "")
     public static final OptionValue<Integer> MinimumJumpTableSize = new OptionValue<>(5);

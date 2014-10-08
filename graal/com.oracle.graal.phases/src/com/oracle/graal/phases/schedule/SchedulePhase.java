@@ -279,7 +279,7 @@ public final class SchedulePhase extends Phase {
     }
 
     public SchedulePhase(SchedulingStrategy strategy) {
-        this.memsched = MemoryAwareScheduling.getValue() ? MemoryScheduling.OPTIMAL : MemoryScheduling.NONE;
+        this.memsched = MemoryScheduling.OPTIMAL;
         this.selectedStrategy = strategy;
     }
 
