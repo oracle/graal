@@ -22,6 +22,10 @@
  */
 package com.oracle.graal.compiler.common.type;
 
+import static com.oracle.graal.compiler.common.type.ArithmeticOpTable.IntegerConvertOp.*;
+
+import java.util.stream.*;
+
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
@@ -81,10 +85,6 @@ public final class ArithmeticOpTable {
         FloatConvertOp[] floatConvert = new FloatConvertOp[FloatConvert.values().length];
 
         for (Op op : ops) {
-            if (op == null) {
-                continue;
-            }
-
             if (op instanceof BinaryOp) {
                 BinaryOp binary = (BinaryOp) op;
                 switch (binary.getOperator()) {
@@ -168,6 +168,12 @@ public final class ArithmeticOpTable {
         return new ArithmeticOpTable(neg, add, sub, mul, div, rem, not, and, or, xor, zeroExtend, signExtend, narrow, floatConvert);
     }
 
+    public Stream<Op> getAllOps() {
+        Stream<Op> ops = Stream.of(neg, add, sub, mul, div, rem, not, and, or, xor, zeroExtend, signExtend, narrow);
+        Stream<Op> floatOps = Stream.of(floatConvert);
+        return Stream.concat(ops, floatOps).filter(op -> op != null);
+    }
+
     private ArithmeticOpTable(UnaryOp neg, BinaryOp add, BinaryOp sub, BinaryOp mul, BinaryOp div, BinaryOp rem, UnaryOp not, BinaryOp and, BinaryOp or, BinaryOp xor, IntegerConvertOp zeroExtend,
                     IntegerConvertOp signExtend, IntegerConvertOp narrow, FloatConvertOp[] floatConvert) {
         this.neg = neg;
@@ -184,6 +190,57 @@ public final class ArithmeticOpTable {
         this.signExtend = signExtend;
         this.narrow = narrow;
         this.floatConvert = floatConvert;
+    }
+
+    public UnaryOp getUnaryOp(UnaryOp op) {
+        switch (op.getOperator()) {
+            case '-':
+                return getNeg();
+            case '~':
+                return getNot();
+            default:
+                return getFloatConvertOp((FloatConvertOp) op);
+        }
+    }
+
+    public BinaryOp getBinaryOp(BinaryOp op) {
+        switch (op.getOperator()) {
+            case '+':
+                return getAdd();
+            case '-':
+                return getSub();
+            case '*':
+                return getMul();
+            case '/':
+                return getDiv();
+            case '%':
+                return getRem();
+            case '&':
+                return getAnd();
+            case '|':
+                return getOr();
+            case '^':
+                return getXor();
+            default:
+                throw GraalInternalError.shouldNotReachHere("unknown binary operator " + op);
+        }
+    }
+
+    public IntegerConvertOp getIntegerConvertOp(IntegerConvertOp op) {
+        switch (op.getOperator()) {
+            case ZERO_EXTEND:
+                return getZeroExtend();
+            case SIGN_EXTEND:
+                return getSignExtend();
+            case NARROW:
+                return getNarrow();
+            default:
+                throw GraalInternalError.shouldNotReachHere("unknown integer convert operator " + op);
+        }
+    }
+
+    public FloatConvertOp getFloatConvertOp(FloatConvertOp op) {
+        return getFloatConvert(op.getFloatConvert());
     }
 
     /**
