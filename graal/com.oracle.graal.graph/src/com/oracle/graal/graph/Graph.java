@@ -815,7 +815,7 @@ public class Graph {
      * @param replacementsMap the replacement map (can be null if no replacement is to be performed)
      * @return a map which associates the original nodes from {@code nodes} to their duplicates
      */
-    public Map<Node, Node> addDuplicates(Iterable<Node> newNodes, final Graph oldGraph, int estimatedNodeCount, Map<Node, Node> replacementsMap) {
+    public Map<Node, Node> addDuplicates(Iterable<? extends Node> newNodes, final Graph oldGraph, int estimatedNodeCount, Map<Node, Node> replacementsMap) {
         DuplicationReplacement replacements;
         if (replacementsMap == null) {
             replacements = null;
@@ -849,7 +849,7 @@ public class Graph {
     private static final DebugTimer DuplicateGraph = Debug.timer("DuplicateGraph");
 
     @SuppressWarnings("all")
-    public Map<Node, Node> addDuplicates(Iterable<Node> newNodes, final Graph oldGraph, int estimatedNodeCount, DuplicationReplacement replacements) {
+    public Map<Node, Node> addDuplicates(Iterable<? extends Node> newNodes, final Graph oldGraph, int estimatedNodeCount, DuplicationReplacement replacements) {
         try (TimerCloseable s = DuplicateGraph.start()) {
             return NodeClass.addGraphDuplicate(this, oldGraph, estimatedNodeCount, newNodes, replacements);
         }
