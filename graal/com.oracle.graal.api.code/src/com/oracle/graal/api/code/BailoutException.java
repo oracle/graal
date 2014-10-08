@@ -42,7 +42,7 @@ public class BailoutException extends RuntimeException {
      */
     public BailoutException(String format, Object... args) {
         super(String.format(Locale.ENGLISH, format, args));
-        this.permanent = false;
+        this.permanent = true;
     }
 
     /**
