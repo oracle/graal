@@ -36,8 +36,8 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public abstract class IntegerConvertNode extends UnaryNode implements ConvertNode, ArithmeticLIRLowerable {
 
-    protected final IntegerConvertOp op;
-    protected final IntegerConvertOp reverseOp;
+    protected IntegerConvertOp op;
+    protected IntegerConvertOp reverseOp;
 
     protected final int resultBits;
 
@@ -72,7 +72,12 @@ public abstract class IntegerConvertNode extends UnaryNode implements ConvertNod
 
     @Override
     public boolean inferStamp() {
-        return updateStamp(op.foldStamp(resultBits, getValue().stamp()));
+        op = ArithmeticOpTable.forStamp(getValue().stamp()).getIntegerConvertOp(op);
+        boolean changed = updateStamp(op.foldStamp(resultBits, getValue().stamp()));
+        if (changed) {
+            reverseOp = ArithmeticOpTable.forStamp(stamp()).getIntegerConvertOp(reverseOp);
+        }
+        return changed;
     }
 
     @Override
