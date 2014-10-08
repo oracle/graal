@@ -49,6 +49,8 @@ import com.oracle.graal.nodes.util.*;
 @NodeInfo
 public class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerable {
 
+    private static final DebugMetric CORRECTED_PROBABILITIES = Debug.metric("CorrectedProbabilities");
+
     @Successor BeginNode trueSuccessor;
     @Successor BeginNode falseSuccessor;
     @Input(InputType.Condition) LogicNode condition;
@@ -147,6 +149,18 @@ public class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerab
 
     @Override
     public void simplify(SimplifierTool tool) {
+        if (trueSuccessor().next() instanceof DeoptimizeNode) {
+            if (trueSuccessorProbability != 0) {
+                CORRECTED_PROBABILITIES.increment();
+                trueSuccessorProbability = 0;
+            }
+        } else if (falseSuccessor().next() instanceof DeoptimizeNode) {
+            if (trueSuccessorProbability != 1) {
+                CORRECTED_PROBABILITIES.increment();
+                trueSuccessorProbability = 1;
+            }
+        }
+
         if (condition() instanceof LogicNegationNode) {
             BeginNode trueSucc = trueSuccessor();
             BeginNode falseSucc = falseSuccessor();
