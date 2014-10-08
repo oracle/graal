@@ -320,7 +320,7 @@ public final class CompileTheWorld {
     class CTWCompilationTask extends CompilationTask {
 
         CTWCompilationTask(HotSpotBackend backend, HotSpotResolvedJavaMethod method) {
-            super(backend, method, INVOCATION_ENTRY_BCI, 0L, method.allocateCompileId(INVOCATION_ENTRY_BCI));
+            super(backend, method, INVOCATION_ENTRY_BCI, 0L, method.allocateCompileId(INVOCATION_ENTRY_BCI), false);
         }
 
         /**
@@ -348,7 +348,6 @@ public final class CompileTheWorld {
             memoryUsed += getCurrentThreadAllocatedBytes() - allocatedAtStart;
             compileTime += (System.currentTimeMillis() - start);
             compiledMethodsCounter++;
-            method.reprofile();  // makes the method also not-entrant
         } catch (Throwable t) {
             // Catch everything and print a message
             println("CompileTheWorld (%d) : Error compiling method: %s", classFileCounter, method.format("%H.%n(%p):%r"));

@@ -138,7 +138,7 @@ public class MemoryUsageBenchmark extends GraalCompilerTest {
         long ctask = 0L;
 
         try (MemoryUsageCloseable c = label == null ? null : new MemoryUsageCloseable(label)) {
-            CompilationTask task = new CompilationTask(backend, method, INVOCATION_ENTRY_BCI, ctask, id);
+            CompilationTask task = new CompilationTask(backend, method, INVOCATION_ENTRY_BCI, ctask, id, false);
             task.runCompilation();
         }
     }
@@ -154,7 +154,7 @@ public class MemoryUsageBenchmark extends GraalCompilerTest {
             int id = method.allocateCompileId(INVOCATION_ENTRY_BCI);
             long ctask = 0L;
             try (AllocSpy as = AllocSpy.open(methodName)) {
-                CompilationTask task = new CompilationTask(backend, method, INVOCATION_ENTRY_BCI, ctask, id);
+                CompilationTask task = new CompilationTask(backend, method, INVOCATION_ENTRY_BCI, ctask, id, false);
                 task.runCompilation();
             }
         }

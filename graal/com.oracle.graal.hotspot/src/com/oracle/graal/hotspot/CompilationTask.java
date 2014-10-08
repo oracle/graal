@@ -79,6 +79,12 @@ public class CompilationTask {
     private final int entryBCI;
     private final int id;
 
+    /**
+     * Specifies whether the compilation result is installed as the
+     * {@linkplain HotSpotNmethod#isDefault() default} nmethod for the compiled method.
+     */
+    private final boolean installAsDefault;
+
     private StructuredGraph graph;
 
     /**
@@ -93,12 +99,13 @@ public class CompilationTask {
      */
     private final long ctask;
 
-    public CompilationTask(HotSpotBackend backend, HotSpotResolvedJavaMethod method, int entryBCI, long ctask, int id) {
+    public CompilationTask(HotSpotBackend backend, HotSpotResolvedJavaMethod method, int entryBCI, long ctask, int id, boolean installAsDefault) {
         this.backend = backend;
         this.method = method;
         this.entryBCI = entryBCI;
         this.id = id;
         this.ctask = ctask;
+        this.installAsDefault = installAsDefault;
     }
 
     public ResolvedJavaMethod getMethod() {
@@ -315,7 +322,7 @@ public class CompilationTask {
         final HotSpotCodeCacheProvider codeCache = backend.getProviders().getCodeCache();
         InstalledCode installedCode = null;
         try (Scope s = Debug.scope("CodeInstall", new DebugDumpScope(String.valueOf(id), true), codeCache, method)) {
-            installedCode = codeCache.installMethod(method, compResult, ctask);
+            installedCode = codeCache.installMethod(method, compResult, ctask, installAsDefault);
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
@@ -357,7 +364,7 @@ public class CompilationTask {
      */
     static void compileMethod(HotSpotResolvedJavaMethod method, int entryBCI, long ctask, int id) {
         HotSpotBackend backend = runtime().getHostBackend();
-        CompilationTask task = new CompilationTask(backend, method, entryBCI, ctask, id);
+        CompilationTask task = new CompilationTask(backend, method, entryBCI, ctask, id, true);
         task.runCompilation();
         return;
     }
