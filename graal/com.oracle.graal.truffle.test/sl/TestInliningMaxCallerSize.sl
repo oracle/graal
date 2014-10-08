@@ -18,9 +18,12 @@ function test2() {
 }
 
 function main() {
+    originalMaxCallerSize = getOption("TruffleInliningMaxCallerSize");
+    setOption("TruffleInliningMaxCallerSize", 20);
     waitForOptimization(callUntilOptimized(test1));
     assertTrue(isInlined(test1, test1, inlinableFunction), "inlinableFunction is not inlined");
     
     waitForOptimization(callUntilOptimized(test2));
     assertFalse(isInlined(test2, test2, notInlinableFunction), "notInlinableFunction is inlined");
+    setOption("TruffleInliningMaxCallerSize", originalMaxCallerSize);
 }  
