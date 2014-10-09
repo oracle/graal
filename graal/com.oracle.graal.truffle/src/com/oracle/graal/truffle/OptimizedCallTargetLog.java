@@ -82,7 +82,7 @@ public final class OptimizedCallTargetLog {
             public boolean visit(List<TruffleInlining> decisionStack, Node node) {
                 if (node instanceof OptimizedDirectCallNode) {
                     OptimizedDirectCallNode callNode = ((OptimizedDirectCallNode) node);
-                    int depth = decisionStack == null ? 0 : decisionStack.size();
+                    int depth = decisionStack == null ? 0 : decisionStack.size() - 1;
                     TruffleInliningDecision inlining = CallTreeNodeVisitor.getCurrentInliningDecision(decisionStack);
                     String dispatched = "<dispatched>";
                     if (inlining != null && inlining.isInline()) {
@@ -92,10 +92,10 @@ public final class OptimizedCallTargetLog {
                     addASTSizeProperty(callNode.getCurrentCallTarget(), properties);
                     properties.putAll(callNode.getCurrentCallTarget().getDebugProperties());
                     properties.put("Stamp", callNode.getCurrentCallTarget().getArgumentStamp());
-                    log((depth * 2), "call", callNode.getCurrentCallTarget().toString() + dispatched, properties);
+                    log((depth * 2), "opt call tree", callNode.getCurrentCallTarget().toString() + dispatched, properties);
                 } else if (node instanceof OptimizedIndirectCallNode) {
-                    int depth = decisionStack == null ? 0 : decisionStack.size();
-                    log((depth * 2), "call", "<indirect>", new LinkedHashMap<String, Object>());
+                    int depth = decisionStack == null ? 0 : decisionStack.size() - 1;
+                    log((depth * 2), "opt call tree", "<indirect>", new LinkedHashMap<String, Object>());
                 }
                 return true;
             }
