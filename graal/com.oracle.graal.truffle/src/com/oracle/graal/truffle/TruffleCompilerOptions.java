@@ -95,7 +95,7 @@ public class TruffleCompilerOptions {
 
     // tracing
     @Option(help = "Prints potential performance problems of the guest language implementation.")
-    public static final OptionValue<Boolean> PrintTrufflePerformanceWarnings = new OptionValue<>(false);
+    public static final OptionValue<Boolean> TraceTrufflePerformanceWarnings = new OptionValue<>(false);
     @Option(help = "")
     public static final OptionValue<Boolean> TraceTruffleCompilation = new OptionValue<>(false);
     @Option(help = "")

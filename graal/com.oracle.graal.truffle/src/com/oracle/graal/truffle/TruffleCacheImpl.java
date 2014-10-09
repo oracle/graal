@@ -192,7 +192,7 @@ public class TruffleCacheImpl implements TruffleCache {
                 }
             }
 
-            if (TruffleCompilerOptions.PrintTrufflePerformanceWarnings.getValue()) {
+            if (TruffleCompilerOptions.TraceTrufflePerformanceWarnings.getValue()) {
                 int warnNodeCount = TruffleCompilerOptions.TrufflePerformanceWarningGraalNodeCount.getValue();
                 if (graph.getNodeCount() > warnNodeCount) {
                     Map<String, Object> map = new LinkedHashMap<>();

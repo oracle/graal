@@ -371,7 +371,7 @@ public class PartialEvaluator {
         TruffleInliningDecision decision = inlining.findByCall(callNode);
         boolean inline;
         if (decision == null) {
-            if (TruffleCompilerOptions.PrintTrufflePerformanceWarnings.getValue()) {
+            if (TruffleCompilerOptions.TraceTrufflePerformanceWarnings.getValue()) {
                 Map<String, Object> properties = new LinkedHashMap<>();
                 properties.put("callNode", callNode);
                 logPerformanceWarning("A direct call within the Truffle AST is not reachable anymore. Call node could not be inlined.", properties);
@@ -385,7 +385,7 @@ public class PartialEvaluator {
 
         OptimizedCallTarget currentTarget = decision.getProfile().getCallNode().getCurrentCallTarget();
         if (decision.getTarget() != currentTarget) {
-            if (TruffleCompilerOptions.PrintTrufflePerformanceWarnings.getValue()) {
+            if (TruffleCompilerOptions.TraceTrufflePerformanceWarnings.getValue()) {
                 Map<String, Object> properties = new LinkedHashMap<>();
                 properties.put("originalTarget", decision.getTarget());
                 properties.put("callNode", callNode);
