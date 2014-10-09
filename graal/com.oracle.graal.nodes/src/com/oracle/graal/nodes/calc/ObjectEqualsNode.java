@@ -122,13 +122,18 @@ public class ObjectEqualsNode extends CompareNode implements Virtualizable {
                  */
                 tool.replaceWithValue(LogicConstantNode.contradiction(graph()));
             } else if (!xIdentity && !yIdentity) {
-                // both are virtual without identity: check contents
-                assert stateX.getVirtualObject().entryCount() == 1 && stateY.getVirtualObject().entryCount() == 1;
-                assert stateX.getVirtualObject().type().equals(stateY.getVirtualObject().type());
-                assert stateX.getVirtualObject().entryKind(0).getStackKind() == Kind.Int || stateX.getVirtualObject().entryKind(0) == Kind.Long;
-                IntegerEqualsNode equals = IntegerEqualsNode.create(stateX.getEntry(0), stateY.getEntry(0));
-                tool.addNode(equals);
-                tool.replaceWithValue(equals);
+                ResolvedJavaType type = stateX.getVirtualObject().type();
+                if (type.equals(stateY.getVirtualObject().type())) {
+                    MetaAccessProvider metaAccess = tool.getMetaAccessProvider();
+                    if (type.equals(metaAccess.lookupJavaType(Integer.class)) || type.equals(metaAccess.lookupJavaType(Long.class))) {
+                        // both are virtual without identity: check contents
+                        assert stateX.getVirtualObject().entryCount() == 1 && stateY.getVirtualObject().entryCount() == 1;
+                        assert stateX.getVirtualObject().entryKind(0).getStackKind() == Kind.Int || stateX.getVirtualObject().entryKind(0) == Kind.Long;
+                        IntegerEqualsNode equals = IntegerEqualsNode.create(stateX.getEntry(0), stateY.getEntry(0));
+                        tool.addNode(equals);
+                        tool.replaceWithValue(equals);
+                    }
+                }
             } else {
                 // both are virtual with identity: check if they refer to the same object
                 tool.replaceWithValue(LogicConstantNode.forBoolean(stateX == stateY, graph()));
