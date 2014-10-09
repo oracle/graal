@@ -190,6 +190,13 @@ public class TruffleInlining implements Iterable<TruffleInliningDecision> {
             return depth;
         }
 
+        static TruffleInliningDecision getCurrentInliningDecision(List<TruffleInlining> decisionStack) {
+            if (decisionStack.size() <= 1) {
+                return null;
+            }
+            return (TruffleInliningDecision) decisionStack.get(decisionStack.size() - 1);
+        }
+
     }
 
     /**

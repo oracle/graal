@@ -76,14 +76,18 @@ public final class OptimizedCallTargetLog {
         }
     }
 
-    public static void logTruffleCalls(OptimizedCallTarget compilable) {
+    public static void logTruffleCallTree(OptimizedCallTarget compilable) {
         CallTreeNodeVisitor visitor = new CallTreeNodeVisitor() {
 
             public boolean visit(List<TruffleInlining> decisionStack, Node node) {
                 if (node instanceof OptimizedDirectCallNode) {
-                    int depth = decisionStack == null ? 0 : decisionStack.size();
                     OptimizedDirectCallNode callNode = ((OptimizedDirectCallNode) node);
-                    String dispatched = !callNode.isInlined() ? " <dispatched>" : "";
+                    int depth = decisionStack == null ? 0 : decisionStack.size();
+                    TruffleInliningDecision inlining = CallTreeNodeVisitor.getCurrentInliningDecision(decisionStack);
+                    String dispatched = "<dispatched>";
+                    if (inlining != null && inlining.isInline()) {
+                        dispatched = "";
+                    }
                     Map<String, Object> properties = new LinkedHashMap<>();
                     addASTSizeProperty(callNode.getCurrentCallTarget(), properties);
                     properties.putAll(callNode.getCurrentCallTarget().getDebugProperties());
@@ -175,27 +179,15 @@ public final class OptimizedCallTargetLog {
             log(0, "opt done", target.toString(), properties);
         }
         if (TraceTruffleCompilationPolymorphism.getValue()) {
-
-            target.getRootNode().accept(new NodeVisitor() {
-                public boolean visit(Node node) {
-                    NodeCost kind = node.getCost();
-                    if (kind == NodeCost.POLYMORPHIC || kind == NodeCost.MEGAMORPHIC) {
-                        Map<String, Object> props = new LinkedHashMap<>();
-                        props.put("simpleName", node.getClass().getSimpleName());
-                        props.put("subtree", "\n" + NodeUtil.printCompactTreeToString(node));
-                        String msg = kind == NodeCost.MEGAMORPHIC ? "megamorphic" : "polymorphic";
-                        log(0, msg, node.toString(), props);
-                    }
-                    if (node instanceof DirectCallNode) {
-                        DirectCallNode callNode = (DirectCallNode) node;
-                        if (callNode.isInlined()) {
-                            callNode.getCurrentRootNode().accept(this);
-                        }
-                    }
-                    return true;
-                }
+            target.nodeStream(true).filter(node -> node != null && (node.getCost() == NodeCost.MEGAMORPHIC || node.getCost() == NodeCost.POLYMORPHIC))//
+            .forEach(node -> {
+                NodeCost cost = node.getCost();
+                Map<String, Object> props = new LinkedHashMap<>();
+                props.put("simpleName", node.getClass().getSimpleName());
+                props.put("subtree", "\n" + NodeUtil.printCompactTreeToString(node));
+                String msg = cost == NodeCost.MEGAMORPHIC ? "megamorphic" : "polymorphic";
+                log(0, msg, node.toString(), props);
             });
-
         }
     }
 

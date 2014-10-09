@@ -25,7 +25,6 @@ package com.oracle.graal.truffle;
 import com.oracle.graal.debug.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.nodes.*;
-import com.oracle.truffle.api.nodes.GraphPrintVisitor.ChildSupplier;
 
 public class TruffleTreeDumpHandler implements DebugDumpHandler {
 
@@ -50,24 +49,7 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
     }
 
     private static void dumpFullTree(final GraphPrintVisitor visitor, final String message, final OptimizedCallTarget oct) {
-
-        visitor.setChildSupplier(new ChildSupplier() {
-
-            public Object startNode(Object callNode) {
-                if (callNode instanceof OptimizedDirectCallNode) {
-                    if (((OptimizedDirectCallNode) callNode).isInlined()) {
-                        return ((OptimizedDirectCallNode) callNode).getCurrentRootNode();
-                    }
-                }
-                return null;
-            }
-
-            public void endNode(Object callNode) {
-            }
-        });
-
         visitor.beginGraph(message).visit(oct.getRootNode());
-        visitor.setChildSupplier(null);
     }
 
     public void close() {
