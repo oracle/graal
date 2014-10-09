@@ -1149,6 +1149,10 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMConstant(name = "JVM_CONSTANT_MethodTypeInError") @Stable public int jvmConstantMethodTypeInError;
     @HotSpotVMConstant(name = "JVM_CONSTANT_InvokeDynamic") @Stable public int jvmConstantInvokeDynamic;
 
+    @HotSpotVMConstant(name = "JVM_CONSTANT_ExternalMax") @Stable public int jvmConstantExternalMax;
+    @HotSpotVMConstant(name = "JVM_CONSTANT_InternalMin") @Stable public int jvmConstantInternalMin;
+    @HotSpotVMConstant(name = "JVM_CONSTANT_InternalMax") @Stable public int jvmConstantInternalMax;
+
     @HotSpotVMConstant(name = "HeapWordSize") @Stable public int heapWordSize;
 
     @HotSpotVMType(name = "Symbol*", get = HotSpotVMType.Type.SIZE) @Stable public int symbolPointerSize;

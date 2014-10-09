@@ -65,23 +65,53 @@ public class HotSpotConstantPool extends CompilerObject implements ConstantPool 
         InvokeDynamic(config().jvmConstantInvokeDynamic);
         // @formatter:on
 
-        private final int value;
+        private final int tag;
 
-        private JVM_CONSTANT(int value) {
-            this.value = value;
+        private static final int ExternalMax = config().jvmConstantExternalMax;
+        private static final int InternalMin = config().jvmConstantInternalMin;
+        private static final int InternalMax = config().jvmConstantInternalMax;
+
+        private JVM_CONSTANT(int tag) {
+            this.tag = tag;
         }
 
         private static HotSpotVMConfig config() {
             return runtime().getConfig();
         }
 
-        public static JVM_CONSTANT getEnum(int value) {
-            for (JVM_CONSTANT e : values()) {
-                if (e.value == value) {
-                    return e;
+        /**
+         * Maps JVM_CONSTANT tags to {@link JVM_CONSTANT} values. Using a separate class for lazy
+         * initialization.
+         */
+        static class TagValueMap {
+            private static final JVM_CONSTANT[] table = new JVM_CONSTANT[ExternalMax + 1 + (InternalMax - InternalMin) + 1];
+            static {
+                assert InternalMin > ExternalMax;
+                for (JVM_CONSTANT e : values()) {
+                    table[indexOf(e.tag)] = e;
                 }
             }
-            throw GraalInternalError.shouldNotReachHere("unknown enum value " + value);
+
+            private static int indexOf(int tag) {
+                if (tag >= InternalMin) {
+                    return tag - InternalMin + ExternalMax + 1;
+                } else {
+                    assert tag <= ExternalMax;
+                }
+                return tag;
+            }
+
+            static JVM_CONSTANT get(int tag) {
+                JVM_CONSTANT res = table[indexOf(tag)];
+                if (res != null) {
+                    return res;
+                }
+                throw GraalInternalError.shouldNotReachHere("unknown JVM_CONSTANT tag " + tag);
+            }
+        }
+
+        public static JVM_CONSTANT getEnum(int tag) {
+            return TagValueMap.get(tag);
         }
     }
 
