@@ -103,7 +103,12 @@ public class PartialEvaluator {
 
             Debug.dump(graph, "Before expansion");
 
-            expandTree(graph, assumptions);
+            TruffleExpansionLogger expansionLogger = null;
+            if (TraceTruffleExpansion.getValue()) {
+                expansionLogger = new TruffleExpansionLogger(providers, graph);
+            }
+
+            expandTree(graph, assumptions, expansionLogger);
 
             TruffleInliningCache inliningCache = null;
             if (TruffleFunctionInlining.getValue()) {
@@ -113,7 +118,7 @@ public class PartialEvaluator {
                 }
             }
 
-            expandDirectCalls(graph, assumptions, callTarget.getInlining(), inliningCache);
+            expandDirectCalls(graph, assumptions, expansionLogger, callTarget.getInlining(), inliningCache);
 
             if (Thread.currentThread().isInterrupted()) {
                 return null;
@@ -140,12 +145,16 @@ public class PartialEvaluator {
             }
 
             // to make frame propagations visible retry expandTree
-            while (expandTree(graph, assumptions)) {
+            while (expandTree(graph, assumptions, expansionLogger)) {
                 try (Scope pe = Debug.scope("TrufflePartialEscape", graph)) {
                     new PartialEscapePhase(true, canonicalizer).apply(graph, tierContext);
                 } catch (Throwable t) {
                     Debug.handle(t);
                 }
+            }
+
+            if (expansionLogger != null) {
+                expansionLogger.print(callTarget);
             }
 
             for (NeverPartOfCompilationNode neverPartOfCompilationNode : graph.getNodes(NeverPartOfCompilationNode.class)) {
@@ -210,12 +219,8 @@ public class PartialEvaluator {
         new DebugHistogramAsciiPrinter(TTY.out().out()).print(histogram);
     }
 
-    private boolean expandTree(StructuredGraph graph, Assumptions assumptions) {
+    private boolean expandTree(StructuredGraph graph, Assumptions assumptions, TruffleExpansionLogger expansionLogger) {
         PhaseContext phaseContext = new PhaseContext(providers, assumptions);
-        TruffleExpansionLogger expansionLogger = null;
-        if (TraceTruffleExpansion.getValue()) {
-            expansionLogger = new TruffleExpansionLogger(providers, graph);
-        }
         boolean changed = false;
         boolean changedInIteration;
         do {
@@ -256,22 +261,19 @@ public class PartialEvaluator {
 
         } while (changedInIteration);
 
-        if (TraceTruffleExpansion.getValue()) {
-            expansionLogger.print();
-        }
         return changed;
     }
 
     private void expandTreeInline(StructuredGraph graph, PhaseContext phaseContext, TruffleExpansionLogger expansionLogger, MethodCallTargetNode methodCallTargetNode, StructuredGraph inlineGraph) {
         try (Indent indent = Debug.logAndIndent("expand graph %s", methodCallTargetNode.targetMethod())) {
             int nodeCountBefore = graph.getNodeCount();
-            if (TraceTruffleExpansion.getValue() && expansionLogger != null) {
+            if (expansionLogger != null) {
                 expansionLogger.preExpand(methodCallTargetNode, inlineGraph);
             }
             List<Node> canonicalizedNodes = methodCallTargetNode.invoke().asNode().usages().snapshot();
 
             Map<Node, Node> inlined = InliningUtil.inline(methodCallTargetNode.invoke(), inlineGraph, false, canonicalizedNodes);
-            if (TraceTruffleExpansion.getValue() && expansionLogger != null) {
+            if (expansionLogger != null) {
                 expansionLogger.postExpand(inlined);
             }
             if (Debug.isDumpEnabled()) {
@@ -335,18 +337,18 @@ public class PartialEvaluator {
         }
     }
 
-    private void expandDirectCalls(StructuredGraph graph, Assumptions assumptions, TruffleInlining inlining, TruffleInliningCache inliningCache) {
+    private void expandDirectCalls(StructuredGraph graph, Assumptions assumptions, TruffleExpansionLogger expansionLogger, TruffleInlining inlining, TruffleInliningCache inliningCache) {
         PhaseContext phaseContext = new PhaseContext(providers, assumptions);
 
         for (MethodCallTargetNode methodCallTargetNode : graph.getNodes(MethodCallTargetNode.class).snapshot()) {
             StructuredGraph inlineGraph = parseDirectCallGraph(phaseContext, assumptions, inlining, inliningCache, methodCallTargetNode);
 
             if (inlineGraph != null) {
-                expandTreeInline(graph, phaseContext, null, methodCallTargetNode, inlineGraph);
+                expandTreeInline(graph, phaseContext, expansionLogger, methodCallTargetNode, inlineGraph);
             }
         }
         // non inlined direct calls need to be expanded until TruffleCallBoundary.
-        expandTree(graph, assumptions);
+        expandTree(graph, assumptions, expansionLogger);
         assert noDirectCallsLeft(graph);
     }
 
@@ -453,8 +455,16 @@ public class PartialEvaluator {
             OptimizedCallTarget target = decision.getTarget();
             StructuredGraph inlineGraph = truffleCache.createInlineGraph(target.toString());
             injectConstantCallTarget(inlineGraph, decision.getTarget(), phaseContext);
-            expandTree(inlineGraph, assumptions);
-            expandDirectCalls(inlineGraph, assumptions, decision, cache);
+            TruffleExpansionLogger expansionLogger = null;
+            if (TraceTruffleExpansion.getValue()) {
+                expansionLogger = new TruffleExpansionLogger(providers, inlineGraph);
+            }
+            expandTree(inlineGraph, assumptions, expansionLogger);
+            expandDirectCalls(inlineGraph, assumptions, expansionLogger, decision, cache);
+
+            if (expansionLogger != null) {
+                expansionLogger.print(target);
+            }
             return inlineGraph;
         } catch (Throwable e) {
             throw Debug.handle(e);

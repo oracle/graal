@@ -89,7 +89,8 @@ public class TruffleExpansionLogger {
         }
     }
 
-    public void print() {
+    public void print(OptimizedCallTarget target) {
+        System.out.printf("Expansion tree for %s: %n", target);
         root.print(System.out);
     }
 
