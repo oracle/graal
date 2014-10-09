@@ -80,7 +80,7 @@ public class NewObjectSnippets implements Snippets {
         Total
     }
 
-    public static final ProfileMode PROFILE_MODE = ProfileMode.Total;
+    public static final ProfileMode PROFILE_MODE = ProfileMode.AllocatedTypes;
 
     @Fold
     private static String createName(String path, String typeContext) {
