@@ -87,14 +87,14 @@ public abstract class GraalFrameInstance implements FrameInstance {
 
     /**
      * This class represents a frame that is taken from the
-     * {@link OptimizedDirectCallNode#callProxy(MaterializedFrameNotify, CallTarget, VirtualFrame, Object[], boolean, boolean)}
+     * {@link OptimizedDirectCallNode#callProxy(MaterializedFrameNotify, CallTarget, VirtualFrame, Object[], boolean)}
      * method.
      */
     public static final class CallNodeFrame extends GraalFrameInstance {
         public static final Method METHOD;
         static {
             try {
-                METHOD = OptimizedDirectCallNode.class.getDeclaredMethod("callProxy", MaterializedFrameNotify.class, CallTarget.class, VirtualFrame.class, Object[].class, boolean.class, boolean.class);
+                METHOD = OptimizedDirectCallNode.class.getDeclaredMethod("callProxy", MaterializedFrameNotify.class, CallTarget.class, VirtualFrame.class, Object[].class, boolean.class);
             } catch (NoSuchMethodException | SecurityException e) {
                 throw new GraalInternalError(e);
             }

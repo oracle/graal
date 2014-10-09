@@ -38,7 +38,7 @@ public final class OptimizedIndirectCallNode extends IndirectCallNode implements
 
     @Override
     public Object call(VirtualFrame frame, CallTarget target, Object[] arguments) {
-        return OptimizedDirectCallNode.callProxy(this, target, frame, arguments, false, false);
+        return OptimizedDirectCallNode.callProxy(this, target, frame, arguments, false);
     }
 
     @Override

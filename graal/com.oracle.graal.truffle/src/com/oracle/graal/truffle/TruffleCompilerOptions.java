@@ -53,20 +53,12 @@ public class TruffleCompilerOptions {
     public static final OptionValue<Integer> TruffleReplaceReprofileCount = new OptionValue<>(10);
     @Option(help = "Enable automatic inlining of call targets")
     public static final OptionValue<Boolean> TruffleFunctionInlining = new OptionValue<>(true);
-    @Option(help = "Experimental: Enable context senstive inlining decisions.")
-    public static final StableOptionValue<Boolean> TruffleContextSensitiveInlining = new StableOptionValue<>(false);
-    @Option(help = "Experimental: Enable an expansion cache per CallTarget. Only functionable with TruffleContextSensitiveInlining enabled.")
-    public static final OptionValue<Boolean> TruffleCallTargetExpansionCache = new OptionValue<>(true);
+    @Option(help = "Enable an expansion cache per CallTarget. Only functionable with TruffleContextSensitiveInlining enabled.")
+    public static final OptionValue<Boolean> TruffleFunctionInliningCache = new OptionValue<>(true);
     @Option(help = "Maximum number of Graal IR nodes during partial evaluation")
     public static final OptionValue<Integer> TruffleGraphMaxNodes = new OptionValue<>(200000);
     @Option(help = "Stop inlining if caller's cumulative tree size would exceed this limit")
     public static final OptionValue<Integer> TruffleInliningMaxCallerSize = new OptionValue<>(2250);
-    @Option(help = "Skip inlining candidate if its tree size exceeds this limit")
-    public static final OptionValue<Integer> TruffleInliningMaxCalleeSize = new OptionValue<>(500);
-    @Option(help = "Call frequency relative to call target")
-    public static final OptionValue<Double> TruffleInliningMinFrequency = new OptionValue<>(0.3);
-    @Option(help = "Allow inlining of less hot candidates if tree size is small")
-    public static final OptionValue<Integer> TruffleInliningTrivialSize = new OptionValue<>(10);
 
     @Option(help = "Defines the number of graal nodes that triggers a performance warning.")
     public static final OptionValue<Integer> TrufflePerformanceWarningGraalNodeCount = new OptionValue<>(1000);

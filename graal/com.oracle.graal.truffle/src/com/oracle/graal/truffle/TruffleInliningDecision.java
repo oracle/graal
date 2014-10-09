@@ -24,49 +24,61 @@ package com.oracle.graal.truffle;
 
 import java.util.*;
 
-public final class TruffleInliningDecision implements Iterable<TruffleInliningProfile> {
+public final class TruffleInliningDecision extends TruffleInlining implements Comparable<TruffleInliningDecision> {
 
-    private final OptimizedCallTarget callTarget;
-    private final Map<OptimizedDirectCallNode, TruffleInliningProfile> profiles;
-    private final Set<TruffleInliningProfile> inlined;
-    private final int nodeCount;
+    private final OptimizedCallTarget target;
+    private final TruffleInliningProfile profile;
+    private boolean inline;
 
-    public TruffleInliningDecision(OptimizedCallTarget callTarget, List<TruffleInliningProfile> profiles, Set<TruffleInliningProfile> inlined, int nodeCount) {
-        this.callTarget = callTarget;
-        this.profiles = new HashMap<>();
-        for (TruffleInliningProfile profile : profiles) {
-            this.profiles.put(profile.getCallNode(), profile);
+    public TruffleInliningDecision(OptimizedCallTarget target, TruffleInliningProfile profile, List<TruffleInliningDecision> children) {
+        super(children);
+        this.target = target;
+        this.profile = profile;
+    }
+
+    public OptimizedCallTarget getTarget() {
+        return target;
+    }
+
+    void setInline(boolean inline) {
+        this.inline = inline;
+    }
+
+    public boolean isInline() {
+        return inline;
+    }
+
+    public TruffleInliningProfile getProfile() {
+        return profile;
+    }
+
+    public int compareTo(TruffleInliningDecision o) {
+        return Double.compare(o.getProfile().getScore(), getProfile().getScore());
+    }
+
+    public boolean isSameAs(TruffleInliningDecision other) {
+        if (getTarget() != other.getTarget()) {
+            return false;
+        } else if (isInline() != other.isInline()) {
+            return false;
+        } else if (!isInline()) {
+            assert !other.isInline();
+            return true;
+        } else {
+            Iterator<TruffleInliningDecision> i1 = iterator();
+            Iterator<TruffleInliningDecision> i2 = other.iterator();
+            while (i1.hasNext() && i2.hasNext()) {
+                if (!i1.next().isSameAs(i2.next())) {
+                    return false;
+                }
+            }
+            return !i1.hasNext() && !i2.hasNext();
         }
-        this.nodeCount = nodeCount;
-        this.inlined = inlined;
-    }
-
-    public Map<OptimizedDirectCallNode, TruffleInliningProfile> getProfiles() {
-        return profiles;
-    }
-
-    public int getNodeCount() {
-        return nodeCount;
-    }
-
-    public OptimizedCallTarget getCallTarget() {
-        return callTarget;
-    }
-
-    public boolean isInlined(OptimizedDirectCallNode path) {
-        return inlined.contains(profiles.get(path));
-    }
-
-    public int size() {
-        return inlined.size();
-    }
-
-    public Iterator<TruffleInliningProfile> iterator() {
-        return Collections.unmodifiableSet(inlined).iterator();
     }
 
     @Override
     public String toString() {
-        return inlined.toString();
+        return String.format("TruffleInliningDecision(callNode=%s, inline=%b)", profile.getCallNode(), inline);
     }
+
 }

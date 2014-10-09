@@ -34,7 +34,7 @@ public class DefaultTruffleSplittingStrategy implements TruffleSplittingStrategy
     }
 
     public void beforeCall(Object[] arguments) {
-        if (call.getCallCount() == 2 && !call.isInlined()) {
+        if (call.getCallCount() == 2) {
             if (shouldSplit()) {
                 forceSplitting();
             }

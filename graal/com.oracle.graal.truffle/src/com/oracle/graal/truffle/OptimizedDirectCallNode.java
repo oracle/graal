@@ -37,7 +37,6 @@ public final class OptimizedDirectCallNode extends DirectCallNode implements Mat
     private int callCount;
     private boolean inliningForced;
 
-    @CompilationFinal private boolean inlined;
     @CompilationFinal private OptimizedCallTarget splitCallTarget;
     @CompilationFinal private FrameAccess outsideFrameAccess = FrameAccess.NONE;
 
@@ -57,14 +56,7 @@ public final class OptimizedDirectCallNode extends DirectCallNode implements Mat
         if (CompilerDirectives.inInterpreter()) {
             onInterpreterCall(arguments);
         }
-        boolean isInlined;
-        if (TruffleCompilerOptions.TruffleContextSensitiveInlining.getValue()) {
-            /* Inlining done during partial evalulation. */
-            isInlined = false;
-        } else {
-            isInlined = this.inlined;
-        }
-        Object result = callProxy(this, getCurrentCallTarget(), frame, arguments, isInlined, true);
+        Object result = callProxy(this, getCurrentCallTarget(), frame, arguments, true);
 
         if (CompilerDirectives.inInterpreter()) {
             afterInterpreterCall(result);
@@ -74,17 +66,14 @@ public final class OptimizedDirectCallNode extends DirectCallNode implements Mat
 
     private void afterInterpreterCall(Object result) {
         splittingStrategy.afterCall(result);
-        // propagateInliningInvalidations();
     }
 
-    public static Object callProxy(MaterializedFrameNotify notify, CallTarget callTarget, VirtualFrame frame, Object[] arguments, boolean inlined, boolean direct) {
+    public static Object callProxy(MaterializedFrameNotify notify, CallTarget callTarget, VirtualFrame frame, Object[] arguments, boolean direct) {
         try {
             if (notify.getOutsideFrameAccess() != FrameAccess.NONE) {
                 CompilerDirectives.materialize(frame);
             }
-            if (inlined) {
-                return ((OptimizedCallTarget) callTarget).callInlined(arguments);
-            } else if (direct) {
+            if (direct) {
                 return ((OptimizedCallTarget) callTarget).callDirect(arguments);
             } else {
                 return callTarget.call(arguments);
@@ -92,13 +81,6 @@ public final class OptimizedDirectCallNode extends DirectCallNode implements Mat
         } finally {
             // this assertion is needed to keep the values from being cleared as non-live locals
             assert notify != null & callTarget != null & frame != null;
-        }
-    }
-
-    public void resetInlining() {
-        CompilerAsserts.neverPartOfCompilation();
-        if (inlined && !inliningForced) {
-            inlined = false;
         }
     }
 
@@ -157,7 +139,6 @@ public final class OptimizedDirectCallNode extends DirectCallNode implements Mat
             getCurrentCallTarget().incrementKnownCallSites();
         }
         splittingStrategy.beforeCall(arguments);
-        // propagateInliningInvalidations();
     }
 
     /** Used by the splitting strategy to install new targets. */
@@ -182,23 +163,6 @@ public final class OptimizedDirectCallNode extends DirectCallNode implements Mat
         } else {
             splitCallTarget = newTarget;
         }
-    }
-
-    @SuppressWarnings("unused")
-    private void propagateInliningInvalidations() {
-        if (isInlined() && !getCurrentCallTarget().inliningPerformed) {
-            replace(this, "Propagate invalid inlining from " + getCurrentCallTarget().toString());
-        }
-    }
-
-    /* Called by the runtime system if this CallNode is really going to be inlined. */
-    void inline() {
-        inlined = true;
-    }
-
-    @Override
-    public boolean isInlined() {
-        return inlined;
     }
 
     @Override
