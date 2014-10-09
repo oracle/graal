@@ -172,7 +172,7 @@ public class TruffleCompilerImpl {
 
     public CompilationResult compileMethodHelper(StructuredGraph graph, Assumptions assumptions, String name, SpeculationLog speculationLog, InstalledCode predefinedInstalledCode) {
         try (Scope s = Debug.scope("TruffleFinal")) {
-            Debug.dump(graph, "After TruffleTier");
+            Debug.dump(1, graph, "After TruffleTier");
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
