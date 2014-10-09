@@ -283,7 +283,7 @@ public final class CompileTheWorld {
                             }
                         } catch (Throwable t) {
                             // If something went wrong during pre-loading we just ignore it.
-                            println("Preloading failed for (%d) %s", classFileCounter, className);
+                            println("Preloading failed for (%d) %s: %s", classFileCounter, className, t);
                         }
 
                         // Are we compiling this class?
