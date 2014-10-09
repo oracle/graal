@@ -198,6 +198,9 @@ public class HotSpotConstantPool extends CompilerObject implements ConstantPool 
         HotSpotVMConfig config = runtime().getConfig();
         final long metaspaceConstantPoolTags = unsafe.getAddress(metaspaceConstantPool + config.constantPoolTagsOffset);
         final int tag = unsafe.getByteVolatile(null, metaspaceConstantPoolTags + config.arrayU1DataOffset + index);
+        if (tag == 0) {
+            return null;
+        }
         return JVM_CONSTANT.getEnum(tag);
     }
 
@@ -535,6 +538,10 @@ public class HotSpotConstantPool extends CompilerObject implements ConstantPool 
         }
 
         JVM_CONSTANT tag = getTagAt(index);
+        if (tag == null) {
+            assert getTagAt(index - 1) == JVM_CONSTANT.Double || getTagAt(index - 1) == JVM_CONSTANT.Long;
+            return;
+        }
         switch (tag) {
             case Fieldref:
             case MethodRef:
@@ -554,14 +561,19 @@ public class HotSpotConstantPool extends CompilerObject implements ConstantPool 
                 }
                 break;
             case InvokeDynamic:
-                if (!isInvokedynamicIndex(cpi)) {
-                    throw new IllegalArgumentException("InvokeDynamic entries must be accessed");
+                if (isInvokedynamicIndex(cpi)) {
+                    runtime().getCompilerToVM().resolveInvokeDynamic(metaspaceConstantPool, cpi);
                 }
-                runtime().getCompilerToVM().resolveInvokeDynamic(metaspaceConstantPool, cpi);
                 break;
             default:
                 // nothing
                 break;
         }
+    }
+
+    @Override
+    public String toString() {
+        HotSpotResolvedObjectType holder = getHolder();
+        return "HotSpotConstantPool<" + holder.toJavaName() + ">";
     }
 }
