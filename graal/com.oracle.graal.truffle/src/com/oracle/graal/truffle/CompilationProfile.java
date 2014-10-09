@@ -40,43 +40,35 @@ public class CompilationProfile {
 
     private long previousTimestamp;
 
-    private int callCount;
-    private int callAndLoopCount;
+    private int interpreterCallCount;
+    private int interpreterCallAndLoopCount;
     private int compilationCallThreshold;
     private int compilationCallAndLoopThreshold;
 
-    private final int originalInvokeCounter;
     private final int originalCompilationThreshold;
 
     public CompilationProfile(final int compilationThreshold, final int initialInvokeCounter) {
         this.previousTimestamp = System.nanoTime();
         this.compilationCallThreshold = initialInvokeCounter;
         this.compilationCallAndLoopThreshold = compilationThreshold;
-        this.originalInvokeCounter = initialInvokeCounter;
         this.originalCompilationThreshold = compilationThreshold;
     }
 
     @Override
     public String toString() {
-        return String.format("CompilationProfile(callCount=%d/%d, callAndLoopCount=%d/%d)", callCount, compilationCallThreshold, callAndLoopCount, compilationCallAndLoopThreshold);
+        return String.format("CompilationProfile(callCount=%d/%d, callAndLoopCount=%d/%d)", interpreterCallCount, compilationCallThreshold, interpreterCallAndLoopCount,
+                        compilationCallAndLoopThreshold);
     }
 
     public Map<String, Object> getDebugProperties() {
         Map<String, Object> properties = new LinkedHashMap<>();
-        String callsThreshold = String.format("%7d/%5d", getCallCount(), getCompilationCallThreshold());
-        String loopsThreshold = String.format("%7d/%5d", getCallAndLoopCount(), getCompilationCallAndLoopThreshold());
+        String callsThreshold = String.format("%7d/%5d", getInterpreterCallCount(), getCompilationCallThreshold());
+        String loopsThreshold = String.format("%7d/%5d", getInterpreterCallAndLoopCount(), getCompilationCallAndLoopThreshold());
         String invalidationReplace = String.format("%5d/%5d", invalidationCount, nodeReplaceCount);
         properties.put("C/T", callsThreshold);
         properties.put("L/T", loopsThreshold);
         properties.put("Inval#/Replace#", invalidationReplace);
         return properties;
-    }
-
-    public void reset() {
-        callCount = 0;
-        callAndLoopCount = 0;
-        compilationCallAndLoopThreshold = originalCompilationThreshold;
-        compilationCallThreshold = originalInvokeCounter;
     }
 
     public long getPreviousTimestamp() {
@@ -91,12 +83,12 @@ public class CompilationProfile {
         return nodeReplaceCount;
     }
 
-    public int getCallAndLoopCount() {
-        return callAndLoopCount;
+    public int getInterpreterCallAndLoopCount() {
+        return interpreterCallAndLoopCount;
     }
 
-    public int getCallCount() {
-        return callCount;
+    public int getInterpreterCallCount() {
+        return interpreterCallCount;
     }
 
     public int getCompilationCallAndLoopThreshold() {
@@ -108,12 +100,12 @@ public class CompilationProfile {
     }
 
     void ensureProfiling(int calls, int callsAndLoop) {
-        int increaseCallAndLoopThreshold = callsAndLoop - (this.compilationCallAndLoopThreshold - this.callAndLoopCount);
+        int increaseCallAndLoopThreshold = callsAndLoop - (this.compilationCallAndLoopThreshold - this.interpreterCallAndLoopCount);
         if (increaseCallAndLoopThreshold > 0) {
             this.compilationCallAndLoopThreshold += increaseCallAndLoopThreshold;
         }
 
-        int increaseCallsThreshold = calls - (this.compilationCallThreshold - this.callCount);
+        int increaseCallsThreshold = calls - (this.compilationCallThreshold - this.interpreterCallCount);
         if (increaseCallsThreshold > 0) {
             this.compilationCallThreshold += increaseCallsThreshold;
         }
@@ -131,24 +123,24 @@ public class CompilationProfile {
     }
 
     public void reportInterpreterCall() {
-        callCount++;
-        callAndLoopCount++;
+        interpreterCallCount++;
+        interpreterCallAndLoopCount++;
     }
 
-    void reportInlinedCall() {
-        callCount++;
-        callAndLoopCount++;
-        compilationCallThreshold++;
-        compilationCallAndLoopThreshold++;
+    public void reportDirectCall() {
+
     }
 
-    void reportInterpreterCalls(int calls) {
-        this.callCount += calls;
-        this.callAndLoopCount += calls;
+    public void reportIndirectCall() {
+
+    }
+
+    public void reportInlinedCall() {
+
     }
 
     void reportLoopCount(int count) {
-        callAndLoopCount += count;
+        interpreterCallAndLoopCount += count;
     }
 
     void reportNodeReplaced() {

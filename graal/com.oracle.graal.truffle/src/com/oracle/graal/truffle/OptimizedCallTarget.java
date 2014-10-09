@@ -49,7 +49,6 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
 
     protected final GraalTruffleRuntime runtime;
     private SpeculationLog speculationLog;
-    protected int callCount;
     protected boolean inliningPerformed;
     protected final CompilationProfile compilationProfile;
     protected final CompilationPolicy compilationPolicy;
@@ -81,9 +80,10 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         this.rootNode.adoptChildren();
         this.rootNode.setCallTarget(this);
         this.compilationPolicy = compilationPolicy;
-        this.compilationProfile = new CompilationProfile(compilationThreshold, invokeCounter);
         if (TruffleCallTargetProfiling.getValue()) {
-            registerCallTarget(this);
+            this.compilationProfile = new TraceCompilationProfile(compilationThreshold, invokeCounter);
+        } else {
+            this.compilationProfile = new CompilationProfile(compilationThreshold, invokeCounter);
         }
     }
 
@@ -121,6 +121,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
 
     @Override
     public Object call(Object... args) {
+        compilationProfile.reportIndirectCall();
         if (profiledArgumentTypesAssumption != null && profiledArgumentTypesAssumption.isValid()) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             profiledArgumentTypesAssumption.invalidate();
@@ -130,6 +131,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     }
 
     public final Object callDirect(Object... args) {
+        compilationProfile.reportDirectCall();
         profileArguments(args);
         Object result = doInvoke(args);
         Class<?> klass = profiledReturnType;
@@ -140,9 +142,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     }
 
     public final Object callInlined(Object... arguments) {
-        if (CompilerDirectives.inInterpreter()) {
-            compilationProfile.reportInlinedCall();
-        }
+        compilationProfile.reportInlinedCall();
         VirtualFrame frame = createFrame(getRootNode().getFrameDescriptor(), arguments);
         return callProxy(frame);
     }
@@ -285,9 +285,6 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
             this.runtime.reinstallStubs();
         } else {
             compilationProfile.reportInterpreterCall();
-            if (TruffleCallTargetProfiling.getValue()) {
-                callCount++;
-            }
             if (compilationPolicy.shouldCompile(compilationProfile)) {
                 compile();
             }

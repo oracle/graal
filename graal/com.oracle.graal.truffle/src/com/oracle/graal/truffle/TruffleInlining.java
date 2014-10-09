@@ -94,7 +94,7 @@ public class TruffleInlining implements Iterable<TruffleInliningDecision> {
     }
 
     private static double calculateFrequency(OptimizedCallTarget target, OptimizedDirectCallNode ocn) {
-        return (double) Math.max(1, ocn.getCallCount()) / (double) Math.max(1, target.getCompilationProfile().getCallCount());
+        return (double) Math.max(1, ocn.getCallCount()) / (double) Math.max(1, target.getCompilationProfile().getInterpreterCallCount());
     }
 
     private static boolean isRecursiveStack(List<OptimizedCallTarget> stack) {
@@ -291,8 +291,8 @@ public class TruffleInlining implements Iterable<TruffleInliningDecision> {
                 if (iterable.hasNext()) {
                     return iterable;
                 } else {
-                    iteratorStack.remove(--tos);
-                    inliningDecisionStack.remove(--tos);
+                    iteratorStack.remove(tos);
+                    inliningDecisionStack.remove(tos--);
                 }
             }
             return null;
