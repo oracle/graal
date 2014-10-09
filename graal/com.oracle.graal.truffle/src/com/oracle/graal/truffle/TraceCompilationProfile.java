@@ -22,17 +22,45 @@
  */
 package com.oracle.graal.truffle;
 
-public class CounterBasedCompilationPolicy implements CompilationPolicy {
+public class TraceCompilationProfile extends CompilationProfile {
 
-    private boolean compilationFailed;
+    private int directCallCount;
+    private int indirectCallCount;
+    private int inlinedCallCount;
 
-    public boolean shouldCompile(CompilationProfile profile) {
-        return !compilationFailed && profile.getInterpreterCallCount() >= profile.getCompilationCallThreshold() &&
-                        profile.getInterpreterCallAndLoopCount() >= profile.getCompilationCallAndLoopThreshold();
+    public TraceCompilationProfile(int compilationThreshold, int initialInvokeCounter) {
+        super(compilationThreshold, initialInvokeCounter);
     }
 
-    public void recordCompilationFailure(Throwable t) {
-        compilationFailed = true;
+    @Override
+    public void reportIndirectCall() {
+        indirectCallCount++;
+    }
+
+    @Override
+    public void reportDirectCall() {
+        directCallCount++;
+    }
+
+    @Override
+    public void reportInlinedCall() {
+        inlinedCallCount++;
+    }
+
+    public int getIndirectCallCount() {
+        return indirectCallCount;
+    }
+
+    public int getDirectCallCount() {
+        return directCallCount;
+    }
+
+    public int getInlinedCallCount() {
+        return inlinedCallCount;
+    }
+
+    public int getTotalCallCount() {
+        return directCallCount + indirectCallCount + inlinedCallCount;
     }
 
 }
