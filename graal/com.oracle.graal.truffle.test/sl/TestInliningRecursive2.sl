@@ -29,9 +29,9 @@ function test() {
 function main() {
     waitForOptimization(callUntilOptimized(test));
     assertTrue(isInlined(test, test, fib), "not inlined: test -> fib");
-    if (getOption("TruffleContextSensitiveInlining")) {
-      assertTrue(isInlined(test, fib, call), "not inlined: fib -> call");
-      assertFalse(isInlined(test, call, fib), "inlined: call -> fib"); 
-      assertTrue(isInlined(test, call, void), "inlined: call -> void");
-    }
+    
+    assertTrue(isInlined(test, fib, call), "not inlined: fib -> call");
+    assertFalse(isInlined(test, call, fib), "inlined: call -> fib"); 
+    assertTrue(isInlined(test, call, void), "inlined: call -> void");
+    
 }  

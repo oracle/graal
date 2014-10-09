@@ -472,6 +472,26 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         invalidate(oldNode, newNode, reason);
     }
 
+    public void accept(NodeVisitor visitor, boolean includeInlinedNodes) {
+        TruffleInlining inliner = getInlining();
+        if (includeInlinedNodes && inliner != null) {
+            inlining.accept(this, visitor);
+        } else {
+            getRootNode().accept(visitor);
+        }
+    }
+
+    public Stream<Node> nodeStream(boolean includeInlinedNodes) {
+        Iterator<Node> iterator;
+        TruffleInlining inliner = getInlining();
+        if (includeInlinedNodes && inliner != null) {
+            iterator = inliner.makeNodeIterator(this);
+        } else {
+            iterator = NodeUtil.makeRecursiveIterator(this.getRootNode());
+        }
+        return StreamSupport.stream(Spliterators.spliteratorUnknownSize(iterator, 0), false);
+    }
+
     public Map<String, Object> getDebugProperties() {
         Map<String, Object> properties = new LinkedHashMap<>();
         addASTSizeProperty(this, properties);

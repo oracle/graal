@@ -25,6 +25,7 @@ package com.oracle.graal.truffle.test.builtins;
 import java.util.*;
 
 import com.oracle.graal.truffle.*;
+import com.oracle.graal.truffle.TruffleInlining.CallTreeNodeVisitor;
 import com.oracle.truffle.api.CompilerDirectives.SlowPath;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.nodes.*;
@@ -45,7 +46,7 @@ public abstract class SLIsInlinedBuiltin extends SLGraalRuntimeBuiltin {
 
         for (OptimizedCallTarget target : findDuplicateCallTargets((OptimizedCallTarget) rootFunction.getCallTarget())) {
             if (target.isValid()) {
-                searchInlined(trace, target, new ArrayList<>(), parentFunction, inlinedFunction);
+                searchInlined(trace, target, parentFunction, inlinedFunction);
             }
         }
 
@@ -61,32 +62,25 @@ public abstract class SLIsInlinedBuiltin extends SLGraalRuntimeBuiltin {
         }
     }
 
-    private void searchInlined(InliningTrace trace, OptimizedCallTarget rootTarget, List<OptimizedDirectCallNode> stack, SLFunction parent, SLFunction inlinedFunction) {
-        OptimizedCallTarget root;
-        if (stack.isEmpty()) {
-            root = rootTarget;
-        } else {
-            root = stack.get(stack.size() - 1).getCurrentCallTarget();
-        }
+    private static void searchInlined(InliningTrace trace, OptimizedCallTarget rootTarget, SLFunction parent, SLFunction inlinedFunction) {
+        rootTarget.accept(new CallTreeNodeVisitor() {
 
-        for (OptimizedDirectCallNode callNode : root.getCallNodes()) {
-            stack.add(callNode);
-
-            boolean inlined = rootTarget.isInlined(stack);
-            if (callNode.getRootNode().getCallTarget() == parent.getCallTarget() && callNode.getCallTarget() == inlinedFunction.getCallTarget()) {
-                if (inlined) {
-                    trace.allFalse = false;
-                } else {
-                    trace.allTrue = false;
+            public boolean visit(List<TruffleInlining> decisionStack, Node node) {
+                if (node instanceof OptimizedDirectCallNode) {
+                    OptimizedDirectCallNode callNode = (OptimizedDirectCallNode) node;
+                    if (callNode.getRootNode().getCallTarget() == parent.getCallTarget() && callNode.getCallTarget() == inlinedFunction.getCallTarget()) {
+                        TruffleInliningDecision decision = (TruffleInliningDecision) decisionStack.get(decisionStack.size() - 1);
+                        if (decision.isInline()) {
+                            trace.allFalse = false;
+                        } else {
+                            trace.allTrue = false;
+                        }
+                    }
                 }
+                return true;
             }
 
-            if (inlined) {
-                searchInlined(trace, rootTarget, stack, parent, inlinedFunction);
-            }
-
-            stack.remove(stack.size() - 1);
-        }
+        }, true);
     }
 
     private static final class InliningTrace {
