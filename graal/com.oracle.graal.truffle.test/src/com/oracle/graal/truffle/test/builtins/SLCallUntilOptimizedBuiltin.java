@@ -22,11 +22,15 @@
  */
 package com.oracle.graal.truffle.test.builtins;
 
+import java.util.concurrent.*;
+
 import com.oracle.graal.truffle.*;
 import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.CompilerDirectives.*;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.sl.*;
 import com.oracle.truffle.sl.runtime.*;
 
 /**
@@ -45,15 +49,29 @@ public abstract class SLCallUntilOptimizedBuiltin extends SLGraalRuntimeBuiltin 
     @Child private IndirectCallNode indirectCall = Truffle.getRuntime().createIndirectCallNode();
 
     @Specialization
+    @SlowPath
     public SLFunction callUntilCompiled(VirtualFrame frame, SLFunction function) {
-        OptimizedCallTarget oct = ((OptimizedCallTarget) function.getCallTarget());
+        OptimizedCallTarget target = ((OptimizedCallTarget) function.getCallTarget());
         for (int i = 0; i < MAX_CALLS; i++) {
-            if (((GraalTruffleRuntime) Truffle.getRuntime()).isCompiling(oct) || oct.isValid()) {
+            if (((GraalTruffleRuntime) Truffle.getRuntime()).isCompiling(target) || target.isValid()) {
                 break;
             } else {
-                indirectCall.call(frame, oct, EMPTY_ARGS);
+                indirectCall.call(frame, target, EMPTY_ARGS);
             }
         }
+        try {
+            ((GraalTruffleRuntime) Truffle.getRuntime()).waitForCompilation(target, 640000);
+        } catch (ExecutionException | TimeoutException e) {
+            throw new RuntimeException(e);
+        }
+
+        // call one more in compiled
+        indirectCall.call(frame, target, EMPTY_ARGS);
+
+        if (!target.isValid()) {
+            throw new SLAssertionError("Function " + target + " invalidated.");
+        }
+
         return function;
     }
 }

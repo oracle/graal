@@ -19,7 +19,7 @@ function test() {
 }
 
 function main() {
-    waitForOptimization(callUntilOptimized(test));
+    callUntilOptimized(test);
     assertTrue(isInlined(test, test, fib), "fib is not inlined");
     assertFalse(isInlined(test, fib, fib), "fib -> fib is not inlined");
 }  
