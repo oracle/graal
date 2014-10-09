@@ -101,8 +101,14 @@ public abstract class DirectCallNode extends Node {
      * {@link DirectCallNode} is really going to be inlined. This depends on whether or not the
      * runtime system supports inlining. The runtime system may also decide to not inline calls
      * which were forced to inline.
+     *
+     * @deprecated we do not expose this information any longer. returns always false.
      */
-    public abstract boolean isInlined();
+    @SuppressWarnings("static-method")
+    @Deprecated
+    public final boolean isInlined() {
+        return false;
+    }
 
     /**
      * Returns <code>true</code> if this {@link DirectCallNode} can be split. A
