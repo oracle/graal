@@ -59,8 +59,6 @@ public class GraphPrintVisitor {
     private Element nodesElement;
     private Element edgesElement;
 
-    private ChildSupplier childSupplier;
-
     public GraphPrintVisitor() {
         DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
         try {
@@ -73,14 +71,6 @@ public class GraphPrintVisitor {
 
         graphDocument = dom.createElement("graphDocument");
         dom.appendChild(graphDocument);
-    }
-
-    public void setChildSupplier(ChildSupplier callNodeVisitor) {
-        this.childSupplier = callNodeVisitor;
-    }
-
-    public ChildSupplier getChildSupplier() {
-        return childSupplier;
     }
 
     public GraphPrintVisitor beginGroup(String groupName) {
@@ -337,15 +327,6 @@ public class GraphPrintVisitor {
         } else {
             // default handler
             createElementForNode(node);
-
-            if (childSupplier != null) {
-                Object result = childSupplier.startNode(node);
-                if (result != null) {
-                    visit(result);
-                    connectNodes(node, result, "inlined");
-                }
-                childSupplier.endNode(node);
-            }
 
             if (node instanceof Node) {
                 for (Map.Entry<String, Node> child : findNamedNodeChildren((Node) node).entrySet()) {
