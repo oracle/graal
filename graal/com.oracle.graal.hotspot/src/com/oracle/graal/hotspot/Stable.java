@@ -25,7 +25,10 @@ package com.oracle.graal.hotspot;
 
 import java.lang.annotation.*;
 
-// TODO remove this annotation after we moved to JDK 8 and use sun.invoke.Stable instead
+/**
+ * This annotation functions as an alias for the sun.invoke.Stable annotation within Graal code. It
+ * is specially recognized during class file parsing in the same way as that annotation.
+ */
 
 @Target(ElementType.FIELD)
 @Retention(RetentionPolicy.RUNTIME)
