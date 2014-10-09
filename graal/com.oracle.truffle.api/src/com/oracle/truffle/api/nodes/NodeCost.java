@@ -66,4 +66,8 @@ public enum NodeCost {
      */
     MEGAMORPHIC;
 
+    public boolean isTrivial() {
+        return this == NONE || this == UNINITIALIZED;
+    }
+
 }

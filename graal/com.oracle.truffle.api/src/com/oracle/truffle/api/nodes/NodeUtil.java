@@ -344,6 +344,74 @@ public final class NodeUtil {
         return NodeClass.get(node.getClass()).makeIterator(node);
     }
 
+    public static Iterator<Node> makeRecursiveIterator(Node node) {
+        return new RecursiveNodeIterator(node);
+    }
+
+    private final static class RecursiveNodeIterator implements Iterator<Node> {
+        private final List<Iterator<Node>> iteratorStack = new ArrayList<>();
+
+        public RecursiveNodeIterator(final Node node) {
+            iteratorStack.add(new Iterator<Node>() {
+
+                private boolean visited;
+
+                public void remove() {
+                    throw new UnsupportedOperationException();
+                }
+
+                public Node next() {
+                    if (visited) {
+                        throw new NoSuchElementException();
+                    }
+                    visited = true;
+                    return node;
+                }
+
+                public boolean hasNext() {
+                    return !visited;
+                }
+            });
+        }
+
+        public boolean hasNext() {
+            return peekIterator() != null;
+        }
+
+        public Node next() {
+            Iterator<Node> iterator = peekIterator();
+            if (iterator == null) {
+                throw new NoSuchElementException();
+            }
+
+            Node node = iterator.next();
+            if (node != null) {
+                Iterator<Node> childIterator = makeIterator(node);
+                if (childIterator.hasNext()) {
+                    iteratorStack.add(childIterator);
+                }
+            }
+            return node;
+        }
+
+        private Iterator<Node> peekIterator() {
+            int tos = iteratorStack.size() - 1;
+            while (tos >= 0) {
+                Iterator<Node> iterable = iteratorStack.get(tos);
+                if (iterable.hasNext()) {
+                    return iterable;
+                } else {
+                    iteratorStack.remove(tos--);
+                }
+            }
+            return null;
+        }
+
+        public void remove() {
+            throw new UnsupportedOperationException();
+        }
+    }
+
     private static long[] toLongArray(List<Long> list) {
         long[] array = new long[list.size()];
         for (int i = 0; i < list.size(); i++) {
@@ -606,54 +674,30 @@ public final class NodeUtil {
     }
 
     public static int countNodes(Node root) {
-        return countNodes(root, null, false);
+        Iterator<Node> nodeIterator = makeRecursiveIterator(root);
+        int count = 0;
+        while (nodeIterator.hasNext()) {
+            nodeIterator.next();
+            count++;
+        }
+        return count;
     }
 
     public static int countNodes(Node root, NodeCountFilter filter) {
-        return countNodes(root, filter, false);
-    }
-
-    public static int countNodes(Node root, NodeCountFilter filter, boolean visitInlinedCallNodes) {
-        NodeCountVisitor nodeCount = new NodeCountVisitor(filter, visitInlinedCallNodes);
-        root.accept(nodeCount);
-        return nodeCount.nodeCount;
+        Iterator<Node> nodeIterator = makeRecursiveIterator(root);
+        int count = 0;
+        while (nodeIterator.hasNext()) {
+            Node node = nodeIterator.next();
+            if (node != null && filter.isCounted(node)) {
+                count++;
+            }
+        }
+        return count;
     }
 
     public interface NodeCountFilter {
 
         boolean isCounted(Node node);
-
-    }
-
-    private static final class NodeCountVisitor implements NodeVisitor {
-
-        private final boolean visitInlinedCallNodes;
-        int nodeCount;
-        private final NodeCountFilter filter;
-
-        private NodeCountVisitor(NodeCountFilter filter, boolean visitInlinedCallNodes) {
-            this.filter = filter;
-            this.visitInlinedCallNodes = visitInlinedCallNodes;
-        }
-
-        @Override
-        public boolean visit(Node node) {
-            if (filter == null || filter.isCounted(node)) {
-                nodeCount++;
-            }
-
-            if (visitInlinedCallNodes && node instanceof DirectCallNode) {
-                DirectCallNode call = (DirectCallNode) node;
-                if (call.isInlined()) {
-                    Node target = ((RootCallTarget) call.getCurrentCallTarget()).getRootNode();
-                    if (target != null) {
-                        target.accept(this);
-                    }
-                }
-            }
-
-            return true;
-        }
 
     }
 
