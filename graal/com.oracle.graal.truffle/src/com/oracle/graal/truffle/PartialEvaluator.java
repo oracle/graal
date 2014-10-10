@@ -369,33 +369,26 @@ public class PartialEvaluator {
         }
 
         TruffleInliningDecision decision = inlining.findByCall(callNode);
-        boolean inline;
         if (decision == null) {
             if (TruffleCompilerOptions.TraceTrufflePerformanceWarnings.getValue()) {
                 Map<String, Object> properties = new LinkedHashMap<>();
                 properties.put("callNode", callNode);
                 logPerformanceWarning("A direct call within the Truffle AST is not reachable anymore. Call node could not be inlined.", properties);
             }
-            inline = false;
-        } else {
-            inline = decision.isInline();
         }
 
-        assert decision.getProfile().getCallNode() == callNode;
-
-        OptimizedCallTarget currentTarget = decision.getProfile().getCallNode().getCurrentCallTarget();
-        if (decision.getTarget() != currentTarget) {
+        if (decision != null && decision.getTarget() != decision.getProfile().getCallNode().getCurrentCallTarget()) {
             if (TruffleCompilerOptions.TraceTrufflePerformanceWarnings.getValue()) {
                 Map<String, Object> properties = new LinkedHashMap<>();
                 properties.put("originalTarget", decision.getTarget());
                 properties.put("callNode", callNode);
                 logPerformanceWarning(String.format("CallTarget changed during compilation. Call node could not be inlined."), properties);
             }
-            inline = false;
+            decision = null;
         }
 
         StructuredGraph graph;
-        if (inline) {
+        if (decision != null && decision.isInline()) {
             if (inliningCache == null) {
                 graph = createInlineGraph(phaseContext, assumptions, null, decision);
             } else {
