@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.nodes.calc;
 
+import java.util.function.*;
+
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
@@ -36,27 +38,33 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public abstract class BinaryArithmeticNode extends BinaryNode implements ArithmeticLIRLowerable {
 
-    protected BinaryOp op;
+    protected final Function<ArithmeticOpTable, BinaryOp> getOp;
 
-    public BinaryArithmeticNode(BinaryOp op, ValueNode x, ValueNode y) {
-        super(op.foldStamp(x.stamp(), y.stamp()), x, y);
-        this.op = op;
+    public BinaryArithmeticNode(Function<ArithmeticOpTable, BinaryOp> getOp, ValueNode x, ValueNode y) {
+        super(getOp.apply(ArithmeticOpTable.forStamp(x.stamp())).foldStamp(x.stamp(), y.stamp()), x, y);
+        this.getOp = getOp;
     }
 
-    public BinaryOp getOp() {
-        return op;
+    protected final BinaryOp getOp(ValueNode forX, ValueNode forY) {
+        ArithmeticOpTable table = ArithmeticOpTable.forStamp(forX.stamp());
+        assert table == ArithmeticOpTable.forStamp(forY.stamp());
+        return getOp.apply(table);
+    }
+
+    public boolean isAssociative() {
+        return getOp(getX(), getY()).isAssociative();
     }
 
     @Override
     public Constant evalConst(Constant... inputs) {
         assert inputs.length == 2;
-        return op.foldConstant(inputs[0], inputs[1]);
+        return getOp(getX(), getY()).foldConstant(inputs[0], inputs[1]);
     }
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
         if (forX.isConstant() && forY.isConstant()) {
-            Constant ret = op.foldConstant(forX.asConstant(), forY.asConstant());
+            Constant ret = getOp(forX, forY).foldConstant(forX.asConstant(), forY.asConstant());
             return ConstantNode.forPrimitive(stamp(), ret);
         }
         return this;
@@ -64,10 +72,7 @@ public abstract class BinaryArithmeticNode extends BinaryNode implements Arithme
 
     @Override
     public boolean inferStamp() {
-        ArithmeticOpTable ops = ArithmeticOpTable.forStamp(getX().stamp());
-        assert ops == ArithmeticOpTable.forStamp(getY().stamp());
-        op = ops.getBinaryOp(op);
-        return updateStamp(op.foldStamp(getX().stamp(), getY().stamp()));
+        return updateStamp(getOp(getX(), getY()).foldStamp(getX().stamp(), getY().stamp()));
     }
 
     public static AddNode add(StructuredGraph graph, ValueNode v1, ValueNode v2) {
@@ -160,7 +165,7 @@ public abstract class BinaryArithmeticNode extends BinaryNode implements Arithme
      * @param forX
      */
     public static BinaryArithmeticNode reassociate(BinaryArithmeticNode node, NodePredicate criterion, ValueNode forX, ValueNode forY) {
-        assert node.getOp().isAssociative();
+        assert node.getOp(forX, forY).isAssociative();
         ReassociateMatch match1 = findReassociate(node, criterion);
         if (match1 == null) {
             return node;

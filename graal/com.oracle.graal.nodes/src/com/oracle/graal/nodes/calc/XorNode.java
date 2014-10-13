@@ -40,7 +40,7 @@ public class XorNode extends BinaryArithmeticNode {
     }
 
     protected XorNode(ValueNode x, ValueNode y) {
-        super(ArithmeticOpTable.forStamp(x.stamp()).getXor(), x, y);
+        super(ArithmeticOpTable::getXor, x, y);
         assert x.stamp().isCompatible(y.stamp());
     }
 
@@ -52,14 +52,14 @@ public class XorNode extends BinaryArithmeticNode {
         }
 
         if (GraphUtil.unproxify(forX) == GraphUtil.unproxify(forY)) {
-            return ConstantNode.forPrimitive(stamp(), getOp().getZero(forX.stamp()));
+            return ConstantNode.forPrimitive(stamp(), getOp(forX, forY).getZero(forX.stamp()));
         }
         if (forX.isConstant() && !forY.isConstant()) {
             return XorNode.create(forY, forX);
         }
         if (forY.isConstant()) {
             Constant c = forY.asConstant();
-            if (getOp().isNeutral(c)) {
+            if (getOp(forX, forY).isNeutral(c)) {
                 return forX;
             }
 

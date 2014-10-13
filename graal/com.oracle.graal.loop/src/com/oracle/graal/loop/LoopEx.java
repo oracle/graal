@@ -138,7 +138,7 @@ public class LoopEx {
         InvariantPredicate invariant = new InvariantPredicate();
         StructuredGraph graph = loopBegin().graph();
         for (BinaryArithmeticNode binary : whole().nodes().filter(BinaryArithmeticNode.class)) {
-            if (!binary.getOp().isAssociative()) {
+            if (!binary.isAssociative()) {
                 continue;
             }
             BinaryArithmeticNode result = BinaryArithmeticNode.reassociate(binary, invariant, binary.getX(), binary.getY());

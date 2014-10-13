@@ -40,7 +40,7 @@ public class OrNode extends BinaryArithmeticNode {
     }
 
     protected OrNode(ValueNode x, ValueNode y) {
-        super(ArithmeticOpTable.forStamp(x.stamp()).getOr(), x, y);
+        super(ArithmeticOpTable::getOr, x, y);
     }
 
     @Override
@@ -58,7 +58,7 @@ public class OrNode extends BinaryArithmeticNode {
         }
         if (forY.isConstant()) {
             Constant c = forY.asConstant();
-            if (getOp().isNeutral(c)) {
+            if (getOp(forX, forY).isNeutral(c)) {
                 return forX;
             }
 

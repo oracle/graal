@@ -39,12 +39,8 @@ public class SignExtendNode extends IntegerConvertNode {
         return USE_GENERATED_NODES ? new SignExtendNodeGen(input, resultBits) : new SignExtendNode(input, resultBits);
     }
 
-    private SignExtendNode(ArithmeticOpTable ops, ValueNode input, int resultBits) {
-        super(ops.getSignExtend(), ops.getNarrow(), resultBits, input);
-    }
-
     protected SignExtendNode(ValueNode input, int resultBits) {
-        this(ArithmeticOpTable.forStamp(input.stamp()), input, resultBits);
+        super(ArithmeticOpTable::getSignExtend, ArithmeticOpTable::getNarrow, resultBits, input);
     }
 
     @Override

@@ -45,7 +45,7 @@ public class NotNode extends UnaryArithmeticNode implements ArithmeticLIRLowerab
     }
 
     protected NotNode(ValueNode x) {
-        super(ArithmeticOpTable.forStamp(x.stamp()).getNot(), x);
+        super(ArithmeticOpTable::getNot, x);
     }
 
     @Override

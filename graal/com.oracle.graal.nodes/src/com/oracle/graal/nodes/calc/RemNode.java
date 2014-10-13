@@ -36,7 +36,7 @@ public class RemNode extends BinaryArithmeticNode implements Lowerable {
     }
 
     protected RemNode(ValueNode x, ValueNode y) {
-        super(ArithmeticOpTable.forStamp(x.stamp()).getRem(), x, y);
+        super(ArithmeticOpTable::getRem, x, y);
     }
 
     @Override

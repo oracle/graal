@@ -39,12 +39,8 @@ public class NarrowNode extends IntegerConvertNode {
         return USE_GENERATED_NODES ? new NarrowNodeGen(input, resultBits) : new NarrowNode(input, resultBits);
     }
 
-    private NarrowNode(ArithmeticOpTable ops, ValueNode input, int resultBits) {
-        super(ops.getNarrow(), ops.getSignExtend(), resultBits, input);
-    }
-
     protected NarrowNode(ValueNode input, int resultBits) {
-        this(ArithmeticOpTable.forStamp(input.stamp()), input, resultBits);
+        super(ArithmeticOpTable::getNarrow, ArithmeticOpTable::getSignExtend, resultBits, input);
     }
 
     @Override

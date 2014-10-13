@@ -45,7 +45,7 @@ public class NegateNode extends UnaryArithmeticNode implements NarrowableArithme
     }
 
     protected NegateNode(ValueNode value) {
-        super(ArithmeticOpTable.forStamp(value.stamp()).getNeg(), value);
+        super(ArithmeticOpTable::getNeg, value);
     }
 
     @Override

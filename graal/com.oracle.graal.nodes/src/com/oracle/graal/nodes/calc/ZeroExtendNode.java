@@ -41,12 +41,8 @@ public class ZeroExtendNode extends IntegerConvertNode {
         return USE_GENERATED_NODES ? new ZeroExtendNodeGen(input, resultBits) : new ZeroExtendNode(input, resultBits);
     }
 
-    private ZeroExtendNode(ArithmeticOpTable ops, ValueNode input, int resultBits) {
-        super(ops.getZeroExtend(), ops.getNarrow(), resultBits, input);
-    }
-
     protected ZeroExtendNode(ValueNode input, int resultBits) {
-        this(ArithmeticOpTable.forStamp(input.stamp()), input, resultBits);
+        super(ArithmeticOpTable::getZeroExtend, ArithmeticOpTable::getNarrow, resultBits, input);
     }
 
     @Override

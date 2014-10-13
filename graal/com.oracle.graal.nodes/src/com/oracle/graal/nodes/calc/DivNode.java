@@ -39,7 +39,7 @@ public class DivNode extends BinaryArithmeticNode {
     }
 
     protected DivNode(ValueNode x, ValueNode y) {
-        super(ArithmeticOpTable.forStamp(x.stamp()).getDiv(), x, y);
+        super(ArithmeticOpTable::getDiv, x, y);
     }
 
     @Override
@@ -51,7 +51,7 @@ public class DivNode extends BinaryArithmeticNode {
 
         if (forY.isConstant()) {
             Constant c = forY.asConstant();
-            if (getOp().isNeutral(c)) {
+            if (getOp(forX, forY).isNeutral(c)) {
                 return forX;
             }
             if (c.getKind().isNumericInteger()) {
