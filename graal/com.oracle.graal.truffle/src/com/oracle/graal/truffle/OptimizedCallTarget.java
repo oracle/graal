@@ -49,7 +49,6 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
 
     protected final GraalTruffleRuntime runtime;
     private SpeculationLog speculationLog;
-    protected boolean inliningPerformed;
     protected final CompilationProfile compilationProfile;
     protected final CompilationPolicy compilationPolicy;
     private OptimizedCallTarget splitSource;
@@ -65,7 +64,6 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     private final Map<TruffleStamp, OptimizedCallTarget> splitVersions = new HashMap<>();
     private TruffleStamp argumentStamp = DefaultTruffleStamp.getInstance();
 
-    /* Experimental field for context sensitive inlining. */
     private TruffleInlining inlining;
 
     public final RootNode getRootNode() {
