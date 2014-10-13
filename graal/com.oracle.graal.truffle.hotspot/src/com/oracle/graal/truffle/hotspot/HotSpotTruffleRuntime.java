@@ -210,7 +210,13 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
         if (!mayBeAsynchronous) {
             try {
                 future.get();
-            } catch (InterruptedException | ExecutionException e) {
+            } catch (ExecutionException e) {
+                if (TruffleCompilationExceptionsAreThrown.getValue()) {
+                    throw new RuntimeException(e.getCause());
+                } else {
+                    // silently ignored
+                }
+            } catch (InterruptedException e) {
                 // silently ignored
             }
         }
