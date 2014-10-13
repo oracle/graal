@@ -68,7 +68,7 @@ public class TruffleCacheImpl implements TruffleCache {
     private final ResolvedJavaType errorClass;
     private final ResolvedJavaType controlFlowExceptionClass;
 
-    private final ResolvedJavaMethod callBoundaryMethod;
+    private final ResolvedJavaMethod callRootMethod;
     private final ResolvedJavaMethod callInlinedMethod;
 
     private long counter;
@@ -85,7 +85,7 @@ public class TruffleCacheImpl implements TruffleCache {
         this.controlFlowExceptionClass = providers.getMetaAccess().lookupJavaType(ControlFlowException.class);
 
         try {
-            callBoundaryMethod = providers.getMetaAccess().lookupJavaMethod(OptimizedCallTarget.class.getDeclaredMethod("callBoundary", Object[].class));
+            callRootMethod = providers.getMetaAccess().lookupJavaMethod(OptimizedCallTarget.class.getDeclaredMethod("callRoot", Object[].class));
         } catch (NoSuchMethodException ex) {
             throw new RuntimeException(ex);
         }
@@ -99,7 +99,7 @@ public class TruffleCacheImpl implements TruffleCache {
     }
 
     public StructuredGraph createRootGraph(String name) {
-        StructuredGraph graph = new StructuredGraph(name, callBoundaryMethod);
+        StructuredGraph graph = new StructuredGraph(name, callRootMethod);
         new GraphBuilderPhase.Instance(providers.getMetaAccess(), configForRoot, TruffleCompilerImpl.Optimizations).apply(graph);
         return graph;
     }
