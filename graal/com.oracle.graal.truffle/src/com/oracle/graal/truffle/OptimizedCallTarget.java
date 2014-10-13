@@ -72,7 +72,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         return rootNode;
     }
 
-    public OptimizedCallTarget(RootNode rootNode, GraalTruffleRuntime runtime, int invokeCounter, int compilationThreshold, CompilationPolicy compilationPolicy, SpeculationLog speculationLog) {
+    public OptimizedCallTarget(RootNode rootNode, GraalTruffleRuntime runtime, CompilationPolicy compilationPolicy, SpeculationLog speculationLog) {
         super(rootNode.toString());
         this.runtime = runtime;
         this.speculationLog = speculationLog;
@@ -81,9 +81,9 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         this.rootNode.setCallTarget(this);
         this.compilationPolicy = compilationPolicy;
         if (TruffleCallTargetProfiling.getValue()) {
-            this.compilationProfile = new TraceCompilationProfile(compilationThreshold, invokeCounter);
+            this.compilationProfile = new TraceCompilationProfile();
         } else {
-            this.compilationProfile = new CompilationProfile(compilationThreshold, invokeCounter);
+            this.compilationProfile = new CompilationProfile();
         }
     }
 

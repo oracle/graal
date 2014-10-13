@@ -28,10 +28,6 @@ public class TraceCompilationProfile extends CompilationProfile {
     private int indirectCallCount;
     private int inlinedCallCount;
 
-    public TraceCompilationProfile(int compilationThreshold, int initialInvokeCounter) {
-        super(compilationThreshold, initialInvokeCounter);
-    }
-
     @Override
     public void reportIndirectCall() {
         indirectCallCount++;
