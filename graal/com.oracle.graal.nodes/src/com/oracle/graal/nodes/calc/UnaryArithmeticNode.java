@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.nodes.calc;
 
+import java.util.function.*;
+
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.UnaryOp;
@@ -31,34 +33,33 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo
-public abstract class UnaryArithmeticNode extends UnaryNode implements ArithmeticLIRLowerable {
+public abstract class UnaryArithmeticNode<OP> extends UnaryNode implements ArithmeticLIRLowerable {
 
-    protected UnaryOp op;
+    protected final Function<ArithmeticOpTable, UnaryOp<OP>> getOp;
 
-    protected UnaryArithmeticNode(UnaryOp op, ValueNode value) {
-        super(op.foldStamp(value.stamp()), value);
-        this.op = op;
+    protected UnaryArithmeticNode(Function<ArithmeticOpTable, UnaryOp<OP>> getOp, ValueNode value) {
+        super(getOp.apply(ArithmeticOpTable.forStamp(value.stamp())).foldStamp(value.stamp()), value);
+        this.getOp = getOp;
     }
 
-    public UnaryOp getOp() {
-        return op;
+    protected final UnaryOp<OP> getOp(ValueNode forValue) {
+        return getOp.apply(ArithmeticOpTable.forStamp(forValue.stamp()));
     }
 
     public Constant evalConst(Constant... inputs) {
         assert inputs.length == 1;
-        return op.foldConstant(inputs[0]);
+        return getOp(getValue()).foldConstant(inputs[0]);
     }
 
     @Override
     public boolean inferStamp() {
-        op = ArithmeticOpTable.forStamp(getValue().stamp()).getUnaryOp(op);
-        return updateStamp(op.foldStamp(getValue().stamp()));
+        return updateStamp(getOp(getValue()).foldStamp(getValue().stamp()));
     }
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
         if (forValue.isConstant()) {
-            return ConstantNode.forPrimitive(stamp(), op.foldConstant(forValue.asConstant()));
+            return ConstantNode.forPrimitive(stamp(), getOp(forValue).foldConstant(forValue.asConstant()));
         }
         return this;
     }

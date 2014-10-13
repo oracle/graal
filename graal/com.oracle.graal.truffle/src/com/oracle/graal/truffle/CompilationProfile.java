@@ -33,25 +33,14 @@ public class CompilationProfile {
      */
     private int invalidationCount;
 
-    /**
-     * Number of times a node was replaced in this tree.
-     */
-    private int nodeReplaceCount;
-
-    private long previousTimestamp;
-
     private int interpreterCallCount;
     private int interpreterCallAndLoopCount;
     private int compilationCallThreshold;
     private int compilationCallAndLoopThreshold;
 
-    private final int originalCompilationThreshold;
-
-    public CompilationProfile(final int compilationThreshold, final int initialInvokeCounter) {
-        this.previousTimestamp = System.nanoTime();
-        this.compilationCallThreshold = initialInvokeCounter;
-        this.compilationCallAndLoopThreshold = compilationThreshold;
-        this.originalCompilationThreshold = compilationThreshold;
+    public CompilationProfile() {
+        this.compilationCallThreshold = TruffleMinInvokeThreshold.getValue();
+        this.compilationCallAndLoopThreshold = TruffleCompilationThreshold.getValue();
     }
 
     @Override
@@ -64,23 +53,15 @@ public class CompilationProfile {
         Map<String, Object> properties = new LinkedHashMap<>();
         String callsThreshold = String.format("%7d/%5d", getInterpreterCallCount(), getCompilationCallThreshold());
         String loopsThreshold = String.format("%7d/%5d", getInterpreterCallAndLoopCount(), getCompilationCallAndLoopThreshold());
-        String invalidationReplace = String.format("%5d/%5d", invalidationCount, nodeReplaceCount);
+        String invalidations = String.format("%5d", invalidationCount);
         properties.put("C/T", callsThreshold);
         properties.put("L/T", loopsThreshold);
-        properties.put("Inval#/Replace#", invalidationReplace);
+        properties.put("Inval#", invalidations);
         return properties;
-    }
-
-    public long getPreviousTimestamp() {
-        return previousTimestamp;
     }
 
     public int getInvalidationCount() {
         return invalidationCount;
-    }
-
-    public int getNodeReplaceCount() {
-        return nodeReplaceCount;
     }
 
     public int getInterpreterCallAndLoopCount() {
@@ -111,11 +92,6 @@ public class CompilationProfile {
         }
     }
 
-    void reportTiminingFailed(long timestamp) {
-        ensureProfiling(0, originalCompilationThreshold);
-        this.previousTimestamp = timestamp;
-    }
-
     public void reportInvalidated() {
         invalidationCount++;
         int reprofile = TruffleInvalidationReprofileCount.getValue();
@@ -144,7 +120,6 @@ public class CompilationProfile {
     }
 
     void reportNodeReplaced() {
-        nodeReplaceCount++;
         // delay compilation until tree is deemed stable enough
         int replaceBackoff = TruffleReplaceReprofileCount.getValue();
         ensureProfiling(1, replaceBackoff);

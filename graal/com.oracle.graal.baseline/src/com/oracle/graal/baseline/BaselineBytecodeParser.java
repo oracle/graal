@@ -595,7 +595,7 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, Baseli
 
     @Override
     protected Value appendConstant(Constant constant) {
-        return gen.emitLoadConstant(constant);
+        return gen.emitLoadConstant(constant.getLIRKind(), constant);
     }
 
     @Override

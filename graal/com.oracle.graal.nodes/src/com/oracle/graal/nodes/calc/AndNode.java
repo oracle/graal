@@ -25,6 +25,7 @@ package com.oracle.graal.nodes.calc;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp.And;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodeinfo.*;
@@ -33,14 +34,14 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.util.*;
 
 @NodeInfo(shortName = "&")
-public class AndNode extends BinaryArithmeticNode implements NarrowableArithmeticNode {
+public class AndNode extends BinaryArithmeticNode<And> implements NarrowableArithmeticNode {
 
     public static AndNode create(ValueNode x, ValueNode y) {
         return USE_GENERATED_NODES ? new AndNodeGen(x, y) : new AndNode(x, y);
     }
 
     protected AndNode(ValueNode x, ValueNode y) {
-        super(ArithmeticOpTable.forStamp(x.stamp()).getAnd(), x, y);
+        super(ArithmeticOpTable::getAnd, x, y);
     }
 
     @Override
@@ -58,7 +59,7 @@ public class AndNode extends BinaryArithmeticNode implements NarrowableArithmeti
         }
         if (forY.isConstant()) {
             Constant c = forY.asConstant();
-            if (getOp().isNeutral(c)) {
+            if (getOp(forX, forY).isNeutral(c)) {
                 return forX;
             }
 

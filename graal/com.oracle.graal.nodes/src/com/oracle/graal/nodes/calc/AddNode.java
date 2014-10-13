@@ -24,6 +24,8 @@ package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp.Add;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodeinfo.*;
@@ -31,14 +33,14 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo(shortName = "+")
-public class AddNode extends BinaryArithmeticNode implements NarrowableArithmeticNode {
+public class AddNode extends BinaryArithmeticNode<Add> implements NarrowableArithmeticNode {
 
     public static AddNode create(ValueNode x, ValueNode y) {
         return USE_GENERATED_NODES ? new AddNodeGen(x, y) : new AddNode(x, y);
     }
 
     protected AddNode(ValueNode x, ValueNode y) {
-        super(ArithmeticOpTable.forStamp(x.stamp()).getAdd(), x, y);
+        super(ArithmeticOpTable::getAdd, x, y);
     }
 
     @Override
@@ -51,7 +53,8 @@ public class AddNode extends BinaryArithmeticNode implements NarrowableArithmeti
         if (forX.isConstant() && !forY.isConstant()) {
             return AddNode.create(forY, forX);
         }
-        boolean associative = getOp().isAssociative();
+        BinaryOp<Add> op = getOp(forX, forY);
+        boolean associative = op.isAssociative();
         if (associative) {
             if (forX instanceof SubNode) {
                 SubNode sub = (SubNode) forX;
@@ -70,7 +73,7 @@ public class AddNode extends BinaryArithmeticNode implements NarrowableArithmeti
         }
         if (forY.isConstant()) {
             Constant c = forY.asConstant();
-            if (getOp().isNeutral(c)) {
+            if (op.isNeutral(c)) {
                 return forX;
             }
             if (associative) {

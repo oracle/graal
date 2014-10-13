@@ -57,7 +57,7 @@ public class InductionVariables {
             }
             ValueNode stride = addSub(backValue, phi);
             if (stride != null) {
-                BasicInductionVariable biv = new BasicInductionVariable(loop, (ValuePhiNode) phi, phi.valueAt(forwardEnd), stride, (BinaryArithmeticNode) backValue);
+                BasicInductionVariable biv = new BasicInductionVariable(loop, (ValuePhiNode) phi, phi.valueAt(forwardEnd), stride, (BinaryArithmeticNode<?>) backValue);
                 ivs.put(phi, biv);
                 bivs.add(biv);
             }
@@ -78,7 +78,7 @@ public class InductionVariables {
                 ValueNode offset = addSub(op, baseIvNode);
                 ValueNode scale;
                 if (offset != null) {
-                    iv = new DerivedOffsetInductionVariable(loop, baseIv, offset, (BinaryArithmeticNode) op);
+                    iv = new DerivedOffsetInductionVariable(loop, baseIv, offset, (BinaryArithmeticNode<?>) op);
                 } else if (op instanceof NegateNode) {
                     iv = new DerivedScaledInductionVariable(loop, baseIv, (NegateNode) op);
                 } else if ((scale = mul(op, baseIvNode)) != null) {
@@ -95,7 +95,7 @@ public class InductionVariables {
 
     private ValueNode addSub(ValueNode op, ValueNode base) {
         if (op.stamp() instanceof IntegerStamp && (op instanceof AddNode || op instanceof SubNode)) {
-            BinaryArithmeticNode aritOp = (BinaryArithmeticNode) op;
+            BinaryArithmeticNode<?> aritOp = (BinaryArithmeticNode<?>) op;
             if (aritOp.getX() == base && loop.isOutsideLoop(aritOp.getY())) {
                 return aritOp.getY();
             } else if (aritOp.getY() == base && loop.isOutsideLoop(aritOp.getX())) {

@@ -23,6 +23,8 @@
 package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.IntegerConvertOp.Narrow;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.IntegerConvertOp.SignExtend;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodeinfo.*;
@@ -33,18 +35,14 @@ import com.oracle.graal.nodes.spi.*;
  * The {@code NarrowNode} converts an integer to a narrower integer.
  */
 @NodeInfo
-public class NarrowNode extends IntegerConvertNode {
+public class NarrowNode extends IntegerConvertNode<Narrow, SignExtend> {
 
     public static NarrowNode create(ValueNode input, int resultBits) {
         return USE_GENERATED_NODES ? new NarrowNodeGen(input, resultBits) : new NarrowNode(input, resultBits);
     }
 
-    private NarrowNode(ArithmeticOpTable ops, ValueNode input, int resultBits) {
-        super(ops.getNarrow(), ops.getSignExtend(), resultBits, input);
-    }
-
     protected NarrowNode(ValueNode input, int resultBits) {
-        this(ArithmeticOpTable.forStamp(input.stamp()), input, resultBits);
+        super(ArithmeticOpTable::getNarrow, ArithmeticOpTable::getSignExtend, resultBits, input);
     }
 
     @Override
@@ -66,7 +64,7 @@ public class NarrowNode extends IntegerConvertNode {
             return NarrowNode.create(other.getValue(), getResultBits());
         } else if (forValue instanceof IntegerConvertNode) {
             // SignExtendNode or ZeroExtendNode
-            IntegerConvertNode other = (IntegerConvertNode) forValue;
+            IntegerConvertNode<?, ?> other = (IntegerConvertNode<?, ?>) forValue;
             if (getResultBits() == other.getInputBits()) {
                 // xxxx -(extend)-> yyyy xxxx -(narrow)-> xxxx
                 // ==> no-op

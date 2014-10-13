@@ -131,7 +131,7 @@ public class IntegerStampTest {
 
     private static Stamp narrowingKindConversion(Stamp stamp, Kind kind) {
         Stamp narrow = IntegerStamp.OPS.getNarrow().foldStamp(kind.getBitCount(), stamp);
-        IntegerConvertOp implicitExtend = kind.isUnsigned() ? IntegerStamp.OPS.getZeroExtend() : IntegerStamp.OPS.getSignExtend();
+        IntegerConvertOp<?> implicitExtend = kind.isUnsigned() ? IntegerStamp.OPS.getZeroExtend() : IntegerStamp.OPS.getSignExtend();
         return implicitExtend.foldStamp(32, narrow);
     }
 

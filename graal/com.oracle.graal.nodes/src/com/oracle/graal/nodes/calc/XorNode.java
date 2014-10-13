@@ -25,6 +25,7 @@ package com.oracle.graal.nodes.calc;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp.Xor;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodeinfo.*;
@@ -33,14 +34,14 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.util.*;
 
 @NodeInfo(shortName = "^")
-public class XorNode extends BinaryArithmeticNode {
+public class XorNode extends BinaryArithmeticNode<Xor> {
 
     public static XorNode create(ValueNode x, ValueNode y) {
         return USE_GENERATED_NODES ? new XorNodeGen(x, y) : new XorNode(x, y);
     }
 
     protected XorNode(ValueNode x, ValueNode y) {
-        super(ArithmeticOpTable.forStamp(x.stamp()).getXor(), x, y);
+        super(ArithmeticOpTable::getXor, x, y);
         assert x.stamp().isCompatible(y.stamp());
     }
 
@@ -52,14 +53,14 @@ public class XorNode extends BinaryArithmeticNode {
         }
 
         if (GraphUtil.unproxify(forX) == GraphUtil.unproxify(forY)) {
-            return ConstantNode.forPrimitive(stamp(), getOp().getZero(forX.stamp()));
+            return ConstantNode.forPrimitive(stamp(), getOp(forX, forY).getZero(forX.stamp()));
         }
         if (forX.isConstant() && !forY.isConstant()) {
             return XorNode.create(forY, forX);
         }
         if (forY.isConstant()) {
             Constant c = forY.asConstant();
-            if (getOp().isNeutral(c)) {
+            if (getOp(forX, forY).isNeutral(c)) {
                 return forX;
             }
 

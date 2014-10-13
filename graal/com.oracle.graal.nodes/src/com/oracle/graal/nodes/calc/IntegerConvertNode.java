@@ -22,9 +22,11 @@
  */
 package com.oracle.graal.nodes.calc;
 
+import java.util.function.*;
+
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.type.ArithmeticOpTable.IntegerConvertOp;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.IntegerConvertOp;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
@@ -34,17 +36,17 @@ import com.oracle.graal.nodes.spi.*;
  * An {@code IntegerConvert} converts an integer to an integer of different width.
  */
 @NodeInfo
-public abstract class IntegerConvertNode extends UnaryNode implements ConvertNode, ArithmeticLIRLowerable {
+public abstract class IntegerConvertNode<OP, REV> extends UnaryNode implements ConvertNode, ArithmeticLIRLowerable {
 
-    protected IntegerConvertOp op;
-    protected IntegerConvertOp reverseOp;
+    protected final Function<ArithmeticOpTable, IntegerConvertOp<OP>> getOp;
+    protected final Function<ArithmeticOpTable, IntegerConvertOp<REV>> getReverseOp;
 
     protected final int resultBits;
 
-    protected IntegerConvertNode(IntegerConvertOp op, IntegerConvertOp reverseOp, int resultBits, ValueNode input) {
-        super(op.foldStamp(resultBits, input.stamp()), input);
-        this.op = op;
-        this.reverseOp = reverseOp;
+    protected IntegerConvertNode(Function<ArithmeticOpTable, IntegerConvertOp<OP>> getOp, Function<ArithmeticOpTable, IntegerConvertOp<REV>> getReverseOp, int resultBits, ValueNode input) {
+        super(getOp.apply(ArithmeticOpTable.forStamp(input.stamp())).foldStamp(resultBits, input.stamp()), input);
+        this.getOp = getOp;
+        this.getReverseOp = getReverseOp;
         this.resultBits = resultBits;
     }
 
@@ -60,24 +62,24 @@ public abstract class IntegerConvertNode extends UnaryNode implements ConvertNod
         }
     }
 
+    protected final IntegerConvertOp<OP> getOp(ValueNode forValue) {
+        return getOp.apply(ArithmeticOpTable.forStamp(forValue.stamp()));
+    }
+
     @Override
     public Constant convert(Constant c) {
-        return op.foldConstant(getInputBits(), getResultBits(), c);
+        return getOp(getValue()).foldConstant(getInputBits(), getResultBits(), c);
     }
 
     @Override
     public Constant reverse(Constant c) {
-        return reverseOp.foldConstant(getResultBits(), getInputBits(), c);
+        IntegerConvertOp<REV> reverse = getReverseOp.apply(ArithmeticOpTable.forStamp(stamp()));
+        return reverse.foldConstant(getResultBits(), getInputBits(), c);
     }
 
     @Override
     public boolean inferStamp() {
-        op = ArithmeticOpTable.forStamp(getValue().stamp()).getIntegerConvertOp(op);
-        boolean changed = updateStamp(op.foldStamp(resultBits, getValue().stamp()));
-        if (changed) {
-            reverseOp = ArithmeticOpTable.forStamp(stamp()).getIntegerConvertOp(reverseOp);
-        }
-        return changed;
+        return updateStamp(getOp(getValue()).foldStamp(resultBits, getValue().stamp()));
     }
 
     @Override
