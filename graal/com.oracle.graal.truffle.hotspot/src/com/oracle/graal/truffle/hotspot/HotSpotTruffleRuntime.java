@@ -282,7 +282,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
 
     private static void logTransferToInterpreter() {
         final int skip = 2;
-        final int limit = 20;
+        final int limit = TraceTruffleStackTraceLimit.getValue();
         StackTraceElement[] stackTrace = new Throwable().getStackTrace();
         String suffix = stackTrace.length > skip + limit ? "\n  ..." : "";
         TTY.out().out().println(Arrays.stream(stackTrace).skip(skip).limit(limit).map(StackTraceElement::toString).collect(Collectors.joining("\n  ", "", suffix)));

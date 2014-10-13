@@ -126,6 +126,8 @@ public class TruffleCompilerOptions {
     public static final OptionValue<Boolean> TraceTruffleTransferToInterpreter = new StableOptionValue<>(false);
     @Option(help = "Print stack trace on assumption invalidation")
     public static final OptionValue<Boolean> TraceTruffleAssumptions = new StableOptionValue<>(false);
+    @Option(help = "Number of stack trace elements printed by TraceTruffleTransferToInterpreter and TraceTruffleAssumptions")
+    public static final OptionValue<Integer> TraceTruffleStackTraceLimit = new OptionValue<>(20);
     @Option(help = "Print a summary of execution counts for all executed CallTargets. Introduces counter overhead for each call.")
     public static final OptionValue<Boolean> TruffleCallTargetProfiling = new StableOptionValue<>(false);
     // @formatter:on
