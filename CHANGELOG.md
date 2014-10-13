@@ -7,6 +7,7 @@
 
 ### Truffle
 * Relaxed declared type restriction on child fields to allow for interface types in addition to Node subclasses.
+* The BranchProfile constructor is now private. Use BranchProfile#create() instead.
 * ...
 
 ## Version 0.5
