@@ -294,7 +294,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     public void compile() {
         if (!runtime.isCompiling(this)) {
             logOptimizingQueued(this);
-            runtime.compile(this, TruffleBackgroundCompilation.getValue());
+            runtime.compile(this, TruffleBackgroundCompilation.getValue() && !TruffleCompilationExceptionsAreThrown.getValue());
         }
     }
 
