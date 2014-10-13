@@ -40,6 +40,9 @@ public final class BranchProfile {
 
     @CompilationFinal private boolean visited;
 
+    private BranchProfile() {
+    }
+
     public void enter() {
         if (!visited) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -49,6 +52,10 @@ public final class BranchProfile {
 
     public boolean isVisited() {
         return visited;
+    }
+
+    public static BranchProfile create() {
+        return new BranchProfile();
     }
 
     @Override

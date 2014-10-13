@@ -47,8 +47,8 @@ public final class SLFunctionBodyNode extends SLExpressionNode {
      * {@link SLReturnNode explicit return statement}. This allows the compiler to generate better
      * code.
      */
-    private final BranchProfile exceptionTaken = new BranchProfile();
-    private final BranchProfile nullTaken = new BranchProfile();
+    private final BranchProfile exceptionTaken = BranchProfile.create();
+    private final BranchProfile nullTaken = BranchProfile.create();
 
     public SLFunctionBodyNode(SourceSection src, SLStatementNode bodyNode) {
         super(src);

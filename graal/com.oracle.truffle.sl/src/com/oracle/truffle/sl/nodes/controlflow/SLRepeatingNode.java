@@ -46,8 +46,8 @@ public final class SLRepeatingNode extends Node implements RepeatingNode {
      * statement was used in this loop. This allows the compiler to generate better code for loops
      * without a {@code continue}.
      */
-    private final BranchProfile continueTaken = new BranchProfile();
-    private final BranchProfile breakTaken = new BranchProfile();
+    private final BranchProfile continueTaken = BranchProfile.create();
+    private final BranchProfile breakTaken = BranchProfile.create();
 
     public SLRepeatingNode(SourceSection src, SLExpressionNode conditionNode, SLStatementNode bodyNode) {
         super(src);

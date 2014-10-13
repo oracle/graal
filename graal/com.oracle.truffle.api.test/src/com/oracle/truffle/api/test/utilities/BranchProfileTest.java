@@ -32,14 +32,14 @@ public class BranchProfileTest {
 
     @Test
     public void testEnter() {
-        BranchProfile profile = new BranchProfile();
+        BranchProfile profile = BranchProfile.create();
         profile.enter();
         profile.enter();
     }
 
     @Test
     public void testToString() {
-        BranchProfile profile = new BranchProfile();
+        BranchProfile profile = BranchProfile.create();
         assertTrue(profile.toString().contains(profile.getClass().getSimpleName()));
         assertTrue(profile.toString().contains("not-visited"));
         assertTrue(profile.toString().contains(Integer.toHexString(profile.hashCode())));
