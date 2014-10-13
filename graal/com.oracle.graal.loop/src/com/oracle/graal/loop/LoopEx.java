@@ -137,11 +137,11 @@ public class LoopEx {
     public void reassociateInvariants() {
         InvariantPredicate invariant = new InvariantPredicate();
         StructuredGraph graph = loopBegin().graph();
-        for (BinaryArithmeticNode binary : whole().nodes().filter(BinaryArithmeticNode.class)) {
+        for (BinaryArithmeticNode<?> binary : whole().nodes().filter(BinaryArithmeticNode.class)) {
             if (!binary.isAssociative()) {
                 continue;
             }
-            BinaryArithmeticNode result = BinaryArithmeticNode.reassociate(binary, invariant, binary.getX(), binary.getY());
+            BinaryArithmeticNode<?> result = BinaryArithmeticNode.reassociate(binary, invariant, binary.getX(), binary.getY());
             if (result != binary) {
                 if (Debug.isLogEnabled()) {
                     Debug.log("%s : Reassociated %s into %s", graph.method().format("%H::%n"), binary, result);

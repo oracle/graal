@@ -23,6 +23,7 @@
 package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.UnaryOp.Neg;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodeinfo.*;
@@ -33,7 +34,7 @@ import com.oracle.graal.nodes.spi.*;
  * The {@code NegateNode} node negates its operand.
  */
 @NodeInfo
-public class NegateNode extends UnaryArithmeticNode implements NarrowableArithmeticNode {
+public class NegateNode extends UnaryArithmeticNode<Neg> implements NarrowableArithmeticNode {
 
     /**
      * Creates new NegateNode instance.

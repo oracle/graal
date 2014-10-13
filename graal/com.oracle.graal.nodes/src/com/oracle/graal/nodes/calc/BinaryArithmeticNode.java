@@ -36,16 +36,16 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo
-public abstract class BinaryArithmeticNode extends BinaryNode implements ArithmeticLIRLowerable {
+public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements ArithmeticLIRLowerable {
 
-    protected final Function<ArithmeticOpTable, BinaryOp> getOp;
+    protected final Function<ArithmeticOpTable, BinaryOp<OP>> getOp;
 
-    public BinaryArithmeticNode(Function<ArithmeticOpTable, BinaryOp> getOp, ValueNode x, ValueNode y) {
+    public BinaryArithmeticNode(Function<ArithmeticOpTable, BinaryOp<OP>> getOp, ValueNode x, ValueNode y) {
         super(getOp.apply(ArithmeticOpTable.forStamp(x.stamp())).foldStamp(x.stamp(), y.stamp()), x, y);
         this.getOp = getOp;
     }
 
-    protected final BinaryOp getOp(ValueNode forX, ValueNode forY) {
+    protected final BinaryOp<OP> getOp(ValueNode forX, ValueNode forY) {
         ArithmeticOpTable table = ArithmeticOpTable.forStamp(forX.stamp());
         assert table == ArithmeticOpTable.forStamp(forY.stamp());
         return getOp.apply(table);
@@ -164,7 +164,7 @@ public abstract class BinaryArithmeticNode extends BinaryNode implements Arithme
      * @param forY
      * @param forX
      */
-    public static BinaryArithmeticNode reassociate(BinaryArithmeticNode node, NodePredicate criterion, ValueNode forX, ValueNode forY) {
+    public static BinaryArithmeticNode<?> reassociate(BinaryArithmeticNode<?> node, NodePredicate criterion, ValueNode forX, ValueNode forY) {
         assert node.getOp(forX, forY).isAssociative();
         ReassociateMatch match1 = findReassociate(node, criterion);
         if (match1 == null) {

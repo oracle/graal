@@ -25,6 +25,7 @@ package com.oracle.graal.replacements.amd64;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.FloatConvertOp;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodeinfo.*;
@@ -38,7 +39,7 @@ import com.oracle.graal.nodes.spi.*;
  * fixup code that handles the corner cases that differ between AMD64 and Java.
  */
 @NodeInfo
-public class AMD64FloatConvertNode extends UnaryArithmeticNode implements ArithmeticLIRLowerable {
+public class AMD64FloatConvertNode extends UnaryArithmeticNode<FloatConvertOp> implements ArithmeticLIRLowerable {
 
     protected final FloatConvert op;
 

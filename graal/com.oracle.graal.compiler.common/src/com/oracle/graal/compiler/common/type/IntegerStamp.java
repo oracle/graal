@@ -23,7 +23,6 @@
 package com.oracle.graal.compiler.common.type;
 
 import static com.oracle.graal.compiler.common.calc.FloatConvert.*;
-import static com.oracle.graal.compiler.common.type.ArithmeticOpTable.IntegerConvertOp.*;
 
 import java.util.*;
 
@@ -369,9 +368,9 @@ public class IntegerStamp extends PrimitiveStamp {
         return v;
     }
 
-    public static final ArithmeticOpTable OPS = ArithmeticOpTable.create(
+    public static final ArithmeticOpTable OPS = new ArithmeticOpTable(
 
-    new UnaryOp('-') {
+    new UnaryOp.Neg() {
 
         @Override
         public Constant foldConstant(Constant value) {
@@ -391,7 +390,7 @@ public class IntegerStamp extends PrimitiveStamp {
         }
     },
 
-    new BinaryOp('+', true, true) {
+    new BinaryOp.Add(true, true) {
 
         @Override
         public Constant foldConstant(Constant a, Constant b) {
@@ -448,7 +447,7 @@ public class IntegerStamp extends PrimitiveStamp {
         }
     },
 
-    new BinaryOp('-', true, false) {
+    new BinaryOp.Sub(true, false) {
 
         @Override
         public Constant foldConstant(Constant a, Constant b) {
@@ -473,7 +472,7 @@ public class IntegerStamp extends PrimitiveStamp {
         }
     },
 
-    new BinaryOp('*', true, true) {
+    new BinaryOp.Mul(true, true) {
 
         @Override
         public Constant foldConstant(Constant a, Constant b) {
@@ -501,7 +500,7 @@ public class IntegerStamp extends PrimitiveStamp {
         }
     },
 
-    new BinaryOp('/', true, false) {
+    new BinaryOp.Div(true, false) {
 
         @Override
         public Constant foldConstant(Constant a, Constant b) {
@@ -529,7 +528,7 @@ public class IntegerStamp extends PrimitiveStamp {
         }
     },
 
-    new BinaryOp('%', false, false) {
+    new BinaryOp.Rem(false, false) {
 
         @Override
         public Constant foldConstant(Constant a, Constant b) {
@@ -560,7 +559,7 @@ public class IntegerStamp extends PrimitiveStamp {
         }
     },
 
-    new UnaryOp('~') {
+    new UnaryOp.Not() {
 
         @Override
         public Constant foldConstant(Constant value) {
@@ -576,7 +575,7 @@ public class IntegerStamp extends PrimitiveStamp {
         }
     },
 
-    new BinaryOp('&', true, true) {
+    new BinaryOp.And(true, true) {
 
         @Override
         public Constant foldConstant(Constant a, Constant b) {
@@ -600,7 +599,7 @@ public class IntegerStamp extends PrimitiveStamp {
         }
     },
 
-    new BinaryOp('|', true, true) {
+    new BinaryOp.Or(true, true) {
 
         @Override
         public Constant foldConstant(Constant a, Constant b) {
@@ -622,7 +621,7 @@ public class IntegerStamp extends PrimitiveStamp {
         }
     },
 
-    new BinaryOp('^', true, true) {
+    new BinaryOp.Xor(true, true) {
 
         @Override
         public Constant foldConstant(Constant a, Constant b) {
@@ -654,7 +653,7 @@ public class IntegerStamp extends PrimitiveStamp {
         }
     },
 
-    new IntegerConvertOp(ZERO_EXTEND) {
+    new IntegerConvertOp.ZeroExtend() {
 
         @Override
         public Constant foldConstant(int inputBits, int resultBits, Constant value) {
@@ -683,7 +682,7 @@ public class IntegerStamp extends PrimitiveStamp {
         }
     },
 
-    new IntegerConvertOp(SIGN_EXTEND) {
+    new IntegerConvertOp.SignExtend() {
 
         @Override
         public Constant foldConstant(int inputBits, int resultBits, Constant value) {
@@ -704,7 +703,7 @@ public class IntegerStamp extends PrimitiveStamp {
         }
     },
 
-    new IntegerConvertOp(NARROW) {
+    new IntegerConvertOp.Narrow() {
 
         @Override
         public Constant foldConstant(int inputBits, int resultBits, Constant value) {

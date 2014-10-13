@@ -22,35 +22,47 @@
  */
 package com.oracle.graal.compiler.common.type;
 
-import static com.oracle.graal.compiler.common.type.ArithmeticOpTable.IntegerConvertOp.*;
-
+import java.util.*;
+import java.util.function.*;
 import java.util.stream.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp.Add;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp.And;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp.Div;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp.Mul;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp.Or;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp.Rem;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp.Sub;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp.Xor;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.IntegerConvertOp.Narrow;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.IntegerConvertOp.SignExtend;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.IntegerConvertOp.ZeroExtend;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.UnaryOp.Neg;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.UnaryOp.Not;
 
 /**
  * Information about arithmetic operations.
  */
 public final class ArithmeticOpTable {
 
-    private final UnaryOp neg;
-    private final BinaryOp add;
-    private final BinaryOp sub;
+    private final UnaryOp<Neg> neg;
+    private final BinaryOp<Add> add;
+    private final BinaryOp<Sub> sub;
 
-    private final BinaryOp mul;
-    private final BinaryOp div;
-    private final BinaryOp rem;
+    private final BinaryOp<Mul> mul;
+    private final BinaryOp<Div> div;
+    private final BinaryOp<Rem> rem;
 
-    private final UnaryOp not;
-    private final BinaryOp and;
-    private final BinaryOp or;
-    private final BinaryOp xor;
+    private final UnaryOp<Not> not;
+    private final BinaryOp<And> and;
+    private final BinaryOp<Or> or;
+    private final BinaryOp<Xor> xor;
 
-    private final IntegerConvertOp zeroExtend;
-    private final IntegerConvertOp signExtend;
-    private final IntegerConvertOp narrow;
+    private final IntegerConvertOp<ZeroExtend> zeroExtend;
+    private final IntegerConvertOp<SignExtend> signExtend;
+    private final IntegerConvertOp<Narrow> narrow;
 
     private final FloatConvertOp[] floatConvert;
 
@@ -62,120 +74,57 @@ public final class ArithmeticOpTable {
         }
     }
 
-    public static final ArithmeticOpTable EMPTY = create();
+    public static final ArithmeticOpTable EMPTY = new ArithmeticOpTable(null, null, null, null, null, null, null, null, null, null, null, null, null);
 
-    public static ArithmeticOpTable create(Op... ops) {
-        UnaryOp neg = null;
-        BinaryOp add = null;
-        BinaryOp sub = null;
+    public ArithmeticOpTable(UnaryOp<Neg> neg, BinaryOp<Add> add, BinaryOp<Sub> sub, BinaryOp<Mul> mul, BinaryOp<Div> div, BinaryOp<Rem> rem, UnaryOp<Not> not, BinaryOp<And> and, BinaryOp<Or> or,
+                    BinaryOp<Xor> xor, IntegerConvertOp<ZeroExtend> zeroExtend, IntegerConvertOp<SignExtend> signExtend, IntegerConvertOp<Narrow> narrow, FloatConvertOp... floatConvert) {
+        this(neg, add, sub, mul, div, rem, not, and, or, xor, zeroExtend, signExtend, narrow, Stream.of(floatConvert));
+    }
 
-        BinaryOp mul = null;
-        BinaryOp div = null;
-        BinaryOp rem = null;
+    public interface ArithmeticOpWrapper {
 
-        UnaryOp not = null;
-        BinaryOp and = null;
-        BinaryOp or = null;
-        BinaryOp xor = null;
+        <OP> UnaryOp<OP> wrapUnaryOp(UnaryOp<OP> op);
 
-        IntegerConvertOp zeroExtend = null;
-        IntegerConvertOp signExtend = null;
-        IntegerConvertOp narrow = null;
+        <OP> BinaryOp<OP> wrapBinaryOp(BinaryOp<OP> op);
 
-        FloatConvertOp[] floatConvert = new FloatConvertOp[FloatConvert.values().length];
+        <OP> IntegerConvertOp<OP> wrapIntegerConvertOp(IntegerConvertOp<OP> op);
 
-        for (Op op : ops) {
-            if (op instanceof BinaryOp) {
-                BinaryOp binary = (BinaryOp) op;
-                switch (binary.getOperator()) {
-                    case '+':
-                        assert add == null;
-                        add = binary;
-                        break;
-                    case '-':
-                        assert sub == null;
-                        sub = binary;
-                        break;
-                    case '*':
-                        assert mul == null;
-                        mul = binary;
-                        break;
-                    case '/':
-                        assert div == null;
-                        div = binary;
-                        break;
-                    case '%':
-                        assert rem == null;
-                        rem = binary;
-                        break;
-                    case '&':
-                        assert and == null;
-                        and = binary;
-                        break;
-                    case '|':
-                        assert or == null;
-                        or = binary;
-                        break;
-                    case '^':
-                        assert xor == null;
-                        xor = binary;
-                        break;
-                    default:
-                        throw GraalInternalError.shouldNotReachHere("unknown binary operator " + binary.getOperator());
-                }
-            } else if (op instanceof IntegerConvertOp) {
-                IntegerConvertOp convert = (IntegerConvertOp) op;
-                switch (convert.getOperator()) {
-                    case IntegerConvertOp.ZERO_EXTEND:
-                        assert zeroExtend == null;
-                        zeroExtend = convert;
-                        break;
-                    case IntegerConvertOp.SIGN_EXTEND:
-                        assert signExtend == null;
-                        signExtend = convert;
-                        break;
-                    case IntegerConvertOp.NARROW:
-                        assert narrow == null;
-                        narrow = convert;
-                        break;
-                    default:
-                        throw GraalInternalError.shouldNotReachHere("unknown integer conversion operator " + convert.getOperator());
-                }
-            } else if (op instanceof FloatConvertOp) {
-                FloatConvertOp convert = (FloatConvertOp) op;
-                int idx = convert.getFloatConvert().ordinal();
-                assert floatConvert[idx] == null;
-                floatConvert[idx] = convert;
-            } else if (op instanceof UnaryOp) {
-                UnaryOp unary = (UnaryOp) op;
-                switch (unary.getOperator()) {
-                    case '-':
-                        assert neg == null;
-                        neg = unary;
-                        break;
-                    case '~':
-                        assert not == null;
-                        not = unary;
-                        break;
-                    default:
-                        throw GraalInternalError.shouldNotReachHere("unknown unary operator " + unary.getOperator());
-                }
-            } else {
-                throw GraalInternalError.shouldNotReachHere("unknown Op subclass " + op);
-            }
+        FloatConvertOp wrapFloatConvertOp(FloatConvertOp op);
+    }
+
+    private static <T> T wrapIfNonNull(Function<T, T> wrapper, T obj) {
+        if (obj == null) {
+            return null;
+        } else {
+            return wrapper.apply(obj);
         }
+    }
+
+    public static ArithmeticOpTable wrap(ArithmeticOpWrapper wrapper, ArithmeticOpTable inner) {
+        UnaryOp<Neg> neg = wrapIfNonNull(wrapper::wrapUnaryOp, inner.getNeg());
+        BinaryOp<Add> add = wrapIfNonNull(wrapper::wrapBinaryOp, inner.getAdd());
+        BinaryOp<Sub> sub = wrapIfNonNull(wrapper::wrapBinaryOp, inner.getSub());
+
+        BinaryOp<Mul> mul = wrapIfNonNull(wrapper::wrapBinaryOp, inner.getMul());
+        BinaryOp<Div> div = wrapIfNonNull(wrapper::wrapBinaryOp, inner.getDiv());
+        BinaryOp<Rem> rem = wrapIfNonNull(wrapper::wrapBinaryOp, inner.getRem());
+
+        UnaryOp<Not> not = wrapIfNonNull(wrapper::wrapUnaryOp, inner.getNot());
+        BinaryOp<And> and = wrapIfNonNull(wrapper::wrapBinaryOp, inner.getAnd());
+        BinaryOp<Or> or = wrapIfNonNull(wrapper::wrapBinaryOp, inner.getOr());
+        BinaryOp<Xor> xor = wrapIfNonNull(wrapper::wrapBinaryOp, inner.getXor());
+
+        IntegerConvertOp<ZeroExtend> zeroExtend = wrapIfNonNull(wrapper::wrapIntegerConvertOp, inner.getZeroExtend());
+        IntegerConvertOp<SignExtend> signExtend = wrapIfNonNull(wrapper::wrapIntegerConvertOp, inner.getSignExtend());
+        IntegerConvertOp<Narrow> narrow = wrapIfNonNull(wrapper::wrapIntegerConvertOp, inner.getNarrow());
+
+        Stream<FloatConvertOp> floatConvert = Stream.of(inner.floatConvert).filter(Objects::nonNull).map(wrapper::wrapFloatConvertOp);
 
         return new ArithmeticOpTable(neg, add, sub, mul, div, rem, not, and, or, xor, zeroExtend, signExtend, narrow, floatConvert);
     }
 
-    public Stream<Op> getAllOps() {
-        Stream<Op> ops = Stream.of(neg, add, sub, mul, div, rem, not, and, or, xor, zeroExtend, signExtend, narrow);
-        Stream<Op> floatOps = Stream.of(floatConvert);
-        return Stream.concat(ops, floatOps).filter(op -> op != null);
-    }
-
-    private ArithmeticOpTable(UnaryOp neg, BinaryOp add, BinaryOp sub, BinaryOp mul, BinaryOp div, BinaryOp rem, UnaryOp not, BinaryOp and, BinaryOp or, BinaryOp xor, IntegerConvertOp zeroExtend,
-                    IntegerConvertOp signExtend, IntegerConvertOp narrow, FloatConvertOp[] floatConvert) {
+    private ArithmeticOpTable(UnaryOp<Neg> neg, BinaryOp<Add> add, BinaryOp<Sub> sub, BinaryOp<Mul> mul, BinaryOp<Div> div, BinaryOp<Rem> rem, UnaryOp<Not> not, BinaryOp<And> and, BinaryOp<Or> or,
+                    BinaryOp<Xor> xor, IntegerConvertOp<ZeroExtend> zeroExtend, IntegerConvertOp<SignExtend> signExtend, IntegerConvertOp<Narrow> narrow, Stream<FloatConvertOp> floatConvert) {
         this.neg = neg;
         this.add = add;
         this.sub = sub;
@@ -189,170 +138,142 @@ public final class ArithmeticOpTable {
         this.zeroExtend = zeroExtend;
         this.signExtend = signExtend;
         this.narrow = narrow;
-        this.floatConvert = floatConvert;
-    }
-
-    public UnaryOp getUnaryOp(UnaryOp op) {
-        switch (op.getOperator()) {
-            case '-':
-                return getNeg();
-            case '~':
-                return getNot();
-            default:
-                return getFloatConvertOp((FloatConvertOp) op);
-        }
-    }
-
-    public BinaryOp getBinaryOp(BinaryOp op) {
-        switch (op.getOperator()) {
-            case '+':
-                return getAdd();
-            case '-':
-                return getSub();
-            case '*':
-                return getMul();
-            case '/':
-                return getDiv();
-            case '%':
-                return getRem();
-            case '&':
-                return getAnd();
-            case '|':
-                return getOr();
-            case '^':
-                return getXor();
-            default:
-                throw GraalInternalError.shouldNotReachHere("unknown binary operator " + op);
-        }
-    }
-
-    public IntegerConvertOp getIntegerConvertOp(IntegerConvertOp op) {
-        switch (op.getOperator()) {
-            case ZERO_EXTEND:
-                return getZeroExtend();
-            case SIGN_EXTEND:
-                return getSignExtend();
-            case NARROW:
-                return getNarrow();
-            default:
-                throw GraalInternalError.shouldNotReachHere("unknown integer convert operator " + op);
-        }
-    }
-
-    public FloatConvertOp getFloatConvertOp(FloatConvertOp op) {
-        return getFloatConvert(op.getFloatConvert());
+        this.floatConvert = new FloatConvertOp[FloatConvert.values().length];
+        floatConvert.forEach(op -> this.floatConvert[op.getFloatConvert().ordinal()] = op);
     }
 
     /**
      * Describes the unary negation operation.
      */
-    public final UnaryOp getNeg() {
+    public final UnaryOp<Neg> getNeg() {
         return neg;
     }
 
     /**
      * Describes the addition operation.
      */
-    public final BinaryOp getAdd() {
+    public final BinaryOp<Add> getAdd() {
         return add;
     }
 
     /**
      * Describes the subtraction operation.
      */
-    public final BinaryOp getSub() {
+    public final BinaryOp<Sub> getSub() {
         return sub;
     }
 
     /**
      * Describes the multiplication operation.
      */
-    public final BinaryOp getMul() {
+    public final BinaryOp<Mul> getMul() {
         return mul;
     }
 
     /**
      * Describes the division operation.
      */
-    public final BinaryOp getDiv() {
+    public final BinaryOp<Div> getDiv() {
         return div;
     }
 
     /**
      * Describes the remainder operation.
      */
-    public final BinaryOp getRem() {
+    public final BinaryOp<Rem> getRem() {
         return rem;
     }
 
     /**
      * Describes the bitwise not operation.
      */
-    public final UnaryOp getNot() {
+    public final UnaryOp<Not> getNot() {
         return not;
     }
 
     /**
      * Describes the bitwise and operation.
      */
-    public final BinaryOp getAnd() {
+    public final BinaryOp<And> getAnd() {
         return and;
     }
 
     /**
      * Describes the bitwise or operation.
      */
-    public final BinaryOp getOr() {
+    public final BinaryOp<Or> getOr() {
         return or;
     }
 
     /**
      * Describes the bitwise xor operation.
      */
-    public final BinaryOp getXor() {
+    public final BinaryOp<Xor> getXor() {
         return xor;
     }
 
-    public IntegerConvertOp getZeroExtend() {
+    /**
+     * Describes the zero extend conversion.
+     */
+    public IntegerConvertOp<ZeroExtend> getZeroExtend() {
         return zeroExtend;
     }
 
-    public IntegerConvertOp getSignExtend() {
+    /**
+     * Describes the sign extend conversion.
+     */
+    public IntegerConvertOp<SignExtend> getSignExtend() {
         return signExtend;
     }
 
-    public IntegerConvertOp getNarrow() {
+    /**
+     * Describes the narrowing conversion.
+     */
+    public IntegerConvertOp<Narrow> getNarrow() {
         return narrow;
     }
 
+    /**
+     * Describes integer/float/double conversions.
+     */
     public FloatConvertOp getFloatConvert(FloatConvert op) {
         return floatConvert[op.ordinal()];
     }
 
     public abstract static class Op {
 
-        private final char operator;
+        private final String operator;
 
-        protected Op(char operator) {
+        protected Op(String operator) {
             this.operator = operator;
-        }
-
-        public char getOperator() {
-            return operator;
         }
 
         @Override
         public String toString() {
-            return Character.toString(operator);
+            return operator;
         }
     }
 
     /**
      * Describes a unary arithmetic operation.
      */
-    public abstract static class UnaryOp extends Op {
+    public abstract static class UnaryOp<T> extends Op {
 
-        protected UnaryOp(char operation) {
+        public abstract static class Neg extends UnaryOp<Neg> {
+
+            protected Neg() {
+                super("-");
+            }
+        }
+
+        public abstract static class Not extends UnaryOp<Not> {
+
+            protected Not() {
+                super("~");
+            }
+        }
+
+        protected UnaryOp(String operation) {
             super(operation);
         }
 
@@ -370,12 +291,68 @@ public final class ArithmeticOpTable {
     /**
      * Describes a binary arithmetic operation.
      */
-    public abstract static class BinaryOp extends Op {
+    public abstract static class BinaryOp<T> extends Op {
+
+        public abstract static class Add extends BinaryOp<Add> {
+
+            protected Add(boolean associative, boolean commutative) {
+                super("+", associative, commutative);
+            }
+        }
+
+        public abstract static class Sub extends BinaryOp<Sub> {
+
+            protected Sub(boolean associative, boolean commutative) {
+                super("-", associative, commutative);
+            }
+        }
+
+        public abstract static class Mul extends BinaryOp<Mul> {
+
+            protected Mul(boolean associative, boolean commutative) {
+                super("*", associative, commutative);
+            }
+        }
+
+        public abstract static class Div extends BinaryOp<Div> {
+
+            protected Div(boolean associative, boolean commutative) {
+                super("/", associative, commutative);
+            }
+        }
+
+        public abstract static class Rem extends BinaryOp<Rem> {
+
+            protected Rem(boolean associative, boolean commutative) {
+                super("%", associative, commutative);
+            }
+        }
+
+        public abstract static class And extends BinaryOp<And> {
+
+            protected And(boolean associative, boolean commutative) {
+                super("&", associative, commutative);
+            }
+        }
+
+        public abstract static class Or extends BinaryOp<Or> {
+
+            protected Or(boolean associative, boolean commutative) {
+                super("|", associative, commutative);
+            }
+        }
+
+        public abstract static class Xor extends BinaryOp<Xor> {
+
+            protected Xor(boolean associative, boolean commutative) {
+                super("^", associative, commutative);
+            }
+        }
 
         private final boolean associative;
         private final boolean commutative;
 
-        protected BinaryOp(char operation, boolean associative, boolean commutative) {
+        protected BinaryOp(String operation, boolean associative, boolean commutative) {
             super(operation);
             this.associative = associative;
             this.commutative = commutative;
@@ -435,51 +412,49 @@ public final class ArithmeticOpTable {
         }
     }
 
-    public abstract static class FloatConvertOp extends UnaryOp {
+    public abstract static class FloatConvertOp extends UnaryOp<FloatConvertOp> {
 
         private final FloatConvert op;
 
         protected FloatConvertOp(FloatConvert op) {
-            super('\0');
+            super(op.name());
             this.op = op;
         }
 
         public FloatConvert getFloatConvert() {
             return op;
         }
-
-        @Override
-        public String toString() {
-            return op.name();
-        }
     }
 
-    public abstract static class IntegerConvertOp extends Op {
+    public abstract static class IntegerConvertOp<T> extends Op {
 
-        public static final char ZERO_EXTEND = 'z';
-        public static final char SIGN_EXTEND = 's';
-        public static final char NARROW = 'n';
+        public abstract static class ZeroExtend extends IntegerConvertOp<ZeroExtend> {
 
-        protected IntegerConvertOp(char op) {
+            protected ZeroExtend() {
+                super("ZeroExtend");
+            }
+        }
+
+        public abstract static class SignExtend extends IntegerConvertOp<SignExtend> {
+
+            protected SignExtend() {
+                super("SignExtend");
+            }
+        }
+
+        public abstract static class Narrow extends IntegerConvertOp<Narrow> {
+
+            protected Narrow() {
+                super("Narrow");
+            }
+        }
+
+        protected IntegerConvertOp(String op) {
             super(op);
         }
 
         public abstract Constant foldConstant(int inputBits, int resultBits, Constant value);
 
         public abstract Stamp foldStamp(int resultBits, Stamp stamp);
-
-        @Override
-        public String toString() {
-            switch (getOperator()) {
-                case ZERO_EXTEND:
-                    return "ZeroExtend";
-                case SIGN_EXTEND:
-                    return "SignExtend";
-                case NARROW:
-                    return "Narrow";
-                default:
-                    throw GraalInternalError.shouldNotReachHere();
-            }
-        }
     }
 }

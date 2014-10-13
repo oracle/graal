@@ -36,14 +36,14 @@ import com.oracle.graal.nodes.spi.*;
  * An {@code IntegerConvert} converts an integer to an integer of different width.
  */
 @NodeInfo
-public abstract class IntegerConvertNode extends UnaryNode implements ConvertNode, ArithmeticLIRLowerable {
+public abstract class IntegerConvertNode<OP, REV> extends UnaryNode implements ConvertNode, ArithmeticLIRLowerable {
 
-    protected final Function<ArithmeticOpTable, IntegerConvertOp> getOp;
-    protected final Function<ArithmeticOpTable, IntegerConvertOp> getReverseOp;
+    protected final Function<ArithmeticOpTable, IntegerConvertOp<OP>> getOp;
+    protected final Function<ArithmeticOpTable, IntegerConvertOp<REV>> getReverseOp;
 
     protected final int resultBits;
 
-    protected IntegerConvertNode(Function<ArithmeticOpTable, IntegerConvertOp> getOp, Function<ArithmeticOpTable, IntegerConvertOp> getReverseOp, int resultBits, ValueNode input) {
+    protected IntegerConvertNode(Function<ArithmeticOpTable, IntegerConvertOp<OP>> getOp, Function<ArithmeticOpTable, IntegerConvertOp<REV>> getReverseOp, int resultBits, ValueNode input) {
         super(getOp.apply(ArithmeticOpTable.forStamp(input.stamp())).foldStamp(resultBits, input.stamp()), input);
         this.getOp = getOp;
         this.getReverseOp = getReverseOp;
@@ -62,7 +62,7 @@ public abstract class IntegerConvertNode extends UnaryNode implements ConvertNod
         }
     }
 
-    protected final IntegerConvertOp getOp(ValueNode forValue) {
+    protected final IntegerConvertOp<OP> getOp(ValueNode forValue) {
         return getOp.apply(ArithmeticOpTable.forStamp(forValue.stamp()));
     }
 
@@ -73,7 +73,7 @@ public abstract class IntegerConvertNode extends UnaryNode implements ConvertNod
 
     @Override
     public Constant reverse(Constant c) {
-        IntegerConvertOp reverse = getReverseOp.apply(ArithmeticOpTable.forStamp(stamp()));
+        IntegerConvertOp<REV> reverse = getReverseOp.apply(ArithmeticOpTable.forStamp(stamp()));
         return reverse.foldConstant(getResultBits(), getInputBits(), c);
     }
 

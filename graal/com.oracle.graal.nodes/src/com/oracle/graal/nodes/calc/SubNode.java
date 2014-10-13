@@ -25,6 +25,7 @@ package com.oracle.graal.nodes.calc;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp.Sub;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodeinfo.*;
@@ -33,7 +34,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.util.*;
 
 @NodeInfo(shortName = "-")
-public class SubNode extends BinaryArithmeticNode implements NarrowableArithmeticNode {
+public class SubNode extends BinaryArithmeticNode<Sub> implements NarrowableArithmeticNode {
 
     public static SubNode create(ValueNode x, ValueNode y) {
         return USE_GENERATED_NODES ? new SubNodeGen(x, y) : new SubNode(x, y);
@@ -51,7 +52,7 @@ public class SubNode extends BinaryArithmeticNode implements NarrowableArithmeti
             return ret;
         }
 
-        BinaryOp op = getOp(forX, forY);
+        BinaryOp<Sub> op = getOp(forX, forY);
         if (GraphUtil.unproxify(forX) == GraphUtil.unproxify(forY)) {
             Constant zero = op.getZero(forX.stamp());
             if (zero != null) {

@@ -33,16 +33,16 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo
-public abstract class UnaryArithmeticNode extends UnaryNode implements ArithmeticLIRLowerable {
+public abstract class UnaryArithmeticNode<OP> extends UnaryNode implements ArithmeticLIRLowerable {
 
-    protected final Function<ArithmeticOpTable, UnaryOp> getOp;
+    protected final Function<ArithmeticOpTable, UnaryOp<OP>> getOp;
 
-    protected UnaryArithmeticNode(Function<ArithmeticOpTable, UnaryOp> getOp, ValueNode value) {
+    protected UnaryArithmeticNode(Function<ArithmeticOpTable, UnaryOp<OP>> getOp, ValueNode value) {
         super(getOp.apply(ArithmeticOpTable.forStamp(value.stamp())).foldStamp(value.stamp()), value);
         this.getOp = getOp;
     }
 
-    protected final UnaryOp getOp(ValueNode forValue) {
+    protected final UnaryOp<OP> getOp(ValueNode forValue) {
         return getOp.apply(ArithmeticOpTable.forStamp(forValue.stamp()));
     }
 
