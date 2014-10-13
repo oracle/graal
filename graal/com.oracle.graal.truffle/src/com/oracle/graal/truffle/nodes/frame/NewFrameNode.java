@@ -113,7 +113,7 @@ public class NewFrameNode extends FixedWithNextNode implements IterableNodeType,
         }
 
         protected VirtualOnlyInstanceNode(ResolvedJavaType type, ResolvedJavaField[] fields) {
-            super(type, fields, false);
+            super(type, fields, true);
         }
 
         @Override
