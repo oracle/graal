@@ -118,7 +118,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRKindTool {
     }
 
     @Override
-    public Value emitLoadConstant(Constant constant) {
+    public Value emitLoadConstant(LIRKind kind, Constant constant) {
         if (canInlineConstant(constant)) {
             return constant;
         } else {

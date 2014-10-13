@@ -52,7 +52,7 @@ public interface LIRGeneratorTool extends ArithmeticLIRGenerator {
 
     void doBlockEnd(AbstractBlock<?> block);
 
-    Value emitLoadConstant(Constant constant);
+    Value emitLoadConstant(LIRKind kind, Constant constant);
 
     Value emitLoad(LIRKind kind, Value address, LIRFrameState state);
 
