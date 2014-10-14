@@ -24,33 +24,26 @@ package com.oracle.graal.truffle.test;
 
 import org.junit.*;
 
-import com.oracle.graal.api.code.*;
+import com.oracle.graal.truffle.*;
 import com.oracle.graal.truffle.test.nodes.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 
-@Ignore("Currently ignored due to problems with code coverage tools.")
 public class AssumptionPartialEvaluationTest extends PartialEvaluationTest {
-
     public static Object constant42() {
         return 42;
     }
 
     @Test
     public void constantValue() {
-        FrameDescriptor fd = new FrameDescriptor();
         Assumption assumption = Truffle.getRuntime().createAssumption();
         AbstractTestNode result = new ConstantWithAssumptionTestNode(assumption, 42);
-        RootTestNode rootNode = new RootTestNode(fd, "constantValue", result);
-        InstalledCode installedCode = assertPartialEvalEquals("constant42", rootNode);
-        Assert.assertTrue(installedCode.isValid());
-        try {
-            assertDeepEquals(42, installedCode.executeVarargs(null, null, null));
-        } catch (InvalidInstalledCodeException e) {
-            Assert.fail("Code must not have been invalidated.");
-        }
-        Assert.assertTrue(installedCode.isValid());
+        RootTestNode rootNode = new RootTestNode(new FrameDescriptor(), "constantValue", result);
+        OptimizedCallTarget callTarget = assertPartialEvalEquals("constant42", rootNode);
+        Assert.assertTrue(callTarget.isValid());
+        assertDeepEquals(42, callTarget.call());
+        Assert.assertTrue(callTarget.isValid());
         try {
             assumption.check();
         } catch (InvalidAssumptionException e) {
@@ -62,12 +55,7 @@ public class AssumptionPartialEvaluationTest extends PartialEvaluationTest {
             Assert.fail("Assumption must have been invalidated.");
         } catch (InvalidAssumptionException e) {
         }
-        Assert.assertFalse(installedCode.isValid());
-
-        try {
-            installedCode.executeVarargs(null, null, null);
-            Assert.fail("Code must have been invalidated.");
-        } catch (InvalidInstalledCodeException e) {
-        }
+        Assert.assertFalse(callTarget.isValid());
+        assertDeepEquals(43, callTarget.call());
     }
 }

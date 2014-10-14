@@ -48,19 +48,19 @@ public class PartialEvaluationTest extends GraalCompilerTest {
         DebugEnvironment.initialize(System.out);
     }
 
-    protected InstalledCode assertPartialEvalEquals(String methodName, RootNode root) {
+    protected OptimizedCallTarget assertPartialEvalEquals(String methodName, RootNode root) {
         return assertPartialEvalEquals(methodName, root, new Object[0]);
     }
 
-    protected InstalledCode assertPartialEvalEquals(String methodName, RootNode root, Object[] arguments) {
+    protected OptimizedCallTarget assertPartialEvalEquals(String methodName, RootNode root, Object[] arguments) {
         Assumptions assumptions = new Assumptions(true);
-        StructuredGraph actual = partialEval(root, arguments, assumptions);
-        InstalledCode result = new InstalledCode("Test:" + methodName);
-        truffleCompiler.compileMethodHelper(actual, assumptions, root.toString(), getSpeculationLog(), result);
+        final OptimizedCallTarget compilable = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(root);
+        StructuredGraph actual = partialEval(compilable, arguments, assumptions);
+        truffleCompiler.compileMethodHelper(actual, assumptions, methodName, getSpeculationLog(), compilable);
         removeFrameStates(actual);
         StructuredGraph expected = parseForComparison(methodName);
         Assert.assertEquals(getCanonicalGraphString(expected, true, true), getCanonicalGraphString(actual, true, true));
-        return result;
+        return compilable;
     }
 
     protected void assertPartialEvalNoInvokes(RootNode root) {
@@ -69,16 +69,15 @@ public class PartialEvaluationTest extends GraalCompilerTest {
 
     protected void assertPartialEvalNoInvokes(RootNode root, Object[] arguments) {
         Assumptions assumptions = new Assumptions(true);
-        StructuredGraph actual = partialEval(root, arguments, assumptions);
+        final OptimizedCallTarget compilable = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(root);
+        StructuredGraph actual = partialEval(compilable, arguments, assumptions);
         removeFrameStates(actual);
         for (MethodCallTargetNode node : actual.getNodes(MethodCallTargetNode.class)) {
             Assert.fail("Found invalid method call target node: " + node);
         }
     }
 
-    protected StructuredGraph partialEval(RootNode root, Object[] arguments, final Assumptions assumptions) {
-        final OptimizedCallTarget compilable = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(root);
-
+    protected StructuredGraph partialEval(OptimizedCallTarget compilable, Object[] arguments, final Assumptions assumptions) {
         // Executed AST so that all classes are loaded and initialized.
         compilable.call(arguments);
         compilable.call(arguments);
