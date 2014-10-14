@@ -29,9 +29,12 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.*;
 
 /**
- * A {@link CompilationFinal} value combined with an {@link Assumption} to notify when it changes.
- * Note that you should be careful that modifications to this value do not cause deoptimization
- * loops. This could be by using a value that is monotonic.
+ * A value that the compiler can assume is constant, but can be changed by invalidation.
+ * <p>
+ * Compiled code that uses the value will be invalidated each time the value changes, so you should
+ * take care to only change values infrequently, or to monitor the number of times the value has
+ * changed and at some point to replace the value with something more generic so that it does not
+ * have to be changed and code does not have to keep being recompiled.
  */
 public class AssumedValue<T> {
 
