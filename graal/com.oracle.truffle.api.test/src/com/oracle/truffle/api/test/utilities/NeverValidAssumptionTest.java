@@ -50,9 +50,11 @@ public class NeverValidAssumptionTest {
         assertFalse(assumption.isValid());
     }
 
-    @Test(expected = UnsupportedOperationException.class)
-    public void testCannotInvalidate() {
+    @Test
+    public void testInvalidateDoesNothing() {
         final NeverValidAssumption assumption = NeverValidAssumption.INSTANCE;
+        assumption.invalidate();
+        assumption.invalidate();
         assumption.invalidate();
     }
 

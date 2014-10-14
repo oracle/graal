@@ -45,7 +45,6 @@ public final class NeverValidAssumption implements Assumption {
 
     @Override
     public void invalidate() {
-        throw new UnsupportedOperationException("Cannot invalidate this assumption - it is never valid");
     }
 
     @Override
