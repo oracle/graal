@@ -25,7 +25,7 @@ package com.oracle.graal.api.meta;
 /**
  * The implementation type of the {@link Constant#NULL_OBJECT null constant}.
  */
-final class NullConstant extends Constant {
+final class NullConstant extends AbstractConstant {
 
     private static final long serialVersionUID = 8906209595800783961L;
 
@@ -44,36 +44,6 @@ final class NullConstant extends Constant {
     }
 
     @Override
-    public Object asBoxedPrimitive() {
-        throw new IllegalArgumentException();
-    }
-
-    @Override
-    public int asInt() {
-        throw new IllegalArgumentException();
-    }
-
-    @Override
-    public boolean asBoolean() {
-        throw new IllegalArgumentException();
-    }
-
-    @Override
-    public long asLong() {
-        throw new IllegalArgumentException();
-    }
-
-    @Override
-    public float asFloat() {
-        throw new IllegalArgumentException();
-    }
-
-    @Override
-    public double asDouble() {
-        throw new IllegalArgumentException();
-    }
-
-    @Override
     public String toValueString() {
         return "null";
     }
@@ -87,5 +57,10 @@ final class NullConstant extends Constant {
     public boolean equals(Object o) {
         assert o == this || !(o instanceof NullConstant) : "null constant is a singleton";
         return o == this;
+    }
+
+    public Object asBoxedPrimitive() {
+        // TODO Auto-generated method stub
+        return null;
     }
 }

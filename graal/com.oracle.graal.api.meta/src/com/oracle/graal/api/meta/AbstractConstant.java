@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,17 +22,20 @@
  */
 package com.oracle.graal.api.meta;
 
-/**
- * Common base class for values that are stored in some location that's managed by the register
- * allocator (e.g. register, stack slot).
- */
-public abstract class AllocatableValue extends AbstractValue {
+public abstract class AbstractConstant extends AbstractValue implements Constant {
 
-    private static final long serialVersionUID = 153019506717492133L;
+    private static final long serialVersionUID = -6355452536852663986L;
 
-    public static final AllocatableValue[] NONE = {};
+    protected AbstractConstant(LIRKind kind) {
+        super(kind);
+    }
 
-    public AllocatableValue(LIRKind lirKind) {
-        super(lirKind);
+    @Override
+    public String toString() {
+        if (getKind() == Kind.Illegal) {
+            return "illegal";
+        } else {
+            return getKind().getJavaName() + "[" + toValueString() + "]";
+        }
     }
 }

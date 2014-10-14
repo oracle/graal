@@ -28,7 +28,7 @@ import com.oracle.graal.api.meta.*;
  * Represents a constant non-{@code null} object reference, within the compiler and across the
  * compiler/runtime interface.
  */
-public final class HotSpotObjectConstant extends Constant implements HotSpotConstant {
+public final class HotSpotObjectConstant extends AbstractConstant implements HotSpotConstant {
 
     private static final long serialVersionUID = 3592151693708093496L;
 
@@ -102,36 +102,6 @@ public final class HotSpotObjectConstant extends Constant implements HotSpotCons
     @Override
     public boolean isDefaultForKind() {
         return false;
-    }
-
-    @Override
-    public Object asBoxedPrimitive() {
-        throw new IllegalArgumentException();
-    }
-
-    @Override
-    public int asInt() {
-        throw new IllegalArgumentException();
-    }
-
-    @Override
-    public boolean asBoolean() {
-        throw new IllegalArgumentException();
-    }
-
-    @Override
-    public long asLong() {
-        throw new IllegalArgumentException();
-    }
-
-    @Override
-    public float asFloat() {
-        throw new IllegalArgumentException();
-    }
-
-    @Override
-    public double asDouble() {
-        throw new IllegalArgumentException();
     }
 
     @Override

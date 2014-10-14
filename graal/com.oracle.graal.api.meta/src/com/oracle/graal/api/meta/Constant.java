@@ -28,9 +28,7 @@ package com.oracle.graal.api.meta;
  * {@code Constant} instances that represent frequently used constant values, such as
  * {@link #NULL_OBJECT}.
  */
-public abstract class Constant extends Value {
-
-    private static final long serialVersionUID = -6355452536852663986L;
+public interface Constant extends Value {
 
     /*
      * Using a larger cache for integers leads to only a slight increase in cache hit ratio which is
@@ -50,23 +48,19 @@ public abstract class Constant extends Value {
     public static final Constant TRUE = new PrimitiveConstant(Kind.Boolean, 1L);
     public static final Constant FALSE = new PrimitiveConstant(Kind.Boolean, 0L);
 
-    protected Constant(LIRKind kind) {
-        super(kind);
-    }
-
     /**
      * Checks whether this constant is null.
      *
      * @return {@code true} if this constant is the null constant
      */
-    public abstract boolean isNull();
+    boolean isNull();
 
     /**
      * Checks whether this constant is non-null.
      *
      * @return {@code true} if this constant is a primitive, or an object constant that is not null
      */
-    public final boolean isNonNull() {
+    default boolean isNonNull() {
         return !isNull();
     }
 
@@ -75,14 +69,16 @@ public abstract class Constant extends Value {
      *
      * @return {@code true} if this constant is the default value for its kind
      */
-    public abstract boolean isDefaultForKind();
+    boolean isDefaultForKind();
 
     /**
      * Returns the value of this constant as a boxed Java value.
      *
      * @return the value of this constant
      */
-    public abstract Object asBoxedPrimitive();
+    default Object asBoxedPrimitive() {
+        throw new IllegalArgumentException();
+    }
 
     /**
      * Returns the primitive int value this constant represents. The constant must have a
@@ -90,7 +86,9 @@ public abstract class Constant extends Value {
      *
      * @return the constant value
      */
-    public abstract int asInt();
+    default int asInt() {
+        throw new IllegalArgumentException();
+    }
 
     /**
      * Returns the primitive boolean value this constant represents. The constant must have kind
@@ -98,7 +96,9 @@ public abstract class Constant extends Value {
      *
      * @return the constant value
      */
-    public abstract boolean asBoolean();
+    default boolean asBoolean() {
+        throw new IllegalArgumentException();
+    }
 
     /**
      * Returns the primitive long value this constant represents. The constant must have kind
@@ -106,7 +106,9 @@ public abstract class Constant extends Value {
      *
      * @return the constant value
      */
-    public abstract long asLong();
+    default long asLong() {
+        throw new IllegalArgumentException();
+    }
 
     /**
      * Returns the primitive float value this constant represents. The constant must have kind
@@ -114,7 +116,9 @@ public abstract class Constant extends Value {
      *
      * @return the constant value
      */
-    public abstract float asFloat();
+    default float asFloat() {
+        throw new IllegalArgumentException();
+    }
 
     /**
      * Returns the primitive double value this constant represents. The constant must have kind
@@ -122,22 +126,15 @@ public abstract class Constant extends Value {
      *
      * @return the constant value
      */
-    public abstract double asDouble();
+    default double asDouble() {
+        throw new IllegalArgumentException();
+    }
 
-    public String toValueString() {
+    default String toValueString() {
         if (getKind() == Kind.Illegal) {
             return "illegal";
         } else {
             return getKind().format(asBoxedPrimitive());
-        }
-    }
-
-    @Override
-    public String toString() {
-        if (getKind() == Kind.Illegal) {
-            return "illegal";
-        } else {
-            return getKind().getJavaName() + "[" + toValueString() + "]";
         }
     }
 

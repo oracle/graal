@@ -22,11 +22,15 @@
  */
 package com.oracle.graal.api.meta;
 
+import java.io.*;
+
 /**
  * Abstract base class for values manipulated by the compiler. All values have a {@linkplain Kind
  * kind} and are immutable.
  */
-public interface Value extends KindProvider {
+public abstract class AbstractValue implements Serializable, Value {
+
+    private static final long serialVersionUID = -6909397188697766469L;
 
     @SuppressWarnings("serial") public static final AllocatableValue ILLEGAL = new AllocatableValue(LIRKind.Illegal) {
 
@@ -36,34 +40,52 @@ public interface Value extends KindProvider {
         }
     };
 
+    private final Kind kind;
+    private final LIRKind lirKind;
+
     /**
-     * Returns a String representation of the kind, which should be the end of all
-     * {@link #toString()} implementation of subclasses.
+     * Initializes a new value of the specified kind.
+     *
+     * @param lirKind the kind
      */
-    default String getKindSuffix() {
-        return "|" + getKind().getTypeChar();
+    protected AbstractValue(LIRKind lirKind) {
+        this.lirKind = lirKind;
+        if (getPlatformKind() instanceof Kind) {
+            this.kind = (Kind) getPlatformKind();
+        } else {
+            this.kind = Kind.Illegal;
+        }
     }
 
     /**
      * Returns the kind of this value.
      */
-    Kind getKind();
+    public final Kind getKind() {
+        return kind;
+    }
 
-    LIRKind getLIRKind();
+    public final LIRKind getLIRKind() {
+        return lirKind;
+    }
 
     /**
      * Returns the platform specific kind used to store this value.
      */
-    PlatformKind getPlatformKind();
+    public final PlatformKind getPlatformKind() {
+        return lirKind.getPlatformKind();
+    }
 
-    /**
-     * Checks if this value is identical to {@code other}.
-     *
-     * Warning: Use with caution! Usually equivalence {@link #equals(Object)} is sufficient and
-     * should be used.
-     */
-    @ExcludeFromIdentityComparisonVerification
-    default boolean identityEquals(Value other) {
-        return this == other;
+    @Override
+    public int hashCode() {
+        return 41 + lirKind.hashCode();
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof AbstractValue) {
+            AbstractValue that = (AbstractValue) obj;
+            return kind.equals(that.kind) && lirKind.equals(that.lirKind);
+        }
+        return false;
     }
 }

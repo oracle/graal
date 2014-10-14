@@ -31,7 +31,7 @@ import com.oracle.graal.api.meta.*;
  * The information stored in the {@link VirtualObject} is used during deoptimization to recreate the
  * object.
  */
-public final class VirtualObject extends Value {
+public final class VirtualObject extends AbstractValue {
 
     private static final long serialVersionUID = -2907197776426346021L;
 

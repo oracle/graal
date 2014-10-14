@@ -22,8 +22,10 @@
  */
 package com.oracle.graal.hotspot.meta;
 
+import com.oracle.graal.api.meta.*;
+
 /**
  * Marker interface for hotspot specific constants.
  */
-public interface HotSpotConstant {
+public interface HotSpotConstant extends Constant {
 }

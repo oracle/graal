@@ -26,7 +26,7 @@ package com.oracle.graal.api.meta;
  * Represents a primitive constant value, such as an integer or floating point number, within the
  * compiler and across the compiler/runtime interface.
  */
-public class PrimitiveConstant extends Constant {
+public class PrimitiveConstant extends AbstractConstant {
 
     private static final long serialVersionUID = 8787949721295655376L;
 
