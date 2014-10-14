@@ -28,9 +28,7 @@ import com.oracle.graal.truffle.test.nodes.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 
-@Ignore("Currently ignored due to problems with code coverage tools.")
 public class ControlFlowExceptionPartialEvaluationTest extends PartialEvaluationTest {
-
     public static Object constant42() {
         return 42;
     }
@@ -50,7 +48,6 @@ public class ControlFlowExceptionPartialEvaluationTest extends PartialEvaluation
     }
 
     public static class ThrowControlFlowExceptionTestNode extends AbstractTestNode {
-
         @Override
         public int execute(VirtualFrame frame) {
             throw new ControlFlowException();
@@ -58,7 +55,6 @@ public class ControlFlowExceptionPartialEvaluationTest extends PartialEvaluation
     }
 
     public static class CatchControlFlowExceptionTestNode extends AbstractTestNode {
-
         @Child private AbstractTestNode child;
 
         public CatchControlFlowExceptionTestNode(AbstractTestNode child) {
@@ -76,7 +72,6 @@ public class ControlFlowExceptionPartialEvaluationTest extends PartialEvaluation
     }
 
     public static class CatchSlowPathAndControlFlowExceptionTestNode extends AbstractTestNode {
-
         @Child private AbstractTestNode child;
 
         public CatchSlowPathAndControlFlowExceptionTestNode(AbstractTestNode child) {
