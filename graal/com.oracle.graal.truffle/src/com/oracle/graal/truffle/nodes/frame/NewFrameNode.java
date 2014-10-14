@@ -178,10 +178,11 @@ public class NewFrameNode extends FixedWithNextNode implements IterableNodeType,
         if (frameSize > 0) {
             FrameDescriptor frameDescriptor = getConstantFrameDescriptor();
             ConstantNode objectDefault = ConstantNode.forConstant(getSnippetReflection().forObject(frameDescriptor.getTypeConversion().getDefaultValue()), tool.getMetaAccessProvider(), graph());
+            ConstantNode primitiveDefault = ConstantNode.forLong(0, graph());
             ConstantNode tagDefault = ConstantNode.forByte((byte) 0, graph());
             for (int i = 0; i < frameSize; i++) {
                 objectArrayEntryState[i] = objectDefault;
-                primitiveArrayEntryState[i] = initialPrimitiveValue(frameDescriptor.getSlots().get(i).getKind());
+                primitiveArrayEntryState[i] = primitiveDefault;
                 tagArrayEntryState[i] = tagDefault;
             }
             tool.getAssumptions().record(new AssumptionValidAssumption((OptimizedAssumption) frameDescriptor.getVersion()));
@@ -201,39 +202,6 @@ public class NewFrameNode extends FixedWithNextNode implements IterableNodeType,
         frameEntryState[frameFieldList.indexOf(tagsField)] = virtualFrameTagArray;
         tool.createVirtualObject(virtualFrame, frameEntryState, Collections.<MonitorIdNode> emptyList());
         tool.replaceWithVirtual(virtualFrame);
-    }
-
-    private ValueNode initialPrimitiveValue(FrameSlotKind kind) {
-        Kind graalKind = null;
-        switch (kind) {
-            case Boolean:
-                graalKind = Kind.Boolean;
-                break;
-            case Byte:
-                graalKind = Kind.Byte;
-                break;
-            case Int:
-                graalKind = Kind.Int;
-                break;
-            case Double:
-                graalKind = Kind.Double;
-                break;
-            case Float:
-                graalKind = Kind.Float;
-                break;
-            case Long:
-                graalKind = Kind.Long;
-                break;
-            case Object:
-            case Illegal:
-                // won't be stored in the primitive array, so default to long
-                graalKind = Kind.Long;
-                break;
-            default:
-                throw new IllegalStateException("Unexpected frame slot kind: " + kind);
-        }
-
-        return ConstantNode.defaultForKind(graalKind, graph());
     }
 
     @Override
