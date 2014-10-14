@@ -45,7 +45,7 @@ public class OptimizedCallUtils {
 
             public boolean visit(List<TruffleInlining> decisionStack, Node node) {
                 if (node == null) {
-                    return false;
+                    return true;
                 }
                 int level = CallTreeNodeVisitor.getNodeDepth(decisionStack, node);
                 for (int i = 0; i < level; i++) {
@@ -79,7 +79,7 @@ public class OptimizedCallUtils {
                     p.println(node.getClass().getSimpleName());
                 }
                 p.flush();
-                return false;
+                return true;
             }
 
         }, true);
