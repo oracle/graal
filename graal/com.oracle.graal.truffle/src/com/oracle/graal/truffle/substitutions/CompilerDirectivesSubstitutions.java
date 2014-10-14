@@ -84,6 +84,9 @@ public class CompilerDirectivesSubstitutions {
         return FrameWithoutBoxing.class;
     }
 
+    @MacroSubstitution(macro = IsCompilationConstantNode.class, isStatic = true)
+    public static native boolean isCompilationConstant(Object value);
+
     @MacroSubstitution(macro = CustomizedUnsafeLoadMacroNode.class, isStatic = true)
     public static native boolean unsafeGetBoolean(Object receiver, long offset, boolean condition, Object locationIdentity);
 
