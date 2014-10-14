@@ -27,7 +27,6 @@ import org.junit.*;
 import com.oracle.graal.truffle.test.nodes.*;
 import com.oracle.truffle.api.frame.*;
 
-@Ignore("Currently ignored due to problems with code coverage tools.")
 public class SimplePartialEvaluationTest extends PartialEvaluationTest {
 
     public static Object constant42() {
@@ -97,7 +96,7 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
     public void loop() {
         FrameDescriptor fd = new FrameDescriptor();
         AbstractTestNode result = new BlockTestNode(new AbstractTestNode[]{new StoreLocalTestNode("x", fd, new ConstantTestNode(0)),
-                        new LoopTestNode(21, new StoreLocalTestNode("x", fd, new AddTestNode(new LoadLocalTestNode("x", fd), new ConstantTestNode(2))))});
+                        new LoopTestNode(7, new StoreLocalTestNode("x", fd, new AddTestNode(new LoadLocalTestNode("x", fd), new ConstantTestNode(6))))});
         assertPartialEvalEquals("constant42", new RootTestNode(fd, "loop", result));
     }
 
@@ -106,6 +105,8 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
         FrameDescriptor fd = new FrameDescriptor();
         AbstractTestNode result = new BlockTestNode(new AbstractTestNode[]{new StoreLocalTestNode("x", fd, new ConstantTestNode(0)),
                         new LoopTestNode(42, new StoreLocalTestNode("x", fd, new AddTestNode(new LoadLocalTestNode("x", fd), new ConstantTestNode(1))))});
-        assertPartialEvalNoInvokes(new RootTestNode(fd, "loop", result));
+        RootTestNode rootNode = new RootTestNode(fd, "loop", result);
+        assertPartialEvalNoInvokes(rootNode);
+        assertPartialEvalEquals("constant42", rootNode);
     }
 }
