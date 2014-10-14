@@ -93,15 +93,11 @@ public class MathIntrinsicNode extends UnaryNode implements ArithmeticLIRLowerab
         builder.setResult(this, result);
     }
 
-    public Constant evalConst(Constant... inputs) {
-        assert inputs.length == 1;
-        return Constant.forDouble(doCompute(inputs[0].asDouble(), operation()));
-    }
-
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
         if (forValue.isConstant()) {
-            return ConstantNode.forPrimitive(evalConst(forValue.asConstant()));
+            double ret = doCompute(forValue.asConstant().asDouble(), operation());
+            return ConstantNode.forDouble(ret);
         }
         return this;
     }

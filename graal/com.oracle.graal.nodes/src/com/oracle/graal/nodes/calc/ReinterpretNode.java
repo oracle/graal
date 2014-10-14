@@ -56,9 +56,7 @@ public class ReinterpretNode extends UnaryNode implements ArithmeticLIRLowerable
         assert to instanceof PrimitiveStamp;
     }
 
-    public Constant evalConst(Constant... inputs) {
-        assert inputs.length == 1;
-        Constant c = inputs[0];
+    private Constant evalConst(Constant c) {
         assert c.getKind().getBitCount() == ((PrimitiveStamp) stamp()).getBits();
         switch (c.getKind()) {
             case Int:

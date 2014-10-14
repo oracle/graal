@@ -56,10 +56,5 @@ public interface ConvertNode extends ArithmeticOperation, NodeInterface {
         return isLossless();
     }
 
-    default Constant evalConst(Constant... inputs) {
-        assert inputs.length == 1;
-        return convert(inputs[0]);
-    }
-
     ValueNode asNode();
 }

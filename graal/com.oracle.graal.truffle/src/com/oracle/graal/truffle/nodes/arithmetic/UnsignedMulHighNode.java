@@ -25,7 +25,6 @@ package com.oracle.graal.truffle.nodes.arithmetic;
 import java.util.function.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
@@ -52,19 +51,6 @@ public class UnsignedMulHighNode extends BinaryNode implements ArithmeticLIRLowe
 
     protected UnsignedMulHighNode(IntegerStamp stamp, ValueNode x, ValueNode y) {
         super(stamp, x, y);
-    }
-
-    @Override
-    public Constant evalConst(Constant... inputs) {
-        assert inputs.length == 2 && inputs[0].getKind() == inputs[1].getKind();
-        switch (inputs[0].getKind()) {
-            case Int:
-                return Constant.forInt(ExactMath.multiplyHighUnsigned(inputs[0].asInt(), inputs[1].asInt()));
-            case Long:
-                return Constant.forLong(ExactMath.multiplyHighUnsigned(inputs[0].asLong(), inputs[1].asLong()));
-            default:
-                throw GraalInternalError.unimplemented();
-        }
     }
 
     /**

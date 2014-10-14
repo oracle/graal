@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.replacements.amd64;
 
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.FloatConvertOp;
 import com.oracle.graal.graph.spi.*;
@@ -50,12 +48,6 @@ public class AMD64FloatConvertNode extends UnaryArithmeticNode<FloatConvertOp> i
     protected AMD64FloatConvertNode(FloatConvert op, ValueNode value) {
         super(table -> table.getFloatConvert(op), value);
         this.op = op;
-    }
-
-    @Override
-    public Constant evalConst(Constant... inputs) {
-        // this node should never have been created if its input is constant
-        throw GraalInternalError.shouldNotReachHere();
     }
 
     @Override

@@ -24,7 +24,6 @@ package com.oracle.graal.nodes.calc;
 
 import java.util.function.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.UnaryOp;
 import com.oracle.graal.graph.spi.*;
@@ -44,11 +43,6 @@ public abstract class UnaryArithmeticNode<OP> extends UnaryNode implements Arith
 
     protected final UnaryOp<OP> getOp(ValueNode forValue) {
         return getOp.apply(ArithmeticOpTable.forStamp(forValue.stamp()));
-    }
-
-    public Constant evalConst(Constant... inputs) {
-        assert inputs.length == 1;
-        return getOp(getValue()).foldConstant(inputs[0]);
     }
 
     @Override
