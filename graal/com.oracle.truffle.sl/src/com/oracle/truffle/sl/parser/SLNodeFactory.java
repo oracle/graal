@@ -116,6 +116,7 @@ public class SLNodeFactory {
 
         final SLFunctionBodyNode functionBodyNode = new SLFunctionBodyNode(functionSrc, methodBlock);
         final SLRootNode rootNode = new SLRootNode(this.context, frameDescriptor, functionBodyNode, functionName);
+        rootNode.assignSourceSection(functionSrc);
 
         context.getFunctionRegistry().register(functionName, rootNode);
 
