@@ -112,23 +112,6 @@ public class CompilationPrinter implements Closeable {
         end("compilation");
     }
 
-    private static class ArchitectureRegFormatter implements RefMapFormatter {
-
-        private final Register[] registers;
-
-        public ArchitectureRegFormatter(Architecture arch) {
-            registers = arch.getRegisters();
-        }
-
-        public String formatStackSlot(int frameRefMapIndex) {
-            return null;
-        }
-
-        public String formatRegister(int regRefMapIndex) {
-            return registers[regRefMapIndex].toString();
-        }
-    }
-
     /**
      * Formats given debug info as a multi line string.
      */
@@ -138,7 +121,7 @@ public class CompilationPrinter implements Closeable {
 
         if (refMap != null && refMap.hasRegisterRefMap()) {
             sb.append("reg-ref-map:");
-            refMap.appendRegisterMap(sb, arch != null ? new ArchitectureRegFormatter(arch) : formatter);
+            refMap.appendRegisterMap(sb, arch != null ? new CodeUtil.DefaultRegFormatter(arch) : formatter);
             sb.append("\n");
         }
 

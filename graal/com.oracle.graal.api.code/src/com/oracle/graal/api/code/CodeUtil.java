@@ -326,9 +326,44 @@ public class CodeUtil {
     }
 
     /**
+     * Formats a location in a register reference map.
+     */
+    public static class DefaultRegFormatter implements RefMapFormatter {
+
+        private final Register[] registers;
+
+        public DefaultRegFormatter(Architecture arch) {
+            registers = new Register[arch.getRegisterReferenceMapSize()];
+            for (Register r : arch.getRegisters()) {
+                if (r.getReferenceMapIndex() >= 0) {
+                    registers[r.getReferenceMapIndex()] = r;
+                }
+            }
+        }
+
+        public String formatStackSlot(int frameRefMapIndex) {
+            return null;
+        }
+
+        public String formatRegister(int regRefMapIndex) {
+            int i = regRefMapIndex;
+            int idx = 0;
+            while (registers[i] == null) {
+                i--;
+                idx++;
+            }
+            if (idx == 0) {
+                return registers[i].toString();
+            } else {
+                return String.format("%s+%d", registers[i].toString(), idx);
+            }
+        }
+    }
+
+    /**
      * Formats a location present in a register or frame reference map.
      */
-    public static class DefaultRefMapFormatter implements RefMapFormatter {
+    public static class DefaultRefMapFormatter extends DefaultRegFormatter {
 
         /**
          * The size of a stack slot.
@@ -340,10 +375,6 @@ public class CodeUtil {
          */
         public final Register fp;
 
-        public final Architecture arch;
-
-        private final Register[] registers;
-
         /**
          * The offset (in bytes) from the slot pointed to by {@link #fp} to the slot corresponding
          * to bit 0 in the frame reference map.
@@ -351,13 +382,13 @@ public class CodeUtil {
         public final int refMapToFPOffset;
 
         public DefaultRefMapFormatter(Architecture arch, int slotSize, Register fp, int refMapToFPOffset) {
-            this.arch = arch;
+            super(arch);
             this.slotSize = slotSize;
             this.fp = fp;
             this.refMapToFPOffset = refMapToFPOffset;
-            this.registers = arch.getRegisters();
         }
 
+        @Override
         public String formatStackSlot(int frameRefMapIndex) {
             int refMapOffset = frameRefMapIndex * slotSize;
             int fpOffset = refMapOffset + refMapToFPOffset;
@@ -365,10 +396,6 @@ public class CodeUtil {
                 return fp + "+" + fpOffset;
             }
             return fp.name + fpOffset;
-        }
-
-        public String formatRegister(int regRefMapIndex) {
-            return registers[regRefMapIndex].toString();
         }
     }
 
