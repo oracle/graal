@@ -79,14 +79,15 @@ public final class ValuePosition {
      * @return The value denoted by this {@linkplain ValuePosition position}.
      */
     public Value get(LIRInstruction inst) {
+        Object obj = inst;
         if (isCompositePosition()) {
-            CompositeValue compValue = (CompositeValue) outerPosition.get(inst);
-            return compValue.getValueClass().getValue(compValue, this);
+            obj = outerPosition.get(inst);
+            assert obj instanceof CompositeValue : "The holder of a composite position is not a CompositeValue? " + obj;
         }
         if (index < values.getDirectCount()) {
-            return values.getValue(inst, index);
+            return values.getValue(obj, index);
         }
-        return values.getValueArray(inst, index)[subIndex];
+        return values.getValueArray(obj, index)[subIndex];
     }
 
     /**

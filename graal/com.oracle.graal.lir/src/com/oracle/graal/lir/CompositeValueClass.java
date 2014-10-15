@@ -121,10 +121,6 @@ public class CompositeValueClass extends LIRIntrospection {
         return result.toString();
     }
 
-    Value getValue(CompositeValue obj, ValuePosition pos) {
-        return getValueForPosition(obj, values, pos);
-    }
-
     CompositeValue createUpdatedValue(CompositeValue compValue, ValuePosition pos, Value value) {
         CompositeValue newCompValue = compValue.clone();
         setValueForPosition(newCompValue, values, pos, value);
