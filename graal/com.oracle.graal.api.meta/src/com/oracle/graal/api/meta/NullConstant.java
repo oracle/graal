@@ -58,9 +58,4 @@ final class NullConstant extends AbstractConstant {
         assert o == this || !(o instanceof NullConstant) : "null constant is a singleton";
         return o == this;
     }
-
-    public Object asBoxedPrimitive() {
-        // TODO Auto-generated method stub
-        return null;
-    }
 }
