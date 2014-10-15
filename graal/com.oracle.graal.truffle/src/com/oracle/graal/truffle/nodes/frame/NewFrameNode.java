@@ -168,23 +168,21 @@ public class NewFrameNode extends FixedWithNextNode implements IterableNodeType,
 
         VirtualObjectNode virtualFrame = VirtualOnlyInstanceNode.create(frameType, frameFields);
         VirtualObjectNode virtualFrameObjectArray = VirtualArrayNode.create((ResolvedJavaType) localsField.getType().getComponentType(), frameSize);
-        VirtualObjectNode virtualFramePrimitiveArray = VirtualArrayNode.create((ResolvedJavaType) primitiveLocalsField.getType().getComponentType(), frameSize);
+        VirtualObjectNode virtualFramePrimitiveArray = VirtualArrayNode.create((ResolvedJavaType) primitiveLocalsField.getType().getComponentType(), frameSize * 2);
         VirtualObjectNode virtualFrameTagArray = VirtualArrayNode.create((ResolvedJavaType) tagsField.getType().getComponentType(), frameSize);
 
         ValueNode[] objectArrayEntryState = new ValueNode[frameSize];
-        ValueNode[] primitiveArrayEntryState = new ValueNode[frameSize];
+        ValueNode[] primitiveArrayEntryState = new ValueNode[frameSize * 2];
         ValueNode[] tagArrayEntryState = new ValueNode[frameSize];
 
         if (frameSize > 0) {
             FrameDescriptor frameDescriptor = getConstantFrameDescriptor();
             ConstantNode objectDefault = ConstantNode.forConstant(getSnippetReflection().forObject(frameDescriptor.getTypeConversion().getDefaultValue()), tool.getMetaAccessProvider(), graph());
-            ConstantNode primitiveDefault = ConstantNode.forLong(0, graph());
+            ConstantNode primitiveDefault = ConstantNode.forInt(0, graph());
             ConstantNode tagDefault = ConstantNode.forByte((byte) 0, graph());
-            for (int i = 0; i < frameSize; i++) {
-                objectArrayEntryState[i] = objectDefault;
-                primitiveArrayEntryState[i] = primitiveDefault;
-                tagArrayEntryState[i] = tagDefault;
-            }
+            Arrays.fill(objectArrayEntryState, objectDefault);
+            Arrays.fill(primitiveArrayEntryState, primitiveDefault);
+            Arrays.fill(tagArrayEntryState, tagDefault);
             tool.getAssumptions().record(new AssumptionValidAssumption((OptimizedAssumption) frameDescriptor.getVersion()));
         }
 
