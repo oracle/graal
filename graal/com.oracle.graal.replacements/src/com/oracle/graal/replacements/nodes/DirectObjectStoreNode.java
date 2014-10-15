@@ -44,8 +44,7 @@ public class DirectObjectStoreNode extends FixedWithNextNode implements Lowerabl
     protected final LocationIdentity locationIdentity;
 
     public static DirectObjectStoreNode create(ValueNode object, int displacement, ValueNode offset, ValueNode value, LocationIdentity locationIdentity) {
-        return USE_GENERATED_NODES ? new DirectObjectStoreNodeGen(object, displacement, offset, value, locationIdentity) : new DirectObjectStoreNode(object, displacement, offset, value,
-                        locationIdentity);
+        return new DirectObjectStoreNode(object, displacement, offset, value, locationIdentity);
     }
 
     protected DirectObjectStoreNode(ValueNode object, int displacement, ValueNode offset, ValueNode value, LocationIdentity locationIdentity) {

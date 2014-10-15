@@ -45,7 +45,7 @@ public class DeoptimizationFetchUnrollInfoCallNode extends FixedWithNextNode imp
     protected final ForeignCallsProvider foreignCalls;
 
     public static DeoptimizationFetchUnrollInfoCallNode create(@InjectedNodeParameter ForeignCallsProvider foreignCalls, ValueNode registerSaver) {
-        return USE_GENERATED_NODES ? new DeoptimizationFetchUnrollInfoCallNodeGen(foreignCalls, registerSaver) : new DeoptimizationFetchUnrollInfoCallNode(foreignCalls, registerSaver);
+        return new DeoptimizationFetchUnrollInfoCallNode(foreignCalls, registerSaver);
     }
 
     protected DeoptimizationFetchUnrollInfoCallNode(ForeignCallsProvider foreignCalls, ValueNode registerSaver) {

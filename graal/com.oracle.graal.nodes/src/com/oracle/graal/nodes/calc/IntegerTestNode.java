@@ -42,7 +42,7 @@ public class IntegerTestNode extends BinaryOpLogicNode {
      * @param y the instruction that produces the second input to this instruction
      */
     public static IntegerTestNode create(ValueNode x, ValueNode y) {
-        return USE_GENERATED_NODES ? new IntegerTestNodeGen(x, y) : new IntegerTestNode(x, y);
+        return new IntegerTestNode(x, y);
     }
 
     protected IntegerTestNode(ValueNode x, ValueNode y) {

@@ -49,7 +49,7 @@ public class DeferredPiNode extends FloatingNode implements Canonicalizable {
     }
 
     public static DeferredPiNode create(ValueNode type, ValueNode object) {
-        return USE_GENERATED_NODES ? new DeferredPiNodeGen(type, object) : new DeferredPiNode(type, object);
+        return new DeferredPiNode(type, object);
     }
 
     protected DeferredPiNode(ValueNode type, ValueNode object) {

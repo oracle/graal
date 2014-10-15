@@ -40,7 +40,7 @@ import com.oracle.graal.replacements.nodes.*;
 public class ObjectCloneNode extends BasicObjectCloneNode implements VirtualizableAllocation, ArrayLengthProvider {
 
     public static ObjectCloneNode create(Invoke invoke) {
-        return USE_GENERATED_NODES ? new ObjectCloneNodeGen(invoke) : new ObjectCloneNode(invoke);
+        return new ObjectCloneNode(invoke);
     }
 
     protected ObjectCloneNode(Invoke invoke) {

@@ -36,7 +36,7 @@ public class SnippetLocationProxyNode extends FloatingNode implements Canonicali
     @Input(InputType.Unchecked) ValueNode location;
 
     public static SnippetLocationProxyNode create(ValueNode location) {
-        return USE_GENERATED_NODES ? new SnippetLocationProxyNodeGen(location) : new SnippetLocationProxyNode(location);
+        return new SnippetLocationProxyNode(location);
     }
 
     protected SnippetLocationProxyNode(ValueNode location) {

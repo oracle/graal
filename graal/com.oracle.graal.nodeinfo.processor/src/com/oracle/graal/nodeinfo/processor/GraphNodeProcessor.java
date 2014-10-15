@@ -32,15 +32,10 @@ import java.util.stream.*;
 import javax.annotation.processing.*;
 import javax.lang.model.*;
 import javax.lang.model.element.*;
-import javax.lang.model.type.*;
 import javax.lang.model.util.*;
 import javax.tools.Diagnostic.Kind;
 
 import com.oracle.graal.nodeinfo.*;
-import com.oracle.truffle.dsl.processor.*;
-import com.oracle.truffle.dsl.processor.java.*;
-import com.oracle.truffle.dsl.processor.java.model.*;
-import com.oracle.truffle.dsl.processor.java.transform.*;
 
 @SupportedSourceVersion(SourceVersion.RELEASE_8)
 @SupportedAnnotationTypes({"com.oracle.graal.nodeinfo.NodeInfo"})
@@ -113,7 +108,7 @@ public class GraphNodeProcessor extends AbstractProcessor {
             return false;
         }
 
-        GraphNodeGenerator gen = new GraphNodeGenerator(this);
+        GraphNodeVerifier verifier = new GraphNodeVerifier(this);
 
         for (Element element : roundEnv.getElementsAnnotatedWith(NodeInfo.class)) {
             scope = element;
@@ -136,17 +131,8 @@ public class GraphNodeProcessor extends AbstractProcessor {
                     continue;
                 }
 
-                if (!typeElement.equals(gen.Node) && !typeElement.getModifiers().contains(Modifier.ABSTRACT)) {
-                    try {
-                        CodeCompilationUnit unit = gen.process(typeElement, false);
-                        emitCode(typeElement, unit);
-                    } catch (ElementException ee) {
-                        // Try to generate the class with just the constructors so that
-                        // spurious errors related to a missing class are not emitted
-                        CodeCompilationUnit unit = gen.process(typeElement, true);
-                        emitCode(typeElement, unit);
-                        throw ee;
-                    }
+                if (!typeElement.equals(verifier.Node) && !typeElement.getModifiers().contains(Modifier.ABSTRACT)) {
+                    verifier.verify(typeElement);
                 }
             } catch (ElementException ee) {
                 errorMessage(ee.element, ee.getMessage());
@@ -157,16 +143,6 @@ public class GraphNodeProcessor extends AbstractProcessor {
             }
         }
         return false;
-    }
-
-    private void emitCode(TypeElement typeElement, CodeCompilationUnit unit) {
-        unit.setGeneratorElement(typeElement);
-
-        DeclaredType overrideType = (DeclaredType) ElementUtils.getType(processingEnv, Override.class);
-        DeclaredType unusedType = (DeclaredType) ElementUtils.getType(processingEnv, SuppressWarnings.class);
-        unit.accept(new GenerateOverrideVisitor(overrideType), null);
-        unit.accept(new FixWarningsVisitor(processingEnv, unusedType, overrideType), null);
-        unit.accept(new CodeWriter(processingEnv, typeElement), null);
     }
 
     /**

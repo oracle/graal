@@ -37,7 +37,7 @@ import com.oracle.graal.nodes.util.*;
 public class SubNode extends BinaryArithmeticNode<Sub> implements NarrowableArithmeticNode {
 
     public static SubNode create(ValueNode x, ValueNode y) {
-        return USE_GENERATED_NODES ? new SubNodeGen(x, y) : new SubNode(x, y);
+        return new SubNode(x, y);
     }
 
     protected SubNode(ValueNode x, ValueNode y) {

@@ -60,8 +60,7 @@ public class SnippetLocationNode extends LocationNode implements Canonicalizable
     }
 
     public static SnippetLocationNode create(@InjectedNodeParameter SnippetReflectionProvider snippetReflection, ValueNode locationIdentity, ValueNode kind, ValueNode displacement) {
-        return USE_GENERATED_NODES ? new SnippetLocationNodeGen(snippetReflection, locationIdentity, kind, displacement) : new SnippetLocationNode(snippetReflection, locationIdentity, kind,
-                        displacement);
+        return new SnippetLocationNode(snippetReflection, locationIdentity, kind, displacement);
     }
 
     protected SnippetLocationNode(@InjectedNodeParameter SnippetReflectionProvider snippetReflection, ValueNode locationIdentity, ValueNode kind, ValueNode displacement) {
@@ -70,8 +69,7 @@ public class SnippetLocationNode extends LocationNode implements Canonicalizable
 
     public static SnippetLocationNode create(@InjectedNodeParameter SnippetReflectionProvider snippetReflection, ValueNode locationIdentity, ValueNode kind, ValueNode displacement, ValueNode index,
                     ValueNode indexScaling) {
-        return USE_GENERATED_NODES ? new SnippetLocationNodeGen(snippetReflection, locationIdentity, kind, displacement, index, indexScaling) : new SnippetLocationNode(snippetReflection,
-                        locationIdentity, kind, displacement, index, indexScaling);
+        return new SnippetLocationNode(snippetReflection, locationIdentity, kind, displacement, index, indexScaling);
     }
 
     protected SnippetLocationNode(SnippetReflectionProvider snippetReflection, ValueNode locationIdentity, ValueNode kind, ValueNode displacement, ValueNode index, ValueNode indexScaling) {

@@ -42,7 +42,7 @@ public class DirectReadNode extends FixedWithNextNode implements LIRLowerable {
     protected final Kind readKind;
 
     public static DirectReadNode create(ValueNode address, Kind readKind) {
-        return USE_GENERATED_NODES ? new DirectReadNodeGen(address, readKind) : new DirectReadNode(address, readKind);
+        return new DirectReadNode(address, readKind);
     }
 
     protected DirectReadNode(ValueNode address, Kind readKind) {

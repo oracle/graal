@@ -42,7 +42,7 @@ public class StoreHubNode extends FixedWithNextNode implements Lowerable {
     }
 
     public static StoreHubNode create(ValueNode object, ValueNode value) {
-        return USE_GENERATED_NODES ? new StoreHubNodeGen(object, value) : new StoreHubNode(object, value);
+        return new StoreHubNode(object, value);
     }
 
     protected StoreHubNode(ValueNode object, ValueNode value) {

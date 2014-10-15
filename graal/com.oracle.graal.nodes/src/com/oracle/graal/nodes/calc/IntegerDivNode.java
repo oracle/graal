@@ -36,7 +36,7 @@ import com.oracle.graal.nodes.spi.*;
 public class IntegerDivNode extends FixedBinaryNode implements Lowerable, LIRLowerable {
 
     public static IntegerDivNode create(ValueNode x, ValueNode y) {
-        return USE_GENERATED_NODES ? new IntegerDivNodeGen(x, y) : new IntegerDivNode(x, y);
+        return new IntegerDivNode(x, y);
     }
 
     protected IntegerDivNode(ValueNode x, ValueNode y) {

@@ -32,7 +32,7 @@ public class LoopExitNode extends BeginStateSplitNode implements IterableNodeTyp
     @Input(InputType.Association) LoopBeginNode loopBegin;
 
     public static LoopExitNode create(LoopBeginNode loop) {
-        return USE_GENERATED_NODES ? new LoopExitNodeGen(loop) : new LoopExitNode(loop);
+        return new LoopExitNode(loop);
     }
 
     protected LoopExitNode(LoopBeginNode loop) {
@@ -47,7 +47,7 @@ public class LoopExitNode extends BeginStateSplitNode implements IterableNodeTyp
     @Override
     public void simplify(SimplifierTool tool) {
         Node prev = this.predecessor();
-        while (prev.getNodeClass().is(BeginNode.class) && prev.usages().isEmpty()) {
+        while (prev.getClass() == BeginNode.class && prev.usages().isEmpty()) {
             BeginNode begin = (BeginNode) prev;
             prev = prev.predecessor();
             graph().removeFixed(begin);

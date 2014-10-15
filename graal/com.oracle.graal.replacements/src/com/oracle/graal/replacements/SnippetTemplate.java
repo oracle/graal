@@ -387,7 +387,7 @@ public class SnippetTemplate {
         protected final Varargs varargs;
 
         public static VarargsPlaceholderNode create(Varargs varargs, MetaAccessProvider metaAccess) {
-            return USE_GENERATED_NODES ? new SnippetTemplate_VarargsPlaceholderNodeGen(varargs, metaAccess) : new VarargsPlaceholderNode(varargs, metaAccess);
+            return new VarargsPlaceholderNode(varargs, metaAccess);
         }
 
         protected VarargsPlaceholderNode(Varargs varargs, MetaAccessProvider metaAccess) {

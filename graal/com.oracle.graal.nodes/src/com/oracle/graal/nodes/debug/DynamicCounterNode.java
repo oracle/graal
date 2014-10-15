@@ -45,7 +45,7 @@ public class DynamicCounterNode extends FixedWithNextNode implements Lowerable {
     protected final boolean withContext;
 
     public static DynamicCounterNode create(String name, String group, ValueNode increment, boolean withContext) {
-        return USE_GENERATED_NODES ? new DynamicCounterNodeGen(name, group, increment, withContext) : new DynamicCounterNode(name, group, increment, withContext);
+        return new DynamicCounterNode(name, group, increment, withContext);
     }
 
     protected DynamicCounterNode(String name, String group, ValueNode increment, boolean withContext) {

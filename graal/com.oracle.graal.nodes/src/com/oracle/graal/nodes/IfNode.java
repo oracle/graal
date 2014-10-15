@@ -66,7 +66,7 @@ public class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerab
     }
 
     public static IfNode create(LogicNode condition, FixedNode trueSuccessor, FixedNode falseSuccessor, double trueSuccessorProbability) {
-        return USE_GENERATED_NODES ? new IfNodeGen(condition, trueSuccessor, falseSuccessor, trueSuccessorProbability) : new IfNode(condition, trueSuccessor, falseSuccessor, trueSuccessorProbability);
+        return new IfNode(condition, trueSuccessor, falseSuccessor, trueSuccessorProbability);
     }
 
     protected IfNode(LogicNode condition, FixedNode trueSuccessor, FixedNode falseSuccessor, double trueSuccessorProbability) {
@@ -74,7 +74,7 @@ public class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerab
     }
 
     public static IfNode create(LogicNode condition, BeginNode trueSuccessor, BeginNode falseSuccessor, double trueSuccessorProbability) {
-        return USE_GENERATED_NODES ? new IfNodeGen(condition, trueSuccessor, falseSuccessor, trueSuccessorProbability) : new IfNode(condition, trueSuccessor, falseSuccessor, trueSuccessorProbability);
+        return new IfNode(condition, trueSuccessor, falseSuccessor, trueSuccessorProbability);
     }
 
     protected IfNode(LogicNode condition, BeginNode trueSuccessor, BeginNode falseSuccessor, double trueSuccessorProbability) {
@@ -236,8 +236,7 @@ public class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerab
         do {
             BeginNode trueSucc = trueSuccessor();
             BeginNode falseSucc = falseSuccessor();
-            if (trueSucc.getNodeClass().is(BeginNode.class) && falseSucc.getNodeClass().is(BeginNode.class) && trueSucc.next() instanceof FixedWithNextNode &&
-                            falseSucc.next() instanceof FixedWithNextNode) {
+            if (trueSucc.getClass() == BeginNode.class && falseSucc.getClass() == BeginNode.class && trueSucc.next() instanceof FixedWithNextNode && falseSucc.next() instanceof FixedWithNextNode) {
                 FixedWithNextNode trueNext = (FixedWithNextNode) trueSucc.next();
                 FixedWithNextNode falseNext = (FixedWithNextNode) falseSucc.next();
                 NodeClass nodeClass = trueNext.getNodeClass();

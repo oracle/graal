@@ -39,7 +39,7 @@ import com.oracle.graal.nodes.spi.*;
 public class BitScanReverseNode extends UnaryNode implements LIRLowerable {
 
     public static BitScanReverseNode create(ValueNode value) {
-        return USE_GENERATED_NODES ? new BitScanReverseNodeGen(value) : new BitScanReverseNode(value);
+        return new BitScanReverseNode(value);
     }
 
     protected BitScanReverseNode(ValueNode value) {

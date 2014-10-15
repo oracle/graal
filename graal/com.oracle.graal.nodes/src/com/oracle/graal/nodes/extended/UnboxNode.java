@@ -36,7 +36,7 @@ public class UnboxNode extends UnaryNode implements Virtualizable, Lowerable {
     protected final Kind boxingKind;
 
     public static UnboxNode create(ValueNode value, Kind boxingKind) {
-        return USE_GENERATED_NODES ? new UnboxNodeGen(value, boxingKind) : new UnboxNode(value, boxingKind);
+        return new UnboxNode(value, boxingKind);
     }
 
     protected UnboxNode(ValueNode value, Kind boxingKind) {

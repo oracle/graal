@@ -111,7 +111,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             protected final Object nextPlaceholder;
 
             public static BlockPlaceholderNode create(BytecodeParser builder) {
-                return USE_GENERATED_NODES ? new GraphBuilderPhase_Instance_BlockPlaceholderNodeGen(builder) : new BlockPlaceholderNode(builder);
+                return new BlockPlaceholderNode(builder);
             }
 
             protected BlockPlaceholderNode(BytecodeParser builder) {
@@ -1346,7 +1346,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                         frameState.clearNonLiveLocals(currentBlock, liveness, false);
                     }
                     if (lastInstr instanceof StateSplit) {
-                        if (lastInstr.getNodeClass().is(BeginNode.class)) {
+                        if (lastInstr.getClass() == BeginNode.class) {
                             // BeginNodes do not need a frame state
                         } else {
                             StateSplit stateSplit = (StateSplit) lastInstr;

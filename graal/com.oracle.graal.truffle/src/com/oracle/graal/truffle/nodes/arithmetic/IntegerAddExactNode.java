@@ -39,7 +39,7 @@ import com.oracle.truffle.api.*;
 public class IntegerAddExactNode extends AddNode implements IntegerExactArithmeticNode {
 
     public static IntegerAddExactNode create(ValueNode x, ValueNode y) {
-        return USE_GENERATED_NODES ? new IntegerAddExactNodeGen(x, y) : new IntegerAddExactNode(x, y);
+        return new IntegerAddExactNode(x, y);
     }
 
     protected IntegerAddExactNode(ValueNode x, ValueNode y) {

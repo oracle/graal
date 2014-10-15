@@ -35,7 +35,7 @@ public class DynamicNewInstanceNode extends AbstractNewObjectNode implements Can
     @Input ValueNode clazz;
 
     public static DynamicNewInstanceNode create(ValueNode clazz, boolean fillContents) {
-        return USE_GENERATED_NODES ? new DynamicNewInstanceNodeGen(clazz, fillContents) : new DynamicNewInstanceNode(clazz, fillContents);
+        return new DynamicNewInstanceNode(clazz, fillContents);
     }
 
     protected DynamicNewInstanceNode(ValueNode clazz, boolean fillContents) {

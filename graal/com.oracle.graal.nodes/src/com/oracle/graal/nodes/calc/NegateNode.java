@@ -42,7 +42,7 @@ public class NegateNode extends UnaryArithmeticNode<Neg> implements NarrowableAr
      * @param value the instruction producing the value that is input to this instruction
      */
     public static NegateNode create(ValueNode value) {
-        return USE_GENERATED_NODES ? new NegateNodeGen(value) : new NegateNode(value);
+        return new NegateNode(value);
     }
 
     protected NegateNode(ValueNode value) {

@@ -46,8 +46,7 @@ public class SelfReplacingMethodCallTargetNode extends MethodCallTargetNode impl
 
     public static SelfReplacingMethodCallTargetNode create(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, JavaType returnType,
                     ResolvedJavaMethod replacementTargetMethod, ValueNode[] replacementArguments, JavaType replacementReturnType) {
-        return USE_GENERATED_NODES ? new SelfReplacingMethodCallTargetNodeGen(invokeKind, targetMethod, arguments, returnType, replacementTargetMethod, replacementArguments, replacementReturnType)
-                        : new SelfReplacingMethodCallTargetNode(invokeKind, targetMethod, arguments, returnType, replacementTargetMethod, replacementArguments, replacementReturnType);
+        return new SelfReplacingMethodCallTargetNode(invokeKind, targetMethod, arguments, returnType, replacementTargetMethod, replacementArguments, replacementReturnType);
     }
 
     protected SelfReplacingMethodCallTargetNode(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, JavaType returnType, ResolvedJavaMethod replacementTargetMethod,

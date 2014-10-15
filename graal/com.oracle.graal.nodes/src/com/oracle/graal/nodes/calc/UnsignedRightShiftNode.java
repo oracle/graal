@@ -34,7 +34,7 @@ import com.oracle.graal.nodes.type.*;
 public class UnsignedRightShiftNode extends ShiftNode {
 
     public static UnsignedRightShiftNode create(ValueNode x, ValueNode y) {
-        return USE_GENERATED_NODES ? new UnsignedRightShiftNodeGen(x, y) : new UnsignedRightShiftNode(x, y);
+        return new UnsignedRightShiftNode(x, y);
     }
 
     protected UnsignedRightShiftNode(ValueNode x, ValueNode y) {

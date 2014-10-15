@@ -36,7 +36,7 @@ import com.oracle.graal.nodes.spi.*;
 public class DivNode extends BinaryArithmeticNode<Div> {
 
     public static DivNode create(ValueNode x, ValueNode y) {
-        return USE_GENERATED_NODES ? new DivNodeGen(x, y) : new DivNode(x, y);
+        return new DivNode(x, y);
     }
 
     protected DivNode(ValueNode x, ValueNode y) {

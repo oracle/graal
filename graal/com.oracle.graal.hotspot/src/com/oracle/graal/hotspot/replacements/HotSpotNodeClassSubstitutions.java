@@ -48,7 +48,7 @@ public class HotSpotNodeClassSubstitutions {
     public static class NodeClassGetNode extends PureFunctionMacroNode {
 
         public static NodeClassGetNode create(Invoke invoke) {
-            return USE_GENERATED_NODES ? new HotSpotNodeClassSubstitutions_NodeClassGetNodeGen(invoke) : new NodeClassGetNode(invoke);
+            return new NodeClassGetNode(invoke);
         }
 
         protected NodeClassGetNode(Invoke invoke) {

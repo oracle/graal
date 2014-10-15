@@ -38,7 +38,7 @@ import com.oracle.graal.nodes.spi.*;
 public class NarrowNode extends IntegerConvertNode<Narrow, SignExtend> {
 
     public static NarrowNode create(ValueNode input, int resultBits) {
-        return USE_GENERATED_NODES ? new NarrowNodeGen(input, resultBits) : new NarrowNode(input, resultBits);
+        return new NarrowNode(input, resultBits);
     }
 
     protected NarrowNode(ValueNode input, int resultBits) {

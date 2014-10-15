@@ -36,7 +36,7 @@ public class LoopEndNode extends AbstractEndNode {
     protected int endIndex;
 
     public static LoopEndNode create(LoopBeginNode begin) {
-        return USE_GENERATED_NODES ? new LoopEndNodeGen(begin) : new LoopEndNode(begin);
+        return new LoopEndNode(begin);
     }
 
     protected LoopEndNode(LoopBeginNode begin) {

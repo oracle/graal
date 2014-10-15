@@ -32,7 +32,7 @@ import com.oracle.graal.nodes.extended.*;
 @NodeInfo(allowedUsageTypes = {InputType.Memory})
 public class StartNode extends BeginStateSplitNode implements MemoryCheckpoint.Single {
     public static StartNode create() {
-        return USE_GENERATED_NODES ? new StartNodeGen() : new StartNode();
+        return new StartNode();
     }
 
     protected StartNode() {

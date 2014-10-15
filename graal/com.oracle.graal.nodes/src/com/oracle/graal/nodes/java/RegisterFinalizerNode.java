@@ -42,7 +42,7 @@ public class RegisterFinalizerNode extends AbstractStateSplit implements Canonic
     @Input ValueNode value;
 
     public static RegisterFinalizerNode create(ValueNode value) {
-        return USE_GENERATED_NODES ? new RegisterFinalizerNodeGen(value) : new RegisterFinalizerNode(value);
+        return new RegisterFinalizerNode(value);
     }
 
     protected RegisterFinalizerNode(ValueNode value) {

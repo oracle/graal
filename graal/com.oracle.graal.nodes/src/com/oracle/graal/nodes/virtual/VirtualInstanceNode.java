@@ -33,7 +33,7 @@ public class VirtualInstanceNode extends VirtualObjectNode {
     protected final ResolvedJavaField[] fields;
 
     public static VirtualInstanceNode create(ResolvedJavaType type, boolean hasIdentity) {
-        return USE_GENERATED_NODES ? new VirtualInstanceNodeGen(type, hasIdentity) : new VirtualInstanceNode(type, hasIdentity);
+        return new VirtualInstanceNode(type, hasIdentity);
     }
 
     protected VirtualInstanceNode(ResolvedJavaType type, boolean hasIdentity) {
@@ -41,7 +41,7 @@ public class VirtualInstanceNode extends VirtualObjectNode {
     }
 
     public static VirtualInstanceNode create(ResolvedJavaType type, ResolvedJavaField[] fields, boolean hasIdentity) {
-        return USE_GENERATED_NODES ? new VirtualInstanceNodeGen(type, fields, hasIdentity) : new VirtualInstanceNode(type, fields, hasIdentity);
+        return new VirtualInstanceNode(type, fields, hasIdentity);
     }
 
     protected VirtualInstanceNode(ResolvedJavaType type, ResolvedJavaField[] fields, boolean hasIdentity) {

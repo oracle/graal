@@ -37,7 +37,7 @@ public class CStringNode extends FloatingNode implements LIRLowerable {
     protected final String string;
 
     public static CStringNode create(String string) {
-        return USE_GENERATED_NODES ? new CStringNodeGen(string) : new CStringNode(string);
+        return new CStringNode(string);
     }
 
     protected CStringNode(String string) {

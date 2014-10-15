@@ -34,7 +34,7 @@ import com.oracle.graal.nodes.virtual.*;
 public class BasicArrayCopyNode extends MacroStateSplitNode implements Virtualizable {
 
     public static BasicArrayCopyNode create(Invoke invoke) {
-        return USE_GENERATED_NODES ? new BasicArrayCopyNodeGen(invoke) : new BasicArrayCopyNode(invoke);
+        return new BasicArrayCopyNode(invoke);
     }
 
     protected BasicArrayCopyNode(Invoke invoke) {

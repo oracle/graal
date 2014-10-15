@@ -38,7 +38,7 @@ import com.oracle.truffle.api.*;
 public class IntegerMulHighNode extends BinaryNode implements ArithmeticLIRLowerable {
 
     public static IntegerMulHighNode create(ValueNode x, ValueNode y) {
-        return USE_GENERATED_NODES ? new IntegerMulHighNodeGen(x, y) : new IntegerMulHighNode(x, y);
+        return new IntegerMulHighNode(x, y);
     }
 
     protected IntegerMulHighNode(ValueNode x, ValueNode y) {
@@ -46,7 +46,7 @@ public class IntegerMulHighNode extends BinaryNode implements ArithmeticLIRLower
     }
 
     public static IntegerMulHighNode create(IntegerStamp stamp, ValueNode x, ValueNode y) {
-        return USE_GENERATED_NODES ? new IntegerMulHighNodeGen(stamp, x, y) : new IntegerMulHighNode(stamp, x, y);
+        return new IntegerMulHighNode(stamp, x, y);
     }
 
     protected IntegerMulHighNode(IntegerStamp stamp, ValueNode x, ValueNode y) {

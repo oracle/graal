@@ -46,7 +46,7 @@ public class UncommonTrapCallNode extends FixedWithNextNode implements LIRLowera
     protected final ForeignCallsProvider foreignCalls;
 
     public static UncommonTrapCallNode create(@InjectedNodeParameter ForeignCallsProvider foreignCalls, ValueNode registerSaver, ValueNode trapRequest) {
-        return USE_GENERATED_NODES ? new UncommonTrapCallNodeGen(foreignCalls, registerSaver, trapRequest) : new UncommonTrapCallNode(foreignCalls, registerSaver, trapRequest);
+        return new UncommonTrapCallNode(foreignCalls, registerSaver, trapRequest);
     }
 
     protected UncommonTrapCallNode(@InjectedNodeParameter ForeignCallsProvider foreignCalls, ValueNode registerSaver, ValueNode trapRequest) {

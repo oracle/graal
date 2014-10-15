@@ -50,7 +50,7 @@ public class CheckCastDynamicNode extends FixedWithNextNode implements Canonical
      * @param object the object being cast
      */
     public static CheckCastDynamicNode create(ValueNode hub, ValueNode object, boolean forStoreCheck) {
-        return USE_GENERATED_NODES ? new CheckCastDynamicNodeGen(hub, object, forStoreCheck) : new CheckCastDynamicNode(hub, object, forStoreCheck);
+        return new CheckCastDynamicNode(hub, object, forStoreCheck);
     }
 
     protected CheckCastDynamicNode(ValueNode hub, ValueNode object, boolean forStoreCheck) {

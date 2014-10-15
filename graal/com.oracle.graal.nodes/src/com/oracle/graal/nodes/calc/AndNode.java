@@ -37,7 +37,7 @@ import com.oracle.graal.nodes.util.*;
 public class AndNode extends BinaryArithmeticNode<And> implements NarrowableArithmeticNode {
 
     public static AndNode create(ValueNode x, ValueNode y) {
-        return USE_GENERATED_NODES ? new AndNodeGen(x, y) : new AndNode(x, y);
+        return new AndNode(x, y);
     }
 
     protected AndNode(ValueNode x, ValueNode y) {

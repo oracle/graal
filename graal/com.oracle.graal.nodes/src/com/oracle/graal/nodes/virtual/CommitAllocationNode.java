@@ -41,7 +41,7 @@ public class CommitAllocationNode extends FixedWithNextNode implements Virtualiz
     protected ArrayList<Integer> lockIndexes = new ArrayList<>(Arrays.asList(0));
 
     public static CommitAllocationNode create() {
-        return USE_GENERATED_NODES ? new CommitAllocationNodeGen() : new CommitAllocationNode();
+        return new CommitAllocationNode();
     }
 
     protected CommitAllocationNode() {

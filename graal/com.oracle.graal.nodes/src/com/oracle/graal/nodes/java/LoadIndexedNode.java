@@ -43,7 +43,7 @@ public class LoadIndexedNode extends AccessIndexedNode implements Virtualizable 
      * @param elementKind the element type
      */
     public static LoadIndexedNode create(ValueNode array, ValueNode index, Kind elementKind) {
-        return USE_GENERATED_NODES ? new LoadIndexedNodeGen(array, index, elementKind) : new LoadIndexedNode(array, index, elementKind);
+        return new LoadIndexedNode(array, index, elementKind);
     }
 
     protected LoadIndexedNode(ValueNode array, ValueNode index, Kind elementKind) {

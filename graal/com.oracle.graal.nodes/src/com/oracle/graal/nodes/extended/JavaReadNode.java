@@ -37,7 +37,7 @@ public class JavaReadNode extends FixedAccessNode implements Lowerable, Guarding
     protected final boolean compressible;
 
     public static JavaReadNode create(ValueNode object, LocationNode location, BarrierType barrierType, boolean compressible) {
-        return USE_GENERATED_NODES ? new JavaReadNodeGen(object, location, barrierType, compressible) : new JavaReadNode(object, location, barrierType, compressible);
+        return new JavaReadNode(object, location, barrierType, compressible);
     }
 
     protected JavaReadNode(ValueNode object, LocationNode location, BarrierType barrierType, boolean compressible) {

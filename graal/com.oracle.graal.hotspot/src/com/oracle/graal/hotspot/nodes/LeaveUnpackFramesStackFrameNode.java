@@ -39,7 +39,7 @@ public class LeaveUnpackFramesStackFrameNode extends FixedWithNextNode implement
     @Input SaveAllRegistersNode registerSaver;
 
     public static LeaveUnpackFramesStackFrameNode create(ValueNode registerSaver) {
-        return USE_GENERATED_NODES ? new LeaveUnpackFramesStackFrameNodeGen(registerSaver) : new LeaveUnpackFramesStackFrameNode(registerSaver);
+        return new LeaveUnpackFramesStackFrameNode(registerSaver);
     }
 
     protected LeaveUnpackFramesStackFrameNode(ValueNode registerSaver) {

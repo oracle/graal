@@ -37,7 +37,7 @@ import com.oracle.graal.nodes.util.*;
 public class OrNode extends BinaryArithmeticNode<Or> {
 
     public static OrNode create(ValueNode x, ValueNode y) {
-        return USE_GENERATED_NODES ? new OrNodeGen(x, y) : new OrNode(x, y);
+        return new OrNode(x, y);
     }
 
     protected OrNode(ValueNode x, ValueNode y) {

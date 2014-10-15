@@ -42,7 +42,7 @@ public class FloatConvertNode extends UnaryArithmeticNode<FloatConvertOp> implem
     protected final FloatConvert op;
 
     public static FloatConvertNode create(FloatConvert op, ValueNode input) {
-        return USE_GENERATED_NODES ? new FloatConvertNodeGen(op, input) : new FloatConvertNode(op, input);
+        return new FloatConvertNode(op, input);
     }
 
     protected FloatConvertNode(FloatConvert op, ValueNode input) {

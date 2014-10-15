@@ -40,7 +40,7 @@ public class BytecodeExceptionNode extends AbstractMemoryCheckpoint implements L
     @Input NodeInputList<ValueNode> arguments;
 
     public static BytecodeExceptionNode create(MetaAccessProvider metaAccess, Class<? extends Throwable> exceptionClass, ValueNode... arguments) {
-        return USE_GENERATED_NODES ? new BytecodeExceptionNodeGen(metaAccess, exceptionClass, arguments) : new BytecodeExceptionNode(metaAccess, exceptionClass, arguments);
+        return new BytecodeExceptionNode(metaAccess, exceptionClass, arguments);
     }
 
     protected BytecodeExceptionNode(MetaAccessProvider metaAccess, Class<? extends Throwable> exceptionClass, ValueNode... arguments) {

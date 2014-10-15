@@ -38,7 +38,7 @@ public class MemoryPhiNode extends PhiNode implements MemoryNode {
     protected final LocationIdentity locationIdentity;
 
     public static MemoryPhiNode create(MergeNode merge, LocationIdentity locationIdentity) {
-        return USE_GENERATED_NODES ? new MemoryPhiNodeGen(merge, locationIdentity) : new MemoryPhiNode(merge, locationIdentity);
+        return new MemoryPhiNode(merge, locationIdentity);
     }
 
     protected MemoryPhiNode(MergeNode merge, LocationIdentity locationIdentity) {
@@ -48,7 +48,7 @@ public class MemoryPhiNode extends PhiNode implements MemoryNode {
     }
 
     public static MemoryPhiNode create(MergeNode merge, LocationIdentity locationIdentity, ValueNode[] values) {
-        return USE_GENERATED_NODES ? new MemoryPhiNodeGen(merge, locationIdentity, values) : new MemoryPhiNode(merge, locationIdentity, values);
+        return new MemoryPhiNode(merge, locationIdentity, values);
     }
 
     protected MemoryPhiNode(MergeNode merge, LocationIdentity locationIdentity, ValueNode[] values) {

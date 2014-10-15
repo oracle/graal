@@ -52,7 +52,7 @@ public class MathIntrinsicNode extends UnaryNode implements ArithmeticLIRLowerab
     }
 
     public static MathIntrinsicNode create(ValueNode value, Operation op) {
-        return USE_GENERATED_NODES ? new MathIntrinsicNodeGen(value, op) : new MathIntrinsicNode(value, op);
+        return new MathIntrinsicNode(value, op);
     }
 
     protected MathIntrinsicNode(ValueNode value, Operation op) {

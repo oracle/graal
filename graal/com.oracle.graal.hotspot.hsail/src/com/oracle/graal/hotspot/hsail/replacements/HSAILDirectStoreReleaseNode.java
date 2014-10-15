@@ -35,7 +35,7 @@ import com.oracle.graal.word.*;
 public class HSAILDirectStoreReleaseNode extends DirectStoreNode {
 
     public static HSAILDirectStoreReleaseNode create(ValueNode address, ValueNode value, Kind kind) {
-        return USE_GENERATED_NODES ? new HSAILDirectStoreReleaseNodeGen(address, value, kind) : new HSAILDirectStoreReleaseNode(address, value, kind);
+        return new HSAILDirectStoreReleaseNode(address, value, kind);
     }
 
     protected HSAILDirectStoreReleaseNode(ValueNode address, ValueNode value, Kind kind) {

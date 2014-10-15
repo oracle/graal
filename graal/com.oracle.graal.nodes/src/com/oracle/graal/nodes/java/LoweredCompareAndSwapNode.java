@@ -62,8 +62,7 @@ public class LoweredCompareAndSwapNode extends FixedAccessNode implements StateS
     }
 
     public static LoweredCompareAndSwapNode create(ValueNode object, LocationNode location, ValueNode expectedValue, ValueNode newValue, BarrierType barrierType) {
-        return USE_GENERATED_NODES ? new LoweredCompareAndSwapNodeGen(object, location, expectedValue, newValue, barrierType) : new LoweredCompareAndSwapNode(object, location, expectedValue,
-                        newValue, barrierType);
+        return new LoweredCompareAndSwapNode(object, location, expectedValue, newValue, barrierType);
     }
 
     protected LoweredCompareAndSwapNode(ValueNode object, LocationNode location, ValueNode expectedValue, ValueNode newValue, BarrierType barrierType) {

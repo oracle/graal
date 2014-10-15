@@ -67,7 +67,7 @@ public class MacroNode extends FixedWithNextNode implements Lowerable {
     protected final InvokeKind invokeKind;
 
     public static MacroNode create(Invoke invoke) {
-        return USE_GENERATED_NODES ? new MacroNodeGen(invoke) : new MacroNode(invoke);
+        return new MacroNode(invoke);
     }
 
     protected MacroNode(Invoke invoke) {

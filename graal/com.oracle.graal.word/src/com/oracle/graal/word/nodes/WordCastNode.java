@@ -51,7 +51,7 @@ public class WordCastNode extends FixedWithNextNode implements LIRLowerable, Can
     }
 
     public static WordCastNode create(Stamp stamp, ValueNode input) {
-        return USE_GENERATED_NODES ? new WordCastNodeGen(stamp, input) : new WordCastNode(stamp, input);
+        return new WordCastNode(stamp, input);
     }
 
     protected WordCastNode(Stamp stamp, ValueNode input) {

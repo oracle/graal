@@ -57,7 +57,7 @@ public class MethodHandleNode extends MacroStateSplitNode implements Simplifiabl
     @Input NodeInputList<ValueNode> replacementArguments;
 
     public static MethodHandleNode create(Invoke invoke) {
-        return USE_GENERATED_NODES ? new MethodHandleNodeGen(invoke) : new MethodHandleNode(invoke);
+        return new MethodHandleNode(invoke);
     }
 
     protected MethodHandleNode(Invoke invoke) {

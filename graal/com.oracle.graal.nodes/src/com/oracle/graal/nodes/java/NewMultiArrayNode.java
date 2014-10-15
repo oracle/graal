@@ -57,7 +57,7 @@ public class NewMultiArrayNode extends DeoptimizingFixedWithNextNode implements 
      * @param dimensions the node which produce the dimensions for this array
      */
     public static NewMultiArrayNode create(ResolvedJavaType type, ValueNode[] dimensions) {
-        return USE_GENERATED_NODES ? new NewMultiArrayNodeGen(type, dimensions) : new NewMultiArrayNode(type, dimensions);
+        return new NewMultiArrayNode(type, dimensions);
     }
 
     protected NewMultiArrayNode(ResolvedJavaType type, ValueNode[] dimensions) {

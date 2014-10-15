@@ -41,7 +41,7 @@ public class ObjectEqualsNode extends CompareNode implements Virtualizable {
      * @param y the instruction that produces the second input to this instruction
      */
     public static ObjectEqualsNode create(ValueNode x, ValueNode y) {
-        return USE_GENERATED_NODES ? new ObjectEqualsNodeGen(x, y) : new ObjectEqualsNode(x, y);
+        return new ObjectEqualsNode(x, y);
     }
 
     protected ObjectEqualsNode(ValueNode x, ValueNode y) {

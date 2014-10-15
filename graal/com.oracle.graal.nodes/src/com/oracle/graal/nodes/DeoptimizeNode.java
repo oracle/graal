@@ -35,7 +35,7 @@ public class DeoptimizeNode extends AbstractDeoptimizeNode implements Lowerable,
     protected final Constant speculation;
 
     public static DeoptimizeNode create(DeoptimizationAction action, DeoptimizationReason reason) {
-        return USE_GENERATED_NODES ? new DeoptimizeNodeGen(action, reason) : new DeoptimizeNode(action, reason);
+        return new DeoptimizeNode(action, reason);
     }
 
     protected DeoptimizeNode(DeoptimizationAction action, DeoptimizationReason reason) {
@@ -43,7 +43,7 @@ public class DeoptimizeNode extends AbstractDeoptimizeNode implements Lowerable,
     }
 
     public static DeoptimizeNode create(DeoptimizationAction action, DeoptimizationReason reason, int debugId, Constant speculation, FrameState stateBefore) {
-        return USE_GENERATED_NODES ? new DeoptimizeNodeGen(action, reason, debugId, speculation, stateBefore) : new DeoptimizeNode(action, reason, debugId, speculation, stateBefore);
+        return new DeoptimizeNode(action, reason, debugId, speculation, stateBefore);
     }
 
     protected DeoptimizeNode(DeoptimizationAction action, DeoptimizationReason reason, int debugId, Constant speculation, FrameState stateBefore) {

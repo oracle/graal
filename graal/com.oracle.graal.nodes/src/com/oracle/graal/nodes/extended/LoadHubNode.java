@@ -44,7 +44,7 @@ public class LoadHubNode extends FloatingGuardedNode implements Lowerable, Canon
     }
 
     public static LoadHubNode create(ValueNode value, Kind kind) {
-        return USE_GENERATED_NODES ? new LoadHubNodeGen(value, kind) : new LoadHubNode(value, kind);
+        return new LoadHubNode(value, kind);
     }
 
     protected LoadHubNode(ValueNode value, Kind kind) {
@@ -53,7 +53,7 @@ public class LoadHubNode extends FloatingGuardedNode implements Lowerable, Canon
     }
 
     public static LoadHubNode create(ValueNode value, Kind kind, ValueNode guard) {
-        return USE_GENERATED_NODES ? new LoadHubNodeGen(value, kind, guard) : new LoadHubNode(value, kind, guard);
+        return new LoadHubNode(value, kind, guard);
     }
 
     protected LoadHubNode(ValueNode value, Kind kind, ValueNode guard) {

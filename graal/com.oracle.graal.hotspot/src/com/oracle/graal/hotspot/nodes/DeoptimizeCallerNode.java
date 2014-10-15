@@ -39,7 +39,7 @@ public class DeoptimizeCallerNode extends ControlSinkNode implements LIRLowerabl
     protected final DeoptimizationReason reason;
 
     public static DeoptimizeCallerNode create(DeoptimizationAction action, DeoptimizationReason reason) {
-        return USE_GENERATED_NODES ? new DeoptimizeCallerNodeGen(action, reason) : new DeoptimizeCallerNode(action, reason);
+        return new DeoptimizeCallerNode(action, reason);
     }
 
     protected DeoptimizeCallerNode(DeoptimizationAction action, DeoptimizationReason reason) {

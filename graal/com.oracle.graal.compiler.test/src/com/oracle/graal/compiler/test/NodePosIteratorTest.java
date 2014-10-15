@@ -42,7 +42,7 @@ public class NodePosIteratorTest extends GraalCompilerTest {
         @Input FloatingNode i2;
 
         public static TestNode create() {
-            return USE_GENERATED_NODES ? new NodePosIteratorTest_TestNodeGen() : new TestNode();
+            return new TestNode();
         }
 
         protected TestNode() {

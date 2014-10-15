@@ -48,7 +48,7 @@ public class EdgesTest extends GraalCompilerTest {
         @Input FloatingNode i2;
 
         public static TestNode create() {
-            return USE_GENERATED_NODES ? new EdgesTest_TestNodeGen() : new TestNode();
+            return new TestNode();
         }
 
         protected TestNode() {

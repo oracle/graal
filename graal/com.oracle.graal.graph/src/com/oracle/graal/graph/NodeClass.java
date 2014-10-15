@@ -27,7 +27,6 @@ import static com.oracle.graal.graph.Edges.*;
 import static com.oracle.graal.graph.InputEdges.*;
 import static com.oracle.graal.graph.Node.*;
 import static com.oracle.graal.graph.util.CollectionsAccess.*;
-import static java.lang.reflect.Modifier.*;
 
 import java.lang.annotation.*;
 import java.lang.reflect.*;
@@ -39,6 +38,7 @@ import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.graph.Edges.Type;
 import com.oracle.graal.graph.Graph.DuplicationReplacement;
 import com.oracle.graal.graph.Node.Input;
+import com.oracle.graal.graph.Node.OptionalInput;
 import com.oracle.graal.graph.Node.Successor;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
@@ -89,23 +89,12 @@ public final class NodeClass extends FieldIntrospection {
                     value = (NodeClass) allClasses.get(key);
                     if (value == null) {
                         Class<?> superclass = c.getSuperclass();
-                        if (GeneratedNode.class.isAssignableFrom(c)) {
-                            Class<? extends Node> originalNodeClass = (Class<? extends Node>) superclass;
-                            value = (NodeClass) allClasses.get(originalNodeClass);
-                            assert value != null;
-                            if (value.genClass == null) {
-                                value.genClass = (Class<? extends Node>) c;
-                            } else {
-                                assert value.genClass == c;
-                            }
-                        } else {
-                            NodeClass superNodeClass = null;
-                            if (superclass != NODE_CLASS) {
-                                // Ensure NodeClass for superclass exists
-                                superNodeClass = get(superclass);
-                            }
-                            value = new NodeClass(key, superNodeClass);
+                        NodeClass superNodeClass = null;
+                        if (superclass != NODE_CLASS) {
+                            // Ensure NodeClass for superclass exists
+                            superNodeClass = get(superclass);
                         }
+                        value = new NodeClass(key, superNodeClass);
                         Object old = allClasses.putIfAbsent(key, value);
                         assert old == null : old + "   " + key;
                     }
@@ -131,13 +120,6 @@ public final class NodeClass extends FieldIntrospection {
     private final int iterableId;
     private final EnumSet<InputType> allowedUsageTypes;
     private int[] iterableIds;
-
-    /**
-     * The {@linkplain GeneratedNode generated} node class denoted by this object. This value is
-     * lazily initialized to avoid class initialization circularity issues. A sentinel value of
-     * {@code Node.class} is used to denote absence of a generated class.
-     */
-    private Class<? extends Node> genClass;
 
     private static final DebugMetric ITERABLE_NODE_TYPES = Debug.metric("IterableNodeTypes");
     private final DebugMetric nodeIterableCount;
@@ -220,30 +202,6 @@ public final class NodeClass extends FieldIntrospection {
         nodeIterableCount = Debug.metric("NodeIterable_%s", clazz);
     }
 
-    /**
-     * Gets the {@linkplain GeneratedNode generated} node class (if any) described by the object.
-     */
-    @SuppressWarnings("unchecked")
-    public Class<? extends Node> getGenClass() {
-        if (USE_GENERATED_NODES) {
-            if (genClass == null) {
-                if (!isAbstract(getClazz().getModifiers())) {
-                    String genClassName = getClazz().getName().replace('$', '_') + "Gen";
-                    try {
-                        genClass = (Class<? extends Node>) Class.forName(genClassName);
-                    } catch (ClassNotFoundException e) {
-                        throw new GraalInternalError("Could not find generated class " + genClassName + " for " + getClazz());
-                    }
-                } else {
-                    // Sentinel value denoting no generated class
-                    genClass = Node.class;
-                }
-            }
-            return genClass.equals(Node.class) ? null : genClass;
-        }
-        return null;
-    }
-
     private static boolean containsId(int iterableId, int[] iterableIds) {
         for (int i : iterableIds) {
             if (i == iterableId) {
@@ -251,26 +209,6 @@ public final class NodeClass extends FieldIntrospection {
             }
         }
         return false;
-    }
-
-    /**
-     * Determines if a given {@link Node} class is described by this {@link NodeClass} object. This
-     * is useful for doing an exact type test (as opposed to an instanceof test) on a node. For
-     * example:
-     *
-     * <pre>
-     *     if (node.getNodeClass().is(BeginNode.class)) { ... }
-     * 
-     *     // Due to generated Node classes, the test below
-     *     // is *not* the same as the test above:
-     *     if (node.getClass() == BeginNode.class) { ... }
-     * </pre>
-     *
-     * @param nodeClass a {@linkplain GeneratedNode non-generated} {@link Node} class
-     */
-    public boolean is(Class<? extends Node> nodeClass) {
-        assert !GeneratedNode.class.isAssignableFrom(nodeClass) : "cannot test NodeClass against generated " + nodeClass;
-        return nodeClass == getClazz();
     }
 
     private String shortName;

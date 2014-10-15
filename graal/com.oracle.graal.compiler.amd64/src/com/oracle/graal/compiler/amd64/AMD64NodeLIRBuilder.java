@@ -275,7 +275,7 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
 
     protected AMD64Arithmetic getOp(ValueNode operation, Access access) {
         Kind memoryKind = getMemoryKind(access);
-        if (operation.getNodeClass().is(AddNode.class)) {
+        if (operation.getClass() == AddNode.class) {
             switch (memoryKind) {
                 case Int:
                     return IADD;
@@ -286,28 +286,28 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
                 case Double:
                     return DADD;
             }
-        } else if (operation.getNodeClass().is(AndNode.class)) {
+        } else if (operation.getClass() == AndNode.class) {
             switch (memoryKind) {
                 case Int:
                     return IAND;
                 case Long:
                     return LAND;
             }
-        } else if (operation.getNodeClass().is(OrNode.class)) {
+        } else if (operation.getClass() == OrNode.class) {
             switch (memoryKind) {
                 case Int:
                     return IOR;
                 case Long:
                     return LOR;
             }
-        } else if (operation.getNodeClass().is(XorNode.class)) {
+        } else if (operation.getClass() == XorNode.class) {
             switch (memoryKind) {
                 case Int:
                     return IXOR;
                 case Long:
                     return LXOR;
             }
-        } else if (operation.getNodeClass().is(SubNode.class)) {
+        } else if (operation.getClass() == SubNode.class) {
             switch (memoryKind) {
                 case Int:
                     return ISUB;
@@ -318,7 +318,7 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
                 case Double:
                     return DSUB;
             }
-        } else if (operation.getNodeClass().is(MulNode.class)) {
+        } else if (operation.getClass() == MulNode.class) {
             switch (memoryKind) {
                 case Int:
                     return IMUL;

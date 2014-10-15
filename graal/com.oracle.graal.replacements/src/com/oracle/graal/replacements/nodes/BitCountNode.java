@@ -35,7 +35,7 @@ import com.oracle.graal.nodes.spi.*;
 public class BitCountNode extends UnaryNode implements LIRLowerable {
 
     public static BitCountNode create(ValueNode value) {
-        return USE_GENERATED_NODES ? new BitCountNodeGen(value) : new BitCountNode(value);
+        return new BitCountNode(value);
     }
 
     protected BitCountNode(ValueNode value) {

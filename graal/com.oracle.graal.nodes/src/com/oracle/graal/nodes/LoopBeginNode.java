@@ -45,7 +45,7 @@ public class LoopBeginNode extends MergeNode implements IterableNodeType, LIRLow
     @OptionalInput(InputType.Guard) GuardingNode overflowGuard;
 
     public static LoopBeginNode create() {
-        return USE_GENERATED_NODES ? new LoopBeginNodeGen() : new LoopBeginNode();
+        return new LoopBeginNode();
     }
 
     protected LoopBeginNode() {

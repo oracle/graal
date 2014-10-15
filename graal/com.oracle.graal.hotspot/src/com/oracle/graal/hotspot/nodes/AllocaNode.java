@@ -52,7 +52,7 @@ public class AllocaNode extends FixedWithNextNode implements LIRLowerable {
     protected final BitSet objects;
 
     public static AllocaNode create(int slots, BitSet objects) {
-        return USE_GENERATED_NODES ? new AllocaNodeGen(slots, objects) : new AllocaNode(slots, objects);
+        return new AllocaNode(slots, objects);
     }
 
     protected AllocaNode(int slots, BitSet objects) {

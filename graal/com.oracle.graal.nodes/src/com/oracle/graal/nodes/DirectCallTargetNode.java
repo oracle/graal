@@ -33,8 +33,7 @@ import com.oracle.graal.nodeinfo.*;
 public class DirectCallTargetNode extends LoweredCallTargetNode {
 
     public static DirectCallTargetNode create(List<ValueNode> arguments, Stamp returnStamp, JavaType[] signature, ResolvedJavaMethod target, CallingConvention.Type callType, InvokeKind invokeKind) {
-        return USE_GENERATED_NODES ? new DirectCallTargetNodeGen(arguments, returnStamp, signature, target, callType, invokeKind) : new DirectCallTargetNode(arguments, returnStamp, signature, target,
-                        callType, invokeKind);
+        return new DirectCallTargetNode(arguments, returnStamp, signature, target, callType, invokeKind);
     }
 
     protected DirectCallTargetNode(List<ValueNode> arguments, Stamp returnStamp, JavaType[] signature, ResolvedJavaMethod target, CallingConvention.Type callType, InvokeKind invokeKind) {

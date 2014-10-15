@@ -53,7 +53,7 @@ public class TailcallNode extends FixedWithNextNode implements LIRLowerable {
      * @param frameState the parameters will be taken from this FrameState
      */
     public static TailcallNode create(ValueNode target, FrameState frameState) {
-        return USE_GENERATED_NODES ? new TailcallNodeGen(target, frameState) : new TailcallNode(target, frameState);
+        return new TailcallNode(target, frameState);
     }
 
     protected TailcallNode(ValueNode target, FrameState frameState) {

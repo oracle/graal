@@ -37,7 +37,7 @@ import com.oracle.graal.nodes.util.*;
 public class XorNode extends BinaryArithmeticNode<Xor> {
 
     public static XorNode create(ValueNode x, ValueNode y) {
-        return USE_GENERATED_NODES ? new XorNodeGen(x, y) : new XorNode(x, y);
+        return new XorNode(x, y);
     }
 
     protected XorNode(ValueNode x, ValueNode y) {

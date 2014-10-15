@@ -36,7 +36,7 @@ import com.oracle.graal.nodes.spi.*;
 public class AddNode extends BinaryArithmeticNode<Add> implements NarrowableArithmeticNode {
 
     public static AddNode create(ValueNode x, ValueNode y) {
-        return USE_GENERATED_NODES ? new AddNodeGen(x, y) : new AddNode(x, y);
+        return new AddNode(x, y);
     }
 
     protected AddNode(ValueNode x, ValueNode y) {

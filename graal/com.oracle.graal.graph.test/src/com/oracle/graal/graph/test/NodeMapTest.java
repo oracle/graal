@@ -38,7 +38,7 @@ public class NodeMapTest {
         }
 
         public static TestNode create() {
-            return USE_GENERATED_NODES ? new NodeMapTest_TestNodeGen() : new TestNode();
+            return new TestNode();
         }
     }
 

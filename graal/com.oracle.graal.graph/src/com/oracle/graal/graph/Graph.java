@@ -107,7 +107,7 @@ public class Graph {
 
         @Override
         public int hashCode() {
-            return Node.USE_GENERATED_VALUE_NUMBER ? node.valueNumberLeaf() : node.getNodeClass().valueNumber(node);
+            return node.getNodeClass().valueNumber(node);
         }
 
         @Override
@@ -628,7 +628,7 @@ public class Graph {
         }
     }
 
-    static final Node PLACE_HOLDER = USE_GENERATED_NODES ? new Graph_PlaceHolderNodeGen() : new PlaceHolderNode();
+    static final Node PLACE_HOLDER = new PlaceHolderNode();
 
     /**
      * When the percent of live nodes in {@link #nodes} fall below this number, a call to

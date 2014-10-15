@@ -37,7 +37,7 @@ import com.oracle.graal.nodes.virtual.*;
 public class WriteNode extends AbstractWriteNode implements LIRLowerable, Simplifiable, Virtualizable {
 
     public static WriteNode create(ValueNode object, ValueNode value, ValueNode location, BarrierType barrierType) {
-        return USE_GENERATED_NODES ? new WriteNodeGen(object, value, location, barrierType) : new WriteNode(object, value, location, barrierType);
+        return new WriteNode(object, value, location, barrierType);
     }
 
     protected WriteNode(ValueNode object, ValueNode value, ValueNode location, BarrierType barrierType) {
@@ -45,7 +45,7 @@ public class WriteNode extends AbstractWriteNode implements LIRLowerable, Simpli
     }
 
     public static WriteNode create(ValueNode object, ValueNode value, ValueNode location, BarrierType barrierType, boolean initialization) {
-        return USE_GENERATED_NODES ? new WriteNodeGen(object, value, location, barrierType, initialization) : new WriteNode(object, value, location, barrierType, initialization);
+        return new WriteNode(object, value, location, barrierType, initialization);
     }
 
     protected WriteNode(ValueNode object, ValueNode value, ValueNode location, BarrierType barrierType, boolean initialization) {
@@ -53,7 +53,7 @@ public class WriteNode extends AbstractWriteNode implements LIRLowerable, Simpli
     }
 
     public static WriteNode create(ValueNode object, ValueNode value, ValueNode location, BarrierType barrierType, GuardingNode guard, boolean initialization) {
-        return USE_GENERATED_NODES ? new WriteNodeGen(object, value, location, barrierType, guard, initialization) : new WriteNode(object, value, location, barrierType, guard, initialization);
+        return new WriteNode(object, value, location, barrierType, guard, initialization);
     }
 
     protected WriteNode(ValueNode object, ValueNode value, ValueNode location, BarrierType barrierType, GuardingNode guard, boolean initialization) {

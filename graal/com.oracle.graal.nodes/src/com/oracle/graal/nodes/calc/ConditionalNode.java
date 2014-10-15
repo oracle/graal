@@ -49,7 +49,7 @@ public class ConditionalNode extends FloatingNode implements Canonicalizable, LI
     }
 
     public static ConditionalNode create(LogicNode condition) {
-        return USE_GENERATED_NODES ? new ConditionalNodeGen(condition) : new ConditionalNode(condition);
+        return new ConditionalNode(condition);
     }
 
     protected ConditionalNode(LogicNode condition) {
@@ -57,7 +57,7 @@ public class ConditionalNode extends FloatingNode implements Canonicalizable, LI
     }
 
     public static ConditionalNode create(LogicNode condition, ValueNode trueValue, ValueNode falseValue) {
-        return USE_GENERATED_NODES ? new ConditionalNodeGen(condition, trueValue, falseValue) : new ConditionalNode(condition, trueValue, falseValue);
+        return new ConditionalNode(condition, trueValue, falseValue);
     }
 
     protected ConditionalNode(LogicNode condition, ValueNode trueValue, ValueNode falseValue) {
@@ -128,7 +128,7 @@ public class ConditionalNode extends FloatingNode implements Canonicalizable, LI
     }
 
     public static ConditionalNode create(@InjectedNodeParameter StructuredGraph graph, Condition condition, ValueNode x, ValueNode y) {
-        return USE_GENERATED_NODES ? new ConditionalNodeGen(graph, condition, x, y) : new ConditionalNode(graph, condition, x, y);
+        return new ConditionalNode(graph, condition, x, y);
     }
 
     protected ConditionalNode(StructuredGraph graph, Condition condition, ValueNode x, ValueNode y) {
@@ -136,7 +136,7 @@ public class ConditionalNode extends FloatingNode implements Canonicalizable, LI
     }
 
     public static ConditionalNode create(ValueNode type, ValueNode object) {
-        return USE_GENERATED_NODES ? new ConditionalNodeGen(type, object) : new ConditionalNode(type, object);
+        return new ConditionalNode(type, object);
     }
 
     protected ConditionalNode(ValueNode type, ValueNode object) {

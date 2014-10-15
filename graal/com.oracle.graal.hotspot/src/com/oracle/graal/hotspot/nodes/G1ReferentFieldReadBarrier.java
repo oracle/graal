@@ -38,7 +38,7 @@ public class G1ReferentFieldReadBarrier extends WriteBarrier {
     protected final boolean doLoad;
 
     public static G1ReferentFieldReadBarrier create(ValueNode object, ValueNode expectedObject, LocationNode location, boolean doLoad) {
-        return USE_GENERATED_NODES ? new G1ReferentFieldReadBarrierGen(object, expectedObject, location, doLoad) : new G1ReferentFieldReadBarrier(object, expectedObject, location, doLoad);
+        return new G1ReferentFieldReadBarrier(object, expectedObject, location, doLoad);
     }
 
     protected G1ReferentFieldReadBarrier(ValueNode object, ValueNode expectedObject, LocationNode location, boolean doLoad) {

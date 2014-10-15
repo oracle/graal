@@ -31,7 +31,7 @@ import com.oracle.graal.nodes.*;
 public class CompilationConstantNode extends NeverPartOfCompilationNode implements Canonicalizable {
 
     public static CompilationConstantNode create(Invoke invoke) {
-        return USE_GENERATED_NODES ? new CompilationConstantNodeGen(invoke) : new CompilationConstantNode(invoke);
+        return new CompilationConstantNode(invoke);
     }
 
     protected CompilationConstantNode(Invoke invoke) {

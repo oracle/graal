@@ -42,7 +42,7 @@ public class NotNode extends UnaryArithmeticNode<Not> implements ArithmeticLIRLo
      * @param x the instruction producing the value that is input to this instruction
      */
     public static NotNode create(ValueNode x) {
-        return USE_GENERATED_NODES ? new NotNodeGen(x) : new NotNode(x);
+        return new NotNode(x);
     }
 
     protected NotNode(ValueNode x) {

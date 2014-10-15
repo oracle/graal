@@ -51,7 +51,7 @@ public class GuardNode extends FloatingAnchoredNode implements Canonicalizable, 
     protected boolean negated;
 
     public static GuardNode create(LogicNode condition, AnchoringNode anchor, DeoptimizationReason reason, DeoptimizationAction action, boolean negated, Constant speculation) {
-        return USE_GENERATED_NODES ? new GuardNodeGen(condition, anchor, reason, action, negated, speculation) : new GuardNode(condition, anchor, reason, action, negated, speculation);
+        return new GuardNode(condition, anchor, reason, action, negated, speculation);
     }
 
     protected GuardNode(LogicNode condition, AnchoringNode anchor, DeoptimizationReason reason, DeoptimizationAction action, boolean negated, Constant speculation) {

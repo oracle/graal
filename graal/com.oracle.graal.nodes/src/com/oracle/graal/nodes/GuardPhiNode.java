@@ -36,7 +36,7 @@ public class GuardPhiNode extends PhiNode implements GuardingNode {
     @OptionalInput(InputType.Guard) NodeInputList<ValueNode> values;
 
     public static GuardPhiNode create(MergeNode merge) {
-        return USE_GENERATED_NODES ? new GuardPhiNodeGen(merge) : new GuardPhiNode(merge);
+        return new GuardPhiNode(merge);
     }
 
     protected GuardPhiNode(MergeNode merge) {
@@ -45,7 +45,7 @@ public class GuardPhiNode extends PhiNode implements GuardingNode {
     }
 
     public static GuardPhiNode create(MergeNode merge, ValueNode[] values) {
-        return USE_GENERATED_NODES ? new GuardPhiNodeGen(merge, values) : new GuardPhiNode(merge, values);
+        return new GuardPhiNode(merge, values);
     }
 
     protected GuardPhiNode(MergeNode merge, ValueNode[] values) {

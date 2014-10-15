@@ -51,7 +51,7 @@ public class CompressionNode extends UnaryNode implements ConvertNode, LIRLowera
     protected final CompressEncoding encoding;
 
     public static CompressionNode create(CompressionOp op, ValueNode input, CompressEncoding encoding) {
-        return USE_GENERATED_NODES ? new CompressionNodeGen(op, input, encoding) : new CompressionNode(op, input, encoding);
+        return new CompressionNode(op, input, encoding);
     }
 
     protected CompressionNode(CompressionOp op, ValueNode input, CompressEncoding encoding) {

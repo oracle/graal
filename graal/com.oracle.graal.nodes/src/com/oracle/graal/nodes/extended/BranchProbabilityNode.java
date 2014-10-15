@@ -54,7 +54,7 @@ public class BranchProbabilityNode extends FloatingNode implements Simplifiable,
     @Input ValueNode condition;
 
     public static BranchProbabilityNode create(ValueNode probability, ValueNode condition) {
-        return USE_GENERATED_NODES ? new BranchProbabilityNodeGen(probability, condition) : new BranchProbabilityNode(probability, condition);
+        return new BranchProbabilityNode(probability, condition);
     }
 
     protected BranchProbabilityNode(ValueNode probability, ValueNode condition) {

@@ -39,7 +39,7 @@ public class TypedNodeIteratorTest {
         protected final String name;
 
         public static TestNode create(String name) {
-            return USE_GENERATED_NODES ? new TypedNodeIteratorTest_TestNodeGen(name) : new TestNode(name);
+            return new TestNode(name);
         }
 
         protected TestNode(String name) {

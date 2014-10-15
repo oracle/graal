@@ -33,7 +33,7 @@ public class NeverPartOfCompilationNode extends MacroStateSplitNode implements I
     protected final String message;
 
     public static NeverPartOfCompilationNode create(Invoke invoke) {
-        return USE_GENERATED_NODES ? new NeverPartOfCompilationNodeGen(invoke) : new NeverPartOfCompilationNode(invoke);
+        return new NeverPartOfCompilationNode(invoke);
     }
 
     protected NeverPartOfCompilationNode(Invoke invoke) {
@@ -41,7 +41,7 @@ public class NeverPartOfCompilationNode extends MacroStateSplitNode implements I
     }
 
     public static NeverPartOfCompilationNode create(Invoke invoke, String message) {
-        return USE_GENERATED_NODES ? new NeverPartOfCompilationNodeGen(invoke, message) : new NeverPartOfCompilationNode(invoke, message);
+        return new NeverPartOfCompilationNode(invoke, message);
     }
 
     protected NeverPartOfCompilationNode(Invoke invoke, String message) {

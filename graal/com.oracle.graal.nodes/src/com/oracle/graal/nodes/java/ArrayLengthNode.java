@@ -47,7 +47,7 @@ public class ArrayLengthNode extends FixedWithNextNode implements Canonicalizabl
     }
 
     public static ArrayLengthNode create(ValueNode array) {
-        return USE_GENERATED_NODES ? new ArrayLengthNodeGen(array) : new ArrayLengthNode(array);
+        return new ArrayLengthNode(array);
     }
 
     protected ArrayLengthNode(ValueNode array) {

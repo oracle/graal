@@ -38,7 +38,7 @@ import com.oracle.graal.nodes.spi.*;
 public class SignExtendNode extends IntegerConvertNode<SignExtend, Narrow> {
 
     public static SignExtendNode create(ValueNode input, int resultBits) {
-        return USE_GENERATED_NODES ? new SignExtendNodeGen(input, resultBits) : new SignExtendNode(input, resultBits);
+        return new SignExtendNode(input, resultBits);
     }
 
     protected SignExtendNode(ValueNode input, int resultBits) {

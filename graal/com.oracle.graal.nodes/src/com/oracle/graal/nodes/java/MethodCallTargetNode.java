@@ -38,7 +38,7 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
      * @param arguments
      */
     public static MethodCallTargetNode create(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, JavaType returnType) {
-        return USE_GENERATED_NODES ? new MethodCallTargetNodeGen(invokeKind, targetMethod, arguments, returnType) : new MethodCallTargetNode(invokeKind, targetMethod, arguments, returnType);
+        return new MethodCallTargetNode(invokeKind, targetMethod, arguments, returnType);
     }
 
     protected MethodCallTargetNode(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, JavaType returnType) {

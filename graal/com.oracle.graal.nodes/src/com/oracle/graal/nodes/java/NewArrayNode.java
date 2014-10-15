@@ -49,7 +49,7 @@ public class NewArrayNode extends AbstractNewArrayNode implements VirtualizableA
      * @param fillContents determines whether the array elements should be initialized to zero/null.
      */
     public static NewArrayNode create(ResolvedJavaType elementType, ValueNode length, boolean fillContents) {
-        return USE_GENERATED_NODES ? new NewArrayNodeGen(elementType, length, fillContents) : new NewArrayNode(elementType, length, fillContents);
+        return new NewArrayNode(elementType, length, fillContents);
     }
 
     protected NewArrayNode(ResolvedJavaType elementType, ValueNode length, boolean fillContents) {
