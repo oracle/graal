@@ -313,7 +313,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
             }
 
             if (TruffleCompilationExceptionsAreThrown.getValue()) {
-                throw new OptimizationFailedException(t, rootNode);
+                throw new OptimizationFailedException(t, this);
             }
             logOptimizingFailed(this, t.toString());
             if (t instanceof BailoutException) {
