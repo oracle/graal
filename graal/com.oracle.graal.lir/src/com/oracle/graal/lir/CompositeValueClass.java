@@ -121,10 +121,6 @@ public class CompositeValueClass extends LIRIntrospection {
         return result.toString();
     }
 
-    EnumSet<OperandFlag> getFlags(ValuePosition pos) {
-        return values.getFlags(pos.getIndex());
-    }
-
     void copyValueArrays(CompositeValue compositeValue) {
         for (int i = values.getDirectCount(); i < values.getCount(); i++) {
             Value[] valueArray = values.getValueArray(compositeValue, i);

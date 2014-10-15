@@ -52,7 +52,8 @@ public final class ValuePosition {
      */
     private final int subIndex;
     /**
-     * @see #getOuterPosition()
+     * The {@link ValuePosition} of the containing {@link CompositeValue} if this value is part of a
+     * {@link CompositeValue}, otherwise {@link #ROOT_VALUE_POSITION}.
      */
     private final ValuePosition outerPosition;
 
@@ -70,7 +71,7 @@ public final class ValuePosition {
      * @return True if the value denoted by this {@linkplain ValuePosition position} is part of a
      *         {@link CompositeValue}.
      */
-    public boolean isCompositePosition() {
+    private boolean isCompositePosition() {
         return outerPosition != ROOT_VALUE_POSITION;
     }
 
@@ -110,30 +111,12 @@ public final class ValuePosition {
         }
     }
 
-    int getSubIndex() {
-        return subIndex;
-    }
-
-    int getIndex() {
-        return index;
-    }
-
     /**
      * @return The flags associated with the value denoted by this {@linkplain ValuePosition
      *         position}.
      */
     public EnumSet<OperandFlag> getFlags() {
         return values.getFlags(index);
-    }
-
-    /**
-     * @return The {@link ValuePosition} of the containing {@link CompositeValue} if this value is
-     *         part of a {@link CompositeValue}, otherwise {@link #ROOT_VALUE_POSITION}.
-     *
-     * @see #isCompositePosition()
-     */
-    public ValuePosition getOuterPosition() {
-        return outerPosition;
     }
 
     @Override
