@@ -70,9 +70,7 @@ public final class DataSection {
                     if (existingPos == null) {
                         size = NumUtil.roundUp(size, d.getAlignment());
                         size += d.getSize(target);
-                        if (d instanceof PatchedData) {
-                            patchCount++;
-                        }
+                        patchCount += PatchedData.getPatchCount(d);
                         dataMap.put(d, externalDataList.size());
                     }
                     externalDataList.add(dataPatch);
@@ -100,10 +98,13 @@ public final class DataSection {
                 buffer.position(index);
 
                 DataSectionReference reference = new DataSectionReference(index);
-                if (d instanceof PatchedData) {
-                    // record patch location
-                    patches[patchIndex++] = new DataPatch(index, d, true);
+
+                // record patch locations
+                Iterator<DataPatch> it = PatchedData.getPatches(d, index).iterator();
+                while (it.hasNext()) {
+                    patches[patchIndex++] = it.next();
                 }
+
                 dataPatch.data = reference;
 
                 index += d.getSize(target);
