@@ -102,6 +102,7 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
 
         HotSpotProviders providers;
         HotSpotRegistersProvider registers;
+        RegisterConfig regConfig;
         HotSpotCodeCacheProvider codeCache;
         HotSpotConstantReflectionProvider constantReflection;
         HotSpotHostForeignCallsProvider foreignCalls;
@@ -120,8 +121,11 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
             try (InitTimer rt = timer("create MetaAccess provider")) {
                 metaAccess = createMetaAccess(runtime);
             }
+            try (InitTimer rt = timer("create RegisterConfig")) {
+                regConfig = createRegisterConfig(runtime, target);
+            }
             try (InitTimer rt = timer("create CodeCache provider")) {
-                codeCache = createCodeCache(runtime, target);
+                codeCache = createCodeCache(runtime, target, regConfig);
             }
             try (InitTimer rt = timer("create ConstantReflection provider")) {
                 constantReflection = createConstantReflection(runtime);
@@ -186,8 +190,12 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
         return new HotSpotConstantReflectionProvider(runtime);
     }
 
-    protected AMD64HotSpotCodeCacheProvider createCodeCache(HotSpotGraalRuntime runtime, TargetDescription target) {
-        return new AMD64HotSpotCodeCacheProvider(runtime, target);
+    protected RegisterConfig createRegisterConfig(HotSpotGraalRuntime runtime, TargetDescription target) {
+        return new AMD64HotSpotRegisterConfig(target.arch, runtime.getConfig());
+    }
+
+    protected HotSpotCodeCacheProvider createCodeCache(HotSpotGraalRuntime runtime, TargetDescription target, RegisterConfig regConfig) {
+        return new HotSpotCodeCacheProvider(runtime, target, regConfig);
     }
 
     protected HotSpotMetaAccessProvider createMetaAccess(HotSpotGraalRuntime runtime) {

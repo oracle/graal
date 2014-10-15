@@ -48,19 +48,17 @@ import com.oracle.graal.printer.*;
 /**
  * HotSpot implementation of {@link CodeCacheProvider}.
  */
-public abstract class HotSpotCodeCacheProvider implements CodeCacheProvider {
+public class HotSpotCodeCacheProvider implements CodeCacheProvider {
 
     protected final HotSpotGraalRuntime runtime;
     protected final TargetDescription target;
     protected final RegisterConfig regConfig;
 
-    public HotSpotCodeCacheProvider(HotSpotGraalRuntime runtime, TargetDescription target) {
+    public HotSpotCodeCacheProvider(HotSpotGraalRuntime runtime, TargetDescription target, RegisterConfig regConfig) {
         this.runtime = runtime;
         this.target = target;
-        regConfig = createRegisterConfig();
+        this.regConfig = regConfig;
     }
-
-    protected abstract RegisterConfig createRegisterConfig();
 
     /**
      * Constants used to mark special positions in code being installed into the code cache by Graal

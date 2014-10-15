@@ -54,7 +54,8 @@ public class SPARCHotSpotBackendFactory implements HotSpotBackendFactory {
 
         HotSpotRegistersProvider registers = createRegisters();
         HotSpotMetaAccessProvider metaAccess = new HotSpotMetaAccessProvider(runtime);
-        HotSpotCodeCacheProvider codeCache = new SPARCHotSpotCodeCacheProvider(runtime, target);
+        RegisterConfig regConfig = new SPARCHotSpotRegisterConfig(target, runtime.getConfig());
+        HotSpotCodeCacheProvider codeCache = new HotSpotCodeCacheProvider(runtime, target, regConfig);
         HotSpotConstantReflectionProvider constantReflection = new HotSpotConstantReflectionProvider(runtime);
         Value[] nativeABICallerSaveRegisters = createNativeABICallerSaveRegisters(runtime.getConfig(), codeCache.getRegisterConfig());
         HotSpotForeignCallsProvider foreignCalls = new SPARCHotSpotForeignCallsProvider(runtime, metaAccess, codeCache, nativeABICallerSaveRegisters);
