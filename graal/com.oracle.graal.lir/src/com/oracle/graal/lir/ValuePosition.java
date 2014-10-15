@@ -96,16 +96,17 @@ public final class ValuePosition {
      * @param inst The instruction this {@linkplain ValuePosition position} belongs to.
      */
     public void set(LIRInstruction inst, Value value) {
+        Object obj = inst;
         if (isCompositePosition()) {
             CompositeValue compValue = (CompositeValue) outerPosition.get(inst);
-            CompositeValue newCompValue = compValue.getValueClass().createUpdatedValue(compValue, this, value);
+            CompositeValue newCompValue = compValue.clone();
             outerPosition.set(inst, newCompValue);
+            obj = newCompValue;
+        }
+        if (index < values.getDirectCount()) {
+            values.setValue(obj, index, value);
         } else {
-            if (index < values.getDirectCount()) {
-                values.setValue(inst, index, value);
-            } else {
-                values.getValueArray(inst, index)[subIndex] = value;
-            }
+            values.getValueArray(obj, index)[subIndex] = value;
         }
     }
 

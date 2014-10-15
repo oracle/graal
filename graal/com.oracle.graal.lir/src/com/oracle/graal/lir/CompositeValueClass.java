@@ -121,12 +121,6 @@ public class CompositeValueClass extends LIRIntrospection {
         return result.toString();
     }
 
-    CompositeValue createUpdatedValue(CompositeValue compValue, ValuePosition pos, Value value) {
-        CompositeValue newCompValue = compValue.clone();
-        setValueForPosition(newCompValue, values, pos, value);
-        return newCompValue;
-    }
-
     EnumSet<OperandFlag> getFlags(ValuePosition pos) {
         return values.getFlags(pos.getIndex());
     }
