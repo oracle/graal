@@ -52,7 +52,8 @@ public interface HotSpotMethodDataAccessor {
         ArgInfoData(config().dataLayoutArgInfoDataTag),
         CallTypeData(config().dataLayoutCallTypeDataTag),
         VirtualCallTypeData(config().dataLayoutVirtualCallTypeDataTag),
-        ParametersTypeData(config().dataLayoutParametersTypeDataTag);
+        ParametersTypeData(config().dataLayoutParametersTypeDataTag),
+        SpeculativeTrapData(config().dataLayoutSpeculativeTrapDataTag);
 
         private final int value;
 
