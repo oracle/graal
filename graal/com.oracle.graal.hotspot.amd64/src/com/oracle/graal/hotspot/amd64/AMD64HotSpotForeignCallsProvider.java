@@ -35,7 +35,6 @@ import static com.oracle.graal.hotspot.replacements.CRC32Substitutions.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 
@@ -64,28 +63,6 @@ public class AMD64HotSpotForeignCallsProvider extends HotSpotHostForeignCallsPro
 
         link(new AMD64DeoptimizationStub(providers, target, registerStubCall(DEOPTIMIZATION_HANDLER, REEXECUTABLE, LEAF, NO_LOCATIONS)));
         link(new AMD64UncommonTrapStub(providers, target, registerStubCall(UNCOMMON_TRAP_HANDLER, REEXECUTABLE, LEAF, NO_LOCATIONS)));
-
-        // When the java.ext.dirs property is modified then the crypto classes might not be found.
-        // If that's the case we ignore the ClassNotFoundException and continue since we cannot
-        // replace a non-existing method anyway.
-        try {
-            // These stubs do callee saving
-            registerForeignCall(ENCRYPT_BLOCK, config.aescryptEncryptBlockStub, NativeCall, PRESERVES_REGISTERS, LEAF_NOFP, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(Kind.Byte));
-            registerForeignCall(DECRYPT_BLOCK, config.aescryptDecryptBlockStub, NativeCall, PRESERVES_REGISTERS, LEAF_NOFP, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(Kind.Byte));
-        } catch (GraalInternalError e) {
-            if (!(e.getCause() instanceof ClassNotFoundException)) {
-                throw e;
-            }
-        }
-        try {
-            // These stubs do callee saving
-            registerForeignCall(ENCRYPT, config.cipherBlockChainingEncryptAESCryptStub, NativeCall, PRESERVES_REGISTERS, LEAF_NOFP, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(Kind.Byte));
-            registerForeignCall(DECRYPT, config.cipherBlockChainingDecryptAESCryptStub, NativeCall, PRESERVES_REGISTERS, LEAF_NOFP, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(Kind.Byte));
-        } catch (GraalInternalError e) {
-            if (!(e.getCause() instanceof ClassNotFoundException)) {
-                throw e;
-            }
-        }
 
         // These stubs do callee saving
         registerForeignCall(UPDATE_BYTES_CRC32, config.updateBytesCRC32Stub, NativeCall, PRESERVES_REGISTERS, LEAF_NOFP, NOT_REEXECUTABLE, ANY_LOCATION);

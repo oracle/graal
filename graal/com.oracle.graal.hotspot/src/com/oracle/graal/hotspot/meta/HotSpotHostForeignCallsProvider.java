@@ -48,6 +48,7 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.word.*;
@@ -185,6 +186,32 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         registerArrayCopy(descMap, Kind.Double, c.jlongArraycopy, c.jlongAlignedArraycopy, c.jlongDisjointArraycopy, c.jlongAlignedDisjointArraycopy);
         registerArrayCopy(descMap, Kind.Object, c.oopArraycopy, c.oopAlignedArraycopy, c.oopDisjointArraycopy, c.oopAlignedDisjointArraycopy);
         registerArrayCopy(descMap, Kind.Object, c.oopArraycopyUninit, c.oopAlignedArraycopyUninit, c.oopDisjointArraycopyUninit, c.oopAlignedDisjointArraycopyUninit, true);
+
+        if (c.useAESIntrinsics) {
+            /*
+             * When the java.ext.dirs property is modified then the crypto classes might not be
+             * found. If that's the case we ignore the ClassNotFoundException and continue since we
+             * cannot replace a non-existing method anyway.
+             */
+            try {
+                // These stubs do callee saving
+                registerForeignCall(ENCRYPT_BLOCK, c.aescryptEncryptBlockStub, NativeCall, PRESERVES_REGISTERS, LEAF_NOFP, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(Kind.Byte));
+                registerForeignCall(DECRYPT_BLOCK, c.aescryptDecryptBlockStub, NativeCall, PRESERVES_REGISTERS, LEAF_NOFP, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(Kind.Byte));
+            } catch (GraalInternalError e) {
+                if (!(e.getCause() instanceof ClassNotFoundException)) {
+                    throw e;
+                }
+            }
+            try {
+                // These stubs do callee saving
+                registerForeignCall(ENCRYPT, c.cipherBlockChainingEncryptAESCryptStub, NativeCall, PRESERVES_REGISTERS, LEAF_NOFP, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(Kind.Byte));
+                registerForeignCall(DECRYPT, c.cipherBlockChainingDecryptAESCryptStub, NativeCall, PRESERVES_REGISTERS, LEAF_NOFP, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(Kind.Byte));
+            } catch (GraalInternalError e) {
+                if (!(e.getCause() instanceof ClassNotFoundException)) {
+                    throw e;
+                }
+            }
+        }
     }
 
     public HotSpotForeignCallLinkage getForeignCall(ForeignCallDescriptor descriptor) {
