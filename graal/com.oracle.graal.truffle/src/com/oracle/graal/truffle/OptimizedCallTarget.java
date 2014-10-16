@@ -39,6 +39,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.utilities.*;
 
 /**
  * Call target that is optimized by Graal upon surpassing a specific invocation threshold.
@@ -66,6 +67,13 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
 
     private TruffleInlining inlining;
 
+    /**
+     * When this call target is inlined, the inlining {@link InstalledCode} registers this
+     * assumption. It gets invalidated when a node rewriting is performed. This ensures that all
+     * compiled methods that have this call target inlined are properly invalidated.
+     */
+    private final CyclicAssumption nodeRewritingAssumption;
+
     public final RootNode getRootNode() {
         return rootNode;
     }
@@ -83,6 +91,11 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         } else {
             this.compilationProfile = new CompilationProfile();
         }
+        this.nodeRewritingAssumption = new CyclicAssumption("nodeRewritingAssumption of " + rootNode.toString());
+    }
+
+    public Assumption getNodeRewritingAssumption() {
+        return nodeRewritingAssumption.getAssumption();
     }
 
     public final void mergeArgumentStamp(TruffleStamp p) {
@@ -263,6 +276,8 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
             compilationProfile.reportInvalidated();
             logOptimizedInvalidated(this, oldNode, newNode, reason);
         }
+        /* Notify compiled method that have inlined this call target that the tree changed. */
+        nodeRewritingAssumption.invalidate();
         cancelInstalledTask(oldNode, newNode, reason);
     }
 
