@@ -67,4 +67,7 @@ public class BreakpointNode extends FixedWithNextNode implements LIRLowerable {
     public NodeInputList<ValueNode> arguments() {
         return arguments;
     }
+
+    @NodeIntrinsic
+    public static native void breakpoint();
 }

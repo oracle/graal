@@ -23,10 +23,11 @@
 package com.oracle.graal.compiler.test;
 
 import com.oracle.graal.api.replacements.*;
+import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 
 @ClassSubstitution(GraalCompilerTest.class)
-class InjectProfileDataSubstitutions {
+class GraalCompilerTestSubstitutions {
 
     @MethodSubstitution
     public static boolean branchProbability(double p, boolean cond) {
@@ -36,5 +37,10 @@ class InjectProfileDataSubstitutions {
     @MethodSubstitution
     public static boolean iterationCount(double i, boolean cond) {
         return BranchProbabilityNode.probability(1. - 1. / i, cond);
+    }
+
+    @MethodSubstitution
+    public static void breakpoint() {
+        BreakpointNode.breakpoint();
     }
 }
