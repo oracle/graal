@@ -272,10 +272,19 @@ public interface Constant extends Value {
      */
     public static Constant forPrimitiveInt(int bits, long i) {
         assert bits <= 64;
-        if (bits > 32) {
-            return new PrimitiveConstant(Kind.Long, i);
-        } else {
-            return new PrimitiveConstant(Kind.Int, (int) i);
+        switch (bits) {
+            case 1:
+                return forBoolean(i != 0);
+            case 8:
+                return forByte((byte) i);
+            case 16:
+                return forShort((short) i);
+            case 32:
+                return forInt((int) i);
+            case 64:
+                return forLong(i);
+            default:
+                throw new IllegalArgumentException("unsupported integer width: " + bits);
         }
     }
 
