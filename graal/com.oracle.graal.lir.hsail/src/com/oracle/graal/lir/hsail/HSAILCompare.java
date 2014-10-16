@@ -70,7 +70,7 @@ public enum HSAILCompare {
         }
 
         @Override
-        protected void verify() {
+        public void verify() {
             super.verify();
             assert (x.getKind() == y.getKind() && ((name().startsWith("I") && x.getKind() == Kind.Int) || (name().startsWith("L") && x.getKind() == Kind.Long) ||
                             (name().startsWith("A") && x.getKind() == Kind.Object) || (name().startsWith("F") && x.getKind() == Kind.Float) || (name().startsWith("D") && x.getKind() == Kind.Double)));

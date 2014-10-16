@@ -173,7 +173,7 @@ public enum PTXArithmetic {
         }
 
         @Override
-        protected void verify() {
+        public void verify() {
             super.verify();
             verifyKind(opcode, result, x, y);
         }
@@ -226,7 +226,7 @@ public enum PTXArithmetic {
         }
 
         @Override
-        protected void verify() {
+        public void verify() {
             super.verify();
             verifyKind(opcode, result, x, y);
         }

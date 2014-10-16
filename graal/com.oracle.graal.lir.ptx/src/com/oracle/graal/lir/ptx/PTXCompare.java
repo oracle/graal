@@ -63,7 +63,7 @@ public enum PTXCompare {
         }
 
         @Override
-        protected void verify() {
+        public void verify() {
             super.verify();
             assert (name().startsWith("I") && x.getKind() == Kind.Int && y.getKind().getStackKind() == Kind.Int) || (name().startsWith("L") && x.getKind() == Kind.Long && y.getKind() == Kind.Long) ||
                             (name().startsWith("A") && x.getKind() == Kind.Object && y.getKind() == Kind.Object) ||

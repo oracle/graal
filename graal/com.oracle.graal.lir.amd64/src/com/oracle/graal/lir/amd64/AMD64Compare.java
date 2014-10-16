@@ -59,7 +59,7 @@ public enum AMD64Compare {
         }
 
         @Override
-        protected void verify() {
+        public void verify() {
             super.verify();
             assert (name().startsWith("B") && x.getKind().getStackKind() == Kind.Int && y.getKind().getStackKind() == Kind.Int) ||
                             (name().startsWith("S") && x.getKind().getStackKind() == Kind.Int && y.getKind().getStackKind() == Kind.Int) ||
@@ -146,7 +146,7 @@ public enum AMD64Compare {
         }
 
         @Override
-        protected void verify() {
+        public void verify() {
             super.verify();
             assert y instanceof Variable || y instanceof Constant;
             assert kind != Kind.Long || !(y instanceof Constant) || NumUtil.isInt(((Constant) y).asLong());

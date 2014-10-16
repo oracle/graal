@@ -58,7 +58,7 @@ public enum SPARCCompare {
         }
 
         @Override
-        protected void verify() {
+        public void verify() {
             super.verify();
             // @formatter:off
             assert  (name().startsWith("I") &&

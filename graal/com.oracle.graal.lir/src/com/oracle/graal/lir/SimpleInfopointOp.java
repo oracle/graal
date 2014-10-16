@@ -26,7 +26,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.lir.asm.*;
 
 @Opcode("SIMPLE_INFOPOINT")
-public class SimpleInfopointOp extends LIRInstruction {
+public class SimpleInfopointOp extends LIRInstructionBase {
     private final InfopointReason reason;
     private final BytecodePosition position;
 

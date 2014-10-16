@@ -95,7 +95,7 @@ public class CompositeValueReplacementTest4 {
 
     }
 
-    private static class TestOp extends LIRInstruction {
+    private static class TestOp extends LIRInstructionBase {
 
         @Use({COMPOSITE}) protected NestedCompositeValue compValue;
 

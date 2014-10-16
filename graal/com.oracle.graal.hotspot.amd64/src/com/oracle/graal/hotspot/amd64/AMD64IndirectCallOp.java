@@ -65,7 +65,7 @@ final class AMD64IndirectCallOp extends IndirectCallOp {
     }
 
     @Override
-    protected void verify() {
+    public void verify() {
         super.verify();
         assert asRegister(metaspaceMethod).equals(METHOD);
     }

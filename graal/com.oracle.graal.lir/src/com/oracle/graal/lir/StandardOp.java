@@ -43,23 +43,23 @@ public class StandardOp {
      * A block delimiter. Every well formed block must contain exactly one such operation and it
      * must be the last operation in the block.
      */
-    public interface BlockEndOp {
+    public interface BlockEndOp extends LIRInstruction {
     }
 
-    public interface NullCheck {
+    public interface NullCheck extends LIRInstruction {
         Value getCheckedValue();
 
         LIRFrameState getState();
     }
 
-    public interface ImplicitNullCheck {
+    public interface ImplicitNullCheck extends LIRInstruction {
         boolean makeNullCheckFor(Value value, LIRFrameState nullCheckState, int implicitNullCheckLimit);
     }
 
     /**
      * LIR operation that defines the position of a label.
      */
-    public static class LabelOp extends LIRInstruction {
+    public static class LabelOp extends LIRInstructionBase {
 
         private static final Value[] NO_VALUES = new Value[0];
 
@@ -103,7 +103,7 @@ public class StandardOp {
     /**
      * LIR operation that is an unconditional jump to a {@link #destination()}.
      */
-    public static class JumpOp extends LIRInstruction implements BlockEndOp {
+    public static class JumpOp extends LIRInstructionBase implements BlockEndOp {
 
         private final LabelRef destination;
 
@@ -133,7 +133,7 @@ public class StandardOp {
      * Marker interface for a LIR operation that moves a value from {@link #getInput()} to
      * {@link #getResult()}.
      */
-    public interface MoveOp {
+    public interface MoveOp extends LIRInstruction {
 
         Value getInput();
 
@@ -145,7 +145,7 @@ public class StandardOp {
      * {@linkplain #remove(Set) pruned} and a mapping from registers to the frame slots in which
      * they are saved can be {@linkplain #getMap(FrameMap) retrieved}.
      */
-    public interface SaveRegistersOp {
+    public interface SaveRegistersOp extends LIRInstruction {
 
         /**
          * Determines if the {@link #remove(Set)} operation is supported for this object.
@@ -177,7 +177,7 @@ public class StandardOp {
      * A LIR operation that does nothing. If the operation records its position, it can be
      * subsequently {@linkplain #replace(LIR, LIRInstruction) replaced}.
      */
-    public static class NoOp extends LIRInstruction {
+    public static class NoOp extends LIRInstructionBase {
 
         /**
          * The block in which this instruction is located.

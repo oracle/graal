@@ -72,7 +72,7 @@ public class AMD64TestMemoryOp extends MemOp {
     }
 
     @Override
-    protected void verify() {
+    public void verify() {
         super.verify();
         assert (kind == Kind.Int || kind == Kind.Long) && kind == y.getKind() : address + " " + y;
     }

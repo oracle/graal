@@ -29,7 +29,7 @@ import com.oracle.graal.lir.asm.*;
 /**
  * Convenience class to provide PTXAssembler for the {@link #emitCode} method.
  */
-public abstract class PTXLIRInstruction extends LIRInstruction {
+public abstract class PTXLIRInstruction extends LIRInstructionBase {
 
     @Override
     public final void emitCode(CompilationResultBuilder crb) {

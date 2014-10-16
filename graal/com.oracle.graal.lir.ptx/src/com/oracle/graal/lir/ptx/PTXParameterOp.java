@@ -31,7 +31,7 @@ import com.oracle.graal.asm.ptx.PTXMacroAssembler.Param;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 
-public class PTXParameterOp extends LIRInstruction {
+public class PTXParameterOp extends LIRInstructionBase {
 
     @Def({REG}) protected Value[] params;
     // True if the parameter list has return argument as the last

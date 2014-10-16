@@ -46,7 +46,7 @@ public class AMD64TestOp extends AMD64LIRInstruction {
     }
 
     @Override
-    protected void verify() {
+    public void verify() {
         super.verify();
         assert (x.getKind() == Kind.Int && y.getKind().getStackKind() == Kind.Int) || (x.getKind() == Kind.Long && y.getKind() == Kind.Long) : x + " " + y;
     }

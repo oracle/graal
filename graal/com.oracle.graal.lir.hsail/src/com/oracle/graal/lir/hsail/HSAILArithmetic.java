@@ -212,7 +212,7 @@ public enum HSAILArithmetic {
         }
 
         @Override
-        protected void verify() {
+        public void verify() {
             super.verify();
             verifyKind(opcode, result, x, y);
         }

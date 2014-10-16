@@ -96,7 +96,7 @@ public class AMD64Call {
         }
 
         @Override
-        protected void verify() {
+        public void verify() {
             super.verify();
             assert isRegister(targetAddress) : "The current register allocator cannot handle variables to be used at call sites, it must be in a fixed register for now";
         }

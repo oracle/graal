@@ -99,7 +99,7 @@ public class ValuePositionTest3 {
 
     }
 
-    private static class TestOp extends LIRInstruction {
+    private static class TestOp extends LIRInstructionBase {
 
         @Use({COMPOSITE}) protected Value value;
 

@@ -29,7 +29,7 @@ import com.oracle.graal.lir.asm.*;
 /**
  * Convenience class to provide HSAILAssembler for the {@link #emitCode} method.
  */
-public abstract class HSAILLIRInstruction extends LIRInstruction {
+public abstract class HSAILLIRInstruction extends LIRInstructionBase {
 
     @Override
     public final void emitCode(CompilationResultBuilder crb) {

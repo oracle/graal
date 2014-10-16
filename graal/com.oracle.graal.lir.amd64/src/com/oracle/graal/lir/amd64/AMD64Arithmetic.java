@@ -306,7 +306,7 @@ public enum AMD64Arithmetic {
         }
 
         @Override
-        protected void verify() {
+        public void verify() {
             super.verify();
             verifyKind(opcode, result, x, y);
         }
@@ -422,7 +422,7 @@ public enum AMD64Arithmetic {
         }
 
         @Override
-        protected void verify() {
+        public void verify() {
             super.verify();
             // left input in rax, right input in any register but rax and rdx, result quotient in
             // rax, result remainder in rdx
@@ -487,7 +487,7 @@ public enum AMD64Arithmetic {
         }
 
         @Override
-        protected void verify() {
+        public void verify() {
             super.verify();
             verifyKind(opcode, result, x, y);
         }

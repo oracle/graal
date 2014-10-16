@@ -29,7 +29,7 @@ import com.oracle.graal.lir.asm.*;
  * Emits an infopoint (only mark the position).
  */
 @Opcode("INFOPOINT")
-public class FullInfopointOp extends LIRInstruction {
+public class FullInfopointOp extends LIRInstructionBase {
 
     @State protected LIRFrameState state;
 
