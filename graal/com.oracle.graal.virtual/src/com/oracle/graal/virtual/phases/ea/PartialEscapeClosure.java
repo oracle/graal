@@ -419,7 +419,8 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                         // skip the next entry
                         valueIndex++;
                     } else {
-                        assert entryKind.getStackKind() == otherKind.getStackKind() || entryKind.getBitCount() >= otherKind.getBitCount() : entryKind + " vs " + otherKind;
+                        assert entryKind.getStackKind() == otherKind.getStackKind() || (entryKind == Kind.Int && otherKind == Kind.Illegal) || entryKind.getBitCount() >= otherKind.getBitCount() : entryKind +
+                                        " vs " + otherKind;
                     }
                     valueIndex++;
                 }

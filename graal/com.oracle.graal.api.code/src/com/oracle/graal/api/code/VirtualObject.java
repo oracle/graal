@@ -160,7 +160,8 @@ public final class VirtualObject extends AbstractValue {
                     }
                 } else {
                     for (int i = 0; i < values.length; i++) {
-                        assert values[i].getKind() == componentKind || componentKind.getBitCount() >= values[i].getKind().getBitCount() : values[i].getKind() + " != " + componentKind;
+                        assert values[i].getKind() == componentKind || componentKind.getBitCount() >= values[i].getKind().getBitCount() ||
+                                        (componentKind == Kind.Int && values[i].getKind().getBitCount() >= Kind.Int.getBitCount()) : values[i].getKind() + " != " + componentKind;
                     }
                 }
             }
