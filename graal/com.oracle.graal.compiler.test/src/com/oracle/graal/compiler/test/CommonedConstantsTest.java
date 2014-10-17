@@ -54,7 +54,7 @@ public class CommonedConstantsTest extends GraalCompilerTest {
     @Test
     public void test0() {
         // Ensure the exception path is profiled
-        ResolvedJavaMethod javaMethod = getMetaAccess().lookupJavaMethod(getMethod("test0Snippet"));
+        ResolvedJavaMethod javaMethod = getResolvedJavaMethod("test0Snippet");
         javaMethod.reprofile();
         test0Snippet(array, array.length);
 

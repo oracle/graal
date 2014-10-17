@@ -23,17 +23,14 @@
 
 package com.oracle.graal.hotspot.test;
 
-import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.atomic.*;
 
 import org.junit.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.runtime.*;
 
 /**
  * The following tests perform object/array equality and assignments in various ways. The selected
@@ -41,16 +38,9 @@ import com.oracle.graal.runtime.*;
  */
 public class CompressedOopTest extends GraalCompilerTest {
 
-    private final MetaAccessProvider metaAccess;
-
-    public CompressedOopTest() {
-        this.metaAccess = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getProviders().getMetaAccess();
-    }
-
     private HotSpotInstalledCode getInstalledCode(String name, Class<?>... parameterTypes) throws Exception {
-        final Method method = CompressedOopTest.class.getMethod(name, parameterTypes);
-        final HotSpotResolvedJavaMethod javaMethod = (HotSpotResolvedJavaMethod) metaAccess.lookupJavaMethod(method);
-        final HotSpotInstalledCode installedBenchmarkCode = (HotSpotInstalledCode) getCode(javaMethod, parseEager(method));
+        final ResolvedJavaMethod javaMethod = getResolvedJavaMethod(getClass(), name, parameterTypes);
+        final HotSpotInstalledCode installedBenchmarkCode = (HotSpotInstalledCode) getCode(javaMethod, parseEager(javaMethod));
         return installedBenchmarkCode;
     }
 

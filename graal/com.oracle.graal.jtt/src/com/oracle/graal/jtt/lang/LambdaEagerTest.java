@@ -62,19 +62,19 @@ public class LambdaEagerTest extends GraalCompilerTest {
     @Test
     public void testEagerResolveNonCapturing01() {
         Result expected = new Result(3, null);
-        testAgainstExpected(getMethod("nonCapturing"), expected, UNRESOLVED_UNREACHED, 1, 2);
+        testAgainstExpected(getResolvedJavaMethod("nonCapturing"), expected, UNRESOLVED_UNREACHED, 1, 2);
     }
 
     @Test
     public void testEagerResolveNonCapturing02() {
         Result expected = new Result(3, null);
-        testAgainstExpected(getMethod("nonCapturing2"), expected, UNRESOLVED_UNREACHED, 1, 2);
+        testAgainstExpected(getResolvedJavaMethod("nonCapturing2"), expected, UNRESOLVED_UNREACHED, 1, 2);
     }
 
     @Test
     public void testEagerResolveCapturing() {
         Result expected = new Result(0, null);
-        testAgainstExpected(getMethod("capturing"), expected, UNRESOLVED_UNREACHED, 1, 2, 3);
+        testAgainstExpected(getResolvedJavaMethod("capturing"), expected, UNRESOLVED_UNREACHED, 1, 2, 3);
     }
 
     @Override

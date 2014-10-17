@@ -26,6 +26,7 @@ import java.lang.reflect.*;
 
 import org.junit.*;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.test.*;
 
 /**
@@ -73,7 +74,7 @@ public class DynamicNewArrayTest extends GraalCompilerTest {
 
     @Test
     public void testStub() {
-        Method method = getMethod("dynamic");
+        ResolvedJavaMethod method = getResolvedJavaMethod("dynamic");
         // this will use the stub call because Element[] is not loaded
         Result actual1 = executeActual(method, null, Element.class, 7);
         // this call will use the fast path

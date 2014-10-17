@@ -27,6 +27,7 @@ import java.lang.reflect.*;
 import org.junit.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Edges.Type;
@@ -114,7 +115,8 @@ public class EdgesTest extends GraalCompilerTest {
             throw new RuntimeException(e);
         }
 
-        StructuredGraph g = parseProfiled(method);
+        ResolvedJavaMethod javaMethod = getMetaAccess().lookupJavaMethod(method);
+        StructuredGraph g = parseProfiled(javaMethod);
         Assumptions assumptions = new Assumptions(false);
         HighTierContext context = new HighTierContext(getProviders(), assumptions, null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
         new InliningPhase(new CanonicalizerPhase(true)).apply(g, context);

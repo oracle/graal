@@ -22,10 +22,9 @@
  */
 package com.oracle.graal.replacements.test;
 
-import java.lang.reflect.*;
-
 import org.junit.*;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
@@ -41,7 +40,7 @@ public class CompiledExceptionHandlerTest extends GraalCompilerTest {
     }
 
     @Override
-    protected StructuredGraph parseEager(Method m) {
+    protected StructuredGraph parseEager(ResolvedJavaMethod m) {
         StructuredGraph graph = super.parseEager(m);
         int handlers = graph.getNodes().filter(ExceptionObjectNode.class).count();
         Assert.assertEquals(1, handlers);

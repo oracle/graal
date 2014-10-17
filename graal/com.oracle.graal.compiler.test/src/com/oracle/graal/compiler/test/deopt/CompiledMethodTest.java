@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.compiler.test.deopt;
 
-import java.lang.reflect.*;
-
 import org.junit.*;
 
 import com.oracle.graal.api.code.*;
@@ -52,8 +50,8 @@ public class CompiledMethodTest extends GraalCompilerTest {
 
     @Test
     public void test1() {
-        Method method = getMethod("testMethod");
-        final StructuredGraph graph = parseEager(method);
+        final ResolvedJavaMethod javaMethod = getResolvedJavaMethod("testMethod");
+        final StructuredGraph graph = parseEager(javaMethod);
         new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders(), new Assumptions(false)));
         new DeadCodeEliminationPhase().apply(graph);
 
@@ -63,7 +61,6 @@ public class CompiledMethodTest extends GraalCompilerTest {
             }
         }
 
-        final ResolvedJavaMethod javaMethod = getMetaAccess().lookupJavaMethod(method);
         InstalledCode compiledMethod = getCode(javaMethod, graph);
         try {
             Object result = compiledMethod.executeVarargs("1", "2", "3");
@@ -75,9 +72,8 @@ public class CompiledMethodTest extends GraalCompilerTest {
 
     @Test
     public void test3() {
-        Method method = getMethod("testMethod");
-        final StructuredGraph graph = parseEager(method);
-        final ResolvedJavaMethod javaMethod = getMetaAccess().lookupJavaMethod(method);
+        final ResolvedJavaMethod javaMethod = getResolvedJavaMethod("testMethod");
+        final StructuredGraph graph = parseEager(javaMethod);
         InstalledCode compiledMethod = getCode(javaMethod, graph);
         try {
             Object result = compiledMethod.executeVarargs("1", "2", "3");
@@ -89,9 +85,8 @@ public class CompiledMethodTest extends GraalCompilerTest {
 
     @Test
     public void test4() {
-        Method method = getMethod("testMethodVirtual");
-        final StructuredGraph graph = parseEager(method);
-        final ResolvedJavaMethod javaMethod = getMetaAccess().lookupJavaMethod(method);
+        final ResolvedJavaMethod javaMethod = getResolvedJavaMethod("testMethodVirtual");
+        final StructuredGraph graph = parseEager(javaMethod);
         InstalledCode compiledMethod = getCode(javaMethod, graph);
         try {
             f1 = "0";

@@ -25,15 +25,11 @@ package com.oracle.graal.hotspot.test;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 
 import java.lang.ref.*;
-import java.lang.reflect.*;
-
-import com.oracle.graal.phases.common.inlining.policy.InlineEverythingPolicy;
 
 import org.junit.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.debug.*;
@@ -48,8 +44,8 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.common.inlining.*;
+import com.oracle.graal.phases.common.inlining.policy.*;
 import com.oracle.graal.phases.tiers.*;
-import com.oracle.graal.runtime.*;
 
 /**
  * The following unit tests assert the presence of write barriers for both Serial and G1 GCs.
@@ -61,12 +57,6 @@ import com.oracle.graal.runtime.*;
  * barrier snippets. The runtime checks have been validated offline.
  */
 public class WriteBarrierAdditionTest extends GraalCompilerTest {
-
-    private final MetaAccessProvider metaAccess;
-
-    public WriteBarrierAdditionTest() {
-        this.metaAccess = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getProviders().getMetaAccess();
-    }
 
     public static class Container {
 
@@ -242,9 +232,8 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
     }
 
     private HotSpotInstalledCode getInstalledCode(String name) throws Exception {
-        final Method method = WriteBarrierAdditionTest.class.getMethod(name, Object.class, Object.class, Object.class);
-        final HotSpotResolvedJavaMethod javaMethod = (HotSpotResolvedJavaMethod) metaAccess.lookupJavaMethod(method);
-        final HotSpotInstalledCode installedBenchmarkCode = (HotSpotInstalledCode) getCode(javaMethod, parseEager(method));
+        final ResolvedJavaMethod javaMethod = getResolvedJavaMethod(WriteBarrierAdditionTest.class, name, Object.class, Object.class, Object.class);
+        final HotSpotInstalledCode installedBenchmarkCode = (HotSpotInstalledCode) getCode(javaMethod, parseEager(javaMethod));
         return installedBenchmarkCode;
     }
 

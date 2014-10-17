@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.compiler.test;
 
-import java.lang.reflect.*;
-
 import org.junit.*;
 
 import com.oracle.graal.api.code.*;
@@ -41,9 +39,9 @@ public class MemoryArithmeticTest extends GraalCompilerTest {
      * Called before a test is executed.
      */
     @Override
-    protected void before(Method method) {
+    protected void before(ResolvedJavaMethod method) {
         // don't let any null exception tracking change the generated code.
-        getMetaAccess().lookupJavaMethod(method).reprofile();
+        method.reprofile();
     }
 
     /**

@@ -23,7 +23,11 @@
 package com.oracle.graal.replacements.test;
 
 import static org.junit.Assert.*;
+
+import java.lang.reflect.*;
+
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.debug.*;
@@ -43,7 +47,7 @@ import com.oracle.graal.phases.tiers.*;
 public abstract class MethodSubstitutionTest extends GraalCompilerTest {
 
     protected StructuredGraph test(final String snippet) {
-        try (Scope s = Debug.scope("MethodSubstitutionTest", getMetaAccess().lookupJavaMethod(getMethod(snippet)))) {
+        try (Scope s = Debug.scope("MethodSubstitutionTest", getResolvedJavaMethod(snippet))) {
             StructuredGraph graph = parseEager(snippet);
             Assumptions assumptions = new Assumptions(true);
             HighTierContext context = new HighTierContext(getProviders(), assumptions, null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
@@ -69,6 +73,32 @@ public abstract class MethodSubstitutionTest extends GraalCompilerTest {
         return graph;
     }
 
+    protected void testSubstitution(String testMethodName, Class<?> intrinsicClass, Class<?> holder, String methodName, Class<?>[] parameterTypes, boolean optional, Object[] args1, Object[] args2) {
+        ResolvedJavaMethod realMethod = getResolvedJavaMethod(holder, methodName, parameterTypes);
+        ResolvedJavaMethod testMethod = getResolvedJavaMethod(testMethodName);
+        StructuredGraph graph = test(testMethodName);
+
+        // Check to see if the resulting graph contains the expected node
+        StructuredGraph replacement = getReplacements().getMethodSubstitution(realMethod);
+        if (replacement == null && !optional) {
+            assertInGraph(graph, intrinsicClass);
+        }
+
+        // Force compilation
+        InstalledCode code = getCode(testMethod, parseEager(testMethod));
+        assert optional || code != null;
+
+        for (int i = 0; i < args1.length; i++) {
+            Object arg1 = args1[i];
+            Object arg2 = args2[i];
+            Object expected = invokeSafe(realMethod, null, arg1, arg2);
+            // Verify that the original method and the substitution produce the same value
+            assertDeepEquals(expected, invokeSafe(testMethod, null, arg1, arg2));
+            // Verify that the generated code and the original produce the same value
+            assertDeepEquals(expected, executeVarargsSafe(code, arg1, arg2));
+        }
+    }
+
     protected static StructuredGraph assertInGraph(StructuredGraph graph, Class<?> clazz) {
         for (Node node : graph.getNodes()) {
             if (clazz.isInstance(node)) {
@@ -78,4 +108,21 @@ public abstract class MethodSubstitutionTest extends GraalCompilerTest {
         fail("Graph does not contain a node of class " + clazz.getName());
         return graph;
     }
+
+    protected static Object executeVarargsSafe(InstalledCode code, Object... args) {
+        try {
+            return code.executeVarargs(args);
+        } catch (InvalidInstalledCodeException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    protected Object invokeSafe(ResolvedJavaMethod method, Object receiver, Object... args) {
+        try {
+            return invoke(method, receiver, args);
+        } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
 }

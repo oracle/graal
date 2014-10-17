@@ -22,11 +22,10 @@
  */
 package com.oracle.graal.replacements.test;
 
-import java.lang.reflect.*;
-
 import org.junit.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
@@ -64,43 +63,26 @@ public class StandardMethodSubstitutionsTest extends MethodSubstitutionTest {
         // Math.pow(value, 13);
     }
 
-    private static Object executeVarargsSafe(InstalledCode code, Object... args) {
-        try {
-            return code.executeVarargs(args);
-        } catch (InvalidInstalledCodeException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private static Object invokeSafe(Method method, Object... args) {
-        method.setAccessible(true);
-        try {
-            Object result = method.invoke(null, args);
-            return result;
-        } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
     public void testSubstitution(String testMethodName, Class<?> intrinsicClass, Class<?> holder, String methodName, boolean optional, Object... args) {
-        Method realMethod = getMethod(holder, methodName);
-        Method testMethod = getMethod(testMethodName);
+        ResolvedJavaMethod realJavaMethod = getResolvedJavaMethod(holder, methodName);
+        ResolvedJavaMethod testJavaMethod = getResolvedJavaMethod(testMethodName);
         StructuredGraph graph = test(testMethodName);
 
         // Check to see if the resulting graph contains the expected node
-        StructuredGraph replacement = getReplacements().getMethodSubstitution(getMetaAccess().lookupJavaMethod(realMethod));
+        StructuredGraph replacement = getReplacements().getMethodSubstitution(realJavaMethod);
         if (replacement == null && !optional) {
             assertInGraph(graph, intrinsicClass);
         }
 
         // Force compilation
-        InstalledCode code = getCode(getMetaAccess().lookupJavaMethod(testMethod), parseEager(testMethod));
+        InstalledCode code = getCode(testJavaMethod, parseEager(testJavaMethod));
         assert optional || code != null;
         for (Object l : args) {
             // Verify that the original method and the substitution produce the same value
-            assertDeepEquals(invokeSafe(testMethod, l), invokeSafe(realMethod, l));
+            Object expected = invokeSafe(realJavaMethod, null, l);
+            assertDeepEquals(expected, invokeSafe(testJavaMethod, null, l));
             // Verify that the generated code and the original produce the same value
-            assertDeepEquals(executeVarargsSafe(code, l), invokeSafe(realMethod, l));
+            assertDeepEquals(expected, executeVarargsSafe(code, l));
         }
     }
 

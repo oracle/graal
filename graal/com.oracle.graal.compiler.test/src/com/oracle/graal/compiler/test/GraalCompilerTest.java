@@ -357,8 +357,8 @@ public abstract class GraalCompilerTest extends GraalTest {
         }
     }
 
-    protected Object referenceInvoke(Method method, Object receiver, Object... args) throws IllegalAccessException, IllegalArgumentException, InvocationTargetException {
-        return method.invoke(receiver, args);
+    protected Object referenceInvoke(ResolvedJavaMethod method, Object receiver, Object... args) throws IllegalAccessException, IllegalArgumentException, InvocationTargetException {
+        return invoke(method, receiver, args);
     }
 
     protected static class Result {
@@ -380,7 +380,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     /**
      * Called before a test is executed.
      */
-    protected void before(@SuppressWarnings("unused") Method method) {
+    protected void before(@SuppressWarnings("unused") ResolvedJavaMethod method) {
     }
 
     /**
@@ -389,7 +389,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     protected void after() {
     }
 
-    protected Result executeExpected(Method method, Object receiver, Object... args) {
+    protected Result executeExpected(ResolvedJavaMethod method, Object receiver, Object... args) {
         before(method);
         try {
             // This gives us both the expected return value as well as ensuring that the method to
@@ -404,18 +404,17 @@ public abstract class GraalCompilerTest extends GraalTest {
         }
     }
 
-    protected Result executeActual(Method method, Object receiver, Object... args) {
+    protected Result executeActual(ResolvedJavaMethod method, Object receiver, Object... args) {
         before(method);
         Object[] executeArgs = argsWithReceiver(receiver, args);
 
-        ResolvedJavaMethod javaMethod = getMetaAccess().lookupJavaMethod(method);
-        checkArgs(javaMethod, executeArgs);
+        checkArgs(method, executeArgs);
 
         InstalledCode compiledMethod = null;
         if (UseBaselineCompiler.getValue()) {
-            compiledMethod = getCodeBaseline(javaMethod, method);
+            compiledMethod = getCodeBaseline(method);
         } else {
-            compiledMethod = getCode(javaMethod, parseEager(method));
+            compiledMethod = getCode(method, parseEager(method));
         }
         try {
             return new Result(compiledMethod.executeVarargs(executeArgs), null);
@@ -426,12 +425,12 @@ public abstract class GraalCompilerTest extends GraalTest {
         }
     }
 
-    protected InstalledCode getCodeBaseline(ResolvedJavaMethod javaMethod, Method method) {
-        return getCodeBaseline(javaMethod, method, false);
+    protected InstalledCode getCodeBaseline(ResolvedJavaMethod javaMethod) {
+        return getCodeBaseline(javaMethod, false);
     }
 
-    protected InstalledCode getCodeBaseline(ResolvedJavaMethod javaMethod, Method method, boolean forceCompile) {
-        assert method.getAnnotation(Test.class) == null : "shouldn't parse method with @Test annotation: " + method;
+    protected InstalledCode getCodeBaseline(ResolvedJavaMethod javaMethod, boolean forceCompile) {
+        assert javaMethod.getAnnotation(Test.class) == null : "shouldn't parse method with @Test annotation: " + javaMethod;
 
         try (Scope bds = Debug.scope("Baseline")) {
             Debug.log("getCodeBaseline()");
@@ -533,8 +532,8 @@ public abstract class GraalCompilerTest extends GraalTest {
 
     protected void test(String name, Object... args) {
         try {
-            Method method = getMethod(name);
-            Object receiver = Modifier.isStatic(method.getModifiers()) ? null : this;
+            ResolvedJavaMethod method = getResolvedJavaMethod(name);
+            Object receiver = method.isStatic() ? null : this;
             test(method, receiver, args);
         } catch (AssumptionViolatedException e) {
             // Suppress so that subsequent calls to this method within the
@@ -542,7 +541,7 @@ public abstract class GraalCompilerTest extends GraalTest {
         }
     }
 
-    protected void test(Method method, Object receiver, Object... args) {
+    protected void test(ResolvedJavaMethod method, Object receiver, Object... args) {
         Result expect = executeExpected(method, receiver, args);
         if (getCodeCache() == null) {
             return;
@@ -550,19 +549,18 @@ public abstract class GraalCompilerTest extends GraalTest {
         testAgainstExpected(method, expect, receiver, args);
     }
 
-    protected void testAgainstExpected(Method method, Result expect, Object receiver, Object... args) {
+    protected void testAgainstExpected(ResolvedJavaMethod method, Result expect, Object receiver, Object... args) {
         testAgainstExpected(method, expect, Collections.<DeoptimizationReason> emptySet(), receiver, args);
     }
 
-    protected Result executeActualCheckDeopt(Method method, Set<DeoptimizationReason> shouldNotDeopt, Object receiver, Object... args) {
+    protected Result executeActualCheckDeopt(ResolvedJavaMethod method, Set<DeoptimizationReason> shouldNotDeopt, Object receiver, Object... args) {
         Map<DeoptimizationReason, Integer> deoptCounts = new EnumMap<>(DeoptimizationReason.class);
-        ResolvedJavaMethod javaMethod = getMetaAccess().lookupJavaMethod(method);
-        ProfilingInfo profile = javaMethod.getProfilingInfo();
+        ProfilingInfo profile = method.getProfilingInfo();
         for (DeoptimizationReason reason : shouldNotDeopt) {
             deoptCounts.put(reason, profile.getDeoptimizationCount(reason));
         }
         Result actual = executeActual(method, receiver, args);
-        profile = javaMethod.getProfilingInfo(); // profile can change after execution
+        profile = method.getProfilingInfo(); // profile can change after execution
         for (DeoptimizationReason reason : shouldNotDeopt) {
             Assert.assertEquals((int) deoptCounts.get(reason), profile.getDeoptimizationCount(reason));
         }
@@ -583,7 +581,7 @@ public abstract class GraalCompilerTest extends GraalTest {
         }
     }
 
-    protected void testAgainstExpected(Method method, Result expect, Set<DeoptimizationReason> shouldNotDeopt, Object receiver, Object... args) {
+    protected void testAgainstExpected(ResolvedJavaMethod method, Result expect, Set<DeoptimizationReason> shouldNotDeopt, Object receiver, Object... args) {
         Result actual = executeActualCheckDeopt(method, shouldNotDeopt, receiver, args);
         assertEquals(expect, actual);
     }
@@ -659,6 +657,46 @@ public abstract class GraalCompilerTest extends GraalTest {
         return getCodeCache().addMethod(method, compResult, null, null);
     }
 
+    private final Map<ResolvedJavaMethod, Method> methodMap = new HashMap<>();
+
+    /**
+     * Converts a reflection {@link Method} to a {@link ResolvedJavaMethod}.
+     */
+    protected ResolvedJavaMethod asResolvedJavaMethod(Method method) {
+        ResolvedJavaMethod javaMethod = getMetaAccess().lookupJavaMethod(method);
+        methodMap.put(javaMethod, method);
+        return javaMethod;
+    }
+
+    protected ResolvedJavaMethod getResolvedJavaMethod(String methodName) {
+        return asResolvedJavaMethod(getMethod(methodName));
+    }
+
+    protected ResolvedJavaMethod getResolvedJavaMethod(Class<?> clazz, String methodName) {
+        return asResolvedJavaMethod(getMethod(clazz, methodName));
+    }
+
+    protected ResolvedJavaMethod getResolvedJavaMethod(Class<?> clazz, String methodName, Class<?>... parameterTypes) {
+        return asResolvedJavaMethod(getMethod(clazz, methodName, parameterTypes));
+    }
+
+    /**
+     * Gets the reflection {@link Method} from which a given {@link ResolvedJavaMethod} was created
+     * or null if {@code javaMethod} does not correspond to a reflection method.
+     */
+    protected Method lookupMethod(ResolvedJavaMethod javaMethod) {
+        return methodMap.get(javaMethod);
+    }
+
+    protected Object invoke(ResolvedJavaMethod javaMethod, Object receiver, Object... args) throws IllegalAccessException, IllegalArgumentException, InvocationTargetException {
+        Method method = lookupMethod(javaMethod);
+        Assert.assertTrue(method != null);
+        if (!method.isAccessible()) {
+            method.setAccessible(true);
+        }
+        return method.invoke(receiver, args);
+    }
+
     /**
      * Parses a Java method in {@linkplain GraphBuilderConfiguration#getDefault() default} mode to
      * produce a graph.
@@ -666,15 +704,15 @@ public abstract class GraalCompilerTest extends GraalTest {
      * @param methodName the name of the method in {@code this.getClass()} to be parsed
      */
     protected StructuredGraph parseProfiled(String methodName) {
-        return parseProfiled(getMethod(methodName));
+        return parseProfiled(getResolvedJavaMethod(methodName));
     }
 
     /**
      * Parses a Java method in {@linkplain GraphBuilderConfiguration#getDefault() default} mode to
      * produce a graph.
      */
-    protected StructuredGraph parseProfiled(Method m) {
-        return parse0(m, getDefaultGraphBuilderSuite());
+    protected StructuredGraph parseProfiled(ResolvedJavaMethod m) {
+        return parse1(m, getDefaultGraphBuilderSuite());
     }
 
     /**
@@ -684,28 +722,27 @@ public abstract class GraalCompilerTest extends GraalTest {
      * @param methodName the name of the method in {@code this.getClass()} to be parsed
      */
     protected StructuredGraph parseEager(String methodName) {
-        return parseEager(getMethod(methodName));
+        return parseEager(getResolvedJavaMethod(methodName));
     }
 
     /**
      * Parses a Java method in {@linkplain GraphBuilderConfiguration#getEagerDefault() eager} mode
      * to produce a graph.
      */
-    protected StructuredGraph parseEager(Method m) {
-        return parse0(m, getCustomGraphBuilderSuite(GraphBuilderConfiguration.getEagerDefault()));
+    protected StructuredGraph parseEager(ResolvedJavaMethod m) {
+        return parse1(m, getCustomGraphBuilderSuite(GraphBuilderConfiguration.getEagerDefault()));
     }
 
     /**
      * Parses a Java method in {@linkplain GraphBuilderConfiguration#getFullDebugDefault() full
      * debug} mode to produce a graph.
      */
-    protected StructuredGraph parseDebug(Method m) {
-        return parse0(m, getCustomGraphBuilderSuite(GraphBuilderConfiguration.getFullDebugDefault()));
+    protected StructuredGraph parseDebug(ResolvedJavaMethod m) {
+        return parse1(m, getCustomGraphBuilderSuite(GraphBuilderConfiguration.getFullDebugDefault()));
     }
 
-    private StructuredGraph parse0(Method m, PhaseSuite<HighTierContext> graphBuilderSuite) {
-        assert m.getAnnotation(Test.class) == null : "shouldn't parse method with @Test annotation: " + m;
-        ResolvedJavaMethod javaMethod = getMetaAccess().lookupJavaMethod(m);
+    private StructuredGraph parse1(ResolvedJavaMethod javaMethod, PhaseSuite<HighTierContext> graphBuilderSuite) {
+        assert javaMethod.getAnnotation(Test.class) == null : "shouldn't parse method with @Test annotation: " + javaMethod;
         try (Scope ds = Debug.scope("Parsing", javaMethod)) {
             StructuredGraph graph = new StructuredGraph(javaMethod);
             graphBuilderSuite.apply(graph, new HighTierContext(providers, null, null, graphBuilderSuite, OptimisticOptimizations.ALL));

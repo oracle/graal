@@ -24,11 +24,10 @@ package com.oracle.graal.compiler.test.inlining;
 
 import static org.junit.Assert.*;
 
-import java.lang.reflect.*;
-
 import org.junit.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
@@ -231,7 +230,7 @@ public class InliningTest extends GraalCompilerTest {
 
     private StructuredGraph getGraph(final String snippet, final boolean eagerInfopointMode) {
         try (Scope s = Debug.scope("InliningTest", new DebugDumpScope(snippet))) {
-            Method method = getMethod(snippet);
+            ResolvedJavaMethod method = getResolvedJavaMethod(snippet);
             StructuredGraph graph = eagerInfopointMode ? parseDebug(method) : parseEager(method);
             PhaseSuite<HighTierContext> graphBuilderSuite = eagerInfopointMode ? getCustomGraphBuilderSuite(GraphBuilderConfiguration.getFullDebugDefault()) : getDefaultGraphBuilderSuite();
             Assumptions assumptions = new Assumptions(true);

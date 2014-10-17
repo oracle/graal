@@ -31,7 +31,7 @@ public class ShortCircuitNodeTest extends GraalCompilerTest {
     @Test
     public void test1() {
         // only executeActual, to avoid creating profiling information
-        executeActual(getMethod("test1Snippet"), 1, 2);
+        executeActual(getResolvedJavaMethod("test1Snippet"), 1, 2);
     }
 
     public static final TestClassInt field = null;

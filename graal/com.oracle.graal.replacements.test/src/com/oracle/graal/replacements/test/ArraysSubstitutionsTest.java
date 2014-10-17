@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.replacements.test;
 
-import java.lang.reflect.*;
 import java.util.*;
 
 import org.junit.*;
@@ -41,49 +40,6 @@ import com.oracle.graal.virtual.phases.ea.*;
  * Tests {@link ArraysSubstitutions}.
  */
 public class ArraysSubstitutionsTest extends MethodSubstitutionTest {
-
-    private static Object executeVarargsSafe(InstalledCode code, Object... args) {
-        try {
-            return code.executeVarargs(args);
-        } catch (InvalidInstalledCodeException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private static Object invokeSafe(Method method, Object receiver, Object... args) {
-        method.setAccessible(true);
-        try {
-            Object result = method.invoke(receiver, args);
-            return result;
-        } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    public void testSubstitution(String testMethodName, Class<?> intrinsicClass, Class<?> holder, String methodName, Class<?>[] parameterTypes, boolean optional, Object[] args1, Object[] args2) {
-        Method realMethod = getMethod(holder, methodName, parameterTypes);
-        Method testMethod = getMethod(testMethodName);
-        StructuredGraph graph = test(testMethodName);
-
-        // Check to see if the resulting graph contains the expected node
-        StructuredGraph replacement = getReplacements().getMethodSubstitution(getMetaAccess().lookupJavaMethod(realMethod));
-        if (replacement == null && !optional) {
-            assertInGraph(graph, intrinsicClass);
-        }
-
-        // Force compilation
-        InstalledCode code = getCode(getMetaAccess().lookupJavaMethod(testMethod), parseEager(testMethod));
-        assert optional || code != null;
-
-        for (int i = 0; i < args1.length; i++) {
-            Object arg1 = args1[i];
-            Object arg2 = args2[i];
-            // Verify that the original method and the substitution produce the same value
-            assertDeepEquals(invokeSafe(testMethod, null, arg1, arg2), invokeSafe(realMethod, null, arg1, arg2));
-            // Verify that the generated code and the original produce the same value
-            assertDeepEquals(executeVarargsSafe(code, arg1, arg2), invokeSafe(realMethod, null, arg1, arg2));
-        }
-    }
 
     private static final int N = 10;
 

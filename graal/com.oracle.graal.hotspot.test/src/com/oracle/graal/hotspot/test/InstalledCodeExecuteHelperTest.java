@@ -24,39 +24,28 @@ package com.oracle.graal.hotspot.test;
 
 import static java.lang.reflect.Modifier.*;
 
-import java.lang.reflect.*;
-
 import org.junit.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.runtime.*;
 
 public class InstalledCodeExecuteHelperTest extends GraalCompilerTest {
 
     private static final int ITERATIONS = 100000;
-    private final MetaAccessProvider metaAccess;
     Object[] argsToBind;
 
-    public InstalledCodeExecuteHelperTest() {
-        this.metaAccess = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getProviders().getMetaAccess();
-    }
-
     @Test
-    public void test1() throws NoSuchMethodException, SecurityException, InvalidInstalledCodeException {
-        final Method fooMethod = InstalledCodeExecuteHelperTest.class.getMethod("foo");
-        final HotSpotResolvedJavaMethod fooJavaMethod = (HotSpotResolvedJavaMethod) metaAccess.lookupJavaMethod(fooMethod);
-        final HotSpotInstalledCode fooCode = (HotSpotInstalledCode) getCode(fooJavaMethod, parseEager(fooMethod));
+    public void test1() throws InvalidInstalledCodeException {
+        final ResolvedJavaMethod fooMethod = getResolvedJavaMethod("foo");
+        final HotSpotInstalledCode fooCode = (HotSpotInstalledCode) getCode(fooMethod, parseEager(fooMethod));
 
         argsToBind = new Object[]{fooCode};
 
-        final Method benchmarkMethod = InstalledCodeExecuteHelperTest.class.getMethod("benchmark", HotSpotInstalledCode.class);
-        final ResolvedJavaMethod benchmarkJavaMethod = metaAccess.lookupJavaMethod(benchmarkMethod);
-        final HotSpotInstalledCode installedBenchmarkCode = (HotSpotInstalledCode) getCode(benchmarkJavaMethod, parseEager(benchmarkMethod));
+        final ResolvedJavaMethod benchmarkMethod = getResolvedJavaMethod("benchmark");
+        final HotSpotInstalledCode installedBenchmarkCode = (HotSpotInstalledCode) getCode(benchmarkMethod, parseEager(benchmarkMethod));
 
         Assert.assertEquals(Integer.valueOf(42), benchmark(fooCode));
 
@@ -79,12 +68,12 @@ public class InstalledCodeExecuteHelperTest extends GraalCompilerTest {
     }
 
     @Override
-    protected StructuredGraph parseEager(Method m) {
+    protected StructuredGraph parseEager(ResolvedJavaMethod m) {
         StructuredGraph graph = super.parseEager(m);
         if (argsToBind != null) {
             Object receiver = isStatic(m.getModifiers()) ? null : this;
             Object[] args = argsWithReceiver(receiver, argsToBind);
-            JavaType[] parameterTypes = getMetaAccess().lookupJavaMethod(m).toParameterTypes();
+            JavaType[] parameterTypes = m.toParameterTypes();
             assert parameterTypes.length == args.length;
             for (int i = 0; i < argsToBind.length; i++) {
                 ParameterNode param = graph.getParameter(i);

@@ -128,7 +128,7 @@ public class MemoryUsageBenchmark extends GraalCompilerTest {
     }
 
     private void doCompilation(String methodName, String label) {
-        HotSpotResolvedJavaMethod method = (HotSpotResolvedJavaMethod) getMetaAccess().lookupJavaMethod(getMethod(methodName));
+        HotSpotResolvedJavaMethod method = (HotSpotResolvedJavaMethod) getResolvedJavaMethod(methodName);
         HotSpotBackend backend = runtime().getHostBackend();
 
         // invalidate any existing compiled code
@@ -145,7 +145,7 @@ public class MemoryUsageBenchmark extends GraalCompilerTest {
 
     private void allocSpyCompilation(String methodName) {
         if (AllocSpy.isEnabled()) {
-            HotSpotResolvedJavaMethod method = (HotSpotResolvedJavaMethod) getMetaAccess().lookupJavaMethod(getMethod(methodName));
+            HotSpotResolvedJavaMethod method = (HotSpotResolvedJavaMethod) getResolvedJavaMethod(methodName);
             HotSpotBackend backend = runtime().getHostBackend();
 
             // invalidate any existing compiled code

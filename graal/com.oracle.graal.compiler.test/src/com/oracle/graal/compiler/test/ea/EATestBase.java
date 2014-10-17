@@ -148,7 +148,7 @@ public class EATestBase extends GraalCompilerTest {
     }
 
     protected void prepareGraph(String snippet, final boolean iterativeEscapeAnalysis) {
-        ResolvedJavaMethod method = getMetaAccess().lookupJavaMethod(getMethod(snippet));
+        ResolvedJavaMethod method = getResolvedJavaMethod(snippet);
         graph = new StructuredGraph(method);
         try (Scope s = Debug.scope(getClass(), graph, method, getCodeCache())) {
             new GraphBuilderPhase.Instance(getMetaAccess(), GraphBuilderConfiguration.getEagerDefault(), OptimisticOptimizations.ALL).apply(graph);

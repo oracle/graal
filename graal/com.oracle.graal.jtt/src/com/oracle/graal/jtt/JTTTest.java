@@ -24,7 +24,6 @@ package com.oracle.graal.jtt;
 
 import static java.lang.reflect.Modifier.*;
 
-import java.lang.reflect.*;
 import java.util.*;
 
 import org.junit.*;
@@ -57,12 +56,12 @@ public class JTTTest extends GraalCompilerTest {
     }
 
     @Override
-    protected StructuredGraph parseEager(Method m) {
+    protected StructuredGraph parseEager(ResolvedJavaMethod m) {
         StructuredGraph graph = super.parseEager(m);
         if (argsToBind != null) {
             Object receiver = isStatic(m.getModifiers()) ? null : this;
             Object[] args = argsWithReceiver(receiver, argsToBind);
-            JavaType[] parameterTypes = getMetaAccess().lookupJavaMethod(m).toParameterTypes();
+            JavaType[] parameterTypes = m.toParameterTypes();
             assert parameterTypes.length == args.length;
             for (int i = 0; i < args.length; i++) {
                 ParameterNode param = graph.getParameter(i);
@@ -109,19 +108,19 @@ public class JTTTest extends GraalCompilerTest {
     }
 
     protected void runTest(Set<DeoptimizationReason> shouldNotDeopt, boolean bind, boolean noProfile, String name, Object... args) {
-        Method method = getMethod(name);
-        Object receiver = Modifier.isStatic(method.getModifiers()) ? null : this;
+        ResolvedJavaMethod method = getResolvedJavaMethod(name);
+        Object receiver = method.isStatic() ? null : this;
 
         Result expect = executeExpected(method, receiver, args);
 
         if (noProfile) {
-            getMetaAccess().lookupJavaMethod(method).reprofile();
+            method.reprofile();
         }
 
         testAgainstExpected(method, expect, shouldNotDeopt, receiver, args);
         if (args.length > 0 && bind) {
             if (noProfile) {
-                getMetaAccess().lookupJavaMethod(method).reprofile();
+                method.reprofile();
             }
 
             this.argsToBind = args;

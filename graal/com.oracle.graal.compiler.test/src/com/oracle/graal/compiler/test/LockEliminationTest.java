@@ -22,11 +22,10 @@
  */
 package com.oracle.graal.compiler.test;
 
-import java.lang.reflect.*;
-
 import org.junit.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
@@ -88,7 +87,7 @@ public class LockEliminationTest extends GraalCompilerTest {
     }
 
     private StructuredGraph getGraph(String snippet) {
-        Method method = getMethod(snippet);
+        ResolvedJavaMethod method = getResolvedJavaMethod(snippet);
         StructuredGraph graph = parseEager(method);
         Assumptions assumptions = new Assumptions(true);
         HighTierContext context = new HighTierContext(getProviders(), assumptions, null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);

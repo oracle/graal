@@ -55,7 +55,7 @@ public abstract class PTXTest extends GraalCompilerTest {
     }
 
     protected ExternalCompilationResult compileKernel(String test) {
-        return compileKernel(getMetaAccess().lookupJavaMethod(getMethod(test)));
+        return compileKernel(getResolvedJavaMethod(test));
     }
 
     protected HotSpotNmethod installKernel(ResolvedJavaMethod method, ExternalCompilationResult ptxCode) {

@@ -33,6 +33,7 @@ import org.junit.*;
 import sun.misc.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.replacements.*;
 
 /**
@@ -40,29 +41,12 @@ import com.oracle.graal.replacements.*;
  */
 public class UnsafeSubstitutionsTest extends MethodSubstitutionTest {
 
-    private static Object executeVarargsSafe(InstalledCode code, Object... args) {
-        try {
-            return code.executeVarargs(args);
-        } catch (InvalidInstalledCodeException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private static Object invokeSafe(Method method, Object receiver, Object... args) {
-        method.setAccessible(true);
-        try {
-            return method.invoke(receiver, args);
-        } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
     public void testSubstitution(String testMethodName, Class<?> holder, String methodName, Class<?>[] parameterTypes, Object receiver, Object[] args1, Object[] args2) {
-        Method originalMethod = getMethod(holder, methodName, parameterTypes);
-        Method testMethod = getMethod(testMethodName);
+        ResolvedJavaMethod testMethod = getResolvedJavaMethod(testMethodName);
+        ResolvedJavaMethod originalMethod = getResolvedJavaMethod(holder, methodName, parameterTypes);
 
         // Force compilation
-        InstalledCode code = getCode(getMetaAccess().lookupJavaMethod(testMethod), parseEager(testMethod));
+        InstalledCode code = getCode(testMethod, parseEager(testMethod));
         assert code != null;
 
         // Verify that the original method and the substitution produce the same value

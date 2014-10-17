@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.replacements.test;
 
-import java.lang.reflect.*;
-
 import org.junit.*;
 
 import com.oracle.graal.api.code.*;
@@ -49,9 +47,8 @@ public class WordTest extends GraalCompilerTest implements Snippets {
     private static final ThreadLocal<SnippetInliningPolicy> inliningPolicy = new ThreadLocal<>();
 
     @Override
-    protected StructuredGraph parseEager(Method m) {
-        ResolvedJavaMethod resolvedMethod = getMetaAccess().lookupJavaMethod(m);
-        return installer.makeGraph(resolvedMethod, null, inliningPolicy.get(), FrameStateProcessing.CollapseFrameForSingleSideEffect);
+    protected StructuredGraph parseEager(ResolvedJavaMethod m) {
+        return installer.makeGraph(m, null, inliningPolicy.get(), FrameStateProcessing.CollapseFrameForSingleSideEffect);
     }
 
     @Test

@@ -71,7 +71,7 @@ public class NewMultiArrayTest extends GraalCompilerTest {
     }
 
     @Override
-    protected Object referenceInvoke(Method method, Object receiver, Object... args) throws IllegalAccessException, IllegalArgumentException, InvocationTargetException {
+    protected Object referenceInvoke(ResolvedJavaMethod method, Object receiver, Object... args) throws IllegalAccessException, IllegalArgumentException, InvocationTargetException {
         if (bottomType != null) {
             try {
                 return Array.newInstance(bottomClass, dimensions);
