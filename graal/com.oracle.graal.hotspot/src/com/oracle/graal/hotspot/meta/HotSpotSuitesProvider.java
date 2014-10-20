@@ -24,6 +24,8 @@ package com.oracle.graal.hotspot.meta;
 
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 
+import java.util.function.*;
+
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.phases.*;
@@ -36,7 +38,7 @@ import com.oracle.graal.phases.tiers.*;
 /**
  * HotSpot implementation of {@link SuitesProvider}.
  */
-public class HotSpotSuitesProvider implements SuitesProvider {
+public class HotSpotSuitesProvider implements SuitesProvider, Supplier<Suites> {
 
     protected final DerivedOptionValue<Suites> defaultSuites;
     protected final PhaseSuite<HighTierContext> defaultGraphBuilderSuite;
@@ -45,11 +47,15 @@ public class HotSpotSuitesProvider implements SuitesProvider {
     public HotSpotSuitesProvider(HotSpotGraalRuntime runtime) {
         this.runtime = runtime;
         this.defaultGraphBuilderSuite = createGraphBuilderSuite();
-        this.defaultSuites = new DerivedOptionValue<>(this::createSuites);
+        this.defaultSuites = new DerivedOptionValue<>(this);
     }
 
     public Suites getDefaultSuites() {
         return defaultSuites.getValue();
+    }
+
+    public Suites get() {
+        return createSuites();
     }
 
     public PhaseSuite<HighTierContext> getDefaultGraphBuilderSuite() {
