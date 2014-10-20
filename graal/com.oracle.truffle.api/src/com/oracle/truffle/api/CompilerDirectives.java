@@ -645,11 +645,11 @@ public final class CompilerDirectives {
     }
 
     /**
-     * Marks methods that are considered slowpath and should therefore not be inlined by default.
+     * Marks a method that it is considered as a boundary for Truffle partial evaluation.
      */
     @Retention(RetentionPolicy.RUNTIME)
     @Target({ElementType.METHOD})
-    public @interface SlowPath {
+    public @interface TruffleBoundary {
     }
 
     /**

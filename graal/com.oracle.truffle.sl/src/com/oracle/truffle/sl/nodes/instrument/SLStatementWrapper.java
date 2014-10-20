@@ -22,7 +22,7 @@
  */
 package com.oracle.truffle.sl.nodes.instrument;
 
-import com.oracle.truffle.api.CompilerDirectives.SlowPath;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.instrument.*;
 import com.oracle.truffle.api.nodes.*;
@@ -61,7 +61,7 @@ public final class SLStatementWrapper extends SLStatementNode implements Wrapper
         return probe;
     }
 
-    @SlowPath
+    @TruffleBoundary
     public void tagAs(SyntaxTag tag) {
         probe.tagAs(tag);
     }

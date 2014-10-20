@@ -30,7 +30,7 @@ import javax.tools.Diagnostic.Kind;
 
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.CompilerDirectives.SlowPath;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.dsl.internal.*;
 import com.oracle.truffle.api.frame.*;
@@ -58,7 +58,7 @@ public final class TruffleTypes {
     private final DeclaredType nodeCost;
     private final TypeMirror compilerDirectives;
     private final TypeMirror compilerAsserts;
-    private final DeclaredType slowPath;
+    private final DeclaredType truffleBoundary;
     private final DeclaredType sourceSection;
     private final DeclaredType truffleOptions;
     private final DeclaredType compilationFinal;
@@ -86,7 +86,7 @@ public final class TruffleTypes {
         invalidAssumption = getRequired(context, InvalidAssumptionException.class);
         nodeInfoAnnotation = getRequired(context, NodeInfo.class);
         nodeCost = getRequired(context, NodeCost.class);
-        slowPath = getRequired(context, SlowPath.class);
+        truffleBoundary = getRequired(context, TruffleBoundary.class);
         sourceSection = getRequired(context, SourceSection.class);
         truffleOptions = getRequired(context, TruffleOptions.class);
         compilationFinal = getRequired(context, CompilationFinal.class);
@@ -204,8 +204,8 @@ public final class TruffleTypes {
         return truffleOptions;
     }
 
-    public DeclaredType getSlowPath() {
-        return slowPath;
+    public DeclaredType getTruffleBoundary() {
+        return truffleBoundary;
     }
 
     public DeclaredType getSourceSection() {

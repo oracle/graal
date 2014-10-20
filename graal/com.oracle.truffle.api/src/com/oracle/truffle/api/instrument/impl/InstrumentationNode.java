@@ -27,7 +27,7 @@ package com.oracle.truffle.api.instrument.impl;
 import java.util.*;
 
 import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.CompilerDirectives.SlowPath;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.instrument.*;
 import com.oracle.truffle.api.nodes.*;
@@ -100,7 +100,7 @@ public abstract class InstrumentationNode extends Node implements ExecutionEvent
      * Reports to the instance of {@link Probe} holding this instrument, if any, that some essential
      * state has changed that requires deoptimization.
      */
-    @CompilerDirectives.SlowPath
+    @CompilerDirectives.TruffleBoundary
     protected void notifyProbeChanged(Instrument instrument) {
         Probe probe = getProbe();
         if (probe != null) {
@@ -372,7 +372,7 @@ public abstract class InstrumentationNode extends Node implements ExecutionEvent
          *
          * @param tag The tag to add to this probe.
          */
-        @SlowPath
+        @TruffleBoundary
         public void tagAs(SyntaxTag tag) {
             assert tag != null;
             if (!tags.contains(tag)) {
@@ -407,7 +407,7 @@ public abstract class InstrumentationNode extends Node implements ExecutionEvent
          *
          * @param instrument The instrument to add to this probe.
          */
-        @SlowPath
+        @TruffleBoundary
         public void addInstrument(Instrument instrument) {
             probeUnchanged.invalidate();
             super.internalAddInstrument(instrument);
@@ -420,7 +420,7 @@ public abstract class InstrumentationNode extends Node implements ExecutionEvent
          *
          * @param instrument The instrument to remove from this probe.
          */
-        @SlowPath
+        @TruffleBoundary
         public void removeInstrument(Instrument instrument) {
             probeUnchanged.invalidate();
             super.internalRemoveInstrument(instrument);
@@ -436,13 +436,13 @@ public abstract class InstrumentationNode extends Node implements ExecutionEvent
         }
 
         @Override
-        @SlowPath
+        @TruffleBoundary
         protected void notifyProbeChanged(Instrument instrument) {
             probeUnchanged.invalidate();
             probeUnchanged = Truffle.getRuntime().createAssumption();
         }
 
-        @SlowPath
+        @TruffleBoundary
         void setTrap(SyntaxTagTrap trap) {
             assert trap == null || isTaggedAs(trap.getTag());
             probeUnchanged.invalidate();

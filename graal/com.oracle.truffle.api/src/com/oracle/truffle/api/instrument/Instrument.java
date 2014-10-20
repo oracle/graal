@@ -25,7 +25,7 @@
 package com.oracle.truffle.api.instrument;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.CompilerDirectives.SlowPath;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.instrument.impl.*;
 import com.oracle.truffle.api.nodes.*;
@@ -49,7 +49,7 @@ import com.oracle.truffle.api.nodes.*;
  * <li>Minimize computation in standard execution paths.</li>
  * <li>If runtime calls must be made back to a tool, construct the instrument with a callback stored
  * in a {@code final} field.</li>
- * <li>Tool methods called by the instrument should be annotated as {@link SlowPath} to prevent them
+ * <li>Tool methods called by the instrument should be annotated as {@link TruffleBoundary} to prevent them
  * from being inlined into fast execution paths.</li>
  * <li>If computation in the execution path is needed, and if performance is important, then the
  * computation is best expressed as a guest language AST and evaluated using standard Truffle

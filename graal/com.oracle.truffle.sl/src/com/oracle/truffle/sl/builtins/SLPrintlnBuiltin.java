@@ -24,7 +24,7 @@ package com.oracle.truffle.sl.builtins;
 
 import java.io.*;
 
-import com.oracle.truffle.api.CompilerDirectives.SlowPath;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.source.*;
@@ -37,7 +37,7 @@ import com.oracle.truffle.sl.runtime.*;
  * <p>
  * Printing involves a lot of Java code, so we need to tell the optimizing system that it should not
  * unconditionally inline everything reachable from the println() method. This is done via the
- * {@link SlowPath} annotations.
+ * {@link TruffleBoundary} annotations.
  */
 @NodeInfo(shortName = "println")
 public abstract class SLPrintlnBuiltin extends SLBuiltinNode {
@@ -52,7 +52,7 @@ public abstract class SLPrintlnBuiltin extends SLBuiltinNode {
         return value;
     }
 
-    @SlowPath
+    @TruffleBoundary
     private static void doPrint(PrintStream out, long value) {
         out.println(value);
     }
@@ -63,7 +63,7 @@ public abstract class SLPrintlnBuiltin extends SLBuiltinNode {
         return value;
     }
 
-    @SlowPath
+    @TruffleBoundary
     private static void doPrint(PrintStream out, boolean value) {
         out.println(value);
     }
@@ -74,7 +74,7 @@ public abstract class SLPrintlnBuiltin extends SLBuiltinNode {
         return value;
     }
 
-    @SlowPath
+    @TruffleBoundary
     private static void doPrint(PrintStream out, String value) {
         out.println(value);
     }
@@ -85,7 +85,7 @@ public abstract class SLPrintlnBuiltin extends SLBuiltinNode {
         return value;
     }
 
-    @SlowPath
+    @TruffleBoundary
     private static void doPrint(PrintStream out, Object value) {
         out.println(value);
     }

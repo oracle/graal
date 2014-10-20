@@ -1362,7 +1362,7 @@ public class NodeCodeGenerator extends AbstractCompilationUnitFactory<NodeData> 
             final boolean needsFrame = node.isFrameUsedByAnyGuard(getContext());
 
             if (!needsFrame) {
-                method.getAnnotationMirrors().add(new CodeAnnotationMirror(getContext().getTruffleTypes().getSlowPath()));
+                method.getAnnotationMirrors().add(new CodeAnnotationMirror(getContext().getTruffleTypes().getTruffleBoundary()));
             }
 
             addInternalValueParameters(method, node.getGenericSpecialization(), needsFrame, !needsFrame, false);

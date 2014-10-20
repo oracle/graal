@@ -23,7 +23,7 @@
 package com.oracle.truffle.sl.builtins;
 
 import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.CompilerDirectives.SlowPath;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
@@ -47,7 +47,7 @@ public abstract class SLStackTraceBuiltin extends SLBuiltinNode {
         return createStackTrace();
     }
 
-    @SlowPath
+    @TruffleBoundary
     private static String createStackTrace() {
         StringBuilder str = new StringBuilder();
 

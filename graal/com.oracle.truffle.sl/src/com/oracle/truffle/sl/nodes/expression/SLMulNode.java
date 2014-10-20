@@ -47,7 +47,7 @@ public abstract class SLMulNode extends SLBinaryNode {
     }
 
     @Specialization
-    @SlowPath
+    @TruffleBoundary
     protected BigInteger mul(BigInteger left, BigInteger right) {
         return left.multiply(right);
     }

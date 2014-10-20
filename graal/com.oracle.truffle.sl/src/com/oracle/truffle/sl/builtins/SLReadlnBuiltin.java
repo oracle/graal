@@ -24,7 +24,7 @@ package com.oracle.truffle.sl.builtins;
 
 import java.io.*;
 
-import com.oracle.truffle.api.CompilerDirectives.SlowPath;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.source.*;
@@ -55,7 +55,7 @@ public abstract class SLReadlnBuiltin extends SLBuiltinNode {
         return result;
     }
 
-    @SlowPath
+    @TruffleBoundary
     private static String doRead(BufferedReader in) {
         try {
             return in.readLine();

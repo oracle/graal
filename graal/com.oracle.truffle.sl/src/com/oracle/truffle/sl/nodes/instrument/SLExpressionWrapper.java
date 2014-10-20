@@ -73,7 +73,7 @@ public final class SLExpressionWrapper extends SLExpressionNode implements Wrapp
         return probe;
     }
 
-    @SlowPath
+    @TruffleBoundary
     public void tagAs(SyntaxTag tag) {
         probe.tagAs(tag);
     }

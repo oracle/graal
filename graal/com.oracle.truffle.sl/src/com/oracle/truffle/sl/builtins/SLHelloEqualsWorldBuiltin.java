@@ -41,7 +41,7 @@ public abstract class SLHelloEqualsWorldBuiltin extends SLBuiltinNode {
     }
 
     @Specialization
-    @SlowPath
+    @TruffleBoundary
     public String change() {
         FrameInstance frameInstance = Truffle.getRuntime().getCallerFrame();
         Frame frame = frameInstance.getFrame(FrameAccess.READ_WRITE, false);

@@ -22,7 +22,7 @@
  */
 package com.oracle.truffle.sl.builtins;
 
-import com.oracle.truffle.api.CompilerDirectives.SlowPath;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.source.*;
@@ -46,7 +46,7 @@ public abstract class SLDefineFunctionBuiltin extends SLBuiltinNode {
         return code;
     }
 
-    @SlowPath
+    @TruffleBoundary
     private static void doDefineFunction(SLContext context, String code) {
         Source source = Source.fromText(code, "[defineFunction]");
         /* The same parsing code as for parsing the initial source. */
