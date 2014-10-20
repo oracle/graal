@@ -38,7 +38,7 @@ import com.oracle.truffle.sl.runtime.*;
 public abstract class SLDisableSplittingBuiltin extends SLGraalRuntimeBuiltin {
 
     @Specialization
-    @SlowPath
+    @TruffleBoundary
     public SLFunction disableSplitting(SLFunction function) {
         OptimizedCallTarget target = (OptimizedCallTarget) function.getCallTarget();
         for (OptimizedCallTarget oct : findDuplicateCallTargets(target)) {
@@ -48,7 +48,7 @@ public abstract class SLDisableSplittingBuiltin extends SLGraalRuntimeBuiltin {
     }
 
     @Specialization
-    @SlowPath
+    @TruffleBoundary
     public SLNull disableSplitting(@SuppressWarnings("unused") SLNull argument) {
         RootNode parentRoot = Truffle.getRuntime().getCallerFrame().getCallNode().getRootNode();
         ((SLRootNode) parentRoot).setSplittable(false);

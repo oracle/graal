@@ -24,7 +24,7 @@ package com.oracle.graal.truffle.test.builtins;
 
 import com.oracle.graal.options.*;
 import com.oracle.graal.truffle.*;
-import com.oracle.truffle.api.CompilerDirectives.SlowPath;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.nodes.*;
 
@@ -36,7 +36,7 @@ import com.oracle.truffle.api.nodes.*;
 public abstract class SLSetOptionBuiltin extends SLGraalRuntimeBuiltin {
 
     @Specialization
-    @SlowPath
+    @TruffleBoundary
     public Object setOption(String name, Object value) {
         TruffleCompilerOptions_Options options = new TruffleCompilerOptions_Options();
         for (OptionDescriptor option : options) {

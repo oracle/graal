@@ -36,7 +36,7 @@ import com.oracle.truffle.api.nodes.*;
 public abstract class SLGetOptionBuiltin extends SLGraalRuntimeBuiltin {
 
     @Specialization
-    @SlowPath
+    @TruffleBoundary
     public Object getOption(String name) {
         TruffleCompilerOptions_Options options = new TruffleCompilerOptions_Options();
         for (OptionDescriptor option : options) {

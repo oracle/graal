@@ -46,7 +46,7 @@ public abstract class SLGraalRuntimeBuiltin extends SLBuiltinNode {
      * Finds all call targets available for the same original call target. This might be useful if a
      * {@link CallTarget} got duplicated due to splitting.
      */
-    @SlowPath
+    @TruffleBoundary
     protected static final Set<OptimizedCallTarget> findDuplicateCallTargets(OptimizedCallTarget originalCallTarget) {
         final Set<OptimizedCallTarget> allCallTargets = new HashSet<>();
         allCallTargets.add(originalCallTarget);
@@ -65,7 +65,7 @@ public abstract class SLGraalRuntimeBuiltin extends SLBuiltinNode {
      * Finds all {@link DirectCallNode} instances calling a certain original {@link CallTarget} in
      * the caller function.
      */
-    @SlowPath
+    @TruffleBoundary
     protected static final Set<DirectCallNode> findCallsTo(OptimizedCallTarget originalCallTarget) {
         FrameInstance frame = Truffle.getRuntime().getCallerFrame();
         RootNode root = frame.getCallNode().getRootNode();
@@ -76,7 +76,7 @@ public abstract class SLGraalRuntimeBuiltin extends SLBuiltinNode {
      * Finds all {@link DirectCallNode} instances calling a certain original {@link CallTarget} in a
      * given {@link RootNode}.
      */
-    @SlowPath
+    @TruffleBoundary
     protected static final Set<DirectCallNode> findCallsTo(RootNode root, OptimizedCallTarget originalCallTarget) {
         final Set<DirectCallNode> allCallNodes = new HashSet<>();
         root.accept(new NodeVisitor() {

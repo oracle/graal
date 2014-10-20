@@ -26,7 +26,7 @@ import java.util.*;
 
 import com.oracle.graal.truffle.*;
 import com.oracle.graal.truffle.TruffleInlining.CallTreeNodeVisitor;
-import com.oracle.truffle.api.CompilerDirectives.SlowPath;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.sl.runtime.*;
@@ -40,7 +40,7 @@ import com.oracle.truffle.sl.runtime.*;
 public abstract class SLIsInlinedBuiltin extends SLGraalRuntimeBuiltin {
 
     @Specialization
-    @SlowPath
+    @TruffleBoundary
     public Object isInlined(SLFunction rootFunction, SLFunction parentFunction, SLFunction inlinedFunction) {
         InliningTrace trace = new InliningTrace();
 

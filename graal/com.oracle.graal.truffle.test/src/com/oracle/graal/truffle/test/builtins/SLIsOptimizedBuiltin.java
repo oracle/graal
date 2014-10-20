@@ -23,7 +23,7 @@
 package com.oracle.graal.truffle.test.builtins;
 
 import com.oracle.graal.truffle.*;
-import com.oracle.truffle.api.CompilerDirectives.SlowPath;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.sl.runtime.*;
@@ -35,7 +35,7 @@ import com.oracle.truffle.sl.runtime.*;
 public abstract class SLIsOptimizedBuiltin extends SLGraalRuntimeBuiltin {
 
     @Specialization
-    @SlowPath
+    @TruffleBoundary
     public boolean isOptimized(SLFunction function) {
         OptimizedCallTarget target = (OptimizedCallTarget) function.getCallTarget();
         for (OptimizedCallTarget foundTarget : findDuplicateCallTargets(target)) {

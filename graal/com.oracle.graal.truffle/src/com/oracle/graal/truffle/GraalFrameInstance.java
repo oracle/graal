@@ -27,7 +27,7 @@ import java.lang.reflect.*;
 import com.oracle.graal.api.code.stack.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.CompilerDirectives.SlowPath;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 
@@ -43,7 +43,7 @@ public abstract class GraalFrameInstance implements FrameInstance {
 
     protected abstract int getFrameIndex();
 
-    @SlowPath
+    @TruffleBoundary
     public Frame getFrame(FrameAccess access, boolean slowPath) {
         if (access == FrameAccess.NONE) {
             return null;

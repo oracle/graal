@@ -106,7 +106,7 @@ public class TruffleCacheImpl implements TruffleCache {
 
     public StructuredGraph lookup(ResolvedJavaMethod method, NodeInputList<ValueNode> arguments, Assumptions assumptions, CanonicalizerPhase canonicalizer) {
 
-        if (method.getAnnotation(CompilerDirectives.SlowPath.class) != null) {
+        if (method.getAnnotation(CompilerDirectives.TruffleBoundary.class) != null) {
             return null;
         }
 
@@ -316,7 +316,7 @@ public class TruffleCacheImpl implements TruffleCache {
     protected boolean shouldInline(MethodCallTargetNode methodCallTargetNode) {
         boolean result = (methodCallTargetNode.invokeKind() == InvokeKind.Special || methodCallTargetNode.invokeKind() == InvokeKind.Static) && methodCallTargetNode.targetMethod().canBeInlined() &&
                         !methodCallTargetNode.targetMethod().isNative() && methodCallTargetNode.targetMethod().getAnnotation(ExplodeLoop.class) == null &&
-                        methodCallTargetNode.targetMethod().getAnnotation(CompilerDirectives.SlowPath.class) == null &&
+                        methodCallTargetNode.targetMethod().getAnnotation(CompilerDirectives.TruffleBoundary.class) == null &&
                         !methodCallTargetNode.targetMethod().getDeclaringClass().equals(stringBuilderClass);
         return result;
     }

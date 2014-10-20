@@ -32,7 +32,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.CompilerDirectives.SlowPath;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 
@@ -99,7 +99,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
         return new OptimizedAssumption(name);
     }
 
-    @SlowPath
+    @TruffleBoundary
     @Override
     public <T> T iterateFrames(FrameInstanceVisitor<T> visitor) {
         initStackIntrospection();
@@ -138,7 +138,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
         return iterateFrames(frame -> frame);
     }
 
-    @SlowPath
+    @TruffleBoundary
     @Override
     public FrameInstance getCurrentFrame() {
         initStackIntrospection();

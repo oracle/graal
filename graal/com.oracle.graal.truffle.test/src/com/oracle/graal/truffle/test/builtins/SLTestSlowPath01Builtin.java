@@ -25,7 +25,7 @@ package com.oracle.graal.truffle.test.builtins;
 import java.util.concurrent.*;
 
 import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.CompilerDirectives.SlowPath;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.sl.runtime.*;
@@ -40,7 +40,7 @@ public abstract class SLTestSlowPath01Builtin extends SLGraalRuntimeBuiltin {
     private static Object nonConstantValue = new Object();
 
     @Specialization
-    @SlowPath
+    @TruffleBoundary
     public Object testSlowPath() {
         CompilerAsserts.neverPartOfCompilation();
         CompilerAsserts.neverPartOfCompilation("Should never throw an exception when compiling.");
