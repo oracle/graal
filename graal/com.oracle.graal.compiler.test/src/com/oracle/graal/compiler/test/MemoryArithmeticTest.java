@@ -32,7 +32,7 @@ public class MemoryArithmeticTest extends GraalCompilerTest {
 
     @Override
     protected InstalledCode getCode(ResolvedJavaMethod method, StructuredGraph graph) {
-        return super.getCode(method, graph, true);
+        return getCode(method, graph, true);
     }
 
     /**

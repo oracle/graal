@@ -75,7 +75,7 @@ public class StandardMethodSubstitutionsTest extends MethodSubstitutionTest {
         }
 
         // Force compilation
-        InstalledCode code = getCode(testJavaMethod, parseEager(testJavaMethod));
+        InstalledCode code = getCode(testJavaMethod);
         assert optional || code != null;
         for (Object l : args) {
             // Verify that the original method and the substitution produce the same value

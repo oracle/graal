@@ -46,7 +46,7 @@ public class UnsafeSubstitutionsTest extends MethodSubstitutionTest {
         ResolvedJavaMethod originalMethod = getResolvedJavaMethod(holder, methodName, parameterTypes);
 
         // Force compilation
-        InstalledCode code = getCode(testMethod, parseEager(testMethod));
+        InstalledCode code = getCode(testMethod);
         assert code != null;
 
         // Verify that the original method and the substitution produce the same value

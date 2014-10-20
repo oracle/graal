@@ -102,7 +102,7 @@ public class AMD64HotSpotFrameOmissionTest extends GraalCompilerTest {
 
     private void testHelper(String name, CodeGenerator gen) {
         ResolvedJavaMethod javaMethod = getResolvedJavaMethod(name);
-        InstalledCode installedCode = getCode(javaMethod, parseEager(javaMethod));
+        InstalledCode installedCode = getCode(javaMethod);
 
         TargetDescription target = getCodeCache().getTarget();
         RegisterConfig registerConfig = getCodeCache().getRegisterConfig();

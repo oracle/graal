@@ -64,12 +64,12 @@ public abstract class PTXTest extends GraalCompilerTest {
     }
 
     @Override
-    protected InstalledCode getCode(ResolvedJavaMethod method, StructuredGraph graph) {
+    protected InstalledCode getCode(ResolvedJavaMethod installedCodeOwner, StructuredGraph graph) {
         PTXHotSpotBackend ptxBackend = getPTXBackend();
-        ExternalCompilationResult ptxCode = compileKernel(method);
+        ExternalCompilationResult ptxCode = compileKernel(installedCodeOwner);
         Assume.assumeTrue(ptxBackend.isDeviceInitialized());
-        HotSpotNmethod installedPTXCode = installKernel(method, ptxCode);
-        StructuredGraph wrapper = new PTXWrapperBuilder(method, installedPTXCode, (HotSpotProviders) getProviders()).getGraph();
+        HotSpotNmethod installedPTXCode = installKernel(installedCodeOwner, ptxCode);
+        StructuredGraph wrapper = new PTXWrapperBuilder(installedCodeOwner, installedPTXCode, (HotSpotProviders) getProviders()).getGraph();
 
         // The PTX C++ layer expects a 1:1 relationship between kernel compilation
         // and kernel execution as it creates a cuContext in the former and
@@ -78,7 +78,7 @@ public abstract class PTXTest extends GraalCompilerTest {
         // TODO: do cuContext management properly
         boolean forceCompile = true;
 
-        return getCode(method, wrapper, forceCompile);
+        return getCode(installedCodeOwner, wrapper, forceCompile);
     }
 
     protected static void compileAndPrintCode(PTXTest test) {

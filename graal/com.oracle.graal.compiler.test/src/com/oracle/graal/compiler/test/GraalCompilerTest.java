@@ -40,6 +40,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.baseline.*;
+import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
@@ -414,7 +415,7 @@ public abstract class GraalCompilerTest extends GraalTest {
         if (UseBaselineCompiler.getValue()) {
             compiledMethod = getCodeBaseline(method);
         } else {
-            compiledMethod = getCode(method, parseEager(method));
+            compiledMethod = getCode(method);
         }
         try {
             return new Result(compiledMethod.executeVarargs(executeArgs), null);
@@ -589,21 +590,36 @@ public abstract class GraalCompilerTest extends GraalTest {
     private Map<ResolvedJavaMethod, InstalledCode> cache = new HashMap<>();
 
     /**
-     * Gets installed code for a given method and graph, compiling it first if necessary.
+     * Gets installed code for a given method, compiling it first if necessary. The graph is parsed
+     * {@link #parseEager(ResolvedJavaMethod) eagerly}.
      */
-    protected InstalledCode getCode(final ResolvedJavaMethod method, final StructuredGraph graph) {
-        return getCode(method, graph, false);
+    protected InstalledCode getCode(ResolvedJavaMethod method) {
+        return getCode(method, null);
+    }
+
+    /**
+     * Gets installed code for a given method, compiling it first if necessary.
+     *
+     * @param installedCodeOwner the method the compiled code will be associated with when installed
+     * @param graph the graph to be compiled. If null, a graph will be obtained from
+     *            {@code installedCodeOwner} via {@link #parseForCompile(ResolvedJavaMethod)}.
+     */
+    protected InstalledCode getCode(ResolvedJavaMethod installedCodeOwner, StructuredGraph graph) {
+        return getCode(installedCodeOwner, graph, false);
     }
 
     /**
      * Gets installed code for a given method and graph, compiling it first if necessary.
      *
+     * @param installedCodeOwner the method the compiled code will be associated with when installed
+     * @param graph the graph to be compiled. If null, a graph will be obtained from
+     *            {@code installedCodeOwner} via {@link #parseForCompile(ResolvedJavaMethod)}.
      * @param forceCompile specifies whether to ignore any previous code cached for the (method,
      *            key) pair
      */
-    protected InstalledCode getCode(final ResolvedJavaMethod method, final StructuredGraph graph, boolean forceCompile) {
+    protected InstalledCode getCode(final ResolvedJavaMethod installedCodeOwner, StructuredGraph graph, boolean forceCompile) {
         if (!forceCompile) {
-            InstalledCode cached = cache.get(method);
+            InstalledCode cached = cache.get(installedCodeOwner);
             if (cached != null) {
                 if (cached.isValid()) {
                     return cached;
@@ -614,21 +630,21 @@ public abstract class GraalCompilerTest extends GraalTest {
         final int id = compilationId.incrementAndGet();
 
         InstalledCode installedCode = null;
-        try (AllocSpy spy = AllocSpy.open(method); Scope ds = Debug.scope("Compiling", new DebugDumpScope(String.valueOf(id), true))) {
+        try (AllocSpy spy = AllocSpy.open(installedCodeOwner); Scope ds = Debug.scope("Compiling", new DebugDumpScope(String.valueOf(id), true))) {
             final boolean printCompilation = PrintCompilation.getValue() && !TTY.isSuppressed();
             if (printCompilation) {
-                TTY.println(String.format("@%-6d Graal %-70s %-45s %-50s ...", id, method.getDeclaringClass().getName(), method.getName(), method.getSignature()));
+                TTY.println(String.format("@%-6d Graal %-70s %-45s %-50s ...", id, installedCodeOwner.getDeclaringClass().getName(), installedCodeOwner.getName(), installedCodeOwner.getSignature()));
             }
             long start = System.currentTimeMillis();
-            CompilationResult compResult = compile(method, graph);
+            CompilationResult compResult = compile(installedCodeOwner, graph);
             if (printCompilation) {
                 TTY.println(String.format("@%-6d Graal %-70s %-45s %-50s | %4dms %5dB", id, "", "", "", System.currentTimeMillis() - start, compResult.getTargetCodeSize()));
             }
 
-            try (Scope s = Debug.scope("CodeInstall", getCodeCache(), method)) {
-                installedCode = addMethod(method, compResult);
+            try (Scope s = Debug.scope("CodeInstall", getCodeCache(), installedCodeOwner)) {
+                installedCode = addMethod(installedCodeOwner, compResult);
                 if (installedCode == null) {
-                    throw new GraalInternalError("Could not install code for " + method.format("%H.%n(%p)"));
+                    throw new GraalInternalError("Could not install code for " + installedCodeOwner.format("%H.%n(%p)"));
                 }
             } catch (Throwable e) {
                 throw Debug.handle(e);
@@ -638,16 +654,40 @@ public abstract class GraalCompilerTest extends GraalTest {
         }
 
         if (!forceCompile) {
-            cache.put(method, installedCode);
+            cache.put(installedCodeOwner, installedCode);
         }
         return installedCode;
     }
 
-    protected CompilationResult compile(ResolvedJavaMethod method, final StructuredGraph graph) {
-        CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graph.method(), false);
-        return compileGraph(graph, null, cc, method, getProviders(), getBackend(), getCodeCache().getTarget(), null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL,
-                        getProfilingInfo(graph), getSpeculationLog(), getSuites(), new CompilationResult(), CompilationResultBuilderFactory.Default);
+    /**
+     * Used to produce a graph for a method about to be compiled by
+     * {@link #compile(ResolvedJavaMethod, StructuredGraph)} if the second parameter to that method
+     * is null.
+     *
+     * The default implementation in {@link GraalCompilerTest} is to call
+     * {@link #parseEager(ResolvedJavaMethod)}.
+     */
+    protected StructuredGraph parseForCompile(ResolvedJavaMethod method) {
+        return parseEager(method);
     }
+
+    /**
+     * Compiles a given method.
+     *
+     * @param installedCodeOwner the method the compiled code will be associated with when installed
+     * @param graph the graph to be compiled for {@code installedCodeOwner}. If null, a graph will
+     *            be obtained from {@code installedCodeOwner} via
+     *            {@link #parseForCompile(ResolvedJavaMethod)}.
+     */
+    protected CompilationResult compile(ResolvedJavaMethod installedCodeOwner, StructuredGraph graph) {
+        StructuredGraph graphToCompile = graph == null ? parseForCompile(installedCodeOwner) : graph;
+        lastCompiledGraph = graphToCompile;
+        CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graphToCompile.method(), false);
+        return GraalCompiler.compileGraph(graphToCompile, null, cc, installedCodeOwner, getProviders(), getBackend(), getCodeCache().getTarget(), null, getDefaultGraphBuilderSuite(),
+                        OptimisticOptimizations.ALL, getProfilingInfo(graphToCompile), getSpeculationLog(), getSuites(), new CompilationResult(), CompilationResultBuilderFactory.Default);
+    }
+
+    protected StructuredGraph lastCompiledGraph;
 
     protected SpeculationLog getSpeculationLog() {
         return null;

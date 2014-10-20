@@ -48,7 +48,8 @@ public class NewMultiArrayTest extends GraalCompilerTest {
     }
 
     @Override
-    protected InstalledCode getCode(final ResolvedJavaMethod method, final StructuredGraph graph) {
+    protected InstalledCode getCode(final ResolvedJavaMethod method, StructuredGraph g) {
+        StructuredGraph graph = g == null ? parseForCompile(method) : g;
         boolean forceCompile = false;
         if (bottomType != null) {
             List<NewMultiArrayNode> snapshot = graph.getNodes().filter(NewMultiArrayNode.class).snapshot();

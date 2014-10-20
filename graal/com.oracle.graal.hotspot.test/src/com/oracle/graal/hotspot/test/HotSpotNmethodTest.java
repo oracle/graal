@@ -28,7 +28,6 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.nodes.*;
 
 public class HotSpotNmethodTest extends GraalCompilerTest {
 
@@ -37,8 +36,7 @@ public class HotSpotNmethodTest extends GraalCompilerTest {
     @Test
     public void testInstallCodeInvalidation() {
         final ResolvedJavaMethod testJavaMethod = getResolvedJavaMethod("foo");
-        final StructuredGraph graph = parseEager("otherFoo");
-        final HotSpotNmethod nmethod = (HotSpotNmethod) getCode(testJavaMethod, graph);
+        final HotSpotNmethod nmethod = (HotSpotNmethod) getCode(testJavaMethod, parseEager("otherFoo"));
         Assert.assertTrue(nmethod.isValid());
         Object result;
         try {
@@ -61,8 +59,7 @@ public class HotSpotNmethodTest extends GraalCompilerTest {
     @Test
     public void testInstallCodeInvalidationWhileRunning() {
         final ResolvedJavaMethod testJavaMethod = getResolvedJavaMethod("foo");
-        final StructuredGraph graph = parseEager("otherFoo");
-        final HotSpotNmethod nmethod = (HotSpotNmethod) getCode(testJavaMethod, graph);
+        final HotSpotNmethod nmethod = (HotSpotNmethod) getCode(testJavaMethod, parseEager("otherFoo"));
         Object result;
         try {
             result = nmethod.executeVarargs(nmethod, null, null);
@@ -76,8 +73,7 @@ public class HotSpotNmethodTest extends GraalCompilerTest {
     @Test
     public void testInstalledCodeCalledFromCompiledCode() {
         final ResolvedJavaMethod testJavaMethod = getResolvedJavaMethod("foo");
-        final StructuredGraph graph = parseEager("otherFoo");
-        final HotSpotNmethod nmethod = (HotSpotNmethod) getCode(testJavaMethod, graph);
+        final HotSpotNmethod nmethod = (HotSpotNmethod) getCode(testJavaMethod, parseEager("otherFoo"));
         Assert.assertTrue(nmethod.isValid());
         try {
             for (int i = 0; i < ITERATION_COUNT; ++i) {

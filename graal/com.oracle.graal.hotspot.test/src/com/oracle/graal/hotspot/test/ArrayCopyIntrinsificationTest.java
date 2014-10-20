@@ -41,7 +41,8 @@ import com.oracle.graal.nodes.*;
 public class ArrayCopyIntrinsificationTest extends GraalCompilerTest {
 
     @Override
-    protected InstalledCode getCode(ResolvedJavaMethod method, StructuredGraph graph) {
+    protected InstalledCode getCode(ResolvedJavaMethod method, StructuredGraph g) {
+        StructuredGraph graph = g == null ? parseForCompile(method) : g;
         int nodeCount = graph.getNodeCount();
         InstalledCode result = super.getCode(method, graph);
         boolean graphWasProcessed = nodeCount != graph.getNodeCount();

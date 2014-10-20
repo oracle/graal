@@ -233,7 +233,7 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
 
     private HotSpotInstalledCode getInstalledCode(String name) throws Exception {
         final ResolvedJavaMethod javaMethod = getResolvedJavaMethod(WriteBarrierAdditionTest.class, name, Object.class, Object.class, Object.class);
-        final HotSpotInstalledCode installedBenchmarkCode = (HotSpotInstalledCode) getCode(javaMethod, parseEager(javaMethod));
+        final HotSpotInstalledCode installedBenchmarkCode = (HotSpotInstalledCode) getCode(javaMethod);
         return installedBenchmarkCode;
     }
 

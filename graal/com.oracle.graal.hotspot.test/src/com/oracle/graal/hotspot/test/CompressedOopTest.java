@@ -40,7 +40,7 @@ public class CompressedOopTest extends GraalCompilerTest {
 
     private HotSpotInstalledCode getInstalledCode(String name, Class<?>... parameterTypes) throws Exception {
         final ResolvedJavaMethod javaMethod = getResolvedJavaMethod(getClass(), name, parameterTypes);
-        final HotSpotInstalledCode installedBenchmarkCode = (HotSpotInstalledCode) getCode(javaMethod, parseEager(javaMethod));
+        final HotSpotInstalledCode installedBenchmarkCode = (HotSpotInstalledCode) getCode(javaMethod);
         return installedBenchmarkCode;
     }
 
