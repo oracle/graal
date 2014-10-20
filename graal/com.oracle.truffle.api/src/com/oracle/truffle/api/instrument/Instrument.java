@@ -49,8 +49,8 @@ import com.oracle.truffle.api.nodes.*;
  * <li>Minimize computation in standard execution paths.</li>
  * <li>If runtime calls must be made back to a tool, construct the instrument with a callback stored
  * in a {@code final} field.</li>
- * <li>Tool methods called by the instrument should be annotated as {@link TruffleBoundary} to prevent them
- * from being inlined into fast execution paths.</li>
+ * <li>Tool methods called by the instrument should be annotated as {@link TruffleBoundary} to
+ * prevent them from being inlined into fast execution paths.</li>
  * <li>If computation in the execution path is needed, and if performance is important, then the
  * computation is best expressed as a guest language AST and evaluated using standard Truffle
  * mechanisms so that standard Truffle optimizations can be applied.</li>
