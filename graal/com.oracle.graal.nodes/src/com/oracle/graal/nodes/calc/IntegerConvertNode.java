@@ -41,25 +41,24 @@ public abstract class IntegerConvertNode<OP, REV> extends UnaryNode implements C
     protected final Function<ArithmeticOpTable, IntegerConvertOp<OP>> getOp;
     protected final Function<ArithmeticOpTable, IntegerConvertOp<REV>> getReverseOp;
 
+    protected final int inputBits;
     protected final int resultBits;
 
-    protected IntegerConvertNode(Function<ArithmeticOpTable, IntegerConvertOp<OP>> getOp, Function<ArithmeticOpTable, IntegerConvertOp<REV>> getReverseOp, int resultBits, ValueNode input) {
-        super(getOp.apply(ArithmeticOpTable.forStamp(input.stamp())).foldStamp(resultBits, input.stamp()), input);
+    protected IntegerConvertNode(Function<ArithmeticOpTable, IntegerConvertOp<OP>> getOp, Function<ArithmeticOpTable, IntegerConvertOp<REV>> getReverseOp, int inputBits, int resultBits,
+                    ValueNode input) {
+        super(getOp.apply(ArithmeticOpTable.forStamp(input.stamp())).foldStamp(inputBits, resultBits, input.stamp()), input);
         this.getOp = getOp;
         this.getReverseOp = getReverseOp;
+        this.inputBits = inputBits;
         this.resultBits = resultBits;
+    }
+
+    public int getInputBits() {
+        return inputBits;
     }
 
     public int getResultBits() {
         return resultBits;
-    }
-
-    public int getInputBits() {
-        if (getValue().stamp() instanceof IntegerStamp) {
-            return ((IntegerStamp) getValue().stamp()).getBits();
-        } else {
-            return 0;
-        }
     }
 
     protected final IntegerConvertOp<OP> getOp(ValueNode forValue) {
@@ -79,20 +78,18 @@ public abstract class IntegerConvertNode<OP, REV> extends UnaryNode implements C
 
     @Override
     public boolean inferStamp() {
-        return updateStamp(getOp(getValue()).foldStamp(resultBits, getValue().stamp()));
+        return updateStamp(getOp(getValue()).foldStamp(inputBits, resultBits, getValue().stamp()));
     }
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
-        if (value.stamp() instanceof IntegerStamp) {
-            int inputBits = ((IntegerStamp) value.stamp()).getBits();
-            if (inputBits == resultBits) {
-                return value;
-            } else if (value.isConstant()) {
-                return ConstantNode.forPrimitive(stamp(), convert(forValue.asConstant()));
-            }
+        if (inputBits == resultBits) {
+            return value;
+        } else if (value.isConstant()) {
+            return ConstantNode.forPrimitive(stamp(), convert(forValue.asConstant()));
+        } else {
+            return this;
         }
-        return this;
     }
 
     public static ValueNode convert(ValueNode input, Stamp stamp) {
@@ -120,7 +117,7 @@ public abstract class IntegerConvertNode<OP, REV> extends UnaryNode implements C
         if (toStamp.getBits() == fromStamp.getBits()) {
             result = input;
         } else if (toStamp.getBits() < fromStamp.getBits()) {
-            result = NarrowNode.create(input, toStamp.getBits());
+            result = NarrowNode.create(input, fromStamp.getBits(), toStamp.getBits());
         } else if (zeroExtend) {
             // toStamp.getBits() > fromStamp.getBits()
             result = ZeroExtendNode.create(input, toStamp.getBits());

@@ -455,6 +455,6 @@ public final class ArithmeticOpTable {
 
         public abstract Constant foldConstant(int inputBits, int resultBits, Constant value);
 
-        public abstract Stamp foldStamp(int resultBits, Stamp stamp);
+        public abstract Stamp foldStamp(int inputBits, int resultBits, Stamp stamp);
     }
 }

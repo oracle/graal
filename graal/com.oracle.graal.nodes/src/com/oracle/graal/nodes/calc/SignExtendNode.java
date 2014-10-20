@@ -38,11 +38,17 @@ import com.oracle.graal.nodes.spi.*;
 public class SignExtendNode extends IntegerConvertNode<SignExtend, Narrow> {
 
     public static SignExtendNode create(ValueNode input, int resultBits) {
-        return new SignExtendNode(input, resultBits);
+        int inputBits = PrimitiveStamp.getBits(input.stamp());
+        assert 0 < inputBits && inputBits <= resultBits;
+        return create(input, inputBits, resultBits);
     }
 
-    protected SignExtendNode(ValueNode input, int resultBits) {
-        super(ArithmeticOpTable::getSignExtend, ArithmeticOpTable::getNarrow, resultBits, input);
+    public static SignExtendNode create(ValueNode input, int inputBits, int resultBits) {
+        return new SignExtendNode(input, inputBits, resultBits);
+    }
+
+    protected SignExtendNode(ValueNode input, int inputBits, int resultBits) {
+        super(ArithmeticOpTable::getSignExtend, ArithmeticOpTable::getNarrow, inputBits, resultBits, input);
     }
 
     @Override
@@ -61,13 +67,13 @@ public class SignExtendNode extends IntegerConvertNode<SignExtend, Narrow> {
             // sxxx -(sign-extend)-> ssss sxxx -(sign-extend)-> ssssssss sssssxxx
             // ==> sxxx -(sign-extend)-> ssssssss sssssxxx
             SignExtendNode other = (SignExtendNode) forValue;
-            return SignExtendNode.create(other.getValue(), getResultBits());
+            return SignExtendNode.create(other.getValue(), other.getInputBits(), getResultBits());
         } else if (forValue instanceof ZeroExtendNode) {
             ZeroExtendNode other = (ZeroExtendNode) forValue;
             if (other.getResultBits() > other.getInputBits()) {
                 // sxxx -(zero-extend)-> 0000 sxxx -(sign-extend)-> 00000000 0000sxxx
                 // ==> sxxx -(zero-extend)-> 00000000 0000sxxx
-                return ZeroExtendNode.create(other.getValue(), getResultBits());
+                return ZeroExtendNode.create(other.getValue(), other.getInputBits(), getResultBits());
             }
         }
 
@@ -76,7 +82,7 @@ public class SignExtendNode extends IntegerConvertNode<SignExtend, Narrow> {
             if ((inputStamp.upMask() & (1L << (getInputBits() - 1))) == 0L) {
                 // 0xxx -(sign-extend)-> 0000 0xxx
                 // ==> 0xxx -(zero-extend)-> 0000 0xxx
-                return ZeroExtendNode.create(forValue, getResultBits());
+                return ZeroExtendNode.create(forValue, getInputBits(), getResultBits());
             }
         }
 

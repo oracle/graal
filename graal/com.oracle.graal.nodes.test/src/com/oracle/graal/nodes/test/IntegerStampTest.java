@@ -129,10 +129,10 @@ public class IntegerStampTest {
         assertEquals(new IntegerStamp(64, -10000, 1000, 0, 0xffffffffffffffffL), StampFactory.forInteger(Kind.Long, -10000, 1000));
     }
 
-    private static Stamp narrowingKindConversion(Stamp stamp, Kind kind) {
-        Stamp narrow = IntegerStamp.OPS.getNarrow().foldStamp(kind.getBitCount(), stamp);
+    private static Stamp narrowingKindConversion(IntegerStamp stamp, Kind kind) {
+        Stamp narrow = IntegerStamp.OPS.getNarrow().foldStamp(stamp.getBits(), kind.getBitCount(), stamp);
         IntegerConvertOp<?> implicitExtend = kind.isUnsigned() ? IntegerStamp.OPS.getZeroExtend() : IntegerStamp.OPS.getSignExtend();
-        return implicitExtend.foldStamp(32, narrow);
+        return implicitExtend.foldStamp(kind.getBitCount(), 32, narrow);
     }
 
     @Test
@@ -273,7 +273,7 @@ public class IntegerStampTest {
 
     private static void testSignExtendShort(long lower, long upper) {
         Stamp shortStamp = StampFactory.forInteger(16, lower, upper);
-        Stamp intStamp = IntegerStamp.OPS.getSignExtend().foldStamp(32, shortStamp);
+        Stamp intStamp = IntegerStamp.OPS.getSignExtend().foldStamp(16, 32, shortStamp);
         assertEquals(StampFactory.forInteger(32, lower, upper), intStamp);
     }
 
@@ -289,7 +289,7 @@ public class IntegerStampTest {
 
     private static void testZeroExtendShort(long lower, long upper, long newLower, long newUpper) {
         Stamp shortStamp = StampFactory.forInteger(16, lower, upper);
-        Stamp intStamp = IntegerStamp.OPS.getZeroExtend().foldStamp(32, shortStamp);
+        Stamp intStamp = IntegerStamp.OPS.getZeroExtend().foldStamp(16, 32, shortStamp);
         assertEquals(StampFactory.forInteger(32, newLower, newUpper), intStamp);
     }
 

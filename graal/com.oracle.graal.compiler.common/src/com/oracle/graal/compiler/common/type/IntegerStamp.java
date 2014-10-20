@@ -661,9 +661,9 @@ public class IntegerStamp extends PrimitiveStamp {
         }
 
         @Override
-        public Stamp foldStamp(int resultBits, Stamp input) {
+        public Stamp foldStamp(int inputBits, int resultBits, Stamp input) {
             IntegerStamp stamp = (IntegerStamp) input;
-            int inputBits = stamp.getBits();
+            assert inputBits == stamp.getBits();
             assert inputBits <= resultBits;
 
             long downMask = CodeUtil.zeroExtend(stamp.downMask(), inputBits);
@@ -690,9 +690,9 @@ public class IntegerStamp extends PrimitiveStamp {
         }
 
         @Override
-        public Stamp foldStamp(int resultBits, Stamp input) {
+        public Stamp foldStamp(int inputBits, int resultBits, Stamp input) {
             IntegerStamp stamp = (IntegerStamp) input;
-            int inputBits = stamp.getBits();
+            assert inputBits == stamp.getBits();
             assert inputBits <= resultBits;
 
             long defaultMask = CodeUtil.mask(resultBits);
@@ -711,9 +711,9 @@ public class IntegerStamp extends PrimitiveStamp {
         }
 
         @Override
-        public Stamp foldStamp(int resultBits, Stamp input) {
+        public Stamp foldStamp(int inputBits, int resultBits, Stamp input) {
             IntegerStamp stamp = (IntegerStamp) input;
-            int inputBits = stamp.getBits();
+            assert inputBits == stamp.getBits();
             assert resultBits <= inputBits;
             if (resultBits == inputBits) {
                 return stamp;
