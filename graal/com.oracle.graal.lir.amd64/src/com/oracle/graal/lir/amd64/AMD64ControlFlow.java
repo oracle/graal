@@ -326,6 +326,10 @@ public class AMD64ControlFlow {
         if (isRegister(other)) {
             assert !asRegister(other).equals(asRegister(result)) : "other already overwritten by previous move";
             switch (other.getKind()) {
+                case Boolean:
+                case Byte:
+                case Short:
+                case Char:
                 case Int:
                     masm.cmovl(cond, asRegister(result), asRegister(other));
                     break;
@@ -338,6 +342,10 @@ public class AMD64ControlFlow {
         } else {
             AMD64Address addr = (AMD64Address) crb.asAddress(other);
             switch (other.getKind()) {
+                case Boolean:
+                case Byte:
+                case Short:
+                case Char:
                 case Int:
                     masm.cmovl(cond, asRegister(result), addr);
                     break;
