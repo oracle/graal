@@ -325,12 +325,14 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         } else {
             if (!(t instanceof BailoutException) || ((BailoutException) t).isPermanent()) {
                 compilationPolicy.recordCompilationFailure(t);
+                logOptimizingFailed(this, t.toString());
+                if (TruffleCompilationExceptionsAreThrown.getValue()) {
+                    throw new OptimizationFailedException(t, this);
+                }
+            } else {
+                logOptimizingUnqueued(this, null, null, "Non permanent bailout: " + t.toString());
             }
 
-            if (TruffleCompilationExceptionsAreThrown.getValue()) {
-                throw new OptimizationFailedException(t, this);
-            }
-            logOptimizingFailed(this, t.toString());
             if (t instanceof BailoutException) {
                 // Bailout => move on.
             } else if (TruffleCompilationExceptionsAreFatal.getValue()) {
