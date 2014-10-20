@@ -56,8 +56,8 @@ public final class PTXFrameMap extends FrameMap {
     @Override
     protected int alignFrameSize(int size) {
         // FIXME return some sane values
-        int x = size + (target.stackAlignment - 1);
-        return (x / target.stackAlignment) * target.stackAlignment;
+        int x = size + (getTarget().stackAlignment - 1);
+        return (x / getTarget().stackAlignment) * getTarget().stackAlignment;
     }
 
     @Override

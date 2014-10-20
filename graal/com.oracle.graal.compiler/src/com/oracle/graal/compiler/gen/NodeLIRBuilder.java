@@ -456,8 +456,8 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
     @Override
     public void emitInvoke(Invoke x) {
         LoweredCallTargetNode callTarget = (LoweredCallTargetNode) x.callTarget();
-        CallingConvention invokeCc = gen.getResult().getFrameMap().registerConfig.getCallingConvention(callTarget.callType(), x.asNode().stamp().javaType(gen.getMetaAccess()), callTarget.signature(),
-                        gen.target(), false);
+        CallingConvention invokeCc = gen.getResult().getFrameMap().getRegisterConfig().getCallingConvention(callTarget.callType(), x.asNode().stamp().javaType(gen.getMetaAccess()),
+                        callTarget.signature(), gen.target(), false);
         gen.getResult().getFrameMap().callsMethod(invokeCc);
 
         Value[] parameters = visitInvokeArguments(invokeCc, callTarget.arguments());

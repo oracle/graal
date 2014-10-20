@@ -58,7 +58,8 @@ public abstract class SPARCNodeLIRBuilder extends NodeLIRBuilder {
             sig[i] = node.arguments().get(i).stamp().javaType(gen.getMetaAccess());
         }
 
-        Value[] parameters = visitInvokeArguments(gen.getResult().getFrameMap().registerConfig.getCallingConvention(CallingConvention.Type.JavaCall, null, sig, gen.target(), false), node.arguments());
+        Value[] parameters = visitInvokeArguments(gen.getResult().getFrameMap().getRegisterConfig().getCallingConvention(CallingConvention.Type.JavaCall, null, sig, gen.target(), false),
+                        node.arguments());
         append(new SPARCBreakpointOp(parameters));
     }
 

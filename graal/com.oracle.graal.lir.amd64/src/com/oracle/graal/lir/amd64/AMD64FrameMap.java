@@ -89,7 +89,7 @@ public class AMD64FrameMap extends FrameMap {
 
     @Override
     protected int alignFrameSize(int size) {
-        return NumUtil.roundUp(size + returnAddressSize(), target.stackAlignment) - returnAddressSize();
+        return NumUtil.roundUp(size + returnAddressSize(), getTarget().stackAlignment) - returnAddressSize();
     }
 
     @Override

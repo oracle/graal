@@ -105,7 +105,7 @@ public final class RedundantMoveElimination {
 
         try (Indent indent = Debug.logAndIndent("eliminate redundant moves")) {
 
-            callerSaveRegs = frameMap.registerConfig.getCallerSaveRegisters();
+            callerSaveRegs = frameMap.getRegisterConfig().getCallerSaveRegisters();
 
             initBlockData(lir);
 
@@ -113,7 +113,7 @@ public final class RedundantMoveElimination {
             // Unallocatable registers should never be optimized.
             eligibleRegs = new int[numRegs];
             Arrays.fill(eligibleRegs, -1);
-            for (Register reg : frameMap.registerConfig.getAllocatableRegisters()) {
+            for (Register reg : frameMap.getRegisterConfig().getAllocatableRegisters()) {
                 if (reg.number < numRegs) {
                     eligibleRegs[reg.number] = reg.number;
                 }

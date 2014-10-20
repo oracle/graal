@@ -559,7 +559,7 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
         asm.emitString0("kernel &run ( \n");
 
         FrameMap frameMap = crb.frameMap;
-        RegisterConfig regConfig = frameMap.registerConfig;
+        RegisterConfig regConfig = frameMap.getRegisterConfig();
         // Build list of param types which does include the gid (for cc register mapping query).
         JavaType[] ccParamTypes = new JavaType[nonConstantParamCount + 1];
         // Include the gid.

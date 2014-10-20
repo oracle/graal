@@ -173,7 +173,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
                         asm.movl(new AMD64Address(rsp, i * intSize), 0xC1C1C1C1);
                     }
                 }
-                CalleeSaveLayout csl = frameMap.registerConfig.getCalleeSaveLayout();
+                CalleeSaveLayout csl = frameMap.getRegisterConfig().getCalleeSaveLayout();
                 if (csl != null && csl.size != 0) {
                     int frameToCSA = frameMap.offsetToCalleeSaveArea();
                     assert frameToCSA >= 0;
@@ -186,7 +186,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
         public void leave(CompilationResultBuilder crb) {
             if (!omitFrame) {
                 AMD64MacroAssembler asm = (AMD64MacroAssembler) crb.asm;
-                CalleeSaveLayout csl = crb.frameMap.registerConfig.getCalleeSaveLayout();
+                CalleeSaveLayout csl = crb.frameMap.getRegisterConfig().getCalleeSaveLayout();
 
                 if (csl != null && csl.size != 0) {
                     // saved all registers, restore all registers
@@ -202,7 +202,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
 
     @Override
     protected Assembler createAssembler(FrameMap frameMap) {
-        return new AMD64MacroAssembler(getTarget(), frameMap.registerConfig);
+        return new AMD64MacroAssembler(getTarget(), frameMap.getRegisterConfig());
     }
 
     @Override
@@ -241,7 +241,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
     public void emitCode(CompilationResultBuilder crb, LIR lir, ResolvedJavaMethod installedCodeOwner) {
         AMD64MacroAssembler asm = (AMD64MacroAssembler) crb.asm;
         FrameMap frameMap = crb.frameMap;
-        RegisterConfig regConfig = frameMap.registerConfig;
+        RegisterConfig regConfig = frameMap.getRegisterConfig();
         HotSpotVMConfig config = getRuntime().getConfig();
         Label verifiedEntry = new Label();
 

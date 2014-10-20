@@ -300,7 +300,7 @@ public class CompilationResultBuilder {
     public AbstractAddress asAddress(Value value) {
         assert isStackSlot(value);
         StackSlot slot = asStackSlot(value);
-        return asm.makeAddress(frameMap.registerConfig.getFrameRegister(), frameMap.offsetForStackSlot(slot));
+        return asm.makeAddress(frameMap.getRegisterConfig().getFrameRegister(), frameMap.offsetForStackSlot(slot));
     }
 
     /**

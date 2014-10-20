@@ -350,7 +350,7 @@ public class PTXHotSpotBackend extends HotSpotBackend {
 
     @Override
     protected Assembler createAssembler(FrameMap frameMap) {
-        return new PTXMacroAssembler(getTarget(), frameMap.registerConfig);
+        return new PTXMacroAssembler(getTarget(), frameMap.getRegisterConfig());
     }
 
     @Override

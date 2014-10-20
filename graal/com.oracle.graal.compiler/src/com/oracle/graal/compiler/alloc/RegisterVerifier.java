@@ -225,7 +225,7 @@ final class RegisterVerifier {
             op.visitEachInput(useConsumer);
             // invalidate all caller save registers at calls
             if (op.destroysCallerSavedRegisters()) {
-                for (Register r : allocator.frameMap.registerConfig.getCallerSaveRegisters()) {
+                for (Register r : allocator.frameMap.getRegisterConfig().getCallerSaveRegisters()) {
                     statePut(inputState, r.asValue(), null);
                 }
             }

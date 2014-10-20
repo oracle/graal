@@ -48,7 +48,7 @@ final class AMD64HotSpotLeaveDeoptimizedStackFrameOp extends AMD64HotSpotEpilogu
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-        Register stackPointer = crb.frameMap.registerConfig.getFrameRegister();
+        Register stackPointer = crb.frameMap.getRegisterConfig().getFrameRegister();
         masm.addq(stackPointer, asRegister(frameSize));
 
         /*

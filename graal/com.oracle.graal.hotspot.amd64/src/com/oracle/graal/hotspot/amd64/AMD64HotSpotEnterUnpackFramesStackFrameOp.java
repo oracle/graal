@@ -67,7 +67,7 @@ final class AMD64HotSpotEnterUnpackFramesStackFrameOp extends AMD64LIRInstructio
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
         FrameMap frameMap = crb.frameMap;
-        RegisterConfig registerConfig = frameMap.registerConfig;
+        RegisterConfig registerConfig = frameMap.getRegisterConfig();
         RegisterSaveLayout registerSaveLayout = saveRegisterOp.getMap(frameMap);
         Register stackPointerRegister = registerConfig.getFrameRegister();
         final int totalFrameSize = frameMap.totalFrameSize();

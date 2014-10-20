@@ -259,7 +259,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         if (destroysRegisters) {
             if (getStub() != null) {
                 if (getStub().preservesRegisters()) {
-                    Register[] savedRegisters = getResult().getFrameMap().registerConfig.getAllocatableRegisters();
+                    Register[] savedRegisters = getResult().getFrameMap().getRegisterConfig().getAllocatableRegisters();
                     save = emitSaveAllRegisters(savedRegisters, true);
                 }
             }
@@ -337,7 +337,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     }
 
     protected boolean zapRegisters() {
-        Register[] zappedRegisters = getResult().getFrameMap().registerConfig.getAllocatableRegisters();
+        Register[] zappedRegisters = getResult().getFrameMap().getRegisterConfig().getAllocatableRegisters();
         Constant[] zapValues = new Constant[zappedRegisters.length];
         for (int i = 0; i < zappedRegisters.length; i++) {
             PlatformKind kind = target().arch.getLargestStorableKind(zappedRegisters[i].getRegisterCategory());

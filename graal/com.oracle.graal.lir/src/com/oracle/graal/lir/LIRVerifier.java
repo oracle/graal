@@ -54,11 +54,11 @@ public final class LIRVerifier {
     }
 
     private int maxRegisterNum() {
-        return frameMap.target.arch.getRegisters().length;
+        return frameMap.getTarget().arch.getRegisters().length;
     }
 
     private boolean isAllocatableRegister(Value value) {
-        return isRegister(value) && frameMap.registerConfig.getAttributesMap()[asRegister(value).number].isAllocatable();
+        return isRegister(value) && frameMap.getRegisterConfig().getAttributesMap()[asRegister(value).number].isAllocatable();
     }
 
     public static boolean verify(final LIRInstruction op) {
@@ -133,7 +133,7 @@ public final class LIRVerifier {
 
                 op.visitEachInput(useConsumer);
                 if (op.destroysCallerSavedRegisters()) {
-                    for (Register register : frameMap.registerConfig.getCallerSaveRegisters()) {
+                    for (Register register : frameMap.getRegisterConfig().getCallerSaveRegisters()) {
                         curRegistersLive[register.number] = null;
                     }
                 }

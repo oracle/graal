@@ -107,7 +107,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRKindTool {
 
     @Override
     public RegisterAttributes attributes(Register register) {
-        return res.getFrameMap().registerConfig.getAttributesMap()[register.number];
+        return res.getFrameMap().getRegisterConfig().getAttributesMap()[register.number];
     }
 
     @Override
@@ -173,7 +173,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRKindTool {
      *         {@code kind}
      */
     public AllocatableValue resultOperandFor(LIRKind kind) {
-        return res.getFrameMap().registerConfig.getReturnRegister((Kind) kind.getPlatformKind()).asValue(kind);
+        return res.getFrameMap().getRegisterConfig().getReturnRegister((Kind) kind.getPlatformKind()).asValue(kind);
     }
 
     public void append(LIRInstruction op) {
