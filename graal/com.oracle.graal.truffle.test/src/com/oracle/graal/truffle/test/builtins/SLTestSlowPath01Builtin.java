@@ -31,7 +31,7 @@ import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.sl.runtime.*;
 
 /**
- * Just used in TestSlowPath01.sl. Verifies that all intrinsics have no effect inside of a @SlowPath
+ * Just used in TestSlowPath01.sl. Verifies that all intrinsics have no effect inside of a @TruffleBoundary
  * annotated method.
  */
 @NodeInfo(shortName = "testSlowPath01")

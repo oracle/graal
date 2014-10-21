@@ -289,7 +289,7 @@ public class TruffleCacheImpl implements TruffleCache {
         if (inlineGraph == this.markerGraph) {
             // Can happen for recursive calls.
             throw GraphUtil.approxSourceException(methodCallTargetNode, new IllegalStateException("Found illegal recursive call to " + methodCallTargetNode.targetMethod() +
-                            ", must annotate such calls with @CompilerDirectives.SlowPath!"));
+                            ", must annotate such calls with @TruffleBoundary!"));
         }
         Invoke invoke = methodCallTargetNode.invoke();
         InliningUtil.inline(invoke, inlineGraph, true, null);
