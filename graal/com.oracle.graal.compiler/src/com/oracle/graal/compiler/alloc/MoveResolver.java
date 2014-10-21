@@ -280,7 +280,7 @@ final class MoveResolver {
                 // one stack slot to another can happen (not allowed by LIRAssembler
                 StackSlot spillSlot = fromInterval.spillSlot();
                 if (spillSlot == null) {
-                    spillSlot = allocator.frameMap.allocateSpillSlot(spillInterval.kind());
+                    spillSlot = allocator.frameMapBuilder.allocateSpillSlot(spillInterval.kind());
                     fromInterval.setSpillSlot(spillSlot);
                 }
                 spillInterval.assignLocation(spillSlot);

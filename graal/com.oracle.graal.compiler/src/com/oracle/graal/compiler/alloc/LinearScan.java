@@ -59,7 +59,7 @@ public final class LinearScan {
 
     final TargetDescription target;
     final LIR ir;
-    final FrameMap frameMap;
+    final FrameMapBuilder frameMapBuilder;
     final RegisterAttributes[] registerAttributes;
     final Register[] registers;
 
@@ -159,12 +159,12 @@ public final class LinearScan {
      */
     private final int firstVariableNumber;
 
-    public LinearScan(TargetDescription target, LIR ir, FrameMap frameMap) {
+    public LinearScan(TargetDescription target, LIR ir, FrameMapBuilder frameMapBuilder) {
         this.target = target;
         this.ir = ir;
-        this.frameMap = frameMap;
+        this.frameMapBuilder = frameMapBuilder;
         this.sortedBlocks = ir.linearScanOrder();
-        this.registerAttributes = frameMap.getRegisterConfig().getAttributesMap();
+        this.registerAttributes = frameMapBuilder.getRegisterConfig().getAttributesMap();
 
         this.registers = target.arch.getRegisters();
         this.firstVariableNumber = registers.length;
@@ -257,7 +257,7 @@ public final class LinearScan {
         } else if (interval.spillSlot() != null) {
             interval.assignLocation(interval.spillSlot());
         } else {
-            StackSlot slot = frameMap.allocateSpillSlot(interval.kind());
+            StackSlot slot = frameMapBuilder.allocateSpillSlot(interval.kind());
             interval.setSpillSlot(slot);
             interval.assignLocation(slot);
         }
@@ -1168,7 +1168,7 @@ public final class LinearScan {
             };
 
             // create a list with all caller-save registers (cpu, fpu, xmm)
-            Register[] callerSaveRegs = frameMap.getRegisterConfig().getCallerSaveRegisters();
+            Register[] callerSaveRegs = frameMapBuilder.getRegisterConfig().getCallerSaveRegisters();
 
             // iterate all blocks in reverse order
             for (int i = blockCount() - 1; i >= 0; i--) {
@@ -1632,7 +1632,7 @@ public final class LinearScan {
      * Visits all intervals for a frame state. The frame state use this information to build the OOP
      * maps.
      */
-    private void markFrameLocations(IntervalWalker iw, LIRInstruction op, LIRFrameState info) {
+    private void markFrameLocations(IntervalWalker iw, LIRInstruction op, LIRFrameState info, FrameMap frameMap) {
         Debug.log("creating oop map at opId %d", op.id());
 
         // walk before the current operation . intervals that start at
@@ -1730,8 +1730,9 @@ public final class LinearScan {
     }
 
     private void computeDebugInfo(IntervalWalker iw, final LIRInstruction op, LIRFrameState info) {
+        FrameMap frameMap = (FrameMap) frameMapBuilder;
         info.initDebugInfo(frameMap, !op.destroysCallerSavedRegisters() || !callKillsRegisters);
-        markFrameLocations(iw, op, info);
+        markFrameLocations(iw, op, info, frameMap);
 
         info.forEachState(op, this::debugInfoProcedure);
         info.finish(op, frameMap);
@@ -1844,7 +1845,7 @@ public final class LinearScan {
             }
 
             try (Scope s = Debug.scope("DebugInfo")) {
-                frameMap.finish();
+                frameMapBuilder.finish();
 
                 printIntervals("After register allocation");
                 printLir("After register allocation", true);
