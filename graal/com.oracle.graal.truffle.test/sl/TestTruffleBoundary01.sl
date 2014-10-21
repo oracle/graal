@@ -3,7 +3,7 @@
  */
 
 function test1() {
-    testSlowPath01();
+    testTruffleBoundary01();
 }
 function main() {
     callUntilOptimized(test1);

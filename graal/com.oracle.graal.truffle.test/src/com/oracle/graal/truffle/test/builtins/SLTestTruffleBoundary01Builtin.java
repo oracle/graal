@@ -34,8 +34,8 @@ import com.oracle.truffle.sl.runtime.*;
  * Just used in TestSlowPath01.sl. Verifies that all intrinsics have no effect inside of a @TruffleBoundary
  * annotated method.
  */
-@NodeInfo(shortName = "testSlowPath01")
-public abstract class SLTestSlowPath01Builtin extends SLGraalRuntimeBuiltin {
+@NodeInfo(shortName = "testTruffleBoundary01")
+public abstract class SLTestTruffleBoundary01Builtin extends SLGraalRuntimeBuiltin {
 
     private static Object nonConstantValue = new Object();
 
