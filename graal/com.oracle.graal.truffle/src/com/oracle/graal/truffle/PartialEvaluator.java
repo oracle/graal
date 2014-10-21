@@ -245,7 +245,7 @@ public class PartialEvaluator {
 
                         ResolvedJavaMethod targetMethod = methodCallTargetNode.targetMethod();
                         if (inlineGraph == null && !targetMethod.isNative() && targetMethod.canBeInlined()) {
-                            inlineGraph = parseGraph(methodCallTargetNode.targetMethod(), methodCallTargetNode.arguments(), assumptions, phaseContext);
+                            inlineGraph = parseGraph(methodCallTargetNode.targetMethod(), methodCallTargetNode.arguments(), phaseContext);
                         }
 
                         if (inlineGraph != null) {
@@ -286,9 +286,8 @@ public class PartialEvaluator {
         }
     }
 
-    private StructuredGraph parseGraph(final ResolvedJavaMethod targetMethod, final NodeInputList<ValueNode> arguments, final Assumptions assumptions, final PhaseContext phaseContext) {
-
-        StructuredGraph graph = truffleCache.lookup(targetMethod, arguments, assumptions, canonicalizer);
+    private StructuredGraph parseGraph(final ResolvedJavaMethod targetMethod, final NodeInputList<ValueNode> arguments, final PhaseContext phaseContext) {
+        StructuredGraph graph = truffleCache.lookup(targetMethod, arguments, canonicalizer);
 
         if (graph != null && targetMethod.getAnnotation(ExplodeLoop.class) != null) {
             assert graph.hasLoops() : graph + " does not contain a loop";
@@ -400,7 +399,7 @@ public class PartialEvaluator {
             assumptions.record(new AssumptionValidAssumption((OptimizedAssumption) decision.getTarget().getNodeRewritingAssumption()));
         } else {
             // we continue expansion of callDirect until we reach the callBoundary.
-            graph = parseGraph(methodCallTargetNode.targetMethod(), methodCallTargetNode.arguments(), assumptions, phaseContext);
+            graph = parseGraph(methodCallTargetNode.targetMethod(), methodCallTargetNode.arguments(), phaseContext);
         }
 
         return graph;
