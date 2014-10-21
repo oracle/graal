@@ -117,14 +117,14 @@ public class TruffleCacheImpl implements TruffleCache {
             }
         }
         StructuredGraph resultGraph = cache.get(key);
+        if (resultGraph == markerGraph) {
+            // Avoid recursive inlining or a previous attempt bailed out (and we won't try again).
+            return null;
+        }
+
         if (resultGraph != null) {
             lastUsed.put(key, counter++);
             return resultGraph;
-        }
-
-        if (resultGraph == markerGraph) {
-            // Avoid recursive inline.
-            return null;
         }
 
         if (lastUsed.values().size() >= TruffleCompilerOptions.TruffleMaxCompilationCacheSize.getValue()) {
