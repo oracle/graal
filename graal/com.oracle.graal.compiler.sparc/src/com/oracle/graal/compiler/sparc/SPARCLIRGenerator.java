@@ -919,7 +919,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
 
     private StackSlot getTempSlot(LIRKind kind) {
         if (tmpStackSlot == null) {
-            tmpStackSlot = getResult().getFrameMap().allocateSpillSlot(kind);
+            tmpStackSlot = getResult().getFrameMapBuilder().allocateSpillSlot(kind);
         }
         return tmpStackSlot;
     }

@@ -25,7 +25,7 @@ package com.oracle.graal.lir.gen;
 import com.oracle.graal.lir.*;
 
 public interface LIRGenerationResult {
-    FrameMapBuilder getFrameMap();
+    FrameMapBuilder getFrameMapBuilder();
 
     LIR getLIR();
 

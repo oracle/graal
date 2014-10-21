@@ -97,7 +97,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
         super.beforeRegisterAllocation();
         boolean hasDebugInfo = getResult().getLIR().hasDebugInfo();
         if (hasDebugInfo) {
-            ((SPARCHotSpotLIRGenerationResult) getResult()).setDeoptimizationRescueSlot(getResult().getFrameMap().allocateSpillSlot(LIRKind.value(Kind.Long)));
+            ((SPARCHotSpotLIRGenerationResult) getResult()).setDeoptimizationRescueSlot(getResult().getFrameMapBuilder().allocateSpillSlot(LIRKind.value(Kind.Long)));
         }
     }
 
@@ -276,7 +276,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
         for (int i = 0; i < savedRegisters.length; i++) {
             PlatformKind kind = target().arch.getLargestStorableKind(savedRegisters[i].getRegisterCategory());
             assert kind != Kind.Illegal;
-            StackSlot spillSlot = getResult().getFrameMap().allocateSpillSlot(LIRKind.value(kind));
+            StackSlot spillSlot = getResult().getFrameMapBuilder().allocateSpillSlot(LIRKind.value(kind));
             savedRegisterLocations[i] = spillSlot;
         }
         return emitSaveRegisters(savedRegisters, savedRegisterLocations, false);

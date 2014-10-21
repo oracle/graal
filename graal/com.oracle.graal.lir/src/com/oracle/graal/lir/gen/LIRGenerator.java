@@ -107,7 +107,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRKindTool {
 
     @Override
     public RegisterAttributes attributes(Register register) {
-        return res.getFrameMap().getRegisterConfig().getAttributesMap()[register.number];
+        return res.getFrameMapBuilder().getRegisterConfig().getAttributesMap()[register.number];
     }
 
     @Override
@@ -173,7 +173,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRKindTool {
      *         {@code kind}
      */
     public AllocatableValue resultOperandFor(LIRKind kind) {
-        return res.getFrameMap().getRegisterConfig().getReturnRegister((Kind) kind.getPlatformKind()).asValue(kind);
+        return res.getFrameMapBuilder().getRegisterConfig().getReturnRegister((Kind) kind.getPlatformKind()).asValue(kind);
     }
 
     public void append(LIRInstruction op) {
@@ -273,7 +273,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRKindTool {
 
         // move the arguments into the correct location
         CallingConvention linkageCc = linkage.getOutgoingCallingConvention();
-        res.getFrameMap().callsMethod(linkageCc);
+        res.getFrameMapBuilder().callsMethod(linkageCc);
         assert linkageCc.getArgumentCount() == args.length : "argument count mismatch";
         Value[] argLocations = new Value[args.length];
         for (int i = 0; i < args.length; i++) {

@@ -86,7 +86,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
 
         public SaveRbp(NoOp placeholder) {
             this.placeholder = placeholder;
-            this.reservedSlot = getResult().getFrameMap().allocateSpillSlot(LIRKind.value(Kind.Long));
+            this.reservedSlot = getResult().getFrameMapBuilder().allocateSpillSlot(LIRKind.value(Kind.Long));
             assert reservedSlot.getRawOffset() == -16 : reservedSlot.getRawOffset();
         }
 
@@ -100,7 +100,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
             if (useStack) {
                 dst = reservedSlot;
             } else {
-                getResult().getFrameMap().freeSpillSlot(reservedSlot);
+                getResult().getFrameMapBuilder().freeSpillSlot(reservedSlot);
                 dst = newVariable(LIRKind.value(Kind.Long));
             }
 
@@ -229,7 +229,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         for (int i = 0; i < savedRegisters.length; i++) {
             PlatformKind kind = target().arch.getLargestStorableKind(savedRegisters[i].getRegisterCategory());
             assert kind != Kind.Illegal;
-            StackSlot spillSlot = getResult().getFrameMap().allocateSpillSlot(LIRKind.value(kind));
+            StackSlot spillSlot = getResult().getFrameMapBuilder().allocateSpillSlot(LIRKind.value(kind));
             savedRegisterLocations[i] = spillSlot;
         }
         return emitSaveRegisters(savedRegisters, savedRegisterLocations, supportsRemove);
@@ -259,7 +259,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         if (destroysRegisters) {
             if (getStub() != null) {
                 if (getStub().preservesRegisters()) {
-                    Register[] savedRegisters = getResult().getFrameMap().getRegisterConfig().getAllocatableRegisters();
+                    Register[] savedRegisters = getResult().getFrameMapBuilder().getRegisterConfig().getAllocatableRegisters();
                     save = emitSaveAllRegisters(savedRegisters, true);
                 }
             }
@@ -337,7 +337,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     }
 
     protected boolean zapRegisters() {
-        Register[] zappedRegisters = getResult().getFrameMap().getRegisterConfig().getAllocatableRegisters();
+        Register[] zappedRegisters = getResult().getFrameMapBuilder().getRegisterConfig().getAllocatableRegisters();
         Constant[] zapValues = new Constant[zappedRegisters.length];
         for (int i = 0; i < zappedRegisters.length; i++) {
             PlatformKind kind = target().arch.getLargestStorableKind(zappedRegisters[i].getRegisterCategory());
@@ -356,7 +356,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     @Override
     public void emitCCall(long address, CallingConvention nativeCallingConvention, Value[] args, int numberOfFloatingPointArguments) {
         Value[] argLocations = new Value[args.length];
-        getResult().getFrameMap().callsMethod(nativeCallingConvention);
+        getResult().getFrameMapBuilder().callsMethod(nativeCallingConvention);
         // TODO(mg): in case a native function uses floating point varargs, the ABI requires that
         // RAX contains the length of the varargs
         AllocatableValue numberOfFloatingPointArgumentsRegister = AMD64.rax.asValue();
@@ -411,7 +411,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         boolean hasDebugInfo = getResult().getLIR().hasDebugInfo();
         AllocatableValue savedRbp = saveRbp.finalize(hasDebugInfo);
         if (hasDebugInfo) {
-            ((AMD64HotSpotLIRGenerationResult) getResult()).setDeoptimizationRescueSlot(getResult().getFrameMap().allocateSpillSlot(LIRKind.value(Kind.Long)));
+            ((AMD64HotSpotLIRGenerationResult) getResult()).setDeoptimizationRescueSlot(getResult().getFrameMapBuilder().allocateSpillSlot(LIRKind.value(Kind.Long)));
         }
 
         for (AMD64HotSpotEpilogueOp op : epilogueOps) {

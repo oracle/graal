@@ -45,7 +45,7 @@ public class SPARCByteSwapOp extends SPARCLIRInstruction implements SPARCTailDel
     public SPARCByteSwapOp(LIRGeneratorTool tool, Value result, Value input) {
         this.result = result;
         this.input = input;
-        this.tmpSlot = tool.getResult().getFrameMap().allocateSpillSlot(LIRKind.value(Kind.Long));
+        this.tmpSlot = tool.getResult().getFrameMapBuilder().allocateSpillSlot(LIRKind.value(Kind.Long));
         this.tempIndex = tool.newVariable(LIRKind.value(Kind.Long));
     }
 
