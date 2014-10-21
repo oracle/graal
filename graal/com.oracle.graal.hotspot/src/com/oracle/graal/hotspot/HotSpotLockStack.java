@@ -35,11 +35,11 @@ import com.oracle.graal.lir.*;
 public class HotSpotLockStack {
 
     private StackSlot[] locks;
-    private final FrameMap frameMap;
+    private final FrameMapBuilder frameMapBuilder;
     private final LIRKind slotKind;
 
-    public HotSpotLockStack(FrameMap frameMap, LIRKind slotKind) {
-        this.frameMap = frameMap;
+    public HotSpotLockStack(FrameMapBuilder frameMapBuilder, LIRKind slotKind) {
+        this.frameMapBuilder = frameMapBuilder;
         this.slotKind = slotKind;
     }
 
@@ -53,7 +53,7 @@ public class HotSpotLockStack {
             locks = Arrays.copyOf(locks, lockDepth + 1);
         }
         if (locks[lockDepth] == null) {
-            locks[lockDepth] = frameMap.allocateSpillSlot(slotKind);
+            locks[lockDepth] = frameMapBuilder.allocateSpillSlot(slotKind);
         }
         return locks[lockDepth];
     }

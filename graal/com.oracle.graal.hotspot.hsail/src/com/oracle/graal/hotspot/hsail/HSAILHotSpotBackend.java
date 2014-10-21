@@ -468,7 +468,7 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
 
     @Override
     public CompilationResultBuilder newCompilationResultBuilder(LIRGenerationResult lirGenRes, CompilationResult compilationResult, CompilationResultBuilderFactory factory) {
-        FrameMap frameMap = lirGenRes.getFrameMap();
+        FrameMap frameMap = (FrameMap) lirGenRes.getFrameMap();
         Assembler masm = createAssembler(frameMap);
         HotSpotFrameContext frameContext = new HotSpotFrameContext();
         // save lirGen for later use by setHostGraph

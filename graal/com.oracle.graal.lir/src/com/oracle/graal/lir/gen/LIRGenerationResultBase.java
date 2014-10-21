@@ -52,7 +52,7 @@ public class LIRGenerationResultBase implements LIRGenerationResult {
         this.hasForeignCall = hasForeignCall;
     }
 
-    public final FrameMap getFrameMap() {
+    public final FrameMapBuilder getFrameMap() {
         return frameMap;
     }
 

@@ -214,7 +214,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
         // - has no deoptimization points
         // - makes no foreign calls (which require an aligned stack)
         AMD64HotSpotLIRGenerationResult gen = (AMD64HotSpotLIRGenerationResult) lirGenRen;
-        FrameMap frameMap = gen.getFrameMap();
+        FrameMap frameMap = (FrameMap) gen.getFrameMap();
         LIR lir = gen.getLIR();
         assert gen.getDeoptimizationRescueSlot() == null || frameMap.frameNeedsAllocating() : "method that can deoptimize must have a frame";
         boolean omitFrame = CanOmitFrame.getValue() && !frameMap.frameNeedsAllocating() && !lir.hasArgInCallerFrame() && !gen.hasForeignCall();
