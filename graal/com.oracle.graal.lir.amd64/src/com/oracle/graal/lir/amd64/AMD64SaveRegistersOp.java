@@ -122,12 +122,26 @@ public class AMD64SaveRegistersOp extends AMD64LIRInstruction implements SaveReg
             for (int i = 0; i < savedRegisters.length; i++) {
                 if (savedRegisters[i] != null) {
                     keys[mapIndex] = savedRegisters[i];
-                    values[mapIndex] = frameMap.indexForStackSlot(slots[i]);
+                    StackSlot slot = slots[i];
+                    values[mapIndex] = indexForStackSlot(frameMap, slot);
                     mapIndex++;
                 }
             }
             assert mapIndex == total;
         }
         return new RegisterSaveLayout(keys, values);
+    }
+
+    /**
+     * Computes the index of a stack slot relative to slot 0. This is also the bit index of stack
+     * slots in the reference map.
+     *
+     * @param slot a stack slot
+     * @return the index of the stack slot
+     */
+    private static int indexForStackSlot(FrameMap frameMap, StackSlot slot) {
+        assert frameMap.offsetForStackSlot(slot) % frameMap.getTarget().wordSize == 0;
+        int value = frameMap.offsetForStackSlot(slot) / frameMap.getTarget().wordSize;
+        return value;
     }
 }

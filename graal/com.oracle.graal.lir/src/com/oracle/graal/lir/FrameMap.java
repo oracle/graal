@@ -213,18 +213,6 @@ public abstract class FrameMap {
     }
 
     /**
-     * Computes the index of a stack slot relative to slot 0. This is also the bit index of stack
-     * slots in the reference map.
-     *
-     * @param slot a stack slot
-     * @return the index of the stack slot
-     */
-    public int indexForStackSlot(StackSlot slot) {
-        assert offsetForStackSlot(slot) % getTarget().wordSize == 0;
-        return offsetForStackSlot(slot) / getTarget().wordSize;
-    }
-
-    /**
      * Gets the offset from the stack pointer to the stack area where callee-saved registers are
      * stored.
      *

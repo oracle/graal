@@ -166,7 +166,7 @@ public class StandardOp {
          * Gets a map from the saved registers saved by this operation to the frame slots in which
          * they are saved.
          *
-         * @param frameMap used to {@linkplain FrameMap#indexForStackSlot(StackSlot) convert} a
+         * @param frameMap used to {@linkplain FrameMap#offsetForStackSlot(StackSlot) convert} a
          *            virtual slot to a frame slot index
          */
         RegisterSaveLayout getMap(FrameMap frameMap);

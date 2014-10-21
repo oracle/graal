@@ -189,7 +189,7 @@ public abstract class HotSpotBackend extends Backend {
      * @param destroyedRegisters the registers destroyed by the stub
      * @param calleeSaveInfo a map from debug infos to the operations that provide their
      *            {@linkplain RegisterSaveLayout callee-save information}
-     * @param frameMap used to {@linkplain FrameMap#indexForStackSlot(StackSlot) convert} a virtual
+     * @param frameMap used to {@linkplain FrameMap#offsetForStackSlot(StackSlot) convert} a virtual
      *            slot to a frame slot index
      */
     protected void updateStub(Stub stub, Set<Register> destroyedRegisters, Map<LIRFrameState, SaveRegistersOp> calleeSaveInfo, FrameMap frameMap) {
