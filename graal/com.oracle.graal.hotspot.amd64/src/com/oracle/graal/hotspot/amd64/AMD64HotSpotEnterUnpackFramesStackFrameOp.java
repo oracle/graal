@@ -86,7 +86,7 @@ final class AMD64HotSpotEnterUnpackFramesStackFrameOp extends AMD64LIRInstructio
         masm.decrementq(stackPointerRegister, totalFrameSize - 2 * crb.target.wordSize);
 
         // Save return registers after moving the frame.
-        final int stackSlotSize = frameMap.stackSlotSize();
+        final int stackSlotSize = frameMap.getTarget().wordSize;
         Register integerResultRegister = registerConfig.getReturnRegister(Kind.Long);
         masm.movptr(new AMD64Address(stackPointerRegister, registerSaveLayout.registerToSlot(integerResultRegister) * stackSlotSize), integerResultRegister);
 

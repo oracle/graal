@@ -121,15 +121,6 @@ public abstract class FrameMap {
     }
 
     /**
-     * Gets the size of a stack slot.
-     *
-     * @return stack slot size
-     */
-    public int stackSlotSize() {
-        return getTarget().wordSize;
-    }
-
-    /**
      * Gets the frame size of the compiled frame, not including the size of the
      * {@link Architecture#getReturnAddressSize() return address slot}.
      *
@@ -229,8 +220,8 @@ public abstract class FrameMap {
      * @return the index of the stack slot
      */
     public int indexForStackSlot(StackSlot slot) {
-        assert offsetForStackSlot(slot) % stackSlotSize() == 0;
-        return offsetForStackSlot(slot) / stackSlotSize();
+        assert offsetForStackSlot(slot) % getTarget().wordSize == 0;
+        return offsetForStackSlot(slot) / getTarget().wordSize;
     }
 
     /**
@@ -342,7 +333,7 @@ public abstract class FrameMap {
         if (slots == 0) {
             return null;
         }
-        spillSize += (slots * stackSlotSize());
+        spillSize += (slots * getTarget().wordSize);
 
         if (!objects.isEmpty()) {
             assert objects.length() <= slots;
@@ -350,7 +341,7 @@ public abstract class FrameMap {
             for (int slotIndex = 0; slotIndex < slots; slotIndex++) {
                 StackSlot objectSlot = null;
                 if (objects.get(slotIndex)) {
-                    objectSlot = allocateNewSpillSlot(LIRKind.reference(Kind.Object), slotIndex * stackSlotSize());
+                    objectSlot = allocateNewSpillSlot(LIRKind.reference(Kind.Object), slotIndex * getTarget().wordSize);
                     objectStackSlots.add(objectSlot);
                     if (outObjectStackSlots != null) {
                         outObjectStackSlots.add(objectSlot);
@@ -373,7 +364,7 @@ public abstract class FrameMap {
     }
 
     public ReferenceMap initReferenceMap(boolean hasRegisters) {
-        ReferenceMap refMap = getTarget().createReferenceMap(hasRegisters, frameSize() / stackSlotSize());
+        ReferenceMap refMap = getTarget().createReferenceMap(hasRegisters, frameSize() / getTarget().wordSize);
         for (StackSlot slot : objectStackSlots) {
             setReference(slot, refMap);
         }
