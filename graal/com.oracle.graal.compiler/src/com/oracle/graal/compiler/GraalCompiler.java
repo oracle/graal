@@ -269,7 +269,7 @@ public class GraalCompiler {
 
             try (Scope s = Debug.scope("Allocator", nodeLirGen)) {
                 if (backend.shouldAllocateRegisters()) {
-                    LinearScan.allocate(target, lir, frameMapBuilder);
+                    LinearScan.allocate(target, lirGenRes);
                 }
             } catch (Throwable e) {
                 throw Debug.handle(e);
@@ -295,7 +295,7 @@ public class GraalCompiler {
 
     public static void emitCode(Backend backend, Assumptions assumptions, LIRGenerationResult lirGenRes, CompilationResult compilationResult, ResolvedJavaMethod installedCodeOwner,
                     CompilationResultBuilderFactory factory) {
-        FrameMap frameMap = (FrameMap) lirGenRes.getFrameMapBuilder();
+        FrameMap frameMap = lirGenRes.getFrameMap();
         CompilationResultBuilder crb = backend.newCompilationResultBuilder(lirGenRes, frameMap, compilationResult, factory);
         backend.emitCode(crb, lirGenRes.getLIR(), installedCodeOwner);
         crb.finish();

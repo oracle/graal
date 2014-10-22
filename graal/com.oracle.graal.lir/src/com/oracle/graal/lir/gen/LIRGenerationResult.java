@@ -25,7 +25,29 @@ package com.oracle.graal.lir.gen;
 import com.oracle.graal.lir.*;
 
 public interface LIRGenerationResult {
+
+    /**
+     * Returns the {@link FrameMapBuilder} for collecting the information to build a
+     * {@link FrameMap}.
+     *
+     * This method can only be used prior calling {@link #buildFrameMap()}.
+     */
     FrameMapBuilder getFrameMapBuilder();
+
+    /**
+     * Creates a {@link FrameMap} out of the {@link FrameMapBuilder}. This method should only be
+     * called once. After calling it, {@link #getFrameMapBuilder()} can no longer be used.
+     *
+     * @see FrameMapBuilder#buildFrameMap()
+     */
+    void buildFrameMap();
+
+    /**
+     * Returns the {@link FrameMap} associated with this {@link LIRGenerationResult}.
+     *
+     * This method can only be called after {@link #buildFrameMap()}.
+     */
+    FrameMap getFrameMap();
 
     LIR getLIR();
 

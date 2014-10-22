@@ -27,6 +27,7 @@ import com.oracle.graal.lir.*;
 public class LIRGenerationResultBase implements LIRGenerationResult {
     private final LIR lir;
     private final FrameMapBuilder frameMapBuilder;
+    private FrameMap frameMap;
     /**
      * Records whether the code being generated makes at least one foreign call.
      */
@@ -53,7 +54,18 @@ public class LIRGenerationResultBase implements LIRGenerationResult {
     }
 
     public final FrameMapBuilder getFrameMapBuilder() {
+        assert frameMap == null : "getFrameMapBuilder() can only be used before calling buildFrameMap()!";
         return frameMapBuilder;
+    }
+
+    public void buildFrameMap() {
+        assert frameMap == null : "buildFrameMap() can only be called once!";
+        frameMap = frameMapBuilder.buildFrameMap();
+    }
+
+    public FrameMap getFrameMap() {
+        assert frameMap != null : "getFrameMap() can only be used after calling buildFrameMap()!";
+        return frameMap;
     }
 
 }

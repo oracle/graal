@@ -30,13 +30,6 @@ import com.oracle.graal.api.meta.*;
 public interface FrameMapBuilder {
 
     /**
-     * Computes the final size of this frame. After this method has been called, methods that change
-     * the frame size cannot be called anymore, e.g., no more spill slots or outgoing arguments can
-     * be requested.
-     */
-    void finish();
-
-    /**
      * Reserves a spill slot in the frame of the method being compiled. The returned slot is aligned
      * on its natural alignment, i.e., an 8-byte spill slot is aligned at an 8-byte boundary, unless
      * overridden by a subclass.
@@ -76,4 +69,10 @@ public interface FrameMapBuilder {
      * @param cc The calling convention for the called method.
      */
     void callsMethod(CallingConvention cc);
+
+    /**
+     * Creates a {@linkplain FrameMap} based on the information collected by this
+     * {@linkplain FrameMapBuilder}.
+     */
+    FrameMap buildFrameMap();
 }

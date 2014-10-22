@@ -378,4 +378,10 @@ public abstract class FrameMap implements FrameMapBuilder {
             assert isConstant(location);
         }
     }
+
+    @Override
+    public FrameMap buildFrameMap() {
+        finish();
+        return this;
+    }
 }

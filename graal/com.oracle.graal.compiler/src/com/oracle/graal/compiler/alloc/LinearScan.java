@@ -45,6 +45,7 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.StandardOp.MoveOp;
+import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.phases.util.*;
@@ -58,6 +59,7 @@ import com.oracle.graal.phases.util.*;
 public final class LinearScan {
 
     final TargetDescription target;
+    final LIRGenerationResult res;
     final LIR ir;
     final FrameMapBuilder frameMapBuilder;
     final RegisterAttributes[] registerAttributes;
@@ -159,10 +161,11 @@ public final class LinearScan {
      */
     private final int firstVariableNumber;
 
-    public LinearScan(TargetDescription target, LIR ir, FrameMapBuilder frameMapBuilder) {
+    public LinearScan(TargetDescription target, LIRGenerationResult res) {
         this.target = target;
-        this.ir = ir;
-        this.frameMapBuilder = frameMapBuilder;
+        this.res = res;
+        this.ir = res.getLIR();
+        this.frameMapBuilder = res.getFrameMapBuilder();
         this.sortedBlocks = ir.linearScanOrder();
         this.registerAttributes = frameMapBuilder.getRegisterConfig().getAttributesMap();
 
@@ -1730,7 +1733,7 @@ public final class LinearScan {
     }
 
     private void computeDebugInfo(IntervalWalker iw, final LIRInstruction op, LIRFrameState info) {
-        FrameMap frameMap = (FrameMap) frameMapBuilder;
+        FrameMap frameMap = res.getFrameMap();
         info.initDebugInfo(frameMap, !op.destroysCallerSavedRegisters() || !callKillsRegisters);
         markFrameLocations(iw, op, info, frameMap);
 
@@ -1801,8 +1804,8 @@ public final class LinearScan {
         }
     }
 
-    public static void allocate(TargetDescription target, LIR lir, FrameMapBuilder frameMapBuilder) {
-        new LinearScan(target, lir, frameMapBuilder).allocate();
+    public static void allocate(TargetDescription target, LIRGenerationResult res) {
+        new LinearScan(target, res).allocate();
     }
 
     private void allocate() {
@@ -1845,7 +1848,8 @@ public final class LinearScan {
             }
 
             try (Scope s = Debug.scope("DebugInfo")) {
-                frameMapBuilder.finish();
+                // build frame map
+                res.buildFrameMap();
 
                 printIntervals("After register allocation");
                 printLir("After register allocation", true);
