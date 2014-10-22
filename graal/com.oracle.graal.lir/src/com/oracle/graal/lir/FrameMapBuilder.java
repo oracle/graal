@@ -27,6 +27,10 @@ import java.util.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 
+/**
+ * A {@link FrameMapBuilder} is used to collect all information necessary to
+ * {@linkplain #buildFrameMap() create} a {@link FrameMap}.
+ */
 public interface FrameMapBuilder {
 
     /**
