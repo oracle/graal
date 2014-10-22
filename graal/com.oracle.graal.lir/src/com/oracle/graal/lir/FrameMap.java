@@ -38,7 +38,7 @@ import com.oracle.graal.asm.*;
  * stack pointer, while spill slots are indexed from the beginning of the frame (and the total frame
  * size has to be added to get the actual offset from the stack pointer).
  */
-public abstract class FrameMap implements FrameMapBuilder {
+public abstract class FrameMap {
 
     private final TargetDescription target;
     private final RegisterConfig registerConfig;
@@ -377,11 +377,5 @@ public abstract class FrameMap implements FrameMapBuilder {
         } else {
             assert isConstant(location);
         }
-    }
-
-    @Override
-    public FrameMap buildFrameMap() {
-        finish();
-        return this;
     }
 }

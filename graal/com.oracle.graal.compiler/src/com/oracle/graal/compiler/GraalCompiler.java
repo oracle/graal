@@ -36,6 +36,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.ProfilingInfo.TriState;
 import com.oracle.graal.compiler.alloc.*;
 import com.oracle.graal.compiler.common.cfg.*;
+import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
@@ -242,7 +243,7 @@ public class GraalCompiler {
             throw Debug.handle(e);
         }
         try (Scope ds = Debug.scope("BackEnd", lir)) {
-            FrameMapBuilder frameMapBuilder = backend.newFrameMap(registerConfig);
+            FrameMapBuilder frameMapBuilder = new FrameMapBuilderImpl(backend, registerConfig);
             LIRGenerationResult lirGenRes = backend.newLIRGenerationResult(lir, frameMapBuilder, graph.method(), stub);
             LIRGeneratorTool lirGen = backend.newLIRGenerator(cc, lirGenRes);
             NodeLIRBuilderTool nodeLirGen = backend.newNodeLIRBuilder(graph, lirGen);
