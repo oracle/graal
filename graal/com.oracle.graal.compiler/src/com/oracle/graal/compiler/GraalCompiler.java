@@ -270,6 +270,9 @@ public class GraalCompiler {
             try (Scope s = Debug.scope("Allocator", nodeLirGen)) {
                 if (backend.shouldAllocateRegisters()) {
                     LinearScan.allocate(target, lirGenRes);
+                } else {
+                    // build frame map for targets that do not allocate registers
+                    lirGenRes.buildFrameMap();
                 }
             } catch (Throwable e) {
                 throw Debug.handle(e);
