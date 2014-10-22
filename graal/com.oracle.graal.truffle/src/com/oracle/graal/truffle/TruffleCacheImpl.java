@@ -104,11 +104,7 @@ public class TruffleCacheImpl implements TruffleCache {
         return graph;
     }
 
-    public StructuredGraph lookup(ResolvedJavaMethod method, NodeInputList<ValueNode> arguments, CanonicalizerPhase canonicalizer) {
-        if (method.getAnnotation(CompilerDirectives.TruffleBoundary.class) != null) {
-            return null;
-        }
-
+    private static List<Object> computeCacheKey(ResolvedJavaMethod method, NodeInputList<ValueNode> arguments) {
         List<Object> key = new ArrayList<>(arguments.size() + 1);
         key.add(method);
         for (ValueNode v : arguments) {
@@ -116,12 +112,28 @@ public class TruffleCacheImpl implements TruffleCache {
                 key.add(v.stamp());
             }
         }
+        return key;
+    }
+
+    public StructuredGraph lookup(ResolvedJavaMethod method, NodeInputList<ValueNode> arguments, CanonicalizerPhase canonicalizer) {
+        List<Object> key = computeCacheKey(method, arguments);
         StructuredGraph resultGraph = cache.get(key);
         if (resultGraph == markerGraph) {
-            // Avoid recursive inlining or a previous attempt bailed out (and we won't try again).
+            // compilation failed previously, don't try again
+            return null;
+        }
+        StructuredGraph graph = cacheLookup(method, arguments, canonicalizer);
+        assert graph != markerGraph : "markerGraph should not leak out";
+        return graph;
+    }
+
+    private StructuredGraph cacheLookup(ResolvedJavaMethod method, NodeInputList<ValueNode> arguments, CanonicalizerPhase canonicalizer) {
+        if (method.getAnnotation(CompilerDirectives.TruffleBoundary.class) != null) {
             return null;
         }
 
+        List<Object> key = computeCacheKey(method, arguments);
+        StructuredGraph resultGraph = cache.get(key);
         if (resultGraph != null) {
             lastUsed.put(key, counter++);
             return resultGraph;
@@ -280,7 +292,7 @@ public class TruffleCacheImpl implements TruffleCache {
     private void expandInvoke(MethodCallTargetNode methodCallTargetNode, CanonicalizerPhase canonicalizer) {
         StructuredGraph inlineGraph = providers.getReplacements().getMethodSubstitution(methodCallTargetNode.targetMethod());
         if (inlineGraph == null) {
-            inlineGraph = TruffleCacheImpl.this.lookup(methodCallTargetNode.targetMethod(), methodCallTargetNode.arguments(), canonicalizer);
+            inlineGraph = cacheLookup(methodCallTargetNode.targetMethod(), methodCallTargetNode.arguments(), canonicalizer);
         }
         if (inlineGraph == null) {
             return;
