@@ -38,6 +38,7 @@ import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.ptx.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.cfg.*;
+import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.gpu.*;
@@ -49,8 +50,8 @@ import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.StandardOp.LabelOp;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.gen.*;
-import com.oracle.graal.lir.ptx.*;
 import com.oracle.graal.lir.ptx.PTXControlFlow.PTXPredicatedLIRInstruction;
+import com.oracle.graal.lir.ptx.*;
 import com.oracle.graal.lir.ptx.PTXMemOp.LoadReturnAddrOp;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -156,8 +157,13 @@ public class PTXHotSpotBackend extends HotSpotBackend {
     private static native long getLaunchKernelAddress();
 
     @Override
-    public FrameMap newFrameMap(RegisterConfig registerConfig) {
-        return new PTXFrameMap(getCodeCache(), registerConfig);
+    public FrameMapBuilder newFrameMapBuilder(RegisterConfig registerConfig) {
+        return new FrameMapBuilderImpl(this, registerConfig);
+    }
+
+    @Override
+    public FrameMap newFrameMap(FrameMapBuilder frameMapBuilder) {
+        return new PTXFrameMap(getCodeCache(), frameMapBuilder.getRegisterConfig());
     }
 
     /**

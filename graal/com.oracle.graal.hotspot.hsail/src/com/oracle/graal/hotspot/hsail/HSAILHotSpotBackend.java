@@ -52,6 +52,7 @@ import com.oracle.graal.asm.hsail.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.gpu.*;
@@ -383,12 +384,17 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
     private static native boolean executeKernel0(HotSpotInstalledCode kernel, int jobSize, Object[] args, int numTlabs, int allocBytesPerWorkitem, int[] oopMapArray)
                     throws InvalidInstalledCodeException;
 
+    @Override
+    public FrameMapBuilder newFrameMapBuilder(RegisterConfig registerConfig) {
+        return new FrameMapBuilderImpl(this, registerConfig);
+    }
+
     /**
      * Use the HSAIL register set when the compilation target is HSAIL.
      */
     @Override
-    public FrameMap newFrameMap(RegisterConfig registerConfig) {
-        return new HSAILFrameMap(getCodeCache(), registerConfig);
+    public FrameMap newFrameMap(FrameMapBuilder frameMapBuilder) {
+        return new HSAILFrameMap(getCodeCache(), frameMapBuilder.getRegisterConfig());
     }
 
     @Override

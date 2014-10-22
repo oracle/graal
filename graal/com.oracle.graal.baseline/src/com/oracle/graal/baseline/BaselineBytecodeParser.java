@@ -134,7 +134,7 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, Baseli
             LIR lir = new LIR(cfg, linearScanOrder, codeEmittingOrder);
 
             RegisterConfig registerConfig = null;
-            FrameMapBuilder frameMapBuilder = new FrameMapBuilderImpl(backend, registerConfig);
+            FrameMapBuilder frameMapBuilder = backend.newFrameMapBuilder(registerConfig);
             TargetDescription target = backend.getTarget();
             CallingConvention cc = CodeUtil.getCallingConvention(backend.getProviders().getCodeCache(), CallingConvention.Type.JavaCallee, method, false);
             this.lirGenRes = backend.newLIRGenerationResult(lir, frameMapBuilder, method, null);

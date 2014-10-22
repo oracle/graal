@@ -71,7 +71,9 @@ public abstract class Backend {
      * The given registerConfig is optional, in case null is passed the default RegisterConfig from
      * the CodeCacheProvider will be used.
      */
-    public abstract FrameMap newFrameMap(RegisterConfig registerConfig);
+    public abstract FrameMapBuilder newFrameMapBuilder(RegisterConfig registerConfig);
+
+    public abstract FrameMap newFrameMap(FrameMapBuilder frameMapBuilder);
 
     public abstract LIRGeneratorTool newLIRGenerator(CallingConvention cc, LIRGenerationResult lirGenRes);
 

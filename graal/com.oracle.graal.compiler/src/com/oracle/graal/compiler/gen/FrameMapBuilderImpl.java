@@ -32,9 +32,12 @@ import com.oracle.graal.lir.*;
 public class FrameMapBuilderImpl implements FrameMapBuilder {
 
     private final FrameMap frameMap;
+    private final RegisterConfig registerConfig;
 
     public FrameMapBuilderImpl(Backend backend, RegisterConfig registerConfig) {
-        this.frameMap = backend.newFrameMap(registerConfig);
+        CodeCacheProvider codeCache = backend.getCodeCache();
+        this.registerConfig = registerConfig == null ? codeCache.getRegisterConfig() : registerConfig;
+        this.frameMap = backend.newFrameMap(this);
     }
 
     public StackSlot allocateSpillSlot(LIRKind kind) {
@@ -46,7 +49,7 @@ public class FrameMapBuilderImpl implements FrameMapBuilder {
     }
 
     public RegisterConfig getRegisterConfig() {
-        return frameMap.getRegisterConfig();
+        return registerConfig;
     }
 
     public void freeSpillSlot(StackSlot slot) {
