@@ -32,8 +32,8 @@ public class HSAILHotSpotLIRGenerationResult extends LIRGenerationResultBase {
 
     private List<DeoptimizingOp> deopts = new ArrayList<>();
 
-    public HSAILHotSpotLIRGenerationResult(LIR lir, FrameMap frameMap) {
-        super(lir, frameMap);
+    public HSAILHotSpotLIRGenerationResult(LIR lir, FrameMapBuilder frameMapBuilder) {
+        super(lir, frameMapBuilder);
     }
 
     public List<DeoptimizingOp> getDeopts() {

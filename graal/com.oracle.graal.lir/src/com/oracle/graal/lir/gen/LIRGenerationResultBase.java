@@ -26,15 +26,15 @@ import com.oracle.graal.lir.*;
 
 public class LIRGenerationResultBase implements LIRGenerationResult {
     private final LIR lir;
-    private final FrameMap frameMap;
+    private final FrameMapBuilder frameMapBuilder;
     /**
      * Records whether the code being generated makes at least one foreign call.
      */
     private boolean hasForeignCall;
 
-    public LIRGenerationResultBase(LIR lir, FrameMap frameMap) {
+    public LIRGenerationResultBase(LIR lir, FrameMapBuilder frameMapBuilder) {
         this.lir = lir;
-        this.frameMap = frameMap;
+        this.frameMapBuilder = frameMapBuilder;
     }
 
     public LIR getLIR() {
@@ -53,7 +53,7 @@ public class LIRGenerationResultBase implements LIRGenerationResult {
     }
 
     public final FrameMapBuilder getFrameMapBuilder() {
-        return frameMap;
+        return frameMapBuilder;
     }
 
 }

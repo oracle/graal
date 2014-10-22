@@ -46,8 +46,8 @@ public class SPARCHotSpotLIRGenerationResult extends LIRGenerationResultBase {
      */
     private Map<LIRFrameState, SaveRegistersOp> calleeSaveInfo = new HashMap<>();
 
-    public SPARCHotSpotLIRGenerationResult(LIR lir, FrameMap frameMap, Object stub) {
-        super(lir, frameMap);
+    public SPARCHotSpotLIRGenerationResult(LIR lir, FrameMapBuilder frameMapBuilder, Object stub) {
+        super(lir, frameMapBuilder);
         this.stub = stub;
     }
 

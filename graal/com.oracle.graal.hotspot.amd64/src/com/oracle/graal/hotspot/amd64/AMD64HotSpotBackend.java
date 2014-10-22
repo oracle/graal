@@ -76,8 +76,8 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
     }
 
     @Override
-    public LIRGenerationResult newLIRGenerationResult(LIR lir, FrameMap frameMap, ResolvedJavaMethod method, Object stub) {
-        return new AMD64HotSpotLIRGenerationResult(lir, frameMap, stub);
+    public LIRGenerationResult newLIRGenerationResult(LIR lir, FrameMapBuilder frameMapBuilder, ResolvedJavaMethod method, Object stub) {
+        return new AMD64HotSpotLIRGenerationResult(lir, frameMapBuilder, stub);
     }
 
     @Override

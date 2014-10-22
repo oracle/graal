@@ -46,8 +46,8 @@ public class AMD64HotSpotLIRGenerationResult extends LIRGenerationResultBase {
      */
     private Map<LIRFrameState, SaveRegistersOp> calleeSaveInfo = new HashMap<>();
 
-    public AMD64HotSpotLIRGenerationResult(LIR lir, FrameMap frameMap, Object stub) {
-        super(lir, frameMap);
+    public AMD64HotSpotLIRGenerationResult(LIR lir, FrameMapBuilder frameMapBuilder, Object stub) {
+        super(lir, frameMapBuilder);
         this.stub = stub;
     }
 

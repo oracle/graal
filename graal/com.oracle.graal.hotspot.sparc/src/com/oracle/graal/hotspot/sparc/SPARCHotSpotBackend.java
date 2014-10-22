@@ -82,8 +82,8 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
     }
 
     @Override
-    public LIRGenerationResult newLIRGenerationResult(LIR lir, FrameMap frameMap, ResolvedJavaMethod method, Object stub) {
-        return new SPARCHotSpotLIRGenerationResult(lir, frameMap, stub);
+    public LIRGenerationResult newLIRGenerationResult(LIR lir, FrameMapBuilder frameMapBuilder, ResolvedJavaMethod method, Object stub) {
+        return new SPARCHotSpotLIRGenerationResult(lir, frameMapBuilder, stub);
     }
 
     @Override

@@ -1801,8 +1801,8 @@ public final class LinearScan {
         }
     }
 
-    public static void allocate(TargetDescription target, LIR lir, FrameMap frameMap) {
-        new LinearScan(target, lir, frameMap).allocate();
+    public static void allocate(TargetDescription target, LIR lir, FrameMapBuilder frameMapBuilder) {
+        new LinearScan(target, lir, frameMapBuilder).allocate();
     }
 
     private void allocate() {

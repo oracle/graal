@@ -39,9 +39,9 @@ import com.oracle.graal.lir.StandardOp.MoveOp;
  */
 public final class RedundantMoveElimination {
 
-    public static void optimize(LIR lir, FrameMap frameMap) {
+    public static void optimize(LIR lir, FrameMapBuilder frameMapBuilder) {
         RedundantMoveElimination redundantMoveElimination = new RedundantMoveElimination();
-        redundantMoveElimination.doOptimize(lir, frameMap);
+        redundantMoveElimination.doOptimize(lir, frameMapBuilder);
     }
 
     /**
@@ -101,11 +101,11 @@ public final class RedundantMoveElimination {
     /**
      * The main method doing the elimination of redundant moves.
      */
-    private void doOptimize(LIR lir, FrameMap frameMap) {
+    private void doOptimize(LIR lir, FrameMapBuilder frameMapBuilder) {
 
         try (Indent indent = Debug.logAndIndent("eliminate redundant moves")) {
 
-            callerSaveRegs = frameMap.getRegisterConfig().getCallerSaveRegisters();
+            callerSaveRegs = frameMapBuilder.getRegisterConfig().getCallerSaveRegisters();
 
             initBlockData(lir);
 
@@ -113,7 +113,7 @@ public final class RedundantMoveElimination {
             // Unallocatable registers should never be optimized.
             eligibleRegs = new int[numRegs];
             Arrays.fill(eligibleRegs, -1);
-            for (Register reg : frameMap.getRegisterConfig().getAllocatableRegisters()) {
+            for (Register reg : frameMapBuilder.getRegisterConfig().getAllocatableRegisters()) {
                 if (reg.number < numRegs) {
                     eligibleRegs[reg.number] = reg.number;
                 }

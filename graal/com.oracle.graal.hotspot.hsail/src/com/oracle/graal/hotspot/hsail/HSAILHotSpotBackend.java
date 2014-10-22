@@ -397,8 +397,8 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
     }
 
     @Override
-    public LIRGenerationResult newLIRGenerationResult(LIR lir, FrameMap frameMap, ResolvedJavaMethod method, Object stub) {
-        return new HSAILHotSpotLIRGenerationResult(lir, frameMap);
+    public LIRGenerationResult newLIRGenerationResult(LIR lir, FrameMapBuilder frameMapBuilder, ResolvedJavaMethod method, Object stub) {
+        return new HSAILHotSpotLIRGenerationResult(lir, frameMapBuilder);
     }
 
     @Override
