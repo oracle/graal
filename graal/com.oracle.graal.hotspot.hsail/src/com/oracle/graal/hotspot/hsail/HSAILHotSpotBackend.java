@@ -52,7 +52,6 @@ import com.oracle.graal.asm.hsail.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.gpu.*;
@@ -386,7 +385,7 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
 
     @Override
     public FrameMapBuilder newFrameMapBuilder(RegisterConfig registerConfig) {
-        return new FrameMapBuilderImpl(this, registerConfig);
+        return new FrameMapBuilderImpl(this::newFrameMap, getCodeCache(), registerConfig);
     }
 
     /**

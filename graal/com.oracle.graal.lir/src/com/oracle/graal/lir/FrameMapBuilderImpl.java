@@ -20,24 +20,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.gen;
+package com.oracle.graal.lir;
 
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.target.*;
-import com.oracle.graal.lir.*;
 
+/**
+ * A simple forwarder to {@link FrameMap}.
+ */
 public class FrameMapBuilderImpl implements FrameMapBuilder {
+
+    @FunctionalInterface
+    public interface FrameMapFactory {
+        FrameMap newFrameMap(FrameMapBuilder frameMapBuilder);
+    }
 
     private final FrameMap frameMap;
     private final RegisterConfig registerConfig;
 
-    public FrameMapBuilderImpl(Backend backend, RegisterConfig registerConfig) {
-        CodeCacheProvider codeCache = backend.getCodeCache();
+    public FrameMapBuilderImpl(FrameMapFactory factory, CodeCacheProvider codeCache, RegisterConfig registerConfig) {
         this.registerConfig = registerConfig == null ? codeCache.getRegisterConfig() : registerConfig;
-        this.frameMap = backend.newFrameMap(this);
+        this.frameMap = factory.newFrameMap(this);
     }
 
     public StackSlot allocateSpillSlot(LIRKind kind) {

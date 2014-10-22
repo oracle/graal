@@ -44,7 +44,6 @@ import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Nop;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.RestoreWindow;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Setx;
 import com.oracle.graal.compiler.common.cfg.*;
-import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.HotSpotCodeCacheProvider.MarkId;
 import com.oracle.graal.hotspot.meta.*;
@@ -74,7 +73,7 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
 
     @Override
     public FrameMapBuilder newFrameMapBuilder(RegisterConfig registerConfig) {
-        return new FrameMapBuilderImpl(this, registerConfig);
+        return new FrameMapBuilderImpl(this::newFrameMap, getCodeCache(), registerConfig);
     }
 
     @Override

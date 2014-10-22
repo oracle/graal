@@ -38,7 +38,6 @@ import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.ptx.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.cfg.*;
-import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.gpu.*;
@@ -158,7 +157,7 @@ public class PTXHotSpotBackend extends HotSpotBackend {
 
     @Override
     public FrameMapBuilder newFrameMapBuilder(RegisterConfig registerConfig) {
-        return new FrameMapBuilderImpl(this, registerConfig);
+        return new FrameMapBuilderImpl(this::newFrameMap, getCodeCache(), registerConfig);
     }
 
     @Override
