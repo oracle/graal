@@ -92,8 +92,8 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
 
         public SaveRbp(NoOp placeholder) {
             this.placeholder = placeholder;
-            this.reservedSlot = getResult().getFrameMapBuilder().allocateSpillSlot(LIRKind.value(Kind.Long));
-            assert reservedSlot.getRawOffset() == -16 : reservedSlot.getRawOffset();
+            AMD64FrameMapBuilder frameMapBuilder = (AMD64FrameMapBuilder) getResult().getFrameMapBuilder();
+            this.reservedSlot = frameMapBuilder.allocateRBPSpillSlot();
         }
 
         /**
