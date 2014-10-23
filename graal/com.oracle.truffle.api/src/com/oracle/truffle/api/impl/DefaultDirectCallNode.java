@@ -79,17 +79,17 @@ public final class DefaultDirectCallNode extends DirectCallNode {
     }
 
     @Override
-    public CallTarget getSplitCallTarget() {
+    public CallTarget getClonedCallTarget() {
         return null;
     }
 
     @Override
-    public boolean split() {
+    public boolean cloneCallTarget() {
         return false;
     }
 
     @Override
-    public boolean isSplittable() {
+    public boolean isCallTargetCloningAllowed() {
         return false;
     }
 

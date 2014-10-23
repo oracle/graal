@@ -41,25 +41,16 @@ public final class SLRootNode extends RootNode {
     /** The function body that is executed, and specialized during execution. */
     @Child private SLExpressionNode bodyNode;
 
-    /**
-     * A copy of the uninitialized body. When performing method inlining, it is beneficial to inline
-     * the unspecialized function body, so that it is specialized in the context of the caller. This
-     * makes the specializations of the inlined function more precise.
-     */
-    private final SLExpressionNode uninitializedBodyNode;
-
     /** The name of the function, for printing purposes only. */
     private final String name;
 
     /** The Simple execution context for this tree **/
     private final SLContext context;
 
-    @CompilationFinal private boolean isSplittable;
+    @CompilationFinal private boolean isCloningAllowed;
 
     public SLRootNode(SLContext context, FrameDescriptor frameDescriptor, SLExpressionNode bodyNode, String name) {
         super(null, frameDescriptor);
-        /* Deep copy the body before any specialization occurs during execution. */
-        this.uninitializedBodyNode = NodeUtil.cloneNode(bodyNode);
         this.bodyNode = bodyNode;
         this.name = name;
         this.context = context;
@@ -74,8 +65,8 @@ public final class SLRootNode extends RootNode {
         return name;
     }
 
-    public void setSplittable(boolean isSplittable) {
-        this.isSplittable = isSplittable;
+    public void setCloningAllowed(boolean isCloningAllowed) {
+        this.isCloningAllowed = isCloningAllowed;
     }
 
     public SLExpressionNode getBodyNode() {
@@ -83,13 +74,8 @@ public final class SLRootNode extends RootNode {
     }
 
     @Override
-    public boolean isSplittable() {
-        return isSplittable;
-    }
-
-    @Override
-    public RootNode split() {
-        return new SLRootNode(this.context, getFrameDescriptor().shallowCopy(), NodeUtil.cloneNode(uninitializedBodyNode), name);
+    public boolean isCloningAllowed() {
+        return isCloningAllowed;
     }
 
     @Override

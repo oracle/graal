@@ -25,6 +25,7 @@
 package com.oracle.truffle.api.nodes;
 
 import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.source.*;
 
@@ -36,7 +37,7 @@ import com.oracle.truffle.api.source.*;
 public abstract class RootNode extends Node {
 
     private RootCallTarget callTarget;
-    private final FrameDescriptor frameDescriptor;
+    @CompilationFinal private FrameDescriptor frameDescriptor;
 
     protected RootNode() {
         this(null, null);
@@ -55,26 +56,24 @@ public abstract class RootNode extends Node {
         }
     }
 
-    /**
-     * Creates a split {@link RootNode} based on the current {@link RootNode}. This method should
-     * return an AST that was never executed and must not be shared with other {@link RootNode} or
-     * {@link CallTarget} instances. This method is intended to be overridden by a subclass.
-     *
-     * @return the split {@link RootNode}
-     */
-    public RootNode split() {
-        throw new UnsupportedOperationException();
+    @Override
+    public Node copy() {
+        RootNode root = (RootNode) super.copy();
+        root.frameDescriptor = frameDescriptor.shallowCopy();
+        return root;
     }
 
     /**
-     * Returns <code>true</code> if this {@link RootNode} can be split. A {@link RootNode} can be
-     * split inside of a {@link CallTarget} that is invoked using a {@link DirectCallNode}. If this
-     * method returns <code>true</code> a proper implementation of {@link #split()} must also be
-     * provided. This method is intended to be overridden by a subclass.
+     * Returns <code>true</code> if this {@link RootNode} is allowed to be cloned. The runtime
+     * system might decide to create deep copies of the {@link RootNode} in order to gather context
+     * sensitive profiling feedback. The default implementation returns <code>false</code>. Guest
+     * language specific implementations may want to return <code>true</code> here to indicate that
+     * gathering call site specific profiling information might make sense for this {@link RootNode}
+     * .
      *
-     * @return <code>true</code> if splittable else <code>false</code>.
+     * @return <code>true</code> if cloning is allowed else <code>false</code>.
      */
-    public boolean isSplittable() {
+    public boolean isCloningAllowed() {
         return false;
     }
 

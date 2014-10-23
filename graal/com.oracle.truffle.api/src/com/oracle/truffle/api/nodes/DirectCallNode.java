@@ -32,17 +32,17 @@ import com.oracle.truffle.api.frame.*;
  * {@link CallTarget} remains the same for each consecutive call. This part of the Truffle API
  * enables the runtime system to perform additional optimizations on direct calls.
  *
- * Optimizations that can be applied to a {@link DirectCallNode} are inlining and splitting.
- * Inlining inlines this call site into the call graph of the parent {@link CallTarget}. Splitting
- * duplicates the {@link CallTarget} using {@link RootNode#split()} to collect call site sensitive
- * profiling information.
+ * Optimizations that can be applied to a {@link DirectCallNode} are inlining and call site
+ * sensitive AST duplication. Inlining inlines this call site into the call graph of the parent
+ * {@link CallTarget}. Call site sensitive AST duplication duplicates the {@link CallTarget} in an
+ * uninitialized state to collect call site sensitive profiling information.
  *
  * Please note: This class is not intended to be subclassed by guest language implementations.
  *
  * @see IndirectCallNode for calls with a non-constant target
  * @see TruffleRuntime#createDirectCallNode(CallTarget)
  * @see #forceInlining()
- * @see #split()
+ * @see #cloneCallTarget()
  */
 public abstract class DirectCallNode extends Node {
 
@@ -111,46 +111,48 @@ public abstract class DirectCallNode extends Node {
     }
 
     /**
-     * Returns <code>true</code> if this {@link DirectCallNode} can be split. A
-     * {@link DirectCallNode} can only be split if the runtime system supports splitting and if the
-     * {@link RootNode} contained the {@link CallTarget} returns <code>true</code> for
-     * {@link RootNode#isSplittable()}.
+     * Returns <code>true</code> if the runtime system supports cloning and the {@link RootNode}
+     * returns <code>true</code> in {@link RootNode#isCloningAllowed()}.
      *
-     * @return <code>true</code> if the target can be split
+     * @return <code>true</code> if the target is allowed to be cloned.
      */
-    public abstract boolean isSplittable();
+    public abstract boolean isCallTargetCloningAllowed();
 
     /**
-     * Enforces the runtime system to split the {@link CallTarget}. If the {@link DirectCallNode} is
-     * not splittable this methods has no effect.
+     * Clones the {@link CallTarget} instance returned by {@link #getCallTarget()} in an
+     * uninitialized state for this {@link DirectCallNode}. This can be sensible to gather call site
+     * sensitive profiling information for this {@link DirectCallNode}. If
+     * {@link #isCallTargetCloningAllowed()} returns <code>false</code> this method has no effect
+     * and returns <code>false</code>.
      */
-    public abstract boolean split();
+    public abstract boolean cloneCallTarget();
 
     /**
-     * Returns <code>true</code> if the target of the {@link DirectCallNode} was split.
+     * Returns <code>true</code> if the target of the {@link DirectCallNode} was cloned by the
+     * runtime system or by the guest language implementation.
      *
      * @return if the target was split
      */
-    public final boolean isSplit() {
-        return getSplitCallTarget() != null;
+    public final boolean isCallTargetCloned() {
+        return getClonedCallTarget() != null;
     }
 
     /**
-     * Returns the split {@link CallTarget} if this method is split.
+     * Returns the split {@link CallTarget} if this call site's {@link CallTarget} is cloned.
      *
      * @return the split {@link CallTarget}
      */
-    public abstract CallTarget getSplitCallTarget();
+    public abstract CallTarget getClonedCallTarget();
 
     /**
      * Returns the used call target when {@link #call(VirtualFrame, Object[])} is invoked. If the
      * {@link CallTarget} was split this method returns the {@link CallTarget} returned by
-     * {@link #getSplitCallTarget()}.
+     * {@link #getClonedCallTarget()}.
      *
      * @return the used {@link CallTarget} when node is called
      */
     public CallTarget getCurrentCallTarget() {
-        CallTarget split = getSplitCallTarget();
+        CallTarget split = getClonedCallTarget();
         if (split != null) {
             return split;
         } else {
