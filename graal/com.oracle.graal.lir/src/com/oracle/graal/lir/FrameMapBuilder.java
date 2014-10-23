@@ -26,10 +26,11 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.lir.gen.*;
 
 /**
  * A {@link FrameMapBuilder} is used to collect all information necessary to
- * {@linkplain #buildFrameMap() create} a {@link FrameMap}.
+ * {@linkplain #buildFrameMap create} a {@link FrameMap}.
  */
 public interface FrameMapBuilder {
 
@@ -80,5 +81,5 @@ public interface FrameMapBuilder {
      * Creates a {@linkplain FrameMap} based on the information collected by this
      * {@linkplain FrameMapBuilder}.
      */
-    FrameMap buildFrameMap();
+    FrameMap buildFrameMap(LIRGenerationResult result);
 }

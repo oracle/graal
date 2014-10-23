@@ -38,7 +38,7 @@ public interface LIRGenerationResult {
      * Creates a {@link FrameMap} out of the {@link FrameMapBuilder}. This method should only be
      * called once. After calling it, {@link #getFrameMapBuilder()} can no longer be used.
      *
-     * @see FrameMapBuilder#buildFrameMap()
+     * @see FrameMapBuilder#buildFrameMap
      */
     void buildFrameMap();
 

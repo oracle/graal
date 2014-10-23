@@ -26,6 +26,7 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.lir.gen.*;
 
 /**
  * A simple forwarder to {@link FrameMap}.
@@ -72,7 +73,7 @@ public class ForwardingFrameMapBuilder implements FrameMapBuilder {
         frameMap.callsMethod(cc);
     }
 
-    public FrameMap buildFrameMap() {
+    public FrameMap buildFrameMap(LIRGenerationResult res) {
         frameMap.finish();
         return frameMap;
     }

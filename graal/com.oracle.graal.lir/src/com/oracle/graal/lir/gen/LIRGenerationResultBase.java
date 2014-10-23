@@ -60,7 +60,7 @@ public class LIRGenerationResultBase implements LIRGenerationResult {
 
     public void buildFrameMap() {
         assert frameMap == null : "buildFrameMap() can only be called once!";
-        frameMap = frameMapBuilder.buildFrameMap();
+        frameMap = frameMapBuilder.buildFrameMap(this);
     }
 
     public FrameMap getFrameMap() {
