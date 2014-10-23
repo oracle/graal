@@ -152,7 +152,7 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitAddress(StackSlot address) {
+    public Variable emitAddress(StackSlotValue address) {
         throw GraalInternalError.unimplemented();
     }
 

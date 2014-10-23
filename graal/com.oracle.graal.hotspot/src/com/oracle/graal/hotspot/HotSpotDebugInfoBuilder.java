@@ -52,7 +52,7 @@ public class HotSpotDebugInfoBuilder extends DebugInfoBuilder {
         if (state.outerFrameState() != null) {
             lockDepth += state.outerFrameState().nestedLockDepth();
         }
-        StackSlot slot = lockStack.makeLockSlot(lockDepth);
+        StackSlotValue slot = lockStack.makeLockSlot(lockDepth);
         ValueNode lock = state.lockAt(lockIndex);
         JavaValue object = toValue(lock);
         boolean eliminated = object instanceof VirtualObject && state.monitorIdAt(lockIndex) != null;

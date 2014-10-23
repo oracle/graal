@@ -112,7 +112,7 @@ public interface LIRGeneratorTool extends ArithmeticLIRGenerator {
 
     Value emitAddress(Value base, long displacement, Value index, int scale);
 
-    Value emitAddress(StackSlot slot);
+    Value emitAddress(StackSlotValue slot);
 
     void emitMembar(int barriers);
 

@@ -196,7 +196,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitAddress(StackSlot address) {
+    public Variable emitAddress(StackSlotValue address) {
         Variable result = newVariable(LIRKind.value(target().wordKind));
         append(new StackLeaOp(result, address));
         return result;

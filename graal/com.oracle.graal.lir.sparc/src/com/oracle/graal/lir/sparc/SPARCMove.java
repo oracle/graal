@@ -134,9 +134,9 @@ public class SPARCMove {
 
         @Def({REG}) protected AllocatableValue result;
         @Use({REG}) protected AllocatableValue input;
-        @Use({STACK}) protected StackSlot temp;
+        @Use({STACK}) protected StackSlotValue temp;
 
-        public MoveFpGp(AllocatableValue result, AllocatableValue input, StackSlot temp) {
+        public MoveFpGp(AllocatableValue result, AllocatableValue input, StackSlotValue temp) {
             super();
             this.result = result;
             this.input = input;
@@ -456,11 +456,11 @@ public class SPARCMove {
     public static class StackLoadAddressOp extends SPARCLIRInstruction implements SPARCTailDelayedLIRInstruction {
 
         @Def({REG}) protected AllocatableValue result;
-        @Use({STACK, UNINITIALIZED}) protected StackSlot slot;
+        @Use({STACK, UNINITIALIZED}) protected StackSlotValue slot;
 
-        public StackLoadAddressOp(AllocatableValue result, StackSlot slot) {
+        public StackLoadAddressOp(AllocatableValue result, StackSlotValue address) {
             this.result = result;
-            this.slot = slot;
+            this.slot = address;
         }
 
         @Override

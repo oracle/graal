@@ -130,7 +130,7 @@ public interface HotSpotLIRGenerator extends LIRGeneratorTool {
     /**
      * Gets a stack slot for a lock at a given lock nesting depth.
      */
-    StackSlot getLockSlot(int lockDepth);
+    StackSlotValue getLockSlot(int lockDepth);
 
     HotSpotProviders getProviders();
 

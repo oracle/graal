@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
+import static com.oracle.graal.api.code.ValueUtil.*;
+
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
@@ -37,7 +39,7 @@ public class AMD64HotSpotLIRGenerationResult extends LIRGenerationResultBase {
      * deoptimization. The return address slot in the callee is overwritten with the address of a
      * deoptimization stub.
      */
-    private StackSlot deoptimizationRescueSlot;
+    private VirtualStackSlot deoptimizationRescueSlot;
     private final Object stub;
 
     /**
@@ -52,11 +54,15 @@ public class AMD64HotSpotLIRGenerationResult extends LIRGenerationResultBase {
     }
 
     StackSlot getDeoptimizationRescueSlot() {
-        return deoptimizationRescueSlot;
+        if (deoptimizationRescueSlot == null) {
+            return null;
+        }
+        assert isStackSlot(deoptimizationRescueSlot);
+        return asStackSlot(deoptimizationRescueSlot);
     }
 
-    public final void setDeoptimizationRescueSlot(StackSlot deoptimizationRescueSlot) {
-        this.deoptimizationRescueSlot = deoptimizationRescueSlot;
+    public final void setDeoptimizationRescueSlot(VirtualStackSlot stackSlot) {
+        this.deoptimizationRescueSlot = stackSlot;
     }
 
     Stub getStub() {

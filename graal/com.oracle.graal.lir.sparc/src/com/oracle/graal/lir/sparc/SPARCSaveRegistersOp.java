@@ -22,13 +22,15 @@
  */
 package com.oracle.graal.lir.sparc;
 
+import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.asm.sparc.SPARCAssembler.*;
 import com.oracle.graal.asm.sparc.*;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Lddf;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Stx;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 import com.oracle.graal.lir.asm.*;
@@ -48,7 +50,7 @@ public class SPARCSaveRegistersOp extends SPARCLIRInstruction implements SaveReg
     /**
      * The slots to which the registers are saved.
      */
-    @Def(STACK) protected final StackSlot[] slots;
+    @Def(STACK) protected final StackSlotValue[] slots;
 
     /**
      * Specifies if {@link #remove(Set)} should have an effect.
@@ -59,12 +61,13 @@ public class SPARCSaveRegistersOp extends SPARCLIRInstruction implements SaveReg
      *
      * @param savedRegisters the registers saved by this operation which may be subject to
      *            {@linkplain #remove(Set) pruning}
-     * @param slots the slots to which the registers are saved
+     * @param savedRegisterLocations the slots to which the registers are saved
      * @param supportsRemove determines if registers can be {@linkplain #remove(Set) pruned}
      */
-    public SPARCSaveRegistersOp(Register[] savedRegisters, StackSlot[] slots, boolean supportsRemove) {
+    public SPARCSaveRegistersOp(Register[] savedRegisters, StackSlotValue[] savedRegisterLocations, boolean supportsRemove) {
+        assert Arrays.asList(savedRegisterLocations).stream().allMatch(ValueUtil::isVirtualStackSlot);
         this.savedRegisters = savedRegisters;
-        this.slots = slots;
+        this.slots = savedRegisterLocations;
         this.supportsRemove = supportsRemove;
     }
 
@@ -86,12 +89,13 @@ public class SPARCSaveRegistersOp extends SPARCLIRInstruction implements SaveReg
         // Now save the registers
         for (int i = 0; i < savedRegisters.length; i++) {
             if (savedRegisters[i] != null) {
-                saveRegister(crb, masm, slots[i], savedRegisters[i]);
+                assert isStackSlot(slots[i]) : "not a StackSlot: " + slots[i];
+                saveRegister(crb, masm, asStackSlot(slots[i]), savedRegisters[i]);
             }
         }
     }
 
-    public StackSlot[] getSlots() {
+    public StackSlotValue[] getSlots() {
         return slots;
     }
 
@@ -133,7 +137,8 @@ public class SPARCSaveRegistersOp extends SPARCLIRInstruction implements SaveReg
             for (int i = 0; i < savedRegisters.length; i++) {
                 if (savedRegisters[i] != null) {
                     keys[mapIndex] = savedRegisters[i];
-                    StackSlot slot = slots[i];
+                    assert isStackSlot(slots[i]) : "not a StackSlot: " + slots[i];
+                    StackSlot slot = asStackSlot(slots[i]);
                     values[mapIndex] = indexForStackSlot(frameMap, slot);
                     mapIndex++;
                 }

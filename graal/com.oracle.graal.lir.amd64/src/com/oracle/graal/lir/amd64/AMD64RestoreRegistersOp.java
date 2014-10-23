@@ -22,7 +22,10 @@
  */
 package com.oracle.graal.lir.amd64;
 
+import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
+
+import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.asm.amd64.*;
@@ -38,15 +41,16 @@ public class AMD64RestoreRegistersOp extends AMD64LIRInstruction {
     /**
      * The slots from which the registers are restored.
      */
-    @Use(STACK) protected final StackSlot[] slots;
+    @Use(STACK) protected final StackSlotValue[] slots;
 
     /**
      * The operation that saved the registers restored by this operation.
      */
     private final AMD64SaveRegistersOp save;
 
-    public AMD64RestoreRegistersOp(StackSlot[] source, AMD64SaveRegistersOp save) {
-        this.slots = source;
+    public AMD64RestoreRegistersOp(StackSlotValue[] values, AMD64SaveRegistersOp save) {
+        assert Arrays.asList(values).stream().allMatch(ValueUtil::isVirtualStackSlot);
+        this.slots = values;
         this.save = save;
     }
 
@@ -64,7 +68,8 @@ public class AMD64RestoreRegistersOp extends AMD64LIRInstruction {
         Register[] savedRegisters = getSavedRegisters();
         for (int i = 0; i < savedRegisters.length; i++) {
             if (savedRegisters[i] != null) {
-                restoreRegister(crb, masm, savedRegisters[i], slots[i]);
+                assert isStackSlot(slots[i]) : "not a StackSlot: " + slots[i];
+                restoreRegister(crb, masm, savedRegisters[i], asStackSlot(slots[i]));
             }
         }
     }

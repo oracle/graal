@@ -20,28 +20,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.amd64;
+package com.oracle.graal.api.code;
 
-import static com.oracle.graal.api.code.ValueUtil.*;
-
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.lir.*;
 
-public class AMD64FrameMapBuilder extends ForwardingFrameMapBuilder {
+public abstract class StackSlotValue extends AllocatableValue {
 
-    public AMD64FrameMapBuilder(FrameMapFactory factory, CodeCacheProvider codeCache, RegisterConfig registerConfig) {
-        super(factory, codeCache, registerConfig);
-    }
+    private static final long serialVersionUID = 5106407801795483337L;
 
-    /**
-     * For non-leaf methods, RBP is preserved in the special stack slot required by the HotSpot
-     * runtime for walking/inspecting frames of such methods.
-     */
-    public StackSlotValue allocateRBPSpillSlot() {
-        StackSlotValue reservedSlot = allocateSpillSlot(LIRKind.value(Kind.Long));
-        assert asStackSlot(reservedSlot).getRawOffset() == -16 : asStackSlot(reservedSlot).getRawOffset();
-        return reservedSlot;
+    public StackSlotValue(LIRKind lirKind) {
+        super(lirKind);
     }
 
 }

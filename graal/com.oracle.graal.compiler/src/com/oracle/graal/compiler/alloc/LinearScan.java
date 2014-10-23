@@ -260,7 +260,7 @@ public final class LinearScan {
         } else if (interval.spillSlot() != null) {
             interval.assignLocation(interval.spillSlot());
         } else {
-            StackSlot slot = frameMapBuilder.allocateSpillSlot(interval.kind());
+            VirtualStackSlot slot = frameMapBuilder.allocateSpillSlot(interval.kind());
             interval.setSpillSlot(slot);
             interval.assignLocation(slot);
         }
@@ -1556,7 +1556,7 @@ public final class LinearScan {
     // * Phase 7: assign register numbers back to LIR
     // (includes computation of debug information and oop maps)
 
-    static StackSlot canonicalSpillOpr(Interval interval) {
+    static StackSlotValue canonicalSpillOpr(Interval interval) {
         assert interval.spillSlot() != null : "canonical spill slot not set";
         return interval.spillSlot();
     }

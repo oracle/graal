@@ -68,7 +68,7 @@ import com.oracle.graal.sparc.SPARC.CPUFeature;
  */
 public abstract class SPARCLIRGenerator extends LIRGenerator {
 
-    private StackSlot tmpStackSlot;
+    private StackSlotValue tmpStackSlot;
 
     private class SPARCSpillMoveFactory implements LIR.SpillMoveFactory {
 
@@ -189,7 +189,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Value emitAddress(StackSlot address) {
+    public Value emitAddress(StackSlotValue address) {
         Variable result = newVariable(LIRKind.value(target().wordKind));
         append(new StackLoadAddressOp(result, address));
         return result;
@@ -911,14 +911,14 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
 
     private void moveBetweenFpGp(AllocatableValue dst, AllocatableValue src) {
         if (!getArchitecture().getFeatures().contains(CPUFeature.VIS3)) {
-            StackSlot tempSlot = getTempSlot(LIRKind.value(Kind.Long));
+            StackSlotValue tempSlot = getTempSlot(LIRKind.value(Kind.Long));
             append(new MoveFpGp(dst, src, tempSlot));
         } else {
             append(new MoveFpGpVIS3(dst, src));
         }
     }
 
-    private StackSlot getTempSlot(LIRKind kind) {
+    private StackSlotValue getTempSlot(LIRKind kind) {
         if (tmpStackSlot == null) {
             tmpStackSlot = getResult().getFrameMapBuilder().allocateSpillSlot(kind);
         }

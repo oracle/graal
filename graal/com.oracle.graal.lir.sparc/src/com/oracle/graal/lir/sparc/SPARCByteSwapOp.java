@@ -40,7 +40,7 @@ public class SPARCByteSwapOp extends SPARCLIRInstruction implements SPARCTailDel
     @Def({REG, HINT}) protected Value result;
     @Use({REG}) protected Value input;
     @Temp({REG}) protected Value tempIndex;
-    @Use({STACK}) protected StackSlot tmpSlot;
+    @Use({STACK}) protected StackSlotValue tmpSlot;
 
     public SPARCByteSwapOp(LIRGeneratorTool tool, Value result, Value input) {
         this.result = result;

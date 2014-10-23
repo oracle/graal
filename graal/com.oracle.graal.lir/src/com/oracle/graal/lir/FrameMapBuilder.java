@@ -42,7 +42,7 @@ public interface FrameMapBuilder {
      * @param kind The kind of the spill slot to be reserved.
      * @return A spill slot denoting the reserved memory area.
      */
-    StackSlot allocateSpillSlot(LIRKind kind);
+    VirtualStackSlot allocateSpillSlot(LIRKind kind);
 
     /**
      * Reserves a number of contiguous slots in the frame of the method being compiled. If the
@@ -57,7 +57,7 @@ public interface FrameMapBuilder {
      *            list
      * @return the first reserved stack slot (i.e., at the lowest address)
      */
-    StackSlot allocateStackSlots(int slots, BitSet objects, List<StackSlot> outObjectStackSlots);
+    VirtualStackSlot allocateStackSlots(int slots, BitSet objects, List<StackSlot> outObjectStackSlots);
 
     RegisterConfig getRegisterConfig();
 
@@ -67,7 +67,7 @@ public interface FrameMapBuilder {
      * Frees a spill slot that was obtained via {@link #allocateSpillSlot(LIRKind)} such that it can
      * be reused for the next allocation request for the same kind of slot.
      */
-    void freeSpillSlot(StackSlot slot);
+    void freeSpillSlot(StackSlotValue reservedSlot);
 
     /**
      * Informs the frame map that the compiled code calls a particular method, which may need stack

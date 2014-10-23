@@ -452,7 +452,7 @@ public final class Interval {
     /**
      * The stack slot to which all splits of this interval are spilled if necessary.
      */
-    private StackSlot spillSlot;
+    private StackSlotValue spillSlot;
 
     /**
      * The kind of this interval.
@@ -615,11 +615,11 @@ public final class Interval {
     /**
      * Gets the canonical spill slot for this interval.
      */
-    StackSlot spillSlot() {
+    StackSlotValue spillSlot() {
         return splitParent().spillSlot;
     }
 
-    void setSpillSlot(StackSlot slot) {
+    void setSpillSlot(StackSlotValue slot) {
         assert splitParent().spillSlot == null : "connot overwrite existing spill slot";
         splitParent().spillSlot = slot;
     }

@@ -33,10 +33,10 @@ public final class HotSpotMonitorValue extends AbstractValue implements JavaValu
     private static final long serialVersionUID = 8241681800464483691L;
 
     private JavaValue owner;
-    private final StackSlot slot;
+    private final StackSlotValue slot;
     private final boolean eliminated;
 
-    public HotSpotMonitorValue(JavaValue owner, StackSlot slot, boolean eliminated) {
+    public HotSpotMonitorValue(JavaValue owner, StackSlotValue slot, boolean eliminated) {
         super(LIRKind.Illegal);
         this.owner = owner;
         this.slot = slot;

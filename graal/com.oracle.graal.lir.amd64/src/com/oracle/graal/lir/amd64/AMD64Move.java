@@ -339,9 +339,10 @@ public class AMD64Move {
     public static class StackLeaOp extends AMD64LIRInstruction {
 
         @Def({REG}) protected AllocatableValue result;
-        @Use({STACK, UNINITIALIZED}) protected StackSlot slot;
+        @Use({STACK, UNINITIALIZED}) protected StackSlotValue slot;
 
-        public StackLeaOp(AllocatableValue result, StackSlot slot) {
+        public StackLeaOp(AllocatableValue result, StackSlotValue slot) {
+            assert isVirtualStackSlot(slot) || isStackSlot(slot) : "Not a stack slot: " + slot;
             this.result = result;
             this.slot = slot;
         }

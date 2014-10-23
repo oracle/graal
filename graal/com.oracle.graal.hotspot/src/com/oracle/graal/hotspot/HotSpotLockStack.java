@@ -34,7 +34,7 @@ import com.oracle.graal.lir.*;
  */
 public class HotSpotLockStack {
 
-    private StackSlot[] locks;
+    private StackSlotValue[] locks;
     private final FrameMapBuilder frameMapBuilder;
     private final LIRKind slotKind;
 
@@ -46,7 +46,7 @@ public class HotSpotLockStack {
     /**
      * Gets a stack slot for a lock at a given lock nesting depth, allocating it first if necessary.
      */
-    public StackSlot makeLockSlot(int lockDepth) {
+    public StackSlotValue makeLockSlot(int lockDepth) {
         if (locks == null) {
             locks = new StackSlot[lockDepth + 1];
         } else if (locks.length < lockDepth + 1) {

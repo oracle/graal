@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.lir;
 
+import static com.oracle.graal.api.code.ValueUtil.*;
+
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
@@ -65,8 +67,8 @@ public class ForwardingFrameMapBuilder implements FrameMapBuilder {
         return codeCache;
     }
 
-    public void freeSpillSlot(StackSlot slot) {
-        frameMap.freeSpillSlot(slot);
+    public void freeSpillSlot(StackSlotValue slot) {
+        frameMap.freeSpillSlot(asStackSlot(slot));
     }
 
     public void callsMethod(CallingConvention cc) {
