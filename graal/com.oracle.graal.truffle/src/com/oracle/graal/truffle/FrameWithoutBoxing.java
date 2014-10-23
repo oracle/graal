@@ -51,7 +51,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         this.arguments = arguments;
         int size = descriptor.getSize();
         this.locals = new Object[size];
-        Arrays.fill(locals, descriptor.getTypeConversion().getDefaultValue());
+        Arrays.fill(locals, descriptor.getDefaultValue());
         this.primitiveLocals = new long[size];
         this.tags = new byte[size];
     }
@@ -252,12 +252,6 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         byte tag = this.getTags()[slotIndex];
         if (tag != accessKind.ordinal()) {
             CompilerDirectives.transferToInterpreter();
-            if (slot.getKind() == accessKind || tag == 0) {
-                descriptor.getTypeConversion().updateFrameSlot(this, slot, getValue(slot));
-                if (getTags()[slotIndex] == accessKind.ordinal()) {
-                    return;
-                }
-            }
             throw new FrameSlotTypeException();
         }
     }
@@ -293,7 +287,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         int newSize = descriptor.getSize();
         if (newSize > oldSize) {
             locals = Arrays.copyOf(locals, newSize);
-            Arrays.fill(locals, oldSize, newSize, descriptor.getTypeConversion().getDefaultValue());
+            Arrays.fill(locals, oldSize, newSize, descriptor.getDefaultValue());
             primitiveLocals = Arrays.copyOf(primitiveLocals, newSize);
             tags = Arrays.copyOf(tags, newSize);
             return true;

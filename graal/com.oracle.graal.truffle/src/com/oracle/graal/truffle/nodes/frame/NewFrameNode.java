@@ -177,7 +177,7 @@ public class NewFrameNode extends FixedWithNextNode implements IterableNodeType,
 
         if (frameSize > 0) {
             FrameDescriptor frameDescriptor = getConstantFrameDescriptor();
-            ConstantNode objectDefault = ConstantNode.forConstant(getSnippetReflection().forObject(frameDescriptor.getTypeConversion().getDefaultValue()), tool.getMetaAccessProvider(), graph());
+            ConstantNode objectDefault = ConstantNode.forConstant(getSnippetReflection().forObject(frameDescriptor.getDefaultValue()), tool.getMetaAccessProvider(), graph());
             ConstantNode tagDefault = ConstantNode.forByte((byte) 0, graph());
             Arrays.fill(objectArrayEntryState, objectDefault);
             Arrays.fill(tagArrayEntryState, tagDefault);
