@@ -272,11 +272,9 @@ public abstract class FrameMap {
      *            for guaranteeing that each such object pointer slot is initialized before any
      *            instruction that uses a reference map. Without this guarantee, the garbage
      *            collector could see garbage object values.
-     * @param outObjectStackSlots if non-null, the object pointer slots allocated are added to this
-     *            list
      * @return the first reserved stack slot (i.e., at the lowest address)
      */
-    public StackSlot allocateStackSlots(int slots, BitSet objects, List<StackSlot> outObjectStackSlots) {
+    protected StackSlot allocateStackSlots(int slots, BitSet objects) {
         assert frameSize == -1 : "frame size must not yet be fixed";
         if (slots == 0) {
             return null;
@@ -290,10 +288,7 @@ public abstract class FrameMap {
                 StackSlot objectSlot = null;
                 if (objects.get(slotIndex)) {
                     objectSlot = allocateNewSpillSlot(LIRKind.reference(Kind.Object), slotIndex * getTarget().wordSize);
-                    objectStackSlots.add(objectSlot);
-                    if (outObjectStackSlots != null) {
-                        outObjectStackSlots.add(objectSlot);
-                    }
+                    addObjectStackSlot(objectSlot);
                 }
                 if (slotIndex == 0) {
                     if (objectSlot != null) {
@@ -309,6 +304,10 @@ public abstract class FrameMap {
         } else {
             return allocateNewSpillSlot(LIRKind.value(getTarget().wordKind), 0);
         }
+    }
+
+    protected void addObjectStackSlot(StackSlot objectSlot) {
+        objectStackSlots.add(objectSlot);
     }
 
     public ReferenceMap initReferenceMap(boolean hasRegisters) {

@@ -71,7 +71,37 @@ public class ForwardingFrameMapBuilder implements FrameMapBuilder {
     }
 
     public StackSlot allocateStackSlots(int slots, BitSet objects, List<StackSlot> outObjectStackSlots) {
-        return frameMap.allocateStackSlots(slots, objects, outObjectStackSlots);
+        if (slots == 0) {
+            return null;
+        }
+        frameMap.spillSize += (slots * frameMap.getTarget().wordSize);
+
+        if (!objects.isEmpty()) {
+            assert objects.length() <= slots;
+            StackSlot result = null;
+            for (int slotIndex = 0; slotIndex < slots; slotIndex++) {
+                StackSlot objectSlot = null;
+                if (objects.get(slotIndex)) {
+                    objectSlot = frameMap.allocateNewSpillSlot(LIRKind.reference(Kind.Object), slotIndex * frameMap.getTarget().wordSize);
+                    frameMap.addObjectStackSlot(objectSlot);
+                    if (outObjectStackSlots != null) {
+                        outObjectStackSlots.add(objectSlot);
+                    }
+                }
+                if (slotIndex == 0) {
+                    if (objectSlot != null) {
+                        result = objectSlot;
+                    } else {
+                        result = frameMap.allocateNewSpillSlot(LIRKind.value(frameMap.getTarget().wordKind), 0);
+                    }
+                }
+            }
+            assert result != null;
+            return result;
+
+        } else {
+            return frameMap.allocateNewSpillSlot(LIRKind.value(frameMap.getTarget().wordKind), 0);
+        }
     }
 
     public RegisterConfig getRegisterConfig() {
