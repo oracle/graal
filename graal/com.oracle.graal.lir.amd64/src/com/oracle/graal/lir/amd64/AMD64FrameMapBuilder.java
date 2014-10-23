@@ -38,8 +38,8 @@ public class AMD64FrameMapBuilder extends ForwardingFrameMapBuilder {
      * For non-leaf methods, RBP is preserved in the special stack slot required by the HotSpot
      * runtime for walking/inspecting frames of such methods.
      */
-    public StackSlotValue allocateRBPSpillSlot() {
-        StackSlotValue reservedSlot = allocateSpillSlot(LIRKind.value(Kind.Long));
+    public VirtualStackSlot allocateRBPSpillSlot() {
+        VirtualStackSlot reservedSlot = allocateSpillSlot(LIRKind.value(Kind.Long));
         assert asStackSlot(reservedSlot).getRawOffset() == -16 : asStackSlot(reservedSlot).getRawOffset();
         return reservedSlot;
     }

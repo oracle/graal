@@ -22,12 +22,11 @@
  */
 package com.oracle.graal.lir;
 
-import static com.oracle.graal.api.code.ValueUtil.*;
-
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.asm.*;
 import com.oracle.graal.lir.gen.*;
 
 /**
@@ -51,8 +50,24 @@ public class ForwardingFrameMapBuilder implements FrameMapBuilder {
         this.frameMap = factory.newFrameMap(this);
     }
 
-    public StackSlot allocateSpillSlot(LIRKind kind) {
-        return frameMap.allocateSpillSlot(kind);
+    private Set<VirtualStackSlot> freedSlots;
+
+    public VirtualStackSlot allocateSpillSlot(LIRKind kind) {
+        if (freedSlots != null) {
+            for (Iterator<VirtualStackSlot> iter = freedSlots.iterator(); iter.hasNext();) {
+                VirtualStackSlot s = iter.next();
+                if (s.getLIRKind().equals(kind)) {
+                    iter.remove();
+                    if (freedSlots.isEmpty()) {
+                        freedSlots = null;
+                    }
+                    return s;
+                }
+            }
+        }
+        int size = frameMap.spillSlotSize(kind);
+        frameMap.spillSize = NumUtil.roundUp(frameMap.spillSize + size, size);
+        return frameMap.allocateNewSpillSlot(kind, 0);
     }
 
     public StackSlot allocateStackSlots(int slots, BitSet objects, List<StackSlot> outObjectStackSlots) {
@@ -67,8 +82,11 @@ public class ForwardingFrameMapBuilder implements FrameMapBuilder {
         return codeCache;
     }
 
-    public void freeSpillSlot(StackSlotValue slot) {
-        frameMap.freeSpillSlot(asStackSlot(slot));
+    public void freeSpillSlot(VirtualStackSlot slot) {
+        if (freedSlots == null) {
+            freedSlots = new HashSet<>();
+        }
+        freedSlots.add(slot);
     }
 
     public void callsMethod(CallingConvention cc) {
@@ -76,6 +94,20 @@ public class ForwardingFrameMapBuilder implements FrameMapBuilder {
     }
 
     public FrameMap buildFrameMap(LIRGenerationResult res) {
+        if (freedSlots != null) {
+            // If the freed slots cover the complete spill area (except for the return
+            // address slot), then the spill size is reset to its initial value.
+            // Without this, frameNeedsAllocating() would never return true.
+            int total = 0;
+            for (VirtualStackSlot s : freedSlots) {
+                total += frameMap.getTarget().getSizeInBytes(s.getKind());
+            }
+            if (total == frameMap.spillSize - frameMap.initialSpillSize) {
+                // reset spill area size
+                frameMap.spillSize = frameMap.initialSpillSize;
+            }
+            freedSlots = null;
+        }
         frameMap.finish();
         return frameMap;
     }

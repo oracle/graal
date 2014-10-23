@@ -88,7 +88,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         /**
          * The slot reserved for saving RBP.
          */
-        final StackSlotValue reservedSlot;
+        final VirtualStackSlot reservedSlot;
 
         public SaveRbp(NoOp placeholder) {
             this.placeholder = placeholder;

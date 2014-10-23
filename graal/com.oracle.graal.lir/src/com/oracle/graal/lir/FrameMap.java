@@ -172,21 +172,6 @@ public abstract class FrameMap {
      * be requested.
      */
     public void finish() {
-        assert this.frameSize == -1 : "must only be set once";
-        if (freedSlots != null) {
-            // If the freed slots cover the complete spill area (except for the return
-            // address slot), then the spill size is reset to its initial value.
-            // Without this, frameNeedsAllocating() would never return true.
-            int total = 0;
-            for (StackSlot s : freedSlots) {
-                total += getTarget().getSizeInBytes(s.getKind());
-            }
-            if (total == spillSize - initialSpillSize) {
-                // reset spill area size
-                spillSize = initialSpillSize;
-            }
-            freedSlots = null;
-        }
         frameSize = currentFrameSize();
         if (frameSize > getRegisterConfig().getMaximumFrameSize()) {
             throw new BailoutException("Frame size (%d) exceeded maximum allowed frame size (%d).", frameSize, getRegisterConfig().getMaximumFrameSize());
@@ -271,36 +256,11 @@ public abstract class FrameMap {
      * @param kind The kind of the spill slot to be reserved.
      * @return A spill slot denoting the reserved memory area.
      */
-    public StackSlot allocateSpillSlot(LIRKind kind) {
+    protected StackSlot allocateSpillSlot(LIRKind kind) {
         assert frameSize == -1 : "frame size must not yet be fixed";
-        if (freedSlots != null) {
-            for (Iterator<StackSlot> iter = freedSlots.iterator(); iter.hasNext();) {
-                StackSlot s = iter.next();
-                if (s.getLIRKind().equals(kind)) {
-                    iter.remove();
-                    if (freedSlots.isEmpty()) {
-                        freedSlots = null;
-                    }
-                    return s;
-                }
-            }
-        }
         int size = spillSlotSize(kind);
         spillSize = NumUtil.roundUp(spillSize + size, size);
         return allocateNewSpillSlot(kind, 0);
-    }
-
-    private Set<StackSlot> freedSlots;
-
-    /**
-     * Frees a spill slot that was obtained via {@link #allocateSpillSlot(LIRKind)} such that it can
-     * be reused for the next allocation request for the same kind of slot.
-     */
-    public void freeSpillSlot(StackSlot slot) {
-        if (freedSlots == null) {
-            freedSlots = new HashSet<>();
-        }
-        freedSlots.add(slot);
     }
 
     /**
