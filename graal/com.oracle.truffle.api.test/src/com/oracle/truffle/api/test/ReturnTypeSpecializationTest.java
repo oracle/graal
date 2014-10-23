@@ -30,7 +30,7 @@ import com.oracle.truffle.api.nodes.*;
 
 /**
  * <h3>Specializing Return Types</h3>
- * 
+ *
  * <p>
  * In order to avoid boxing and/or type casts on the return value of a node, the return value the
  * method for executing a node can have a specific type and need not be of type
@@ -124,6 +124,7 @@ public class ReturnTypeSpecializationTest {
                 int result = value.executeInt(frame);
                 frame.setInt(slot, result);
             } catch (UnexpectedResultException e) {
+                slot.setKind(FrameSlotKind.Object);
                 frame.setObject(slot, e.getResult());
                 replace(new ObjectAssignLocal(slot, value));
             }
@@ -143,6 +144,7 @@ public class ReturnTypeSpecializationTest {
         @Override
         Object execute(VirtualFrame frame) {
             Object o = value.execute(frame);
+            slot.setKind(FrameSlotKind.Object);
             frame.setObject(slot, o);
             return null;
         }

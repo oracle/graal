@@ -27,7 +27,6 @@ package com.oracle.truffle.api.frame;
 import java.util.*;
 
 import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.impl.*;
 
 /**
  * Descriptor of the slots of frame objects. Multiple frame instances are associated with one such
@@ -35,21 +34,29 @@ import com.oracle.truffle.api.impl.*;
  */
 public final class FrameDescriptor implements Cloneable {
 
-    private final FrameTypeConversion typeConversion;
+    private final Object defaultValue;
     private final ArrayList<FrameSlot> slots;
     private final HashMap<Object, FrameSlot> identifierToSlotMap;
     private Assumption version;
     private HashMap<Object, Assumption> identifierToNotInFrameAssumptionMap;
 
     public FrameDescriptor() {
-        this(DefaultFrameTypeConversion.getInstance());
+        this(null);
     }
 
-    public FrameDescriptor(FrameTypeConversion typeConversion) {
-        this.typeConversion = typeConversion;
+    public FrameDescriptor(Object defaultValue) {
+        this.defaultValue = defaultValue;
         slots = new ArrayList<>();
         identifierToSlotMap = new HashMap<>();
         version = createVersion();
+    }
+
+    public static FrameDescriptor create() {
+        return new FrameDescriptor();
+    }
+
+    public static FrameDescriptor create(Object defaultValue) {
+        return new FrameDescriptor(defaultValue);
     }
 
     public FrameSlot addFrameSlot(Object identifier) {
@@ -91,6 +98,14 @@ public final class FrameDescriptor implements Cloneable {
         return addFrameSlot(identifier, kind);
     }
 
+    public FrameSlot findOrAddFrameSlot(Object identifier, Object info, FrameSlotKind kind) {
+        FrameSlot result = findFrameSlot(identifier);
+        if (result != null) {
+            return result;
+        }
+        return addFrameSlot(identifier, info, kind);
+    }
+
     public void removeFrameSlot(Object identifier) {
         CompilerAsserts.neverPartOfCompilation("interpreter-only.  includes hashmap operations.");
         assert identifierToSlotMap.containsKey(identifier);
@@ -118,7 +133,7 @@ public final class FrameDescriptor implements Cloneable {
     }
 
     public FrameDescriptor copy() {
-        FrameDescriptor clonedFrameDescriptor = new FrameDescriptor(this.typeConversion);
+        FrameDescriptor clonedFrameDescriptor = new FrameDescriptor(this.defaultValue);
         for (int i = 0; i < this.getSlots().size(); i++) {
             Object identifier = this.getSlots().get(i).getIdentifier();
             clonedFrameDescriptor.addFrameSlot(identifier);
@@ -127,7 +142,7 @@ public final class FrameDescriptor implements Cloneable {
     }
 
     public FrameDescriptor shallowCopy() {
-        FrameDescriptor clonedFrameDescriptor = new FrameDescriptor(this.typeConversion);
+        FrameDescriptor clonedFrameDescriptor = new FrameDescriptor(this.defaultValue);
         clonedFrameDescriptor.slots.addAll(slots);
         clonedFrameDescriptor.identifierToSlotMap.putAll(identifierToSlotMap);
         return clonedFrameDescriptor;
@@ -146,8 +161,8 @@ public final class FrameDescriptor implements Cloneable {
         return Truffle.getRuntime().createAssumption("frame version");
     }
 
-    public FrameTypeConversion getTypeConversion() {
-        return typeConversion;
+    public Object getDefaultValue() {
+        return defaultValue;
     }
 
     public Assumption getNotInFrameAssumption(Object identifier) {

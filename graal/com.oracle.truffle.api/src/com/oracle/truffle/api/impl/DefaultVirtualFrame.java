@@ -45,7 +45,7 @@ final class DefaultVirtualFrame implements VirtualFrame {
         this.descriptor = descriptor;
         this.arguments = arguments;
         this.locals = new Object[descriptor.getSize()];
-        Arrays.fill(locals, descriptor.getTypeConversion().getDefaultValue());
+        Arrays.fill(locals, descriptor.getDefaultValue());
         this.tags = new byte[descriptor.getSize()];
     }
 
@@ -178,12 +178,6 @@ final class DefaultVirtualFrame implements VirtualFrame {
         }
         byte tag = tags[slotIndex];
         if (accessKind == FrameSlotKind.Object ? tag != 0 : tag != accessKind.ordinal()) {
-            if (slot.getKind() == accessKind || tag == 0) {
-                descriptor.getTypeConversion().updateFrameSlot(this, slot, getValue(slot));
-                if (tags[slotIndex] == accessKind.ordinal()) {
-                    return;
-                }
-            }
             throw new FrameSlotTypeException();
         }
     }
@@ -193,7 +187,7 @@ final class DefaultVirtualFrame implements VirtualFrame {
         int newSize = descriptor.getSize();
         if (newSize > oldSize) {
             locals = Arrays.copyOf(locals, newSize);
-            Arrays.fill(locals, oldSize, newSize, descriptor.getTypeConversion().getDefaultValue());
+            Arrays.fill(locals, oldSize, newSize, descriptor.getDefaultValue());
             tags = Arrays.copyOf(tags, newSize);
             return true;
         }

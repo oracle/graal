@@ -117,6 +117,7 @@ public class FrameSlotTypeSpecializationTest {
             if (o instanceof Integer) {
                 frame.setInt(slot, (Integer) o);
             } else {
+                slot.setKind(FrameSlotKind.Object);
                 frame.setObject(slot, o);
                 this.replace(new ObjectAssignLocal(slot, value));
             }
@@ -136,6 +137,7 @@ public class FrameSlotTypeSpecializationTest {
         @Override
         Object execute(VirtualFrame frame) {
             Object o = value.execute(frame);
+            slot.setKind(FrameSlotKind.Object);
             frame.setObject(slot, o);
             return null;
         }
