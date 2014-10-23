@@ -30,7 +30,7 @@ import com.oracle.graal.api.meta.*;
 /**
  * A simple forwarder to {@link FrameMap}.
  */
-public class FrameMapBuilderImpl implements FrameMapBuilder {
+public class ForwardingFrameMapBuilder implements FrameMapBuilder {
 
     @FunctionalInterface
     public interface FrameMapFactory {
@@ -40,7 +40,7 @@ public class FrameMapBuilderImpl implements FrameMapBuilder {
     private final FrameMap frameMap;
     private final RegisterConfig registerConfig;
 
-    public FrameMapBuilderImpl(FrameMapFactory factory, CodeCacheProvider codeCache, RegisterConfig registerConfig) {
+    public ForwardingFrameMapBuilder(FrameMapFactory factory, CodeCacheProvider codeCache, RegisterConfig registerConfig) {
         this.registerConfig = registerConfig == null ? codeCache.getRegisterConfig() : registerConfig;
         this.frameMap = factory.newFrameMap(this);
     }
