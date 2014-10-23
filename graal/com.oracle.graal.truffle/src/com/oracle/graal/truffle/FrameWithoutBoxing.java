@@ -37,13 +37,13 @@ import com.oracle.truffle.api.frame.*;
 public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame {
     private static final long OBJECT_BASE_OFFSET = Unsafe.ARRAY_OBJECT_BASE_OFFSET;
     private static final long OBJECT_INDEX_SCALE = Unsafe.ARRAY_OBJECT_INDEX_SCALE;
-    private static final long PRIMITIVE_BASE_OFFSET = Unsafe.ARRAY_INT_BASE_OFFSET;
-    private static final long PRIMITIVE_INDEX_SCALE = Unsafe.ARRAY_INT_INDEX_SCALE * 2;
+    private static final long PRIMITIVE_BASE_OFFSET = Unsafe.ARRAY_LONG_BASE_OFFSET;
+    private static final long PRIMITIVE_INDEX_SCALE = Unsafe.ARRAY_LONG_INDEX_SCALE;
 
     private final FrameDescriptor descriptor;
     private final Object[] arguments;
     private Object[] locals;
-    private int[] primitiveLocals;
+    private long[] primitiveLocals;
     private byte[] tags;
 
     public FrameWithoutBoxing(FrameDescriptor descriptor, Object[] arguments) {
@@ -52,7 +52,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         int size = descriptor.getSize();
         this.locals = new Object[size];
         Arrays.fill(locals, descriptor.getTypeConversion().getDefaultValue());
-        this.primitiveLocals = new int[size * 2];
+        this.primitiveLocals = new long[size];
         this.tags = new byte[size];
     }
 
@@ -76,8 +76,8 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         return CompilerDirectives.unsafeCast(locals, Object[].class, true, true);
     }
 
-    private int[] getPrimitiveLocals() {
-        return CompilerDirectives.unsafeCast(this.primitiveLocals, int[].class, true, true);
+    private long[] getPrimitiveLocals() {
+        return CompilerDirectives.unsafeCast(this.primitiveLocals, long[].class, true, true);
     }
 
     private byte[] getTags() {
@@ -294,7 +294,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         if (newSize > oldSize) {
             locals = Arrays.copyOf(locals, newSize);
             Arrays.fill(locals, oldSize, newSize, descriptor.getTypeConversion().getDefaultValue());
-            primitiveLocals = Arrays.copyOf(primitiveLocals, newSize * 2);
+            primitiveLocals = Arrays.copyOf(primitiveLocals, newSize);
             tags = Arrays.copyOf(tags, newSize);
             return true;
         }

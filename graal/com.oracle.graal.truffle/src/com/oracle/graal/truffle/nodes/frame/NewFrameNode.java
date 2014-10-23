@@ -168,21 +168,22 @@ public class NewFrameNode extends FixedWithNextNode implements IterableNodeType,
 
         VirtualObjectNode virtualFrame = VirtualOnlyInstanceNode.create(frameType, frameFields);
         VirtualObjectNode virtualFrameObjectArray = VirtualArrayNode.create((ResolvedJavaType) localsField.getType().getComponentType(), frameSize);
-        VirtualObjectNode virtualFramePrimitiveArray = VirtualArrayNode.create((ResolvedJavaType) primitiveLocalsField.getType().getComponentType(), frameSize * 2);
+        VirtualObjectNode virtualFramePrimitiveArray = VirtualArrayNode.create((ResolvedJavaType) primitiveLocalsField.getType().getComponentType(), frameSize);
         VirtualObjectNode virtualFrameTagArray = VirtualArrayNode.create((ResolvedJavaType) tagsField.getType().getComponentType(), frameSize);
 
         ValueNode[] objectArrayEntryState = new ValueNode[frameSize];
-        ValueNode[] primitiveArrayEntryState = new ValueNode[frameSize * 2];
+        ValueNode[] primitiveArrayEntryState = new ValueNode[frameSize];
         ValueNode[] tagArrayEntryState = new ValueNode[frameSize];
 
         if (frameSize > 0) {
             FrameDescriptor frameDescriptor = getConstantFrameDescriptor();
             ConstantNode objectDefault = ConstantNode.forConstant(getSnippetReflection().forObject(frameDescriptor.getTypeConversion().getDefaultValue()), tool.getMetaAccessProvider(), graph());
-            ConstantNode primitiveDefault = ConstantNode.forInt(0, graph());
             ConstantNode tagDefault = ConstantNode.forByte((byte) 0, graph());
             Arrays.fill(objectArrayEntryState, objectDefault);
-            Arrays.fill(primitiveArrayEntryState, primitiveDefault);
             Arrays.fill(tagArrayEntryState, tagDefault);
+            for (int i = 0; i < frameSize; i++) {
+                primitiveArrayEntryState[i] = initialPrimitiveValue(frameDescriptor.getSlots().get(i).getKind());
+            }
             tool.getAssumptions().record(new AssumptionValidAssumption((OptimizedAssumption) frameDescriptor.getVersion()));
         }
 
@@ -200,6 +201,39 @@ public class NewFrameNode extends FixedWithNextNode implements IterableNodeType,
         frameEntryState[frameFieldList.indexOf(tagsField)] = virtualFrameTagArray;
         tool.createVirtualObject(virtualFrame, frameEntryState, Collections.<MonitorIdNode> emptyList());
         tool.replaceWithVirtual(virtualFrame);
+    }
+
+    private ValueNode initialPrimitiveValue(FrameSlotKind kind) {
+        Kind graalKind = null;
+        switch (kind) {
+            case Boolean:
+                graalKind = Kind.Boolean;
+                break;
+            case Byte:
+                graalKind = Kind.Byte;
+                break;
+            case Int:
+                graalKind = Kind.Int;
+                break;
+            case Double:
+                graalKind = Kind.Double;
+                break;
+            case Float:
+                graalKind = Kind.Float;
+                break;
+            case Long:
+                graalKind = Kind.Long;
+                break;
+            case Object:
+            case Illegal:
+                // won't be stored in the primitive array, so default to long
+                graalKind = Kind.Long;
+                break;
+            default:
+                throw new IllegalStateException("Unexpected frame slot kind: " + kind);
+        }
+
+        return ConstantNode.defaultForKind(graalKind, graph());
     }
 
     @Override

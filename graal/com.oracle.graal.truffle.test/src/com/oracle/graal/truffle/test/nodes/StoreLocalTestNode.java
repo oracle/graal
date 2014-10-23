@@ -37,6 +37,7 @@ public class StoreLocalTestNode extends AbstractTestNode {
 
     @Override
     public int execute(VirtualFrame frame) {
+        slot.setKind(FrameSlotKind.Int);
         int value = valueNode.execute(frame);
         frame.setInt(slot, value);
         return value;
