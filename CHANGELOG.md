@@ -9,6 +9,11 @@
 * Relaxed declared type restriction on child fields to allow for interface types in addition to Node subclasses.
 * The BranchProfile constructor is now private. Use BranchProfile#create() instead.
 * Renamed @CompilerDirectives.SlowPath to @CompilerDirectives.TruffleBoundary
+* Renamed RootNode#isSplittable to RootNode#isCloningAllowed
+* Removed RootNode#split. Cloning ASTs for splitting is now an implementation detail of the Truffle runtime implementation. 
+* Renamed DirectCallNode#isSplittable to DirectCallNode#isCallTargetCloningAllowed
+* Renamed DirectCallNode#split to DirectCallNode#cloneCallTarget
+* Renamed DirectCallNode#isSplit to DirectCallNode#isCallTargetCloned
 * ...
 
 ## Version 0.5

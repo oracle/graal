@@ -185,6 +185,8 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
         }
     }
 
+    public abstract RootCallTarget createClonedCallTarget(OptimizedCallTarget sourceCallTarget, RootNode root);
+
     public abstract Replacements getReplacements();
 
     public abstract void compile(OptimizedCallTarget optimizedCallTarget, boolean mayBeAsynchronous);

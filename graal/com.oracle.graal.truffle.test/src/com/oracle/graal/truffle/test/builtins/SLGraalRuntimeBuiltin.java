@@ -53,7 +53,7 @@ public abstract class SLGraalRuntimeBuiltin extends SLBuiltinNode {
         for (RootCallTarget target : Truffle.getRuntime().getCallTargets()) {
             if (target instanceof OptimizedCallTarget) {
                 OptimizedCallTarget oct = (OptimizedCallTarget) target;
-                if (oct.getSplitSource() == originalCallTarget) {
+                if (oct.getSourceCallTarget() == originalCallTarget) {
                     allCallTargets.add(oct);
                 }
             }
@@ -83,7 +83,7 @@ public abstract class SLGraalRuntimeBuiltin extends SLBuiltinNode {
             public boolean visit(Node node) {
                 if (node instanceof DirectCallNode) {
                     DirectCallNode callNode = (DirectCallNode) node;
-                    if (callNode.getCallTarget() == originalCallTarget || callNode.getSplitCallTarget() == originalCallTarget) {
+                    if (callNode.getCallTarget() == originalCallTarget || callNode.getClonedCallTarget() == originalCallTarget) {
                         allCallNodes.add(callNode);
                     }
                 }

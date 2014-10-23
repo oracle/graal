@@ -42,7 +42,7 @@ public abstract class SLDisableSplittingBuiltin extends SLGraalRuntimeBuiltin {
     public SLFunction disableSplitting(SLFunction function) {
         OptimizedCallTarget target = (OptimizedCallTarget) function.getCallTarget();
         for (OptimizedCallTarget oct : findDuplicateCallTargets(target)) {
-            ((SLRootNode) oct.getRootNode()).setSplittable(false);
+            ((SLRootNode) oct.getRootNode()).setCloningAllowed(false);
         }
         return function;
     }
@@ -51,7 +51,7 @@ public abstract class SLDisableSplittingBuiltin extends SLGraalRuntimeBuiltin {
     @TruffleBoundary
     public SLNull disableSplitting(@SuppressWarnings("unused") SLNull argument) {
         RootNode parentRoot = Truffle.getRuntime().getCallerFrame().getCallNode().getRootNode();
-        ((SLRootNode) parentRoot).setSplittable(false);
+        ((SLRootNode) parentRoot).setCloningAllowed(false);
         return SLNull.SINGLETON;
     }
 

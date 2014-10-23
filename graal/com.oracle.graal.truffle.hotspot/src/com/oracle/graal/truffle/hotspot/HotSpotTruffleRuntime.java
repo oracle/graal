@@ -107,15 +107,24 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
 
     @Override
     public RootCallTarget createCallTarget(RootNode rootNode) {
+        return createCallTargetImpl(null, rootNode);
+    }
+
+    private RootCallTarget createCallTargetImpl(OptimizedCallTarget source, RootNode rootNode) {
         CompilationPolicy compilationPolicy;
         if (acceptForCompilation(rootNode)) {
             compilationPolicy = new CounterBasedCompilationPolicy();
         } else {
             compilationPolicy = new InterpreterOnlyCompilationPolicy();
         }
-        OptimizedCallTarget target = new OptimizedCallTarget(rootNode, this, compilationPolicy, new HotSpotSpeculationLog());
+        OptimizedCallTarget target = new OptimizedCallTarget(source, rootNode, this, compilationPolicy, new HotSpotSpeculationLog());
         callTargets.put(target, null);
         return target;
+    }
+
+    @Override
+    public RootCallTarget createClonedCallTarget(OptimizedCallTarget source, RootNode root) {
+        return createCallTargetImpl(source, root);
     }
 
     @Override

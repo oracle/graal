@@ -42,23 +42,23 @@ public class DefaultTruffleSplittingStrategy implements TruffleSplittingStrategy
     }
 
     public void forceSplitting() {
-        if (call.isSplit()) {
+        if (call.isCallTargetCloned()) {
             return;
         }
-        call.installSplitCallTarget(call.getCallTarget().split());
+        call.installSplitCallTarget(call.getCallTarget().cloneUninitialized());
     }
 
     public void afterCall(Object returnValue) {
     }
 
     private boolean shouldSplit() {
-        if (call.getSplitCallTarget() != null) {
+        if (call.getClonedCallTarget() != null) {
             return false;
         }
         if (!TruffleCompilerOptions.TruffleSplitting.getValue()) {
             return false;
         }
-        if (!call.isSplittable()) {
+        if (!call.isCallTargetCloningAllowed()) {
             return false;
         }
         OptimizedCallTarget splitTarget = call.getCallTarget();
@@ -69,7 +69,7 @@ public class DefaultTruffleSplittingStrategy implements TruffleSplittingStrategy
 
         // disable recursive splitting for now
         OptimizedCallTarget root = (OptimizedCallTarget) call.getRootNode().getCallTarget();
-        if (root == splitTarget || root.getSplitSource() == splitTarget) {
+        if (root == splitTarget || root.getSourceCallTarget() == splitTarget) {
             // recursive call found
             return false;
         }

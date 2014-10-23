@@ -110,8 +110,8 @@ public final class OptimizedDirectCallNode extends DirectCallNode implements Mat
     }
 
     @Override
-    public boolean isSplittable() {
-        return getCallTarget().getRootNode().isSplittable();
+    public boolean isCallTargetCloningAllowed() {
+        return getCallTarget().getRootNode().isCloningAllowed();
     }
 
     @Override
@@ -129,7 +129,7 @@ public final class OptimizedDirectCallNode extends DirectCallNode implements Mat
     }
 
     @Override
-    public OptimizedCallTarget getSplitCallTarget() {
+    public OptimizedCallTarget getClonedCallTarget() {
         return splitCallTarget;
     }
 
@@ -158,7 +158,7 @@ public final class OptimizedDirectCallNode extends DirectCallNode implements Mat
         // dummy replace to report the split
         replace(this, "Split call " + newTarget.toString());
 
-        if (newTarget.getSplitSource() == null) {
+        if (newTarget.getSourceCallTarget() == null) {
             splitCallTarget = null;
         } else {
             splitCallTarget = newTarget;
@@ -166,7 +166,7 @@ public final class OptimizedDirectCallNode extends DirectCallNode implements Mat
     }
 
     @Override
-    public boolean split() {
+    public boolean cloneCallTarget() {
         splittingStrategy.forceSplitting();
         return true;
     }

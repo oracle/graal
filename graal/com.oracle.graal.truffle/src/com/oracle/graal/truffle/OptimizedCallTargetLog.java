@@ -258,8 +258,8 @@ public final class OptimizedCallTargetLog {
         Map<OptimizedCallTarget, List<OptimizedCallTarget>> groupedTargets = Truffle.getRuntime().getCallTargets().stream()//
         .map(target -> (OptimizedCallTarget) target)//
         .collect(Collectors.groupingBy(target -> {
-            if (target.getSplitSource() != null) {
-                return target.getSplitSource();
+            if (target.getSourceCallTarget() != null) {
+                return target.getSourceCallTarget();
             }
             return target;
         }));

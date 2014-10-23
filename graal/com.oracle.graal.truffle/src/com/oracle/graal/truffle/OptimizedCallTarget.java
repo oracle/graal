@@ -52,13 +52,14 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     private SpeculationLog speculationLog;
     protected final CompilationProfile compilationProfile;
     protected final CompilationPolicy compilationPolicy;
-    private OptimizedCallTarget splitSource;
+    private final OptimizedCallTarget sourceCallTarget;
     private final AtomicInteger callSitesKnown = new AtomicInteger(0);
     @CompilationFinal private Class<?>[] profiledArgumentTypes;
     @CompilationFinal private Assumption profiledArgumentTypesAssumption;
     @CompilationFinal private Class<?> profiledReturnType;
     @CompilationFinal private Assumption profiledReturnTypeAssumption;
 
+    private final RootNode uninitializedRootNode;
     private final RootNode rootNode;
 
     /* Experimental fields for new splitting. */
@@ -78,20 +79,29 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         return rootNode;
     }
 
-    public OptimizedCallTarget(RootNode rootNode, GraalTruffleRuntime runtime, CompilationPolicy compilationPolicy, SpeculationLog speculationLog) {
+    public OptimizedCallTarget(OptimizedCallTarget sourceCallTarget, RootNode rootNode, GraalTruffleRuntime runtime, CompilationPolicy compilationPolicy, SpeculationLog speculationLog) {
         super(rootNode.toString());
+        this.sourceCallTarget = sourceCallTarget;
         this.runtime = runtime;
         this.speculationLog = speculationLog;
         this.rootNode = rootNode;
+        this.compilationPolicy = compilationPolicy;
         this.rootNode.adoptChildren();
         this.rootNode.setCallTarget(this);
-        this.compilationPolicy = compilationPolicy;
+        this.uninitializedRootNode = sourceCallTarget == null ? cloneRootNode(rootNode) : sourceCallTarget.uninitializedRootNode;
         if (TruffleCallTargetProfiling.getValue()) {
             this.compilationProfile = new TraceCompilationProfile();
         } else {
             this.compilationProfile = new CompilationProfile();
         }
         this.nodeRewritingAssumption = new CyclicAssumption("nodeRewritingAssumption of " + rootNode.toString());
+    }
+
+    private static RootNode cloneRootNode(RootNode root) {
+        if (root == null || !root.isCloningAllowed()) {
+            return null;
+        }
+        return NodeUtil.cloneNode(root);
     }
 
     public Assumption getNodeRewritingAssumption() {
@@ -106,19 +116,19 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         return argumentStamp;
     }
 
-    private int splitIndex;
+    private int cloneIndex;
 
-    public int getSplitIndex() {
-        return splitIndex;
+    public int getCloneIndex() {
+        return cloneIndex;
     }
 
-    public OptimizedCallTarget split() {
-        if (!getRootNode().isSplittable()) {
+    public OptimizedCallTarget cloneUninitialized() {
+        RootNode copiedRoot = cloneRootNode(uninitializedRootNode);
+        if (copiedRoot == null) {
             return null;
         }
-        OptimizedCallTarget splitTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(getRootNode().split());
-        splitTarget.splitSource = this;
-        splitTarget.splitIndex = splitIndex++;
+        OptimizedCallTarget splitTarget = (OptimizedCallTarget) runtime.createClonedCallTarget(this, copiedRoot);
+        splitTarget.cloneIndex = cloneIndex++;
         return splitTarget;
     }
 
@@ -375,12 +385,8 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         callSitesKnown.decrementAndGet();
     }
 
-    public final OptimizedCallTarget getSplitSource() {
-        return splitSource;
-    }
-
-    public final void setSplitSource(OptimizedCallTarget splitSource) {
-        this.splitSource = splitSource;
+    public final OptimizedCallTarget getSourceCallTarget() {
+        return sourceCallTarget;
     }
 
     @Override
@@ -389,8 +395,8 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         if (isValid()) {
             superString += " <opt>";
         }
-        if (splitSource != null) {
-            superString += " <split-" + splitIndex + "-" + argumentStamp.toStringShort() + ">";
+        if (sourceCallTarget != null) {
+            superString += " <split-" + cloneIndex + "-" + argumentStamp.toStringShort() + ">";
         }
         return superString;
     }
