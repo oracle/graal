@@ -31,19 +31,27 @@ package com.oracle.truffle.api.utilities;
  *
  * <pre>
  * private final ValueProfile classProfile = ValueProfile.createClassProfile();
- *
+ * 
  * return classProfile.profile(value);
  * </pre>
  *
  * All instances of {@code ValueProfile} (and subclasses) must be held in {@code final} fields for
  * compiler optimizations to take effect.
  *
+ * @see #createPrimitiveProfile()
  * @see #createIdentityProfile()
  * @see #createClassProfile()
  */
 public abstract class ValueProfile {
 
     public abstract <T> T profile(T value);
+
+    /**
+     * Returns a {@link ValueProfile} that speculates on the exact class of a value.
+     */
+    public static PrimitiveValueProfile createPrimitiveProfile() {
+        return new PrimitiveValueProfile();
+    }
 
     /**
      * Returns a {@link ValueProfile} that speculates on the exact class of a value.
