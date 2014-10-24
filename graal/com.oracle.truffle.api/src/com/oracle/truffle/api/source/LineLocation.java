@@ -31,11 +31,11 @@ package com.oracle.truffle.api.source;
  */
 public interface LineLocation {
 
-    public Source getSource();
+    Source getSource();
 
     /**
-     * Gets the 1-based number of a line in the source
+     * Gets the 1-based number of a line in the source.
      */
-    public int getLineNumber();
+    int getLineNumber();
 
 }

@@ -773,52 +773,52 @@ public abstract class Source {
         }
 
         @Override
-        public final Source getSource() {
+        public Source getSource() {
             return source;
         }
 
         @Override
-        public final int getStartLine() {
+        public int getStartLine() {
             return startLine;
         }
 
         @Override
-        public final LineLocation getLineLocation() {
+        public LineLocation getLineLocation() {
             return source.createLineLocation(startLine);
         }
 
         @Override
-        public final int getStartColumn() {
+        public int getStartColumn() {
             return startColumn;
         }
 
         @Override
-        public final int getCharIndex() {
+        public int getCharIndex() {
             return charIndex;
         }
 
         @Override
-        public final int getCharLength() {
+        public int getCharLength() {
             return charLength;
         }
 
         @Override
-        public final int getCharEndIndex() {
+        public int getCharEndIndex() {
             return charIndex + charLength;
         }
 
         @Override
-        public final String getIdentifier() {
+        public String getIdentifier() {
             return identifier;
         }
 
         @Override
-        public final String getCode() {
+        public String getCode() {
             return getSource().getCode(charIndex, charLength);
         }
 
         @Override
-        public final String getShortDescription() {
+        public String getShortDescription() {
             return String.format("%s:%d", source.getShortName(), startLine);
         }
 

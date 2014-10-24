@@ -209,7 +209,7 @@ public class MethodSpec {
         return toSignatureString("methodName");
     }
 
-    static class TypeDef {
+    static final class TypeDef {
 
         private final List<TypeMirror> types;
         private final String name;

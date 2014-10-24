@@ -348,7 +348,7 @@ public final class NodeUtil {
         return new RecursiveNodeIterator(node);
     }
 
-    private final static class RecursiveNodeIterator implements Iterator<Node> {
+    private static final class RecursiveNodeIterator implements Iterator<Node> {
         private final List<Iterator<Node>> iteratorStack = new ArrayList<>();
 
         public RecursiveNodeIterator(final Node node) {

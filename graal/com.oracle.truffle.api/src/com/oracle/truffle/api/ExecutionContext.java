@@ -161,7 +161,7 @@ public abstract class ExecutionContext {
     public abstract String getLanguageShortName();
 
     /**
-     * Establishes source event reporting
+     * Establishes source event reporting.
      */
     protected abstract void setSourceCallback(SourceCallback sourceCallback);
 

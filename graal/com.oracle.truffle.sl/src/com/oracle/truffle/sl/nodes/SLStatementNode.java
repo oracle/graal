@@ -89,8 +89,9 @@ public abstract class SLStatementNode extends Node implements Instrumentable {
     public Probe probe() {
         Node parent = getParent();
 
-        if (parent == null)
+        if (parent == null) {
             throw new IllegalStateException("Cannot probe a node without a parent");
+        }
 
         if (parent instanceof SLStatementWrapper) {
             return ((SLStatementWrapper) parent).getProbe();
@@ -108,8 +109,9 @@ public abstract class SLStatementNode extends Node implements Instrumentable {
     protected SLContext getRootNodeSLContext(Node node) {
         assert node != null;
 
-        if (node instanceof SLRootNode)
+        if (node instanceof SLRootNode) {
             return ((SLRootNode) node).getSLContext();
+        }
         return getRootNodeSLContext(node.getParent());
     }
 }

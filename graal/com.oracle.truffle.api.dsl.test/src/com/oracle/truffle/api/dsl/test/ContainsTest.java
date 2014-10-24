@@ -50,7 +50,7 @@ public class ContainsTest {
     public void testContains1() {
         assertRuns(Contains1Factory.getInstance(), //
                         array(1, "a", 2, "b"), //
-                        array(2, "aa", 3, "ba"),//
+                        array(2, "aa", 3, "ba"), //
                         new ExecutionListener() {
                             public void afterExecution(TestRootNode<? extends ValueNode> node, int index, Object value, Object expectedResult, Object actualResult, boolean last) {
                                 if (value instanceof String) {
@@ -122,7 +122,7 @@ public class ContainsTest {
     public void testContains3() {
         assertRuns(Contains3Factory.getInstance(), //
                         array(2, 1, 2, -3, -4), //
-                        array(-2, 2, -2, -3, -4),//
+                        array(-2, 2, -2, -3, -4), //
                         new ExecutionListener() {
                             public void afterExecution(TestRootNode<? extends ValueNode> node, int index, Object value, Object expectedResult, Object actualResult, boolean last) {
                                 // assert that we are always monomorphic
@@ -175,7 +175,7 @@ public class ContainsTest {
     public void testContains4() {
         assertRuns(Contains4Factory.getInstance(), //
                         array(-1, 0, 1, 2), //
-                        array(1, 0, 1, 2),//
+                        array(1, 0, 1, 2), //
                         new ExecutionListener() {
                             public void afterExecution(TestRootNode<? extends ValueNode> node, int index, Object value, Object expectedResult, Object actualResult, boolean last) {
                                 Assert.assertEquals(NodeCost.MONOMORPHIC, node.getNode().getCost());

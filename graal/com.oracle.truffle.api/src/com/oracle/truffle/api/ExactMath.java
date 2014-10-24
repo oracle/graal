@@ -105,8 +105,10 @@ public class ExactMath {
     }
 
     public static long multiplyHigh(long x, long y) {
+        // Checkstyle: stop
         long x0, y0, z0;
         long x1, y1, z1, z2, t;
+        // Checkstyle: resume
 
         x0 = x & 0xFFFFFFFFL;
         x1 = x >> 32;
@@ -124,8 +126,10 @@ public class ExactMath {
     }
 
     public static long multiplyHighUnsigned(long x, long y) {
+        // Checkstyle: stop
         long x0, y0, z0;
         long x1, y1, z1, z2, t;
+        // Checkstyle: resume
 
         x0 = x & 0xFFFFFFFFL;
         x1 = x >>> 32;

@@ -518,10 +518,14 @@ public abstract class AbstractCodeWriter extends CodeElementScanner<Void, Void> 
             write(e.getBody());
             writeLn("}");
         } else {
-            writeLn("{ }");
+            writeLn(" {");
+            writeLn("}");
         }
         writeEmptyLn();
         return null;
+    }
+
+    public void foo() {
     }
 
     @Override

@@ -334,7 +334,7 @@ public abstract class InstrumentationNode extends Node implements ExecutionEvent
         @CompilerDirectives.CompilationFinal private SyntaxTagTrap trap = null;
 
         /**
-         * The collection of tags for this instrumentation node
+         * The collection of tags for this instrumentation node.
          */
         private final ArrayList<SyntaxTag> tags = new ArrayList<>();
 

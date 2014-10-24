@@ -43,7 +43,7 @@ public class SpecializationFallthroughTest {
     public void testFallthrough0() {
         assertRuns(FallthroughTest0Factory.getInstance(), //
                         array(0, 0, 1, 2), //
-                        array(0, 0, 1, 2),//
+                        array(0, 0, 1, 2), //
                         new ExecutionListener() {
                             public void afterExecution(TestRootNode<? extends ValueNode> node, int index, Object value, Object expectedResult, Object actualResult, boolean last) {
                                 if (!last) {
@@ -87,7 +87,7 @@ public class SpecializationFallthroughTest {
     public void testFallthrough1() {
         assertRuns(FallthroughTest1Factory.getInstance(), //
                         array(0, 0, 0, 1, 2), //
-                        array(0, 0, 0, 1, 2),//
+                        array(0, 0, 0, 1, 2), //
                         new ExecutionListener() {
                             public void afterExecution(TestRootNode<? extends ValueNode> node, int index, Object value, Object expectedResult, Object actualResult, boolean last) {
                                 if (!last) {
@@ -133,7 +133,7 @@ public class SpecializationFallthroughTest {
     public void testFallthrough2() {
         assertRuns(FallthroughTest2Factory.getInstance(), //
                         array(0, 0, 1, 1, 2, 2), //
-                        array(0, 0, 1, 1, 2, 2),//
+                        array(0, 0, 1, 1, 2, 2), //
                         new ExecutionListener() {
                             public void afterExecution(TestRootNode<? extends ValueNode> node, int index, Object value, Object expectedResult, Object actualResult, boolean last) {
                                 if (!last) {
@@ -189,7 +189,7 @@ public class SpecializationFallthroughTest {
     public void testFallthrough3() {
         assertRuns(FallthroughTest3Factory.getInstance(), //
                         array(0, 0, 1, 1, 2, 2), //
-                        array(0, 0, 1, 1, 2, 2),//
+                        array(0, 0, 1, 1, 2, 2), //
                         new ExecutionListener() {
                             public void afterExecution(TestRootNode<? extends ValueNode> node, int index, Object value, Object expectedResult, Object actualResult, boolean last) {
                                 if (!last) {
@@ -237,7 +237,7 @@ public class SpecializationFallthroughTest {
     public void testFallthrough4() {
         assertRuns(FallthroughTest4Factory.getInstance(), //
                         array(0, 0, 1, 1, 2, 2), //
-                        array(0, 0, 1, 1, 2, 2),//
+                        array(0, 0, 1, 1, 2, 2), //
                         new ExecutionListener() {
                             public void afterExecution(TestRootNode<? extends ValueNode> node, int index, Object value, Object expectedResult, Object actualResult, boolean last) {
                                 if (!last) {
@@ -290,7 +290,7 @@ public class SpecializationFallthroughTest {
     public void testFallthrough5() {
         assertRuns(FallthroughTest5Factory.getInstance(), //
                         array(0, 0, 1, 1, 2, 2), //
-                        array(0, 0, 1, 1, 2, 2),//
+                        array(0, 0, 1, 1, 2, 2), //
                         new ExecutionListener() {
                             public void afterExecution(TestRootNode<? extends ValueNode> node, int index, Object value, Object expectedResult, Object actualResult, boolean last) {
                                 if (!last) {

@@ -54,8 +54,9 @@ public class SLInstrumenter implements NodeVisitor {
                 Probe probe = expressionNode.probe();
                 // probe.tagAs(STATEMENT);
 
-                if (node instanceof SLWriteLocalVariableNode)
+                if (node instanceof SLWriteLocalVariableNode) {
                     probe.tagAs(ASSIGNMENT);
+                }
             }
         } else if (node instanceof SLStatementNode && node.getParent() != null) {
 
@@ -64,8 +65,9 @@ public class SLInstrumenter implements NodeVisitor {
                 Probe probe = statementNode.probe();
                 probe.tagAs(STATEMENT);
 
-                if (node instanceof SLWhileNode)
+                if (node instanceof SLWhileNode) {
                     probe.tagAs(START_LOOP);
+                }
             }
         }
 

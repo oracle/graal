@@ -75,7 +75,7 @@ public class PolymorphicTest {
     public void testPolymorphic1() {
         assertRuns(Polymorphic1Factory.getInstance(), //
                         array(42, 43, true, false, "a", "b"), //
-                        array(42, 43, true, false, "a", "b"),//
+                        array(42, 43, true, false, "a", "b"), //
                         new ExecutionListener() {
                             public void afterExecution(TestRootNode<? extends ValueNode> node, int index, Object value, Object expectedResult, Object actualResult, boolean last) {
                                 Polymorphic1 polymorphic = ((Polymorphic1) node.getNode());
@@ -119,7 +119,7 @@ public class PolymorphicTest {
     public void testPolymorphic2() {
         assertRuns(Polymorphic2Factory.getInstance(), //
                         array(0, 1, 1, "1", "2", 2, 3), //
-                        array(0, 1, 1, "1", "2", 2, 3),//
+                        array(0, 1, 1, "1", "2", 2, 3), //
                         new ExecutionListener() {
                             public void afterExecution(TestRootNode<? extends ValueNode> node, int index, Object value, Object expectedResult, Object actualResult, boolean last) {
                                 Polymorphic2 polymorphic = ((Polymorphic2) node.getNode());
@@ -161,7 +161,7 @@ public class PolymorphicTest {
     public void testPolymorphic3() {
         assertRuns(Polymorphic3Factory.getInstance(), //
                         array("0", "1", 1, 1, 2, 2, 3, 3), //
-                        array("0", "1", 1, 1, 2, 2, 3, 3),//
+                        array("0", "1", 1, 1, 2, 2, 3, 3), //
                         new ExecutionListener() {
                             public void afterExecution(TestRootNode<? extends ValueNode> node, int index, Object value, Object expectedResult, Object actualResult, boolean last) {
                                 Polymorphic3 polymorphic = ((Polymorphic3) node.getNode());

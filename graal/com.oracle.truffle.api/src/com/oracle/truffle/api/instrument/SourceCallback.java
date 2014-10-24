@@ -31,9 +31,9 @@ import com.oracle.truffle.api.source.*;
  */
 public interface SourceCallback {
 
-    public void startLoading(Source source);
+    void startLoading(Source source);
 
-    public void endLoading(Source source);
+    void endLoading(Source source);
 
     /**
      * Inert (singleton) implementation of {@link SourceCallback}.

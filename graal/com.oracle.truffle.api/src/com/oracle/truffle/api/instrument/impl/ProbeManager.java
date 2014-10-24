@@ -32,7 +32,7 @@ import com.oracle.truffle.api.instrument.impl.InstrumentationNode.ProbeImpl;
 import com.oracle.truffle.api.source.*;
 
 /**
- * Factory and services for AST {@link Probe}s
+ * Factory and services for AST {@link Probe}s.
  */
 public final class ProbeManager {
 

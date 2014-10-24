@@ -139,8 +139,9 @@ public class LineLocationToProbeCollectionMap implements ProbeListener {
 
         ArrayList<Probe> probes = new ArrayList<>();
         for (LineLocation line : keySet) {
-            if (line.getLineNumber() == lineNumber)
+            if (line.getLineNumber() == lineNumber) {
                 probes.addAll(lineToProbesMap.get(line));
+            }
         }
 
         return probes;

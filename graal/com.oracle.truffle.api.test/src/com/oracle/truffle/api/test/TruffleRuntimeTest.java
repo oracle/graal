@@ -54,7 +54,7 @@ public class TruffleRuntimeTest {
     private TruffleRuntime runtime;
 
     @Before
-    public void setup() {
+    public void setUp() {
         this.runtime = Truffle.getRuntime();
     }
 

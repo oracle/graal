@@ -92,7 +92,7 @@ public class InterfaceChildFieldTest {
     }
 
     interface TestChildInterface {
-        public int executeIntf();
+        int executeIntf();
     }
 
     class TestLeafNode extends Node implements TestChildInterface {

@@ -47,7 +47,7 @@ public class FallbackTest {
     }
 
     /**
-     * test with fallback handler defined
+     * Test with fallback handler defined.
      */
     @SuppressWarnings("unused")
     @NodeChild("a")
@@ -72,7 +72,7 @@ public class FallbackTest {
     }
 
     /**
-     * test without fallback handler defined
+     * Test without fallback handler defined.
      */
     @SuppressWarnings("unused")
     @NodeChild("a")
@@ -93,7 +93,7 @@ public class FallbackTest {
     }
 
     /**
-     * test without fallback handler and unreachable
+     * Test without fallback handler and unreachable.
      */
     @SuppressWarnings("unused")
     @NodeChild("a")
@@ -136,7 +136,7 @@ public class FallbackTest {
     }
 
     /**
-     * test without fallback handler and unreachable
+     * Test without fallback handler and unreachable.
      */
     @SuppressWarnings("unused")
     @NodeChild("a")

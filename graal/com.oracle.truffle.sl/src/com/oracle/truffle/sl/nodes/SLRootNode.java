@@ -44,7 +44,7 @@ public final class SLRootNode extends RootNode {
     /** The name of the function, for printing purposes only. */
     private final String name;
 
-    /** The Simple execution context for this tree **/
+    /** The Simple execution context for this tree. **/
     private final SLContext context;
 
     @CompilationFinal private boolean isCloningAllowed;

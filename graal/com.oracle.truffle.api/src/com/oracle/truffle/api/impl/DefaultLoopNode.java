@@ -36,6 +36,7 @@ public final class DefaultLoopNode extends LoopNode {
     @Override
     public void executeLoop(VirtualFrame frame) {
         while (executeRepeatingNode(frame)) {
+            // Empty
         }
     }
 }

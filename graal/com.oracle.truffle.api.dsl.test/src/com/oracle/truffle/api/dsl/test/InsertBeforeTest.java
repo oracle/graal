@@ -120,7 +120,7 @@ public class InsertBeforeTest {
     }
 
     @NodeChild("a")
-    static class InsertBefore1T6_1 extends InsertBefore1Base {
+    static class InsertBefore1T6part1 extends InsertBefore1Base {
 
         boolean g0(int a) {
             return a == 0;
@@ -134,7 +134,7 @@ public class InsertBeforeTest {
     }
 
     @NodeChild("a")
-    static class InsertBefore1T6_2 extends InsertBefore1T6_1 {
+    static class InsertBefore1T6part2 extends InsertBefore1T6part1 {
 
         boolean g(int a) {
             return a == 0;

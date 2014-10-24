@@ -130,7 +130,7 @@ public class JSONHelper {
         return new JSONArrayBuilder();
     }
 
-    public static abstract class JSONStringBuilder {
+    public abstract static class JSONStringBuilder {
         @Override
         public final String toString() {
             StringBuilder sb = new StringBuilder();

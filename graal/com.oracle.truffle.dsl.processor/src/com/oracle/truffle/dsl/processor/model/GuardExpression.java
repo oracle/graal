@@ -110,7 +110,7 @@ public final class GuardExpression {
         return Objects.hash(guardName, negated, resolvedGuard, resolvedChildren);
     }
 
-    public final boolean implies(GuardExpression other) {
+    public boolean implies(GuardExpression other) {
         if (equals(other)) {
             return true;
         }

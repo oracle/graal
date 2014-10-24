@@ -121,8 +121,9 @@ public class LineLocationToSourceSectionCollectionMap implements ProbeListener {
 
         final ArrayList<SourceSection> sourceSections = new ArrayList<>();
         for (LineLocation line : keySet) {
-            if (line.getLineNumber() == lineNumber)
+            if (line.getLineNumber() == lineNumber) {
                 sourceSections.addAll(lineToSourceSectionsMap.get(line));
+            }
         }
 
         return sourceSections;

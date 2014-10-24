@@ -322,12 +322,12 @@ public class NodeCodeGenerator extends AbstractCompilationUnitFactory<NodeData> 
     /**
      * <pre>
      * variant1 $condition != null
-     *
+     * 
      * $type $name = defaultValue($type);
      * if ($condition) {
      *     $name = $value;
      * }
-     *
+     * 
      * variant2 $condition != null
      * $type $name = $value;
      * </pre>
@@ -2530,10 +2530,11 @@ public class NodeCodeGenerator extends AbstractCompilationUnitFactory<NodeData> 
             } else {
                 builder.startNewArray(classArray, null);
                 for (SpecializationData specialization : list) {
-                    if (specialization.isGeneric() || specialization.isPolymorphic()) {
-                        specialization = getModel().getNode().getUninitializedSpecialization();
+                    SpecializationData s = specialization;
+                    if (s.isGeneric() || s.isPolymorphic()) {
+                        s = getModel().getNode().getUninitializedSpecialization();
                     }
-                    builder.startGroup().string(nodeSpecializationClassName(specialization)).string(".class").end();
+                    builder.startGroup().string(nodeSpecializationClassName(s)).string(".class").end();
                 }
                 builder.end();
             }
