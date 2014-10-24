@@ -49,8 +49,9 @@ public class LongCmpTest extends GraalKernelTester {
         dispatchLambdaKernel(NUM, (gid) -> {
             long val = inArray[gid];
             long result = val * val;
-            if (val > 9)
+            if (val > 9) {
                 result++;
+            }
             outArray[gid] = result;
         });
     }

@@ -30,9 +30,9 @@ import com.oracle.graal.compiler.hsail.test.Vec3;
  */
 public class Body extends Vec3 {
 
-    public Body(float _x, float _y, float _z, float _m) {
-        super(_x, _y, _z);
-        m = _m;
+    public Body(float x, float y, float z, float m) {
+        super(x, y, z);
+        this.m = m;
         v = new Vec3(0, 0, 0);
     }
 
@@ -67,32 +67,32 @@ public class Body extends Vec3 {
         return m;
     }
 
-    public void setM(float _m) {
-        m = _m;
+    public void setM(float value) {
+        m = value;
     }
 
-    public void setX(float _x) {
-        x = _x;
+    public void setX(float value) {
+        x = value;
     }
 
-    public void setY(float _y) {
-        y = _y;
+    public void setY(float value) {
+        y = value;
     }
 
-    public void setZ(float _z) {
-        z = _z;
+    public void setZ(float value) {
+        z = value;
     }
 
-    public void setVx(float _vx) {
-        v.x = _vx;
+    public void setVx(float value) {
+        v.x = value;
     }
 
-    public void setVy(float _vy) {
-        v.y = _vy;
+    public void setVy(float value) {
+        v.y = value;
     }
 
-    public void setVz(float _vz) {
-        v.z = _vz;
+    public void setVz(float value) {
+        v.z = value;
     }
 
     @Override

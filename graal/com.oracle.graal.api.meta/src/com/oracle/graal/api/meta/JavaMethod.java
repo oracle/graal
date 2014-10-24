@@ -72,16 +72,16 @@ public interface JavaMethod {
      * @throws IllegalFormatException if an illegal specifier is encountered in {@code format}
      */
     default String format(String format) throws IllegalFormatException {
-        final StringBuilder sb = new StringBuilder();
+        StringBuilder sb = new StringBuilder();
         int index = 0;
         Signature sig = null;
         while (index < format.length()) {
-            final char ch = format.charAt(index++);
+            char ch = format.charAt(index++);
             if (ch == '%') {
                 if (index >= format.length()) {
                     throw new UnknownFormatConversionException("An unquoted '%' character cannot terminate a method format specification");
                 }
-                final char specifier = format.charAt(index++);
+                char specifier = format.charAt(index++);
                 boolean qualified = false;
                 switch (specifier) {
                     case 'R':

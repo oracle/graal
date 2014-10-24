@@ -41,8 +41,9 @@ public class StaticIntFieldSameClassTest extends StaticIntFieldReadTest {
         dispatchLambdaKernel(NUM, (gid) -> {
             int val = inArray[gid] * myField1;
             outArray[gid] = val;
-            if (gid == 3)
+            if (gid == 3) {
                 myField2 = val + gid;
+            }
         });
         fieldResult = myField2;
     }

@@ -112,7 +112,7 @@ public final class TimerImpl extends DebugValue implements DebugTimer {
         return TimeUnit.NANOSECONDS;
     }
 
-    private static abstract class AbstractTimer implements TimerCloseable {
+    private abstract static class AbstractTimer implements TimerCloseable {
 
         private final AbstractTimer parent;
         private final TimerImpl timer;

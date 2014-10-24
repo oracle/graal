@@ -67,7 +67,7 @@ public final class JFREventProvider implements EventProvider {
      * @return the {@link EventToken event token}
      */
     @SuppressWarnings({"deprecation", "javadoc", "unchecked"})
-    private final EventToken registerEvent(Class<?> c) {
+    private EventToken registerEvent(Class<?> c) {
         try {
             return producer.addEvent((Class<? extends com.oracle.jrockit.jfr.InstantEvent>) c);
         } catch (InvalidEventDefinitionException | InvalidValueException e) {

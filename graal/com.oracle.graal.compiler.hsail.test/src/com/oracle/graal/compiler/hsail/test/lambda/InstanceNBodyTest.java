@@ -39,34 +39,34 @@ public class InstanceNBodyTest extends GraalKernelTester {
     static final int width = 768;
     static final int height = 768;
 
-    @Result float[] in_xyz = new float[bodies * 3]; // positions xy and z of bodies
+    @Result float[] inXyz = new float[bodies * 3]; // positions xy and z of bodies
 
-    @Result float[] out_xyz = new float[bodies * 3]; // positions xy and z of bodies
+    @Result float[] outXyz = new float[bodies * 3]; // positions xy and z of bodies
 
-    @Result float[] in_vxyz = new float[bodies * 3]; // velocity component of x,y and z of
+    @Result float[] inVxyz = new float[bodies * 3]; // velocity component of x,y and z of
     // bodies
 
-    @Result float[] out_vxyz = new float[bodies * 3];
+    @Result float[] outVxyz = new float[bodies * 3];
 
-    static float[] seed_xyz = new float[bodies * 3];
+    static float[] seedXyz = new float[bodies * 3];
     static {
         final float maxDist = width / 4;
         for (int body = 0; body < (bodies * 3); body += 3) {
             final float theta = (float) (Math.random() * Math.PI * 2);
             final float phi = (float) (Math.random() * Math.PI * 2);
             final float radius = (float) (Math.random() * maxDist);
-            seed_xyz[body + 0] = (float) (radius * Math.cos(theta) * Math.sin(phi)) + width / 2;
-            seed_xyz[body + 1] = (float) (radius * Math.sin(theta) * Math.sin(phi)) + height / 2;
-            seed_xyz[body + 2] = (float) (radius * Math.cos(phi));
+            seedXyz[body + 0] = (float) (radius * Math.cos(theta) * Math.sin(phi)) + width / 2;
+            seedXyz[body + 1] = (float) (radius * Math.sin(theta) * Math.sin(phi)) + height / 2;
+            seedXyz[body + 2] = (float) (radius * Math.cos(phi));
         }
     }
 
     @Override
     public void runTest() {
-        System.arraycopy(seed_xyz, 0, in_xyz, 0, seed_xyz.length);
-        Arrays.fill(out_xyz, 0f);
-        Arrays.fill(out_vxyz, 0f);
-        Arrays.fill(in_vxyz, 0f);
+        System.arraycopy(seedXyz, 0, inXyz, 0, seedXyz.length);
+        Arrays.fill(outXyz, 0f);
+        Arrays.fill(outVxyz, 0f);
+        Arrays.fill(inVxyz, 0f);
 
         // no local copies to make it an instance lambda
 
@@ -78,9 +78,9 @@ public class InstanceNBodyTest extends GraalKernelTester {
             float accy = 0.f;
             float accz = 0.f;
             for (int i = 0; i < count; i += 3) {
-                final float dx = in_xyz[i + 0] - in_xyz[globalId + 0];
-                final float dy = in_xyz[i + 1] - in_xyz[globalId + 1];
-                final float dz = in_xyz[i + 2] - in_xyz[globalId + 2];
+                final float dx = inXyz[i + 0] - inXyz[globalId + 0];
+                final float dy = inXyz[i + 1] - inXyz[globalId + 1];
+                final float dz = inXyz[i + 2] - inXyz[globalId + 2];
                 final float invDist = (float) (1.0 / (Math.sqrt((dx * dx) + (dy * dy) + (dz * dz) + espSqr)));
                 accx += mass * invDist * invDist * invDist * dx;
                 accy += mass * invDist * invDist * invDist * dy;
@@ -89,13 +89,13 @@ public class InstanceNBodyTest extends GraalKernelTester {
             accx *= delT;
             accy *= delT;
             accz *= delT;
-            out_xyz[globalId + 0] = in_xyz[globalId + 0] + (in_vxyz[globalId + 0] * delT) + (accx * .5f * delT);
-            out_xyz[globalId + 1] = in_xyz[globalId + 1] + (in_vxyz[globalId + 1] * delT) + (accy * .5f * delT);
-            out_xyz[globalId + 2] = in_xyz[globalId + 2] + (in_vxyz[globalId + 2] * delT) + (accz * .5f * delT);
+            outXyz[globalId + 0] = inXyz[globalId + 0] + (inVxyz[globalId + 0] * delT) + (accx * .5f * delT);
+            outXyz[globalId + 1] = inXyz[globalId + 1] + (inVxyz[globalId + 1] * delT) + (accy * .5f * delT);
+            outXyz[globalId + 2] = inXyz[globalId + 2] + (inVxyz[globalId + 2] * delT) + (accz * .5f * delT);
 
-            out_vxyz[globalId + 0] = in_vxyz[globalId + 0] + accx;
-            out_vxyz[globalId + 1] = in_vxyz[globalId + 1] + accy;
-            out_vxyz[globalId + 2] = in_vxyz[globalId + 2] + accz;
+            outVxyz[globalId + 0] = inVxyz[globalId + 0] + accx;
+            outVxyz[globalId + 1] = inVxyz[globalId + 1] + accy;
+            outVxyz[globalId + 2] = inVxyz[globalId + 2] + accz;
         });
     }
 

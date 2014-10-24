@@ -28,7 +28,7 @@ package com.oracle.graal.api.meta;
  */
 public interface Value extends KindProvider {
 
-    @SuppressWarnings("serial") public static final AllocatableValue ILLEGAL = new AllocatableValue(LIRKind.Illegal) {
+    @SuppressWarnings("serial") AllocatableValue ILLEGAL = new AllocatableValue(LIRKind.Illegal) {
 
         @Override
         public String toString() {

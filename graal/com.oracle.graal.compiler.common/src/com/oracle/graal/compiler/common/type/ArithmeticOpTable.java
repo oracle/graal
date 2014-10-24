@@ -145,70 +145,70 @@ public final class ArithmeticOpTable {
     /**
      * Describes the unary negation operation.
      */
-    public final UnaryOp<Neg> getNeg() {
+    public UnaryOp<Neg> getNeg() {
         return neg;
     }
 
     /**
      * Describes the addition operation.
      */
-    public final BinaryOp<Add> getAdd() {
+    public BinaryOp<Add> getAdd() {
         return add;
     }
 
     /**
      * Describes the subtraction operation.
      */
-    public final BinaryOp<Sub> getSub() {
+    public BinaryOp<Sub> getSub() {
         return sub;
     }
 
     /**
      * Describes the multiplication operation.
      */
-    public final BinaryOp<Mul> getMul() {
+    public BinaryOp<Mul> getMul() {
         return mul;
     }
 
     /**
      * Describes the division operation.
      */
-    public final BinaryOp<Div> getDiv() {
+    public BinaryOp<Div> getDiv() {
         return div;
     }
 
     /**
      * Describes the remainder operation.
      */
-    public final BinaryOp<Rem> getRem() {
+    public BinaryOp<Rem> getRem() {
         return rem;
     }
 
     /**
      * Describes the bitwise not operation.
      */
-    public final UnaryOp<Not> getNot() {
+    public UnaryOp<Not> getNot() {
         return not;
     }
 
     /**
      * Describes the bitwise and operation.
      */
-    public final BinaryOp<And> getAnd() {
+    public BinaryOp<And> getAnd() {
         return and;
     }
 
     /**
      * Describes the bitwise or operation.
      */
-    public final BinaryOp<Or> getOr() {
+    public BinaryOp<Or> getOr() {
         return or;
     }
 
     /**
      * Describes the bitwise xor operation.
      */
-    public final BinaryOp<Xor> getXor() {
+    public BinaryOp<Xor> getXor() {
         return xor;
     }
 

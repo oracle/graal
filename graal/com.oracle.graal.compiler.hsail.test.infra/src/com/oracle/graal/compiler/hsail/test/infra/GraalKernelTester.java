@@ -131,7 +131,7 @@ public abstract class GraalKernelTester extends KernelTester {
     }
 
     /**
-     * Determines if we are running CQE tests (via a -D flag)
+     * Determines if we are running CQE tests (via a -D flag).
      */
     public boolean runningCQETests() {
         return Boolean.getBoolean("com.amd.CQE");

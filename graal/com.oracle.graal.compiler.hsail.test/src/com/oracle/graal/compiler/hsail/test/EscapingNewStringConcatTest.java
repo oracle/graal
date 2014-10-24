@@ -34,20 +34,20 @@ import com.oracle.graal.debug.*;
 
 public class EscapingNewStringConcatTest extends EscapingNewBase {
 
-    @Result public String[] myOutArray = new String[NUM];
-    public String[] inArray = new String[NUM];
+    @Result public String[] myOutArray = new String[num];
+    public String[] inArray = new String[num];
 
     @Override
     void setupArrays() {
         super.setupArrays();
-        for (int i = 0; i < NUM; i++) {
+        for (int i = 0; i < num; i++) {
             inArray[i] = Integer.toString(i + 100);
         }
     }
 
     public void run(int gid) {
-        outArray[gid] = inArray[gid] + inArray[(gid + NUM / 2) % NUM];
-        myOutArray[gid] = inArray[(gid + NUM / 2) % NUM] + inArray[gid];
+        outArray[gid] = inArray[gid] + inArray[(gid + num / 2) % num];
+        myOutArray[gid] = inArray[(gid + num / 2) % num] + inArray[gid];
     }
 
     @Ignore("emitDirectCall unimplemented")

@@ -122,7 +122,7 @@ public class Witness implements Cloneable {
     }
 
     /**
-     * Counterpart to {@link #asStamp()}
+     * Counterpart to {@link #asStamp()}.
      */
     public Witness(ObjectStamp stamp, GuardingNode anchor) {
         assert stamp.isLegal();

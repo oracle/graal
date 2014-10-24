@@ -26,7 +26,7 @@ package com.oracle.graal.compiler.hsail.test.lambda;
 import org.junit.*;
 
 /**
- * Tests the DREM bytecode instruction
+ * Tests the DREM bytecode instruction.
  */
 public class DremTest extends DoubleTwoInputMathBase {
 

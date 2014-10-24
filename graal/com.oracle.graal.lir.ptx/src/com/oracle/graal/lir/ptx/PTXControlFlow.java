@@ -42,7 +42,7 @@ import com.oracle.graal.lir.asm.*;
 
 public class PTXControlFlow {
 
-    public static abstract class PTXPredicatedLIRInstruction extends PTXLIRInstruction {
+    public abstract static class PTXPredicatedLIRInstruction extends PTXLIRInstruction {
         private int predRegNum;
 
         PTXPredicatedLIRInstruction(int regNum) {

@@ -40,7 +40,7 @@ public class ReduceMinTest {
     static int loops = 1;
 
     // The input array to the kernel
-    int bigArray[] = null;
+    int[] bigArray = null;
 
     // result for baseline single threaded stream
     int resultStream = 0;

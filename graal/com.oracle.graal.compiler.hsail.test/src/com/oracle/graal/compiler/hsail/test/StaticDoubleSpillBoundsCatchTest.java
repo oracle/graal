@@ -29,7 +29,7 @@ import org.junit.*;
 import com.oracle.graal.compiler.hsail.test.infra.*;
 
 /**
- * Tests the spilling of double variables into memory with deopt
+ * Tests the spilling of double variables into memory with deopt.
  */
 public class StaticDoubleSpillBoundsCatchTest extends GraalKernelTester {
 
@@ -123,7 +123,7 @@ public class StaticDoubleSpillBoundsCatchTest extends GraalKernelTester {
         /**
          * Call it for a range, specifying testmethod args (but not the fields it uses or the gid
          * argument).
-         * 
+         *
          */
         Arrays.fill(out, -1f);
         Arrays.fill(aux, 0f);

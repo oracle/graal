@@ -209,7 +209,8 @@ public class SPARCControlFlow {
                 emitCBCond(masm, actualX, actualY, actualTrueTarget, conditionFlag);
                 new Nop().emit(masm);
             } finally {
-                if (scratch != null) {// release the scratch if used
+                if (scratch != null) {
+                    // release the scratch if used
                     scratch.close();
                 }
             }
@@ -468,7 +469,7 @@ public class SPARCControlFlow {
             case AT:
             case BT:
             case BE:
-                GraalInternalError.unimplemented("Should not be required for float/dobule");
+                throw GraalInternalError.unimplemented("Should not be required for float/dobule");
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }

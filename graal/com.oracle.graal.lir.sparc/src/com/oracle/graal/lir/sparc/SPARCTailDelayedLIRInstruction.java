@@ -44,5 +44,5 @@ import com.oracle.graal.lir.*;
  * . The DelayedControlTransfer instruction will emit the code just with Nop in the delay slot.
  */
 public interface SPARCTailDelayedLIRInstruction {
-    public void setDelayedControlTransfer(SPARCDelayedControlTransfer holder);
+    void setDelayedControlTransfer(SPARCDelayedControlTransfer holder);
 }

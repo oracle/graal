@@ -179,8 +179,9 @@ public final class OptimizedCallTargetLog {
             log(0, "opt done", target.toString(), properties);
         }
         if (TraceTruffleCompilationPolymorphism.getValue()) {
-            target.nodeStream(true).filter(node -> node != null && (node.getCost() == NodeCost.MEGAMORPHIC || node.getCost() == NodeCost.POLYMORPHIC))//
-            .forEach(node -> {
+            // @formatter:off
+            target.nodeStream(true).filter(node -> node != null && (node.getCost() == NodeCost.MEGAMORPHIC || node.getCost() == NodeCost.POLYMORPHIC)).
+            forEach(node -> {
                 NodeCost cost = node.getCost();
                 Map<String, Object> props = new LinkedHashMap<>();
                 props.put("simpleName", node.getClass().getSimpleName());
@@ -188,6 +189,7 @@ public final class OptimizedCallTargetLog {
                 String msg = cost == NodeCost.MEGAMORPHIC ? "megamorphic" : "polymorphic";
                 log(0, msg, node.toString(), props);
             });
+            // @formatter:on
         }
     }
 
@@ -255,18 +257,21 @@ public final class OptimizedCallTargetLog {
     }
 
     private static void printProfiling() {
-        Map<OptimizedCallTarget, List<OptimizedCallTarget>> groupedTargets = Truffle.getRuntime().getCallTargets().stream()//
-        .map(target -> (OptimizedCallTarget) target)//
-        .collect(Collectors.groupingBy(target -> {
+        // @formatter:off
+        Map<OptimizedCallTarget, List<OptimizedCallTarget>> groupedTargets = Truffle.getRuntime().getCallTargets().stream().
+        map(target -> (OptimizedCallTarget) target).
+        collect(Collectors.groupingBy(target -> {
             if (target.getSourceCallTarget() != null) {
                 return target.getSourceCallTarget();
             }
             return target;
         }));
+        // @formatter:on
 
-        List<OptimizedCallTarget> uniqueSortedTargets = groupedTargets.keySet().stream()//
-        .sorted((target1, target2) -> sumCalls(groupedTargets.get(target2), p -> p.getTotalCallCount()) - sumCalls(groupedTargets.get(target1), p -> p.getTotalCallCount()))//
-        .collect(Collectors.toList());
+        List<OptimizedCallTarget> uniqueSortedTargets = groupedTargets.keySet().stream().sorted(
+                        (target1, target2) -> sumCalls(groupedTargets.get(target2), p -> p.getTotalCallCount()) - sumCalls(groupedTargets.get(target1), p -> p.getTotalCallCount())).collect(
+                        Collectors.toList());
+        // @formatter:on
 
         int totalDirectCallCount = 0;
         int totalInlinedCallCount = 0;

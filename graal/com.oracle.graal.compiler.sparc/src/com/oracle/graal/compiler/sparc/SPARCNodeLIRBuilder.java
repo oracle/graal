@@ -101,15 +101,14 @@ public abstract class SPARCNodeLIRBuilder extends NodeLIRBuilder {
             default:
                 throw GraalInternalError.unimplemented("unsupported sign extension (" + fromBits + " bit -> " + toBits + " bit)");
         }
-        {
-            Kind localFromKind = fromKind;
-            Kind localToKind = toKind;
-            return builder -> {
-                Value address = access.accessLocation().generateAddress(builder, gen, operand(access.object()));
-                Value v = getLIRGeneratorTool().emitLoad(LIRKind.value(localFromKind), address, getState(access));
-                return getLIRGeneratorTool().emitReinterpret(LIRKind.value(localToKind), v);
-            };
-        }
+
+        Kind localFromKind = fromKind;
+        Kind localToKind = toKind;
+        return builder -> {
+            Value address = access.accessLocation().generateAddress(builder, gen, operand(access.object()));
+            Value v = getLIRGeneratorTool().emitLoad(LIRKind.value(localFromKind), address, getState(access));
+            return getLIRGeneratorTool().emitReinterpret(LIRKind.value(localToKind), v);
+        };
     }
 
     @MatchRule("(SignExtend Read=access)")

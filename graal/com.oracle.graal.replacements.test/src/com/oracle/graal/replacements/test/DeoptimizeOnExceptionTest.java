@@ -89,6 +89,7 @@ public class DeoptimizeOnExceptionTest extends GraalCompilerTest {
     public static void methodB() {
         Random r = new Random(System.currentTimeMillis());
         while (r.nextFloat() > .03f) {
+            // Empty
         }
 
         return;
@@ -97,6 +98,7 @@ public class DeoptimizeOnExceptionTest extends GraalCompilerTest {
     public static void methodA() {
         Random r = new Random(System.currentTimeMillis());
         while (r.nextDouble() > .05) {
+            // Empty
         }
         return;
     }

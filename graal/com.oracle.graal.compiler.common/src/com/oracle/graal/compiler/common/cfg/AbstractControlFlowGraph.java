@@ -28,8 +28,8 @@ import com.oracle.graal.compiler.common.*;
 
 public interface AbstractControlFlowGraph<T extends AbstractBlock<T>> {
 
-    static final int BLOCK_ID_INITIAL = -1;
-    static final int BLOCK_ID_VISITED = -2;
+    int BLOCK_ID_INITIAL = -1;
+    int BLOCK_ID_VISITED = -2;
 
     /**
      * Returns the list blocks contained in this control flow graph.
@@ -104,7 +104,7 @@ public interface AbstractControlFlowGraph<T extends AbstractBlock<T>> {
      * @see #getBlocks()
      * @see CFGVerifier
      */
-    public static AbstractBlock<?> commonDominator(AbstractBlock<?> a, AbstractBlock<?> b) {
+    static AbstractBlock<?> commonDominator(AbstractBlock<?> a, AbstractBlock<?> b) {
         if (a == null) {
             return b;
         }
@@ -128,7 +128,7 @@ public interface AbstractControlFlowGraph<T extends AbstractBlock<T>> {
      * @see AbstractControlFlowGraph#commonDominator(AbstractBlock, AbstractBlock)
      */
     @SuppressWarnings("unchecked")
-    public static <T extends AbstractBlock<T>> T commonDominatorTyped(T a, T b) {
+    static <T extends AbstractBlock<T>> T commonDominatorTyped(T a, T b) {
         return (T) commonDominator(a, b);
     }
 }

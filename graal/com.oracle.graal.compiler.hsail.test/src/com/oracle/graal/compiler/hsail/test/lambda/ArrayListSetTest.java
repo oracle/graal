@@ -32,7 +32,7 @@ import java.util.*;
  */
 public class ArrayListSetTest extends GraalKernelTester {
 
-    final static int NUM = 50;
+    static final int NUM = 50;
     ArrayList<Integer> aryList = new ArrayList<>();
 
     @Override

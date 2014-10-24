@@ -30,7 +30,7 @@ import com.oracle.graal.jtt.*;
 public class UntrustedInterfaces extends JTTTest {
 
     public interface CallBack {
-        public int callBack(TestInterface ti);
+        int callBack(TestInterface ti);
     }
 
     private interface TestInterface {
@@ -38,27 +38,27 @@ public class UntrustedInterfaces extends JTTTest {
     }
 
     /**
-     * What a GoodPill would look like:
+     * What a GoodPill would look like.
      *
      * <pre>
      * private static final class GoodPill extends Pill {
      *     public void setField() {
      *         field = new TestConstant();
      *     }
-     *
+     * 
      *     public void setStaticField() {
      *         staticField = new TestConstant();
      *     }
-     *
+     * 
      *     public int callMe(CallBack callback) {
      *         return callback.callBack(new TestConstant());
      *     }
-     *
+     * 
      *     public TestInterface get() {
      *         return new TestConstant();
      *     }
      * }
-     *
+     * 
      * private static final class TestConstant implements TestInterface {
      *     public int method() {
      *         return 42;
@@ -66,7 +66,7 @@ public class UntrustedInterfaces extends JTTTest {
      * }
      * </pre>
      */
-    public static abstract class Pill {
+    public abstract static class Pill {
         public static TestInterface staticField;
         public TestInterface field;
 
@@ -143,10 +143,13 @@ public class UntrustedInterfaces extends JTTTest {
 
     private static Pill poisonPill;
 
+    // Checkstyle: stop
     @BeforeClass
-    public static void setup() throws InstantiationException, IllegalAccessException, ClassNotFoundException {
+    public static void setUp() throws InstantiationException, IllegalAccessException, ClassNotFoundException {
         poisonPill = (Pill) new PoisonLoader().findClass(PoisonLoader.POISON_IMPL_NAME).newInstance();
     }
+
+    // Checkstyle: resume
 
     @Test
     public void testStaticField0() {

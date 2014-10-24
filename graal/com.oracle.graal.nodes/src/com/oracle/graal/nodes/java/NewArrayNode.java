@@ -57,7 +57,7 @@ public class NewArrayNode extends AbstractNewArrayNode implements VirtualizableA
     }
 
     @NodeIntrinsic
-    static private native Object newArray(@ConstantNodeParameter Class<?> elementType, int length, @ConstantNodeParameter boolean fillContents);
+    private static native Object newArray(@ConstantNodeParameter Class<?> elementType, int length, @ConstantNodeParameter boolean fillContents);
 
     public static Object newUninitializedArray(Class<?> elementType, int length) {
         return newArray(elementType, length, false);

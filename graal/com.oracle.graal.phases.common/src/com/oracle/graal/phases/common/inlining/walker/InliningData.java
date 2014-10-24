@@ -480,6 +480,7 @@ public class InliningData {
     }
 
     /**
+     * Gets the freshly instantiated arguments.
      * <p>
      * A freshly instantiated argument is either:
      * <uL>
@@ -723,9 +724,9 @@ public class InliningData {
     }
 
     /**
-     * This method checks an invariant that {@link #moveForward()} must maintain: "the top
-     * invocation records how many concrete target methods (for it) remain on the
-     * {@link #graphQueue}; those targets 'belong' to the current invocation in question."
+     * Checks an invariant that {@link #moveForward()} must maintain: "the top invocation records
+     * how many concrete target methods (for it) remain on the {@link #graphQueue}; those targets
+     * 'belong' to the current invocation in question.
      */
     private boolean topGraphsForTopInvocation() {
         if (invocationQueue.isEmpty()) {

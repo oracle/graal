@@ -30,7 +30,7 @@ import org.junit.*;
 
 public class EscapingNewFloatStringTest extends EscapingNewBase {
 
-    @Result public String[] myOutArray = new String[NUM];
+    @Result public String[] myOutArray = new String[num];
 
     public void run(int gid) {
         outArray[gid] = Float.toString(gid * 1.11f);

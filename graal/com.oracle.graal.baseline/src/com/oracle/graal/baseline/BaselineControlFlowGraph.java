@@ -30,7 +30,7 @@ import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.java.*;
 import com.oracle.graal.java.BciBlockMapping.BciBlock;
 
-public class BaselineControlFlowGraph implements AbstractControlFlowGraph<BciBlock> {
+public final class BaselineControlFlowGraph implements AbstractControlFlowGraph<BciBlock> {
 
     private List<BciBlock> blocks;
     private Collection<Loop<BciBlock>> loops;

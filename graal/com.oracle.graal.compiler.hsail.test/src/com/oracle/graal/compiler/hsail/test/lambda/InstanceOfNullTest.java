@@ -35,8 +35,9 @@ public class InstanceOfNullTest extends VirtualCallTest {
         setupArrays();
         // change some of the inShapes to null
         for (int i = 0; i < NUM; i++) {
-            if (i % 3 == 0)
+            if (i % 3 == 0) {
                 inShapeArray[i] = null;
+            }
         }
 
         dispatchLambdaKernel(NUM, (gid) -> {

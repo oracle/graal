@@ -454,6 +454,9 @@ public final class State extends MergeableState<State> implements Cloneable {
 
     // @formatter:off
     /**
+     * Determines if the first argument is known not to conform to the second argument.
+     *
+     * <pre>
      *   \   |     |     |     |
      *    \ b|     |     |     |
      *   a \ |     |     |     |
@@ -472,7 +475,7 @@ public final class State extends MergeableState<State> implements Cloneable {
      *    iface: interface
      *    final: exact non-interface reference-type
      *    non-f: non-exact non-interface reference-type
-     *
+     * </pre>
      * @return true iff the first argument is known not to conform to the second argument.
      */
     // @formatter:on
@@ -627,7 +630,7 @@ public final class State extends MergeableState<State> implements Cloneable {
     }
 
     /**
-     * Ideas for the future:
+     * Ideas for the future.
      * <ul>
      * <li>track inferred less-than edges from (accumulated) CompareNode-s</li>
      * <li>track set-representative for equality classes determined by (chained) IntegerTestNode</li>
@@ -906,7 +909,7 @@ public final class State extends MergeableState<State> implements Cloneable {
     }
 
     /**
-     * Utility method for {@link #outcome(boolean, com.oracle.graal.nodes.LogicNode)}
+     * Utility method for {@link #outcome(boolean, com.oracle.graal.nodes.LogicNode)}.
      */
     private Evidence outcomeIsNullNode(boolean isTrue, IsNullNode isNullNode) {
         if (isTrue) {
@@ -933,7 +936,7 @@ public final class State extends MergeableState<State> implements Cloneable {
     }
 
     /**
-     * Utility method for {@link #outcome(boolean, com.oracle.graal.nodes.LogicNode)}
+     * Utility method for {@link #outcome(boolean, com.oracle.graal.nodes.LogicNode)}.
      */
     private Evidence outcomeInstanceOfNode(boolean isTrue, InstanceOfNode iOf) {
         final Witness w = typeInfo(iOf.getValue());
@@ -973,7 +976,7 @@ public final class State extends MergeableState<State> implements Cloneable {
     }
 
     /**
-     * Utility method for {@link #outcome(boolean, com.oracle.graal.nodes.LogicNode)}
+     * Utility method for {@link #outcome(boolean, com.oracle.graal.nodes.LogicNode)}.
      */
     private Evidence outcomeShortCircuitOrNode(boolean isTrue, ShortCircuitOrNode orNode) {
         if (!isTrue) {

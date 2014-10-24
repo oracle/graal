@@ -50,19 +50,20 @@ public abstract class SPARCAssembler extends Assembler {
     }
 
     public interface AssemblerEmittable {
-        public void emit(SPARCAssembler masm);
+        void emit(SPARCAssembler masm);
     }
 
     // @formatter:off
     /**
      * Instruction format for Fmt00 instructions. This abstraction is needed as it
      * makes the patching easier later on.
-     *
+     * <pre>
      * | 00  |  ??    | op2 |               ??                        |
      * |31 30|29    25|24 22|21                                      0|
+     * </pre>
      */
     // @formatter:on
-    public static abstract class Fmt00 implements AssemblerEmittable {
+    public abstract static class Fmt00 implements AssemblerEmittable {
 
         protected static final int OP_SHIFT = 30;
         protected static final int CBCOND_SHIFT = 28;
@@ -84,7 +85,7 @@ public abstract class SPARCAssembler extends Assembler {
 
         public static Fmt00 read(SPARCAssembler masm, int pos) {
             final int inst = masm.getInt(pos);
-            Op2s op2 = Op2s.byValue((inst&OP2_MASK) >> OP2_SHIFT);
+            Op2s op2 = Op2s.byValue((inst & OP2_MASK) >> OP2_SHIFT);
             switch(op2) {
                 case Br:
                 case Fb:
@@ -96,7 +97,7 @@ public abstract class SPARCAssembler extends Assembler {
                     return Fmt00c.read(masm, pos);
                 case Bpr:
                     boolean isCBcond = (inst & CBCOND_MASK) != 0;
-                    if(isCBcond) {
+                    if (isCBcond) {
                         return Fmt00e.read(masm, pos);
                     } else {
                         return Fmt00d.read(masm, pos);
@@ -148,9 +149,10 @@ public abstract class SPARCAssembler extends Assembler {
     // @formatter:off
     /**
      * Instruction format for sethi.
-     *
+     * <pre>
      * | 00  |  rd    | op2 |               imm22                     |
      * |31 30|29    25|24 22|21                                      0|
+     * </pre>
      */
     // @formatter:on
     public static class Fmt00a extends Fmt00 implements AssemblerEmittable {
@@ -228,9 +230,10 @@ public abstract class SPARCAssembler extends Assembler {
     // @formatter:off
     /**
      * Instruction format for branches.
-     *
+     * <pre>
      * | 00  |a | cond | op2 |             disp22                      |
      * |31 30|29|28  25|24 22|21                                      0|
+     * </pre>
      */
     // @formatter:on
     public static class Fmt00b extends Fmt00 {
@@ -366,9 +369,10 @@ public abstract class SPARCAssembler extends Assembler {
     // @formatter:off
     /**
      * Instruction format for conditional branches.
-     *
+     * <pre>
      * | 00  |a | cond | op2 |cc1|cc0|p |             disp19           |
      * |31 30|29|28  25|24 22|21 |20 |19|                             0|
+     * </pre>
      */
     // @formatter:on
     public static class Fmt00c extends Fmt00 {
@@ -521,9 +525,10 @@ public abstract class SPARCAssembler extends Assembler {
     // @formatter:off
     /**
      * Instruction format for Branch on Integer Register with Prediction.
-     *
+     * <pre>
      * |00   |a |- |rcond | 011 |d16hi|p | rs1 |          d16lo           |
      * |31 30|29|28|27  25|24 22|21 20|19|18 14|                         0|
+     * </pre>
      */
     // @formatter:on
     public static class Fmt00d extends Fmt00 {
@@ -634,10 +639,11 @@ public abstract class SPARCAssembler extends Assembler {
 
     // @formatter:off
     /**
-     * Instruction format CBcond
-     *
+     * Instruction format CBcond.
+     * <pre>
      * |00   |chi|1 | clo | 011 |cc2|d10hi|rs1  |i |d10lo|rs2/simm5|
      * |31 30|29 |28|27 25|24 22|21 |20 19|18 14|13|12  5|4       0|
+     * </pre>
      */
     // @formatter:on
     public static class Fmt00e extends Fmt00 {
@@ -788,9 +794,10 @@ public abstract class SPARCAssembler extends Assembler {
     // @formatter:off
     /**
      * Instruction format for calls.
-     *
+     * <pre>
      * | 01  |                      disp30                             |
      * |31 30|29                                                      0|
+     * </pre>
      */
     // @formatter:on
     public static class Fmt01 {
@@ -930,10 +937,11 @@ public abstract class SPARCAssembler extends Assembler {
 
     // @formatter:off
     /**
-     * Instruction format for fcmp
-     *
+     * Instruction format for fcmp.
+     * <pre>
      * | 10  | --- |cc1|cc0|desc |   rs1   |   opf  | rs2 |
      * |31 30|29 27|26 |25 |24 19|18     14|13     5|4   0|
+     * </pre>
      */
     // @formatter:on
     public static class Fmt3c {
@@ -968,13 +976,14 @@ public abstract class SPARCAssembler extends Assembler {
     // @formatter:off
     /**
      * Instruction format for Arithmetic, Logical, Moves, Tcc, Prefetch, and Misc.
-     *
+     * <pre>
      * | 10  |   rd   |   op3   |   rs1   | i|     imm_asi   |   rs2   |
      * | 10  |   rd   |   op3   |   rs1   | i|          simm13         |
      * | 10  |   rd   |   op3   |   rs1   | i| x|            |   rs2   |
      * | 10  |   rd   |   op3   |   rs1   | i| x|            | shcnt32 |
-     * | 10  |   rd   |   op3   |   rs1   | i| x|           |  shcnt64 |
+     * | 10  |   rd   |   op3   |   rs1   | i| x|            | shcnt64 |
      * |31 30|29    25|24     19|18     14|13|12|11         5|4       0|
+     * </pre>
      */
     // @formatter:on
     public static class Fmt10 implements AssemblerEmittable {
@@ -1110,10 +1119,11 @@ public abstract class SPARCAssembler extends Assembler {
     // @formatter:off
     /**
      * Instruction format for Loads, Stores and Misc.
-     *
+     * <pre>
      * | 11  |   rd   |   op3   |   rs1   | i|   imm_asi   |   rs2   |
      * | 11  |   rd   |   op3   |   rs1   | i|        simm13         |
      * |31 30|29    25|24     19|18     14|13|12          5|4       0|
+     * </pre>
      */
     // @formatter:on
     public static class Fmt11 {
@@ -1265,10 +1275,11 @@ public abstract class SPARCAssembler extends Assembler {
     // @formatter:off
     /**
      * Instruction format for Movcc.
-     *
+     * <pre>
      * | 10  |   rd   |   op3   |cc2|   cond  | i|cc1|cc0|      -      |   rs2   |
      * | 10  |   rd   |   op3   |cc2|   cond  | i|cc1|cc0|        simm11         |
      * |31 30|29    25|24     19| 18|17     14|13| 12| 11|10          5|4       0|
+     * </pre>
      */
     // @formatter:on
     public static class Fmt10c {
@@ -1390,9 +1401,10 @@ public abstract class SPARCAssembler extends Assembler {
     // @formatter:off
     /**
      * Instruction format for Fmovcc.
-     *
+     * <pre>
      * | 10  |   rd   |   op3   | -|   cond  | opfcc | opf_low |   rs2   |
      * |31 30|29    25|24     19|18|17     14|13   11|10      5|4       0|
+     * </pre>
      */
     // @formatter:on
     public static class Fmt10d implements AssemblerEmittable {
@@ -1406,12 +1418,12 @@ public abstract class SPARCAssembler extends Assembler {
         private static final int RS2_SHIFT = 0;
 
         // @formatter:off
-        private static final int RD_MASK     = 0b0011_1110_0000_0000_0000_0000_0000_0000;
-        private static final int OP3_MASK    = 0b0000_0001_1111_1000_0000_0000_0000_0000;
-        private static final int COND_MASK   = 0b0000_0000_0000_0011_1100_0000_0000_0000;
-        private static final int OPFCC_MASK  = 0b0000_0000_0000_0000_0011_1000_0000_0000;
-        private static final int OPF_LOW_MASK= 0b0000_0000_0000_0000_0000_0111_1110_0000;
-        private static final int RS2_MASK    = 0b0000_0000_0000_0000_0000_0000_0001_1111;
+        private static final int RD_MASK      = 0b0011_1110_0000_0000_0000_0000_0000_0000;
+        private static final int OP3_MASK     = 0b0000_0001_1111_1000_0000_0000_0000_0000;
+        private static final int COND_MASK    = 0b0000_0000_0000_0011_1100_0000_0000_0000;
+        private static final int OPFCC_MASK   = 0b0000_0000_0000_0000_0011_1000_0000_0000;
+        private static final int OPF_LOW_MASK = 0b0000_0000_0000_0000_0000_0111_1110_0000;
+        private static final int RS2_MASK     = 0b0000_0000_0000_0000_0000_0000_0001_1111;
         // @formatter:on
 
         private int rd;
@@ -1863,9 +1875,8 @@ public abstract class SPARCAssembler extends Assembler {
 
         Fcmps(0x51, "fcmps"),
         Fcmpd(0x52, "fcmpd"),
-        Fcmpq(0x53, "fcmpq"),
+        Fcmpq(0x53, "fcmpq");
 
-        ;
         // @formatter:on
 
         private final int value;
@@ -1916,16 +1927,16 @@ public abstract class SPARCAssembler extends Assembler {
     }
 
     /**
-     * Condition Codes to use for instruction
+     * Condition Codes to use for instruction.
      */
     public enum CC {
         // @formatter:off
         /**
-         * Condition is considered as 32bit operation condition
+         * Condition is considered as 32bit operation condition.
          */
         Icc(0b00, "icc"),
         /**
-         * Condition is considered as 64bit operation condition
+         * Condition is considered as 64bit operation condition.
          */
         Xcc(0b10, "xcc"),
         Ptrcc(getHostWordKind() == Kind.Long ? Xcc.getValue() : Icc.getValue(), "ptrcc"),
@@ -2187,7 +2198,7 @@ public abstract class SPARCAssembler extends Assembler {
     }
 
     /**
-     * Represents the <b>Address Space Identifier</b> defined in the SPARC architec
+     * Represents the <b>Address Space Identifier</b> defined in the SPARC architecture.
      */
     public enum Asi {
         // @formatter:off
@@ -3021,7 +3032,7 @@ public abstract class SPARCAssembler extends Assembler {
     }
 
     /**
-     * Floating-point multiply-add single (fused)
+     * Floating-point multiply-add single (fused).
      */
     public static class Fmadds extends Fmt5a {
 
@@ -3031,7 +3042,7 @@ public abstract class SPARCAssembler extends Assembler {
     }
 
     /**
-     * Floating-point multiply-add double (fused)
+     * Floating-point multiply-add double (fused).
      */
     public static class Fmaddd extends Fmt5a {
 
@@ -3041,7 +3052,7 @@ public abstract class SPARCAssembler extends Assembler {
     }
 
     /**
-     * 16-bit partitioned average
+     * 16-bit partitioned average.
      */
     public static class Fmean16 extends Fmt3p {
 
@@ -3351,7 +3362,7 @@ public abstract class SPARCAssembler extends Assembler {
     }
 
     /**
-     * Convert Double to 32-bit Integer
+     * Convert Double to 32-bit Integer.
      */
     public static class Fdtoi extends Fmt3n {
 
@@ -3399,7 +3410,7 @@ public abstract class SPARCAssembler extends Assembler {
     }
 
     /**
-     * Flush register windows
+     * Flush register windows.
      */
     public static class Flushw extends Fmt10 {
 
@@ -4135,7 +4146,7 @@ public abstract class SPARCAssembler extends Assembler {
             super(Op3s.Rett, src1, src2, r0);
         }
 
-        public static int PC_RETURN_OFFSET = 8;
+        public static final int PC_RETURN_OFFSET = 8;
     }
 
     public static class Save extends Fmt10 {

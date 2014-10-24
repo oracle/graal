@@ -39,40 +39,40 @@ public class StaticNBodyTest extends GraalKernelTester {
     static final int width = 768;
     static final int height = 768;
 
-    @Result float[] in_xyz = new float[bodies * 3]; // positions xy and z of bodies
+    @Result float[] inXyz = new float[bodies * 3]; // positions xy and z of bodies
 
-    @Result float[] out_xyz = new float[bodies * 3]; // positions xy and z of bodies
+    @Result float[] outXyz = new float[bodies * 3]; // positions xy and z of bodies
 
-    @Result float[] in_vxyz = new float[bodies * 3]; // velocity component of x,y and z of
+    @Result float[] inVxyz = new float[bodies * 3]; // velocity component of x,y and z of
     // bodies
 
-    @Result float[] out_vxyz = new float[bodies * 3];
+    @Result float[] outVxyz = new float[bodies * 3];
 
-    static float[] seed_xyz = new float[bodies * 3];
+    static float[] seedXyz = new float[bodies * 3];
     static {
         final float maxDist = width / 4;
         for (int body = 0; body < (bodies * 3); body += 3) {
             final float theta = (float) (Math.random() * Math.PI * 2);
             final float phi = (float) (Math.random() * Math.PI * 2);
             final float radius = (float) (Math.random() * maxDist);
-            seed_xyz[body + 0] = (float) (radius * Math.cos(theta) * Math.sin(phi)) + width / 2;
-            seed_xyz[body + 1] = (float) (radius * Math.sin(theta) * Math.sin(phi)) + height / 2;
-            seed_xyz[body + 2] = (float) (radius * Math.cos(phi));
+            seedXyz[body + 0] = (float) (radius * Math.cos(theta) * Math.sin(phi)) + width / 2;
+            seedXyz[body + 1] = (float) (radius * Math.sin(theta) * Math.sin(phi)) + height / 2;
+            seedXyz[body + 2] = (float) (radius * Math.cos(phi));
         }
     }
 
     @Override
     public void runTest() {
-        System.arraycopy(seed_xyz, 0, in_xyz, 0, seed_xyz.length);
-        Arrays.fill(out_xyz, 0f);
-        Arrays.fill(out_vxyz, 0f);
-        Arrays.fill(in_vxyz, 0f);
+        System.arraycopy(seedXyz, 0, inXyz, 0, seedXyz.length);
+        Arrays.fill(outXyz, 0f);
+        Arrays.fill(outVxyz, 0f);
+        Arrays.fill(inVxyz, 0f);
 
         // local copies for a static lambda
-        float[] in_xyz1 = this.in_xyz;
-        float[] out_xyz1 = this.out_xyz;
-        float[] in_vxyz1 = this.in_vxyz;
-        float[] out_vxyz1 = this.out_vxyz;
+        float[] inXyz1 = this.inXyz;
+        float[] outXyz1 = this.outXyz;
+        float[] inVxyz1 = this.inVxyz;
+        float[] outVxyz1 = this.outVxyz;
 
         dispatchLambdaKernel(bodies, (gid) -> {
             final int count = bodies * 3;
@@ -82,9 +82,9 @@ public class StaticNBodyTest extends GraalKernelTester {
             float accy = 0.f;
             float accz = 0.f;
             for (int i = 0; i < count; i += 3) {
-                final float dx = in_xyz1[i + 0] - in_xyz1[globalId + 0];
-                final float dy = in_xyz1[i + 1] - in_xyz1[globalId + 1];
-                final float dz = in_xyz1[i + 2] - in_xyz1[globalId + 2];
+                final float dx = inXyz1[i + 0] - inXyz1[globalId + 0];
+                final float dy = inXyz1[i + 1] - inXyz1[globalId + 1];
+                final float dz = inXyz1[i + 2] - inXyz1[globalId + 2];
                 final float invDist = (float) (1.0 / (Math.sqrt((dx * dx) + (dy * dy) + (dz * dz) + espSqr)));
                 accx += mass * invDist * invDist * invDist * dx;
                 accy += mass * invDist * invDist * invDist * dy;
@@ -93,13 +93,13 @@ public class StaticNBodyTest extends GraalKernelTester {
             accx *= delT;
             accy *= delT;
             accz *= delT;
-            out_xyz1[globalId + 0] = in_xyz1[globalId + 0] + (in_vxyz1[globalId + 0] * delT) + (accx * .5f * delT);
-            out_xyz1[globalId + 1] = in_xyz1[globalId + 1] + (in_vxyz1[globalId + 1] * delT) + (accy * .5f * delT);
-            out_xyz1[globalId + 2] = in_xyz1[globalId + 2] + (in_vxyz1[globalId + 2] * delT) + (accz * .5f * delT);
+            outXyz1[globalId + 0] = inXyz1[globalId + 0] + (inVxyz1[globalId + 0] * delT) + (accx * .5f * delT);
+            outXyz1[globalId + 1] = inXyz1[globalId + 1] + (inVxyz1[globalId + 1] * delT) + (accy * .5f * delT);
+            outXyz1[globalId + 2] = inXyz1[globalId + 2] + (inVxyz1[globalId + 2] * delT) + (accz * .5f * delT);
 
-            out_vxyz1[globalId + 0] = in_vxyz1[globalId + 0] + accx;
-            out_vxyz1[globalId + 1] = in_vxyz1[globalId + 1] + accy;
-            out_vxyz1[globalId + 2] = in_vxyz1[globalId + 2] + accz;
+            outVxyz1[globalId + 0] = inVxyz1[globalId + 0] + accx;
+            outVxyz1[globalId + 1] = inVxyz1[globalId + 1] + accy;
+            outVxyz1[globalId + 2] = inVxyz1[globalId + 2] + accz;
         });
     }
 

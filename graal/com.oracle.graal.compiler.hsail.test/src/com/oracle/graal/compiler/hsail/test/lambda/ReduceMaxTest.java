@@ -40,7 +40,7 @@ public class ReduceMaxTest {
     static int loops = 1;
 
     // The source array
-    int bigArray[] = null;
+    int[] bigArray = null;
 
     // result for baseline single threaded stream
     int resultStream = 0;

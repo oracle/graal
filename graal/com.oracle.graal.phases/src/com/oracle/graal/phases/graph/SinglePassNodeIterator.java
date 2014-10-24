@@ -109,7 +109,7 @@ public abstract class SinglePassNodeIterator<T extends MergeableState<T>> {
      * </ul>
      * </p>
      */
-    private static class PathStart<U> {
+    private static final class PathStart<U> {
         private final BeginNode node;
         private final U stateOnEntry;
 
@@ -259,7 +259,7 @@ public abstract class SinglePassNodeIterator<T extends MergeableState<T>> {
     }
 
     /**
-     * Once all loop-end-nodes for a given loop-node have been visited:
+     * Once all loop-end-nodes for a given loop-node have been visited.
      * <ul>
      * <li>the state for that loop-node is updated based on the states of the loop-end-nodes</li>
      * <li>entries in {@link #nodeStates} are pruned for the loop (they aren't going to be looked up

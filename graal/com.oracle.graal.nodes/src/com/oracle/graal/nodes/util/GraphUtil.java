@@ -446,7 +446,7 @@ public class GraphUtil {
 
     /**
      * Returns an iterator that will return the given node followed by all its predecessors, up
-     * until the point where {@link Node#predecessor()} returns null;
+     * until the point where {@link Node#predecessor()} returns null.
      *
      * @param start the node at which to start iterating
      */

@@ -35,7 +35,7 @@ public abstract class FloatMathBase extends MathTestBase {
     }
 
     /**
-     * Initializes the input and output arrays
+     * Initializes the input and output arrays.
      */
     void setupArrays() {
         for (int i = 0; i < size / 2; i++) {

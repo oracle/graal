@@ -31,7 +31,7 @@ import org.junit.*;
  */
 public class StringSubsequenceTest extends GraalKernelTester {
 
-    final static int NUM = 50;
+    static final int NUM = 50;
     String inputString;
     @Result CharSequence[] resultSequence = new String[NUM];
 

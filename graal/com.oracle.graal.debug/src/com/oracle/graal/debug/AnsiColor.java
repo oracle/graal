@@ -26,63 +26,63 @@ package com.oracle.graal.debug;
  * Ansi terminal color escape codes.
  */
 public final class AnsiColor {
-    /** Foreground black */
+    /** Foreground black. */
     public static final String BLACK = "\u001b[30m";
-    /** Foreground red */
+    /** Foreground red. */
     public static final String RED = "\u001b[31m";
-    /** Foreground green */
+    /** Foreground green. */
     public static final String GREEN = "\u001b[32m";
-    /** Foreground yellow */
+    /** Foreground yellow. */
     public static final String YELLOW = "\u001b[33m";
-    /** Foreground blue */
+    /** Foreground blue. */
     public static final String BLUE = "\u001b[34m";
-    /** Foreground magenta */
+    /** Foreground magenta. */
     public static final String MAGENTA = "\u001b[35m";
-    /** Foreground cyan */
+    /** Foreground cyan. */
     public static final String CYAN = "\u001b[36m";
-    /** Foreground white */
+    /** Foreground white. */
     public static final String WHITE = "\u001b[37m";
 
-    /** Foreground bold black */
+    /** Foreground bold black. */
     public static final String BOLD_BLACK = "\u001b[30;1m";
-    /** Foreground bold red */
+    /** Foreground bold red. */
     public static final String BOLD_RED = "\u001b[31;1m";
-    /** Foreground bold green */
+    /** Foreground bold green. */
     public static final String BOLD_GREEN = "\u001b[32;1m";
-    /** Foreground bold yellow */
+    /** Foreground bold yellow. */
     public static final String BOLD_YELLOW = "\u001b[33;1m";
-    /** Foreground bold blue */
+    /** Foreground bold blue. */
     public static final String BOLD_BLUE = "\u001b[34;1m";
-    /** Foreground bold magenta */
+    /** Foreground bold magenta. */
     public static final String BOLD_MAGENTA = "\u001b[35;1m";
-    /** Foreground bold cyan */
+    /** Foreground bold cyan. */
     public static final String BOLD_CYAN = "\u001b[36;1m";
-    /** Foreground bold white */
+    /** Foreground bold white. */
     public static final String BOLD_WHITE = "\u001b[37;1m";
 
-    /** Background black */
+    /** Background black. */
     public static final String BG_BLACK = "\u001b[40m";
-    /** Background red */
+    /** Background red. */
     public static final String BG_RED = "\u001b[41m";
-    /** Background green */
+    /** Background green. */
     public static final String BG_GREEN = "\u001b[42m";
-    /** Background yellow */
+    /** Background yellow. */
     public static final String BG_YELLOW = "\u001b[43m";
-    /** Background blue */
+    /** Background blue. */
     public static final String BG_BLUE = "\u001b[44m";
-    /** Background magenta */
+    /** Background magenta. */
     public static final String BG_MAGENTA = "\u001b[45m";
-    /** Background cyan */
+    /** Background cyan. */
     public static final String BG_CYAN = "\u001b[46m";
-    /** Background white */
+    /** Background white. */
     public static final String BG_WHITE = "\u001b[47m";
 
-    /** Reset */
+    /** Reset. */
     public static final String RESET = "\u001b[0m";
-    /** Underline */
+    /** Underline. */
     public static final String UNDERLINED = "\u001b[4m";
 
-    /** Prevent instantiation */
+    /** Prevent instantiation. */
     private AnsiColor() {
     }
 }

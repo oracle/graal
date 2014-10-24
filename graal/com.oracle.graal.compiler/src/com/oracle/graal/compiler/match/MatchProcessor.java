@@ -536,13 +536,13 @@ public class MatchProcessor extends AbstractProcessor {
             out.println();
             out.println("    @Override");
             out.println("    public List<" + desc + "> statements(MatchRuleRegistry.NodeClassLookup lookup) {");
+            out.println("        // Checkstyle: stop ");
 
             for (String positionDeclaration : info.positionDeclarations) {
                 out.println("        " + positionDeclaration);
             }
             out.println();
 
-            out.println("        // CheckStyle: stop line length check");
             out.println("        List<" + desc + "> statements = Collections.unmodifiableList(Arrays.asList(");
 
             int i = 0;
@@ -552,7 +552,7 @@ public class MatchProcessor extends AbstractProcessor {
                 i++;
             }
             out.println("        ));");
-            out.println("        // CheckStyle: resume line length check");
+            out.println("        // Checkstyle: resume");
             out.println("        return statements;");
             out.println("    }");
 

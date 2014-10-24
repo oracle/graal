@@ -67,13 +67,14 @@ public class TypeSwitchNode extends SwitchNode implements LIRLowerable, Simplifi
     }
 
     /**
-     * Don't allow duplicate keys
+     * Don't allow duplicate keys.
      */
     private boolean assertKeys() {
         for (int i = 0; i < keys.length; i++) {
             for (int j = 0; j < keys.length; j++) {
-                if (i == j)
+                if (i == j) {
                     continue;
+                }
                 assert !keys[i].equals(keys[j]);
             }
         }

@@ -38,35 +38,35 @@ public interface ModifiersProvider {
     int getModifiers();
 
     /**
-     * see {@link Modifier#isInterface(int)}
+     * @see Modifier#isInterface(int)
      */
     default boolean isInterface() {
         return Modifier.isInterface(getModifiers());
     }
 
     /**
-     * see {@link Modifier#isSynchronized(int)}
+     * @see Modifier#isSynchronized(int)
      */
     default boolean isSynchronized() {
         return Modifier.isSynchronized(getModifiers());
     }
 
     /**
-     * see {@link Modifier#isStatic(int)}
+     * @see Modifier#isStatic(int)
      */
     default boolean isStatic() {
         return Modifier.isStatic(getModifiers());
     }
 
     /**
-     * see {@link Modifier#isFinal(int)}
+     * @see Modifier#isFinal(int)
      */
     default boolean isFinal() {
         return Modifier.isFinal(getModifiers());
     }
 
     /**
-     * see {@link Modifier#isPublic(int)}
+     * @see Modifier#isPublic(int)
      */
     default boolean isPublic() {
         return Modifier.isPublic(getModifiers());
@@ -81,49 +81,49 @@ public interface ModifiersProvider {
     }
 
     /**
-     * see {@link Modifier#isPrivate(int)}
+     * @see Modifier#isPrivate(int)
      */
     default boolean isPrivate() {
         return Modifier.isPrivate(getModifiers());
     }
 
     /**
-     * see {@link Modifier#isProtected(int)}
+     * @see Modifier#isProtected(int)
      */
     default boolean isProtected() {
         return Modifier.isProtected(getModifiers());
     }
 
     /**
-     * see {@link Modifier#isTransient(int)}
+     * @see Modifier#isTransient(int)
      */
     default boolean isTransient() {
         return Modifier.isTransient(getModifiers());
     }
 
     /**
-     * see {@link Modifier#isStrict(int)}
+     * @see Modifier#isStrict(int)
      */
     default boolean isStrict() {
         return Modifier.isStrict(getModifiers());
     }
 
     /**
-     * see {@link Modifier#isVolatile(int)}
+     * @see Modifier#isVolatile(int)
      */
     default boolean isVolatile() {
         return Modifier.isVolatile(getModifiers());
     }
 
     /**
-     * see {@link Modifier#isNative(int)}
+     * @see Modifier#isNative(int)
      */
     default boolean isNative() {
         return Modifier.isNative(getModifiers());
     }
 
     /**
-     * see {@link Modifier#isAbstract(int)}
+     * @see Modifier#isAbstract(int)
      */
     default boolean isAbstract() {
         return Modifier.isAbstract(getModifiers());

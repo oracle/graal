@@ -549,7 +549,7 @@ public class HotSpotConstantPool extends CompilerObject implements ConstantPool 
                 index = getUncachedKlassRefIndexAt(index);
                 tag = getTagAt(index);
                 assert tag == JVM_CONSTANT.Class || tag == JVM_CONSTANT.UnresolvedClass || tag == JVM_CONSTANT.UnresolvedClassInError : tag;
-                // fall-through
+                // fall through
             case Class:
             case UnresolvedClass:
             case UnresolvedClassInError:

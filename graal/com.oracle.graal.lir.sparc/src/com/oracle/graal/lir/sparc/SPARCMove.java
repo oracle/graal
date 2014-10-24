@@ -97,7 +97,7 @@ public class SPARCMove {
     }
 
     /**
-     * Move between floating-point and general purpose register domain (WITHOUT VIS3)
+     * Move between floating-point and general purpose register domain (WITHOUT VIS3).
      */
     @Opcode("MOVE")
     public static class MoveFpGp extends SPARCLIRInstruction implements MoveOp, SPARCTailDelayedLIRInstruction {
@@ -191,7 +191,7 @@ public class SPARCMove {
     }
 
     /**
-     * Move between floating-point and general purpose register domain (WITH VIS3)
+     * Move between floating-point and general purpose register domain (WITH VIS3).
      */
     @Opcode("MOVE")
     public static class MoveFpGpVIS3 extends SPARCLIRInstruction implements MoveOp, SPARCTailDelayedLIRInstruction {

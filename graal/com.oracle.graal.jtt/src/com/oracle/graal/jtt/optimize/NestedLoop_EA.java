@@ -49,14 +49,14 @@ public class NestedLoop_EA extends JTTTest {
     }
 
     static class Frame {
-        Object objects[] = new Object[10];
+        Object[] objects = new Object[10];
     }
 
-    final static int RESULT_SLOT = 0;
-    final static int K_SLOT = 1;
-    final static int I_SLOT = 2;
-    final static int ARG_SLOT = 3;
-    final static int STACK_BASE = 4;
+    static final int RESULT_SLOT = 0;
+    static final int K_SLOT = 1;
+    static final int I_SLOT = 2;
+    static final int ARG_SLOT = 3;
+    static final int STACK_BASE = 4;
 
     static class Pointer {
         public int sp = STACK_BASE;

@@ -125,9 +125,9 @@ public class HSAILControlFlow {
     }
 
     public interface DeoptimizingOp {
-        public LIRFrameState getFrameState();
+        LIRFrameState getFrameState();
 
-        public int getCodeBufferPos();
+        int getCodeBufferPos();
     }
 
     /***

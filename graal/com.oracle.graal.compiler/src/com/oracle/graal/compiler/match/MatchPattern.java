@@ -75,32 +75,32 @@ public class MatchPattern {
         private static final Result CACHED_NOT_SAFE = new Result(MatchResultCode.NOT_SAFE, null, null);
         private static final Result CACHED_ALREADY_USED = new Result(MatchResultCode.ALREADY_USED, null, null);
 
-        static Result WRONG_CLASS(ValueNode node, MatchPattern matcher) {
+        static Result wrongClass(ValueNode node, MatchPattern matcher) {
             MatchResult_WRONG_CLASS.increment();
             return Debug.isEnabled() ? new Result(MatchResultCode.WRONG_CLASS, node, matcher) : CACHED_WRONG_CLASS;
         }
 
-        static Result NAMED_VALUE_MISMATCH(ValueNode node, MatchPattern matcher) {
+        static Result namedValueMismatch(ValueNode node, MatchPattern matcher) {
             MatchResult_NAMED_VALUE_MISMATCH.increment();
             return Debug.isEnabled() ? new Result(MatchResultCode.NAMED_VALUE_MISMATCH, node, matcher) : CACHED_NAMED_VALUE_MISMATCH;
         }
 
-        static Result TOO_MANY_USERS(ValueNode node, MatchPattern matcher) {
+        static Result tooManyUsers(ValueNode node, MatchPattern matcher) {
             MatchResult_TOO_MANY_USERS.increment();
             return Debug.isEnabled() ? new Result(MatchResultCode.TOO_MANY_USERS, node, matcher) : CACHED_TOO_MANY_USERS;
         }
 
-        static Result NOT_IN_BLOCK(ScheduledNode node, MatchPattern matcher) {
+        static Result notInBlock(ScheduledNode node, MatchPattern matcher) {
             MatchResult_NOT_IN_BLOCK.increment();
             return Debug.isEnabled() ? new Result(MatchResultCode.NOT_IN_BLOCK, node, matcher) : CACHED_NOT_IN_BLOCK;
         }
 
-        static Result NOT_SAFE(ScheduledNode node, MatchPattern matcher) {
+        static Result notSafe(ScheduledNode node, MatchPattern matcher) {
             MatchResult_NOT_SAFE.increment();
             return Debug.isEnabled() ? new Result(MatchResultCode.NOT_SAFE, node, matcher) : CACHED_NOT_SAFE;
         }
 
-        static Result ALREADY_USED(ValueNode node, MatchPattern matcher) {
+        static Result alreadyUsed(ValueNode node, MatchPattern matcher) {
             MatchResult_ALREADY_USED.increment();
             return Debug.isEnabled() ? new Result(MatchResultCode.ALREADY_USED, node, matcher) : CACHED_ALREADY_USED;
         }
@@ -186,7 +186,7 @@ public class MatchPattern {
 
     private Result matchType(ValueNode node) {
         if (nodeClass != null && node.getClass() != nodeClass) {
-            return Result.WRONG_CLASS(node, this);
+            return Result.wrongClass(node, this);
         }
         return Result.OK;
     }
@@ -252,7 +252,7 @@ public class MatchPattern {
 
         if (singleUser && !atRoot) {
             if (node.usages().count() > 1) {
-                return Result.TOO_MANY_USERS(node, statement.getPattern());
+                return Result.tooManyUsers(node, statement.getPattern());
             }
         }
 

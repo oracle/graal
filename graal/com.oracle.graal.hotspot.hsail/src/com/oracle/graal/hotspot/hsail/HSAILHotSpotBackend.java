@@ -86,7 +86,7 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
 
         // @formatter:off
         @Option(help = "Number of TLABs used for HSAIL kernels which allocate")
-        static public final OptionValue<Integer> HsailKernelTlabs = new OptionValue<>(4);
+        public static  final OptionValue<Integer> HsailKernelTlabs = new OptionValue<>(4);
         // @formatter:on
     }
 
@@ -627,40 +627,40 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
 
         if (useHSAILDeoptimization) {
             // Aliases for d16
-            RegisterValue d16_deoptInfo = HSAIL.d16.asValue(wordLIRKind);
+            RegisterValue d16DeoptInfo = HSAIL.d16.asValue(wordLIRKind);
 
             // Aliases for d17
-            RegisterValue d17_tlabIndex = HSAIL.d17.asValue(wordLIRKind);
-            RegisterValue d17_safepointFlagAddrIndex = d17_tlabIndex;
+            RegisterValue d17TlabIndex = HSAIL.d17.asValue(wordLIRKind);
+            RegisterValue d17SafepointFlagAddrIndex = d17TlabIndex;
 
             // Aliases for s34
-            RegisterValue s34_deoptOccurred = HSAIL.s34.asValue(LIRKind.value(Kind.Int));
-            RegisterValue s34_tlabIndex = s34_deoptOccurred;
+            RegisterValue s34DeoptOccurred = HSAIL.s34.asValue(LIRKind.value(Kind.Int));
+            RegisterValue s34TlabIndex = s34DeoptOccurred;
 
-            asm.emitLoadKernelArg(d16_deoptInfo, asm.getDeoptInfoName(), "u64");
+            asm.emitLoadKernelArg(d16DeoptInfo, asm.getDeoptInfoName(), "u64");
             asm.emitComment("// Check if a deopt or safepoint has occurred and abort if true before doing any work");
 
             if (useHSAILSafepoints) {
                 // Load address of _notice_safepoints field
-                asm.emitLoad(wordKind, d17_safepointFlagAddrIndex, new HSAILAddressValue(wordLIRKind, d16_deoptInfo, config.hsailNoticeSafepointsOffset).toAddress());
+                asm.emitLoad(wordKind, d17SafepointFlagAddrIndex, new HSAILAddressValue(wordLIRKind, d16DeoptInfo, config.hsailNoticeSafepointsOffset).toAddress());
                 // Load int value from that field
-                asm.emitLoadAcquire(s34_deoptOccurred, new HSAILAddressValue(wordLIRKind, d17_safepointFlagAddrIndex, 0).toAddress());
-                asm.emitCompare(Kind.Int, s34_deoptOccurred, Constant.forInt(0), "ne", false, false);
+                asm.emitLoadAcquire(s34DeoptOccurred, new HSAILAddressValue(wordLIRKind, d17SafepointFlagAddrIndex, 0).toAddress());
+                asm.emitCompare(Kind.Int, s34DeoptOccurred, Constant.forInt(0), "ne", false, false);
                 asm.cbr(deoptInProgressLabel);
             }
-            asm.emitLoadAcquire(s34_deoptOccurred, new HSAILAddressValue(wordLIRKind, d16_deoptInfo, config.hsailDeoptOccurredOffset).toAddress());
-            asm.emitCompare(Kind.Int, s34_deoptOccurred, Constant.forInt(0), "ne", false, false);
+            asm.emitLoadAcquire(s34DeoptOccurred, new HSAILAddressValue(wordLIRKind, d16DeoptInfo, config.hsailDeoptOccurredOffset).toAddress());
+            asm.emitCompare(Kind.Int, s34DeoptOccurred, Constant.forInt(0), "ne", false, false);
             asm.cbr(deoptInProgressLabel);
             // load thread register if this kernel performs allocation
             if (usesAllocation) {
                 RegisterValue threadReg = getProviders().getRegisters().getThreadRegister().asValue(wordLIRKind);
                 assert HsailKernelTlabs.getValue() > 0;
-                asm.emitLoad(wordKind, threadReg, new HSAILAddressValue(wordLIRKind, d16_deoptInfo, config.hsailCurTlabInfoOffset).toAddress());
+                asm.emitLoad(wordKind, threadReg, new HSAILAddressValue(wordLIRKind, d16DeoptInfo, config.hsailCurTlabInfoOffset).toAddress());
                 if (HsailKernelTlabs.getValue() != 1) {
                     asm.emitComment("// map workitem to a tlab");
-                    asm.emitString(String.format("rem_u32  $%s, %s, %d;", s34_tlabIndex.getRegister(), workItemReg, HsailKernelTlabs.getValue()));
-                    asm.emitConvert(d17_tlabIndex, s34_tlabIndex, wordKind, Kind.Int);
-                    asm.emit("mad", threadReg, d17_tlabIndex, Constant.forInt(8), threadReg);
+                    asm.emitString(String.format("rem_u32  $%s, %s, %d;", s34TlabIndex.getRegister(), workItemReg, HsailKernelTlabs.getValue()));
+                    asm.emitConvert(d17TlabIndex, s34TlabIndex, wordKind, Kind.Int);
+                    asm.emit("mad", threadReg, d17TlabIndex, Constant.forInt(8), threadReg);
                 } else {
                     // workitem is already mapped to solitary tlab
                 }

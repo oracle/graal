@@ -163,8 +163,7 @@ public class DefaultTruffleSplittingStrategyNew implements TruffleSplittingStrat
         String id = String.format("@%8h %s", target.hashCode(), target.getSourceCallTarget() == null ? "orig." : "split");
         String plusMinus = stamp.equals(newStamp) ? "+ " : (stamp.equals(oldStamp) ? "- " : "");
         System.out.printf("%16s%-20sCallers: %3d, Nodes:%10s %s%n", plusMinus, id, target.getKnownCallSiteCount(), //
-                        String.format("%d (%d/%d)", count(target, NodeCost.MONOMORPHIC), count(target, NodeCost.POLYMORPHIC), count(target, NodeCost.MEGAMORPHIC)),//
-                        stamp);
+                        String.format("%d (%d/%d)", count(target, NodeCost.MONOMORPHIC), count(target, NodeCost.POLYMORPHIC), count(target, NodeCost.MEGAMORPHIC)), stamp);
     }
 
     private static int count(OptimizedCallTarget target, final NodeCost otherCost) {

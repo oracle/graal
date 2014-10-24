@@ -52,27 +52,27 @@ public class MandelStaticTest extends GraalKernelTester {
         // since we want this to be a fully static lambda, make local copies
         // of the arrays and values that will get captured by the lambda
         int[] rgb1 = this.rgb;
-        float x_offset = -1f;
-        float y_offset = 0f;
+        float xOffset = -1f;
+        float yOffset = 0f;
         float scale = 3f;
 
         // call it for a range, specifying lambda
         dispatchLambdaKernel(RANGE, (gid) -> {
             final int width = WIDTH;
             final int height = HEIGHT;
-            float lx = (((gid % width * scale) - ((scale / 2) * width)) / width) + x_offset;
-            float ly = (((gid / width * scale) - ((scale / 2) * height)) / height) + y_offset;
+            float lx = (((gid % width * scale) - ((scale / 2) * width)) / width) + xOffset;
+            float ly = (((gid / width * scale) - ((scale / 2) * height)) / height) + yOffset;
 
             int count = 0;
             float zx = lx;
             float zy = ly;
-            float new_zx = 0f;
+            float newZx = 0f;
 
             // Iterate until the algorithm converges or until maxIterations are reached.
                         while (count < maxIterations && zx * zx + zy * zy < 8) {
-                            new_zx = zx * zx - zy * zy + lx;
+                            newZx = zx * zx - zy * zy + lx;
                             zy = 2 * zx * zy + ly;
-                            zx = new_zx;
+                            zx = newZx;
                             count++;
                         }
 

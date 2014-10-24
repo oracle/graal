@@ -175,7 +175,7 @@ public class HSAILMove {
     }
 
     /**
-     * A LoadOp that uses the HSAIL ld_acq instruction
+     * A LoadOp that uses the HSAIL ld_acq instruction.
      */
     public static class LoadAcquireOp extends LoadOp {
         public LoadAcquireOp(Kind kind, AllocatableValue result, HSAILAddressValue address, LIRFrameState state) {
@@ -207,7 +207,7 @@ public class HSAILMove {
     }
 
     /**
-     * A StoreOp that uses the HSAIL st_rel instruction
+     * A StoreOp that uses the HSAIL st_rel instruction.
      */
     public static class StoreReleaseOp extends StoreOp {
         public StoreReleaseOp(Kind kind, HSAILAddressValue address, AllocatableValue input, LIRFrameState state) {

@@ -31,7 +31,7 @@ import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.compiler.hsail.test.infra.*;
 
 /**
- * Tests call to Math.tan(double)
+ * Tests call to Math.tan(double).
  */
 public abstract class MathTestBase extends GraalKernelTester {
 

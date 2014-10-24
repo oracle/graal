@@ -28,16 +28,16 @@ import com.oracle.graal.compiler.hsail.test.infra.GraalKernelTester;
 /**
  * Base class for testing virtual method calls.
  */
-abstract public class VirtualCallBase extends GraalKernelTester {
+public abstract class VirtualCallBase extends GraalKernelTester {
 
     static final int NUM = 20000;
 
     @Result public float[] outArray = new float[NUM];
     public Shape[] inShapeArray = new Shape[NUM];
 
-    static abstract class Shape {
+    abstract static class Shape {
 
-        abstract public float getArea();
+        public abstract float getArea();
     }
 
     static class Circle extends Shape {
@@ -58,8 +58,8 @@ abstract public class VirtualCallBase extends GraalKernelTester {
 
         private float len;
 
-        Square(float _len) {
-            len = _len;
+        Square(float len) {
+            this.len = len;
         }
 
         @Override

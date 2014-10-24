@@ -35,7 +35,7 @@ public abstract class DoubleTwoInputMathBase extends DoubleMathBase {
     }
 
     /**
-     * Initializes the input and output arrays
+     * Initializes the input and output arrays.
      */
     @Override
     void setupArrays() {

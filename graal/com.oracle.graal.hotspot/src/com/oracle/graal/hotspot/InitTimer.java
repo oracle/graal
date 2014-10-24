@@ -31,7 +31,7 @@ import edu.umd.cs.findbugs.annotations.*;
  * {@link DebugTimer} as it must be independent from all other Graal code so as to not perturb the
  * initialization sequence.
  */
-public class InitTimer implements AutoCloseable {
+public final class InitTimer implements AutoCloseable {
     final String name;
     final long start;
 

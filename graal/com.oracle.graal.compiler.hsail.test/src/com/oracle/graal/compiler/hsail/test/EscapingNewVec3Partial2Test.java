@@ -30,7 +30,7 @@ import org.junit.Test;
 
 public class EscapingNewVec3Partial2Test extends EscapingNewVec3Base {
 
-    int testGid = NUM / 2;
+    int testGid = num / 2;
 
     @Override
     public void run(int gid) {

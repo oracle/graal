@@ -90,7 +90,7 @@ public class MatchContext {
             return Result.OK;
         } else {
             if (current.value != value || current.type != type) {
-                return Result.NAMED_VALUE_MISMATCH(value, rule.getPattern());
+                return Result.namedValueMismatch(value, rule.getPattern());
             }
             return Result.OK;
         }
@@ -112,7 +112,7 @@ public class MatchContext {
                         Debug.log("%s(%s) %1s", (consumed != null && consumed.contains(theNode) || theNode == root) ? "*" : " ", theNode.usages().count(), theNode);
                     }
                 }
-                return Result.NOT_SAFE(node, rule.getPattern());
+                return Result.notSafe(node, rule.getPattern());
             }
         }
         return Result.OK;
@@ -152,11 +152,11 @@ public class MatchContext {
         // Check NOT_IN_BLOCK first since that usually implies ALREADY_USED
         int index = nodes.indexOf(node);
         if (index == -1) {
-            return Result.NOT_IN_BLOCK(node, rule.getPattern());
+            return Result.notInBlock(node, rule.getPattern());
         }
 
         if (builder.hasOperand(node)) {
-            return Result.ALREADY_USED(node, rule.getPattern());
+            return Result.alreadyUsed(node, rule.getPattern());
         }
 
         startIndex = Math.min(startIndex, index);

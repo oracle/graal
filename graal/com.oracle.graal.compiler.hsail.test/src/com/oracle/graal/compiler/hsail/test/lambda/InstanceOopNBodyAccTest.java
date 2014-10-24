@@ -45,7 +45,7 @@ public class InstanceOopNBodyAccTest extends GraalKernelTester {
             super(x, y, z, m);
         }
 
-        public Vec3 computeAcc(Body[] in_bodies, float espSqr1, float delT1) {
+        public Vec3 computeAcc(Body[] inBodies, float espSqr1, float delT1) {
             float accx = 0.f;
             float accy = 0.f;
             float accz = 0.f;
@@ -53,12 +53,12 @@ public class InstanceOopNBodyAccTest extends GraalKernelTester {
             float myPosy = y;
             float myPosz = z;
 
-            for (int b = 0; b < in_bodies.length; b++) {
-                float dx = in_bodies[b].getX() - myPosx;
-                float dy = in_bodies[b].getY() - myPosy;
-                float dz = in_bodies[b].getZ() - myPosz;
+            for (int b = 0; b < inBodies.length; b++) {
+                float dx = inBodies[b].getX() - myPosx;
+                float dy = inBodies[b].getY() - myPosy;
+                float dz = inBodies[b].getZ() - myPosz;
                 float invDist = 1.0f / (float) Math.sqrt((dx * dx) + (dy * dy) + (dz * dz) + espSqr1);
-                float s = in_bodies[b].getM() * invDist * invDist * invDist;
+                float s = inBodies[b].getM() * invDist * invDist * invDist;
                 accx = accx + (s * dx);
                 accy = accy + (s * dy);
                 accz = accz + (s * dz);
@@ -69,10 +69,10 @@ public class InstanceOopNBodyAccTest extends GraalKernelTester {
         }
     }
 
-    @Result Body[] in_bodies = new Body[bodies];
-    @Result Body[] out_bodies = new Body[bodies];
+    @Result Body[] inBodies = new Body[bodies];
+    @Result Body[] outBodies = new Body[bodies];
 
-    static Body[] seed_bodies = new Body[bodies];
+    static Body[] seedBodies = new Body[bodies];
     static {
         final float maxDist = width / 4;
         for (int body = 0; body < bodies; body++) {
@@ -82,22 +82,22 @@ public class InstanceOopNBodyAccTest extends GraalKernelTester {
             float x = (float) (radius * Math.cos(theta) * Math.sin(phi)) + width / 2;
             float y = (float) (radius * Math.sin(theta) * Math.sin(phi)) + height / 2;
             float z = (float) (radius * Math.cos(phi));
-            seed_bodies[body] = new Body(x, y, z, mass);
+            seedBodies[body] = new Body(x, y, z, mass);
         }
     }
 
     @Override
     public void runTest() {
-        System.arraycopy(seed_bodies, 0, in_bodies, 0, seed_bodies.length);
+        System.arraycopy(seedBodies, 0, inBodies, 0, seedBodies.length);
         for (int b = 0; b < bodies; b++) {
-            out_bodies[b] = new Body(0, 0, 0, mass);
+            outBodies[b] = new Body(0, 0, 0, mass);
         }
         // no local copies of arrays so we make it an instance lambda
 
         dispatchLambdaKernel(bodies, (gid) -> {
-            Body bin = in_bodies[gid];
-            Body bout = out_bodies[gid];
-            Vec3 acc = bin.computeAcc(in_bodies, espSqr, delT);
+            Body bin = inBodies[gid];
+            Body bout = outBodies[gid];
+            Vec3 acc = bin.computeAcc(inBodies, espSqr, delT);
 
             float myPosx = bin.getX();
             float myPosy = bin.getY();

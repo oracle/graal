@@ -26,7 +26,7 @@ package com.oracle.graal.compiler.hsail.test.lambda;
 import org.junit.Test;
 
 /**
- * Tests the storing of null in an Object array
+ * Tests the storing of null in an Object array.
  */
 public class ObjectStoreNullTest extends ObjectStoreTest {
 

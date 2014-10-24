@@ -31,7 +31,7 @@ import org.junit.*;
  */
 public class StringSubstringTest extends GraalKernelTester {
 
-    final static int NUM = 50;
+    static final int NUM = 50;
     String inputString;
     @Result String[] resultString = new String[NUM];
 

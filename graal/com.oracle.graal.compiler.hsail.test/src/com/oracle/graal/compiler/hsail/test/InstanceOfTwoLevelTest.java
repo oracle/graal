@@ -30,8 +30,8 @@ public class InstanceOfTwoLevelTest extends GraalKernelTester {
 
     static final int NUM = 20;
 
-    static abstract class Shape {
-        abstract public float getArea();
+    abstract static class Shape {
+        public abstract float getArea();
     }
 
     static class Ellipse extends Shape {
@@ -66,8 +66,8 @@ public class InstanceOfTwoLevelTest extends GraalKernelTester {
     static class Square extends Shape {
         private float len;
 
-        Square(float _len) {
-            len = _len;
+        Square(float len) {
+            this.len = len;
         }
 
         @Override

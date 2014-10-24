@@ -31,7 +31,7 @@ import org.junit.*;
  */
 public class StringBuilderTest extends GraalKernelTester {
 
-    final static int NUM = 20;
+    static final int NUM = 20;
     StringBuilder[] builders = new StringBuilder[NUM];
     @Result String[] resultString = new String[NUM];
 

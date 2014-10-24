@@ -51,8 +51,9 @@ public class StaticIntFieldWriteTest extends GraalKernelTester {
         intStaticField = -99;
         dispatchLambdaKernel(NUM, (gid) -> {
             outArray[gid] = inArray[gid] * 2;
-            if (gid == 3)
+            if (gid == 3) {
                 intStaticField = outArray[gid];
+            }
         });
         fieldResult = intStaticField;   // save for kerneltester comparison
     }

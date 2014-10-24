@@ -25,7 +25,7 @@ package com.oracle.graal.truffle;
 /**
  * Experimental.
  */
-public abstract interface TruffleStamp {
+public interface TruffleStamp {
 
     TruffleStamp join(TruffleStamp p);
 

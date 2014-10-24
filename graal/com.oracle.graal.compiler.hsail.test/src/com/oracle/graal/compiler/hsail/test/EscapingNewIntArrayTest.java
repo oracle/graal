@@ -45,7 +45,7 @@ public class EscapingNewIntArrayTest extends EscapingNewBase {
     public void runTest() {
         super.runTest();
         if (DEBUG) {
-            for (int i = 0; i < NUM; i++) {
+            for (int i = 0; i < num; i++) {
                 int[] ary = (int[]) outArray[i];
                 System.out.print("ary len " + ary.length + ":  ");
                 for (int val : ary) {

@@ -51,7 +51,7 @@ public final class CallsiteHolderExplorable extends CallsiteHolder {
 
     /**
      * Graph in which inlining may be performed at one or more of the callsites containined in
-     * {@link #remainingInvokes}
+     * {@link #remainingInvokes}.
      */
     private final StructuredGraph graph;
 

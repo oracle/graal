@@ -133,6 +133,7 @@
   </module>
   <module name="FileTabCharacter">
     <property name="severity" value="error"/>
+    <property name="fileExtensions" value="java"/>
   </module>
   <module name="NewlineAtEndOfFile">
     <property name="lineSeparator" value="lf"/>
@@ -188,20 +189,10 @@
     <property name="message" value="illegal Windows line ending"/>
   </module>
   <module name="SuppressionCommentFilter">
-    <property name="offCommentFormat" value="CheckStyle: stop system..print check"/>
-    <property name="onCommentFormat" value="CheckStyle: resume system..print check"/>
-    <property name="checkFormat" value="RegexpSingleline"/>
-    <metadata name="com.atlassw.tools.eclipse.checkstyle.comment" value="Disable System.(out|err).print checks"/>
-  </module>
-  <module name="SuppressionCommentFilter">
     <property name="offCommentFormat" value="CheckStyle: stop header check"/>
     <property name="onCommentFormat" value="CheckStyle: resume header check"/>
     <property name="checkFormat" value=".*Header"/>
     <metadata name="com.atlassw.tools.eclipse.checkstyle.comment" value="Disable header checks"/>
-  </module>
-  <module name="RegexpSingleline">
-    <property name="format" value="System\.(out|err)\.print"/>
-    <property name="fileExtensions" value="java"/>
   </module>
   <module name="SuppressionCommentFilter">
     <property name="offCommentFormat" value="CheckStyle: stop line length check"/>

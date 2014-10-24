@@ -25,7 +25,7 @@ package com.oracle.graal.compiler.gen;
 import com.oracle.graal.api.meta.*;
 
 /**
- * visible interface of bytecode parsers
+ * visible interface of bytecode parsers.
  */
 public interface BytecodeParserTool {
 

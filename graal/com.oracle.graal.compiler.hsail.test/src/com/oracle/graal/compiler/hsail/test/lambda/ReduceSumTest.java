@@ -40,7 +40,7 @@ public class ReduceSumTest {
     static int loops = 1;
 
     // The array to be summed
-    int bigArray[] = null;
+    int[] bigArray = null;
 
     // sum for baseline single threaded stream
     int sumStream = 0;

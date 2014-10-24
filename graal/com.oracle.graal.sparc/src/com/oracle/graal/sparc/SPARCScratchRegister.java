@@ -24,7 +24,7 @@ package com.oracle.graal.sparc;
 
 import com.oracle.graal.api.code.*;
 
-public class SPARCScratchRegister implements AutoCloseable {
+public final class SPARCScratchRegister implements AutoCloseable {
     private final ThreadLocal<Boolean> locked = new ThreadLocal<>();
     private final ThreadLocal<Exception> where = new ThreadLocal<>();
     private final Register register;

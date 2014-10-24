@@ -58,7 +58,7 @@ public class DirectReadNode extends FixedWithNextNode implements LIRLowerable {
     /**
      * If we are sub it sizes, we try to sign/zero extend the value to at least int as it is done in
      * the {@link com.oracle.graal.replacements.DefaultJavaLoweringProvider#implicitLoadConvert} and
-     * {@link com.oracle.graal.replacements.DefaultJavaLoweringProvider#createUnsafeRead}
+     * {@link com.oracle.graal.replacements.DefaultJavaLoweringProvider#createUnsafeRead}.
      *
      * @see com.oracle.graal.replacements.DefaultJavaLoweringProvider#implicitLoadConvert
      * @see com.oracle.graal.replacements.DefaultJavaLoweringProvider#createUnsafeRead

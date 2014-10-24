@@ -29,7 +29,7 @@ import org.junit.Test;
  */
 
 public class EscapingNewIntegerTest extends EscapingNewBase {
-    @Result Integer[] myOutArray = new Integer[NUM];
+    @Result Integer[] myOutArray = new Integer[num];
 
     public void run(int gid) {
         outArray[gid] = (gid + 1) * 111;

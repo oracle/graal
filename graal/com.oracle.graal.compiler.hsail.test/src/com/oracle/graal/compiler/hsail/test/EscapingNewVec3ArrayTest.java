@@ -46,7 +46,7 @@ public class EscapingNewVec3ArrayTest extends EscapingNewBase {
         super.runTest();
         if (DEBUG) {
             System.out.println("dumping results");
-            for (int i = 0; i < NUM; i++) {
+            for (int i = 0; i < num; i++) {
                 Vec3[] ary = (Vec3[]) outArray[i];
                 System.out.print("ary len " + ary.length + ":  ");
                 for (Vec3 val : ary) {

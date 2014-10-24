@@ -190,10 +190,13 @@ public class HSAILMathSubstitutions {
         return JStrictMath.pow(x, y);
     }
 
+    // Checkstyle: stop
     @MethodSubstitution
     public static double IEEEremainder(double x, double y) {
         return JStrictMath.IEEEremainder(x, y);
     }
+
+    // Checkstyle: resume
 
     @MethodSubstitution
     public static double sinh(double x) {

@@ -54,7 +54,7 @@ import com.oracle.graal.word.*;
  */
 public class HSAILNewObjectSnippets extends NewObjectSnippets {
 
-    static public class Options {
+    public static class Options {
 
         // @formatter:off
         @Option(help = "In HSAIL allocation, allow allocation from eden as fallback if TLAB is full")
@@ -64,7 +64,7 @@ public class HSAILNewObjectSnippets extends NewObjectSnippets {
         static final OptionValue<Boolean> HsailNewTlabAllocate = new OptionValue<>(true);
 
         @Option(help = "Estimate of number of bytes allocated by each HSAIL workitem, used to size TLABs")
-        static public final OptionValue<Integer> HsailAllocBytesPerWorkitem = new OptionValue<>(64);
+        public  static  final OptionValue<Integer> HsailAllocBytesPerWorkitem = new OptionValue<>(64);
 
         // @formatter:on
     }

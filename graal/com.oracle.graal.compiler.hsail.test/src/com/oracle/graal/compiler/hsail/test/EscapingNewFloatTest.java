@@ -25,7 +25,7 @@ package com.oracle.graal.compiler.hsail.test;
 import org.junit.Test;
 
 public class EscapingNewFloatTest extends EscapingNewBase {
-    @Result Float[] myOutArray = new Float[NUM];
+    @Result Float[] myOutArray = new Float[num];
 
     public void run(int gid) {
         outArray[gid] = (gid + 1) * 1.11f;

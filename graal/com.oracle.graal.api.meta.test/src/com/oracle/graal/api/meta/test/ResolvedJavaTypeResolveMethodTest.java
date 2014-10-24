@@ -39,7 +39,7 @@ public class ResolvedJavaTypeResolveMethodTest {
         metaAccess = providers.getMetaAccess();
     }
 
-    protected static abstract class A {
+    protected abstract static class A {
         @SuppressWarnings("unused")
         private void priv() {
         }
@@ -72,7 +72,7 @@ public class ResolvedJavaTypeResolveMethodTest {
         }
     }
 
-    protected static abstract class D extends A {
+    protected abstract static class D extends A {
 
     }
 

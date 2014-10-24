@@ -55,7 +55,10 @@ public class GraalJUnitCore {
         boolean color = false;
         boolean eagerStackTrace = false;
         boolean gcAfterTest = false;
-        for (String each : expandArgs(args)) {
+
+        String[] expandedArgs = expandArgs(args);
+        for (int i = 0; i < expandedArgs.length; i++) {
+            String each = expandedArgs[i];
             if (each.charAt(0) == '-') {
                 // command line arguments
                 if (each.contentEquals("-JUnitVerbose")) {

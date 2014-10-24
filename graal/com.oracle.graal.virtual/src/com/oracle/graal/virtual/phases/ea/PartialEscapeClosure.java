@@ -124,7 +124,8 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
     }
 
     private void processNodeWithState(NodeWithState nodeWithState, final BlockT state, final GraphEffectList effects) {
-        for (FrameState frameState : nodeWithState.states()) {
+        for (FrameState fs : nodeWithState.states()) {
+            FrameState frameState = fs;
             if (frameState.usages().count() > 1) {
                 FrameState copy = (FrameState) frameState.copyWithInputs();
                 nodeWithState.asNode().replaceFirstInput(frameState, copy);

@@ -31,20 +31,20 @@ import java.util.Arrays;
 
 public class EscapingNewBase extends GraalKernelTester {
 
-    final int NUM = getRange();
+    final int num = getRange();
 
     int getRange() {
         return 24;
     }
 
-    @Result public Object[] outArray = new Object[NUM];
+    @Result public Object[] outArray = new Object[num];
     public Object[] savedOutArray;
     @Result public boolean savedOutArrayMatch1;
     @Result public boolean savedOutArrayMatch2;
     @Result public boolean savedOutArrayMatch3;
 
     void setupArrays() {
-        for (int i = 0; i < NUM; i++) {
+        for (int i = 0; i < num; i++) {
             outArray[i] = null;
         }
     }
@@ -62,17 +62,17 @@ public class EscapingNewBase extends GraalKernelTester {
     public void runTest() {
         setupArrays();
 
-        dispatchMethodKernel(NUM);
+        dispatchMethodKernel(num);
         // use System.gc() to ensure new objects are in form that gc likes
         System.gc();
-        savedOutArray = Arrays.copyOf(outArray, NUM);
+        savedOutArray = Arrays.copyOf(outArray, num);
         savedOutArrayMatch1 = Arrays.equals(outArray, savedOutArray);
         if (getDispatches() > 1) {
             // redispatch kernel without gc
-            dispatchMethodKernel(NUM);
+            dispatchMethodKernel(num);
             savedOutArrayMatch2 = Arrays.equals(outArray, savedOutArray);
             // and one more time with gc
-            dispatchMethodKernel(NUM);
+            dispatchMethodKernel(num);
             savedOutArrayMatch3 = Arrays.equals(outArray, savedOutArray);
             System.gc();
         }

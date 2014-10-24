@@ -46,10 +46,10 @@ public class VecmathNBodyDeoptTest extends GraalKernelTester {
          */
         private static final long serialVersionUID = 1L;
 
-        public Body(float _x, float _y, float _z, float _m) {
-            super(_x, _y, _z);
-            m = _m;
-            v = new Vector3f(0, 0, 0);
+        public Body(float x, float y, float z, float m) {
+            super(x, y, z);
+            this.m = m;
+            this.v = new Vector3f(0, 0, 0);
         }
 
         float m;
@@ -59,10 +59,10 @@ public class VecmathNBodyDeoptTest extends GraalKernelTester {
             return m;
         }
 
-        public Vector3f computeAcc(Body[] in_bodies, float espSqr1, float delT1) {
+        public Vector3f computeAcc(Body[] inBodies, float espSqr1, float delT1) {
             Vector3f acc = new Vector3f();
 
-            for (Body b : in_bodies) {
+            for (Body b : inBodies) {
                 Vector3f d = new Vector3f();
                 d.sub(b, this);
                 float invDist = 1.0f / (float) Math.sqrt(d.lengthSquared() + espSqr1);
@@ -76,10 +76,10 @@ public class VecmathNBodyDeoptTest extends GraalKernelTester {
         }
     }
 
-    @Result Body[] in_bodies = new Body[bodies];
-    @Result Body[] out_bodies = new Body[bodies];
+    @Result Body[] inBodies = new Body[bodies];
+    @Result Body[] outBodies = new Body[bodies];
 
-    static Body[] seed_bodies = new Body[bodies];
+    static Body[] seedBodies = new Body[bodies];
 
     static {
         java.util.Random randgen = new Random(0);
@@ -91,22 +91,22 @@ public class VecmathNBodyDeoptTest extends GraalKernelTester {
             float x = (float) (radius * Math.cos(theta) * Math.sin(phi)) + width / 2;
             float y = (float) (radius * Math.sin(theta) * Math.sin(phi)) + height / 2;
             float z = (float) (radius * Math.cos(phi));
-            seed_bodies[body] = new Body(x, y, z, mass);
+            seedBodies[body] = new Body(x, y, z, mass);
         }
     }
 
     @Override
     public void runTest() {
-        System.arraycopy(seed_bodies, 0, in_bodies, 0, seed_bodies.length);
+        System.arraycopy(seedBodies, 0, inBodies, 0, seedBodies.length);
         for (int b = 0; b < bodies; b++) {
-            out_bodies[b] = new Body(0, 0, 0, mass);
+            outBodies[b] = new Body(0, 0, 0, mass);
         }
         // no local copies of arrays so we make it an instance lambda
 
         dispatchLambdaKernel(bodies, (gid) -> {
-            Body inb = in_bodies[gid];
-            Body outb = out_bodies[gid];
-            Vector3f acc = inb.computeAcc(in_bodies, espSqr, delT);
+            Body inb = inBodies[gid];
+            Body outb = outBodies[gid];
+            Vector3f acc = inb.computeAcc(inBodies, espSqr, delT);
 
             Vector3f tmpPos = new Vector3f();
             tmpPos.scaleAdd(delT, inb.v, inb);

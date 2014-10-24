@@ -45,6 +45,7 @@ public class GraphNodeVerifier {
     private final Types types;
     private final Elements elements;
 
+    // Checkstyle: stop
     private final TypeElement Input;
     private final TypeElement OptionalInput;
     private final TypeElement Successor;
@@ -52,6 +53,8 @@ public class GraphNodeVerifier {
     final TypeElement Node;
     private final TypeElement NodeInputList;
     private final TypeElement NodeSuccessorList;
+
+    // Checkstyle: resume
 
     public GraphNodeVerifier(GraphNodeProcessor processor) {
         this.env = processor;

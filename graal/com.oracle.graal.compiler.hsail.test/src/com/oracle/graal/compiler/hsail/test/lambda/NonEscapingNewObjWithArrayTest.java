@@ -41,7 +41,7 @@ public class NonEscapingNewObjWithArrayTest extends GraalKernelTester {
     @Result public float[] outArray = new float[NUM];
 
     static class MyObj {
-        float a[];
+        float[] a;
 
         public MyObj(float[] src, int ofst) {
             a = Arrays.copyOfRange(src, ofst, ofst + 3);

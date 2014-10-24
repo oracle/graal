@@ -50,7 +50,7 @@ public class BC_lcmp extends JTTTest {
     }
 
     /**
-     * Test with ugly numbers (which probably does not fit into one instruction
+     * Test with ugly numbers (which probably does not fit into one instruction.
      *
      * @throws Throwable
      */
@@ -60,7 +60,7 @@ public class BC_lcmp extends JTTTest {
     }
 
     /**
-     * Test with big numbers where it makes difference if the value is handled with 64 bits
+     * Test with big numbers where it makes difference if the value is handled with 64 bits.
      *
      * @throws Throwable
      */

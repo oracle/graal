@@ -30,7 +30,7 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 
-public class FlowUtil {
+public final class FlowUtil {
 
     private FlowUtil() {
         // no instances of this class
@@ -95,11 +95,11 @@ public class FlowUtil {
         } else {
             /*
              * Not comparable, two cases:
-             *
+             * 
              * Example 1: 'a' standing for j.l.Number and 'b' for j.l.String We return null for lack
              * of a value representing NullType, the right answer. Same goes when both arguments are
              * non-comparable interfaces.
-             *
+             * 
              * Example 2: 'a' standing for sun/nio/ch/DirectBuffer (an interface) and b for
              * java/nio/Buffer (an abstract class). The class always takes precedence.
              */
@@ -155,15 +155,15 @@ public class FlowUtil {
      * @return whether the first argument is strictly more precise than the second.
      */
     public static boolean isMorePrecise(ObjectStamp a, ObjectStamp b) {
-        int d0 = MINUS(a.alwaysNull(), b.alwaysNull());
+        int d0 = minus(a.alwaysNull(), b.alwaysNull());
         if (d0 == -1) {
             return false;
         }
-        int d1 = MINUS(a.nonNull(), b.nonNull());
+        int d1 = minus(a.nonNull(), b.nonNull());
         if (d1 == -1) {
             return false;
         }
-        int d2 = MINUS(a.isExactType(), b.isExactType());
+        int d2 = minus(a.isExactType(), b.isExactType());
         if (d2 == -1) {
             return false;
         }
@@ -188,7 +188,7 @@ public class FlowUtil {
         return maxScore > 0;
     }
 
-    private static int MINUS(boolean a, boolean b) {
+    private static int minus(boolean a, boolean b) {
         int aa = a ? 1 : 0;
         int bb = b ? 1 : 0;
         return aa - bb;

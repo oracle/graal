@@ -30,7 +30,7 @@ import java.util.stream.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.graph.*;
 
-public class ComputeLoopFrequenciesClosure extends ReentrantNodeIterator.NodeIteratorClosure<Double> {
+public final class ComputeLoopFrequenciesClosure extends ReentrantNodeIterator.NodeIteratorClosure<Double> {
 
     private static final ComputeLoopFrequenciesClosure INSTANCE = new ComputeLoopFrequenciesClosure();
 

@@ -109,7 +109,7 @@ public interface ResolvedJavaMethod extends JavaMethod, InvokeTarget, ModifiersP
 
     /**
      * Checks whether this method can be statically bound (usually, that means it is final or
-     * private or static, but not abstract, or the declaring class is final)
+     * private or static, but not abstract, or the declaring class is final).
      *
      * @return {@code true} if this method can be statically bound
      */

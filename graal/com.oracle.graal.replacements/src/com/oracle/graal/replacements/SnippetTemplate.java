@@ -74,7 +74,10 @@ import com.oracle.graal.word.*;
  */
 public class SnippetTemplate {
 
+    // Checkstyle: stop
     public static boolean LAZY_SNIPPETS = true;
+
+    // Checkstyle: resume
 
     /**
      * Holds the {@link ResolvedJavaMethod} of the snippet, together with some information about the

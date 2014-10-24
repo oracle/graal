@@ -39,7 +39,7 @@ import com.oracle.graal.sparc.*;
  */
 @Opcode("SAVE_REGISTER")
 public class SPARCSaveRegistersOp extends SPARCLIRInstruction implements SaveRegistersOp {
-    public static Register RETURN_REGISTER_STORAGE = SPARC.d62;
+    public static final Register RETURN_REGISTER_STORAGE = SPARC.d62;
     /**
      * The registers (potentially) saved by this operation.
      */

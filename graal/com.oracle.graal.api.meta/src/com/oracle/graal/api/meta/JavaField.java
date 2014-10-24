@@ -76,16 +76,16 @@ public interface JavaField {
      * @throws IllegalFormatException if an illegal specifier is encountered in {@code format}
      */
     default String format(String format) throws IllegalFormatException {
-        final StringBuilder sb = new StringBuilder();
+        StringBuilder sb = new StringBuilder();
         int index = 0;
         JavaType type = getType();
         while (index < format.length()) {
-            final char ch = format.charAt(index++);
+            char ch = format.charAt(index++);
             if (ch == '%') {
                 if (index >= format.length()) {
                     throw new UnknownFormatConversionException("An unquoted '%' character cannot terminate a field format specification");
                 }
-                final char specifier = format.charAt(index++);
+                char specifier = format.charAt(index++);
                 boolean qualified = false;
                 switch (specifier) {
                     case 'T':

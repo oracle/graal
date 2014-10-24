@@ -50,7 +50,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
     private final boolean canonicalizeReads;
     private final CustomCanonicalizer customCanonicalizer;
 
-    public static abstract class CustomCanonicalizer {
+    public abstract static class CustomCanonicalizer {
 
         public Node canonicalize(Node node) {
             return node;

@@ -219,7 +219,7 @@ public class SPARC extends Architecture {
     public static final int FLOAT_REGISTER_COUNT = 64;
 
     /**
-     * Alignment for valid memory access
+     * Alignment for valid memory access.
      */
     public static final int MEMORY_ACCESS_ALIGN = 4;
 

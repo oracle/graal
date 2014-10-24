@@ -28,13 +28,13 @@ package com.oracle.graal.compiler.hsail.test;
 
 public class EscapingNewVec3Base extends EscapingNewBase {
 
-    float[] inArray = new float[NUM];
-    @Result Vec3[] myOutArray = new Vec3[NUM];
+    float[] inArray = new float[num];
+    @Result Vec3[] myOutArray = new Vec3[num];
 
     @Override
     void setupArrays() {
         super.setupArrays();
-        for (int i = 0; i < NUM; i++) {
+        for (int i = 0; i < num; i++) {
             inArray[i] = i;
             myOutArray[i] = null;
         }

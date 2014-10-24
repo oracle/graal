@@ -30,7 +30,7 @@ import org.junit.Test;
 
 public class EscapingNewStringTest extends EscapingNewBase {
 
-    @Result public String[] myOutArray = new String[NUM];
+    @Result public String[] myOutArray = new String[num];
 
     public void run(int gid) {
         outArray[gid] = Integer.toString(gid * 111);

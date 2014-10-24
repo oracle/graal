@@ -341,7 +341,7 @@ public class NodeUsagesTests {
     }
 
     @Test
-    public void testReplaceAtUsagesWithPredicate2_3() {
+    public void testReplaceAtUsagesWithPredicate203() {
         Graph graph = new Graph();
         Def def0 = graph.add(Def.create());
         Def def1 = graph.add(Def.create());

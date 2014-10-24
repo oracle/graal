@@ -83,7 +83,7 @@ public final class BciBlockMapping {
         public int loopId;
 
         /**
-         * XXX to be removed - currently only used by baseline compiler
+         * XXX to be removed - currently only used by baseline compiler.
          */
         public Loop<BciBlock> loop;
         public boolean isLoopEnd;

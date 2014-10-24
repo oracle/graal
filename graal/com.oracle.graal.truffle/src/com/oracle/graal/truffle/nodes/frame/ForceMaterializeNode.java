@@ -46,5 +46,5 @@ public class ForceMaterializeNode extends FixedWithNextNode implements LIRLowera
     }
 
     @NodeIntrinsic
-    public native static void force(Object object);
+    public static native void force(Object object);
 }

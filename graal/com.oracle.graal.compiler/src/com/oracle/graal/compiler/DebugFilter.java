@@ -83,7 +83,7 @@ import com.oracle.graal.debug.internal.*;
  * Matches scopes containing "Code" but not "Dead", with log level {@link Debug#DEFAULT_LOG_LEVEL}.
  * </ul>
  */
-class DebugFilter {
+final class DebugFilter {
 
     public static DebugFilter parse(String spec) {
         if (spec == null) {

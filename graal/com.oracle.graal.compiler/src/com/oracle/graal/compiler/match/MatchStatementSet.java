@@ -32,10 +32,10 @@ public interface MatchStatementSet extends Service {
      * @return the {@link NodeLIRBuilder} subclass which defined this set of {@link MatchStatement}
      *         instances.
      */
-    public Class<? extends NodeLIRBuilder> forClass();
+    Class<? extends NodeLIRBuilder> forClass();
 
     /**
      * @return the {@link MatchStatement}s available for this {@link NodeLIRBuilder} subclass.
      */
-    public List<MatchStatement> statements(MatchRuleRegistry.NodeClassLookup lookup);
+    List<MatchStatement> statements(MatchRuleRegistry.NodeClassLookup lookup);
 }

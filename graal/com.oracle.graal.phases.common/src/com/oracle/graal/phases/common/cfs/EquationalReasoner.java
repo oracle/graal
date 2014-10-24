@@ -381,7 +381,7 @@ public final class EquationalReasoner {
     /**
      * The contract for this baseCase-style method is covered in
      * {@link EquationalReasoner#deverbosify(com.oracle.graal.graph.Node)
-     * EquationalReasoner#deverbosify()}
+     * EquationalReasoner#deverbosify()}.
      *
      * @return a {@link com.oracle.graal.nodes.calc.FloatingNode} different from the argument, in
      *         case a reduction was made. The node being returned might be already in the graph. In

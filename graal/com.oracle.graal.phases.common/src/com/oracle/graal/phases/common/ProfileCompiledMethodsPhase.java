@@ -58,8 +58,8 @@ public class ProfileCompiledMethodsPhase extends Phase {
     private static final String GROUP_NAME_INVOKES = "~profiled invokes";
 
     private static final boolean WITH_SECTION_HEADER = false;
-    private static boolean WITH_INVOKE_FREE_SECTIONS = false;
-    private static boolean WITH_INVOKES = true;
+    private static final boolean WITH_INVOKE_FREE_SECTIONS = Boolean.parseBoolean(System.getProperty("ProfileCompiledMethodsPhase.WITH_FREE_SECTIONS", "false"));
+    private static final boolean WITH_INVOKES = Boolean.parseBoolean(System.getProperty("ProfileCompiledMethodsPhase.WITH_INVOKES", "true"));
 
     @Override
     protected void run(StructuredGraph graph) {

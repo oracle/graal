@@ -38,9 +38,11 @@ public class TruffleStampTest {
     private static final Object TYPE1 = new Object();
     private static final Object TYPE2 = new Object();
 
-    @DataPoints public static Object[] data = new Object[]{1, 2, 1.0d, 2.0d, "1", "2", null,//
+    // @formatter:off
+    @DataPoints public static Object[] data = new Object[]{1, 2, 1.0d, 2.0d, "1", "2", null,
                     new TestTypedObject(TYPE1), new TestTypedObject(TYPE1), new TestTypedObject(TYPE2), //
                     new Object[]{1, "a", new TestTypedObject(TYPE1)}, new Object[0]};
+    // @formatter:on
 
     private TruffleStamp stamp;
 

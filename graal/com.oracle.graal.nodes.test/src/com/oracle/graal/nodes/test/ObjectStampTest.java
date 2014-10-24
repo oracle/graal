@@ -34,7 +34,7 @@ public class ObjectStampTest extends AbstractObjectStampTest {
         Assert.assertEquals(StampFactory.object(), notTrusted);
     }
 
-    private static interface TrustedI extends TrustedInterface {
+    private interface TrustedI extends TrustedInterface {
 
     }
 

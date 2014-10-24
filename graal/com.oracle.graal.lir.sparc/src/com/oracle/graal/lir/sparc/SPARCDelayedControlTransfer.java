@@ -55,7 +55,7 @@ public interface SPARCDelayedControlTransfer {
      * @param crb
      * @param masm
      */
-    public void emitControlTransfer(CompilationResultBuilder crb, SPARCMacroAssembler masm);
+    void emitControlTransfer(CompilationResultBuilder crb, SPARCMacroAssembler masm);
 
-    public void resetState();
+    void resetState();
 }

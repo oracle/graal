@@ -43,7 +43,7 @@ public class MatchRuleRegistry {
      * the current NodeClass might not be the same NodeClass used in the target so this provides a
      * level of indirection.
      */
-    public static interface NodeClassLookup {
+    public interface NodeClassLookup {
         NodeClass get(Class<?> theClass);
     }
 
@@ -87,7 +87,7 @@ public class MatchRuleRegistry {
      * @param theClass
      * @return the set of {@link MatchStatement}s applicable to theClass.
      */
-    public synchronized static Map<Class<? extends ValueNode>, List<MatchStatement>> lookup(Class<? extends NodeLIRBuilder> theClass) {
+    public static synchronized Map<Class<? extends ValueNode>, List<MatchStatement>> lookup(Class<? extends NodeLIRBuilder> theClass) {
         Map<Class<? extends ValueNode>, List<MatchStatement>> result = registry.get(theClass);
 
         if (result == null) {

@@ -33,7 +33,7 @@ import com.oracle.graal.lir.constopt.ConstantTree.NodeCost;
 /**
  * Analyzes a {@link ConstantTree} and marks potential materialization positions.
  */
-public class ConstantTreeAnalyzer {
+public final class ConstantTreeAnalyzer {
     private final ConstantTree tree;
     private final BitSet visited;
 

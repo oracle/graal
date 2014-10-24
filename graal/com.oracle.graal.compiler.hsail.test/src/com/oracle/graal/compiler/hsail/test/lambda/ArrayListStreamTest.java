@@ -46,9 +46,9 @@ public class ArrayListStreamTest {
         int x;
         int y;
 
-        public MyPoint(int _x, int _y) {
-            x = _x;
-            y = _y;
+        public MyPoint(int x, int y) {
+            this.x = x;
+            this.y = y;
         }
     }
 

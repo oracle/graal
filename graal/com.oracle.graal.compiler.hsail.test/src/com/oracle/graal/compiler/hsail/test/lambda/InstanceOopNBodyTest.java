@@ -38,11 +38,11 @@ public class InstanceOopNBodyTest extends GraalKernelTester {
     static final int width = 768;
     static final int height = 768;
 
-    @Result Body[] in_bodies = new Body[bodies];
+    @Result Body[] inBodies = new Body[bodies];
 
-    @Result Body[] out_bodies = new Body[bodies];
+    @Result Body[] outBodies = new Body[bodies];
 
-    static Body[] seed_bodies = new Body[bodies];
+    static Body[] seedBodies = new Body[bodies];
     static {
         final float maxDist = width / 4;
         for (int body = 0; body < bodies; body++) {
@@ -52,15 +52,15 @@ public class InstanceOopNBodyTest extends GraalKernelTester {
             float x = (float) (radius * Math.cos(theta) * Math.sin(phi)) + width / 2;
             float y = (float) (radius * Math.sin(theta) * Math.sin(phi)) + height / 2;
             float z = (float) (radius * Math.cos(phi));
-            seed_bodies[body] = new Body(x, y, z, mass);
+            seedBodies[body] = new Body(x, y, z, mass);
         }
     }
 
     @Override
     public void runTest() {
-        System.arraycopy(seed_bodies, 0, in_bodies, 0, seed_bodies.length);
+        System.arraycopy(seedBodies, 0, inBodies, 0, seedBodies.length);
         for (int b = 0; b < bodies; b++) {
-            out_bodies[b] = new Body(0, 0, 0, mass);
+            outBodies[b] = new Body(0, 0, 0, mass);
         }
         // no local copies of arrays so we make it an instance lambda
 
@@ -68,13 +68,13 @@ public class InstanceOopNBodyTest extends GraalKernelTester {
             float accx = 0.f;
             float accy = 0.f;
             float accz = 0.f;
-            Body inb = in_bodies[gid];
-            Body outb = out_bodies[gid];
+            Body inb = inBodies[gid];
+            Body outb = outBodies[gid];
             float myPosx = inb.getX();
             float myPosy = inb.getY();
             float myPosz = inb.getZ();
 
-            for (Body b : in_bodies) {
+            for (Body b : inBodies) {
                 final float dx = b.getX() - myPosx;
                 final float dy = b.getY() - myPosy;
                 final float dz = b.getZ() - myPosz;

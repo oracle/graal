@@ -35,14 +35,14 @@ public interface GraalJUnitRunListener {
      *
      * @param description describes the tests to be run
      */
-    public void testRunStarted(Description description);
+    void testRunStarted(Description description);
 
     /**
-     * Called when all tests have finished
+     * Called when all tests have finished.
      *
      * @param result the summary of the test run, including all the tests that failed
      */
-    public void testRunFinished(Result result);
+    void testRunFinished(Result result);
 
     /**
      * Called when a test class is about to be started.
@@ -86,7 +86,7 @@ public interface GraalJUnitRunListener {
      *
      * @param description describes the test that will not be run
      */
-    public void testIgnored(Description description);
+    void testIgnored(Description description);
 
     /**
      * Called when an atomic test succeeds.
@@ -96,33 +96,33 @@ public interface GraalJUnitRunListener {
     void testSucceeded(Description description);
 
     /**
-     * Called when an atomic test flags that it assumes a condition that is false
+     * Called when an atomic test flags that it assumes a condition that is false.
      *
      * @param failure describes the test that failed and the {@link AssumptionViolatedException}
      *            that was thrown
      */
-    public void testAssumptionFailure(Failure failure);
+    void testAssumptionFailure(Failure failure);
 
     /**
      * Called after {@link #testClassFinished(Class)}.
      */
-    public void testClassFinishedDelimiter();
+    void testClassFinishedDelimiter();
 
     /**
-     * Called after {@link #testClassStarted(Class)}
+     * Called after {@link #testClassStarted(Class)}.
      */
-    public void testClassStartedDelimiter();
+    void testClassStartedDelimiter();
 
     /**
-     * Called after {@link #testStarted(Description)}
+     * Called after {@link #testStarted(Description)}.
      */
-    public void testStartedDelimiter();
+    void testStartedDelimiter();
 
     /**
-     * Called after {@link #testFailed(Failure)}
+     * Called after {@link #testFailed(Failure)}.
      */
-    public void testFinishedDelimiter();
+    void testFinishedDelimiter();
 
-    public PrintStream getWriter();
+    PrintStream getWriter();
 
 }

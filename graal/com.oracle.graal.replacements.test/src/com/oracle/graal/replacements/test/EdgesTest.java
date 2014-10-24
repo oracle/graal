@@ -80,7 +80,7 @@ public class EdgesTest extends GraalCompilerTest {
 
     /**
      * Checks that there are no checkcasts in the compiled version of
-     * {@link Edges#getNode(Node, int)}
+     * {@link Edges#getNode(Node, int)}.
      */
     @Test
     public void test0() {
@@ -89,7 +89,7 @@ public class EdgesTest extends GraalCompilerTest {
 
     /**
      * Checks that there are no checkcasts in the compiled version of
-     * {@link Edges#getNodeList(Node, int)}
+     * {@link Edges#getNodeList(Node, int)}.
      */
     @Test
     public void test1() {
@@ -98,7 +98,7 @@ public class EdgesTest extends GraalCompilerTest {
 
     /**
      * Checks that there are no checkcasts in the compiled version of
-     * {@link Edges#setNode(Node, int, Node)}
+     * {@link Edges#setNode(Node, int, Node)}.
      */
     @Test
     public void test2() {

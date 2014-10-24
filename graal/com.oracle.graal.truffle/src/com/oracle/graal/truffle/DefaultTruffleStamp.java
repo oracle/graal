@@ -79,7 +79,7 @@ public final class DefaultTruffleStamp {
         return NO_TYPE;
     }
 
-    private static abstract class ValueStamp implements TruffleStamp {
+    private abstract static class ValueStamp implements TruffleStamp {
 
         Class<?> getClazz() {
             return NO_CLASS;
@@ -325,7 +325,7 @@ public final class DefaultTruffleStamp {
 
     }
 
-    private final static class ArrayStamp implements TruffleStamp {
+    private static final class ArrayStamp implements TruffleStamp {
 
         private static final ArrayStamp INSTANCE = new ArrayStamp(getInstance());
 

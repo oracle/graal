@@ -34,7 +34,7 @@ import com.oracle.graal.lir.asm.*;
  * The {@code LIRInstruction} interface definition.
  */
 public interface LIRInstruction {
-    static final Value[] NO_OPERANDS = {};
+    Value[] NO_OPERANDS = {};
 
     /**
      * Constants denoting how a LIR instruction uses an operand.

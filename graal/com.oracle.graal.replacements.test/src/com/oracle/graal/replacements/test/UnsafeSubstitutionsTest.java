@@ -50,18 +50,15 @@ public class UnsafeSubstitutionsTest extends MethodSubstitutionTest {
         assert code != null;
 
         // Verify that the original method and the substitution produce the same value
-        {
-            Object expected = invokeSafe(originalMethod, receiver, args1);
-            Object actual = invokeSafe(testMethod, null, args2);
-            assertDeepEquals(expected, actual);
-        }
+        Object expected = invokeSafe(originalMethod, receiver, args1);
+        Object actual = invokeSafe(testMethod, null, args2);
+        assertDeepEquals(expected, actual);
 
         // Verify that the generated code and the original produce the same value
-        {
-            Object expected = invokeSafe(originalMethod, receiver, args1);
-            Object actual = executeVarargsSafe(code, args2);
-            assertDeepEquals(expected, actual);
-        }
+        expected = invokeSafe(originalMethod, receiver, args1);
+        actual = executeVarargsSafe(code, args2);
+        assertDeepEquals(expected, actual);
+
     }
 
     static long off(Object o, String name) {

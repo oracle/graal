@@ -31,8 +31,8 @@ import org.junit.*;
  */
 public class ByteArrayCopyDisjointTest extends GraalKernelTester {
 
-    final static int MAXOUTSIZ = 100;
-    final static int NUM = 20;
+    static final int MAXOUTSIZ = 100;
+    static final int NUM = 20;
 
     @Result byte[][] outArray = new byte[NUM][MAXOUTSIZ];
     byte[] inArray = new byte[NUM + MAXOUTSIZ];
