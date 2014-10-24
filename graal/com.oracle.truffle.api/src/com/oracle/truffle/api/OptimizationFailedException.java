@@ -26,14 +26,14 @@ package com.oracle.truffle.api;
 
 public class OptimizationFailedException extends RuntimeException {
 
-    private final CallTarget callTarget;
+    private final RootCallTarget callTarget;
 
-    public OptimizationFailedException(Throwable cause, CallTarget callTarget) {
+    public OptimizationFailedException(Throwable cause, RootCallTarget callTarget) {
         super(cause);
         this.callTarget = callTarget;
     }
 
-    public CallTarget getCallTarget() {
+    public RootCallTarget getCallTarget() {
         return callTarget;
     }
 
