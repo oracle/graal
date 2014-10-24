@@ -14,6 +14,7 @@
 * Renamed DirectCallNode#isSplittable to DirectCallNode#isCallTargetCloningAllowed
 * Renamed DirectCallNode#split to DirectCallNode#cloneCallTarget
 * Renamed DirectCallNode#isSplit to DirectCallNode#isCallTargetCloned
+* Added PrimitiveValueProfile.
 * ...
 
 ## Version 0.5
