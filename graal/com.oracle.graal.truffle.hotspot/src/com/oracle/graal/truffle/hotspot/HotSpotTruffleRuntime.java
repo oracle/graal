@@ -219,7 +219,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
             try {
                 future.get();
             } catch (ExecutionException e) {
-                if (TruffleCompilationExceptionsAreThrown.getValue() && !(e.getCause() instanceof BailoutException)) {
+                if (TruffleCompilationExceptionsAreThrown.getValue() && !(e.getCause() instanceof BailoutException) && !((BailoutException) e.getCause()).isPermanent()) {
                     throw new RuntimeException(e.getCause());
                 } else {
                     // silently ignored
