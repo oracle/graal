@@ -47,7 +47,8 @@ public abstract class ValueProfile {
     public abstract <T> T profile(T value);
 
     /**
-     * Returns a {@link ValueProfile} that speculates on the exact class of a value.
+     * Returns a {@link PrimitiveValueProfile} that speculates on the primitive equality or object
+     * identity of a value.
      */
     public static PrimitiveValueProfile createPrimitiveProfile() {
         return new PrimitiveValueProfile();
