@@ -70,7 +70,7 @@ public class ClassIsInstanceNode extends MacroNode implements Canonicalizable {
                     Object o = HotSpotObjectConstant.asObject(object.asConstant());
                     return ConstantNode.forBoolean(o != null && c.isInstance(o));
                 }
-                HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) HotSpotResolvedObjectType.fromClass(c);
+                HotSpotResolvedObjectType type = HotSpotResolvedObjectType.fromObjectClass(c);
                 InstanceOfNode instanceOf = InstanceOfNode.create(type, object, null);
                 return ConditionalNode.create(instanceOf, ConstantNode.forBoolean(true), ConstantNode.forBoolean(false));
             }

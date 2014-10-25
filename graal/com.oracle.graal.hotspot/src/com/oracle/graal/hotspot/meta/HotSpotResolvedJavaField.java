@@ -255,7 +255,7 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
         if (isStatic()) {
             return false;
         }
-        return getDeclaringClass().isAssignableFrom(HotSpotResolvedObjectType.fromClass(object.getClass()));
+        return getDeclaringClass().isAssignableFrom(HotSpotResolvedObjectType.fromObjectClass(object.getClass()));
     }
 
     @Override

@@ -71,12 +71,12 @@ public final class HotSpotResolvedPrimitiveType extends HotSpotResolvedJavaType 
     }
 
     @Override
-    public ResolvedJavaType getArrayClass() {
+    public HotSpotResolvedObjectType getArrayClass() {
         if (kind == Kind.Void) {
             return null;
         }
         Class<?> javaArrayMirror = Array.newInstance(mirror(), 0).getClass();
-        return HotSpotResolvedObjectType.fromClass(javaArrayMirror);
+        return HotSpotResolvedObjectType.fromObjectClass(javaArrayMirror);
     }
 
     public ResolvedJavaType getElementalType() {

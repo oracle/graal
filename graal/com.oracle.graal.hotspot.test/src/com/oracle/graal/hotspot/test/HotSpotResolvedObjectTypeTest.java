@@ -33,7 +33,7 @@ public class HotSpotResolvedObjectTypeTest {
 
     @Test
     public void testGetSourceFileName() throws Throwable {
-        Assert.assertEquals("Object.java", HotSpotResolvedObjectType.fromClass(Object.class).getSourceFileName());
-        Assert.assertEquals("HotSpotResolvedObjectTypeTest.java", HotSpotResolvedObjectType.fromClass(this.getClass()).getSourceFileName());
+        Assert.assertEquals("Object.java", HotSpotResolvedObjectType.fromObjectClass(Object.class).getSourceFileName());
+        Assert.assertEquals("HotSpotResolvedObjectTypeTest.java", HotSpotResolvedObjectType.fromObjectClass(this.getClass()).getSourceFileName());
     }
 }

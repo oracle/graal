@@ -492,7 +492,7 @@ public final class HotSpotMethodData extends CompilerObject {
             outer: for (int i = 0; i < typeProfileWidth; i++) {
                 long receiverKlass = data.readWord(position, getTypeOffset(i));
                 if (receiverKlass != 0) {
-                    ResolvedJavaType klass = HotSpotResolvedObjectType.fromMetaspaceKlass(receiverKlass);
+                    HotSpotResolvedObjectType klass = HotSpotResolvedObjectType.fromMetaspaceKlass(receiverKlass);
                     long count = data.readUnsignedInt(position, getTypeCountOffset(i));
                     /*
                      * Because of races in the profile collection machinery it's possible for a

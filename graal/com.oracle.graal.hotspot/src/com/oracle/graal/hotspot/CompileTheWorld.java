@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.debug.internal.MemUseTrackerImpl.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
+import static com.oracle.graal.hotspot.meta.HotSpotResolvedObjectType.*;
 import static com.oracle.graal.nodes.StructuredGraph.*;
 
 import java.io.*;
@@ -276,7 +277,7 @@ public final class CompileTheWorld {
 
                         // Pre-load all classes in the constant pool.
                         try {
-                            HotSpotResolvedObjectType objectType = (HotSpotResolvedObjectType) HotSpotResolvedObjectType.fromClass(javaClass);
+                            HotSpotResolvedObjectType objectType = fromObjectClass(javaClass);
                             ConstantPool constantPool = objectType.constantPool();
                             for (int cpi = 1; cpi < constantPool.length(); cpi++) {
                                 constantPool.loadReferencedType(cpi, Bytecodes.LDC);

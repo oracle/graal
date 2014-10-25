@@ -23,6 +23,8 @@
 package com.oracle.graal.hotspot.meta;
 
 import static com.oracle.graal.compiler.common.UnsafeAccess.*;
+import static com.oracle.graal.hotspot.meta.HotSpotResolvedJavaType.*;
+import static com.oracle.graal.hotspot.meta.HotSpotResolvedObjectType.*;
 
 import java.lang.reflect.*;
 
@@ -43,19 +45,19 @@ public class HotSpotMetaAccessProvider implements MetaAccessProvider {
         this.runtime = runtime;
     }
 
-    public ResolvedJavaType lookupJavaType(Class<?> clazz) {
+    public HotSpotResolvedJavaType lookupJavaType(Class<?> clazz) {
         if (clazz == null) {
             throw new IllegalArgumentException("Class parameter was null");
         }
-        return HotSpotResolvedObjectType.fromClass(clazz);
+        return fromClass(clazz);
     }
 
-    public ResolvedJavaType lookupJavaType(Constant constant) {
+    public HotSpotResolvedObjectType lookupJavaType(Constant constant) {
         if (constant.isNull() || !(constant instanceof HotSpotObjectConstant)) {
             return null;
         }
         Object o = HotSpotObjectConstant.asObject(constant);
-        return HotSpotResolvedObjectType.fromClass(o.getClass());
+        return fromObjectClass(o.getClass());
     }
 
     public Signature parseMethodDescriptor(String signature) {
@@ -113,11 +115,11 @@ public class HotSpotMetaAccessProvider implements MetaAccessProvider {
         final int modifiers = reflectionField.getModifiers();
         final long offset = Modifier.isStatic(modifiers) ? unsafe.staticFieldOffset(reflectionField) : unsafe.objectFieldOffset(reflectionField);
 
-        ResolvedJavaType holder = HotSpotResolvedObjectType.fromClass(fieldHolder);
-        ResolvedJavaType type = HotSpotResolvedObjectType.fromClass(fieldType);
+        HotSpotResolvedObjectType holder = fromObjectClass(fieldHolder);
+        HotSpotResolvedJavaType type = fromClass(fieldType);
 
         if (offset != -1) {
-            HotSpotResolvedObjectType resolved = (HotSpotResolvedObjectType) holder;
+            HotSpotResolvedObjectType resolved = holder;
             return resolved.createField(name, type, offset, modifiers);
         } else {
             throw GraalInternalError.shouldNotReachHere("unresolved field " + reflectionField);
@@ -293,7 +295,7 @@ public class HotSpotMetaAccessProvider implements MetaAccessProvider {
     @Override
     public long getMemorySize(Constant constant) {
         if (constant.getKind() == Kind.Object) {
-            HotSpotResolvedObjectType lookupJavaType = (HotSpotResolvedObjectType) this.lookupJavaType(constant);
+            HotSpotResolvedObjectType lookupJavaType = this.lookupJavaType(constant);
 
             if (lookupJavaType == null) {
                 return 0;

@@ -47,7 +47,7 @@ public class HotSpotResolvedJavaFieldTest {
     @Test
     public void testModifiersForInternal() {
         for (Class<?> c : classesWithInternalFields) {
-            ResolvedJavaType type = HotSpotResolvedObjectType.fromClass(c);
+            HotSpotResolvedObjectType type = HotSpotResolvedObjectType.fromObjectClass(c);
             for (ResolvedJavaField field : type.getInstanceFields(false)) {
                 if (field.isInternal()) {
                     Assert.assertEquals(0, ~getReflectionFieldModifiers() & field.getModifiers());
@@ -63,7 +63,7 @@ public class HotSpotResolvedJavaFieldTest {
     @Test
     public void testCachingForInternalFields() {
         for (Class<?> c : classesWithInternalFields) {
-            HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) HotSpotResolvedObjectType.fromClass(c);
+            HotSpotResolvedObjectType type = HotSpotResolvedObjectType.fromObjectClass(c);
             for (ResolvedJavaField field : type.getInstanceFields(false)) {
                 if (field.isInternal()) {
                     HotSpotResolvedJavaField expected = (HotSpotResolvedJavaField) field;

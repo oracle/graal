@@ -67,7 +67,7 @@ public class ClassCastNode extends MacroStateSplitNode implements Canonicalizabl
         if (forJavaClass.isConstant()) {
             Class<?> c = (Class<?>) HotSpotObjectConstant.asObject(forJavaClass.asConstant());
             if (c != null && !c.isPrimitive()) {
-                HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) HotSpotResolvedObjectType.fromClass(c);
+                HotSpotResolvedObjectType type = HotSpotResolvedObjectType.fromObjectClass(c);
                 return CheckCastNode.create(type, forObject, null, false);
             }
         }

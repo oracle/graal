@@ -131,7 +131,7 @@ public class HotSpotConstantPool extends CompilerObject implements ConstantPool 
      */
     private HotSpotResolvedObjectType getHolder() {
         final long metaspaceKlass = unsafe.getAddress(metaspaceConstantPool + runtime().getConfig().constantPoolHolderOffset);
-        return (HotSpotResolvedObjectType) HotSpotResolvedObjectType.fromMetaspaceKlass(metaspaceKlass);
+        return HotSpotResolvedObjectType.fromMetaspaceKlass(metaspaceKlass);
     }
 
     /**
@@ -462,7 +462,7 @@ public class HotSpotConstantPool extends CompilerObject implements ConstantPool 
             String name = getNameRefAt(index);
             String signature = getSignatureRefAt(index);
             if (opcode == Bytecodes.INVOKEDYNAMIC) {
-                JavaType holder = HotSpotResolvedJavaType.fromClass(MethodHandle.class);
+                HotSpotResolvedObjectType holder = HotSpotResolvedObjectType.fromObjectClass(MethodHandle.class);
                 return new HotSpotMethodUnresolved(name, signature, holder);
             } else {
                 final int klassIndex = getKlassRefIndexAt(index);
@@ -504,7 +504,7 @@ public class HotSpotConstantPool extends CompilerObject implements ConstantPool 
                  */
                 return new HotSpotUnresolvedField(holder, name, type);
             }
-            HotSpotResolvedObjectType resolvedHolder = (HotSpotResolvedObjectType) HotSpotResolvedObjectType.fromMetaspaceKlass(metaspaceKlass);
+            HotSpotResolvedObjectType resolvedHolder = HotSpotResolvedObjectType.fromMetaspaceKlass(metaspaceKlass);
             final int flags = (int) info[0];
             final long offset = info[1];
             return resolvedHolder.createField(name, type, offset, flags);
@@ -554,7 +554,7 @@ public class HotSpotConstantPool extends CompilerObject implements ConstantPool 
             case UnresolvedClass:
             case UnresolvedClassInError:
                 final long metaspaceKlass = runtime().getCompilerToVM().constantPoolKlassAt(metaspaceConstantPool, index);
-                HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) HotSpotResolvedObjectType.fromMetaspaceKlass(metaspaceKlass);
+                HotSpotResolvedObjectType type = HotSpotResolvedObjectType.fromMetaspaceKlass(metaspaceKlass);
                 Class<?> klass = type.mirror();
                 if (!klass.isPrimitive() && !klass.isArray()) {
                     unsafe.ensureClassInitialized(klass);

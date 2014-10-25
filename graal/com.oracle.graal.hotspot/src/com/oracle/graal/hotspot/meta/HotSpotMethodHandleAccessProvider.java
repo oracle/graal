@@ -23,6 +23,8 @@
 package com.oracle.graal.hotspot.meta;
 
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
+import static com.oracle.graal.hotspot.meta.HotSpotResolvedJavaType.*;
+import static com.oracle.graal.hotspot.meta.HotSpotResolvedObjectType.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
@@ -51,7 +53,7 @@ public class HotSpotMethodHandleAccessProvider implements MethodHandleAccessProv
          */
         private static ResolvedJavaField findFieldInClass(String className, String fieldName) throws ClassNotFoundException {
             Class<?> clazz = Class.forName(className);
-            ResolvedJavaType type = HotSpotResolvedObjectType.fromClass(clazz);
+            ResolvedJavaType type = fromClass(clazz);
             ResolvedJavaField[] fields = type.getInstanceFields(false);
             for (ResolvedJavaField field : fields) {
                 if (field.getName().equals(fieldName)) {
@@ -63,7 +65,7 @@ public class HotSpotMethodHandleAccessProvider implements MethodHandleAccessProv
 
         private static ResolvedJavaMethod findMethodInClass(String className, String methodName) throws ClassNotFoundException {
             Class<?> clazz = Class.forName(className);
-            ResolvedJavaType type = HotSpotResolvedObjectType.fromClass(clazz);
+            HotSpotResolvedObjectType type = fromObjectClass(clazz);
             ResolvedJavaMethod result = null;
             for (ResolvedJavaMethod method : type.getDeclaredMethods()) {
                 if (method.getName().equals(methodName)) {
