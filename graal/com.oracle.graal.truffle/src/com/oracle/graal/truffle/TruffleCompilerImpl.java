@@ -129,10 +129,6 @@ public class TruffleCompilerImpl {
             if (TraceTruffleCompilationAST.getValue()) {
                 OptimizedCallUtils.printCompactTree(OptimizedCallTarget.OUT, compilable);
             }
-            if (TraceTruffleCompilationCallTree.getValue()) {
-                OptimizedCallTargetLog.log(0, "opt call tree", compilable.toString(), compilable.getDebugProperties());
-                OptimizedCallTargetLog.logTruffleCallTree(compilable);
-            }
             compilationNotify.notifyCompilationSuccess(compilable, graph, compilationResult);
         } catch (Throwable t) {
             compilationNotify.notifyCompilationFailed(compilable, graph, t);
