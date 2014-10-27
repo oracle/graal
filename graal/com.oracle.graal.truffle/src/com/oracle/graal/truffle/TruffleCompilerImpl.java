@@ -24,7 +24,6 @@ package com.oracle.graal.truffle;
 
 import static com.oracle.graal.api.code.CodeUtil.*;
 import static com.oracle.graal.compiler.GraalCompiler.*;
-import static com.oracle.graal.truffle.TruffleCompilerOptions.*;
 
 import java.util.*;
 
@@ -124,11 +123,7 @@ public class TruffleCompilerImpl {
             }
 
             compilationNotify.notifyCompilationTruffleTierFinished(compilable, graph);
-
             CompilationResult compilationResult = compileMethodHelper(graph, assumptions, compilable.toString(), compilable.getSpeculationLog(), compilable);
-            if (TraceTruffleCompilationAST.getValue()) {
-                OptimizedCallUtils.printCompactTree(OptimizedCallTarget.OUT, compilable);
-            }
             compilationNotify.notifyCompilationSuccess(compilable, graph, compilationResult);
         } catch (Throwable t) {
             compilationNotify.notifyCompilationFailed(compilable, graph, t);
