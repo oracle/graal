@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -80,7 +80,7 @@ public class CompressionNode extends UnaryNode implements ConvertNode, LIRLowera
             return ((HotSpotObjectConstant) c).compress();
         } else if (c instanceof HotSpotMetaspaceConstant) {
             assert c.getKind() == Kind.Long;
-            return HotSpotMetaspaceConstant.forMetaspaceObject(Kind.Int, encoding.compress(c.asLong()), HotSpotMetaspaceConstant.getMetaspaceObject(c));
+            return HotSpotMetaspaceConstant.forMetaspaceObject(Kind.Int, encoding.compress(c.asLong()), HotSpotMetaspaceConstant.getMetaspaceObject(c), true);
         } else {
             throw GraalInternalError.shouldNotReachHere("invalid constant input for compress op: " + c);
         }
@@ -93,7 +93,7 @@ public class CompressionNode extends UnaryNode implements ConvertNode, LIRLowera
             return ((HotSpotObjectConstant) c).uncompress();
         } else if (c instanceof HotSpotMetaspaceConstant) {
             assert c.getKind() == Kind.Int;
-            return HotSpotMetaspaceConstant.forMetaspaceObject(Kind.Long, encoding.uncompress(c.asInt()), HotSpotMetaspaceConstant.getMetaspaceObject(c));
+            return HotSpotMetaspaceConstant.forMetaspaceObject(Kind.Long, encoding.uncompress(c.asInt()), HotSpotMetaspaceConstant.getMetaspaceObject(c), false);
         } else {
             throw GraalInternalError.shouldNotReachHere("invalid constant input for uncompress op: " + c);
         }

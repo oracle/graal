@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,6 +31,7 @@ import java.util.*;
 
 import com.oracle.graal.alloc.*;
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.CompilationResult.ConstantReference;
 import com.oracle.graal.api.code.CompilationResult.DataPatch;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.ProfilingInfo.TriState;
@@ -307,7 +308,7 @@ public class GraalCompiler {
         }
 
         if (Debug.isMeterEnabled()) {
-            List<DataPatch> ldp = compilationResult.getDataReferences();
+            List<DataPatch> ldp = compilationResult.getDataPatches();
             Kind[] kindValues = Kind.values();
             DebugMetric[] dms = new DebugMetric[kindValues.length];
             for (int i = 0; i < dms.length; i++) {
@@ -315,7 +316,11 @@ public class GraalCompiler {
             }
 
             for (DataPatch dp : ldp) {
-                dms[dp.data.getKind().ordinal()].add(1);
+                Kind kind = Kind.Illegal;
+                if (dp.reference instanceof ConstantReference) {
+                    kind = ((ConstantReference) dp.reference).getConstant().getKind();
+                }
+                dms[kind.ordinal()].add(1);
             }
 
             Debug.metric("CompilationResults").increment();

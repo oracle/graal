@@ -43,9 +43,11 @@ import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.api.code.CompilationResult.Call;
 import com.oracle.graal.api.code.CompilationResult.CodeAnnotation;
 import com.oracle.graal.api.code.CompilationResult.DataPatch;
+import com.oracle.graal.api.code.CompilationResult.DataSectionReference;
 import com.oracle.graal.api.code.CompilationResult.ExceptionHandler;
 import com.oracle.graal.api.code.CompilationResult.Infopoint;
 import com.oracle.graal.api.code.CompilationResult.Mark;
+import com.oracle.graal.api.code.DataSection.Data;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.hsail.*;
@@ -297,7 +299,7 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
         HSAILHotSpotNmethod code = new HSAILHotSpotNmethod(javaMethod, hsailCode.getName(), false, true);
         code.setOopMapArray(hsailCode.getOopMapArray());
         code.setUsesAllocationFlag(hsailCode.getUsesAllocationFlag());
-        HotSpotCompiledNmethod compiled = new HotSpotCompiledNmethod(getTarget(), javaMethod, compilationResult);
+        HotSpotCompiledNmethod compiled = new HotSpotCompiledNmethod(javaMethod, compilationResult);
         CodeInstallResult result = getRuntime().getCompilerToVM().installCode(compiled, code, null);
         if (result != CodeInstallResult.OK) {
             return null;
@@ -314,7 +316,7 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
         result.setEntryBCI(hsailCode.getEntryBCI());
         assert hsailCode.getMarks().isEmpty();
         assert hsailCode.getExceptionHandlers().isEmpty();
-        assert hsailCode.getDataReferences().isEmpty();
+        assert hsailCode.getDataPatches().isEmpty();
 
         // from host code
         result.setTotalFrameSize(hostCode.getTotalFrameSize());
@@ -329,14 +331,13 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
         for (ExceptionHandler handler : hostCode.getExceptionHandlers()) {
             result.recordExceptionHandler(handler.pcOffset, handler.handlerPos);
         }
-        for (DataPatch patch : hostCode.getDataReferences()) {
-            if (patch.data != null) {
-                if (patch.inline) {
-                    result.recordInlineData(patch.pcOffset, patch.data);
-                } else {
-                    result.recordDataReference(patch.pcOffset, patch.data);
-                }
+        for (DataPatch patch : hostCode.getDataPatches()) {
+            if (patch.reference instanceof DataSectionReference) {
+                Data hostData = hostCode.getDataSection().findData((DataSectionReference) patch.reference);
+                Data resultData = new Data(hostData.getAlignment(), hostData.getSize(), hostData.getBuilder());
+                patch.reference = result.getDataSection().insertData(resultData);
             }
+            result.recordDataPatch(patch.pcOffset, patch.reference);
         }
         for (Infopoint infopoint : hostCode.getInfopoints()) {
             if (infopoint instanceof Call) {

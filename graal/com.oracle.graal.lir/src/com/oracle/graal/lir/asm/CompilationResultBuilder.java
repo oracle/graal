@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,7 +27,10 @@ import static com.oracle.graal.api.code.ValueUtil.*;
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.CompilationResult.Data;
+import com.oracle.graal.api.code.CompilationResult.ConstantReference;
+import com.oracle.graal.api.code.CompilationResult.DataSectionReference;
+import com.oracle.graal.api.code.DataSection.Data;
+import com.oracle.graal.api.code.DataSection.DataBuilder;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.compiler.common.*;
@@ -77,6 +80,8 @@ public class CompilationResultBuilder {
 
     private List<ExceptionInfo> exceptionInfoList;
 
+    private final IdentityHashMap<Constant, Data> dataCache;
+
     public CompilationResultBuilder(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, Assembler asm, FrameContext frameContext, CompilationResult compilationResult) {
         this.target = codeCache.getTarget();
         this.codeCache = codeCache;
@@ -86,6 +91,9 @@ public class CompilationResultBuilder {
         this.compilationResult = compilationResult;
         this.frameContext = frameContext;
         assert frameContext != null;
+
+        // constants are already GVNed in the high level graph, so we can use an IdentityHashMap
+        this.dataCache = new IdentityHashMap<>();
     }
 
     public void setTotalFrameSize(int frameSize) {
@@ -154,27 +162,39 @@ public class CompilationResultBuilder {
     }
 
     public void recordInlineDataInCode(Constant data) {
-        recordInlineDataInCode(codeCache.createDataItem(data, 0));
-    }
-
-    public void recordInlineDataInCode(Data data) {
         assert data != null;
         int pos = asm.position();
         Debug.log("Inline data in code: pos = %d, data = %s", pos, data);
-        compilationResult.recordInlineData(pos, data);
+        if (data instanceof VMConstant) {
+            compilationResult.recordDataPatch(pos, new ConstantReference((VMConstant) data));
+        }
     }
 
-    public AbstractAddress recordDataReferenceInCode(Constant data, int alignment) {
+    private AbstractAddress recordDataSectionReference(Data data) {
         assert data != null;
-        return recordDataReferenceInCode(codeCache.createDataItem(data, alignment));
-    }
-
-    public AbstractAddress recordDataReferenceInCode(Data data) {
-        assert data != null;
-        int pos = asm.position();
-        Debug.log("Data reference in code: pos = %d, data = %s", pos, data);
-        compilationResult.recordDataReference(pos, data);
+        DataSectionReference reference = compilationResult.getDataSection().insertData(data);
+        compilationResult.recordDataPatch(asm.position(), reference);
         return asm.getPlaceholder();
+    }
+
+    public AbstractAddress recordDataReferenceInCode(Constant constant, int alignment) {
+        assert constant != null;
+        Debug.log("Constant reference in code: pos = %d, data = %s", asm.position(), constant);
+        Data data = dataCache.get(constant);
+        if (data == null) {
+            data = codeCache.createDataItem(constant);
+            dataCache.put(constant, data);
+        }
+        data.updateAlignment(alignment);
+        return recordDataSectionReference(data);
+    }
+
+    public AbstractAddress recordDataReferenceInCode(byte[] data, int alignment) {
+        assert data != null;
+        if (Debug.isLogEnabled()) {
+            Debug.log("Data reference in code: pos = %d, data = %s", asm.position(), Arrays.toString(data));
+        }
+        return recordDataSectionReference(new Data(alignment, data.length, DataBuilder.raw(data)));
     }
 
     /**

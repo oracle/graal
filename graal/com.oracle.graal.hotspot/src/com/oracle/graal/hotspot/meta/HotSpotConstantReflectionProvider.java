@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -166,10 +166,10 @@ public class HotSpotConstantReflectionProvider implements ConstantReflectionProv
                 assert bits == 32 && kind == Kind.Int;
                 long klassPointer = config().getKlassEncoding().uncompress((int) rawValue);
                 assert klassPointer == runtime.getCompilerToVM().readUnsafeKlassPointer(base);
-                return HotSpotMetaspaceConstant.forMetaspaceObject(kind, rawValue, HotSpotResolvedObjectType.fromMetaspaceKlass(klassPointer));
+                return HotSpotMetaspaceConstant.forMetaspaceObject(kind, rawValue, HotSpotResolvedObjectType.fromMetaspaceKlass(klassPointer), true);
             } else {
                 assert bits == 64 && kind == Kind.Long;
-                return HotSpotMetaspaceConstant.forMetaspaceObject(kind, rawValue, HotSpotResolvedObjectType.fromMetaspaceKlass(rawValue));
+                return HotSpotMetaspaceConstant.forMetaspaceObject(kind, rawValue, HotSpotResolvedObjectType.fromMetaspaceKlass(rawValue), false);
             }
         } else {
             switch (kind) {

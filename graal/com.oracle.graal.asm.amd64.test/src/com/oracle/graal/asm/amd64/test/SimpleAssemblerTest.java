@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,8 +29,9 @@ import java.nio.*;
 import org.junit.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.CompilationResult.PrimitiveData;
-import com.oracle.graal.api.code.CompilationResult.RawData;
+import com.oracle.graal.api.code.CompilationResult.DataSectionReference;
+import com.oracle.graal.api.code.DataSection.Data;
+import com.oracle.graal.api.code.DataSection.DataBuilder;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.asm.test.*;
@@ -66,7 +67,9 @@ public class SimpleAssemblerTest extends AssemblerTest {
             public byte[] generateCode(CompilationResult compResult, TargetDescription target, RegisterConfig registerConfig, CallingConvention cc) {
                 AMD64MacroAssembler asm = new AMD64MacroAssembler(target, registerConfig);
                 Register ret = registerConfig.getReturnRegister(Kind.Double);
-                compResult.recordDataReference(asm.position(), new PrimitiveData(Constant.forDouble(84.72), 8));
+                Data data = new Data(8, 8, DataBuilder.primitive((PrimitiveConstant) Constant.forDouble(84.72)));
+                DataSectionReference ref = compResult.getDataSection().insertData(data);
+                compResult.recordDataPatch(asm.position(), ref);
                 asm.movdbl(ret, asm.getPlaceholder());
                 asm.ret(0);
                 return asm.close(true);
@@ -86,7 +89,9 @@ public class SimpleAssemblerTest extends AssemblerTest {
 
                 byte[] rawBytes = new byte[8];
                 ByteBuffer.wrap(rawBytes).order(ByteOrder.nativeOrder()).putDouble(84.72);
-                compResult.recordDataReference(asm.position(), new RawData(rawBytes, 8));
+                Data data = new Data(8, 8, DataBuilder.raw(rawBytes));
+                DataSectionReference ref = compResult.getDataSection().insertData(data);
+                compResult.recordDataPatch(asm.position(), ref);
                 asm.movdbl(ret, asm.getPlaceholder());
                 asm.ret(0);
                 return asm.close(true);

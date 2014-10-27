@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -174,7 +174,7 @@ public abstract class Stub {
                 try (Scope s = Debug.scope("CodeInstall")) {
                     Stub stub = Stub.this;
                     HotSpotRuntimeStub installedCode = new HotSpotRuntimeStub(stub);
-                    HotSpotCompiledCode hsCompResult = new HotSpotCompiledRuntimeStub(backend.getTarget(), stub, compResult);
+                    HotSpotCompiledCode hsCompResult = new HotSpotCompiledRuntimeStub(stub, compResult);
 
                     CodeInstallResult result = runtime().getCompilerToVM().installCode(hsCompResult, installedCode, null);
                     if (result != CodeInstallResult.OK) {

@@ -68,7 +68,7 @@ public class HSAILHotSpotNodeLIRBuilder extends HSAILNodeLIRBuilder implements H
         if (c.getKind() == Kind.Long) {
             int compressedValue = (int) (((c.asLong() - encoding.base) >> encoding.shift) & 0xffffffffL);
             if (c instanceof HotSpotMetaspaceConstant) {
-                return HotSpotMetaspaceConstant.forMetaspaceObject(Kind.Int, compressedValue, HotSpotMetaspaceConstant.getMetaspaceObject(c));
+                return HotSpotMetaspaceConstant.forMetaspaceObject(Kind.Int, compressedValue, HotSpotMetaspaceConstant.getMetaspaceObject(c), true);
             } else {
                 return Constant.forIntegerKind(Kind.Int, compressedValue);
             }

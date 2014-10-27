@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.api.code;
 
-import com.oracle.graal.api.code.CompilationResult.Data;
 import com.oracle.graal.api.code.CompilationResult.DataPatch;
+import com.oracle.graal.api.code.DataSection.Data;
 import com.oracle.graal.api.meta.*;
 
 /**
@@ -87,7 +87,7 @@ public interface CodeCacheProvider {
     /**
      * Create a {@link Data} item for a {@link Constant}, that can be used in a {@link DataPatch}.
      */
-    Data createDataItem(Constant constant, int alignment);
+    Data createDataItem(Constant constant);
 
     /**
      * Gets a description of the target architecture.

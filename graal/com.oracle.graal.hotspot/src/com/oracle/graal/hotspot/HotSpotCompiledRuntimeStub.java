@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,9 +26,9 @@ import static com.oracle.graal.hotspot.HotSpotHostBackend.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CompilationResult.Call;
+import com.oracle.graal.api.code.CompilationResult.ConstantReference;
 import com.oracle.graal.api.code.CompilationResult.DataPatch;
 import com.oracle.graal.api.code.CompilationResult.Infopoint;
-import com.oracle.graal.hotspot.data.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.stubs.*;
 
@@ -41,8 +41,8 @@ public final class HotSpotCompiledRuntimeStub extends HotSpotCompiledCode {
 
     public final String stubName;
 
-    public HotSpotCompiledRuntimeStub(TargetDescription target, Stub stub, CompilationResult compResult) {
-        super(target, compResult);
+    public HotSpotCompiledRuntimeStub(Stub stub, CompilationResult compResult) {
+        super(compResult);
         this.stubName = stub.toString();
         assert checkStubInvariants(compResult);
     }
@@ -52,17 +52,20 @@ public final class HotSpotCompiledRuntimeStub extends HotSpotCompiledCode {
      */
     private boolean checkStubInvariants(CompilationResult compResult) {
         assert compResult.getExceptionHandlers().isEmpty();
-        for (DataPatch data : compResult.getDataReferences()) {
-            if (data.data instanceof MetaspaceData) {
-                MetaspaceData meta = (MetaspaceData) data.data;
-                if (meta.annotation instanceof HotSpotResolvedObjectType && ((HotSpotResolvedObjectType) meta.annotation).getName().equals("[I")) {
-                    // special handling for NewArrayStub
-                    // embedding the type '[I' is safe, since it is never unloaded
-                    continue;
+        for (DataPatch data : compResult.getDataPatches()) {
+            if (data.reference instanceof ConstantReference) {
+                ConstantReference ref = (ConstantReference) data.reference;
+                if (ref.getConstant() instanceof HotSpotMetaspaceConstant) {
+                    Object object = HotSpotMetaspaceConstant.getMetaspaceObject(ref.getConstant());
+                    if (object instanceof HotSpotResolvedObjectType && ((HotSpotResolvedObjectType) object).getName().equals("[I")) {
+                        // special handling for NewArrayStub
+                        // embedding the type '[I' is safe, since it is never unloaded
+                        continue;
+                    }
                 }
             }
 
-            assert !(data.data instanceof PatchedData) : this + " cannot have embedded object or metadata constant: " + data.data;
+            assert !(data.reference instanceof ConstantReference) : this + " cannot have embedded object or metadata constant: " + data.reference;
         }
         for (Infopoint infopoint : compResult.getInfopoints()) {
             assert infopoint instanceof Call : this + " cannot have non-call infopoint: " + infopoint;

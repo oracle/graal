@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -769,7 +769,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
      * Gets the metaspace Klass boxed in a {@link Constant}.
      */
     public Constant klass() {
-        return HotSpotMetaspaceConstant.forMetaspaceObject(runtime().getTarget().wordKind, getMetaspaceKlass(), this);
+        return HotSpotMetaspaceConstant.forMetaspaceObject(runtime().getTarget().wordKind, getMetaspaceKlass(), this, false);
     }
 
     public boolean isPrimaryType() {

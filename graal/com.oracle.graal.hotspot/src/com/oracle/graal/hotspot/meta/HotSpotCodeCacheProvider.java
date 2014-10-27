@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,18 +29,18 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CodeUtil.DefaultRefMapFormatter;
 import com.oracle.graal.api.code.CodeUtil.RefMapFormatter;
 import com.oracle.graal.api.code.CompilationResult.Call;
-import com.oracle.graal.api.code.CompilationResult.Data;
+import com.oracle.graal.api.code.CompilationResult.ConstantReference;
 import com.oracle.graal.api.code.CompilationResult.DataPatch;
 import com.oracle.graal.api.code.CompilationResult.Infopoint;
 import com.oracle.graal.api.code.CompilationResult.Mark;
-import com.oracle.graal.api.code.CompilationResult.PrimitiveData;
+import com.oracle.graal.api.code.DataSection.Data;
+import com.oracle.graal.api.code.DataSection.DataBuilder;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.bridge.CompilerToVM.CodeInstallResult;
-import com.oracle.graal.hotspot.data.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.printer.*;
@@ -136,8 +136,8 @@ public class HotSpotCodeCacheProvider implements CodeCacheProvider {
                     addOperandComment(hcf, infopoint.pcOffset, "{infopoint: " + infopoint.reason + "}");
                 }
             }
-            for (DataPatch site : compResult.getDataReferences()) {
-                hcf.addOperandComment(site.pcOffset, "{" + site.data.toString() + "}");
+            for (DataPatch site : compResult.getDataPatches()) {
+                hcf.addOperandComment(site.pcOffset, "{" + site.reference.toString() + "}");
             }
             for (Mark mark : compResult.getMarks()) {
                 hcf.addComment(mark.pcOffset, MarkId.getEnum((int) mark.id).toString());
@@ -209,7 +209,7 @@ public class HotSpotCodeCacheProvider implements CodeCacheProvider {
             compResult.setId(method.allocateCompileId(compResult.getEntryBCI()));
         }
         HotSpotInstalledCode installedCode = new HotSpotNmethod(method, compResult.getName(), isDefault);
-        runtime.getCompilerToVM().installCode(new HotSpotCompiledNmethod(target, method, compResult, ctask), installedCode, method.getSpeculationLog());
+        runtime.getCompilerToVM().installCode(new HotSpotCompiledNmethod(method, compResult, ctask), installedCode, method.getSpeculationLog());
         return logOrDump(installedCode, compResult);
     }
 
@@ -224,7 +224,7 @@ public class HotSpotCodeCacheProvider implements CodeCacheProvider {
             HotSpotInstalledCode code = new HotSpotNmethod(hotspotMethod, compResult.getName(), false);
             installedCode = code;
         }
-        CodeInstallResult result = runtime.getCompilerToVM().installCode(new HotSpotCompiledNmethod(target, hotspotMethod, compResult), installedCode, log);
+        CodeInstallResult result = runtime.getCompilerToVM().installCode(new HotSpotCompiledNmethod(hotspotMethod, compResult), installedCode, log);
         if (result != CodeInstallResult.OK) {
             throw new BailoutException(result != CodeInstallResult.DEPENDENCIES_FAILED, "Code installation failed: %s", result);
         }
@@ -243,7 +243,7 @@ public class HotSpotCodeCacheProvider implements CodeCacheProvider {
             compResult.setId(javaMethod.allocateCompileId(compResult.getEntryBCI()));
         }
         HotSpotNmethod code = new HotSpotNmethod(javaMethod, compResult.getName(), false, true);
-        HotSpotCompiledNmethod compiled = new HotSpotCompiledNmethod(target, javaMethod, compResult);
+        HotSpotCompiledNmethod compiled = new HotSpotCompiledNmethod(javaMethod, compResult);
         CompilerToVM vm = runtime.getCompilerToVM();
         CodeInstallResult result = vm.installCode(compiled, code, null);
         if (result != CodeInstallResult.OK) {
@@ -256,16 +256,48 @@ public class HotSpotCodeCacheProvider implements CodeCacheProvider {
         return constant instanceof HotSpotMetaspaceConstant;
     }
 
-    public Data createDataItem(Constant constant, int alignment) {
-        if (constant instanceof HotSpotMetaspaceConstant) {
-            // constant.getKind() == target.wordKind for uncompressed pointers
-            // otherwise, it's a compressed pointer
-            return new MetaspaceData(alignment, constant.asLong(), HotSpotMetaspaceConstant.getMetaspaceObject(constant), constant.getKind() != target.wordKind);
-        } else if (constant.getKind().isObject()) {
-            return new OopData(alignment, HotSpotObjectConstant.asObject(constant), false);
+    public Data createDataItem(Constant constant) {
+        int size;
+        DataBuilder builder;
+        if (constant instanceof VMConstant) {
+            VMConstant vmConstant = (VMConstant) constant;
+            boolean compressed;
+            long raw;
+            if (vmConstant instanceof HotSpotObjectConstant) {
+                compressed = HotSpotObjectConstant.isCompressed(constant);
+                raw = 0xDEADDEADDEADDEADL;
+            } else if (vmConstant instanceof HotSpotMetaspaceConstant) {
+                compressed = vmConstant.getKind() != target.wordKind;
+                raw = vmConstant.asLong();
+            } else {
+                throw GraalInternalError.shouldNotReachHere();
+            }
+
+            size = target.getSizeInBytes(compressed ? Kind.Int : target.wordKind);
+            if (size == 4) {
+                builder = (buffer, patch) -> {
+                    patch.accept(new DataPatch(buffer.position(), new ConstantReference(vmConstant)));
+                    buffer.putInt((int) raw);
+                };
+            } else {
+                assert size == 8;
+                builder = (buffer, patch) -> {
+                    patch.accept(new DataPatch(buffer.position(), new ConstantReference(vmConstant)));
+                    buffer.putLong(raw);
+                };
+            }
+        } else if (constant.isNull()) {
+            boolean compressed = HotSpotObjectConstant.isCompressed(constant);
+            size = target.getSizeInBytes(compressed ? Kind.Int : target.wordKind);
+            builder = DataBuilder.zero(size);
+        } else if (constant instanceof PrimitiveConstant) {
+            size = target.getSizeInBytes(constant.getKind());
+            builder = DataBuilder.primitive((PrimitiveConstant) constant);
         } else {
-            return new PrimitiveData(constant, alignment);
+            throw GraalInternalError.shouldNotReachHere();
         }
+
+        return new Data(size, size, builder);
     }
 
     @Override

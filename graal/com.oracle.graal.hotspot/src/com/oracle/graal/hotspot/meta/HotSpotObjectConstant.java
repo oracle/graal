@@ -28,7 +28,7 @@ import com.oracle.graal.api.meta.*;
  * Represents a constant non-{@code null} object reference, within the compiler and across the
  * compiler/runtime interface.
  */
-public final class HotSpotObjectConstant extends AbstractConstant implements HotSpotConstant {
+public final class HotSpotObjectConstant extends AbstractConstant implements HotSpotConstant, VMConstant {
 
     private static final long serialVersionUID = 3592151693708093496L;
 

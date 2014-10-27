@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,6 @@ package com.oracle.graal.api.code;
 import static java.util.Collections.*;
 
 import java.io.*;
-import java.nio.*;
 import java.util.*;
 
 import com.oracle.graal.api.code.CodeUtil.RefMapFormatter;
@@ -141,93 +140,28 @@ public class CompilationResult implements Serializable {
     /**
      * Represents some external data that is referenced by the code.
      */
-    public abstract static class Data {
+    public abstract static class Reference implements Serializable {
 
-        private final int alignment;
-
-        protected Data(int alignment) {
-            this.alignment = alignment;
-        }
-
-        public int getAlignment() {
-            return alignment;
-        }
-
-        public abstract int getSize(TargetDescription target);
-
-        public abstract Kind getKind();
-
-        public abstract void emit(TargetDescription target, ByteBuffer buffer);
+        private static final long serialVersionUID = 4841246083028477946L;
     }
 
-    public abstract static class ConstantData extends Data {
+    public static class ConstantReference extends Reference {
 
-        private final Constant constant;
+        private static final long serialVersionUID = 5841121930949053612L;
 
-        protected ConstantData(Constant constant, int alignment) {
-            super(alignment);
+        private final VMConstant constant;
+
+        public ConstantReference(VMConstant constant) {
             this.constant = constant;
         }
 
-        public Constant getConstant() {
+        public VMConstant getConstant() {
             return constant;
-        }
-    }
-
-    /**
-     * Represents a Java primitive value used in a {@link DataPatch}. This implementation uses
-     * {@link Kind#getByteCount()} bytes to encode each value.
-     */
-    public static final class PrimitiveData extends ConstantData {
-
-        public PrimitiveData(Constant constant, int alignment) {
-            super(constant, alignment);
-            assert constant.getKind().isPrimitive();
-        }
-
-        @Override
-        public int getSize(TargetDescription target) {
-            return getConstant().getKind().getByteCount();
-        }
-
-        @Override
-        public Kind getKind() {
-            return getConstant().getKind();
-        }
-
-        @Override
-        public void emit(TargetDescription target, ByteBuffer buffer) {
-            switch (getConstant().getKind()) {
-                case Boolean:
-                    buffer.put(getConstant().asBoolean() ? (byte) 1 : (byte) 0);
-                    break;
-                case Byte:
-                    buffer.put((byte) getConstant().asInt());
-                    break;
-                case Char:
-                    buffer.putChar((char) getConstant().asInt());
-                    break;
-                case Short:
-                    buffer.putShort((short) getConstant().asInt());
-                    break;
-                case Int:
-                    buffer.putInt(getConstant().asInt());
-                    break;
-                case Long:
-                    buffer.putLong(getConstant().asLong());
-                    break;
-                case Float:
-                    buffer.putFloat(getConstant().asFloat());
-                    break;
-                case Double:
-                    buffer.putDouble(getConstant().asDouble());
-                    break;
-            }
         }
 
         @Override
         public String toString() {
-            return getConstant().toString();
+            return constant.toString();
         }
 
         @Override
@@ -240,8 +174,8 @@ public class CompilationResult implements Serializable {
             if (this == obj) {
                 return true;
             }
-            if (obj instanceof PrimitiveData) {
-                PrimitiveData other = (PrimitiveData) obj;
+            if (obj instanceof ConstantReference) {
+                ConstantReference other = (ConstantReference) obj;
                 return getConstant().equals(other.getConstant());
             } else {
                 return false;
@@ -249,80 +183,44 @@ public class CompilationResult implements Serializable {
         }
     }
 
-    public static final class RawData extends Data {
+    public static class DataSectionReference extends Reference {
 
-        public final byte[] data;
+        private static final long serialVersionUID = 9011681879878139182L;
 
-        public RawData(byte[] data, int alignment) {
-            super(alignment);
-            this.data = data;
+        private int offset;
+
+        public DataSectionReference() {
+            // will be set after the data section layout is fixed
+            offset = 0xDEADDEAD;
         }
 
-        @Override
-        public int getSize(TargetDescription target) {
-            return data.length;
+        public int getOffset() {
+            return offset;
         }
 
-        @Override
-        public Kind getKind() {
-            return Kind.Illegal;
-        }
-
-        @Override
-        public void emit(TargetDescription target, ByteBuffer buffer) {
-            buffer.put(data);
-        }
-
-        @Override
-        public String toString() {
-            Formatter ret = new Formatter();
-            boolean first = true;
-            for (byte b : data) {
-                ret.format(first ? "%02X" : " %02X", b);
-                first = false;
-            }
-            return ret.toString();
-        }
-
-        @Override
-        public int hashCode() {
-            return Arrays.hashCode(data);
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (this == obj) {
-                return true;
-            }
-            if (obj instanceof RawData) {
-                RawData other = (RawData) obj;
-                return Arrays.equals(data, other.data);
-            } else {
-                return false;
-            }
+        public void setOffset(int offset) {
+            this.offset = offset;
         }
     }
 
     /**
      * Represents a code site that references some data. The associated data can be either a
-     * reference to an external {@link Data} item in the data section, or it may be an inlined
+     * {@link DataSectionReference reference} to the data section, or it may be an inlined
      * {@link Constant} that needs to be patched.
      */
     public static final class DataPatch extends Site {
 
         private static final long serialVersionUID = 5771730331604867476L;
-        public Data data;
-        public boolean inline;
+        public Reference reference;
 
-        public DataPatch(int pcOffset, Data data, boolean inline) {
+        public DataPatch(int pcOffset, Reference reference) {
             super(pcOffset);
-            this.data = data;
-            this.inline = inline;
+            this.reference = reference;
         }
 
         @Override
         public String toString() {
-            return String.format("%d[<data patch referring to %s data %s>]", pcOffset, inline ? "inline" : "external", data.toString());
+            return String.format("%d[<data patch referring to %s>]", pcOffset, reference.toString());
         }
     }
 
@@ -453,8 +351,10 @@ public class CompilationResult implements Serializable {
     private int id = -1;
     private int entryBCI = -1;
 
+    private final DataSection dataSection = new DataSection();
+
     private final List<Infopoint> infopoints = new ArrayList<>();
-    private final List<DataPatch> dataReferences = new ArrayList<>();
+    private final List<DataPatch> dataPatches = new ArrayList<>();
     private final List<ExceptionHandler> exceptionHandlers = new ArrayList<>();
     private final List<Mark> marks = new ArrayList<>();
 
@@ -521,6 +421,10 @@ public class CompilationResult implements Serializable {
         return assumptions;
     }
 
+    public DataSection getDataSection() {
+        return dataSection;
+    }
+
     /**
      * The total frame size of the method in bytes. This includes the return address pushed onto the
      * stack, if any.
@@ -554,26 +458,16 @@ public class CompilationResult implements Serializable {
     }
 
     /**
-     * Records a reference to the data section in the code section (e.g. to load an integer or
-     * floating point constant).
+     * Records a data patch in the code section. The data patch can refer to something in the
+     * {@link DataSectionReference data section} or directly to an {@link ConstantReference inlined
+     * constant}.
      *
-     * @param codePos the position in the code where the data reference occurs
-     * @param data the data that is referenced
+     * @param codePos The position in the code that needs to be patched.
+     * @param ref The reference that should be inserted in the code.
      */
-    public void recordDataReference(int codePos, Data data) {
-        assert codePos >= 0 && data != null;
-        dataReferences.add(new DataPatch(codePos, data, false));
-    }
-
-    /**
-     * Records a reference to an inlined constant in the code section (e.g. to load a constant oop).
-     *
-     * @param codePos the position in the code where the inlined constant occurs
-     * @param data the data that is referenced
-     */
-    public void recordInlineData(int codePos, Data data) {
-        assert codePos >= 0 && data != null;
-        dataReferences.add(new DataPatch(codePos, data, true));
+    public void recordDataPatch(int codePos, Reference ref) {
+        assert codePos >= 0 && ref != null;
+        dataPatches.add(new DataPatch(codePos, ref));
     }
 
     /**
@@ -755,11 +649,11 @@ public class CompilationResult implements Serializable {
     /**
      * @return the list of data references
      */
-    public List<DataPatch> getDataReferences() {
-        if (dataReferences.isEmpty()) {
+    public List<DataPatch> getDataPatches() {
+        if (dataPatches.isEmpty()) {
             return emptyList();
         }
-        return unmodifiableList(dataReferences);
+        return unmodifiableList(dataPatches);
     }
 
     /**
@@ -788,7 +682,7 @@ public class CompilationResult implements Serializable {
 
     public void reset() {
         infopoints.clear();
-        dataReferences.clear();
+        dataPatches.clear();
         exceptionHandlers.clear();
         marks.clear();
         if (annotations != null) {

@@ -26,12 +26,12 @@ import java.util.*;
 
 import com.oracle.graal.api.meta.*;
 
-public final class HotSpotMetaspaceConstant extends PrimitiveConstant implements HotSpotConstant {
+public final class HotSpotMetaspaceConstant extends PrimitiveConstant implements HotSpotConstant, VMConstant {
 
     private static final long serialVersionUID = 1003463314013122983L;
 
-    public static Constant forMetaspaceObject(Kind kind, long primitive, Object metaspaceObject) {
-        return new HotSpotMetaspaceConstant(kind, primitive, metaspaceObject);
+    public static Constant forMetaspaceObject(Kind kind, long primitive, Object metaspaceObject, boolean compressed) {
+        return new HotSpotMetaspaceConstant(kind, primitive, metaspaceObject, compressed);
     }
 
     public static Object getMetaspaceObject(Constant constant) {
@@ -39,10 +39,12 @@ public final class HotSpotMetaspaceConstant extends PrimitiveConstant implements
     }
 
     private final Object metaspaceObject;
+    private final boolean compressed;
 
-    private HotSpotMetaspaceConstant(Kind kind, long primitive, Object metaspaceObject) {
+    private HotSpotMetaspaceConstant(Kind kind, long primitive, Object metaspaceObject, boolean compressed) {
         super(kind, primitive);
         this.metaspaceObject = metaspaceObject;
+        this.compressed = compressed;
     }
 
     @Override
@@ -57,6 +59,6 @@ public final class HotSpotMetaspaceConstant extends PrimitiveConstant implements
 
     @Override
     public String toString() {
-        return super.toString() + "{" + metaspaceObject + "}";
+        return super.toString() + "{" + metaspaceObject + (compressed ? ";compressed}" : "}");
     }
 }

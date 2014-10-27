@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,7 +28,6 @@ import static java.lang.Double.*;
 import static java.lang.Float.*;
 
 import com.oracle.graal.amd64.*;
-import com.oracle.graal.api.code.CompilationResult.RawData;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
@@ -333,8 +332,7 @@ public class AMD64Move {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-            RawData rawData = new RawData(data, 16);
-            masm.leaq(asRegister(result), (AMD64Address) crb.recordDataReferenceInCode(rawData));
+            masm.leaq(asRegister(result), (AMD64Address) crb.recordDataReferenceInCode(data, 16));
         }
     }
 
