@@ -37,7 +37,7 @@ public class AbstractDebugCompilationListener implements GraalTruffleCompilation
     public void notifyShutdown(TruffleRuntime runtime) {
     }
 
-    protected static void log(int indent, String msg, String details, Map<String, Object> properties) {
+    public static void log(int indent, String msg, String details, Map<String, Object> properties) {
         StringBuilder sb = new StringBuilder();
         sb.append(String.format("[truffle] %-16s ", msg));
         for (int i = 0; i < indent; i++) {
@@ -69,7 +69,7 @@ public class AbstractDebugCompilationListener implements GraalTruffleCompilation
         OUT.println(sb.toString());
     }
 
-    protected static void addASTSizeProperty(OptimizedCallTarget target, Map<String, Object> properties) {
+    public static void addASTSizeProperty(OptimizedCallTarget target, Map<String, Object> properties) {
         int nodeCount = OptimizedCallUtils.countNonTrivialNodes(target, false);
         int deepNodeCount = nodeCount;
         TruffleInlining inlining = target.getInlining();

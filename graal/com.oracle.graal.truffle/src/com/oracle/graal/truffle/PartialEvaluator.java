@@ -23,7 +23,6 @@
 package com.oracle.graal.truffle;
 
 import static com.oracle.graal.compiler.common.GraalOptions.*;
-import static com.oracle.graal.truffle.OptimizedCallTargetLog.*;
 import static com.oracle.graal.truffle.TruffleCompilerOptions.*;
 
 import java.util.*;
@@ -51,6 +50,7 @@ import com.oracle.graal.phases.common.inlining.*;
 import com.oracle.graal.phases.common.inlining.info.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.phases.util.*;
+import com.oracle.graal.truffle.debug.*;
 import com.oracle.graal.truffle.nodes.*;
 import com.oracle.graal.truffle.nodes.asserts.*;
 import com.oracle.graal.truffle.nodes.frame.*;
@@ -373,7 +373,7 @@ public class PartialEvaluator {
             if (TruffleCompilerOptions.TraceTrufflePerformanceWarnings.getValue()) {
                 Map<String, Object> properties = new LinkedHashMap<>();
                 properties.put("callNode", callNode);
-                logPerformanceWarning("A direct call within the Truffle AST is not reachable anymore. Call node could not be inlined.", properties);
+                TracePerformanceWarningsListener.logPerformanceWarning("A direct call within the Truffle AST is not reachable anymore. Call node could not be inlined.", properties);
             }
         }
 
@@ -382,7 +382,7 @@ public class PartialEvaluator {
                 Map<String, Object> properties = new LinkedHashMap<>();
                 properties.put("originalTarget", decision.getTarget());
                 properties.put("callNode", callNode);
-                logPerformanceWarning(String.format("CallTarget changed during compilation. Call node could not be inlined."), properties);
+                TracePerformanceWarningsListener.logPerformanceWarning(String.format("CallTarget changed during compilation. Call node could not be inlined."), properties);
             }
             decision = null;
         }

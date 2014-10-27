@@ -44,6 +44,7 @@ import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.common.inlining.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.phases.util.*;
+import com.oracle.graal.truffle.debug.*;
 import com.oracle.graal.truffle.phases.*;
 import com.oracle.graal.virtual.phases.ea.*;
 import com.oracle.truffle.api.*;
@@ -209,7 +210,7 @@ public class TruffleCacheImpl implements TruffleCache {
                     Map<String, Object> map = new LinkedHashMap<>();
                     map.put("nodeCount", graph.getNodeCount());
                     map.put("method", method.toString());
-                    OptimizedCallTargetLog.logPerformanceWarning(String.format("Method on fast path contains more than %d graal nodes.", warnNodeCount), map);
+                    TracePerformanceWarningsListener.logPerformanceWarning(String.format("Method on fast path contains more than %d graal nodes.", warnNodeCount), map);
                 }
             }
 

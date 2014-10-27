@@ -61,6 +61,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
         TraceCompilationListener.install(this);
         TraceCompilationPolymorphismListener.install(this);
         TraceCompilationCallTreeListener.install(this);
+        TracePerformanceWarningsListener.install(this);
         TraceInliningListener.install(this);
         PrintCallTargetProfiling.install(this);
     }

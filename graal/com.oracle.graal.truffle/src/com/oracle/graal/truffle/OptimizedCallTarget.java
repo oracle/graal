@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.truffle;
 
-import static com.oracle.graal.truffle.OptimizedCallTargetLog.*;
 import static com.oracle.graal.truffle.TruffleCompilerOptions.*;
 
 import java.io.*;
@@ -34,6 +33,7 @@ import java.util.stream.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.truffle.debug.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.*;
@@ -451,7 +451,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
 
     public Map<String, Object> getDebugProperties() {
         Map<String, Object> properties = new LinkedHashMap<>();
-        addASTSizeProperty(this, properties);
+        AbstractDebugCompilationListener.addASTSizeProperty(this, properties);
         properties.putAll(getCompilationProfile().getDebugProperties());
         return properties;
     }

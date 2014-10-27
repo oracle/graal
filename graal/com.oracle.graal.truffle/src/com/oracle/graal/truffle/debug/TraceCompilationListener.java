@@ -85,7 +85,7 @@ public class TraceCompilationListener extends AbstractDebugCompilationListener {
 
         int dispatchedCalls = calls - inlinedCalls;
         Map<String, Object> properties = new LinkedHashMap<>();
-        OptimizedCallTargetLog.addASTSizeProperty(target, properties);
+        addASTSizeProperty(target, properties);
         properties.put("Time", String.format("%5.0f(%4.0f+%-4.0f)ms", //
                         (timeCompilationFinished - compilation.timeCompilationStarted) / 1e6, //
                         (compilation.timePartialEvaluationFinished - compilation.timeCompilationStarted) / 1e6, //
