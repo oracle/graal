@@ -32,7 +32,7 @@ import java.util.stream.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.truffle.TruffleInlining.CallTreeNodeVisitor;
 import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.nodes.Node;
 
 public final class OptimizedCallTargetLog {
 
@@ -127,69 +127,6 @@ public final class OptimizedCallTargetLog {
     private static void logInliningDone(OptimizedCallTarget target) {
         if (TraceTruffleInlining.getValue()) {
             log(0, "inline done", target.toString(), target.getDebugProperties());
-        }
-    }
-
-    public static void logOptimizingQueued(OptimizedCallTarget target) {
-        if (TraceTruffleCompilationDetails.getValue()) {
-            log(0, "opt queued", target.toString(), target.getDebugProperties());
-        }
-    }
-
-    public static void logOptimizingUnqueued(OptimizedCallTarget target, Node oldNode, Node newNode, CharSequence reason) {
-        if (TraceTruffleCompilationDetails.getValue()) {
-            Map<String, Object> properties = new LinkedHashMap<>();
-            addReplaceProperties(properties, oldNode, newNode);
-            properties.put("Reason", reason);
-            log(0, "opt unqueued", target.toString(), properties);
-        }
-    }
-
-    private static void addReplaceProperties(Map<String, Object> properties, Node oldNode, Node newNode) {
-        if (oldNode != null && newNode != null) {
-            properties.put("OldClass", oldNode.getClass().getSimpleName());
-            properties.put("NewClass", newNode.getClass().getSimpleName());
-            properties.put("Node", newNode);
-        }
-    }
-
-    static void logOptimizingStart(OptimizedCallTarget target) {
-        if (TraceTruffleCompilationDetails.getValue()) {
-            log(0, "opt start", target.toString(), target.getDebugProperties());
-        }
-    }
-
-    public static void logOptimizedInvalidated(OptimizedCallTarget target, Node oldNode, Node newNode, CharSequence reason) {
-        if (TraceTruffleCompilation.getValue()) {
-            Map<String, Object> properties = new LinkedHashMap<>();
-            addReplaceProperties(properties, oldNode, newNode);
-            properties.put("Reason", reason);
-            log(0, "opt invalidated", target.toString(), properties);
-        }
-    }
-
-    public static void logOptimizingFailed(OptimizedCallTarget callSite, CharSequence reason) {
-        Map<String, Object> properties = new LinkedHashMap<>();
-        properties.put("Reason", reason);
-        log(0, "opt fail", callSite.toString(), properties);
-    }
-
-    public static void logOptimizingDone(OptimizedCallTarget target, Map<String, Object> properties) {
-        if (TraceTruffleCompilationDetails.getValue() || TraceTruffleCompilation.getValue()) {
-            log(0, "opt done", target.toString(), properties);
-        }
-        if (TraceTruffleCompilationPolymorphism.getValue()) {
-            // @formatter:off
-            target.nodeStream(true).filter(node -> node != null && (node.getCost() == NodeCost.MEGAMORPHIC || node.getCost() == NodeCost.POLYMORPHIC)).
-            forEach(node -> {
-                NodeCost cost = node.getCost();
-                Map<String, Object> props = new LinkedHashMap<>();
-                props.put("simpleName", node.getClass().getSimpleName());
-                props.put("subtree", "\n" + NodeUtil.printCompactTreeToString(node));
-                String msg = cost == NodeCost.MEGAMORPHIC ? "megamorphic" : "polymorphic";
-                log(0, msg, node.toString(), props);
-            });
-            // @formatter:on
         }
     }
 

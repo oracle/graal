@@ -79,6 +79,8 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
         installOptimizedCallTargetCallDirect();
         lookupCallMethods(getGraalProviders().getMetaAccess());
 
+        installDefaultListeners();
+
         // Create compilation queue.
         CompilerThreadFactory factory = new CompilerThreadFactory("TruffleCompilerThread", new CompilerThreadFactory.DebugConfigAccess() {
             public GraalDebugConfig getDebugConfig() {
@@ -92,6 +94,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
             }
         });
         compileQueue = new ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(), factory);
+
     }
 
     private static void installOptimizedCallTargetCallDirect() {

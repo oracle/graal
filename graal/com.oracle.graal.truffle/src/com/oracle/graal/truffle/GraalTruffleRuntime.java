@@ -56,6 +56,12 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
         Runtime.getRuntime().addShutdownHook(new Thread(this::shutdown));
     }
 
+    protected void installDefaultListeners() {
+        TraceCompilationFailureListener.install(this);
+        TraceCompilationListener.install(this);
+        TraceCompilationPolymorphismListener.install(this);
+    }
+
     protected void lookupCallMethods(MetaAccessProvider metaAccess) {
         callNodeMethod = new ResolvedJavaMethod[]{metaAccess.lookupJavaMethod(GraalFrameInstance.CallNodeFrame.METHOD)};
         callTargetMethod = new ResolvedJavaMethod[]{metaAccess.lookupJavaMethod(GraalFrameInstance.CallTargetFrame.METHOD)};
