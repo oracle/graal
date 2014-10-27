@@ -63,6 +63,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
         TraceCompilationCallTreeListener.install(this);
         TracePerformanceWarningsListener.install(this);
         TraceInliningListener.install(this);
+        TraceSplittingListener.install(this);
         PrintCallTargetProfiling.install(this);
     }
 
@@ -83,7 +84,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
     @Override
     public DirectCallNode createDirectCallNode(CallTarget target) {
         if (target instanceof OptimizedCallTarget) {
-            return new OptimizedDirectCallNode((OptimizedCallTarget) target);
+            return new OptimizedDirectCallNode(this, (OptimizedCallTarget) target);
         } else {
             throw new IllegalStateException(String.format("Unexpected call target class %s!", target.getClass()));
         }
@@ -253,6 +254,10 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
 
         public void notifyCompilationFailed(OptimizedCallTarget target, StructuredGraph graph, Throwable t) {
             compilationListeners.forEach(l -> l.notifyCompilationFailed(target, graph, t));
+        }
+
+        public void notifyCompilationSplit(OptimizedDirectCallNode callNode) {
+            compilationListeners.forEach(l -> l.notifyCompilationSplit(callNode));
         }
 
         public void notifyCompilationSuccess(OptimizedCallTarget target, StructuredGraph graph, CompilationResult result) {

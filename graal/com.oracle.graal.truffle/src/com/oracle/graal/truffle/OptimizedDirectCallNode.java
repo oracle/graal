@@ -41,9 +41,11 @@ public final class OptimizedDirectCallNode extends DirectCallNode implements Mat
     @CompilationFinal private FrameAccess outsideFrameAccess = FrameAccess.NONE;
 
     private final TruffleSplittingStrategy splittingStrategy;
+    private final GraalTruffleRuntime runtime;
 
-    public OptimizedDirectCallNode(OptimizedCallTarget target) {
+    public OptimizedDirectCallNode(GraalTruffleRuntime runtime, OptimizedCallTarget target) {
         super(target);
+        this.runtime = runtime;
         if (TruffleCompilerOptions.TruffleSplittingNew.getValue()) {
             this.splittingStrategy = new DefaultTruffleSplittingStrategyNew(this);
         } else {
@@ -157,12 +159,12 @@ public final class OptimizedDirectCallNode extends DirectCallNode implements Mat
 
         // dummy replace to report the split
         replace(this, "Split call " + newTarget.toString());
-
         if (newTarget.getSourceCallTarget() == null) {
             splitCallTarget = null;
         } else {
             splitCallTarget = newTarget;
         }
+        runtime.getCompilationNotify().notifyCompilationSplit(this);
     }
 
     @Override

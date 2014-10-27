@@ -12,6 +12,8 @@ public interface GraalTruffleCompilationListener {
 
     void notifyCompilationFailed(OptimizedCallTarget target, StructuredGraph graph, Throwable t);
 
+    void notifyCompilationSplit(OptimizedDirectCallNode callNode);
+
     void notifyCompilationStarted(OptimizedCallTarget target);
 
     void notifyCompilationTruffleTierFinished(OptimizedCallTarget target, StructuredGraph graph);
