@@ -205,7 +205,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
             @Override
             public void run() {
                 try (Scope s = Debug.scope("Truffle", new TruffleDebugJavaMethod(optimizedCallTarget))) {
-                    truffleCompiler.compileMethodImpl(optimizedCallTarget);
+                    truffleCompiler.compileMethod(optimizedCallTarget);
                     optimizedCallTarget.notifyCompilationFinished();
                 } catch (Throwable e) {
                     optimizedCallTarget.notifyCompilationFailed(e);
@@ -214,6 +214,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
         };
         Future<?> future = compileQueue.submit(r);
         this.compilations.put(optimizedCallTarget, future);
+        getCompilationNotify().notifyCompilationQueued(optimizedCallTarget);
 
         if (!mayBeAsynchronous) {
             try {
@@ -231,11 +232,13 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
     }
 
     @Override
-    public boolean cancelInstalledTask(OptimizedCallTarget optimizedCallTarget) {
+    public boolean cancelInstalledTask(OptimizedCallTarget optimizedCallTarget, Object source, CharSequence reason) {
         Future<?> codeTask = this.compilations.get(optimizedCallTarget);
         if (codeTask != null && isCompiling(optimizedCallTarget)) {
             this.compilations.remove(optimizedCallTarget);
-            return codeTask.cancel(true);
+            boolean result = codeTask.cancel(true);
+            getCompilationNotify().notifyCompilationDequeued(optimizedCallTarget, source, reason);
+            return result;
         }
         return false;
     }
@@ -266,8 +269,9 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
     }
 
     @Override
-    public void invalidateInstalledCode(OptimizedCallTarget optimizedCallTarget) {
+    public void invalidateInstalledCode(OptimizedCallTarget optimizedCallTarget, Object source, CharSequence reason) {
         HotSpotGraalRuntime.runtime().getCompilerToVM().invalidateInstalledCode(optimizedCallTarget);
+        getCompilationNotify().notifyCompilationInvalidated(optimizedCallTarget, source, reason);
     }
 
     @Override

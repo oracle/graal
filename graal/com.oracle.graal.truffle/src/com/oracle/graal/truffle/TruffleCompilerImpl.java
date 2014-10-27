@@ -64,6 +64,7 @@ public class TruffleCompilerImpl {
     private final GraphBuilderConfiguration config;
     private final RuntimeProvider runtime;
     private final TruffleCache truffleCache;
+    private final GraalTruffleCompilationListener compilationNotify;
 
     private static final Class<?>[] SKIPPED_EXCEPTION_CLASSES = new Class[]{UnexpectedResultException.class, SlowPathException.class, ArithmeticException.class, IllegalArgumentException.class};
 
@@ -71,9 +72,11 @@ public class TruffleCompilerImpl {
                     OptimisticOptimizations.Optimization.RemoveNeverExecutedCode, OptimisticOptimizations.Optimization.UseTypeCheckedInlining, OptimisticOptimizations.Optimization.UseTypeCheckHints);
 
     public TruffleCompilerImpl() {
+        GraalTruffleRuntime graalTruffleRuntime = ((GraalTruffleRuntime) Truffle.getRuntime());
         this.runtime = Graal.getRequiredCapability(RuntimeProvider.class);
+        this.compilationNotify = graalTruffleRuntime.getCompilationNotify();
         this.backend = runtime.getHostBackend();
-        Replacements truffleReplacements = ((GraalTruffleRuntime) Truffle.getRuntime()).getReplacements();
+        Replacements truffleReplacements = graalTruffleRuntime.getReplacements();
         this.providers = backend.getProviders().copyWith(truffleReplacements);
         this.suites = backend.getSuites().getDefaultSuites();
 
@@ -105,45 +108,52 @@ public class TruffleCompilerImpl {
     public static final DebugMemUseTracker CompilationMemUse = Debug.memUseTracker("TruffleCompilationMemUse");
     public static final DebugMemUseTracker CodeInstallationMemUse = Debug.memUseTracker("TruffleCodeInstallationMemUse");
 
-    public void compileMethodImpl(final OptimizedCallTarget compilable) {
-        final StructuredGraph graph;
+    public void compileMethod(final OptimizedCallTarget compilable) {
+        StructuredGraph graph = null;
+
+        compilationNotify.notifyCompilationStarted(compilable);
 
         if (TraceTruffleCompilation.getValue()) {
             OptimizedCallTargetLog.logOptimizingStart(compilable);
-
         }
 
-        long timeCompilationStarted = System.nanoTime();
-        Assumptions assumptions = new Assumptions(true);
+        try {
+            long timeCompilationStarted = System.nanoTime();
+            Assumptions assumptions = new Assumptions(true);
 
-        try (TimerCloseable a = PartialEvaluationTime.start(); Closeable c = PartialEvaluationMemUse.start()) {
-            graph = partialEvaluator.createGraph(compilable, assumptions);
-        }
+            try (TimerCloseable a = PartialEvaluationTime.start(); Closeable c = PartialEvaluationMemUse.start()) {
+                graph = partialEvaluator.createGraph(compilable, assumptions);
+            }
 
-        if (Thread.currentThread().isInterrupted()) {
-            return;
-        }
+            if (Thread.currentThread().isInterrupted()) {
+                return;
+            }
 
-        long timePartialEvaluationFinished = System.nanoTime();
-        int nodeCountPartialEval = graph.getNodeCount();
-        CompilationResult compilationResult = compileMethodHelper(graph, assumptions, compilable.toString(), compilable.getSpeculationLog(), compilable);
-        long timeCompilationFinished = System.nanoTime();
-        int nodeCountLowered = graph.getNodeCount();
+            compilationNotify.notifyCompilationTruffleTierFinished(compilable, graph);
 
-        if (TraceTruffleCompilation.getValue()) {
-            printTruffleCompilation(compilable, timeCompilationStarted, timePartialEvaluationFinished, nodeCountPartialEval, compilationResult, timeCompilationFinished, nodeCountLowered);
+            long timePartialEvaluationFinished = System.nanoTime();
+            int nodeCountPartialEval = graph.getNodeCount();
+            CompilationResult compilationResult = compileMethodHelper(graph, assumptions, compilable.toString(), compilable.getSpeculationLog(), compilable);
+            long timeCompilationFinished = System.nanoTime();
+            int nodeCountLowered = graph.getNodeCount();
+            if (TraceTruffleCompilation.getValue()) {
+                printTruffleCompilation(compilable, timeCompilationStarted, timePartialEvaluationFinished, nodeCountPartialEval, compilationResult, timeCompilationFinished, nodeCountLowered);
+            }
+            if (TraceTruffleCompilationAST.getValue()) {
+                OptimizedCallUtils.printCompactTree(OptimizedCallTarget.OUT, compilable);
+            }
+            if (TraceTruffleCompilationCallTree.getValue()) {
+                OptimizedCallTargetLog.log(0, "opt call tree", compilable.toString(), compilable.getDebugProperties());
+                OptimizedCallTargetLog.logTruffleCallTree(compilable);
+            }
+            if (TraceTruffleInlining.getValue()) {
+                OptimizedCallTargetLog.logInliningDecision(compilable);
+            }
+            compilationNotify.notifyCompilationSuccess(compilable, graph, compilationResult);
+        } catch (Throwable t) {
+            compilationNotify.notifyCompilationFailed(compilable, graph, t);
+            throw t;
         }
-        if (TraceTruffleCompilationAST.getValue()) {
-            OptimizedCallUtils.printCompactTree(OptimizedCallTarget.OUT, compilable);
-        }
-        if (TraceTruffleCompilationCallTree.getValue()) {
-            OptimizedCallTargetLog.log(0, "opt call tree", compilable.toString(), compilable.getDebugProperties());
-            OptimizedCallTargetLog.logTruffleCallTree(compilable);
-        }
-        if (TraceTruffleInlining.getValue()) {
-            OptimizedCallTargetLog.logInliningDecision(compilable);
-        }
-
     }
 
     private static void printTruffleCompilation(final OptimizedCallTarget compilable, long timeCompilationStarted, long timePartialEvaluationFinished, int nodeCountPartialEval,

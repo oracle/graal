@@ -276,21 +276,11 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
 
     @Override
     public void invalidate() {
-        this.runtime.invalidateInstalledCode(this);
+        invalidate(null, null);
     }
 
-    protected void invalidate(Node oldNode, Node newNode, CharSequence reason) {
-        if (isValid()) {
-            CompilerAsserts.neverPartOfCompilation();
-            invalidate();
-            logOptimizedInvalidated(this, oldNode, newNode, reason);
-        }
-        /* Notify compiled method that have inlined this call target that the tree changed. */
-        nodeRewritingAssumption.invalidate();
-
-        if (cancelInstalledTask(oldNode, newNode, reason)) {
-            compilationProfile.reportInvalidated();
-        }
+    protected void invalidate(Node source, CharSequence reason) {
+        this.runtime.invalidateInstalledCode(this, source, reason);
     }
 
     public TruffleInlining getInlining() {
@@ -302,7 +292,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     }
 
     private boolean cancelInstalledTask(Node oldNode, Node newNode, CharSequence reason) {
-        boolean cancelled = this.runtime.cancelInstalledTask(this);
+        boolean cancelled = this.runtime.cancelInstalledTask(this, newNode, reason);
         if (cancelled) {
             notifyCompilationDequeued(oldNode, newNode, reason);
         }
@@ -442,8 +432,18 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
 
     @Override
     public void nodeReplaced(Node oldNode, Node newNode, CharSequence reason) {
+        if (isValid()) {
+            CompilerAsserts.neverPartOfCompilation();
+            invalidate(newNode, reason);
+            logOptimizedInvalidated(this, oldNode, newNode, reason);
+        }
+        /* Notify compiled method that have inlined this call target that the tree changed. */
+        nodeRewritingAssumption.invalidate();
+
         compilationProfile.reportNodeReplaced();
-        invalidate(oldNode, newNode, reason);
+        if (cancelInstalledTask(oldNode, newNode, reason)) {
+            compilationProfile.reportInvalidated();
+        }
     }
 
     public void accept(NodeVisitor visitor, boolean includeInlinedNodes) {
