@@ -59,7 +59,7 @@ public abstract class RootNode extends Node {
     @Override
     public Node copy() {
         RootNode root = (RootNode) super.copy();
-        root.frameDescriptor = frameDescriptor.shallowCopy();
+        root.frameDescriptor = frameDescriptor;
         return root;
     }
 
