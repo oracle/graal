@@ -31,7 +31,7 @@ import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.sl.runtime.*;
 
 /**
- * Just used in TestSlowPath01.sl. Verifies that all intrinsics have no effect inside of a @TruffleBoundary
+ * Just used in TestTruffleBoundary01.sl. Verifies that all intrinsics have no effect inside of a @TruffleBoundary
  * annotated method.
  */
 @NodeInfo(shortName = "testTruffleBoundary01")
@@ -41,7 +41,7 @@ public abstract class SLTestTruffleBoundary01Builtin extends SLGraalRuntimeBuilt
 
     @Specialization
     @TruffleBoundary
-    public Object testSlowPath() {
+    public Object testTruffleBoundary() {
         CompilerAsserts.neverPartOfCompilation();
         CompilerAsserts.neverPartOfCompilation("Should never throw an exception when compiling.");
         CompilerAsserts.compilationConstant(nonConstantValue);
