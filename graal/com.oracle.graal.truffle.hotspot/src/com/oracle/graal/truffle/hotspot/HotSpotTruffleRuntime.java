@@ -206,9 +206,9 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
             public void run() {
                 try (Scope s = Debug.scope("Truffle", new TruffleDebugJavaMethod(optimizedCallTarget))) {
                     truffleCompiler.compileMethodImpl(optimizedCallTarget);
-                    optimizedCallTarget.compilationFinished(null);
+                    optimizedCallTarget.notifyCompilationFinished();
                 } catch (Throwable e) {
-                    optimizedCallTarget.compilationFinished(e);
+                    optimizedCallTarget.notifyCompilationFailed(e);
                 }
             }
         };

@@ -283,12 +283,14 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         if (isValid()) {
             CompilerAsserts.neverPartOfCompilation();
             invalidate();
-            compilationProfile.reportInvalidated();
             logOptimizedInvalidated(this, oldNode, newNode, reason);
         }
         /* Notify compiled method that have inlined this call target that the tree changed. */
         nodeRewritingAssumption.invalidate();
-        cancelInstalledTask(oldNode, newNode, reason);
+
+        if (cancelInstalledTask(oldNode, newNode, reason)) {
+            compilationProfile.reportInvalidated();
+        }
     }
 
     public TruffleInlining getInlining() {
@@ -299,11 +301,12 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         this.inlining = inliningDecision;
     }
 
-    private void cancelInstalledTask(Node oldNode, Node newNode, CharSequence reason) {
-        if (this.runtime.cancelInstalledTask(this)) {
-            logOptimizingUnqueued(this, oldNode, newNode, reason);
-            compilationProfile.reportInvalidated();
+    private boolean cancelInstalledTask(Node oldNode, Node newNode, CharSequence reason) {
+        boolean cancelled = this.runtime.cancelInstalledTask(this);
+        if (cancelled) {
+            notifyCompilationDequeued(oldNode, newNode, reason);
         }
+        return cancelled;
     }
 
     private void interpreterCall() {
@@ -321,34 +324,42 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
 
     public void compile() {
         if (!runtime.isCompiling(this)) {
-            logOptimizingQueued(this);
+            notifyCompilationQueued();
             runtime.compile(this, TruffleBackgroundCompilation.getValue() && !TruffleCompilationExceptionsAreThrown.getValue());
         }
     }
 
-    public void compilationFinished(Throwable t) {
-        if (t == null) {
-            // Compilation was successful.
-            if (inlining != null) {
-                dequeueInlinedCallSites(inlining);
+    public void notifyCompilationQueued() {
+        logOptimizingQueued(this);
+    }
+
+    public void notifyCompilationDequeued(Node oldNode, Node newNode, CharSequence reason) {
+        logOptimizingUnqueued(this, oldNode, newNode, reason);
+    }
+
+    public void notifyCompilationFailed(Throwable t) {
+        if (!(t instanceof BailoutException) || ((BailoutException) t).isPermanent()) {
+            compilationPolicy.recordCompilationFailure(t);
+            logOptimizingFailed(this, t.toString());
+            if (TruffleCompilationExceptionsAreThrown.getValue()) {
+                throw new OptimizationFailedException(t, this);
             }
         } else {
-            if (!(t instanceof BailoutException) || ((BailoutException) t).isPermanent()) {
-                compilationPolicy.recordCompilationFailure(t);
-                logOptimizingFailed(this, t.toString());
-                if (TruffleCompilationExceptionsAreThrown.getValue()) {
-                    throw new OptimizationFailedException(t, this);
-                }
-            } else {
-                logOptimizingUnqueued(this, null, null, "Non permanent bailout: " + t.toString());
-            }
+            logOptimizingUnqueued(this, null, null, "Non permanent bailout: " + t.toString());
+        }
 
-            if (t instanceof BailoutException) {
-                // Bailout => move on.
-            } else if (TruffleCompilationExceptionsAreFatal.getValue()) {
-                t.printStackTrace(OUT);
-                System.exit(-1);
-            }
+        if (t instanceof BailoutException) {
+            // Bailout => move on.
+        } else if (TruffleCompilationExceptionsAreFatal.getValue()) {
+            t.printStackTrace(OUT);
+            System.exit(-1);
+        }
+    }
+
+    public void notifyCompilationFinished() {
+        // Compilation was successful.
+        if (inlining != null) {
+            dequeueInlinedCallSites(inlining);
         }
     }
 
@@ -356,9 +367,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         for (TruffleInliningDecision decision : parentDecision) {
             if (decision.isInline()) {
                 OptimizedCallTarget target = decision.getTarget();
-                if (runtime.cancelInstalledTask(target)) {
-                    logOptimizingUnqueued(target, null, null, "Inlining caller compiled.");
-                }
+                target.cancelInstalledTask(decision.getProfile().getCallNode(), decision.getProfile().getCallNode(), "Inlining caller compiled.");
                 dequeueInlinedCallSites(decision);
             }
         }
