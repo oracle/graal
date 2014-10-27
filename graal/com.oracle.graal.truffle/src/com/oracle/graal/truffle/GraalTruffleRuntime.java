@@ -260,6 +260,10 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
             compilationListeners.forEach(l -> l.notifyCompilationSplit(callNode));
         }
 
+        public void notifyCompilationGraalTierFinished(OptimizedCallTarget target, StructuredGraph graph) {
+            compilationListeners.forEach(l -> l.notifyCompilationGraalTierFinished(target, graph));
+        }
+
         public void notifyCompilationSuccess(OptimizedCallTarget target, StructuredGraph graph, CompilationResult result) {
             compilationListeners.forEach(l -> l.notifyCompilationSuccess(target, graph, result));
         }

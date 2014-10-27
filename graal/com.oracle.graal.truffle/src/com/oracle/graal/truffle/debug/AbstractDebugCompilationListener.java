@@ -50,6 +50,9 @@ public class AbstractDebugCompilationListener implements GraalTruffleCompilation
     public void notifyCompilationTruffleTierFinished(OptimizedCallTarget target, StructuredGraph graph) {
     }
 
+    public void notifyCompilationGraalTierFinished(OptimizedCallTarget target, StructuredGraph graph) {
+    }
+
     public void notifyCompilationSplit(OptimizedDirectCallNode callNode) {
     }
 
