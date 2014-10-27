@@ -38,29 +38,6 @@ public final class OptimizedCallTargetLog {
     private OptimizedCallTargetLog() {
     }
 
-    public static void logInliningDecision(OptimizedCallTarget target) {
-        TruffleInlining inlining = target.getInlining();
-        if (inlining == null) {
-            return;
-        }
-
-        logInliningStart(target);
-        logInliningDecisionRecursive(inlining, 1);
-        logInliningDone(target);
-    }
-
-    private static void logInliningDecisionRecursive(TruffleInlining result, int depth) {
-        for (TruffleInliningDecision decision : result) {
-            TruffleInliningProfile profile = decision.getProfile();
-            boolean inlined = decision.isInline();
-            String msg = inlined ? "inline success" : "inline failed";
-            logInlinedImpl(msg, decision.getProfile().getCallNode(), profile, depth);
-            if (inlined) {
-                logInliningDecisionRecursive(decision, depth + 1);
-            }
-        }
-    }
-
     public static void logTruffleCallTree(OptimizedCallTarget compilable) {
         CallTreeNodeVisitor visitor = new CallTreeNodeVisitor() {
 
@@ -92,26 +69,6 @@ public final class OptimizedCallTargetLog {
             compilable.getRootNode().accept(visitor);
         } else {
             inlining.accept(compilable, visitor);
-        }
-    }
-
-    private static void logInlinedImpl(String status, OptimizedDirectCallNode callNode, TruffleInliningProfile profile, int depth) {
-        Map<String, Object> properties = new LinkedHashMap<>();
-        if (profile != null) {
-            properties.putAll(profile.getDebugProperties());
-        }
-        log((depth * 2), status, callNode.getCurrentCallTarget().toString(), properties);
-    }
-
-    private static void logInliningStart(OptimizedCallTarget target) {
-        if (TraceTruffleInlining.getValue()) {
-            log(0, "inline start", target.toString(), target.getDebugProperties());
-        }
-    }
-
-    private static void logInliningDone(OptimizedCallTarget target) {
-        if (TraceTruffleInlining.getValue()) {
-            log(0, "inline done", target.toString(), target.getDebugProperties());
         }
     }
 
