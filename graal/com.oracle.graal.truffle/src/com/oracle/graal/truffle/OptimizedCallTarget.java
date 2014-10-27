@@ -449,6 +449,10 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         return StreamSupport.stream(Spliterators.spliteratorUnknownSize(iterator, 0), false);
     }
 
+    public int countNonTrivialNodes(final boolean inlined) {
+        return (int) nodeStream(inlined).filter(e -> e != null && !e.getCost().isTrivial()).count();
+    }
+
     public Map<String, Object> getDebugProperties() {
         Map<String, Object> properties = new LinkedHashMap<>();
         AbstractDebugCompilationListener.addASTSizeProperty(this, properties);

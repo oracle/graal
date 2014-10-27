@@ -42,7 +42,7 @@ public class TruffleInlining implements Iterable<TruffleInliningDecision> {
     }
 
     private static List<TruffleInliningDecision> createDecisions(OptimizedCallTarget sourceTarget, TruffleInliningPolicy policy) {
-        int nodeCount = OptimizedCallUtils.countNonTrivialNodes(sourceTarget, false);
+        int nodeCount = sourceTarget.countNonTrivialNodes(false);
         List<TruffleInliningDecision> exploredCallSites = exploreCallSites(new ArrayList<>(Arrays.asList(sourceTarget)), nodeCount, policy);
         return decideInlining(exploredCallSites, policy, nodeCount);
     }
@@ -65,7 +65,7 @@ public class TruffleInlining implements Iterable<TruffleInliningDecision> {
 
         List<TruffleInliningDecision> childCallSites = Collections.emptyList();
         double frequency = calculateFrequency(parentTarget, callNode);
-        int nodeCount = OptimizedCallUtils.countNonTrivialNodes(callNode.getCurrentCallTarget(), false);
+        int nodeCount = callNode.getCurrentCallTarget().countNonTrivialNodes(false);
 
         boolean recursive = isRecursiveStack(callStack);
         int deepNodeCount = nodeCount;

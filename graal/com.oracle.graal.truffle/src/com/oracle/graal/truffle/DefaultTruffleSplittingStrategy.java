@@ -62,7 +62,7 @@ public class DefaultTruffleSplittingStrategy implements TruffleSplittingStrategy
             return false;
         }
         OptimizedCallTarget splitTarget = call.getCallTarget();
-        int nodeCount = OptimizedCallUtils.countNonTrivialNodes(splitTarget, false);
+        int nodeCount = splitTarget.countNonTrivialNodes(false);
         if (nodeCount > TruffleCompilerOptions.TruffleSplittingMaxCalleeSize.getValue()) {
             return false;
         }
