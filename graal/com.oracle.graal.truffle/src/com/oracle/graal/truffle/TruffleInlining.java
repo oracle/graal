@@ -225,7 +225,7 @@ public class TruffleInlining implements Iterable<TruffleInliningDecision> {
                     if (childInlining != null) {
                         stack.add(childInlining);
                         continueTraverse = visitNode(node);
-                        if (continueTraverse) {
+                        if (continueTraverse && childInlining.isInline()) {
                             childInlining.getTarget().getRootNode().accept(this);
                         }
                         stack.remove(stack.size() - 1);
