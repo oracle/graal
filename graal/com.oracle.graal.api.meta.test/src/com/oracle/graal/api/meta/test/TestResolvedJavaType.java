@@ -337,6 +337,87 @@ public class TestResolvedJavaType extends TypeUniverse {
         checkConcreteSubtype(inta, inta);
     }
 
+    interface NoImplementor {
+    }
+
+    interface SingleImplementorInterface {
+    }
+
+    static class SingleConcreteImplementor implements SingleImplementorInterface {
+    }
+
+    interface SingleAbstractImplementorInterface {
+    }
+
+    abstract static class SingleAbstractImplementor implements SingleAbstractImplementorInterface {
+    }
+
+    interface MultiImplementorInterface {
+    }
+
+    static class ConcreteImplementor1 implements MultiImplementorInterface {
+    }
+
+    static class ConcreteImplementor2 implements MultiImplementorInterface {
+    }
+
+    interface MultipleAbstractImplementorInterface {
+    }
+
+    abstract static class MultiAbstractImplementor1 implements MultipleAbstractImplementorInterface {
+    }
+
+    abstract static class MultiAbstractImplementor2 implements MultipleAbstractImplementorInterface {
+    }
+
+    interface SingleAbstractImplementorInterface2 {
+    }
+
+    interface ExtendedSingleImplementorInterface {
+    }
+
+    abstract static class SingleAbstractImplementor2 implements SingleAbstractImplementorInterface2 {
+    }
+
+    static class ConcreteTransitiveImplementor1 extends SingleAbstractImplementor2 implements ExtendedSingleImplementorInterface {
+    }
+
+    static class ConcreteTransitiveImplementor2 extends SingleAbstractImplementor2 implements ExtendedSingleImplementorInterface {
+    }
+
+    @Test
+    public void getImplementorTest() {
+        ResolvedJavaType base = metaAccess.lookupJavaType(Base.class);
+        assertNull(base.getImplementor());
+
+        ResolvedJavaType iNi = metaAccess.lookupJavaType(NoImplementor.class);
+        assertNull(iNi.getImplementor());
+
+        ResolvedJavaType iSi = metaAccess.lookupJavaType(SingleImplementorInterface.class);
+        ResolvedJavaType cSi = metaAccess.lookupJavaType(SingleConcreteImplementor.class);
+        assertEquals(cSi, iSi.getImplementor());
+
+        ResolvedJavaType iSai = metaAccess.lookupJavaType(SingleAbstractImplementorInterface.class);
+        ResolvedJavaType aSai = metaAccess.lookupJavaType(SingleAbstractImplementor.class);
+        assertEquals(aSai, iSai.getImplementor());
+
+        ResolvedJavaType iMi = metaAccess.lookupJavaType(MultiImplementorInterface.class);
+        metaAccess.lookupJavaType(ConcreteImplementor1.class);
+        metaAccess.lookupJavaType(ConcreteImplementor2.class);
+        assertEquals(iMi, iMi.getImplementor());
+
+        ResolvedJavaType iMai = metaAccess.lookupJavaType(MultipleAbstractImplementorInterface.class);
+        metaAccess.lookupJavaType(MultiAbstractImplementor1.class);
+        metaAccess.lookupJavaType(MultiAbstractImplementor2.class);
+        assertEquals(iMai, iMai.getImplementor());
+
+        ResolvedJavaType iSai2 = metaAccess.lookupJavaType(SingleAbstractImplementorInterface2.class);
+        ResolvedJavaType aSai2 = metaAccess.lookupJavaType(SingleAbstractImplementor2.class);
+        metaAccess.lookupJavaType(ConcreteTransitiveImplementor1.class);
+        metaAccess.lookupJavaType(ConcreteTransitiveImplementor2.class);
+        assertEquals(aSai2, iSai2.getImplementor());
+    }
+
     @Test
     public void getComponentTypeTest() {
         for (Class<?> c : classes) {
