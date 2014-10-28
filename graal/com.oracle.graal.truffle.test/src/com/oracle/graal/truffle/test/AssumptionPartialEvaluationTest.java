@@ -58,4 +58,21 @@ public class AssumptionPartialEvaluationTest extends PartialEvaluationTest {
         Assert.assertFalse(callTarget.isValid());
         assertDeepEquals(43, callTarget.call());
     }
+
+    /**
+     * This tests whether a valid Assumption does successfully cut of the branch that is not
+     * executed.
+     */
+    @Test
+    public void assumptionBranchCutoff() {
+        Assumption assumption = Truffle.getRuntime().createAssumption();
+        AssumptionCutsBranchTestNode result = new AssumptionCutsBranchTestNode(assumption);
+        RootTestNode rootNode = new RootTestNode(new FrameDescriptor(), "cutoffBranch", result);
+        OptimizedCallTarget compilable = compileHelper("cutoffBranch", rootNode, new Object[0]);
+
+        for (int i = 0; i < 100000; i++) {
+            Assert.assertEquals(0, compilable.call(new Object[0]));
+        }
+        Assert.assertNull(result.getChildNode());
+    }
 }
