@@ -280,7 +280,9 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     }
 
     protected void invalidate(Node source, CharSequence reason) {
-        this.runtime.invalidateInstalledCode(this, source, reason);
+        if (isValid()) {
+            this.runtime.invalidateInstalledCode(this, source, reason);
+        }
     }
 
     public TruffleInlining getInlining() {
