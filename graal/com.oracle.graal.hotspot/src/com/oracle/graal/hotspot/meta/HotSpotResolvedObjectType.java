@@ -151,14 +151,10 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
         if (isArray()) {
             return getElementalType().isFinal() ? this : null;
         } else if (isInterface()) {
-            final long implementorMetaspaceKlass = runtime().getCompilerToVM().getKlassImplementor(getMetaspaceKlass());
-
-            // No implementor.
-            if (implementorMetaspaceKlass == 0) {
+            HotSpotResolvedObjectType type = getImplementor();
+            if (type == null) {
                 return null;
             }
-
-            HotSpotResolvedObjectType type = fromMetaspaceKlass(implementorMetaspaceKlass);
 
             /*
              * If the implementor field contains itself that indicates that the interface has more
@@ -222,6 +218,21 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
             interfaces = result;
         }
         return interfaces;
+    }
+
+    @Override
+    public HotSpotResolvedObjectType getImplementor() {
+        if (!isInterface()) {
+            return null;
+        }
+        final long implementorMetaspaceKlass = runtime().getCompilerToVM().getKlassImplementor(getMetaspaceKlass());
+
+        // No implementor.
+        if (implementorMetaspaceKlass == 0) {
+            return null;
+        }
+
+        return fromMetaspaceKlass(implementorMetaspaceKlass);
     }
 
     public HotSpotResolvedObjectType getSupertype() {

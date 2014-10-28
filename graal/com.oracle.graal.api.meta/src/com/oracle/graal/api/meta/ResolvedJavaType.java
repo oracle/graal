@@ -179,6 +179,14 @@ public interface ResolvedJavaType extends JavaType, ModifiersProvider {
     ResolvedJavaType[] getInterfaces();
 
     /**
+     * Gets the the single implementor of this type.
+     *
+     * @return {@code null} if there is no implementor or this type is not an interface, the
+     *         implementor if there is only one, or {@code this} if there are more than one.
+     */
+    ResolvedJavaType getImplementor();
+
+    /**
      * Walks the class hierarchy upwards and returns the least common class that is a superclass of
      * both the current and the given type.
      *
