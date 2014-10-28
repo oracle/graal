@@ -42,7 +42,7 @@ import com.oracle.graal.nodes.type.*;
 @NodeInfo(nameTemplate = "{p#op/s}")
 public class CompressionNode extends UnaryNode implements ConvertNode, LIRLowerable {
 
-    enum CompressionOp {
+    public enum CompressionOp {
         Compress,
         Uncompress
     }
@@ -196,4 +196,7 @@ public class CompressionNode extends UnaryNode implements ConvertNode, LIRLowera
         }
         gen.setResult(this, result);
     }
+
+    @NodeIntrinsic
+    public static native Object compression(@ConstantNodeParameter CompressionOp op, Object object, @ConstantNodeParameter CompressEncoding encoding);
 }
