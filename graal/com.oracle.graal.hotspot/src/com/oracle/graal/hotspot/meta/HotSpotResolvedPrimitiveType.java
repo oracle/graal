@@ -184,6 +184,11 @@ public final class HotSpotResolvedPrimitiveType extends HotSpotResolvedJavaType 
     }
 
     @Override
+    public ResolvedJavaMethod resolveMethod(ResolvedJavaMethod method, ResolvedJavaType callerType, boolean includeAbstract) {
+        return null;
+    }
+
+    @Override
     public String toString() {
         return "HotSpotResolvedPrimitiveType<" + kind + ">";
     }

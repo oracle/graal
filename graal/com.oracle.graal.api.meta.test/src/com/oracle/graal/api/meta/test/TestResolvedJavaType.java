@@ -534,6 +534,39 @@ public class TestResolvedJavaType extends TypeUniverse {
     }
 
     @Test
+    public void resolveMethodTest() {
+        ResolvedJavaType context = metaAccess.lookupJavaType(TestResolvedJavaType.class);
+        for (Class<?> c : classes) {
+            if (c.isInterface() || c.isPrimitive()) {
+                ResolvedJavaType type = metaAccess.lookupJavaType(c);
+                for (Method m : c.getDeclaredMethods()) {
+                    if (JAVA_VERSION <= 1.7D || (!isStatic(m.getModifiers()) && !isPrivate(m.getModifiers()))) {
+                        ResolvedJavaMethod resolved = metaAccess.lookupJavaMethod(m);
+                        ResolvedJavaMethod impl = type.resolveMethod(resolved, context, true);
+                        ResolvedJavaMethod expected = resolved.isDefault() || resolved.isAbstract() ? resolved : null;
+                        assertEquals(m.toString(), expected, impl);
+                    } else {
+                        // As of JDK 8, interfaces can have static and private methods
+                    }
+                }
+            } else {
+                ResolvedJavaType type = metaAccess.lookupJavaType(c);
+                VTable vtable = getVTable(c);
+                for (Method impl : vtable.methods.values()) {
+                    Set<Method> decls = findDeclarations(impl, c);
+                    for (Method decl : decls) {
+                        ResolvedJavaMethod m = metaAccess.lookupJavaMethod(decl);
+                        if (m.isPublic()) {
+                            ResolvedJavaMethod i = metaAccess.lookupJavaMethod(impl);
+                            checkResolveMethod(type, context, m, i);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
     public void resolveConcreteMethodTest() {
         ResolvedJavaType context = metaAccess.lookupJavaType(TestResolvedJavaType.class);
         for (Class<?> c : classes) {

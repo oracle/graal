@@ -380,22 +380,18 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
 
     @Override
     public ResolvedJavaMethod resolveConcreteMethod(ResolvedJavaMethod method, ResolvedJavaType callerType) {
-        ResolvedJavaMethod resolvedMethod = resolveMethodInternal(method, callerType);
+        ResolvedJavaMethod resolvedMethod = resolveMethod(method, callerType, true);
         if (resolvedMethod == null || resolvedMethod.isAbstract()) {
             return null;
         }
         return resolvedMethod;
     }
 
-    /**
-     * Resolve the method against the current type and return the method found, including any
-     * abstract methods.
-     *
-     * @param method
-     * @param callerType
-     * @return the method found
-     */
-    private ResolvedJavaMethod resolveMethodInternal(ResolvedJavaMethod method, ResolvedJavaType callerType) {
+    @Override
+    public ResolvedJavaMethod resolveMethod(ResolvedJavaMethod method, ResolvedJavaType callerType, boolean includeAbstract) {
+        if (!includeAbstract) {
+            return resolveConcreteMethod(method, callerType);
+        }
         assert !callerType.isArray();
         if (!method.isAbstract() && method.getDeclaringClass().equals(this) && method.isPublic()) {
             return method;
@@ -522,7 +518,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
          * The holder may be a subtype of the decaredHolder so make sure to resolve the method to
          * the correct method for the subtype.
          */
-        HotSpotResolvedJavaMethod resolvedMethod = (HotSpotResolvedJavaMethod) resolveMethodInternal(hmethod, this);
+        HotSpotResolvedJavaMethod resolvedMethod = (HotSpotResolvedJavaMethod) resolveMethod(hmethod, this, true);
         if (resolvedMethod == null) {
             // The type isn't known to implement the method.
             return null;

@@ -230,6 +230,21 @@ public interface ResolvedJavaType extends JavaType, ModifiersProvider {
 
     /**
      * Resolves the method implementation for virtual dispatches on objects of this dynamic type.
+     * This resolution process only searches "up" the class hierarchy of this type.
+     *
+     * @param method the method to select the implementation of
+     * @param callerType the caller or context type used to perform access checks
+     * @param includeAbstract whether abstract methods should be returned. If it is {@code false}
+     *            this method behaves like {@link #resolveConcreteMethod}. This is just a temporary
+     *            parameter to highlight the changed semantics of this method. TODO (je) remove this
+     *            flag.
+     * @return the link-time resolved method (might be abstract) or {@code null} if it can not be
+     *         linked
+     */
+    ResolvedJavaMethod resolveMethod(ResolvedJavaMethod method, ResolvedJavaType callerType, boolean includeAbstract);
+
+    /**
+     * Resolves the method implementation for virtual dispatches on objects of this dynamic type.
      * This resolution process only searches "up" the class hierarchy of this type. A broader search
      * that also walks "down" the hierarchy is implemented by
      * {@link #findUniqueConcreteMethod(ResolvedJavaMethod)}.
