@@ -31,7 +31,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
 
 @NodeInfo
-public class MethodCallTargetNode extends CallTargetNode implements IterableNodeType, Canonicalizable {
+public class MethodCallTargetNode extends CallTargetNode implements IterableNodeType, Simplifiable {
     protected final JavaType returnType;
 
     /**
@@ -100,14 +100,14 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
+    public void simplify(SimplifierTool tool) {
         if (invokeKind() == InvokeKind.Interface || invokeKind() == InvokeKind.Virtual) {
             // attempt to devirtualize the call
 
             // check for trivial cases (e.g. final methods, nonvirtual methods)
             if (targetMethod().canBeStaticallyBound()) {
                 setInvokeKind(InvokeKind.Special);
-                return this;
+                return;
             }
 
             // check if the type of the receiver can narrow the result
@@ -122,7 +122,7 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
                 if (resolvedMethod != null && (resolvedMethod.canBeStaticallyBound() || StampTool.isExactType(receiver) || type.isArray())) {
                     setInvokeKind(InvokeKind.Special);
                     setTargetMethod(resolvedMethod);
-                    return this;
+                    return;
                 }
                 if (tool.assumptions() != null && tool.assumptions().useOptimisticAssumptions()) {
                     ResolvedJavaType uniqueConcreteType = type.findUniqueConcreteSubtype();
@@ -132,7 +132,7 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
                             tool.assumptions().recordConcreteSubtype(type, uniqueConcreteType);
                             setInvokeKind(InvokeKind.Special);
                             setTargetMethod(methodFromUniqueType);
-                            return this;
+                            return;
                         }
                     }
 
@@ -141,12 +141,11 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
                         tool.assumptions().recordConcreteMethod(targetMethod(), type, uniqueConcreteMethod);
                         setInvokeKind(InvokeKind.Special);
                         setTargetMethod(uniqueConcreteMethod);
-                        return this;
+                        return;
                     }
                 }
             }
         }
-        return this;
     }
 
     @Override
