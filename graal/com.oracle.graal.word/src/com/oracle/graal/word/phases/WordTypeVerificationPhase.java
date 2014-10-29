@@ -108,7 +108,7 @@ public class WordTypeVerificationPhase extends Phase {
             if (!isStatic) {
                 ValueNode receiver = arguments.get(argc);
                 if (receiver == node && isWord(node)) {
-                    ResolvedJavaMethod resolvedMethod = wordAccess.wordImplType.resolveMethod(method, invoke.getContextType());
+                    ResolvedJavaMethod resolvedMethod = wordAccess.wordImplType.resolveConcreteMethod(method, invoke.getContextType());
                     verify(resolvedMethod != null, node, invoke.asNode(), "cannot resolve method on Word class: " + method.format("%H.%n(%P) %r"));
                     Operation operation = resolvedMethod.getAnnotation(Word.Operation.class);
                     verify(operation != null, node, invoke.asNode(), "cannot dispatch on word value to non @Operation annotated method " + resolvedMethod);

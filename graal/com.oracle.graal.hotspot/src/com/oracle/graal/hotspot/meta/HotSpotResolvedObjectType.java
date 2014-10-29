@@ -379,7 +379,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
     }
 
     @Override
-    public ResolvedJavaMethod resolveMethod(ResolvedJavaMethod method, ResolvedJavaType callerType) {
+    public ResolvedJavaMethod resolveConcreteMethod(ResolvedJavaMethod method, ResolvedJavaType callerType) {
         ResolvedJavaMethod resolvedMethod = resolveMethodInternal(method, callerType);
         if (resolvedMethod == null || resolvedMethod.isAbstract()) {
             return null;

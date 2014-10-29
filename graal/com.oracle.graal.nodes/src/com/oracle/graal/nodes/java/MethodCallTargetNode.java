@@ -118,7 +118,7 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
                  * either the holder class is exact, or the receiver object has an exact type, or
                  * it's an array type
                  */
-                ResolvedJavaMethod resolvedMethod = type.resolveMethod(targetMethod(), invoke().getContextType());
+                ResolvedJavaMethod resolvedMethod = type.resolveConcreteMethod(targetMethod(), invoke().getContextType());
                 if (resolvedMethod != null && (resolvedMethod.canBeStaticallyBound() || StampTool.isExactType(receiver) || type.isArray())) {
                     setInvokeKind(InvokeKind.Special);
                     setTargetMethod(resolvedMethod);
@@ -127,7 +127,7 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
                 if (tool.assumptions() != null && tool.assumptions().useOptimisticAssumptions()) {
                     ResolvedJavaType uniqueConcreteType = type.findUniqueConcreteSubtype();
                     if (uniqueConcreteType != null) {
-                        ResolvedJavaMethod methodFromUniqueType = uniqueConcreteType.resolveMethod(targetMethod(), invoke().getContextType());
+                        ResolvedJavaMethod methodFromUniqueType = uniqueConcreteType.resolveConcreteMethod(targetMethod(), invoke().getContextType());
                         if (methodFromUniqueType != null) {
                             tool.assumptions().recordConcreteSubtype(type, uniqueConcreteType);
                             setInvokeKind(InvokeKind.Special);

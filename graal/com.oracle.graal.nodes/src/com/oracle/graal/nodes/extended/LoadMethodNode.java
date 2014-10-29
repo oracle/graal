@@ -96,7 +96,7 @@ public class LoadMethodNode extends FixedWithNextNode implements Lowerable, Cano
      *         the method
      */
     private Node resolveExactMethod(CanonicalizerTool tool, ResolvedJavaType type) {
-        ResolvedJavaMethod newMethod = type.resolveMethod(method, type);
+        ResolvedJavaMethod newMethod = type.resolveConcreteMethod(method, type);
         if (newMethod == null) {
             /*
              * This really represent a misuse of LoadMethod since we're loading from a class which

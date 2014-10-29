@@ -187,7 +187,7 @@ public class InliningData {
                 holder = receiverType;
                 if (receiverStamp.isExactType()) {
                     assert targetMethod.getDeclaringClass().isAssignableFrom(holder) : holder + " subtype of " + targetMethod.getDeclaringClass() + " for " + targetMethod;
-                    ResolvedJavaMethod resolvedMethod = holder.resolveMethod(targetMethod, contextType);
+                    ResolvedJavaMethod resolvedMethod = holder.resolveConcreteMethod(targetMethod, contextType);
                     if (resolvedMethod != null) {
                         return getExactInlineInfo(invoke, resolvedMethod);
                     }
@@ -197,7 +197,7 @@ public class InliningData {
 
         if (holder.isArray()) {
             // arrays can be treated as Objects
-            ResolvedJavaMethod resolvedMethod = holder.resolveMethod(targetMethod, contextType);
+            ResolvedJavaMethod resolvedMethod = holder.resolveConcreteMethod(targetMethod, contextType);
             if (resolvedMethod != null) {
                 return getExactInlineInfo(invoke, resolvedMethod);
             }
@@ -206,7 +206,7 @@ public class InliningData {
         if (assumptions.useOptimisticAssumptions()) {
             ResolvedJavaType uniqueSubtype = holder.findUniqueConcreteSubtype();
             if (uniqueSubtype != null) {
-                ResolvedJavaMethod resolvedMethod = uniqueSubtype.resolveMethod(targetMethod, contextType);
+                ResolvedJavaMethod resolvedMethod = uniqueSubtype.resolveConcreteMethod(targetMethod, contextType);
                 if (resolvedMethod != null) {
                     return getAssumptionInlineInfo(invoke, resolvedMethod, new Assumptions.ConcreteSubtype(holder, uniqueSubtype));
                 }
@@ -249,7 +249,7 @@ public class InliningData {
 
             ResolvedJavaType type = ptypes[0].getType();
             assert type.isArray() || !type.isAbstract();
-            ResolvedJavaMethod concrete = type.resolveMethod(targetMethod, contextType);
+            ResolvedJavaMethod concrete = type.resolveConcreteMethod(targetMethod, contextType);
             if (!checkTargetConditions(invoke, concrete)) {
                 return null;
             }
@@ -273,7 +273,7 @@ public class InliningData {
             ArrayList<ResolvedJavaMethod> concreteMethods = new ArrayList<>();
             ArrayList<Double> concreteMethodsProbabilities = new ArrayList<>();
             for (int i = 0; i < ptypes.length; i++) {
-                ResolvedJavaMethod concrete = ptypes[i].getType().resolveMethod(targetMethod, contextType);
+                ResolvedJavaMethod concrete = ptypes[i].getType().resolveConcreteMethod(targetMethod, contextType);
                 if (concrete == null) {
                     InliningUtil.logNotInlined(invoke, inliningDepth(), targetMethod, "could not resolve method");
                     return null;
@@ -320,7 +320,7 @@ public class InliningData {
             ArrayList<JavaTypeProfile.ProfiledType> usedTypes = new ArrayList<>();
             ArrayList<Integer> typesToConcretes = new ArrayList<>();
             for (JavaTypeProfile.ProfiledType type : ptypes) {
-                ResolvedJavaMethod concrete = type.getType().resolveMethod(targetMethod, contextType);
+                ResolvedJavaMethod concrete = type.getType().resolveConcreteMethod(targetMethod, contextType);
                 int index = concreteMethods.indexOf(concrete);
                 if (index == -1) {
                     notRecordedTypeProbability += type.getProbability();

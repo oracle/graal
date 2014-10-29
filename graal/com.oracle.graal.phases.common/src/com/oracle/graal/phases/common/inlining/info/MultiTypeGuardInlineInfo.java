@@ -529,9 +529,9 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
             // we have a vtable entry for the interface method and can use a less expensive
             // virtual call
             if (!leastCommonType.isInterface() && targetMethod.getDeclaringClass().isAssignableFrom(leastCommonType)) {
-                ResolvedJavaMethod baseClassTargetMethod = leastCommonType.resolveMethod(targetMethod, contextType);
+                ResolvedJavaMethod baseClassTargetMethod = leastCommonType.resolveConcreteMethod(targetMethod, contextType);
                 if (baseClassTargetMethod != null) {
-                    devirtualizeWithTypeSwitch(graph, InvokeKind.Virtual, leastCommonType.resolveMethod(targetMethod, contextType), metaAccess);
+                    devirtualizeWithTypeSwitch(graph, InvokeKind.Virtual, leastCommonType.resolveConcreteMethod(targetMethod, contextType), metaAccess);
                 }
             }
         }

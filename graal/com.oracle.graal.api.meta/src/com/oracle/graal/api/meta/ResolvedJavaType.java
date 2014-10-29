@@ -239,7 +239,7 @@ public interface ResolvedJavaType extends JavaType, ModifiersProvider {
      * @return the concrete method that would be selected at runtime, or {@code null} if there is no
      *         concrete implementation of {@code method} in this type or any of its superclasses
      */
-    ResolvedJavaMethod resolveMethod(ResolvedJavaMethod method, ResolvedJavaType callerType);
+    ResolvedJavaMethod resolveConcreteMethod(ResolvedJavaMethod method, ResolvedJavaType callerType);
 
     /**
      * Given a {@link ResolvedJavaMethod} A, returns a concrete {@link ResolvedJavaMethod} B that is
