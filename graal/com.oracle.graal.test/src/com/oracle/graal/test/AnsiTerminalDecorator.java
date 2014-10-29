@@ -44,6 +44,13 @@ public class AnsiTerminalDecorator extends GraalJUnitRunListenerDecorator {
     }
 
     @Override
+    public void testAssumptionFailure(Failure failure) {
+        getWriter().print(BLUE);
+        super.testAssumptionFailure(failure);
+        getWriter().print(RESET);
+    }
+
+    @Override
     public void testFailed(Failure failure) {
         getWriter().print(RED);
         super.testFailed(failure);
