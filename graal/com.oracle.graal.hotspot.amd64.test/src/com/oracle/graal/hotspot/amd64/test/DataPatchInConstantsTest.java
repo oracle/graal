@@ -28,6 +28,7 @@ import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
 import org.junit.*;
 
+import com.oracle.graal.amd64.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.asm.amd64.*;
@@ -44,6 +45,11 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
 public class DataPatchInConstantsTest extends GraalCompilerTest {
+
+    @Before
+    public void checkAMD64() {
+        Assume.assumeTrue("skipping AMD64 specific test", getTarget().arch instanceof AMD64);
+    }
 
     private static final Object object = new Object() {
 
