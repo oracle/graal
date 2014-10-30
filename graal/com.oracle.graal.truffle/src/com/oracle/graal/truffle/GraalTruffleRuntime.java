@@ -172,6 +172,10 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
         return stackIntrospection.iterateFrames(callTargetMethod, callTargetMethod, 0, frame -> new GraalFrameInstance.CallTargetFrame(frame, true));
     }
 
+    public <T> T getCapability(Class<T> capability) {
+        return null;
+    }
+
     protected boolean acceptForCompilation(RootNode rootNode) {
         if (TruffleCompileOnly.getValue() != null) {
             if (includes == null) {
