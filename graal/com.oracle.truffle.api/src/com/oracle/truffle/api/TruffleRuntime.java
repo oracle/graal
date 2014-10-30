@@ -139,6 +139,14 @@ public interface TruffleRuntime {
     FrameInstance getCurrentFrame();
 
     /**
+     * Requests a capability from the runtime.
+     *
+     * @param capability the type of the interface representing the capability
+     * @return an implementation of the capability or {@code null} if the runtime does not offer it
+     */
+    <T> T getCapability(Class<T> capability);
+
+    /**
      * Returns a list of all still referenced {@link RootCallTarget} instances that were created
      * using {@link #createCallTarget(RootNode)}.
      */

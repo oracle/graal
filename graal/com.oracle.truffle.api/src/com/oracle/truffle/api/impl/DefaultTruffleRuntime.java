@@ -144,6 +144,10 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
         return currentFrames.get();
     }
 
+    public <T> T getCapability(Class<T> capability) {
+        return null;
+    }
+
     public void notifyTransferToInterpreter() {
     }
 
