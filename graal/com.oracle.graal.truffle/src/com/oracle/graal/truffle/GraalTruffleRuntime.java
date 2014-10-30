@@ -224,6 +224,8 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
         getCompilationNotify().notifyShutdown(this);
     }
 
+    public abstract Collection<OptimizedCallTarget> getQueuedCallTargets();
+
     public abstract Replacements getReplacements();
 
     public abstract void compile(OptimizedCallTarget optimizedCallTarget, boolean mayBeAsynchronous);

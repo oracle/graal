@@ -259,6 +259,11 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
     }
 
     @Override
+    public Collection<OptimizedCallTarget> getQueuedCallTargets() {
+        return compilations.keySet().stream().filter(e -> !compilations.get(e).isDone()).collect(Collectors.toList());
+    }
+
+    @Override
     public boolean isCompiling(OptimizedCallTarget optimizedCallTarget) {
         Future<?> codeTask = this.compilations.get(optimizedCallTarget);
         if (codeTask != null) {
