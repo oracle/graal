@@ -65,6 +65,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
         TraceInliningListener.install(this);
         TraceSplittingListener.install(this);
         PrintCallTargetProfiling.install(this);
+        CompilationStatisticsListener.install(this);
     }
 
     protected void lookupCallMethods(MetaAccessProvider metaAccess) {

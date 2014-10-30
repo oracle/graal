@@ -77,7 +77,6 @@ public class TruffleCompilerOptions {
     public static final OptionValue<Boolean> TruffleSplittingAggressive = new OptionValue<>(false);
 
 
-
     @Option(help = "Disable call target splitting if tree size exceeds this limit")
     public static final OptionValue<Integer> TruffleSplittingMaxCalleeSize = new OptionValue<>(100);
     @Option(help = "Number of most recently used methods in truffle cache")
@@ -130,5 +129,9 @@ public class TruffleCompilerOptions {
     public static final OptionValue<Integer> TraceTruffleStackTraceLimit = new OptionValue<>(20);
     @Option(help = "Print a summary of execution counts for all executed CallTargets. Introduces counter overhead for each call.")
     public static final OptionValue<Boolean> TruffleCallTargetProfiling = new StableOptionValue<>(false);
+    @Option(help = "Print Truffle compilation statistics at the end of a run.")
+    public static final OptionValue<Boolean> TruffleCompilationStatistics = new OptionValue<>(false);
+    @Option(help = "Print additional more verbose Truffle compilation statistics at the end of a run.")
+    public static final OptionValue<Boolean> TruffleCompilationStatisticDetails = new OptionValue<>(false);
     // @formatter:on
 }
