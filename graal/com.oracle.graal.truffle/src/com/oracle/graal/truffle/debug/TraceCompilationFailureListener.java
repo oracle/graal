@@ -46,7 +46,7 @@ public final class TraceCompilationFailureListener extends AbstractDebugCompilat
         }
     }
 
-    public static final boolean isPermanentBailout(Throwable t) {
+    public static boolean isPermanentBailout(Throwable t) {
         return !(t instanceof BailoutException) || ((BailoutException) t).isPermanent();
     }
 
