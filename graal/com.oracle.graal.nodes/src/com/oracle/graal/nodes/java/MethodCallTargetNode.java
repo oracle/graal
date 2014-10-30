@@ -145,6 +145,27 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
                     }
                 }
             }
+            ResolvedJavaType receiverType = targetMethod().getDeclaringClass();
+            if (receiverType.isInterface()) {
+                ResolvedJavaType single = receiverType.getSingleImplementor();
+                if (single != null && !single.equals(receiverType)) {
+                    ResolvedJavaMethod newResolvedMethod = single.resolveMethod(targetMethod(), invoke().getContextType(), true);
+                    // TODO (je): we can not yet deal with default methods
+                    if (newResolvedMethod != null && !newResolvedMethod.isDefault()) {
+                        ProfilingInfo profilingInfo = invoke().getContextMethod().getProfilingInfo();
+                        JavaTypeProfile profile = profilingInfo.getTypeProfile(invoke().bci());
+                        LogicNode condition = graph().unique(InstanceOfNode.create(single, receiver, profile));
+                        assert graph().getGuardsStage().ordinal() < StructuredGraph.GuardsStage.FIXED_DEOPTS.ordinal() : "Graph already fixed!";
+                        GuardNode guard = graph().unique(
+                                        GuardNode.create(condition, BeginNode.prevBegin(invoke().asNode()), DeoptimizationReason.OptimizedTypeCheckViolated, DeoptimizationAction.InvalidateRecompile,
+                                                        false, JavaConstant.NULL_OBJECT));
+                        PiNode piNode = graph().unique(PiNode.create(receiver, StampFactory.declared(single), guard));
+                        arguments().set(0, piNode);
+                        setInvokeKind(InvokeKind.Virtual);
+                        setTargetMethod(newResolvedMethod);
+                    }
+                }
+            }
         }
     }
 
