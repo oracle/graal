@@ -33,7 +33,7 @@ import com.oracle.graal.lir.LIRInstruction.OperandMode;
 /**
  * Base class to represent values that need to be stored in more than one register.
  */
-public abstract class CompositeValue extends AbstractValue implements Cloneable {
+public abstract class CompositeValue extends Value implements Cloneable {
 
     private static final long serialVersionUID = -169180052684126180L;
 

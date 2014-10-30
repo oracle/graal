@@ -28,39 +28,45 @@ package com.oracle.graal.api.meta;
  * {@code Constant} instances that represent frequently used constant values, such as
  * {@link #NULL_OBJECT}.
  */
-public interface Constant extends Value {
+public abstract class Constant extends Value {
+
+    private static final long serialVersionUID = -6355452536852663986L;
 
     /*
      * Using a larger cache for integers leads to only a slight increase in cache hit ratio which is
      * not enough to justify the impact on startup time.
      */
-    Constant NULL_OBJECT = new NullConstant();
-    Constant INT_MINUS_1 = new PrimitiveConstant(Kind.Int, -1);
-    Constant INT_0 = new PrimitiveConstant(Kind.Int, 0);
-    Constant INT_1 = new PrimitiveConstant(Kind.Int, 1);
-    Constant INT_2 = new PrimitiveConstant(Kind.Int, 2);
-    Constant LONG_0 = new PrimitiveConstant(Kind.Long, 0L);
-    Constant LONG_1 = new PrimitiveConstant(Kind.Long, 1L);
-    Constant FLOAT_0 = new PrimitiveConstant(Kind.Float, Float.floatToRawIntBits(0.0F));
-    Constant FLOAT_1 = new PrimitiveConstant(Kind.Float, Float.floatToRawIntBits(1.0F));
-    Constant DOUBLE_0 = new PrimitiveConstant(Kind.Double, Double.doubleToRawLongBits(0.0D));
-    Constant DOUBLE_1 = new PrimitiveConstant(Kind.Double, Double.doubleToRawLongBits(1.0D));
-    Constant TRUE = new PrimitiveConstant(Kind.Boolean, 1L);
-    Constant FALSE = new PrimitiveConstant(Kind.Boolean, 0L);
+    public static final Constant NULL_OBJECT = new NullConstant();
+    public static final Constant INT_MINUS_1 = new PrimitiveConstant(Kind.Int, -1);
+    public static final Constant INT_0 = new PrimitiveConstant(Kind.Int, 0);
+    public static final Constant INT_1 = new PrimitiveConstant(Kind.Int, 1);
+    public static final Constant INT_2 = new PrimitiveConstant(Kind.Int, 2);
+    public static final Constant LONG_0 = new PrimitiveConstant(Kind.Long, 0L);
+    public static final Constant LONG_1 = new PrimitiveConstant(Kind.Long, 1L);
+    public static final Constant FLOAT_0 = new PrimitiveConstant(Kind.Float, Float.floatToRawIntBits(0.0F));
+    public static final Constant FLOAT_1 = new PrimitiveConstant(Kind.Float, Float.floatToRawIntBits(1.0F));
+    public static final Constant DOUBLE_0 = new PrimitiveConstant(Kind.Double, Double.doubleToRawLongBits(0.0D));
+    public static final Constant DOUBLE_1 = new PrimitiveConstant(Kind.Double, Double.doubleToRawLongBits(1.0D));
+    public static final Constant TRUE = new PrimitiveConstant(Kind.Boolean, 1L);
+    public static final Constant FALSE = new PrimitiveConstant(Kind.Boolean, 0L);
+
+    protected Constant(LIRKind kind) {
+        super(kind);
+    }
 
     /**
      * Checks whether this constant is null.
      *
      * @return {@code true} if this constant is the null constant
      */
-    boolean isNull();
+    public abstract boolean isNull();
 
     /**
      * Checks whether this constant is non-null.
      *
      * @return {@code true} if this constant is a primitive, or an object constant that is not null
      */
-    default boolean isNonNull() {
+    public final boolean isNonNull() {
         return !isNull();
     }
 
@@ -69,16 +75,14 @@ public interface Constant extends Value {
      *
      * @return {@code true} if this constant is the default value for its kind
      */
-    boolean isDefaultForKind();
+    public abstract boolean isDefaultForKind();
 
     /**
      * Returns the value of this constant as a boxed Java value.
      *
      * @return the value of this constant
      */
-    default Object asBoxedPrimitive() {
-        throw new IllegalArgumentException();
-    }
+    public abstract Object asBoxedPrimitive();
 
     /**
      * Returns the primitive int value this constant represents. The constant must have a
@@ -86,9 +90,7 @@ public interface Constant extends Value {
      *
      * @return the constant value
      */
-    default int asInt() {
-        throw new IllegalArgumentException();
-    }
+    public abstract int asInt();
 
     /**
      * Returns the primitive boolean value this constant represents. The constant must have kind
@@ -96,9 +98,7 @@ public interface Constant extends Value {
      *
      * @return the constant value
      */
-    default boolean asBoolean() {
-        throw new IllegalArgumentException();
-    }
+    public abstract boolean asBoolean();
 
     /**
      * Returns the primitive long value this constant represents. The constant must have kind
@@ -106,9 +106,7 @@ public interface Constant extends Value {
      *
      * @return the constant value
      */
-    default long asLong() {
-        throw new IllegalArgumentException();
-    }
+    public abstract long asLong();
 
     /**
      * Returns the primitive float value this constant represents. The constant must have kind
@@ -116,9 +114,7 @@ public interface Constant extends Value {
      *
      * @return the constant value
      */
-    default float asFloat() {
-        throw new IllegalArgumentException();
-    }
+    public abstract float asFloat();
 
     /**
      * Returns the primitive double value this constant represents. The constant must have kind
@@ -126,15 +122,22 @@ public interface Constant extends Value {
      *
      * @return the constant value
      */
-    default double asDouble() {
-        throw new IllegalArgumentException();
-    }
+    public abstract double asDouble();
 
-    default String toValueString() {
+    public String toValueString() {
         if (getKind() == Kind.Illegal) {
             return "illegal";
         } else {
             return getKind().format(asBoxedPrimitive());
+        }
+    }
+
+    @Override
+    public String toString() {
+        if (getKind() == Kind.Illegal) {
+            return "illegal";
+        } else {
+            return getKind().getJavaName() + "[" + toValueString() + "]";
         }
     }
 
@@ -144,7 +147,7 @@ public interface Constant extends Value {
      * @param d the double value to box
      * @return a boxed copy of {@code value}
      */
-    static Constant forDouble(double d) {
+    public static Constant forDouble(double d) {
         if (Double.compare(0.0D, d) == 0) {
             return DOUBLE_0;
         }
@@ -160,7 +163,7 @@ public interface Constant extends Value {
      * @param f the float value to box
      * @return a boxed copy of {@code value}
      */
-    static Constant forFloat(float f) {
+    public static Constant forFloat(float f) {
         if (Float.compare(f, 0.0F) == 0) {
             return FLOAT_0;
         }
@@ -176,7 +179,7 @@ public interface Constant extends Value {
      * @param i the long value to box
      * @return a boxed copy of {@code value}
      */
-    static Constant forLong(long i) {
+    public static Constant forLong(long i) {
         if (i == 0) {
             return LONG_0;
         } else if (i == 1) {
@@ -192,7 +195,7 @@ public interface Constant extends Value {
      * @param i the integer value to box
      * @return a boxed copy of {@code value}
      */
-    static Constant forInt(int i) {
+    public static Constant forInt(int i) {
         switch (i) {
             case -1:
                 return INT_MINUS_1;
@@ -213,7 +216,7 @@ public interface Constant extends Value {
      * @param i the byte value to box
      * @return a boxed copy of {@code value}
      */
-    static Constant forByte(byte i) {
+    public static Constant forByte(byte i) {
         return new PrimitiveConstant(Kind.Byte, i);
     }
 
@@ -223,7 +226,7 @@ public interface Constant extends Value {
      * @param i the boolean value to box
      * @return a boxed copy of {@code value}
      */
-    static Constant forBoolean(boolean i) {
+    public static Constant forBoolean(boolean i) {
         return i ? TRUE : FALSE;
     }
 
@@ -233,7 +236,7 @@ public interface Constant extends Value {
      * @param i the char value to box
      * @return a boxed copy of {@code value}
      */
-    static Constant forChar(char i) {
+    public static Constant forChar(char i) {
         return new PrimitiveConstant(Kind.Char, i);
     }
 
@@ -243,14 +246,14 @@ public interface Constant extends Value {
      * @param i the short value to box
      * @return a boxed copy of {@code value}
      */
-    static Constant forShort(short i) {
+    public static Constant forShort(short i) {
         return new PrimitiveConstant(Kind.Short, i);
     }
 
     /**
      * Creates a {@link Constant} from a primitive integer of a certain kind.
      */
-    static Constant forIntegerKind(Kind kind, long i) {
+    public static Constant forIntegerKind(Kind kind, long i) {
         switch (kind) {
             case Byte:
                 return new PrimitiveConstant(kind, (byte) i);
@@ -270,7 +273,7 @@ public interface Constant extends Value {
     /**
      * Creates a {@link Constant} from a primitive integer of a certain width.
      */
-    static Constant forPrimitiveInt(int bits, long i) {
+    public static Constant forPrimitiveInt(int bits, long i) {
         assert bits <= 64;
         switch (bits) {
             case 1:
@@ -294,7 +297,7 @@ public interface Constant extends Value {
      * @param value the Java boxed value
      * @return the primitive constant holding the {@code value}
      */
-    static Constant forBoxedPrimitive(Object value) {
+    public static Constant forBoxedPrimitive(Object value) {
         if (value instanceof Boolean) {
             return forBoolean((Boolean) value);
         } else if (value instanceof Byte) {
@@ -316,14 +319,14 @@ public interface Constant extends Value {
         }
     }
 
-    static Constant forIllegal() {
+    public static Constant forIllegal() {
         return new PrimitiveConstant(Kind.Illegal, 0);
     }
 
     /**
      * Returns a constant with the default value for the given kind.
      */
-    static Constant defaultForKind(Kind kind) {
+    public static Constant defaultForKind(Kind kind) {
         switch (kind) {
             case Boolean:
                 return FALSE;
@@ -351,7 +354,7 @@ public interface Constant extends Value {
     /**
      * Returns the zero value for a given numeric kind.
      */
-    static Constant zero(Kind kind) {
+    public static Constant zero(Kind kind) {
         switch (kind) {
             case Boolean:
                 return FALSE;
@@ -377,7 +380,7 @@ public interface Constant extends Value {
     /**
      * Returns the one value for a given numeric kind.
      */
-    static Constant one(Kind kind) {
+    public static Constant one(Kind kind) {
         switch (kind) {
             case Boolean:
                 return TRUE;
@@ -403,7 +406,7 @@ public interface Constant extends Value {
     /**
      * Adds two numeric constants.
      */
-    static Constant add(Constant x, Constant y) {
+    public static Constant add(Constant x, Constant y) {
         assert x.getKind() == y.getKind();
         switch (x.getKind()) {
             case Byte:
@@ -428,7 +431,7 @@ public interface Constant extends Value {
     /**
      * Multiplies two numeric constants.
      */
-    static Constant mul(Constant x, Constant y) {
+    public static Constant mul(Constant x, Constant y) {
         assert x.getKind() == y.getKind();
         switch (x.getKind()) {
             case Byte:

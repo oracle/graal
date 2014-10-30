@@ -318,7 +318,8 @@ public class GraalCompiler {
             for (DataPatch dp : ldp) {
                 Kind kind = Kind.Illegal;
                 if (dp.reference instanceof ConstantReference) {
-                    kind = ((ConstantReference) dp.reference).getConstant().getKind();
+                    VMConstant constant = ((ConstantReference) dp.reference).getConstant();
+                    kind = ((Constant) constant).getKind();
                 }
                 dms[kind.ordinal()].add(1);
             }

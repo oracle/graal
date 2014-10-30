@@ -263,12 +263,12 @@ public class HotSpotCodeCacheProvider implements CodeCacheProvider {
             VMConstant vmConstant = (VMConstant) constant;
             boolean compressed;
             long raw;
-            if (vmConstant instanceof HotSpotObjectConstant) {
+            if (constant instanceof HotSpotObjectConstant) {
                 compressed = HotSpotObjectConstant.isCompressed(constant);
                 raw = 0xDEADDEADDEADDEADL;
-            } else if (vmConstant instanceof HotSpotMetaspaceConstant) {
-                compressed = vmConstant.getKind() != target.wordKind;
-                raw = vmConstant.asLong();
+            } else if (constant instanceof HotSpotMetaspaceConstant) {
+                compressed = constant.getKind() != target.wordKind;
+                raw = constant.asLong();
             } else {
                 throw GraalInternalError.shouldNotReachHere();
             }

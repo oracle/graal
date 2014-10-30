@@ -51,7 +51,7 @@ public class CompositeValueReplacementTest3 {
 
     }
 
-    private static class DummyValue extends AbstractValue {
+    private static class DummyValue extends Value {
 
         private static final long serialVersionUID = -645435039553382737L;
         private final int id;

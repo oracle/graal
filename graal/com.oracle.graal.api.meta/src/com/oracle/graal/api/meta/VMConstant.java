@@ -22,5 +22,5 @@
  */
 package com.oracle.graal.api.meta;
 
-public interface VMConstant extends Constant {
+public interface VMConstant {
 }

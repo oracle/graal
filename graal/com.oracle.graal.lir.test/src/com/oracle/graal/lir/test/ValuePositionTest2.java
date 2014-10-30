@@ -50,7 +50,7 @@ public class ValuePositionTest2 {
 
     }
 
-    private static class DummyValue extends AbstractValue {
+    private static class DummyValue extends Value {
 
         private static final long serialVersionUID = 3620305384660607012L;
         private final int id;

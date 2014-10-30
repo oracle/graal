@@ -27,7 +27,7 @@ import com.oracle.graal.api.meta.*;
 /**
  * The compressed representation of the {@link Constant#NULL_OBJECT null constant}.
  */
-public final class HotSpotCompressedNullConstant extends AbstractConstant implements HotSpotConstant {
+public final class HotSpotCompressedNullConstant extends Constant implements HotSpotConstant {
 
     private static final long serialVersionUID = 8906209595800783961L;
 
@@ -45,6 +45,36 @@ public final class HotSpotCompressedNullConstant extends AbstractConstant implem
     @Override
     public boolean isDefaultForKind() {
         return true;
+    }
+
+    @Override
+    public Object asBoxedPrimitive() {
+        throw new IllegalArgumentException();
+    }
+
+    @Override
+    public int asInt() {
+        throw new IllegalArgumentException();
+    }
+
+    @Override
+    public boolean asBoolean() {
+        throw new IllegalArgumentException();
+    }
+
+    @Override
+    public long asLong() {
+        throw new IllegalArgumentException();
+    }
+
+    @Override
+    public float asFloat() {
+        throw new IllegalArgumentException();
+    }
+
+    @Override
+    public double asDouble() {
+        throw new IllegalArgumentException();
     }
 
     @Override

@@ -847,8 +847,7 @@ public class SPARCMove {
                         delaySlotLir.emitControlTransfer(crb, masm);
                         new Clr(asRegister(result)).emit(masm);
                     } else if (crb.target.inlineObjects) {
-                        VMConstant vmConstant = (VMConstant) input;
-                        crb.recordInlineDataInCode(vmConstant); // relocatable cannot be delayed
+                        crb.recordInlineDataInCode(input); // relocatable cannot be delayed
                         new Setx(0xDEADDEADDEADDEADL, asRegister(result), true).emit(masm);
                     } else {
                         throw GraalInternalError.unimplemented();
