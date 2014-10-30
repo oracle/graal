@@ -31,7 +31,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.truffle.*;
 import com.oracle.truffle.api.*;
 
-public class AbstractDebugCompilationListener implements GraalTruffleCompilationListener {
+public abstract class AbstractDebugCompilationListener implements GraalTruffleCompilationListener {
 
     protected static final PrintStream OUT = TTY.out().out();
 

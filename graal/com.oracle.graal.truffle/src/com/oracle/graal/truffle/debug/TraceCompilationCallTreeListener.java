@@ -32,7 +32,7 @@ import com.oracle.graal.truffle.*;
 import com.oracle.graal.truffle.TruffleInlining.*;
 import com.oracle.truffle.api.nodes.*;
 
-public class TraceCompilationCallTreeListener extends AbstractDebugCompilationListener {
+public final class TraceCompilationCallTreeListener extends AbstractDebugCompilationListener {
 
     private TraceCompilationCallTreeListener() {
     }

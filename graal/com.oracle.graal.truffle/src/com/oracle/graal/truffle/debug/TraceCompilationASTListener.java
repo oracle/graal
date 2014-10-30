@@ -34,7 +34,7 @@ import com.oracle.graal.truffle.TruffleInlining.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.nodes.NodeUtil.*;
 
-public class TraceCompilationASTListener extends AbstractDebugCompilationListener {
+public final class TraceCompilationASTListener extends AbstractDebugCompilationListener {
 
     public static void install(GraalTruffleRuntime runtime) {
         if (TraceTruffleCompilationAST.getValue()) {

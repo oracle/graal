@@ -29,7 +29,7 @@ import java.util.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.truffle.*;
 
-public class TraceInliningListener extends AbstractDebugCompilationListener {
+public final class TraceInliningListener extends AbstractDebugCompilationListener {
 
     private TraceInliningListener() {
     }

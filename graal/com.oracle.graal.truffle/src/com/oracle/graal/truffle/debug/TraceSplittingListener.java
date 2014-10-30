@@ -30,7 +30,7 @@ import com.oracle.graal.truffle.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.nodes.NodeUtil.*;
 
-public class TraceSplittingListener extends AbstractDebugCompilationListener {
+public final class TraceSplittingListener extends AbstractDebugCompilationListener {
 
     private TraceSplittingListener() {
     }

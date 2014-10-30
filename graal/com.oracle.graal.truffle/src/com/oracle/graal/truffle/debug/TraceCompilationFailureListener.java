@@ -28,7 +28,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.truffle.*;
 
-public class TraceCompilationFailureListener extends AbstractDebugCompilationListener {
+public final class TraceCompilationFailureListener extends AbstractDebugCompilationListener {
 
     private TraceCompilationFailureListener() {
     }

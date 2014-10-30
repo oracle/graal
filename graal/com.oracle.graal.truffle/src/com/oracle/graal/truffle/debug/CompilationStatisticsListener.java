@@ -38,7 +38,7 @@ import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.nodes.Node;
 
-public class CompilationStatisticsListener extends AbstractDebugCompilationListener {
+public final class CompilationStatisticsListener extends AbstractDebugCompilationListener {
 
     private long firstCompilation;
 
@@ -289,8 +289,8 @@ public class CompilationStatisticsListener extends AbstractDebugCompilationListe
         final Map<T, IntSummaryStatistics> types = new HashMap<>();
 
         public void printStatistics(Function<T, String> toStringFunction) {
-            types.keySet().stream().sorted(Comparator.comparing(c -> -types.get(c).getSum()))//
-            .forEach(c -> {
+            types.keySet().stream().sorted(Comparator.comparing(c -> -types.get(c).getSum())).//
+            forEach(c -> {
                 printStatistic(String.format("    %s", toStringFunction.apply(c)), types.get(c));
             });
         }

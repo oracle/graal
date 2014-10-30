@@ -31,7 +31,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.truffle.*;
 import com.oracle.truffle.api.source.*;
 
-public class TraceCompilationListener extends AbstractDebugCompilationListener {
+public final class TraceCompilationListener extends AbstractDebugCompilationListener {
 
     private final ThreadLocal<LocalCompilation> currentCompilation = new ThreadLocal<>();
 

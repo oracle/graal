@@ -31,7 +31,7 @@ import java.util.stream.*;
 import com.oracle.graal.truffle.*;
 import com.oracle.truffle.api.*;
 
-public class PrintCallTargetProfiling extends AbstractDebugCompilationListener {
+public final class PrintCallTargetProfiling extends AbstractDebugCompilationListener {
 
     public static void install(GraalTruffleRuntime runtime) {
         if (TruffleCallTargetProfiling.getValue()) {
