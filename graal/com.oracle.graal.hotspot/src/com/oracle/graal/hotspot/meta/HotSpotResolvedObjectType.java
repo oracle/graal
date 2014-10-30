@@ -223,7 +223,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
     @Override
     public HotSpotResolvedObjectType getImplementor() {
         if (!isInterface()) {
-            return null;
+            throw new GraalInternalError("Cannot call getImplementor() on a non-interface type: " + this);
         }
         final long implementorMetaspaceKlass = runtime().getCompilerToVM().getKlassImplementor(getMetaspaceKlass());
 

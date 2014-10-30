@@ -105,7 +105,7 @@ public final class HotSpotResolvedPrimitiveType extends HotSpotResolvedJavaType 
 
     @Override
     public ResolvedJavaType getImplementor() {
-        return null;
+        throw new GraalInternalError("Cannot call getImplementor() on a non-interface type: " + this);
     }
 
     @Override
