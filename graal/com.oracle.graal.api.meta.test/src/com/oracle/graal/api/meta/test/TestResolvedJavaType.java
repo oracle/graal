@@ -387,45 +387,45 @@ public class TestResolvedJavaType extends TypeUniverse {
     }
 
     @Test
-    public void getImplementorTest() {
+    public void getSingleImplementorTest() {
         ResolvedJavaType iNi = metaAccess.lookupJavaType(NoImplementor.class);
-        assertNull(iNi.getImplementor());
+        assertNull(iNi.getSingleImplementor());
 
         ResolvedJavaType iSi = metaAccess.lookupJavaType(SingleImplementorInterface.class);
         ResolvedJavaType cSi = metaAccess.lookupJavaType(SingleConcreteImplementor.class);
-        assertEquals(cSi, iSi.getImplementor());
+        assertEquals(cSi, iSi.getSingleImplementor());
 
         ResolvedJavaType iSai = metaAccess.lookupJavaType(SingleAbstractImplementorInterface.class);
         ResolvedJavaType aSai = metaAccess.lookupJavaType(SingleAbstractImplementor.class);
-        assertEquals(aSai, iSai.getImplementor());
+        assertEquals(aSai, iSai.getSingleImplementor());
 
         ResolvedJavaType iMi = metaAccess.lookupJavaType(MultiImplementorInterface.class);
         metaAccess.lookupJavaType(ConcreteImplementor1.class);
         metaAccess.lookupJavaType(ConcreteImplementor2.class);
-        assertEquals(iMi, iMi.getImplementor());
+        assertEquals(iMi, iMi.getSingleImplementor());
 
         ResolvedJavaType iMai = metaAccess.lookupJavaType(MultipleAbstractImplementorInterface.class);
         metaAccess.lookupJavaType(MultiAbstractImplementor1.class);
         metaAccess.lookupJavaType(MultiAbstractImplementor2.class);
-        assertEquals(iMai, iMai.getImplementor());
+        assertEquals(iMai, iMai.getSingleImplementor());
 
         ResolvedJavaType iSai2 = metaAccess.lookupJavaType(SingleAbstractImplementorInterface2.class);
         ResolvedJavaType aSai2 = metaAccess.lookupJavaType(SingleAbstractImplementor2.class);
         metaAccess.lookupJavaType(ConcreteTransitiveImplementor1.class);
         metaAccess.lookupJavaType(ConcreteTransitiveImplementor2.class);
-        assertEquals(aSai2, iSai2.getImplementor());
+        assertEquals(aSai2, iSai2.getSingleImplementor());
     }
 
     @Test(expected = GraalInternalError.class)
-    public void getImplementorTestClassReceiver() {
+    public void getSingleImplementorTestClassReceiver() {
         ResolvedJavaType base = metaAccess.lookupJavaType(Base.class);
-        base.getImplementor();
+        base.getSingleImplementor();
     }
 
     @Test(expected = GraalInternalError.class)
-    public void getImplementorTestPrimitiveReceiver() {
+    public void getSingleImplementorTestPrimitiveReceiver() {
         ResolvedJavaType primitive = metaAccess.lookupJavaType(int.class);
-        primitive.getImplementor();
+        primitive.getSingleImplementor();
     }
 
     @Test

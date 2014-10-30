@@ -151,7 +151,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
         if (isArray()) {
             return getElementalType().isFinal() ? this : null;
         } else if (isInterface()) {
-            HotSpotResolvedObjectType type = getImplementor();
+            HotSpotResolvedObjectType type = getSingleImplementor();
             if (type == null) {
                 return null;
             }
@@ -221,7 +221,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
     }
 
     @Override
-    public HotSpotResolvedObjectType getImplementor() {
+    public HotSpotResolvedObjectType getSingleImplementor() {
         if (!isInterface()) {
             throw new GraalInternalError("Cannot call getImplementor() on a non-interface type: " + this);
         }
