@@ -30,8 +30,6 @@ import java.util.concurrent.*;
 
 import sun.misc.*;
 
-import com.oracle.truffle.api.frame.*;
-
 /**
  * Directives that influence the optimizations of the Truffle compiler. All of the operations have
  * no effect when executed in the Truffle interpreter.
@@ -228,20 +226,6 @@ public final class CompilerDirectives {
     @SuppressWarnings("unchecked")
     public static <T> T unsafeCast(Object value, Class<T> type, boolean condition, boolean nonNull) {
         return (T) value;
-    }
-
-    /**
-     * Asserts that this value is not null and retrieved from a call to Frame.materialize.
-     *
-     * @param value the value that is known to have been obtained via Frame.materialize
-     * @return the value to be casted to the new type
-     */
-    public static MaterializedFrame unsafeFrameCast(MaterializedFrame value) {
-        return unsafeCast(value, getUnsafeFrameType(), true, true);
-    }
-
-    private static Class<? extends MaterializedFrame> getUnsafeFrameType() {
-        return MaterializedFrame.class;
     }
 
     /**
