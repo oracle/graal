@@ -30,11 +30,11 @@ public final class HotSpotMetaspaceConstant extends PrimitiveConstant implements
 
     private static final long serialVersionUID = 1003463314013122983L;
 
-    public static Constant forMetaspaceObject(Kind kind, long primitive, Object metaspaceObject, boolean compressed) {
+    public static JavaConstant forMetaspaceObject(Kind kind, long primitive, Object metaspaceObject, boolean compressed) {
         return new HotSpotMetaspaceConstant(kind, primitive, metaspaceObject, compressed);
     }
 
-    public static Object getMetaspaceObject(Constant constant) {
+    public static Object getMetaspaceObject(JavaConstant constant) {
         return ((HotSpotMetaspaceConstant) constant).metaspaceObject;
     }
 

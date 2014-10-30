@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -122,7 +122,7 @@ public class GuardLoweringPhase extends BasePhase<MidTierContext> {
 
         private void processGuard(Node node) {
             GuardNode guard = (GuardNode) node;
-            if (guard.negated() && guard.condition() instanceof IsNullNode && (guard.getSpeculation() == null || guard.getSpeculation().equals(Constant.NULL_OBJECT))) {
+            if (guard.negated() && guard.condition() instanceof IsNullNode && (guard.getSpeculation() == null || guard.getSpeculation().equals(JavaConstant.NULL_OBJECT))) {
                 ValueNode obj = ((IsNullNode) guard.condition()).getValue();
                 nullGuarded.put(obj, guard);
             }

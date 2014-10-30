@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -86,7 +86,7 @@ public class NodeIntrinsificationPhase extends Phase {
             ResolvedJavaType[] parameterTypes = resolveJavaTypes(target.toParameterTypes(), declaringClass);
 
             // Prepare the arguments for the reflective factory method call on the node class.
-            Constant[] nodeFactoryArguments = prepareArguments(methodCallTargetNode, parameterTypes, target, false);
+            JavaConstant[] nodeFactoryArguments = prepareArguments(methodCallTargetNode, parameterTypes, target, false);
             if (nodeFactoryArguments == null) {
                 return false;
             }
@@ -105,11 +105,11 @@ public class NodeIntrinsificationPhase extends Phase {
             ResolvedJavaType[] parameterTypes = resolveJavaTypes(target.toParameterTypes(), declaringClass);
 
             // Prepare the arguments for the reflective method call
-            Constant[] arguments = prepareArguments(methodCallTargetNode, parameterTypes, target, true);
+            JavaConstant[] arguments = prepareArguments(methodCallTargetNode, parameterTypes, target, true);
             if (arguments == null) {
                 return false;
             }
-            Constant receiver = null;
+            JavaConstant receiver = null;
             if (!methodCallTargetNode.isStatic()) {
                 receiver = arguments[0];
                 arguments = Arrays.copyOfRange(arguments, 1, arguments.length);
@@ -117,7 +117,7 @@ public class NodeIntrinsificationPhase extends Phase {
             }
 
             // Call the method
-            Constant constant = target.invoke(receiver, arguments);
+            JavaConstant constant = target.invoke(receiver, arguments);
 
             if (constant != null) {
                 // Replace the invoke with the result of the call
@@ -156,9 +156,9 @@ public class NodeIntrinsificationPhase extends Phase {
      * @return the arguments for the reflective invocation or null if an argument of {@code invoke}
      *         that is expected to be constant isn't
      */
-    private Constant[] prepareArguments(MethodCallTargetNode methodCallTargetNode, ResolvedJavaType[] parameterTypes, ResolvedJavaMethod target, boolean folding) {
+    private JavaConstant[] prepareArguments(MethodCallTargetNode methodCallTargetNode, ResolvedJavaType[] parameterTypes, ResolvedJavaMethod target, boolean folding) {
         NodeInputList<ValueNode> arguments = methodCallTargetNode.arguments();
-        Constant[] reflectionCallArguments = new Constant[arguments.size()];
+        JavaConstant[] reflectionCallArguments = new JavaConstant[arguments.size()];
         for (int i = 0; i < reflectionCallArguments.length; ++i) {
             int parameterIndex = i;
             if (!methodCallTargetNode.isStatic()) {
@@ -170,7 +170,7 @@ public class NodeIntrinsificationPhase extends Phase {
                     return null;
                 }
                 ConstantNode constantNode = (ConstantNode) argument;
-                Constant constant = constantNode.asConstant();
+                JavaConstant constant = constantNode.asJavaConstant();
                 ResolvedJavaType type = providers.getConstantReflection().asJavaType(constant);
                 if (type != null) {
                     reflectionCallArguments[i] = snippetReflection.forObject(type);
@@ -209,13 +209,13 @@ public class NodeIntrinsificationPhase extends Phase {
     }
 
     protected Node createNodeInstance(StructuredGraph graph, ResolvedJavaType nodeClass, ResolvedJavaType[] parameterTypes, Stamp invokeStamp, boolean setStampFromReturnType,
-                    Constant[] nodeFactoryArguments) {
+                    JavaConstant[] nodeFactoryArguments) {
         ResolvedJavaMethod factory = null;
-        Constant[] arguments = null;
+        JavaConstant[] arguments = null;
 
         for (ResolvedJavaMethod m : nodeClass.getDeclaredMethods()) {
             if (m.getName().equals("create") && !m.isSynthetic()) {
-                Constant[] match = match(graph, m, parameterTypes, nodeFactoryArguments);
+                JavaConstant[] match = match(graph, m, parameterTypes, nodeFactoryArguments);
 
                 if (match != null) {
                     if (factory == null) {
@@ -244,7 +244,7 @@ public class NodeIntrinsificationPhase extends Phase {
         }
     }
 
-    protected Constant invokeFactory(ResolvedJavaMethod factory, Constant[] arguments) {
+    protected JavaConstant invokeFactory(ResolvedJavaMethod factory, JavaConstant[] arguments) {
         return factory.invoke(null, arguments);
     }
 
@@ -268,15 +268,15 @@ public class NodeIntrinsificationPhase extends Phase {
         return false;
     }
 
-    private Constant[] match(StructuredGraph graph, ResolvedJavaMethod m, ResolvedJavaType[] parameterTypes, Constant[] nodeFactoryArguments) {
-        Constant[] arguments = null;
-        Constant[] injected = null;
+    private JavaConstant[] match(StructuredGraph graph, ResolvedJavaMethod m, ResolvedJavaType[] parameterTypes, JavaConstant[] nodeFactoryArguments) {
+        JavaConstant[] arguments = null;
+        JavaConstant[] injected = null;
 
         ResolvedJavaType[] signature = resolveJavaTypes(m.getSignature().toParameterTypes(null), m.getDeclaringClass());
         MetaAccessProvider metaAccess = providers.getMetaAccess();
         for (int i = 0; i < signature.length; i++) {
             if (m.getParameterAnnotation(InjectedNodeParameter.class, i) != null) {
-                injected = injected == null ? new Constant[1] : Arrays.copyOf(injected, injected.length + 1);
+                injected = injected == null ? new JavaConstant[1] : Arrays.copyOf(injected, injected.length + 1);
                 if (signature[i].equals(metaAccess.lookupJavaType(MetaAccessProvider.class))) {
                     injected[injected.length - 1] = snippetReflection.forObject(metaAccess);
                 } else if (signature[i].equals(metaAccess.lookupJavaType(StructuredGraph.class))) {
@@ -333,7 +333,7 @@ public class NodeIntrinsificationPhase extends Phase {
         }
 
         if (injected != null) {
-            Constant[] copy = new Constant[injected.length + arguments.length];
+            JavaConstant[] copy = new JavaConstant[injected.length + arguments.length];
             System.arraycopy(injected, 0, copy, 0, injected.length);
             System.arraycopy(arguments, 0, copy, injected.length, arguments.length);
             arguments = copy;

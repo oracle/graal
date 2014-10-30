@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -139,7 +139,7 @@ public abstract class InstanceOfSnippetsTemplates extends AbstractTemplates {
             assert isInitialized();
             if (result.isConstant()) {
                 assert testValue.isConstant();
-                return LogicConstantNode.forBoolean(result.asConstant().equals(testValue.asConstant()), result.graph());
+                return LogicConstantNode.forBoolean(result.asJavaConstant().equals(testValue.asJavaConstant()), result.graph());
             }
             if (condition == null || condition.getY() != testValue) {
                 // Re-use previously generated condition if the trueValue for the test is the same

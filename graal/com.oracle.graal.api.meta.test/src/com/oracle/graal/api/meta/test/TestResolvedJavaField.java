@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -95,13 +95,13 @@ public class TestResolvedJavaField extends FieldUniverse {
 
         ResolvedJavaField field = metaAccess.lookupJavaField(getClass().getDeclaredField("stringField"));
         for (Object receiver : new Object[]{this, null, new String()}) {
-            Constant value = field.readConstantValue(snippetReflection.forObject(receiver));
+            JavaConstant value = field.readConstantValue(snippetReflection.forObject(receiver));
             assertNull(value);
         }
 
         ResolvedJavaField constField = metaAccess.lookupJavaField(getClass().getDeclaredField("constantStringField"));
         for (Object receiver : new Object[]{this, null, new String()}) {
-            Constant value = constField.readConstantValue(snippetReflection.forObject(receiver));
+            JavaConstant value = constField.readConstantValue(snippetReflection.forObject(receiver));
             if (value != null) {
                 Object expected = "constantField";
                 assertTrue(snippetReflection.asObject(value) == expected);

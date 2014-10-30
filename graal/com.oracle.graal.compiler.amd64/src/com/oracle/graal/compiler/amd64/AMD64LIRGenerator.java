@@ -93,7 +93,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public boolean canInlineConstant(Constant c) {
+    public boolean canInlineConstant(JavaConstant c) {
         switch (c.getKind()) {
             case Long:
                 return NumUtil.isInt(c.asLong()) && !getCodeCache().needsDataPatch(c);
@@ -152,9 +152,9 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
                 /* Scale value that architecture cannot handle, so scale manually. */
                 Value longIndex = index.getKind() == Kind.Long ? index : emitSignExtend(index, 32, 64);
                 if (CodeUtil.isPowerOf2(scale)) {
-                    indexRegister = emitShl(longIndex, Constant.forLong(CodeUtil.log2(scale)));
+                    indexRegister = emitShl(longIndex, JavaConstant.forLong(CodeUtil.log2(scale)));
                 } else {
-                    indexRegister = emitMul(longIndex, Constant.forLong(scale));
+                    indexRegister = emitMul(longIndex, JavaConstant.forLong(scale));
                 }
                 scaleEnum = Scale.Times1;
 
@@ -171,7 +171,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
             displacementInt = (int) finalDisp;
         } else {
             displacementInt = 0;
-            AllocatableValue displacementRegister = load(Constant.forLong(finalDisp));
+            AllocatableValue displacementRegister = load(JavaConstant.forLong(finalDisp));
             if (baseRegister.equals(Value.ILLEGAL)) {
                 baseRegister = displacementRegister;
             } else if (indexRegister.equals(Value.ILLEGAL)) {
@@ -315,13 +315,13 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
             emitCompareRegMemoryOp(cmpKind, left, b, state);
             mirrored = false;
         } else {
-            emitCompareMemoryConOp(cmpKind, b, (Constant) a, state);
+            emitCompareMemoryConOp(cmpKind, b, (JavaConstant) a, state);
             mirrored = true;
         }
         return mirrored;
     }
 
-    protected void emitCompareMemoryConOp(Kind kind, AMD64AddressValue address, Constant value, LIRFrameState state) {
+    protected void emitCompareMemoryConOp(Kind kind, AMD64AddressValue address, JavaConstant value, LIRFrameState state) {
         assert kind.getStackKind() == value.getKind().getStackKind();
         switch (kind) {
             case Byte:
@@ -416,10 +416,10 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
                 append(new Unary1Op(LNEG, result, input));
                 break;
             case Float:
-                append(new BinaryRegConst(FXOR, result, input, Constant.forFloat(Float.intBitsToFloat(0x80000000))));
+                append(new BinaryRegConst(FXOR, result, input, JavaConstant.forFloat(Float.intBitsToFloat(0x80000000))));
                 break;
             case Double:
-                append(new BinaryRegConst(DXOR, result, input, Constant.forDouble(Double.longBitsToDouble(0x8000000000000000L))));
+                append(new BinaryRegConst(DXOR, result, input, JavaConstant.forDouble(Double.longBitsToDouble(0x8000000000000000L))));
                 break;
             default:
                 throw GraalInternalError.shouldNotReachHere();
@@ -454,7 +454,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         }
     }
 
-    private Variable emitBinaryConst(AMD64Arithmetic op, boolean commutative, AllocatableValue a, Constant b) {
+    private Variable emitBinaryConst(AMD64Arithmetic op, boolean commutative, AllocatableValue a, JavaConstant b) {
         switch (op) {
             case IADD:
             case LADD:
@@ -937,13 +937,13 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
             assert inputVal.getKind() == Kind.Long;
             Variable result = newVariable(LIRKind.derive(inputVal).changeType(Kind.Long));
             long mask = CodeUtil.mask(fromBits);
-            append(new BinaryRegConst(AMD64Arithmetic.LAND, result, asAllocatable(inputVal), Constant.forLong(mask)));
+            append(new BinaryRegConst(AMD64Arithmetic.LAND, result, asAllocatable(inputVal), JavaConstant.forLong(mask)));
             return result;
         } else {
             assert inputVal.getKind().getStackKind() == Kind.Int;
             Variable result = newVariable(LIRKind.derive(inputVal).changeType(Kind.Int));
             int mask = (int) CodeUtil.mask(fromBits);
-            append(new BinaryRegConst(AMD64Arithmetic.IAND, result, asAllocatable(inputVal), Constant.forInt(mask)));
+            append(new BinaryRegConst(AMD64Arithmetic.IAND, result, asAllocatable(inputVal), JavaConstant.forInt(mask)));
             if (toBits > 32) {
                 Variable longResult = newVariable(LIRKind.derive(inputVal).changeType(Kind.Long));
                 emitMove(longResult, result);
@@ -1006,7 +1006,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     @Override
     public Value emitMathAbs(Value input) {
         Variable result = newVariable(LIRKind.derive(input));
-        append(new BinaryRegConst(DAND, result, asAllocatable(input), Constant.forDouble(Double.longBitsToDouble(0x7FFFFFFFFFFFFFFFL))));
+        append(new BinaryRegConst(DAND, result, asAllocatable(input), JavaConstant.forDouble(Double.longBitsToDouble(0x7FFFFFFFFFFFFFFFL))));
         return result;
     }
 

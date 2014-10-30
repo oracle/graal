@@ -101,8 +101,8 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
     }
 
     /**
-     * If the compiler is configured for AOT mode, {@link #readConstantValue(Constant)} should be
-     * only called for snippets or replacements.
+     * If the compiler is configured for AOT mode, {@link #readConstantValue(JavaConstant)} should
+     * be only called for snippets or replacements.
      */
     private static boolean isCalledForSnippets() {
         MetaAccessProvider metaAccess = runtime().getHostProviders().getMetaAccess();
@@ -194,7 +194,7 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
      * {@code receiver} is (assignable to) {@link StableOptionValue}.
      */
     @Override
-    public Constant readConstantValue(Constant receiver) {
+    public JavaConstant readConstantValue(JavaConstant receiver) {
         assert !ImmutableCode.getValue() || isCalledForSnippets() : receiver;
 
         if (receiver == null) {
@@ -218,14 +218,14 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
             if (object != null) {
                 if (isFinal()) {
                     if (isInObject(object)) {
-                        Constant value = readValue(receiver);
+                        JavaConstant value = readValue(receiver);
                         if (assumeNonStaticFinalFieldsAsFinal(object.getClass()) || !value.isDefaultForKind()) {
                             return value;
                         }
                     }
                 } else if (isStable()) {
                     if (isInObject(object)) {
-                        Constant value = readValue(receiver);
+                        JavaConstant value = readValue(receiver);
                         if (assumeDefaultStableFieldsAsFinal(object.getClass()) || !value.isDefaultForKind()) {
                             return value;
                         }
@@ -259,7 +259,7 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
     }
 
     @Override
-    public Constant readValue(Constant receiver) {
+    public JavaConstant readValue(JavaConstant receiver) {
         if (receiver == null) {
             assert isStatic();
             if (holder.isInitialized()) {
@@ -279,8 +279,8 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
 
     /**
      * Usually {@link Stable} fields are not considered constant if the value is the
-     * {@link Constant#isDefaultForKind default value}. For some special classes we want to override
-     * this behavior.
+     * {@link JavaConstant#isDefaultForKind default value}. For some special classes we want to
+     * override this behavior.
      */
     private static boolean assumeDefaultStableFieldsAsFinal(Class<?> clazz) {
         // HotSpotVMConfig has a lot of zero-value fields which we know are stable and want to be

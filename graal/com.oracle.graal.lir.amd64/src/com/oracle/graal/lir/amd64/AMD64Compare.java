@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -148,8 +148,8 @@ public enum AMD64Compare {
         @Override
         public void verify() {
             super.verify();
-            assert y instanceof Variable || y instanceof Constant;
-            assert kind != Kind.Long || !(y instanceof Constant) || NumUtil.isInt(((Constant) y).asLong());
+            assert y instanceof Variable || y instanceof JavaConstant;
+            assert kind != Kind.Long || !(y instanceof JavaConstant) || NumUtil.isInt(((JavaConstant) y).asLong());
         }
     }
 
@@ -181,7 +181,7 @@ public enum AMD64Compare {
                     throw GraalInternalError.shouldNotReachHere();
             }
         } else if (isRegister(x) && isConstant(y)) {
-            boolean isZero = ((Constant) y).isDefaultForKind();
+            boolean isZero = ((JavaConstant) y).isDefaultForKind();
             switch (opcode) {
                 case BCMP:
                     if (isZero) {

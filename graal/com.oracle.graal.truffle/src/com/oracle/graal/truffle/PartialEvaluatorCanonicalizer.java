@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -54,7 +54,7 @@ final class PartialEvaluatorCanonicalizer extends CanonicalizerPhase.CustomCanon
         if (!loadFieldNode.isStatic() && loadFieldNode.object().isConstant() && !loadFieldNode.object().isNullConstant()) {
             if (loadFieldNode.field().isFinal() || (loadFieldNode.getKind() == Kind.Object && loadFieldNode.field().getAnnotation(Child.class) != null) ||
                             loadFieldNode.field().getAnnotation(CompilerDirectives.CompilationFinal.class) != null) {
-                Constant constant = loadFieldNode.field().readValue(loadFieldNode.object().asConstant());
+                JavaConstant constant = loadFieldNode.field().readValue(loadFieldNode.object().asJavaConstant());
                 assert verifyFieldValue(loadFieldNode.field(), constant);
                 return ConstantNode.forConstant(constant, metaAccess);
             }
@@ -64,9 +64,9 @@ final class PartialEvaluatorCanonicalizer extends CanonicalizerPhase.CustomCanon
 
     private Node canonicalizeLoadIndex(LoadIndexedNode loadIndexedNode) {
         if (loadIndexedNode.array().isConstant() && loadIndexedNode.index().isConstant()) {
-            int index = loadIndexedNode.index().asConstant().asInt();
+            int index = loadIndexedNode.index().asJavaConstant().asInt();
 
-            Constant constant = constantReflection.readArrayElement(loadIndexedNode.array().asConstant(), index);
+            JavaConstant constant = constantReflection.readArrayElement(loadIndexedNode.array().asJavaConstant(), index);
             if (constant != null) {
                 return ConstantNode.forConstant(constant, metaAccess);
             }
@@ -74,7 +74,7 @@ final class PartialEvaluatorCanonicalizer extends CanonicalizerPhase.CustomCanon
         return loadIndexedNode;
     }
 
-    private boolean verifyFieldValue(ResolvedJavaField field, Constant constant) {
+    private boolean verifyFieldValue(ResolvedJavaField field, JavaConstant constant) {
         assert field.getAnnotation(Child.class) == null || constant.isNull() ||
                         metaAccess.lookupJavaType(com.oracle.truffle.api.nodes.Node.class).isAssignableFrom(metaAccess.lookupJavaType(constant)) : "@Child field value must be a Node: " + field +
                         ", but was: " + constant;

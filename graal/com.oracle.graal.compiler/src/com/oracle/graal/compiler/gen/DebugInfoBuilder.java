@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -90,7 +90,7 @@ public class DebugInfoBuilder {
                             assert currentField != null;
                             int pos = 0;
                             for (int i = 0; i < vobj.entryCount(); i++) {
-                                if (!currentField.values().get(i).isConstant() || currentField.values().get(i).asConstant().getKind() != Kind.Illegal) {
+                                if (!currentField.values().get(i).isConstant() || currentField.values().get(i).asJavaConstant().getKind() != Kind.Illegal) {
                                     values[pos++] = toValue(currentField.values().get(i));
                                 } else {
                                     assert currentField.values().get(i - 1).getKind() == Kind.Double || currentField.values().get(i - 1).getKind() == Kind.Long : vobj + " " + i + " " +
@@ -214,7 +214,7 @@ public class DebugInfoBuilder {
                 } else if (value != null) {
                     STATE_VARIABLES.increment();
                     Value operand = nodeOperands.get(value);
-                    assert operand != null && (operand instanceof Variable || operand instanceof Constant) : operand + " for " + value;
+                    assert operand != null && (operand instanceof Variable || operand instanceof JavaConstant) : operand + " for " + value;
                     return operand;
 
                 } else {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -49,9 +49,9 @@ public class MetaUtil {
      * @param printTopN print total size and instance count of the top n classes is desired
      * @return the number of bytes occupied by this constant
      */
-    public static long getMemorySizeRecursive(MetaAccessProvider access, ConstantReflectionProvider constantReflection, Constant constant, PrintStream out, int printTopN) {
-        Set<Constant> marked = new HashSet<>();
-        Stack<Constant> stack = new Stack<>();
+    public static long getMemorySizeRecursive(MetaAccessProvider access, ConstantReflectionProvider constantReflection, JavaConstant constant, PrintStream out, int printTopN) {
+        Set<JavaConstant> marked = new HashSet<>();
+        Stack<JavaConstant> stack = new Stack<>();
         if (constant.getKind() == Kind.Object && constant.isNonNull()) {
             marked.add(constant);
         }
@@ -59,7 +59,7 @@ public class MetaUtil {
         stack.push(constant);
         long sum = 0;
         while (!stack.isEmpty()) {
-            Constant c = stack.pop();
+            JavaConstant c = stack.pop();
             long memorySize = access.getMemorySize(constant);
             sum += memorySize;
             if (c.getKind() == Kind.Object && c.isNonNull()) {
@@ -75,7 +75,7 @@ public class MetaUtil {
                     if (!type.getComponentType().isPrimitive()) {
                         int length = constantReflection.readArrayLength(c);
                         for (int i = 0; i < length; i++) {
-                            Constant value = constantReflection.readArrayElement(c, i);
+                            JavaConstant value = constantReflection.readArrayElement(c, i);
                             pushConstant(marked, stack, value);
                         }
                     }
@@ -83,7 +83,7 @@ public class MetaUtil {
                     ResolvedJavaField[] instanceFields = type.getInstanceFields(true);
                     for (ResolvedJavaField f : instanceFields) {
                         if (f.getKind() == Kind.Object) {
-                            Constant value = f.readValue(c);
+                            JavaConstant value = f.readValue(c);
                             pushConstant(marked, stack, value);
                         }
                     }
@@ -120,7 +120,7 @@ public class MetaUtil {
         return sum;
     }
 
-    private static void pushConstant(Set<Constant> marked, Stack<Constant> stack, Constant value) {
+    private static void pushConstant(Set<JavaConstant> marked, Stack<JavaConstant> stack, JavaConstant value) {
         if (value.isNonNull()) {
             if (!marked.contains(value)) {
                 marked.add(value);

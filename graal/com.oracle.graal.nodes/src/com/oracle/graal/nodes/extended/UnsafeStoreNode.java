@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -89,7 +89,7 @@ public class UnsafeStoreNode extends UnsafeAccessNode implements StateSplit, Low
         if (state != null && state.getState() == EscapeState.Virtual) {
             ValueNode indexValue = tool.getReplacedValue(offset());
             if (indexValue.isConstant()) {
-                long off = indexValue.asConstant().asLong();
+                long off = indexValue.asJavaConstant().asLong();
                 int entryIndex = state.getVirtualObject().entryIndexForOffset(off);
                 if (entryIndex != -1) {
                     Kind entryKind = state.getVirtualObject().entryKind(entryIndex);
@@ -104,7 +104,7 @@ public class UnsafeStoreNode extends UnsafeAccessNode implements StateSplit, Low
                                 Kind nextKind = state.getVirtualObject().entryKind(nextIndex);
                                 if (nextKind == Kind.Int) {
                                     tool.setVirtualEntry(state, entryIndex, value(), true);
-                                    tool.setVirtualEntry(state, nextIndex, ConstantNode.forConstant(Constant.forIllegal(), tool.getMetaAccessProvider(), graph()), true);
+                                    tool.setVirtualEntry(state, nextIndex, ConstantNode.forConstant(JavaConstant.forIllegal(), tool.getMetaAccessProvider(), graph()), true);
                                     tool.delete();
                                 }
                             }

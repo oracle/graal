@@ -53,7 +53,7 @@ public abstract class UnaryArithmeticNode<OP> extends UnaryNode implements Arith
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
         if (forValue.isConstant()) {
-            return ConstantNode.forPrimitive(stamp(), getOp(forValue).foldConstant(forValue.asConstant()));
+            return ConstantNode.forPrimitive(stamp(), getOp(forValue).foldConstant(forValue.asJavaConstant()));
         }
         return this;
     }

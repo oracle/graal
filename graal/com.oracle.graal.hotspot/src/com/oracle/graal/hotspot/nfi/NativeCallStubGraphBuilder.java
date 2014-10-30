@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -61,7 +61,7 @@ public class NativeCallStubGraphBuilder {
             g.start().setStateAfter(frameState);
             List<ValueNode> parameters = new ArrayList<>();
             FixedWithNextNode fixedWithNext = getParameters(g, arg0, argumentTypes.length, argumentTypes, parameters, providers);
-            Constant functionPointerNode = Constant.forLong(functionPointer);
+            JavaConstant functionPointerNode = JavaConstant.forLong(functionPointer);
 
             ValueNode[] arguments = new ValueNode[parameters.size()];
 

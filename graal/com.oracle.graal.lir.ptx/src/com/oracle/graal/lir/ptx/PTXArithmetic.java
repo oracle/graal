@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -73,9 +73,9 @@ public enum PTXArithmetic {
             Variable dst = (Variable) result;
             Variable src = (Variable) x;
             if (from == Kind.Long && to == Kind.Int) {
-                new And(dst, src, Constant.forLong(0xFFFFFFFF)).emit(masm);
+                new And(dst, src, JavaConstant.forLong(0xFFFFFFFF)).emit(masm);
             } else if ((from == Kind.Int || from == Kind.Long) && to == Kind.Short) {
-                new And(dst, src, Constant.forInt((short) 0xFFFF)).emit(masm);
+                new And(dst, src, JavaConstant.forInt((short) 0xFFFF)).emit(masm);
             } else {
                 new Cvt((Variable) result, (Variable) x, to, from).emit(masm);
             }

@@ -49,8 +49,8 @@ class DefUseTree {
         return (Variable) ((MoveOp) instruction).getResult();
     }
 
-    public Constant getConstant() {
-        return (Constant) ((MoveOp) instruction).getInput();
+    public JavaConstant getConstant() {
+        return (JavaConstant) ((MoveOp) instruction).getInput();
     }
 
     public LIRInstruction getInstruction() {

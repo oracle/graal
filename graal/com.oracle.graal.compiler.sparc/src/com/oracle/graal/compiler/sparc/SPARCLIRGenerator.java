@@ -83,7 +83,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public boolean canInlineConstant(Constant c) {
+    public boolean canInlineConstant(JavaConstant c) {
         switch (c.getKind()) {
             case Int:
                 return SPARCAssembler.isSimm13(c.asInt()) && !getCodeCache().needsDataPatch(c);
@@ -142,9 +142,9 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
                 if (scale != 1) {
                     Value longIndex = index.getKind() == Kind.Long ? index : emitSignExtend(index, 32, 64);
                     if (CodeUtil.isPowerOf2(scale)) {
-                        indexRegister = emitShl(longIndex, Constant.forLong(CodeUtil.log2(scale)));
+                        indexRegister = emitShl(longIndex, JavaConstant.forLong(CodeUtil.log2(scale)));
                     } else {
-                        indexRegister = emitMul(longIndex, Constant.forLong(scale));
+                        indexRegister = emitMul(longIndex, JavaConstant.forLong(scale));
                     }
                 } else {
                     indexRegister = asAllocatable(index);
@@ -163,14 +163,14 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
         } else {
             displacementInt = 0;
             if (baseRegister.equals(Value.ILLEGAL)) {
-                baseRegister = load(Constant.forLong(finalDisp));
+                baseRegister = load(JavaConstant.forLong(finalDisp));
             } else {
                 if (finalDisp == 0) {
                     // Nothing to do. Just use the base register.
                 } else {
                     Variable longBaseRegister = newVariable(LIRKind.derivedReference(Kind.Long));
                     emitMove(longBaseRegister, baseRegister);
-                    baseRegister = emitAdd(longBaseRegister, Constant.forLong(finalDisp));
+                    baseRegister = emitAdd(longBaseRegister, JavaConstant.forLong(finalDisp));
                 }
             }
         }
@@ -273,7 +273,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
 
     private Value loadSimm11(Value value) {
         if (isConstant(value)) {
-            Constant c = asConstant(value);
+            JavaConstant c = asConstant(value);
             if (c.isNull() || SPARCAssembler.isSimm11(c)) {
                 return value;
             } else {
@@ -552,7 +552,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
         }
     }
 
-    private Variable emitBinaryConst(SPARCArithmetic op, AllocatableValue a, Constant b, LIRFrameState state) {
+    private Variable emitBinaryConst(SPARCArithmetic op, AllocatableValue a, JavaConstant b, LIRFrameState state) {
         switch (op) {
             case IADD:
             case LADD:
@@ -786,7 +786,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
 
     private Variable emitShift(SPARCArithmetic op, Value a, Value b) {
         Variable result = newVariable(LIRKind.derive(a, b).changeType(a.getPlatformKind()));
-        if (isConstant(b) && canInlineConstant((Constant) b)) {
+        if (isConstant(b) && canInlineConstant((JavaConstant) b)) {
             append(new BinaryRegConst(op, result, load(a), asConstant(b), null));
         } else {
             append(new BinaryRegReg(op, result, load(a), load(b)));
@@ -978,15 +978,15 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
             assert inputVal.getKind() == Kind.Long;
             Variable result = newVariable(LIRKind.derive(inputVal).changeType(Kind.Long));
             long mask = CodeUtil.mask(fromBits);
-            append(new BinaryRegConst(SPARCArithmetic.LAND, result, asAllocatable(inputVal), Constant.forLong(mask), null));
+            append(new BinaryRegConst(SPARCArithmetic.LAND, result, asAllocatable(inputVal), JavaConstant.forLong(mask), null));
             return result;
         } else {
             assert inputVal.getKind() == Kind.Int || inputVal.getKind() == Kind.Short || inputVal.getKind() == Kind.Byte || inputVal.getKind() == Kind.Char : inputVal.getKind();
             Variable result = newVariable(LIRKind.derive(inputVal).changeType(Kind.Int));
             long mask = CodeUtil.mask(fromBits);
-            Constant constant = Constant.forInt((int) mask);
+            JavaConstant constant = JavaConstant.forInt((int) mask);
             if (fromBits == 32) {
-                append(new BinaryRegConst(IUSHR, result, inputVal, Constant.forInt(0)));
+                append(new BinaryRegConst(IUSHR, result, inputVal, JavaConstant.forInt(0)));
             } else if (canInlineConstant(constant)) {
                 append(new BinaryRegConst(SPARCArithmetic.IAND, result, asAllocatable(inputVal), constant, null));
             } else {

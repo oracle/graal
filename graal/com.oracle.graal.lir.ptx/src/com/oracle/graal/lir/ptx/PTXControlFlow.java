@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -204,7 +204,7 @@ public class PTXControlFlow {
 
     public static class StrategySwitchOp extends PTXPredicatedLIRInstruction implements BlockEndOp {
 
-        @Use({CONST}) protected Constant[] keyConstants;
+        @Use({CONST}) protected JavaConstant[] keyConstants;
         private final LabelRef[] keyTargets;
         private LabelRef defaultTarget;
         @Alive({REG}) protected Value key;
@@ -277,9 +277,9 @@ public class PTXControlFlow {
             if (lowKey != 0) {
                 // subtract the low value from the switch value
                 // new Sub(value, value, lowKey).emit(masm);
-                new Setp(GT, index, Constant.forInt(highKey - lowKey), getPredRegNum()).emit(masm);
+                new Setp(GT, index, JavaConstant.forInt(highKey - lowKey), getPredRegNum()).emit(masm);
             } else {
-                new Setp(GT, index, Constant.forInt(highKey), getPredRegNum()).emit(masm);
+                new Setp(GT, index, JavaConstant.forInt(highKey), getPredRegNum()).emit(masm);
             }
 
             // Jump to default target if index is not within the jump table

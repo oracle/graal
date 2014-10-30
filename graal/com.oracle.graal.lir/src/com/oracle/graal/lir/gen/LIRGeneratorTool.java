@@ -52,7 +52,7 @@ public interface LIRGeneratorTool extends ArithmeticLIRGenerator {
 
     void doBlockEnd(AbstractBlock<?> block);
 
-    Value emitLoadConstant(LIRKind kind, Constant constant);
+    Value emitLoadConstant(LIRKind kind, JavaConstant constant);
 
     Value emitLoad(LIRKind kind, Value address, LIRFrameState state);
 
@@ -173,7 +173,7 @@ public interface LIRGeneratorTool extends ArithmeticLIRGenerator {
 
     Variable emitIntegerTestMove(Value leftVal, Value right, Value trueValue, Value falseValue);
 
-    void emitStrategySwitch(Constant[] keyConstants, double[] keyProbabilities, LabelRef[] keyTargets, LabelRef defaultTarget, Variable value);
+    void emitStrategySwitch(JavaConstant[] keyConstants, double[] keyProbabilities, LabelRef[] keyTargets, LabelRef defaultTarget, Variable value);
 
     void emitStrategySwitch(SwitchStrategy strategy, Variable key, LabelRef[] keyTargets, LabelRef defaultTarget);
 

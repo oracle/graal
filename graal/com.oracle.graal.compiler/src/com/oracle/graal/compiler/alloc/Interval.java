@@ -529,10 +529,10 @@ public final class Interval {
      * The value with which a spilled child interval can be re-materialized. Currently this must be
      * a Constant.
      */
-    private Constant materializedValue;
+    private JavaConstant materializedValue;
 
     /**
-     * The number of times {@link #addMaterializationValue(Constant)} is called.
+     * The number of times {@link #addMaterializationValue(JavaConstant)} is called.
      */
     private int numMaterializationValuesAdded;
 
@@ -737,7 +737,7 @@ public final class Interval {
     /**
      * Sets the value which is used for re-materialization.
      */
-    void addMaterializationValue(Constant value) {
+    void addMaterializationValue(JavaConstant value) {
         if (numMaterializationValuesAdded == 0) {
             materializedValue = value;
         } else {
@@ -758,7 +758,7 @@ public final class Interval {
     /**
      * Returns a value which can be moved to a register instead of a restore-move from stack.
      */
-    public Constant getMaterializedValue() {
+    public JavaConstant getMaterializedValue() {
         return splitParent().materializedValue;
     }
 

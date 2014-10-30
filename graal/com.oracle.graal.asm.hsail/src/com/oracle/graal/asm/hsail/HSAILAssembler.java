@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -86,7 +86,7 @@ public abstract class HSAILAssembler extends AbstractHSAILAssembler {
      * @param a the destination register
      * @param src the Object Constant being moved
      */
-    public abstract void mov(Register a, Constant src);
+    public abstract void mov(Register a, JavaConstant src);
 
     private static String getBitTypeFromKind(Kind kind) {
         switch (kind) {
@@ -373,7 +373,7 @@ public abstract class HSAILAssembler extends AbstractHSAILAssembler {
         if (!isConstant(src)) {
             return HSAIL.mapRegister(src);
         } else {
-            Constant consrc = asConstant(src);
+            JavaConstant consrc = asConstant(src);
             switch (src.getKind()) {
                 case Boolean:
                 case Int:
@@ -503,13 +503,13 @@ public abstract class HSAILAssembler extends AbstractHSAILAssembler {
         assert (!isConstant(result));
         if (base == 0) {
             // we don't have to test for null if shl is the only operation
-            emitForceUnsignedKind("shl", Kind.Long, result, result, Constant.forInt(shift));
+            emitForceUnsignedKind("shl", Kind.Long, result, result, JavaConstant.forInt(shift));
         } else if (shift == 0) {
             // only use add if result is not starting as null (test only if testForNull is true)
-            emitWithOptionalTestForNull(testForNull, "add", result, result, Constant.forLong(base));
+            emitWithOptionalTestForNull(testForNull, "add", result, result, JavaConstant.forLong(base));
         } else {
             // only use mad if result is not starting as null (test only if testForNull is true)
-            emitWithOptionalTestForNull(testForNull, "mad", result, result, Constant.forInt(1 << shift), Constant.forLong(base));
+            emitWithOptionalTestForNull(testForNull, "mad", result, result, JavaConstant.forInt(1 << shift), JavaConstant.forLong(base));
         }
     }
 
@@ -530,11 +530,11 @@ public abstract class HSAILAssembler extends AbstractHSAILAssembler {
         assert (!isConstant(result));
         if (base != 0) {
             // only use sub if result is not starting as null (test only if testForNull is true)
-            emitWithOptionalTestForNull(testForNull, "sub", result, result, Constant.forLong(base));
+            emitWithOptionalTestForNull(testForNull, "sub", result, result, JavaConstant.forLong(base));
         }
         if (shift != 0) {
             // note that the shr can still be done even if the result is null
-            emitForceUnsignedKind("shr", Kind.Long, result, result, Constant.forInt(shift));
+            emitForceUnsignedKind("shr", Kind.Long, result, result, JavaConstant.forInt(shift));
         }
     }
 
@@ -550,11 +550,11 @@ public abstract class HSAILAssembler extends AbstractHSAILAssembler {
      */
     private void emitWithOptionalTestForNull(boolean testForNull, String mnemonic, Value result, Value... sources) {
         if (testForNull) {
-            emitCompare(Kind.Long, result, Constant.forLong(0), "eq", false, true);
+            emitCompare(Kind.Long, result, JavaConstant.forLong(0), "eq", false, true);
         }
         emitForceUnsigned(mnemonic, result, sources);
         if (testForNull) {
-            emitConditionalMove(result, Constant.forLong(0), result, 64);
+            emitConditionalMove(result, JavaConstant.forLong(0), result, 64);
         }
     }
 
@@ -638,7 +638,7 @@ public abstract class HSAILAssembler extends AbstractHSAILAssembler {
         // emitString(String.format("maxwaveid_u32 %s;", HSAIL.mapRegister(dest)));
         int hardCodedMaxWaveId = 36;
         emitComment("// Hard-coded maxwaveid=" + hardCodedMaxWaveId + " until it works");
-        emitMov(Kind.Int, dest, Constant.forInt(hardCodedMaxWaveId));
+        emitMov(Kind.Int, dest, JavaConstant.forInt(hardCodedMaxWaveId));
     }
 
     public void emitMultiplyByWavesize(Value dest) {

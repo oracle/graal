@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -66,7 +66,7 @@ public class DynamicNewArrayNode extends AbstractNewArrayNode {
     @Override
     public void simplify(SimplifierTool tool) {
         if (isAlive() && elementType.isConstant()) {
-            ResolvedJavaType javaType = tool.getConstantReflection().asJavaType(elementType.asConstant());
+            ResolvedJavaType javaType = tool.getConstantReflection().asJavaType(elementType.asJavaConstant());
             if (javaType != null && !javaType.equals(tool.getMetaAccess().lookupJavaType(void.class))) {
                 ValueNode len = length();
                 NewArrayNode newArray = graph().add(NewArrayNode.create(javaType, len.isAlive() ? len : graph().addOrUniqueWithInputs(len), fillContents()));

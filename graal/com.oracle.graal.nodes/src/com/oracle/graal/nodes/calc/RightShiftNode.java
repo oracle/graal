@@ -47,12 +47,12 @@ public class RightShiftNode extends ShiftNode {
         return updateStamp(StampTool.rightShift(getX().stamp(), getY().stamp()));
     }
 
-    private static Constant evalConst(Constant a, Constant b) {
+    private static JavaConstant evalConst(JavaConstant a, JavaConstant b) {
         if (a.getKind() == Kind.Int) {
-            return Constant.forInt(a.asInt() >> b.asInt());
+            return JavaConstant.forInt(a.asInt() >> b.asInt());
         } else {
             assert a.getKind() == Kind.Long;
-            return Constant.forLong(a.asLong() >> b.asLong());
+            return JavaConstant.forLong(a.asLong() >> b.asLong());
         }
     }
 
@@ -62,9 +62,9 @@ public class RightShiftNode extends ShiftNode {
             return UnsignedRightShiftNode.create(forX, forY);
         }
         if (forX.isConstant() && forY.isConstant()) {
-            return ConstantNode.forPrimitive(evalConst(forX.asConstant(), forY.asConstant()));
+            return ConstantNode.forPrimitive(evalConst(forX.asJavaConstant(), forY.asJavaConstant()));
         } else if (forY.isConstant()) {
-            int amount = forY.asConstant().asInt();
+            int amount = forY.asJavaConstant().asInt();
             int originalAmout = amount;
             int mask = getShiftAmountMask();
             amount &= mask;
@@ -74,7 +74,7 @@ public class RightShiftNode extends ShiftNode {
             if (forX instanceof ShiftNode) {
                 ShiftNode other = (ShiftNode) forX;
                 if (other.getY().isConstant()) {
-                    int otherAmount = other.getY().asConstant().asInt() & mask;
+                    int otherAmount = other.getY().asJavaConstant().asInt() & mask;
                     if (other instanceof RightShiftNode) {
                         int total = amount + otherAmount;
                         if (total != (total & mask)) {

@@ -100,20 +100,20 @@ public class UseTrappingNullChecksPhase extends BasePhase<LowTierContext> {
             for (AbstractEndNode end : merge.cfgPredecessors().snapshot()) {
                 ValueNode thisReason = reasons != null ? reasons.get(index) : reason;
                 ValueNode thisSpeculation = speculations != null ? speculations.get(index++) : speculation;
-                if (!thisReason.isConstant() || !thisSpeculation.isConstant() || !thisSpeculation.asConstant().equals(Constant.NULL_OBJECT)) {
+                if (!thisReason.isConstant() || !thisSpeculation.isConstant() || !thisSpeculation.asJavaConstant().equals(JavaConstant.NULL_OBJECT)) {
                     continue;
                 }
-                DeoptimizationReason deoptimizationReason = metaAccessProvider.decodeDeoptReason(thisReason.asConstant());
+                DeoptimizationReason deoptimizationReason = metaAccessProvider.decodeDeoptReason(thisReason.asJavaConstant());
                 tryUseTrappingNullCheck(deopt, end.predecessor(), deoptimizationReason, null);
             }
         }
     }
 
-    private static void tryUseTrappingNullCheck(AbstractDeoptimizeNode deopt, Node predecessor, DeoptimizationReason deoptimizationReason, Constant speculation) {
+    private static void tryUseTrappingNullCheck(AbstractDeoptimizeNode deopt, Node predecessor, DeoptimizationReason deoptimizationReason, JavaConstant speculation) {
         if (deoptimizationReason != DeoptimizationReason.NullCheckException && deoptimizationReason != DeoptimizationReason.UnreachedCode) {
             return;
         }
-        if (speculation != null && !speculation.equals(Constant.NULL_OBJECT)) {
+        if (speculation != null && !speculation.equals(JavaConstant.NULL_OBJECT)) {
             return;
         }
         if (predecessor instanceof MergeNode) {

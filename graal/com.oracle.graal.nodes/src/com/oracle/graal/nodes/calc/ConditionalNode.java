@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -91,10 +91,10 @@ public class ConditionalNode extends FloatingNode implements Canonicalizable, LI
         // this optimizes the case where a value that can only be 0 or 1 is materialized to 0 or 1
         if (trueValue().isConstant() && falseValue().isConstant() && condition instanceof IntegerEqualsNode) {
             IntegerEqualsNode equals = (IntegerEqualsNode) condition;
-            if (equals.getY().isConstant() && equals.getY().asConstant().equals(Constant.INT_0) && equals.getX().stamp() instanceof IntegerStamp) {
+            if (equals.getY().isConstant() && equals.getY().asJavaConstant().equals(JavaConstant.INT_0) && equals.getX().stamp() instanceof IntegerStamp) {
                 IntegerStamp equalsXStamp = (IntegerStamp) equals.getX().stamp();
                 if (equalsXStamp.upMask() == 1) {
-                    if (trueValue().asConstant().equals(Constant.INT_0) && falseValue().asConstant().equals(Constant.INT_1)) {
+                    if (trueValue().asJavaConstant().equals(JavaConstant.INT_0) && falseValue().asJavaConstant().equals(JavaConstant.INT_1)) {
                         return IntegerConvertNode.convertUnsigned(equals.getX(), stamp());
                     }
                 }

@@ -23,8 +23,8 @@
 package com.oracle.graal.api.meta;
 
 /**
- * Reflection operations on values represented as {@linkplain Constant constants}. All methods in
- * this interface require the VM to access the actual object encapsulated in {@link Kind#Object
+ * Reflection operations on values represented as {@linkplain JavaConstant constants}. All methods
+ * in this interface require the VM to access the actual object encapsulated in {@link Kind#Object
  * object} constants. This access is not always possible, depending on kind of VM and the state that
  * the VM is in. Therefore, all methods can return {@code null} at any time, to indicate that the
  * result is not available at this point. The caller is responsible to check for {@code null}
@@ -38,20 +38,20 @@ public interface ConstantReflectionProvider {
      * {@link Boolean#FALSE false} if they are different. Returns {@code null} if the constants
      * cannot be compared at this point.
      */
-    Boolean constantEquals(Constant x, Constant y);
+    Boolean constantEquals(JavaConstant x, JavaConstant y);
 
     /**
      * Returns the length of the array constant. Returns {@code null} if the constant is not an
      * array, or if the array length is not available at this point.
      */
-    Integer readArrayLength(Constant array);
+    Integer readArrayLength(JavaConstant array);
 
     /**
      * Reads a value from the given array at the given index. Returns {@code null} if the constant
      * is not an array, if the index is out of bounds, or if the value is not available at this
      * point.
      */
-    Constant readArrayElement(Constant array, int index);
+    JavaConstant readArrayElement(JavaConstant array, int index);
 
     /**
      * Reads a value of this kind using a base address and a displacement. No bounds checking or
@@ -59,21 +59,21 @@ public interface ConstantReflectionProvider {
      *
      * @param base the base address from which the value is read.
      * @param displacement the displacement within the object in bytes
-     * @return the read value encapsulated in a {@link Constant} object, or {@code null} if the
+     * @return the read value encapsulated in a {@link JavaConstant} object, or {@code null} if the
      *         value cannot be read.
      */
-    Constant readUnsafeConstant(Kind kind, Constant base, long displacement);
+    JavaConstant readUnsafeConstant(Kind kind, JavaConstant base, long displacement);
 
     /**
      * Reads a primitive value using a base address and a displacement.
      *
-     * @param kind the {@link Kind} of the returned {@link Constant} object
+     * @param kind the {@link Kind} of the returned {@link JavaConstant} object
      * @param base the base address from which the value is read
      * @param displacement the displacement within the object in bytes
      * @param bits the number of bits to read from memory
-     * @return the read value encapsulated in a {@link Constant} object of {@link Kind} kind
+     * @return the read value encapsulated in a {@link JavaConstant} object of {@link Kind} kind
      */
-    Constant readRawConstant(Kind kind, Constant base, long displacement, int bits);
+    JavaConstant readRawConstant(Kind kind, JavaConstant base, long displacement, int bits);
 
     /**
      * Converts the given {@link Kind#isPrimitive() primitive} constant to a boxed
@@ -81,7 +81,7 @@ public interface ConstantReflectionProvider {
      * if the source is is not a primitive constant, or the boxed value is not available at this
      * point.
      */
-    Constant boxPrimitive(Constant source);
+    JavaConstant boxPrimitive(JavaConstant source);
 
     /**
      * Converts the given {@link Kind#Object object} constant to a {@link Kind#isPrimitive()
@@ -89,12 +89,12 @@ public interface ConstantReflectionProvider {
      * is is not an object constant that can be unboxed, or the unboxed value is not available at
      * this point.
      */
-    Constant unboxPrimitive(Constant source);
+    JavaConstant unboxPrimitive(JavaConstant source);
 
     /**
      * Returns the {@link ResolvedJavaType} for a {@link Class} object (or any other object regarded
      * as a class by the VM) encapsulated in the given constant. Returns {@code null} if the
      * constant does not encapsulate a class, or if the type is not available at this point.
      */
-    ResolvedJavaType asJavaType(Constant constant);
+    ResolvedJavaType asJavaType(JavaConstant constant);
 }

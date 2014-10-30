@@ -197,8 +197,8 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
             } else {
                 handleUnresolvedLoadConstant(type);
             }
-        } else if (con instanceof Constant) {
-            Constant constant = (Constant) con;
+        } else if (con instanceof JavaConstant) {
+            JavaConstant constant = (JavaConstant) con;
             frameState.push(constant.getKind().getStackKind(), appendConstant(constant));
         } else {
             throw new Error("lookupConstant returned an object of incorrect type");
@@ -499,7 +499,7 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
         int index = getStream().readLocalIndex();
         int delta = getStream().readIncrement();
         T x = frameState.loadLocal(index);
-        T y = appendConstant(Constant.forInt(delta));
+        T y = appendConstant(JavaConstant.forInt(delta));
         frameState.storeLocal(index, append(genIntegerAdd(Kind.Int, x, y)));
     }
 
@@ -516,13 +516,13 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
     protected abstract void genIf(T x, Condition cond, T y);
 
     private void genIfZero(Condition cond) {
-        T y = appendConstant(Constant.INT_0);
+        T y = appendConstant(JavaConstant.INT_0);
         T x = frameState.ipop();
         genIf(x, cond, y);
     }
 
     private void genIfNull(Condition cond) {
-        T y = appendConstant(Constant.NULL_OBJECT);
+        T y = appendConstant(JavaConstant.NULL_OBJECT);
         T x = frameState.apop();
         genIf(x, cond, y);
     }
@@ -888,7 +888,7 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
         }
     }
 
-    protected abstract T appendConstant(Constant constant);
+    protected abstract T appendConstant(JavaConstant constant);
 
     protected abstract T append(T v);
 
@@ -929,23 +929,23 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
         // @formatter:off
     switch (opcode) {
         case NOP            : /* nothing to do */ break;
-        case ACONST_NULL    : frameState.apush(appendConstant(Constant.NULL_OBJECT)); break;
+        case ACONST_NULL    : frameState.apush(appendConstant(JavaConstant.NULL_OBJECT)); break;
         case ICONST_M1      : // fall through
         case ICONST_0       : // fall through
         case ICONST_1       : // fall through
         case ICONST_2       : // fall through
         case ICONST_3       : // fall through
         case ICONST_4       : // fall through
-        case ICONST_5       : frameState.ipush(appendConstant(Constant.forInt(opcode - ICONST_0))); break;
+        case ICONST_5       : frameState.ipush(appendConstant(JavaConstant.forInt(opcode - ICONST_0))); break;
         case LCONST_0       : // fall through
-        case LCONST_1       : frameState.lpush(appendConstant(Constant.forLong(opcode - LCONST_0))); break;
+        case LCONST_1       : frameState.lpush(appendConstant(JavaConstant.forLong(opcode - LCONST_0))); break;
         case FCONST_0       : // fall through
         case FCONST_1       : // fall through
-        case FCONST_2       : frameState.fpush(appendConstant(Constant.forFloat(opcode - FCONST_0))); break;
+        case FCONST_2       : frameState.fpush(appendConstant(JavaConstant.forFloat(opcode - FCONST_0))); break;
         case DCONST_0       : // fall through
-        case DCONST_1       : frameState.dpush(appendConstant(Constant.forDouble(opcode - DCONST_0))); break;
-        case BIPUSH         : frameState.ipush(appendConstant(Constant.forInt(stream.readByte()))); break;
-        case SIPUSH         : frameState.ipush(appendConstant(Constant.forInt(stream.readShort()))); break;
+        case DCONST_1       : frameState.dpush(appendConstant(JavaConstant.forDouble(opcode - DCONST_0))); break;
+        case BIPUSH         : frameState.ipush(appendConstant(JavaConstant.forInt(stream.readByte()))); break;
+        case SIPUSH         : frameState.ipush(appendConstant(JavaConstant.forInt(stream.readShort()))); break;
         case LDC            : // fall through
         case LDC_W          : // fall through
         case LDC2_W         : genLoadConstant(stream.readCPI(), opcode); break;

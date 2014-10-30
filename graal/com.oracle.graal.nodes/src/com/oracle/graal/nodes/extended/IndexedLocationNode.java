@@ -98,7 +98,7 @@ public class IndexedLocationNode extends LocationNode implements Canonicalizable
     @Override
     public Node canonical(CanonicalizerTool tool) {
         if (index.isConstant()) {
-            return ConstantLocationNode.create(getLocationIdentity(), getValueKind(), index.asConstant().asLong() * indexScaling + displacement);
+            return ConstantLocationNode.create(getLocationIdentity(), getValueKind(), index.asJavaConstant().asLong() * indexScaling + displacement);
         }
         return this;
     }

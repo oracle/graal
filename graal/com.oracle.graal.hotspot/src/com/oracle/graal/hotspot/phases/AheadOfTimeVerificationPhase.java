@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -57,7 +57,7 @@ public class AheadOfTimeVerificationPhase extends VerifyPhase<PhaseContext> {
     }
 
     private static boolean isNullReference(ConstantNode node) {
-        return isObject(node) && node.asConstant().isNull();
+        return isObject(node) && node.asJavaConstant().isNull();
     }
 
     private static boolean isDirectMethodHandle(ConstantNode node) {
@@ -80,7 +80,7 @@ public class AheadOfTimeVerificationPhase extends VerifyPhase<PhaseContext> {
             return false;
         }
 
-        Object o = HotSpotObjectConstant.asObject(node.asConstant());
+        Object o = HotSpotObjectConstant.asObject(node.asJavaConstant());
         if (!(o instanceof String)) {
             return false;
         }

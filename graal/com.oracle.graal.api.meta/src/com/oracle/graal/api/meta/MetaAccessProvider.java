@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -67,11 +67,11 @@ public interface MetaAccessProvider {
     ResolvedJavaField lookupJavaField(Field reflectionField);
 
     /**
-     * Returns the resolved Java type of the given {@link Constant} object.
+     * Returns the resolved Java type of the given {@link JavaConstant} object.
      *
      * @return {@code null} if {@code constant.isNull() || !constant.kind.isObject()}
      */
-    ResolvedJavaType lookupJavaType(Constant constant);
+    ResolvedJavaType lookupJavaType(JavaConstant constant);
 
     /**
      * Returns the number of bytes occupied by this constant value or constant object.
@@ -79,7 +79,7 @@ public interface MetaAccessProvider {
      * @param constant the constant whose bytes should be measured
      * @return the number of bytes occupied by this constant
      */
-    long getMemorySize(Constant constant);
+    long getMemorySize(JavaConstant constant);
 
     /**
      * Parses a <a
@@ -98,11 +98,11 @@ public interface MetaAccessProvider {
      *
      * @return the encoded value as an integer
      */
-    Constant encodeDeoptActionAndReason(DeoptimizationAction action, DeoptimizationReason reason, int debugId);
+    JavaConstant encodeDeoptActionAndReason(DeoptimizationAction action, DeoptimizationReason reason, int debugId);
 
-    DeoptimizationReason decodeDeoptReason(Constant constant);
+    DeoptimizationReason decodeDeoptReason(JavaConstant constant);
 
-    DeoptimizationAction decodeDeoptAction(Constant constant);
+    DeoptimizationAction decodeDeoptAction(JavaConstant constant);
 
-    int decodeDebugId(Constant constant);
+    int decodeDebugId(JavaConstant constant);
 }

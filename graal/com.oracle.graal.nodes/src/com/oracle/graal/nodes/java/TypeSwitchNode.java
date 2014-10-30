@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -85,9 +85,9 @@ public class TypeSwitchNode extends SwitchNode implements LIRLowerable, Simplifi
     public boolean isSorted() {
         Kind kind = value().getKind();
         if (kind.isNumericInteger()) {
-            Constant lastKey = null;
+            JavaConstant lastKey = null;
             for (int i = 0; i < keyCount(); i++) {
-                Constant key = keyAt(i);
+                JavaConstant key = keyAt(i);
                 if (lastKey != null && key.asLong() <= lastKey.asLong()) {
                     return false;
                 }
@@ -105,7 +105,7 @@ public class TypeSwitchNode extends SwitchNode implements LIRLowerable, Simplifi
     }
 
     @Override
-    public Constant keyAt(int index) {
+    public JavaConstant keyAt(int index) {
         return keys[index].getEncoding(Representation.ObjectHub);
     }
 
@@ -130,11 +130,11 @@ public class TypeSwitchNode extends SwitchNode implements LIRLowerable, Simplifi
     @Override
     public void simplify(SimplifierTool tool) {
         if (value() instanceof ConstantNode) {
-            Constant constant = value().asConstant();
+            JavaConstant constant = value().asJavaConstant();
 
             int survivingEdge = keySuccessorIndex(keyCount());
             for (int i = 0; i < keyCount(); i++) {
-                Constant typeHub = keyAt(i);
+                JavaConstant typeHub = keyAt(i);
                 assert constant.getKind() == typeHub.getKind();
                 Boolean equal = tool.getConstantReflection().constantEquals(constant, typeHub);
                 if (equal == null) {

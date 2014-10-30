@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -60,19 +60,19 @@ public interface ResolvedJavaField extends JavaField, LocationIdentity, Modifier
      * @return the constant value of this field or {@code null} if this field is not considered
      *         constant by the runtime
      */
-    Constant readConstantValue(Constant receiver);
+    JavaConstant readConstantValue(JavaConstant receiver);
 
     /**
      * Gets the current value of this field for a given object, if available. There is no guarantee
      * that the same value will be returned by this method for a field unless the field is
-     * considered to be {@linkplain #readConstantValue(Constant) constant} by the runtime.
+     * considered to be {@linkplain #readConstantValue(JavaConstant) constant} by the runtime.
      *
      * @param receiver object from which this field's value is to be read. This value is ignored if
      *            this field is static.
      * @return the value of this field or {@code null} if the value is not available (e.g., because
      *         the field holder is not yet initialized).
      */
-    Constant readValue(Constant receiver);
+    JavaConstant readValue(JavaConstant receiver);
 
     /**
      * Returns the {@link ResolvedJavaType} object representing the class or interface that declares

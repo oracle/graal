@@ -93,7 +93,7 @@ public class PTXLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public boolean canInlineConstant(Constant c) {
+    public boolean canInlineConstant(JavaConstant c) {
         switch (c.getKind()) {
             case Long:
                 return NumUtil.isInt(c.asLong()) && !getCodeCache().needsDataPatch(c);
@@ -168,9 +168,9 @@ public class PTXLIRGenerator extends LIRGenerator {
                 convertedIndex = emitSignExtend(index, 32, 64);
                 if (scale != 1) {
                     if (CodeUtil.isPowerOf2(scale)) {
-                        indexRegister = emitShl(convertedIndex, Constant.forInt(CodeUtil.log2(scale)));
+                        indexRegister = emitShl(convertedIndex, JavaConstant.forInt(CodeUtil.log2(scale)));
                     } else {
-                        indexRegister = emitMul(convertedIndex, Constant.forInt(scale));
+                        indexRegister = emitMul(convertedIndex, JavaConstant.forInt(scale));
                     }
                 } else {
                     indexRegister = convertedIndex;
@@ -696,13 +696,13 @@ public class PTXLIRGenerator extends LIRGenerator {
             assert inputVal.getKind() == Kind.Long;
             Variable result = newVariable(LIRKind.derive(inputVal).changeType(Kind.Long));
             long mask = CodeUtil.mask(fromBits);
-            append(new Op2Stack(LAND, result, inputVal, Constant.forLong(mask)));
+            append(new Op2Stack(LAND, result, inputVal, JavaConstant.forLong(mask)));
             return result;
         } else {
             assert inputVal.getKind() == Kind.Int;
             Variable result = newVariable(LIRKind.derive(inputVal).changeType(Kind.Int));
             int mask = (int) CodeUtil.mask(fromBits);
-            append(new Op2Stack(IAND, result, inputVal, Constant.forInt(mask)));
+            append(new Op2Stack(IAND, result, inputVal, JavaConstant.forInt(mask)));
             if (toBits > 32) {
                 Variable longResult = newVariable(LIRKind.derive(inputVal).changeType(Kind.Long));
                 emitMove(longResult, result);

@@ -62,7 +62,7 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public boolean canInlineConstant(Constant c) {
+    public boolean canInlineConstant(JavaConstant c) {
         switch (c.getKind()) {
             case Long:
                 return NumUtil.isInt(c.asLong()) && !getCodeCache().needsDataPatch(c);
@@ -125,7 +125,7 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
                 Value indexRegister;
                 Value convertedIndex = index.getKind() == Kind.Long ? index : this.emitSignExtend(index, 32, 64);
                 if (scale != 1) {
-                    indexRegister = emitUMul(convertedIndex, Constant.forInt(scale));
+                    indexRegister = emitUMul(convertedIndex, JavaConstant.forInt(scale));
                 } else {
                     indexRegister = convertedIndex;
                 }
@@ -199,13 +199,13 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
     public void emitIntegerTestBranch(Value left, Value right, LabelRef trueDestination, LabelRef falseDestination, double trueDestinationProbability) {
         Variable result = emitAnd(left, right);
         Variable dummyResult = newVariable(left.getLIRKind());
-        append(new CompareBranchOp(mapKindToCompareOp(result.getKind()), Condition.EQ, result, Constant.forInt(0), dummyResult, dummyResult, trueDestination, falseDestination, false));
+        append(new CompareBranchOp(mapKindToCompareOp(result.getKind()), Condition.EQ, result, JavaConstant.forInt(0), dummyResult, dummyResult, trueDestination, falseDestination, false));
     }
 
     @Override
     public Variable emitIntegerTestMove(Value left, Value right, Value trueValue, Value falseValue) {
         Variable result = emitAnd(left, right);
-        append(new CondMoveOp(mapKindToCompareOp(result.getKind()), result, Constant.forInt(0), result, Condition.EQ, load(trueValue), load(falseValue)));
+        append(new CondMoveOp(mapKindToCompareOp(result.getKind()), result, JavaConstant.forInt(0), result, Condition.EQ, load(trueValue), load(falseValue)));
         return result;
     }
 
@@ -822,7 +822,7 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
      * Graal generates for any switch construct appearing in Java bytecode.
      */
     @Override
-    public void emitStrategySwitch(Constant[] keyConstants, double[] keyProbabilities, LabelRef[] keyTargets, LabelRef defaultTarget, Variable value) {
+    public void emitStrategySwitch(JavaConstant[] keyConstants, double[] keyProbabilities, LabelRef[] keyTargets, LabelRef defaultTarget, Variable value) {
         emitStrategySwitch(new SwitchStrategy.SequentialStrategy(keyProbabilities, keyConstants), value, keyTargets, defaultTarget);
     }
 

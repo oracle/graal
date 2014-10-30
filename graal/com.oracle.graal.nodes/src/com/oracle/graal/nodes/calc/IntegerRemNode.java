@@ -49,13 +49,13 @@ public class IntegerRemNode extends FixedBinaryNode implements Lowerable, LIRLow
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
         if (forX.isConstant() && forY.isConstant()) {
             @SuppressWarnings("hiding")
-            long y = forY.asConstant().asLong();
+            long y = forY.asJavaConstant().asLong();
             if (y == 0) {
                 return this; // this will trap, can not canonicalize
             }
-            return ConstantNode.forIntegerStamp(stamp(), forX.asConstant().asLong() % y);
+            return ConstantNode.forIntegerStamp(stamp(), forX.asJavaConstant().asLong() % y);
         } else if (forY.isConstant()) {
-            long c = forY.asConstant().asLong();
+            long c = forY.asJavaConstant().asLong();
             if (c == 1 || c == -1) {
                 return ConstantNode.forIntegerStamp(stamp(), 0);
             } else if (c > 0 && CodeUtil.isPowerOf2(c) && forX.stamp() instanceof IntegerStamp && ((IntegerStamp) forX.stamp()).isPositive()) {

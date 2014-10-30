@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -383,13 +383,13 @@ public class HotSpotConstantPool extends CompilerObject implements ConstantPool 
         final JVM_CONSTANT tag = getTagAt(cpi);
         switch (tag) {
             case Integer:
-                return Constant.forInt(getIntAt(cpi));
+                return JavaConstant.forInt(getIntAt(cpi));
             case Long:
-                return Constant.forLong(getLongAt(cpi));
+                return JavaConstant.forLong(getLongAt(cpi));
             case Float:
-                return Constant.forFloat(getFloatAt(cpi));
+                return JavaConstant.forFloat(getFloatAt(cpi));
             case Double:
-                return Constant.forDouble(getDoubleAt(cpi));
+                return JavaConstant.forDouble(getDoubleAt(cpi));
             case Class:
             case UnresolvedClass:
             case UnresolvedClassInError:
@@ -421,7 +421,7 @@ public class HotSpotConstantPool extends CompilerObject implements ConstantPool 
     }
 
     @Override
-    public Constant lookupAppendix(int cpi, int opcode) {
+    public JavaConstant lookupAppendix(int cpi, int opcode) {
         assert Bytecodes.isInvoke(opcode);
         final int index = toConstantPoolIndex(cpi, opcode);
         Object result = runtime().getCompilerToVM().lookupAppendixInPool(metaspaceConstantPool, index);

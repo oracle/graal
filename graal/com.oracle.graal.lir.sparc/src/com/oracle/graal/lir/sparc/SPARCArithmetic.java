@@ -114,13 +114,13 @@ public enum SPARCArithmetic {
         @Def({REG, HINT}) protected AllocatableValue result;
         @Use({REG}) protected Value x;
         @State protected LIRFrameState state;
-        protected Constant y;
+        protected JavaConstant y;
 
-        public BinaryRegConst(SPARCArithmetic opcode, AllocatableValue result, Value x, Constant y) {
+        public BinaryRegConst(SPARCArithmetic opcode, AllocatableValue result, Value x, JavaConstant y) {
             this(opcode, result, x, y, null);
         }
 
-        public BinaryRegConst(SPARCArithmetic opcode, AllocatableValue result, Value x, Constant y, LIRFrameState state) {
+        public BinaryRegConst(SPARCArithmetic opcode, AllocatableValue result, Value x, JavaConstant y, LIRFrameState state) {
             this.opcode = opcode;
             this.result = result;
             this.x = x;
@@ -175,7 +175,7 @@ public enum SPARCArithmetic {
         }
     }
 
-    private static void emitRegConstant(CompilationResultBuilder crb, SPARCMacroAssembler masm, SPARCArithmetic opcode, Value dst, Value src1, Constant src2, LIRFrameState info,
+    private static void emitRegConstant(CompilationResultBuilder crb, SPARCMacroAssembler masm, SPARCArithmetic opcode, Value dst, Value src1, JavaConstant src2, LIRFrameState info,
                     SPARCDelayedControlTransfer delaySlotLir) {
         assert isSimm13(crb.asIntConst(src2)) : src2;
         int constant = crb.asIntConst(src2);

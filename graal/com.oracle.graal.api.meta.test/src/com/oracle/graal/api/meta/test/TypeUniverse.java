@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -50,7 +50,7 @@ public class TypeUniverse {
     public final SnippetReflectionProvider snippetReflection;
     public final Collection<Class<?>> classes = new HashSet<>();
     public final Map<Class<?>, Class<?>> arrayClasses = new HashMap<>();
-    public final List<Constant> constants = new ArrayList<>();
+    public final List<JavaConstant> constants = new ArrayList<>();
 
     public TypeUniverse() {
         Providers providers = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getProviders();
@@ -77,11 +77,11 @@ public class TypeUniverse {
         for (Class<?> c : initialClasses) {
             addClass(c);
         }
-        for (Field f : Constant.class.getDeclaredFields()) {
+        for (Field f : JavaConstant.class.getDeclaredFields()) {
             int mods = f.getModifiers();
-            if (f.getType() == Constant.class && Modifier.isPublic(mods) && Modifier.isStatic(mods) && Modifier.isFinal(mods)) {
+            if (f.getType() == JavaConstant.class && Modifier.isPublic(mods) && Modifier.isStatic(mods) && Modifier.isFinal(mods)) {
                 try {
-                    Constant c = (Constant) f.get(null);
+                    JavaConstant c = (JavaConstant) f.get(null);
                     if (c != null) {
                         constants.add(c);
                     }

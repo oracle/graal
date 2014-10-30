@@ -123,9 +123,9 @@ public class ReadNode extends FloatableAccessNode implements LIRLowerable, Canon
                 if ((location.getLocationIdentity() == LocationIdentity.FINAL_LOCATION || location.getLocationIdentity() == LocationIdentity.ARRAY_LENGTH_LOCATION) &&
                                 location instanceof ConstantLocationNode) {
                     long displacement = ((ConstantLocationNode) location).getDisplacement();
-                    Constant base = object.asConstant();
+                    JavaConstant base = object.asJavaConstant();
                     if (base != null) {
-                        Constant constant;
+                        JavaConstant constant;
                         if (read.stamp() instanceof PrimitiveStamp) {
                             PrimitiveStamp stamp = (PrimitiveStamp) read.stamp();
                             constant = tool.getConstantReflection().readRawConstant(stamp.getStackKind(), base, displacement, stamp.getBits());

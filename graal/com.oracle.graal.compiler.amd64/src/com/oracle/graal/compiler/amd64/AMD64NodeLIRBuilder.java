@@ -110,7 +110,7 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
         Kind kind = getMemoryKind(access);
 
         if (value.isConstant()) {
-            Constant constant = value.asConstant();
+            JavaConstant constant = value.asJavaConstant();
             if (kind == Kind.Long && !NumUtil.isInt(constant.asLong())) {
                 // Only imm32 as long
                 return null;
@@ -145,7 +145,7 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
                 double trueLabelProbability = ifNode.probability(ifNode.trueSuccessor());
                 Value other;
                 if (value.isConstant()) {
-                    other = value.asConstant();
+                    other = value.asJavaConstant();
                 } else {
                     other = operand(value);
                 }
@@ -165,7 +165,7 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
             if (kind != kind.getStackKind()) {
                 return null;
             }
-            Constant constant = value.asConstant();
+            JavaConstant constant = value.asJavaConstant();
             if (kind == Kind.Long && !NumUtil.isInt(constant.asLong())) {
                 // Only imm32 as long
                 return null;
@@ -355,7 +355,7 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
 
     @MatchRule("(Or (LeftShift=lshift value Constant) (UnsignedRightShift=rshift value Constant))")
     public ComplexMatchResult rotateLeftConstant(LeftShiftNode lshift, UnsignedRightShiftNode rshift) {
-        if ((lshift.getShiftAmountMask() & (lshift.getY().asConstant().asInt() + rshift.getY().asConstant().asInt())) == 0) {
+        if ((lshift.getShiftAmountMask() & (lshift.getY().asJavaConstant().asInt() + rshift.getY().asJavaConstant().asInt())) == 0) {
             return builder -> getLIRGeneratorTool().emitRol(operand(lshift.getX()), operand(lshift.getY()));
         }
         return null;
@@ -363,7 +363,7 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
 
     @MatchRule("(Or (LeftShift value (Sub Constant=delta shiftAmount)) (UnsignedRightShift value shiftAmount))")
     public ComplexMatchResult rotateRightVariable(ValueNode value, ConstantNode delta, ValueNode shiftAmount) {
-        if (delta.asConstant().asLong() == 0 || delta.asConstant().asLong() == 32) {
+        if (delta.asJavaConstant().asLong() == 0 || delta.asJavaConstant().asLong() == 32) {
             return builder -> getLIRGeneratorTool().emitRor(operand(value), operand(shiftAmount));
         }
         return null;
@@ -371,7 +371,7 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
 
     @MatchRule("(Or (LeftShift value shiftAmount) (UnsignedRightShift value (Sub Constant=delta shiftAmount)))")
     public ComplexMatchResult rotateLeftVariable(ValueNode value, ValueNode shiftAmount, ConstantNode delta) {
-        if (delta.asConstant().asLong() == 0 || delta.asConstant().asLong() == 32) {
+        if (delta.asJavaConstant().asLong() == 0 || delta.asJavaConstant().asLong() == 32) {
             return builder -> getLIRGeneratorTool().emitRol(operand(value), operand(shiftAmount));
         }
         return null;

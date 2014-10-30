@@ -595,7 +595,7 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, Baseli
     }
 
     @Override
-    protected Value appendConstant(Constant constant) {
+    protected Value appendConstant(JavaConstant constant) {
         return gen.emitLoadConstant(constant.getLIRKind(), constant);
     }
 
@@ -665,7 +665,7 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, Baseli
         Debug.log("moveConstantsToVariables: framestate before: %s", frameState);
         for (int i = 0; i < frameState.stackSize(); i++) {
             Value src = frameState.stackAt(i);
-            if (src instanceof Constant) {
+            if (src instanceof JavaConstant) {
                 AllocatableValue dst = gen.newVariable(src.getLIRKind());
                 gen.emitMove(dst, src);
                 frameState.storeStack(i, dst);
@@ -674,7 +674,7 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, Baseli
         }
         for (int i = 0; i < frameState.localsSize(); i++) {
             Value src = frameState.localAt(i);
-            if (src instanceof Constant) {
+            if (src instanceof JavaConstant) {
                 AllocatableValue dst = gen.newVariable(src.getLIRKind());
                 gen.emitMove(dst, src);
                 frameState.storeLocal(i, dst);

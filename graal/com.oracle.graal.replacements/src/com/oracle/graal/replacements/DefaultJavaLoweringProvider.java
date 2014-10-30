@@ -277,7 +277,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         Kind readKind = load.accessKind();
         ValueNode[] base = null;
         ValueNode object = load.object();
-        if (object.isConstant() && object.asConstant().isDefaultForKind()) {
+        if (object.isConstant() && object.asJavaConstant().isDefaultForKind()) {
             base = new ValueNode[1];
         }
         LocationNode location = createLocation(load, base);
@@ -295,7 +295,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         StructuredGraph graph = store.graph();
         ValueNode object = store.object();
         ValueNode[] base = null;
-        if (object.isConstant() && object.asConstant().isDefaultForKind()) {
+        if (object.isConstant() && object.asJavaConstant().isDefaultForKind()) {
             base = new ValueNode[1];
         }
         LocationNode location = createLocation(store, base);
@@ -360,7 +360,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                     }
                     if (value == null) {
                         omittedValues.set(valuePos);
-                    } else if (!(value.isConstant() && value.asConstant().isDefaultForKind())) {
+                    } else if (!(value.isConstant() && value.asJavaConstant().isDefaultForKind())) {
                         // Constant.illegal is always the defaultForKind, so it is skipped
                         Kind valueKind = value.getKind();
                         Kind entryKind = virtual.entryKind(i);
@@ -402,7 +402,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                         ValueNode value = commit.getValues().get(valuePos);
                         assert value instanceof VirtualObjectNode;
                         ValueNode allocValue = allocations[commit.getVirtualObjects().indexOf(value)];
-                        if (!(allocValue.isConstant() && allocValue.asConstant().isDefaultForKind())) {
+                        if (!(allocValue.isConstant() && allocValue.asJavaConstant().isDefaultForKind())) {
                             assert virtual.entryKind(i) == Kind.Object && allocValue.getKind() == Kind.Object;
                             LocationNode location;
                             BarrierType barrierType;
@@ -611,7 +611,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     protected LocationNode createLocation(ValueNode offsetNode, LocationIdentity locationIdentity, Kind accessKind, ValueNode[] base) {
         ValueNode offset = offsetNode;
         if (offset.isConstant()) {
-            long offsetValue = offset.asConstant().asLong();
+            long offsetValue = offset.asJavaConstant().asLong();
             return ConstantLocationNode.create(locationIdentity, accessKind, offsetValue, offset.graph());
         }
 
@@ -628,7 +628,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         if (offset instanceof AddNode) {
             AddNode integerAddNode = (AddNode) offset;
             if (integerAddNode.getY() instanceof ConstantNode) {
-                displacement = integerAddNode.getY().asConstant().asLong();
+                displacement = integerAddNode.getY().asJavaConstant().asLong();
                 offset = integerAddNode.getX();
             }
         }
@@ -648,7 +648,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             if (offset instanceof AddNode) {
                 integerAddNode = (AddNode) offset;
                 if (integerAddNode.getY() instanceof ConstantNode) {
-                    displacement = integerAddNode.getY().asConstant().asLong();
+                    displacement = integerAddNode.getY().asJavaConstant().asLong();
                     offset = integerAddNode.getX();
                 }
             }
@@ -656,7 +656,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         if (offset instanceof LeftShiftNode) {
             LeftShiftNode leftShiftNode = (LeftShiftNode) offset;
             if (leftShiftNode.getY() instanceof ConstantNode) {
-                long shift = leftShiftNode.getY().asConstant().asLong();
+                long shift = leftShiftNode.getY().asJavaConstant().asLong();
                 if (shift >= 1 && shift <= 3) {
                     if (shift == 1) {
                         indexScaling = 2;
@@ -696,8 +696,8 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         }
 
         if (arrayLength.isConstant() && n.index().isConstant()) {
-            int l = arrayLength.asConstant().asInt();
-            int i = n.index().asConstant().asInt();
+            int l = arrayLength.asJavaConstant().asInt();
+            int i = n.index().asJavaConstant().asInt();
             if (i >= 0 && i < l) {
                 // unneeded range check
                 return null;

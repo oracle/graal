@@ -96,7 +96,7 @@ public class MathIntrinsicNode extends UnaryNode implements ArithmeticLIRLowerab
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
         if (forValue.isConstant()) {
-            double ret = doCompute(forValue.asConstant().asDouble(), operation());
+            double ret = doCompute(forValue.asJavaConstant().asDouble(), operation());
             return ConstantNode.forDouble(ret);
         }
         return this;

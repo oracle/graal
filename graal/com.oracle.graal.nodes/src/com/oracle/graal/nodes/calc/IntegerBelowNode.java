@@ -77,7 +77,7 @@ public class IntegerBelowNode extends CompareNode {
                 }
             }
         }
-        if (forX.isConstant() && forX.asConstant().asLong() == 0) {
+        if (forX.isConstant() && forX.asJavaConstant().asLong() == 0) {
             // 0 |<| y is the same as 0 != y
             return LogicNegationNode.create(CompareNode.createCompareNode(Condition.EQ, forX, forY));
         }

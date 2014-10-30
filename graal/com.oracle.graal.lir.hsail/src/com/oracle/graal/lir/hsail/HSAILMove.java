@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -77,8 +77,8 @@ public class HSAILMove {
         }
 
         private void checkForNullObjectInput() {
-            if (result.getKind() == Kind.Object && isConstant(input) && input.getKind() == Kind.Long && ((Constant) input).asLong() == 0) {
-                input = Constant.NULL_OBJECT;
+            if (result.getKind() == Kind.Object && isConstant(input) && input.getKind() == Kind.Long && ((JavaConstant) input).asLong() == 0) {
+                input = JavaConstant.NULL_OBJECT;
             }
         }
 
@@ -224,9 +224,9 @@ public class HSAILMove {
 
     public static class StoreConstantOp extends MemOp {
 
-        protected final Constant input;
+        protected final JavaConstant input;
 
-        public StoreConstantOp(Kind kind, HSAILAddressValue address, Constant input, LIRFrameState state) {
+        public StoreConstantOp(Kind kind, HSAILAddressValue address, JavaConstant input, LIRFrameState state) {
             super(kind, address, state);
             this.input = input;
         }

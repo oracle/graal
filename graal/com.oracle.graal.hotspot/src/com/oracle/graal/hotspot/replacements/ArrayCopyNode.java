@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -106,7 +106,7 @@ public class ArrayCopyNode extends BasicArrayCopyNode implements Virtualizable, 
             if (shouldUnroll()) {
                 final StructuredGraph copy = snippetGraph;
                 try (Scope s = Debug.scope("ArrayCopySnippetSpecialization", snippetGraph.method())) {
-                    unrollFixedLengthLoop(copy, getLength().asConstant().asInt(), tool);
+                    unrollFixedLengthLoop(copy, getLength().asJavaConstant().asInt(), tool);
                 } catch (Throwable e) {
                     throw Debug.handle(e);
                 }
@@ -116,7 +116,7 @@ public class ArrayCopyNode extends BasicArrayCopyNode implements Virtualizable, 
     }
 
     private boolean shouldUnroll() {
-        return getLength().isConstant() && getLength().asConstant().asInt() <= GraalOptions.MaximumEscapeAnalysisArrayLength.getValue();
+        return getLength().isConstant() && getLength().asJavaConstant().asInt() <= GraalOptions.MaximumEscapeAnalysisArrayLength.getValue();
     }
 
     /*

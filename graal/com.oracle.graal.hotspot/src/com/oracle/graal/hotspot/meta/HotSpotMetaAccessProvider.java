@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -52,7 +52,7 @@ public class HotSpotMetaAccessProvider implements MetaAccessProvider {
         return fromClass(clazz);
     }
 
-    public HotSpotResolvedObjectType lookupJavaType(Constant constant) {
+    public HotSpotResolvedObjectType lookupJavaType(JavaConstant constant) {
         if (constant.isNull() || !(constant instanceof HotSpotObjectConstant)) {
             return null;
         }
@@ -132,31 +132,31 @@ public class HotSpotMetaAccessProvider implements MetaAccessProvider {
     }
 
     @Override
-    public Constant encodeDeoptActionAndReason(DeoptimizationAction action, DeoptimizationReason reason, int debugId) {
+    public JavaConstant encodeDeoptActionAndReason(DeoptimizationAction action, DeoptimizationReason reason, int debugId) {
         HotSpotVMConfig config = runtime.getConfig();
         int actionValue = convertDeoptAction(action);
         int reasonValue = convertDeoptReason(reason);
         int debugValue = debugId & intMaskRight(config.deoptimizationDebugIdBits);
-        Constant c = Constant.forInt(~((debugValue << config.deoptimizationDebugIdShift) | (reasonValue << config.deoptimizationReasonShift) | (actionValue << config.deoptimizationActionShift)));
+        JavaConstant c = JavaConstant.forInt(~((debugValue << config.deoptimizationDebugIdShift) | (reasonValue << config.deoptimizationReasonShift) | (actionValue << config.deoptimizationActionShift)));
         assert c.asInt() < 0;
         return c;
     }
 
-    public DeoptimizationReason decodeDeoptReason(Constant constant) {
+    public DeoptimizationReason decodeDeoptReason(JavaConstant constant) {
         HotSpotVMConfig config = runtime.getConfig();
         int reasonValue = ((~constant.asInt()) >> config.deoptimizationReasonShift) & intMaskRight(config.deoptimizationReasonBits);
         DeoptimizationReason reason = convertDeoptReason(reasonValue);
         return reason;
     }
 
-    public DeoptimizationAction decodeDeoptAction(Constant constant) {
+    public DeoptimizationAction decodeDeoptAction(JavaConstant constant) {
         HotSpotVMConfig config = runtime.getConfig();
         int actionValue = ((~constant.asInt()) >> config.deoptimizationActionShift) & intMaskRight(config.deoptimizationActionBits);
         DeoptimizationAction action = convertDeoptAction(actionValue);
         return action;
     }
 
-    public int decodeDebugId(Constant constant) {
+    public int decodeDebugId(JavaConstant constant) {
         HotSpotVMConfig config = runtime.getConfig();
         return ((~constant.asInt()) >> config.deoptimizationDebugIdShift) & intMaskRight(config.deoptimizationDebugIdBits);
     }
@@ -293,7 +293,7 @@ public class HotSpotMetaAccessProvider implements MetaAccessProvider {
     }
 
     @Override
-    public long getMemorySize(Constant constant) {
+    public long getMemorySize(JavaConstant constant) {
         if (constant.getKind() == Kind.Object) {
             HotSpotResolvedObjectType lookupJavaType = this.lookupJavaType(constant);
 

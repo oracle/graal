@@ -93,12 +93,12 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator implements HotSp
         return config.narrowKlassBase;
     }
 
-    private static boolean canStoreConstant(Constant c) {
+    private static boolean canStoreConstant(JavaConstant c) {
         return !(c instanceof HotSpotObjectConstant);
     }
 
     @Override
-    public boolean canInlineConstant(Constant c) {
+    public boolean canInlineConstant(JavaConstant c) {
         if (c instanceof HotSpotObjectConstant) {
             return c.isNull();
         } else {
@@ -125,9 +125,9 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator implements HotSp
     public void emitStore(LIRKind kind, Value address, Value inputVal, LIRFrameState state) {
         HSAILAddressValue storeAddress = asAddressValue(address);
         if (isConstant(inputVal)) {
-            Constant c = asConstant(inputVal);
+            JavaConstant c = asConstant(inputVal);
             if (HotSpotCompressedNullConstant.COMPRESSED_NULL.equals(c)) {
-                c = Constant.INT_0;
+                c = JavaConstant.INT_0;
             }
             if (canStoreConstant(c)) {
                 append(new StoreConstantOp((Kind) kind.getPlatformKind(), storeAddress, c, state));
@@ -234,8 +234,8 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator implements HotSp
     @Override
     protected HSAILLIRInstruction createMove(AllocatableValue dst, Value src) {
         if (HotSpotCompressedNullConstant.COMPRESSED_NULL.equals(src)) {
-            return new MoveToRegOp(Kind.Int, dst, Constant.INT_0);
-        } else if (src instanceof HotSpotObjectConstant && HotSpotObjectConstant.isCompressed((Constant) src)) {
+            return new MoveToRegOp(Kind.Int, dst, JavaConstant.INT_0);
+        } else if (src instanceof HotSpotObjectConstant && HotSpotObjectConstant.isCompressed((JavaConstant) src)) {
             Variable uncompressed = newVariable(LIRKind.reference(Kind.Object));
             append(new MoveToRegOp(Kind.Object, uncompressed, src));
             CompressEncoding oopEncoding = config.getOopEncoding();
@@ -253,13 +253,13 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator implements HotSp
     /**
      * @return a compressed version of the incoming constant lifted from AMD64HotSpotLIRGenerator
      */
-    protected static Constant compress(Constant c, CompressEncoding encoding) {
+    protected static JavaConstant compress(JavaConstant c, CompressEncoding encoding) {
         if (c.getKind() == Kind.Long) {
             int compressedValue = (int) (((c.asLong() - encoding.base) >> encoding.shift) & 0xffffffffL);
             if (c instanceof HotSpotMetaspaceConstant) {
                 return HotSpotMetaspaceConstant.forMetaspaceObject(Kind.Int, compressedValue, HotSpotMetaspaceConstant.getMetaspaceObject(c), true);
             } else {
-                return Constant.forIntegerKind(Kind.Int, compressedValue);
+                return JavaConstant.forIntegerKind(Kind.Int, compressedValue);
             }
         } else {
             throw GraalInternalError.shouldNotReachHere();

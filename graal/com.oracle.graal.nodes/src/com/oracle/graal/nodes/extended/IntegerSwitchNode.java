@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -101,8 +101,8 @@ public class IntegerSwitchNode extends SwitchNode implements LIRLowerable, Simpl
      * @return the key at that index
      */
     @Override
-    public Constant keyAt(int i) {
-        return Constant.forInt(keys[i]);
+    public JavaConstant keyAt(int i) {
+        return JavaConstant.forInt(keys[i]);
     }
 
     @Override
@@ -130,7 +130,7 @@ public class IntegerSwitchNode extends SwitchNode implements LIRLowerable, Simpl
             tool.addToWorkList(defaultSuccessor());
             graph().removeSplitPropagate(this, defaultSuccessor());
         } else if (value() instanceof ConstantNode) {
-            int constant = value().asConstant().asInt();
+            int constant = value().asJavaConstant().asInt();
 
             int survivingEdge = keySuccessorIndex(keyCount());
             for (int i = 0; i < keyCount(); i++) {

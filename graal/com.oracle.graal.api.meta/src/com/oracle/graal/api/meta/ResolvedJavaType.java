@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -58,7 +58,7 @@ public interface ResolvedJavaType extends JavaType, ModifiersProvider {
      * @param r the part of this type
      * @return a constant representing a reference to the specified part of this type
      */
-    Constant getEncoding(Representation r);
+    JavaConstant getEncoding(Representation r);
 
     /**
      * Checks whether this type has a finalizer method.
@@ -154,7 +154,7 @@ public interface ResolvedJavaType extends JavaType, ModifiersProvider {
      * @param obj the object to test
      * @return {@code true} if the object is an instance of this type
      */
-    boolean isInstance(Constant obj);
+    boolean isInstance(JavaConstant obj);
 
     /**
      * Returns this type if it is an exact type otherwise returns null. This type is exact if it is
@@ -343,7 +343,7 @@ public interface ResolvedJavaType extends JavaType, ModifiersProvider {
      * Creates a new array with this type as the component type and the specified length. This
      * method is similar to {@link Array#newInstance(Class, int)}.
      */
-    Constant newArray(int length);
+    JavaConstant newArray(int length);
 
     /**
      * Returns true if this type represents and interface and it should be trusted even in places

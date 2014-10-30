@@ -179,7 +179,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
 
     @Override
     public void emitDeoptimizeCaller(DeoptimizationAction action, DeoptimizationReason reason) {
-        moveDeoptValuesToThread(getMetaAccess().encodeDeoptActionAndReason(action, reason, 0), Constant.NULL_OBJECT);
+        moveDeoptValuesToThread(getMetaAccess().encodeDeoptActionAndReason(action, reason, 0), JavaConstant.NULL_OBJECT);
         append(new SPARCHotSpotDeoptimizeCallerOp());
     }
 
@@ -191,7 +191,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
         return result;
     }
 
-    private static boolean canStoreConstant(Constant c) {
+    private static boolean canStoreConstant(JavaConstant c) {
         // SPARC can only store integer null constants (via g0)
         switch (c.getKind()) {
             case Float:
@@ -206,7 +206,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
     public void emitStore(LIRKind kind, Value address, Value inputVal, LIRFrameState state) {
         SPARCAddressValue storeAddress = asAddressValue(address);
         if (isConstant(inputVal)) {
-            Constant c = asConstant(inputVal);
+            JavaConstant c = asConstant(inputVal);
             if (canStoreConstant(c)) {
                 append(new StoreConstantOp((Kind) kind.getPlatformKind(), storeAddress, c, state));
                 return;

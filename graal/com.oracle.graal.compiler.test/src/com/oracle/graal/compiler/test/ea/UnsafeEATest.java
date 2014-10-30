@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -52,7 +52,7 @@ public class UnsafeEATest extends EATestBase {
 
     @Test
     public void testSimpleInt() {
-        testEscapeAnalysis("testSimpleIntSnippet", Constant.forInt(101), false);
+        testEscapeAnalysis("testSimpleIntSnippet", JavaConstant.forInt(101), false);
     }
 
     public static int testSimpleIntSnippet() {
@@ -74,7 +74,7 @@ public class UnsafeEATest extends EATestBase {
 
     @Test
     public void testSimpleDouble() {
-        testEscapeAnalysis("testSimpleDoubleSnippet", Constant.forDouble(10.1), false);
+        testEscapeAnalysis("testSimpleDoubleSnippet", JavaConstant.forDouble(10.1), false);
     }
 
     public static double testSimpleDoubleSnippet() {

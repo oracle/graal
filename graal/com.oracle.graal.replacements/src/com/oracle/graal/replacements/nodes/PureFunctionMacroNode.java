@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,7 +43,7 @@ public abstract class PureFunctionMacroNode extends MacroStateSplitNode implemen
      * This method should return either a constant that represents the result of the function, or
      * null if no such result could be determined.
      */
-    protected abstract Constant evaluate(Constant param, MetaAccessProvider metaAccess);
+    protected abstract JavaConstant evaluate(JavaConstant param, MetaAccessProvider metaAccess);
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
@@ -52,7 +52,7 @@ public abstract class PureFunctionMacroNode extends MacroStateSplitNode implemen
         } else {
             ValueNode param = arguments.get(0);
             if (param.isConstant()) {
-                Constant constant = evaluate(param.asConstant(), tool.getMetaAccess());
+                JavaConstant constant = evaluate(param.asJavaConstant(), tool.getMetaAccess());
                 if (constant != null) {
                     return ConstantNode.forConstant(constant, tool.getMetaAccess());
                 }

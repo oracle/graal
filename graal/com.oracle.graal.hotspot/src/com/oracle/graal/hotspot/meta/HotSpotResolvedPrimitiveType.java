@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -114,7 +114,7 @@ public final class HotSpotResolvedPrimitiveType extends HotSpotResolvedJavaType 
     }
 
     @Override
-    public Constant getEncoding(Representation r) {
+    public JavaConstant getEncoding(Representation r) {
         throw GraalInternalError.unimplemented("HotSpotResolvedPrimitiveType.getEncoding");
     }
 
@@ -148,7 +148,7 @@ public final class HotSpotResolvedPrimitiveType extends HotSpotResolvedJavaType 
     }
 
     @Override
-    public boolean isInstance(Constant obj) {
+    public boolean isInstance(JavaConstant obj) {
         return false;
     }
 
@@ -274,7 +274,7 @@ public final class HotSpotResolvedPrimitiveType extends HotSpotResolvedJavaType 
     }
 
     @Override
-    public Constant newArray(int length) {
+    public JavaConstant newArray(int length) {
         return HotSpotObjectConstant.forObject(Array.newInstance(mirror(), length));
     }
 

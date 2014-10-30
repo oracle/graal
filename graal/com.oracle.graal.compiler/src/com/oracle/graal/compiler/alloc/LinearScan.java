@@ -2227,12 +2227,12 @@ public final class LinearScan {
      * @param interval The interval for this defined value.
      * @return Returns the value which is moved to the instruction and which can be reused at all
      *         reload-locations in case the interval of this instruction is spilled. Currently this
-     *         can only be a {@link Constant}.
+     *         can only be a {@link JavaConstant}.
      */
-    public static Constant getMaterializedValue(LIRInstruction op, Value operand, Interval interval) {
+    public static JavaConstant getMaterializedValue(LIRInstruction op, Value operand, Interval interval) {
         if (op instanceof MoveOp) {
             MoveOp move = (MoveOp) op;
-            if (move.getInput() instanceof Constant) {
+            if (move.getInput() instanceof JavaConstant) {
                 /*
                  * Check if the interval has any uses which would accept an stack location (priority
                  * == ShouldHaveRegister). Rematerialization of such intervals can result in a
@@ -2247,7 +2247,7 @@ public final class LinearScan {
                         return null;
                     }
                 }
-                return (Constant) move.getInput();
+                return (JavaConstant) move.getInput();
             }
         }
         return null;

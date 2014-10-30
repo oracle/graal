@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -67,7 +67,7 @@ public class PartialEvaluator {
 
     private final Providers providers;
     private final CanonicalizerPhase canonicalizer;
-    private Set<Constant> constantReceivers;
+    private Set<JavaConstant> constantReceivers;
     private final TruffleCache truffleCache;
     private final SnippetReflectionProvider snippetReflection;
     private final ResolvedJavaMethod callDirectMethod;
@@ -205,7 +205,7 @@ public class PartialEvaluator {
 
     private void createHistogram() {
         DebugHistogram histogram = Debug.createHistogram("Expanded Truffle Nodes");
-        for (Constant c : constantReceivers) {
+        for (JavaConstant c : constantReceivers) {
             String javaName = providers.getMetaAccess().lookupJavaType(c).toJavaName(false);
 
             // The DSL uses nested classes with redundant names - only show the inner class
@@ -231,7 +231,7 @@ public class PartialEvaluator {
                 try (Indent id1 = Debug.logAndIndent("try inlining %s, kind = %s", methodCallTargetNode.targetMethod(), kind)) {
                     if (kind == InvokeKind.Static || kind == InvokeKind.Special) {
                         if ((TraceTruffleCompilationHistogram.getValue() || TraceTruffleCompilationDetails.getValue()) && kind == InvokeKind.Special && methodCallTargetNode.receiver().isConstant()) {
-                            constantReceivers.add(methodCallTargetNode.receiver().asConstant());
+                            constantReceivers.add(methodCallTargetNode.receiver().asJavaConstant());
                         }
 
                         Replacements replacements = providers.getReplacements();
@@ -296,7 +296,7 @@ public class PartialEvaluator {
             for (ParameterNode param : graphCopy.getNodes(ParameterNode.class).snapshot()) {
                 ValueNode arg = arguments.get(param.index());
                 if (arg.isConstant()) {
-                    Constant constant = arg.asConstant();
+                    JavaConstant constant = arg.asJavaConstant();
                     param.usages().snapshotTo(modifiedNodes);
                     param.replaceAndDelete(ConstantNode.forConstant(constant, phaseContext.getMetaAccess(), graphCopy));
                 } else {
@@ -304,7 +304,7 @@ public class PartialEvaluator {
                     if (length != null && length.isConstant()) {
                         param.usages().snapshotTo(modifiedNodes);
                         ParameterNode newParam = graphCopy.addWithoutUnique(ParameterNode.create(param.index(), param.stamp()));
-                        param.replaceAndDelete(graphCopy.addWithoutUnique(PiArrayNode.create(newParam, ConstantNode.forInt(length.asConstant().asInt(), graphCopy), param.stamp())));
+                        param.replaceAndDelete(graphCopy.addWithoutUnique(PiArrayNode.create(newParam, ConstantNode.forInt(length.asJavaConstant().asInt(), graphCopy), param.stamp())));
                     }
                 }
             }
@@ -434,7 +434,7 @@ public class PartialEvaluator {
             throw new AssertionError(String.format("Method argument for method '%s' is not constant.", callDirectMethod.toString()));
         }
 
-        Constant constantCallNode = node.asConstant();
+        JavaConstant constantCallNode = node.asJavaConstant();
         Object value = snippetReflection.asObject(constantCallNode);
 
         if (!(value instanceof OptimizedDirectCallNode)) {

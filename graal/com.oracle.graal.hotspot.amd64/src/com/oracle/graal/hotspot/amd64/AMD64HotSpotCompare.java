@@ -41,9 +41,9 @@ public class AMD64HotSpotCompare {
     public static class HotSpotCompareConstantOp extends AMD64LIRInstruction {
 
         @Use({REG}) protected AllocatableValue x;
-        protected Constant y;
+        protected JavaConstant y;
 
-        public HotSpotCompareConstantOp(AllocatableValue x, Constant y) {
+        public HotSpotCompareConstantOp(AllocatableValue x, JavaConstant y) {
             this.x = x;
             this.y = y;
         }
@@ -83,9 +83,9 @@ public class AMD64HotSpotCompare {
     @Opcode("CMP")
     public static class HotSpotCompareMemoryConstantOp extends MemOp {
 
-        protected Constant y;
+        protected JavaConstant y;
 
-        public HotSpotCompareMemoryConstantOp(Kind kind, AMD64AddressValue x, Constant y, LIRFrameState state) {
+        public HotSpotCompareMemoryConstantOp(Kind kind, AMD64AddressValue x, JavaConstant y, LIRFrameState state) {
             super(kind, x, state);
             this.y = y;
         }

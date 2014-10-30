@@ -206,7 +206,7 @@ public class CompilationResult implements Serializable {
     /**
      * Represents a code site that references some data. The associated data can be either a
      * {@link DataSectionReference reference} to the data section, or it may be an inlined
-     * {@link Constant} that needs to be patched.
+     * {@link JavaConstant} that needs to be patched.
      */
     public static final class DataPatch extends Site {
 

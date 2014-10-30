@@ -55,7 +55,7 @@ public class HSAILControlFlow {
         /**
          * The array of key constants used for the cases of this switch statement.
          */
-        @Use({CONST}) protected Constant[] keyConstants;
+        @Use({CONST}) protected JavaConstant[] keyConstants;
         /**
          * The branch target labels that correspond to each case.
          */
@@ -156,7 +156,7 @@ public class HSAILControlFlow {
         public void emitCode(CompilationResultBuilder crb, HSAILAssembler masm) {
             String reasonString;
             if (isConstant(actionAndReason)) {
-                DeoptimizationReason reason = metaAccessProvider.decodeDeoptReason((Constant) actionAndReason);
+                DeoptimizationReason reason = metaAccessProvider.decodeDeoptReason((JavaConstant) actionAndReason);
                 reasonString = reason.toString();
             } else {
                 reasonString = "Variable Reason";
@@ -180,7 +180,7 @@ public class HSAILControlFlow {
             AllocatableValue actionAndReasonReg = HSAIL.actionAndReasonReg.asValue(LIRKind.value(Kind.Int));
             AllocatableValue codeBufferOffsetReg = HSAIL.codeBufferOffsetReg.asValue(LIRKind.value(Kind.Int));
             masm.emitMov(Kind.Int, actionAndReasonReg, actionAndReason);
-            masm.emitMov(Kind.Int, codeBufferOffsetReg, Constant.forInt(codeBufferPos));
+            masm.emitMov(Kind.Int, codeBufferOffsetReg, JavaConstant.forInt(codeBufferPos));
             masm.emitJumpToLabelName(masm.getDeoptLabelName());
 
             // Now record the debuginfo. If HSAIL deoptimization is off,

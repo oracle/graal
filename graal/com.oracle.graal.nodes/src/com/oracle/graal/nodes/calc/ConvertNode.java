@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,9 +35,9 @@ public interface ConvertNode extends ArithmeticOperation, NodeInterface {
 
     ValueNode getValue();
 
-    Constant convert(Constant c);
+    JavaConstant convert(JavaConstant c);
 
-    Constant reverse(Constant c);
+    JavaConstant reverse(JavaConstant c);
 
     /**
      * Check whether a conversion is lossless.

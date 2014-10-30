@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -67,7 +67,7 @@ public class DerivedOffsetInductionVariable extends InductionVariable {
 
     @Override
     public long constantInit() {
-        return op(base.constantInit(), offset.asConstant().asLong());
+        return op(base.constantInit(), offset.asJavaConstant().asLong());
     }
 
     @Override
@@ -108,7 +108,7 @@ public class DerivedOffsetInductionVariable extends InductionVariable {
 
     @Override
     public long constantExtremum() {
-        return op(base.constantExtremum(), offset.asConstant().asLong());
+        return op(base.constantExtremum(), offset.asJavaConstant().asLong());
     }
 
     private long op(long b, long o) {

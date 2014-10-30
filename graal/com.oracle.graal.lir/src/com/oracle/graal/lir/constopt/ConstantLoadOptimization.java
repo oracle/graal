@@ -282,7 +282,7 @@ public final class ConstantLoadOptimization {
         }
     }
 
-    private void insertLoad(Constant constant, LIRKind kind, AbstractBlock<?> block, List<UseEntry> usages) {
+    private void insertLoad(JavaConstant constant, LIRKind kind, AbstractBlock<?> block, List<UseEntry> usages) {
         assert usages != null && usages.size() > 0 : String.format("No usages %s %s %s", constant, block, usages);
         // create variable
         Variable variable = lirGen.newVariable(kind);

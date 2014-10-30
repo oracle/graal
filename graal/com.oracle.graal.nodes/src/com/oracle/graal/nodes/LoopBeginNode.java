@@ -251,9 +251,9 @@ public class LoopBeginNode extends MergeNode implements IterableNodeType, LIRLow
             if (input != null && input instanceof AddNode && input.stamp() instanceof IntegerStamp) {
                 AddNode add = (AddNode) input;
                 if (add.getX() == phi && add.getY().isConstant()) {
-                    increment = add.getY().asConstant().asLong();
+                    increment = add.getY().asJavaConstant().asLong();
                 } else if (add.getY() == phi && add.getX().isConstant()) {
-                    increment = add.getX().asConstant().asLong();
+                    increment = add.getX().asJavaConstant().asLong();
                 }
             } else if (input == phi) {
                 increment = 0;

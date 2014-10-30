@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,7 +41,7 @@ public class EscapeAnalysisTest extends EATestBase {
 
     @Test
     public void test1() {
-        testEscapeAnalysis("test1Snippet", Constant.forInt(101), false);
+        testEscapeAnalysis("test1Snippet", JavaConstant.forInt(101), false);
     }
 
     public static int test1Snippet() {
@@ -51,7 +51,7 @@ public class EscapeAnalysisTest extends EATestBase {
 
     @Test
     public void test2() {
-        testEscapeAnalysis("test2Snippet", Constant.forInt(0), false);
+        testEscapeAnalysis("test2Snippet", JavaConstant.forInt(0), false);
     }
 
     public static int test2Snippet() {
@@ -61,7 +61,7 @@ public class EscapeAnalysisTest extends EATestBase {
 
     @Test
     public void test3() {
-        testEscapeAnalysis("test3Snippet", Constant.NULL_OBJECT, false);
+        testEscapeAnalysis("test3Snippet", JavaConstant.NULL_OBJECT, false);
     }
 
     public static Object test3Snippet() {
@@ -71,7 +71,7 @@ public class EscapeAnalysisTest extends EATestBase {
 
     @Test
     public void testMonitor() {
-        testEscapeAnalysis("testMonitorSnippet", Constant.forInt(0), false);
+        testEscapeAnalysis("testMonitorSnippet", JavaConstant.forInt(0), false);
     }
 
     public static int testMonitorSnippet() {
@@ -90,7 +90,7 @@ public class EscapeAnalysisTest extends EATestBase {
 
     @Test
     public void testMonitor2() {
-        testEscapeAnalysis("testMonitor2Snippet", Constant.forInt(0), false);
+        testEscapeAnalysis("testMonitor2Snippet", JavaConstant.forInt(0), false);
     }
 
     /**
@@ -113,7 +113,7 @@ public class EscapeAnalysisTest extends EATestBase {
 
     @Test
     public void testMerge() {
-        testEscapeAnalysis("testMerge1Snippet", Constant.forInt(0), true);
+        testEscapeAnalysis("testMerge1Snippet", JavaConstant.forInt(0), true);
     }
 
     public static int testMerge1Snippet(int a) {
@@ -132,7 +132,7 @@ public class EscapeAnalysisTest extends EATestBase {
 
     @Test
     public void testSimpleLoop() {
-        testEscapeAnalysis("testSimpleLoopSnippet", Constant.forInt(1), false);
+        testEscapeAnalysis("testSimpleLoopSnippet", JavaConstant.forInt(1), false);
     }
 
     public int testSimpleLoopSnippet(int a) {
@@ -145,7 +145,7 @@ public class EscapeAnalysisTest extends EATestBase {
 
     @Test
     public void testModifyingLoop() {
-        testEscapeAnalysis("testModifyingLoopSnippet", Constant.forInt(1), false);
+        testEscapeAnalysis("testModifyingLoopSnippet", JavaConstant.forInt(1), false);
     }
 
     public int testModifyingLoopSnippet(int a) {
@@ -159,7 +159,7 @@ public class EscapeAnalysisTest extends EATestBase {
 
     @Test
     public void testMergeAllocationsInt() {
-        testEscapeAnalysis("testMergeAllocationsIntSnippet", Constant.forInt(1), false);
+        testEscapeAnalysis("testMergeAllocationsIntSnippet", JavaConstant.forInt(1), false);
     }
 
     public int testMergeAllocationsIntSnippet(int a) {
@@ -176,7 +176,7 @@ public class EscapeAnalysisTest extends EATestBase {
 
     @Test
     public void testMergeAllocationsObj() {
-        testEscapeAnalysis("testMergeAllocationsObjSnippet", Constant.forInt(1), false);
+        testEscapeAnalysis("testMergeAllocationsObjSnippet", JavaConstant.forInt(1), false);
     }
 
     public int testMergeAllocationsObjSnippet(int a) {
@@ -196,7 +196,7 @@ public class EscapeAnalysisTest extends EATestBase {
 
     @Test
     public void testMergeAllocationsObjCirc() {
-        testEscapeAnalysis("testMergeAllocationsObjCircSnippet", Constant.forInt(1), false);
+        testEscapeAnalysis("testMergeAllocationsObjCircSnippet", JavaConstant.forInt(1), false);
     }
 
     public int testMergeAllocationsObjCircSnippet(int a) {
@@ -238,7 +238,7 @@ public class EscapeAnalysisTest extends EATestBase {
 
     @Test
     public void testMergeAllocationsException() {
-        testEscapeAnalysis("testMergeAllocationsExceptionSnippet", Constant.forInt(1), false);
+        testEscapeAnalysis("testMergeAllocationsExceptionSnippet", JavaConstant.forInt(1), false);
     }
 
     public int testMergeAllocationsExceptionSnippet(int a) {
@@ -267,7 +267,7 @@ public class EscapeAnalysisTest extends EATestBase {
 
     @Test
     public void testInstanceOf() {
-        testEscapeAnalysis("testInstanceOfSnippet", Constant.forInt(1), false);
+        testEscapeAnalysis("testInstanceOfSnippet", JavaConstant.forInt(1), false);
     }
 
     public boolean testInstanceOfSnippet() {

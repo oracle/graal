@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -278,9 +278,9 @@ public final class ArithmeticOpTable {
         }
 
         /**
-         * Apply the operation to a {@link Constant}.
+         * Apply the operation to a {@link JavaConstant}.
          */
-        public abstract Constant foldConstant(Constant value);
+        public abstract JavaConstant foldConstant(JavaConstant value);
 
         /**
          * Apply the operation to a {@link Stamp}.
@@ -359,9 +359,9 @@ public final class ArithmeticOpTable {
         }
 
         /**
-         * Apply the operation to two {@linkplain Constant Constants}.
+         * Apply the operation to two {@linkplain JavaConstant Constants}.
          */
-        public abstract Constant foldConstant(Constant a, Constant b);
+        public abstract JavaConstant foldConstant(JavaConstant a, JavaConstant b);
 
         /**
          * Apply the operation to two {@linkplain Stamp Stamps}.
@@ -388,13 +388,13 @@ public final class ArithmeticOpTable {
         }
 
         /**
-         * Check whether a {@link Constant} is a neutral element for this operation. A neutral
+         * Check whether a {@link JavaConstant} is a neutral element for this operation. A neutral
          * element is any element {@code n} where {@code a . n == a} for all a.
          *
-         * @param n the {@link Constant} that should be tested
+         * @param n the {@link JavaConstant} that should be tested
          * @return true iff for all {@code a}: {@code a . n == a}
          */
-        public boolean isNeutral(Constant n) {
+        public boolean isNeutral(JavaConstant n) {
             return false;
         }
 
@@ -407,7 +407,7 @@ public final class ArithmeticOpTable {
          * @return a unique {@code z} such that {@code z == a . a} for each {@code a} in
          *         {@code stamp} if it exists, otherwise {@code null}
          */
-        public Constant getZero(Stamp stamp) {
+        public JavaConstant getZero(Stamp stamp) {
             return null;
         }
     }
@@ -453,7 +453,7 @@ public final class ArithmeticOpTable {
             super(op);
         }
 
-        public abstract Constant foldConstant(int inputBits, int resultBits, Constant value);
+        public abstract JavaConstant foldConstant(int inputBits, int resultBits, JavaConstant value);
 
         public abstract Stamp foldStamp(int inputBits, int resultBits, Stamp stamp);
     }

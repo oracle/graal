@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -139,7 +139,7 @@ public class BenchmarkCounters {
         }
         assert groups.get(index).equals(group) : "mismatching groups: " + groups.get(index) + " vs. " + group;
         if (counter.getIncrement().isConstant()) {
-            staticCounters.get(index).addAndGet(counter.getIncrement().asConstant().asLong());
+            staticCounters.get(index).addAndGet(counter.getIncrement().asJavaConstant().asLong());
         }
         return index;
     }

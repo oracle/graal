@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -99,7 +99,7 @@ public class ArrayLengthNode extends FixedWithNextNode implements Canonicalizabl
         }
         ValueNode array = GraphUtil.unproxify(originalArray);
         if (constantReflection != null && array.isConstant() && !array.isNullConstant()) {
-            Constant constantValue = array.asConstant();
+            JavaConstant constantValue = array.asJavaConstant();
             if (constantValue != null && constantValue.isNonNull()) {
                 Integer constantLength = constantReflection.readArrayLength(constantValue);
                 if (constantLength != null) {

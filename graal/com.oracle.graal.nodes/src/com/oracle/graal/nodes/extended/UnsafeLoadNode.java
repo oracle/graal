@@ -71,7 +71,7 @@ public class UnsafeLoadNode extends UnsafeAccessNode implements Lowerable, Virtu
         if (state != null && state.getState() == EscapeState.Virtual) {
             ValueNode offsetValue = tool.getReplacedValue(offset());
             if (offsetValue.isConstant()) {
-                long off = offsetValue.asConstant().asLong();
+                long off = offsetValue.asJavaConstant().asLong();
                 int entryIndex = state.getVirtualObject().entryIndexForOffset(off);
                 if (entryIndex != -1) {
                     ValueNode entry = state.getEntry(entryIndex);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -72,8 +72,8 @@ public class DynamicDeoptimizeNode extends AbstractDeoptimizeNode implements LIR
     @Override
     public Node canonical(CanonicalizerTool tool) {
         if (actionAndReason.isConstant() && speculation.isConstant()) {
-            Constant constant = actionAndReason.asConstant();
-            Constant speculationConstant = speculation.asConstant();
+            JavaConstant constant = actionAndReason.asJavaConstant();
+            JavaConstant speculationConstant = speculation.asJavaConstant();
             DeoptimizeNode newDeopt = DeoptimizeNode.create(tool.getMetaAccess().decodeDeoptAction(constant), tool.getMetaAccess().decodeDeoptReason(constant),
                             tool.getMetaAccess().decodeDebugId(constant), speculationConstant, stateBefore());
             return newDeopt;

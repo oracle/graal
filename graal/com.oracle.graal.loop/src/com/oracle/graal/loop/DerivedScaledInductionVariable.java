@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -93,12 +93,12 @@ public class DerivedScaledInductionVariable extends InductionVariable {
 
     @Override
     public long constantInit() {
-        return base.constantInit() * scale.asConstant().asLong();
+        return base.constantInit() * scale.asJavaConstant().asLong();
     }
 
     @Override
     public long constantStride() {
-        return base.constantStride() * scale.asConstant().asLong();
+        return base.constantStride() * scale.asJavaConstant().asLong();
     }
 
     @Override
@@ -118,7 +118,7 @@ public class DerivedScaledInductionVariable extends InductionVariable {
 
     @Override
     public long constantExtremum() {
-        return base.constantExtremum() * scale.asConstant().asLong();
+        return base.constantExtremum() * scale.asJavaConstant().asLong();
     }
 
     @Override

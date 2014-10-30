@@ -53,7 +53,7 @@ public abstract class AbstractObjectStamp extends Stamp {
     }
 
     @Override
-    public Stamp constant(Constant c, MetaAccessProvider meta) {
+    public Stamp constant(JavaConstant c, MetaAccessProvider meta) {
         ResolvedJavaType constType = c.isNull() ? null : meta.lookupJavaType(c);
         return copyWith(constType, c.isNonNull(), c.isNonNull(), c.isNull());
     }

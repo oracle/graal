@@ -66,10 +66,10 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
     /**
      * Gets the Graal mirror from a HotSpot metaspace Klass native object.
      *
-     * @param metaspaceKlass a metaspace Klass object boxed in a {@link Constant}
+     * @param metaspaceKlass a metaspace Klass object boxed in a {@link JavaConstant}
      * @return the {@link HotSpotResolvedObjectType} corresponding to {@code klassConstant}
      */
-    public static HotSpotResolvedObjectType fromMetaspaceKlass(Constant metaspaceKlass) {
+    public static HotSpotResolvedObjectType fromMetaspaceKlass(JavaConstant metaspaceKlass) {
         assert metaspaceKlass.getKind() == Kind.Long;
         return fromMetaspaceKlass(metaspaceKlass.asLong());
     }
@@ -93,7 +93,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
      * <p>
      * <b>NOTE</b>: Creating an instance of this class does not install the mirror for the
      * {@link Class} type. Use {@link #fromObjectClass(Class)},
-     * {@link #fromMetaspaceKlass(Constant)} or {@link #fromMetaspaceKlass(long)} instead.
+     * {@link #fromMetaspaceKlass(JavaConstant)} or {@link #fromMetaspaceKlass(long)} instead.
      * </p>
      *
      * @param javaClass the Class to create the mirror for
@@ -278,7 +278,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
     }
 
     @Override
-    public Constant getEncoding(Representation r) {
+    public JavaConstant getEncoding(Representation r) {
         switch (r) {
             case JavaClass:
                 return HotSpotObjectConstant.forObject(mirror());
@@ -341,7 +341,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
     }
 
     @Override
-    public boolean isInstance(Constant obj) {
+    public boolean isInstance(JavaConstant obj) {
         if (obj.getKind() == Kind.Object && !obj.isNull()) {
             return mirror().isInstance(HotSpotObjectConstant.asObject(obj));
         }
@@ -777,9 +777,9 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
     }
 
     /**
-     * Gets the metaspace Klass boxed in a {@link Constant}.
+     * Gets the metaspace Klass boxed in a {@link JavaConstant}.
      */
-    public Constant klass() {
+    public JavaConstant klass() {
         return HotSpotMetaspaceConstant.forMetaspaceObject(runtime().getTarget().wordKind, getMetaspaceKlass(), this, false);
     }
 
@@ -865,7 +865,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
     }
 
     @Override
-    public Constant newArray(int length) {
+    public JavaConstant newArray(int length) {
         return HotSpotObjectConstant.forObject(Array.newInstance(mirror(), length));
     }
 

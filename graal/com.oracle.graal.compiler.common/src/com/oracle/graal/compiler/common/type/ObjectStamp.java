@@ -66,9 +66,9 @@ public class ObjectStamp extends AbstractObjectStamp {
     }
 
     @Override
-    public Constant asConstant() {
+    public JavaConstant asConstant() {
         if (alwaysNull()) {
-            return Constant.NULL_OBJECT;
+            return JavaConstant.NULL_OBJECT;
         } else {
             return null;
         }

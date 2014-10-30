@@ -100,7 +100,7 @@ public class LoadHubNode extends FloatingGuardedNode implements Lowerable, Canon
     public void virtualize(VirtualizerTool tool) {
         State state = tool.getObjectState(value);
         if (state != null) {
-            Constant constantHub = state.getVirtualObject().type().getEncoding(Representation.ObjectHub);
+            JavaConstant constantHub = state.getVirtualObject().type().getEncoding(Representation.ObjectHub);
             tool.replaceWithValue(ConstantNode.forConstant(constantHub, tool.getMetaAccessProvider(), graph()));
         }
     }

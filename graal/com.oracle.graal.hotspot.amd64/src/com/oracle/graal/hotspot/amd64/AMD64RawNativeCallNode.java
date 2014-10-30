@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,14 +35,14 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public class AMD64RawNativeCallNode extends FixedWithNextNode implements LIRLowerable {
 
-    protected final Constant functionPointer;
+    protected final JavaConstant functionPointer;
     @Input NodeInputList<ValueNode> args;
 
-    public static AMD64RawNativeCallNode create(Kind returnType, Constant functionPointer, ValueNode[] args) {
+    public static AMD64RawNativeCallNode create(Kind returnType, JavaConstant functionPointer, ValueNode[] args) {
         return new AMD64RawNativeCallNode(returnType, functionPointer, args);
     }
 
-    protected AMD64RawNativeCallNode(Kind returnType, Constant functionPointer, ValueNode[] args) {
+    protected AMD64RawNativeCallNode(Kind returnType, JavaConstant functionPointer, ValueNode[] args) {
         super(StampFactory.forKind(returnType));
         this.functionPointer = functionPointer;
         this.args = new NodeInputList<>(this, args);

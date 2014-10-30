@@ -532,7 +532,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
                 gen.emitCompareBranch(kind, gen.load(operand(x.value())), x.keyAt(0), Condition.EQ, false, getLIRBlock(x.keySuccessor(0)), defaultTarget, probability);
             } else {
                 LabelRef[] keyTargets = new LabelRef[keyCount];
-                Constant[] keyConstants = new Constant[keyCount];
+                JavaConstant[] keyConstants = new JavaConstant[keyCount];
                 double[] keyProbabilities = new double[keyCount];
                 for (int i = 0; i < keyCount; i++) {
                     keyTargets[i] = getLIRBlock(x.keySuccessor(i));

@@ -91,11 +91,11 @@ public class LoadFieldNode extends AccessFieldNode implements Canonicalizable.Un
      * Gets a constant value for this load if possible.
      */
     public ConstantNode asConstant(MetaAccessProvider metaAccess, ValueNode forObject) {
-        Constant constant = null;
+        JavaConstant constant = null;
         if (isStatic()) {
             constant = field().readConstantValue(null);
         } else if (forObject.isConstant() && !forObject.isNullConstant()) {
-            constant = field().readConstantValue(forObject.asConstant());
+            constant = field().readConstantValue(forObject.asJavaConstant());
         }
         if (constant != null) {
             return ConstantNode.forConstant(constant, metaAccess);
@@ -106,9 +106,9 @@ public class LoadFieldNode extends AccessFieldNode implements Canonicalizable.Un
     private PhiNode asPhi(MetaAccessProvider metaAccess, ValueNode forObject) {
         if (!isStatic() && field.isFinal() && forObject instanceof ValuePhiNode && ((ValuePhiNode) forObject).values().filter(isNotA(ConstantNode.class)).isEmpty()) {
             PhiNode phi = (PhiNode) forObject;
-            Constant[] constants = new Constant[phi.valueCount()];
+            JavaConstant[] constants = new JavaConstant[phi.valueCount()];
             for (int i = 0; i < phi.valueCount(); i++) {
-                Constant constantValue = field().readConstantValue(phi.valueAt(i).asConstant());
+                JavaConstant constantValue = field().readConstantValue(phi.valueAt(i).asJavaConstant());
                 if (constantValue == null) {
                     return null;
                 }

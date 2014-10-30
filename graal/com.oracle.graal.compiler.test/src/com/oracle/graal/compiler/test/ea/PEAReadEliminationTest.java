@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -88,7 +88,7 @@ public class PEAReadEliminationTest extends GraalCompilerTest {
         ValueNode result = getReturn("testSimpleSnippet").result();
         assertTrue(graph.getNodes().filter(LoadFieldNode.class).isEmpty());
         assertTrue(result.isConstant());
-        assertDeepEquals(2, result.asConstant().asInt());
+        assertDeepEquals(2, result.asJavaConstant().asInt());
     }
 
     @SuppressWarnings("all")

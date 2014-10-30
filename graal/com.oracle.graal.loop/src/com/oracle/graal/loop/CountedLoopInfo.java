@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -78,7 +78,7 @@ public class CountedLoopInfo {
 
     public long constantMaxTripCount() {
         long off = oneOff ? iv.direction() == Direction.Up ? 1 : -1 : 0;
-        long max = (((ConstantNode) end).asConstant().asLong() + off - iv.constantInit()) / iv.constantStride();
+        long max = (((ConstantNode) end).asJavaConstant().asLong() + off - iv.constantInit()) / iv.constantStride();
         return Math.max(0, max);
     }
 
@@ -158,7 +158,7 @@ public class CountedLoopInfo {
             cond = graph.unique(IntegerLessThanNode.create(end, v1));
         }
         overflowGuard = graph.unique(GuardNode.create(cond, BeginNode.prevBegin(loop.entryPoint()), DeoptimizationReason.LoopLimitCheck, DeoptimizationAction.InvalidateRecompile, true,
-                        Constant.NULL_OBJECT)); // TODO gd: use speculation
+                        JavaConstant.NULL_OBJECT)); // TODO gd: use speculation
         loop.loopBegin().setOverflowGuard(overflowGuard);
         return overflowGuard;
     }

@@ -123,7 +123,7 @@ public interface LIRInstruction {
         COMPOSITE,
 
         /**
-         * The value can be a {@link Constant}.
+         * The value can be a {@link JavaConstant}.
          */
         CONST,
 

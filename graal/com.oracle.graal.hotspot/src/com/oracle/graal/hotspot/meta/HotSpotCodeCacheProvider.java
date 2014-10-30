@@ -252,11 +252,11 @@ public class HotSpotCodeCacheProvider implements CodeCacheProvider {
         return code;
     }
 
-    public boolean needsDataPatch(Constant constant) {
+    public boolean needsDataPatch(JavaConstant constant) {
         return constant instanceof HotSpotMetaspaceConstant;
     }
 
-    public Data createDataItem(Constant constant) {
+    public Data createDataItem(JavaConstant constant) {
         int size;
         DataBuilder builder;
         if (constant instanceof VMConstant) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,38 +30,38 @@ public class ConstantTest extends FieldUniverse {
 
     @Test
     public void testNegativeZero() {
-        Assert.assertTrue("Constant for 0.0f must be different from -0.0f", Constant.FLOAT_0 != Constant.forFloat(-0.0F));
-        Assert.assertTrue("Constant for 0.0d must be different from -0.0d", Constant.DOUBLE_0 != Constant.forDouble(-0.0d));
+        Assert.assertTrue("Constant for 0.0f must be different from -0.0f", JavaConstant.FLOAT_0 != JavaConstant.forFloat(-0.0F));
+        Assert.assertTrue("Constant for 0.0d must be different from -0.0d", JavaConstant.DOUBLE_0 != JavaConstant.forDouble(-0.0d));
     }
 
     @Test
     public void testNullIsNull() {
-        Assert.assertTrue(Constant.NULL_OBJECT.isNull());
+        Assert.assertTrue(JavaConstant.NULL_OBJECT.isNull());
     }
 
     @Test
     public void testOne() {
         for (Kind kind : Kind.values()) {
             if (kind.isNumericInteger() || kind.isNumericFloat()) {
-                Assert.assertTrue(Constant.one(kind).getKind() == kind);
+                Assert.assertTrue(JavaConstant.one(kind).getKind() == kind);
             }
         }
-        Assert.assertEquals(1, Constant.one(Kind.Int).asInt());
-        Assert.assertEquals(1L, Constant.one(Kind.Long).asLong());
-        Assert.assertEquals(1, Constant.one(Kind.Byte).asInt());
-        Assert.assertEquals(1, Constant.one(Kind.Short).asInt());
-        Assert.assertEquals(1, Constant.one(Kind.Char).asInt());
-        Assert.assertTrue(1F == Constant.one(Kind.Float).asFloat());
-        Assert.assertTrue(1D == Constant.one(Kind.Double).asDouble());
+        Assert.assertEquals(1, JavaConstant.one(Kind.Int).asInt());
+        Assert.assertEquals(1L, JavaConstant.one(Kind.Long).asLong());
+        Assert.assertEquals(1, JavaConstant.one(Kind.Byte).asInt());
+        Assert.assertEquals(1, JavaConstant.one(Kind.Short).asInt());
+        Assert.assertEquals(1, JavaConstant.one(Kind.Char).asInt());
+        Assert.assertTrue(1F == JavaConstant.one(Kind.Float).asFloat());
+        Assert.assertTrue(1D == JavaConstant.one(Kind.Double).asDouble());
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void testIllegalOne() {
-        Constant.one(Kind.Illegal);
+        JavaConstant.one(Kind.Illegal);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void testVoidOne() {
-        Constant.one(Kind.Void);
+        JavaConstant.one(Kind.Void);
     }
 }

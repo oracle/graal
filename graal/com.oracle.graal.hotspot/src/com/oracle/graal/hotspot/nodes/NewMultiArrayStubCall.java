@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -60,7 +60,7 @@ public class NewMultiArrayStubCall extends ForeignCallNode {
     @Override
     public boolean inferStamp() {
         if (stamp() == defaultStamp && hub.isConstant()) {
-            updateStamp(StampFactory.exactNonNull(HotSpotResolvedObjectType.fromMetaspaceKlass(hub.asConstant())));
+            updateStamp(StampFactory.exactNonNull(HotSpotResolvedObjectType.fromMetaspaceKlass(hub.asJavaConstant())));
             return true;
         }
         return false;
@@ -68,7 +68,7 @@ public class NewMultiArrayStubCall extends ForeignCallNode {
 
     @Override
     protected Value[] operands(NodeLIRBuilderTool gen) {
-        return new Value[]{gen.operand(hub), Constant.forInt(rank), gen.operand(dims)};
+        return new Value[]{gen.operand(hub), JavaConstant.forInt(rank), gen.operand(dims)};
     }
 
     @NodeIntrinsic

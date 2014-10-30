@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -234,7 +234,7 @@ public class WordTypeRewriterPhase extends Phase {
                 assert arguments.size() == 3;
                 Kind readKind = asKind(callTargetNode.returnType());
                 LocationNode location = makeLocation(graph, arguments.get(1), readKind, ANY_LOCATION);
-                BarrierType barrierType = (BarrierType) snippetReflection.asObject(arguments.get(2).asConstant());
+                BarrierType barrierType = (BarrierType) snippetReflection.asObject(arguments.get(2).asJavaConstant());
                 replace(invoke, readOp(graph, arguments.get(0), invoke, location, barrierType, true));
                 break;
             }
@@ -374,7 +374,7 @@ public class WordTypeRewriterPhase extends Phase {
 
     private LocationNode makeLocation(StructuredGraph graph, ValueNode offset, Kind readKind, ValueNode locationIdentity) {
         if (locationIdentity.isConstant()) {
-            return makeLocation(graph, offset, readKind, (LocationIdentity) snippetReflection.asObject(locationIdentity.asConstant()));
+            return makeLocation(graph, offset, readKind, (LocationIdentity) snippetReflection.asObject(locationIdentity.asJavaConstant()));
         }
         return SnippetLocationNode.create(snippetReflection, locationIdentity, ConstantNode.forConstant(snippetReflection.forObject(readKind), metaAccess, graph), ConstantNode.forLong(0, graph),
                         fromSigned(graph, offset), ConstantNode.forInt(1, graph), graph);

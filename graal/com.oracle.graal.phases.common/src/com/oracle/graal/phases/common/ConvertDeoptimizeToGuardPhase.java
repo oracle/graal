@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -75,11 +75,11 @@ public class ConvertDeoptimizeToGuardPhase extends Phase {
                     CompareNode compare = (CompareNode) fixedGuard.condition();
                     List<AbstractEndNode> mergePredecessors = merge.cfgPredecessors().snapshot();
 
-                    Constant[] xs = IfNode.constantValues(compare.getX(), merge, true);
+                    JavaConstant[] xs = IfNode.constantValues(compare.getX(), merge, true);
                     if (xs == null) {
                         continue;
                     }
-                    Constant[] ys = IfNode.constantValues(compare.getY(), merge, true);
+                    JavaConstant[] ys = IfNode.constantValues(compare.getY(), merge, true);
                     if (ys == null) {
                         continue;
                     }

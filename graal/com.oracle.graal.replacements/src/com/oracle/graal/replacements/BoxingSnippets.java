@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -176,8 +176,8 @@ public class BoxingSnippets implements Snippets {
     public static FloatingNode canonicalizeBoxing(BoxNode box, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection) {
         ValueNode value = box.getValue();
         if (value.isConstant()) {
-            Constant sourceConstant = value.asConstant();
-            Constant boxedConstant = constantReflection.boxPrimitive(sourceConstant);
+            JavaConstant sourceConstant = value.asJavaConstant();
+            JavaConstant boxedConstant = constantReflection.boxPrimitive(sourceConstant);
             if (boxedConstant != null && boxedConstant.getKind() == box.getBoxingKind()) {
                 return ConstantNode.forConstant(boxedConstant, metaAccess, box.graph());
             }

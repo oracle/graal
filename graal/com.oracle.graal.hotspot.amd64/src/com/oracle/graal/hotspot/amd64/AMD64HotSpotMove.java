@@ -45,9 +45,9 @@ public class AMD64HotSpotMove {
     public static class HotSpotLoadConstantOp extends AMD64LIRInstruction implements MoveOp {
 
         @Def({REG, STACK}) private AllocatableValue result;
-        private final Constant input;
+        private final JavaConstant input;
 
-        public HotSpotLoadConstantOp(AllocatableValue result, Constant input) {
+        public HotSpotLoadConstantOp(AllocatableValue result, JavaConstant input) {
             this.result = result;
             this.input = input;
         }
@@ -125,7 +125,7 @@ public class AMD64HotSpotMove {
 
     public static class HotSpotStoreConstantOp extends StoreConstantOp {
 
-        public HotSpotStoreConstantOp(Kind kind, AMD64AddressValue address, Constant input, LIRFrameState state) {
+        public HotSpotStoreConstantOp(Kind kind, AMD64AddressValue address, JavaConstant input, LIRFrameState state) {
             super(kind, address, input, state);
         }
 

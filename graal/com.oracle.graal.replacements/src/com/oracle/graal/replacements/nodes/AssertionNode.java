@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -64,7 +64,7 @@ public class AssertionNode extends FixedWithNextNode implements Lowerable, Canon
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (value.isConstant() && value.asConstant().asInt() != 0) {
+        if (value.isConstant() && value.asJavaConstant().asInt() != 0) {
             return null;
         }
         /*
@@ -82,7 +82,7 @@ public class AssertionNode extends FixedWithNextNode implements Lowerable, Canon
 
     public void generate(NodeLIRBuilderTool generator) {
         assert compileTimeAssertion;
-        if (value.isConstant() && value.asConstant().asInt() == 0) {
+        if (value.isConstant() && value.asJavaConstant().asInt() == 0) {
             throw new GraalInternalError("%s: failed compile-time assertion: %s", this, message);
         } else {
             throw new GraalInternalError("%s: failed compile-time assertion (value %s): %s", this, value, message);

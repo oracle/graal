@@ -362,7 +362,7 @@ public abstract class FrameMap {
     /**
      * Marks the specified location as a reference in the reference map of the debug information.
      * The tracked location can be a {@link RegisterValue} or a {@link StackSlot}. Note that a
-     * {@link Constant} is automatically tracked.
+     * {@link JavaConstant} is automatically tracked.
      *
      * @param location The location to be added to the reference map.
      * @param refMap A reference map, as created by {@link #initReferenceMap(boolean)}.

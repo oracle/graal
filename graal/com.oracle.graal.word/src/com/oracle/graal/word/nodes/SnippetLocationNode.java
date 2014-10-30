@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -85,7 +85,7 @@ public class SnippetLocationNode extends LocationNode implements Canonicalizable
     @Override
     public Kind getValueKind() {
         if (valueKind.isConstant()) {
-            return (Kind) snippetReflection.asObject(valueKind.asConstant());
+            return (Kind) snippetReflection.asObject(valueKind.asJavaConstant());
         }
         throw new GraalInternalError("Cannot access kind yet because it is not constant: " + valueKind);
     }
@@ -93,7 +93,7 @@ public class SnippetLocationNode extends LocationNode implements Canonicalizable
     @Override
     public LocationIdentity getLocationIdentity() {
         if (locationIdentity.isConstant()) {
-            return (LocationIdentity) snippetReflection.asObject(locationIdentity.asConstant());
+            return (LocationIdentity) snippetReflection.asObject(locationIdentity.asJavaConstant());
         }
         // We do not know our actual location identity yet, so be conservative.
         return ANY_LOCATION;
@@ -102,15 +102,15 @@ public class SnippetLocationNode extends LocationNode implements Canonicalizable
     @Override
     public Node canonical(CanonicalizerTool tool) {
         if (valueKind.isConstant() && locationIdentity.isConstant() && displacement.isConstant() && (indexScaling == null || indexScaling.isConstant())) {
-            Kind constKind = (Kind) snippetReflection.asObject(valueKind.asConstant());
-            LocationIdentity constLocation = (LocationIdentity) snippetReflection.asObject(locationIdentity.asConstant());
-            long constDisplacement = displacement.asConstant().asLong();
-            int constIndexScaling = indexScaling == null ? 0 : indexScaling.asConstant().asInt();
+            Kind constKind = (Kind) snippetReflection.asObject(valueKind.asJavaConstant());
+            LocationIdentity constLocation = (LocationIdentity) snippetReflection.asObject(locationIdentity.asJavaConstant());
+            long constDisplacement = displacement.asJavaConstant().asLong();
+            int constIndexScaling = indexScaling == null ? 0 : indexScaling.asJavaConstant().asInt();
 
             if (index == null || constIndexScaling == 0) {
                 return ConstantLocationNode.create(constLocation, constKind, constDisplacement, graph());
             } else if (index.isConstant()) {
-                return ConstantLocationNode.create(constLocation, constKind, index.asConstant().asLong() * constIndexScaling + constDisplacement, graph());
+                return ConstantLocationNode.create(constLocation, constKind, index.asJavaConstant().asLong() * constIndexScaling + constDisplacement, graph());
             } else {
                 return IndexedLocationNode.create(constLocation, constKind, constDisplacement, index, graph(), constIndexScaling);
             }

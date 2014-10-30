@@ -60,10 +60,10 @@ public class CustomizedUnsafeStoreMacroNode extends NeverPartOfCompilationNode i
             ValueNode offsetArgument = arguments.get(OFFSET_ARGUMENT_INDEX);
             ValueNode valueArgument = arguments.get(VALUE_ARGUMENT_INDEX);
             LocationIdentity locationIdentity;
-            if (locationArgument.asConstant().isNull()) {
+            if (locationArgument.asJavaConstant().isNull()) {
                 locationIdentity = LocationIdentity.ANY_LOCATION;
             } else {
-                locationIdentity = ObjectLocationIdentity.create(locationArgument.asConstant());
+                locationIdentity = ObjectLocationIdentity.create(locationArgument.asJavaConstant());
             }
 
             return UnsafeStoreNode.create(objectArgument, offsetArgument, valueArgument, this.getTargetMethod().getSignature().getParameterKind(VALUE_ARGUMENT_INDEX), locationIdentity, stateAfter());

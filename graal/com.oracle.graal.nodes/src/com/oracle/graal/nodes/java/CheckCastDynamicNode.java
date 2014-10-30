@@ -99,7 +99,7 @@ public class CheckCastDynamicNode extends FixedWithNextNode implements Canonical
             return forObject;
         }
         if (forHub.isConstant()) {
-            ResolvedJavaType t = tool.getConstantReflection().asJavaType(forHub.asConstant());
+            ResolvedJavaType t = tool.getConstantReflection().asJavaType(forHub.asJavaConstant());
             if (t != null) {
                 return CheckCastNode.create(t, forObject, null, forStoreCheck);
             }

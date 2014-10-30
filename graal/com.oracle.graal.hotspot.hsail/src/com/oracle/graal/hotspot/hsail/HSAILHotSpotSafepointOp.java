@@ -37,7 +37,7 @@ import com.oracle.graal.nodes.spi.*;
  */
 @Opcode("SAFEPOINT")
 public class HSAILHotSpotSafepointOp extends HSAILLIRInstruction implements HSAILControlFlow.DeoptimizingOp {
-    private Constant actionAndReason;
+    private JavaConstant actionAndReason;
     @State protected LIRFrameState frameState;
     protected int codeBufferPos = -1;
     final int offsetToNoticeSafepoints;
@@ -73,13 +73,13 @@ public class HSAILHotSpotSafepointOp extends HSAILLIRInstruction implements HSAI
             // Load int value from that field
             HSAILAddress noticeSafepointsIntAddr = new HSAILAddressValue(LIRKind.value(Kind.Long), spAddrReg, 0).toAddress();
             masm.emitLoadAcquire(scratch32, noticeSafepointsIntAddr);
-            masm.emitCompare(Kind.Int, scratch32, Constant.forInt(0), "eq", false, false);
+            masm.emitCompare(Kind.Int, scratch32, JavaConstant.forInt(0), "eq", false, false);
             masm.cbr(afterSafepointLabel);
 
             AllocatableValue actionAndReasonReg = HSAIL.actionAndReasonReg.asValue(LIRKind.value(Kind.Int));
             AllocatableValue codeBufferOffsetReg = HSAIL.codeBufferOffsetReg.asValue(LIRKind.value(Kind.Int));
             masm.emitMov(Kind.Int, actionAndReasonReg, actionAndReason);
-            masm.emitMov(Kind.Int, codeBufferOffsetReg, Constant.forInt(codeBufferPos));
+            masm.emitMov(Kind.Int, codeBufferOffsetReg, JavaConstant.forInt(codeBufferPos));
             masm.emitJumpToLabelName(masm.getDeoptLabelName());
 
             masm.emitString0(afterSafepointLabel + ":\n");

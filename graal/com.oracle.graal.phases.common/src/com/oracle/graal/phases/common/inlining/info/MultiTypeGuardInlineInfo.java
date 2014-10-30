@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -355,7 +355,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
             double[] probability = new double[concretes.size()];
             for (int i = 0; i < concretes.size(); ++i) {
                 ResolvedJavaMethod firstMethod = concretes.get(i);
-                Constant firstMethodConstant = firstMethod.getEncoding();
+                JavaConstant firstMethodConstant = firstMethod.getEncoding();
 
                 ConstantNode firstMethodConstantNode = ConstantNode.forConstant(firstMethodConstant, metaAccess, graph);
                 constantMethods[i] = firstMethodConstantNode;

@@ -117,7 +117,7 @@ public class AMD64ControlFlow {
     }
 
     public static class StrategySwitchOp extends AMD64LIRInstruction implements BlockEndOp {
-        @Use({CONST}) protected Constant[] keyConstants;
+        @Use({CONST}) protected JavaConstant[] keyConstants;
         private final LabelRef[] keyTargets;
         private LabelRef defaultTarget;
         @Alive({REG}) protected Value key;

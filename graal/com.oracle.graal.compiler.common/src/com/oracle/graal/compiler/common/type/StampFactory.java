@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -167,7 +167,7 @@ public class StampFactory {
         return new FloatStamp(kind.getBitCount(), lowerBound, upperBound, nonNaN);
     }
 
-    public static Stamp forConstant(Constant value) {
+    public static Stamp forConstant(JavaConstant value) {
         Kind kind = value.getKind();
         switch (kind) {
             case Boolean:
@@ -195,7 +195,7 @@ public class StampFactory {
         }
     }
 
-    public static Stamp forConstant(Constant value, MetaAccessProvider metaAccess) {
+    public static Stamp forConstant(JavaConstant value, MetaAccessProvider metaAccess) {
         if (value.getKind() == Kind.Object) {
             ResolvedJavaType type = value.isNull() ? null : metaAccess.lookupJavaType(value);
             return new ObjectStamp(type, value.isNonNull(), value.isNonNull(), value.isNull());

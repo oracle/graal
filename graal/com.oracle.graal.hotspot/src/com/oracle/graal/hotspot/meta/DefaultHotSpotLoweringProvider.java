@@ -402,7 +402,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
         Kind wordKind = target.wordKind;
         HotSpotVMConfig config = runtime.getConfig();
         LocationNode location = ConstantLocationNode.create(FINAL_LOCATION, wordKind, config.hubOffset, graph);
-        assert !object.isConstant() || object.asConstant().isNull();
+        assert !object.isConstant() || object.asJavaConstant().isNull();
 
         Stamp hubStamp;
         if (config.useCompressedClassPointers) {
@@ -422,7 +422,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
     private WriteNode createWriteHub(StructuredGraph graph, Kind wordKind, ValueNode object, ValueNode value) {
         HotSpotVMConfig config = runtime.getConfig();
         LocationNode location = ConstantLocationNode.create(HUB_LOCATION, wordKind, config.hubOffset, graph);
-        assert !object.isConstant() || object.asConstant().isNull();
+        assert !object.isConstant() || object.asJavaConstant().isNull();
 
         ValueNode writeValue = value;
         if (config.useCompressedClassPointers) {

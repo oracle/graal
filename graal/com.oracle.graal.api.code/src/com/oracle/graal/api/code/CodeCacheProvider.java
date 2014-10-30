@@ -82,12 +82,13 @@ public interface CodeCacheProvider {
      * Determines if a {@link DataPatch} should be created for a given primitive constant that is
      * part of a {@link CompilationResult}. A data patch is always created for an object constant.
      */
-    boolean needsDataPatch(Constant constant);
+    boolean needsDataPatch(JavaConstant constant);
 
     /**
-     * Create a {@link Data} item for a {@link Constant}, that can be used in a {@link DataPatch}.
+     * Create a {@link Data} item for a {@link JavaConstant}, that can be used in a
+     * {@link DataPatch}.
      */
-    Data createDataItem(Constant constant);
+    Data createDataItem(JavaConstant constant);
 
     /**
      * Gets a description of the target architecture.

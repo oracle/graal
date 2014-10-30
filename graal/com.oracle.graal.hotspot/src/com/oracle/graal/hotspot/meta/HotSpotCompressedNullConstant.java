@@ -25,13 +25,13 @@ package com.oracle.graal.hotspot.meta;
 import com.oracle.graal.api.meta.*;
 
 /**
- * The compressed representation of the {@link Constant#NULL_OBJECT null constant}.
+ * The compressed representation of the {@link JavaConstant#NULL_OBJECT null constant}.
  */
-public final class HotSpotCompressedNullConstant extends Constant implements HotSpotConstant {
+public final class HotSpotCompressedNullConstant extends JavaConstant implements HotSpotConstant {
 
     private static final long serialVersionUID = 8906209595800783961L;
 
-    public static final Constant COMPRESSED_NULL = new HotSpotCompressedNullConstant();
+    public static final JavaConstant COMPRESSED_NULL = new HotSpotCompressedNullConstant();
 
     private HotSpotCompressedNullConstant() {
         super(LIRKind.reference(Kind.Int));

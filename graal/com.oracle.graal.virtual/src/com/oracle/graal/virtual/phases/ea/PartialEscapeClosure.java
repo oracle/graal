@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -436,10 +436,10 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                             Kind valueKind = value.getKind();
                             if (valueKind != twoSlotKinds[valueIndex]) {
                                 ValueNode nextValue = objStates[i].getEntry(valueIndex + 1);
-                                if (value.isConstant() && value.asConstant().equals(Constant.INT_0) && nextValue.isConstant() && nextValue.asConstant().equals(Constant.INT_0)) {
+                                if (value.isConstant() && value.asJavaConstant().equals(JavaConstant.INT_0) && nextValue.isConstant() && nextValue.asJavaConstant().equals(JavaConstant.INT_0)) {
                                     // rewrite to a zero constant of the larger kind
                                     objStates[i].setEntry(valueIndex, ConstantNode.defaultForKind(twoSlotKinds[valueIndex], merge.graph()));
-                                    objStates[i].setEntry(valueIndex + 1, ConstantNode.forConstant(Constant.forIllegal(), tool.getMetaAccessProvider(), merge.graph()));
+                                    objStates[i].setEntry(valueIndex + 1, ConstantNode.forConstant(JavaConstant.forIllegal(), tool.getMetaAccessProvider(), merge.graph()));
                                 } else {
                                     compatible = false;
                                     break outer;
@@ -468,7 +468,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                         // skip an entry after a long/double value that occupies two int slots
                         valueIndex++;
                         phis[valueIndex] = null;
-                        values[valueIndex] = ConstantNode.forConstant(Constant.forIllegal(), tool.getMetaAccessProvider(), merge.graph());
+                        values[valueIndex] = ConstantNode.forConstant(JavaConstant.forIllegal(), tool.getMetaAccessProvider(), merge.graph());
                     }
                     valueIndex++;
                 }

@@ -74,7 +74,7 @@ public abstract class SwitchNode extends ControlSplitNode {
     protected boolean assertValues() {
         Kind kind = value.getKind();
         for (int i = 0; i < keyCount(); i++) {
-            Constant key = keyAt(i);
+            JavaConstant key = keyAt(i);
             assert key.getKind() == kind;
         }
         return true;
@@ -105,7 +105,7 @@ public abstract class SwitchNode extends ControlSplitNode {
     /**
      * The key at the specified position, encoded in a Constant.
      */
-    public abstract Constant keyAt(int i);
+    public abstract JavaConstant keyAt(int i);
 
     public boolean structureEquals(SwitchNode switchNode) {
         return Arrays.equals(keySuccessors, switchNode.keySuccessors) && equalKeys(switchNode);

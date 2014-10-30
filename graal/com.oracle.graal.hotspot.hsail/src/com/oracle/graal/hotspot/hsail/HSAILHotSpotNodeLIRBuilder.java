@@ -64,13 +64,13 @@ public class HSAILHotSpotNodeLIRBuilder extends HSAILNodeLIRBuilder implements H
     /**
      * @return a compressed version of the incoming constant lifted from AMD64HotSpotLIRGenerator
      */
-    protected static Constant compress(Constant c, CompressEncoding encoding) {
+    protected static JavaConstant compress(JavaConstant c, CompressEncoding encoding) {
         if (c.getKind() == Kind.Long) {
             int compressedValue = (int) (((c.asLong() - encoding.base) >> encoding.shift) & 0xffffffffL);
             if (c instanceof HotSpotMetaspaceConstant) {
                 return HotSpotMetaspaceConstant.forMetaspaceObject(Kind.Int, compressedValue, HotSpotMetaspaceConstant.getMetaspaceObject(c), true);
             } else {
-                return Constant.forIntegerKind(Kind.Int, compressedValue);
+                return JavaConstant.forIntegerKind(Kind.Int, compressedValue);
             }
         } else {
             throw GraalInternalError.shouldNotReachHere();

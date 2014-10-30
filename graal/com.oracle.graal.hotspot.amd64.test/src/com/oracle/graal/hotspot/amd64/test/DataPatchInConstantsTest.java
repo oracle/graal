@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -172,7 +172,7 @@ public class DataPatchInConstantsTest extends GraalCompilerTest {
             LIRGeneratorTool gen = generator.getLIRGeneratorTool();
             Variable ret = gen.newVariable(gen.getLIRKind(stamp()));
 
-            gen.append(new LoadThroughPatchOp(input.asConstant(), stamp() instanceof NarrowOopStamp, ret));
+            gen.append(new LoadThroughPatchOp(input.asJavaConstant(), stamp() instanceof NarrowOopStamp, ret));
             generator.setResult(this, ret);
         }
 
@@ -182,11 +182,11 @@ public class DataPatchInConstantsTest extends GraalCompilerTest {
 
     private static class LoadThroughPatchOp extends LIRInstructionBase {
 
-        final Constant c;
+        final JavaConstant c;
         final boolean compressed;
         @Def({REG}) AllocatableValue result;
 
-        LoadThroughPatchOp(Constant c, boolean compressed, AllocatableValue result) {
+        LoadThroughPatchOp(JavaConstant c, boolean compressed, AllocatableValue result) {
             this.c = c;
             this.compressed = compressed;
             this.result = result;

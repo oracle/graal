@@ -62,9 +62,9 @@ public abstract class CompareNode extends BinaryOpLogicNode {
      */
     public abstract boolean unorderedIsTrue();
 
-    private ValueNode optimizeConditional(Constant constant, ConditionalNode conditionalNode, ConstantReflectionProvider constantReflection, Condition cond) {
-        Constant trueConstant = conditionalNode.trueValue().asConstant();
-        Constant falseConstant = conditionalNode.falseValue().asConstant();
+    private ValueNode optimizeConditional(JavaConstant constant, ConditionalNode conditionalNode, ConstantReflectionProvider constantReflection, Condition cond) {
+        JavaConstant trueConstant = conditionalNode.trueValue().asJavaConstant();
+        JavaConstant falseConstant = conditionalNode.falseValue().asJavaConstant();
 
         if (falseConstant != null && trueConstant != null && constantReflection != null) {
             boolean trueResult = cond.foldCondition(trueConstant, constant, constantReflection, unorderedIsTrue());
@@ -86,22 +86,22 @@ public abstract class CompareNode extends BinaryOpLogicNode {
         return this;
     }
 
-    protected ValueNode optimizeNormalizeCmp(Constant constant, NormalizeCompareNode normalizeNode, boolean mirrored) {
+    protected ValueNode optimizeNormalizeCmp(JavaConstant constant, NormalizeCompareNode normalizeNode, boolean mirrored) {
         throw new GraalInternalError("NormalizeCompareNode connected to %s (%s %s %s)", this, constant, normalizeNode, mirrored);
     }
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
         if (forX.isConstant() && forY.isConstant()) {
-            return LogicConstantNode.forBoolean(condition().foldCondition(forX.asConstant(), forY.asConstant(), tool.getConstantReflection(), unorderedIsTrue()));
+            return LogicConstantNode.forBoolean(condition().foldCondition(forX.asJavaConstant(), forY.asJavaConstant(), tool.getConstantReflection(), unorderedIsTrue()));
         }
         ValueNode result;
         if (forX.isConstant()) {
-            if ((result = canonicalizeSymmetricConstant(tool, forX.asConstant(), forY, true)) != this) {
+            if ((result = canonicalizeSymmetricConstant(tool, forX.asJavaConstant(), forY, true)) != this) {
                 return result;
             }
         } else if (forY.isConstant()) {
-            if ((result = canonicalizeSymmetricConstant(tool, forY.asConstant(), forX, false)) != this) {
+            if ((result = canonicalizeSymmetricConstant(tool, forY.asJavaConstant(), forX, false)) != this) {
                 return result;
             }
         } else if (forX instanceof ConvertNode && forY instanceof ConvertNode) {
@@ -116,7 +116,7 @@ public abstract class CompareNode extends BinaryOpLogicNode {
 
     protected abstract CompareNode duplicateModified(ValueNode newX, ValueNode newY);
 
-    protected ValueNode canonicalizeSymmetricConstant(CanonicalizerTool tool, Constant constant, ValueNode nonConstant, boolean mirrored) {
+    protected ValueNode canonicalizeSymmetricConstant(CanonicalizerTool tool, JavaConstant constant, ValueNode nonConstant, boolean mirrored) {
         if (nonConstant instanceof ConditionalNode) {
             return optimizeConditional(constant, (ConditionalNode) nonConstant, tool.getConstantReflection(), mirrored ? condition().mirror() : condition());
         } else if (nonConstant instanceof NormalizeCompareNode) {
@@ -135,9 +135,9 @@ public abstract class CompareNode extends BinaryOpLogicNode {
         return this;
     }
 
-    private ConstantNode canonicalConvertConstant(CanonicalizerTool tool, ConvertNode convert, Constant constant) {
+    private ConstantNode canonicalConvertConstant(CanonicalizerTool tool, ConvertNode convert, JavaConstant constant) {
         if (convert.preservesOrder(condition())) {
-            Constant reverseConverted = convert.reverse(constant);
+            JavaConstant reverseConverted = convert.reverse(constant);
             if (convert.convert(reverseConverted).equals(constant)) {
                 return ConstantNode.forConstant(convert.getValue().stamp(), reverseConverted, tool.getMetaAccess());
             }

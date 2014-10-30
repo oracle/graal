@@ -72,7 +72,7 @@ public class AddNode extends BinaryArithmeticNode<Add> implements NarrowableArit
             }
         }
         if (forY.isConstant()) {
-            Constant c = forY.asConstant();
+            JavaConstant c = forY.asJavaConstant();
             if (op.isNeutral(c)) {
                 return forX;
             }

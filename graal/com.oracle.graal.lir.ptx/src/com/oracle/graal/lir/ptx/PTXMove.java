@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -181,7 +181,7 @@ public class PTXMove {
             }
         } else if (isConstant(input)) {
             if (isVariable(result)) {
-                const2reg(crb, masm, result, (Constant) input);
+                const2reg(crb, masm, result, (JavaConstant) input);
             } else {
                 throw GraalInternalError.shouldNotReachHere();
             }
@@ -210,7 +210,7 @@ public class PTXMove {
         }
     }
 
-    private static void const2reg(CompilationResultBuilder crb, PTXMacroAssembler masm, Value result, Constant input) {
+    private static void const2reg(CompilationResultBuilder crb, PTXMacroAssembler masm, Value result, JavaConstant input) {
         Variable dest = (Variable) result;
 
         switch (input.getKind().getStackKind()) {
@@ -223,10 +223,10 @@ public class PTXMove {
                 break;
             case Object:
                 if (input.isNull()) {
-                    new Mov(dest, Constant.forLong(0x0L)).emit(masm);
+                    new Mov(dest, JavaConstant.forLong(0x0L)).emit(masm);
                 } else if (crb.target.inlineObjects) {
                     crb.recordInlineDataInCode(input);
-                    new Mov(dest, Constant.forLong(0xDEADDEADDEADDEADL)).emit(masm);
+                    new Mov(dest, JavaConstant.forLong(0xDEADDEADDEADDEADL)).emit(masm);
                 } else {
                     // new Mov(dest, crb.recordDataReferenceInCode(input, 0, false));
                 }

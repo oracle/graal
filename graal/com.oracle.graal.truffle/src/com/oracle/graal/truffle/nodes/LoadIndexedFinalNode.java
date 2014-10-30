@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -56,7 +56,7 @@ public class LoadIndexedFinalNode extends AccessIndexedNode implements Canonical
     @Override
     public Node canonical(CanonicalizerTool tool) {
         if (array().isConstant() && index().isConstant()) {
-            Constant constant = tool.getConstantReflection().readArrayElement(array().asConstant(), index().asConstant().asInt());
+            JavaConstant constant = tool.getConstantReflection().readArrayElement(array().asJavaConstant(), index().asJavaConstant().asInt());
             if (constant != null) {
                 return ConstantNode.forConstant(constant, tool.getMetaAccess());
             }

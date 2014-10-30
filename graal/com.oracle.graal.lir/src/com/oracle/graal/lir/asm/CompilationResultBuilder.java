@@ -80,7 +80,7 @@ public class CompilationResultBuilder {
 
     private List<ExceptionInfo> exceptionInfoList;
 
-    private final IdentityHashMap<Constant, Data> dataCache;
+    private final IdentityHashMap<JavaConstant, Data> dataCache;
 
     public CompilationResultBuilder(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, Assembler asm, FrameContext frameContext, CompilationResult compilationResult) {
         this.target = codeCache.getTarget();
@@ -161,7 +161,7 @@ public class CompilationResultBuilder {
         compilationResult.recordInfopoint(pos, debugInfo, reason);
     }
 
-    public void recordInlineDataInCode(Constant data) {
+    public void recordInlineDataInCode(JavaConstant data) {
         assert data != null;
         int pos = asm.position();
         Debug.log("Inline data in code: pos = %d, data = %s", pos, data);
@@ -177,7 +177,7 @@ public class CompilationResultBuilder {
         return asm.getPlaceholder();
     }
 
-    public AbstractAddress recordDataReferenceInCode(Constant constant, int alignment) {
+    public AbstractAddress recordDataReferenceInCode(JavaConstant constant, int alignment) {
         assert constant != null;
         Debug.log("Constant reference in code: pos = %d, data = %s", asm.position(), constant);
         Data data = dataCache.get(constant);
@@ -203,7 +203,7 @@ public class CompilationResultBuilder {
      */
     public int asIntConst(Value value) {
         assert (value.getKind().isNumericInteger()) && isConstant(value);
-        Constant constant = (Constant) value;
+        JavaConstant constant = (JavaConstant) value;
         assert !codeCache.needsDataPatch(constant) : constant + " should be in a DataPatch";
         long c = constant.asLong();
         if (!NumUtil.isInt(c)) {
@@ -217,7 +217,7 @@ public class CompilationResultBuilder {
      */
     public float asFloatConst(Value value) {
         assert (value.getKind().getStackKind() == Kind.Float && isConstant(value));
-        Constant constant = (Constant) value;
+        JavaConstant constant = (JavaConstant) value;
         assert !codeCache.needsDataPatch(constant) : constant + " should be in a DataPatch";
         return constant.asFloat();
     }
@@ -227,7 +227,7 @@ public class CompilationResultBuilder {
      */
     public long asLongConst(Value value) {
         assert (value.getKind().getStackKind() == Kind.Long && isConstant(value));
-        Constant constant = (Constant) value;
+        JavaConstant constant = (JavaConstant) value;
         assert !codeCache.needsDataPatch(constant) : constant + " should be in a DataPatch";
         return constant.asLong();
     }
@@ -237,7 +237,7 @@ public class CompilationResultBuilder {
      */
     public double asDoubleConst(Value value) {
         assert (value.getKind().getStackKind() == Kind.Double && isConstant(value));
-        Constant constant = (Constant) value;
+        JavaConstant constant = (JavaConstant) value;
         assert !codeCache.needsDataPatch(constant) : constant + " should be in a DataPatch";
         return constant.asDouble();
     }
@@ -251,7 +251,7 @@ public class CompilationResultBuilder {
 
     public AbstractAddress asFloatConstRef(Value value, int alignment) {
         assert value.getKind() == Kind.Float && isConstant(value);
-        return recordDataReferenceInCode((Constant) value, alignment);
+        return recordDataReferenceInCode((JavaConstant) value, alignment);
     }
 
     /**
@@ -263,7 +263,7 @@ public class CompilationResultBuilder {
 
     public AbstractAddress asDoubleConstRef(Value value, int alignment) {
         assert value.getKind() == Kind.Double && isConstant(value);
-        return recordDataReferenceInCode((Constant) value, alignment);
+        return recordDataReferenceInCode((JavaConstant) value, alignment);
     }
 
     /**
@@ -271,7 +271,7 @@ public class CompilationResultBuilder {
      */
     public AbstractAddress asLongConstRef(Value value) {
         assert value.getKind() == Kind.Long && isConstant(value);
-        return recordDataReferenceInCode((Constant) value, 8);
+        return recordDataReferenceInCode((JavaConstant) value, 8);
     }
 
     /**
@@ -279,7 +279,7 @@ public class CompilationResultBuilder {
      */
     public AbstractAddress asObjectConstRef(Value value) {
         assert value.getKind() == Kind.Object && isConstant(value);
-        return recordDataReferenceInCode((Constant) value, 8);
+        return recordDataReferenceInCode((JavaConstant) value, 8);
     }
 
     public AbstractAddress asByteAddr(Value value) {

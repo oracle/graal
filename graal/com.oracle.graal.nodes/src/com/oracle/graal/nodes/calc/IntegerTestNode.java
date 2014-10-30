@@ -52,7 +52,7 @@ public class IntegerTestNode extends BinaryOpLogicNode {
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
         if (forX.isConstant() && forY.isConstant()) {
-            return LogicConstantNode.forBoolean((forX.asConstant().asLong() & forY.asConstant().asLong()) == 0);
+            return LogicConstantNode.forBoolean((forX.asJavaConstant().asLong() & forY.asJavaConstant().asLong()) == 0);
         }
         if (getX().stamp() instanceof IntegerStamp && getY().stamp() instanceof IntegerStamp) {
             IntegerStamp xStamp = (IntegerStamp) forX.stamp();

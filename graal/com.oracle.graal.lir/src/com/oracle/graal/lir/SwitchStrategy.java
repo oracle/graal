@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,10 +32,10 @@ import com.oracle.graal.lir.asm.*;
 /**
  * This class encapsulates different strategies on how to generate code for switch instructions.
  * 
- * The {@link #getBestStrategy(double[], Constant[], LabelRef[])} method can be used to get strategy
- * with the smallest average effort (average number of comparisons until a decision is reached). The
- * strategy returned by this method will have its averageEffort set, while a strategy constructed
- * directly will not.
+ * The {@link #getBestStrategy(double[], JavaConstant[], LabelRef[])} method can be used to get
+ * strategy with the smallest average effort (average number of comparisons until a decision is
+ * reached). The strategy returned by this method will have its averageEffort set, while a strategy
+ * constructed directly will not.
  */
 public abstract class SwitchStrategy {
 
@@ -191,11 +191,11 @@ public abstract class SwitchStrategy {
     }
 
     public final double[] keyProbabilities;
-    public final Constant[] keyConstants;
+    public final JavaConstant[] keyConstants;
     private double averageEffort = -1;
     private EffortClosure effortClosure;
 
-    public SwitchStrategy(double[] keyProbabilities, Constant[] keyConstants) {
+    public SwitchStrategy(double[] keyProbabilities, JavaConstant[] keyConstants) {
         assert keyConstants.length == keyProbabilities.length && keyConstants.length >= 2;
         this.keyProbabilities = keyProbabilities;
         this.keyConstants = keyConstants;
@@ -254,7 +254,7 @@ public abstract class SwitchStrategy {
     public static class SequentialStrategy extends SwitchStrategy {
         private final Integer[] indexes;
 
-        public SequentialStrategy(final double[] keyProbabilities, Constant[] keyConstants) {
+        public SequentialStrategy(final double[] keyProbabilities, JavaConstant[] keyConstants) {
             super(keyProbabilities, keyConstants);
 
             int keyCount = keyConstants.length;
@@ -289,7 +289,7 @@ public abstract class SwitchStrategy {
     public static class RangesStrategy extends SwitchStrategy {
         private final Integer[] indexes;
 
-        public RangesStrategy(final double[] keyProbabilities, Constant[] keyConstants) {
+        public RangesStrategy(final double[] keyProbabilities, JavaConstant[] keyConstants) {
             super(keyProbabilities, keyConstants);
 
             int keyCount = keyConstants.length;
@@ -353,7 +353,7 @@ public abstract class SwitchStrategy {
 
         private final double[] probabilitySums;
 
-        public BinaryStrategy(double[] keyProbabilities, Constant[] keyConstants) {
+        public BinaryStrategy(double[] keyProbabilities, JavaConstant[] keyConstants) {
             super(keyProbabilities, keyConstants);
             probabilitySums = new double[keyProbabilities.length + 1];
             double sum = 0;
@@ -457,7 +457,7 @@ public abstract class SwitchStrategy {
 
     public abstract void run(SwitchClosure closure);
 
-    private static SwitchStrategy[] getStrategies(double[] keyProbabilities, Constant[] keyConstants, LabelRef[] keyTargets) {
+    private static SwitchStrategy[] getStrategies(double[] keyProbabilities, JavaConstant[] keyConstants, LabelRef[] keyTargets) {
         SwitchStrategy[] strategies = new SwitchStrategy[]{new SequentialStrategy(keyProbabilities, keyConstants), new RangesStrategy(keyProbabilities, keyConstants),
                         new BinaryStrategy(keyProbabilities, keyConstants)};
         for (SwitchStrategy strategy : strategies) {
@@ -473,7 +473,7 @@ public abstract class SwitchStrategy {
      * Creates all switch strategies for the given switch, evaluates them (based on average effort)
      * and returns the best one.
      */
-    public static SwitchStrategy getBestStrategy(double[] keyProbabilities, Constant[] keyConstants, LabelRef[] keyTargets) {
+    public static SwitchStrategy getBestStrategy(double[] keyProbabilities, JavaConstant[] keyConstants, LabelRef[] keyTargets) {
         SwitchStrategy[] strategies = getStrategies(keyProbabilities, keyConstants, keyTargets);
         double bestEffort = Integer.MAX_VALUE;
         SwitchStrategy bestStrategy = null;

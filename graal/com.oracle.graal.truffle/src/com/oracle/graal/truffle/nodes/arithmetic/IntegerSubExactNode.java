@@ -62,7 +62,7 @@ public class IntegerSubExactNode extends SubNode implements IntegerExactArithmet
         if (forX.isConstant() && forY.isConstant()) {
             return canonicalXYconstant(forX, forY);
         } else if (forY.isConstant()) {
-            long c = forY.asConstant().asLong();
+            long c = forY.asJavaConstant().asLong();
             if (c == 0) {
                 return forX;
             }
@@ -71,8 +71,8 @@ public class IntegerSubExactNode extends SubNode implements IntegerExactArithmet
     }
 
     private ValueNode canonicalXYconstant(ValueNode forX, ValueNode forY) {
-        Constant xConst = forX.asConstant();
-        Constant yConst = forY.asConstant();
+        JavaConstant xConst = forX.asJavaConstant();
+        JavaConstant yConst = forY.asJavaConstant();
         assert xConst.getKind() == yConst.getKind();
         try {
             if (xConst.getKind() == Kind.Int) {

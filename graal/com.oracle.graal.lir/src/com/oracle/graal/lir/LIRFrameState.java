@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -121,7 +121,7 @@ public class LIRFrameState {
     /**
      * Called by the register allocator to mark the specified location as a reference in the
      * reference map of the debug information. The tracked location can be a {@link RegisterValue}
-     * or a {@link StackSlot}. Note that a {@link Constant} is automatically tracked.
+     * or a {@link StackSlot}. Note that a {@link JavaConstant} is automatically tracked.
      *
      * @param location The location to be added to the reference map.
      * @param frameMap The frame map.

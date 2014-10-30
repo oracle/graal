@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -105,20 +105,22 @@ public abstract class ValueNode extends ScheduledNode implements StampProvider, 
      * @return {@code true} if this value represents the null constant
      */
     public final boolean isNullConstant() {
-        return this instanceof ConstantNode && ((ConstantNode) this).getValue().isNull();
+        JavaConstant value = asJavaConstant();
+        return value != null && value.isNull();
     }
 
     /**
      * Convert this value to a constant if it is a constant, otherwise return null.
      *
-     * @return the {@link Constant} represented by this value if it is a constant; {@code null}
+     * @return the {@link JavaConstant} represented by this value if it is a constant; {@code null}
      *         otherwise
      */
-    public final Constant asConstant() {
+    public final JavaConstant asJavaConstant() {
         if (this instanceof ConstantNode) {
             return ((ConstantNode) this).getValue();
+        } else {
+            return null;
         }
-        return null;
     }
 
     public ValueNode asNode() {

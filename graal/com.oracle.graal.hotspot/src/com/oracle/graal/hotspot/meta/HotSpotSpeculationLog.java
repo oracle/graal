@@ -28,7 +28,7 @@ import com.oracle.graal.api.meta.*;
 public class HotSpotSpeculationLog extends SpeculationLog {
 
     @Override
-    public Constant speculate(Object reason) {
+    public JavaConstant speculate(Object reason) {
         addSpeculation(reason);
         return HotSpotObjectConstant.forObject(reason);
     }

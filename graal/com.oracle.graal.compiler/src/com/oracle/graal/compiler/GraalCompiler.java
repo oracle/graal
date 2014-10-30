@@ -319,7 +319,7 @@ public class GraalCompiler {
                 Kind kind = Kind.Illegal;
                 if (dp.reference instanceof ConstantReference) {
                     VMConstant constant = ((ConstantReference) dp.reference).getConstant();
-                    kind = ((Constant) constant).getKind();
+                    kind = ((JavaConstant) constant).getKind();
                 }
                 dms[kind.ordinal()].add(1);
             }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -198,7 +198,7 @@ public class InlineableGraph implements Inlineable {
             if (param.usages().isNotEmpty()) {
                 ValueNode arg = args.get(param.index());
                 if (arg.isConstant()) {
-                    Constant constant = arg.asConstant();
+                    JavaConstant constant = arg.asJavaConstant();
                     parameterUsages = trackParameterUsages(param, parameterUsages);
                     // collect param usages before replacing the param
                     graph.replaceFloating(param, ConstantNode.forConstant(constant, context.getMetaAccess(), graph));

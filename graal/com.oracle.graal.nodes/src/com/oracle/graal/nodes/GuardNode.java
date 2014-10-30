@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -46,15 +46,15 @@ public class GuardNode extends FloatingAnchoredNode implements Canonicalizable, 
 
     @Input(InputType.Condition) protected LogicNode condition;
     protected final DeoptimizationReason reason;
-    protected Constant speculation;
+    protected JavaConstant speculation;
     protected DeoptimizationAction action;
     protected boolean negated;
 
-    public static GuardNode create(LogicNode condition, AnchoringNode anchor, DeoptimizationReason reason, DeoptimizationAction action, boolean negated, Constant speculation) {
+    public static GuardNode create(LogicNode condition, AnchoringNode anchor, DeoptimizationReason reason, DeoptimizationAction action, boolean negated, JavaConstant speculation) {
         return new GuardNode(condition, anchor, reason, action, negated, speculation);
     }
 
-    protected GuardNode(LogicNode condition, AnchoringNode anchor, DeoptimizationReason reason, DeoptimizationAction action, boolean negated, Constant speculation) {
+    protected GuardNode(LogicNode condition, AnchoringNode anchor, DeoptimizationReason reason, DeoptimizationAction action, boolean negated, JavaConstant speculation) {
         super(StampFactory.forVoid(), anchor);
         this.condition = condition;
         this.reason = reason;
@@ -82,11 +82,11 @@ public class GuardNode extends FloatingAnchoredNode implements Canonicalizable, 
         return action;
     }
 
-    public Constant getSpeculation() {
+    public JavaConstant getSpeculation() {
         return speculation;
     }
 
-    public void setSpeculation(Constant speculation) {
+    public void setSpeculation(JavaConstant speculation) {
         this.speculation = speculation;
     }
 

@@ -28,27 +28,27 @@ import com.oracle.graal.api.meta.*;
  * Represents a constant non-{@code null} object reference, within the compiler and across the
  * compiler/runtime interface.
  */
-public final class HotSpotObjectConstant extends Constant implements HotSpotConstant, VMConstant {
+public final class HotSpotObjectConstant extends JavaConstant implements HotSpotConstant, VMConstant {
 
     private static final long serialVersionUID = 3592151693708093496L;
 
-    public static Constant forObject(Object object) {
+    public static JavaConstant forObject(Object object) {
         if (object == null) {
-            return Constant.NULL_OBJECT;
+            return JavaConstant.NULL_OBJECT;
         } else {
             return new HotSpotObjectConstant(object, false);
         }
     }
 
-    public static Constant forBoxedValue(Kind kind, Object value) {
+    public static JavaConstant forBoxedValue(Kind kind, Object value) {
         if (kind == Kind.Object) {
             return HotSpotObjectConstant.forObject(value);
         } else {
-            return Constant.forBoxedPrimitive(value);
+            return JavaConstant.forBoxedPrimitive(value);
         }
     }
 
-    public static Object asObject(Constant constant) {
+    public static Object asObject(JavaConstant constant) {
         if (constant.isNull()) {
             return null;
         } else {
@@ -56,7 +56,7 @@ public final class HotSpotObjectConstant extends Constant implements HotSpotCons
         }
     }
 
-    public static Object asBoxedValue(Constant constant) {
+    public static Object asBoxedValue(JavaConstant constant) {
         if (constant.isNull()) {
             return null;
         } else if (constant instanceof HotSpotObjectConstant) {
@@ -66,7 +66,7 @@ public final class HotSpotObjectConstant extends Constant implements HotSpotCons
         }
     }
 
-    public static boolean isCompressed(Constant constant) {
+    public static boolean isCompressed(JavaConstant constant) {
         if (constant.isNull()) {
             return HotSpotCompressedNullConstant.NULL_OBJECT.equals(constant);
         } else {
@@ -84,12 +84,12 @@ public final class HotSpotObjectConstant extends Constant implements HotSpotCons
         assert object != null;
     }
 
-    public Constant compress() {
+    public JavaConstant compress() {
         assert !compressed;
         return new HotSpotObjectConstant(object, true);
     }
 
-    public Constant uncompress() {
+    public JavaConstant uncompress() {
         assert compressed;
         return new HotSpotObjectConstant(object, false);
     }

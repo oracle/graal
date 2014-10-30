@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -60,7 +60,7 @@ public class ObjectGetClassNode extends MacroNode implements Virtualizable, Cano
         }
         State state = tool.getObjectState(getObject());
         if (state != null) {
-            Constant clazz = state.getVirtualObject().type().getEncoding(Representation.JavaClass);
+            JavaConstant clazz = state.getVirtualObject().type().getEncoding(Representation.JavaClass);
             tool.replaceWithValue(ConstantNode.forConstant(clazz, tool.getMetaAccessProvider(), graph()));
         }
     }
@@ -75,14 +75,14 @@ public class ObjectGetClassNode extends MacroNode implements Virtualizable, Cano
         } else {
             ResolvedJavaType type = StampTool.typeOrNull(getObject());
             if (StampTool.isExactType(getObject())) {
-                Constant clazz = type.getEncoding(Representation.JavaClass);
+                JavaConstant clazz = type.getEncoding(Representation.JavaClass);
                 return ConstantNode.forConstant(clazz, tool.getMetaAccess());
             }
             if (type != null && tool.assumptions().useOptimisticAssumptions()) {
                 ResolvedJavaType exactType = type.findUniqueConcreteSubtype();
                 if (exactType != null) {
                     tool.assumptions().recordConcreteSubtype(type, exactType);
-                    Constant clazz = exactType.getEncoding(Representation.JavaClass);
+                    JavaConstant clazz = exactType.getEncoding(Representation.JavaClass);
                     return ConstantNode.forConstant(clazz, tool.getMetaAccess());
                 }
             }

@@ -54,7 +54,7 @@ public class BitCountNode extends UnaryNode implements LIRLowerable {
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
         if (forValue.isConstant()) {
-            Constant c = forValue.asConstant();
+            JavaConstant c = forValue.asJavaConstant();
             return ConstantNode.forInt(forValue.getKind() == Kind.Int ? bitCount(c.asInt()) : bitCount(c.asLong()));
         }
         return this;

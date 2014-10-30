@@ -82,7 +82,7 @@ public class ObjectEqualsNode extends CompareNode implements Virtualizable {
     private void virtualizeNonVirtualComparison(State state, ValueNode other, VirtualizerTool tool) {
         if (!state.getVirtualObject().hasIdentity() && state.getVirtualObject().entryKind(0) == Kind.Boolean) {
             if (other.isConstant()) {
-                Constant otherUnboxed = tool.getConstantReflectionProvider().unboxPrimitive(other.asConstant());
+                JavaConstant otherUnboxed = tool.getConstantReflectionProvider().unboxPrimitive(other.asJavaConstant());
                 if (otherUnboxed != null && otherUnboxed.getKind() == Kind.Boolean) {
                     int expectedValue = otherUnboxed.asBoolean() ? 1 : 0;
                     IntegerEqualsNode equals = IntegerEqualsNode.create(state.getEntry(0), ConstantNode.forInt(expectedValue, graph()));

@@ -146,7 +146,7 @@ public class MethodHandleNode extends MacroStateSplitNode implements Simplifiabl
     protected InvokeNode getInvokeBasicTarget() {
         ValueNode methodHandleNode = getReceiver();
         if (methodHandleNode.isConstant()) {
-            return getTargetInvokeNode(methodHandleAccess().resolveInvokeBasicTarget(methodHandleNode.asConstant(), false));
+            return getTargetInvokeNode(methodHandleAccess().resolveInvokeBasicTarget(methodHandleNode.asJavaConstant(), false));
         }
         return null;
     }
@@ -162,7 +162,7 @@ public class MethodHandleNode extends MacroStateSplitNode implements Simplifiabl
     protected InvokeNode getLinkToTarget() {
         ValueNode memberNameNode = getMemberName();
         if (memberNameNode.isConstant()) {
-            return getTargetInvokeNode(methodHandleAccess().resolveLinkToTarget(memberNameNode.asConstant()));
+            return getTargetInvokeNode(methodHandleAccess().resolveLinkToTarget(memberNameNode.asJavaConstant()));
         }
         return null;
     }

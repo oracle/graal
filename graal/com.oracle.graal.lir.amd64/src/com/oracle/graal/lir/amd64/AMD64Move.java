@@ -258,9 +258,9 @@ public class AMD64Move {
 
     public static class StoreConstantOp extends MemOp {
 
-        protected final Constant input;
+        protected final JavaConstant input;
 
-        public StoreConstantOp(Kind kind, AMD64AddressValue address, Constant input, LIRFrameState state) {
+        public StoreConstantOp(Kind kind, AMD64AddressValue address, JavaConstant input, LIRFrameState state) {
             super(kind, address, state);
             this.input = input;
         }
@@ -519,9 +519,9 @@ public class AMD64Move {
             }
         } else if (isConstant(input)) {
             if (isRegister(result)) {
-                const2reg(crb, masm, result, (Constant) input);
+                const2reg(crb, masm, result, (JavaConstant) input);
             } else if (isStackSlot(result)) {
-                const2stack(crb, masm, result, (Constant) input);
+                const2stack(crb, masm, result, (JavaConstant) input);
             } else {
                 throw GraalInternalError.shouldNotReachHere();
             }
@@ -621,7 +621,7 @@ public class AMD64Move {
         }
     }
 
-    private static void const2reg(CompilationResultBuilder crb, AMD64MacroAssembler masm, Value result, Constant input) {
+    private static void const2reg(CompilationResultBuilder crb, AMD64MacroAssembler masm, Value result, JavaConstant input) {
         /*
          * Note: we use the kind of the input operand (and not the kind of the result operand)
          * because they don't match in all cases. For example, an object constant can be loaded to a
@@ -698,7 +698,7 @@ public class AMD64Move {
         }
     }
 
-    private static void const2stack(CompilationResultBuilder crb, AMD64MacroAssembler masm, Value result, Constant input) {
+    private static void const2stack(CompilationResultBuilder crb, AMD64MacroAssembler masm, Value result, JavaConstant input) {
         assert !crb.codeCache.needsDataPatch(input);
         AMD64Address dest = (AMD64Address) crb.asAddress(result);
         switch (input.getKind().getStackKind()) {

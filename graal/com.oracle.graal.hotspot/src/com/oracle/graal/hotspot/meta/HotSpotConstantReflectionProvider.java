@@ -43,12 +43,12 @@ public class HotSpotConstantReflectionProvider implements ConstantReflectionProv
     }
 
     @Override
-    public Boolean constantEquals(Constant x, Constant y) {
+    public Boolean constantEquals(JavaConstant x, JavaConstant y) {
         return x.equals(y);
     }
 
     @Override
-    public Integer readArrayLength(Constant array) {
+    public Integer readArrayLength(JavaConstant array) {
         if (array.getKind() != Kind.Object || array.isNull() || !HotSpotObjectConstant.asObject(array).getClass().isArray()) {
             return null;
         }
@@ -56,7 +56,7 @@ public class HotSpotConstantReflectionProvider implements ConstantReflectionProv
     }
 
     @Override
-    public Constant readUnsafeConstant(Kind kind, Constant baseConstant, long initialDisplacement) {
+    public JavaConstant readUnsafeConstant(Kind kind, JavaConstant baseConstant, long initialDisplacement) {
         Object base;
         long displacement;
         if (baseConstant.getKind() == Kind.Object) {
@@ -78,29 +78,29 @@ public class HotSpotConstantReflectionProvider implements ConstantReflectionProv
 
         switch (kind) {
             case Boolean:
-                return Constant.forBoolean(base == null ? unsafe.getByte(displacement) != 0 : unsafe.getBoolean(base, displacement));
+                return JavaConstant.forBoolean(base == null ? unsafe.getByte(displacement) != 0 : unsafe.getBoolean(base, displacement));
             case Byte:
-                return Constant.forByte(base == null ? unsafe.getByte(displacement) : unsafe.getByte(base, displacement));
+                return JavaConstant.forByte(base == null ? unsafe.getByte(displacement) : unsafe.getByte(base, displacement));
             case Char:
-                return Constant.forChar(base == null ? unsafe.getChar(displacement) : unsafe.getChar(base, displacement));
+                return JavaConstant.forChar(base == null ? unsafe.getChar(displacement) : unsafe.getChar(base, displacement));
             case Short:
-                return Constant.forShort(base == null ? unsafe.getShort(displacement) : unsafe.getShort(base, displacement));
+                return JavaConstant.forShort(base == null ? unsafe.getShort(displacement) : unsafe.getShort(base, displacement));
             case Int:
-                return Constant.forInt(base == null ? unsafe.getInt(displacement) : unsafe.getInt(base, displacement));
+                return JavaConstant.forInt(base == null ? unsafe.getInt(displacement) : unsafe.getInt(base, displacement));
             case Long:
                 if (displacement == config().hubOffset && runtime.getConfig().useCompressedClassPointers) {
                     if (base == null) {
                         throw new GraalInternalError("Base of object must not be null");
                     } else {
-                        return Constant.forLong(runtime.getCompilerToVM().readUnsafeKlassPointer(base));
+                        return JavaConstant.forLong(runtime.getCompilerToVM().readUnsafeKlassPointer(base));
                     }
                 } else {
-                    return Constant.forLong(base == null ? unsafe.getLong(displacement) : unsafe.getLong(base, displacement));
+                    return JavaConstant.forLong(base == null ? unsafe.getLong(displacement) : unsafe.getLong(base, displacement));
                 }
             case Float:
-                return Constant.forFloat(base == null ? unsafe.getFloat(displacement) : unsafe.getFloat(base, displacement));
+                return JavaConstant.forFloat(base == null ? unsafe.getFloat(displacement) : unsafe.getFloat(base, displacement));
             case Double:
-                return Constant.forDouble(base == null ? unsafe.getDouble(displacement) : unsafe.getDouble(base, displacement));
+                return JavaConstant.forDouble(base == null ? unsafe.getDouble(displacement) : unsafe.getDouble(base, displacement));
             case Object: {
                 Object o = null;
                 if (baseConstant.getKind() == Kind.Object) {
@@ -123,7 +123,7 @@ public class HotSpotConstantReflectionProvider implements ConstantReflectionProv
     }
 
     @Override
-    public Constant readRawConstant(Kind kind, Constant baseConstant, long initialDisplacement, int bits) {
+    public JavaConstant readRawConstant(Kind kind, JavaConstant baseConstant, long initialDisplacement, int bits) {
         Object base;
         long displacement;
         if (baseConstant.getKind() == Kind.Object) {
@@ -174,13 +174,13 @@ public class HotSpotConstantReflectionProvider implements ConstantReflectionProv
         } else {
             switch (kind) {
                 case Int:
-                    return Constant.forInt((int) rawValue);
+                    return JavaConstant.forInt((int) rawValue);
                 case Long:
-                    return Constant.forLong(rawValue);
+                    return JavaConstant.forLong(rawValue);
                 case Float:
-                    return Constant.forFloat(Float.intBitsToFloat((int) rawValue));
+                    return JavaConstant.forFloat(Float.intBitsToFloat((int) rawValue));
                 case Double:
-                    return Constant.forDouble(Double.longBitsToDouble(rawValue));
+                    return JavaConstant.forDouble(Double.longBitsToDouble(rawValue));
                 default:
                     throw GraalInternalError.shouldNotReachHere();
             }
@@ -188,7 +188,7 @@ public class HotSpotConstantReflectionProvider implements ConstantReflectionProv
     }
 
     @Override
-    public Constant readArrayElement(Constant array, int index) {
+    public JavaConstant readArrayElement(JavaConstant array, int index) {
         if (array.getKind() != Kind.Object || array.isNull()) {
             return null;
         }
@@ -201,12 +201,12 @@ public class HotSpotConstantReflectionProvider implements ConstantReflectionProv
         if (a instanceof Object[]) {
             return HotSpotObjectConstant.forObject(((Object[]) a)[index]);
         } else {
-            return Constant.forBoxedPrimitive(Array.get(a, index));
+            return JavaConstant.forBoxedPrimitive(Array.get(a, index));
         }
     }
 
     @Override
-    public Constant boxPrimitive(Constant source) {
+    public JavaConstant boxPrimitive(JavaConstant source) {
         if (!source.getKind().isPrimitive()) {
             return null;
         }
@@ -214,15 +214,15 @@ public class HotSpotConstantReflectionProvider implements ConstantReflectionProv
     }
 
     @Override
-    public Constant unboxPrimitive(Constant source) {
+    public JavaConstant unboxPrimitive(JavaConstant source) {
         if (!source.getKind().isObject()) {
             return null;
         }
-        return Constant.forBoxedPrimitive(HotSpotObjectConstant.asObject(source));
+        return JavaConstant.forBoxedPrimitive(HotSpotObjectConstant.asObject(source));
     }
 
     @Override
-    public ResolvedJavaType asJavaType(Constant constant) {
+    public ResolvedJavaType asJavaType(JavaConstant constant) {
         if (constant instanceof HotSpotObjectConstant) {
             Object obj = HotSpotObjectConstant.asObject(constant);
             if (obj instanceof Class) {

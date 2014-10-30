@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -66,7 +66,7 @@ public class PTXMemOp {
                 case Float:
                 case Double:
                 case Object:
-                    new Ld(Global, result, addr.getBase(), Constant.forLong(addr.getDisplacement())).emit(masm);
+                    new Ld(Global, result, addr.getBase(), JavaConstant.forLong(addr.getDisplacement())).emit(masm);
                     break;
                 default:
                     throw GraalInternalError.shouldNotReachHere();
@@ -101,7 +101,7 @@ public class PTXMemOp {
                 case Float:
                 case Double:
                 case Object:
-                    new St(Global, input, addr.getBase(), Constant.forLong(addr.getDisplacement())).emit(masm);
+                    new St(Global, input, addr.getBase(), JavaConstant.forLong(addr.getDisplacement())).emit(masm);
                     break;
                 default:
                     throw GraalInternalError.shouldNotReachHere("missing: " + address.getKind());
@@ -137,7 +137,7 @@ public class PTXMemOp {
                 case Float:
                 case Double:
                 case Object:
-                    new LoadParam(Parameter, result, addr.getBase(), Constant.forLong(addr.getDisplacement())).emit(masm);
+                    new LoadParam(Parameter, result, addr.getBase(), JavaConstant.forLong(addr.getDisplacement())).emit(masm);
                     break;
                 default:
                     throw GraalInternalError.shouldNotReachHere();
@@ -170,7 +170,7 @@ public class PTXMemOp {
                 case Long:
                 case Float:
                 case Double:
-                    new LoadAddr(Parameter, result, addr.getBase(), Constant.forLong(addr.getDisplacement())).emit(masm);
+                    new LoadAddr(Parameter, result, addr.getBase(), JavaConstant.forLong(addr.getDisplacement())).emit(masm);
                     break;
                 default:
                     throw GraalInternalError.shouldNotReachHere();
@@ -206,7 +206,7 @@ public class PTXMemOp {
                 case Float:
                 case Double:
                 case Object:
-                    new St(Global, input, addr.getBase(), Constant.forLong(addr.getDisplacement())).emit(masm);
+                    new St(Global, input, addr.getBase(), JavaConstant.forLong(addr.getDisplacement())).emit(masm);
                     break;
                 default:
                     throw GraalInternalError.shouldNotReachHere("missing: " + address.getKind());

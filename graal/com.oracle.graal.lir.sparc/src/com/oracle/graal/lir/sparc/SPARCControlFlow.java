@@ -518,7 +518,7 @@ public class SPARCControlFlow {
     }
 
     public static class StrategySwitchOp extends SPARCLIRInstruction implements BlockEndOp {
-        @Use({CONST}) protected Constant[] keyConstants;
+        @Use({CONST}) protected JavaConstant[] keyConstants;
         private final LabelRef[] keyTargets;
         private LabelRef defaultTarget;
         @Alive({REG}) protected Value key;

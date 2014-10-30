@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -63,8 +63,8 @@ public class CustomizedUnsafeLoadFinalNode extends FixedWithNextNode implements 
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (object.isConstant() && !object.isNullConstant() && offset.isConstant() && condition.isConstant() && condition.asConstant().asInt() == 1) {
-            Constant constant = tool.getConstantReflection().readUnsafeConstant(accessKind, object.asConstant(), offset.asConstant().asLong());
+        if (object.isConstant() && !object.isNullConstant() && offset.isConstant() && condition.isConstant() && condition.asJavaConstant().asInt() == 1) {
+            JavaConstant constant = tool.getConstantReflection().readUnsafeConstant(accessKind, object.asJavaConstant(), offset.asJavaConstant().asLong());
             return ConstantNode.forConstant(constant, tool.getMetaAccess());
         }
         return this;
@@ -79,7 +79,7 @@ public class CustomizedUnsafeLoadFinalNode extends FixedWithNextNode implements 
         if (state != null && state.getState() == EscapeState.Virtual) {
             ValueNode offsetValue = tool.getReplacedValue(offset);
             if (offsetValue.isConstant()) {
-                long constantOffset = offsetValue.asConstant().asLong();
+                long constantOffset = offsetValue.asJavaConstant().asLong();
                 int entryIndex = state.getVirtualObject().entryIndexForOffset(constantOffset);
                 if (entryIndex != -1) {
                     ValueNode entry = state.getEntry(entryIndex);
@@ -95,10 +95,10 @@ public class CustomizedUnsafeLoadFinalNode extends FixedWithNextNode implements 
     public void lower(LoweringTool tool) {
         CompareNode compare = CompareNode.createCompareNode(graph(), Condition.EQ, condition, ConstantNode.forBoolean(true, graph()));
         LocationIdentity locationIdentity;
-        if (!location.isConstant() || location.asConstant().isNull()) {
+        if (!location.isConstant() || location.asJavaConstant().isNull()) {
             locationIdentity = LocationIdentity.ANY_LOCATION;
         } else {
-            locationIdentity = ObjectLocationIdentity.create(location.asConstant());
+            locationIdentity = ObjectLocationIdentity.create(location.asJavaConstant());
         }
         UnsafeLoadNode result = graph().add(UnsafeLoadNode.create(object, offset, accessKind, locationIdentity, compare));
         graph().replaceFixedWithFixed(this, result);

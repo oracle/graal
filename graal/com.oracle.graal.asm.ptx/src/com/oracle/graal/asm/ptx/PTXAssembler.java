@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -177,7 +177,7 @@ public class PTXAssembler extends AbstractPTXAssembler {
         }
 
         public String emitConstant(Value v, boolean comma) {
-            Constant constant = (Constant) v;
+            JavaConstant constant = (JavaConstant) v;
             String str = null;
 
             switch (v.getKind().getTypeChar()) {
@@ -288,7 +288,7 @@ public class PTXAssembler extends AbstractPTXAssembler {
         }
 
         public String emitConstant(Value v) {
-            Constant constant = (Constant) v;
+            JavaConstant constant = (JavaConstant) v;
 
             switch (v.getKind().getTypeChar()) {
                 case 'i':
@@ -368,8 +368,8 @@ public class PTXAssembler extends AbstractPTXAssembler {
 
         public String emitAddress(Value var, Value val) {
             assert var instanceof Variable;
-            assert val instanceof Constant;
-            Constant constant = (Constant) val;
+            assert val instanceof JavaConstant;
+            JavaConstant constant = (JavaConstant) val;
             return ("[" + ((space == PTXStateSpace.Parameter) ? emitParameter((Variable) var) : emitRegister((Variable) var, false)) + " + " + constant.toValueString() + "]");
         }
 
@@ -651,7 +651,7 @@ public class PTXAssembler extends AbstractPTXAssembler {
         }
 
         public String emitConstant(Value v) {
-            Constant constant = (Constant) v;
+            JavaConstant constant = (JavaConstant) v;
 
             switch (v.getKind().getTypeChar()) {
                 case 'i':

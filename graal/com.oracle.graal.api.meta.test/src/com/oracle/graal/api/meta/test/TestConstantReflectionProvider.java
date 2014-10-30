@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,8 +39,8 @@ public class TestConstantReflectionProvider extends TypeUniverse {
 
     @Test
     public void constantEqualsTest() {
-        for (Constant c1 : constants) {
-            for (Constant c2 : constants) {
+        for (JavaConstant c1 : constants) {
+            for (JavaConstant c2 : constants) {
                 // test symmetry
                 assertEquals(constantReflection.constantEquals(c1, c2), constantReflection.constantEquals(c2, c1));
                 if (c1.getKind() != Kind.Object && c2.getKind() != Kind.Object) {
@@ -52,7 +52,7 @@ public class TestConstantReflectionProvider extends TypeUniverse {
 
     @Test
     public void readArrayLengthTest() {
-        for (Constant c : constants) {
+        for (JavaConstant c : constants) {
             Integer actual = constantReflection.readArrayLength(c);
             if (c.getKind() != Kind.Object || c.isNull() || !snippetReflection.asObject(c).getClass().isArray()) {
                 assertNull(actual);
@@ -66,44 +66,44 @@ public class TestConstantReflectionProvider extends TypeUniverse {
 
     @Test
     public void boxTest() {
-        for (Constant c : constants) {
-            Constant boxed = constantReflection.boxPrimitive(c);
+        for (JavaConstant c : constants) {
+            JavaConstant boxed = constantReflection.boxPrimitive(c);
             if (c.getKind().isPrimitive()) {
                 assertTrue(boxed.getKind().isObject());
                 assertFalse(boxed.isNull());
             }
         }
 
-        assertEquals(Long.valueOf(42), snippetReflection.asObject(constantReflection.boxPrimitive(Constant.forLong(42))));
-        assertEquals(Integer.valueOf(666), snippetReflection.asObject(constantReflection.boxPrimitive(Constant.forInt(666))));
-        assertEquals(Byte.valueOf((byte) 123), snippetReflection.asObject(constantReflection.boxPrimitive(Constant.forByte((byte) 123))));
-        assertSame(Boolean.TRUE, snippetReflection.asObject(constantReflection.boxPrimitive(Constant.forBoolean(true))));
+        assertEquals(Long.valueOf(42), snippetReflection.asObject(constantReflection.boxPrimitive(JavaConstant.forLong(42))));
+        assertEquals(Integer.valueOf(666), snippetReflection.asObject(constantReflection.boxPrimitive(JavaConstant.forInt(666))));
+        assertEquals(Byte.valueOf((byte) 123), snippetReflection.asObject(constantReflection.boxPrimitive(JavaConstant.forByte((byte) 123))));
+        assertSame(Boolean.TRUE, snippetReflection.asObject(constantReflection.boxPrimitive(JavaConstant.forBoolean(true))));
 
-        assertNull(constantReflection.boxPrimitive(Constant.NULL_OBJECT));
+        assertNull(constantReflection.boxPrimitive(JavaConstant.NULL_OBJECT));
         assertNull(constantReflection.boxPrimitive(snippetReflection.forObject("abc")));
     }
 
     @Test
     public void unboxTest() {
-        for (Constant c : constants) {
-            Constant unboxed = constantReflection.unboxPrimitive(c);
+        for (JavaConstant c : constants) {
+            JavaConstant unboxed = constantReflection.unboxPrimitive(c);
             if (unboxed != null) {
                 assertFalse(unboxed.getKind().isObject());
             }
         }
 
-        assertEquals(Constant.forLong(42), constantReflection.unboxPrimitive(snippetReflection.forObject(Long.valueOf(42))));
-        assertEquals(Constant.forInt(666), constantReflection.unboxPrimitive(snippetReflection.forObject(Integer.valueOf(666))));
-        assertEquals(Constant.forByte((byte) 123), constantReflection.unboxPrimitive(snippetReflection.forObject(Byte.valueOf((byte) 123))));
-        assertSame(Constant.forBoolean(true), constantReflection.unboxPrimitive(snippetReflection.forObject(Boolean.TRUE)));
+        assertEquals(JavaConstant.forLong(42), constantReflection.unboxPrimitive(snippetReflection.forObject(Long.valueOf(42))));
+        assertEquals(JavaConstant.forInt(666), constantReflection.unboxPrimitive(snippetReflection.forObject(Integer.valueOf(666))));
+        assertEquals(JavaConstant.forByte((byte) 123), constantReflection.unboxPrimitive(snippetReflection.forObject(Byte.valueOf((byte) 123))));
+        assertSame(JavaConstant.forBoolean(true), constantReflection.unboxPrimitive(snippetReflection.forObject(Boolean.TRUE)));
 
-        assertNull(constantReflection.unboxPrimitive(Constant.NULL_OBJECT));
+        assertNull(constantReflection.unboxPrimitive(JavaConstant.NULL_OBJECT));
         assertNull(constantReflection.unboxPrimitive(snippetReflection.forObject("abc")));
     }
 
     @Test
     public void testAsJavaType() {
-        for (Constant c : constants) {
+        for (JavaConstant c : constants) {
             ResolvedJavaType type = constantReflection.asJavaType(c);
 
             Object o = snippetReflection.asBoxedValue(c);

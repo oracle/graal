@@ -255,9 +255,9 @@ public enum AMD64Arithmetic {
         @Opcode private final AMD64Arithmetic opcode;
         @Def({REG, HINT}) protected AllocatableValue result;
         @Use({REG, STACK}) protected AllocatableValue x;
-        protected Constant y;
+        protected JavaConstant y;
 
-        public BinaryRegConst(AMD64Arithmetic opcode, AllocatableValue result, AllocatableValue x, Constant y) {
+        public BinaryRegConst(AMD64Arithmetic opcode, AllocatableValue result, AllocatableValue x, JavaConstant y) {
             this.opcode = opcode;
             this.result = result;
             this.x = x;
@@ -320,9 +320,9 @@ public enum AMD64Arithmetic {
         @Opcode private final AMD64Arithmetic opcode;
         @Def({REG}) protected AllocatableValue result;
         @Use({REG, STACK}) protected AllocatableValue x;
-        protected Constant y;
+        protected JavaConstant y;
 
-        public BinaryRegStackConst(AMD64Arithmetic opcode, AllocatableValue result, AllocatableValue x, Constant y) {
+        public BinaryRegStackConst(AMD64Arithmetic opcode, AllocatableValue result, AllocatableValue x, JavaConstant y) {
             this.opcode = opcode;
             this.result = result;
             this.x = x;

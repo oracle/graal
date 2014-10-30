@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -336,7 +336,7 @@ public class ArraysSubstitutionsTest extends MethodSubstitutionTest {
         new InliningPhase(new CanonicalizerPhase(true)).apply(graph, context);
         new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders(), assumptions));
 
-        Assert.assertTrue(graph.getNodes(ReturnNode.class).first().result().asConstant().asLong() == 0);
+        Assert.assertTrue(graph.getNodes(ReturnNode.class).first().result().asJavaConstant().asLong() == 0);
     }
 
     public static final int[] constantArray3 = new int[]{1, 2, 3};
@@ -353,7 +353,7 @@ public class ArraysSubstitutionsTest extends MethodSubstitutionTest {
         new InliningPhase(new CanonicalizerPhase(true)).apply(graph, context);
         new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders(), assumptions));
 
-        Assert.assertTrue(graph.getNodes(ReturnNode.class).first().result().asConstant().asLong() == 1);
+        Assert.assertTrue(graph.getNodes(ReturnNode.class).first().result().asJavaConstant().asLong() == 1);
     }
 
     public static boolean testCanonicalEqualSnippet() {
@@ -370,7 +370,7 @@ public class ArraysSubstitutionsTest extends MethodSubstitutionTest {
         new PartialEscapePhase(false, new CanonicalizerPhase(false)).apply(graph, context);
         new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders(), assumptions));
 
-        Assert.assertTrue(graph.getNodes(ReturnNode.class).first().result().asConstant().asLong() == 1);
+        Assert.assertTrue(graph.getNodes(ReturnNode.class).first().result().asJavaConstant().asLong() == 1);
     }
 
     public static boolean testVirtualEqualSnippet() {
@@ -389,7 +389,7 @@ public class ArraysSubstitutionsTest extends MethodSubstitutionTest {
         new PartialEscapePhase(false, new CanonicalizerPhase(false)).apply(graph, context);
         new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders(), assumptions));
 
-        Assert.assertTrue(graph.getNodes(ReturnNode.class).first().result().asConstant().asLong() == 0);
+        Assert.assertTrue(graph.getNodes(ReturnNode.class).first().result().asJavaConstant().asLong() == 0);
     }
 
     public static boolean testVirtualNotEqualSnippet(int x) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -103,16 +103,16 @@ public class BasicInductionVariable extends InductionVariable {
 
     @Override
     public long constantInit() {
-        return init.asConstant().asLong();
+        return init.asJavaConstant().asLong();
     }
 
     @Override
     public long constantStride() {
         if (op instanceof AddNode) {
-            return rawStride.asConstant().asLong();
+            return rawStride.asJavaConstant().asLong();
         }
         if (op instanceof SubNode) {
-            return -rawStride.asConstant().asLong();
+            return -rawStride.asJavaConstant().asLong();
         }
         throw GraalInternalError.shouldNotReachHere();
     }

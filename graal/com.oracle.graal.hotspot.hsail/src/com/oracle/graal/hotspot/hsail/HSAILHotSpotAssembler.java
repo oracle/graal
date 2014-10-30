@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,7 +40,7 @@ public class HSAILHotSpotAssembler extends HSAILAssembler {
     }
 
     @Override
-    public final void mov(Register a, Constant src) {
+    public final void mov(Register a, JavaConstant src) {
         String regName = "$d" + a.encoding();
         // For a null object simply move 0x0 into the destination register.
         if (src.isNull()) {

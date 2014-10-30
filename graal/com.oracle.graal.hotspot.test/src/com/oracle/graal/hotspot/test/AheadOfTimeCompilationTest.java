@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -92,7 +92,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         NodeIterable<ConstantNode> filter = getConstantNodes(result);
         assertDeepEquals(1, filter.count());
         HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) getMetaAccess().lookupJavaType(AheadOfTimeCompilationTest.class);
-        assertDeepEquals(type.klass(), filter.first().asConstant());
+        assertDeepEquals(type.klass(), filter.first().asJavaConstant());
 
         assertDeepEquals(1, result.getNodes(FloatingReadNode.class).count());
         assertDeepEquals(0, result.getNodes().filter(ReadNode.class).count());
@@ -104,7 +104,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
 
         NodeIterable<ConstantNode> filter = getConstantNodes(result);
         assertDeepEquals(1, filter.count());
-        Object mirror = HotSpotObjectConstant.asObject(filter.first().asConstant());
+        Object mirror = HotSpotObjectConstant.asObject(filter.first().asJavaConstant());
         assertDeepEquals(Class.class, mirror.getClass());
         assertDeepEquals(AheadOfTimeCompilationTest.class, mirror);
 
@@ -132,7 +132,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         StructuredGraph result = compile("getPrimitiveClassObject", false);
         NodeIterable<ConstantNode> filter = getConstantNodes(result);
         assertDeepEquals(1, filter.count());
-        Object mirror = HotSpotObjectConstant.asObject(filter.first().asConstant());
+        Object mirror = HotSpotObjectConstant.asObject(filter.first().asJavaConstant());
         assertDeepEquals(Class.class, mirror.getClass());
         assertDeepEquals(Integer.TYPE, mirror);
 
@@ -160,7 +160,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
 
         NodeIterable<ConstantNode> filter = getConstantNodes(result);
         assertDeepEquals(1, filter.count());
-        Object mirror = HotSpotObjectConstant.asObject(filter.first().asConstant());
+        Object mirror = HotSpotObjectConstant.asObject(filter.first().asJavaConstant());
         assertDeepEquals(String.class, mirror.getClass());
         assertDeepEquals("test string", mirror);
 
@@ -182,7 +182,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         assertDeepEquals(1, getConstantNodes(result).count());
         ConstantNode constant = getConstantNodes(result).first();
         assertDeepEquals(Kind.Long, constant.getKind());
-        assertDeepEquals(((HotSpotResolvedObjectType) getMetaAccess().lookupJavaType(Boolean.class)).klass(), constant.asConstant());
+        assertDeepEquals(((HotSpotResolvedObjectType) getMetaAccess().lookupJavaType(Boolean.class)).klass(), constant.asJavaConstant());
     }
 
     @Test
@@ -193,7 +193,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         assertDeepEquals(1, getConstantNodes(result).count());
         ConstantNode constant = getConstantNodes(result).first();
         assertDeepEquals(Kind.Object, constant.getKind());
-        assertDeepEquals(Boolean.TRUE, HotSpotObjectConstant.asObject(constant.asConstant()));
+        assertDeepEquals(Boolean.TRUE, HotSpotObjectConstant.asObject(constant.asJavaConstant()));
     }
 
     private StructuredGraph compile(String test, boolean compileAOT) {

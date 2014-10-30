@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -118,7 +118,7 @@ public class ArrayCopyCallNode extends AbstractMemoryCheckpoint implements Lower
     }
 
     private boolean shouldUnroll() {
-        return getLength().isConstant() && getLength().asConstant().asInt() <= GraalOptions.MaximumEscapeAnalysisArrayLength.getValue();
+        return getLength().isConstant() && getLength().asJavaConstant().asInt() <= GraalOptions.MaximumEscapeAnalysisArrayLength.getValue();
     }
 
     private ValueNode computeBase(ValueNode base, ValueNode pos) {
@@ -183,7 +183,7 @@ public class ArrayCopyCallNode extends AbstractMemoryCheckpoint implements Lower
         return uninitialized;
     }
 
-    static boolean isHeapWordAligned(Constant value, Kind kind) {
+    static boolean isHeapWordAligned(JavaConstant value, Kind kind) {
         return (arrayBaseOffset(kind) + (long) value.asInt() * arrayIndexScale(kind)) % heapWordSize() == 0;
     }
 
@@ -193,8 +193,8 @@ public class ArrayCopyCallNode extends AbstractMemoryCheckpoint implements Lower
             // Can treat as disjoint
             disjoint = true;
         }
-        Constant constantSrc = srcPos.stamp().asConstant();
-        Constant constantDst = destPos.stamp().asConstant();
+        JavaConstant constantSrc = srcPos.stamp().asConstant();
+        JavaConstant constantDst = destPos.stamp().asConstant();
         if (constantSrc != null && constantDst != null) {
             if (!aligned) {
                 aligned = isHeapWordAligned(constantSrc, componentKind) && isHeapWordAligned(constantDst, componentKind);

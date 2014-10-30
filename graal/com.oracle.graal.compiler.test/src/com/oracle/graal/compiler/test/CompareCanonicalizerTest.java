@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -128,9 +128,9 @@ public class CompareCanonicalizerTest extends GraalCompilerTest {
     @Test
     public void testIntegerTestCanonicalization() {
         ValueNode result = getResult(getCanonicalizedGraph("integerTestCanonicalization1"));
-        assertTrue(result.isConstant() && result.asConstant().asLong() == 1);
+        assertTrue(result.isConstant() && result.asJavaConstant().asLong() == 1);
         result = getResult(getCanonicalizedGraph("integerTestCanonicalization2"));
-        assertTrue(result.isConstant() && result.asConstant().asLong() == 1);
+        assertTrue(result.isConstant() && result.asJavaConstant().asLong() == 1);
         StructuredGraph graph = getCanonicalizedGraph("integerTestCanonicalization3");
         assertDeepEquals(1, graph.getNodes(ReturnNode.class).count());
         assertTrue(graph.getNodes(ReturnNode.class).first().result() instanceof ConditionalNode);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -555,7 +555,7 @@ public class ConditionalEliminationPhase extends Phase {
                 GuardedStamp cstamp = state.valueConstraints.get(equals.getY());
                 if (cstamp != null && equals.getX().isConstant()) {
                     IntegerStamp stamp = (IntegerStamp) cstamp.getStamp();
-                    if (!stamp.contains(equals.getX().asConstant().asLong())) {
+                    if (!stamp.contains(equals.getX().asJavaConstant().asLong())) {
                         // x != n is true if n is outside the range of the stamp
                         existingGuard = cstamp.getGuard();
                         Debug.log("existing guard %s %1s proves !%1s", existingGuard, existingGuard.condition(), guard.condition());

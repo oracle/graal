@@ -73,8 +73,8 @@ public class CompressionNode extends UnaryNode implements ConvertNode, LIRLowera
         return input.graph().unique(CompressionNode.create(CompressionOp.Uncompress, input, encoding));
     }
 
-    private static Constant compress(Constant c, CompressEncoding encoding) {
-        if (Constant.NULL_OBJECT.equals(c)) {
+    private static JavaConstant compress(JavaConstant c, CompressEncoding encoding) {
+        if (JavaConstant.NULL_OBJECT.equals(c)) {
             return HotSpotCompressedNullConstant.COMPRESSED_NULL;
         } else if (c instanceof HotSpotObjectConstant) {
             return ((HotSpotObjectConstant) c).compress();
@@ -86,9 +86,9 @@ public class CompressionNode extends UnaryNode implements ConvertNode, LIRLowera
         }
     }
 
-    private static Constant uncompress(Constant c, CompressEncoding encoding) {
+    private static JavaConstant uncompress(JavaConstant c, CompressEncoding encoding) {
         if (HotSpotCompressedNullConstant.COMPRESSED_NULL.equals(c)) {
-            return Constant.NULL_OBJECT;
+            return JavaConstant.NULL_OBJECT;
         } else if (c instanceof HotSpotObjectConstant) {
             return ((HotSpotObjectConstant) c).uncompress();
         } else if (c instanceof HotSpotMetaspaceConstant) {
@@ -100,7 +100,7 @@ public class CompressionNode extends UnaryNode implements ConvertNode, LIRLowera
     }
 
     @Override
-    public Constant convert(Constant c) {
+    public JavaConstant convert(JavaConstant c) {
         switch (op) {
             case Compress:
                 return compress(c, encoding);
@@ -112,7 +112,7 @@ public class CompressionNode extends UnaryNode implements ConvertNode, LIRLowera
     }
 
     @Override
-    public Constant reverse(Constant c) {
+    public JavaConstant reverse(JavaConstant c) {
         switch (op) {
             case Compress:
                 return uncompress(c, encoding);
@@ -162,7 +162,7 @@ public class CompressionNode extends UnaryNode implements ConvertNode, LIRLowera
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
         if (forValue.isConstant()) {
-            return ConstantNode.forConstant(stamp(), convert(forValue.asConstant()), tool.getMetaAccess());
+            return ConstantNode.forConstant(stamp(), convert(forValue.asJavaConstant()), tool.getMetaAccess());
         } else if (forValue instanceof CompressionNode) {
             CompressionNode other = (CompressionNode) forValue;
             if (op != other.op && encoding.equals(other.encoding)) {

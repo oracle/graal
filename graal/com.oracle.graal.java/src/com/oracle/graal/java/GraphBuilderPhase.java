@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -337,7 +337,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             protected void handleUnresolvedCheckCast(JavaType type, ValueNode object) {
                 assert !graphBuilderConfig.eagerResolving();
                 append(FixedGuardNode.create(currentGraph.unique(IsNullNode.create(object)), Unresolved, InvalidateRecompile));
-                frameState.apush(appendConstant(Constant.NULL_OBJECT));
+                frameState.apush(appendConstant(JavaConstant.NULL_OBJECT));
             }
 
             /**
@@ -351,7 +351,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 DeoptimizeNode deopt = currentGraph.add(DeoptimizeNode.create(InvalidateRecompile, Unresolved));
                 append(IfNode.create(currentGraph.unique(IsNullNode.create(object)), successor, deopt, 1));
                 lastInstr = successor;
-                frameState.ipush(appendConstant(Constant.INT_0));
+                frameState.ipush(appendConstant(JavaConstant.INT_0));
             }
 
             /**
@@ -736,7 +736,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             @Override
             protected void genInvokeDynamic(JavaMethod target) {
                 if (target instanceof ResolvedJavaMethod) {
-                    Constant appendix = constantPool.lookupAppendix(stream.readCPI4(), Bytecodes.INVOKEDYNAMIC);
+                    JavaConstant appendix = constantPool.lookupAppendix(stream.readCPI4(), Bytecodes.INVOKEDYNAMIC);
                     if (appendix != null) {
                         frameState.apush(ConstantNode.forConstant(appendix, metaAccess, currentGraph));
                     }
@@ -758,7 +758,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                      * +and+invokedynamic
                      */
                     boolean hasReceiver = !((ResolvedJavaMethod) target).isStatic();
-                    Constant appendix = constantPool.lookupAppendix(stream.readCPI(), Bytecodes.INVOKEVIRTUAL);
+                    JavaConstant appendix = constantPool.lookupAppendix(stream.readCPI(), Bytecodes.INVOKEVIRTUAL);
                     if (appendix != null) {
                         frameState.apush(ConstantNode.forConstant(appendix, metaAccess, currentGraph));
                     }
@@ -911,7 +911,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             }
 
             private ConstantNode getJsrConstant(long bci) {
-                Constant nextBciConstant = new RawConstant(bci);
+                JavaConstant nextBciConstant = new RawConstant(bci);
                 Stamp nextBciStamp = StampFactory.forConstant(nextBciConstant);
                 ConstantNode nextBciNode = ConstantNode.create(nextBciConstant, nextBciStamp);
                 return currentGraph.unique(nextBciNode);
@@ -927,7 +927,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             }
 
             @Override
-            protected ConstantNode appendConstant(Constant constant) {
+            protected ConstantNode appendConstant(JavaConstant constant) {
                 assert constant != null;
                 return ConstantNode.forConstant(constant, metaAccess, currentGraph);
             }

@@ -56,30 +56,30 @@ public class ReinterpretNode extends UnaryNode implements ArithmeticLIRLowerable
         assert to instanceof PrimitiveStamp;
     }
 
-    private Constant evalConst(Constant c) {
+    private JavaConstant evalConst(JavaConstant c) {
         assert c.getKind().getBitCount() == ((PrimitiveStamp) stamp()).getBits();
         switch (c.getKind()) {
             case Int:
                 if (stamp() instanceof FloatStamp) {
-                    return Constant.forFloat(Float.intBitsToFloat(c.asInt()));
+                    return JavaConstant.forFloat(Float.intBitsToFloat(c.asInt()));
                 } else {
                     return c;
                 }
             case Long:
                 if (stamp() instanceof FloatStamp) {
-                    return Constant.forDouble(Double.longBitsToDouble(c.asLong()));
+                    return JavaConstant.forDouble(Double.longBitsToDouble(c.asLong()));
                 } else {
                     return c;
                 }
             case Float:
                 if (stamp() instanceof IntegerStamp) {
-                    return Constant.forInt(Float.floatToRawIntBits(c.asFloat()));
+                    return JavaConstant.forInt(Float.floatToRawIntBits(c.asFloat()));
                 } else {
                     return c;
                 }
             case Double:
                 if (stamp() instanceof IntegerStamp) {
-                    return Constant.forLong(Double.doubleToRawLongBits(c.asDouble()));
+                    return JavaConstant.forLong(Double.doubleToRawLongBits(c.asDouble()));
                 } else {
                     return c;
                 }
@@ -90,7 +90,7 @@ public class ReinterpretNode extends UnaryNode implements ArithmeticLIRLowerable
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
         if (forValue.isConstant()) {
-            return ConstantNode.forConstant(evalConst(forValue.asConstant()), null);
+            return ConstantNode.forConstant(evalConst(forValue.asJavaConstant()), null);
         }
         if (stamp().isCompatible(forValue.stamp())) {
             return forValue;

@@ -159,7 +159,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     /**
      * Gets the address of the C++ Method object for this method.
      */
-    public Constant getMetaspaceMethodConstant() {
+    public JavaConstant getMetaspaceMethodConstant() {
         return HotSpotMetaspaceConstant.forMetaspaceObject(getHostWordKind(), metaspaceMethod, this, false);
     }
 
@@ -168,7 +168,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     }
 
     @Override
-    public Constant getEncoding() {
+    public JavaConstant getEncoding() {
         return getMetaspaceMethodConstant();
     }
 
@@ -702,7 +702,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     }
 
     @Override
-    public Constant invoke(Constant receiver, Constant[] arguments) {
+    public JavaConstant invoke(JavaConstant receiver, JavaConstant[] arguments) {
         assert !isConstructor();
         Method javaMethod = toJava();
         javaMethod.setAccessible(true);
@@ -723,7 +723,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     }
 
     @Override
-    public Constant newInstance(Constant[] arguments) {
+    public JavaConstant newInstance(JavaConstant[] arguments) {
         assert isConstructor();
         Constructor<?> javaConstructor = toJavaConstructor();
         javaConstructor.setAccessible(true);

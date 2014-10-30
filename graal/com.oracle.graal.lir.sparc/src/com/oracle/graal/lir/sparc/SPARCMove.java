@@ -540,9 +540,9 @@ public class SPARCMove {
 
     public static class StoreConstantOp extends MemOp implements SPARCTailDelayedLIRInstruction {
 
-        protected final Constant input;
+        protected final JavaConstant input;
 
-        public StoreConstantOp(Kind kind, SPARCAddressValue address, Constant input, LIRFrameState state) {
+        public StoreConstantOp(Kind kind, SPARCAddressValue address, JavaConstant input, LIRFrameState state) {
             super(kind, address, state);
             this.input = input;
             if (!input.isDefaultForKind()) {
@@ -601,7 +601,7 @@ public class SPARCMove {
                 throw GraalInternalError.shouldNotReachHere();
             }
         } else if (isConstant(input)) {
-            Constant constant = asConstant(input);
+            JavaConstant constant = asConstant(input);
             if (isRegister(result)) {
                 const2reg(crb, masm, result, constant, delaySlotLir);
             } else if (isStackSlot(result)) {
@@ -755,7 +755,7 @@ public class SPARCMove {
         }
     }
 
-    private static void const2reg(CompilationResultBuilder crb, SPARCMacroAssembler masm, Value result, Constant input, SPARCDelayedControlTransfer delaySlotLir) {
+    private static void const2reg(CompilationResultBuilder crb, SPARCMacroAssembler masm, Value result, JavaConstant input, SPARCDelayedControlTransfer delaySlotLir) {
         try (SPARCScratchRegister sc = SPARCScratchRegister.get()) {
             Register scratch = sc.getRegister();
             boolean hasVIS3 = ((SPARC) masm.target.arch).getFeatures().contains(CPUFeature.VIS3);

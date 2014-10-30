@@ -48,9 +48,9 @@ public final class AMD64ZapRegistersOp extends AMD64LIRInstruction implements Sa
     /**
      * The garbage values that are written to the registers.
      */
-    @Use({CONST}) protected Constant[] zapValues;
+    @Use({CONST}) protected JavaConstant[] zapValues;
 
-    public AMD64ZapRegistersOp(Register[] zappedRegisters, Constant[] zapValues) {
+    public AMD64ZapRegistersOp(Register[] zappedRegisters, JavaConstant[] zapValues) {
         this.zappedRegisters = zappedRegisters;
         this.zapValues = zapValues;
     }

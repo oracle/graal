@@ -66,7 +66,7 @@ public interface MethodHandleAccessProvider {
      * interpreter overhead. If the parameter forceBytecodeGeneration is set to true, the VM should
      * try to generate bytecodes before this method returns.
      */
-    ResolvedJavaMethod resolveInvokeBasicTarget(Constant methodHandle, boolean forceBytecodeGeneration);
+    ResolvedJavaMethod resolveInvokeBasicTarget(JavaConstant methodHandle, boolean forceBytecodeGeneration);
 
     /**
      * Resolves the invocation target for an invocation of a {@code MethodHandle.linkTo*} method
@@ -74,5 +74,5 @@ public interface MethodHandleAccessProvider {
      * {@code linkTo*} method. Returns {@code null} if the invocation target is not available at
      * this time.
      */
-    ResolvedJavaMethod resolveLinkToTarget(Constant memberName);
+    ResolvedJavaMethod resolveLinkToTarget(JavaConstant memberName);
 }

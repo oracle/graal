@@ -646,11 +646,11 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
                 asm.emitLoad(wordKind, d17SafepointFlagAddrIndex, new HSAILAddressValue(wordLIRKind, d16DeoptInfo, config.hsailNoticeSafepointsOffset).toAddress());
                 // Load int value from that field
                 asm.emitLoadAcquire(s34DeoptOccurred, new HSAILAddressValue(wordLIRKind, d17SafepointFlagAddrIndex, 0).toAddress());
-                asm.emitCompare(Kind.Int, s34DeoptOccurred, Constant.forInt(0), "ne", false, false);
+                asm.emitCompare(Kind.Int, s34DeoptOccurred, JavaConstant.forInt(0), "ne", false, false);
                 asm.cbr(deoptInProgressLabel);
             }
             asm.emitLoadAcquire(s34DeoptOccurred, new HSAILAddressValue(wordLIRKind, d16DeoptInfo, config.hsailDeoptOccurredOffset).toAddress());
-            asm.emitCompare(Kind.Int, s34DeoptOccurred, Constant.forInt(0), "ne", false, false);
+            asm.emitCompare(Kind.Int, s34DeoptOccurred, JavaConstant.forInt(0), "ne", false, false);
             asm.cbr(deoptInProgressLabel);
             // load thread register if this kernel performs allocation
             if (usesAllocation) {
@@ -661,7 +661,7 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
                     asm.emitComment("// map workitem to a tlab");
                     asm.emitString(String.format("rem_u32  $%s, %s, %d;", s34TlabIndex.getRegister(), workItemReg, HsailKernelTlabs.getValue()));
                     asm.emitConvert(d17TlabIndex, s34TlabIndex, wordKind, Kind.Int);
-                    asm.emit("mad", threadReg, d17TlabIndex, Constant.forInt(8), threadReg);
+                    asm.emit("mad", threadReg, d17TlabIndex, JavaConstant.forInt(8), threadReg);
                 } else {
                     // workitem is already mapped to solitary tlab
                 }
@@ -836,7 +836,7 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
             asm.emitConvert(waveMathScratch2, workidreg, wordKind, Kind.Int);
             asm.emit("add", waveMathScratch1, waveMathScratch1, waveMathScratch2);
             HSAILAddress neverRanStoreAddr = new HSAILAddressValue(wordLIRKind, waveMathScratch1, 0).toAddress();
-            asm.emitStore(Kind.Byte, Constant.forInt(1), neverRanStoreAddr);
+            asm.emitStore(Kind.Byte, JavaConstant.forInt(1), neverRanStoreAddr);
             asm.emitString("ret;");
 
             // The deoptimizing lanes will jump here
@@ -847,23 +847,23 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
             asm.emitLoadKernelArg(scratch64, asm.getDeoptInfoName(), "u64");
 
             // Set deopt occurred flag
-            asm.emitMov(Kind.Int, scratch32, Constant.forInt(1));
+            asm.emitMov(Kind.Int, scratch32, JavaConstant.forInt(1));
             asm.emitStoreRelease(scratch32, deoptInfoAddr);
 
             asm.emitComment("// Determine next deopt save slot");
-            asm.emitAtomicAdd(scratch32, deoptNextIndexAddr, Constant.forInt(1));
+            asm.emitAtomicAdd(scratch32, deoptNextIndexAddr, JavaConstant.forInt(1));
             /*
              * scratch32 now holds next index to use set error condition if no room in save area
              */
             asm.emitComment("// assert room to save deopt");
-            asm.emitCompare(Kind.Int, scratch32, Constant.forInt(maxDeoptIndex), "lt", false, false);
+            asm.emitCompare(Kind.Int, scratch32, JavaConstant.forInt(maxDeoptIndex), "lt", false, false);
             asm.cbr("@L_StoreDeopt");
             /*
              * if assert fails, store a guaranteed negative workitemid in top level deopt occurred
              * flag
              */
             asm.emitWorkItemAbsId(scratch32);
-            asm.emit("mad", scratch32, scratch32, Constant.forInt(-1), Constant.forInt(-1));
+            asm.emit("mad", scratch32, scratch32, JavaConstant.forInt(-1), JavaConstant.forInt(-1));
             asm.emitStore(scratch32, deoptInfoAddr);
             asm.emitString("ret;");
 
@@ -874,17 +874,17 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
             asm.emitComment("// Convert id's for ptr math");
             asm.emitConvert(cuSaveAreaPtr, scratch32, wordKind, Kind.Int);
             asm.emitComment("// multiply by sizeof KernelDeoptArea");
-            asm.emit("mul", cuSaveAreaPtr, cuSaveAreaPtr, Constant.forInt(sizeofKernelDeopt));
+            asm.emit("mul", cuSaveAreaPtr, cuSaveAreaPtr, JavaConstant.forInt(sizeofKernelDeopt));
             asm.emitComment("// Add computed offset to deoptInfoPtr base");
             asm.emit("add", cuSaveAreaPtr, cuSaveAreaPtr, scratch64);
             // Add offset to _deopt_save_states[0]
-            asm.emit("add", scratch64, cuSaveAreaPtr, Constant.forInt(offsetToDeoptSaveStates));
+            asm.emit("add", scratch64, cuSaveAreaPtr, JavaConstant.forInt(offsetToDeoptSaveStates));
 
             HSAILAddress workItemAddr = new HSAILAddressValue(wordLIRKind, scratch64, offsetToDeoptimizationWorkItem).toAddress();
             HSAILAddress actionReasonStoreAddr = new HSAILAddressValue(wordLIRKind, scratch64, offsetToDeoptimizationReason).toAddress();
 
             asm.emitComment("// Get _deopt_info._first_frame");
-            asm.emit("add", waveMathScratch1, scratch64, Constant.forInt(offsetToDeoptimizationFrame));
+            asm.emit("add", waveMathScratch1, scratch64, JavaConstant.forInt(offsetToDeoptimizationFrame));
             // Now scratch64 is the _deopt_info._first_frame
             HSAILAddress pcStoreAddr = new HSAILAddressValue(wordLIRKind, waveMathScratch1, offsetToFramePc).toAddress();
             HSAILAddress regCountsAddr = new HSAILAddressValue(wordLIRKind, waveMathScratch1, offsetToNumSaves).toAddress();
@@ -897,7 +897,7 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
             asm.emitStore(Kind.Int, codeBufferOffsetReg, pcStoreAddr);
 
             asm.emitComment("// store regCounts (" + numSRegs + " $s registers, " + numDRegs + " $d registers, " + numStackSlots + " stack slots)");
-            asm.emitStore(Kind.Int, Constant.forInt(numSRegs + (numDRegs << 8) + (numStackSlots << 16)), regCountsAddr);
+            asm.emitStore(Kind.Int, JavaConstant.forInt(numSRegs + (numDRegs << 8) + (numStackSlots << 16)), regCountsAddr);
 
             /*
              * Loop thru the usedValues storing each of the registers that are used. We always store
@@ -1187,8 +1187,8 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
     private static ValueNode getNodeForValueFromFrame(Value localValue, ParameterNode hsailFrame, StructuredGraph hostGraph, HotSpotProviders providers, HotSpotVMConfig config, int numSRegs,
                     int numDRegs, Map<VirtualObject, VirtualObjectNode> virtualObjects) {
         ValueNode valueNode;
-        if (localValue instanceof Constant) {
-            valueNode = ConstantNode.forConstant((Constant) localValue, providers.getMetaAccess(), hostGraph);
+        if (localValue instanceof JavaConstant) {
+            valueNode = ConstantNode.forConstant((JavaConstant) localValue, providers.getMetaAccess(), hostGraph);
         } else if (localValue instanceof VirtualObject) {
             valueNode = getNodeForVirtualObjectFromFrame((VirtualObject) localValue, virtualObjects, hostGraph);
         } else if (localValue instanceof StackSlot) {

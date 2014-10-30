@@ -68,8 +68,8 @@ public class UnboxNode extends UnaryNode implements Virtualizable, Lowerable {
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
         if (forValue.isConstant()) {
-            Constant constant = forValue.asConstant();
-            Constant unboxed = tool.getConstantReflection().unboxPrimitive(constant);
+            JavaConstant constant = forValue.asJavaConstant();
+            JavaConstant unboxed = tool.getConstantReflection().unboxPrimitive(constant);
             if (unboxed != null && unboxed.getKind() == boxingKind) {
                 return ConstantNode.forConstant(unboxed, tool.getMetaAccess());
             }

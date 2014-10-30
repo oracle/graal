@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -204,7 +204,7 @@ public interface ResolvedJavaMethod extends JavaMethod, InvokeTarget, ModifiersP
      * @return The value returned by the method invocation, or {@code null} if the return type is
      *         {@code void}.
      */
-    Constant invoke(Constant receiver, Constant[] arguments);
+    JavaConstant invoke(JavaConstant receiver, JavaConstant[] arguments);
 
     /**
      * Uses the constructor represented by this object to create and initialize a new instance of
@@ -214,14 +214,14 @@ public interface ResolvedJavaMethod extends JavaMethod, InvokeTarget, ModifiersP
      * @param arguments The arguments for the constructor.
      * @return The newly created and initialized object.
      */
-    Constant newInstance(Constant[] arguments);
+    JavaConstant newInstance(JavaConstant[] arguments);
 
     /**
      * Gets the encoding of (that is, a constant representing the value of) this method.
      *
      * @return a constant representing a reference to this method
      */
-    Constant getEncoding();
+    JavaConstant getEncoding();
 
     /**
      * Checks if this method is present in the virtual table for subtypes of the specified

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,7 +38,7 @@ import com.oracle.graal.lir.LIRInstruction.OperandMode;
 abstract class LIRIntrospection extends FieldIntrospection {
 
     private static final Class<Value> VALUE_CLASS = Value.class;
-    private static final Class<Constant> CONSTANT_CLASS = Constant.class;
+    private static final Class<JavaConstant> CONSTANT_CLASS = JavaConstant.class;
     private static final Class<Variable> VARIABLE_CLASS = Variable.class;
     private static final Class<RegisterValue> REGISTER_VALUE_CLASS = RegisterValue.class;
     private static final Class<StackSlot> STACK_SLOT_CLASS = StackSlot.class;

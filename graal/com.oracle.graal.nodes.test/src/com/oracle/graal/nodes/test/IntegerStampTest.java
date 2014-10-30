@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -268,7 +268,7 @@ public class IntegerStampTest {
     @Test
     public void testAnd() {
         assertEquals(new IntegerStamp(32, Integer.MIN_VALUE, 0x40000000L, 0, 0xc0000000L),
-                        IntegerStamp.OPS.getAnd().foldStamp(StampFactory.forKind(Kind.Int), StampFactory.forConstant(Constant.forInt(0xc0000000))));
+                        IntegerStamp.OPS.getAnd().foldStamp(StampFactory.forKind(Kind.Int), StampFactory.forConstant(JavaConstant.forInt(0xc0000000))));
     }
 
     private static void testSignExtendShort(long lower, long upper) {

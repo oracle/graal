@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -437,20 +437,20 @@ public enum Kind implements PlatformKind {
         }
     }
 
-    public Constant getDefaultValue() {
+    public JavaConstant getDefaultValue() {
         switch (this) {
             case Boolean:
-                return Constant.FALSE;
+                return JavaConstant.FALSE;
             case Int:
-                return Constant.INT_0;
+                return JavaConstant.INT_0;
             case Long:
-                return Constant.LONG_0;
+                return JavaConstant.LONG_0;
             case Float:
-                return Constant.FLOAT_0;
+                return JavaConstant.FLOAT_0;
             case Double:
-                return Constant.DOUBLE_0;
+                return JavaConstant.DOUBLE_0;
             case Object:
-                return Constant.NULL_OBJECT;
+                return JavaConstant.NULL_OBJECT;
             case Byte:
             case Char:
             case Short:

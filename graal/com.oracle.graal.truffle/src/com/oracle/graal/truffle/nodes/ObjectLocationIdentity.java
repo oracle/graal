@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,11 +31,11 @@ import com.oracle.graal.api.meta.*;
  */
 public final class ObjectLocationIdentity implements LocationIdentity {
 
-    private static HashMap<Constant, LocationIdentity> map = new HashMap<>();
+    private static HashMap<JavaConstant, LocationIdentity> map = new HashMap<>();
 
-    private Constant object;
+    private JavaConstant object;
 
-    public static LocationIdentity create(Constant object) {
+    public static LocationIdentity create(JavaConstant object) {
         assert object.getKind() == Kind.Object && object.isNonNull();
         synchronized (map) {
             if (map.containsKey(object)) {
@@ -48,7 +48,7 @@ public final class ObjectLocationIdentity implements LocationIdentity {
         }
     }
 
-    private ObjectLocationIdentity(Constant object) {
+    private ObjectLocationIdentity(JavaConstant object) {
         this.object = object;
     }
 

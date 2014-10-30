@@ -321,7 +321,7 @@ public enum Condition {
      * @return {@link Boolean#TRUE} if the comparison is known to be true, {@link Boolean#FALSE} if
      *         the comparison is known to be false
      */
-    public boolean foldCondition(Constant lt, Constant rt, ConstantReflectionProvider constantReflection) {
+    public boolean foldCondition(JavaConstant lt, JavaConstant rt, ConstantReflectionProvider constantReflection) {
         assert !lt.getKind().isNumericFloat() && !rt.getKind().isNumericFloat();
         return foldCondition(lt, rt, constantReflection, false);
     }
@@ -336,7 +336,7 @@ public enum Condition {
      * @return true if the comparison is known to be true, false if the comparison is known to be
      *         false
      */
-    public boolean foldCondition(Constant lt, Constant rt, ConstantReflectionProvider constantReflection, boolean unorderedIsTrue) {
+    public boolean foldCondition(JavaConstant lt, JavaConstant rt, ConstantReflectionProvider constantReflection, boolean unorderedIsTrue) {
         if (lt instanceof PrimitiveConstant) {
             switch (lt.getKind()) {
                 case Boolean:

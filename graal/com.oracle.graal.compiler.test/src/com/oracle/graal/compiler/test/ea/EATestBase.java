@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -134,12 +134,12 @@ public class EATestBase extends GraalCompilerTest {
      * @param iterativeEscapeAnalysis true if escape analysis should be run for more than one
      *            iteration
      */
-    protected void testEscapeAnalysis(String snippet, final Constant expectedConstantResult, final boolean iterativeEscapeAnalysis) {
+    protected void testEscapeAnalysis(String snippet, final JavaConstant expectedConstantResult, final boolean iterativeEscapeAnalysis) {
         prepareGraph(snippet, iterativeEscapeAnalysis);
         if (expectedConstantResult != null) {
             for (ReturnNode returnNode : returnNodes) {
                 Assert.assertTrue(returnNode.result().toString(), returnNode.result().isConstant());
-                Assert.assertEquals(expectedConstantResult, returnNode.result().asConstant());
+                Assert.assertEquals(expectedConstantResult, returnNode.result().asJavaConstant());
             }
         }
         int newInstanceCount = graph.getNodes().filter(NewInstanceNode.class).count() + graph.getNodes().filter(NewArrayNode.class).count() +

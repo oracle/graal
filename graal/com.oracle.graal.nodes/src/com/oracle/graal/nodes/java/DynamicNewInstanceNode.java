@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -46,7 +46,7 @@ public class DynamicNewInstanceNode extends AbstractNewObjectNode implements Can
     @Override
     public Node canonical(CanonicalizerTool tool) {
         if (clazz.isConstant()) {
-            ResolvedJavaType type = tool.getConstantReflection().asJavaType(clazz.asConstant());
+            ResolvedJavaType type = tool.getConstantReflection().asJavaType(clazz.asJavaConstant());
             if (type != null && type.isInitialized() && !type.isArray() && !type.isInterface() && !type.isPrimitive()) {
                 return NewInstanceNode.create(type, fillContents());
             }

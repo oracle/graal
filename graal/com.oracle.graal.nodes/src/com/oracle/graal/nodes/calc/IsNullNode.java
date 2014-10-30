@@ -63,7 +63,7 @@ public class IsNullNode extends UnaryOpLogicNode implements LIRLowerable, Virtua
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
-        Constant constant = forValue.asConstant();
+        JavaConstant constant = forValue.asJavaConstant();
         if (constant != null) {
             assert constant.getKind() == Kind.Object;
             return LogicConstantNode.forBoolean(constant.isNull());

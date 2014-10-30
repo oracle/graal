@@ -63,7 +63,7 @@ public class InstanceOfDynamicNode extends LogicNode implements Canonicalizable.
 
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forObject, ValueNode forMirror) {
         if (forMirror.isConstant()) {
-            ResolvedJavaType t = tool.getConstantReflection().asJavaType(forMirror.asConstant());
+            ResolvedJavaType t = tool.getConstantReflection().asJavaType(forMirror.asJavaConstant());
             if (t != null) {
                 if (t.isPrimitive()) {
                     return LogicConstantNode.contradiction();

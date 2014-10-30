@@ -29,7 +29,7 @@ public interface PlatformKind {
 
     String name();
 
-    Constant getDefaultValue();
+    JavaConstant getDefaultValue();
 
     default int getVectorLength() {
         return 1;

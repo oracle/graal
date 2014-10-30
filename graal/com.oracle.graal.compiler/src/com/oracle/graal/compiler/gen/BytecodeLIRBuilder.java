@@ -63,7 +63,7 @@ public abstract class BytecodeLIRBuilder {
 
     public abstract int getArrayLengthOffset();
 
-    public abstract Constant getClassConstant(ResolvedJavaType declaringClass);
+    public abstract JavaConstant getClassConstant(ResolvedJavaType declaringClass);
 
     public abstract int getFieldOffset(ResolvedJavaField field);
 

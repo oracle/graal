@@ -67,7 +67,7 @@ public class BitScanReverseNode extends UnaryNode implements LIRLowerable {
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
         if (forValue.isConstant()) {
-            Constant c = forValue.asConstant();
+            JavaConstant c = forValue.asJavaConstant();
             if (c.asLong() != 0) {
                 return ConstantNode.forInt(forValue.getKind() == Kind.Int ? scan(c.asInt()) : scan(c.asLong()));
             }

@@ -118,7 +118,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRKindTool {
     }
 
     @Override
-    public Value emitLoadConstant(LIRKind kind, Constant constant) {
+    public Value emitLoadConstant(LIRKind kind, JavaConstant constant) {
         if (canInlineConstant(constant)) {
             return constant;
         } else {
@@ -149,10 +149,10 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRKindTool {
      * @return True if the constant can be used directly, false if the constant needs to be in a
      *         register.
      */
-    protected abstract boolean canInlineConstant(Constant c);
+    protected abstract boolean canInlineConstant(JavaConstant c);
 
     public Value loadNonConst(Value value) {
-        if (isConstant(value) && !canInlineConstant((Constant) value)) {
+        if (isConstant(value) && !canInlineConstant((JavaConstant) value)) {
             return emitMove(value);
         }
         return value;
@@ -292,7 +292,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRKindTool {
         }
     }
 
-    public void emitStrategySwitch(Constant[] keyConstants, double[] keyProbabilities, LabelRef[] keyTargets, LabelRef defaultTarget, Variable value) {
+    public void emitStrategySwitch(JavaConstant[] keyConstants, double[] keyProbabilities, LabelRef[] keyTargets, LabelRef defaultTarget, Variable value) {
         int keyCount = keyConstants.length;
         SwitchStrategy strategy = SwitchStrategy.getBestStrategy(keyProbabilities, keyConstants, keyTargets);
         long valueRange = keyConstants[keyCount - 1].asLong() - keyConstants[0].asLong() + 1;
@@ -334,27 +334,27 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRKindTool {
     /**
      * Gets a garbage value for a given kind.
      */
-    protected Constant zapValueForKind(PlatformKind kind) {
+    protected JavaConstant zapValueForKind(PlatformKind kind) {
         long dead = 0xDEADDEADDEADDEADL;
         switch ((Kind) kind) {
             case Boolean:
-                return Constant.FALSE;
+                return JavaConstant.FALSE;
             case Byte:
-                return Constant.forByte((byte) dead);
+                return JavaConstant.forByte((byte) dead);
             case Char:
-                return Constant.forChar((char) dead);
+                return JavaConstant.forChar((char) dead);
             case Short:
-                return Constant.forShort((short) dead);
+                return JavaConstant.forShort((short) dead);
             case Int:
-                return Constant.forInt((int) dead);
+                return JavaConstant.forInt((int) dead);
             case Double:
-                return Constant.forDouble(Double.longBitsToDouble(dead));
+                return JavaConstant.forDouble(Double.longBitsToDouble(dead));
             case Float:
-                return Constant.forFloat(Float.intBitsToFloat((int) dead));
+                return JavaConstant.forFloat(Float.intBitsToFloat((int) dead));
             case Long:
-                return Constant.forLong(dead);
+                return JavaConstant.forLong(dead);
             case Object:
-                return Constant.NULL_OBJECT;
+                return JavaConstant.NULL_OBJECT;
             default:
                 throw new IllegalArgumentException(kind.toString());
         }

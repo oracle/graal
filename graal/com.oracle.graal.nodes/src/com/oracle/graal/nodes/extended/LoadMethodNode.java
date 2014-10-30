@@ -81,7 +81,7 @@ public class LoadMethodNode extends FixedWithNextNode implements Lowerable, Cano
             }
         }
         if (hub.isConstant()) {
-            return resolveExactMethod(tool, tool.getConstantReflection().asJavaType(hub.asConstant()));
+            return resolveExactMethod(tool, tool.getConstantReflection().asJavaType(hub.asJavaConstant()));
         }
 
         return this;
@@ -102,7 +102,7 @@ public class LoadMethodNode extends FixedWithNextNode implements Lowerable, Cano
              * This really represent a misuse of LoadMethod since we're loading from a class which
              * isn't known to implement the original method but for now at least fold it away.
              */
-            return ConstantNode.forConstant(Constant.NULL_OBJECT, null);
+            return ConstantNode.forConstant(JavaConstant.NULL_OBJECT, null);
         } else {
             return ConstantNode.forConstant(newMethod.getEncoding(), tool.getMetaAccess());
         }

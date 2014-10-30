@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -58,7 +58,7 @@ public class BitOpNodesTest extends GraalCompilerTest {
     @Test
     public void testBitCountIntConstant() {
         ValueNode result = parseAndInline("bitCountIntConstantSnippet");
-        Assert.assertEquals(7, result.asConstant().asInt());
+        Assert.assertEquals(7, result.asJavaConstant().asInt());
     }
 
     public static int bitCountLongConstantSnippet() {
@@ -88,7 +88,7 @@ public class BitOpNodesTest extends GraalCompilerTest {
     @Test
     public void testBitCountLongConstant() {
         ValueNode result = parseAndInline("bitCountLongConstantSnippet");
-        Assert.assertEquals(7, result.asConstant().asInt());
+        Assert.assertEquals(7, result.asJavaConstant().asInt());
     }
 
     public static int bitCountLongSnippet(long v) {
@@ -122,7 +122,7 @@ public class BitOpNodesTest extends GraalCompilerTest {
     @Test
     public void testScanForwardIntConstant() {
         ValueNode result = parseAndInline("scanForwardIntConstantSnippet");
-        Assert.assertEquals(40, result.asConstant().asInt());
+        Assert.assertEquals(40, result.asJavaConstant().asInt());
     }
 
     public static int scanForwardIntSnippet(int v) {
@@ -142,7 +142,7 @@ public class BitOpNodesTest extends GraalCompilerTest {
     @Test
     public void testScanForwardLongConstant() {
         ValueNode result = parseAndInline("scanForwardLongConstantSnippet");
-        Assert.assertEquals(72, result.asConstant().asInt());
+        Assert.assertEquals(72, result.asJavaConstant().asInt());
     }
 
     public static int scanForwardLongSnippet(long v) {
@@ -178,7 +178,7 @@ public class BitOpNodesTest extends GraalCompilerTest {
     @Test
     public void testScanReverseIntConstant() {
         ValueNode result = parseAndInline("scanReverseIntConstantSnippet");
-        Assert.assertEquals(47, result.asConstant().asInt());
+        Assert.assertEquals(47, result.asJavaConstant().asInt());
     }
 
     public static int scanReverseIntSnippet(int v) {
@@ -201,7 +201,7 @@ public class BitOpNodesTest extends GraalCompilerTest {
     @Test
     public void testScanReverseLongConstant() {
         ValueNode result = parseAndInline("scanReverseLongConstantSnippet");
-        Assert.assertEquals(111, result.asConstant().asInt());
+        Assert.assertEquals(111, result.asJavaConstant().asInt());
     }
 
     public static int scanReverseLongSnippet(long v) {

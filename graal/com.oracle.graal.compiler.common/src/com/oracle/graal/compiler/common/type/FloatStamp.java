@@ -61,7 +61,7 @@ public class FloatStamp extends PrimitiveStamp {
     }
 
     @Override
-    public Stamp constant(Constant c, MetaAccessProvider meta) {
+    public Stamp constant(JavaConstant c, MetaAccessProvider meta) {
         assert c.getKind().isNumericFloat() && c.getKind().getBitCount() == getBits();
         return StampFactory.forConstant(c);
     }
@@ -243,13 +243,13 @@ public class FloatStamp extends PrimitiveStamp {
     }
 
     @Override
-    public Constant asConstant() {
+    public JavaConstant asConstant() {
         if (nonNaN && Double.compare(lowerBound, upperBound) == 0) {
             switch (getBits()) {
                 case 32:
-                    return Constant.forFloat((float) lowerBound);
+                    return JavaConstant.forFloat((float) lowerBound);
                 case 64:
-                    return Constant.forDouble(lowerBound);
+                    return JavaConstant.forDouble(lowerBound);
             }
         }
         return null;
@@ -260,12 +260,12 @@ public class FloatStamp extends PrimitiveStamp {
     new UnaryOp.Neg() {
 
         @Override
-        public Constant foldConstant(Constant value) {
+        public JavaConstant foldConstant(JavaConstant value) {
             switch (value.getKind()) {
                 case Float:
-                    return Constant.forFloat(-value.asFloat());
+                    return JavaConstant.forFloat(-value.asFloat());
                 case Double:
-                    return Constant.forDouble(-value.asDouble());
+                    return JavaConstant.forDouble(-value.asDouble());
                 default:
                     throw GraalInternalError.shouldNotReachHere();
             }
@@ -281,13 +281,13 @@ public class FloatStamp extends PrimitiveStamp {
     new BinaryOp.Add(false, true) {
 
         @Override
-        public Constant foldConstant(Constant a, Constant b) {
+        public JavaConstant foldConstant(JavaConstant a, JavaConstant b) {
             assert a.getKind() == b.getKind();
             switch (a.getKind()) {
                 case Float:
-                    return Constant.forFloat(a.asFloat() + b.asFloat());
+                    return JavaConstant.forFloat(a.asFloat() + b.asFloat());
                 case Double:
-                    return Constant.forDouble(a.asDouble() + b.asDouble());
+                    return JavaConstant.forDouble(a.asDouble() + b.asDouble());
                 default:
                     throw GraalInternalError.shouldNotReachHere();
             }
@@ -300,7 +300,7 @@ public class FloatStamp extends PrimitiveStamp {
         }
 
         @Override
-        public boolean isNeutral(Constant n) {
+        public boolean isNeutral(JavaConstant n) {
             switch (n.getKind()) {
                 case Float:
                     return Float.compare(n.asFloat(), -0.0f) == 0;
@@ -315,13 +315,13 @@ public class FloatStamp extends PrimitiveStamp {
     new BinaryOp.Sub(false, false) {
 
         @Override
-        public Constant foldConstant(Constant a, Constant b) {
+        public JavaConstant foldConstant(JavaConstant a, JavaConstant b) {
             assert a.getKind() == b.getKind();
             switch (a.getKind()) {
                 case Float:
-                    return Constant.forFloat(a.asFloat() - b.asFloat());
+                    return JavaConstant.forFloat(a.asFloat() - b.asFloat());
                 case Double:
-                    return Constant.forDouble(a.asDouble() - b.asDouble());
+                    return JavaConstant.forDouble(a.asDouble() - b.asDouble());
                 default:
                     throw GraalInternalError.shouldNotReachHere();
             }
@@ -334,7 +334,7 @@ public class FloatStamp extends PrimitiveStamp {
         }
 
         @Override
-        public boolean isNeutral(Constant n) {
+        public boolean isNeutral(JavaConstant n) {
             switch (n.getKind()) {
                 case Float:
                     return Float.compare(n.asFloat(), 0.0f) == 0;
@@ -349,13 +349,13 @@ public class FloatStamp extends PrimitiveStamp {
     new BinaryOp.Mul(false, true) {
 
         @Override
-        public Constant foldConstant(Constant a, Constant b) {
+        public JavaConstant foldConstant(JavaConstant a, JavaConstant b) {
             assert a.getKind() == b.getKind();
             switch (a.getKind()) {
                 case Float:
-                    return Constant.forFloat(a.asFloat() * b.asFloat());
+                    return JavaConstant.forFloat(a.asFloat() * b.asFloat());
                 case Double:
-                    return Constant.forDouble(a.asDouble() * b.asDouble());
+                    return JavaConstant.forDouble(a.asDouble() * b.asDouble());
                 default:
                     throw GraalInternalError.shouldNotReachHere();
             }
@@ -368,7 +368,7 @@ public class FloatStamp extends PrimitiveStamp {
         }
 
         @Override
-        public boolean isNeutral(Constant n) {
+        public boolean isNeutral(JavaConstant n) {
             switch (n.getKind()) {
                 case Float:
                     return Float.compare(n.asFloat(), 1.0f) == 0;
@@ -383,13 +383,13 @@ public class FloatStamp extends PrimitiveStamp {
     new BinaryOp.Div(false, false) {
 
         @Override
-        public Constant foldConstant(Constant a, Constant b) {
+        public JavaConstant foldConstant(JavaConstant a, JavaConstant b) {
             assert a.getKind() == b.getKind();
             switch (a.getKind()) {
                 case Float:
-                    return Constant.forFloat(a.asFloat() / b.asFloat());
+                    return JavaConstant.forFloat(a.asFloat() / b.asFloat());
                 case Double:
-                    return Constant.forDouble(a.asDouble() / b.asDouble());
+                    return JavaConstant.forDouble(a.asDouble() / b.asDouble());
                 default:
                     throw GraalInternalError.shouldNotReachHere();
             }
@@ -402,7 +402,7 @@ public class FloatStamp extends PrimitiveStamp {
         }
 
         @Override
-        public boolean isNeutral(Constant n) {
+        public boolean isNeutral(JavaConstant n) {
             switch (n.getKind()) {
                 case Float:
                     return Float.compare(n.asFloat(), 1.0f) == 0;
@@ -417,13 +417,13 @@ public class FloatStamp extends PrimitiveStamp {
     new BinaryOp.Rem(false, false) {
 
         @Override
-        public Constant foldConstant(Constant a, Constant b) {
+        public JavaConstant foldConstant(JavaConstant a, JavaConstant b) {
             assert a.getKind() == b.getKind();
             switch (a.getKind()) {
                 case Float:
-                    return Constant.forFloat(a.asFloat() % b.asFloat());
+                    return JavaConstant.forFloat(a.asFloat() % b.asFloat());
                 case Double:
-                    return Constant.forDouble(a.asDouble() % b.asDouble());
+                    return JavaConstant.forDouble(a.asDouble() % b.asDouble());
                 default:
                     throw GraalInternalError.shouldNotReachHere();
             }
@@ -443,8 +443,8 @@ public class FloatStamp extends PrimitiveStamp {
     new FloatConvertOp(F2I) {
 
         @Override
-        public Constant foldConstant(Constant value) {
-            return Constant.forInt((int) value.asFloat());
+        public JavaConstant foldConstant(JavaConstant value) {
+            return JavaConstant.forInt((int) value.asFloat());
         }
 
         @Override
@@ -457,8 +457,8 @@ public class FloatStamp extends PrimitiveStamp {
     new FloatConvertOp(F2L) {
 
         @Override
-        public Constant foldConstant(Constant value) {
-            return Constant.forLong((long) value.asFloat());
+        public JavaConstant foldConstant(JavaConstant value) {
+            return JavaConstant.forLong((long) value.asFloat());
         }
 
         @Override
@@ -471,8 +471,8 @@ public class FloatStamp extends PrimitiveStamp {
     new FloatConvertOp(D2I) {
 
         @Override
-        public Constant foldConstant(Constant value) {
-            return Constant.forInt((int) value.asDouble());
+        public JavaConstant foldConstant(JavaConstant value) {
+            return JavaConstant.forInt((int) value.asDouble());
         }
 
         @Override
@@ -485,8 +485,8 @@ public class FloatStamp extends PrimitiveStamp {
     new FloatConvertOp(D2L) {
 
         @Override
-        public Constant foldConstant(Constant value) {
-            return Constant.forLong((long) value.asDouble());
+        public JavaConstant foldConstant(JavaConstant value) {
+            return JavaConstant.forLong((long) value.asDouble());
         }
 
         @Override
@@ -499,8 +499,8 @@ public class FloatStamp extends PrimitiveStamp {
     new FloatConvertOp(F2D) {
 
         @Override
-        public Constant foldConstant(Constant value) {
-            return Constant.forDouble(value.asFloat());
+        public JavaConstant foldConstant(JavaConstant value) {
+            return JavaConstant.forDouble(value.asFloat());
         }
 
         @Override
@@ -513,8 +513,8 @@ public class FloatStamp extends PrimitiveStamp {
     new FloatConvertOp(D2F) {
 
         @Override
-        public Constant foldConstant(Constant value) {
-            return Constant.forFloat((float) value.asDouble());
+        public JavaConstant foldConstant(JavaConstant value) {
+            return JavaConstant.forFloat((float) value.asDouble());
         }
 
         @Override

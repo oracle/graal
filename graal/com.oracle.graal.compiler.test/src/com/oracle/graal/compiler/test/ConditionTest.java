@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,8 +41,8 @@ public class ConditionTest {
                 boolean implies = c1.implies(c2);
                 if (implies) {
                     for (int i = 0; i < 1000; i++) {
-                        Constant a = Constant.forInt(rand.nextInt());
-                        Constant b = Constant.forInt(i < 100 ? a.asInt() : rand.nextInt());
+                        JavaConstant a = JavaConstant.forInt(rand.nextInt());
+                        JavaConstant b = JavaConstant.forInt(i < 100 ? a.asInt() : rand.nextInt());
                         boolean result1 = c1.foldCondition(a, b, null, false);
                         boolean result2 = c2.foldCondition(a, b, null, false);
                         if (result1) {
@@ -63,8 +63,8 @@ public class ConditionTest {
                 assertEquals(join, c2.join(c1));
                 if (join != null) {
                     for (int i = 0; i < 1000; i++) {
-                        Constant a = Constant.forInt(rand.nextInt());
-                        Constant b = Constant.forInt(i < 100 ? a.asInt() : rand.nextInt());
+                        JavaConstant a = JavaConstant.forInt(rand.nextInt());
+                        JavaConstant b = JavaConstant.forInt(i < 100 ? a.asInt() : rand.nextInt());
                         boolean result1 = c1.foldCondition(a, b, null, false);
                         boolean result2 = c2.foldCondition(a, b, null, false);
                         boolean resultJoin = join.foldCondition(a, b, null, false);
@@ -88,8 +88,8 @@ public class ConditionTest {
                 assertEquals(meet, c2.meet(c1));
                 if (meet != null) {
                     for (int i = 0; i < 1000; i++) {
-                        Constant a = Constant.forInt(rand.nextInt());
-                        Constant b = Constant.forInt(i < 100 ? a.asInt() : rand.nextInt());
+                        JavaConstant a = JavaConstant.forInt(rand.nextInt());
+                        JavaConstant b = JavaConstant.forInt(i < 100 ? a.asInt() : rand.nextInt());
                         boolean result1 = c1.foldCondition(a, b, null, false);
                         boolean result2 = c2.foldCondition(a, b, null, false);
                         boolean resultMeet = meet.foldCondition(a, b, null, false);

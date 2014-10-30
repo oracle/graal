@@ -61,7 +61,7 @@ public class IntegerEqualsNode extends CompareNode {
     }
 
     @Override
-    protected ValueNode optimizeNormalizeCmp(Constant constant, NormalizeCompareNode normalizeNode, boolean mirrored) {
+    protected ValueNode optimizeNormalizeCmp(JavaConstant constant, NormalizeCompareNode normalizeNode, boolean mirrored) {
         if (constant.getKind() == Kind.Int && constant.asInt() == 0) {
             ValueNode a = mirrored ? normalizeNode.getY() : normalizeNode.getX();
             ValueNode b = mirrored ? normalizeNode.getX() : normalizeNode.getY();
@@ -96,7 +96,7 @@ public class IntegerEqualsNode extends CompareNode {
     }
 
     @Override
-    protected ValueNode canonicalizeSymmetricConstant(CanonicalizerTool tool, Constant constant, ValueNode nonConstant, boolean mirrored) {
+    protected ValueNode canonicalizeSymmetricConstant(CanonicalizerTool tool, JavaConstant constant, ValueNode nonConstant, boolean mirrored) {
         if (constant.asLong() == 0) {
             if (nonConstant instanceof AndNode) {
                 AndNode andNode = (AndNode) nonConstant;
@@ -106,7 +106,7 @@ public class IntegerEqualsNode extends CompareNode {
                     LeftShiftNode shift = (LeftShiftNode) nonConstant;
                     if (shift.getY().isConstant()) {
                         int mask = shift.getShiftAmountMask();
-                        int amount = shift.getY().asConstant().asInt() & mask;
+                        int amount = shift.getY().asJavaConstant().asInt() & mask;
                         if (shift.getX().getKind() == Kind.Int) {
                             return IntegerTestNode.create(shift.getX(), ConstantNode.forInt(-1 >>> amount));
                         } else {
@@ -118,7 +118,7 @@ public class IntegerEqualsNode extends CompareNode {
                     RightShiftNode shift = (RightShiftNode) nonConstant;
                     if (shift.getY().isConstant() && ((IntegerStamp) shift.getX().stamp()).isPositive()) {
                         int mask = shift.getShiftAmountMask();
-                        int amount = shift.getY().asConstant().asInt() & mask;
+                        int amount = shift.getY().asJavaConstant().asInt() & mask;
                         if (shift.getX().getKind() == Kind.Int) {
                             return IntegerTestNode.create(shift.getX(), ConstantNode.forInt(-1 << amount));
                         } else {
@@ -130,7 +130,7 @@ public class IntegerEqualsNode extends CompareNode {
                     UnsignedRightShiftNode shift = (UnsignedRightShiftNode) nonConstant;
                     if (shift.getY().isConstant()) {
                         int mask = shift.getShiftAmountMask();
-                        int amount = shift.getY().asConstant().asInt() & mask;
+                        int amount = shift.getY().asJavaConstant().asInt() & mask;
                         if (shift.getX().getKind() == Kind.Int) {
                             return IntegerTestNode.create(shift.getX(), ConstantNode.forInt(-1 << amount));
                         } else {

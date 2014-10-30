@@ -58,7 +58,7 @@ public class OrNode extends BinaryArithmeticNode<Or> {
             return create(forY, forX);
         }
         if (forY.isConstant()) {
-            Constant c = forY.asConstant();
+            JavaConstant c = forY.asJavaConstant();
             if (getOp(forX, forY).isNeutral(c)) {
                 return forX;
             }
