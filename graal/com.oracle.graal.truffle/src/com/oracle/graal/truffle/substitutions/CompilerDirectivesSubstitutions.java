@@ -29,12 +29,10 @@ import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.truffle.*;
 import com.oracle.graal.truffle.nodes.*;
 import com.oracle.graal.truffle.nodes.frame.*;
 import com.oracle.graal.truffle.nodes.typesystem.*;
 import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.frame.*;
 
 @ClassSubstitution(CompilerDirectives.class)
 public class CompilerDirectivesSubstitutions {
@@ -78,11 +76,6 @@ public class CompilerDirectivesSubstitutions {
 
     @MacroSubstitution(macro = UnsafeTypeCastMacroNode.class, isStatic = true)
     public static native Object unsafeCast(Object value, Class<?> clazz, boolean condition, boolean nonNull);
-
-    @MethodSubstitution
-    private static Class<? extends MaterializedFrame> getUnsafeFrameType() {
-        return FrameWithoutBoxing.class;
-    }
 
     @MacroSubstitution(macro = IsCompilationConstantNode.class, isStatic = true)
     public static native boolean isCompilationConstant(Object value);

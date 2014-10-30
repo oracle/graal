@@ -31,6 +31,8 @@
 * Added `NeverValidAssumption` to complement `AlwaysValidAssumption`.
 * Fixed a bug in `AssumedValue` that may not invalidate correctly.
 * New option, `-G:+/-TruffleCompilationExceptionsAreThrown`, that will throw an `OptimizationFailedException` for compiler errors.
+* Removed `FrameTypeConversion` interface and changed the corresponding `FrameDescriptor` constructor to have a default value parameter instead.
+* Removed `CompilerDirectives.unsafeFrameCast` (equivalent to a `(MaterializedFrame)` cast).
 
 ## Version 0.4
 19-Aug-2014, [Repository Revision](http://hg.openjdk.java.net/graal/graal/shortlog/graal-0.4)
