@@ -90,10 +90,12 @@ public interface CompilerToVM {
     long findUniqueConcreteMethod(long actualHolderMetaspaceKlass, long metaspaceMethod);
 
     /**
-     * Returns the implementor for the given interface class.
+     * Returns the implementor for the given interface class, if there is a single implementor.
      *
      * @param metaspaceKlass the metaspace klass to get the implementor for
-     * @return the implementor as metaspace klass pointer or null if there is no implementor
+     * @return the implementor as metaspace klass pointer if there is a single implementor, null if
+     *         there is no implementor, or the input metaspace klass pointer ({@code metaspaceKlass}
+     *         ) itself if there is more than one implementor.
      */
     long getKlassImplementor(long metaspaceKlass);
 

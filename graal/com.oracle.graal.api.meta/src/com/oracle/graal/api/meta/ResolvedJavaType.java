@@ -181,6 +181,10 @@ public interface ResolvedJavaType extends JavaType, ModifiersProvider {
     /**
      * Gets the single implementor of this type. Calling this method on a non-interface type causes
      * an exception.
+     * <p>
+     * If the compiler uses the result of this method for its compilation, the usage must be guarded
+     * because the verifier can not guarantee that the assigned type really implements this
+     * interface. Additionally, class loading can invalidate the result of this method.
      *
      * @return {@code null} if there is no implementor, the implementor if there is only one, or
      *         {@code this} if there are more than one.
