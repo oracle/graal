@@ -83,7 +83,7 @@ public class DebugInfoBuilder {
                 for (Entry<VirtualObjectNode, VirtualObject> entry : virtualObjectsCopy.entrySet()) {
                     if (entry.getValue().getValues() == null) {
                         VirtualObjectNode vobj = entry.getKey();
-                        Value[] values = new Value[vobj.entryCount()];
+                        JavaValue[] values = new JavaValue[vobj.entryCount()];
                         if (values.length > 0) {
                             changed = true;
                             VirtualObjectState currentField = (VirtualObjectState) objectStates.get(vobj);
@@ -133,7 +133,7 @@ public class DebugInfoBuilder {
             int numStack = state.stackSize();
             int numLocks = state.locksSize();
 
-            Value[] values = new Value[numLocals + numStack + numLocks];
+            JavaValue[] values = new JavaValue[numLocals + numStack + numLocks];
             computeLocals(state, numLocals, values);
             computeStack(state, numLocals, numStack, values);
             computeLocks(state, values);
@@ -148,33 +148,33 @@ public class DebugInfoBuilder {
         }
     }
 
-    protected void computeLocals(FrameState state, int numLocals, Value[] values) {
+    protected void computeLocals(FrameState state, int numLocals, JavaValue[] values) {
         for (int i = 0; i < numLocals; i++) {
             values[i] = computeLocalValue(state, i);
         }
     }
 
-    protected Value computeLocalValue(FrameState state, int i) {
+    protected JavaValue computeLocalValue(FrameState state, int i) {
         return toValue(state.localAt(i));
     }
 
-    protected void computeStack(FrameState state, int numLocals, int numStack, Value[] values) {
+    protected void computeStack(FrameState state, int numLocals, int numStack, JavaValue[] values) {
         for (int i = 0; i < numStack; i++) {
             values[numLocals + i] = computeStackValue(state, i);
         }
     }
 
-    protected Value computeStackValue(FrameState state, int i) {
+    protected JavaValue computeStackValue(FrameState state, int i) {
         return toValue(state.stackAt(i));
     }
 
-    protected void computeLocks(FrameState state, Value[] values) {
+    protected void computeLocks(FrameState state, JavaValue[] values) {
         for (int i = 0; i < state.locksSize(); i++) {
             values[state.localsSize() + state.stackSize() + i] = computeLockValue(state, i);
         }
     }
 
-    protected Value computeLockValue(FrameState state, int i) {
+    protected JavaValue computeLockValue(FrameState state, int i) {
         return toValue(state.lockAt(i));
     }
 
@@ -183,7 +183,7 @@ public class DebugInfoBuilder {
     private static final DebugMetric STATE_VARIABLES = Debug.metric("StateVariables");
     private static final DebugMetric STATE_CONSTANTS = Debug.metric("StateConstants");
 
-    protected Value toValue(ValueNode value) {
+    protected JavaValue toValue(ValueNode value) {
         try {
             if (value instanceof VirtualObjectNode) {
                 VirtualObjectNode obj = (VirtualObjectNode) value;
@@ -215,7 +215,7 @@ public class DebugInfoBuilder {
                     STATE_VARIABLES.increment();
                     Value operand = nodeOperands.get(value);
                     assert operand != null && (operand instanceof Variable || operand instanceof JavaConstant) : operand + " for " + value;
-                    return operand;
+                    return (JavaValue) operand;
 
                 } else {
                     // return a dummy value because real value not needed

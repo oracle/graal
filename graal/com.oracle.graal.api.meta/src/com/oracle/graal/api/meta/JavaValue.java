@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,16 +23,12 @@
 package com.oracle.graal.api.meta;
 
 /**
- * Common base class for values that are stored in some location that's managed by the register
- * allocator (e.g. register, stack slot).
+ * Interface for things that represent a Java value.
  */
-public abstract class AllocatableValue extends Value implements JavaValue {
+public interface JavaValue {
 
-    private static final long serialVersionUID = 153019506717492133L;
-
-    public static final AllocatableValue[] NONE = {};
-
-    public AllocatableValue(LIRKind lirKind) {
-        super(lirKind);
-    }
+    /**
+     * Returns the kind of this value.
+     */
+    Kind getKind();
 }

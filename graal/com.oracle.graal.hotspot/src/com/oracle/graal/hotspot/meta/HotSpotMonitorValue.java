@@ -28,26 +28,26 @@ import com.oracle.graal.api.meta.*;
 /**
  * Represents lock information in the debug information.
  */
-public final class HotSpotMonitorValue extends Value {
+public final class HotSpotMonitorValue extends Value implements JavaValue {
 
     private static final long serialVersionUID = 8241681800464483691L;
 
-    private Value owner;
+    private JavaValue owner;
     private final StackSlot slot;
     private final boolean eliminated;
 
-    public HotSpotMonitorValue(Value owner, StackSlot slot, boolean eliminated) {
+    public HotSpotMonitorValue(JavaValue owner, StackSlot slot, boolean eliminated) {
         super(LIRKind.Illegal);
         this.owner = owner;
         this.slot = slot;
         this.eliminated = eliminated;
     }
 
-    public Value getOwner() {
+    public JavaValue getOwner() {
         return owner;
     }
 
-    public void setOwner(Value newOwner) {
+    public void setOwner(JavaValue newOwner) {
         this.owner = newOwner;
     }
 

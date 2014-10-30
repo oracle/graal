@@ -505,18 +505,18 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, Baseli
         int numLocals = state.localsSize();
         int numStack = state.stackSize();
         int numLocks = state.lockDepth();
-        Value[] values = new Value[numLocals + numStack + numLocks];
+        JavaValue[] values = new JavaValue[numLocals + numStack + numLocks];
 
         for (int i = 0; i < numLocals; i++) {
-            values[i] = state.localAt(i);
+            values[i] = (JavaValue) state.localAt(i);
         }
 
         for (int i = 0; i < numStack; i++) {
-            values[numLocals + i] = state.stackAt(i);
+            values[numLocals + i] = (JavaValue) state.stackAt(i);
         }
 
         for (int i = 0; i < numStack; i++) {
-            values[numLocals + numStack + i] = state.lockAt(i);
+            values[numLocals + numStack + i] = (JavaValue) state.lockAt(i);
         }
 
         BytecodeFrame frame = new BytecodeFrame(caller, method, bci(), state.rethrowException(), duringCall, values, numLocals, numStack, numLocks);

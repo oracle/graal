@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,8 +41,11 @@ class HotSpotLIRFrameState extends LIRFrameState {
     protected Value processValue(LIRInstruction inst, InstructionValueProcedure proc, Value value) {
         if (value instanceof HotSpotMonitorValue) {
             HotSpotMonitorValue monitor = (HotSpotMonitorValue) value;
-            if (processed(monitor.getOwner())) {
-                monitor.setOwner(proc.doValue(inst, monitor.getOwner(), OperandMode.ALIVE, STATE_FLAGS));
+            if (monitor.getOwner() instanceof Value) {
+                Value owner = (Value) monitor.getOwner();
+                if (processed(owner)) {
+                    monitor.setOwner((JavaValue) proc.doValue(inst, owner, OperandMode.ALIVE, STATE_FLAGS));
+                }
             }
             return value;
         } else {

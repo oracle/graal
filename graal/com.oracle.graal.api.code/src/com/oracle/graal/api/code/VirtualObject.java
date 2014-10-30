@@ -31,12 +31,12 @@ import com.oracle.graal.api.meta.*;
  * The information stored in the {@link VirtualObject} is used during deoptimization to recreate the
  * object.
  */
-public final class VirtualObject extends Value {
+public final class VirtualObject extends Value implements JavaValue {
 
     private static final long serialVersionUID = -2907197776426346021L;
 
     private final ResolvedJavaType type;
-    private Value[] values;
+    private JavaValue[] values;
     private final int id;
 
     /**
@@ -54,18 +54,18 @@ public final class VirtualObject extends Value {
      *            position in the compiled code.
      * @return a new {@link VirtualObject} instance.
      */
-    public static VirtualObject get(ResolvedJavaType type, Value[] values, int id) {
+    public static VirtualObject get(ResolvedJavaType type, JavaValue[] values, int id) {
         return new VirtualObject(type, values, id);
     }
 
-    private VirtualObject(ResolvedJavaType type, Value[] values, int id) {
+    private VirtualObject(ResolvedJavaType type, JavaValue[] values, int id) {
         super(LIRKind.reference(Kind.Object));
         this.type = type;
         this.values = values;
         this.id = id;
     }
 
-    private static StringBuilder appendValue(StringBuilder buf, Value value, Set<VirtualObject> visited) {
+    private static StringBuilder appendValue(StringBuilder buf, JavaValue value, Set<VirtualObject> visited) {
         if (value instanceof VirtualObject) {
             VirtualObject vo = (VirtualObject) value;
             buf.append("vobject:").append(vo.type.toJavaName(false)).append(':').append(vo.id);
@@ -120,7 +120,7 @@ public final class VirtualObject extends Value {
     /**
      * Returns an array containing all the values to be stored into the object when it is recreated.
      */
-    public Value[] getValues() {
+    public JavaValue[] getValues() {
         return values;
     }
 
@@ -132,7 +132,7 @@ public final class VirtualObject extends Value {
         return id;
     }
 
-    private static boolean checkValues(ResolvedJavaType type, Value[] values) {
+    private static boolean checkValues(ResolvedJavaType type, JavaValue[] values) {
         if (values != null) {
             if (!type.isArray()) {
                 ResolvedJavaField[] fields = type.getInstanceFields(true);
@@ -140,8 +140,8 @@ public final class VirtualObject extends Value {
                 for (int i = 0; i < values.length; i++) {
                     ResolvedJavaField field = fields[fieldIndex++];
                     Kind valKind = values[i].getKind().getStackKind();
-                    if (field.getKind() == Kind.Object) {
-                        assert values[i].getLIRKind().isReference(0) : field + ": " + valKind + " != " + field.getKind();
+                    if (field.getKind() == Kind.Object && values[i] instanceof Value) {
+                        assert ((Value) values[i]).getLIRKind().isReference(0) : field + ": " + valKind + " != " + field.getKind();
                     } else {
                         if ((valKind == Kind.Double || valKind == Kind.Long) && field.getKind() == Kind.Int) {
                             assert fields[fieldIndex].getKind() == Kind.Int;
@@ -156,7 +156,9 @@ public final class VirtualObject extends Value {
                 Kind componentKind = type.getComponentType().getKind().getStackKind();
                 if (componentKind == Kind.Object) {
                     for (int i = 0; i < values.length; i++) {
-                        assert values[i].getLIRKind().isReference(0) : values[i].getKind() + " != " + componentKind;
+                        if (values[i] instanceof Value) {
+                            assert ((Value) values[i]).getLIRKind().isReference(0) : values[i].getKind() + " != " + componentKind;
+                        }
                     }
                 } else {
                     for (int i = 0; i < values.length; i++) {
@@ -175,7 +177,7 @@ public final class VirtualObject extends Value {
      * @param values an array containing all the values to be stored into the object when it is
      *            recreated.
      */
-    public void setValues(Value[] values) {
+    public void setValues(JavaValue[] values) {
         assert checkValues(type, values);
         this.values = values;
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -65,7 +65,7 @@ public class BytecodeFrame extends BytecodePosition implements Serializable {
      * Note that the number of locals and the number of stack slots may be smaller than the maximum
      * number of locals and stack slots as specified in the compiled method.
      */
-    public final Value[] values;
+    public final JavaValue[] values;
 
     /**
      * The number of locals in the values array.
@@ -143,7 +143,7 @@ public class BytecodeFrame extends BytecodePosition implements Serializable {
      * @param numStack the depth of the stack
      * @param numLocks the number of locked objects
      */
-    public BytecodeFrame(BytecodeFrame caller, ResolvedJavaMethod method, int bci, boolean rethrowException, boolean duringCall, Value[] values, int numLocals, int numStack, int numLocks) {
+    public BytecodeFrame(BytecodeFrame caller, ResolvedJavaMethod method, int bci, boolean rethrowException, boolean duringCall, JavaValue[] values, int numLocals, int numStack, int numLocks) {
         super(caller, method, bci);
         assert values != null;
         this.rethrowException = rethrowException;
@@ -182,7 +182,7 @@ public class BytecodeFrame extends BytecodePosition implements Serializable {
      * @param i the local variable index
      * @return the value that can be used to reconstruct the local's current value
      */
-    public Value getLocalValue(int i) {
+    public JavaValue getLocalValue(int i) {
         return values[i];
     }
 
@@ -192,7 +192,7 @@ public class BytecodeFrame extends BytecodePosition implements Serializable {
      * @param i the stack index
      * @return the value that can be used to reconstruct the stack slot's current value
      */
-    public Value getStackValue(int i) {
+    public JavaValue getStackValue(int i) {
         return values[i + numLocals];
     }
 
@@ -202,7 +202,7 @@ public class BytecodeFrame extends BytecodePosition implements Serializable {
      * @param i the lock index
      * @return the value that can be used to reconstruct the lock's current value
      */
-    public Value getLockValue(int i) {
+    public JavaValue getLockValue(int i) {
         return values[i + numLocals + numStack];
     }
 
