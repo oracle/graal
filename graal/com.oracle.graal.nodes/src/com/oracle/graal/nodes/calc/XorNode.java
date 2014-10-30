@@ -59,13 +59,13 @@ public class XorNode extends BinaryArithmeticNode<Xor> {
             return XorNode.create(forY, forX);
         }
         if (forY.isConstant()) {
-            JavaConstant c = forY.asJavaConstant();
+            Constant c = forY.asConstant();
             if (getOp(forX, forY).isNeutral(c)) {
                 return forX;
             }
 
-            if (c.getKind().isNumericInteger()) {
-                long rawY = c.asLong();
+            if (c instanceof PrimitiveConstant && ((PrimitiveConstant) c).getKind().isNumericInteger()) {
+                long rawY = ((PrimitiveConstant) c).asLong();
                 long mask = CodeUtil.mask(PrimitiveStamp.getBits(stamp()));
                 if ((rawY & mask) == mask) {
                     return NotNode.create(forX);

@@ -103,7 +103,7 @@ public final class VoidStamp extends Stamp {
     }
 
     @Override
-    public Stamp constant(JavaConstant c, MetaAccessProvider meta) {
+    public Stamp constant(Constant c, MetaAccessProvider meta) {
         throw GraalInternalError.shouldNotReachHere("void stamp has no value");
     }
 

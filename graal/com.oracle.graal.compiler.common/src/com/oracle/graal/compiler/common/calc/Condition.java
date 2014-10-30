@@ -336,16 +336,18 @@ public enum Condition {
      * @return true if the comparison is known to be true, false if the comparison is known to be
      *         false
      */
-    public boolean foldCondition(JavaConstant lt, JavaConstant rt, ConstantReflectionProvider constantReflection, boolean unorderedIsTrue) {
+    public boolean foldCondition(Constant lt, Constant rt, ConstantReflectionProvider constantReflection, boolean unorderedIsTrue) {
         if (lt instanceof PrimitiveConstant) {
-            switch (lt.getKind()) {
+            PrimitiveConstant lp = (PrimitiveConstant) lt;
+            PrimitiveConstant rp = (PrimitiveConstant) rt;
+            switch (lp.getKind()) {
                 case Boolean:
                 case Byte:
                 case Char:
                 case Short:
                 case Int: {
-                    int x = lt.asInt();
-                    int y = rt.asInt();
+                    int x = lp.asInt();
+                    int y = rp.asInt();
                     switch (this) {
                         case EQ:
                             return x == y;
@@ -372,8 +374,8 @@ public enum Condition {
                     }
                 }
                 case Long: {
-                    long x = lt.asLong();
-                    long y = rt.asLong();
+                    long x = lp.asLong();
+                    long y = rp.asLong();
                     switch (this) {
                         case EQ:
                             return x == y;
@@ -400,8 +402,8 @@ public enum Condition {
                     }
                 }
                 case Float: {
-                    float x = lt.asFloat();
-                    float y = rt.asFloat();
+                    float x = lp.asFloat();
+                    float y = rp.asFloat();
                     if (Float.isNaN(x) || Float.isNaN(y)) {
                         return unorderedIsTrue;
                     }
@@ -423,8 +425,8 @@ public enum Condition {
                     }
                 }
                 case Double: {
-                    double x = lt.asDouble();
-                    double y = rt.asDouble();
+                    double x = lp.asDouble();
+                    double y = rp.asDouble();
                     if (Double.isNaN(x) || Double.isNaN(y)) {
                         return unorderedIsTrue;
                     }
@@ -446,7 +448,7 @@ public enum Condition {
                     }
                 }
                 default:
-                    throw new GraalInternalError("expected value kind %s while folding condition: %s", lt.getKind(), this);
+                    throw new GraalInternalError("expected value kind %s while folding condition: %s", lp.getKind(), this);
             }
         } else {
             Boolean equal = constantReflection.constantEquals(lt, rt);

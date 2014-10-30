@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -56,7 +56,7 @@ public class CompiledMethodTest extends GraalCompilerTest {
         new DeadCodeEliminationPhase().apply(graph);
 
         for (ConstantNode node : ConstantNode.getConstantNodes(graph)) {
-            if (node.getKind() == Kind.Object && " ".equals(getSnippetReflection().asObject(node.getValue()))) {
+            if (node.getKind() == Kind.Object && " ".equals(getSnippetReflection().asObject(node.asJavaConstant()))) {
                 node.replace(graph, ConstantNode.forConstant(getSnippetReflection().forObject("-"), getMetaAccess(), graph));
             }
         }

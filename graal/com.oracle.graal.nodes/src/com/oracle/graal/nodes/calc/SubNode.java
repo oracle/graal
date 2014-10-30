@@ -54,7 +54,7 @@ public class SubNode extends BinaryArithmeticNode<Sub> implements NarrowableArit
 
         BinaryOp<Sub> op = getOp(forX, forY);
         if (GraphUtil.unproxify(forX) == GraphUtil.unproxify(forY)) {
-            JavaConstant zero = op.getZero(forX.stamp());
+            Constant zero = op.getZero(forX.stamp());
             if (zero != null) {
                 return ConstantNode.forPrimitive(stamp(), zero);
             }
@@ -97,7 +97,7 @@ public class SubNode extends BinaryArithmeticNode<Sub> implements NarrowableArit
             }
         }
         if (forY.isConstant()) {
-            JavaConstant c = forY.asJavaConstant();
+            Constant c = forY.asConstant();
             if (op.isNeutral(c)) {
                 return forX;
             }
@@ -107,8 +107,8 @@ public class SubNode extends BinaryArithmeticNode<Sub> implements NarrowableArit
                     return reassociated;
                 }
             }
-            if (c.getKind().isNumericInteger()) {
-                long i = c.asLong();
+            if (c instanceof PrimitiveConstant && ((PrimitiveConstant) c).getKind().isNumericInteger()) {
+                long i = ((PrimitiveConstant) c).asLong();
                 if (i < 0 || ((IntegerStamp) StampFactory.forKind(forY.getKind())).contains(-i)) {
                     // Adding a negative is more friendly to the backend since adds are
                     // commutative, so prefer add when it fits.
@@ -116,7 +116,7 @@ public class SubNode extends BinaryArithmeticNode<Sub> implements NarrowableArit
                 }
             }
         } else if (forX.isConstant()) {
-            JavaConstant c = forX.asJavaConstant();
+            Constant c = forX.asConstant();
             if (ArithmeticOpTable.forStamp(stamp()).getAdd().isNeutral(c)) {
                 /*
                  * Note that for floating point numbers, + and - have different neutral elements. We

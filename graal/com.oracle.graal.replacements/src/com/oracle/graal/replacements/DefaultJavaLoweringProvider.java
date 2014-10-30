@@ -277,7 +277,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         Kind readKind = load.accessKind();
         ValueNode[] base = null;
         ValueNode object = load.object();
-        if (object.isConstant() && object.asJavaConstant().isDefaultForKind()) {
+        if (object.isConstant() && object.asConstant().isDefaultForKind()) {
             base = new ValueNode[1];
         }
         LocationNode location = createLocation(load, base);
@@ -295,7 +295,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         StructuredGraph graph = store.graph();
         ValueNode object = store.object();
         ValueNode[] base = null;
-        if (object.isConstant() && object.asJavaConstant().isDefaultForKind()) {
+        if (object.isConstant() && object.asConstant().isDefaultForKind()) {
             base = new ValueNode[1];
         }
         LocationNode location = createLocation(store, base);
@@ -360,7 +360,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                     }
                     if (value == null) {
                         omittedValues.set(valuePos);
-                    } else if (!(value.isConstant() && value.asJavaConstant().isDefaultForKind())) {
+                    } else if (!(value.isConstant() && value.asConstant().isDefaultForKind())) {
                         // Constant.illegal is always the defaultForKind, so it is skipped
                         Kind valueKind = value.getKind();
                         Kind entryKind = virtual.entryKind(i);

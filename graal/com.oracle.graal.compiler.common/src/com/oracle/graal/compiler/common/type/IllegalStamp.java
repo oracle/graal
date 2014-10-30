@@ -55,7 +55,7 @@ public final class IllegalStamp extends Stamp {
     }
 
     @Override
-    public Stamp constant(JavaConstant c, MetaAccessProvider meta) {
+    public Stamp constant(Constant c, MetaAccessProvider meta) {
         throw GraalInternalError.shouldNotReachHere("illegal stamp has no value");
     }
 

@@ -209,7 +209,7 @@ public class DebugInfoBuilder {
                 ValueNode unproxied = GraphUtil.unproxify(value);
                 if (unproxied instanceof ConstantNode) {
                     STATE_CONSTANTS.increment();
-                    return ((ConstantNode) unproxied).getValue();
+                    return unproxied.asJavaConstant();
 
                 } else if (value != null) {
                     STATE_VARIABLES.increment();

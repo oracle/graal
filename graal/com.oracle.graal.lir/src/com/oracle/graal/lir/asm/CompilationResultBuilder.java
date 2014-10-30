@@ -80,7 +80,7 @@ public class CompilationResultBuilder {
 
     private List<ExceptionInfo> exceptionInfoList;
 
-    private final IdentityHashMap<JavaConstant, Data> dataCache;
+    private final IdentityHashMap<Constant, Data> dataCache;
 
     public CompilationResultBuilder(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, Assembler asm, FrameContext frameContext, CompilationResult compilationResult) {
         this.target = codeCache.getTarget();
@@ -177,7 +177,7 @@ public class CompilationResultBuilder {
         return asm.getPlaceholder();
     }
 
-    public AbstractAddress recordDataReferenceInCode(JavaConstant constant, int alignment) {
+    public AbstractAddress recordDataReferenceInCode(Constant constant, int alignment) {
         assert constant != null;
         Debug.log("Constant reference in code: pos = %d, data = %s", asm.position(), constant);
         Data data = dataCache.get(constant);

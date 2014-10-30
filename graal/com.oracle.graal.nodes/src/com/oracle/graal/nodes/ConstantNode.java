@@ -36,14 +36,14 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 
 /**
- * The {@code ConstantNode} represents a {@link JavaConstant constant}.
+ * The {@code ConstantNode} represents a {@link Constant constant}.
  */
 @NodeInfo(shortName = "Const", nameTemplate = "Const({p#rawvalue})")
 public class ConstantNode extends FloatingNode implements LIRLowerable {
 
     private static final DebugMetric ConstantNodes = Debug.metric("ConstantNodes");
 
-    protected final JavaConstant value;
+    protected final Constant value;
 
     private static ConstantNode createPrimitive(JavaConstant value) {
         assert value.getKind() != Kind.Object;
@@ -55,11 +55,11 @@ public class ConstantNode extends FloatingNode implements LIRLowerable {
      *
      * @param value the constant
      */
-    public static ConstantNode create(JavaConstant value, Stamp stamp) {
+    public static ConstantNode create(Constant value, Stamp stamp) {
         return new ConstantNode(value, stamp);
     }
 
-    protected ConstantNode(JavaConstant value, Stamp stamp) {
+    protected ConstantNode(Constant value, Stamp stamp) {
         super(stamp);
         assert stamp != null;
         this.value = value;
@@ -69,7 +69,7 @@ public class ConstantNode extends FloatingNode implements LIRLowerable {
     /**
      * @return the constant value represented by this node
      */
-    public JavaConstant getValue() {
+    public Constant getValue() {
         return value;
     }
 
@@ -92,7 +92,7 @@ public class ConstantNode extends FloatingNode implements LIRLowerable {
     @Override
     public void generate(NodeLIRBuilderTool gen) {
         if (onlyUsedInVirtualState()) {
-            gen.setResult(this, value);
+            gen.setResult(this, (JavaConstant) value);
         } else {
             LIRKind kind = gen.getLIRGeneratorTool().getLIRKind(stamp());
             gen.setResult(this, gen.getLIRGeneratorTool().emitLoadConstant(kind, value));
@@ -132,11 +132,11 @@ public class ConstantNode extends FloatingNode implements LIRLowerable {
         }
     }
 
-    public static ConstantNode forConstant(Stamp stamp, JavaConstant constant, MetaAccessProvider metaAccess, StructuredGraph graph) {
+    public static ConstantNode forConstant(Stamp stamp, Constant constant, MetaAccessProvider metaAccess, StructuredGraph graph) {
         return graph.unique(ConstantNode.create(constant, stamp.constant(constant, metaAccess)));
     }
 
-    public static ConstantNode forConstant(Stamp stamp, JavaConstant constant, MetaAccessProvider metaAccess) {
+    public static ConstantNode forConstant(Stamp stamp, Constant constant, MetaAccessProvider metaAccess) {
         return ConstantNode.create(constant, stamp.constant(constant, metaAccess));
     }
 
@@ -173,14 +173,16 @@ public class ConstantNode extends FloatingNode implements LIRLowerable {
     /**
      * Returns a node for a primitive of a given type.
      */
-    public static ConstantNode forPrimitive(Stamp stamp, JavaConstant constant) {
+    public static ConstantNode forPrimitive(Stamp stamp, Constant constant) {
         if (stamp instanceof IntegerStamp) {
-            assert constant.getKind().isNumericInteger() && stamp.getStackKind() == constant.getKind().getStackKind();
+            PrimitiveConstant primitive = (PrimitiveConstant) constant;
+            assert primitive.getKind().isNumericInteger() && stamp.getStackKind() == primitive.getKind().getStackKind();
             IntegerStamp istamp = (IntegerStamp) stamp;
-            return forIntegerBits(istamp.getBits(), constant);
+            return forIntegerBits(istamp.getBits(), primitive);
         } else if (stamp instanceof FloatStamp) {
-            assert constant.getKind().isNumericFloat() && stamp.getStackKind() == constant.getKind();
-            return forConstant(constant, null);
+            PrimitiveConstant primitive = (PrimitiveConstant) constant;
+            assert primitive.getKind().isNumericFloat() && stamp.getStackKind() == primitive.getKind();
+            return forConstant(primitive, null);
         } else {
             assert !(stamp instanceof AbstractObjectStamp);
             return ConstantNode.create(constant, stamp.constant(constant, null));

@@ -196,7 +196,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
                         if (node instanceof ValueNode) {
                             ValueNode valueNode = (ValueNode) node;
                             boolean improvedStamp = tryInferStamp(valueNode);
-                            JavaConstant constant = valueNode.stamp().asConstant();
+                            Constant constant = valueNode.stamp().asConstant();
                             if (constant != null && !(node instanceof ConstantNode)) {
                                 valueNode.replaceAtUsages(InputType.Value, ConstantNode.forConstant(valueNode.stamp(), constant, context.getMetaAccess(), graph));
                                 GraphUtil.tryKillUnused(valueNode);

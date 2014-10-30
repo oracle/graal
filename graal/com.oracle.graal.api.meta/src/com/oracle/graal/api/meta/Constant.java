@@ -22,5 +22,12 @@
  */
 package com.oracle.graal.api.meta;
 
-public interface VMConstant extends Constant {
+/**
+ * Represents a compile-time constant (boxed) value within the compiler.
+ */
+public interface Constant {
+
+    boolean isDefaultForKind();
+
+    String toValueString();
 }

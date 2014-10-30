@@ -61,9 +61,10 @@ public class IntegerLessThanNode extends CompareNode {
     }
 
     @Override
-    protected ValueNode optimizeNormalizeCmp(JavaConstant constant, NormalizeCompareNode normalizeNode, boolean mirrored) {
+    protected ValueNode optimizeNormalizeCmp(Constant constant, NormalizeCompareNode normalizeNode, boolean mirrored) {
+        PrimitiveConstant primitive = (PrimitiveConstant) constant;
         assert condition() == Condition.LT;
-        if (constant.getKind() == Kind.Int && constant.asInt() == 0) {
+        if (primitive.getKind() == Kind.Int && primitive.asInt() == 0) {
             ValueNode a = mirrored ? normalizeNode.getY() : normalizeNode.getX();
             ValueNode b = mirrored ? normalizeNode.getX() : normalizeNode.getY();
 

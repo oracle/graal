@@ -25,10 +25,10 @@ package com.oracle.graal.api.meta;
 /**
  * Represents a constant (boxed) value, such as an integer, floating point number, or object
  * reference, within the compiler and across the compiler/runtime interface. Exports a set of
- * {@code Constant} instances that represent frequently used constant values, such as
+ * {@code JavaConstant} instances that represent frequently used constant values, such as
  * {@link #NULL_OBJECT}.
  */
-public abstract class JavaConstant extends Value {
+public abstract class JavaConstant extends Value implements Constant {
 
     private static final long serialVersionUID = -6355452536852663986L;
 
@@ -60,6 +60,14 @@ public abstract class JavaConstant extends Value {
      * @return {@code true} if this constant is the null constant
      */
     public abstract boolean isNull();
+
+    public static boolean isNull(Constant c) {
+        if (c instanceof JavaConstant) {
+            return ((JavaConstant) c).isNull();
+        } else {
+            return false;
+        }
+    }
 
     /**
      * Checks whether this constant is non-null.

@@ -48,26 +48,26 @@ public final class HotSpotObjectConstant extends JavaConstant implements HotSpot
         }
     }
 
-    public static Object asObject(JavaConstant constant) {
-        if (constant.isNull()) {
+    public static Object asObject(Constant constant) {
+        if (JavaConstant.isNull(constant)) {
             return null;
         } else {
             return ((HotSpotObjectConstant) constant).object;
         }
     }
 
-    public static Object asBoxedValue(JavaConstant constant) {
-        if (constant.isNull()) {
+    public static Object asBoxedValue(Constant constant) {
+        if (JavaConstant.isNull(constant)) {
             return null;
         } else if (constant instanceof HotSpotObjectConstant) {
             return ((HotSpotObjectConstant) constant).object;
         } else {
-            return constant.asBoxedPrimitive();
+            return ((JavaConstant) constant).asBoxedPrimitive();
         }
     }
 
-    public static boolean isCompressed(JavaConstant constant) {
-        if (constant.isNull()) {
+    public static boolean isCompressed(Constant constant) {
+        if (JavaConstant.isNull(constant)) {
             return HotSpotCompressedNullConstant.NULL_OBJECT.equals(constant);
         } else {
             return ((HotSpotObjectConstant) constant).compressed;

@@ -38,7 +38,7 @@ public interface ConstantReflectionProvider {
      * {@link Boolean#FALSE false} if they are different. Returns {@code null} if the constants
      * cannot be compared at this point.
      */
-    Boolean constantEquals(JavaConstant x, JavaConstant y);
+    Boolean constantEquals(Constant x, Constant y);
 
     /**
      * Returns the length of the array constant. Returns {@code null} if the constant is not an

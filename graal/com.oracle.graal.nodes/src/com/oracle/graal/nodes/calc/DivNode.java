@@ -51,12 +51,12 @@ public class DivNode extends BinaryArithmeticNode<Div> {
         }
 
         if (forY.isConstant()) {
-            JavaConstant c = forY.asJavaConstant();
+            Constant c = forY.asConstant();
             if (getOp(forX, forY).isNeutral(c)) {
                 return forX;
             }
-            if (c.getKind().isNumericInteger()) {
-                long i = c.asLong();
+            if (c instanceof PrimitiveConstant && ((PrimitiveConstant) c).getKind().isNumericInteger()) {
+                long i = ((PrimitiveConstant) c).asLong();
                 boolean signFlip = false;
                 if (i < 0) {
                     i = -i;

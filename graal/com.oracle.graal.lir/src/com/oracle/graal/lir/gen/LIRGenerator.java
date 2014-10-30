@@ -118,11 +118,12 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRKindTool {
     }
 
     @Override
-    public Value emitLoadConstant(LIRKind kind, JavaConstant constant) {
-        if (canInlineConstant(constant)) {
-            return constant;
+    public Value emitLoadConstant(LIRKind kind, Constant constant) {
+        JavaConstant javaConstant = (JavaConstant) constant;
+        if (canInlineConstant(javaConstant)) {
+            return javaConstant;
         } else {
-            return emitMove(constant);
+            return emitMove(javaConstant);
         }
     }
 

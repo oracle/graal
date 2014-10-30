@@ -35,9 +35,9 @@ public interface ConvertNode extends ArithmeticOperation, NodeInterface {
 
     ValueNode getValue();
 
-    JavaConstant convert(JavaConstant c);
+    Constant convert(Constant c);
 
-    JavaConstant reverse(JavaConstant c);
+    Constant reverse(Constant c);
 
     /**
      * Check whether a conversion is lossless.

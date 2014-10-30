@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -162,7 +162,7 @@ public class FlowSenReduTest extends GraalCompilerTest {
         ConstantNode c2 = (ConstantNode) iter.next().result();
 
         assertDeepEquals(c1, c2);
-        assertDeepEquals(0, c1.getValue().asInt());
+        assertDeepEquals(0, c1.asJavaConstant().asInt());
     }
 
     @Test
@@ -222,7 +222,7 @@ public class FlowSenReduTest extends GraalCompilerTest {
         ConstantNode c2 = (ConstantNode) iter.next().result();
 
         assertDeepEquals(c1, c2);
-        Assert.assertTrue(c1.getValue().isNull());
+        Assert.assertTrue(c1.asJavaConstant().isNull());
     }
 
     /*

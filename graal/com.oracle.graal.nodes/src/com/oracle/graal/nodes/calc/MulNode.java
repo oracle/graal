@@ -56,13 +56,13 @@ public class MulNode extends BinaryArithmeticNode<Mul> implements NarrowableArit
         }
         if (forY.isConstant()) {
             BinaryOp<Mul> op = getOp(forX, forY);
-            JavaConstant c = forY.asJavaConstant();
+            Constant c = forY.asConstant();
             if (op.isNeutral(c)) {
                 return forX;
             }
 
-            if (c.getKind().isNumericInteger()) {
-                long i = c.asLong();
+            if (c instanceof PrimitiveConstant && ((PrimitiveConstant) c).getKind().isNumericInteger()) {
+                long i = ((PrimitiveConstant) c).asLong();
                 boolean signFlip = false;
                 if (i < 0) {
                     i = -i;

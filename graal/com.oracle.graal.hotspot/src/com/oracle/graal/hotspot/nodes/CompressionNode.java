@@ -73,34 +73,36 @@ public class CompressionNode extends UnaryNode implements ConvertNode, LIRLowera
         return input.graph().unique(CompressionNode.create(CompressionOp.Uncompress, input, encoding));
     }
 
-    private static JavaConstant compress(JavaConstant c, CompressEncoding encoding) {
+    private static Constant compress(Constant c, CompressEncoding encoding) {
         if (JavaConstant.NULL_OBJECT.equals(c)) {
             return HotSpotCompressedNullConstant.COMPRESSED_NULL;
         } else if (c instanceof HotSpotObjectConstant) {
             return ((HotSpotObjectConstant) c).compress();
         } else if (c instanceof HotSpotMetaspaceConstant) {
-            assert c.getKind() == Kind.Long;
-            return HotSpotMetaspaceConstant.forMetaspaceObject(Kind.Int, encoding.compress(c.asLong()), HotSpotMetaspaceConstant.getMetaspaceObject(c), true);
+            HotSpotMetaspaceConstant meta = (HotSpotMetaspaceConstant) c;
+            assert meta.getKind() == Kind.Long;
+            return HotSpotMetaspaceConstant.forMetaspaceObject(Kind.Int, encoding.compress(meta.asLong()), HotSpotMetaspaceConstant.getMetaspaceObject(meta), true);
         } else {
             throw GraalInternalError.shouldNotReachHere("invalid constant input for compress op: " + c);
         }
     }
 
-    private static JavaConstant uncompress(JavaConstant c, CompressEncoding encoding) {
+    private static Constant uncompress(Constant c, CompressEncoding encoding) {
         if (HotSpotCompressedNullConstant.COMPRESSED_NULL.equals(c)) {
             return JavaConstant.NULL_OBJECT;
         } else if (c instanceof HotSpotObjectConstant) {
             return ((HotSpotObjectConstant) c).uncompress();
         } else if (c instanceof HotSpotMetaspaceConstant) {
-            assert c.getKind() == Kind.Int;
-            return HotSpotMetaspaceConstant.forMetaspaceObject(Kind.Long, encoding.uncompress(c.asInt()), HotSpotMetaspaceConstant.getMetaspaceObject(c), false);
+            HotSpotMetaspaceConstant meta = (HotSpotMetaspaceConstant) c;
+            assert meta.getKind() == Kind.Int;
+            return HotSpotMetaspaceConstant.forMetaspaceObject(Kind.Long, encoding.uncompress(meta.asInt()), HotSpotMetaspaceConstant.getMetaspaceObject(meta), false);
         } else {
             throw GraalInternalError.shouldNotReachHere("invalid constant input for uncompress op: " + c);
         }
     }
 
     @Override
-    public JavaConstant convert(JavaConstant c) {
+    public Constant convert(Constant c) {
         switch (op) {
             case Compress:
                 return compress(c, encoding);
@@ -112,7 +114,7 @@ public class CompressionNode extends UnaryNode implements ConvertNode, LIRLowera
     }
 
     @Override
-    public JavaConstant reverse(JavaConstant c) {
+    public Constant reverse(Constant c) {
         switch (op) {
             case Compress:
                 return uncompress(c, encoding);

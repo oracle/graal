@@ -115,9 +115,18 @@ public abstract class ValueNode extends ScheduledNode implements StampProvider, 
      * @return the {@link JavaConstant} represented by this value if it is a constant; {@code null}
      *         otherwise
      */
-    public final JavaConstant asJavaConstant() {
+    public final Constant asConstant() {
         if (this instanceof ConstantNode) {
             return ((ConstantNode) this).getValue();
+        } else {
+            return null;
+        }
+    }
+
+    public final JavaConstant asJavaConstant() {
+        Constant value = asConstant();
+        if (value instanceof JavaConstant) {
+            return (JavaConstant) value;
         } else {
             return null;
         }

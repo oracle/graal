@@ -93,7 +93,7 @@ public abstract class Stamp {
      * If it is not possible to represent single value stamps, this method returns a stamp that
      * includes c, and is otherwise as narrow as possible.
      */
-    public abstract Stamp constant(JavaConstant c, MetaAccessProvider meta);
+    public abstract Stamp constant(Constant c, MetaAccessProvider meta);
 
     /**
      * Test whether two stamps have the same base type.
@@ -112,7 +112,7 @@ public abstract class Stamp {
      * @return the constant corresponding to the single value of this stamp and null if this stamp
      *         can represent less or more than one value.
      */
-    public JavaConstant asConstant() {
+    public Constant asConstant() {
         return null;
     }
 }

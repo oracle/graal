@@ -279,8 +279,8 @@ public class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerab
         assert trueSuccessor().usages().isEmpty() && falseSuccessor().usages().isEmpty();
         if (condition() instanceof IntegerLessThanNode) {
             IntegerLessThanNode lessThan = (IntegerLessThanNode) condition();
-            JavaConstant y = lessThan.getY().stamp().asConstant();
-            if (y != null && y.asLong() == 0 && falseSuccessor().next() instanceof IfNode) {
+            Constant y = lessThan.getY().stamp().asConstant();
+            if (y instanceof PrimitiveConstant && ((PrimitiveConstant) y).asLong() == 0 && falseSuccessor().next() instanceof IfNode) {
                 IfNode ifNode2 = (IfNode) falseSuccessor().next();
                 if (ifNode2.condition() instanceof IntegerLessThanNode) {
                     IntegerLessThanNode lessThan2 = (IntegerLessThanNode) ifNode2.condition();

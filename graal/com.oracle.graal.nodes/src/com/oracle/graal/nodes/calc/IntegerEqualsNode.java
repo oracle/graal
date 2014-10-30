@@ -61,8 +61,9 @@ public class IntegerEqualsNode extends CompareNode {
     }
 
     @Override
-    protected ValueNode optimizeNormalizeCmp(JavaConstant constant, NormalizeCompareNode normalizeNode, boolean mirrored) {
-        if (constant.getKind() == Kind.Int && constant.asInt() == 0) {
+    protected ValueNode optimizeNormalizeCmp(Constant constant, NormalizeCompareNode normalizeNode, boolean mirrored) {
+        PrimitiveConstant primitive = (PrimitiveConstant) constant;
+        if (primitive.getKind() == Kind.Int && primitive.asInt() == 0) {
             ValueNode a = mirrored ? normalizeNode.getY() : normalizeNode.getX();
             ValueNode b = mirrored ? normalizeNode.getX() : normalizeNode.getY();
 
@@ -96,8 +97,8 @@ public class IntegerEqualsNode extends CompareNode {
     }
 
     @Override
-    protected ValueNode canonicalizeSymmetricConstant(CanonicalizerTool tool, JavaConstant constant, ValueNode nonConstant, boolean mirrored) {
-        if (constant.asLong() == 0) {
+    protected ValueNode canonicalizeSymmetricConstant(CanonicalizerTool tool, Constant constant, ValueNode nonConstant, boolean mirrored) {
+        if (constant instanceof PrimitiveConstant && ((PrimitiveConstant) constant).asLong() == 0) {
             if (nonConstant instanceof AndNode) {
                 AndNode andNode = (AndNode) nonConstant;
                 return IntegerTestNode.create(andNode.getX(), andNode.getY());

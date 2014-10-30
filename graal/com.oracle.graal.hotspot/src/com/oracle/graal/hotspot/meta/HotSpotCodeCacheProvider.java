@@ -256,7 +256,7 @@ public class HotSpotCodeCacheProvider implements CodeCacheProvider {
         return constant instanceof HotSpotMetaspaceConstant;
     }
 
-    public Data createDataItem(JavaConstant constant) {
+    public Data createDataItem(Constant constant) {
         int size;
         DataBuilder builder;
         if (constant instanceof VMConstant) {
@@ -267,8 +267,9 @@ public class HotSpotCodeCacheProvider implements CodeCacheProvider {
                 compressed = HotSpotObjectConstant.isCompressed(constant);
                 raw = 0xDEADDEADDEADDEADL;
             } else if (constant instanceof HotSpotMetaspaceConstant) {
-                compressed = constant.getKind() != target.wordKind;
-                raw = constant.asLong();
+                HotSpotMetaspaceConstant meta = (HotSpotMetaspaceConstant) constant;
+                compressed = meta.getKind() != target.wordKind;
+                raw = meta.asLong();
             } else {
                 throw GraalInternalError.shouldNotReachHere();
             }
@@ -286,13 +287,14 @@ public class HotSpotCodeCacheProvider implements CodeCacheProvider {
                     buffer.putLong(raw);
                 };
             }
-        } else if (constant.isNull()) {
+        } else if (JavaConstant.isNull(constant)) {
             boolean compressed = HotSpotObjectConstant.isCompressed(constant);
             size = target.getSizeInBytes(compressed ? Kind.Int : target.wordKind);
             builder = DataBuilder.zero(size);
         } else if (constant instanceof PrimitiveConstant) {
-            size = target.getSizeInBytes(constant.getKind());
-            builder = DataBuilder.primitive((PrimitiveConstant) constant);
+            PrimitiveConstant prim = (PrimitiveConstant) constant;
+            size = target.getSizeInBytes(prim.getKind());
+            builder = DataBuilder.primitive(prim);
         } else {
             throw GraalInternalError.shouldNotReachHere();
         }

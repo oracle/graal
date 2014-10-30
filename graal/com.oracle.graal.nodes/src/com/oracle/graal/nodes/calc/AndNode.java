@@ -58,13 +58,13 @@ public class AndNode extends BinaryArithmeticNode<And> implements NarrowableArit
             return AndNode.create(forY, forX);
         }
         if (forY.isConstant()) {
-            JavaConstant c = forY.asJavaConstant();
+            Constant c = forY.asConstant();
             if (getOp(forX, forY).isNeutral(c)) {
                 return forX;
             }
 
-            if (c.getKind().isNumericInteger()) {
-                long rawY = c.asLong();
+            if (c instanceof PrimitiveConstant && ((PrimitiveConstant) c).getKind().isNumericInteger()) {
+                long rawY = ((PrimitiveConstant) c).asLong();
                 long mask = CodeUtil.mask(PrimitiveStamp.getBits(stamp()));
                 if ((rawY & mask) == 0) {
                     return ConstantNode.forIntegerStamp(stamp(), 0);

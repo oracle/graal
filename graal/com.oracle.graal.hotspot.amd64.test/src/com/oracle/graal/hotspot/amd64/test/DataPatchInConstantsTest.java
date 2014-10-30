@@ -182,11 +182,11 @@ public class DataPatchInConstantsTest extends GraalCompilerTest {
 
     private static class LoadThroughPatchOp extends LIRInstructionBase {
 
-        final JavaConstant c;
+        final Constant c;
         final boolean compressed;
         @Def({REG}) AllocatableValue result;
 
-        LoadThroughPatchOp(JavaConstant c, boolean compressed, AllocatableValue result) {
+        LoadThroughPatchOp(Constant c, boolean compressed, AllocatableValue result) {
             this.c = c;
             this.compressed = compressed;
             this.result = result;

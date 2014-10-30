@@ -61,9 +61,10 @@ public class FloatStamp extends PrimitiveStamp {
     }
 
     @Override
-    public Stamp constant(JavaConstant c, MetaAccessProvider meta) {
-        assert c.getKind().isNumericFloat() && c.getKind().getBitCount() == getBits();
-        return StampFactory.forConstant(c);
+    public Stamp constant(Constant c, MetaAccessProvider meta) {
+        JavaConstant jc = (JavaConstant) c;
+        assert jc.getKind().isNumericFloat() && jc.getKind().getBitCount() == getBits();
+        return StampFactory.forConstant(jc);
     }
 
     @Override
@@ -260,7 +261,8 @@ public class FloatStamp extends PrimitiveStamp {
     new UnaryOp.Neg() {
 
         @Override
-        public JavaConstant foldConstant(JavaConstant value) {
+        public Constant foldConstant(Constant c) {
+            PrimitiveConstant value = (PrimitiveConstant) c;
             switch (value.getKind()) {
                 case Float:
                     return JavaConstant.forFloat(-value.asFloat());
@@ -281,7 +283,9 @@ public class FloatStamp extends PrimitiveStamp {
     new BinaryOp.Add(false, true) {
 
         @Override
-        public JavaConstant foldConstant(JavaConstant a, JavaConstant b) {
+        public Constant foldConstant(Constant const1, Constant const2) {
+            PrimitiveConstant a = (PrimitiveConstant) const1;
+            PrimitiveConstant b = (PrimitiveConstant) const2;
             assert a.getKind() == b.getKind();
             switch (a.getKind()) {
                 case Float:
@@ -300,7 +304,8 @@ public class FloatStamp extends PrimitiveStamp {
         }
 
         @Override
-        public boolean isNeutral(JavaConstant n) {
+        public boolean isNeutral(Constant value) {
+            PrimitiveConstant n = (PrimitiveConstant) value;
             switch (n.getKind()) {
                 case Float:
                     return Float.compare(n.asFloat(), -0.0f) == 0;
@@ -315,7 +320,9 @@ public class FloatStamp extends PrimitiveStamp {
     new BinaryOp.Sub(false, false) {
 
         @Override
-        public JavaConstant foldConstant(JavaConstant a, JavaConstant b) {
+        public Constant foldConstant(Constant const1, Constant const2) {
+            PrimitiveConstant a = (PrimitiveConstant) const1;
+            PrimitiveConstant b = (PrimitiveConstant) const2;
             assert a.getKind() == b.getKind();
             switch (a.getKind()) {
                 case Float:
@@ -334,7 +341,8 @@ public class FloatStamp extends PrimitiveStamp {
         }
 
         @Override
-        public boolean isNeutral(JavaConstant n) {
+        public boolean isNeutral(Constant value) {
+            PrimitiveConstant n = (PrimitiveConstant) value;
             switch (n.getKind()) {
                 case Float:
                     return Float.compare(n.asFloat(), 0.0f) == 0;
@@ -349,7 +357,9 @@ public class FloatStamp extends PrimitiveStamp {
     new BinaryOp.Mul(false, true) {
 
         @Override
-        public JavaConstant foldConstant(JavaConstant a, JavaConstant b) {
+        public Constant foldConstant(Constant const1, Constant const2) {
+            PrimitiveConstant a = (PrimitiveConstant) const1;
+            PrimitiveConstant b = (PrimitiveConstant) const2;
             assert a.getKind() == b.getKind();
             switch (a.getKind()) {
                 case Float:
@@ -368,7 +378,8 @@ public class FloatStamp extends PrimitiveStamp {
         }
 
         @Override
-        public boolean isNeutral(JavaConstant n) {
+        public boolean isNeutral(Constant value) {
+            PrimitiveConstant n = (PrimitiveConstant) value;
             switch (n.getKind()) {
                 case Float:
                     return Float.compare(n.asFloat(), 1.0f) == 0;
@@ -383,7 +394,9 @@ public class FloatStamp extends PrimitiveStamp {
     new BinaryOp.Div(false, false) {
 
         @Override
-        public JavaConstant foldConstant(JavaConstant a, JavaConstant b) {
+        public Constant foldConstant(Constant const1, Constant const2) {
+            PrimitiveConstant a = (PrimitiveConstant) const1;
+            PrimitiveConstant b = (PrimitiveConstant) const2;
             assert a.getKind() == b.getKind();
             switch (a.getKind()) {
                 case Float:
@@ -402,7 +415,8 @@ public class FloatStamp extends PrimitiveStamp {
         }
 
         @Override
-        public boolean isNeutral(JavaConstant n) {
+        public boolean isNeutral(Constant value) {
+            PrimitiveConstant n = (PrimitiveConstant) value;
             switch (n.getKind()) {
                 case Float:
                     return Float.compare(n.asFloat(), 1.0f) == 0;
@@ -417,7 +431,9 @@ public class FloatStamp extends PrimitiveStamp {
     new BinaryOp.Rem(false, false) {
 
         @Override
-        public JavaConstant foldConstant(JavaConstant a, JavaConstant b) {
+        public Constant foldConstant(Constant const1, Constant const2) {
+            PrimitiveConstant a = (PrimitiveConstant) const1;
+            PrimitiveConstant b = (PrimitiveConstant) const2;
             assert a.getKind() == b.getKind();
             switch (a.getKind()) {
                 case Float:
@@ -443,7 +459,8 @@ public class FloatStamp extends PrimitiveStamp {
     new FloatConvertOp(F2I) {
 
         @Override
-        public JavaConstant foldConstant(JavaConstant value) {
+        public Constant foldConstant(Constant c) {
+            PrimitiveConstant value = (PrimitiveConstant) c;
             return JavaConstant.forInt((int) value.asFloat());
         }
 
@@ -457,7 +474,8 @@ public class FloatStamp extends PrimitiveStamp {
     new FloatConvertOp(F2L) {
 
         @Override
-        public JavaConstant foldConstant(JavaConstant value) {
+        public Constant foldConstant(Constant c) {
+            PrimitiveConstant value = (PrimitiveConstant) c;
             return JavaConstant.forLong((long) value.asFloat());
         }
 
@@ -471,7 +489,8 @@ public class FloatStamp extends PrimitiveStamp {
     new FloatConvertOp(D2I) {
 
         @Override
-        public JavaConstant foldConstant(JavaConstant value) {
+        public Constant foldConstant(Constant c) {
+            PrimitiveConstant value = (PrimitiveConstant) c;
             return JavaConstant.forInt((int) value.asDouble());
         }
 
@@ -485,7 +504,8 @@ public class FloatStamp extends PrimitiveStamp {
     new FloatConvertOp(D2L) {
 
         @Override
-        public JavaConstant foldConstant(JavaConstant value) {
+        public Constant foldConstant(Constant c) {
+            PrimitiveConstant value = (PrimitiveConstant) c;
             return JavaConstant.forLong((long) value.asDouble());
         }
 
@@ -499,7 +519,8 @@ public class FloatStamp extends PrimitiveStamp {
     new FloatConvertOp(F2D) {
 
         @Override
-        public JavaConstant foldConstant(JavaConstant value) {
+        public Constant foldConstant(Constant c) {
+            PrimitiveConstant value = (PrimitiveConstant) c;
             return JavaConstant.forDouble(value.asFloat());
         }
 
@@ -513,7 +534,8 @@ public class FloatStamp extends PrimitiveStamp {
     new FloatConvertOp(D2F) {
 
         @Override
-        public JavaConstant foldConstant(JavaConstant value) {
+        public Constant foldConstant(Constant c) {
+            PrimitiveConstant value = (PrimitiveConstant) c;
             return JavaConstant.forFloat((float) value.asDouble());
         }
 

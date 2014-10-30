@@ -193,8 +193,8 @@ public class ArrayCopyCallNode extends AbstractMemoryCheckpoint implements Lower
             // Can treat as disjoint
             disjoint = true;
         }
-        JavaConstant constantSrc = srcPos.stamp().asConstant();
-        JavaConstant constantDst = destPos.stamp().asConstant();
+        PrimitiveConstant constantSrc = (PrimitiveConstant) srcPos.stamp().asConstant();
+        PrimitiveConstant constantDst = (PrimitiveConstant) destPos.stamp().asConstant();
         if (constantSrc != null && constantDst != null) {
             if (!aligned) {
                 aligned = isHeapWordAligned(constantSrc, componentKind) && isHeapWordAligned(constantDst, componentKind);
