@@ -32,7 +32,7 @@ import com.oracle.truffle.api.source.*;
 
 public class TypeSystemTest {
 
-    @TypeSystem({int.class, double.class, boolean.class, BigInteger.class, String.class, CallTarget.class, BExtendsAbstract.class, CExtendsAbstract.class, Abstract.class, Interface.class,
+    @TypeSystem({int.class, long.class, double.class, boolean.class, BigInteger.class, String.class, CallTarget.class, BExtendsAbstract.class, CExtendsAbstract.class, Abstract.class, Interface.class,
                     Object[].class})
     static class SimpleTypes {
 
@@ -57,6 +57,11 @@ public class TypeSystemTest {
         }
 
         @ImplicitCast
+        public long castLong(int value) {
+            return value;
+        }
+
+        @ImplicitCast
         public BigInteger castBigInteger(int value) {
             return BigInteger.valueOf(value);
         }
@@ -76,6 +81,10 @@ public class TypeSystemTest {
 
         public int executeInt(VirtualFrame frame) throws UnexpectedResultException {
             return SimpleTypesGen.SIMPLETYPES.expectInteger(execute(frame));
+        }
+
+        public long executeLong(VirtualFrame frame) throws UnexpectedResultException {
+            return SimpleTypesGen.SIMPLETYPES.expectLong(execute(frame));
         }
 
         public String executeString(VirtualFrame frame) throws UnexpectedResultException {
