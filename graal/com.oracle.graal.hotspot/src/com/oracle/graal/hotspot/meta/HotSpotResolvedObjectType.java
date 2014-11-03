@@ -399,13 +399,13 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
         if (!method.getDeclaringClass().isAssignableFrom(this)) {
             return null;
         }
-        HotSpotResolvedJavaMethod hotSpotMethod = (HotSpotResolvedJavaMethod) method;
+        HotSpotResolvedJavaMethodImpl hotSpotMethod = (HotSpotResolvedJavaMethodImpl) method;
         HotSpotResolvedObjectType hotSpotCallerType = (HotSpotResolvedObjectType) callerType;
         final long resolvedMetaspaceMethod = runtime().getCompilerToVM().resolveMethod(getMetaspaceKlass(), hotSpotMethod.getMetaspaceMethod(), hotSpotCallerType.getMetaspaceKlass());
         if (resolvedMetaspaceMethod == 0) {
             return null;
         }
-        return HotSpotResolvedJavaMethod.fromMetaspace(resolvedMetaspaceMethod);
+        return HotSpotResolvedJavaMethodImpl.fromMetaspace(resolvedMetaspaceMethod);
     }
 
     public ConstantPool constantPool() {
@@ -446,7 +446,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
             method = methodCache.get(metaspaceMethod);
         }
         if (method == null) {
-            method = new HotSpotResolvedJavaMethod(this, metaspaceMethod);
+            method = new HotSpotResolvedJavaMethodImpl(this, metaspaceMethod);
             methodCache.put(metaspaceMethod, method);
         }
         return method;
@@ -614,7 +614,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
         }
     }
 
-    private static class OffsetComparator implements Comparator<HotSpotResolvedJavaField> {
+    private static class OffsetComparator implements java.util.Comparator<HotSpotResolvedJavaField> {
         @Override
         public int compare(HotSpotResolvedJavaField o1, HotSpotResolvedJavaField o2) {
             return o1.offset() - o2.offset();

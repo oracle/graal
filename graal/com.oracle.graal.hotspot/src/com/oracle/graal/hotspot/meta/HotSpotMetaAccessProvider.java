@@ -89,7 +89,7 @@ public class HotSpotMetaAccessProvider implements MetaAccessProvider {
             Class<?> holder = reflectionMethod.getDeclaringClass();
             final int slot = reflectionMethodSlot.getInt(reflectionMethod);
             final long metaspaceMethod = runtime.getCompilerToVM().getMetaspaceMethod(holder, slot);
-            return HotSpotResolvedJavaMethod.fromMetaspace(metaspaceMethod);
+            return HotSpotResolvedJavaMethodImpl.fromMetaspace(metaspaceMethod);
         } catch (IllegalArgumentException | IllegalAccessException e) {
             throw new GraalInternalError(e);
         }
@@ -100,7 +100,7 @@ public class HotSpotMetaAccessProvider implements MetaAccessProvider {
             Class<?> holder = reflectionConstructor.getDeclaringClass();
             final int slot = reflectionConstructorSlot.getInt(reflectionConstructor);
             final long metaspaceMethod = runtime.getCompilerToVM().getMetaspaceMethod(holder, slot);
-            return HotSpotResolvedJavaMethod.fromMetaspace(metaspaceMethod);
+            return HotSpotResolvedJavaMethodImpl.fromMetaspace(metaspaceMethod);
         } catch (IllegalArgumentException | IllegalAccessException e) {
             throw new GraalInternalError(e);
         }

@@ -91,7 +91,7 @@ public class HotSpotMethodHandleAccessProvider implements MethodHandleAccessProv
 
     @Override
     public IntrinsicMethod lookupMethodHandleIntrinsic(ResolvedJavaMethod method) {
-        int intrinsicId = ((HotSpotResolvedJavaMethod) method).intrinsicId();
+        int intrinsicId = ((HotSpotResolvedJavaMethodImpl) method).intrinsicId();
         if (intrinsicId != 0) {
             HotSpotVMConfig config = runtime().getConfig();
             if (intrinsicId == config.vmIntrinsicInvokeBasic) {
@@ -148,6 +148,6 @@ public class HotSpotMethodHandleAccessProvider implements MethodHandleAccessProv
         /* Load injected field: JVM_Method* MemberName.vmtarget */
         JavaConstant vmtarget = LazyInitialization.memberNameVmtargetField.readValue(memberName);
         /* Create a method from the vmtarget method pointer. */
-        return HotSpotResolvedJavaMethod.fromMetaspace(vmtarget.asLong());
+        return HotSpotResolvedJavaMethodImpl.fromMetaspace(vmtarget.asLong());
     }
 }

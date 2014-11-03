@@ -548,7 +548,7 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider,
         } else {
             long[] result = new long[methods.length];
             for (int i = 0; i < result.length; i++) {
-                result[i] = ((HotSpotResolvedJavaMethod) methods[i]).getMetaspaceMethod();
+                result[i] = ((HotSpotResolvedJavaMethodImpl) methods[i]).getMetaspaceMethod();
             }
             return result;
         }

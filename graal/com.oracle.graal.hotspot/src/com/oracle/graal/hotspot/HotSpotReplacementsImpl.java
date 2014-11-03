@@ -90,7 +90,6 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
              * The methods of MethodHandle that need substitution are signature-polymorphic, i.e.,
              * the VM replicates them for every signature that they are actually used for.
              * Therefore, we cannot use the usual annotation-driven mechanism to define the
-             * substitution.
              */
             if (MethodHandleNode.lookupMethodHandleIntrinsic(method) != null) {
                 return MethodHandleNode.class;

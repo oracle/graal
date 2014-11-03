@@ -456,7 +456,7 @@ public class HotSpotConstantPool extends CompilerObject implements ConstantPool 
         final int index = toConstantPoolIndex(cpi, opcode);
         final long metaspaceMethod = runtime().getCompilerToVM().lookupMethodInPool(metaspaceConstantPool, index, (byte) opcode);
         if (metaspaceMethod != 0L) {
-            return HotSpotResolvedJavaMethod.fromMetaspace(metaspaceMethod);
+            return HotSpotResolvedJavaMethodImpl.fromMetaspace(metaspaceMethod);
         } else {
             // Get the method's name and signature.
             String name = getNameRefAt(index);
