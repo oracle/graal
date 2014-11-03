@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot.replacements;
 import static com.oracle.graal.compiler.GraalCompiler.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.meta.ResolvedJavaType.Representation;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
@@ -100,7 +101,7 @@ public class ReflectionGetCallerClassNode extends MacroStateSplitNode implements
                     if (!method.ignoredBySecurityStackWalk()) {
                         // We have reached the desired frame; return the holder class.
                         HotSpotResolvedObjectType callerClass = method.getDeclaringClass();
-                        return ConstantNode.forConstant(HotSpotObjectConstant.forObject(callerClass.mirror()), metaAccess);
+                        return ConstantNode.forConstant(callerClass.getEncoding(Representation.JavaClass), metaAccess);
                     }
                     break;
             }

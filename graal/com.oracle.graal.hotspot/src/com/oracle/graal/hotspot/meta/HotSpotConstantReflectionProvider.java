@@ -107,8 +107,8 @@ public class HotSpotConstantReflectionProvider implements ConstantReflectionProv
                     o = unsafe.getObject(base, displacement);
                 } else if (baseConstant instanceof HotSpotMetaspaceConstant) {
                     Object metaspaceObject = HotSpotMetaspaceConstant.getMetaspaceObject(baseConstant);
-                    if (metaspaceObject instanceof HotSpotResolvedObjectType && initialDisplacement == runtime.getConfig().classMirrorOffset) {
-                        o = ((HotSpotResolvedObjectType) metaspaceObject).mirror();
+                    if (metaspaceObject instanceof HotSpotResolvedObjectTypeImpl && initialDisplacement == runtime.getConfig().classMirrorOffset) {
+                        o = ((HotSpotResolvedObjectTypeImpl) metaspaceObject).mirror();
                     } else {
                         throw GraalInternalError.shouldNotReachHere();
                     }
@@ -166,10 +166,10 @@ public class HotSpotConstantReflectionProvider implements ConstantReflectionProv
                 assert bits == 32 && kind == Kind.Int;
                 long klassPointer = config().getKlassEncoding().uncompress((int) rawValue);
                 assert klassPointer == runtime.getCompilerToVM().readUnsafeKlassPointer(base);
-                return HotSpotMetaspaceConstant.forMetaspaceObject(kind, rawValue, HotSpotResolvedObjectType.fromMetaspaceKlass(klassPointer), true);
+                return HotSpotMetaspaceConstant.forMetaspaceObject(kind, rawValue, HotSpotResolvedObjectTypeImpl.fromMetaspaceKlass(klassPointer), true);
             } else {
                 assert bits == 64 && kind == Kind.Long;
-                return HotSpotMetaspaceConstant.forMetaspaceObject(kind, rawValue, HotSpotResolvedObjectType.fromMetaspaceKlass(rawValue), false);
+                return HotSpotMetaspaceConstant.forMetaspaceObject(kind, rawValue, HotSpotResolvedObjectTypeImpl.fromMetaspaceKlass(rawValue), false);
             }
         } else {
             switch (kind) {
@@ -231,7 +231,7 @@ public class HotSpotConstantReflectionProvider implements ConstantReflectionProv
         }
         if (constant instanceof HotSpotMetaspaceConstant) {
             Object obj = HotSpotMetaspaceConstant.getMetaspaceObject(constant);
-            if (obj instanceof HotSpotResolvedObjectType) {
+            if (obj instanceof HotSpotResolvedObjectTypeImpl) {
                 return (ResolvedJavaType) obj;
             }
         }

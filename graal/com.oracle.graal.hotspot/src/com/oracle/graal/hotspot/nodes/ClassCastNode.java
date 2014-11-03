@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.spi.*;
-import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
@@ -65,9 +65,8 @@ public class ClassCastNode extends MacroStateSplitNode implements Canonicalizabl
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forJavaClass, ValueNode forObject) {
         if (forJavaClass.isConstant()) {
-            Class<?> c = (Class<?>) HotSpotObjectConstant.asObject(forJavaClass.asJavaConstant());
-            if (c != null && !c.isPrimitive()) {
-                HotSpotResolvedObjectType type = HotSpotResolvedObjectType.fromObjectClass(c);
+            ResolvedJavaType type = tool.getConstantReflection().asJavaType(forJavaClass.asJavaConstant());
+            if (type != null && !type.isPrimitive()) {
                 return CheckCastNode.create(type, forObject, null, false);
             }
         }

@@ -71,7 +71,7 @@ public final class HotSpotMethodData extends CompilerObject {
      */
     private final long metaspaceMethodData;
 
-    HotSpotMethodData(long metaspaceMethodData) {
+    public HotSpotMethodData(long metaspaceMethodData) {
         this.metaspaceMethodData = metaspaceMethodData;
     }
 
@@ -492,7 +492,7 @@ public final class HotSpotMethodData extends CompilerObject {
             outer: for (int i = 0; i < typeProfileWidth; i++) {
                 long receiverKlass = data.readWord(position, getTypeOffset(i));
                 if (receiverKlass != 0) {
-                    HotSpotResolvedObjectType klass = HotSpotResolvedObjectType.fromMetaspaceKlass(receiverKlass);
+                    HotSpotResolvedObjectTypeImpl klass = HotSpotResolvedObjectTypeImpl.fromMetaspaceKlass(receiverKlass);
                     long count = data.readUnsignedInt(position, getTypeCountOffset(i));
                     /*
                      * Because of races in the profile collection machinery it's possible for a
@@ -630,7 +630,7 @@ public final class HotSpotMethodData extends CompilerObject {
             for (int i = 0; i < profileWidth; i++) {
                 long method = data.readWord(position, getMethodOffset(i));
                 if (method != 0) {
-                    methods[entries] = HotSpotResolvedJavaMethod.fromMetaspace(method);
+                    methods[entries] = HotSpotResolvedJavaMethodImpl.fromMetaspace(method);
                     long count = data.readUnsignedInt(position, getMethodCountOffset(i));
                     totalCount += count;
                     counts[entries] = count;

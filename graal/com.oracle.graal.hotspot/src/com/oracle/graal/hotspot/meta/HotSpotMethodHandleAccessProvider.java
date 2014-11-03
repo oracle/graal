@@ -24,7 +24,7 @@ package com.oracle.graal.hotspot.meta;
 
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.hotspot.meta.HotSpotResolvedJavaType.*;
-import static com.oracle.graal.hotspot.meta.HotSpotResolvedObjectType.*;
+import static com.oracle.graal.hotspot.meta.HotSpotResolvedObjectTypeImpl.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
@@ -65,7 +65,7 @@ public class HotSpotMethodHandleAccessProvider implements MethodHandleAccessProv
 
         private static ResolvedJavaMethod findMethodInClass(String className, String methodName) throws ClassNotFoundException {
             Class<?> clazz = Class.forName(className);
-            HotSpotResolvedObjectType type = fromObjectClass(clazz);
+            HotSpotResolvedObjectTypeImpl type = fromObjectClass(clazz);
             ResolvedJavaMethod result = null;
             for (ResolvedJavaMethod method : type.getDeclaredMethods()) {
                 if (method.getName().equals(methodName)) {
@@ -91,7 +91,7 @@ public class HotSpotMethodHandleAccessProvider implements MethodHandleAccessProv
 
     @Override
     public IntrinsicMethod lookupMethodHandleIntrinsic(ResolvedJavaMethod method) {
-        int intrinsicId = ((HotSpotResolvedJavaMethod) method).intrinsicId();
+        int intrinsicId = ((HotSpotResolvedJavaMethodImpl) method).intrinsicId();
         if (intrinsicId != 0) {
             HotSpotVMConfig config = runtime().getConfig();
             if (intrinsicId == config.vmIntrinsicInvokeBasic) {
@@ -148,6 +148,6 @@ public class HotSpotMethodHandleAccessProvider implements MethodHandleAccessProv
         /* Load injected field: JVM_Method* MemberName.vmtarget */
         JavaConstant vmtarget = LazyInitialization.memberNameVmtargetField.readValue(memberName);
         /* Create a method from the vmtarget method pointer. */
-        return HotSpotResolvedJavaMethod.fromMetaspace(vmtarget.asLong());
+        return HotSpotResolvedJavaMethodImpl.fromMetaspace(vmtarget.asLong());
     }
 }

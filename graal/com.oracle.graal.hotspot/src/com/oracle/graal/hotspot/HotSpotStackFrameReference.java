@@ -73,12 +73,12 @@ public class HotSpotStackFrameReference implements InspectedFrame {
 
     @Override
     public ResolvedJavaMethod getMethod() {
-        return HotSpotResolvedJavaMethod.fromMetaspace(metaspaceMethod);
+        return HotSpotResolvedJavaMethodImpl.fromMetaspace(metaspaceMethod);
     }
 
     @Override
     public boolean isMethod(ResolvedJavaMethod method) {
-        return metaspaceMethod == ((HotSpotResolvedJavaMethod) method).getMetaspaceMethod();
+        return metaspaceMethod == ((HotSpotResolvedJavaMethodImpl) method).getMetaspaceMethod();
     }
 
     @Override

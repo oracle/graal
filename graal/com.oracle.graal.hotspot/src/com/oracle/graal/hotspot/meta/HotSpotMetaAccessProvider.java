@@ -24,7 +24,7 @@ package com.oracle.graal.hotspot.meta;
 
 import static com.oracle.graal.compiler.common.UnsafeAccess.*;
 import static com.oracle.graal.hotspot.meta.HotSpotResolvedJavaType.*;
-import static com.oracle.graal.hotspot.meta.HotSpotResolvedObjectType.*;
+import static com.oracle.graal.hotspot.meta.HotSpotResolvedObjectTypeImpl.*;
 
 import java.lang.reflect.*;
 
@@ -52,7 +52,7 @@ public class HotSpotMetaAccessProvider implements MetaAccessProvider {
         return fromClass(clazz);
     }
 
-    public HotSpotResolvedObjectType lookupJavaType(JavaConstant constant) {
+    public HotSpotResolvedObjectTypeImpl lookupJavaType(JavaConstant constant) {
         if (constant.isNull() || !(constant instanceof HotSpotObjectConstant)) {
             return null;
         }
@@ -89,7 +89,7 @@ public class HotSpotMetaAccessProvider implements MetaAccessProvider {
             Class<?> holder = reflectionMethod.getDeclaringClass();
             final int slot = reflectionMethodSlot.getInt(reflectionMethod);
             final long metaspaceMethod = runtime.getCompilerToVM().getMetaspaceMethod(holder, slot);
-            return HotSpotResolvedJavaMethod.fromMetaspace(metaspaceMethod);
+            return HotSpotResolvedJavaMethodImpl.fromMetaspace(metaspaceMethod);
         } catch (IllegalArgumentException | IllegalAccessException e) {
             throw new GraalInternalError(e);
         }
@@ -100,7 +100,7 @@ public class HotSpotMetaAccessProvider implements MetaAccessProvider {
             Class<?> holder = reflectionConstructor.getDeclaringClass();
             final int slot = reflectionConstructorSlot.getInt(reflectionConstructor);
             final long metaspaceMethod = runtime.getCompilerToVM().getMetaspaceMethod(holder, slot);
-            return HotSpotResolvedJavaMethod.fromMetaspace(metaspaceMethod);
+            return HotSpotResolvedJavaMethodImpl.fromMetaspace(metaspaceMethod);
         } catch (IllegalArgumentException | IllegalAccessException e) {
             throw new GraalInternalError(e);
         }
@@ -115,11 +115,11 @@ public class HotSpotMetaAccessProvider implements MetaAccessProvider {
         final int modifiers = reflectionField.getModifiers();
         final long offset = Modifier.isStatic(modifiers) ? unsafe.staticFieldOffset(reflectionField) : unsafe.objectFieldOffset(reflectionField);
 
-        HotSpotResolvedObjectType holder = fromObjectClass(fieldHolder);
+        HotSpotResolvedObjectTypeImpl holder = fromObjectClass(fieldHolder);
         HotSpotResolvedJavaType type = fromClass(fieldType);
 
         if (offset != -1) {
-            HotSpotResolvedObjectType resolved = holder;
+            HotSpotResolvedObjectTypeImpl resolved = holder;
             return resolved.createField(name, type, offset, modifiers);
         } else {
             throw GraalInternalError.shouldNotReachHere("unresolved field " + reflectionField);
@@ -295,7 +295,7 @@ public class HotSpotMetaAccessProvider implements MetaAccessProvider {
     @Override
     public long getMemorySize(JavaConstant constant) {
         if (constant.getKind() == Kind.Object) {
-            HotSpotResolvedObjectType lookupJavaType = this.lookupJavaType(constant);
+            HotSpotResolvedObjectTypeImpl lookupJavaType = this.lookupJavaType(constant);
 
             if (lookupJavaType == null) {
                 return 0;
