@@ -39,7 +39,7 @@ public interface HotSpotResolvedJavaMethod extends ResolvedJavaMethod {
      */
     boolean isCallerSensitive();
 
-    HotSpotResolvedObjectType getDeclaringClass();
+    HotSpotResolvedObjectTypeImpl getDeclaringClass();
 
     /**
      * Returns true if this method has a {@code ForceInline} annotation.
@@ -70,7 +70,7 @@ public interface HotSpotResolvedJavaMethod extends ResolvedJavaMethod {
 
     boolean hasBalancedMonitors();
 
-    ResolvedJavaMethod uniqueConcreteMethod(HotSpotResolvedObjectType receiver);
+    ResolvedJavaMethod uniqueConcreteMethod(HotSpotResolvedObjectTypeImpl receiver);
 
     /**
      * Returns whether this method has compiled code.

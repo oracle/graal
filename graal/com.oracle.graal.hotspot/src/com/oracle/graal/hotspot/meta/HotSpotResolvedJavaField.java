@@ -24,7 +24,7 @@ package com.oracle.graal.hotspot.meta;
 
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
-import static com.oracle.graal.hotspot.meta.HotSpotResolvedObjectType.*;
+import static com.oracle.graal.hotspot.meta.HotSpotResolvedObjectTypeImpl.*;
 
 import java.lang.annotation.*;
 import java.lang.reflect.*;
@@ -45,7 +45,7 @@ import com.oracle.graal.replacements.SnippetTemplate.Arguments;
 public class HotSpotResolvedJavaField extends CompilerObject implements ResolvedJavaField {
 
     private static final long serialVersionUID = 7692985878836955683L;
-    private final HotSpotResolvedObjectType holder;
+    private final HotSpotResolvedObjectTypeImpl holder;
     private final String name;
     private JavaType type;
     private final int offset;
@@ -55,7 +55,7 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
      */
     private final int modifiers;
 
-    public HotSpotResolvedJavaField(HotSpotResolvedObjectType holder, String name, JavaType type, long offset, int modifiers) {
+    public HotSpotResolvedJavaField(HotSpotResolvedObjectTypeImpl holder, String name, JavaType type, long offset, int modifiers) {
         this.holder = holder;
         this.name = name;
         this.type = type;
@@ -255,7 +255,7 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
         if (isStatic()) {
             return false;
         }
-        return getDeclaringClass().isAssignableFrom(HotSpotResolvedObjectType.fromObjectClass(object.getClass()));
+        return getDeclaringClass().isAssignableFrom(HotSpotResolvedObjectTypeImpl.fromObjectClass(object.getClass()));
     }
 
     @Override
@@ -292,7 +292,7 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
     }
 
     @Override
-    public HotSpotResolvedObjectType getDeclaringClass() {
+    public HotSpotResolvedObjectTypeImpl getDeclaringClass() {
         return holder;
     }
 

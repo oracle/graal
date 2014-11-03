@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
-import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
@@ -61,16 +61,16 @@ public class ClassIsInstanceNode extends MacroNode implements Canonicalizable {
         ValueNode javaClass = getJavaClass();
         if (javaClass.isConstant()) {
             ValueNode object = getObject();
-            Class<?> c = (Class<?>) HotSpotObjectConstant.asObject(javaClass.asJavaConstant());
-            if (c != null) {
-                if (c.isPrimitive()) {
+            ConstantReflectionProvider constantReflection = tool.getConstantReflection();
+            ResolvedJavaType type = constantReflection.asJavaType(javaClass.asJavaConstant());
+            if (type != null) {
+                if (type.isPrimitive()) {
                     return ConstantNode.forBoolean(false);
                 }
                 if (object.isConstant()) {
-                    Object o = HotSpotObjectConstant.asObject(object.asJavaConstant());
-                    return ConstantNode.forBoolean(o != null && c.isInstance(o));
+                    JavaConstant c = object.asJavaConstant();
+                    return ConstantNode.forBoolean(c.isNonNull() && type.isInstance(c));
                 }
-                HotSpotResolvedObjectType type = HotSpotResolvedObjectType.fromObjectClass(c);
                 InstanceOfNode instanceOf = InstanceOfNode.create(type, object, null);
                 return ConditionalNode.create(instanceOf, ConstantNode.forBoolean(true), ConstantNode.forBoolean(false));
             }

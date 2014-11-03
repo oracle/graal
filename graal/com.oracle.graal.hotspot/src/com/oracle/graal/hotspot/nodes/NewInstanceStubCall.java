@@ -56,7 +56,7 @@ public class NewInstanceStubCall extends DeoptimizingStubCall implements LIRLowe
     @Override
     public boolean inferStamp() {
         if (stamp() == defaultStamp && hub.isConstant()) {
-            updateStamp(StampFactory.exactNonNull(HotSpotResolvedObjectType.fromMetaspaceKlass(hub.asJavaConstant())));
+            updateStamp(StampFactory.exactNonNull(HotSpotResolvedObjectTypeImpl.fromMetaspaceKlass(hub.asJavaConstant())));
             return true;
         }
         return false;

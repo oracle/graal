@@ -47,11 +47,11 @@ import com.oracle.graal.runtime.*;
 
 /**
  * use
- * 
+ *
  * <pre>
  * mx unittest AheadOfTimeCompilationTest @-XX:CompileCommand='print,*AheadOfTimeCompilationTest.*'
  * </pre>
- * 
+ *
  * to print disassembly.
  */
 public class AheadOfTimeCompilationTest extends GraalCompilerTest {

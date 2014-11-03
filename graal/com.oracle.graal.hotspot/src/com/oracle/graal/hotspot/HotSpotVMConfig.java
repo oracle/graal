@@ -1169,7 +1169,7 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMConstant(name = "JVM_ACC_SYNTHETIC") @Stable public int syntheticFlag;
 
     /**
-     * @see HotSpotResolvedObjectType#createField
+     * @see HotSpotResolvedObjectTypeImpl#createField
      */
     @HotSpotVMConstant(name = "JVM_RECOGNIZED_FIELD_MODIFIERS") @Stable public int recognizedFieldModifiers;
 

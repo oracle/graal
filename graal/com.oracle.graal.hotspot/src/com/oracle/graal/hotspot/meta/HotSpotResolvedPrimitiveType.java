@@ -42,7 +42,7 @@ public final class HotSpotResolvedPrimitiveType extends HotSpotResolvedJavaType 
     /**
      * Gets the Graal mirror for a {@link Kind}.
      *
-     * @return the {@link HotSpotResolvedObjectType} corresponding to {@code kind}
+     * @return the {@link HotSpotResolvedObjectTypeImpl} corresponding to {@code kind}
      */
     public static ResolvedJavaType fromKind(Kind kind) {
         Class<?> javaClass = kind.toJavaClass();
@@ -71,12 +71,12 @@ public final class HotSpotResolvedPrimitiveType extends HotSpotResolvedJavaType 
     }
 
     @Override
-    public HotSpotResolvedObjectType getArrayClass() {
+    public HotSpotResolvedObjectTypeImpl getArrayClass() {
         if (kind == Kind.Void) {
             return null;
         }
         Class<?> javaArrayMirror = Array.newInstance(mirror(), 0).getClass();
-        return HotSpotResolvedObjectType.fromObjectClass(javaArrayMirror);
+        return HotSpotResolvedObjectTypeImpl.fromObjectClass(javaArrayMirror);
     }
 
     public ResolvedJavaType getElementalType() {

@@ -27,13 +27,13 @@ import org.junit.*;
 import com.oracle.graal.hotspot.meta.*;
 
 /**
- * Tests {@link HotSpotResolvedObjectType} functionality.
+ * Tests {@link HotSpotResolvedJavaMethod} functionality.
  */
 public class HotSpotResolvedObjectTypeTest {
 
     @Test
     public void testGetSourceFileName() throws Throwable {
-        Assert.assertEquals("Object.java", HotSpotResolvedObjectType.fromObjectClass(Object.class).getSourceFileName());
-        Assert.assertEquals("HotSpotResolvedObjectTypeTest.java", HotSpotResolvedObjectType.fromObjectClass(this.getClass()).getSourceFileName());
+        Assert.assertEquals("Object.java", HotSpotResolvedObjectTypeImpl.fromObjectClass(Object.class).getSourceFileName());
+        Assert.assertEquals("HotSpotResolvedObjectTypeTest.java", HotSpotResolvedObjectTypeImpl.fromObjectClass(this.getClass()).getSourceFileName());
     }
 }
