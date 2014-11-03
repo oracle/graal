@@ -37,12 +37,20 @@ public interface LocationIdentity {
     LocationIdentity ANY_LOCATION = new NamedLocationIdentity("ANY_LOCATION");
 
     /**
-     * Denotes the location of a value that is guaranteed to be final.
+     * Denotes the location of a value that is guaranteed to be unchanging.
      */
-    LocationIdentity FINAL_LOCATION = new NamedLocationIdentity("FINAL_LOCATION");
+    LocationIdentity FINAL_LOCATION = new NamedLocationIdentity("FINAL_LOCATION", true);
 
     /**
      * Denotes the location of the length field of a Java array.
      */
-    LocationIdentity ARRAY_LENGTH_LOCATION = new NamedLocationIdentity("[].length");
+    LocationIdentity ARRAY_LENGTH_LOCATION = new NamedLocationIdentity("[].length", true);
+
+    /**
+     * Denotes a location is unchanging in all cases. Not that this is different than the Java
+     * notion of final which only requires definite assignment.
+     */
+    default boolean isImmutable() {
+        return false;
+    }
 }

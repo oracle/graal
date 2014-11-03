@@ -952,7 +952,7 @@ public class SnippetTemplate {
                 for (Node usage : oldNode.usages().snapshot()) {
                     LocationIdentity identity = getLocationIdentity(usage);
                     boolean usageReplaced = false;
-                    if (identity != null && identity != FINAL_LOCATION) {
+                    if (identity != null && !identity.isImmutable()) {
                         // lastLocationAccess points into the snippet graph. find a proper
                         // MemoryCheckPoint inside the snippet graph
                         MemoryNode lastAccess = mmap.getLastLocationAccess(identity);

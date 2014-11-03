@@ -31,18 +31,35 @@ public class NamedLocationIdentity implements LocationIdentity {
 
     protected final String name;
 
+    protected final boolean immutable;
+
     /**
      * Creates a named unique location identity for read and write operations.
-     * 
+     *
      * @param name the name of the new location identity
      */
     public NamedLocationIdentity(String name) {
         this.name = name;
+        this.immutable = false;
+    }
+
+    /**
+     * Creates a named unique location identity for read and write operations.
+     *
+     * @param name the name of the new location identity
+     */
+    public NamedLocationIdentity(String name, boolean immutable) {
+        this.name = name;
+        this.immutable = immutable;
     }
 
     @Override
     public String toString() {
         return name;
+    }
+
+    public boolean isImmutable() {
+        return immutable;
     }
 
     /**

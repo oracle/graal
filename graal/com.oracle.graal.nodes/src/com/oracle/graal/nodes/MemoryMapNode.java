@@ -73,7 +73,7 @@ public class MemoryMapNode extends FloatingNode implements MemoryMap, LIRLowerab
     }
 
     public MemoryNode getLastLocationAccess(LocationIdentity locationIdentity) {
-        if (locationIdentity == FINAL_LOCATION) {
+        if (locationIdentity.isImmutable()) {
             return null;
         } else {
             int index = locationIdentities.indexOf(locationIdentity);

@@ -437,7 +437,7 @@ public final class SchedulePhase extends Phase {
                 break;
             case LATEST:
             case LATEST_OUT_OF_LOOPS:
-                boolean scheduleRead = memsched == MemoryScheduling.OPTIMAL && node instanceof FloatingReadNode && ((FloatingReadNode) node).location().getLocationIdentity() != FINAL_LOCATION;
+                boolean scheduleRead = memsched == MemoryScheduling.OPTIMAL && node instanceof FloatingReadNode && !((FloatingReadNode) node).location().getLocationIdentity().isImmutable();
                 if (scheduleRead) {
                     FloatingReadNode read = (FloatingReadNode) node;
                     block = optimalBlock(read, strategy);
@@ -508,7 +508,7 @@ public final class SchedulePhase extends Phase {
         assert memsched == MemoryScheduling.OPTIMAL;
 
         LocationIdentity locid = n.location().getLocationIdentity();
-        assert locid != FINAL_LOCATION;
+        assert !locid.isImmutable();
 
         Block upperBoundBlock = blockForMemoryNode(n.getLastLocationAccess());
         Block earliestBlock = earliestBlock(n);
@@ -996,7 +996,7 @@ public final class SchedulePhase extends Phase {
             for (ScheduledNode i : instructions) {
                 if (i instanceof FloatingReadNode) {
                     FloatingReadNode frn = (FloatingReadNode) i;
-                    if (frn.location().getLocationIdentity() != FINAL_LOCATION) {
+                    if (!frn.location().getLocationIdentity().isImmutable()) {
                         state.addRead(frn);
                         if (nodesFor(b).contains(frn.getLastLocationAccess())) {
                             assert !state.isBeforeLastLocation(frn);
@@ -1043,7 +1043,7 @@ public final class SchedulePhase extends Phase {
     private void processKillLocation(Node node, LocationIdentity identity, SortState state) {
         for (FloatingReadNode frn : state.readsSnapshot()) {
             LocationIdentity readLocation = frn.location().getLocationIdentity();
-            assert readLocation != FINAL_LOCATION;
+            assert !readLocation.isImmutable();
             if (frn.getLastLocationAccess() == node) {
                 assert identity == ANY_LOCATION || readLocation == identity || node instanceof MemoryCheckpoint.Multi : "location doesn't match: " + readLocation + ", " + identity;
                 state.clearBeforeLastLocation(frn);
