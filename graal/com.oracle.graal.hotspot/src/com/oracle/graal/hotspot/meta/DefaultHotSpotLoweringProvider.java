@@ -250,7 +250,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
     @Override
     protected ValueNode createReadArrayComponentHub(StructuredGraph graph, ValueNode arrayHub, FixedNode anchor) {
         Kind wordKind = runtime.getTarget().wordKind;
-        LocationNode location = ConstantLocationNode.create(FINAL_LOCATION, wordKind, runtime.getConfig().arrayClassElementOffset, graph);
+        LocationNode location = ConstantLocationNode.create(OBJ_ARRAY_KLASS_ELEMENT_KLASS_LOCATION, wordKind, runtime.getConfig().arrayClassElementOffset, graph);
         /*
          * Anchor the read of the element klass to the cfg, because it is only valid when arrayClass
          * is an object class, which might not be the case in other parts of the compiled method.
@@ -401,7 +401,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
     protected ValueNode createReadHub(StructuredGraph graph, ValueNode object, GuardingNode guard) {
         Kind wordKind = target.wordKind;
         HotSpotVMConfig config = runtime.getConfig();
-        LocationNode location = ConstantLocationNode.create(FINAL_LOCATION, wordKind, config.hubOffset, graph);
+        LocationNode location = ConstantLocationNode.create(HUB_LOCATION, wordKind, config.hubOffset, graph);
         assert !object.isConstant() || object.asJavaConstant().isNull();
 
         Stamp hubStamp;
@@ -421,7 +421,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
 
     private WriteNode createWriteHub(StructuredGraph graph, Kind wordKind, ValueNode object, ValueNode value) {
         HotSpotVMConfig config = runtime.getConfig();
-        LocationNode location = ConstantLocationNode.create(HUB_LOCATION, wordKind, config.hubOffset, graph);
+        LocationNode location = ConstantLocationNode.create(HUB_WRITE_LOCATION, wordKind, config.hubOffset, graph);
         assert !object.isConstant() || object.asJavaConstant().isNull();
 
         ValueNode writeValue = value;

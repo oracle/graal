@@ -141,7 +141,7 @@ public class InstanceOfSnippets implements Snippets {
         }
         GuardingNode anchorNode = SnippetAnchorNode.anchor();
         Word objectHub = loadHubIntrinsic(object, getWordKind(), anchorNode);
-        if (probability(NOT_LIKELY_PROBABILITY, objectHub.readWord(superCheckOffset, LocationIdentity.FINAL_LOCATION).notEqual(hub))) {
+        if (probability(NOT_LIKELY_PROBABILITY, objectHub.readWord(superCheckOffset, PRIMARY_SUPERS_LOCATION).notEqual(hub))) {
             displayMiss.inc();
             return falseValue;
         }

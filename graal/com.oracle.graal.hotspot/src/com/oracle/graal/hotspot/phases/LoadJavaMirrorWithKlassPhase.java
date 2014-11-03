@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot.phases;
 
 import static com.oracle.graal.api.meta.LocationIdentity.*;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.nodes.ConstantNode.*;
 
 import com.oracle.graal.api.meta.*;
@@ -65,7 +66,7 @@ public class LoadJavaMirrorWithKlassPhase extends BasePhase<PhaseContext> {
             JavaConstant klass;
             LocationNode location;
             if (type instanceof HotSpotResolvedObjectType) {
-                location = ConstantLocationNode.create(FINAL_LOCATION, Kind.Object, classMirrorOffset, graph);
+                location = ConstantLocationNode.create(CLASS_MIRROR_LOCATION, Kind.Object, classMirrorOffset, graph);
                 klass = ((HotSpotResolvedObjectType) type).klass();
             } else {
                 /*

@@ -45,15 +45,15 @@ public class ThreadSubstitutions {
 
     @MethodSubstitution
     public static Thread currentThread() {
-        return PiNode.piCastNonNull(CurrentJavaThreadNode.get(getWordKind()).readObject(threadObjectOffset(), LocationIdentity.FINAL_LOCATION), Thread.class);
+        return PiNode.piCastNonNull(CurrentJavaThreadNode.get(getWordKind()).readObject(threadObjectOffset(), JAVA_THREAD_THREAD_OBJECT_LOCATION), Thread.class);
     }
 
     @MethodSubstitution(isStatic = false)
     public static boolean isInterrupted(final Thread thisObject, boolean clearInterrupted) {
         Word javaThread = CurrentJavaThreadNode.get(getWordKind());
-        Object thread = javaThread.readObject(threadObjectOffset(), LocationIdentity.FINAL_LOCATION);
+        Object thread = javaThread.readObject(threadObjectOffset(), JAVA_THREAD_THREAD_OBJECT_LOCATION);
         if (thisObject == thread) {
-            Word osThread = javaThread.readWord(osThreadOffset(), LocationIdentity.FINAL_LOCATION);
+            Word osThread = javaThread.readWord(osThreadOffset(), JAVA_THREAD_OSTHREAD_LOCATION);
             boolean interrupted = osThread.readInt(osThreadInterruptedOffset(), ANY_LOCATION) != 0;
             if (!interrupted || !clearInterrupted) {
                 return interrupted;
