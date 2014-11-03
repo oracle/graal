@@ -164,6 +164,10 @@ public class InvokeNode extends AbstractMemoryCheckpoint implements Invoke, LIRL
             StateSplit stateSplit = (StateSplit) node;
             stateSplit.setStateAfter(currentStateAfter);
         }
+        if (node instanceof ForeignCallNode) {
+            ForeignCallNode foreign = (ForeignCallNode) node;
+            foreign.setBci(bci());
+        }
         if (node instanceof FixedWithNextNode) {
             graph().replaceFixedWithFixed(this, (FixedWithNextNode) node);
         } else if (node instanceof ControlSinkNode) {

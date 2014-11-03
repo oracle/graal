@@ -781,11 +781,8 @@ public class HotSpotReplacementsUtil {
         return identityHashCode(IDENTITY_HASHCODE, x);
     }
 
-    @SuppressWarnings("unused")
     @NodeIntrinsic(ForeignCallNode.class)
-    public static int identityHashCode(@ConstantNodeParameter ForeignCallDescriptor descriptor, Object object) {
-        return System.identityHashCode(object);
-    }
+    public static native int identityHashCode(@ConstantNodeParameter ForeignCallDescriptor descriptor, Object object);
 
     @Fold
     public static int verifiedEntryPointOffset() {

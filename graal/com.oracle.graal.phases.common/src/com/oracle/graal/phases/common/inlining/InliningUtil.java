@@ -410,8 +410,7 @@ public class InliningUtil {
                         assert frameState.bci != BytecodeFrame.AFTER_EXCEPTION_BCI && frameState.bci != BytecodeFrame.BEFORE_BCI && frameState.bci != BytecodeFrame.AFTER_EXCEPTION_BCI &&
                                         frameState.bci != BytecodeFrame.UNWIND_BCI : frameState.bci;
                         if (outerFrameState == null) {
-                            outerFrameState = stateAtReturn.duplicateModified(invoke.bci(), stateAtReturn.rethrowException(), invokeReturnKind);
-                            outerFrameState.setDuringCall(true);
+                            outerFrameState = stateAtReturn.duplicateModifiedDuringCall(invoke.bci(), invokeReturnKind);
                         }
                         frameState.setOuterFrameState(outerFrameState);
                     }

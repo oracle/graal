@@ -43,6 +43,7 @@ public class ForeignCallNode extends AbstractMemoryCheckpoint implements LIRLowe
     protected final ForeignCallsProvider foreignCalls;
 
     protected final ForeignCallDescriptor descriptor;
+    protected int bci = BytecodeFrame.UNKNOWN_BCI;
 
     public static ForeignCallNode create(@InjectedNodeParameter ForeignCallsProvider foreignCalls, ForeignCallDescriptor descriptor, ValueNode... arguments) {
         return new ForeignCallNode(foreignCalls, descriptor, arguments);
@@ -128,12 +129,22 @@ public class ForeignCallNode extends AbstractMemoryCheckpoint implements LIRLowe
         this.stateDuring = stateDuring;
     }
 
+    /**
+     * Set the {@code bci} of the invoke bytecode for use when converting a stateAfter into a
+     * stateDuring.
+     */
+    public void setBci(int bci) {
+        this.bci = bci;
+    }
+
     @Override
     public void computeStateDuring(FrameState currentStateAfter) {
         FrameState newStateDuring;
         if ((currentStateAfter.stackSize() > 0 && currentStateAfter.stackAt(currentStateAfter.stackSize() - 1) == this) ||
                         (currentStateAfter.stackSize() > 1 && currentStateAfter.stackAt(currentStateAfter.stackSize() - 2) == this)) {
-            newStateDuring = currentStateAfter.duplicateModified(currentStateAfter.bci, currentStateAfter.rethrowException(), this.getKind());
+            // The result of this call is on the top of stack, so roll back to the previous bci.
+            assert bci != BytecodeFrame.UNKNOWN_BCI;
+            newStateDuring = currentStateAfter.duplicateModifiedDuringCall(bci, this.getKind());
         } else {
             newStateDuring = currentStateAfter;
         }

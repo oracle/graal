@@ -84,8 +84,7 @@ public interface Invoke extends StateSplit, Lowerable, DeoptimizingNode.DeoptDur
 
     @Override
     default void computeStateDuring(FrameState stateAfter) {
-        FrameState newStateDuring = stateAfter.duplicateModified(bci(), stateAfter.rethrowException(), asNode().getKind());
-        newStateDuring.setDuringCall(true);
+        FrameState newStateDuring = stateAfter.duplicateModifiedDuringCall(bci(), asNode().getKind());
         setStateDuring(newStateDuring);
     }
 
