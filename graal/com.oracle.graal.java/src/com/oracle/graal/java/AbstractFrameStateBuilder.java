@@ -55,7 +55,7 @@ public abstract class AbstractFrameStateBuilder<T extends KindProvider, S extend
         this.stackSize = other.stackSize;
         this.locals = other.locals.clone();
         this.stack = other.stack.clone();
-        this.lockedObjects = other.lockedObjects == getEmtpyArray() ? getEmtpyArray() : other.lockedObjects.clone();
+        this.lockedObjects = other.lockedObjects == getEmptyArray() ? getEmptyArray() : other.lockedObjects.clone();
         this.rethrowException = other.rethrowException;
 
         assert locals.length == method.getMaxLocals();
@@ -64,7 +64,7 @@ public abstract class AbstractFrameStateBuilder<T extends KindProvider, S extend
 
     public abstract S copy();
 
-    protected abstract T[] getEmtpyArray();
+    protected abstract T[] getEmptyArray();
 
     public abstract boolean isCompatibleWith(S other);
 
@@ -371,7 +371,7 @@ public abstract class AbstractFrameStateBuilder<T extends KindProvider, S extend
             stackindex += stackSlots(element.getKind());
         }
         stackSize = base;
-        return r.toArray(getEmtpyArray());
+        return r.toArray(getEmptyArray());
     }
 
     /**

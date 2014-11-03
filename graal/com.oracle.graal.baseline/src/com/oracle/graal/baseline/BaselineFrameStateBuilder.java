@@ -40,7 +40,7 @@ public class BaselineFrameStateBuilder extends AbstractFrameStateBuilder<Value, 
     }
 
     @Override
-    protected Value[] getEmtpyArray() {
+    protected Value[] getEmptyArray() {
         return EMPTY_ARRAY;
     }
 
