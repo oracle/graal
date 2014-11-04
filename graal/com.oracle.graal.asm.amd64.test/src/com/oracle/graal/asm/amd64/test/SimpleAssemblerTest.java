@@ -28,6 +28,7 @@ import java.nio.*;
 
 import org.junit.*;
 
+import com.oracle.graal.amd64.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CompilationResult.DataSectionReference;
 import com.oracle.graal.api.code.DataSection.Data;
@@ -39,8 +40,8 @@ import com.oracle.graal.asm.test.*;
 public class SimpleAssemblerTest extends AssemblerTest {
 
     @Before
-    public void assumeNotSparc() {
-        assumeFalse(System.getProperty("os.arch").toLowerCase().contains("sparc"));
+    public void checkAMD64() {
+        assumeTrue("skipping AMD64 specific test", codeCache.getTarget().arch instanceof AMD64);
     }
 
     @Test
