@@ -22,17 +22,18 @@
  */
 package com.oracle.graal.compiler.amd64.test;
 
+import static org.junit.Assume.*;
+
 import org.junit.*;
 
+import com.oracle.graal.amd64.*;
 import com.oracle.graal.compiler.test.backend.*;
-
-import static org.junit.Assume.*;
 
 public class AMD64AllocatorTest extends AllocatorTest {
 
     @Before
-    public void setUp() {
-        assumeTrue(isArchitecture("x86_64"));
+    public void checkAMD64() {
+        assumeTrue("skipping AMD64 specific test", getTarget().arch instanceof AMD64);
     }
 
     @Test
