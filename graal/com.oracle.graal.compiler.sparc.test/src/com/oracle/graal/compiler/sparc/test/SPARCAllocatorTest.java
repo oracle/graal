@@ -27,12 +27,13 @@ import static org.junit.Assume.*;
 import org.junit.*;
 
 import com.oracle.graal.compiler.test.backend.*;
+import com.oracle.graal.sparc.*;
 
 public class SPARCAllocatorTest extends AllocatorTest {
 
     @Before
-    public void setUp() {
-        assumeTrue(isArchitecture("SPARC"));
+    public void checkSPARC() {
+        assumeTrue("skipping SPARC specific test", getTarget().arch instanceof SPARC);
     }
 
     @Test
