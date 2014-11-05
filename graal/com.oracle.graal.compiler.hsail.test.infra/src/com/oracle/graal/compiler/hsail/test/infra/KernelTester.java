@@ -405,7 +405,7 @@ public abstract class KernelTester extends GraalTest {
             }
         }
         // Ignore any kerneltester test if okra does not exist.
-        assumeTrue(okraLibExists);
+        assumeTrue("No Okra library detected, skipping test!", okraLibExists);
         // Control which okra instances can run the tests.
         onSimulator = OkraContext.isSimulator();
         okraContext = new OkraContext();

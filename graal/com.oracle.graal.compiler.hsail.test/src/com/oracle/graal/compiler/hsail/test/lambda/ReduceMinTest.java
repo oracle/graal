@@ -78,7 +78,7 @@ public class ReduceMinTest {
     public void testReduce() {
 
         // The simulator does not support HSA local memory as of June 2014
-        assumeTrue(OkraUtil.okraLibExists() && OkraContext.isSimulator() == false);
+        assumeTrue("The simulator does not support HSA local memory, skipping!", OkraUtil.okraLibExists() && OkraContext.isSimulator() == false);
 
         // Handmade reduce does not support +UseCompressedOops
         HotSpotVMConfig config = runtime().getConfig();

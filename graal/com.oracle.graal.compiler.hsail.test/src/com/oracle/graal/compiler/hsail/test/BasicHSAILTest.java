@@ -339,7 +339,7 @@ public class BasicHSAILTest extends GraalCompilerTest {
     @Override
     protected HSAILHotSpotBackend getBackend() {
         Backend backend = super.getBackend();
-        Assume.assumeTrue(backend instanceof HSAILHotSpotBackend);
+        Assume.assumeTrue("No HSAIL backend, skipping test!", backend instanceof HSAILHotSpotBackend);
         return (HSAILHotSpotBackend) backend;
     }
 

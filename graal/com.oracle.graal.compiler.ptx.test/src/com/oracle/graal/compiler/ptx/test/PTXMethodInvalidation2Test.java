@@ -56,7 +56,7 @@ public class PTXMethodInvalidation2Test extends PTXTest {
         while (ref.get() != null) {
             System.gc();
             // Give up after 1000 attempts
-            Assume.assumeTrue(++attempts < 1000);
+            Assume.assumeTrue("Giving up after too many attempts!", ++attempts < 1000);
         }
 
         Assert.assertFalse(code.getStart() == 0L);

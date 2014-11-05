@@ -46,7 +46,7 @@ public abstract class PTXTest extends GraalCompilerTest {
 
     public static PTXHotSpotBackend getPTXBackend() {
         Backend backend = runtime().getBackend(PTX.class);
-        Assume.assumeTrue(backend instanceof PTXHotSpotBackend);
+        Assume.assumeTrue("No PTX backend, skipping test!", backend instanceof PTXHotSpotBackend);
         return (PTXHotSpotBackend) backend;
     }
 
@@ -67,7 +67,7 @@ public abstract class PTXTest extends GraalCompilerTest {
     protected InstalledCode getCode(ResolvedJavaMethod installedCodeOwner, StructuredGraph graph) {
         PTXHotSpotBackend ptxBackend = getPTXBackend();
         ExternalCompilationResult ptxCode = compileKernel(installedCodeOwner);
-        Assume.assumeTrue(ptxBackend.isDeviceInitialized());
+        Assume.assumeTrue("Skipping PTX test: device not initialized!", ptxBackend.isDeviceInitialized());
         HotSpotNmethod installedPTXCode = installKernel(installedCodeOwner, ptxCode);
         StructuredGraph wrapper = new PTXWrapperBuilder(installedCodeOwner, installedPTXCode, (HotSpotProviders) getProviders()).getGraph();
 

@@ -66,7 +66,7 @@ public abstract class GraalKernelTester extends KernelTester {
 
     protected static HSAILHotSpotBackend getHSAILBackend() {
         Backend backend = runtime().getBackend(HSAIL.class);
-        Assume.assumeTrue(backend instanceof HSAILHotSpotBackend);
+        Assume.assumeTrue("No HSAIL backend, skipping test!", backend instanceof HSAILHotSpotBackend);
         return (HSAILHotSpotBackend) backend;
     }
 
@@ -201,7 +201,7 @@ public abstract class GraalKernelTester extends KernelTester {
     @Override
     public void testGeneratedHsail() {
         try (OverrideScope s = getOverrideScope()) {
-            assumeTrue(supportsRequiredCapabilities() && okraEnvIsInitialized());
+            assumeTrue("Orka environment not initialized or unsupported!", supportsRequiredCapabilities() && okraEnvIsInitialized());
             super.testGeneratedHsail();
         }
     }
@@ -209,7 +209,7 @@ public abstract class GraalKernelTester extends KernelTester {
     @Override
     public void testGeneratedHsailUsingLambdaMethod() {
         try (OverrideScope s = getOverrideScope()) {
-            assumeTrue(supportsRequiredCapabilities() && okraEnvIsInitialized());
+            assumeTrue("Orka environment not initialized or unsupported!", supportsRequiredCapabilities() && okraEnvIsInitialized());
             super.testGeneratedHsailUsingLambdaMethod();
         }
     }
