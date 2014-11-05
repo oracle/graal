@@ -156,9 +156,7 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
                     ResolvedJavaMethod newResolvedMethod = single.resolveMethod(targetMethod(), invoke().getContextType(), true);
                     // TODO (je): we can not yet deal with default methods
                     if (newResolvedMethod != null && !newResolvedMethod.isDefault()) {
-                        ProfilingInfo profilingInfo = invoke().getContextMethod().getProfilingInfo();
-                        JavaTypeProfile profile = profilingInfo.getTypeProfile(invoke().bci());
-                        LogicNode condition = graph().unique(InstanceOfNode.create(single, receiver, profile));
+                        LogicNode condition = graph().unique(InstanceOfNode.create(single, receiver, getProfile()));
                         assert graph().getGuardsStage().ordinal() < StructuredGraph.GuardsStage.FIXED_DEOPTS.ordinal() : "Graph already fixed!";
                         GuardNode guard = graph().unique(
                                         GuardNode.create(condition, BeginNode.prevBegin(invoke().asNode()), DeoptimizationReason.OptimizedTypeCheckViolated, DeoptimizationAction.InvalidateRecompile,
@@ -171,6 +169,17 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
                 }
             }
         }
+    }
+
+    private JavaTypeProfile getProfile() {
+        assert !isStatic();
+        if (receiver() instanceof TypeProfileProxyNode) {
+            // get profile from TypeProfileProxy
+            return ((TypeProfileProxyNode) receiver()).getProfile();
+        }
+        // get profile from invoke()
+        ProfilingInfo profilingInfo = invoke().getContextMethod().getProfilingInfo();
+        return profilingInfo.getTypeProfile(invoke().bci());
     }
 
     @Override
