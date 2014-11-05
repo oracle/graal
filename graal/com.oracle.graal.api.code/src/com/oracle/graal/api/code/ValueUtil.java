@@ -80,6 +80,16 @@ public final class ValueUtil {
         return (StackSlot) value;
     }
 
+    public static boolean isStackSlotValue(Value value) {
+        assert value != null;
+        return value instanceof StackSlotValue;
+    }
+
+    public static StackSlotValue asStackSlotValue(Value value) {
+        assert value != null;
+        return (StackSlotValue) value;
+    }
+
     public static boolean isVirtualStackSlot(Value value) {
         assert value != null;
         return value instanceof VirtualStackSlot;

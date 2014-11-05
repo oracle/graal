@@ -226,7 +226,7 @@ public final class LIRVerifier {
     private static void allowed(Object op, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
         if ((isVariable(value) && flags.contains(OperandFlag.REG)) ||
             (isRegister(value) && flags.contains(OperandFlag.REG)) ||
-            (isStackSlot(value) && flags.contains(OperandFlag.STACK)) ||
+            (isStackSlotValue(value) && flags.contains(OperandFlag.STACK)) ||
             (isConstant(value) && flags.contains(OperandFlag.CONST) && mode != OperandMode.DEF) ||
             (isIllegal(value) && flags.contains(OperandFlag.ILLEGAL))) {
             return;
