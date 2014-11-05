@@ -28,7 +28,7 @@ import com.oracle.graal.api.meta.*;
  * Represents a constant non-{@code null} object reference, within the compiler and across the
  * compiler/runtime interface.
  */
-public interface HotSpotObjectConstant extends HotSpotConstant, VMConstant {
+public interface HotSpotObjectConstant extends JavaValue, HotSpotConstant, VMConstant {
 
     JavaConstant compress();
 
