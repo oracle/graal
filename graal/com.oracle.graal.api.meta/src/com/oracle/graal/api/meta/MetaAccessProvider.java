@@ -28,7 +28,7 @@ import java.lang.reflect.*;
 /**
  * Provides access to the metadata of a class typically provided in a class file.
  */
-public interface MetaAccessProvider {
+public interface MetaAccessProvider extends Remote {
 
     /**
      * Returns the resolved Java type representing a given Java class.

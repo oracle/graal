@@ -25,7 +25,7 @@ package com.oracle.graal.hotspot.meta;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.HotSpotVMConfig.CompressEncoding;
 
-public interface HotSpotMetaspaceConstant extends HotSpotConstant, VMConstant {
+public interface HotSpotMetaspaceConstant extends HotSpotConstant, VMConstant, Remote {
 
     boolean isCompressed();
 

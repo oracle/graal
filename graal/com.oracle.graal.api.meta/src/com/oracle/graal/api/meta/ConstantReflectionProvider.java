@@ -30,7 +30,7 @@ package com.oracle.graal.api.meta;
  * result is not available at this point. The caller is responsible to check for {@code null}
  * results and handle them properly, e.g., not perform an optimization.
  */
-public interface ConstantReflectionProvider {
+public interface ConstantReflectionProvider extends Remote {
 
     /**
      * Compares two constants for equality. The equality relationship is symmetric. Returns

@@ -28,7 +28,7 @@ import static com.oracle.graal.api.meta.MetaUtil.*;
  * Represents a resolved or unresolved type. Types include primitives, objects, {@code void}, and
  * arrays thereof.
  */
-public interface JavaType {
+public interface JavaType extends Remote {
 
     /**
      * Returns the name of this type in internal form. The following are examples of strings

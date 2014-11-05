@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,18 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.meta;
-
-import com.oracle.graal.api.meta.*;
+package com.oracle.graal.api.meta;
 
 /**
- * Represents a constant non-{@code null} object reference, within the compiler and across the
- * compiler/runtime interface.
+ * Marker interface for classes whose values are proxied during replay compilation capture or remote
+ * compilation.
  */
-public interface HotSpotObjectConstant extends JavaValue, HotSpotConstant, VMConstant, Remote {
-
-    JavaConstant compress();
-
-    JavaConstant uncompress();
-
+public interface Remote {
 }

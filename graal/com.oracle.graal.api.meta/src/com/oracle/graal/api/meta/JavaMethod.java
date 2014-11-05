@@ -28,7 +28,7 @@ import java.util.*;
  * Represents a reference to a Java method, either resolved or unresolved. Methods, like fields and
  * types, are resolved through {@link ConstantPool constant pools}.
  */
-public interface JavaMethod {
+public interface JavaMethod extends Remote {
 
     /**
      * Returns the name of this method.

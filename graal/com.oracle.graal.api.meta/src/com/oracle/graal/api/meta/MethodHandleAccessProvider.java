@@ -29,7 +29,7 @@ import java.lang.invoke.*;
  * implementation of this interface is usually required to access non-public classes, methods, and
  * fields of {@link MethodHandle}, i.e., data that is not standardized by the Java specification.
  */
-public interface MethodHandleAccessProvider {
+public interface MethodHandleAccessProvider extends Remote {
 
     /**
      * Identification for methods defined on the class {@link MethodHandle} that are processed by
