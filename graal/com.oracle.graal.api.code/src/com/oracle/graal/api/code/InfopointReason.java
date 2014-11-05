@@ -34,13 +34,13 @@ public enum InfopointReason {
     METHOD_END(true),
     LINE_NUMBER(true);
 
-    private InfopointReason(boolean canBeOmited) {
-        this.canBeOmited = canBeOmited;
+    private InfopointReason(boolean canBeOmitted) {
+        this.canBeOmitted = canBeOmitted;
     }
 
-    private final boolean canBeOmited;
+    private final boolean canBeOmitted;
 
-    public boolean canBeOmited() {
-        return canBeOmited;
+    public boolean canBeOmitted() {
+        return canBeOmitted;
     }
 }

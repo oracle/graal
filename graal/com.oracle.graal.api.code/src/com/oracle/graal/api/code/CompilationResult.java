@@ -522,10 +522,10 @@ public class CompilationResult implements Serializable {
                 previousInfopoint = infopoints.get(infopoints.size() - 1);
             }
             if (previousInfopoint.pcOffset == infopoint.pcOffset) {
-                if (infopoint.reason.canBeOmited()) {
+                if (infopoint.reason.canBeOmitted()) {
                     return;
                 }
-                if (previousInfopoint.reason.canBeOmited()) {
+                if (previousInfopoint.reason.canBeOmitted()) {
                     Infopoint removed = infopoints.remove(infopoints.size() - 1);
                     assert removed == previousInfopoint;
                 } else {
