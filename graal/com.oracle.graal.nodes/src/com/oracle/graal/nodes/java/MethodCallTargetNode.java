@@ -149,22 +149,22 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
                     }
                 }
             }
-            ResolvedJavaType receiverType = targetMethod().getDeclaringClass();
-            if (receiverType.isInterface()) {
-                ResolvedJavaType single = receiverType.getSingleImplementor();
-                if (single != null && !single.equals(receiverType)) {
-                    ResolvedJavaMethod newResolvedMethod = single.resolveMethod(targetMethod(), invoke().getContextType(), true);
+            ResolvedJavaType declaredReceiverType = targetMethod().getDeclaringClass();
+            if (declaredReceiverType.isInterface()) {
+                ResolvedJavaType singleImplementor = declaredReceiverType.getSingleImplementor();
+                if (singleImplementor != null && !singleImplementor.equals(declaredReceiverType)) {
+                    ResolvedJavaMethod singleImplementorMethod = singleImplementor.resolveMethod(targetMethod(), invoke().getContextType(), true);
                     // TODO (je): we can not yet deal with default methods
-                    if (newResolvedMethod != null && !newResolvedMethod.isDefault()) {
-                        LogicNode condition = graph().unique(InstanceOfNode.create(single, receiver, getProfile()));
+                    if (singleImplementorMethod != null && !singleImplementorMethod.isDefault()) {
+                        LogicNode condition = graph().unique(InstanceOfNode.create(singleImplementor, receiver, getProfile()));
                         assert graph().getGuardsStage().ordinal() < StructuredGraph.GuardsStage.FIXED_DEOPTS.ordinal() : "Graph already fixed!";
                         GuardNode guard = graph().unique(
                                         GuardNode.create(condition, BeginNode.prevBegin(invoke().asNode()), DeoptimizationReason.OptimizedTypeCheckViolated, DeoptimizationAction.InvalidateRecompile,
                                                         false, JavaConstant.NULL_OBJECT));
-                        PiNode piNode = graph().unique(PiNode.create(receiver, StampFactory.declared(single), guard));
+                        PiNode piNode = graph().unique(PiNode.create(receiver, StampFactory.declared(singleImplementor), guard));
                         arguments().set(0, piNode);
                         setInvokeKind(InvokeKind.Virtual);
-                        setTargetMethod(newResolvedMethod);
+                        setTargetMethod(singleImplementorMethod);
                     }
                 }
             }
