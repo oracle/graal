@@ -74,10 +74,10 @@ public class StandardMethodSubstitutionsTest extends MethodSubstitutionTest {
             assertInGraph(graph, intrinsicClass);
         }
 
-        // Force compilation
-        InstalledCode code = getCode(testJavaMethod);
-        assert optional || code != null;
         for (Object l : args) {
+            // Force compilation
+            InstalledCode code = getCode(testJavaMethod);
+            assert optional || code != null;
             // Verify that the original method and the substitution produce the same value
             Object expected = invokeSafe(realJavaMethod, null, l);
             assertDeepEquals(expected, invokeSafe(testJavaMethod, null, l));
