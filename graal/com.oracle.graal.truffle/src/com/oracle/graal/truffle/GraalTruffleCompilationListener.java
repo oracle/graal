@@ -25,16 +25,47 @@ package com.oracle.graal.truffle;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.nodes.*;
 
+/**
+ * Enables implementations of this interface to listen to compilation related events of the Graal
+ * Truffle runtime. The states for a particular {@link OptimizedCallTarget} that is compiled using
+ * the Graal Truffle system can be described using the following deterministic automata: * <code>
+ * <pre>
+ * ( (split | (queue . unqueue))*
+ *    . queue . started
+ *    . (truffleTierFinished . graalTierFinished . success)
+ *      | ([truffleTierFinished] . [graalTierFinished] . failed)
+ *    . invalidate )*
+ * </pre>
+ * </code>
+ * <p>
+ * Note: <code>|</code> is the 'or' and <code>.</code> is the sequential operator. The
+ * <code>*</code> represents the Kleene Closure.
+ * </p>
+ *
+ * @see GraalTruffleRuntime#addCompilationListener(GraalTruffleCompilationListener)
+ */
 public interface GraalTruffleCompilationListener {
 
+    void notifyCompilationSplit(OptimizedDirectCallNode callNode);
+
+    /**
+     * Invoked if a call target was queued to the compilation queue.
+     */
     void notifyCompilationQueued(OptimizedCallTarget target);
 
+    /**
+     * Invoked if a call target was unqueued from the compilation queue.
+     *
+     * @param source the source object that caused the compilation to be unqueued. For example the
+     *            source {@link Node} object. May be <code>null</code>.
+     * @param reason a textual description of the reason why the compilation was unqueued. May be
+     *            <code>null</code>.
+     */
     void notifyCompilationDequeued(OptimizedCallTarget target, Object source, CharSequence reason);
 
     void notifyCompilationFailed(OptimizedCallTarget target, StructuredGraph graph, Throwable t);
-
-    void notifyCompilationSplit(OptimizedDirectCallNode callNode);
 
     void notifyCompilationStarted(OptimizedCallTarget target);
 
@@ -44,8 +75,19 @@ public interface GraalTruffleCompilationListener {
 
     void notifyCompilationSuccess(OptimizedCallTarget target, StructuredGraph graph, CompilationResult result);
 
+    /**
+     * Invoked if a compiled call target was invalidated.
+     *
+     * @param source the source object that caused the compilation to be invalidated. For example
+     *            the source {@link Node} object. May be <code>null</code>.
+     * @param reason a textual description of the reason why the compilation was invalidated. May be
+     *            <code>null</code>.
+     */
     void notifyCompilationInvalidated(OptimizedCallTarget target, Object source, CharSequence reason);
 
+    /**
+     * Invoked as the compiler gets shut down.
+     */
     void notifyShutdown(TruffleRuntime runtime);
 
 }
