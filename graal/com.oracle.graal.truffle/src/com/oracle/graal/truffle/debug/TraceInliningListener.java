@@ -69,7 +69,7 @@ public final class TraceInliningListener extends AbstractDebugCompilationListene
         if (profile != null) {
             properties.putAll(profile.getDebugProperties());
         }
-        log((depth * 2), status, callNode.getCurrentCallTarget().toString(), properties);
+        log(depth, status, callNode.getCurrentCallTarget().toString(), properties);
     }
 
 }
