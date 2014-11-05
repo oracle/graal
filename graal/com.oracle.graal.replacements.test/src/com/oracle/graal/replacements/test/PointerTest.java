@@ -44,7 +44,7 @@ import com.oracle.graal.word.nodes.*;
  */
 public class PointerTest extends GraalCompilerTest implements Snippets {
 
-    private static final LocationIdentity ID = new NamedLocationIdentity("ID");
+    private static final LocationIdentity ID = NamedLocationIdentity.create("ID");
     private static final Kind[] KINDS = new Kind[]{Kind.Byte, Kind.Char, Kind.Short, Kind.Int, Kind.Long, Kind.Float, Kind.Double, Kind.Object};
     private final TargetDescription target;
     private final ReplacementsImpl installer;

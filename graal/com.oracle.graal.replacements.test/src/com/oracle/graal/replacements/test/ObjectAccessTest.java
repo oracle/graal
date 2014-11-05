@@ -40,7 +40,7 @@ import com.oracle.graal.word.*;
  */
 public class ObjectAccessTest extends GraalCompilerTest implements Snippets {
 
-    private static final LocationIdentity ID = new NamedLocationIdentity("ID");
+    private static final LocationIdentity ID = NamedLocationIdentity.create("ObjectAccessTestID");
     private static final Kind[] KINDS = new Kind[]{Kind.Byte, Kind.Char, Kind.Short, Kind.Int, Kind.Long, Kind.Float, Kind.Double, Kind.Object};
     private final ReplacementsImpl installer;
 

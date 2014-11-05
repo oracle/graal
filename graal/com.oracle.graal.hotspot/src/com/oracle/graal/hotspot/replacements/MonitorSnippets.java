@@ -369,7 +369,7 @@ public class MonitorSnippets implements Snippets {
      */
     private static final boolean ENABLE_BREAKPOINT = false;
 
-    private static final LocationIdentity MONITOR_COUNTER_LOCATION = new NamedLocationIdentity("MonitorCounter");
+    private static final LocationIdentity MONITOR_COUNTER_LOCATION = NamedLocationIdentity.create("MonitorCounter");
 
     @NodeIntrinsic(BreakpointNode.class)
     static native void bkpt(Object object, Word mark, Word tmp, Word value);
