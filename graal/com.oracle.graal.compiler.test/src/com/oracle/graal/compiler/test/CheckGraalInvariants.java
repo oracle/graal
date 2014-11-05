@@ -38,6 +38,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.CompilerThreadFactory.DebugConfigAccess;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.java.*;
@@ -208,6 +209,8 @@ public class CheckGraalInvariants extends GraalTest {
             new VerifyUsageWithEquals(JavaField.class).apply(graph, context);
             new VerifyUsageWithEquals(LocationIdentity.class).apply(graph, context);
             new VerifyUsageWithEquals(LIRKind.class).apply(graph, context);
+            new VerifyUsageWithEquals(ArithmeticOpTable.class).apply(graph, context);
+            new VerifyUsageWithEquals(ArithmeticOpTable.Op.class).apply(graph, context);
         }
         new VerifyDebugUsage().apply(graph, context);
     }

@@ -53,7 +53,7 @@ public abstract class ArithmeticStamp extends Stamp {
         if (!(obj instanceof ArithmeticStamp)) {
             return false;
         }
-        ArithmeticStamp other = (ArithmeticStamp) obj;
-        return this.ops == other.ops;
+        assert this.ops.toString().equals(((ArithmeticStamp) obj).ops.toString());
+        return true;
     }
 }

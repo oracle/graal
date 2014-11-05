@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.compiler.common.type;
 
+import static com.oracle.graal.api.meta.MetaUtil.*;
+
 import java.util.*;
 import java.util.function.*;
 import java.util.stream.*;
@@ -240,6 +242,15 @@ public final class ArithmeticOpTable {
         return floatConvert[op.ordinal()];
     }
 
+    public static String toString(Op... ops) {
+        return Arrays.asList(ops).stream().map(o -> o == null ? "null" : o.operator + "{" + getSimpleName(o.getClass(), false) + "}").collect(Collectors.joining(","));
+    }
+
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + "[" + toString(neg, add, sub, mul, div, rem, not, and, or, xor, zeroExtend, signExtend, narrow) + ",floatConvert[" + toString(floatConvert) + "]]";
+    }
+
     public abstract static class Op {
 
         private final String operator;
@@ -251,6 +262,22 @@ public final class ArithmeticOpTable {
         @Override
         public String toString() {
             return operator;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj == this) {
+                return true;
+            }
+            if (obj != null && getClass() == obj.getClass()) {
+                return obj.toString().equals(toString());
+            }
+            return false;
+        }
+
+        @Override
+        public int hashCode() {
+            return toString().hashCode();
         }
     }
 
@@ -409,6 +436,20 @@ public final class ArithmeticOpTable {
          */
         public Constant getZero(Stamp stamp) {
             return null;
+        }
+
+        @Override
+        public String toString() {
+            if (associative) {
+                if (commutative) {
+                    return super.toString() + "[AC]";
+                } else {
+                    return super.toString() + "[A]";
+                }
+            } else if (commutative) {
+                return super.toString() + "[C]";
+            }
+            return super.toString();
         }
     }
 
