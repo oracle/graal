@@ -60,7 +60,7 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
 
     private final CanonicalizerPhase canonicalizer;
 
-    @NodeInfo
+    @NodeInfo(allowedUsageTypes = {InputType.Guard, InputType.Anchor})
     static class DummyAnchorNode extends FixedWithNextNode implements GuardingNode, AnchoringNode {
         public static DummyAnchorNode create() {
             return new DummyAnchorNode();
