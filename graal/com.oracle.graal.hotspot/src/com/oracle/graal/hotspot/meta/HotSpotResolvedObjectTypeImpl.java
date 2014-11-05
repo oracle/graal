@@ -488,7 +488,7 @@ public final class HotSpotResolvedObjectTypeImpl extends HotSpotResolvedJavaType
         }
 
         if (result == null) {
-            result = new HotSpotResolvedJavaField(this, fieldName, type, offset, rawFlags);
+            result = new HotSpotResolvedJavaFieldImpl(this, fieldName, type, offset, rawFlags);
             fieldCache.put(id, result);
         } else {
             assert result.getName().equals(fieldName);
