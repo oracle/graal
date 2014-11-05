@@ -157,7 +157,7 @@ public class PTXHotSpotBackend extends HotSpotBackend {
 
     @Override
     public FrameMapBuilder newFrameMapBuilder(RegisterConfig registerConfig) {
-        return new ForwardingFrameMapBuilder(this::newFrameMap, getCodeCache(), registerConfig);
+        return new DelayedFrameMapBuilder(this::newFrameMap, getCodeCache(), registerConfig);
     }
 
     @Override

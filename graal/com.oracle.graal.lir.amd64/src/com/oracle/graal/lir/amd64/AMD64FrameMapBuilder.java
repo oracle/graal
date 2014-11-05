@@ -24,11 +24,15 @@ package com.oracle.graal.lir.amd64;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
 
+import java.util.*;
+
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.lir.*;
 
-public class AMD64FrameMapBuilder extends ForwardingFrameMapBuilder {
+public class AMD64FrameMapBuilder extends DelayedFrameMapBuilder {
+
+    private TrackedVirtualStackSlot rbpSpillSlot;
 
     public AMD64FrameMapBuilder(FrameMapFactory factory, CodeCacheProvider codeCache, RegisterConfig registerConfig) {
         super(factory, codeCache, registerConfig);
@@ -39,9 +43,27 @@ public class AMD64FrameMapBuilder extends ForwardingFrameMapBuilder {
      * runtime for walking/inspecting frames of such methods.
      */
     public VirtualStackSlot allocateRBPSpillSlot() {
-        VirtualStackSlot reservedSlot = allocateSpillSlot(LIRKind.value(Kind.Long));
-        assert asStackSlot(reservedSlot).getRawOffset() == -16 : asStackSlot(reservedSlot).getRawOffset();
-        return reservedSlot;
+        rbpSpillSlot = (TrackedVirtualStackSlot) allocateSpillSlot(LIRKind.value(Kind.Long));
+        return rbpSpillSlot;
     }
 
+    @Override
+    public void freeSpillSlot(VirtualStackSlot slot) {
+        assert slot != null;
+        if (slot.equals(rbpSpillSlot)) {
+            rbpSpillSlot = null;
+        } else {
+            super.freeSpillSlot(slot);
+        }
+    }
+
+    @Override
+    protected void mapStackSlots(FrameMap frameMap, HashMap<VirtualStackSlot, StackSlot> mapping) {
+        if (rbpSpillSlot != null) {
+            StackSlot reservedSlot = rbpSpillSlot.transform(frameMap);
+            assert asStackSlot(reservedSlot).getRawOffset() == -16 : asStackSlot(reservedSlot).getRawOffset();
+            mapping.put(rbpSpillSlot, reservedSlot);
+        }
+        super.mapStackSlots(frameMap, mapping);
+    }
 }
