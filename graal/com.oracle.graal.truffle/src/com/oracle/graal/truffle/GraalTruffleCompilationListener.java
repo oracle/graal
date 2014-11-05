@@ -24,7 +24,6 @@ package com.oracle.graal.truffle;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.nodes.*;
 
 /**
@@ -88,11 +87,11 @@ public interface GraalTruffleCompilationListener {
     /**
      * Invoked as the compiler gets shut down.
      */
-    void notifyShutdown(TruffleRuntime runtime);
+    void notifyShutdown(GraalTruffleRuntime runtime);
 
     /**
      * Invoked as soon as the compiler is ready to use.
      */
-    void notifyStartup(TruffleRuntime runtime);
+    void notifyStartup(GraalTruffleRuntime runtime);
 
 }
