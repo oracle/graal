@@ -22,27 +22,9 @@
  */
 package com.oracle.graal.compiler.common;
 
-import java.lang.reflect.*;
-import java.util.*;
 import java.util.concurrent.*;
 
 public abstract class FieldIntrospection extends UnsafeAccess {
-
-    /**
-     * Interface used to determine the offset (in bytes) of a field.
-     */
-    public interface CalcOffset {
-
-        long getOffset(Field field);
-    }
-
-    public static class DefaultCalcOffset implements CalcOffset {
-
-        @Override
-        public long getOffset(Field field) {
-            return unsafe.objectFieldOffset(field);
-        }
-    }
 
     protected static final ConcurrentHashMap<Class<?>, FieldIntrospection> allClasses = new ConcurrentHashMap<>();
 
@@ -66,66 +48,5 @@ public abstract class FieldIntrospection extends UnsafeAccess {
      */
     public Fields getData() {
         return data;
-    }
-
-    /**
-     * Describes a field in a class during scanning.
-     */
-    public static class FieldInfo implements Comparable<FieldInfo> {
-        public final long offset;
-        public final String name;
-        public final Class<?> type;
-
-        public FieldInfo(long offset, String name, Class<?> type) {
-            this.offset = offset;
-            this.name = name;
-            this.type = type;
-        }
-
-        /**
-         * Sorts fields in ascending order by their {@link #offset}s.
-         */
-        public int compareTo(FieldInfo o) {
-            return offset < o.offset ? -1 : (offset > o.offset ? 1 : 0);
-        }
-
-        @Override
-        public String toString() {
-            return "[" + offset + "]" + name + ":" + type.getSimpleName();
-        }
-    }
-
-    public abstract static class BaseFieldScanner {
-
-        private final CalcOffset calc;
-
-        /**
-         * Fields not belonging to a more specific category defined by scanner subclasses are added
-         * to this list.
-         */
-        public final ArrayList<FieldInfo> data = new ArrayList<>();
-
-        protected BaseFieldScanner(CalcOffset calc) {
-            this.calc = calc;
-        }
-
-        /**
-         * Scans the fields in a class hierarchy.
-         */
-        public void scan(Class<?> clazz, boolean includeSuperclasses) {
-            Class<?> currentClazz = clazz;
-            do {
-                for (Field field : currentClazz.getDeclaredFields()) {
-                    if (Modifier.isStatic(field.getModifiers()) || Modifier.isTransient(field.getModifiers())) {
-                        continue;
-                    }
-                    long offset = calc.getOffset(field);
-                    scanField(field, offset);
-                }
-                currentClazz = currentClazz.getSuperclass();
-            } while (includeSuperclasses && currentClazz.getSuperclass() != Object.class);
-        }
-
-        protected abstract void scanField(Field field, long offset);
     }
 }

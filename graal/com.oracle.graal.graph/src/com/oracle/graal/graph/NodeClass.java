@@ -136,10 +136,10 @@ public final class NodeClass extends FieldIntrospection {
     private final boolean isLeafNode;
 
     public NodeClass(Class<?> clazz, NodeClass superNodeClass) {
-        this(clazz, superNodeClass, new DefaultCalcOffset(), null, 0);
+        this(clazz, superNodeClass, new FieldsScanner.DefaultCalcOffset(), null, 0);
     }
 
-    public NodeClass(Class<?> clazz, NodeClass superNodeClass, CalcOffset calcOffset, int[] presetIterableIds, int presetIterableId) {
+    public NodeClass(Class<?> clazz, NodeClass superNodeClass, FieldsScanner.CalcOffset calcOffset, int[] presetIterableIds, int presetIterableId) {
         super(clazz);
         this.superNodeClass = superNodeClass;
         assert NODE_CLASS.isAssignableFrom(clazz);
@@ -151,9 +151,9 @@ public final class NodeClass extends FieldIntrospection {
 
         this.isSimplifiable = Simplifiable.class.isAssignableFrom(clazz);
 
-        FieldScanner fs = new FieldScanner(calcOffset, superNodeClass);
+        NodeFieldsScanner fs = new NodeFieldsScanner(calcOffset, superNodeClass);
         try (TimerCloseable t = Init_FieldScanning.start()) {
-            fs.scan(clazz, false);
+            fs.scan(clazz, clazz.getSuperclass(), false);
         }
 
         try (TimerCloseable t1 = Init_Edges.start()) {
@@ -266,7 +266,7 @@ public final class NodeClass extends FieldIntrospection {
     /**
      * Describes a field representing an input or successor edge in a node.
      */
-    protected static class EdgeInfo extends FieldInfo {
+    protected static class EdgeInfo extends FieldsScanner.FieldInfo {
 
         public EdgeInfo(long offset, String name, Class<?> type) {
             super(offset, name, type);
@@ -276,7 +276,7 @@ public final class NodeClass extends FieldIntrospection {
          * Sorts non-list edges before list edges.
          */
         @Override
-        public int compareTo(FieldInfo o) {
+        public int compareTo(FieldsScanner.FieldInfo o) {
             if (NodeList.class.isAssignableFrom(o.type)) {
                 if (!NodeList.class.isAssignableFrom(type)) {
                     return -1;
@@ -309,14 +309,14 @@ public final class NodeClass extends FieldIntrospection {
         }
     }
 
-    protected static class FieldScanner extends BaseFieldScanner {
+    protected static class NodeFieldsScanner extends FieldsScanner {
 
         public final ArrayList<InputInfo> inputs = new ArrayList<>();
         public final ArrayList<EdgeInfo> successors = new ArrayList<>();
         int directInputs;
         int directSuccessors;
 
-        protected FieldScanner(CalcOffset calc, NodeClass superNodeClass) {
+        protected NodeFieldsScanner(FieldsScanner.CalcOffset calc, NodeClass superNodeClass) {
             super(calc);
             if (superNodeClass != null) {
                 translateInto(superNodeClass.inputs, inputs);
@@ -372,7 +372,7 @@ public final class NodeClass extends FieldIntrospection {
                     GraalInternalError.guarantee(!NODE_CLASS.isAssignableFrom(type) || field.getName().equals("Null"), "suspicious node field: %s", field);
                     GraalInternalError.guarantee(!INPUT_LIST_CLASS.isAssignableFrom(type), "suspicious node input list field: %s", field);
                     GraalInternalError.guarantee(!SUCCESSOR_LIST_CLASS.isAssignableFrom(type), "suspicious node successor list field: %s", field);
-                    data.add(new FieldInfo(offset, field.getName(), type));
+                    super.scanField(field, offset);
                 }
             }
         }

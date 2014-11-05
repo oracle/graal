@@ -28,8 +28,6 @@ import java.util.*;
 
 import sun.misc.*;
 
-import com.oracle.graal.compiler.common.FieldIntrospection.FieldInfo;
-
 /**
  * Describes fields in a class, primarily for access via {@link Unsafe}.
  */
@@ -50,13 +48,19 @@ public class Fields {
      */
     private final Class<?>[] types;
 
-    public Fields(ArrayList<? extends FieldInfo> fields) {
+    public static Fields forClass(Class<?> clazz, Class<?> endClazz, boolean includeTransient, FieldsScanner.CalcOffset calcOffset) {
+        FieldsScanner scanner = new FieldsScanner(calcOffset == null ? new FieldsScanner.DefaultCalcOffset() : calcOffset);
+        scanner.scan(clazz, endClazz, includeTransient);
+        return new Fields(scanner.data);
+    }
+
+    public Fields(ArrayList<? extends FieldsScanner.FieldInfo> fields) {
         Collections.sort(fields);
         this.offsets = new long[fields.size()];
         this.names = new String[offsets.length];
         this.types = new Class[offsets.length];
         int index = 0;
-        for (FieldInfo f : fields) {
+        for (FieldsScanner.FieldInfo f : fields) {
             offsets[index] = f.offset;
             names[index] = f.name;
             types[index] = f.type;
@@ -71,19 +75,40 @@ public class Fields {
         return offsets.length;
     }
 
-    public static void translateInto(Fields fields, ArrayList<FieldInfo> infos) {
+    public static void translateInto(Fields fields, ArrayList<FieldsScanner.FieldInfo> infos) {
         for (int index = 0; index < fields.getCount(); index++) {
-            infos.add(new FieldInfo(fields.offsets[index], fields.names[index], fields.types[index]));
+            infos.add(new FieldsScanner.FieldInfo(fields.offsets[index], fields.names[index], fields.types[index]));
         }
     }
 
     /**
-     * Copies fields from {@code from} to {@code to}. The objects must be of the exact same type.
+     * Function enabling an object field value to be replaced with another value when being copied
+     * within {@link Fields#copy(Object, Object, ObjectTransformer)}.
+     */
+    @FunctionalInterface
+    public interface ObjectTransformer {
+        Object apply(int index, Object from);
+    }
+
+    /**
+     * Copies fields from {@code from} to {@code to}, both of which must be of the same type.
      *
-     * @param from the object from which the fields should be copied.
-     * @param to the object to which the fields should be copied.
+     * @param from the object from which the fields should be copied
+     * @param to the object to which the fields should be copied
      */
     public void copy(Object from, Object to) {
+        copy(from, to, null);
+    }
+
+    /**
+     * Copies fields from {@code from} to {@code to}, both of which must be of the same type.
+     *
+     * @param from the object from which the fields should be copied
+     * @param to the object to which the fields should be copied
+     * @param trans function to applied to object field values as they are copied. If {@code null},
+     *            the value is copied unchanged.
+     */
+    public void copy(Object from, Object to, ObjectTransformer trans) {
         assert from.getClass() == to.getClass();
         for (int index = 0; index < offsets.length; index++) {
             long offset = offsets[index];
@@ -109,7 +134,8 @@ public class Fields {
                     assert false : "unhandled property type: " + type;
                 }
             } else {
-                unsafe.putObject(to, offset, unsafe.getObject(from, offset));
+                Object obj = unsafe.getObject(from, offset);
+                unsafe.putObject(to, offset, trans == null ? obj : trans.apply(index, obj));
             }
         }
     }

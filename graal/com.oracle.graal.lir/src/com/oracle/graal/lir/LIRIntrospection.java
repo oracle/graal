@@ -96,7 +96,7 @@ abstract class LIRIntrospection extends FieldIntrospection {
      */
     protected Values values;
 
-    protected static class ValueFieldInfo extends FieldInfo {
+    protected static class ValueFieldInfo extends FieldsScanner.FieldInfo {
 
         final EnumSet<OperandFlag> flags;
 
@@ -110,7 +110,7 @@ abstract class LIRIntrospection extends FieldIntrospection {
          * Sorts non-array fields before array fields.
          */
         @Override
-        public int compareTo(FieldInfo o) {
+        public int compareTo(FieldsScanner.FieldInfo o) {
             if (VALUE_ARRAY_CLASS.isAssignableFrom(o.type)) {
                 if (!VALUE_ARRAY_CLASS.isAssignableFrom(type)) {
                     return -1;
@@ -138,12 +138,12 @@ abstract class LIRIntrospection extends FieldIntrospection {
         public final ArrayList<ValueFieldInfo> values = new ArrayList<>();
     }
 
-    protected abstract static class FieldScanner extends BaseFieldScanner {
+    protected abstract static class LIRFieldsScanner extends FieldsScanner {
 
         public final Map<Class<? extends Annotation>, OperandModeAnnotation> valueAnnotations;
-        public final ArrayList<FieldInfo> states = new ArrayList<>();
+        public final ArrayList<FieldsScanner.FieldInfo> states = new ArrayList<>();
 
-        public FieldScanner(CalcOffset calc) {
+        public LIRFieldsScanner(FieldsScanner.CalcOffset calc) {
             super(calc);
             valueAnnotations = new HashMap<>();
         }
@@ -182,7 +182,7 @@ abstract class LIRIntrospection extends FieldIntrospection {
             } else {
                 assert getOperandModeAnnotation(field) == null : "Field must not have operand mode annotation: " + field;
                 assert field.getAnnotation(LIRInstruction.State.class) == null : "Field must not have state annotation: " + field;
-                data.add(new FieldInfo(offset, field.getName(), type));
+                super.scanField(field, offset);
             }
         }
 

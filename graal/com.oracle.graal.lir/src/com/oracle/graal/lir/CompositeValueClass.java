@@ -58,22 +58,22 @@ public class CompositeValueClass extends LIRIntrospection {
     }
 
     public CompositeValueClass(Class<? extends CompositeValue> clazz) {
-        this(clazz, new DefaultCalcOffset());
+        this(clazz, new FieldsScanner.DefaultCalcOffset());
     }
 
-    public CompositeValueClass(Class<? extends CompositeValue> clazz, CalcOffset calcOffset) {
+    public CompositeValueClass(Class<? extends CompositeValue> clazz, FieldsScanner.CalcOffset calcOffset) {
         super(clazz);
 
-        ValueFieldScanner vfs = new ValueFieldScanner(calcOffset);
-        vfs.scan(clazz, true);
+        CompositeValueFieldsScanner vfs = new CompositeValueFieldsScanner(calcOffset);
+        vfs.scan(clazz, CompositeValue.class, false);
 
         values = new Values(vfs.valueAnnotations.get(CompositeValue.Component.class));
         data = new Fields(vfs.data);
     }
 
-    private static class ValueFieldScanner extends FieldScanner {
+    private static class CompositeValueFieldsScanner extends LIRFieldsScanner {
 
-        public ValueFieldScanner(CalcOffset calc) {
+        public CompositeValueFieldsScanner(FieldsScanner.CalcOffset calc) {
             super(calc);
             valueAnnotations.put(CompositeValue.Component.class, new OperandModeAnnotation());
         }

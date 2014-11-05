@@ -63,14 +63,14 @@ public class LIRInstructionClass extends LIRIntrospection {
     private int opcodeIndex;
 
     private LIRInstructionClass(Class<? extends LIRInstruction> clazz) {
-        this(clazz, new DefaultCalcOffset());
+        this(clazz, new FieldsScanner.DefaultCalcOffset());
     }
 
-    public LIRInstructionClass(Class<? extends LIRInstruction> clazz, CalcOffset calcOffset) {
+    public LIRInstructionClass(Class<? extends LIRInstruction> clazz, FieldsScanner.CalcOffset calcOffset) {
         super(clazz);
         assert INSTRUCTION_CLASS.isAssignableFrom(clazz);
 
-        InstructionFieldScanner ifs = new InstructionFieldScanner(calcOffset);
+        LIRInstructionFieldsScanner ifs = new LIRInstructionFieldsScanner(calcOffset);
         ifs.scan(clazz);
 
         uses = new Values(ifs.valueAnnotations.get(LIRInstruction.Use.class));
@@ -89,16 +89,16 @@ public class LIRInstructionClass extends LIRIntrospection {
         }
     }
 
-    private static class InstructionFieldScanner extends FieldScanner {
+    private static class LIRInstructionFieldsScanner extends LIRFieldsScanner {
 
         private String opcodeConstant;
 
         /**
          * Field (if any) annotated by {@link Opcode}.
          */
-        private FieldInfo opcodeField;
+        private FieldsScanner.FieldInfo opcodeField;
 
-        public InstructionFieldScanner(CalcOffset calc) {
+        public LIRInstructionFieldsScanner(FieldsScanner.CalcOffset calc) {
             super(calc);
 
             valueAnnotations.put(LIRInstruction.Use.class, new OperandModeAnnotation());
@@ -134,7 +134,7 @@ public class LIRInstructionClass extends LIRIntrospection {
             }
             opcodeField = null;
 
-            super.scan(clazz, true);
+            super.scan(clazz, LIRInstructionBase.class, false);
 
             if (opcodeConstant == null && opcodeField == null) {
                 opcodeConstant = clazz.getSimpleName();
@@ -150,7 +150,7 @@ public class LIRInstructionClass extends LIRIntrospection {
             if (STATE_CLASS.isAssignableFrom(type)) {
                 assert getOperandModeAnnotation(field) == null : "Field must not have operand mode annotation: " + field;
                 assert field.getAnnotation(LIRInstruction.State.class) != null : "Field must have state annotation: " + field;
-                states.add(new FieldInfo(offset, field.getName(), type));
+                states.add(new FieldsScanner.FieldInfo(offset, field.getName(), type));
             } else {
                 super.scanField(field, offset);
             }
