@@ -26,7 +26,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
 
 /**
- * Common interface for all HotSpot {@link JavaType} implementations.
+ * Common base class for all HotSpot {@link JavaType} implementations.
  */
 public abstract class HotSpotJavaType extends CompilerObject implements JavaType {
 
