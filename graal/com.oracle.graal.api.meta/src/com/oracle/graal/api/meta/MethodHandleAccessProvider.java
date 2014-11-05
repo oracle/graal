@@ -20,11 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.api.replacements;
+package com.oracle.graal.api.meta;
 
 import java.lang.invoke.*;
-
-import com.oracle.graal.api.meta.*;
 
 /**
  * Interface to access the internals of the {@link MethodHandle} implementation of the VM. An

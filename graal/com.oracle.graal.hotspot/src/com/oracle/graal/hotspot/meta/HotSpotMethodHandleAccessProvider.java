@@ -27,7 +27,6 @@ import static com.oracle.graal.hotspot.meta.HotSpotResolvedJavaType.*;
 import static com.oracle.graal.hotspot.meta.HotSpotResolvedObjectTypeImpl.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.hotspot.*;
 

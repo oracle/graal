@@ -446,8 +446,6 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider,
             return (T) this;
         } else if (clazz == SnippetReflectionProvider.class) {
             return (T) getHostProviders().getSnippetReflection();
-        } else if (clazz == MethodHandleAccessProvider.class) {
-            return (T) getHostProviders().getMethodHandleAccess();
         } else if (clazz == EventProvider.class) {
             return (T) eventProvider;
         }

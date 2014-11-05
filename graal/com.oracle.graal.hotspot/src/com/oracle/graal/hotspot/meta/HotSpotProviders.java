@@ -38,17 +38,15 @@ public class HotSpotProviders extends Providers {
     private final SuitesProvider suites;
     private final HotSpotRegistersProvider registers;
     private final SnippetReflectionProvider snippetReflection;
-    private final HotSpotMethodHandleAccessProvider methodHandleAccess;
 
     public HotSpotProviders(HotSpotMetaAccessProvider metaAccess, HotSpotCodeCacheProvider codeCache, ConstantReflectionProvider constantReflection, HotSpotForeignCallsProvider foreignCalls,
                     LoweringProvider lowerer, Replacements replacements, HotSpotDisassemblerProvider disassembler, SuitesProvider suites, HotSpotRegistersProvider registers,
-                    SnippetReflectionProvider snippetReflection, HotSpotMethodHandleAccessProvider methodHandleAccess) {
+                    SnippetReflectionProvider snippetReflection) {
         super(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, replacements);
         this.disassembler = disassembler;
         this.suites = suites;
         this.registers = registers;
         this.snippetReflection = snippetReflection;
-        this.methodHandleAccess = methodHandleAccess;
     }
 
     @Override
@@ -80,9 +78,5 @@ public class HotSpotProviders extends Providers {
 
     public SnippetReflectionProvider getSnippetReflection() {
         return snippetReflection;
-    }
-
-    public HotSpotMethodHandleAccessProvider getMethodHandleAccess() {
-        return methodHandleAccess;
     }
 }

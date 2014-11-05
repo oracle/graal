@@ -68,9 +68,7 @@ public class SPARCHotSpotBackendFactory implements HotSpotBackendFactory {
         HotSpotReplacementsImpl replacements = new HotSpotReplacementsImpl(p, snippetReflection, runtime.getConfig(), assumptions, target);
         HotSpotDisassemblerProvider disassembler = new HotSpotDisassemblerProvider(runtime);
         HotSpotSuitesProvider suites = new HotSpotSuitesProvider(runtime);
-        HotSpotMethodHandleAccessProvider methodHandleAccess = new HotSpotMethodHandleAccessProvider();
-        HotSpotProviders providers = new HotSpotProviders(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, replacements, disassembler, suites, registers, snippetReflection,
-                        methodHandleAccess);
+        HotSpotProviders providers = new HotSpotProviders(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, replacements, disassembler, suites, registers, snippetReflection);
 
         return new SPARCHotSpotBackend(runtime, providers);
     }

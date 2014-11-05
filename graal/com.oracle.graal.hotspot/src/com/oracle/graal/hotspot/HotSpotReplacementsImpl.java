@@ -91,7 +91,7 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
              * the VM replicates them for every signature that they are actually used for.
              * Therefore, we cannot use the usual annotation-driven mechanism to define the
              */
-            if (MethodHandleNode.lookupMethodHandleIntrinsic(method) != null) {
+            if (MethodHandleNode.lookupMethodHandleIntrinsic(method, providers.getMetaAccess().getMethodHandleAccess()) != null) {
                 return MethodHandleNode.class;
             }
         }

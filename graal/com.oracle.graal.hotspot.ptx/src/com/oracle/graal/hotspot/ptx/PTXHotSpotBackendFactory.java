@@ -77,8 +77,7 @@ public class PTXHotSpotBackendFactory implements HotSpotBackendFactory {
             try (InitTimer rt = timer("create HotSpotRegisters provider")) {
                 registers = new HotSpotRegisters(PTX.tid, Register.None, Register.None);
             }
-            providers = new HotSpotProviders(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, replacements, disassembler, suites, registers, host.getSnippetReflection(),
-                            host.getMethodHandleAccess());
+            providers = new HotSpotProviders(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, replacements, disassembler, suites, registers, host.getSnippetReflection());
         }
         try (InitTimer rt = timer("instantiate backend")) {
             return new PTXHotSpotBackend(runtime, providers);

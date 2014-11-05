@@ -113,7 +113,6 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
         Replacements replacements;
         HotSpotDisassemblerProvider disassembler;
         HotSpotSuitesProvider suites;
-        HotSpotMethodHandleAccessProvider methodHandleAccess;
         try (InitTimer t = timer("create providers")) {
             try (InitTimer rt = timer("create HotSpotRegisters provider")) {
                 registers = createRegisters();
@@ -155,10 +154,7 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
             try (InitTimer rt = timer("create Suites provider")) {
                 suites = createSuites(runtime);
             }
-            try (InitTimer rt = timer("create MethodHandleAccess provider")) {
-                methodHandleAccess = new HotSpotMethodHandleAccessProvider();
-            }
-            providers = new HotSpotProviders(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, replacements, disassembler, suites, registers, snippetReflection, methodHandleAccess);
+            providers = new HotSpotProviders(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, replacements, disassembler, suites, registers, snippetReflection);
         }
         try (InitTimer rt = timer("instantiate backend")) {
             return createBackend(runtime, providers);

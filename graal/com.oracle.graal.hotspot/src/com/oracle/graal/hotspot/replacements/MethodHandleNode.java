@@ -22,14 +22,11 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
-
 import java.lang.invoke.*;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.api.replacements.MethodHandleAccessProvider.IntrinsicMethod;
+import com.oracle.graal.api.meta.MethodHandleAccessProvider.IntrinsicMethod;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
@@ -48,9 +45,6 @@ import com.oracle.graal.replacements.nodes.*;
 @NodeInfo
 public class MethodHandleNode extends MacroStateSplitNode implements Simplifiable {
 
-    /** The method that this node is representing. */
-    protected final IntrinsicMethod intrinsicMethod;
-
     // Replacement method data
     protected ResolvedJavaMethod replacementTargetMethod;
     protected JavaType replacementReturnType;
@@ -64,8 +58,6 @@ public class MethodHandleNode extends MacroStateSplitNode implements Simplifiabl
         super(invoke);
 
         MethodCallTargetNode callTarget = (MethodCallTargetNode) invoke.callTarget();
-        intrinsicMethod = lookupMethodHandleIntrinsic(callTarget.targetMethod());
-        assert intrinsicMethod != null;
 
         // See if we need to save some replacement method data.
         if (callTarget instanceof SelfReplacingMethodCallTargetNode) {
@@ -83,22 +75,23 @@ public class MethodHandleNode extends MacroStateSplitNode implements Simplifiabl
      * Returns the method handle method intrinsic identifier for the provided method, or
      * {@code null} if the method is not a method that can be handled by this class.
      */
-    public static IntrinsicMethod lookupMethodHandleIntrinsic(ResolvedJavaMethod method) {
-        return methodHandleAccess().lookupMethodHandleIntrinsic(method);
+    public static IntrinsicMethod lookupMethodHandleIntrinsic(ResolvedJavaMethod method, MethodHandleAccessProvider methodHandleAccess) {
+        return methodHandleAccess.lookupMethodHandleIntrinsic(method);
     }
 
     @Override
     public void simplify(SimplifierTool tool) {
         InvokeNode invoke;
+        IntrinsicMethod intrinsicMethod = lookupMethodHandleIntrinsic(targetMethod, tool.getMetaAccess().getMethodHandleAccess());
         switch (intrinsicMethod) {
             case INVOKE_BASIC:
-                invoke = getInvokeBasicTarget();
+                invoke = getInvokeBasicTarget(tool, intrinsicMethod);
                 break;
             case LINK_TO_STATIC:
             case LINK_TO_SPECIAL:
             case LINK_TO_VIRTUAL:
             case LINK_TO_INTERFACE:
-                invoke = getLinkToTarget();
+                invoke = getLinkToTarget(tool, intrinsicMethod);
                 break;
             default:
                 throw GraalInternalError.shouldNotReachHere();
@@ -130,23 +123,15 @@ public class MethodHandleNode extends MacroStateSplitNode implements Simplifiabl
     }
 
     /**
-     * Returns the {@link MethodHandleAccessProvider} that provides introspection of internal
-     * {@link MethodHandle} data.
-     */
-    private static MethodHandleAccessProvider methodHandleAccess() {
-        return runtime().getHostProviders().getMethodHandleAccess();
-    }
-
-    /**
      * Used for the MethodHandle.invokeBasic method (the {@link IntrinsicMethod#INVOKE_BASIC }
      * method) to get the target {@link InvokeNode} if the method handle receiver is constant.
      *
      * @return invoke node for the {@link java.lang.invoke.MethodHandle} target
      */
-    protected InvokeNode getInvokeBasicTarget() {
+    protected InvokeNode getInvokeBasicTarget(SimplifierTool tool, IntrinsicMethod intrinsicMethod) {
         ValueNode methodHandleNode = getReceiver();
         if (methodHandleNode.isConstant()) {
-            return getTargetInvokeNode(methodHandleAccess().resolveInvokeBasicTarget(methodHandleNode.asJavaConstant(), false));
+            return getTargetInvokeNode(tool.getMetaAccess().getMethodHandleAccess().resolveInvokeBasicTarget(methodHandleNode.asJavaConstant(), false), intrinsicMethod);
         }
         return null;
     }
@@ -159,10 +144,10 @@ public class MethodHandleNode extends MacroStateSplitNode implements Simplifiabl
      *
      * @return invoke node for the member name target
      */
-    protected InvokeNode getLinkToTarget() {
+    protected InvokeNode getLinkToTarget(SimplifierTool tool, IntrinsicMethod intrinsicMethod) {
         ValueNode memberNameNode = getMemberName();
         if (memberNameNode.isConstant()) {
-            return getTargetInvokeNode(methodHandleAccess().resolveLinkToTarget(memberNameNode.asJavaConstant()));
+            return getTargetInvokeNode(tool.getMetaAccess().getMethodHandleAccess().resolveLinkToTarget(memberNameNode.asJavaConstant()), intrinsicMethod);
         }
         return null;
     }
@@ -174,7 +159,7 @@ public class MethodHandleNode extends MacroStateSplitNode implements Simplifiabl
      * @param target the target, already loaded from the member name node
      * @return invoke node for the member name target
      */
-    private InvokeNode getTargetInvokeNode(ResolvedJavaMethod target) {
+    private InvokeNode getTargetInvokeNode(ResolvedJavaMethod target, IntrinsicMethod intrinsicMethod) {
         if (target == null) {
             return null;
         }
@@ -205,18 +190,18 @@ public class MethodHandleNode extends MacroStateSplitNode implements Simplifiabl
             if (receiverType != null) {
                 ResolvedJavaMethod concreteMethod = receiverType.findUniqueConcreteMethod(target);
                 if (concreteMethod != null) {
-                    return createTargetInvokeNode(concreteMethod);
+                    return createTargetInvokeNode(concreteMethod, intrinsicMethod);
                 }
             }
         }
 
         if (target.canBeStaticallyBound()) {
-            return createTargetInvokeNode(target);
+            return createTargetInvokeNode(target, intrinsicMethod);
         }
 
         ResolvedJavaMethod concreteMethod = target.getDeclaringClass().findUniqueConcreteMethod(target);
         if (concreteMethod != null) {
-            return createTargetInvokeNode(concreteMethod);
+            return createTargetInvokeNode(concreteMethod, intrinsicMethod);
         }
 
         return null;
@@ -250,7 +235,7 @@ public class MethodHandleNode extends MacroStateSplitNode implements Simplifiabl
      * @param target the method to be called
      * @return invoke node for the member name target
      */
-    private InvokeNode createTargetInvokeNode(ResolvedJavaMethod target) {
+    private InvokeNode createTargetInvokeNode(ResolvedJavaMethod target, IntrinsicMethod intrinsicMethod) {
         InvokeKind targetInvokeKind = target.isStatic() ? InvokeKind.Static : InvokeKind.Special;
         JavaType targetReturnType = target.getSignature().getReturnType(null);
 
