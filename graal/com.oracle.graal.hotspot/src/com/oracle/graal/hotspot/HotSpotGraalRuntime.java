@@ -257,7 +257,7 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider,
 
     /**
      * Graal mirrors are stored as a {@link ClassValue} associated with the {@link Class} of the
-     * type. This data structure stores both {@link HotSpotResolvedJavaMethod} and
+     * type. This data structure stores both {@link HotSpotResolvedObjectType} and
      * {@link HotSpotResolvedPrimitiveType} types.
      */
     private final ClassValue<ResolvedJavaType> graalMirrors = new ClassValue<ResolvedJavaType>() {
@@ -330,7 +330,7 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider,
     /**
      * Gets the Graal mirror for a {@link Class} object.
      *
-     * @return the {@link HotSpotResolvedJavaType} corresponding to {@code javaClass}
+     * @return the {@link ResolvedJavaType} corresponding to {@code javaClass}
      */
     public ResolvedJavaType fromClass(Class<?> javaClass) {
         return graalMirrors.get(javaClass);
