@@ -203,7 +203,7 @@ public class PTX extends Architecture {
         }
 
         Kind kind = (Kind) lirKind;
-        if (category == REG) {
+        if (category.equals(REG)) {
             switch (kind) {
                 case Boolean:
                 case Byte:
@@ -223,7 +223,7 @@ public class PTX extends Architecture {
 
     @Override
     public PlatformKind getLargestStorableKind(RegisterCategory category) {
-        if (category == REG) {
+        if (category.equals(REG)) {
             return Kind.Double;
         } else {
             return Kind.Illegal;

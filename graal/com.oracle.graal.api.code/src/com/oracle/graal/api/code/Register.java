@@ -111,8 +111,8 @@ public final class Register implements Comparable<Register> {
         @Override
         public boolean equals(Object obj) {
             if (obj instanceof RegisterCategory) {
-                RegisterCategory other = (RegisterCategory) obj;
-                return name.equals(other.name);
+                RegisterCategory that = (RegisterCategory) obj;
+                return this.referenceMapOffset == that.referenceMapOffset && this.referenceMapShift == that.referenceMapShift && this.name.equals(that.name);
             }
             return false;
         }
@@ -232,7 +232,7 @@ public final class Register implements Comparable<Register> {
             if (number == other.number) {
                 assert name.equals(other.name);
                 assert encoding == other.encoding;
-                assert registerCategory == other.registerCategory;
+                assert registerCategory.equals(other.registerCategory);
                 return true;
             }
         }

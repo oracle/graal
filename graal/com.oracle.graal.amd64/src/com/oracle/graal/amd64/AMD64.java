@@ -154,7 +154,7 @@ public class AMD64 extends Architecture {
         }
 
         Kind kind = (Kind) platformKind;
-        if (category == CPU) {
+        if (category.equals(CPU)) {
             switch (kind) {
                 case Boolean:
                 case Byte:
@@ -165,7 +165,7 @@ public class AMD64 extends Architecture {
                 case Object:
                     return true;
             }
-        } else if (category == XMM) {
+        } else if (category.equals(XMM)) {
             switch (kind) {
                 case Float:
                 case Double:
@@ -178,9 +178,9 @@ public class AMD64 extends Architecture {
 
     @Override
     public PlatformKind getLargestStorableKind(RegisterCategory category) {
-        if (category == CPU) {
+        if (category.equals(CPU)) {
             return Kind.Long;
-        } else if (category == XMM) {
+        } else if (category.equals(XMM)) {
             return Kind.Double;
         } else {
             return Kind.Illegal;

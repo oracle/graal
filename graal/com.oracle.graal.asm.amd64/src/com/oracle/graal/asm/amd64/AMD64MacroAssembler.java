@@ -180,7 +180,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
     }
 
     public void movflt(Register dst, Register src) {
-        assert dst.getRegisterCategory() == AMD64.XMM && src.getRegisterCategory() == AMD64.XMM;
+        assert dst.getRegisterCategory().equals(AMD64.XMM) && src.getRegisterCategory().equals(AMD64.XMM);
         if (UseXmmRegToRegMoveAll) {
             movaps(dst, src);
         } else {
@@ -189,17 +189,17 @@ public class AMD64MacroAssembler extends AMD64Assembler {
     }
 
     public void movflt(Register dst, AMD64Address src) {
-        assert dst.getRegisterCategory() == AMD64.XMM;
+        assert dst.getRegisterCategory().equals(AMD64.XMM);
         movss(dst, src);
     }
 
     public void movflt(AMD64Address dst, Register src) {
-        assert src.getRegisterCategory() == AMD64.XMM;
+        assert src.getRegisterCategory().equals(AMD64.XMM);
         movss(dst, src);
     }
 
     public void movdbl(Register dst, Register src) {
-        assert dst.getRegisterCategory() == AMD64.XMM && src.getRegisterCategory() == AMD64.XMM;
+        assert dst.getRegisterCategory().equals(AMD64.XMM) && src.getRegisterCategory().equals(AMD64.XMM);
         if (UseXmmRegToRegMoveAll) {
             movapd(dst, src);
         } else {
@@ -208,7 +208,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
     }
 
     public void movdbl(Register dst, AMD64Address src) {
-        assert dst.getRegisterCategory() == AMD64.XMM;
+        assert dst.getRegisterCategory().equals(AMD64.XMM);
         if (UseXmmLoadAndClearUpper) {
             movsd(dst, src);
         } else {
@@ -217,7 +217,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
     }
 
     public void movdbl(AMD64Address dst, Register src) {
-        assert src.getRegisterCategory() == AMD64.XMM;
+        assert src.getRegisterCategory().equals(AMD64.XMM);
         movsd(dst, src);
     }
 
@@ -267,7 +267,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
     }
 
     private AMD64Address trigPrologue(Register value) {
-        assert value.getRegisterCategory() == AMD64.XMM;
+        assert value.getRegisterCategory().equals(AMD64.XMM);
         AMD64Address tmp = new AMD64Address(AMD64.rsp);
         subq(AMD64.rsp, target.getSizeInBytes(Kind.Double));
         movdbl(tmp, value);
@@ -276,7 +276,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
     }
 
     private void trigEpilogue(Register dest, AMD64Address tmp) {
-        assert dest.getRegisterCategory() == AMD64.XMM;
+        assert dest.getRegisterCategory().equals(AMD64.XMM);
         fstpd(tmp);
         movdbl(dest, tmp);
         addq(AMD64.rsp, target.getSizeInBytes(Kind.Double));

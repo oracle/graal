@@ -217,7 +217,7 @@ public class HSAIL extends Architecture {
             return false;
         }
         Kind kind = (Kind) platformKind;
-        if (category == CPU32) {
+        if (category.equals(CPU32)) {
             switch (kind) {
                 case Boolean:
                 case Byte:
@@ -231,7 +231,7 @@ public class HSAIL extends Architecture {
                 case Object:
                     return false;
             }
-        } else if (category == CPU64 || category == CPU128) {
+        } else if (category.equals(CPU64) || category.equals(CPU128)) {
             switch (kind) {
                 case Boolean:
                 case Byte:
@@ -250,9 +250,9 @@ public class HSAIL extends Architecture {
 
     @Override
     public PlatformKind getLargestStorableKind(RegisterCategory category) {
-        if (category == CPU32) {
+        if (category.equals(CPU32)) {
             return Kind.Int;
-        } else if (category == CPU64 || category == CPU128) {
+        } else if (category.equals(CPU64) || category.equals(CPU128)) {
             return Kind.Long;
         } else {
             return Kind.Illegal;

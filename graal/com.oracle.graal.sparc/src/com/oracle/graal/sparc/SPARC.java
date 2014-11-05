@@ -237,7 +237,7 @@ public class SPARC extends Architecture {
         }
 
         Kind kind = (Kind) lirKind;
-        if (category == CPU) {
+        if (category.equals(CPU)) {
             switch (kind) {
                 case Boolean:
                 case Byte:
@@ -248,7 +248,7 @@ public class SPARC extends Architecture {
                 case Object:
                     return true;
             }
-        } else if (category == FPU) {
+        } else if (category.equals(FPU)) {
             switch (kind) {
                 case Float:
                 case Double:
@@ -260,9 +260,9 @@ public class SPARC extends Architecture {
 
     @Override
     public PlatformKind getLargestStorableKind(RegisterCategory category) {
-        if (category == CPU) {
+        if (category.equals(CPU)) {
             return Kind.Long;
-        } else if (category == FPU) {
+        } else if (category.equals(FPU)) {
             return Kind.Double;
         } else {
             return Kind.Illegal;
