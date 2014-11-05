@@ -57,7 +57,7 @@ public interface FrameMapBuilder {
      *            list
      * @return the first reserved stack slot (i.e., at the lowest address)
      */
-    VirtualStackSlot allocateStackSlots(int slots, BitSet objects, List<StackSlot> outObjectStackSlots);
+    VirtualStackSlot allocateStackSlots(int slots, BitSet objects, List<VirtualStackSlot> outObjectStackSlots);
 
     RegisterConfig getRegisterConfig();
 

@@ -70,7 +70,7 @@ public class ForwardingFrameMapBuilder implements FrameMapBuilder {
         return frameMap.allocateNewSpillSlot(kind, 0);
     }
 
-    public StackSlot allocateStackSlots(int slots, BitSet objects, List<StackSlot> outObjectStackSlots) {
+    public VirtualStackSlot allocateStackSlots(int slots, BitSet objects, List<VirtualStackSlot> outObjectStackSlots) {
         if (slots == 0) {
             return null;
         }
