@@ -29,17 +29,18 @@ import java.util.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.FrameMapBuilder.FrameMappingTool;
 import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 import com.oracle.graal.lir.gen.*;
 
-public class AMD64HotSpotLIRGenerationResult extends LIRGenerationResultBase {
+public class AMD64HotSpotLIRGenerationResult extends LIRGenerationResultBase implements FrameMapBuilder.FrameMappable {
 
     /**
      * The slot reserved for storing the original return address when a frame is marked for
      * deoptimization. The return address slot in the callee is overwritten with the address of a
      * deoptimization stub.
      */
-    private VirtualStackSlot deoptimizationRescueSlot;
+    private StackSlotValue deoptimizationRescueSlot;
     private final Object stub;
 
     /**
@@ -61,7 +62,7 @@ public class AMD64HotSpotLIRGenerationResult extends LIRGenerationResultBase {
         return asStackSlot(deoptimizationRescueSlot);
     }
 
-    public final void setDeoptimizationRescueSlot(VirtualStackSlot stackSlot) {
+    public final void setDeoptimizationRescueSlot(StackSlotValue stackSlot) {
         this.deoptimizationRescueSlot = stackSlot;
     }
 
@@ -73,4 +74,7 @@ public class AMD64HotSpotLIRGenerationResult extends LIRGenerationResultBase {
         return calleeSaveInfo;
     }
 
+    public void map(FrameMappingTool tool) {
+        deoptimizationRescueSlot = tool.getStackSlot(asVirtualStackSlot(deoptimizationRescueSlot));
+    }
 }

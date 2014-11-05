@@ -22,17 +22,22 @@
  */
 package com.oracle.graal.lir;
 
+import static com.oracle.graal.api.code.ValueUtil.*;
+
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.cfg.*;
-import com.oracle.graal.lir.StandardOp.*;
+import com.oracle.graal.lir.FrameMapBuilder.FrameMappable;
+import com.oracle.graal.lir.FrameMapBuilder.FrameMappingTool;
+import com.oracle.graal.lir.StandardOp.BlockEndOp;
+import com.oracle.graal.lir.StandardOp.LabelOp;
 
 /**
  * This class implements the overall container for the LIR graph and directs its construction,
  * optimization, and finalization.
  */
-public class LIR {
+public class LIR implements FrameMappable {
 
     private final AbstractControlFlowGraph<?> cfg;
 
@@ -218,4 +223,19 @@ public class LIR {
             }
         }
     }
+
+    public void map(FrameMappingTool tool) {
+        ValueProcedure updateProc = (value, mode, flags) -> {
+            if (isVirtualStackSlot(value)) {
+                return tool.getStackSlot(asVirtualStackSlot(value));
+            }
+            return value;
+        };
+        for (AbstractBlock<?> block : getControlFlowGraph().getBlocks()) {
+            for (LIRInstruction inst : getLIRforBlock(block)) {
+                inst.forEachAlive(updateProc);
+            }
+        }
+    }
+
 }

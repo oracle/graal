@@ -35,6 +35,22 @@ import com.oracle.graal.lir.gen.*;
 public interface FrameMapBuilder {
 
     /**
+     * A tool to get the real stack slot from a virtual stack slot.
+     */
+    @FunctionalInterface
+    interface FrameMappingTool {
+        StackSlot getStackSlot(VirtualStackSlot slot);
+    }
+
+    /**
+     * This interface should be implemented by all classes that store virtual stack slots to convert
+     * them into real stack slots when {@link FrameMapBuilder#buildFrameMap} is called.
+     */
+    interface FrameMappable {
+        void map(FrameMappingTool tool);
+    }
+
+    /**
      * Reserves a spill slot in the frame of the method being compiled. The returned slot is aligned
      * on its natural alignment, i.e., an 8-byte spill slot is aligned at an 8-byte boundary, unless
      * overridden by a subclass.
@@ -76,6 +92,12 @@ public interface FrameMapBuilder {
      * @param cc The calling convention for the called method.
      */
     void callsMethod(CallingConvention cc);
+
+    /**
+     * Registers a FrameMappable class so that virtual stack slots can be changed to real stack
+     * slots.
+     */
+    void requireMapping(FrameMappable mappable);
 
     /**
      * Creates a {@linkplain FrameMap} based on the information collected by this

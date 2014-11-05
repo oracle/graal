@@ -52,9 +52,11 @@ public class DelayedFrameMapBuilder implements FrameMapBuilder {
         this.factory = factory;
         this.stackSlots = new ArrayList<>();
         this.calls = new ArrayList<>();
+        this.mappables = new ArrayList<>();
     }
 
     private Set<VirtualStackSlot> freedSlots;
+    private final List<FrameMappable> mappables;
 
     public VirtualStackSlot allocateSpillSlot(LIRKind kind) {
         if (freedSlots != null) {
@@ -186,7 +188,9 @@ public class DelayedFrameMapBuilder implements FrameMapBuilder {
         for (CallingConvention cc : calls) {
             frameMap.callsMethod(cc);
         }
-        // end fill
+        // rewrite
+        mappables.forEach(m -> m.map(mapping::get));
+        //
         if (freedSlots != null) {
             // If the freed slots cover the complete spill area (except for the return
             // address slot), then the spill size is reset to its initial value.
@@ -210,6 +214,10 @@ public class DelayedFrameMapBuilder implements FrameMapBuilder {
             StackSlot slot = virtualSlot.transform(frameMap);
             mapping.put(virtualSlot, slot);
         }
+    }
+
+    public void requireMapping(FrameMappable mappable) {
+        this.mappables.add(mappable);
     }
 
 }
