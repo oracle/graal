@@ -65,6 +65,9 @@ public abstract class AbstractDebugCompilationListener implements GraalTruffleCo
     public void notifyShutdown(TruffleRuntime runtime) {
     }
 
+    public void notifyStartup(TruffleRuntime runtime) {
+    }
+
     public static void log(int indent, String msg, String details, Map<String, Object> properties) {
         StringBuilder sb = new StringBuilder();
         sb.append(String.format("[truffle] %-16s ", msg));

@@ -90,4 +90,9 @@ public interface GraalTruffleCompilationListener {
      */
     void notifyShutdown(TruffleRuntime runtime);
 
+    /**
+     * Invoked as soon as the compiler is ready to use.
+     */
+    void notifyStartup(TruffleRuntime runtime);
+
 }
