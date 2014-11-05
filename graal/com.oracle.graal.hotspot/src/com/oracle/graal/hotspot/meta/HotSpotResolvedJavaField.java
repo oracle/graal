@@ -210,7 +210,7 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
              * have a non-default value.
              */
             assert !isStatic();
-            Object object = HotSpotObjectConstant.asObject(receiver);
+            Object object = HotSpotObjectConstantImpl.asObject(receiver);
 
             // Canonicalization may attempt to process an unsafe read before
             // processing a guard (e.g. a null check or a type check) for this read
@@ -236,7 +236,7 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
                         if (isInObject(object)) {
                             assert getName().equals("value") : "Unexpected field in " + StableOptionValue.class.getName() + " hierarchy:" + this;
                             StableOptionValue<?> option = (StableOptionValue<?>) object;
-                            return HotSpotObjectConstant.forObject(option.getValue());
+                            return HotSpotObjectConstantImpl.forObject(option.getValue());
                         }
                     }
                 }
@@ -263,12 +263,12 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
         if (receiver == null) {
             assert isStatic();
             if (holder.isInitialized()) {
-                return runtime().getHostProviders().getConstantReflection().readUnsafeConstant(getKind(), HotSpotObjectConstant.forObject(holder.mirror()), offset);
+                return runtime().getHostProviders().getConstantReflection().readUnsafeConstant(getKind(), HotSpotObjectConstantImpl.forObject(holder.mirror()), offset);
             }
             return null;
         } else {
             assert !isStatic();
-            assert receiver.isNonNull() && isInObject(HotSpotObjectConstant.asObject(receiver));
+            assert receiver.isNonNull() && isInObject(HotSpotObjectConstantImpl.asObject(receiver));
             return runtime().getHostProviders().getConstantReflection().readUnsafeConstant(getKind(), receiver, offset);
         }
     }

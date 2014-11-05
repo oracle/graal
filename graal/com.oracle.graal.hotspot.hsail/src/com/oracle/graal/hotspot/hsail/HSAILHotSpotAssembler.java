@@ -46,7 +46,7 @@ public class HSAILHotSpotAssembler extends HSAILAssembler {
         if (src.isNull()) {
             emitString("mov_b64 " + regName + ", 0x0;  // null object");
         } else {
-            Object obj = HotSpotObjectConstant.asObject(src);
+            Object obj = HotSpotObjectConstantImpl.asObject(src);
             // Get a JNI reference handle to the object.
             long refHandle = OkraUtil.getRefHandle(obj);
             // Get the clasname of the object for emitting a comment.

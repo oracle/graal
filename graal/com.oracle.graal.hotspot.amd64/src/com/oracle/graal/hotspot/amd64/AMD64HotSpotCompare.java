@@ -55,7 +55,7 @@ public class AMD64HotSpotCompare {
                 // compressed null
                 masm.testl(asRegister(x), asRegister(x));
             } else if (y instanceof HotSpotObjectConstant) {
-                if (HotSpotObjectConstant.isCompressed(y)) {
+                if (HotSpotObjectConstantImpl.isCompressed(y)) {
                     // compressed oop
                     crb.recordInlineDataInCode(y);
                     masm.cmpl(asRegister(x), 0xDEADDEAD);
@@ -96,7 +96,7 @@ public class AMD64HotSpotCompare {
                 // compressed null
                 masm.cmpl(address.toAddress(), 0);
             } else if (y instanceof HotSpotObjectConstant) {
-                if (HotSpotObjectConstant.isCompressed(y) && crb.target.inlineObjects) {
+                if (HotSpotObjectConstantImpl.isCompressed(y) && crb.target.inlineObjects) {
                     // compressed oop
                     crb.recordInlineDataInCode(y);
                     masm.cmpl(address.toAddress(), 0xDEADDEAD);

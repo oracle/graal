@@ -60,7 +60,7 @@ public class HotSpotNodeClassSubstitutions {
             if (param.isNull() || ImmutableCode.getValue()) {
                 return null;
             }
-            return HotSpotObjectConstant.forObject(NodeClass.get((Class<?>) HotSpotObjectConstant.asObject(param)));
+            return HotSpotObjectConstantImpl.forObject(NodeClass.get((Class<?>) HotSpotObjectConstantImpl.asObject(param)));
         }
     }
 

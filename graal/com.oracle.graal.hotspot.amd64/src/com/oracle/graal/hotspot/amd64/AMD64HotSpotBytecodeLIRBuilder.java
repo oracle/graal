@@ -87,7 +87,7 @@ public class AMD64HotSpotBytecodeLIRBuilder extends BytecodeLIRBuilder {
 
     @Override
     public JavaConstant getClassConstant(ResolvedJavaType declaringClass) {
-        return HotSpotObjectConstant.forObject(((HotSpotResolvedJavaType) declaringClass).mirror());
+        return HotSpotObjectConstantImpl.forObject(((HotSpotResolvedJavaType) declaringClass).mirror());
     }
 
     @Override

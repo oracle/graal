@@ -49,10 +49,15 @@ public class HotSpotConstantReflectionProvider implements ConstantReflectionProv
 
     @Override
     public Integer readArrayLength(JavaConstant array) {
-        if (array.getKind() != Kind.Object || array.isNull() || !HotSpotObjectConstant.asObject(array).getClass().isArray()) {
+        if (array.getKind() != Kind.Object || array.isNull()) {
             return null;
         }
-        return Array.getLength(HotSpotObjectConstant.asObject(array));
+
+        Object arrayObject = HotSpotObjectConstantImpl.asObject(array);
+        if (!arrayObject.getClass().isArray()) {
+            return null;
+        }
+        return Array.getLength(arrayObject);
     }
 
     @Override
@@ -60,7 +65,7 @@ public class HotSpotConstantReflectionProvider implements ConstantReflectionProv
         Object base;
         long displacement;
         if (baseConstant.getKind() == Kind.Object) {
-            base = HotSpotObjectConstant.asObject(baseConstant);
+            base = HotSpotObjectConstantImpl.asObject(baseConstant);
             displacement = initialDisplacement;
             if (base == null) {
                 return null;
@@ -115,7 +120,7 @@ public class HotSpotConstantReflectionProvider implements ConstantReflectionProv
                 } else {
                     throw GraalInternalError.shouldNotReachHere();
                 }
-                return HotSpotObjectConstant.forObject(o);
+                return HotSpotObjectConstantImpl.forObject(o);
             }
             default:
                 throw GraalInternalError.shouldNotReachHere();
@@ -127,7 +132,7 @@ public class HotSpotConstantReflectionProvider implements ConstantReflectionProv
         Object base;
         long displacement;
         if (baseConstant.getKind() == Kind.Object) {
-            base = HotSpotObjectConstant.asObject(baseConstant);
+            base = HotSpotObjectConstantImpl.asObject(baseConstant);
             displacement = initialDisplacement;
             if (base == null) {
                 return null;
@@ -192,14 +197,14 @@ public class HotSpotConstantReflectionProvider implements ConstantReflectionProv
         if (array.getKind() != Kind.Object || array.isNull()) {
             return null;
         }
-        Object a = HotSpotObjectConstant.asObject(array);
+        Object a = HotSpotObjectConstantImpl.asObject(array);
 
         if (index < 0 || index >= Array.getLength(a)) {
             return null;
         }
 
         if (a instanceof Object[]) {
-            return HotSpotObjectConstant.forObject(((Object[]) a)[index]);
+            return HotSpotObjectConstantImpl.forObject(((Object[]) a)[index]);
         } else {
             return JavaConstant.forBoxedPrimitive(Array.get(a, index));
         }
@@ -210,7 +215,7 @@ public class HotSpotConstantReflectionProvider implements ConstantReflectionProv
         if (!source.getKind().isPrimitive()) {
             return null;
         }
-        return HotSpotObjectConstant.forObject(source.asBoxedPrimitive());
+        return HotSpotObjectConstantImpl.forObject(source.asBoxedPrimitive());
     }
 
     @Override
@@ -218,13 +223,13 @@ public class HotSpotConstantReflectionProvider implements ConstantReflectionProv
         if (!source.getKind().isObject()) {
             return null;
         }
-        return JavaConstant.forBoxedPrimitive(HotSpotObjectConstant.asObject(source));
+        return JavaConstant.forBoxedPrimitive(HotSpotObjectConstantImpl.asObject(source));
     }
 
     @Override
     public ResolvedJavaType asJavaType(JavaConstant constant) {
         if (constant instanceof HotSpotObjectConstant) {
-            Object obj = HotSpotObjectConstant.asObject(constant);
+            Object obj = HotSpotObjectConstantImpl.asObject(constant);
             if (obj instanceof Class) {
                 return runtime.getHostProviders().getMetaAccess().lookupJavaType((Class<?>) obj);
             }

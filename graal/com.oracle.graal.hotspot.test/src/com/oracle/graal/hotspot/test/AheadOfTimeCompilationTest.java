@@ -104,7 +104,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
 
         NodeIterable<ConstantNode> filter = getConstantNodes(result);
         assertDeepEquals(1, filter.count());
-        Object mirror = HotSpotObjectConstant.asObject(filter.first().asJavaConstant());
+        Object mirror = HotSpotObjectConstantImpl.asObject(filter.first().asJavaConstant());
         assertDeepEquals(Class.class, mirror.getClass());
         assertDeepEquals(AheadOfTimeCompilationTest.class, mirror);
 
@@ -132,7 +132,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         StructuredGraph result = compile("getPrimitiveClassObject", false);
         NodeIterable<ConstantNode> filter = getConstantNodes(result);
         assertDeepEquals(1, filter.count());
-        Object mirror = HotSpotObjectConstant.asObject(filter.first().asJavaConstant());
+        Object mirror = HotSpotObjectConstantImpl.asObject(filter.first().asJavaConstant());
         assertDeepEquals(Class.class, mirror.getClass());
         assertDeepEquals(Integer.TYPE, mirror);
 
@@ -160,7 +160,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
 
         NodeIterable<ConstantNode> filter = getConstantNodes(result);
         assertDeepEquals(1, filter.count());
-        Object mirror = HotSpotObjectConstant.asObject(filter.first().asJavaConstant());
+        Object mirror = HotSpotObjectConstantImpl.asObject(filter.first().asJavaConstant());
         assertDeepEquals(String.class, mirror.getClass());
         assertDeepEquals("test string", mirror);
 
@@ -193,7 +193,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         assertDeepEquals(1, getConstantNodes(result).count());
         ConstantNode constant = getConstantNodes(result).first();
         assertDeepEquals(Kind.Object, constant.getKind());
-        assertDeepEquals(Boolean.TRUE, HotSpotObjectConstant.asObject(constant.asJavaConstant()));
+        assertDeepEquals(Boolean.TRUE, HotSpotObjectConstantImpl.asObject(constant.asJavaConstant()));
     }
 
     private StructuredGraph compile(String test, boolean compileAOT) {

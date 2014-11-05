@@ -29,21 +29,21 @@ public class HotSpotSnippetReflectionProvider implements SnippetReflectionProvid
 
     @Override
     public JavaConstant forObject(Object object) {
-        return HotSpotObjectConstant.forObject(object);
+        return HotSpotObjectConstantImpl.forObject(object);
     }
 
     @Override
     public Object asObject(JavaConstant constant) {
-        return HotSpotObjectConstant.asObject(constant);
+        return HotSpotObjectConstantImpl.asObject(constant);
     }
 
     @Override
     public JavaConstant forBoxed(Kind kind, Object value) {
-        return HotSpotObjectConstant.forBoxedValue(kind, value);
+        return HotSpotObjectConstantImpl.forBoxedValue(kind, value);
     }
 
     @Override
     public Object asBoxedValue(JavaConstant constant) {
-        return HotSpotObjectConstant.asBoxedValue(constant);
+        return HotSpotObjectConstantImpl.asBoxedValue(constant);
     }
 }

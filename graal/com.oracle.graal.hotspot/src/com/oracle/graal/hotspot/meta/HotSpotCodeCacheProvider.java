@@ -264,7 +264,7 @@ public class HotSpotCodeCacheProvider implements CodeCacheProvider {
             boolean compressed;
             long raw;
             if (constant instanceof HotSpotObjectConstant) {
-                compressed = HotSpotObjectConstant.isCompressed(constant);
+                compressed = HotSpotObjectConstantImpl.isCompressed(constant);
                 raw = 0xDEADDEADDEADDEADL;
             } else if (constant instanceof HotSpotMetaspaceConstant) {
                 HotSpotMetaspaceConstant meta = (HotSpotMetaspaceConstant) constant;
@@ -288,7 +288,7 @@ public class HotSpotCodeCacheProvider implements CodeCacheProvider {
                 };
             }
         } else if (JavaConstant.isNull(constant)) {
-            boolean compressed = HotSpotObjectConstant.isCompressed(constant);
+            boolean compressed = HotSpotObjectConstantImpl.isCompressed(constant);
             size = target.getSizeInBytes(compressed ? Kind.Int : target.wordKind);
             builder = DataBuilder.zero(size);
         } else if (constant instanceof PrimitiveConstant) {

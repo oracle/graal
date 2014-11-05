@@ -620,7 +620,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         if (HotSpotCompressedNullConstant.COMPRESSED_NULL.equals(c)) {
             return true;
         } else if (c instanceof HotSpotObjectConstant) {
-            return HotSpotObjectConstant.isCompressed(c);
+            return HotSpotObjectConstantImpl.isCompressed(c);
         } else {
             return super.canInlineConstant(c);
         }

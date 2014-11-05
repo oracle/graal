@@ -54,10 +54,10 @@ public class ClassGetSuperclassNode extends MacroNode implements Canonicalizable
     public Node canonical(CanonicalizerTool tool) {
         ValueNode javaClass = getJavaClass();
         if (javaClass.isConstant()) {
-            Class<?> c = (Class<?>) HotSpotObjectConstant.asObject(javaClass.asJavaConstant());
+            Class<?> c = (Class<?>) HotSpotObjectConstantImpl.asObject(javaClass.asJavaConstant());
             if (c != null) {
                 Class<?> superclass = c.getSuperclass();
-                return ConstantNode.forConstant(HotSpotObjectConstant.forObject(superclass), tool.getMetaAccess());
+                return ConstantNode.forConstant(HotSpotObjectConstantImpl.forObject(superclass), tool.getMetaAccess());
             }
         }
         return this;

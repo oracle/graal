@@ -51,7 +51,7 @@ public class CallSiteTargetNode extends MacroStateSplitNode implements Canonical
 
     private ConstantNode getConstantCallTarget(MetaAccessProvider metaAccess, Assumptions assumptions) {
         if (getCallSite().isConstant() && !getCallSite().isNullConstant()) {
-            CallSite callSite = (CallSite) HotSpotObjectConstant.asObject(getCallSite().asJavaConstant());
+            CallSite callSite = (CallSite) HotSpotObjectConstantImpl.asObject(getCallSite().asJavaConstant());
             MethodHandle target = callSite.getTarget();
             if (!(callSite instanceof ConstantCallSite)) {
                 if (assumptions == null || !assumptions.useOptimisticAssumptions()) {
@@ -59,7 +59,7 @@ public class CallSiteTargetNode extends MacroStateSplitNode implements Canonical
                 }
                 assumptions.record(new Assumptions.CallSiteTargetValue(callSite, target));
             }
-            return ConstantNode.forConstant(HotSpotObjectConstant.forObject(target), metaAccess, graph());
+            return ConstantNode.forConstant(HotSpotObjectConstantImpl.forObject(target), metaAccess, graph());
         }
         return null;
     }

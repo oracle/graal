@@ -80,7 +80,7 @@ public class AheadOfTimeVerificationPhase extends VerifyPhase<PhaseContext> {
             return false;
         }
 
-        Object o = HotSpotObjectConstant.asObject(node.asJavaConstant());
+        Object o = HotSpotObjectConstantImpl.asObject(node.asJavaConstant());
         if (!(o instanceof String)) {
             return false;
         }

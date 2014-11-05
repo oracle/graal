@@ -30,6 +30,6 @@ public class HotSpotSpeculationLog extends SpeculationLog {
     @Override
     public JavaConstant speculate(Object reason) {
         addSpeculation(reason);
-        return HotSpotObjectConstant.forObject(reason);
+        return HotSpotObjectConstantImpl.forObject(reason);
     }
 }

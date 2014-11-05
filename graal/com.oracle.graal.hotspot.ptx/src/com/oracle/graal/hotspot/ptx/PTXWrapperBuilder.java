@@ -190,7 +190,7 @@ public class PTXWrapperBuilder extends GraphKit {
             }
         }
 
-        InvokeNode kernelStart = createInvoke(getClass(), "getKernelStart", ConstantNode.forConstant(HotSpotObjectConstant.forObject(kernel), providers.getMetaAccess(), getGraph()));
+        InvokeNode kernelStart = createInvoke(getClass(), "getKernelStart", ConstantNode.forConstant(HotSpotObjectConstantImpl.forObject(kernel), providers.getMetaAccess(), getGraph()));
 
         AllocaNode buf = append(AllocaNode.create(bufSize / wordSize, new BitSet()));
         ValueNode objectParametersOffsets;

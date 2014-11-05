@@ -175,7 +175,7 @@ public class ReplacingStreams {
                 if (constant.getKind() != Kind.Object) {
                     return obj;
                 }
-                Object contents = HotSpotObjectConstant.asObject(constant);
+                Object contents = HotSpotObjectConstantImpl.asObject(constant);
                 if (contents == null) {
                     return obj;
                 }
@@ -185,12 +185,12 @@ public class ReplacingStreams {
                 }
                 placeholder = objectMap.get(contents);
                 if (placeholder != null) {
-                    return HotSpotObjectConstant.forObject(placeholder);
+                    return HotSpotObjectConstantImpl.forObject(placeholder);
                 }
                 if (contents instanceof Remote) {
-                    return HotSpotObjectConstant.forObject(createRemoteCallPlaceholder(contents));
+                    return HotSpotObjectConstantImpl.forObject(createRemoteCallPlaceholder(contents));
                 }
-                return HotSpotObjectConstant.forObject(createDummyPlaceholder(contents));
+                return HotSpotObjectConstantImpl.forObject(createDummyPlaceholder(contents));
             }
             return obj;
         }

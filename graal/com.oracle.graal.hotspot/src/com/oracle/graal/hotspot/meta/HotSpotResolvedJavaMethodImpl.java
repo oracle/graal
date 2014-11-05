@@ -709,13 +709,13 @@ public final class HotSpotResolvedJavaMethodImpl extends HotSpotMethod implement
 
         Object[] objArguments = new Object[arguments.length];
         for (int i = 0; i < arguments.length; i++) {
-            objArguments[i] = HotSpotObjectConstant.asBoxedValue(arguments[i]);
+            objArguments[i] = HotSpotObjectConstantImpl.asBoxedValue(arguments[i]);
         }
-        Object objReceiver = receiver != null ? HotSpotObjectConstant.asObject(receiver) : null;
+        Object objReceiver = receiver != null ? HotSpotObjectConstantImpl.asObject(receiver) : null;
 
         try {
             Object objResult = javaMethod.invoke(objReceiver, objArguments);
-            return javaMethod.getReturnType() == void.class ? null : HotSpotObjectConstant.forBoxedValue(getSignature().getReturnKind(), objResult);
+            return javaMethod.getReturnType() == void.class ? null : HotSpotObjectConstantImpl.forBoxedValue(getSignature().getReturnKind(), objResult);
 
         } catch (IllegalAccessException | InvocationTargetException ex) {
             throw new IllegalArgumentException(ex);
@@ -730,13 +730,13 @@ public final class HotSpotResolvedJavaMethodImpl extends HotSpotMethod implement
 
         Object[] objArguments = new Object[arguments.length];
         for (int i = 0; i < arguments.length; i++) {
-            objArguments[i] = HotSpotObjectConstant.asBoxedValue(arguments[i]);
+            objArguments[i] = HotSpotObjectConstantImpl.asBoxedValue(arguments[i]);
         }
 
         try {
             Object objResult = javaConstructor.newInstance(objArguments);
             assert objResult != null;
-            return HotSpotObjectConstant.forObject(objResult);
+            return HotSpotObjectConstantImpl.forObject(objResult);
 
         } catch (IllegalAccessException | InvocationTargetException | InstantiationException ex) {
             throw new IllegalArgumentException(ex);

@@ -43,6 +43,6 @@ public class SystemIdentityHashCodeNode extends PureFunctionMacroNode {
 
     @Override
     protected JavaConstant evaluate(JavaConstant param, MetaAccessProvider metaAccess) {
-        return ImmutableCode.getValue() || param.isNull() ? null : JavaConstant.forInt(System.identityHashCode(HotSpotObjectConstant.asObject(param)));
+        return ImmutableCode.getValue() || param.isNull() ? null : JavaConstant.forInt(System.identityHashCode(HotSpotObjectConstantImpl.asObject(param)));
     }
 }

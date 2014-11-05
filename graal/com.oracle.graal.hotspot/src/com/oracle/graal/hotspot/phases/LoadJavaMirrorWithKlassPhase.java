@@ -60,9 +60,9 @@ public class LoadJavaMirrorWithKlassPhase extends BasePhase<PhaseContext> {
     }
 
     private ValueNode getClassConstantReplacement(StructuredGraph graph, PhaseContext context, JavaConstant constant) {
-        if (constant instanceof HotSpotObjectConstant && HotSpotObjectConstant.asObject(constant) instanceof Class<?>) {
+        if (constant instanceof HotSpotObjectConstant && HotSpotObjectConstantImpl.asObject(constant) instanceof Class<?>) {
             MetaAccessProvider metaAccess = context.getMetaAccess();
-            ResolvedJavaType type = metaAccess.lookupJavaType((Class<?>) HotSpotObjectConstant.asObject(constant));
+            ResolvedJavaType type = metaAccess.lookupJavaType((Class<?>) HotSpotObjectConstantImpl.asObject(constant));
             JavaConstant klass;
             LocationNode location;
             if (type instanceof HotSpotResolvedObjectType) {
@@ -94,7 +94,7 @@ public class LoadJavaMirrorWithKlassPhase extends BasePhase<PhaseContext> {
             Stamp stamp = StampFactory.exactNonNull(metaAccess.lookupJavaType(Class.class));
             FloatingReadNode freadNode = graph.unique(FloatingReadNode.create(klassNode, location, null, stamp));
 
-            if (HotSpotObjectConstant.isCompressed(constant)) {
+            if (HotSpotObjectConstantImpl.isCompressed(constant)) {
                 return CompressionNode.compress(freadNode, oopEncoding);
             } else {
                 return freadNode;

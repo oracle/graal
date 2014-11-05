@@ -61,7 +61,7 @@ public class CompositeValueClassSubstitutions {
             if (param.isNull() || ImmutableCode.getValue()) {
                 return null;
             }
-            return HotSpotObjectConstant.forObject(CompositeValueClass.get((Class<? extends CompositeValue>) HotSpotObjectConstant.asObject(param)));
+            return HotSpotObjectConstantImpl.forObject(CompositeValueClass.get((Class<? extends CompositeValue>) HotSpotObjectConstantImpl.asObject(param)));
         }
     }
 

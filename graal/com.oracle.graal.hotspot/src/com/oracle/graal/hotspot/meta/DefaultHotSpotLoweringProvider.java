@@ -236,7 +236,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
     @Override
     protected ValueNode staticFieldBase(StructuredGraph graph, ResolvedJavaField f) {
         HotSpotResolvedJavaField field = (HotSpotResolvedJavaField) f;
-        return ConstantNode.forConstant(HotSpotObjectConstant.forObject(field.getDeclaringClass().mirror()), metaAccess, graph);
+        return ConstantNode.forConstant(HotSpotObjectConstantImpl.forObject(field.getDeclaringClass().mirror()), metaAccess, graph);
     }
 
     @Override
@@ -355,7 +355,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
                 } else {
                     throw GraalInternalError.shouldNotReachHere();
                 }
-                FloatingNode exceptionNode = ConstantNode.forConstant(HotSpotObjectConstant.forObject(exception), metaAccess, graph);
+                FloatingNode exceptionNode = ConstantNode.forConstant(HotSpotObjectConstantImpl.forObject(exception), metaAccess, graph);
                 graph.replaceFixedWithFloating(node, exceptionNode);
 
             } else {
