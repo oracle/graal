@@ -79,9 +79,8 @@ public class CompressionNode extends UnaryNode implements ConvertNode, LIRLowera
         } else if (c instanceof HotSpotObjectConstant) {
             return ((HotSpotObjectConstant) c).compress();
         } else if (c instanceof HotSpotMetaspaceConstant) {
-            HotSpotMetaspaceConstant meta = (HotSpotMetaspaceConstant) c;
-            assert meta.getKind() == Kind.Long;
-            return HotSpotMetaspaceConstant.forMetaspaceObject(Kind.Int, encoding.compress(meta.asLong()), HotSpotMetaspaceConstant.getMetaspaceObject(meta), true);
+            assert ((HotSpotMetaspaceConstant) c).getKind() == Kind.Long;
+            return ((HotSpotMetaspaceConstant) c).compress(encoding);
         } else {
             throw GraalInternalError.shouldNotReachHere("invalid constant input for compress op: " + c);
         }
@@ -93,9 +92,8 @@ public class CompressionNode extends UnaryNode implements ConvertNode, LIRLowera
         } else if (c instanceof HotSpotObjectConstant) {
             return ((HotSpotObjectConstant) c).uncompress();
         } else if (c instanceof HotSpotMetaspaceConstant) {
-            HotSpotMetaspaceConstant meta = (HotSpotMetaspaceConstant) c;
-            assert meta.getKind() == Kind.Int;
-            return HotSpotMetaspaceConstant.forMetaspaceObject(Kind.Long, encoding.uncompress(meta.asInt()), HotSpotMetaspaceConstant.getMetaspaceObject(meta), false);
+            assert ((HotSpotMetaspaceConstant) c).getKind() == Kind.Int;
+            return ((HotSpotMetaspaceConstant) c).uncompress(encoding);
         } else {
             throw GraalInternalError.shouldNotReachHere("invalid constant input for uncompress op: " + c);
         }

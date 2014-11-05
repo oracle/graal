@@ -57,7 +57,7 @@ public final class HotSpotCompiledRuntimeStub extends HotSpotCompiledCode {
             if (data.reference instanceof ConstantReference) {
                 ConstantReference ref = (ConstantReference) data.reference;
                 if (ref.getConstant() instanceof HotSpotMetaspaceConstant) {
-                    Object object = HotSpotMetaspaceConstant.getMetaspaceObject((JavaConstant) ref.getConstant());
+                    Object object = HotSpotMetaspaceConstantImpl.getMetaspaceObject((JavaConstant) ref.getConstant());
                     if (object instanceof HotSpotResolvedObjectType && ((HotSpotResolvedObjectType) object).getName().equals("[I")) {
                         // special handling for NewArrayStub
                         // embedding the type '[I' is safe, since it is never unloaded

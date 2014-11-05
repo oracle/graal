@@ -160,7 +160,7 @@ public final class HotSpotResolvedJavaMethodImpl extends HotSpotMethod implement
      * Gets the address of the C++ Method object for this method.
      */
     public JavaConstant getMetaspaceMethodConstant() {
-        return HotSpotMetaspaceConstant.forMetaspaceObject(getHostWordKind(), metaspaceMethod, this, false);
+        return HotSpotMetaspaceConstantImpl.forMetaspaceObject(getHostWordKind(), metaspaceMethod, this, false);
     }
 
     public long getMetaspaceMethod() {

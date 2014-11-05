@@ -419,22 +419,6 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         }
     }
 
-    /**
-     * @return a compressed version of the incoming constant
-     */
-    protected static JavaConstant compress(JavaConstant c, CompressEncoding encoding) {
-        if (c.getKind() == Kind.Long) {
-            int compressedValue = (int) (((c.asLong() - encoding.base) >> encoding.shift) & 0xffffffffL);
-            if (c instanceof HotSpotMetaspaceConstant) {
-                return HotSpotMetaspaceConstant.forMetaspaceObject(Kind.Int, compressedValue, HotSpotMetaspaceConstant.getMetaspaceObject(c), true);
-            } else {
-                return JavaConstant.forIntegerKind(Kind.Int, compressedValue);
-            }
-        } else {
-            throw GraalInternalError.shouldNotReachHere();
-        }
-    }
-
     private static LIRKind toStackKind(LIRKind kind) {
         if (kind.getPlatformKind() instanceof Kind) {
             Kind stackKind = ((Kind) kind.getPlatformKind()).getStackKind();
