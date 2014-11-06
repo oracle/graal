@@ -49,6 +49,10 @@ public final class CompilationStatisticsListener extends AbstractDebugCompilatio
     private int dequeues;
     private int splits;
 
+    private final IntSummaryStatistics deferCompilations = new IntSummaryStatistics();
+    private final LongSummaryStatistics timeToQueue = new LongSummaryStatistics();
+    private final LongSummaryStatistics timeToCompilation = new LongSummaryStatistics();
+
     private final IntSummaryStatistics nodeCount = new IntSummaryStatistics();
     private final IntSummaryStatistics nodeCountTrivial = new IntSummaryStatistics();
     private final IntSummaryStatistics nodeCountNonTrivial = new IntSummaryStatistics();
@@ -104,6 +108,7 @@ public final class CompilationStatisticsListener extends AbstractDebugCompilatio
         if (firstCompilation == 0) {
             firstCompilation = System.nanoTime();
         }
+        timeToQueue.accept(System.nanoTime() - target.getCompilationProfile().getTimestamp());
     }
 
     @Override
@@ -129,6 +134,9 @@ public final class CompilationStatisticsListener extends AbstractDebugCompilatio
         CompilationLocal local = new CompilationLocal();
         local.compilationStarted = System.nanoTime();
         compilationLocal.set(local);
+
+        deferCompilations.accept(target.getCompilationProfile().getDeferedCount());
+        timeToCompilation.accept(local.compilationStarted - target.getCompilationProfile().getTimestamp());
     }
 
     @Override
@@ -215,6 +223,10 @@ public final class CompilationStatisticsListener extends AbstractDebugCompilatio
         printStatistic("Queue Accuracy", 1.0 - dequeues / (double) queues);
         printStatistic("Compilation Utilization", compilationTime.getSum() / (double) (endTime - firstCompilation));
         printStatistic("Remaining Compilation Queue", runtime.getQueuedCallTargets().size());
+        printStatistic("Times defered until compilation", deferCompilations);
+
+        printStatisticTime("Time to queue", timeToQueue);
+        printStatisticTime("Time to compilation", timeToCompilation);
 
         printStatisticTime("Compilation time", compilationTime);
         printStatisticTime("  Truffle Tier", compilationTimeTruffleTier);
