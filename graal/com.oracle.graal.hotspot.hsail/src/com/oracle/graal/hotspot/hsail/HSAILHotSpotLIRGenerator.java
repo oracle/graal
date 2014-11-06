@@ -235,7 +235,7 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator implements HotSp
     protected HSAILLIRInstruction createMove(AllocatableValue dst, Value src) {
         if (HotSpotCompressedNullConstant.COMPRESSED_NULL.equals(src)) {
             return new MoveToRegOp(Kind.Int, dst, JavaConstant.INT_0);
-        } else if (src instanceof HotSpotObjectConstant && HotSpotObjectConstantImpl.isCompressed((JavaConstant) src)) {
+        } else if (src instanceof HotSpotObjectConstant && ((HotSpotObjectConstant) src).isCompressed()) {
             Variable uncompressed = newVariable(LIRKind.reference(Kind.Object));
             append(new MoveToRegOp(Kind.Object, uncompressed, src));
             CompressEncoding oopEncoding = config.getOopEncoding();

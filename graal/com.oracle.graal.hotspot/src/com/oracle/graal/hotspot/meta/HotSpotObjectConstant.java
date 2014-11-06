@@ -39,6 +39,8 @@ public interface HotSpotObjectConstant extends JavaValue, HotSpotConstant, VMCon
 
     JavaConstant uncompress();
 
+    boolean isCompressed();
+
     /**
      * Gets the result of {@link Class#getClassLoader()} for the {@link Class} object represented by
      * this constant.

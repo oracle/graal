@@ -94,7 +94,7 @@ public class LoadJavaMirrorWithKlassPhase extends BasePhase<PhaseContext> {
             Stamp stamp = StampFactory.exactNonNull(metaAccess.lookupJavaType(Class.class));
             FloatingReadNode freadNode = graph.unique(FloatingReadNode.create(klassNode, location, null, stamp));
 
-            if (HotSpotObjectConstantImpl.isCompressed(constant)) {
+            if (((HotSpotObjectConstant) constant).isCompressed()) {
                 return CompressionNode.compress(freadNode, oopEncoding);
             } else {
                 return freadNode;
