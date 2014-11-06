@@ -33,7 +33,7 @@ import com.oracle.graal.nodes.*;
 /**
  * Interface for managing replacements.
  */
-public interface Replacements extends Remote{
+public interface Replacements extends Remote {
 
     /**
      * Gets the snippet graph derived from a given method.
