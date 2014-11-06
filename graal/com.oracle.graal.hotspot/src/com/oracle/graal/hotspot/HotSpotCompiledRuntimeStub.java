@@ -29,7 +29,6 @@ import com.oracle.graal.api.code.CompilationResult.Call;
 import com.oracle.graal.api.code.CompilationResult.ConstantReference;
 import com.oracle.graal.api.code.CompilationResult.DataPatch;
 import com.oracle.graal.api.code.CompilationResult.Infopoint;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.stubs.*;
 
@@ -57,8 +56,8 @@ public final class HotSpotCompiledRuntimeStub extends HotSpotCompiledCode {
             if (data.reference instanceof ConstantReference) {
                 ConstantReference ref = (ConstantReference) data.reference;
                 if (ref.getConstant() instanceof HotSpotMetaspaceConstant) {
-                    Object object = HotSpotMetaspaceConstantImpl.getMetaspaceObject((JavaConstant) ref.getConstant());
-                    if (object instanceof HotSpotResolvedObjectType && ((HotSpotResolvedObjectType) object).getName().equals("[I")) {
+                    HotSpotMetaspaceConstant c = (HotSpotMetaspaceConstant) ref.getConstant();
+                    if (c.asResolvedJavaType() != null && c.asResolvedJavaType().getName().equals("[I")) {
                         // special handling for NewArrayStub
                         // embedding the type '[I' is safe, since it is never unloaded
                         continue;
