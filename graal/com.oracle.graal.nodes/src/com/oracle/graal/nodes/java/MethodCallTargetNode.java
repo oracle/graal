@@ -150,12 +150,15 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
                 }
             }
             ResolvedJavaType declaredReceiverType = targetMethod().getDeclaringClass();
-            if (declaredReceiverType.isInterface()) {
+            /*
+             * We need to check the invoke kind to avoid recursive simplification for default
+             * methods calls.
+             */
+            if (declaredReceiverType.isInterface() && !invokeKind().equals(InvokeKind.Virtual)) {
                 ResolvedJavaType singleImplementor = declaredReceiverType.getSingleImplementor();
                 if (singleImplementor != null && !singleImplementor.equals(declaredReceiverType)) {
                     ResolvedJavaMethod singleImplementorMethod = singleImplementor.resolveMethod(targetMethod(), invoke().getContextType(), true);
-                    // TODO (je): we can not yet deal with default methods
-                    if (singleImplementorMethod != null && !singleImplementorMethod.isDefault()) {
+                    if (singleImplementorMethod != null) {
                         LogicNode condition = graph().unique(InstanceOfNode.create(singleImplementor, receiver, getProfile()));
                         assert graph().getGuardsStage().ordinal() < StructuredGraph.GuardsStage.FIXED_DEOPTS.ordinal() : "Graph already fixed!";
                         GuardNode guard = graph().unique(
