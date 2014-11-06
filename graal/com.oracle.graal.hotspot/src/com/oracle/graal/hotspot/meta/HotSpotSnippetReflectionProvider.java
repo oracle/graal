@@ -34,7 +34,7 @@ public class HotSpotSnippetReflectionProvider implements SnippetReflectionProvid
 
     @Override
     public Object asObject(JavaConstant constant) {
-        return HotSpotObjectConstantImpl.asObject(constant);
+        return ((HotSpotObjectConstantImpl) constant).object();
     }
 
     @Override

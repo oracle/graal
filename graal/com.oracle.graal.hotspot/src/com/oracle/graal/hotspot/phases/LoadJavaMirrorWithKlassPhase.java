@@ -60,44 +60,48 @@ public class LoadJavaMirrorWithKlassPhase extends BasePhase<PhaseContext> {
     }
 
     private ValueNode getClassConstantReplacement(StructuredGraph graph, PhaseContext context, JavaConstant constant) {
-        if (constant instanceof HotSpotObjectConstant && HotSpotObjectConstantImpl.asObject(constant) instanceof Class<?>) {
-            MetaAccessProvider metaAccess = context.getMetaAccess();
-            ResolvedJavaType type = metaAccess.lookupJavaType((Class<?>) HotSpotObjectConstantImpl.asObject(constant));
-            JavaConstant klass;
-            LocationNode location;
-            if (type instanceof HotSpotResolvedObjectType) {
-                location = ConstantLocationNode.create(CLASS_MIRROR_LOCATION, Kind.Object, classMirrorOffset, graph);
-                klass = ((HotSpotResolvedObjectType) type).klass();
-            } else {
-                /*
-                 * Primitive classes are more difficult since they don't have a corresponding Klass*
-                 * so get them from Class.TYPE for the java box type.
-                 */
-                HotSpotResolvedPrimitiveType primitive = (HotSpotResolvedPrimitiveType) type;
-                ResolvedJavaType boxingClass = metaAccess.lookupJavaType(primitive.getKind().toBoxedJavaClass());
-                klass = ((HotSpotResolvedObjectType) boxingClass).klass();
-                HotSpotResolvedJavaField[] a = (HotSpotResolvedJavaField[]) boxingClass.getStaticFields();
-                HotSpotResolvedJavaField typeField = null;
-                for (HotSpotResolvedJavaField f : a) {
-                    if (f.getName().equals("TYPE")) {
-                        typeField = f;
-                        break;
+        if (constant instanceof HotSpotObjectConstant) {
+            ConstantReflectionProvider constantReflection = context.getConstantReflection();
+            ResolvedJavaType c = constantReflection.asJavaType(constant);
+            if (c != null) {
+                MetaAccessProvider metaAccess = context.getMetaAccess();
+                ResolvedJavaType type = c;
+                JavaConstant klass;
+                LocationNode location;
+                if (type instanceof HotSpotResolvedObjectType) {
+                    location = ConstantLocationNode.create(CLASS_MIRROR_LOCATION, Kind.Object, classMirrorOffset, graph);
+                    klass = ((HotSpotResolvedObjectType) type).klass();
+                } else {
+                    /*
+                     * Primitive classes are more difficult since they don't have a corresponding
+                     * Klass* so get them from Class.TYPE for the java box type.
+                     */
+                    HotSpotResolvedPrimitiveType primitive = (HotSpotResolvedPrimitiveType) type;
+                    ResolvedJavaType boxingClass = metaAccess.lookupJavaType(primitive.getKind().toBoxedJavaClass());
+                    klass = ((HotSpotResolvedObjectType) boxingClass).klass();
+                    HotSpotResolvedJavaField[] a = (HotSpotResolvedJavaField[]) boxingClass.getStaticFields();
+                    HotSpotResolvedJavaField typeField = null;
+                    for (HotSpotResolvedJavaField f : a) {
+                        if (f.getName().equals("TYPE")) {
+                            typeField = f;
+                            break;
+                        }
                     }
+                    if (typeField == null) {
+                        throw new GraalInternalError("Can't find TYPE field in class");
+                    }
+                    location = ConstantLocationNode.create(FINAL_LOCATION, Kind.Object, typeField.offset(), graph);
                 }
-                if (typeField == null) {
-                    throw new GraalInternalError("Can't find TYPE field in class");
+                ConstantNode klassNode = ConstantNode.forConstant(klass, metaAccess, graph);
+
+                Stamp stamp = StampFactory.exactNonNull(metaAccess.lookupJavaType(Class.class));
+                FloatingReadNode freadNode = graph.unique(FloatingReadNode.create(klassNode, location, null, stamp));
+
+                if (((HotSpotObjectConstant) constant).isCompressed()) {
+                    return CompressionNode.compress(freadNode, oopEncoding);
+                } else {
+                    return freadNode;
                 }
-                location = ConstantLocationNode.create(FINAL_LOCATION, Kind.Object, typeField.offset(), graph);
-            }
-            ConstantNode klassNode = ConstantNode.forConstant(klass, metaAccess, graph);
-
-            Stamp stamp = StampFactory.exactNonNull(metaAccess.lookupJavaType(Class.class));
-            FloatingReadNode freadNode = graph.unique(FloatingReadNode.create(klassNode, location, null, stamp));
-
-            if (((HotSpotObjectConstant) constant).isCompressed()) {
-                return CompressionNode.compress(freadNode, oopEncoding);
-            } else {
-                return freadNode;
             }
         }
         return null;

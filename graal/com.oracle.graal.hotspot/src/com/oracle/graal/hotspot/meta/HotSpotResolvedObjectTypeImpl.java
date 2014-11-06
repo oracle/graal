@@ -343,7 +343,7 @@ public final class HotSpotResolvedObjectTypeImpl extends HotSpotResolvedJavaType
     @Override
     public boolean isInstance(JavaConstant obj) {
         if (obj.getKind() == Kind.Object && !obj.isNull()) {
-            return mirror().isInstance(HotSpotObjectConstantImpl.asObject(obj));
+            return mirror().isInstance(((HotSpotObjectConstantImpl) obj).object());
         }
         return false;
     }

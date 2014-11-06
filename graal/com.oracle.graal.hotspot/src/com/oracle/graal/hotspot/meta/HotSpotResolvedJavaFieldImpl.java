@@ -210,7 +210,7 @@ public class HotSpotResolvedJavaFieldImpl extends CompilerObject implements HotS
              * have a non-default value.
              */
             assert !isStatic();
-            Object object = HotSpotObjectConstantImpl.asObject(receiver);
+            Object object = ((HotSpotObjectConstantImpl) receiver).object();
 
             // Canonicalization may attempt to process an unsafe read before
             // processing a guard (e.g. a null check or a type check) for this read
@@ -268,7 +268,7 @@ public class HotSpotResolvedJavaFieldImpl extends CompilerObject implements HotS
             return null;
         } else {
             assert !isStatic();
-            assert receiver.isNonNull() && isInObject(HotSpotObjectConstantImpl.asObject(receiver));
+            assert receiver.isNonNull() && isInObject(((HotSpotObjectConstantImpl) receiver).object());
             return runtime().getHostProviders().getConstantReflection().readUnsafeConstant(getKind(), receiver, offset);
         }
     }

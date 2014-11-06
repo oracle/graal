@@ -55,14 +55,6 @@ public final class HotSpotObjectConstantImpl extends JavaConstant implements Hot
         }
     }
 
-    public static Object asObject(Constant constant) {
-        if (JavaConstant.isNull(constant)) {
-            return null;
-        } else {
-            return ((HotSpotObjectConstantImpl) constant).object;
-        }
-    }
-
     public static Object asBoxedValue(Constant constant) {
         if (JavaConstant.isNull(constant)) {
             return null;
@@ -81,6 +73,28 @@ public final class HotSpotObjectConstantImpl extends JavaConstant implements Hot
         this.object = object;
         this.compressed = compressed;
         assert object != null;
+    }
+
+    /**
+     * Package-private accessor for the object represented by this constant.
+     */
+    Object object() {
+        return object;
+    }
+
+    /**
+     * Determines if the object represented by this constant is {@link Object#equals(Object) equal}
+     * to a given object.
+     */
+    public boolean isEqualTo(Object obj) {
+        return object.equals(obj);
+    }
+
+    /**
+     * Gets the class of the object represented by this constant.
+     */
+    public Class<?> getObjectClass() {
+        return object.getClass();
     }
 
     public boolean isCompressed() {

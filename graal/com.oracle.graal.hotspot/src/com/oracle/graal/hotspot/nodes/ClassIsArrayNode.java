@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
-import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
@@ -54,9 +54,10 @@ public class ClassIsArrayNode extends MacroNode implements Canonicalizable {
     public Node canonical(CanonicalizerTool tool) {
         ValueNode javaClass = getJavaClass();
         if (javaClass.isConstant()) {
-            Class<?> c = (Class<?>) HotSpotObjectConstantImpl.asObject(javaClass.asJavaConstant());
-            if (c != null) {
-                return ConstantNode.forBoolean(c.isArray());
+            ConstantReflectionProvider constantReflection = tool.getConstantReflection();
+            ResolvedJavaType type = constantReflection.asJavaType(javaClass.asJavaConstant());
+            if (type != null) {
+                return ConstantNode.forBoolean(type.isArray());
             }
         }
         return this;

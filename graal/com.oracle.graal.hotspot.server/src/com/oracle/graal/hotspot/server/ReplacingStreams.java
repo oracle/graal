@@ -30,7 +30,6 @@ import java.util.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.logging.*;
-import com.oracle.graal.hotspot.meta.*;
 
 public class ReplacingStreams {
 
@@ -147,7 +146,7 @@ public class ReplacingStreams {
     }
 
     /**
-     * Replaces certain cir objects that cannot easily be made Serializable.
+     * Replaces certain objects that cannot easily be made Serializable.
      */
     public class ReplacingOutputStream extends ObjectOutputStream {
 
@@ -169,29 +168,9 @@ public class ReplacingStreams {
                 return createRemoteCallPlaceholder(obj);
             }
 
-            // is the object a constant of object type?
-            if (obj.getClass() == JavaConstant.class) {
-                JavaConstant constant = (JavaConstant) obj;
-                if (constant.getKind() != Kind.Object) {
-                    return obj;
-                }
-                Object contents = HotSpotObjectConstantImpl.asObject(constant);
-                if (contents == null) {
-                    return obj;
-                }
-                // don't replace if the object already is a placeholder
-                if (contents instanceof Placeholder || contents instanceof Long) {
-                    return obj;
-                }
-                placeholder = objectMap.get(contents);
-                if (placeholder != null) {
-                    return HotSpotObjectConstantImpl.forObject(placeholder);
-                }
-                if (contents instanceof Remote) {
-                    return HotSpotObjectConstantImpl.forObject(createRemoteCallPlaceholder(contents));
-                }
-                return HotSpotObjectConstantImpl.forObject(createDummyPlaceholder(contents));
-            }
+            // Remote object constants must implement Remote
+            assert !(obj instanceof JavaConstant) || ((JavaConstant) obj).getKind() != Kind.Object;
+
             return obj;
         }
     }
@@ -202,11 +181,5 @@ public class ReplacingStreams {
         objectMap.put(obj, new Placeholder(objectList.size()));
         objectList.add(obj);
         return new NewRemoteCallPlaceholder(ProxyUtil.getAllInterfaces(obj.getClass()));
-    }
-
-    public Object createDummyPlaceholder(Object obj) {
-        objectMap.put(obj, new Placeholder(objectList.size()));
-        objectList.add(obj);
-        return new NewDummyPlaceholder();
     }
 }

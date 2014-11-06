@@ -711,7 +711,7 @@ public final class HotSpotResolvedJavaMethodImpl extends HotSpotMethod implement
         for (int i = 0; i < arguments.length; i++) {
             objArguments[i] = HotSpotObjectConstantImpl.asBoxedValue(arguments[i]);
         }
-        Object objReceiver = receiver != null ? HotSpotObjectConstantImpl.asObject(receiver) : null;
+        Object objReceiver = receiver != null ? ((HotSpotObjectConstantImpl) receiver).object() : null;
 
         try {
             Object objResult = javaMethod.invoke(objReceiver, objArguments);

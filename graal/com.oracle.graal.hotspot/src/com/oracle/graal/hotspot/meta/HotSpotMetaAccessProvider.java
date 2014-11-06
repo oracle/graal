@@ -62,7 +62,7 @@ public class HotSpotMetaAccessProvider implements MetaAccessProvider {
         if (constant.isNull() || !(constant instanceof HotSpotObjectConstant)) {
             return null;
         }
-        Object o = HotSpotObjectConstantImpl.asObject(constant);
+        Object o = ((HotSpotObjectConstantImpl) constant).object();
         return fromObjectClass(o.getClass());
     }
 
@@ -308,7 +308,7 @@ public class HotSpotMetaAccessProvider implements MetaAccessProvider {
             } else {
                 if (lookupJavaType.isArray()) {
                     // TODO(tw): Add compressed pointer support.
-                    int length = Array.getLength(HotSpotObjectConstantImpl.asObject(constant));
+                    int length = Array.getLength(((HotSpotObjectConstantImpl) constant).object());
                     ResolvedJavaType elementType = lookupJavaType.getComponentType();
                     Kind elementKind = elementType.getKind();
                     final int headerSize = HotSpotGraalRuntime.getArrayBaseOffset(elementKind);
