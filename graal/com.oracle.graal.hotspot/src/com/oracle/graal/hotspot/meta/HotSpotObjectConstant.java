@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot.meta;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
 
 /**
  * Represents a constant non-{@code null} object reference, within the compiler and across the
@@ -49,4 +50,12 @@ public interface HotSpotObjectConstant extends JavaValue, HotSpotConstant, VMCon
      */
     @PureFunction
     int getIdentityHashCode();
+
+    /**
+     * Gets the result of {@link NodeClass#get(Class)} for the {@link Class} object represented by
+     * this constant.
+     *
+     * @return {@code null} if this constant does not represent a {@link Class} object
+     */
+    JavaConstant getNodeClass();
 }

@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot.meta;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
 
 /**
  * Represents a constant non-{@code null} object reference, within the compiler and across the
@@ -107,6 +108,13 @@ public final class HotSpotObjectConstantImpl extends JavaConstant implements Hot
 
     public int getIdentityHashCode() {
         return System.identityHashCode(object);
+    }
+
+    public JavaConstant getNodeClass() {
+        if (object instanceof Class) {
+            return HotSpotObjectConstantImpl.forObject(NodeClass.get((Class<?>) object));
+        }
+        return null;
     }
 
     @Override
