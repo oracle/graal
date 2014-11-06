@@ -94,6 +94,17 @@ public final class HotSpotObjectConstantImpl extends JavaConstant implements Hot
         return new HotSpotObjectConstantImpl(object, false);
     }
 
+    public JavaConstant getClassLoader() {
+        if (object instanceof Class) {
+            /*
+             * This is an intrinsic for getClassLoader0, which occurs after any security checks. We
+             * can't call that directly so just call getClassLoader.
+             */
+            return HotSpotObjectConstantImpl.forObject(((Class<?>) object).getClassLoader());
+        }
+        return null;
+    }
+
     @Override
     public boolean isNull() {
         return false;
