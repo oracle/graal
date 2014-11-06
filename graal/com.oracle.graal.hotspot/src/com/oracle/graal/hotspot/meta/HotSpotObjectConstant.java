@@ -22,6 +22,9 @@
  */
 package com.oracle.graal.hotspot.meta;
 
+import java.lang.invoke.*;
+
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 
@@ -74,4 +77,15 @@ public interface HotSpotObjectConstant extends JavaValue, HotSpotConstant, VMCon
      * @return {@code null} if this constant does not represent a {@link Class} object
      */
     JavaConstant getSuperclass();
+
+    /**
+     * Gets the result of {@link CallSite#getTarget()} for the {@link CallSite} object represented
+     * by this constant.
+     *
+     * @param assumptions used to register an assumption that the {@link CallSite}'s target does not
+     *            change
+     * @return {@code null} if this constant does not represent a {@link CallSite} object
+     */
+    JavaConstant getCallSiteTarget(Assumptions assumptions);
+
 }

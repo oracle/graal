@@ -22,6 +22,9 @@
  */
 package com.oracle.graal.hotspot.meta;
 
+import java.lang.invoke.*;
+
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 
@@ -127,6 +130,21 @@ public final class HotSpotObjectConstantImpl extends JavaConstant implements Hot
     public JavaConstant getSuperclass() {
         if (object instanceof Class) {
             return HotSpotObjectConstantImpl.forObject(((Class<?>) object).getSuperclass());
+        }
+        return null;
+    }
+
+    public JavaConstant getCallSiteTarget(Assumptions assumptions) {
+        if (object instanceof CallSite) {
+            CallSite callSite = (CallSite) object;
+            MethodHandle target = callSite.getTarget();
+            if (!(callSite instanceof ConstantCallSite)) {
+                if (assumptions == null || !assumptions.useOptimisticAssumptions()) {
+                    return null;
+                }
+                assumptions.record(new Assumptions.CallSiteTargetValue(callSite, target));
+            }
+            return HotSpotObjectConstantImpl.forObject(target);
         }
         return null;
     }
