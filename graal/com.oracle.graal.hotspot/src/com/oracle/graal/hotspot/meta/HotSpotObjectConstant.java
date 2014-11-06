@@ -27,6 +27,7 @@ import java.lang.invoke.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.lir.*;
 
 /**
  * Represents a constant non-{@code null} object reference, within the compiler and across the
@@ -88,4 +89,11 @@ public interface HotSpotObjectConstant extends JavaValue, HotSpotConstant, VMCon
      */
     JavaConstant getCallSiteTarget(Assumptions assumptions);
 
+    /**
+     * Gets the result of {@link CompositeValueClass#get(Class)} for the {@link Class} object
+     * represented by this constant.
+     *
+     * @return {@code null} if this constant does not represent a {@link Class} object
+     */
+    JavaConstant getCompositeValueClass();
 }

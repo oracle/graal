@@ -55,13 +55,13 @@ public class CompositeValueClassSubstitutions {
             super(invoke);
         }
 
-        @SuppressWarnings("unchecked")
         @Override
         protected JavaConstant evaluate(JavaConstant param, MetaAccessProvider metaAccess) {
             if (param.isNull() || ImmutableCode.getValue()) {
                 return null;
             }
-            return HotSpotObjectConstantImpl.forObject(CompositeValueClass.get((Class<? extends CompositeValue>) HotSpotObjectConstantImpl.asObject(param)));
+            HotSpotObjectConstant c = (HotSpotObjectConstant) param;
+            return c.getCompositeValueClass();
         }
     }
 

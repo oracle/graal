@@ -27,6 +27,7 @@ import java.lang.invoke.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.lir.*;
 
 /**
  * Represents a constant non-{@code null} object reference, within the compiler and across the
@@ -145,6 +146,16 @@ public final class HotSpotObjectConstantImpl extends JavaConstant implements Hot
                 assumptions.record(new Assumptions.CallSiteTargetValue(callSite, target));
             }
             return HotSpotObjectConstantImpl.forObject(target);
+        }
+        return null;
+    }
+
+    @SuppressWarnings("unchecked")
+    public JavaConstant getCompositeValueClass() {
+        if (object instanceof Class) {
+            Class<? extends CompositeValue> c = (Class<? extends CompositeValue>) object;
+            assert CompositeValueClass.class.isAssignableFrom(c);
+            return HotSpotObjectConstantImpl.forObject(CompositeValueClass.get(c));
         }
         return null;
     }
