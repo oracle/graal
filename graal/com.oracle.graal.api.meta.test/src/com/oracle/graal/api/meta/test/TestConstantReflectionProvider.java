@@ -86,7 +86,7 @@ public class TestConstantReflectionProvider extends TypeUniverse {
     @Test
     public void unboxTest() {
         for (JavaConstant c : constants) {
-            JavaConstant unboxed = constantReflection.unboxPrimitive(c);
+            JavaConstant unboxed = c.isNull() ? null : constantReflection.unboxPrimitive(c);
             if (unboxed != null) {
                 assertFalse(unboxed.getKind().isObject());
             }

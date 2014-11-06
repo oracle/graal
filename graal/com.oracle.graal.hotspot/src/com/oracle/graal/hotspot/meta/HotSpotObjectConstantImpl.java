@@ -166,7 +166,7 @@ public final class HotSpotObjectConstantImpl extends JavaConstant implements Hot
     public JavaConstant getCompositeValueClass() {
         if (object instanceof Class) {
             Class<? extends CompositeValue> c = (Class<? extends CompositeValue>) object;
-            assert CompositeValueClass.class.isAssignableFrom(c);
+            assert CompositeValue.class.isAssignableFrom(c) : c;
             return HotSpotObjectConstantImpl.forObject(CompositeValueClass.get(c));
         }
         return null;
