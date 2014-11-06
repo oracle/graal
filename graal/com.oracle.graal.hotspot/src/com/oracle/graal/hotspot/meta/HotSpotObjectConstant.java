@@ -58,4 +58,12 @@ public interface HotSpotObjectConstant extends JavaValue, HotSpotConstant, VMCon
      * @return {@code null} if this constant does not represent a {@link Class} object
      */
     JavaConstant getNodeClass();
+
+    /**
+     * Gets the result of {@link Class#getComponentType()} for the {@link Class} object represented
+     * by this constant.
+     *
+     * @return {@code null} if this constant does not represent a {@link Class} object
+     */
+    JavaConstant getComponentType();
 }
