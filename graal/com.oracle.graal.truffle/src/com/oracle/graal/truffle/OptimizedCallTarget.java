@@ -54,6 +54,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     protected final CompilationPolicy compilationPolicy;
     private final OptimizedCallTarget sourceCallTarget;
     private final AtomicInteger callSitesKnown = new AtomicInteger(0);
+
     @CompilationFinal private Class<?>[] profiledArgumentTypes;
     @CompilationFinal private Assumption profiledArgumentTypesAssumption;
     @CompilationFinal private Class<?> profiledReturnType;
@@ -238,7 +239,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
             // We are called and we are still in Truffle interpreter mode.
             interpreterCall();
         } else {
-            // We come here from compiled code (i.e., we have been inlined).
+            // We come here from compiled code
         }
 
         return callRoot(args);
@@ -418,8 +419,8 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
 
     @Override
     public void nodeReplaced(Node oldNode, Node newNode, CharSequence reason) {
+        CompilerAsserts.neverPartOfCompilation();
         if (isValid()) {
-            CompilerAsserts.neverPartOfCompilation();
             invalidate(newNode, reason);
         }
         /* Notify compiled method that have inlined this call target that the tree changed. */

@@ -66,6 +66,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
         TraceSplittingListener.install(this);
         PrintCallTargetProfiling.install(this);
         CompilationStatisticsListener.install(this);
+        compilationNotify.notifyStartup(this);
     }
 
     protected void lookupCallMethods(MetaAccessProvider metaAccess) {
@@ -283,8 +284,12 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
             compilationListeners.forEach(l -> l.notifyCompilationTruffleTierFinished(target, graph));
         }
 
-        public void notifyShutdown(TruffleRuntime runtime) {
+        public void notifyShutdown(GraalTruffleRuntime runtime) {
             compilationListeners.forEach(l -> l.notifyShutdown(runtime));
+        }
+
+        public void notifyStartup(GraalTruffleRuntime runtime) {
+            compilationListeners.forEach(l -> l.notifyStartup(runtime));
         }
 
     }

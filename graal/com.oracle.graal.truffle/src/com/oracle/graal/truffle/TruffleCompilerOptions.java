@@ -45,6 +45,8 @@ public class TruffleCompilerOptions {
     public static final OptionValue<String> TruffleCompileOnly = new OptionValue<>(null);
     @Option(help = "Compile call target when call count exceeds this threshold")
     public static final OptionValue<Integer> TruffleCompilationThreshold = new OptionValue<>(1000);
+    @Option(help = "Defines the maximum timespan in milliseconds that is required for a call target to be queued for compilation.")
+    public static final OptionValue<Integer> TruffleTimeThreshold = new OptionValue<>(5000);
     @Option(help = "Minimum number of calls before a call target is compiled")
     public static final OptionValue<Integer> TruffleMinInvokeThreshold = new OptionValue<>(3);
     @Option(help = "Delay compilation after an invalidation to allow for reprofiling")

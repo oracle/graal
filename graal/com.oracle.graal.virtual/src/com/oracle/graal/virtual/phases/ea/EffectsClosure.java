@@ -119,7 +119,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
         VirtualUtil.trace("\nBlock: %s, preds: %s, succ: %s (", block, block.getPredecessors(), block.getSuccessors());
 
         GraphEffectList effects = blockEffects.get(block);
-        FixedWithNextNode lastFixedNode = null;
+        FixedWithNextNode lastFixedNode = block.getBeginNode().predecessor() instanceof FixedWithNextNode ? (FixedWithNextNode) block.getBeginNode().predecessor() : null;
         Iterable<? extends Node> nodes = schedule != null ? schedule.getBlockToNodesMap().get(block) : block.getNodes();
         for (Node node : nodes) {
             aliases.set(node, null);
