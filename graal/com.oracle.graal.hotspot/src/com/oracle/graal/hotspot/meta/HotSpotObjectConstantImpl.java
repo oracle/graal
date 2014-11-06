@@ -124,6 +124,13 @@ public final class HotSpotObjectConstantImpl extends JavaConstant implements Hot
         return null;
     }
 
+    public JavaConstant getSuperclass() {
+        if (object instanceof Class) {
+            return HotSpotObjectConstantImpl.forObject(((Class<?>) object).getSuperclass());
+        }
+        return null;
+    }
+
     @Override
     public boolean isNull() {
         return false;
