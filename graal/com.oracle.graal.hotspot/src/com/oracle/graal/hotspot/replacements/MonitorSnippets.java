@@ -507,7 +507,7 @@ public class MonitorSnippets implements Snippets {
                     for (ReturnNode ret : rets) {
                         returnType = checkCounter.getMethod().getSignature().getReturnType(checkCounter.getMethod().getDeclaringClass());
                         String msg = "unbalanced monitors in " + graph.method().format("%H.%n(%p)") + ", count = %d";
-                        ConstantNode errMsg = ConstantNode.forConstant(HotSpotObjectConstantImpl.forObject(msg), providers.getMetaAccess(), graph);
+                        ConstantNode errMsg = ConstantNode.forConstant(tool.getConstantReflection().forString(msg), providers.getMetaAccess(), graph);
                         callTarget = graph.add(MethodCallTargetNode.create(InvokeKind.Static, checkCounter.getMethod(), new ValueNode[]{errMsg}, returnType));
                         invoke = graph.add(InvokeNode.create(callTarget, 0));
                         List<ValueNode> stack = Collections.emptyList();

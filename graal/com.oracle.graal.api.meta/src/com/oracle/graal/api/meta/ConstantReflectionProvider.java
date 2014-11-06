@@ -92,6 +92,11 @@ public interface ConstantReflectionProvider extends Remote {
     JavaConstant unboxPrimitive(JavaConstant source);
 
     /**
+     * Gets a string as a {@link JavaConstant}.
+     */
+    JavaConstant forString(String value);
+
+    /**
      * Returns the {@link ResolvedJavaType} for a {@link Class} object (or any other object regarded
      * as a class by the VM) encapsulated in the given constant. Returns {@code null} if the
      * constant does not encapsulate a class, or if the type is not available at this point.

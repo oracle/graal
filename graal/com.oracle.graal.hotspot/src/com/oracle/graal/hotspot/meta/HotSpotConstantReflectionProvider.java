@@ -229,6 +229,10 @@ public class HotSpotConstantReflectionProvider implements ConstantReflectionProv
         return JavaConstant.forBoxedPrimitive(((HotSpotObjectConstantImpl) source).object());
     }
 
+    public JavaConstant forString(String value) {
+        return HotSpotObjectConstantImpl.forObject(value);
+    }
+
     @Override
     public ResolvedJavaType asJavaType(JavaConstant constant) {
         if (constant instanceof HotSpotObjectConstant) {
