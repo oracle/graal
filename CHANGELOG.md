@@ -15,6 +15,7 @@
 * Renamed DirectCallNode#split to DirectCallNode#cloneCallTarget
 * Renamed DirectCallNode#isSplit to DirectCallNode#isCallTargetCloned
 * Added PrimitiveValueProfile.
+* Added -G:TruffleTimeThreshold=5000 option to defer compilation for call targets
 * ...
 
 ## Version 0.5
