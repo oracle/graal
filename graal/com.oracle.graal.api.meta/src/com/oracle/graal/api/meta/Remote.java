@@ -22,9 +22,19 @@
  */
 package com.oracle.graal.api.meta;
 
+import java.lang.annotation.*;
+
 /**
  * Marker interface for classes whose values are proxied during replay compilation capture or remote
  * compilation.
  */
 public interface Remote {
+
+    /**
+     * Denotes a method whose return value is determined solely by its parameter values.
+     */
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.METHOD)
+    public @interface PureFunction {
+    }
 }
