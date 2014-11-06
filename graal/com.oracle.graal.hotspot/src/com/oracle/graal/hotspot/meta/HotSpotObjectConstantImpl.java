@@ -105,6 +105,10 @@ public final class HotSpotObjectConstantImpl extends JavaConstant implements Hot
         return null;
     }
 
+    public int getIdentityHashCode() {
+        return System.identityHashCode(object);
+    }
+
     @Override
     public boolean isNull() {
         return false;
