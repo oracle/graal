@@ -126,6 +126,74 @@ public class GraalCompiler {
     }
 
     /**
+     * Encapsulates all the inputs to a {@linkplain GraalCompiler#compile(Request) compilation}.
+     */
+    public static class Request<T extends CompilationResult> {
+        public final StructuredGraph graph;
+        public final Object stub;
+        public final CallingConvention cc;
+        public final ResolvedJavaMethod installedCodeOwner;
+        public final Providers providers;
+        public final Backend backend;
+        public final TargetDescription target;
+        public final Map<ResolvedJavaMethod, StructuredGraph> cache;
+        public final PhaseSuite<HighTierContext> graphBuilderSuite;
+        public final OptimisticOptimizations optimisticOpts;
+        public final ProfilingInfo profilingInfo;
+        public final SpeculationLog speculationLog;
+        public final Suites suites;
+        public final T compilationResult;
+        public final CompilationResultBuilderFactory factory;
+
+        /**
+         * @param graph the graph to be compiled
+         * @param cc the calling convention for calls to the code compiled for {@code graph}
+         * @param installedCodeOwner the method the compiled code will be associated with once
+         *            installed. This argument can be null.
+         * @param stub
+         * @param providers
+         * @param backend
+         * @param target
+         * @param cache
+         * @param graphBuilderSuite
+         * @param optimisticOpts
+         * @param profilingInfo
+         * @param speculationLog
+         * @param suites
+         * @param compilationResult
+         * @param factory
+         */
+        public Request(StructuredGraph graph, Object stub, CallingConvention cc, ResolvedJavaMethod installedCodeOwner, Providers providers, Backend backend, TargetDescription target,
+                        Map<ResolvedJavaMethod, StructuredGraph> cache, PhaseSuite<HighTierContext> graphBuilderSuite, OptimisticOptimizations optimisticOpts, ProfilingInfo profilingInfo,
+                        SpeculationLog speculationLog, Suites suites, T compilationResult, CompilationResultBuilderFactory factory) {
+            this.graph = graph;
+            this.stub = stub;
+            this.cc = cc;
+            this.installedCodeOwner = installedCodeOwner;
+            this.providers = providers;
+            this.backend = backend;
+            this.target = target;
+            this.cache = cache;
+            this.graphBuilderSuite = graphBuilderSuite;
+            this.optimisticOpts = optimisticOpts;
+            this.profilingInfo = profilingInfo;
+            this.speculationLog = speculationLog;
+            this.suites = suites;
+            this.compilationResult = compilationResult;
+            this.factory = factory;
+        }
+
+        /**
+         * Executes this compilation request.
+         *
+         * @return the result of the compilation
+         */
+        public T execute() {
+            return GraalCompiler.compile(this);
+        }
+    }
+
+    /**
      * Requests compilation of a given graph.
      *
      * @param graph the graph to be compiled
@@ -137,15 +205,25 @@ public class GraalCompiler {
     public static <T extends CompilationResult> T compileGraph(StructuredGraph graph, Object stub, CallingConvention cc, ResolvedJavaMethod installedCodeOwner, Providers providers, Backend backend,
                     TargetDescription target, Map<ResolvedJavaMethod, StructuredGraph> cache, PhaseSuite<HighTierContext> graphBuilderSuite, OptimisticOptimizations optimisticOpts,
                     ProfilingInfo profilingInfo, SpeculationLog speculationLog, Suites suites, T compilationResult, CompilationResultBuilderFactory factory) {
-        assert !graph.isFrozen();
-        try (Scope s0 = Debug.scope("GraalCompiler", graph, providers.getCodeCache())) {
+        return compile(new Request<>(graph, stub, cc, installedCodeOwner, providers, backend, target, cache, graphBuilderSuite, optimisticOpts, profilingInfo, speculationLog, suites,
+                        compilationResult, factory));
+    }
+
+    /**
+     * Services a given compilation request.
+     *
+     * @return the result of the compilation
+     */
+    public static <T extends CompilationResult> T compile(Request<T> r) {
+        assert !r.graph.isFrozen();
+        try (Scope s0 = Debug.scope("GraalCompiler", r.graph, r.providers.getCodeCache())) {
             Assumptions assumptions = new Assumptions(OptAssumptions.getValue());
-            SchedulePhase schedule = emitFrontEnd(providers, target, graph, assumptions, cache, graphBuilderSuite, optimisticOpts, profilingInfo, speculationLog, suites);
-            emitBackEnd(graph, stub, cc, installedCodeOwner, backend, target, compilationResult, factory, assumptions, schedule, null);
+            SchedulePhase schedule = emitFrontEnd(r.providers, r.target, r.graph, assumptions, r.cache, r.graphBuilderSuite, r.optimisticOpts, r.profilingInfo, r.speculationLog, r.suites);
+            emitBackEnd(r.graph, r.stub, r.cc, r.installedCodeOwner, r.backend, r.target, r.compilationResult, r.factory, assumptions, schedule, null);
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
-        return compilationResult;
+        return r.compilationResult;
     }
 
     public static ProfilingInfo getProfilingInfo(StructuredGraph graph) {
