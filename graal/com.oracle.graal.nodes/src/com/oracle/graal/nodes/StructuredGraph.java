@@ -260,7 +260,7 @@ public class StructuredGraph extends Graph {
     }
 
     public void replaceFloating(FloatingNode node, Node replacement) {
-        assert node != null && replacement != null && node.isAlive() && replacement.isAlive() : "cannot replace " + node + " with " + replacement;
+        assert node != null && node.isAlive() && (replacement == null || replacement.isAlive()) : "cannot replace " + node + " with " + replacement;
         node.replaceAtUsages(replacement);
         node.safeDelete();
     }
