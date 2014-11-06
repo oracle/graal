@@ -29,6 +29,8 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+
 /**
  * Represents a constant non-{@code null} object reference, within the compiler and across the
  * compiler/runtime interface.
@@ -158,6 +160,15 @@ public final class HotSpotObjectConstantImpl extends JavaConstant implements Hot
             return HotSpotObjectConstantImpl.forObject(CompositeValueClass.get(c));
         }
         return null;
+    }
+
+    @SuppressFBWarnings(value = "ES_COMPARING_STRINGS_WITH_EQ", justification = "reference equality is what we want")
+    public boolean isInternedString() {
+        if (object instanceof String) {
+            String s = (String) object;
+            return s.intern() == s;
+        }
+        return false;
     }
 
     @Override

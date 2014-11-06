@@ -31,8 +31,6 @@ import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.tiers.*;
 
-import edu.umd.cs.findbugs.annotations.*;
-
 /**
  * Checks for illegal object constants in a graph processed for AOT compilation. The only legal
  * object constants are {@linkplain String#intern() interned} strings as they will be installed in
@@ -74,18 +72,12 @@ public class AheadOfTimeVerificationPhase extends VerifyPhase<PhaseContext> {
         return StampTool.typeOrNull(node).getName().startsWith("Ljava/lang/invoke/BoundMethodHandle");
     }
 
-    @SuppressFBWarnings(value = "ES_COMPARING_STRINGS_WITH_EQ", justification = "reference equality is what we want")
     private static boolean isInternedString(ConstantNode node) {
         if (!isObject(node)) {
             return false;
         }
 
-        Object o = HotSpotObjectConstantImpl.asObject(node.asJavaConstant());
-        if (!(o instanceof String)) {
-            return false;
-        }
-
-        String s = (String) o;
-        return s == s.intern();
+        HotSpotObjectConstant c = (HotSpotObjectConstant) node.asConstant();
+        return c.isInternedString();
     }
 }
