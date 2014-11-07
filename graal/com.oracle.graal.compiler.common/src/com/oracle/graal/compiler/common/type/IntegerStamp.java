@@ -375,7 +375,7 @@ public class IntegerStamp extends PrimitiveStamp {
         @Override
         public Constant foldConstant(Constant value) {
             PrimitiveConstant c = (PrimitiveConstant) value;
-            return PrimitiveConstant.forIntegerKind(c.getKind(), -c.asLong());
+            return JavaConstant.forIntegerKind(c.getKind(), -c.asLong());
         }
 
         @Override
@@ -683,7 +683,7 @@ public class IntegerStamp extends PrimitiveStamp {
         @Override
         public Constant foldConstant(Constant value) {
             PrimitiveConstant c = (PrimitiveConstant) value;
-            return PrimitiveConstant.forIntegerKind(c.getKind(), Math.abs(c.asLong()));
+            return JavaConstant.forIntegerKind(c.getKind(), Math.abs(c.asLong()));
         }
 
         @Override

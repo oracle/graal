@@ -25,7 +25,7 @@ package com.oracle.graal.api.meta;
 /**
  * The implementation type of the {@link JavaConstant#NULL_OBJECT null constant}.
  */
-final class NullConstant extends JavaConstant {
+final class NullConstant extends AbstractValue implements JavaConstant {
 
     private static final long serialVersionUID = 8906209595800783961L;
 

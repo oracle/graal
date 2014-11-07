@@ -28,40 +28,34 @@ package com.oracle.graal.api.meta;
  * {@code JavaConstant} instances that represent frequently used constant values, such as
  * {@link #NULL_OBJECT}.
  */
-public abstract class JavaConstant extends AbstractValue implements Constant, JavaValue {
-
-    private static final long serialVersionUID = -6355452536852663986L;
+public interface JavaConstant extends Constant, JavaValue, Value {
 
     /*
      * Using a larger cache for integers leads to only a slight increase in cache hit ratio which is
      * not enough to justify the impact on startup time.
      */
-    public static final JavaConstant NULL_OBJECT = new NullConstant();
-    public static final JavaConstant INT_MINUS_1 = new PrimitiveConstant(Kind.Int, -1);
-    public static final JavaConstant INT_0 = new PrimitiveConstant(Kind.Int, 0);
-    public static final JavaConstant INT_1 = new PrimitiveConstant(Kind.Int, 1);
-    public static final JavaConstant INT_2 = new PrimitiveConstant(Kind.Int, 2);
-    public static final JavaConstant LONG_0 = new PrimitiveConstant(Kind.Long, 0L);
-    public static final JavaConstant LONG_1 = new PrimitiveConstant(Kind.Long, 1L);
-    public static final JavaConstant FLOAT_0 = new PrimitiveConstant(Kind.Float, Float.floatToRawIntBits(0.0F));
-    public static final JavaConstant FLOAT_1 = new PrimitiveConstant(Kind.Float, Float.floatToRawIntBits(1.0F));
-    public static final JavaConstant DOUBLE_0 = new PrimitiveConstant(Kind.Double, Double.doubleToRawLongBits(0.0D));
-    public static final JavaConstant DOUBLE_1 = new PrimitiveConstant(Kind.Double, Double.doubleToRawLongBits(1.0D));
-    public static final JavaConstant TRUE = new PrimitiveConstant(Kind.Boolean, 1L);
-    public static final JavaConstant FALSE = new PrimitiveConstant(Kind.Boolean, 0L);
-
-    protected JavaConstant(LIRKind kind) {
-        super(kind);
-    }
+    JavaConstant NULL_OBJECT = new NullConstant();
+    PrimitiveConstant INT_MINUS_1 = new PrimitiveConstant(Kind.Int, -1);
+    PrimitiveConstant INT_0 = new PrimitiveConstant(Kind.Int, 0);
+    PrimitiveConstant INT_1 = new PrimitiveConstant(Kind.Int, 1);
+    PrimitiveConstant INT_2 = new PrimitiveConstant(Kind.Int, 2);
+    PrimitiveConstant LONG_0 = new PrimitiveConstant(Kind.Long, 0L);
+    PrimitiveConstant LONG_1 = new PrimitiveConstant(Kind.Long, 1L);
+    PrimitiveConstant FLOAT_0 = new PrimitiveConstant(Kind.Float, Float.floatToRawIntBits(0.0F));
+    PrimitiveConstant FLOAT_1 = new PrimitiveConstant(Kind.Float, Float.floatToRawIntBits(1.0F));
+    PrimitiveConstant DOUBLE_0 = new PrimitiveConstant(Kind.Double, Double.doubleToRawLongBits(0.0D));
+    PrimitiveConstant DOUBLE_1 = new PrimitiveConstant(Kind.Double, Double.doubleToRawLongBits(1.0D));
+    PrimitiveConstant TRUE = new PrimitiveConstant(Kind.Boolean, 1L);
+    PrimitiveConstant FALSE = new PrimitiveConstant(Kind.Boolean, 0L);
 
     /**
      * Checks whether this constant is null.
      *
      * @return {@code true} if this constant is the null constant
      */
-    public abstract boolean isNull();
+    boolean isNull();
 
-    public static boolean isNull(Constant c) {
+    static boolean isNull(Constant c) {
         if (c instanceof JavaConstant) {
             return ((JavaConstant) c).isNull();
         } else {
@@ -74,7 +68,7 @@ public abstract class JavaConstant extends AbstractValue implements Constant, Ja
      *
      * @return {@code true} if this constant is a primitive, or an object constant that is not null
      */
-    public final boolean isNonNull() {
+    default boolean isNonNull() {
         return !isNull();
     }
 
@@ -83,14 +77,14 @@ public abstract class JavaConstant extends AbstractValue implements Constant, Ja
      *
      * @return {@code true} if this constant is the default value for its kind
      */
-    public abstract boolean isDefaultForKind();
+    boolean isDefaultForKind();
 
     /**
      * Returns the value of this constant as a boxed Java value.
      *
      * @return the value of this constant
      */
-    public abstract Object asBoxedPrimitive();
+    Object asBoxedPrimitive();
 
     /**
      * Returns the primitive int value this constant represents. The constant must have a
@@ -98,7 +92,7 @@ public abstract class JavaConstant extends AbstractValue implements Constant, Ja
      *
      * @return the constant value
      */
-    public abstract int asInt();
+    int asInt();
 
     /**
      * Returns the primitive boolean value this constant represents. The constant must have kind
@@ -106,7 +100,7 @@ public abstract class JavaConstant extends AbstractValue implements Constant, Ja
      *
      * @return the constant value
      */
-    public abstract boolean asBoolean();
+    boolean asBoolean();
 
     /**
      * Returns the primitive long value this constant represents. The constant must have kind
@@ -114,7 +108,7 @@ public abstract class JavaConstant extends AbstractValue implements Constant, Ja
      *
      * @return the constant value
      */
-    public abstract long asLong();
+    long asLong();
 
     /**
      * Returns the primitive float value this constant represents. The constant must have kind
@@ -122,7 +116,7 @@ public abstract class JavaConstant extends AbstractValue implements Constant, Ja
      *
      * @return the constant value
      */
-    public abstract float asFloat();
+    float asFloat();
 
     /**
      * Returns the primitive double value this constant represents. The constant must have kind
@@ -130,9 +124,9 @@ public abstract class JavaConstant extends AbstractValue implements Constant, Ja
      *
      * @return the constant value
      */
-    public abstract double asDouble();
+    double asDouble();
 
-    public String toValueString() {
+    default String toValueString() {
         if (getKind() == Kind.Illegal) {
             return "illegal";
         } else {
@@ -140,14 +134,14 @@ public abstract class JavaConstant extends AbstractValue implements Constant, Ja
         }
     }
 
-    @Override
-    public String toString() {
-        if (getKind() == Kind.Illegal) {
-            return "illegal";
-        } else {
-            return getKind().getJavaName() + "[" + toValueString() + "]";
-        }
-    }
+// @Override
+// public String toString() {
+// if (getKind() == Kind.Illegal) {
+// return "illegal";
+// } else {
+// return getKind().getJavaName() + "[" + toValueString() + "]";
+// }
+// }
 
     /**
      * Creates a boxed double constant.
@@ -155,7 +149,7 @@ public abstract class JavaConstant extends AbstractValue implements Constant, Ja
      * @param d the double value to box
      * @return a boxed copy of {@code value}
      */
-    public static JavaConstant forDouble(double d) {
+    static PrimitiveConstant forDouble(double d) {
         if (Double.compare(0.0D, d) == 0) {
             return DOUBLE_0;
         }
@@ -171,7 +165,7 @@ public abstract class JavaConstant extends AbstractValue implements Constant, Ja
      * @param f the float value to box
      * @return a boxed copy of {@code value}
      */
-    public static JavaConstant forFloat(float f) {
+    static PrimitiveConstant forFloat(float f) {
         if (Float.compare(f, 0.0F) == 0) {
             return FLOAT_0;
         }
@@ -187,7 +181,7 @@ public abstract class JavaConstant extends AbstractValue implements Constant, Ja
      * @param i the long value to box
      * @return a boxed copy of {@code value}
      */
-    public static JavaConstant forLong(long i) {
+    static PrimitiveConstant forLong(long i) {
         if (i == 0) {
             return LONG_0;
         } else if (i == 1) {
@@ -203,7 +197,7 @@ public abstract class JavaConstant extends AbstractValue implements Constant, Ja
      * @param i the integer value to box
      * @return a boxed copy of {@code value}
      */
-    public static JavaConstant forInt(int i) {
+    static PrimitiveConstant forInt(int i) {
         switch (i) {
             case -1:
                 return INT_MINUS_1;
@@ -224,7 +218,7 @@ public abstract class JavaConstant extends AbstractValue implements Constant, Ja
      * @param i the byte value to box
      * @return a boxed copy of {@code value}
      */
-    public static JavaConstant forByte(byte i) {
+    static PrimitiveConstant forByte(byte i) {
         return new PrimitiveConstant(Kind.Byte, i);
     }
 
@@ -234,7 +228,7 @@ public abstract class JavaConstant extends AbstractValue implements Constant, Ja
      * @param i the boolean value to box
      * @return a boxed copy of {@code value}
      */
-    public static JavaConstant forBoolean(boolean i) {
+    static PrimitiveConstant forBoolean(boolean i) {
         return i ? TRUE : FALSE;
     }
 
@@ -244,7 +238,7 @@ public abstract class JavaConstant extends AbstractValue implements Constant, Ja
      * @param i the char value to box
      * @return a boxed copy of {@code value}
      */
-    public static JavaConstant forChar(char i) {
+    static PrimitiveConstant forChar(char i) {
         return new PrimitiveConstant(Kind.Char, i);
     }
 
@@ -254,14 +248,14 @@ public abstract class JavaConstant extends AbstractValue implements Constant, Ja
      * @param i the short value to box
      * @return a boxed copy of {@code value}
      */
-    public static JavaConstant forShort(short i) {
+    static PrimitiveConstant forShort(short i) {
         return new PrimitiveConstant(Kind.Short, i);
     }
 
     /**
      * Creates a {@link JavaConstant} from a primitive integer of a certain kind.
      */
-    public static JavaConstant forIntegerKind(Kind kind, long i) {
+    static PrimitiveConstant forIntegerKind(Kind kind, long i) {
         switch (kind) {
             case Byte:
                 return new PrimitiveConstant(kind, (byte) i);
@@ -281,7 +275,7 @@ public abstract class JavaConstant extends AbstractValue implements Constant, Ja
     /**
      * Creates a {@link JavaConstant} from a primitive integer of a certain width.
      */
-    public static JavaConstant forPrimitiveInt(int bits, long i) {
+    static PrimitiveConstant forPrimitiveInt(int bits, long i) {
         assert bits <= 64;
         switch (bits) {
             case 1:
@@ -305,7 +299,7 @@ public abstract class JavaConstant extends AbstractValue implements Constant, Ja
      * @param value the Java boxed value
      * @return the primitive constant holding the {@code value}
      */
-    public static JavaConstant forBoxedPrimitive(Object value) {
+    static PrimitiveConstant forBoxedPrimitive(Object value) {
         if (value instanceof Boolean) {
             return forBoolean((Boolean) value);
         } else if (value instanceof Byte) {
@@ -327,14 +321,14 @@ public abstract class JavaConstant extends AbstractValue implements Constant, Ja
         }
     }
 
-    public static JavaConstant forIllegal() {
+    static PrimitiveConstant forIllegal() {
         return new PrimitiveConstant(Kind.Illegal, 0);
     }
 
     /**
      * Returns a constant with the default value for the given kind.
      */
-    public static JavaConstant defaultForKind(Kind kind) {
+    static JavaConstant defaultForKind(Kind kind) {
         switch (kind) {
             case Boolean:
                 return FALSE;
@@ -362,7 +356,7 @@ public abstract class JavaConstant extends AbstractValue implements Constant, Ja
     /**
      * Returns the zero value for a given numeric kind.
      */
-    public static JavaConstant zero(Kind kind) {
+    static JavaConstant zero(Kind kind) {
         switch (kind) {
             case Boolean:
                 return FALSE;
@@ -388,7 +382,7 @@ public abstract class JavaConstant extends AbstractValue implements Constant, Ja
     /**
      * Returns the one value for a given numeric kind.
      */
-    public static JavaConstant one(Kind kind) {
+    static JavaConstant one(Kind kind) {
         switch (kind) {
             case Boolean:
                 return TRUE;
@@ -414,7 +408,7 @@ public abstract class JavaConstant extends AbstractValue implements Constant, Ja
     /**
      * Adds two numeric constants.
      */
-    public static JavaConstant add(JavaConstant x, JavaConstant y) {
+    static JavaConstant add(JavaConstant x, JavaConstant y) {
         assert x.getKind() == y.getKind();
         switch (x.getKind()) {
             case Byte:
@@ -439,7 +433,7 @@ public abstract class JavaConstant extends AbstractValue implements Constant, Ja
     /**
      * Multiplies two numeric constants.
      */
-    public static JavaConstant mul(JavaConstant x, JavaConstant y) {
+    static PrimitiveConstant mul(JavaConstant x, JavaConstant y) {
         assert x.getKind() == y.getKind();
         switch (x.getKind()) {
             case Byte:

@@ -27,7 +27,7 @@ import com.oracle.graal.api.meta.*;
 /**
  * The compressed representation of the {@link JavaConstant#NULL_OBJECT null constant}.
  */
-public final class HotSpotCompressedNullConstant extends JavaConstant implements HotSpotConstant {
+public final class HotSpotCompressedNullConstant extends AbstractValue implements JavaConstant, HotSpotConstant {
 
     private static final long serialVersionUID = 8906209595800783961L;
 
