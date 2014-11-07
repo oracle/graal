@@ -39,7 +39,7 @@ public class HotSpotProviders extends Providers {
     private final HotSpotRegistersProvider registers;
     private final SnippetReflectionProvider snippetReflection;
 
-    public HotSpotProviders(HotSpotMetaAccessProvider metaAccess, HotSpotCodeCacheProvider codeCache, ConstantReflectionProvider constantReflection, HotSpotForeignCallsProvider foreignCalls,
+    public HotSpotProviders(MetaAccessProvider metaAccess, HotSpotCodeCacheProvider codeCache, ConstantReflectionProvider constantReflection, HotSpotForeignCallsProvider foreignCalls,
                     LoweringProvider lowerer, Replacements replacements, HotSpotDisassemblerProvider disassembler, SuitesProvider suites, HotSpotRegistersProvider registers,
                     SnippetReflectionProvider snippetReflection) {
         super(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, replacements);
@@ -52,11 +52,6 @@ public class HotSpotProviders extends Providers {
     @Override
     public HotSpotCodeCacheProvider getCodeCache() {
         return (HotSpotCodeCacheProvider) super.getCodeCache();
-    }
-
-    @Override
-    public HotSpotMetaAccessProvider getMetaAccess() {
-        return (HotSpotMetaAccessProvider) super.getMetaAccess();
     }
 
     public HotSpotDisassemblerProvider getDisassembler() {

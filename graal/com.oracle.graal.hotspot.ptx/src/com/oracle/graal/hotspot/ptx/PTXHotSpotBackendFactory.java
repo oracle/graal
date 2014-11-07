@@ -39,7 +39,7 @@ public class PTXHotSpotBackendFactory implements HotSpotBackendFactory {
 
     public HotSpotBackend createBackend(HotSpotGraalRuntime runtime, HotSpotBackend hostBackend) {
         HotSpotProviders host = hostBackend.getProviders();
-        HotSpotMetaAccessProvider metaAccess;
+        MetaAccessProvider metaAccess;
         PTXHotSpotCodeCacheProvider codeCache;
         ConstantReflectionProvider constantReflection;
         HotSpotForeignCallsProvider foreignCalls;
