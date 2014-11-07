@@ -452,7 +452,191 @@ public class FloatStamp extends PrimitiveStamp {
         }
     },
 
-    null, null, null, null,
+    new UnaryOp.Not() {
+
+        @Override
+        public Constant foldConstant(Constant c) {
+            PrimitiveConstant value = (PrimitiveConstant) c;
+            switch (value.getKind()) {
+                case Float:
+                    int f = Float.floatToRawIntBits(value.asFloat());
+                    return JavaConstant.forFloat(Float.intBitsToFloat(~f));
+                case Double:
+                    long d = Double.doubleToRawLongBits(value.asDouble());
+                    return JavaConstant.forDouble(Double.longBitsToDouble(~d));
+                default:
+                    throw GraalInternalError.shouldNotReachHere();
+            }
+        }
+
+        @Override
+        public Stamp foldStamp(Stamp s) {
+            return s.unrestricted();
+        }
+    },
+
+    new BinaryOp.And(true, true) {
+
+        @Override
+        public Constant foldConstant(Constant const1, Constant const2) {
+            PrimitiveConstant a = (PrimitiveConstant) const1;
+            PrimitiveConstant b = (PrimitiveConstant) const2;
+            assert a.getKind() == b.getKind();
+            switch (a.getKind()) {
+                case Float:
+                    int fa = Float.floatToRawIntBits(a.asFloat());
+                    int fb = Float.floatToRawIntBits(b.asFloat());
+                    return JavaConstant.forFloat(Float.intBitsToFloat(fa & fb));
+                case Double:
+                    long da = Double.doubleToRawLongBits(a.asDouble());
+                    long db = Double.doubleToRawLongBits(b.asDouble());
+                    return JavaConstant.forDouble(Double.longBitsToDouble(da & db));
+                default:
+                    throw GraalInternalError.shouldNotReachHere();
+            }
+        }
+
+        @Override
+        public Stamp foldStamp(Stamp stamp1, Stamp stamp2) {
+            return stamp1.unrestricted();
+        }
+
+        @Override
+        public boolean isNeutral(Constant n) {
+            PrimitiveConstant value = (PrimitiveConstant) n;
+            switch (value.getKind()) {
+                case Float:
+                    return Float.floatToRawIntBits(value.asFloat()) == 0xFFFFFFFF;
+                case Double:
+                    return Double.doubleToRawLongBits(value.asDouble()) == 0xFFFFFFFFFFFFFFFFL;
+                default:
+                    throw GraalInternalError.shouldNotReachHere();
+            }
+        }
+    },
+
+    new BinaryOp.Or(true, true) {
+
+        @Override
+        public Constant foldConstant(Constant const1, Constant const2) {
+            PrimitiveConstant a = (PrimitiveConstant) const1;
+            PrimitiveConstant b = (PrimitiveConstant) const2;
+            assert a.getKind() == b.getKind();
+            switch (a.getKind()) {
+                case Float:
+                    int fa = Float.floatToRawIntBits(a.asFloat());
+                    int fb = Float.floatToRawIntBits(b.asFloat());
+                    return JavaConstant.forFloat(Float.intBitsToFloat(fa | fb));
+                case Double:
+                    long da = Double.doubleToRawLongBits(a.asDouble());
+                    long db = Double.doubleToRawLongBits(b.asDouble());
+                    return JavaConstant.forDouble(Double.longBitsToDouble(da | db));
+                default:
+                    throw GraalInternalError.shouldNotReachHere();
+            }
+        }
+
+        @Override
+        public Stamp foldStamp(Stamp stamp1, Stamp stamp2) {
+            return stamp1.unrestricted();
+        }
+
+        @Override
+        public boolean isNeutral(Constant n) {
+            PrimitiveConstant value = (PrimitiveConstant) n;
+            switch (value.getKind()) {
+                case Float:
+                    return Float.floatToRawIntBits(value.asFloat()) == 0;
+                case Double:
+                    return Double.doubleToRawLongBits(value.asDouble()) == 0L;
+                default:
+                    throw GraalInternalError.shouldNotReachHere();
+            }
+        }
+    },
+
+    new BinaryOp.Xor(true, true) {
+
+        @Override
+        public Constant foldConstant(Constant const1, Constant const2) {
+            PrimitiveConstant a = (PrimitiveConstant) const1;
+            PrimitiveConstant b = (PrimitiveConstant) const2;
+            assert a.getKind() == b.getKind();
+            switch (a.getKind()) {
+                case Float:
+                    int fa = Float.floatToRawIntBits(a.asFloat());
+                    int fb = Float.floatToRawIntBits(b.asFloat());
+                    return JavaConstant.forFloat(Float.intBitsToFloat(fa ^ fb));
+                case Double:
+                    long da = Double.doubleToRawLongBits(a.asDouble());
+                    long db = Double.doubleToRawLongBits(b.asDouble());
+                    return JavaConstant.forDouble(Double.longBitsToDouble(da ^ db));
+                default:
+                    throw GraalInternalError.shouldNotReachHere();
+            }
+        }
+
+        @Override
+        public Stamp foldStamp(Stamp stamp1, Stamp stamp2) {
+            return stamp1.unrestricted();
+        }
+
+        @Override
+        public boolean isNeutral(Constant n) {
+            PrimitiveConstant value = (PrimitiveConstant) n;
+            switch (value.getKind()) {
+                case Float:
+                    return Float.floatToRawIntBits(value.asFloat()) == 0;
+                case Double:
+                    return Double.doubleToRawLongBits(value.asDouble()) == 0L;
+                default:
+                    throw GraalInternalError.shouldNotReachHere();
+            }
+        }
+    },
+
+    new UnaryOp.Abs() {
+
+        @Override
+        public Constant foldConstant(Constant c) {
+            PrimitiveConstant value = (PrimitiveConstant) c;
+            switch (value.getKind()) {
+                case Float:
+                    return JavaConstant.forFloat(Math.abs(value.asFloat()));
+                case Double:
+                    return JavaConstant.forDouble(Math.abs(value.asDouble()));
+                default:
+                    throw GraalInternalError.shouldNotReachHere();
+            }
+        }
+
+        @Override
+        public Stamp foldStamp(Stamp s) {
+            FloatStamp stamp = (FloatStamp) s;
+            return new FloatStamp(stamp.getBits(), 0, Math.max(-stamp.lowerBound(), stamp.upperBound()), stamp.isNonNaN());
+        }
+    },
+
+    new UnaryOp.Sqrt() {
+
+        @Override
+        public Constant foldConstant(Constant c) {
+            PrimitiveConstant value = (PrimitiveConstant) c;
+            switch (value.getKind()) {
+                case Float:
+                    return JavaConstant.forFloat((float) Math.sqrt(value.asFloat()));
+                case Double:
+                    return JavaConstant.forDouble(Math.sqrt(value.asDouble()));
+                default:
+                    throw GraalInternalError.shouldNotReachHere();
+            }
+        }
+
+        @Override
+        public Stamp foldStamp(Stamp s) {
+            return s.unrestricted();
+        }
+    },
 
     null, null, null,
 

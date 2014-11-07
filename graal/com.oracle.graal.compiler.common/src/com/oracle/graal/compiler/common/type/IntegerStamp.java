@@ -678,6 +678,29 @@ public class IntegerStamp extends PrimitiveStamp {
         }
     },
 
+    new UnaryOp.Abs() {
+
+        @Override
+        public Constant foldConstant(Constant value) {
+            PrimitiveConstant c = (PrimitiveConstant) value;
+            return PrimitiveConstant.forIntegerKind(c.getKind(), Math.abs(c.asLong()));
+        }
+
+        @Override
+        public Stamp foldStamp(Stamp input) {
+            IntegerStamp stamp = (IntegerStamp) input;
+            int bits = stamp.getBits();
+            if (stamp.lowerBound() == CodeUtil.minValue(bits)) {
+                return input.unrestricted();
+            } else {
+                long limit = Math.max(-stamp.lowerBound(), stamp.upperBound());
+                return StampFactory.forInteger(bits, 0, limit);
+            }
+        }
+    },
+
+    null,
+
     new IntegerConvertOp.ZeroExtend() {
 
         @Override

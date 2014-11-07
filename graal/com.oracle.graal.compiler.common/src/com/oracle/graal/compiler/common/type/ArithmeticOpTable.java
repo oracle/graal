@@ -41,8 +41,10 @@ import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp.Xor;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.IntegerConvertOp.Narrow;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.IntegerConvertOp.SignExtend;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.IntegerConvertOp.ZeroExtend;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.UnaryOp.Abs;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.UnaryOp.Neg;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.UnaryOp.Not;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.UnaryOp.Sqrt;
 
 /**
  * Information about arithmetic operations.
@@ -62,6 +64,9 @@ public final class ArithmeticOpTable {
     private final BinaryOp<Or> or;
     private final BinaryOp<Xor> xor;
 
+    private final UnaryOp<Abs> abs;
+    private final UnaryOp<Sqrt> sqrt;
+
     private final IntegerConvertOp<ZeroExtend> zeroExtend;
     private final IntegerConvertOp<SignExtend> signExtend;
     private final IntegerConvertOp<Narrow> narrow;
@@ -76,11 +81,12 @@ public final class ArithmeticOpTable {
         }
     }
 
-    public static final ArithmeticOpTable EMPTY = new ArithmeticOpTable(null, null, null, null, null, null, null, null, null, null, null, null, null);
+    public static final ArithmeticOpTable EMPTY = new ArithmeticOpTable(null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
     public ArithmeticOpTable(UnaryOp<Neg> neg, BinaryOp<Add> add, BinaryOp<Sub> sub, BinaryOp<Mul> mul, BinaryOp<Div> div, BinaryOp<Rem> rem, UnaryOp<Not> not, BinaryOp<And> and, BinaryOp<Or> or,
-                    BinaryOp<Xor> xor, IntegerConvertOp<ZeroExtend> zeroExtend, IntegerConvertOp<SignExtend> signExtend, IntegerConvertOp<Narrow> narrow, FloatConvertOp... floatConvert) {
-        this(neg, add, sub, mul, div, rem, not, and, or, xor, zeroExtend, signExtend, narrow, Stream.of(floatConvert));
+                    BinaryOp<Xor> xor, UnaryOp<Abs> abs, UnaryOp<Sqrt> sqrt, IntegerConvertOp<ZeroExtend> zeroExtend, IntegerConvertOp<SignExtend> signExtend, IntegerConvertOp<Narrow> narrow,
+                    FloatConvertOp... floatConvert) {
+        this(neg, add, sub, mul, div, rem, not, and, or, xor, abs, sqrt, zeroExtend, signExtend, narrow, Stream.of(floatConvert));
     }
 
     public interface ArithmeticOpWrapper {
@@ -116,17 +122,21 @@ public final class ArithmeticOpTable {
         BinaryOp<Or> or = wrapIfNonNull(wrapper::wrapBinaryOp, inner.getOr());
         BinaryOp<Xor> xor = wrapIfNonNull(wrapper::wrapBinaryOp, inner.getXor());
 
+        UnaryOp<Abs> abs = wrapIfNonNull(wrapper::wrapUnaryOp, inner.getAbs());
+        UnaryOp<Sqrt> sqrt = wrapIfNonNull(wrapper::wrapUnaryOp, inner.getSqrt());
+
         IntegerConvertOp<ZeroExtend> zeroExtend = wrapIfNonNull(wrapper::wrapIntegerConvertOp, inner.getZeroExtend());
         IntegerConvertOp<SignExtend> signExtend = wrapIfNonNull(wrapper::wrapIntegerConvertOp, inner.getSignExtend());
         IntegerConvertOp<Narrow> narrow = wrapIfNonNull(wrapper::wrapIntegerConvertOp, inner.getNarrow());
 
         Stream<FloatConvertOp> floatConvert = Stream.of(inner.floatConvert).filter(Objects::nonNull).map(wrapper::wrapFloatConvertOp);
 
-        return new ArithmeticOpTable(neg, add, sub, mul, div, rem, not, and, or, xor, zeroExtend, signExtend, narrow, floatConvert);
+        return new ArithmeticOpTable(neg, add, sub, mul, div, rem, not, and, or, xor, abs, sqrt, zeroExtend, signExtend, narrow, floatConvert);
     }
 
     private ArithmeticOpTable(UnaryOp<Neg> neg, BinaryOp<Add> add, BinaryOp<Sub> sub, BinaryOp<Mul> mul, BinaryOp<Div> div, BinaryOp<Rem> rem, UnaryOp<Not> not, BinaryOp<And> and, BinaryOp<Or> or,
-                    BinaryOp<Xor> xor, IntegerConvertOp<ZeroExtend> zeroExtend, IntegerConvertOp<SignExtend> signExtend, IntegerConvertOp<Narrow> narrow, Stream<FloatConvertOp> floatConvert) {
+                    BinaryOp<Xor> xor, UnaryOp<Abs> abs, UnaryOp<Sqrt> sqrt, IntegerConvertOp<ZeroExtend> zeroExtend, IntegerConvertOp<SignExtend> signExtend, IntegerConvertOp<Narrow> narrow,
+                    Stream<FloatConvertOp> floatConvert) {
         this.neg = neg;
         this.add = add;
         this.sub = sub;
@@ -137,6 +147,8 @@ public final class ArithmeticOpTable {
         this.and = and;
         this.or = or;
         this.xor = xor;
+        this.abs = abs;
+        this.sqrt = sqrt;
         this.zeroExtend = zeroExtend;
         this.signExtend = signExtend;
         this.narrow = narrow;
@@ -215,6 +227,20 @@ public final class ArithmeticOpTable {
     }
 
     /**
+     * Describes the absolute value operation.
+     */
+    public UnaryOp<Abs> getAbs() {
+        return abs;
+    }
+
+    /**
+     * Describes the square root operation.
+     */
+    public UnaryOp<Sqrt> getSqrt() {
+        return sqrt;
+    }
+
+    /**
      * Describes the zero extend conversion.
      */
     public IntegerConvertOp<ZeroExtend> getZeroExtend() {
@@ -248,7 +274,8 @@ public final class ArithmeticOpTable {
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + "[" + toString(neg, add, sub, mul, div, rem, not, and, or, xor, zeroExtend, signExtend, narrow) + ",floatConvert[" + toString(floatConvert) + "]]";
+        return getClass().getSimpleName() + "[" + toString(neg, add, sub, mul, div, rem, not, and, or, xor, abs, sqrt, zeroExtend, signExtend, narrow) + ",floatConvert[" + toString(floatConvert) +
+                        "]]";
     }
 
     public abstract static class Op {
@@ -297,6 +324,20 @@ public final class ArithmeticOpTable {
 
             protected Not() {
                 super("~");
+            }
+        }
+
+        public abstract static class Abs extends UnaryOp<Abs> {
+
+            protected Abs() {
+                super("ABS");
+            }
+        }
+
+        public abstract static class Sqrt extends UnaryOp<Sqrt> {
+
+            protected Sqrt() {
+                super("SQRT");
             }
         }
 
