@@ -63,9 +63,9 @@ public class WriteBarrierSnippets implements Snippets {
                     "Number of effective G1 Post Write Barriers (after passing the NULL test)");
     private static final SnippetCounter g1ExecutedPostWriteBarrierCounter = new SnippetCounter(countersWriteBarriers, "g1ExecutedPostWriteBarrier", "Number of executed G1 Post Write Barriers");
 
-    public static final LocationIdentity GC_CARD_LOCATION = NamedLocationIdentity.create("GC-Card");
-    public static final LocationIdentity GC_LOG_LOCATION = NamedLocationIdentity.create("GC-Log");
-    public static final LocationIdentity GC_INDEX_LOCATION = NamedLocationIdentity.create("GC-Index");
+    public static final LocationIdentity GC_CARD_LOCATION = NamedLocationIdentity.mutable("GC-Card");
+    public static final LocationIdentity GC_LOG_LOCATION = NamedLocationIdentity.mutable("GC-Log");
+    public static final LocationIdentity GC_INDEX_LOCATION = NamedLocationIdentity.mutable("GC-Index");
 
     @Snippet
     public static void serialWriteBarrier(Object object, Object location, @ConstantParameter boolean usePrecise) {

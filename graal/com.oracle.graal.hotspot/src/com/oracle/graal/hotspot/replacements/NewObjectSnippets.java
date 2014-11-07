@@ -62,7 +62,7 @@ import com.oracle.graal.word.*;
  */
 public class NewObjectSnippets implements Snippets {
 
-    public static final LocationIdentity INIT_LOCATION = NamedLocationIdentity.create("Initialization");
+    public static final LocationIdentity INIT_LOCATION = NamedLocationIdentity.mutable("Initialization");
 
     static class Options {
 

@@ -43,18 +43,18 @@ public class HSAILHotSpotReplacementsUtil extends HotSpotReplacementsUtil {
         hsailRegisters = registers;
     }
 
-    public static final LocationIdentity TLAB_INFO_LOCATION = NamedLocationIdentity.create("TlabInfo");
-    public static final LocationIdentity TLABINFO_LASTGOODTOP_LOCATION = NamedLocationIdentity.create("TlabInfoLastGoodTop");
-    public static final LocationIdentity TLABINFO_END_LOCATION = NamedLocationIdentity.create("TlabInfoEnd");
-    public static final LocationIdentity TLABINFO_TOP_LOCATION = NamedLocationIdentity.create("TlabInfoTop");
-    public static final LocationIdentity TLABINFO_START_LOCATION = NamedLocationIdentity.create("TlabInfoStart");
-    public static final LocationIdentity TLABINFO_ALLOCINFO_LOCATION = NamedLocationIdentity.create("TlabInfoAllocInfo");
-    public static final LocationIdentity TLABINFO_ORIGINALTOP_LOCATION = NamedLocationIdentity.create("TlabInfoOriginalTop");
-    public static final LocationIdentity TLABINFO_TLAB_LOCATION = NamedLocationIdentity.create("TlabInfoTlab");
+    public static final LocationIdentity TLAB_INFO_LOCATION = NamedLocationIdentity.mutable("TlabInfo");
+    public static final LocationIdentity TLABINFO_LASTGOODTOP_LOCATION = NamedLocationIdentity.mutable("TlabInfoLastGoodTop");
+    public static final LocationIdentity TLABINFO_END_LOCATION = NamedLocationIdentity.mutable("TlabInfoEnd");
+    public static final LocationIdentity TLABINFO_TOP_LOCATION = NamedLocationIdentity.mutable("TlabInfoTop");
+    public static final LocationIdentity TLABINFO_START_LOCATION = NamedLocationIdentity.mutable("TlabInfoStart");
+    public static final LocationIdentity TLABINFO_ALLOCINFO_LOCATION = NamedLocationIdentity.mutable("TlabInfoAllocInfo");
+    public static final LocationIdentity TLABINFO_ORIGINALTOP_LOCATION = NamedLocationIdentity.mutable("TlabInfoOriginalTop");
+    public static final LocationIdentity TLABINFO_TLAB_LOCATION = NamedLocationIdentity.mutable("TlabInfoTlab");
 
-    public static final LocationIdentity ALLOCINFO_TLABINFOSPOOLNEXT_LOCATION = NamedLocationIdentity.create("AllocInfoTlabInfosPoolNext");
-    public static final LocationIdentity ALLOCINFO_TLABINFOSPOOLEND_LOCATION = NamedLocationIdentity.create("AllocInfoTlabInfosPoolEnd");
-    public static final LocationIdentity ALLOCINFO_TLABALIGNRESERVEBYTES_LOCATION = NamedLocationIdentity.create("AllocInfoTlabAlignreservebytes");
+    public static final LocationIdentity ALLOCINFO_TLABINFOSPOOLNEXT_LOCATION = NamedLocationIdentity.mutable("AllocInfoTlabInfosPoolNext");
+    public static final LocationIdentity ALLOCINFO_TLABINFOSPOOLEND_LOCATION = NamedLocationIdentity.mutable("AllocInfoTlabInfosPoolEnd");
+    public static final LocationIdentity ALLOCINFO_TLABALIGNRESERVEBYTES_LOCATION = NamedLocationIdentity.mutable("AllocInfoTlabAlignreservebytes");
 
     /**
      * Gets the value of the thread register as a Word. There is a level of indirection here. Thread
