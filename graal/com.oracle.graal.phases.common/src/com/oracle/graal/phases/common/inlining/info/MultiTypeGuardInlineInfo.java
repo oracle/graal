@@ -343,7 +343,9 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
     private boolean createDispatchOnTypeBeforeInvoke(StructuredGraph graph, BeginNode[] successors, boolean invokeIsOnlySuccessor, MetaAccessProvider metaAccess) {
         assert ptypes.size() >= 1;
         ValueNode nonNullReceiver = InliningUtil.nonNullReceiver(invoke);
-        Kind hubKind = ((MethodCallTargetNode) invoke.callTarget()).targetMethod().getDeclaringClass().getEncoding(ResolvedJavaType.Representation.ObjectHub).getKind();
+        Constant hubConstant = ((MethodCallTargetNode) invoke.callTarget()).targetMethod().getDeclaringClass().getEncoding(ResolvedJavaType.Representation.ObjectHub);
+        Stamp hubStamp = ((StampProvider) hubConstant).stamp();
+        Kind hubKind = hubStamp.getStackKind();
         LoadHubNode hub = graph.unique(LoadHubNode.create(nonNullReceiver, hubKind));
 
         if (!invokeIsOnlySuccessor && chooseMethodDispatch()) {
