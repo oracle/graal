@@ -22,17 +22,13 @@
  */
 package com.oracle.graal.api.meta;
 
-import java.io.*;
-
 /**
- * Abstract base class for values manipulated by the compiler. All values have a {@linkplain Kind
- * kind} and are immutable.
+ * Interface for values manipulated by the compiler. All values have a {@linkplain Kind kind} and
+ * are immutable.
  */
-public abstract class Value implements Serializable, KindProvider {
+public interface Value extends KindProvider {
 
-    private static final long serialVersionUID = -6909397188697766469L;
-
-    @SuppressWarnings("serial") public static final AllocatableValue ILLEGAL = new AllocatableValue(LIRKind.Illegal) {
+    @SuppressWarnings("serial") AllocatableValue ILLEGAL = new AllocatableValue(LIRKind.Illegal) {
 
         @Override
         public String toString() {
@@ -40,62 +36,12 @@ public abstract class Value implements Serializable, KindProvider {
         }
     };
 
-    private final Kind kind;
-    private final LIRKind lirKind;
-
-    /**
-     * Initializes a new value of the specified kind.
-     *
-     * @param lirKind the kind
-     */
-    protected Value(LIRKind lirKind) {
-        this.lirKind = lirKind;
-        if (getPlatformKind() instanceof Kind) {
-            this.kind = (Kind) getPlatformKind();
-        } else {
-            this.kind = Kind.Illegal;
-        }
-    }
-
-    /**
-     * Returns a String representation of the kind, which should be the end of all
-     * {@link #toString()} implementation of subclasses.
-     */
-    protected final String getKindSuffix() {
-        return "|" + getKind().getTypeChar();
-    }
-
-    /**
-     * Returns the kind of this value.
-     */
-    public final Kind getKind() {
-        return kind;
-    }
-
-    public final LIRKind getLIRKind() {
-        return lirKind;
-    }
+    LIRKind getLIRKind();
 
     /**
      * Returns the platform specific kind used to store this value.
      */
-    public final PlatformKind getPlatformKind() {
-        return lirKind.getPlatformKind();
-    }
-
-    @Override
-    public int hashCode() {
-        return 41 + lirKind.hashCode();
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (obj instanceof Value) {
-            Value that = (Value) obj;
-            return kind.equals(that.kind) && lirKind.equals(that.lirKind);
-        }
-        return false;
-    }
+    PlatformKind getPlatformKind();
 
     /**
      * Checks if this value is identical to {@code other}.
@@ -104,7 +50,7 @@ public abstract class Value implements Serializable, KindProvider {
      * should be used.
      */
     @ExcludeFromIdentityComparisonVerification
-    public final boolean identityEquals(Value other) {
+    default boolean identityEquals(Value other) {
         return this == other;
     }
 }

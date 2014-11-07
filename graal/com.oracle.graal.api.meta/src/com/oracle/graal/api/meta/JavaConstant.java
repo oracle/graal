@@ -28,7 +28,7 @@ package com.oracle.graal.api.meta;
  * {@code JavaConstant} instances that represent frequently used constant values, such as
  * {@link #NULL_OBJECT}.
  */
-public abstract class JavaConstant extends Value implements Constant, JavaValue {
+public abstract class JavaConstant extends AbstractValue implements Constant, JavaValue {
 
     private static final long serialVersionUID = -6355452536852663986L;
 

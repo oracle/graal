@@ -28,7 +28,7 @@ import com.oracle.graal.api.meta.*;
 /**
  * Represents lock information in the debug information.
  */
-public final class HotSpotMonitorValue extends Value implements JavaValue {
+public final class HotSpotMonitorValue extends AbstractValue implements JavaValue {
 
     private static final long serialVersionUID = 8241681800464483691L;
 

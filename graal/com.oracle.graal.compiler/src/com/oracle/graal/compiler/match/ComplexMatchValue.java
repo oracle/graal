@@ -30,14 +30,14 @@ import com.oracle.graal.compiler.gen.*;
  * closure because Value is serializable which is a hassle for the little inner classes which
  * usually occur here.
  */
-public class ComplexMatchValue extends Value {
+public class ComplexMatchValue extends AbstractValue {
     private static final long serialVersionUID = -4734670273590368770L;
 
     /**
      * This is the Value of a node which was matched as part of a complex match. The value isn't
      * actually useable but this marks it as having been evaluated.
      */
-    @SuppressWarnings("serial") public static final Value INTERIOR_MATCH = new Value(LIRKind.Illegal) {
+    @SuppressWarnings("serial") public static final Value INTERIOR_MATCH = new AbstractValue(LIRKind.Illegal) {
 
         @Override
         public String toString() {

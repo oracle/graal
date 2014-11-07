@@ -26,7 +26,7 @@ package com.oracle.graal.api.meta;
  * Common base class for values that are stored in some location that's managed by the register
  * allocator (e.g. register, stack slot).
  */
-public abstract class AllocatableValue extends Value implements JavaValue {
+public abstract class AllocatableValue extends AbstractValue implements JavaValue, KindProvider {
 
     private static final long serialVersionUID = 153019506717492133L;
 
