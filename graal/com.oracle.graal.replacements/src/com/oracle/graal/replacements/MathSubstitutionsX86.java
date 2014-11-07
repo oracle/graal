@@ -40,6 +40,11 @@ public class MathSubstitutionsX86 {
     private static final double PI_4 = Math.PI / 4;
 
     @MethodSubstitution
+    public static float abs(float x) {
+        return AbsNode.abs(x);
+    }
+
+    @MethodSubstitution
     public static double abs(double x) {
         return AbsNode.abs(x);
     }

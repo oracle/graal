@@ -1006,7 +1006,16 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     @Override
     public Value emitMathAbs(Value input) {
         Variable result = newVariable(LIRKind.derive(input));
-        append(new BinaryRegConst(DAND, result, asAllocatable(input), JavaConstant.forDouble(Double.longBitsToDouble(0x7FFFFFFFFFFFFFFFL))));
+        switch (input.getKind()) {
+            case Float:
+                append(new BinaryRegConst(FAND, result, asAllocatable(input), JavaConstant.forFloat(Float.intBitsToFloat(0x7FFFFFFF))));
+                break;
+            case Double:
+                append(new BinaryRegConst(DAND, result, asAllocatable(input), JavaConstant.forDouble(Double.longBitsToDouble(0x7FFFFFFFFFFFFFFFL))));
+                break;
+            default:
+                throw GraalInternalError.shouldNotReachHere();
+        }
         return result;
     }
 
