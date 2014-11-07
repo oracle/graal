@@ -39,7 +39,7 @@ public class StandardMethodSubstitutionsTest extends MethodSubstitutionTest {
 
     @Test
     public void testMathSubstitutions() {
-        assertInGraph(assertNotInGraph(test("mathAbs"), IfNode.class), MathIntrinsicNode.class);     // Java
+        assertInGraph(assertNotInGraph(test("mathAbs"), IfNode.class), AbsNode.class);     // Java
         test("math");
 
         double value = 34567.891D;

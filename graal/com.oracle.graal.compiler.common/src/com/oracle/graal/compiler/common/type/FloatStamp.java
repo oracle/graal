@@ -454,6 +454,49 @@ public class FloatStamp extends PrimitiveStamp {
 
     null, null, null, null,
 
+    new UnaryOp.Abs() {
+
+        @Override
+        public Constant foldConstant(Constant c) {
+            PrimitiveConstant value = (PrimitiveConstant) c;
+            switch (value.getKind()) {
+                case Float:
+                    return JavaConstant.forFloat(Math.abs(value.asFloat()));
+                case Double:
+                    return JavaConstant.forDouble(Math.abs(value.asDouble()));
+                default:
+                    throw GraalInternalError.shouldNotReachHere();
+            }
+        }
+
+        @Override
+        public Stamp foldStamp(Stamp s) {
+            FloatStamp stamp = (FloatStamp) s;
+            return new FloatStamp(stamp.getBits(), 0, Math.max(-stamp.lowerBound(), stamp.upperBound()), stamp.isNonNaN());
+        }
+    },
+
+    new UnaryOp.Sqrt() {
+
+        @Override
+        public Constant foldConstant(Constant c) {
+            PrimitiveConstant value = (PrimitiveConstant) c;
+            switch (value.getKind()) {
+                case Float:
+                    return JavaConstant.forFloat((float) Math.sqrt(value.asFloat()));
+                case Double:
+                    return JavaConstant.forDouble(Math.sqrt(value.asDouble()));
+                default:
+                    throw GraalInternalError.shouldNotReachHere();
+            }
+        }
+
+        @Override
+        public Stamp foldStamp(Stamp s) {
+            return s.unrestricted();
+        }
+    },
+
     null, null, null,
 
     new FloatConvertOp(F2I) {
