@@ -32,6 +32,8 @@ import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspotvmconfig.*;
 
+//JaCoCo Exclude
+
 /**
  * Used to access native configuration details.
  *
