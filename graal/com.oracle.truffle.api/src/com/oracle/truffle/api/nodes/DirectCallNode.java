@@ -175,4 +175,10 @@ public abstract class DirectCallNode extends Node {
         }
         return null;
     }
+
+    @Override
+    public String toString() {
+        return String.format("%s(target=%s)", getClass().getSimpleName(), getCurrentCallTarget());
+    }
+
 }

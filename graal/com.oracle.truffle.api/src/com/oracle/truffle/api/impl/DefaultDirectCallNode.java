@@ -98,11 +98,6 @@ public final class DefaultDirectCallNode extends DirectCallNode {
         return false;
     }
 
-    @Override
-    public String toString() {
-        return (getParent() != null ? getParent().toString() : super.toString()) + " call " + getCurrentCallTarget().toString();
-    }
-
     private static DefaultTruffleRuntime defaultTruffleRuntime() {
         return (DefaultTruffleRuntime) Truffle.getRuntime();
     }
