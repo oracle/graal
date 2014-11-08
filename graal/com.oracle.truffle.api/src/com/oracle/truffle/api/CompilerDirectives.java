@@ -114,6 +114,12 @@ public final class CompilerDirectives {
      * </code>
      * </pre>
      *
+     * Note that optimizations that a compiler will apply to code that is conditional on
+     * <code>isCompilationConstant</code> may be limited. For this reason
+     * <code>isCompilationConstant</code> is not recommended for use to select between alternate
+     * implementations of functionality depending on whether a value is constant. Instead, it is
+     * intended for use as a diagnostic mechanism, such as illustrated above.
+     *
      * @param value
      * @return {@code true} when given value is seen as compilation constant, {@code false} if not
      *         compilation constant.
