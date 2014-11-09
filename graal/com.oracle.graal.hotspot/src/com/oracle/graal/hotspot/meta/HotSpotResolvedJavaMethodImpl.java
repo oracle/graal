@@ -350,7 +350,7 @@ public final class HotSpotResolvedJavaMethodImpl extends HotSpotMethod implement
         return runtime().getCompilerToVM().getStackTraceElement(metaspaceMethod, bci);
     }
 
-    public ResolvedJavaMethod uniqueConcreteMethod(HotSpotResolvedObjectTypeImpl receiver) {
+    public ResolvedJavaMethod uniqueConcreteMethod(HotSpotResolvedObjectType receiver) {
         if (receiver.isInterface()) {
             // Cannot trust interfaces. Because of:
             // interface I { void foo(); }
@@ -362,7 +362,8 @@ public final class HotSpotResolvedJavaMethodImpl extends HotSpotMethod implement
             // seeing A.foo().
             return null;
         }
-        final long uniqueConcreteMethod = runtime().getCompilerToVM().findUniqueConcreteMethod(receiver.getMetaspaceKlass(), metaspaceMethod);
+        long metaspaceKlass = ((HotSpotResolvedObjectTypeImpl) receiver).getMetaspaceKlass();
+        final long uniqueConcreteMethod = runtime().getCompilerToVM().findUniqueConcreteMethod(metaspaceKlass, metaspaceMethod);
         if (uniqueConcreteMethod == 0) {
             return null;
         }

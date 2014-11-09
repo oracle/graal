@@ -503,7 +503,7 @@ public final class HotSpotResolvedObjectTypeImpl extends HotSpotResolvedJavaType
     @Override
     public ResolvedJavaMethod findUniqueConcreteMethod(ResolvedJavaMethod method) {
         HotSpotResolvedJavaMethod hmethod = (HotSpotResolvedJavaMethod) method;
-        HotSpotResolvedObjectTypeImpl declaredHolder = hmethod.getDeclaringClass();
+        HotSpotResolvedObjectType declaredHolder = hmethod.getDeclaringClass();
         /*
          * Sometimes the receiver type in the graph hasn't stabilized to a subtype of declared
          * holder, usually because of phis, so make sure that the type is related to the declared
