@@ -107,4 +107,23 @@ public abstract class RootNode extends Node {
         this.callTarget = callTarget;
     }
 
+    /**
+     * Returns the {@link ExecutionContext} associated with this <code>RootNode</code>. This allows
+     * the correct <code>ExecutionContext</code> to be determined for a <code>RootNode</code> (and
+     * so also for a {@link RootCallTarget} and a {@link FrameInstance} obtained from the call
+     * stack) without prior knowledge of the language it has come from.
+     *
+     * Used for instance to determine the language of a <code>RootNode<code>:
+     *
+     * <pre>
+     * <code>
+     * rootNode.getExecutionContext().getLanguageShortName();
+     * </code> </pre>
+     *
+     * Returns <code>null</code> by default.
+     */
+    public ExecutionContext getExecutionContext() {
+        return null;
+    }
+
 }

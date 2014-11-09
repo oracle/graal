@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.sl.nodes;
 
+import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.CompilerDirectives.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
@@ -84,6 +85,11 @@ public final class SLRootNode extends RootNode {
     }
 
     public SLContext getSLContext() {
+        return this.context;
+    }
+
+    @Override
+    public ExecutionContext getExecutionContext() {
         return this.context;
     }
 }
