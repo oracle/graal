@@ -35,7 +35,8 @@ import com.oracle.graal.truffle.nodes.asserts.*;
 import com.oracle.truffle.api.*;
 
 /**
- * Macro node for method {@link CompilerDirectives#unsafeCast(Object, Class, boolean)}.
+ * Macro node for {@link CompilerDirectives#unsafeGetInt(Object, long, boolean, Object)} and
+ * friends.
  */
 @NodeInfo
 public class CustomizedUnsafeLoadMacroNode extends NeverPartOfCompilationNode implements Canonicalizable {
