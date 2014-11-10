@@ -689,13 +689,17 @@ public abstract class GraalCompilerTest extends GraalTest {
 
         CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graphToCompile.method(), false);
         try (Context c = new Context(); Debug.Scope s = Debug.scope("ReplayCompiling", new DebugDumpScope("REPLAY", true))) {
-            Request<CompilationResult> request = new GraalCompiler.Request<>(graphToCompile, null, cc, installedCodeOwner, getProviders(), getBackend(), getCodeCache().getTarget(), null,
-                            getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL, getProfilingInfo(graphToCompile), getSpeculationLog(), getSuites(), new CompilationResult(),
-                            CompilationResultBuilderFactory.Default);
+            try {
+                Request<CompilationResult> request = new GraalCompiler.Request<>(graphToCompile, null, cc, installedCodeOwner, getProviders(), getBackend(), getCodeCache().getTarget(), null,
+                                getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL, getProfilingInfo(graphToCompile), getSpeculationLog(), getSuites(), new CompilationResult(),
+                                CompilationResultBuilderFactory.Default);
 
-            request = c.get(request);
-
-            return GraalCompiler.compile(request);
+                request = c.get(request);
+                return GraalCompiler.compile(request);
+            } catch (Throwable e) {
+                e.printStackTrace();
+                throw e;
+            }
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
