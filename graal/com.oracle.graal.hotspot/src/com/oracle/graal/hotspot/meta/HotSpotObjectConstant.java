@@ -47,14 +47,12 @@ public interface HotSpotObjectConstant extends JavaConstant, HotSpotConstant, VM
      *
      * @return {@code null} if this constant does not represent a {@link Class} object
      */
-    @PureFunction
     JavaConstant getClassLoader();
 
     /**
      * Gets the {@linkplain System#identityHashCode(Object) identity} has code for the object
      * represented by this constant.
      */
-    @PureFunction
     int getIdentityHashCode();
 
     /**

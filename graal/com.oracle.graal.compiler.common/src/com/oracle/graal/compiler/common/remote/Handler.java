@@ -25,16 +25,12 @@ package com.oracle.graal.compiler.common.remote;
 import java.lang.reflect.*;
 import java.util.*;
 
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.meta.Remote.PureFunction;
-
-@SuppressWarnings("unused")
 public class Handler<T> implements InvocationHandler {
 
     private final T delegate;
     private final Context context;
 
-    Map<Invocation, Object> constantDataInvocations = new HashMap<>();
+    Map<Invocation, Object> cachedInvocations = new HashMap<>();
 
     public Handler(T delegate, Context context) {
         this.delegate = delegate;
@@ -63,15 +59,23 @@ public class Handler<T> implements InvocationHandler {
         return res;
     }
 
+    /**
+     * @param method
+     */
+    private static boolean isCacheable(Method method) {
+        // TODO: use annotations for finer control of what should be cached
+        return true;
+    }
+
     @Override
     public Object invoke(Object proxy, Method method, Object[] a) throws Throwable {
         Object[] args = unproxify(a);
-        boolean isConstantData = method.getAnnotation(PureFunction.class) != null;
+        boolean isCacheable = isCacheable(method);
         Invocation invocation = new Invocation(method, delegate, args);
-        if (isConstantData) {
-            if (constantDataInvocations.containsKey(invocation)) {
-                Object result = constantDataInvocations.get(invocation);
-                assert Objects.deepEquals(result, invocation.invoke());
+        if (isCacheable) {
+            assert method.getReturnType() != Void.TYPE : method;
+            if (cachedInvocations.containsKey(invocation)) {
+                Object result = cachedInvocations.get(invocation);
                 // System.out.println(invocation + ": " + result);
                 return result;
             }
@@ -81,8 +85,8 @@ public class Handler<T> implements InvocationHandler {
 
         Object result = invocation.invoke();
         result = context.get(result);
-        if (isConstantData) {
-            constantDataInvocations.put(invocation, result);
+        if (isCacheable) {
+            cachedInvocations.put(invocation, result);
         }
         return result;
     }
