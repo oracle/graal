@@ -36,6 +36,7 @@
 * Removed `FrameTypeConversion` interface and changed the corresponding `FrameDescriptor` constructor to have a default value parameter instead.
 * Removed `CompilerDirectives.unsafeFrameCast` (equivalent to a `(MaterializedFrame)` cast).
 * Added `TruffleRuntime#getCapability` API method.
+* Added `NodeInterface` and allowed child field to be declared with interfaces that extend it.
 
 ## Version 0.4
 19-Aug-2014, [Repository Revision](http://hg.openjdk.java.net/graal/graal/shortlog/graal-0.4)
