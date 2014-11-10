@@ -63,7 +63,7 @@ public class HotSpotReplacementsUtil {
         return config().verifyOops;
     }
 
-    public static final LocationIdentity EXCEPTION_OOP_LOCATION = NamedLocationIdentity.create("ExceptionOop");
+    public static final LocationIdentity EXCEPTION_OOP_LOCATION = NamedLocationIdentity.mutable("ExceptionOop");
 
     /**
      * @see HotSpotVMConfig#threadExceptionOopOffset
@@ -73,49 +73,49 @@ public class HotSpotReplacementsUtil {
         return config().threadExceptionOopOffset;
     }
 
-    public static final LocationIdentity EXCEPTION_PC_LOCATION = NamedLocationIdentity.create("ExceptionPc");
+    public static final LocationIdentity EXCEPTION_PC_LOCATION = NamedLocationIdentity.mutable("ExceptionPc");
 
     @Fold
     public static int threadExceptionPcOffset() {
         return config().threadExceptionPcOffset;
     }
 
-    public static final LocationIdentity LAST_JAVA_PC_LOCATION = NamedLocationIdentity.create("LastJavaPc");
+    public static final LocationIdentity LAST_JAVA_PC_LOCATION = NamedLocationIdentity.mutable("LastJavaPc");
 
     @Fold
     public static int threadLastJavaPcOffset() {
         return config().threadLastJavaPcOffset();
     }
 
-    public static final LocationIdentity LAST_JAVA_FP_LOCATION = NamedLocationIdentity.create("LastJavaFp");
+    public static final LocationIdentity LAST_JAVA_FP_LOCATION = NamedLocationIdentity.mutable("LastJavaFp");
 
     @Fold
     public static int threadLastJavaFpOffset() {
         return config().threadLastJavaFpOffset();
     }
 
-    public static final LocationIdentity TLAB_TOP_LOCATION = NamedLocationIdentity.create("TlabTop");
+    public static final LocationIdentity TLAB_TOP_LOCATION = NamedLocationIdentity.mutable("TlabTop");
 
     @Fold
     public static int threadTlabTopOffset() {
         return config().threadTlabTopOffset();
     }
 
-    public static final LocationIdentity TLAB_END_LOCATION = NamedLocationIdentity.create("TlabEnd");
+    public static final LocationIdentity TLAB_END_LOCATION = NamedLocationIdentity.mutable("TlabEnd");
 
     @Fold
     private static int threadTlabEndOffset() {
         return config().threadTlabEndOffset();
     }
 
-    public static final LocationIdentity TLAB_START_LOCATION = NamedLocationIdentity.create("TlabStart");
+    public static final LocationIdentity TLAB_START_LOCATION = NamedLocationIdentity.mutable("TlabStart");
 
     @Fold
     private static int threadTlabStartOffset() {
         return config().threadTlabStartOffset();
     }
 
-    public static final LocationIdentity PENDING_EXCEPTION_LOCATION = NamedLocationIdentity.create("PendingException");
+    public static final LocationIdentity PENDING_EXCEPTION_LOCATION = NamedLocationIdentity.mutable("PendingException");
 
     /**
      * @see HotSpotVMConfig#pendingExceptionOffset
@@ -125,7 +125,7 @@ public class HotSpotReplacementsUtil {
         return config().pendingExceptionOffset;
     }
 
-    public static final LocationIdentity PENDING_DEOPTIMIZATION_LOCATION = NamedLocationIdentity.create("PendingDeoptimization");
+    public static final LocationIdentity PENDING_DEOPTIMIZATION_LOCATION = NamedLocationIdentity.mutable("PendingDeoptimization");
 
     /**
      * @see HotSpotVMConfig#pendingDeoptimizationOffset
@@ -135,7 +135,7 @@ public class HotSpotReplacementsUtil {
         return config().pendingDeoptimizationOffset;
     }
 
-    public static final LocationIdentity OBJECT_RESULT_LOCATION = NamedLocationIdentity.create("ObjectResult");
+    public static final LocationIdentity OBJECT_RESULT_LOCATION = NamedLocationIdentity.mutable("ObjectResult");
 
     @Fold
     private static int objectResultOffset() {
@@ -232,14 +232,14 @@ public class HotSpotReplacementsUtil {
         return result;
     }
 
-    public static final LocationIdentity JAVA_THREAD_THREAD_OBJECT_LOCATION = NamedLocationIdentity.create("JavaThread::_threadObj");
+    public static final LocationIdentity JAVA_THREAD_THREAD_OBJECT_LOCATION = NamedLocationIdentity.mutable("JavaThread::_threadObj");
 
     @Fold
     public static int threadObjectOffset() {
         return config().threadObjectOffset;
     }
 
-    public static final LocationIdentity JAVA_THREAD_OSTHREAD_LOCATION = NamedLocationIdentity.create("JavaThread::_osthread");
+    public static final LocationIdentity JAVA_THREAD_OSTHREAD_LOCATION = NamedLocationIdentity.mutable("JavaThread::_osthread");
 
     @Fold
     public static int osThreadOffset() {
@@ -271,7 +271,7 @@ public class HotSpotReplacementsUtil {
         return config().heapWordSize;
     }
 
-    public static final LocationIdentity PROTOTYPE_MARK_WORD_LOCATION = NamedLocationIdentity.create("PrototypeMarkWord");
+    public static final LocationIdentity PROTOTYPE_MARK_WORD_LOCATION = NamedLocationIdentity.mutable("PrototypeMarkWord");
 
     @Fold
     public static int prototypeMarkWordOffset() {
@@ -283,14 +283,14 @@ public class HotSpotReplacementsUtil {
         return config().arrayPrototypeMarkWord();
     }
 
-    public static final LocationIdentity KLASS_ACCESS_FLAGS_LOCATION = NamedLocationIdentity.create("Klass::_access_flags", true);
+    public static final LocationIdentity KLASS_ACCESS_FLAGS_LOCATION = NamedLocationIdentity.immutable("Klass::_access_flags");
 
     @Fold
     public static int klassAccessFlagsOffset() {
         return config().klassAccessFlagsOffset;
     }
 
-    public static final LocationIdentity KLASS_LAYOUT_HELPER_LOCATION = NamedLocationIdentity.create("Klass::_layout_helper", true);
+    public static final LocationIdentity KLASS_LAYOUT_HELPER_LOCATION = NamedLocationIdentity.immutable("Klass::_layout_helper");
 
     @Fold
     public static int klassLayoutHelperOffset() {
@@ -319,30 +319,30 @@ public class HotSpotReplacementsUtil {
         return (layoutHelper < layoutHelperNeutralValue);
     }
 
-    public static final LocationIdentity ARRAY_KLASS_COMPONENT_MIRROR = NamedLocationIdentity.create("ArrayKlass::_component_mirror", true);
+    public static final LocationIdentity ARRAY_KLASS_COMPONENT_MIRROR = NamedLocationIdentity.immutable("ArrayKlass::_component_mirror");
 
     @Fold
     public static int arrayKlassComponentMirrorOffset() {
         return config().arrayKlassComponentMirrorOffset;
     }
 
-    public static final LocationIdentity KLASS_SUPER_KLASS_LOCATION = NamedLocationIdentity.create("Klass::_super", true);
+    public static final LocationIdentity KLASS_SUPER_KLASS_LOCATION = NamedLocationIdentity.immutable("Klass::_super");
 
     @Fold
     public static int klassSuperKlassOffset() {
         return config().klassSuperKlassOffset;
     }
 
-    public static final LocationIdentity MARK_WORD_LOCATION = NamedLocationIdentity.create("MarkWord");
+    public static final LocationIdentity MARK_WORD_LOCATION = NamedLocationIdentity.mutable("MarkWord");
 
     @Fold
     public static int markOffset() {
         return config().markOffset;
     }
 
-    public static final LocationIdentity HUB_WRITE_LOCATION = NamedLocationIdentity.create("Hub:write");
+    public static final LocationIdentity HUB_WRITE_LOCATION = NamedLocationIdentity.mutable("Hub:write");
 
-    public static final LocationIdentity HUB_LOCATION = NamedLocationIdentity.create("Hub", true);
+    public static final LocationIdentity HUB_LOCATION = NamedLocationIdentity.immutable("Hub");
 
     @Fold
     private static int hubOffset() {
@@ -479,28 +479,28 @@ public class HotSpotReplacementsUtil {
         return config().g1SATBQueueBufferOffset();
     }
 
-    public static final LocationIdentity KLASS_SUPER_CHECK_OFFSET_LOCATION = NamedLocationIdentity.create("Klass::_super_check_offset", true);
+    public static final LocationIdentity KLASS_SUPER_CHECK_OFFSET_LOCATION = NamedLocationIdentity.immutable("Klass::_super_check_offset");
 
     @Fold
     public static int superCheckOffsetOffset() {
         return config().superCheckOffsetOffset;
     }
 
-    public static final LocationIdentity SECONDARY_SUPER_CACHE_LOCATION = NamedLocationIdentity.create("SecondarySuperCache");
+    public static final LocationIdentity SECONDARY_SUPER_CACHE_LOCATION = NamedLocationIdentity.mutable("SecondarySuperCache");
 
     @Fold
     public static int secondarySuperCacheOffset() {
         return config().secondarySuperCacheOffset;
     }
 
-    public static final LocationIdentity SECONDARY_SUPERS_LOCATION = NamedLocationIdentity.create("SecondarySupers");
+    public static final LocationIdentity SECONDARY_SUPERS_LOCATION = NamedLocationIdentity.mutable("SecondarySupers");
 
     @Fold
     public static int secondarySupersOffset() {
         return config().secondarySupersOffset;
     }
 
-    public static final LocationIdentity DISPLACED_MARK_WORD_LOCATION = NamedLocationIdentity.create("DisplacedMarkWord");
+    public static final LocationIdentity DISPLACED_MARK_WORD_LOCATION = NamedLocationIdentity.mutable("DisplacedMarkWord");
 
     @Fold
     public static int lockDisplacedMarkOffset() {
@@ -598,7 +598,7 @@ public class HotSpotReplacementsUtil {
         return CodeUtil.log2(wordSize());
     }
 
-    public static final LocationIdentity CLASS_STATE_LOCATION = NamedLocationIdentity.create("ClassState");
+    public static final LocationIdentity CLASS_STATE_LOCATION = NamedLocationIdentity.mutable("ClassState");
 
     @Fold
     public static int instanceKlassInitStateOffset() {
@@ -623,7 +623,7 @@ public class HotSpotReplacementsUtil {
         return hub.readByte(instanceKlassInitStateOffset(), CLASS_STATE_LOCATION);
     }
 
-    public static final LocationIdentity KLASS_MODIFIER_FLAGS_LOCATION = NamedLocationIdentity.create("Klass::_modifier_flags", true);
+    public static final LocationIdentity KLASS_MODIFIER_FLAGS_LOCATION = NamedLocationIdentity.immutable("Klass::_modifier_flags");
 
     @Fold
     public static int klassModifierFlagsOffset() {
@@ -640,28 +640,28 @@ public class HotSpotReplacementsUtil {
         return config().arrayKlassOffset;
     }
 
-    public static final LocationIdentity KLASS_NODE_CLASS = NamedLocationIdentity.create("KlassNodeClass");
+    public static final LocationIdentity KLASS_NODE_CLASS = NamedLocationIdentity.mutable("KlassNodeClass");
 
     @Fold
     public static int instanceKlassNodeClassOffset() {
         return config().instanceKlassNodeClassOffset;
     }
 
-    public static final LocationIdentity CLASS_MIRROR_LOCATION = NamedLocationIdentity.create("Klass::_java_mirror", true);
+    public static final LocationIdentity CLASS_MIRROR_LOCATION = NamedLocationIdentity.immutable("Klass::_java_mirror");
 
     @Fold
     public static int classMirrorOffset() {
         return config().classMirrorOffset;
     }
 
-    public static final LocationIdentity HEAP_TOP_LOCATION = NamedLocationIdentity.create("HeapTop");
+    public static final LocationIdentity HEAP_TOP_LOCATION = NamedLocationIdentity.mutable("HeapTop");
 
     @Fold
     public static long heapTopAddress() {
         return config().heapTopAddress;
     }
 
-    public static final LocationIdentity HEAP_END_LOCATION = NamedLocationIdentity.create("HeapEnd");
+    public static final LocationIdentity HEAP_END_LOCATION = NamedLocationIdentity.mutable("HeapEnd");
 
     @Fold
     public static long heapEndAddress() {
@@ -683,42 +683,42 @@ public class HotSpotReplacementsUtil {
         return config().tlabAlignmentReserve;
     }
 
-    public static final LocationIdentity TLAB_SIZE_LOCATION = NamedLocationIdentity.create("TlabSize");
+    public static final LocationIdentity TLAB_SIZE_LOCATION = NamedLocationIdentity.mutable("TlabSize");
 
     @Fold
     public static int threadTlabSizeOffset() {
         return config().threadTlabSizeOffset();
     }
 
-    public static final LocationIdentity TLAB_THREAD_ALLOCATED_BYTES_LOCATION = NamedLocationIdentity.create("TlabThreadAllocatedBytes");
+    public static final LocationIdentity TLAB_THREAD_ALLOCATED_BYTES_LOCATION = NamedLocationIdentity.mutable("TlabThreadAllocatedBytes");
 
     @Fold
     public static int threadAllocatedBytesOffset() {
         return config().threadAllocatedBytesOffset;
     }
 
-    public static final LocationIdentity TLAB_REFILL_WASTE_LIMIT_LOCATION = NamedLocationIdentity.create("RefillWasteLimit");
+    public static final LocationIdentity TLAB_REFILL_WASTE_LIMIT_LOCATION = NamedLocationIdentity.mutable("RefillWasteLimit");
 
     @Fold
     public static int tlabRefillWasteLimitOffset() {
         return config().tlabRefillWasteLimitOffset();
     }
 
-    public static final LocationIdentity TLAB_NOF_REFILLS_LOCATION = NamedLocationIdentity.create("TlabNOfRefills");
+    public static final LocationIdentity TLAB_NOF_REFILLS_LOCATION = NamedLocationIdentity.mutable("TlabNOfRefills");
 
     @Fold
     public static int tlabNumberOfRefillsOffset() {
         return config().tlabNumberOfRefillsOffset();
     }
 
-    public static final LocationIdentity TLAB_FAST_REFILL_WASTE_LOCATION = NamedLocationIdentity.create("TlabFastRefillWaste");
+    public static final LocationIdentity TLAB_FAST_REFILL_WASTE_LOCATION = NamedLocationIdentity.mutable("TlabFastRefillWaste");
 
     @Fold
     public static int tlabFastRefillWasteOffset() {
         return config().tlabFastRefillWasteOffset();
     }
 
-    public static final LocationIdentity TLAB_SLOW_ALLOCATIONS_LOCATION = NamedLocationIdentity.create("TlabSlowAllocations");
+    public static final LocationIdentity TLAB_SLOW_ALLOCATIONS_LOCATION = NamedLocationIdentity.mutable("TlabSlowAllocations");
 
     @Fold
     public static int tlabSlowAllocationsOffset() {
@@ -818,11 +818,11 @@ public class HotSpotReplacementsUtil {
         }
     }
 
-    public static final LocationIdentity OBJ_ARRAY_KLASS_ELEMENT_KLASS_LOCATION = NamedLocationIdentity.create("ObjArrayKlass::_element_klass", true);
+    public static final LocationIdentity OBJ_ARRAY_KLASS_ELEMENT_KLASS_LOCATION = NamedLocationIdentity.immutable("ObjArrayKlass::_element_klass");
 
-    public static final LocationIdentity PRIMARY_SUPERS_LOCATION = NamedLocationIdentity.create("PrimarySupers", true);
+    public static final LocationIdentity PRIMARY_SUPERS_LOCATION = NamedLocationIdentity.immutable("PrimarySupers");
 
-    public static final LocationIdentity METASPACE_ARRAY_LENGTH_LOCATION = NamedLocationIdentity.create("MetaspaceArrayLength", true);
+    public static final LocationIdentity METASPACE_ARRAY_LENGTH_LOCATION = NamedLocationIdentity.immutable("MetaspaceArrayLength");
 
-    public static final LocationIdentity SECONDARY_SUPERS_ELEMENT_LOCATION = NamedLocationIdentity.create("SecondarySupersElement", true);
+    public static final LocationIdentity SECONDARY_SUPERS_ELEMENT_LOCATION = NamedLocationIdentity.immutable("SecondarySupersElement");
 }

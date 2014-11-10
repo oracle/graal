@@ -78,7 +78,7 @@ import com.oracle.graal.word.*;
  */
 public class UncommonTrapStub extends SnippetStub {
 
-    public static final LocationIdentity STACK_BANG_LOCATION = NamedLocationIdentity.create("stack bang");
+    public static final LocationIdentity STACK_BANG_LOCATION = NamedLocationIdentity.mutable("stack bang");
 
     private final TargetDescription target;
 

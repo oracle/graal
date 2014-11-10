@@ -31,21 +31,25 @@ import com.oracle.graal.api.meta.*;
  */
 public final class ObjectLocationIdentity implements LocationIdentity {
 
-    private static HashMap<JavaConstant, LocationIdentity> map = new HashMap<>();
-
     private JavaConstant object;
 
     public static LocationIdentity create(JavaConstant object) {
         assert object.getKind() == Kind.Object && object.isNonNull();
-        synchronized (map) {
-            if (map.containsKey(object)) {
-                return map.get(object);
-            } else {
-                ObjectLocationIdentity locationIdentity = new ObjectLocationIdentity(object);
-                map.put(object, locationIdentity);
-                return locationIdentity;
-            }
+        return new ObjectLocationIdentity(object);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof ObjectLocationIdentity) {
+            ObjectLocationIdentity that = (ObjectLocationIdentity) obj;
+            return Objects.equals(that.object, this.object);
         }
+        return false;
+    }
+
+    @Override
+    public int hashCode() {
+        return object.hashCode();
     }
 
     private ObjectLocationIdentity(JavaConstant object) {

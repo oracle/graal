@@ -132,7 +132,7 @@ public class SnippetCounter implements Comparable<SnippetCounter> {
      * usage in snippets is always possible. If a method accesses the counter via the field and the
      * snippet, the result might not be correct though.
      */
-    protected static final LocationIdentity SNIPPET_COUNTER_LOCATION = NamedLocationIdentity.create("SnippetCounter");
+    protected static final LocationIdentity SNIPPET_COUNTER_LOCATION = NamedLocationIdentity.mutable("SnippetCounter");
 
     /**
      * Increments the value of this counter. This method can be safely used in a snippet if it is
