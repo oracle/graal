@@ -177,7 +177,7 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
                         GuardNode guard = graph().unique(
                                         GuardNode.create(condition, BeginNode.prevBegin(invoke().asNode()), DeoptimizationReason.OptimizedTypeCheckViolated, DeoptimizationAction.InvalidateRecompile,
                                                         false, JavaConstant.NULL_OBJECT));
-                        PiNode piNode = graph().unique(PiNode.create(receiver, StampFactory.declared(singleImplementor), guard));
+                        PiNode piNode = graph().unique(PiNode.create(receiver, StampFactory.declaredNonNull(singleImplementor), guard));
                         arguments().set(0, piNode);
                         setInvokeKind(InvokeKind.Virtual);
                         setTargetMethod(singleImplementorMethod);
