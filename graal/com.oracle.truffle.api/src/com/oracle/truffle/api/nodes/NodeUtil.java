@@ -224,9 +224,13 @@ public final class NodeUtil {
             this.clazz = clazz;
         }
 
+        private static boolean isNodeType(Class<?> clazz) {
+            return Node.class.isAssignableFrom(clazz) || (clazz.isInterface() && NodeInterface.class.isAssignableFrom(clazz));
+        }
+
         private static void checkChildField(Field field) {
-            if (!(Node.class.isAssignableFrom(field.getType()) || field.getType().isInterface())) {
-                throw new AssertionError("@Child field type must be a subclass of Node or an interface (" + field + ")");
+            if (!isNodeType(field.getType())) {
+                throw new AssertionError("@Child field type must be a subclass of Node or an interface extending NodeInterface (" + field + ")");
             }
             if (Modifier.isFinal(field.getModifiers())) {
                 throw new AssertionError("@Child field must not be final (" + field + ")");
@@ -234,8 +238,8 @@ public final class NodeUtil {
         }
 
         private static void checkChildrenField(Field field) {
-            if (!(field.getType().isArray() && (Node.class.isAssignableFrom(field.getType().getComponentType()) || field.getType().getComponentType().isInterface()))) {
-                throw new AssertionError("@Children field type must be an array of a subclass of Node or an interface (" + field + ")");
+            if (!(field.getType().isArray() && isNodeType(field.getType().getComponentType()))) {
+                throw new AssertionError("@Children field type must be an array of a subclass of Node or an interface extending NodeInterface (" + field + ")");
             }
             if (!Modifier.isFinal(field.getModifiers())) {
                 throw new AssertionError("@Children field must be final (" + field + ")");

@@ -36,7 +36,7 @@ import com.oracle.truffle.api.utilities.*;
 /**
  * Abstract base class for all Truffle nodes.
  */
-public abstract class Node implements Cloneable {
+public abstract class Node implements NodeInterface, Cloneable {
 
     @CompilationFinal private Node parent;
 

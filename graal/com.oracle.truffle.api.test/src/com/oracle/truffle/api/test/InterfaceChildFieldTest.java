@@ -91,7 +91,7 @@ public class InterfaceChildFieldTest {
         }
     }
 
-    interface TestChildInterface {
+    interface TestChildInterface extends NodeInterface {
         int executeIntf();
     }
 
