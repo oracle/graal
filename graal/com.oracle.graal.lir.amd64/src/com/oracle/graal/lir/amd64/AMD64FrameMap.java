@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.lir.amd64;
 
+import static com.oracle.graal.api.code.ValueUtil.*;
+
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
@@ -70,6 +72,8 @@ import com.oracle.graal.lir.*;
  */
 public class AMD64FrameMap extends FrameMap {
 
+    private StackSlot rbpSpillSlot;
+
     public AMD64FrameMap(CodeCacheProvider codeCache, RegisterConfig registerConfig) {
         super(codeCache, registerConfig);
         // (negative) offset relative to sp + total frame size
@@ -100,5 +104,30 @@ public class AMD64FrameMap extends FrameMap {
     @Override
     protected StackSlot allocateNewSpillSlot(LIRKind kind, int additionalOffset) {
         return StackSlot.get(kind, -spillSize + additionalOffset, true);
+    }
+
+    /**
+     * For non-leaf methods, RBP is preserved in the special stack slot required by the HotSpot
+     * runtime for walking/inspecting frames of such methods.
+     */
+    StackSlot allocateRBPSpillSlot() {
+        assert spillSize == initialSpillSize : "RBP spill slot can only be allocated before getting other stack slots";
+        int size = spillSlotSize(LIRKind.value(Kind.Long));
+        spillSize = NumUtil.roundUp(spillSize + size, size);
+        rbpSpillSlot = allocateNewSpillSlot(LIRKind.value(Kind.Long), 0);
+        assert asStackSlot(rbpSpillSlot).getRawOffset() == -16 : asStackSlot(rbpSpillSlot).getRawOffset();
+        return rbpSpillSlot;
+    }
+
+    void freeRBPSpillSlot() {
+        int size = spillSlotSize(LIRKind.value(Kind.Long));
+        assert spillSize == NumUtil.roundUp(initialSpillSize + size, size) : "RBP spill slot can not be freed after allocation other stack slots";
+        spillSize = initialSpillSize;
+    }
+
+    public StackSlot allocateDeoptimizationRescueSlot() {
+        int size = spillSlotSize(LIRKind.value(Kind.Long));
+        spillSize = NumUtil.roundUp(spillSize + size, size);
+        return allocateNewSpillSlot(LIRKind.value(Kind.Long), 0);
     }
 }

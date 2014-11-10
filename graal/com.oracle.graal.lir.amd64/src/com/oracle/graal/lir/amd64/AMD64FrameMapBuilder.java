@@ -22,17 +22,10 @@
  */
 package com.oracle.graal.lir.amd64;
 
-import static com.oracle.graal.api.code.ValueUtil.*;
-
-import java.util.*;
-
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.lir.*;
 
 public class AMD64FrameMapBuilder extends DelayedFrameMapBuilder {
-
-    private TrackedVirtualStackSlot rbpSpillSlot;
 
     public AMD64FrameMapBuilder(FrameMapFactory factory, CodeCacheProvider codeCache, RegisterConfig registerConfig) {
         super(factory, codeCache, registerConfig);
@@ -42,28 +35,15 @@ public class AMD64FrameMapBuilder extends DelayedFrameMapBuilder {
      * For non-leaf methods, RBP is preserved in the special stack slot required by the HotSpot
      * runtime for walking/inspecting frames of such methods.
      */
-    public VirtualStackSlot allocateRBPSpillSlot() {
-        rbpSpillSlot = (TrackedVirtualStackSlot) allocateSpillSlot(LIRKind.value(Kind.Long));
-        return rbpSpillSlot;
+    public StackSlot allocateRBPSpillSlot() {
+        return ((AMD64FrameMap) frameMap).allocateRBPSpillSlot();
     }
 
-    @Override
-    public void freeSpillSlot(VirtualStackSlot slot) {
-        assert slot != null;
-        if (slot.equals(rbpSpillSlot)) {
-            rbpSpillSlot = null;
-        } else {
-            super.freeSpillSlot(slot);
-        }
+    public void freeRBPSpillSlot() {
+        ((AMD64FrameMap) frameMap).freeRBPSpillSlot();
     }
 
-    @Override
-    protected void mapStackSlots(HashMap<VirtualStackSlot, StackSlot> mapping) {
-        if (rbpSpillSlot != null) {
-            StackSlot reservedSlot = rbpSpillSlot.transform();
-            assert asStackSlot(reservedSlot).getRawOffset() == -16 : asStackSlot(reservedSlot).getRawOffset();
-            mapping.put(rbpSpillSlot, reservedSlot);
-        }
-        super.mapStackSlots(mapping);
+    public StackSlot allocateDeoptimizationRescueSlot() {
+        return ((AMD64FrameMap) frameMap).allocateDeoptimizationRescueSlot();
     }
 }

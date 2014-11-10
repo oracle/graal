@@ -88,7 +88,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         /**
          * The slot reserved for saving RBP.
          */
-        final VirtualStackSlot reservedSlot;
+        final StackSlot reservedSlot;
 
         public SaveRbp(NoOp placeholder) {
             this.placeholder = placeholder;
@@ -106,7 +106,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
             if (useStack) {
                 dst = reservedSlot;
             } else {
-                getResult().getFrameMapBuilder().freeSpillSlot(reservedSlot);
+                ((AMD64FrameMapBuilder) getResult().getFrameMapBuilder()).freeRBPSpillSlot();
                 dst = newVariable(LIRKind.value(Kind.Long));
             }
 
@@ -417,7 +417,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         boolean hasDebugInfo = getResult().getLIR().hasDebugInfo();
         AllocatableValue savedRbp = saveRbp.finalize(hasDebugInfo);
         if (hasDebugInfo) {
-            ((AMD64HotSpotLIRGenerationResult) getResult()).setDeoptimizationRescueSlot(getResult().getFrameMapBuilder().allocateSpillSlot(LIRKind.value(Kind.Long)));
+            ((AMD64HotSpotLIRGenerationResult) getResult()).setDeoptimizationRescueSlot(((AMD64FrameMapBuilder) getResult().getFrameMapBuilder()).allocateDeoptimizationRescueSlot());
         }
 
         for (AMD64HotSpotEpilogueOp op : epilogueOps) {
