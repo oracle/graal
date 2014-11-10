@@ -31,6 +31,7 @@ import org.junit.runner.notification.*;
 public class GraalTextListener implements GraalJUnitRunListener {
 
     private final PrintStream fWriter;
+    protected Failure lastFailure;
 
     public GraalTextListener(JUnitSystem system) {
         this(system.out());
@@ -43,6 +44,10 @@ public class GraalTextListener implements GraalJUnitRunListener {
     @Override
     public PrintStream getWriter() {
         return fWriter;
+    }
+
+    public Failure getLastFailure() {
+        return lastFailure;
     }
 
     @Override
@@ -77,6 +82,7 @@ public class GraalTextListener implements GraalJUnitRunListener {
     @Override
     public void testFailed(Failure failure) {
         getWriter().print('E');
+        lastFailure = failure;
     }
 
     @Override

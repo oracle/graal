@@ -30,6 +30,8 @@ import junit.runner.*;
 import org.junit.internal.*;
 import org.junit.runner.*;
 import org.junit.runner.notification.*;
+import org.junit.runners.*;
+import org.junit.runners.model.*;
 
 public class GraalJUnitCore {
 
@@ -52,6 +54,7 @@ public class GraalJUnitCore {
         List<Failure> missingClasses = new ArrayList<>();
         boolean verbose = false;
         boolean enableTiming = false;
+        boolean failFast = false;
         boolean color = false;
         boolean eagerStackTrace = false;
         boolean gcAfterTest = false;
@@ -63,6 +66,8 @@ public class GraalJUnitCore {
                 // command line arguments
                 if (each.contentEquals("-JUnitVerbose")) {
                     verbose = true;
+                } else if (each.contentEquals("-JUnitFailFast")) {
+                    failFast = true;
                 } else if (each.contentEquals("-JUnitEnableTiming")) {
                     enableTiming = true;
                 } else if (each.contentEquals("-JUnitColor")) {
@@ -107,12 +112,13 @@ public class GraalJUnitCore {
                 }
             }
         }
-        GraalJUnitRunListener graalListener;
+        final GraalTextListener textListener;
         if (!verbose) {
-            graalListener = new GraalTextListener(system);
+            textListener = new GraalTextListener(system);
         } else {
-            graalListener = new GraalVerboseTextListener(system);
+            textListener = new GraalVerboseTextListener(system);
         }
+        GraalJUnitRunListener graalListener = textListener;
         if (enableTiming) {
             graalListener = new TimingDecorator(graalListener);
         }
@@ -131,6 +137,24 @@ public class GraalJUnitCore {
             request = Request.classes(classes.toArray(new Class[0]));
         } else {
             request = Request.method(classes.get(0), methodName);
+        }
+        if (failFast) {
+            Runner runner = request.getRunner();
+            if (runner instanceof ParentRunner) {
+                ParentRunner<?> parentRunner = (ParentRunner<?>) runner;
+                parentRunner.setScheduler(new RunnerScheduler() {
+                    public void schedule(Runnable childStatement) {
+                        if (textListener.getLastFailure() == null) {
+                            childStatement.run();
+                        }
+                    }
+
+                    public void finished() {
+                    }
+                });
+            } else {
+                system.out().println("Unexpected Runner subclass " + runner.getClass().getName() + " - fail fast not supported");
+            }
         }
         Result result = junitCore.run(request);
         for (Failure each : missingClasses) {
