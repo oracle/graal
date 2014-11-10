@@ -22,10 +22,16 @@
  */
 package com.oracle.graal.api.meta;
 
+import java.util.*;
+
 /**
  * Marker interface for location identities. Apart from the special values {@link #ANY_LOCATION} and
  * {@link #FINAL_LOCATION}, a different location identity of two memory accesses guarantees that the
  * two accesses do not interfere.
+ *
+ * Clients of {@link LocationIdentity} must use {@link #equals(Object)}, not {@code ==}, when
+ * comparing two {@link LocationIdentity} values for equality. Likewise, they must not use
+ * {@link IdentityHashMap}s with {@link LocationIdentity} values as keys.
  */
 public interface LocationIdentity {
 
