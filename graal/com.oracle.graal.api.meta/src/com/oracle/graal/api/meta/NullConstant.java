@@ -74,6 +74,11 @@ final class NullConstant extends AbstractValue implements JavaConstant {
     }
 
     @Override
+    public String toString() {
+        return JavaConstant.toString(this);
+    }
+
+    @Override
     public String toValueString() {
         return "null";
     }

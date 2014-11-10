@@ -134,14 +134,13 @@ public interface JavaConstant extends Constant, JavaValue, Value {
         }
     }
 
-// @Override
-// public String toString() {
-// if (getKind() == Kind.Illegal) {
-// return "illegal";
-// } else {
-// return getKind().getJavaName() + "[" + toValueString() + "]";
-// }
-// }
+    static String toString(JavaConstant constant) {
+        if (constant.getKind() == Kind.Illegal) {
+            return "illegal";
+        } else {
+            return constant.getKind().getJavaName() + "[" + constant.toValueString() + "]";
+        }
+    }
 
     /**
      * Creates a boxed double constant.
