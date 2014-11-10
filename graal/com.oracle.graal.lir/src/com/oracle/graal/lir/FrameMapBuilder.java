@@ -60,6 +60,8 @@ public interface FrameMapBuilder {
 
     RegisterConfig getRegisterConfig();
 
+    CodeCacheProvider getCodeCache();
+
     /**
      * Frees a spill slot that was obtained via {@link #allocateSpillSlot(LIRKind)} such that it can
      * be reused for the next allocation request for the same kind of slot.

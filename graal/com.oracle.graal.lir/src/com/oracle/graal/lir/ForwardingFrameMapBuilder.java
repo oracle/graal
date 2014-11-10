@@ -39,9 +39,12 @@ public class ForwardingFrameMapBuilder implements FrameMapBuilder {
 
     private final FrameMap frameMap;
     private final RegisterConfig registerConfig;
+    private final CodeCacheProvider codeCache;
 
     public ForwardingFrameMapBuilder(FrameMapFactory factory, CodeCacheProvider codeCache, RegisterConfig registerConfig) {
         this.registerConfig = registerConfig == null ? codeCache.getRegisterConfig() : registerConfig;
+        this.codeCache = codeCache;
+        // all members must be set up before calling FrameMapFactory#newFrameMap
         this.frameMap = factory.newFrameMap(this);
     }
 
@@ -55,6 +58,10 @@ public class ForwardingFrameMapBuilder implements FrameMapBuilder {
 
     public RegisterConfig getRegisterConfig() {
         return registerConfig;
+    }
+
+    public CodeCacheProvider getCodeCache() {
+        return codeCache;
     }
 
     public void freeSpillSlot(StackSlot slot) {
