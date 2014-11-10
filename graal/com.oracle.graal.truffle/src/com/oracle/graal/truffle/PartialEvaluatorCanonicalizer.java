@@ -27,8 +27,10 @@ import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.phases.common.*;
-import com.oracle.truffle.api.*;
+import com.oracle.graal.truffle.nodes.*;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.Node.Child;
+import com.oracle.truffle.api.nodes.Node.Children;
 
 final class PartialEvaluatorCanonicalizer extends CanonicalizerPhase.CustomCanonicalizer {
 
@@ -52,32 +54,56 @@ final class PartialEvaluatorCanonicalizer extends CanonicalizerPhase.CustomCanon
 
     private Node canonicalizeLoadField(LoadFieldNode loadFieldNode) {
         if (!loadFieldNode.isStatic() && loadFieldNode.object().isConstant() && !loadFieldNode.object().isNullConstant()) {
-            if (loadFieldNode.field().isFinal() || (loadFieldNode.getKind() == Kind.Object && loadFieldNode.field().getAnnotation(Child.class) != null) ||
-                            loadFieldNode.field().getAnnotation(CompilerDirectives.CompilationFinal.class) != null) {
-                JavaConstant constant = loadFieldNode.field().readValue(loadFieldNode.object().asJavaConstant());
-                assert verifyFieldValue(loadFieldNode.field(), constant);
-                return ConstantNode.forConstant(constant, metaAccess);
+            ResolvedJavaField field = loadFieldNode.field();
+            JavaType fieldType = field.getType();
+            if (field.isFinal() || field.getAnnotation(CompilationFinal.class) != null ||
+                            (fieldType.getKind() == Kind.Object && (field.getAnnotation(Child.class) != null || field.getAnnotation(Children.class) != null))) {
+                JavaConstant constant = field.readValue(loadFieldNode.object().asJavaConstant());
+                assert verifyFieldValue(field, constant);
+                if (constant.isNonNull() && fieldType.getKind() == Kind.Object && fieldType.getComponentType() != null &&
+                                (field.getAnnotation(CompilationFinal.class) != null || field.getAnnotation(Children.class) != null)) {
+                    int stableDimensions = getDeclaredArrayDimensions(fieldType);
+                    return StableArrayConstantNode.forStableArrayConstant(constant, stableDimensions, true, metaAccess);
+                } else {
+                    return ConstantNode.forConstant(constant, metaAccess);
+                }
             }
         }
         return loadFieldNode;
     }
 
     private Node canonicalizeLoadIndex(LoadIndexedNode loadIndexedNode) {
-        if (loadIndexedNode.array().isConstant() && loadIndexedNode.index().isConstant()) {
+        if (loadIndexedNode.array() instanceof StableArrayConstantNode && loadIndexedNode.index().isConstant()) {
+            StableArrayConstantNode stableArray = (StableArrayConstantNode) loadIndexedNode.array();
             int index = loadIndexedNode.index().asJavaConstant().asInt();
 
             JavaConstant constant = constantReflection.readArrayElement(loadIndexedNode.array().asJavaConstant(), index);
             if (constant != null) {
-                return ConstantNode.forConstant(constant, metaAccess);
+                if (stableArray.getStableDimensions() > 1 && constant.isNonNull()) {
+                    return StableArrayConstantNode.forStableArrayConstant(constant, stableArray.getStableDimensions() - 1, stableArray.isCompilationFinal(), metaAccess);
+                } else if (constant.isNonNull() || stableArray.isCompilationFinal()) {
+                    return ConstantNode.forConstant(constant, metaAccess);
+                }
             }
         }
         return loadIndexedNode;
+    }
+
+    private static int getDeclaredArrayDimensions(JavaType type) {
+        int dimensions = 0;
+        JavaType componentType = type;
+        while ((componentType = componentType.getComponentType()) != null) {
+            dimensions++;
+        }
+        return dimensions;
     }
 
     private boolean verifyFieldValue(ResolvedJavaField field, JavaConstant constant) {
         assert field.getAnnotation(Child.class) == null || constant.isNull() ||
                         metaAccess.lookupJavaType(com.oracle.truffle.api.nodes.Node.class).isAssignableFrom(metaAccess.lookupJavaType(constant)) : "@Child field value must be a Node: " + field +
                         ", but was: " + constant;
+        assert field.getAnnotation(Children.class) == null || constant.isNull() || metaAccess.lookupJavaType(constant).isArray() : "@Children field value must be an array: " + field + ", but was: " +
+                        constant;
         return true;
     }
 }

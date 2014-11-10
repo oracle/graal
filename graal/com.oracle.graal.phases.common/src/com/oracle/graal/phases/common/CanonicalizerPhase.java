@@ -228,15 +228,15 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
         }
 
         public boolean tryCanonicalize(final Node node, NodeClass nodeClass) {
-            boolean result = baseTryCanonicalize(node, nodeClass);
-            if (!result && customCanonicalizer != null) {
+            if (customCanonicalizer != null) {
                 Node canonical = customCanonicalizer.canonicalize(node);
-                result = performReplacement(node, canonical);
-                if (!result) {
+                if (performReplacement(node, canonical)) {
+                    return true;
+                } else {
                     customCanonicalizer.simplify(node, tool);
                 }
             }
-            return result;
+            return baseTryCanonicalize(node, nodeClass);
         }
 
         private static AutoCloseable getCanonicalizeableContractAssertion(Node node) {
