@@ -161,8 +161,8 @@ public class PTXHotSpotBackend extends HotSpotBackend {
     }
 
     @Override
-    public FrameMap newFrameMap(FrameMapBuilder frameMapBuilder) {
-        return new PTXFrameMap(getCodeCache(), frameMapBuilder.getRegisterConfig());
+    public FrameMap newFrameMap(RegisterConfig registerConfig) {
+        return new PTXFrameMap(getCodeCache(), registerConfig);
     }
 
     /**

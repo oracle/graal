@@ -73,7 +73,7 @@ public abstract class Backend {
      */
     public abstract FrameMapBuilder newFrameMapBuilder(RegisterConfig registerConfig);
 
-    public abstract FrameMap newFrameMap(FrameMapBuilder frameMapBuilder);
+    public abstract FrameMap newFrameMap(RegisterConfig registerConfig);
 
     public abstract LIRGeneratorTool newLIRGenerator(CallingConvention cc, LIRGenerationResult lirGenRes);
 
