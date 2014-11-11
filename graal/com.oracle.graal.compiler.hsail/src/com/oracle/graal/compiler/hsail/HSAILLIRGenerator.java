@@ -33,14 +33,24 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
+import com.oracle.graal.compiler.common.spi.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.JumpOp;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.hsail.*;
+import com.oracle.graal.lir.hsail.HSAILArithmetic.ConvertOp;
 import com.oracle.graal.lir.hsail.HSAILArithmetic.Op1Reg;
 import com.oracle.graal.lir.hsail.HSAILArithmetic.Op2Reg;
-import com.oracle.graal.lir.hsail.HSAILControlFlow.*;
-import com.oracle.graal.lir.hsail.HSAILMove.*;
+import com.oracle.graal.lir.hsail.HSAILArithmetic.ShiftOp;
+import com.oracle.graal.lir.hsail.HSAILControlFlow.CompareBranchOp;
+import com.oracle.graal.lir.hsail.HSAILControlFlow.CondMoveOp;
+import com.oracle.graal.lir.hsail.HSAILControlFlow.FloatCondMoveOp;
+import com.oracle.graal.lir.hsail.HSAILControlFlow.ReturnOp;
+import com.oracle.graal.lir.hsail.HSAILControlFlow.StrategySwitchOp;
+import com.oracle.graal.lir.hsail.HSAILMove.LeaOp;
+import com.oracle.graal.lir.hsail.HSAILMove.MembarOp;
+import com.oracle.graal.lir.hsail.HSAILMove.MoveFromRegOp;
+import com.oracle.graal.lir.hsail.HSAILMove.MoveToRegOp;
 import com.oracle.graal.phases.util.*;
 
 /**
@@ -56,8 +66,8 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
         }
     }
 
-    public HSAILLIRGenerator(Providers providers, CallingConvention cc, LIRGenerationResult lirGenRes) {
-        super(providers, cc, lirGenRes);
+    public HSAILLIRGenerator(LIRKindTool lirKindTool, Providers providers, CallingConvention cc, LIRGenerationResult lirGenRes) {
+        super(lirKindTool, providers, cc, lirGenRes);
         lirGenRes.getLIR().setSpillMoveFactory(new HSAILSpillMoveFactory());
     }
 

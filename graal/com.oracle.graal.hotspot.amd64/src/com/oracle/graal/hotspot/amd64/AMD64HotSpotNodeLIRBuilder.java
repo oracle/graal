@@ -226,9 +226,8 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
             Stamp compressedStamp = compress.getValue().stamp();
             if (compressedStamp instanceof NarrowOopStamp) {
                 return true;
-            } else if (compressedStamp instanceof IntegerStamp) {
-                IntegerStamp is = (IntegerStamp) compressedStamp;
-                return is.getBits() == 32 && config.narrowKlassBase == config.narrowOopBase;
+            } else if (compressedStamp instanceof NarrowPointerStamp) {
+                return config.narrowKlassBase == config.narrowOopBase;
             }
         }
         return false;

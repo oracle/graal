@@ -20,18 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.common.spi;
+package com.oracle.graal.api.meta;
 
-import com.oracle.graal.api.meta.*;
-
-/**
- * This interface can be used to access platform and VM specific kinds.
- */
-public interface LIRKindTool {
-
-    LIRKind getIntegerKind(int bits);
-
-    LIRKind getFloatingKind(int bits);
-
-    LIRKind getPointerKind(PointerType type);
+public enum PointerType {
+    Object,
+    Type,
+    Method
 }

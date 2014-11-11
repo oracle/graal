@@ -20,18 +20,39 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.common.spi;
+package com.oracle.graal.lir.gen;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.compiler.common.spi.*;
 
 /**
- * This interface can be used to access platform and VM specific kinds.
+ * Default implementation of {@link LIRKindTool}. Returns the normal Java kind for primitive types.
+ * Subclasses still have to implement {@link #getPointerKind}.
  */
-public interface LIRKindTool {
+public abstract class DefaultLIRKindTool implements LIRKindTool {
 
-    LIRKind getIntegerKind(int bits);
+    public LIRKind getIntegerKind(int bits) {
+        if (bits <= 8) {
+            return LIRKind.value(Kind.Byte);
+        } else if (bits <= 16) {
+            return LIRKind.value(Kind.Short);
+        } else if (bits <= 32) {
+            return LIRKind.value(Kind.Int);
+        } else {
+            assert bits <= 64;
+            return LIRKind.value(Kind.Long);
+        }
+    }
 
-    LIRKind getFloatingKind(int bits);
-
-    LIRKind getPointerKind(PointerType type);
+    public LIRKind getFloatingKind(int bits) {
+        switch (bits) {
+            case 32:
+                return LIRKind.value(Kind.Float);
+            case 64:
+                return LIRKind.value(Kind.Double);
+            default:
+                throw GraalInternalError.shouldNotReachHere();
+        }
+    }
 }

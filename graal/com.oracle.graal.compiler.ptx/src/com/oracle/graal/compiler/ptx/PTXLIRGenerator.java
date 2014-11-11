@@ -33,6 +33,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
+import com.oracle.graal.compiler.common.spi.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.JumpOp;
 import com.oracle.graal.lir.gen.*;
@@ -80,8 +81,8 @@ public class PTXLIRGenerator extends LIRGenerator {
         }
     }
 
-    public PTXLIRGenerator(Providers providers, CallingConvention cc, LIRGenerationResult lirGenRes) {
-        super(providers, cc, lirGenRes);
+    public PTXLIRGenerator(LIRKindTool lirKindTool, Providers providers, CallingConvention cc, LIRGenerationResult lirGenRes) {
+        super(lirKindTool, providers, cc, lirGenRes);
         lirGenRes.getLIR().setSpillMoveFactory(new PTXSpillMoveFactory());
         int callVariables = cc.getArgumentCount() + (cc.getReturn().equals(Value.ILLEGAL) ? 0 : 1);
         lirGenRes.getLIR().setFirstVariableNumber(callVariables);

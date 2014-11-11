@@ -44,7 +44,7 @@ import com.oracle.graal.options.*;
 /**
  * This class traverses the HIR instructions and generates LIR instructions from them.
  */
-public abstract class LIRGenerator implements LIRGeneratorTool, LIRKindTool {
+public abstract class LIRGenerator implements LIRGeneratorTool {
 
     public static class Options {
         // @formatter:off
@@ -55,6 +55,8 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRKindTool {
         // @formatter:on
     }
 
+    private final LIRKindTool lirKindTool;
+
     private final CodeGenProviders providers;
     private final CallingConvention cc;
 
@@ -62,7 +64,8 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRKindTool {
 
     private LIRGenerationResult res;
 
-    public LIRGenerator(CodeGenProviders providers, CallingConvention cc, LIRGenerationResult res) {
+    public LIRGenerator(LIRKindTool lirKindTool, CodeGenProviders providers, CallingConvention cc, LIRGenerationResult res) {
+        this.lirKindTool = lirKindTool;
         this.res = res;
         this.providers = providers;
         this.cc = cc;
@@ -361,39 +364,8 @@ public abstract class LIRGenerator implements LIRGeneratorTool, LIRKindTool {
         }
     }
 
-    /**
-     * Default implementation: Return the Java stack kind for each stamp.
-     */
     public LIRKind getLIRKind(Stamp stamp) {
-        return stamp.getLIRKind(this);
-    }
-
-    public LIRKind getIntegerKind(int bits) {
-        if (bits <= 8) {
-            return LIRKind.value(Kind.Byte);
-        } else if (bits <= 16) {
-            return LIRKind.value(Kind.Short);
-        } else if (bits <= 32) {
-            return LIRKind.value(Kind.Int);
-        } else {
-            assert bits <= 64;
-            return LIRKind.value(Kind.Long);
-        }
-    }
-
-    public LIRKind getFloatingKind(int bits) {
-        switch (bits) {
-            case 32:
-                return LIRKind.value(Kind.Float);
-            case 64:
-                return LIRKind.value(Kind.Double);
-            default:
-                throw GraalInternalError.shouldNotReachHere();
-        }
-    }
-
-    public LIRKind getObjectKind() {
-        return LIRKind.reference(Kind.Object);
+        return stamp.getLIRKind(lirKindTool);
     }
 
     protected LIRKind getAddressKind(Value base, long displacement, Value index) {

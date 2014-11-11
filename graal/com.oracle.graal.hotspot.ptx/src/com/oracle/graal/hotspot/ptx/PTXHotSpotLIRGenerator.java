@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,6 +30,7 @@ import com.oracle.graal.compiler.ptx.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.HotSpotVMConfig.CompressEncoding;
 import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.hotspot.nodes.type.*;
 import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 import com.oracle.graal.lir.gen.*;
 
@@ -39,7 +40,7 @@ import com.oracle.graal.lir.gen.*;
 public class PTXHotSpotLIRGenerator extends PTXLIRGenerator implements HotSpotLIRGenerator {
 
     protected PTXHotSpotLIRGenerator(HotSpotProviders providers, HotSpotVMConfig config, CallingConvention cc, LIRGenerationResult lirGenRes) {
-        super(providers, cc, lirGenRes);
+        super(new HotSpotLIRKindTool(providers.getCodeCache().getTarget().wordKind), providers, cc, lirGenRes);
         assert config.basicLockSize == 8;
     }
 

@@ -26,7 +26,10 @@ import java.util.*;
 
 import com.oracle.graal.api.meta.*;
 
-public abstract class AbstractObjectStamp extends Stamp {
+/**
+ * Type describing all pointers to Java objects.
+ */
+public abstract class AbstractObjectStamp extends AbstractPointerStamp {
 
     private final ResolvedJavaType type;
     private final boolean exactType;
@@ -34,6 +37,7 @@ public abstract class AbstractObjectStamp extends Stamp {
     private final boolean alwaysNull;
 
     protected AbstractObjectStamp(ResolvedJavaType type, boolean exactType, boolean nonNull, boolean alwaysNull) {
+        super(PointerType.Object);
         this.type = type;
         this.exactType = exactType;
         this.nonNull = nonNull;

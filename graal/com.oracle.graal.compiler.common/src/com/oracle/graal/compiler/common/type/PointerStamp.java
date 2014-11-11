@@ -20,18 +20,54 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.common.spi;
+package com.oracle.graal.compiler.common.type;
 
 import com.oracle.graal.api.meta.*;
 
 /**
- * This interface can be used to access platform and VM specific kinds.
+ * Type of all pointers that point to things other than Java objects.
  */
-public interface LIRKindTool {
+public class PointerStamp extends AbstractPointerStamp {
 
-    LIRKind getIntegerKind(int bits);
+    PointerStamp(PointerType type) {
+        super(type);
+        assert type != PointerType.Object : "object pointers should use ObjectStamp";
+    }
 
-    LIRKind getFloatingKind(int bits);
+    @Override
+    public Stamp meet(Stamp other) {
+        if (!isCompatible(other)) {
+            return StampFactory.illegal();
+        }
+        return this;
+    }
 
-    LIRKind getPointerKind(PointerType type);
+    @Override
+    public Stamp join(Stamp other) {
+        if (!isCompatible(other)) {
+            return StampFactory.illegal();
+        }
+        return this;
+    }
+
+    @Override
+    public Stamp unrestricted() {
+        return this;
+    }
+
+    @Override
+    public Stamp illegal() {
+        // there is no illegal pointer stamp
+        return this;
+    }
+
+    @Override
+    public Stamp constant(Constant c, MetaAccessProvider meta) {
+        return this;
+    }
+
+    @Override
+    public boolean isLegal() {
+        return true;
+    }
 }

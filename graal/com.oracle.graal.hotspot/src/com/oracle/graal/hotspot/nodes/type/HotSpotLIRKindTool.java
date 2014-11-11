@@ -20,18 +20,33 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.common.spi;
+package com.oracle.graal.hotspot.nodes.type;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.lir.gen.*;
 
-/**
- * This interface can be used to access platform and VM specific kinds.
- */
-public interface LIRKindTool {
+public class HotSpotLIRKindTool extends DefaultLIRKindTool {
 
-    LIRKind getIntegerKind(int bits);
+    private final Kind pointerKind;
 
-    LIRKind getFloatingKind(int bits);
+    public HotSpotLIRKindTool(Kind pointerKind) {
+        this.pointerKind = pointerKind;
+    }
 
-    LIRKind getPointerKind(PointerType type);
+    public LIRKind getPointerKind(PointerType type) {
+        /*
+         * In the Hotspot VM, object pointers are tracked heap references. All other pointers
+         * (method and klass pointers) are untracked pointers to the metaspace.
+         */
+        switch (type) {
+            case Object:
+                return LIRKind.reference(Kind.Object);
+            case Type:
+            case Method:
+                return LIRKind.value(pointerKind);
+            default:
+                throw GraalInternalError.shouldNotReachHere();
+        }
+    }
 }

@@ -36,6 +36,7 @@ import com.oracle.graal.asm.sparc.SPARCAssembler.CC;
 import com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
+import com.oracle.graal.compiler.common.spi.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.sparc.*;
@@ -60,7 +61,7 @@ import com.oracle.graal.lir.sparc.SPARCMove.MoveToRegOp;
 import com.oracle.graal.lir.sparc.SPARCMove.StackLoadAddressOp;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.sparc.*;
-import com.oracle.graal.sparc.SPARC.*;
+import com.oracle.graal.sparc.SPARC.CPUFeature;
 
 /**
  * This class implements the SPARC specific portion of the LIR generator.
@@ -77,8 +78,8 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
         }
     }
 
-    public SPARCLIRGenerator(Providers providers, CallingConvention cc, LIRGenerationResult lirGenRes) {
-        super(providers, cc, lirGenRes);
+    public SPARCLIRGenerator(LIRKindTool lirKindTool, Providers providers, CallingConvention cc, LIRGenerationResult lirGenRes) {
+        super(lirKindTool, providers, cc, lirGenRes);
         lirGenRes.getLIR().setSpillMoveFactory(new SPARCSpillMoveFactory());
     }
 

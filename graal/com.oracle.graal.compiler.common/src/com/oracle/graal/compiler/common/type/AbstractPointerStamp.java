@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,48 +23,50 @@
 package com.oracle.graal.compiler.common.type;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.compiler.common.spi.*;
 
-public class ObjectStamp extends AbstractObjectStamp {
+/**
+ * Abstract base class of all pointer types.
+ */
+public abstract class AbstractPointerStamp extends Stamp {
 
-    public ObjectStamp(ResolvedJavaType type, boolean exactType, boolean nonNull, boolean alwaysNull) {
-        super(type, exactType, nonNull, alwaysNull);
+    private final PointerType type;
+
+    protected AbstractPointerStamp(PointerType type) {
+        this.type = type;
+    }
+
+    public PointerType getType() {
+        return type;
     }
 
     @Override
-    protected ObjectStamp copyWith(ResolvedJavaType type, boolean exactType, boolean nonNull, boolean alwaysNull) {
-        return new ObjectStamp(type, exactType, nonNull, alwaysNull);
-    }
-
-    @Override
-    public Stamp unrestricted() {
-        return StampFactory.object();
-    }
-
-    @Override
-    public String toString() {
-        StringBuilder str = new StringBuilder();
-        str.append('a');
-        appendString(str);
-        return str.toString();
-    }
-
-    @Override
-    public boolean isCompatible(Stamp other) {
-        if (this == other) {
-            return true;
-        }
-        if (other instanceof ObjectStamp) {
-            return true;
+    public boolean isCompatible(Stamp otherStamp) {
+        if (otherStamp instanceof AbstractPointerStamp) {
+            AbstractPointerStamp other = (AbstractPointerStamp) otherStamp;
+            return this.type == other.type;
         }
         return false;
     }
 
     @Override
-    public JavaConstant asConstant() {
-        if (alwaysNull()) {
-            return JavaConstant.NULL_OBJECT;
-        } else {
-            return null;
-        }
+    public LIRKind getLIRKind(LIRKindTool tool) {
+        return tool.getPointerKind(getType());
+    }
+
+    @Override
+    public Kind getStackKind() {
+        return Kind.Illegal;
+    }
+
+    @Override
+    public ResolvedJavaType javaType(MetaAccessProvider metaAccess) {
+        throw GraalInternalError.shouldNotReachHere(type + " pointer has no Java type");
+    }
+
+    @Override
+    public String toString() {
+        return type + "*";
     }
 }

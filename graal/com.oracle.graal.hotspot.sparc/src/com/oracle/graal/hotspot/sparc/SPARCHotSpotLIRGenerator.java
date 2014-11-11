@@ -37,12 +37,17 @@ import com.oracle.graal.compiler.sparc.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.HotSpotVMConfig.CompressEncoding;
 import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.hotspot.nodes.type.*;
 import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.sparc.*;
-import com.oracle.graal.lir.sparc.SPARCMove.*;
+import com.oracle.graal.lir.sparc.SPARCMove.CompareAndSwapOp;
+import com.oracle.graal.lir.sparc.SPARCMove.LoadOp;
+import com.oracle.graal.lir.sparc.SPARCMove.NullCheckOp;
+import com.oracle.graal.lir.sparc.SPARCMove.StoreConstantOp;
+import com.oracle.graal.lir.sparc.SPARCMove.StoreOp;
 
 public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSpotLIRGenerator {
 
@@ -51,7 +56,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
     private LIRFrameState currentRuntimeCallInfo;
 
     public SPARCHotSpotLIRGenerator(HotSpotProviders providers, HotSpotVMConfig config, CallingConvention cc, LIRGenerationResult lirGenRes) {
-        super(providers, cc, lirGenRes);
+        super(new HotSpotLIRKindTool(providers.getCodeCache().getTarget().wordKind), providers, cc, lirGenRes);
         this.config = config;
     }
 
