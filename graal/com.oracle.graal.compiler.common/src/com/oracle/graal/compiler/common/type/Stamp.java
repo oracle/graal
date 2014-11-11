@@ -116,10 +116,12 @@ public abstract class Stamp {
         return null;
     }
 
+    public abstract Constant readConstant(ConstantReflectionProvider provider, Constant base, long displacement);
+
     /**
      * Tries to improve this stamp with the stamp given as parameter. If successful, returns the new
      * improved stamp. Otherwise, returns null.
-     * 
+     *
      * @param other the stamp that should be used to improve this stamp
      * @return the newly improved stamp of null if an improvement was not possible
      */

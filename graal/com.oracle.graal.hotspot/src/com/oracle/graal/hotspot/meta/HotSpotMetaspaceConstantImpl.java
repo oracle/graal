@@ -36,7 +36,7 @@ public final class HotSpotMetaspaceConstantImpl extends PrimitiveConstant implem
         return new HotSpotMetaspaceConstantImpl(kind, primitive, metaspaceObject, compressed);
     }
 
-    static Object getMetaspaceObject(JavaConstant constant) {
+    static Object getMetaspaceObject(Constant constant) {
         return ((HotSpotMetaspaceConstantImpl) constant).metaspaceObject;
     }
 

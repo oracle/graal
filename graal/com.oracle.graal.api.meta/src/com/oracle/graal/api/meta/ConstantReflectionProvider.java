@@ -71,9 +71,19 @@ public interface ConstantReflectionProvider extends Remote {
      * @param base the base address from which the value is read
      * @param displacement the displacement within the object in bytes
      * @param bits the number of bits to read from memory
-     * @return the read value encapsulated in a {@link JavaConstant} object of {@link Kind} kind
+     * @return the read value encapsulated in a {@link Constant} object of {@link Kind} kind
      */
-    JavaConstant readRawConstant(Kind kind, JavaConstant base, long displacement, int bits);
+    JavaConstant readRawConstant(Kind kind, Constant base, long displacement, int bits);
+
+    /**
+     * Reads a pointer value using a base address and a displacement.
+     *
+     * @param type the {@link PointerType} of the returned {@link Constant} object
+     * @param base the base address from which the value is read
+     * @param displacement the displacement within the object in bytes
+     * @return the read value encapsulated in a {@link Constant} object
+     */
+    Constant readPointerConstant(PointerType type, Constant base, long displacement);
 
     /**
      * Converts the given {@link Kind#isPrimitive() primitive} constant to a boxed

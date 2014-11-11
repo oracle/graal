@@ -89,6 +89,11 @@ public final class IllegalStamp extends Stamp {
         return false;
     }
 
+    @Override
+    public Constant readConstant(ConstantReflectionProvider provider, Constant base, long displacement) {
+        throw GraalInternalError.shouldNotReachHere("can't read values of illegal stamp");
+    }
+
     private static IllegalStamp instance = new IllegalStamp();
 
     static IllegalStamp getInstance() {

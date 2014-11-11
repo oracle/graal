@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,6 +21,8 @@
  * questions.
  */
 package com.oracle.graal.compiler.common.type;
+
+import com.oracle.graal.api.meta.*;
 
 /**
  * Type describing primitive values.
@@ -47,6 +49,11 @@ public abstract class PrimitiveStamp extends ArithmeticStamp {
         } else {
             return 0;
         }
+    }
+
+    @Override
+    public Constant readConstant(ConstantReflectionProvider provider, Constant base, long displacement) {
+        return provider.readRawConstant(getStackKind(), base, displacement, getBits());
     }
 
     @Override

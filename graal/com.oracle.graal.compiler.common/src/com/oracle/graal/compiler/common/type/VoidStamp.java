@@ -103,6 +103,11 @@ public final class VoidStamp extends Stamp {
     }
 
     @Override
+    public Constant readConstant(ConstantReflectionProvider provider, Constant base, long displacement) {
+        throw GraalInternalError.shouldNotReachHere("can't read values of void stamp");
+    }
+
+    @Override
     public Stamp constant(Constant c, MetaAccessProvider meta) {
         throw GraalInternalError.shouldNotReachHere("void stamp has no value");
     }

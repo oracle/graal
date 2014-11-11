@@ -119,22 +119,12 @@ public class ReadNode extends FloatableAccessNode implements LIRLowerable, Canon
     public static ValueNode canonicalizeRead(ValueNode read, LocationNode location, ValueNode object, CanonicalizerTool tool) {
         MetaAccessProvider metaAccess = tool.getMetaAccess();
         if (tool.canonicalizeReads()) {
-            if (metaAccess != null && object != null && object.isConstant()) {
+            if (metaAccess != null && object != null && object.isConstant() && !object.isNullConstant()) {
                 if ((location.getLocationIdentity().isImmutable()) && location instanceof ConstantLocationNode) {
                     long displacement = ((ConstantLocationNode) location).getDisplacement();
-                    JavaConstant base = object.asJavaConstant();
-                    if (base != null) {
-                        JavaConstant constant;
-                        if (read.stamp() instanceof PrimitiveStamp) {
-                            PrimitiveStamp stamp = (PrimitiveStamp) read.stamp();
-                            constant = tool.getConstantReflection().readRawConstant(stamp.getStackKind(), base, displacement, stamp.getBits());
-                        } else {
-                            assert read.stamp() instanceof ObjectStamp;
-                            constant = tool.getConstantReflection().readUnsafeConstant(Kind.Object, base, displacement);
-                        }
-                        if (constant != null) {
-                            return ConstantNode.forConstant(read.stamp(), constant, metaAccess);
-                        }
+                    Constant constant = read.stamp().readConstant(tool.getConstantReflection(), object.asConstant(), displacement);
+                    if (constant != null) {
+                        return ConstantNode.forConstant(read.stamp(), constant, metaAccess);
                     }
                 }
             }

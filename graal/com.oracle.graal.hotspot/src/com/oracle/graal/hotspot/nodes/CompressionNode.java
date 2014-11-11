@@ -81,6 +81,9 @@ public class CompressionNode extends UnaryNode implements ConvertNode, LIRLowera
         } else if (c instanceof HotSpotMetaspaceConstant) {
             assert ((HotSpotMetaspaceConstant) c).stamp().getStackKind() == Kind.Long;
             return ((HotSpotMetaspaceConstant) c).compress(encoding);
+        } else if (c instanceof PrimitiveConstant) {
+            assert ((PrimitiveConstant) c).getKind() == Kind.Long;
+            return JavaConstant.forInt(encoding.compress(((PrimitiveConstant) c).asLong()));
         } else {
             throw GraalInternalError.shouldNotReachHere("invalid constant input for compress op: " + c);
         }
@@ -94,6 +97,9 @@ public class CompressionNode extends UnaryNode implements ConvertNode, LIRLowera
         } else if (c instanceof HotSpotMetaspaceConstant) {
             assert ((HotSpotMetaspaceConstant) c).stamp().getStackKind() == Kind.Int;
             return ((HotSpotMetaspaceConstant) c).uncompress(encoding);
+        } else if (c instanceof PrimitiveConstant) {
+            assert ((PrimitiveConstant) c).getKind() == Kind.Int;
+            return JavaConstant.forLong(encoding.uncompress(((PrimitiveConstant) c).asInt()));
         } else {
             throw GraalInternalError.shouldNotReachHere("invalid constant input for uncompress op: " + c);
         }

@@ -61,6 +61,11 @@ public abstract class AbstractPointerStamp extends Stamp {
     }
 
     @Override
+    public Constant readConstant(ConstantReflectionProvider provider, Constant base, long displacement) {
+        return provider.readPointerConstant(type, base, displacement);
+    }
+
+    @Override
     public ResolvedJavaType javaType(MetaAccessProvider metaAccess) {
         throw GraalInternalError.shouldNotReachHere(type + " pointer has no Java type");
     }

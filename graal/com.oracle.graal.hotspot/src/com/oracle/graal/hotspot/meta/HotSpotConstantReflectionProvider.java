@@ -23,7 +23,6 @@
 package com.oracle.graal.hotspot.meta;
 
 import static com.oracle.graal.compiler.common.UnsafeAccess.*;
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 
 import java.lang.reflect.*;
 
@@ -61,94 +60,22 @@ public class HotSpotConstantReflectionProvider implements ConstantReflectionProv
         return Array.getLength(arrayObject);
     }
 
-    @Override
-    public JavaConstant readUnsafeConstant(Kind kind, JavaConstant baseConstant, long initialDisplacement) {
+    private static long readRawValue(Constant baseConstant, long initialDisplacement, int bits) {
         Object base;
         long displacement;
-        if (baseConstant.getKind() == Kind.Object) {
-            base = baseConstant.isNull() ? null : ((HotSpotObjectConstantImpl) baseConstant).object();
-            displacement = initialDisplacement;
-            if (base == null) {
-                return null;
-            }
-        } else if (baseConstant.getKind().isNumericInteger()) {
-            long baseLong = baseConstant.asLong();
-            if (baseLong == 0L) {
-                return null;
-            }
-            displacement = initialDisplacement + baseLong;
-            base = null;
-        } else {
-            throw GraalInternalError.shouldNotReachHere();
-        }
-
-        switch (kind) {
-            case Boolean:
-                return JavaConstant.forBoolean(base == null ? unsafe.getByte(displacement) != 0 : unsafe.getBoolean(base, displacement));
-            case Byte:
-                return JavaConstant.forByte(base == null ? unsafe.getByte(displacement) : unsafe.getByte(base, displacement));
-            case Char:
-                return JavaConstant.forChar(base == null ? unsafe.getChar(displacement) : unsafe.getChar(base, displacement));
-            case Short:
-                return JavaConstant.forShort(base == null ? unsafe.getShort(displacement) : unsafe.getShort(base, displacement));
-            case Int:
-                return JavaConstant.forInt(base == null ? unsafe.getInt(displacement) : unsafe.getInt(base, displacement));
-            case Long:
-                if (displacement == config().hubOffset && runtime.getConfig().useCompressedClassPointers) {
-                    if (base == null) {
-                        throw new GraalInternalError("Base of object must not be null");
-                    } else {
-                        return JavaConstant.forLong(runtime.getCompilerToVM().readUnsafeKlassPointer(base));
-                    }
-                } else {
-                    return JavaConstant.forLong(base == null ? unsafe.getLong(displacement) : unsafe.getLong(base, displacement));
-                }
-            case Float:
-                return JavaConstant.forFloat(base == null ? unsafe.getFloat(displacement) : unsafe.getFloat(base, displacement));
-            case Double:
-                return JavaConstant.forDouble(base == null ? unsafe.getDouble(displacement) : unsafe.getDouble(base, displacement));
-            case Object: {
-                Object o = null;
-                if (baseConstant.getKind() == Kind.Object) {
-                    o = unsafe.getObject(base, displacement);
-                } else if (baseConstant instanceof HotSpotMetaspaceConstant) {
-                    Object metaspaceObject = HotSpotMetaspaceConstantImpl.getMetaspaceObject(baseConstant);
-                    if (metaspaceObject instanceof HotSpotResolvedObjectTypeImpl && initialDisplacement == runtime.getConfig().classMirrorOffset) {
-                        o = ((HotSpotResolvedObjectTypeImpl) metaspaceObject).mirror();
-                    } else if (metaspaceObject instanceof HotSpotResolvedObjectTypeImpl && initialDisplacement == runtime.getConfig().arrayKlassComponentMirrorOffset) {
-                        o = ((HotSpotResolvedObjectTypeImpl) metaspaceObject).mirror().getComponentType();
-                    } else if (metaspaceObject instanceof HotSpotResolvedObjectTypeImpl && initialDisplacement == runtime.getConfig().instanceKlassNodeClassOffset) {
-                        o = NodeClass.get(((HotSpotResolvedObjectTypeImpl) metaspaceObject).mirror());
-                    } else {
-                        throw GraalInternalError.shouldNotReachHere();
-                    }
-                } else {
-                    throw GraalInternalError.shouldNotReachHere();
-                }
-                return HotSpotObjectConstantImpl.forObject(o);
-            }
-            default:
+        if (baseConstant instanceof JavaConstant) {
+            JavaConstant javaConstant = (JavaConstant) baseConstant;
+            if (javaConstant instanceof HotSpotObjectConstantImpl) {
+                base = ((HotSpotObjectConstantImpl) javaConstant).object();
+                displacement = initialDisplacement;
+            } else if (javaConstant.getKind().isNumericInteger()) {
+                long baseLong = javaConstant.asLong();
+                assert baseLong != 0;
+                displacement = initialDisplacement + baseLong;
+                base = null;
+            } else {
                 throw GraalInternalError.shouldNotReachHere();
-        }
-    }
-
-    @Override
-    public JavaConstant readRawConstant(Kind kind, JavaConstant baseConstant, long initialDisplacement, int bits) {
-        Object base;
-        long displacement;
-        if (baseConstant.getKind() == Kind.Object) {
-            base = baseConstant.isNull() ? null : ((HotSpotObjectConstantImpl) baseConstant).object();
-            displacement = initialDisplacement;
-            if (base == null) {
-                return null;
             }
-        } else if (baseConstant.getKind().isNumericInteger()) {
-            long baseLong = baseConstant.asLong();
-            if (baseLong == 0L) {
-                return null;
-            }
-            displacement = initialDisplacement + baseLong;
-            base = null;
         } else {
             throw GraalInternalError.shouldNotReachHere();
         }
@@ -170,22 +97,54 @@ public class HotSpotConstantReflectionProvider implements ConstantReflectionProv
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }
+        return rawValue;
+    }
 
-        if (base != null && displacement == config().hubOffset) {
-            if (config().useCompressedClassPointers) {
-                assert bits == 32 && kind == Kind.Int;
-                long klassPointer = config().getKlassEncoding().uncompress((int) rawValue);
-                assert klassPointer == runtime.getCompilerToVM().readUnsafeKlassPointer(base);
-                return HotSpotMetaspaceConstantImpl.forMetaspaceObject(kind, rawValue, HotSpotResolvedObjectTypeImpl.fromMetaspaceKlass(klassPointer), true);
-            } else {
-                assert bits == 64 && kind == Kind.Long;
-                return HotSpotMetaspaceConstantImpl.forMetaspaceObject(kind, rawValue, HotSpotResolvedObjectTypeImpl.fromMetaspaceKlass(rawValue), false);
+    private Object readRawObject(Constant baseConstant, long displacement, boolean compressed) {
+        if (baseConstant instanceof HotSpotObjectConstantImpl) {
+            assert compressed == runtime.getConfig().useCompressedOops;
+            return unsafe.getObject(((HotSpotObjectConstantImpl) baseConstant).object(), displacement);
+        } else if (baseConstant instanceof HotSpotMetaspaceConstant) {
+            Object metaspaceObject = HotSpotMetaspaceConstantImpl.getMetaspaceObject(baseConstant);
+            if (metaspaceObject instanceof HotSpotResolvedObjectTypeImpl) {
+                assert !compressed : "unexpected compressed read from Klass*";
+                if (displacement == runtime.getConfig().classMirrorOffset) {
+                    return ((HotSpotResolvedObjectTypeImpl) metaspaceObject).mirror();
+                } else if (displacement == runtime.getConfig().arrayKlassComponentMirrorOffset) {
+                    return ((HotSpotResolvedObjectTypeImpl) metaspaceObject).mirror().getComponentType();
+                } else if (displacement == runtime.getConfig().instanceKlassNodeClassOffset) {
+                    return NodeClass.get(((HotSpotResolvedObjectTypeImpl) metaspaceObject).mirror());
+                }
             }
-        } else if (displacement == config().klassOffset && base instanceof Class) {
-            long value = unsafe.getLong(base, displacement);
-            return HotSpotMetaspaceConstantImpl.forMetaspaceObject(kind, value, runtime.getHostProviders().getMetaAccess().lookupJavaType((Class<?>) base), false);
+            throw GraalInternalError.shouldNotReachHere("read from unknown Klass* offset " + displacement);
         } else {
+            throw GraalInternalError.shouldNotReachHere("unexpected base pointer: " + (baseConstant == null ? "null" : baseConstant.toString()));
+        }
+    }
+
+    @Override
+    public JavaConstant readUnsafeConstant(Kind kind, JavaConstant baseConstant, long displacement) {
+        if (kind == Kind.Object) {
+            Object o = readRawObject(baseConstant, displacement, runtime.getConfig().useCompressedOops);
+            return HotSpotObjectConstantImpl.forObject(o);
+        } else {
+            return readRawConstant(kind, baseConstant, displacement, kind.getByteCount() * 8);
+        }
+    }
+
+    @Override
+    public JavaConstant readRawConstant(Kind kind, Constant baseConstant, long initialDisplacement, int bits) {
+        try {
+            long rawValue = readRawValue(baseConstant, initialDisplacement, bits);
             switch (kind) {
+                case Boolean:
+                    return JavaConstant.forBoolean(rawValue != 0);
+                case Byte:
+                    return JavaConstant.forByte((byte) rawValue);
+                case Char:
+                    return JavaConstant.forChar((char) rawValue);
+                case Short:
+                    return JavaConstant.forShort((short) rawValue);
                 case Int:
                     return JavaConstant.forInt((int) rawValue);
                 case Long:
@@ -195,8 +154,51 @@ public class HotSpotConstantReflectionProvider implements ConstantReflectionProv
                 case Double:
                     return JavaConstant.forDouble(Double.longBitsToDouble(rawValue));
                 default:
-                    throw GraalInternalError.shouldNotReachHere();
+                    throw GraalInternalError.shouldNotReachHere("unsupported kind: " + kind);
             }
+        } catch (NullPointerException e) {
+            return null;
+        }
+    }
+
+    public Constant readPointerConstant(PointerType type, Constant base, long displacement) {
+        switch (type) {
+            case Object:
+                if (base instanceof PrimitiveConstant && !(base instanceof HotSpotMetaspaceConstant)) {
+                    // FIXME: we lost a metaspace annotation somewhere
+                    return null;
+                }
+                return HotSpotObjectConstantImpl.forObject(readRawObject(base, displacement, false));
+            case Type:
+                long klass = readRawValue(base, displacement, runtime.getTarget().wordSize * 8);
+                HotSpotResolvedObjectType metaKlass = HotSpotResolvedObjectTypeImpl.fromMetaspaceKlass(klass);
+                return HotSpotMetaspaceConstantImpl.forMetaspaceObject(runtime.getTarget().wordKind, klass, metaKlass, false);
+            case Method:
+                long method = readRawValue(base, displacement, runtime.getTarget().wordSize * 8);
+                HotSpotResolvedJavaMethod metaMethod = HotSpotResolvedJavaMethodImpl.fromMetaspace(method);
+                return HotSpotMetaspaceConstantImpl.forMetaspaceObject(runtime.getTarget().wordKind, method, metaMethod, false);
+            default:
+                throw GraalInternalError.shouldNotReachHere();
+        }
+    }
+
+    public Constant readNarrowPointerConstant(PointerType type, Constant base, long displacement) {
+        switch (type) {
+            case Object:
+                if (base instanceof PrimitiveConstant && !(base instanceof HotSpotMetaspaceConstant)) {
+                    // FIXME: we lost a metaspace annotation somewhere
+                    return null;
+                }
+                return HotSpotObjectConstantImpl.forObject(readRawObject(base, displacement, true), true);
+            case Type:
+                int compressed = (int) readRawValue(base, displacement, 32);
+                long klass = runtime.getConfig().getKlassEncoding().uncompress(compressed);
+                HotSpotResolvedObjectType metaKlass = HotSpotResolvedObjectTypeImpl.fromMetaspaceKlass(klass);
+                return HotSpotMetaspaceConstantImpl.forMetaspaceObject(Kind.Int, compressed, metaKlass, true);
+            case Method:
+                // there are no compressed method pointers
+            default:
+                throw GraalInternalError.shouldNotReachHere();
         }
     }
 

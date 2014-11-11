@@ -80,6 +80,11 @@ public class NarrowOopStamp extends AbstractObjectStamp {
     }
 
     @Override
+    public Constant readConstant(ConstantReflectionProvider provider, Constant base, long displacement) {
+        return ((HotSpotConstantReflectionProvider) provider).readNarrowPointerConstant(PointerType.Object, base, displacement);
+    }
+
+    @Override
     public int hashCode() {
         final int prime = 31;
         int result = super.hashCode();

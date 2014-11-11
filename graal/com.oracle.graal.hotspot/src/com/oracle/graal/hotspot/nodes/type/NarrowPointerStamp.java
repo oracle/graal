@@ -26,6 +26,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.spi.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.hotspot.HotSpotVMConfig.*;
+import com.oracle.graal.hotspot.meta.*;
 
 public class NarrowPointerStamp extends AbstractPointerStamp {
 
@@ -84,6 +85,11 @@ public class NarrowPointerStamp extends AbstractPointerStamp {
     @Override
     public Stamp constant(Constant c, MetaAccessProvider meta) {
         return this;
+    }
+
+    @Override
+    public Constant readConstant(ConstantReflectionProvider provider, Constant base, long displacement) {
+        return ((HotSpotConstantReflectionProvider) provider).readNarrowPointerConstant(getType(), base, displacement);
     }
 
     @Override
