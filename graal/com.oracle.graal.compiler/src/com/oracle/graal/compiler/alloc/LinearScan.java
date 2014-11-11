@@ -42,6 +42,8 @@ import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.FrameMapBuilder.FrameMappable;
+import com.oracle.graal.lir.FrameMapBuilder.FrameMappingTool;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.StandardOp.MoveOp;
@@ -1804,6 +1806,31 @@ public final class LinearScan {
         }
     }
 
+    private class Mapper implements FrameMappable {
+
+        public void map(FrameMappingTool tool) {
+            try (Scope scope = Debug.scope("StackSlotMappingLSRA")) {
+                for (Interval current : intervals) {
+                    if (current != null) {
+                        if (isVirtualStackSlot(current.location())) {
+                            VirtualStackSlot value = asVirtualStackSlot(current.location());
+                            StackSlot stackSlot = tool.getStackSlot(value);
+                            Debug.log("map %s -> %s", value, stackSlot);
+                            current.assignLocation(stackSlot);
+                        }
+                        if (current.isSplitParent() && current.spillSlot() != null && isVirtualStackSlot(current.spillSlot())) {
+                            VirtualStackSlot value = asVirtualStackSlot(current.spillSlot());
+                            StackSlot stackSlot = tool.getStackSlot(value);
+                            Debug.log("map %s -> %s", value, stackSlot);
+                            current.setSpillSlot(stackSlot);
+                        }
+                    }
+                }
+            }
+        }
+
+    }
+
     public static void allocate(TargetDescription target, LIRGenerationResult res) {
         new LinearScan(target, res).allocate();
     }
@@ -1851,6 +1878,8 @@ public final class LinearScan {
                 printIntervals("After register allocation");
                 printLir("After register allocation", true);
 
+                // register interval mapper
+                frameMapBuilder.requireMapping(new Mapper());
                 // build frame map
                 res.buildFrameMap();
 
