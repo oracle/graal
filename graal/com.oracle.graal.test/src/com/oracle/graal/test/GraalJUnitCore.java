@@ -135,26 +135,29 @@ public class GraalJUnitCore {
         Request request;
         if (methodName == null) {
             request = Request.classes(classes.toArray(new Class[0]));
-        } else {
-            request = Request.method(classes.get(0), methodName);
-        }
-        if (failFast) {
-            Runner runner = request.getRunner();
-            if (runner instanceof ParentRunner) {
-                ParentRunner<?> parentRunner = (ParentRunner<?>) runner;
-                parentRunner.setScheduler(new RunnerScheduler() {
-                    public void schedule(Runnable childStatement) {
-                        if (textListener.getLastFailure() == null) {
-                            childStatement.run();
+            if (failFast) {
+                Runner runner = request.getRunner();
+                if (runner instanceof ParentRunner) {
+                    ParentRunner<?> parentRunner = (ParentRunner<?>) runner;
+                    parentRunner.setScheduler(new RunnerScheduler() {
+                        public void schedule(Runnable childStatement) {
+                            if (textListener.getLastFailure() == null) {
+                                childStatement.run();
+                            }
                         }
-                    }
 
-                    public void finished() {
-                    }
-                });
-            } else {
-                system.out().println("Unexpected Runner subclass " + runner.getClass().getName() + " - fail fast not supported");
+                        public void finished() {
+                        }
+                    });
+                } else {
+                    system.out().println("Unexpected Runner subclass " + runner.getClass().getName() + " - fail fast not supported");
+                }
             }
+        } else {
+            if (failFast) {
+                system.out().println("Single method selected - fail fast not supported");
+            }
+            request = Request.method(classes.get(0), methodName);
         }
         Result result = junitCore.run(request);
         for (Failure each : missingClasses) {
