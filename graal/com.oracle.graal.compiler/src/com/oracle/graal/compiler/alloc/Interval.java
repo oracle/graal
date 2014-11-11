@@ -546,7 +546,7 @@ public final class Interval {
         } else if (isIllegal(newLocation)) {
             assert canMaterialize();
         } else {
-            assert this.location == null || isRegister(this.location) : "cannot re-assign location for " + this;
+            assert this.location == null || isRegister(this.location) || (isVirtualStackSlot(this.location) && isStackSlot(newLocation)) : "cannot re-assign location for " + this;
             assert isStackSlotValue(newLocation);
             assert !newLocation.getLIRKind().equals(LIRKind.Illegal);
             assert newLocation.getLIRKind().equals(this.kind);
@@ -620,7 +620,7 @@ public final class Interval {
     }
 
     void setSpillSlot(StackSlotValue slot) {
-        assert splitParent().spillSlot == null : "connot overwrite existing spill slot";
+        assert splitParent().spillSlot == null || (isVirtualStackSlot(splitParent().spillSlot) && isStackSlot(slot)) : "connot overwrite existing spill slot";
         splitParent().spillSlot = slot;
     }
 
