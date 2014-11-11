@@ -26,8 +26,11 @@ import static com.oracle.graal.api.code.ValueUtil.*;
 
 import java.util.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.cfg.*;
+import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.lir.FrameMapBuilder.FrameMappable;
 import com.oracle.graal.lir.FrameMapBuilder.FrameMappingTool;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
@@ -225,15 +228,27 @@ public class LIR implements FrameMappable {
     }
 
     public void map(FrameMappingTool tool) {
-        ValueProcedure updateProc = (value, mode, flags) -> {
-            if (isVirtualStackSlot(value)) {
-                return tool.getStackSlot(asVirtualStackSlot(value));
-            }
-            return value;
-        };
-        for (AbstractBlock<?> block : getControlFlowGraph().getBlocks()) {
-            for (LIRInstruction inst : getLIRforBlock(block)) {
-                inst.forEachAlive(updateProc);
+        try (Scope scope = Debug.scope("StackSlotMappingLIR")) {
+            ValueProcedure updateProc = (value, mode, flags) -> {
+                if (isVirtualStackSlot(value)) {
+                    StackSlot stackSlot = tool.getStackSlot(asVirtualStackSlot(value));
+                    Debug.log("map %s -> %s", value, stackSlot);
+                    return stackSlot;
+                }
+                return value;
+            };
+            for (AbstractBlock<?> block : getControlFlowGraph().getBlocks()) {
+                try (Indent indent0 = Debug.logAndIndent("block: %s", block)) {
+                    for (LIRInstruction inst : getLIRforBlock(block)) {
+                        try (Indent indent1 = Debug.logAndIndent("Inst: %d: %s", inst.id(), inst)) {
+                            inst.forEachAlive(updateProc);
+                            inst.forEachInput(updateProc);
+                            inst.forEachOutput(updateProc);
+                            inst.forEachTemp(updateProc);
+                            inst.forEachState(updateProc);
+                        }
+                    }
+                }
             }
         }
     }
