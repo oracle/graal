@@ -151,7 +151,7 @@ public class NewObjectSnippets implements Snippets {
 
     @Snippet
     public static Object allocateInstanceDynamic(Class<?> type, @ConstantParameter boolean fillContents, @ConstantParameter Register threadRegister, @ConstantParameter String typeContext) {
-        Word hub = loadWordFromObject(type, klassOffset());
+        Word hub = loadWordFromObject(type, klassOffset(), CLASS_KLASS_LOCATION);
         if (probability(FAST_PATH_PROBABILITY, !hub.equal(Word.zero()))) {
             if (probability(FAST_PATH_PROBABILITY, isInstanceKlassFullyInitialized(hub))) {
                 int layoutHelper = readLayoutHelper(hub);
@@ -218,7 +218,7 @@ public class NewObjectSnippets implements Snippets {
 
     @Snippet
     public static Object allocateArrayDynamic(Class<?> elementType, int length, @ConstantParameter boolean fillContents, @ConstantParameter Register threadRegister) {
-        Word hub = loadWordFromObject(elementType, arrayKlassOffset());
+        Word hub = loadWordFromObject(elementType, arrayKlassOffset(), CLASS_ARRAY_KLASS_LOCATION);
         if (hub.equal(Word.zero()) || !belowThan(length, MAX_ARRAY_FAST_PATH_ALLOCATION_LENGTH)) {
             return dynamicNewArrayStub(DYNAMIC_NEW_ARRAY, elementType, length);
         }

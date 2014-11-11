@@ -23,6 +23,8 @@
 package com.oracle.graal.nodes.extended;
 
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -32,7 +34,7 @@ import com.oracle.graal.nodes.spi.*;
  * barriers, implicit conversions and optionally oop uncompression.
  */
 @NodeInfo
-public class JavaReadNode extends FixedAccessNode implements Lowerable, GuardingNode {
+public class JavaReadNode extends FixedAccessNode implements Lowerable, GuardingNode, Canonicalizable {
 
     protected final boolean compressible;
 
@@ -55,5 +57,10 @@ public class JavaReadNode extends FixedAccessNode implements Lowerable, Guarding
 
     public boolean isCompressible() {
         return compressible;
+    }
+
+    @Override
+    public Node canonical(CanonicalizerTool tool) {
+        return ReadNode.canonicalizeRead(this, location(), object(), tool);
     }
 }

@@ -32,6 +32,7 @@ import java.util.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.replacements.*;
@@ -274,7 +275,7 @@ public class HotSpotResolvedJavaFieldImpl extends CompilerObject implements HotS
     }
 
     private static boolean assumeNonStaticFinalFieldsAsFinal(Class<?> clazz) {
-        return clazz == SnippetCounter.class;
+        return clazz == SnippetCounter.class || clazz == NodeClass.class;
     }
 
     /**

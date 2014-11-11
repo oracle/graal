@@ -170,6 +170,7 @@ public final class NodeClass extends FieldIntrospection {
         startGVNNumber = clazz.hashCode();
 
         NodeInfo info = getAnnotationTimed(clazz, NodeInfo.class);
+        assert info != null : "Missing NodeInfo annotation on " + clazz;
         this.nameTemplate = info.nameTemplate();
 
         try (TimerCloseable t1 = Init_AllowedUsages.start()) {

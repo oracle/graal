@@ -493,7 +493,7 @@ public class HotSpotReplacementsUtil {
         return config().secondarySuperCacheOffset;
     }
 
-    public static final LocationIdentity SECONDARY_SUPERS_LOCATION = NamedLocationIdentity.mutable("SecondarySupers");
+    public static final LocationIdentity SECONDARY_SUPERS_LOCATION = NamedLocationIdentity.immutable("SecondarySupers");
 
     @Fold
     public static int secondarySupersOffset() {
@@ -557,6 +557,11 @@ public class HotSpotReplacementsUtil {
     public static Word loadWordFromObject(Object object, int offset) {
         ReplacementsUtil.staticAssert(offset != hubOffset(), "Use loadHubIntrinsic instead of loadWordFromObject");
         return loadWordFromObjectIntrinsic(object, offset, getWordKind(), LocationIdentity.ANY_LOCATION);
+    }
+
+    public static Word loadWordFromObject(Object object, int offset, LocationIdentity identity) {
+        ReplacementsUtil.staticAssert(offset != hubOffset(), "Use loadHubIntrinsic instead of loadWordFromObject");
+        return loadWordFromObjectIntrinsic(object, offset, getWordKind(), identity);
     }
 
     /**
@@ -630,17 +635,21 @@ public class HotSpotReplacementsUtil {
         return config().klassModifierFlagsOffset;
     }
 
+    public static final LocationIdentity CLASS_KLASS_LOCATION = NamedLocationIdentity.immutable("Class._klass");
+
     @Fold
     public static int klassOffset() {
         return config().klassOffset;
     }
+
+    public static final LocationIdentity CLASS_ARRAY_KLASS_LOCATION = NamedLocationIdentity.immutable("Class._array_klass");
 
     @Fold
     public static int arrayKlassOffset() {
         return config().arrayKlassOffset;
     }
 
-    public static final LocationIdentity KLASS_NODE_CLASS = NamedLocationIdentity.mutable("KlassNodeClass");
+    public static final LocationIdentity KLASS_NODE_CLASS = NamedLocationIdentity.immutable("KlassNodeClass");
 
     @Fold
     public static int instanceKlassNodeClassOffset() {

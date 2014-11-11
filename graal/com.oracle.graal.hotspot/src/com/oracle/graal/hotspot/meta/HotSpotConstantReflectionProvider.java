@@ -29,6 +29,7 @@ import java.lang.reflect.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 
 /**
@@ -114,6 +115,10 @@ public class HotSpotConstantReflectionProvider implements ConstantReflectionProv
                     Object metaspaceObject = HotSpotMetaspaceConstantImpl.getMetaspaceObject(baseConstant);
                     if (metaspaceObject instanceof HotSpotResolvedObjectTypeImpl && initialDisplacement == runtime.getConfig().classMirrorOffset) {
                         o = ((HotSpotResolvedObjectTypeImpl) metaspaceObject).mirror();
+                    } else if (metaspaceObject instanceof HotSpotResolvedObjectTypeImpl && initialDisplacement == runtime.getConfig().arrayKlassComponentMirrorOffset) {
+                        o = ((HotSpotResolvedObjectTypeImpl) metaspaceObject).mirror().getComponentType();
+                    } else if (metaspaceObject instanceof HotSpotResolvedObjectTypeImpl && initialDisplacement == runtime.getConfig().instanceKlassNodeClassOffset) {
+                        o = NodeClass.get(((HotSpotResolvedObjectTypeImpl) metaspaceObject).mirror());
                     } else {
                         throw GraalInternalError.shouldNotReachHere();
                     }
@@ -176,6 +181,9 @@ public class HotSpotConstantReflectionProvider implements ConstantReflectionProv
                 assert bits == 64 && kind == Kind.Long;
                 return HotSpotMetaspaceConstantImpl.forMetaspaceObject(kind, rawValue, HotSpotResolvedObjectTypeImpl.fromMetaspaceKlass(rawValue), false);
             }
+        } else if (displacement == config().klassOffset && base instanceof Class) {
+            long value = unsafe.getLong(base, displacement);
+            return HotSpotMetaspaceConstantImpl.forMetaspaceObject(kind, value, runtime.getHostProviders().getMetaAccess().lookupJavaType((Class<?>) base), false);
         } else {
             switch (kind) {
                 case Int:

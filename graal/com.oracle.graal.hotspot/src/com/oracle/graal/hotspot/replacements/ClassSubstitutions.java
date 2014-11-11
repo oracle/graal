@@ -42,7 +42,7 @@ public class ClassSubstitutions {
     @MacroSubstitution(macro = ClassGetModifiersNode.class, isStatic = false)
     @MethodSubstitution(isStatic = false)
     public static int getModifiers(final Class<?> thisObj) {
-        Word klass = loadWordFromObject(thisObj, klassOffset());
+        Word klass = loadWordFromObject(thisObj, klassOffset(), CLASS_KLASS_LOCATION);
         if (klass.equal(0)) {
             // Class for primitive type
             return Modifier.ABSTRACT | Modifier.FINAL | Modifier.PUBLIC;
@@ -54,7 +54,7 @@ public class ClassSubstitutions {
     @MacroSubstitution(macro = ClassIsInterfaceNode.class, isStatic = false)
     @MethodSubstitution(isStatic = false)
     public static boolean isInterface(final Class<?> thisObj) {
-        Word klass = loadWordFromObject(thisObj, klassOffset());
+        Word klass = loadWordFromObject(thisObj, klassOffset(), CLASS_KLASS_LOCATION);
         if (klass.equal(0)) {
             return false;
         } else {
@@ -66,7 +66,7 @@ public class ClassSubstitutions {
     @MacroSubstitution(macro = ClassIsArrayNode.class, isStatic = false)
     @MethodSubstitution(isStatic = false)
     public static boolean isArray(final Class<?> thisObj) {
-        Word klass = loadWordFromObject(thisObj, klassOffset());
+        Word klass = loadWordFromObject(thisObj, klassOffset(), CLASS_KLASS_LOCATION);
         if (klass.equal(0)) {
             return false;
         } else {
@@ -77,7 +77,7 @@ public class ClassSubstitutions {
     @MacroSubstitution(macro = ClassIsPrimitiveNode.class, isStatic = false)
     @MethodSubstitution(isStatic = false)
     public static boolean isPrimitive(final Class<?> thisObj) {
-        Word klass = loadWordFromObject(thisObj, klassOffset());
+        Word klass = loadWordFromObject(thisObj, klassOffset(), CLASS_KLASS_LOCATION);
         return klass.equal(0);
     }
 
@@ -87,7 +87,7 @@ public class ClassSubstitutions {
     @MacroSubstitution(macro = ClassGetSuperclassNode.class, isStatic = false)
     @MethodSubstitution(isStatic = false)
     public static Class<?> getSuperclass(final Class<?> thisObj) {
-        Word klass = loadWordFromObject(thisObj, klassOffset());
+        Word klass = loadWordFromObject(thisObj, klassOffset(), CLASS_KLASS_LOCATION);
         if (klass.notEqual(0)) {
             int accessFlags = klass.readInt(klassAccessFlagsOffset(), KLASS_ACCESS_FLAGS_LOCATION);
             if ((accessFlags & Modifier.INTERFACE) == 0) {
@@ -109,7 +109,7 @@ public class ClassSubstitutions {
     @MacroSubstitution(macro = ClassGetComponentTypeNode.class, isStatic = false)
     @MethodSubstitution(isStatic = false)
     public static Class<?> getComponentType(final Class<?> thisObj) {
-        Word klass = loadWordFromObject(thisObj, klassOffset());
+        Word klass = loadWordFromObject(thisObj, klassOffset(), CLASS_KLASS_LOCATION);
         if (klass.notEqual(0)) {
             if (klassIsArray(klass)) {
                 return piCastExactNonNull(klass.readObject(arrayKlassComponentMirrorOffset(), ARRAY_KLASS_COMPONENT_MIRROR), Class.class);
