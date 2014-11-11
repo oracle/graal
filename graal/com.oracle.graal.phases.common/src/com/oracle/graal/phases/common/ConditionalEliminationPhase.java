@@ -412,7 +412,11 @@ public class ConditionalEliminationPhase extends Phase {
 
         private void registerControlSplitInfo(Node pred, BeginNode begin) {
             assert pred != null && begin != null;
-            if (begin instanceof LoopExitNode) {
+            /*
+             * We does not create value proxies for values it may connect accross loop exit node so
+             * we have to clear the state at loop exits if the graph needs value proxies
+             */
+            if (begin instanceof LoopExitNode && begin.graph().hasValueProxies()) {
                 state.clear();
             }
 
