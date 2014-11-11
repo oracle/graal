@@ -642,7 +642,7 @@ public class HotSpotReplacementsUtil {
         return config().klassOffset;
     }
 
-    public static final LocationIdentity CLASS_ARRAY_KLASS_LOCATION = NamedLocationIdentity.immutable("Class._array_klass");
+    public static final LocationIdentity CLASS_ARRAY_KLASS_LOCATION = NamedLocationIdentity.mutable("Class._array_klass");
 
     @Fold
     public static int arrayKlassOffset() {
