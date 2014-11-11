@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.hotspot;
 
+import static com.oracle.graal.api.code.ValueUtil.*;
+
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.meta.*;
@@ -46,6 +48,10 @@ class HotSpotLIRFrameState extends LIRFrameState {
                 if (processed(owner)) {
                     monitor.setOwner((JavaValue) proc.doValue(inst, owner, OperandMode.ALIVE, STATE_FLAGS));
                 }
+            }
+            Value slot = monitor.getSlot();
+            if (isVirtualStackSlot(slot) && processed(slot)) {
+                monitor.setSlot(asStackSlotValue(proc.doValue(inst, slot, OperandMode.ALIVE, STATE_FLAGS)));
             }
             return value;
         } else {

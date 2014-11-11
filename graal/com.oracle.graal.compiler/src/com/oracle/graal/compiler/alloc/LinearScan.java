@@ -696,10 +696,12 @@ public final class LinearScan {
                     }
                 };
                 ValueConsumer stateConsumer = (operand, mode, flags) -> {
-                    int operandNum = operandNumber(operand);
-                    if (!liveKill.get(operandNum)) {
-                        liveGen.set(operandNum);
-                        Debug.log("liveGen in state for operand %d", operandNum);
+                    if (isVariableOrRegister(operand)) {
+                        int operandNum = operandNumber(operand);
+                        if (!liveKill.get(operandNum)) {
+                            liveGen.set(operandNum);
+                            Debug.log("liveGen in state for operand %d", operandNum);
+                        }
                     }
                 };
                 ValueConsumer defConsumer = (operand, mode, flags) -> {
@@ -1167,9 +1169,11 @@ public final class LinearScan {
             };
 
             InstructionValueConsumer stateProc = (op, operand, mode, flags) -> {
-                int opId = op.id();
-                int blockFrom = getFirstLirInstructionId((blockForId(opId)));
-                addUse((AllocatableValue) operand, blockFrom, opId + 1, RegisterPriority.None, operand.getLIRKind());
+                if (isVariableOrRegister(operand)) {
+                    int opId = op.id();
+                    int blockFrom = getFirstLirInstructionId((blockForId(opId)));
+                    addUse((AllocatableValue) operand, blockFrom, opId + 1, RegisterPriority.None, operand.getLIRKind());
+                }
             };
 
             // create a list with all caller-save registers (cpu, fpu, xmm)

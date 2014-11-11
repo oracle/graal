@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.hotspot.meta;
 
+import static com.oracle.graal.api.code.ValueUtil.*;
+
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 
@@ -33,7 +35,7 @@ public final class HotSpotMonitorValue extends AbstractValue implements JavaValu
     private static final long serialVersionUID = 8241681800464483691L;
 
     private JavaValue owner;
-    private final StackSlotValue slot;
+    private StackSlotValue slot;
     private final boolean eliminated;
 
     public HotSpotMonitorValue(JavaValue owner, StackSlotValue slot, boolean eliminated) {
@@ -81,5 +83,10 @@ public final class HotSpotMonitorValue extends AbstractValue implements JavaValu
             return super.equals(obj) && eliminated == other.eliminated && owner.equals(other.owner) && slot.equals(other.slot);
         }
         return false;
+    }
+
+    public void setSlot(StackSlotValue stackSlot) {
+        assert slot == null || (isVirtualStackSlot(slot) && (slot.equals(stackSlot) || isStackSlot(stackSlot))) : String.format("Can not set slot for %s to %s", this, stackSlot);
+        slot = stackSlot;
     }
 }
