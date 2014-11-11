@@ -1848,11 +1848,13 @@ public final class LinearScan {
             }
 
             try (Scope s = Debug.scope("DebugInfo")) {
+                printIntervals("After register allocation");
+                printLir("After register allocation", true);
+
                 // build frame map
                 res.buildFrameMap();
 
-                printIntervals("After register allocation");
-                printLir("After register allocation", true);
+                printLir("After FrameMap building", true);
 
                 sortIntervalsAfterAllocation();
 
