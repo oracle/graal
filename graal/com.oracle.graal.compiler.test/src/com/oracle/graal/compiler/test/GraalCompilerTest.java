@@ -690,37 +690,32 @@ public abstract class GraalCompilerTest extends GraalTest {
 
         CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graphToCompile.method(), false);
         try (Context c = new Context(); Debug.Scope s = Debug.scope("ReplayCompiling", new DebugDumpScope("REPLAY", true))) {
-            try {
-                // Capturing compilation
-                Request<CompilationResult> capturingRequest = c.get(new GraalCompiler.Request<>(graphToCompile, null, cc, installedCodeOwner, getProviders(), getBackend(), getCodeCache().getTarget(),
-                                null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL, getProfilingInfo(graphToCompile), getSpeculationLog(), getSuites(), new CompilationResult(),
-                                CompilationResultBuilderFactory.Default));
-                CompilationResult capturingResult = GraalCompiler.compile(capturingRequest);
-                String path = DeepFieldsEquals.equals(originalResult, capturingResult);
-                if (path != null) {
-                    DeepFieldsEquals.equals(originalResult, capturingResult);
-                    Assert.fail("Capturing replay compilation result differs from original compilation result at " + path);
-                }
-
-                c.setMode(Mode.Replaying);
-
-                // Replay compilation
-                Request<CompilationResult> replyRequest = new GraalCompiler.Request<>(graphToCompile, null, cc, capturingRequest.installedCodeOwner, capturingRequest.providers,
-                                capturingRequest.backend, capturingRequest.target, null, capturingRequest.graphBuilderSuite, capturingRequest.optimisticOpts, capturingRequest.profilingInfo,
-                                capturingRequest.speculationLog, capturingRequest.suites, new CompilationResult(), capturingRequest.factory);
-
-                CompilationResult replayResult = GraalCompiler.compile(replyRequest);
-                path = DeepFieldsEquals.equals(originalResult, replayResult);
-                if (path != null) {
-                    DeepFieldsEquals.equals(originalResult, replayResult);
-                    Assert.fail("Capturing replay compilation result differs from original compilation result at " + path);
-                }
-
-                return capturingResult;
-            } catch (Throwable e) {
-                e.printStackTrace();
-                throw e;
+            // Capturing compilation
+            Request<CompilationResult> capturingRequest = c.get(new GraalCompiler.Request<>(graphToCompile, null, cc, installedCodeOwner, getProviders(), getBackend(), getCodeCache().getTarget(),
+                            null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL, getProfilingInfo(graphToCompile), getSpeculationLog(), getSuites(), new CompilationResult(),
+                            CompilationResultBuilderFactory.Default));
+            CompilationResult capturingResult = GraalCompiler.compile(capturingRequest);
+            String path = DeepFieldsEquals.equals(originalResult, capturingResult);
+            if (path != null) {
+                DeepFieldsEquals.equals(originalResult, capturingResult);
+                Assert.fail("Capturing replay compilation result differs from original compilation result at " + path);
             }
+
+            c.setMode(Mode.Replaying);
+
+            // Replay compilation
+            Request<CompilationResult> replyRequest = new GraalCompiler.Request<>(graphToCompile, null, cc, capturingRequest.installedCodeOwner, capturingRequest.providers, capturingRequest.backend,
+                            capturingRequest.target, null, capturingRequest.graphBuilderSuite, capturingRequest.optimisticOpts, capturingRequest.profilingInfo, capturingRequest.speculationLog,
+                            capturingRequest.suites, new CompilationResult(), capturingRequest.factory);
+
+            CompilationResult replayResult = GraalCompiler.compile(replyRequest);
+            path = DeepFieldsEquals.equals(originalResult, replayResult);
+            if (path != null) {
+                DeepFieldsEquals.equals(originalResult, replayResult);
+                Assert.fail("Capturing replay compilation result differs from original compilation result at " + path);
+            }
+
+            return capturingResult;
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
