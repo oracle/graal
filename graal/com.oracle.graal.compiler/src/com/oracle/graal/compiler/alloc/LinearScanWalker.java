@@ -535,7 +535,7 @@ class LinearScanWalker extends IntervalWalker {
      * This is called for every interval that is assigned to a stack slot.
      */
     protected void handleSpillSlot(Interval interval) {
-        assert interval.location() != null && (interval.canMaterialize() || isStackSlot(interval.location())) : "interval not assigned to a stack slot " + interval;
+        assert interval.location() != null && (interval.canMaterialize() || isStackSlotValue(interval.location())) : "interval not assigned to a stack slot " + interval;
         // Do nothing. Stack slots are not processed in this implementation.
     }
 
@@ -853,7 +853,7 @@ class LinearScanWalker extends IntervalWalker {
         try (Indent indent = Debug.logAndIndent("activating interval %s,  splitParent: %d", interval, interval.splitParent().operandNumber)) {
 
             final Value operand = interval.operand;
-            if (interval.location() != null && isStackSlot(interval.location())) {
+            if (interval.location() != null && isStackSlotValue(interval.location())) {
                 // activating an interval that has a stack slot assigned . split it at first use
                 // position
                 // used for method parameters

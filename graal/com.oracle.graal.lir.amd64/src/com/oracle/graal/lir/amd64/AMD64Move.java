@@ -342,7 +342,7 @@ public class AMD64Move {
         @Use({STACK, UNINITIALIZED}) protected StackSlotValue slot;
 
         public StackLeaOp(AllocatableValue result, StackSlotValue slot) {
-            assert isVirtualStackSlot(slot) || isStackSlot(slot) : "Not a stack slot: " + slot;
+            assert isStackSlotValue(slot) : "Not a stack slot: " + slot;
             this.result = result;
             this.slot = slot;
         }

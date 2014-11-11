@@ -62,7 +62,7 @@ public final class HSAILAddressValue extends CompositeValue {
         super(kind);
         this.base = base;
         this.displacement = displacement;
-        assert !isStackSlot(base);
+        assert !isStackSlotValue(base);
     }
 
     public HSAILAddress toAddress() {

@@ -127,7 +127,7 @@ public class PTXLIRGenerator extends LIRGenerator {
 
     @Override
     public void emitMove(AllocatableValue dst, Value src) {
-        if (isRegister(src) || isStackSlot(dst)) {
+        if (isRegister(src) || isStackSlotValue(dst)) {
             append(new MoveFromRegOp(dst, src));
         } else {
             append(new MoveToRegOp(dst, src));

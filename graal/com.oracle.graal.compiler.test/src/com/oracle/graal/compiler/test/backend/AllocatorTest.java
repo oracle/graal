@@ -98,7 +98,7 @@ public class AllocatorTest extends GraalCompilerTest {
                     if (ValueUtil.isRegister(use)) {
                         regRegMoves++;
                     }
-                } else if (ValueUtil.isStackSlot(def)) {
+                } else if (ValueUtil.isStackSlotValue(def)) {
                     spillMoves++;
                 }
             }

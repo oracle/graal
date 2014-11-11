@@ -86,7 +86,7 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
     protected HSAILLIRInstruction createMove(AllocatableValue dst, Value src) {
         if (src instanceof HSAILAddressValue) {
             return new LeaOp(dst, (HSAILAddressValue) src);
-        } else if (isRegister(src) || isStackSlot(dst)) {
+        } else if (isRegister(src) || isStackSlotValue(dst)) {
             return new MoveFromRegOp(dst.getKind(), dst, src);
         } else {
             return new MoveToRegOp(dst.getKind(), dst, src);

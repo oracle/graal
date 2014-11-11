@@ -48,7 +48,7 @@ public class HotSpotLockStack {
      */
     public StackSlotValue makeLockSlot(int lockDepth) {
         if (locks == null) {
-            locks = new StackSlot[lockDepth + 1];
+            locks = new StackSlotValue[lockDepth + 1];
         } else if (locks.length < lockDepth + 1) {
             locks = Arrays.copyOf(locks, lockDepth + 1);
         }

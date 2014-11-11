@@ -64,7 +64,7 @@ public final class PTXAddressValue extends CompositeValue {
         this.base = base;
         this.displacement = displacement;
 
-        assert !isStackSlot(base);
+        assert !isStackSlotValue(base);
     }
 
     public PTXAddress toAddress() {

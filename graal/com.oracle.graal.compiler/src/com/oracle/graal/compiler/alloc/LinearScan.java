@@ -565,7 +565,7 @@ public final class LinearScan {
                                 AllocatableValue toLocation = canonicalSpillOpr(interval);
 
                                 assert isRegister(fromLocation) : "from operand must be a register but is: " + fromLocation + " toLocation=" + toLocation + " spillState=" + interval.spillState();
-                                assert isStackSlot(toLocation) : "to operand must be a stack slot";
+                                assert isStackSlotValue(toLocation) : "to operand must be a stack slot";
 
                                 insertionBuffer.append(j + 1, ir.getSpillMoveFactory().createMove(toLocation, fromLocation));
 
@@ -1728,7 +1728,7 @@ public final class LinearScan {
         // the intervals
         // if the interval is not live, colorLirOperand will cause an assert on failure
         Value result = colorLirOperand((Variable) operand, tempOpId, mode);
-        assert !hasCall(tempOpId) || isStackSlot(result) || isConstant(result) || !isCallerSave(result) : "cannot have caller-save register operands at calls";
+        assert !hasCall(tempOpId) || isStackSlotValue(result) || isConstant(result) || !isCallerSave(result) : "cannot have caller-save register operands at calls";
         return result;
     }
 
@@ -1898,7 +1898,7 @@ public final class LinearScan {
                 Interval firstSpillChild = null;
                 try (Indent indent = Debug.logAndIndent("interval %s (%s)", interval, defBlock)) {
                     for (Interval splitChild : interval.getSplitChildren()) {
-                        if (isStackSlot(splitChild.location())) {
+                        if (isStackSlotValue(splitChild.location())) {
                             if (firstSpillChild == null || splitChild.from() < firstSpillChild.from()) {
                                 firstSpillChild = splitChild;
                             } else {

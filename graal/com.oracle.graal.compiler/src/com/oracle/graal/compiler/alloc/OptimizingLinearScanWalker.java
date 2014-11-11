@@ -53,10 +53,10 @@ public class OptimizingLinearScanWalker extends LinearScanWalker {
     protected void handleSpillSlot(Interval interval) {
         assert interval.location() != null : "interval  not assigned " + interval;
         if (interval.canMaterialize()) {
-            assert !isStackSlot(interval.location()) : "interval can materialize but assigned to a stack slot " + interval;
+            assert !isStackSlotValue(interval.location()) : "interval can materialize but assigned to a stack slot " + interval;
             return;
         }
-        assert isStackSlot(interval.location()) : "interval not assigned to a stack slot " + interval;
+        assert isStackSlotValue(interval.location()) : "interval not assigned to a stack slot " + interval;
         try (Scope s1 = Debug.scope("LSRAOptimization")) {
             Debug.log("adding stack to unhandled list %s", interval);
             unhandledLists.addToListSortedByStartAndUsePositions(RegisterBinding.Stack, interval);
@@ -152,13 +152,13 @@ public class OptimizingLinearScanWalker extends LinearScanWalker {
             return false;
         }
 
-        if (!isStackSlot(predecessorLocation) && !isRegister(predecessorLocation)) {
+        if (!isStackSlotValue(predecessorLocation) && !isRegister(predecessorLocation)) {
             assert predecessorInterval.canMaterialize();
             // value is materialized -> no need for optimization
             return false;
         }
 
-        assert isStackSlot(currentLocation) || isRegister(currentLocation) : "current location not a register or stack slot " + currentLocation;
+        assert isStackSlotValue(currentLocation) || isRegister(currentLocation) : "current location not a register or stack slot " + currentLocation;
 
         try (Indent indent = Debug.logAndIndent("location differs: %s vs. %s", predecessorLocation, currentLocation)) {
             // split current interval at current position
@@ -187,7 +187,7 @@ public class OptimizingLinearScanWalker extends LinearScanWalker {
                 if (isRegister(predecessorLocation)) {
                     splitRegisterInterval(splitPart, asRegister(predecessorLocation));
                 } else {
-                    assert isStackSlot(predecessorLocation);
+                    assert isStackSlotValue(predecessorLocation);
                     Debug.log("assigning interval %s to %s", splitPart, predecessorLocation);
                     splitPart.assignLocation(predecessorLocation);
                     // activate interval

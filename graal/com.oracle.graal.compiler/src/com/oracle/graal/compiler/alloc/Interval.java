@@ -547,7 +547,7 @@ public final class Interval {
             assert canMaterialize();
         } else {
             assert this.location == null || isRegister(this.location) : "cannot re-assign location for " + this;
-            assert isStackSlot(newLocation);
+            assert isStackSlotValue(newLocation);
             assert !newLocation.getLIRKind().equals(LIRKind.Illegal);
             assert newLocation.getLIRKind().equals(this.kind);
         }
