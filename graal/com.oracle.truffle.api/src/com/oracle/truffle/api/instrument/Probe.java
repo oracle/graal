@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.api.instrument;
 
+import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.source.*;
 
 /**
@@ -49,7 +50,7 @@ import com.oracle.truffle.api.source.*;
  * @see Instrument
  * @see Wrapper
  */
-public interface Probe extends ExecutionEvents, SyntaxTagged {
+public interface Probe extends ExecutionEvents, SyntaxTagged, NodeInterface {
 
     /**
      * Get the {@link SourceSection} in some Truffle AST associated with this probe.
