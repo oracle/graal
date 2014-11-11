@@ -27,9 +27,47 @@ import com.oracle.graal.api.meta.*;
 public abstract class VirtualStackSlot extends StackSlotValue {
 
     private static final long serialVersionUID = 2823688688873398219L;
+    private static int idCounter = 0;
+    private final int id;
 
     public VirtualStackSlot(LIRKind lirKind) {
         super(lirKind);
+        id = idCounter++;
+    }
+
+    public int getId() {
+        return id;
+    }
+
+    @Override
+    public String toString() {
+        return "VirtualSlot" + id + getKindSuffix();
+    }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = super.hashCode();
+        result = prime * result + id;
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (!super.equals(obj)) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        VirtualStackSlot other = (VirtualStackSlot) obj;
+        if (id != other.id) {
+            return false;
+        }
+        return true;
     }
 
 }
