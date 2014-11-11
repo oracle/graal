@@ -3,6 +3,7 @@
 ## `tip`
 ### Graal
 * Changed name suite specification from `mx/projects.py` to `mx/suite.py`.
+* Changed semantics (and signature) of `ResolvedJavaType#resolveMethod()` (old behavior available via `resolveConcreteMethod()`).
 * ...
 
 ### Truffle
