@@ -40,6 +40,21 @@ public class Context implements AutoCloseable {
 
     private final Map<Class<?>, Fields> fieldsMap = new HashMap<>();
 
+    public enum Mode {
+        Capturing,
+        Replaying
+    }
+
+    private Mode mode = Mode.Capturing;
+
+    public Mode getMode() {
+        return mode;
+    }
+
+    public void setMode(Mode mode) {
+        this.mode = mode;
+    }
+
     /**
      * Gets a descriptor for the fields in a class that can be used for serialization.
      */
@@ -75,6 +90,29 @@ public class Context implements AutoCloseable {
         NamedLocationIdentity.class
     ));
     // @formatter:on
+
+    private static void registerStaticField(Class<?> declaringClass, String staticFieldName) {
+        try {
+            Field f = declaringClass.getDeclaredField(staticFieldName);
+            assert Modifier.isStatic(f.getModifiers()) : f;
+            assert Modifier.isFinal(f.getModifiers()) : f;
+            assert !f.getType().isPrimitive() : f;
+            f.setAccessible(true);
+            Object obj = f.get(null);
+            Field existing = SpecialStaticFields.put(obj, f);
+            assert existing == null;
+        } catch (Exception e) {
+            throw new GraalInternalError(e);
+        }
+    }
+
+    /**
+     * Objects that should not be copied but retrieved from final static fields.
+     */
+    private static final Map<Object, Field> SpecialStaticFields = new IdentityHashMap<>();
+    static {
+        registerStaticField(ArrayList.class, "DEFAULTCAPACITY_EMPTY_ELEMENTDATA");
+    }
 
     /**
      * Determines if a given class is a subclass of any class in a given collection of classes.
@@ -187,7 +225,7 @@ public class Context implements AutoCloseable {
     private Object copyFieldOrElement(Deque<Object> worklist, Map<Object, Object> copies, Object srcValue) {
         Object dstValue = srcValue;
         if (srcValue != null && !Proxy.isProxyClass(srcValue.getClass())) {
-            if (isAssignableTo(srcValue.getClass(), DontCopyClasses)) {
+            if (isAssignableTo(srcValue.getClass(), DontCopyClasses) || SpecialStaticFields.containsKey(srcValue)) {
                 pool.put(srcValue, srcValue);
                 return srcValue;
             }
@@ -221,6 +259,9 @@ public class Context implements AutoCloseable {
      */
     private Object copy(Object root) {
         if (isAssignableTo(root.getClass(), DontCopyClasses)) {
+            return root;
+        }
+        if (SpecialStaticFields.containsKey(root)) {
             return root;
         }
         // System.out.printf("----- %s ------%n", s(obj));
@@ -272,7 +313,11 @@ public class Context implements AutoCloseable {
         } else {
             Object value = pool.get(obj);
             if (value == null) {
-                value = copy(obj);
+                if (mode == Mode.Capturing) {
+                    value = copy(obj);
+                } else {
+                    throw new GraalInternalError("No captured state for %s", obj);
+                }
             }
             return (T) value;
         }

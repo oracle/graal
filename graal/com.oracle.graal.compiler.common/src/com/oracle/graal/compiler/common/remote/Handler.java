@@ -41,6 +41,14 @@ public class Handler<T> implements InvocationHandler {
         return delegate;
     }
 
+    static Object unproxifyObject(Object obj) {
+        if (obj != null && Proxy.isProxyClass(obj.getClass())) {
+            Handler<?> h = (Handler<?>) Proxy.getInvocationHandler(obj);
+            return h.delegate;
+        }
+        return obj;
+    }
+
     static Object[] unproxify(Object[] args) {
         if (args == null) {
             return args;

@@ -44,6 +44,7 @@ import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.GraalCompiler.Request;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.remote.*;
+import com.oracle.graal.compiler.common.remote.Context.Mode;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
@@ -682,7 +683,7 @@ public abstract class GraalCompilerTest extends GraalTest {
      */
     private static final boolean TEST_REPLAY = Boolean.getBoolean("graal.testReplay");
 
-    protected CompilationResult replayCompile(ResolvedJavaMethod installedCodeOwner, StructuredGraph graph) {
+    protected CompilationResult replayCompile(CompilationResult originalResult, ResolvedJavaMethod installedCodeOwner, StructuredGraph graph) {
 
         StructuredGraph graphToCompile = graph == null ? parseForCompile(installedCodeOwner) : graph;
         lastCompiledGraph = graphToCompile;
@@ -690,12 +691,32 @@ public abstract class GraalCompilerTest extends GraalTest {
         CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graphToCompile.method(), false);
         try (Context c = new Context(); Debug.Scope s = Debug.scope("ReplayCompiling", new DebugDumpScope("REPLAY", true))) {
             try {
-                Request<CompilationResult> request = new GraalCompiler.Request<>(graphToCompile, null, cc, installedCodeOwner, getProviders(), getBackend(), getCodeCache().getTarget(), null,
-                                getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL, getProfilingInfo(graphToCompile), getSpeculationLog(), getSuites(), new CompilationResult(),
-                                CompilationResultBuilderFactory.Default);
+                // Capturing compilation
+                Request<CompilationResult> capturingRequest = c.get(new GraalCompiler.Request<>(graphToCompile, null, cc, installedCodeOwner, getProviders(), getBackend(), getCodeCache().getTarget(),
+                                null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL, getProfilingInfo(graphToCompile), getSpeculationLog(), getSuites(), new CompilationResult(),
+                                CompilationResultBuilderFactory.Default));
+                CompilationResult capturingResult = GraalCompiler.compile(capturingRequest);
+                String path = DeepFieldsEquals.equals(originalResult, capturingResult);
+                if (path != null) {
+                    DeepFieldsEquals.equals(originalResult, capturingResult);
+                    Assert.fail("Capturing replay compilation result differs from original compilation result at " + path);
+                }
 
-                request = c.get(request);
-                return GraalCompiler.compile(request);
+                c.setMode(Mode.Replaying);
+
+                // Replay compilation
+                Request<CompilationResult> replyRequest = new GraalCompiler.Request<>(graphToCompile, null, cc, capturingRequest.installedCodeOwner, capturingRequest.providers,
+                                capturingRequest.backend, capturingRequest.target, null, capturingRequest.graphBuilderSuite, capturingRequest.optimisticOpts, capturingRequest.profilingInfo,
+                                capturingRequest.speculationLog, capturingRequest.suites, new CompilationResult(), capturingRequest.factory);
+
+                CompilationResult replayResult = GraalCompiler.compile(replyRequest);
+                path = DeepFieldsEquals.equals(originalResult, replayResult);
+                if (path != null) {
+                    DeepFieldsEquals.equals(originalResult, replayResult);
+                    Assert.fail("Capturing replay compilation result differs from original compilation result at " + path);
+                }
+
+                return capturingResult;
             } catch (Throwable e) {
                 e.printStackTrace();
                 throw e;
@@ -721,7 +742,7 @@ public abstract class GraalCompilerTest extends GraalTest {
                         OptimisticOptimizations.ALL, getProfilingInfo(graphToCompile), getSpeculationLog(), getSuites(), new CompilationResult(), CompilationResultBuilderFactory.Default);
 
         if (TEST_REPLAY && graph == null) {
-            replayCompile(installedCodeOwner, null);
+            replayCompile(res, installedCodeOwner, null);
         }
         return res;
     }
