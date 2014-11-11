@@ -101,6 +101,8 @@ public class Context implements AutoCloseable {
             Object obj = f.get(null);
             Field existing = SpecialStaticFields.put(obj, f);
             assert existing == null;
+        } catch (NoSuchFieldException e) {
+            // ignore non-existing fields
         } catch (Exception e) {
             throw new GraalInternalError(e);
         }
@@ -111,6 +113,7 @@ public class Context implements AutoCloseable {
      */
     private static final Map<Object, Field> SpecialStaticFields = new IdentityHashMap<>();
     static {
+        registerStaticField(ArrayList.class, "EMPTY_ELEMENTDATA");
         registerStaticField(ArrayList.class, "DEFAULTCAPACITY_EMPTY_ELEMENTDATA");
     }
 
