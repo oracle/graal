@@ -736,27 +736,34 @@ public abstract class GraalCompilerTest extends GraalTest {
         lastCompiledGraph = graphToCompile;
 
         CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graphToCompile.method(), false);
-        try (Context c = new Context(); Debug.Scope s = Debug.scope("ReplayCompiling", new DebugDumpScope("REPLAY", true))) {
+        try (Context c = new Context()) {
             // Need to use an 'in context' copy of the original result when comparing for
             // equality against other 'in context' results so that proxies are compared
             // against proxies
             CompilationResult originalResultInContext = c.get(originalResult);
 
             // Capturing compilation
-            Request<CompilationResult> capturingRequest = c.get(new GraalCompiler.Request<>(graphToCompile, null, cc, installedCodeOwner, getProviders(), getBackend(), getCodeCache().getTarget(),
-                            null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL, getProfilingInfo(graphToCompile), getSpeculationLog(), getSuites(), new CompilationResult(),
-                            CompilationResultBuilderFactory.Default));
-            assertCompilationResultsEqual(c, "Capturing", originalResultInContext, GraalCompiler.compile(capturingRequest), installedCodeOwner);
+            Request<CompilationResult> capturingRequest = null;
+            try (Debug.Scope s = Debug.scope("CapturingCompiling", new DebugDumpScope("CAPTURE", true))) {
+                capturingRequest = c.get(new GraalCompiler.Request<>(graphToCompile, null, cc, installedCodeOwner, getProviders(), getBackend(), getCodeCache().getTarget(), null,
+                                getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL, getProfilingInfo(graphToCompile), getSpeculationLog(), getSuites(), new CompilationResult(),
+                                CompilationResultBuilderFactory.Default));
+                assertCompilationResultsEqual(c, "Capturing", originalResultInContext, GraalCompiler.compile(capturingRequest), installedCodeOwner);
+            } catch (Throwable e) {
+                throw Debug.handle(e);
+            }
 
             // Replay compilation
-            Request<CompilationResult> replyRequest = c.get(new GraalCompiler.Request<>(graphToCompile.copy(), null, cc, capturingRequest.installedCodeOwner, capturingRequest.providers,
-                            capturingRequest.backend, capturingRequest.target, null, capturingRequest.graphBuilderSuite, capturingRequest.optimisticOpts, capturingRequest.profilingInfo,
-                            capturingRequest.speculationLog, capturingRequest.suites, new CompilationResult(), capturingRequest.factory));
-            c.setMode(Mode.Replaying);
+            try (Debug.Scope s = Debug.scope("ReplayCompiling", new DebugDumpScope("REPLAY", true))) {
+                Request<CompilationResult> replyRequest = c.get(new GraalCompiler.Request<>(graphToCompile.copy(), null, cc, capturingRequest.installedCodeOwner, capturingRequest.providers,
+                                capturingRequest.backend, capturingRequest.target, null, capturingRequest.graphBuilderSuite, capturingRequest.optimisticOpts, capturingRequest.profilingInfo,
+                                capturingRequest.speculationLog, capturingRequest.suites, new CompilationResult(), capturingRequest.factory));
+                c.setMode(Mode.Replaying);
 
-            assertCompilationResultsEqual(c, "Replay", originalResultInContext, GraalCompiler.compile(replyRequest), installedCodeOwner);
-        } catch (Throwable e) {
-            throw Debug.handle(e);
+                assertCompilationResultsEqual(c, "Replay", originalResultInContext, GraalCompiler.compile(replyRequest), installedCodeOwner);
+            } catch (Throwable e) {
+                throw Debug.handle(e);
+            }
         }
     }
 
