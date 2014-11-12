@@ -145,7 +145,38 @@ public class HotSpotCodeCacheProvider implements CodeCacheProvider {
                 hcf.addComment(mark.pcOffset, MarkId.getEnum((int) mark.id).toString());
             }
         }
-        return hcf.toEmbeddedString();
+        String hcfEmbeddedString = hcf.toEmbeddedString();
+        return HexCodeFileDisTool.tryDisassemble(hcfEmbeddedString);
+    }
+
+    /**
+     * Interface to the tool for disassembling an {@link HexCodeFile#toEmbeddedString() embedded}
+     * {@link HexCodeFile}.
+     */
+    static class HexCodeFileDisTool {
+        static final Method processMethod;
+        static {
+            Method toolMethod = null;
+            try {
+                Class<?> toolClass = Class.forName("com.oracle.max.hcfdis.HexCodeFileDis", true, ClassLoader.getSystemClassLoader());
+                toolMethod = toolClass.getDeclaredMethod("processEmbeddedString", String.class);
+            } catch (Exception e) {
+                // Tool not available on the class path
+            }
+            processMethod = toolMethod;
+        }
+
+        public static String tryDisassemble(String hcfEmbeddedString) {
+            if (processMethod != null) {
+                try {
+                    return (String) processMethod.invoke(null, hcfEmbeddedString);
+                } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+                    // If the tool is available, for now let's be noisy when it fails
+                    throw new GraalInternalError(e);
+                }
+            }
+            return hcfEmbeddedString;
+        }
     }
 
     /**
