@@ -264,12 +264,7 @@ public class Context implements AutoCloseable {
      * In addition, copies in {@link #pool} are re-used.
      */
     private Object copy(Object root) {
-        if (isAssignableTo(root.getClass(), DontCopyClasses)) {
-            return root;
-        }
-        if (SpecialStaticFields.containsKey(root)) {
-            return root;
-        }
+        assert !(isAssignableTo(root.getClass(), DontCopyClasses) || SpecialStaticFields.containsKey(root));
         // System.out.printf("----- %s ------%n", s(obj));
         assert pool.get(root) == null;
         Deque<Object> worklist = new IdentityLinkedList<>();
@@ -317,12 +312,17 @@ public class Context implements AutoCloseable {
             }
             return (T) proxy;
         } else {
-            Object value = pool.get(obj);
-            if (value == null) {
-                if (mode == Mode.Capturing) {
-                    value = copy(obj);
-                } else {
-                    throw new GraalInternalError("No captured state for %s", obj);
+            Object value;
+            if (isAssignableTo(obj.getClass(), DontCopyClasses) || SpecialStaticFields.containsKey(obj)) {
+                value = obj;
+            } else {
+                value = pool.get(obj);
+                if (value == null) {
+                    if (mode == Mode.Capturing) {
+                        value = copy(obj);
+                    } else {
+                        throw new GraalInternalError("No captured state for %s [class=%s]", obj, obj.getClass());
+                    }
                 }
             }
             return (T) value;
