@@ -23,6 +23,7 @@
 package com.oracle.graal.compiler.common.remote;
 
 import java.lang.reflect.*;
+import java.nio.*;
 import java.util.*;
 
 import sun.awt.util.*;
@@ -113,6 +114,8 @@ public class Context implements AutoCloseable {
      */
     private static final Map<Object, Field> SpecialStaticFields = new IdentityHashMap<>();
     static {
+        registerStaticField(ByteOrder.class, "BIG_ENDIAN");
+        registerStaticField(ByteOrder.class, "LITTLE_ENDIAN");
         registerStaticField(ArrayList.class, "EMPTY_ELEMENTDATA");
         registerStaticField(ArrayList.class, "DEFAULTCAPACITY_EMPTY_ELEMENTDATA");
     }
