@@ -470,27 +470,9 @@ public class ConditionalEliminationPhase extends Phase {
             return null;
         }
 
-        private boolean eliminateTrivialGuard(GuardNode guard) {
-            LogicNode condition = guard.condition();
-
-            if (testExistingGuard(guard)) {
+        private boolean eliminateTrivialGuardOrRegisterStamp(GuardNode guard) {
+            if (tryReplaceWithExistingGuard(guard)) {
                 return true;
-            } else {
-                GuardingNode anchor = state.trueConditions.get(condition);
-                if (anchor != null) {
-                    if (!guard.negated()) {
-                        eliminateGuard(guard, anchor);
-                        return true;
-                    }
-                } else {
-                    anchor = state.falseConditions.get(condition);
-                    if (anchor != null) {
-                        if (guard.negated()) {
-                            eliminateGuard(guard, anchor);
-                            return true;
-                        }
-                    }
-                }
             }
             // Can't be eliminated so accumulate any type information from the guard
             registerConditionalStamp(guard);
@@ -573,7 +555,7 @@ public class ConditionalEliminationPhase extends Phase {
             return false;
         }
 
-        private boolean testExistingGuard(GuardNode guard) {
+        private boolean tryReplaceWithExistingGuard(GuardNode guard) {
             GuardingNode existingGuard = guard.negated() ? state.falseConditions.get(guard.condition()) : state.trueConditions.get(guard.condition());
             if (existingGuard != null && existingGuard != guard) {
                 eliminateGuard(guard, existingGuard);
@@ -672,20 +654,22 @@ public class ConditionalEliminationPhase extends Phase {
                 // First eliminate any guards which can be trivially removed and register any
                 // type constraints the guards produce.
                 for (GuardNode guard : begin.guards().snapshot()) {
-                    eliminateTrivialGuard(guard);
+                    eliminateTrivialGuardOrRegisterStamp(guard);
                 }
 
                 // Collect the guards which have produced conditional stamps.
+                // XXX (gd) IdentityHashMap.values().contains performs a linear search
+                // so we prefer to build a set
                 Set<GuardNode> provers = Node.newSet();
-                for (Map.Entry<ValueNode, GuardedStamp> e : state.valueConstraints.entrySet()) {
-                    provers.add(e.getValue().getGuard());
+                for (GuardedStamp e : state.valueConstraints.values()) {
+                    provers.add(e.getGuard());
                 }
 
                 // Process the remaining guards. Guards which produced some type constraint should
                 // just be registered since they aren't trivially deleteable. Test the other guards
                 // to see if they can be deleted using type constraints.
                 for (GuardNode guard : begin.guards().snapshot()) {
-                    if (provers.contains(guard) || !(testExistingGuard(guard) || testImpliedGuard(guard))) {
+                    if (provers.contains(guard) || !(tryReplaceWithExistingGuard(guard) || testImpliedGuard(guard))) {
                         registerCondition(!guard.negated(), guard.condition(), guard);
                     }
                 }
