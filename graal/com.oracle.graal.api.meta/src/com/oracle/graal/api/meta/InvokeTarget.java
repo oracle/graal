@@ -25,5 +25,5 @@ package com.oracle.graal.api.meta;
 /**
  * Represents the resolved target of an invocation.
  */
-public interface InvokeTarget {
+public interface InvokeTarget extends Remote {
 }

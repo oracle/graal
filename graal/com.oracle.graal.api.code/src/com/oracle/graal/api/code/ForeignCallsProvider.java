@@ -27,7 +27,7 @@ import com.oracle.graal.api.meta.*;
 /**
  * Details about a set of supported {@link ForeignCallDescriptor foreign calls}.
  */
-public interface ForeignCallsProvider {
+public interface ForeignCallsProvider extends Remote {
 
     /**
      * Determines if a given foreign call is side-effect free. Deoptimization cannot return
