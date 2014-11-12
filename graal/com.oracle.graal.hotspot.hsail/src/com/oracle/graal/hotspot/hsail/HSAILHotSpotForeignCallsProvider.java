@@ -38,7 +38,7 @@ public class HSAILHotSpotForeignCallsProvider extends HotSpotForeignCallsProvide
         // we don't really support foreign calls yet, but we do want to generate dummy code for them
         // so we lazily create dummy linkages here.
         if (foreignCalls.get(descriptor) == null) {
-            return register(new HotSpotForeignCallLinkage(descriptor, 0x12345678, null, null, null, null, false, new LocationIdentity[0]));
+            return register(new HotSpotForeignCallLinkageImpl(descriptor, 0x12345678, null, null, null, null, false, new LocationIdentity[0]));
         } else {
             return super.lookupForeignCall(descriptor);
         }
