@@ -32,7 +32,6 @@ import java.lang.ref.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.meta.ResolvedJavaType.Representation;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
@@ -239,7 +238,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
     @Override
     protected ValueNode staticFieldBase(StructuredGraph graph, ResolvedJavaField f) {
         HotSpotResolvedJavaField field = (HotSpotResolvedJavaField) f;
-        JavaConstant base = field.getDeclaringClass().getEncoding(Representation.JavaClass);
+        JavaConstant base = field.getDeclaringClass().getJavaClass();
         return ConstantNode.forConstant(base, metaAccess, graph);
     }
 

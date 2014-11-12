@@ -25,7 +25,6 @@ package com.oracle.graal.nodes.java;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.meta.ResolvedJavaType.Representation;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
@@ -106,7 +105,7 @@ public class TypeSwitchNode extends SwitchNode implements LIRLowerable, Simplifi
 
     @Override
     public JavaConstant keyAt(int index) {
-        return keys[index].getEncoding(Representation.ObjectHub);
+        return keys[index].getObjectHub();
     }
 
     @Override

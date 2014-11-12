@@ -25,7 +25,6 @@ package com.oracle.graal.hotspot.replacements;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.meta.ResolvedJavaType.Representation;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
@@ -60,7 +59,7 @@ public class ObjectGetClassNode extends MacroNode implements Virtualizable, Cano
         }
         State state = tool.getObjectState(getObject());
         if (state != null) {
-            JavaConstant clazz = state.getVirtualObject().type().getEncoding(Representation.JavaClass);
+            JavaConstant clazz = state.getVirtualObject().type().getJavaClass();
             tool.replaceWithValue(ConstantNode.forConstant(clazz, tool.getMetaAccessProvider(), graph()));
         }
     }
@@ -75,14 +74,14 @@ public class ObjectGetClassNode extends MacroNode implements Virtualizable, Cano
         } else {
             ResolvedJavaType type = StampTool.typeOrNull(getObject());
             if (StampTool.isExactType(getObject())) {
-                JavaConstant clazz = type.getEncoding(Representation.JavaClass);
+                JavaConstant clazz = type.getJavaClass();
                 return ConstantNode.forConstant(clazz, tool.getMetaAccess());
             }
             if (type != null && tool.assumptions().useOptimisticAssumptions()) {
                 ResolvedJavaType exactType = type.findUniqueConcreteSubtype();
                 if (exactType != null) {
                     tool.assumptions().recordConcreteSubtype(type, exactType);
-                    JavaConstant clazz = exactType.getEncoding(Representation.JavaClass);
+                    JavaConstant clazz = exactType.getJavaClass();
                     return ConstantNode.forConstant(clazz, tool.getMetaAccess());
                 }
             }

@@ -29,7 +29,6 @@ import java.util.*;
 import com.oracle.graal.alloc.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.meta.ResolvedJavaType.Representation;
 import com.oracle.graal.bytecode.*;
 import com.oracle.graal.compiler.alloc.*;
 import com.oracle.graal.compiler.common.*;
@@ -232,7 +231,7 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, Baseli
     }
 
     @Override
-    protected void handleUnresolvedExceptionType(Representation representation, JavaType type) {
+    protected void handleUnresolvedExceptionType(JavaType type) {
         // TODO Auto-generated method stub
         throw GraalInternalError.unimplemented("Auto-generated method stub");
     }

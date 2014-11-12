@@ -114,8 +114,13 @@ public final class HotSpotResolvedPrimitiveType extends HotSpotResolvedJavaType 
     }
 
     @Override
-    public JavaConstant getEncoding(Representation r) {
-        throw GraalInternalError.unimplemented("HotSpotResolvedPrimitiveType.getEncoding");
+    public JavaConstant getObjectHub() {
+        throw GraalInternalError.unimplemented("HotSpotResolvedPrimitiveType.getObjectHub");
+    }
+
+    @Override
+    public JavaConstant getJavaClass() {
+        throw GraalInternalError.unimplemented("HotSpotResolvedPrimitiveType.getJavaClass");
     }
 
     @Override

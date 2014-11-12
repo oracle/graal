@@ -23,7 +23,6 @@
 package com.oracle.graal.nodes.extended;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.meta.ResolvedJavaType.Representation;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
@@ -31,8 +30,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
 /**
- * Loads an object's {@linkplain Representation#ObjectHub hub}. The object is not null-checked by
- * this operation.
+ * Loads an object's hub. The object is not null-checked by this operation.
  */
 @NodeInfo
 public class LoadHubNode extends FloatingGuardedNode implements Lowerable, Canonicalizable, Virtualizable {
@@ -90,7 +88,7 @@ public class LoadHubNode extends FloatingGuardedNode implements Lowerable, Canon
             }
 
             if (exactType != null) {
-                return ConstantNode.forConstant(exactType.getEncoding(Representation.ObjectHub), metaAccess);
+                return ConstantNode.forConstant(exactType.getObjectHub(), metaAccess);
             }
         }
         return this;
@@ -100,7 +98,7 @@ public class LoadHubNode extends FloatingGuardedNode implements Lowerable, Canon
     public void virtualize(VirtualizerTool tool) {
         State state = tool.getObjectState(value);
         if (state != null) {
-            JavaConstant constantHub = state.getVirtualObject().type().getEncoding(Representation.ObjectHub);
+            JavaConstant constantHub = state.getVirtualObject().type().getObjectHub();
             tool.replaceWithValue(ConstantNode.forConstant(constantHub, tool.getMetaAccessProvider(), graph()));
         }
     }

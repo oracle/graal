@@ -278,15 +278,13 @@ public final class HotSpotResolvedObjectTypeImpl extends HotSpotResolvedJavaType
     }
 
     @Override
-    public JavaConstant getEncoding(Representation r) {
-        switch (r) {
-            case JavaClass:
-                return HotSpotObjectConstantImpl.forObject(mirror());
-            case ObjectHub:
-                return klass();
-            default:
-                throw GraalInternalError.shouldNotReachHere("unexpected representation " + r);
-        }
+    public JavaConstant getJavaClass() {
+        return HotSpotObjectConstantImpl.forObject(mirror());
+    }
+
+    @Override
+    public JavaConstant getObjectHub() {
+        return klass();
     }
 
     @Override

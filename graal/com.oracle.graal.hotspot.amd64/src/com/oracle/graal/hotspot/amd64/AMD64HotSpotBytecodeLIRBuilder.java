@@ -26,7 +26,6 @@ import static com.oracle.graal.amd64.AMD64.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.meta.ResolvedJavaType.Representation;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.hotspot.amd64.AMD64HotSpotLIRGenerator.SaveRbp;
 import com.oracle.graal.hotspot.meta.*;
@@ -88,7 +87,7 @@ public class AMD64HotSpotBytecodeLIRBuilder extends BytecodeLIRBuilder {
 
     @Override
     public JavaConstant getClassConstant(ResolvedJavaType declaringClass) {
-        return declaringClass.getEncoding(Representation.JavaClass);
+        return declaringClass.getJavaClass();
     }
 
     @Override

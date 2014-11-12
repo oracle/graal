@@ -32,7 +32,6 @@ import java.util.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.ProfilingInfo.TriState;
-import com.oracle.graal.api.meta.ResolvedJavaType.Representation;
 import com.oracle.graal.bytecode.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
@@ -407,11 +406,10 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             }
 
             /**
-             * @param representation
              * @param type
              */
             @Override
-            protected void handleUnresolvedExceptionType(Representation representation, JavaType type) {
+            protected void handleUnresolvedExceptionType(JavaType type) {
                 assert !graphBuilderConfig.eagerResolving();
                 append(DeoptimizeNode.create(InvalidateRecompile, Unresolved));
             }
@@ -1136,7 +1134,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             private ValueNode synchronizedObject(HIRFrameStateBuilder state, ResolvedJavaMethod target) {
                 if (target.isStatic()) {
-                    return appendConstant(target.getDeclaringClass().getEncoding(Representation.JavaClass));
+                    return appendConstant(target.getDeclaringClass().getJavaClass());
                 } else {
                     return state.loadLocal(0);
                 }
@@ -1256,7 +1254,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     checkCast.setNext(catchSuccessor);
                     append(IfNode.create(currentGraph.unique(InstanceOfNode.create((ResolvedJavaType) catchType, exception, null)), checkCast, nextDispatch, 0.5));
                 } else {
-                    handleUnresolvedExceptionType(Representation.ObjectHub, catchType);
+                    handleUnresolvedExceptionType(catchType);
                 }
             }
 

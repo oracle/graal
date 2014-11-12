@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -103,7 +103,7 @@ public class TypeGuardInlineInfo extends AbstractInlineInfo {
 
     private void createGuard(StructuredGraph graph, MetaAccessProvider metaAccess) {
         ValueNode nonNullReceiver = InliningUtil.nonNullReceiver(invoke);
-        ConstantNode typeHub = ConstantNode.forConstant(type.getEncoding(ResolvedJavaType.Representation.ObjectHub), metaAccess, graph);
+        ConstantNode typeHub = ConstantNode.forConstant(type.getObjectHub(), metaAccess, graph);
         LoadHubNode receiverHub = graph.unique(LoadHubNode.create(nonNullReceiver, typeHub.getKind()));
 
         CompareNode typeCheck = CompareNode.createCompareNode(graph, Condition.EQ, receiverHub, typeHub);

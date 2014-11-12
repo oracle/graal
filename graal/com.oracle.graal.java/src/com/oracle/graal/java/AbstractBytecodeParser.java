@@ -31,7 +31,6 @@ import java.util.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.ProfilingInfo.TriState;
-import com.oracle.graal.api.meta.ResolvedJavaType.Representation;
 import com.oracle.graal.bytecode.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
@@ -177,10 +176,9 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
     protected abstract void handleUnresolvedStoreField(JavaField field, T value, T receiver);
 
     /**
-     * @param representation
      * @param type
      */
-    protected abstract void handleUnresolvedExceptionType(Representation representation, JavaType type);
+    protected abstract void handleUnresolvedExceptionType(JavaType type);
 
     // protected abstract void handleUnresolvedInvoke(JavaMethod javaMethod, InvokeKind invokeKind);
 
@@ -193,7 +191,7 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
             // this is a load of class constant which might be unresolved
             JavaType type = (JavaType) con;
             if (type instanceof ResolvedJavaType) {
-                frameState.push(Kind.Object, appendConstant(((ResolvedJavaType) type).getEncoding(Representation.JavaClass)));
+                frameState.push(Kind.Object, appendConstant(((ResolvedJavaType) type).getJavaClass()));
             } else {
                 handleUnresolvedLoadConstant(type);
             }

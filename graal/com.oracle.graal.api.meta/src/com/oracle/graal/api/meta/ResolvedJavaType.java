@@ -34,31 +34,15 @@ import java.net.*;
 public interface ResolvedJavaType extends JavaType, ModifiersProvider {
 
     /**
-     * Represents each of the several different parts of the runtime representation of a type which
-     * compiled code may need to reference individually. These may or may not be different objects
-     * or data structures, depending on the runtime system.
+     * Gets the runtime representation of the Java class object of this type.
      */
-    public enum Representation {
-        /**
-         * The runtime representation of the Java class object of this type.
-         */
-        JavaClass,
-
-        /**
-         * The runtime representation of the "hub" of this type--that is, the closest part of the
-         * type representation which is typically stored in the object header.
-         */
-        ObjectHub
-    }
+    JavaConstant getJavaClass();
 
     /**
-     * Gets the encoding of (that is, a constant representing the value of) the specified part of
-     * this type.
-     *
-     * @param r the part of this type
-     * @return a constant representing a reference to the specified part of this type
+     * Gets the runtime representation of the "hub" of this type--that is, the closest part of the
+     * type representation which is typically stored in the object header.
      */
-    JavaConstant getEncoding(Representation r);
+    JavaConstant getObjectHub();
 
     /**
      * Checks whether this type has a finalizer method.
