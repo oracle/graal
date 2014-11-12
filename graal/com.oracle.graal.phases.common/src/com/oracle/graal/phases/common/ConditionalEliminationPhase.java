@@ -104,8 +104,8 @@ public class ConditionalEliminationPhase extends Phase {
         private Map<ValueNode, ResolvedJavaType> knownTypes;
         private Set<ValueNode> knownNonNull;
         private Set<ValueNode> knownNull;
-        private Map<LogicNode, ValueNode> trueConditions;
-        private Map<LogicNode, ValueNode> falseConditions;
+        private Map<LogicNode, GuardingNode> trueConditions;
+        private Map<LogicNode, GuardingNode> falseConditions;
         private Map<ValueNode, GuardedStamp> valueConstraints;
 
         public State() {
@@ -129,8 +129,8 @@ public class ConditionalEliminationPhase extends Phase {
         @Override
         public boolean merge(MergeNode merge, List<State> withStates) {
             Map<ValueNode, ResolvedJavaType> newKnownTypes = Node.newIdentityMap();
-            Map<LogicNode, ValueNode> newTrueConditions = Node.newIdentityMap();
-            Map<LogicNode, ValueNode> newFalseConditions = Node.newIdentityMap();
+            Map<LogicNode, GuardingNode> newTrueConditions = Node.newIdentityMap();
+            Map<LogicNode, GuardingNode> newFalseConditions = Node.newIdentityMap();
             Map<ValueNode, GuardedStamp> newValueConstraints = Node.newIdentityMap();
 
             Set<ValueNode> newKnownNull = Node.newSet(knownNull);
@@ -156,12 +156,12 @@ public class ConditionalEliminationPhase extends Phase {
                 }
             }
 
-            for (Map.Entry<LogicNode, ValueNode> entry : trueConditions.entrySet()) {
+            for (Map.Entry<LogicNode, GuardingNode> entry : trueConditions.entrySet()) {
                 LogicNode check = entry.getKey();
-                ValueNode guard = entry.getValue();
+                GuardingNode guard = entry.getValue();
 
                 for (State other : withStates) {
-                    ValueNode otherGuard = other.trueConditions.get(check);
+                    GuardingNode otherGuard = other.trueConditions.get(check);
                     if (otherGuard == null) {
                         guard = null;
                         break;
@@ -174,12 +174,12 @@ public class ConditionalEliminationPhase extends Phase {
                     newTrueConditions.put(check, guard);
                 }
             }
-            for (Map.Entry<LogicNode, ValueNode> entry : falseConditions.entrySet()) {
+            for (Map.Entry<LogicNode, GuardingNode> entry : falseConditions.entrySet()) {
                 LogicNode check = entry.getKey();
-                ValueNode guard = entry.getValue();
+                GuardingNode guard = entry.getValue();
 
                 for (State other : withStates) {
-                    ValueNode otherGuard = other.falseConditions.get(check);
+                    GuardingNode otherGuard = other.falseConditions.get(check);
                     if (otherGuard == null) {
                         guard = null;
                         break;
@@ -254,7 +254,7 @@ public class ConditionalEliminationPhase extends Phase {
          * Adds information about a condition. If isTrue is true then the condition is known to
          * hold, otherwise the condition is known not to hold.
          */
-        public void addCondition(boolean isTrue, LogicNode condition, ValueNode anchor) {
+        public void addCondition(boolean isTrue, LogicNode condition, GuardingNode anchor) {
             if (isTrue) {
                 if (!trueConditions.containsKey(condition)) {
                     trueConditions.put(condition, anchor);
@@ -352,7 +352,7 @@ public class ConditionalEliminationPhase extends Phase {
             super.finished();
         }
 
-        private void registerCondition(boolean isTrue, LogicNode condition, ValueNode anchor) {
+        private void registerCondition(boolean isTrue, LogicNode condition, GuardingNode anchor) {
             if (!isTrue && condition instanceof ShortCircuitOrNode) {
                 /*
                  * We can only do this for fixed nodes, because floating guards will be registered
@@ -476,7 +476,7 @@ public class ConditionalEliminationPhase extends Phase {
             if (testExistingGuard(guard)) {
                 return true;
             } else {
-                ValueNode anchor = state.trueConditions.get(condition);
+                GuardingNode anchor = state.trueConditions.get(condition);
                 if (anchor != null) {
                     if (!guard.negated()) {
                         eliminateGuard(guard, anchor);
@@ -503,8 +503,8 @@ public class ConditionalEliminationPhase extends Phase {
          * @param guard The guard to eliminate.
          * @param anchor Node to replace the guard.
          */
-        private void eliminateGuard(GuardNode guard, ValueNode anchor) {
-            guard.replaceAtUsages(anchor);
+        private void eliminateGuard(GuardNode guard, GuardingNode anchor) {
+            guard.replaceAtUsages(anchor.asNode());
             metricGuardsRemoved.increment();
             GraphUtil.killWithUnusedFloatingInputs(guard);
         }
@@ -574,7 +574,7 @@ public class ConditionalEliminationPhase extends Phase {
         }
 
         private boolean testExistingGuard(GuardNode guard) {
-            ValueNode existingGuard = guard.negated() ? state.falseConditions.get(guard.condition()) : state.trueConditions.get(guard.condition());
+            GuardingNode existingGuard = guard.negated() ? state.falseConditions.get(guard.condition()) : state.trueConditions.get(guard.condition());
             if (existingGuard != null && existingGuard != guard) {
                 eliminateGuard(guard, existingGuard);
                 return true;
@@ -694,9 +694,9 @@ public class ConditionalEliminationPhase extends Phase {
                 }
             } else if (node instanceof FixedGuardNode) {
                 FixedGuardNode guard = (FixedGuardNode) node;
-                ValueNode existingGuard = guard.isNegated() ? state.falseConditions.get(guard.condition()) : state.trueConditions.get(guard.condition());
+                GuardingNode existingGuard = guard.isNegated() ? state.falseConditions.get(guard.condition()) : state.trueConditions.get(guard.condition());
                 if (existingGuard != null && existingGuard instanceof FixedGuardNode) {
-                    guard.replaceAtUsages(existingGuard);
+                    guard.replaceAtUsages(existingGuard.asNode());
                     guard.graph().removeFixed(guard);
                 } else {
                     registerCondition(!guard.isNegated(), guard.condition(), guard);
@@ -729,7 +729,7 @@ public class ConditionalEliminationPhase extends Phase {
             } else if (node instanceof ConditionAnchorNode) {
                 ConditionAnchorNode conditionAnchorNode = (ConditionAnchorNode) node;
                 LogicNode condition = conditionAnchorNode.condition();
-                ValueNode replacementAnchor = null;
+                GuardingNode replacementAnchor = null;
                 if (conditionAnchorNode.isNegated()) {
                     if (state.falseConditions.containsKey(condition)) {
                         replacementAnchor = state.falseConditions.get(condition);
@@ -740,7 +740,7 @@ public class ConditionalEliminationPhase extends Phase {
                     }
                 }
                 if (replacementAnchor != null) {
-                    conditionAnchorNode.replaceAtUsages(replacementAnchor);
+                    conditionAnchorNode.replaceAtUsages(replacementAnchor.asNode());
                     conditionAnchorNode.graph().removeFixed(conditionAnchorNode);
                 }
             } else if (node instanceof IfNode) {
@@ -748,7 +748,7 @@ public class ConditionalEliminationPhase extends Phase {
                 LogicNode compare = ifNode.condition();
 
                 LogicNode replacement = null;
-                ValueNode replacementAnchor = null;
+                GuardingNode replacementAnchor = null;
                 BeginNode survivingSuccessor = null;
                 if (state.trueConditions.containsKey(compare)) {
                     replacement = trueConstant;
@@ -772,7 +772,7 @@ public class ConditionalEliminationPhase extends Phase {
 
                 if (replacement != null) {
                     if (replacementAnchor != null && !(replacementAnchor instanceof BeginNode)) {
-                        ValueAnchorNode anchor = graph.add(ValueAnchorNode.create(replacementAnchor));
+                        ValueAnchorNode anchor = graph.add(ValueAnchorNode.create(replacementAnchor.asNode()));
                         graph.addBeforeFixed(ifNode, anchor);
                     }
                     for (Node n : survivingSuccessor.usages().snapshot()) {
@@ -784,7 +784,7 @@ public class ConditionalEliminationPhase extends Phase {
                                 return;
                             }
                             // Rewire to the replacement anchor.
-                            n.replaceFirstInput(survivingSuccessor, replacementAnchor);
+                            n.replaceFirstInput(survivingSuccessor, replacementAnchor.asNode());
                         }
                     }
 
@@ -838,9 +838,9 @@ public class ConditionalEliminationPhase extends Phase {
                 if (n instanceof InstanceOfNode) {
                     InstanceOfNode instanceOfNode = (InstanceOfNode) n;
                     if (instanceOfNode.type().equals(type) && state.trueConditions.containsKey(instanceOfNode)) {
-                        ValueNode v = state.trueConditions.get(instanceOfNode);
-                        if (v instanceof GuardingNode) {
-                            return (GuardingNode) v;
+                        GuardingNode v = state.trueConditions.get(instanceOfNode);
+                        if (v != null) {
+                            return v;
                         }
                     }
                 }
