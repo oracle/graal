@@ -67,12 +67,9 @@ public class Handler<T> implements InvocationHandler {
         return res;
     }
 
-    /**
-     * @param method
-     */
     private static boolean isCacheable(Method method) {
         // TODO: use annotations for finer control of what should be cached
-        return true;
+        return method.getReturnType() != Void.TYPE;
     }
 
     @Override
@@ -81,14 +78,13 @@ public class Handler<T> implements InvocationHandler {
         boolean isCacheable = isCacheable(method);
         Invocation invocation = new Invocation(method, delegate, args);
         if (isCacheable) {
-            assert method.getReturnType() != Void.TYPE : method;
             if (cachedInvocations.containsKey(invocation)) {
                 Object result = cachedInvocations.get(invocation);
                 // System.out.println(invocation + ": " + result);
                 return result;
             }
         } else {
-            // System.out.println("not pure: " + method);
+            // System.out.println("not cacheable: " + method);
         }
 
         Object result = invocation.invoke();
