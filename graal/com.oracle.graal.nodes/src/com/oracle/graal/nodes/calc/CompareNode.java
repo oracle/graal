@@ -25,6 +25,7 @@ package com.oracle.graal.nodes.calc;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
@@ -93,7 +94,7 @@ public abstract class CompareNode extends BinaryOpLogicNode {
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
         if (forX.isConstant() && forY.isConstant()) {
-            return LogicConstantNode.forBoolean(condition().foldCondition(forX.asJavaConstant(), forY.asJavaConstant(), tool.getConstantReflection(), unorderedIsTrue()));
+            return LogicConstantNode.forBoolean(condition().foldCondition(forX.asConstant(), forY.asConstant(), tool.getConstantReflection(), unorderedIsTrue()));
         }
         ValueNode result;
         if (forX.isConstant()) {
@@ -156,8 +157,10 @@ public abstract class CompareNode extends BinaryOpLogicNode {
 
         CompareNode comparison;
         if (condition == Condition.EQ) {
-            if (x.getKind() == Kind.Object) {
+            if (x.stamp() instanceof AbstractObjectStamp) {
                 comparison = ObjectEqualsNode.create(x, y);
+            } else if (x.stamp() instanceof AbstractPointerStamp) {
+                comparison = PointerEqualsNode.create(x, y);
             } else {
                 assert x.getKind().isNumericInteger();
                 comparison = IntegerEqualsNode.create(x, y);

@@ -23,16 +23,15 @@
 package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.calc.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.nodes.util.*;
 
 @NodeInfo(shortName = "==")
-public class ObjectEqualsNode extends CompareNode implements Virtualizable {
+public class ObjectEqualsNode extends PointerEqualsNode implements Virtualizable {
 
     /**
      * Constructs a new object equality comparison node.
@@ -46,18 +45,8 @@ public class ObjectEqualsNode extends CompareNode implements Virtualizable {
 
     protected ObjectEqualsNode(ValueNode x, ValueNode y) {
         super(x, y);
-        assert x.getKind() == Kind.Object;
-        assert y.getKind() == Kind.Object;
-    }
-
-    @Override
-    public Condition condition() {
-        return Condition.EQ;
-    }
-
-    @Override
-    public boolean unorderedIsTrue() {
-        return false;
+        assert x.stamp() instanceof AbstractObjectStamp;
+        assert y.stamp() instanceof AbstractObjectStamp;
     }
 
     @Override
@@ -65,11 +54,6 @@ public class ObjectEqualsNode extends CompareNode implements Virtualizable {
         ValueNode result = super.canonical(tool, forX, forY);
         if (result != this) {
             return result;
-        }
-        if (GraphUtil.unproxify(forX) == GraphUtil.unproxify(forY)) {
-            return LogicConstantNode.tautology();
-        } else if (forX.stamp().alwaysDistinct(forY.stamp())) {
-            return LogicConstantNode.contradiction();
         }
         if (StampTool.isObjectAlwaysNull(forX)) {
             return IsNullNode.create(forY);
