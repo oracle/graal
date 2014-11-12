@@ -23,6 +23,7 @@
 package com.oracle.graal.api.code;
 
 import java.io.*;
+import java.util.*;
 
 import com.oracle.graal.api.meta.*;
 
@@ -213,6 +214,28 @@ public class BytecodeFrame extends BytecodePosition implements Serializable {
      */
     public BytecodeFrame caller() {
         return (BytecodeFrame) getCaller();
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj instanceof BytecodeFrame && super.equals(obj)) {
+            BytecodeFrame that = (BytecodeFrame) obj;
+            // @formatter:off
+            if (this.duringCall == that.duringCall &&
+                this.rethrowException == that.rethrowException &&
+                this.numLocals == that.numLocals &&
+                this.numLocks == that.numLocks &&
+                this.numStack == that.numStack &&
+                Arrays.equals(this.values, that.values)) {
+                return true;
+            }
+            // @formatter:off
+            return true;
+        }
+        return false;
     }
 
     @Override

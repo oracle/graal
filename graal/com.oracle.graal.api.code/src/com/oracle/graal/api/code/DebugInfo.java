@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.api.code;
 
+import java.util.*;
+
 /**
  * Represents the debugging information for a particular point of execution. This information
  * includes:
@@ -34,7 +36,7 @@ package com.oracle.graal.api.code;
  * current frame</li>
  * </ul>
  */
-public class DebugInfo {
+public final class DebugInfo {
 
     private final BytecodePosition bytecodePosition;
     private final ReferenceMap referenceMap;
@@ -103,5 +105,24 @@ public class DebugInfo {
      */
     public RegisterSaveLayout getCalleeSaveInfo() {
         return calleeSaveInfo;
+    }
+
+    @Override
+    public int hashCode() {
+        throw new UnsupportedOperationException("hashCode");
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj instanceof DebugInfo) {
+            DebugInfo that = (DebugInfo) obj;
+            if (Objects.equals(this.bytecodePosition, that.bytecodePosition) && Objects.equals(this.calleeSaveInfo, that.calleeSaveInfo) && Objects.equals(this.referenceMap, that.referenceMap)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

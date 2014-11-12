@@ -30,7 +30,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 
-public class HotSpotReferenceMap implements ReferenceMap, Serializable {
+public final class HotSpotReferenceMap implements ReferenceMap, Serializable {
 
     private static final long serialVersionUID = -1052183095979496819L;
 
@@ -152,6 +152,30 @@ public class HotSpotReferenceMap implements ReferenceMap, Serializable {
         } else {
             assert kind.isValue() : "unknown reference kind " + kind;
         }
+    }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + ((frameRefMap == null) ? 0 : frameRefMap.hashCode());
+        result = prime * result + ((registerRefMap == null) ? 0 : registerRefMap.hashCode());
+        result = prime * result + ((target == null) ? 0 : target.hashCode());
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj instanceof HotSpotReferenceMap) {
+            HotSpotReferenceMap that = (HotSpotReferenceMap) obj;
+            if (this.frameRefMap.equals(that.frameRefMap) && this.registerRefMap.equals(that.registerRefMap) && this.target.equals(that.target)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public boolean hasRegisterRefMap() {

@@ -28,7 +28,7 @@ import java.util.*;
  * A map from registers to frame slots. This can be used to describe where callee saved registers
  * are saved in a callee's frame.
  */
-public class RegisterSaveLayout {
+public final class RegisterSaveLayout {
 
     /**
      * Keys.
@@ -99,6 +99,25 @@ public class RegisterSaveLayout {
             result.put(slots[i], registers[i]);
         }
         return result;
+    }
+
+    @Override
+    public int hashCode() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj instanceof RegisterSaveLayout) {
+            RegisterSaveLayout that = (RegisterSaveLayout) obj;
+            if (Arrays.equals(registers, that.registers) && Arrays.equals(slots, that.slots)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override

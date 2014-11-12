@@ -237,7 +237,7 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
         public boolean equals(Object obj) {
             if (obj instanceof CallSiteTargetValue) {
                 CallSiteTargetValue other = (CallSiteTargetValue) obj;
-                return other.callSite == callSite && other.methodHandle == methodHandle;
+                return callSite.equals(other.callSite) && methodHandle.equals(other.methodHandle);
             }
             return false;
         }
@@ -272,6 +272,31 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
 
     public boolean useOptimisticAssumptions() {
         return useOptimisticAssumptions;
+    }
+
+    @Override
+    public int hashCode() {
+        throw new UnsupportedOperationException("hashCode");
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj instanceof Assumptions) {
+            Assumptions that = (Assumptions) obj;
+            if (useOptimisticAssumptions != that.useOptimisticAssumptions || count != that.count) {
+                return false;
+            }
+            for (int i = 0; i < count; i++) {
+                if (!list[i].equals(that.list[i])) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        return false;
     }
 
     @Override

@@ -32,7 +32,7 @@ import com.oracle.graal.api.code.CompilationResult.DataSectionReference;
 import com.oracle.graal.api.code.DataSection.Data;
 import com.oracle.graal.api.meta.*;
 
-public class DataSection implements Serializable, Iterable<Data> {
+public final class DataSection implements Serializable, Iterable<Data> {
 
     private static final long serialVersionUID = -1375715553825731716L;
 
@@ -94,7 +94,7 @@ public class DataSection implements Serializable, Iterable<Data> {
         }
     }
 
-    public static class Data implements Serializable {
+    public static final class Data implements Serializable {
 
         private static final long serialVersionUID = -719932751800916080L;
 
@@ -131,6 +131,27 @@ public class DataSection implements Serializable, Iterable<Data> {
         public DataBuilder getBuilder() {
             return builder;
         }
+
+        @Override
+        public int hashCode() {
+            // Data instances should not be used as hash map keys
+            throw new UnsupportedOperationException("hashCode");
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            assert ref != null;
+            if (obj == this) {
+                return true;
+            }
+            if (obj instanceof Data) {
+                Data that = (Data) obj;
+                if (this.alignment == that.alignment && this.size == that.size && this.ref.equals(that.ref)) {
+                    return true;
+                }
+            }
+            return false;
+        }
     }
 
     private final ArrayList<Data> dataItems = new ArrayList<>();
@@ -138,6 +159,26 @@ public class DataSection implements Serializable, Iterable<Data> {
     private boolean finalLayout;
     private int sectionAlignment;
     private int sectionSize;
+
+    @Override
+    public int hashCode() {
+        // DataSection instances should not be used as hash map keys
+        throw new UnsupportedOperationException("hashCode");
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj instanceof DataSection) {
+            DataSection that = (DataSection) obj;
+            if (this.finalLayout == that.finalLayout && this.sectionAlignment == that.sectionAlignment && this.sectionSize == that.sectionSize && Objects.equals(this.dataItems, that.dataItems)) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     /**
      * Insert a {@link Data} item into the data section. If the item is already in the data section,

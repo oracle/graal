@@ -82,6 +82,33 @@ public abstract class TargetDescription {
         this.inlineObjects = inlineObjects;
     }
 
+    @Override
+    public final int hashCode() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public final boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj instanceof TargetDescription) {
+            TargetDescription that = (TargetDescription) obj;
+            // @formatter:off
+            if (this.implicitNullCheckLimit == that.implicitNullCheckLimit &&
+                this.inlineObjects == that.inlineObjects &&
+                this.isMP == that.isMP &&
+                this.stackAlignment == that.stackAlignment &&
+                this.wordKind.equals(that.wordKind) &&
+                this.wordSize == that.wordSize &&
+                this.arch.equals(that.arch)) {
+                return true;
+            }
+            // @formatter:on
+        }
+        return false;
+    }
+
     public int getSizeInBytes(PlatformKind kind) {
         return arch.getSizeInBytes(kind);
     }

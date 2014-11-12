@@ -52,6 +52,14 @@ public class CompilationResult implements Serializable {
         public Site(int pos) {
             this.pcOffset = pos;
         }
+
+        @Override
+        public final int hashCode() {
+            throw new UnsupportedOperationException("hashCode");
+        }
+
+        @Override
+        public abstract boolean equals(Object obj);
     }
 
     /**
@@ -88,6 +96,20 @@ public class CompilationResult implements Serializable {
             }
             return this.reason.compareTo(o.reason);
         }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj != null && obj.getClass() == getClass()) {
+                Infopoint that = (Infopoint) obj;
+                if (this.pcOffset == that.pcOffset && Objects.equals(this.debugInfo, that.debugInfo) && Objects.equals(this.reason, that.reason)) {
+                    return true;
+                }
+            }
+            return false;
+        }
     }
 
     /**
@@ -122,6 +144,20 @@ public class CompilationResult implements Serializable {
         }
 
         @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj instanceof Call && super.equals(obj)) {
+                Call that = (Call) obj;
+                if (this.size == that.size && this.direct == that.direct && Objects.equals(this.target, that.target)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        @Override
         public String toString() {
             StringBuilder sb = new StringBuilder();
             sb.append(pcOffset);
@@ -143,9 +179,17 @@ public class CompilationResult implements Serializable {
     public abstract static class Reference implements Serializable {
 
         private static final long serialVersionUID = 4841246083028477946L;
+
+        @Override
+        public final int hashCode() {
+            throw new UnsupportedOperationException("hashCode");
+        }
+
+        @Override
+        public abstract boolean equals(Object obj);
     }
 
-    public static class ConstantReference extends Reference {
+    public static final class ConstantReference extends Reference {
 
         private static final long serialVersionUID = 5841121930949053612L;
 
@@ -165,25 +209,19 @@ public class CompilationResult implements Serializable {
         }
 
         @Override
-        public int hashCode() {
-            return getConstant().hashCode();
-        }
-
-        @Override
         public boolean equals(Object obj) {
             if (this == obj) {
                 return true;
             }
             if (obj instanceof ConstantReference) {
-                ConstantReference other = (ConstantReference) obj;
-                return getConstant().equals(other.getConstant());
-            } else {
-                return false;
+                ConstantReference that = (ConstantReference) obj;
+                return Objects.equals(this.constant, that.constant);
             }
+            return false;
         }
     }
 
-    public static class DataSectionReference extends Reference {
+    public static final class DataSectionReference extends Reference {
 
         private static final long serialVersionUID = 9011681879878139182L;
 
@@ -200,6 +238,18 @@ public class CompilationResult implements Serializable {
 
         public void setOffset(int offset) {
             this.offset = offset;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj instanceof DataSectionReference) {
+                DataSectionReference that = (DataSectionReference) obj;
+                return this.offset == that.offset;
+            }
+            return false;
         }
     }
 
@@ -222,6 +272,20 @@ public class CompilationResult implements Serializable {
         public String toString() {
             return String.format("%d[<data patch referring to %s>]", pcOffset, reference.toString());
         }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj instanceof DataPatch) {
+                DataPatch that = (DataPatch) obj;
+                if (this.pcOffset == that.pcOffset && Objects.equals(this.reference, that.reference)) {
+                    return true;
+                }
+            }
+            return false;
+        }
     }
 
     /**
@@ -237,6 +301,14 @@ public class CompilationResult implements Serializable {
         public CodeAnnotation(int position) {
             this.position = position;
         }
+
+        @Override
+        public final int hashCode() {
+            throw new UnsupportedOperationException("hashCode");
+        }
+
+        @Override
+        public abstract boolean equals(Object obj);
     }
 
     /**
@@ -253,6 +325,20 @@ public class CompilationResult implements Serializable {
         public CodeComment(int position, String comment) {
             super(position);
             this.value = comment;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj instanceof CodeComment) {
+                CodeComment that = (CodeComment) obj;
+                if (this.position == that.position && this.value.equals(that.value)) {
+                    return true;
+                }
+            }
+            return false;
         }
 
         @Override
@@ -297,6 +383,20 @@ public class CompilationResult implements Serializable {
         }
 
         @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj instanceof JumpTable) {
+                JumpTable that = (JumpTable) obj;
+                if (this.position == that.position && this.entrySize == that.entrySize && this.low == that.low && this.high == that.high) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        @Override
         public String toString() {
             return getClass().getSimpleName() + "@" + position + ": [" + low + " .. " + high + "]";
         }
@@ -319,6 +419,20 @@ public class CompilationResult implements Serializable {
         @Override
         public String toString() {
             return String.format("%d[<exception edge to %d>]", pcOffset, handlerPos);
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj instanceof ExceptionHandler) {
+                ExceptionHandler that = (ExceptionHandler) obj;
+                if (this.pcOffset == that.pcOffset && this.handlerPos == that.handlerPos) {
+                    return true;
+                }
+            }
+            return false;
         }
     }
 
@@ -345,6 +459,20 @@ public class CompilationResult implements Serializable {
             } else {
                 return String.format("%d[<mark with id %s>]", pcOffset, id.toString());
             }
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj instanceof Mark) {
+                Mark that = (Mark) obj;
+                if (this.pcOffset == that.pcOffset && Objects.equals(this.id, that.id)) {
+                    return true;
+                }
+            }
+            return false;
         }
     }
 
@@ -383,6 +511,41 @@ public class CompilationResult implements Serializable {
 
     public CompilationResult(String name) {
         this.name = name;
+    }
+
+    @Override
+    public int hashCode() {
+        // CompilationResult instances should not be used as hash map keys
+        throw new UnsupportedOperationException("hashCode");
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj != null && obj.getClass() == getClass()) {
+            CompilationResult that = (CompilationResult) obj;
+            // @formatter:off
+            if (this.entryBCI == that.entryBCI &&
+                this.id == that.id &&
+                this.customStackAreaOffset == that.customStackAreaOffset &&
+                this.totalFrameSize == that.totalFrameSize &&
+                this.targetCodeSize == that.targetCodeSize &&
+                Objects.equals(this.name, that.name) &&
+                Objects.equals(this.annotations, that.annotations) &&
+                Objects.equals(this.assumptions, that.assumptions) &&
+                Objects.equals(this.dataSection, that.dataSection) &&
+                Objects.equals(this.exceptionHandlers, that.exceptionHandlers) &&
+                Objects.equals(this.dataPatches, that.dataPatches) &&
+                Objects.equals(this.infopoints, that.infopoints) &&
+                Objects.equals(this.marks,  that.marks) &&
+                Arrays.equals(targetCode, that.targetCode)) {
+                return true;
+            }
+            // @formatter:on
+        }
+        return false;
     }
 
     /**

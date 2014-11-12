@@ -23,6 +23,7 @@
 package com.oracle.graal.api.code;
 
 import java.nio.*;
+import java.util.*;
 
 import com.oracle.graal.api.code.Register.RegisterCategory;
 import com.oracle.graal.api.meta.*;
@@ -218,4 +219,31 @@ public abstract class Architecture {
      * @return the largest kind that can be stored in a register {@code category}
      */
     public abstract PlatformKind getLargestStorableKind(RegisterCategory category);
+
+    @Override
+    public final boolean equals(Object obj) {
+        if (obj == this) {
+            return true;
+        }
+        if (obj instanceof Architecture) {
+            Architecture that = (Architecture) obj;
+            if (this.name.equals(that.name)) {
+                assert this.byteOrder.equals(that.byteOrder);
+                assert this.implicitMemoryBarriers == that.implicitMemoryBarriers;
+                assert this.machineCodeCallDisplacementOffset == that.machineCodeCallDisplacementOffset;
+                assert this.registerReferenceMapSize == that.registerReferenceMapSize;
+                assert Arrays.equals(this.registers, that.registers);
+                assert this.returnAddressSize == that.returnAddressSize;
+                assert this.unalignedMemoryAccess == that.unalignedMemoryAccess;
+                assert this.wordSize == that.wordSize;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Override
+    public final int hashCode() {
+        return name.hashCode();
+    }
 }

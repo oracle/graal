@@ -49,7 +49,7 @@ public final class AssumptionValidAssumption extends Assumptions.Assumption {
     public boolean equals(Object obj) {
         if (obj instanceof AssumptionValidAssumption) {
             AssumptionValidAssumption other = (AssumptionValidAssumption) obj;
-            return other.assumption == this.assumption;
+            return this.assumption == other.assumption;
         }
         return false;
     }
