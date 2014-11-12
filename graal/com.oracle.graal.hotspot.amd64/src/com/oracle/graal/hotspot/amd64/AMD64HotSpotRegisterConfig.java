@@ -76,7 +76,7 @@ public class AMD64HotSpotRegisterConfig implements RegisterConfig {
             }
         }
 
-        Register[] ret = list.toArray(new Register[0]);
+        Register[] ret = list.toArray(new Register[list.size()]);
         categorized.put(kind, ret);
         return ret;
     }
