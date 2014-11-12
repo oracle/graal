@@ -449,7 +449,7 @@ public class ConditionalEliminationPhase extends Phase {
 
         private GuardedStamp computeGuardedStamp(GuardNode guard) {
             if (guard.condition() instanceof IntegerBelowNode) {
-                if (guard.negated()) {
+                if (guard.isNegated()) {
                     // Not sure how to reason about negated guards
                     return null;
                 }
@@ -523,7 +523,7 @@ public class ConditionalEliminationPhase extends Phase {
                         return false;
                     }
                     // See if we can use the other guard
-                    if (!guard.negated() && !cstamp.getGuard().negated() && yStamp.isPositive()) {
+                    if (!guard.isNegated() && !cstamp.getGuard().isNegated() && yStamp.isPositive()) {
                         if (xStamp.isPositive() && xStamp.upperBound() < yStamp.lowerBound()) {
                             // Proven true
                             existingGuard = cstamp.getGuard();
@@ -534,7 +534,7 @@ public class ConditionalEliminationPhase extends Phase {
                         }
                     }
                 }
-            } else if (guard.condition() instanceof IntegerEqualsNode && guard.negated()) {
+            } else if (guard.condition() instanceof IntegerEqualsNode && guard.isNegated()) {
                 IntegerEqualsNode equals = (IntegerEqualsNode) guard.condition();
                 GuardedStamp cstamp = state.valueConstraints.get(equals.getY());
                 if (cstamp != null && equals.getX().isConstant()) {
@@ -556,7 +556,7 @@ public class ConditionalEliminationPhase extends Phase {
         }
 
         private boolean tryReplaceWithExistingGuard(GuardNode guard) {
-            GuardingNode existingGuard = guard.negated() ? state.falseConditions.get(guard.condition()) : state.trueConditions.get(guard.condition());
+            GuardingNode existingGuard = guard.isNegated() ? state.falseConditions.get(guard.condition()) : state.trueConditions.get(guard.condition());
             if (existingGuard != null && existingGuard != guard) {
                 eliminateGuard(guard, existingGuard);
                 return true;
@@ -570,10 +570,10 @@ public class ConditionalEliminationPhase extends Phase {
                 GuardedStamp other = state.valueConstraints.get(conditional.getValue());
                 if (other == null) {
                     state.valueConstraints.put(conditional.getValue(), conditional);
-                } else if (guard.negated() != other.getGuard().negated()) {
+                } else if (guard.isNegated() != other.getGuard().isNegated()) {
                     // This seems impossible
                     // Debug.log("negated and !negated guards %1s %1s", guard, other.getGuard());
-                } else if (!guard.negated()) {
+                } else if (!guard.isNegated()) {
                     // two different constraints, pick the one with the tightest type
                     // information
                     Stamp result = conditional.getStamp().join(other.getStamp());
@@ -670,7 +670,7 @@ public class ConditionalEliminationPhase extends Phase {
                 // to see if they can be deleted using type constraints.
                 for (GuardNode guard : begin.guards().snapshot()) {
                     if (provers.contains(guard) || !(tryReplaceWithExistingGuard(guard) || testImpliedGuard(guard))) {
-                        registerCondition(!guard.negated(), guard.condition(), guard);
+                        registerCondition(!guard.isNegated(), guard.condition(), guard);
                     }
                 }
                 for (GuardNode guard : provers) {

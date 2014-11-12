@@ -121,7 +121,7 @@ public class GuardLoweringPhase extends BasePhase<MidTierContext> {
 
         private void processGuard(Node node) {
             GuardNode guard = (GuardNode) node;
-            if (guard.negated() && guard.condition() instanceof IsNullNode && (guard.getSpeculation() == null || guard.getSpeculation().equals(JavaConstant.NULL_OBJECT))) {
+            if (guard.isNegated() && guard.condition() instanceof IsNullNode && (guard.getSpeculation() == null || guard.getSpeculation().equals(JavaConstant.NULL_OBJECT))) {
                 ValueNode obj = ((IsNullNode) guard.condition()).getValue();
                 nullGuarded.put(obj, guard);
             }
@@ -168,7 +168,7 @@ public class GuardLoweringPhase extends BasePhase<MidTierContext> {
             BeginNode trueSuccessor;
             BeginNode falseSuccessor;
             insertLoopExits(deopt);
-            if (guard.negated()) {
+            if (guard.isNegated()) {
                 trueSuccessor = deoptBranch;
                 falseSuccessor = fastPath;
             } else {

@@ -135,7 +135,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
         public GuardingNode createGuard(FixedNode before, LogicNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action, boolean negated) {
             if (OptEliminateGuards.getValue()) {
                 for (Node usage : condition.usages()) {
-                    if (!activeGuards.isNew(usage) && activeGuards.isMarked(usage) && ((GuardNode) usage).negated() == negated) {
+                    if (!activeGuards.isNew(usage) && activeGuards.isMarked(usage) && ((GuardNode) usage).isNegated() == negated) {
                         return (GuardNode) usage;
                     }
                 }

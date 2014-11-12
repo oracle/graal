@@ -70,7 +70,7 @@ public class GuardNode extends FloatingAnchoredNode implements Canonicalizable, 
         return condition;
     }
 
-    public boolean negated() {
+    public boolean isNegated() {
         return negated;
     }
 
