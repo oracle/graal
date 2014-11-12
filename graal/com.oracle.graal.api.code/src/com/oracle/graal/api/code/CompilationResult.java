@@ -181,9 +181,7 @@ public class CompilationResult implements Serializable {
         private static final long serialVersionUID = 4841246083028477946L;
 
         @Override
-        public final int hashCode() {
-            throw new UnsupportedOperationException("hashCode");
-        }
+        public abstract int hashCode();
 
         @Override
         public abstract boolean equals(Object obj);
@@ -206,6 +204,11 @@ public class CompilationResult implements Serializable {
         @Override
         public String toString() {
             return constant.toString();
+        }
+
+        @Override
+        public int hashCode() {
+            return constant.hashCode();
         }
 
         @Override
@@ -238,6 +241,11 @@ public class CompilationResult implements Serializable {
 
         public void setOffset(int offset) {
             this.offset = offset;
+        }
+
+        @Override
+        public int hashCode() {
+            return offset;
         }
 
         @Override
