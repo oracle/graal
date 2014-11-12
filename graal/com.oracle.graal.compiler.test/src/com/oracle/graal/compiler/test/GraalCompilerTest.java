@@ -27,6 +27,7 @@ import static com.oracle.graal.compiler.GraalCompiler.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.nodes.ConstantNode.*;
 
+import java.io.*;
 import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.atomic.*;
@@ -683,7 +684,53 @@ public abstract class GraalCompilerTest extends GraalTest {
      */
     private static final boolean TEST_REPLAY = Boolean.getBoolean("graal.testReplay");
 
-    protected CompilationResult replayCompile(CompilationResult originalResult, ResolvedJavaMethod installedCodeOwner, StructuredGraph graph) {
+    /**
+     * Directory into which tests can dump content useful in debugging test failures.
+     */
+    private static final File OUTPUT_DIR = new File(System.getProperty("graal.test.output"), "testOutput");
+
+    protected static File getOutputDir() {
+        if (!OUTPUT_DIR.exists()) {
+            OUTPUT_DIR.mkdirs();
+        }
+        if (!OUTPUT_DIR.exists()) {
+            throw new GraalInternalError("Could not create test output directory: %s", OUTPUT_DIR.getAbsolutePath());
+        }
+        return OUTPUT_DIR;
+    }
+
+    protected String dissasembleToFile(CompilationResult original, ResolvedJavaMethod installedCodeOwner, String fileSuffix) {
+        String dis = getCodeCache().disassemble(original, null);
+        File disFile = new File(getOutputDir(), installedCodeOwner.format("%H.%n_%p").replace(", ", "__") + "." + fileSuffix);
+        try (PrintStream ps = new PrintStream(new FileOutputStream(disFile))) {
+            ps.println(dis);
+            return disFile.getAbsolutePath();
+        } catch (IOException e) {
+            return null;
+        }
+    }
+
+    protected void assertCompilationResultsEqual(Context c, String prefix, CompilationResult original, CompilationResult derived, ResolvedJavaMethod installedCodeOwner) {
+        if (!derived.equals(original)) {
+            Mode mode = c.getMode();
+            // Temporarily force capturing mode as dumping/printing/disassembling
+            // may need to execute proxy methods that have not yet been executed
+            c.setMode(Mode.Capturing);
+            try {
+                String originalDisFile = dissasembleToFile(original, installedCodeOwner, "original");
+                String derivedDisFile = dissasembleToFile(derived, installedCodeOwner, "derived");
+                String message = String.format("%s compilation result differs from original compilation result", prefix);
+                if (originalDisFile != null && derivedDisFile != null) {
+                    message += String.format(" [diff %s %s]", originalDisFile, derivedDisFile);
+                }
+                Assert.fail(message);
+            } finally {
+                c.setMode(mode);
+            }
+        }
+    }
+
+    protected void replayCompile(CompilationResult originalResult, ResolvedJavaMethod installedCodeOwner, StructuredGraph graph) {
 
         StructuredGraph graphToCompile = graph == null ? parseForCompile(installedCodeOwner) : graph;
         lastCompiledGraph = graphToCompile;
@@ -699,11 +746,7 @@ public abstract class GraalCompilerTest extends GraalTest {
             Request<CompilationResult> capturingRequest = c.get(new GraalCompiler.Request<>(graphToCompile, null, cc, installedCodeOwner, getProviders(), getBackend(), getCodeCache().getTarget(),
                             null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL, getProfilingInfo(graphToCompile), getSpeculationLog(), getSuites(), new CompilationResult(),
                             CompilationResultBuilderFactory.Default));
-            CompilationResult capturingResult = GraalCompiler.compile(capturingRequest);
-            if (!capturingResult.equals(originalResultInContext)) {
-                capturingResult.equals(originalResultInContext);
-                Assert.fail(String.format("Capturing compilation result differs from original compilation result:%nexpected: %s%n  actual: %s", originalResultInContext, capturingResult));
-            }
+            assertCompilationResultsEqual(c, "Capturing", originalResultInContext, GraalCompiler.compile(capturingRequest), installedCodeOwner);
 
             // Replay compilation
             Request<CompilationResult> replyRequest = c.get(new GraalCompiler.Request<>(graphToCompile.copy(), null, cc, capturingRequest.installedCodeOwner, capturingRequest.providers,
@@ -711,13 +754,7 @@ public abstract class GraalCompilerTest extends GraalTest {
                             capturingRequest.speculationLog, capturingRequest.suites, new CompilationResult(), capturingRequest.factory));
             c.setMode(Mode.Replaying);
 
-            CompilationResult replayResult = GraalCompiler.compile(replyRequest);
-            if (!replayResult.equals(originalResultInContext)) {
-                replayResult.equals(originalResultInContext);
-                Assert.fail(String.format("Replay compilation result differs from original compilation result:%nexpected: %s%n  actual: %s", originalResultInContext, replayResult));
-            }
-
-            return capturingResult;
+            assertCompilationResultsEqual(c, "Replay", originalResultInContext, GraalCompiler.compile(replyRequest), installedCodeOwner);
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
