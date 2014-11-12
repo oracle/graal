@@ -156,12 +156,7 @@ public final class HotSpotReferenceMap implements ReferenceMap, Serializable {
 
     @Override
     public int hashCode() {
-        final int prime = 31;
-        int result = 1;
-        result = prime * result + ((frameRefMap == null) ? 0 : frameRefMap.hashCode());
-        result = prime * result + ((registerRefMap == null) ? 0 : registerRefMap.hashCode());
-        result = prime * result + ((target == null) ? 0 : target.hashCode());
-        return result;
+        throw new UnsupportedOperationException();
     }
 
     @Override
@@ -171,7 +166,7 @@ public final class HotSpotReferenceMap implements ReferenceMap, Serializable {
         }
         if (obj instanceof HotSpotReferenceMap) {
             HotSpotReferenceMap that = (HotSpotReferenceMap) obj;
-            if (this.frameRefMap.equals(that.frameRefMap) && this.registerRefMap.equals(that.registerRefMap) && this.target.equals(that.target)) {
+            if (this.frameRefMap.equals(that.frameRefMap) && Objects.equals(this.registerRefMap, that.registerRefMap) && this.target.equals(that.target)) {
                 return true;
             }
         }
