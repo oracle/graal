@@ -17,6 +17,10 @@
 * Added PrimitiveValueProfile.
 * Added -G:TruffleTimeThreshold=5000 option to defer compilation for call targets
 * Added RootNode#getExecutionContext to identify nodes with languages
+* Removed `FrameTypeConversion` interface and changed the corresponding `FrameDescriptor` constructor to have a default value parameter instead.
+* Removed `CompilerDirectives.unsafeFrameCast` (equivalent to a `(MaterializedFrame)` cast).
+* Added `TruffleRuntime#getCapability` API method.
+* Added `NodeInterface` and allowed child field to be declared with interfaces that extend it.
 * ...
 
 ## Version 0.5
@@ -33,10 +37,6 @@
 * Added `NeverValidAssumption` to complement `AlwaysValidAssumption`.
 * Fixed a bug in `AssumedValue` that may not invalidate correctly.
 * New option, `-G:+/-TruffleCompilationExceptionsAreThrown`, that will throw an `OptimizationFailedException` for compiler errors.
-* Removed `FrameTypeConversion` interface and changed the corresponding `FrameDescriptor` constructor to have a default value parameter instead.
-* Removed `CompilerDirectives.unsafeFrameCast` (equivalent to a `(MaterializedFrame)` cast).
-* Added `TruffleRuntime#getCapability` API method.
-* Added `NodeInterface` and allowed child field to be declared with interfaces that extend it.
 
 ## Version 0.4
 19-Aug-2014, [Repository Revision](http://hg.openjdk.java.net/graal/graal/shortlog/graal-0.4)
