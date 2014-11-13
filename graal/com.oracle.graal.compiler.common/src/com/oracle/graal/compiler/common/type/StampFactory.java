@@ -81,8 +81,11 @@ public class StampFactory {
         }
 
         pointerStampCache[PointerType.Object.ordinal()] = objectStamp;
-        pointerStampCache[PointerType.Type.ordinal()] = new PointerStamp(PointerType.Type);
-        pointerStampCache[PointerType.Method.ordinal()] = new PointerStamp(PointerType.Method);
+        for (PointerType t : PointerType.values()) {
+            if (t != PointerType.Object) {
+                pointerStampCache[t.ordinal()] = new PointerStamp(t);
+            }
+        }
     }
 
     /**

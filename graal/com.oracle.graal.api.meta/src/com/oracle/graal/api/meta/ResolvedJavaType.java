@@ -42,7 +42,7 @@ public interface ResolvedJavaType extends JavaType, ModifiersProvider {
      * Gets the runtime representation of the "hub" of this type--that is, the closest part of the
      * type representation which is typically stored in the object header.
      */
-    JavaConstant getObjectHub();
+    Constant getObjectHub();
 
     /**
      * Checks whether this type has a finalizer method.

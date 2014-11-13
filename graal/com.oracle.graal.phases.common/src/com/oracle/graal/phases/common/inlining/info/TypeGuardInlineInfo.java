@@ -103,8 +103,8 @@ public class TypeGuardInlineInfo extends AbstractInlineInfo {
 
     private void createGuard(StructuredGraph graph, MetaAccessProvider metaAccess) {
         ValueNode nonNullReceiver = InliningUtil.nonNullReceiver(invoke);
-        ConstantNode typeHub = ConstantNode.forConstant(type.getObjectHub(), metaAccess, graph);
-        LoadHubNode receiverHub = graph.unique(LoadHubNode.create(nonNullReceiver, typeHub.getKind()));
+        LoadHubNode receiverHub = graph.unique(LoadHubNode.create(nonNullReceiver));
+        ConstantNode typeHub = ConstantNode.forConstant(receiverHub.stamp(), type.getObjectHub(), metaAccess, graph);
 
         CompareNode typeCheck = CompareNode.createCompareNode(graph, Condition.EQ, receiverHub, typeHub);
         FixedGuardNode guard = graph.add(FixedGuardNode.create(typeCheck, DeoptimizationReason.TypeCheckedInliningViolated, DeoptimizationAction.InvalidateReprofile));

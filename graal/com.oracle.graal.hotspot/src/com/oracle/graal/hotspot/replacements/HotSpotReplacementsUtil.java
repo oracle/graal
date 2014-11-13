@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -297,7 +297,7 @@ public class HotSpotReplacementsUtil {
         return config().klassLayoutHelperOffset;
     }
 
-    public static int readLayoutHelper(Word hub) {
+    public static int readLayoutHelper(Pointer hub) {
         return hub.readInt(klassLayoutHelperOffset(), KLASS_LAYOUT_HELPER_LOCATION);
     }
 
@@ -349,7 +349,7 @@ public class HotSpotReplacementsUtil {
         return config().hubOffset;
     }
 
-    public static void initializeObjectHeader(Word memory, Word markWord, Word hub) {
+    public static void initializeObjectHeader(Word memory, Word markWord, TypePointer hub) {
         memory.writeWord(markOffset(), markWord, MARK_WORD_LOCATION);
         StoreHubNode.write(memory, hub);
     }
@@ -540,8 +540,8 @@ public class HotSpotReplacementsUtil {
     /**
      * Loads the hub of an object (without null checking it first).
      */
-    public static Word loadHub(Object object) {
-        return loadHubIntrinsic(object, getWordKind());
+    public static Pointer loadHub(Object object) {
+        return Word.fromTypePointer(loadHubIntrinsic(object));
     }
 
     public static Object verifyOop(Object object) {
@@ -587,15 +587,14 @@ public class HotSpotReplacementsUtil {
     }
 
     @SuppressWarnings("unused")
-    @NodeIntrinsic(value = LoadHubNode.class, setStampFromReturnType = true)
-    public static Word loadHubIntrinsic(Object object, @ConstantNodeParameter Kind word, GuardingNode anchor) {
-        return Word.unsigned(unsafeReadKlassPointer(object));
+    @NodeIntrinsic(value = LoadHubNode.class)
+    public static TypePointer loadHubIntrinsic(Object object, GuardingNode anchor) {
+        return Word.unsigned(unsafeReadKlassPointer(object)).toTypePointer();
     }
 
-    @SuppressWarnings("unused")
-    @NodeIntrinsic(value = LoadHubNode.class, setStampFromReturnType = true)
-    public static Word loadHubIntrinsic(Object object, @ConstantNodeParameter Kind word) {
-        return Word.unsigned(unsafeReadKlassPointer(object));
+    @NodeIntrinsic(value = LoadHubNode.class)
+    public static TypePointer loadHubIntrinsic(Object object) {
+        return Word.unsigned(unsafeReadKlassPointer(object)).toTypePointer();
     }
 
     @Fold
@@ -620,11 +619,11 @@ public class HotSpotReplacementsUtil {
      * @param hub the hub of an InstanceKlass
      * @return true is the InstanceKlass represented by hub is fully initialized
      */
-    public static boolean isInstanceKlassFullyInitialized(Word hub) {
+    public static boolean isInstanceKlassFullyInitialized(Pointer hub) {
         return readInstanceKlassState(hub) == instanceKlassStateFullyInitialized();
     }
 
-    private static byte readInstanceKlassState(Word hub) {
+    private static byte readInstanceKlassState(Pointer hub) {
         return hub.readByte(instanceKlassInitStateOffset(), CLASS_STATE_LOCATION);
     }
 

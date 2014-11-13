@@ -56,6 +56,8 @@ public class WordTypeRewriterPhase extends Phase {
     protected final SnippetReflectionProvider snippetReflection;
     protected final ResolvedJavaType wordBaseType;
     protected final ResolvedJavaType wordImplType;
+    protected final ResolvedJavaType typePointerType;
+    protected final ResolvedJavaType methodPointerType;
     protected final ResolvedJavaType objectAccessType;
     protected final ResolvedJavaType barrieredAccessType;
     protected final Kind wordKind;
@@ -66,6 +68,8 @@ public class WordTypeRewriterPhase extends Phase {
         this.wordKind = wordKind;
         this.wordBaseType = metaAccess.lookupJavaType(WordBase.class);
         this.wordImplType = metaAccess.lookupJavaType(Word.class);
+        this.typePointerType = metaAccess.lookupJavaType(TypePointer.class);
+        this.methodPointerType = metaAccess.lookupJavaType(MethodPointer.class);
         this.objectAccessType = metaAccess.lookupJavaType(ObjectAccess.class);
         this.barrieredAccessType = metaAccess.lookupJavaType(BarrieredAccess.class);
     }
@@ -100,6 +104,11 @@ public class WordTypeRewriterPhase extends Phase {
 
             } else {
                 node.setStamp(StampFactory.forKind(wordKind));
+            }
+        } else {
+            PointerType pointer = getPointerType(node);
+            if (pointer != null) {
+                node.setStamp(StampFactory.forPointer(pointer));
             }
         }
     }
@@ -163,6 +172,11 @@ public class WordTypeRewriterPhase extends Phase {
             } else {
                 throw GraalInternalError.shouldNotReachHere();
             }
+        } else if (node.stamp() instanceof PointerStamp && node instanceof LoadIndexedNode && node.elementKind() != Kind.Illegal) {
+            /*
+             * Prevent rewriting of the PointerStamp.
+             */
+            graph.replaceFixedWithFixed(node, graph.add(LoadIndexedPointerNode.create(node.stamp(), node.array(), node.index())));
         }
     }
 
@@ -208,7 +222,7 @@ public class WordTypeRewriterPhase extends Phase {
 
             case COMPARISON:
                 assert arguments.size() == 2;
-                replace(invoke, comparisonOp(graph, operation.condition(), arguments.get(0), fromSigned(graph, arguments.get(1))));
+                replace(invoke, comparisonOp(graph, operation.condition(), arguments.get(0), arguments.get(1)));
                 break;
 
             case NOT:
@@ -274,8 +288,9 @@ public class WordTypeRewriterPhase extends Phase {
                 break;
 
             case FROM_OBJECT:
+            case FROM_POINTER:
                 assert arguments.size() == 1;
-                WordCastNode objectToWord = graph.add(WordCastNode.objectToWord(arguments.get(0), wordKind));
+                WordCastNode objectToWord = graph.add(WordCastNode.pointerToWord(arguments.get(0), wordKind));
                 graph.addBeforeFixed(invoke.asNode(), objectToWord);
                 replace(invoke, objectToWord);
                 break;
@@ -286,8 +301,24 @@ public class WordTypeRewriterPhase extends Phase {
                 break;
 
             case TO_OBJECT:
+            case TO_METHOD_POINTER:
+            case TO_TYPE_POINTER:
                 assert arguments.size() == 1;
-                WordCastNode wordToObject = graph.add(WordCastNode.wordToObject(arguments.get(0), wordKind));
+                PointerType type;
+                switch (operation.opcode()) {
+                    case TO_OBJECT:
+                        type = PointerType.Object;
+                        break;
+                    case TO_METHOD_POINTER:
+                        type = PointerType.Method;
+                        break;
+                    case TO_TYPE_POINTER:
+                        type = PointerType.Type;
+                        break;
+                    default:
+                        throw GraalInternalError.shouldNotReachHere();
+                }
+                WordCastNode wordToObject = graph.add(WordCastNode.wordToPointer(arguments.get(0), wordKind, type));
                 graph.addBeforeFixed(invoke.asNode(), wordToObject);
                 replace(invoke, wordToObject);
                 break;
@@ -343,8 +374,6 @@ public class WordTypeRewriterPhase extends Phase {
     }
 
     private ValueNode comparisonOp(StructuredGraph graph, Condition condition, ValueNode left, ValueNode right) {
-        assert left.getKind() == wordKind && right.getKind() == wordKind;
-
         // mirroring gets the condition into canonical form
         boolean mirror = condition.canonicalMirror();
 
@@ -352,12 +381,21 @@ public class WordTypeRewriterPhase extends Phase {
         ValueNode b = mirror ? left : right;
 
         CompareNode comparison;
-        if (condition == Condition.EQ || condition == Condition.NE) {
-            comparison = IntegerEqualsNode.create(a, b);
-        } else if (condition.isUnsigned()) {
-            comparison = IntegerBelowNode.create(a, b);
+        if (left.stamp() instanceof AbstractPointerStamp) {
+            assert right.stamp() instanceof AbstractPointerStamp;
+            assert condition == Condition.EQ || condition == Condition.NE;
+            comparison = PointerEqualsNode.create(a, b);
         } else {
-            comparison = IntegerLessThanNode.create(a, b);
+            a = fromSigned(graph, a);
+            b = fromSigned(graph, b);
+            assert a.getKind() == wordKind && b.getKind() == wordKind;
+            if (condition == Condition.EQ || condition == Condition.NE) {
+                comparison = IntegerEqualsNode.create(a, b);
+            } else if (condition.isUnsigned()) {
+                comparison = IntegerBelowNode.create(a, b);
+            } else {
+                comparison = IntegerLessThanNode.create(a, b);
+            }
         }
 
         ConstantNode trueValue = ConstantNode.forInt(1, graph);
@@ -428,6 +466,21 @@ public class WordTypeRewriterPhase extends Phase {
 
     protected boolean isWord(ResolvedJavaType type) {
         return type != null && wordBaseType.isAssignableFrom(type);
+    }
+
+    protected PointerType getPointerType(ValueNode node) {
+        return getPointerType(StampTool.typeOrNull(node));
+    }
+
+    protected PointerType getPointerType(ResolvedJavaType type) {
+        if (type != null) {
+            if (typePointerType.isAssignableFrom(type)) {
+                return PointerType.Type;
+            } else if (methodPointerType.isAssignableFrom(type)) {
+                return PointerType.Method;
+            }
+        }
+        return null;
     }
 
     protected Kind asKind(JavaType type) {

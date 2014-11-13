@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,7 +39,7 @@ public class ObjectSubstitutions {
     @MacroSubstitution(macro = ObjectGetClassNode.class, isStatic = false, forced = true)
     @MethodSubstitution(isStatic = false, forced = true)
     public static Class<?> getClass(final Object thisObj) {
-        Word hub = loadHub(thisObj);
+        Pointer hub = loadHub(thisObj);
         return piCastExactNonNull(hub.readObject(Word.signed(classMirrorOffset()), CLASS_MIRROR_LOCATION), Class.class);
     }
 

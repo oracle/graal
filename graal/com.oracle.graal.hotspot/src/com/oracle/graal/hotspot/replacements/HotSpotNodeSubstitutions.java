@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,7 +41,7 @@ public class HotSpotNodeSubstitutions {
         // HotSpot creates the NodeClass for each Node subclass while initializing it
         // so we are guaranteed to read a non-null value here. As long as NodeClass
         // is final, the stamp of the PiNode below will automatically be exact.
-        Word klass = loadHub(node);
+        Pointer klass = loadHub(node);
         return piCastNonNull(klass.readObject(Word.signed(instanceKlassNodeClassOffset()), KLASS_NODE_CLASS), NodeClass.class);
     }
 }

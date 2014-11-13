@@ -61,7 +61,7 @@ public class TypeSwitchNode extends SwitchNode implements LIRLowerable, Simplifi
         assert successors.length <= keys.length + 1;
         assert keySuccessors.length == keyProbabilities.length;
         this.keys = keys;
-        assert assertValues();
+        assert value.stamp() instanceof AbstractPointerStamp;
         assert assertKeys();
     }
 
@@ -105,7 +105,7 @@ public class TypeSwitchNode extends SwitchNode implements LIRLowerable, Simplifi
 
     @Override
     public JavaConstant keyAt(int index) {
-        return keys[index].getObjectHub();
+        return (JavaConstant) keys[index].getObjectHub();
     }
 
     @Override

@@ -72,5 +72,5 @@ public class NewArrayStubCall extends DeoptimizingStubCall implements LIRLowerab
     }
 
     @NodeIntrinsic
-    public static native Object call(Word hub, int length);
+    public static native Object call(TypePointer hub, int length);
 }

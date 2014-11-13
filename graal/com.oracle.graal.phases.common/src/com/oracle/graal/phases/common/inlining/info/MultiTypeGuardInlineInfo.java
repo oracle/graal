@@ -41,7 +41,7 @@ import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.common.inlining.*;
-import com.oracle.graal.phases.common.inlining.info.elem.Inlineable;
+import com.oracle.graal.phases.common.inlining.info.elem.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.phases.util.*;
 
@@ -343,10 +343,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
     private boolean createDispatchOnTypeBeforeInvoke(StructuredGraph graph, BeginNode[] successors, boolean invokeIsOnlySuccessor, MetaAccessProvider metaAccess) {
         assert ptypes.size() >= 1;
         ValueNode nonNullReceiver = InliningUtil.nonNullReceiver(invoke);
-        Constant hubConstant = ((MethodCallTargetNode) invoke.callTarget()).targetMethod().getDeclaringClass().getObjectHub();
-        Stamp hubStamp = ((StampProvider) hubConstant).stamp();
-        Kind hubKind = hubStamp.getStackKind();
-        LoadHubNode hub = graph.unique(LoadHubNode.create(nonNullReceiver, hubKind));
+        LoadHubNode hub = graph.unique(LoadHubNode.create(nonNullReceiver));
 
         if (!invokeIsOnlySuccessor && chooseMethodDispatch()) {
             assert successors.length == concretes.size() + 1;
@@ -357,9 +354,9 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
             double[] probability = new double[concretes.size()];
             for (int i = 0; i < concretes.size(); ++i) {
                 ResolvedJavaMethod firstMethod = concretes.get(i);
-                JavaConstant firstMethodConstant = firstMethod.getEncoding();
+                Constant firstMethodConstant = firstMethod.getEncoding();
 
-                ConstantNode firstMethodConstantNode = ConstantNode.forConstant(firstMethodConstant, metaAccess, graph);
+                ConstantNode firstMethodConstantNode = ConstantNode.forConstant(StampFactory.forPointer(PointerType.Method), firstMethodConstant, metaAccess, graph);
                 constantMethods[i] = firstMethodConstantNode;
                 double concretesProbability = concretesProbabilities.get(i);
                 assert concretesProbability >= 0.0;
@@ -377,7 +374,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
             ResolvedJavaType receiverType = invoke.getReceiverType();
             FixedNode lastSucc = successors[concretes.size()];
             for (int i = concretes.size() - 1; i >= 0; --i) {
-                LoadMethodNode method = graph.add(LoadMethodNode.create(concretes.get(i), receiverType, hub, constantMethods[i].getKind()));
+                LoadMethodNode method = graph.add(LoadMethodNode.create(concretes.get(i), receiverType, hub));
                 CompareNode methodCheck = CompareNode.createCompareNode(graph, Condition.EQ, method, constantMethods[i]);
                 IfNode ifNode = graph.add(IfNode.create(methodCheck, successors[i], lastSucc, probability[i]));
                 method.setNext(ifNode);

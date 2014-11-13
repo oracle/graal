@@ -242,6 +242,7 @@ public class SnippetTemplate {
         protected final SnippetInfo info;
         protected final CacheKey cacheKey;
         protected final Object[] values;
+        protected final Stamp[] constStamps;
 
         protected int nextParamIdx;
 
@@ -249,6 +250,7 @@ public class SnippetTemplate {
             this.info = info;
             this.cacheKey = new CacheKey(info, guardsStage, loweringStage);
             this.values = new Object[info.getParameterCount()];
+            this.constStamps = new Stamp[info.getParameterCount()];
         }
 
         public Arguments add(String name, Object value) {
@@ -259,8 +261,13 @@ public class SnippetTemplate {
         }
 
         public Arguments addConst(String name, Object value) {
+            return addConst(name, value, null);
+        }
+
+        public Arguments addConst(String name, Object value, Stamp stamp) {
             assert check(name, true, false);
             values[nextParamIdx] = value;
+            constStamps[nextParamIdx] = stamp;
             cacheKey.setParam(nextParamIdx, value);
             nextParamIdx++;
             return this;
@@ -575,13 +582,19 @@ public class SnippetTemplate {
             if (args.info.isConstantParameter(i)) {
                 Object arg = args.values[i];
                 Kind kind = signature.getParameterKind(i);
-                JavaConstant constantArg;
-                if (arg instanceof JavaConstant) {
-                    constantArg = (JavaConstant) arg;
+                ConstantNode constantNode;
+                if (arg instanceof Constant) {
+                    Stamp stamp = args.constStamps[i];
+                    if (stamp == null) {
+                        assert arg instanceof JavaConstant : "could not determine type of constant " + arg;
+                        constantNode = ConstantNode.forConstant((JavaConstant) arg, metaAccess, snippetCopy);
+                    } else {
+                        constantNode = ConstantNode.forConstant(stamp, (Constant) arg, metaAccess, snippetCopy);
+                    }
                 } else {
-                    constantArg = snippetReflection.forBoxed(kind, arg);
+                    constantNode = ConstantNode.forConstant(snippetReflection.forBoxed(kind, arg), metaAccess, snippetCopy);
                 }
-                nodeReplacements.put(snippetGraph.getParameter(i), ConstantNode.forConstant(constantArg, metaAccess, snippetCopy));
+                nodeReplacements.put(snippetGraph.getParameter(i), constantNode);
             } else if (args.info.isVarargsParameter(i)) {
                 Varargs varargs = (Varargs) args.values[i];
                 VarargsPlaceholderNode placeholder = snippetCopy.unique(VarargsPlaceholderNode.create(varargs, providers.getMetaAccess()));

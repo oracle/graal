@@ -70,5 +70,5 @@ public class NewInstanceStubCall extends DeoptimizingStubCall implements LIRLowe
     }
 
     @NodeIntrinsic
-    public static native Object call(Word hub);
+    public static native Object call(TypePointer hub);
 }

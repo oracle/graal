@@ -61,9 +61,22 @@ public class ConstantNode extends FloatingNode implements LIRLowerable {
 
     protected ConstantNode(Constant value, Stamp stamp) {
         super(stamp);
-        assert stamp != null;
+        assert stamp != null && isCompatible(value, stamp);
         this.value = value;
         ConstantNodes.increment();
+    }
+
+    private static boolean isCompatible(Constant value, Stamp stamp) {
+        if (value instanceof VMConstant) {
+            assert stamp instanceof AbstractPointerStamp;
+        } else if (value instanceof PrimitiveConstant) {
+            if (((PrimitiveConstant) value).getKind() == Kind.Illegal) {
+                assert stamp instanceof IllegalStamp;
+            } else {
+                assert stamp instanceof PrimitiveStamp;
+            }
+        }
+        return true;
     }
 
     /**

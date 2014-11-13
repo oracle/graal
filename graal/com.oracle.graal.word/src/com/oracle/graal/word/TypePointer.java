@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,21 +22,10 @@
  */
 package com.oracle.graal.word;
 
-public interface ComparableWord extends WordBase {
+import com.oracle.graal.api.meta.*;
 
-    /**
-     * Compares this word with the specified value.
-     *
-     * @param val value to which this word is to be compared.
-     * @return {@code this == val}
-     */
-    boolean equal(ComparableWord val);
-
-    /**
-     * Compares this word with the specified value.
-     *
-     * @param val value to which this word is to be compared.
-     * @return {@code this != val}
-     */
-    boolean notEqual(ComparableWord val);
+/**
+ * Marker interface for a metaspace pointer to a type.
+ */
+public interface TypePointer extends TrustedInterface {
 }

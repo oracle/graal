@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,7 @@ import static com.oracle.graal.hotspot.stubs.StubUtil.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.*;
@@ -63,7 +64,7 @@ public class NewArrayStub extends SnippetStub {
         Arguments args = new Arguments(stub, GuardsStage.FLOATING_GUARDS, LoweringTool.StandardLoweringStage.HIGH_TIER);
         args.add("hub", null);
         args.add("length", null);
-        args.addConst("intArrayHub", intArrayType.klass());
+        args.addConst("intArrayHub", intArrayType.klass(), StampFactory.forPointer(PointerType.Type));
         args.addConst("threadRegister", providers.getRegisters().getThreadRegister());
         return args;
     }
@@ -82,8 +83,8 @@ public class NewArrayStub extends SnippetStub {
      * @param intArrayHub the hub for {@code int[].class}
      */
     @Snippet
-    private static Object newArray(Word hub, int length, @ConstantParameter Word intArrayHub, @ConstantParameter Register threadRegister) {
-        int layoutHelper = hub.readInt(klassLayoutHelperOffset(), KLASS_LAYOUT_HELPER_LOCATION);
+    private static Object newArray(TypePointer hub, int length, @ConstantParameter TypePointer intArrayHub, @ConstantParameter Register threadRegister) {
+        int layoutHelper = Word.fromTypePointer(hub).readInt(klassLayoutHelperOffset(), KLASS_LAYOUT_HELPER_LOCATION);
         int log2ElementSize = (layoutHelper >> layoutHelperLog2ElementSizeShift()) & layoutHelperLog2ElementSizeMask();
         int headerSize = (layoutHelper >> layoutHelperHeaderSizeShift()) & layoutHelperHeaderSizeMask();
         int elementKind = (layoutHelper >> layoutHelperElementTypeShift()) & layoutHelperElementTypeMask();
@@ -92,7 +93,7 @@ public class NewArrayStub extends SnippetStub {
             printf("newArray: element kind %d\n", elementKind);
             printf("newArray: array length %d\n", length);
             printf("newArray: array size %d\n", sizeInBytes);
-            printf("newArray: hub=%p\n", hub.rawValue());
+            printf("newArray: hub=%p\n", Word.fromTypePointer(hub).rawValue());
         }
 
         // check that array length is small enough for fast path.
@@ -115,8 +116,8 @@ public class NewArrayStub extends SnippetStub {
         return verifyObject(getAndClearObjectResult(thread));
     }
 
-    public static final ForeignCallDescriptor NEW_ARRAY_C = newDescriptor(NewArrayStub.class, "newArrayC", void.class, Word.class, Word.class, int.class);
+    public static final ForeignCallDescriptor NEW_ARRAY_C = newDescriptor(NewArrayStub.class, "newArrayC", void.class, Word.class, TypePointer.class, int.class);
 
     @NodeIntrinsic(StubForeignCallNode.class)
-    public static native void newArrayC(@ConstantNodeParameter ForeignCallDescriptor newArrayC, Word thread, Word hub, int length);
+    public static native void newArrayC(@ConstantNodeParameter ForeignCallDescriptor newArrayC, Word thread, TypePointer hub, int length);
 }

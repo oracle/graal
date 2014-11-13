@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,7 @@ import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.*;
@@ -62,7 +63,7 @@ public class NewInstanceStub extends SnippetStub {
 
         Arguments args = new Arguments(stub, GuardsStage.FLOATING_GUARDS, LoweringTool.StandardLoweringStage.HIGH_TIER);
         args.add("hub", null);
-        args.addConst("intArrayHub", intArrayType.klass());
+        args.addConst("intArrayHub", intArrayType.klass(), StampFactory.forPointer(PointerType.Type));
         args.addConst("threadRegister", providers.getRegisters().getThreadRegister());
         return args;
     }
@@ -95,18 +96,19 @@ public class NewInstanceStub extends SnippetStub {
      * @param intArrayHub the hub for {@code int[].class}
      */
     @Snippet
-    private static Object newInstance(Word hub, @ConstantParameter Word intArrayHub, @ConstantParameter Register threadRegister) {
+    private static Object newInstance(TypePointer hub, @ConstantParameter TypePointer intArrayHub, @ConstantParameter Register threadRegister) {
         /*
          * The type is known to be an instance so Klass::_layout_helper is the instance size as a
          * raw number
          */
-        int sizeInBytes = hub.readInt(klassLayoutHelperOffset(), KLASS_LAYOUT_HELPER_LOCATION);
+        Pointer hubPtr = Word.fromTypePointer(hub);
+        int sizeInBytes = hubPtr.readInt(klassLayoutHelperOffset(), KLASS_LAYOUT_HELPER_LOCATION);
         Word thread = registerAsWord(threadRegister);
         if (!forceSlowPath() && inlineContiguousAllocationSupported()) {
-            if (isInstanceKlassFullyInitialized(hub)) {
+            if (isInstanceKlassFullyInitialized(hubPtr)) {
                 Word memory = refillAllocate(thread, intArrayHub, sizeInBytes, logging());
                 if (memory.notEqual(0)) {
-                    Word prototypeMarkWord = hub.readWord(prototypeMarkWordOffset(), PROTOTYPE_MARK_WORD_LOCATION);
+                    Word prototypeMarkWord = hubPtr.readWord(prototypeMarkWordOffset(), PROTOTYPE_MARK_WORD_LOCATION);
                     NewObjectSnippets.formatObjectForStub(hub, sizeInBytes, memory, prototypeMarkWord);
                     return verifyObject(memory.toObject());
                 }
@@ -132,7 +134,7 @@ public class NewInstanceStub extends SnippetStub {
      * @return the newly allocated, uninitialized chunk of memory, or {@link Word#zero()} if the
      *         operation was unsuccessful
      */
-    static Word refillAllocate(Word thread, Word intArrayHub, int sizeInBytes, boolean log) {
+    static Word refillAllocate(Word thread, TypePointer intArrayHub, int sizeInBytes, boolean log) {
         // If G1 is enabled, the "eden" allocation space is not the same always
         // and therefore we have to go to slowpath to allocate a new TLAB.
         if (useG1GC()) {
@@ -255,8 +257,8 @@ public class NewInstanceStub extends SnippetStub {
         return Boolean.getBoolean("graal.newInstanceStub.forceSlowPath");
     }
 
-    public static final ForeignCallDescriptor NEW_INSTANCE_C = newDescriptor(NewInstanceStub.class, "newInstanceC", void.class, Word.class, Word.class);
+    public static final ForeignCallDescriptor NEW_INSTANCE_C = newDescriptor(NewInstanceStub.class, "newInstanceC", void.class, Word.class, TypePointer.class);
 
     @NodeIntrinsic(StubForeignCallNode.class)
-    public static native void newInstanceC(@ConstantNodeParameter ForeignCallDescriptor newInstanceC, Word thread, Word hub);
+    public static native void newInstanceC(@ConstantNodeParameter ForeignCallDescriptor newInstanceC, Word thread, TypePointer hub);
 }

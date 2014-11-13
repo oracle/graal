@@ -80,7 +80,7 @@ public interface HotSpotResolvedObjectType extends ResolvedJavaType {
     /**
      * Gets the metaspace Klass boxed in a {@link JavaConstant}.
      */
-    JavaConstant klass();
+    Constant klass();
 
     boolean isPrimaryType();
 

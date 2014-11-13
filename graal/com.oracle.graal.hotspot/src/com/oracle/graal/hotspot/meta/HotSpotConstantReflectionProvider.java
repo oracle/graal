@@ -164,10 +164,6 @@ public class HotSpotConstantReflectionProvider implements ConstantReflectionProv
     public Constant readPointerConstant(PointerType type, Constant base, long displacement) {
         switch (type) {
             case Object:
-                if (base instanceof PrimitiveConstant && !(base instanceof HotSpotMetaspaceConstant)) {
-                    // FIXME: we lost a metaspace annotation somewhere
-                    return null;
-                }
                 return HotSpotObjectConstantImpl.forObject(readRawObject(base, displacement, false));
             case Type:
                 long klass = readRawValue(base, displacement, runtime.getTarget().wordSize * 8);
@@ -185,10 +181,6 @@ public class HotSpotConstantReflectionProvider implements ConstantReflectionProv
     public Constant readNarrowPointerConstant(PointerType type, Constant base, long displacement) {
         switch (type) {
             case Object:
-                if (base instanceof PrimitiveConstant && !(base instanceof HotSpotMetaspaceConstant)) {
-                    // FIXME: we lost a metaspace annotation somewhere
-                    return null;
-                }
                 return HotSpotObjectConstantImpl.forObject(readRawObject(base, displacement, true), true);
             case Type:
                 int compressed = (int) readRawValue(base, displacement, 32);

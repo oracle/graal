@@ -96,4 +96,9 @@ public class NarrowPointerStamp extends AbstractPointerStamp {
     public boolean isLegal() {
         return true;
     }
+
+    @Override
+    public String toString() {
+        return "narrow " + super.toString();
+    }
 }

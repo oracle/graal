@@ -221,7 +221,7 @@ public interface ResolvedJavaMethod extends JavaMethod, InvokeTarget, ModifiersP
      *
      * @return a constant representing a reference to this method
      */
-    JavaConstant getEncoding();
+    Constant getEncoding();
 
     /**
      * Checks if this method is present in the virtual table for subtypes of the specified

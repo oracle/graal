@@ -60,7 +60,7 @@ public class IntegerSwitchNode extends SwitchNode implements LIRLowerable, Simpl
         assert keySuccessors.length == keys.length + 1;
         assert keySuccessors.length == keyProbabilities.length;
         this.keys = keys;
-        assert assertValues();
+        assert value.stamp() instanceof PrimitiveStamp && value.stamp().getStackKind().isNumericInteger();
         assert assertSorted();
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -229,7 +229,7 @@ public class StubUtil {
                     fatal("oop not in heap: %p", oop.rawValue());
                 }
 
-                Word klass = loadHubIntrinsic(object, getWordKind(), anchorNode);
+                Pointer klass = Word.fromTypePointer(loadHubIntrinsic(object, anchorNode));
                 if (klass.equal(Word.zero())) {
                     fatal("klass for oop %p is null", oop.rawValue());
                 }

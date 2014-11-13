@@ -45,12 +45,12 @@ public class LoadMethodNode extends FixedWithNextNode implements Lowerable, Cano
         return hub;
     }
 
-    public static LoadMethodNode create(ResolvedJavaMethod method, ResolvedJavaType receiverType, ValueNode hub, Kind kind) {
-        return new LoadMethodNode(method, receiverType, hub, kind);
+    public static LoadMethodNode create(ResolvedJavaMethod method, ResolvedJavaType receiverType, ValueNode hub) {
+        return new LoadMethodNode(method, receiverType, hub);
     }
 
-    protected LoadMethodNode(ResolvedJavaMethod method, ResolvedJavaType receiverType, ValueNode hub, Kind kind) {
-        super(kind == Kind.Object ? StampFactory.objectNonNull() : StampFactory.forKind(kind));
+    protected LoadMethodNode(ResolvedJavaMethod method, ResolvedJavaType receiverType, ValueNode hub) {
+        super(StampFactory.forPointer(PointerType.Method));
         this.receiverType = receiverType;
         this.hub = hub;
         this.method = method;
@@ -76,7 +76,7 @@ public class LoadMethodNode extends FixedWithNextNode implements Lowerable, Cano
                 ResolvedJavaMethod resolvedMethod = type.findUniqueConcreteMethod(method);
                 if (resolvedMethod != null && !type.isInterface() && method.getDeclaringClass().isAssignableFrom(type)) {
                     tool.assumptions().recordConcreteMethod(method, type, resolvedMethod);
-                    return ConstantNode.forConstant(resolvedMethod.getEncoding(), tool.getMetaAccess());
+                    return ConstantNode.forConstant(stamp(), resolvedMethod.getEncoding(), tool.getMetaAccess());
                 }
             }
         }
@@ -104,7 +104,7 @@ public class LoadMethodNode extends FixedWithNextNode implements Lowerable, Cano
              */
             return ConstantNode.forConstant(JavaConstant.NULL_OBJECT, null);
         } else {
-            return ConstantNode.forConstant(newMethod.getEncoding(), tool.getMetaAccess());
+            return ConstantNode.forConstant(stamp(), newMethod.getEncoding(), tool.getMetaAccess());
         }
     }
 

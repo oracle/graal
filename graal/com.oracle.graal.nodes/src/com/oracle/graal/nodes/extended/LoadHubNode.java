@@ -41,27 +41,23 @@ public class LoadHubNode extends FloatingGuardedNode implements Lowerable, Canon
         return value;
     }
 
-    public static LoadHubNode create(ValueNode value, Kind kind) {
-        return new LoadHubNode(value, kind);
+    public static LoadHubNode create(ValueNode value) {
+        return new LoadHubNode(value);
     }
 
-    protected LoadHubNode(ValueNode value, Kind kind) {
-        super(getKind(kind), null);
+    protected LoadHubNode(ValueNode value) {
+        super(StampFactory.forPointer(PointerType.Type), null);
         this.value = value;
     }
 
-    public static LoadHubNode create(ValueNode value, Kind kind, ValueNode guard) {
-        return new LoadHubNode(value, kind, guard);
+    public static LoadHubNode create(ValueNode value, ValueNode guard) {
+        return new LoadHubNode(value, guard);
     }
 
-    protected LoadHubNode(ValueNode value, Kind kind, ValueNode guard) {
-        super(getKind(kind), (GuardingNode) guard);
+    protected LoadHubNode(ValueNode value, ValueNode guard) {
+        super(StampFactory.forPointer(PointerType.Type), (GuardingNode) guard);
         assert value != guard;
         this.value = value;
-    }
-
-    private static Stamp getKind(Kind kind) {
-        return kind == Kind.Object ? StampFactory.objectNonNull() : StampFactory.forKind(kind);
     }
 
     @Override
@@ -88,7 +84,7 @@ public class LoadHubNode extends FloatingGuardedNode implements Lowerable, Canon
             }
 
             if (exactType != null) {
-                return ConstantNode.forConstant(exactType.getObjectHub(), metaAccess);
+                return ConstantNode.forConstant(stamp(), exactType.getObjectHub(), metaAccess);
             }
         }
         return this;
@@ -98,8 +94,8 @@ public class LoadHubNode extends FloatingGuardedNode implements Lowerable, Canon
     public void virtualize(VirtualizerTool tool) {
         State state = tool.getObjectState(value);
         if (state != null) {
-            JavaConstant constantHub = state.getVirtualObject().type().getObjectHub();
-            tool.replaceWithValue(ConstantNode.forConstant(constantHub, tool.getMetaAccessProvider(), graph()));
+            Constant constantHub = state.getVirtualObject().type().getObjectHub();
+            tool.replaceWithValue(ConstantNode.forConstant(stamp(), constantHub, tool.getMetaAccessProvider(), graph()));
         }
     }
 }

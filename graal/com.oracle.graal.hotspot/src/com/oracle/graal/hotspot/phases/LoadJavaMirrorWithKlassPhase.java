@@ -66,7 +66,7 @@ public class LoadJavaMirrorWithKlassPhase extends BasePhase<PhaseContext> {
             if (c != null) {
                 MetaAccessProvider metaAccess = context.getMetaAccess();
                 ResolvedJavaType type = c;
-                JavaConstant klass;
+                Constant klass;
                 LocationNode location;
                 if (type instanceof HotSpotResolvedObjectType) {
                     location = ConstantLocationNode.create(CLASS_MIRROR_LOCATION, Kind.Object, classMirrorOffset, graph);
@@ -92,7 +92,7 @@ public class LoadJavaMirrorWithKlassPhase extends BasePhase<PhaseContext> {
                     }
                     location = ConstantLocationNode.create(FINAL_LOCATION, Kind.Object, typeField.offset(), graph);
                 }
-                ConstantNode klassNode = ConstantNode.forConstant(klass, metaAccess, graph);
+                ConstantNode klassNode = ConstantNode.forConstant(StampFactory.forPointer(PointerType.Type), klass, metaAccess, graph);
 
                 Stamp stamp = StampFactory.exactNonNull(metaAccess.lookupJavaType(Class.class));
                 FloatingReadNode freadNode = graph.unique(FloatingReadNode.create(klassNode, location, null, stamp));

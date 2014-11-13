@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -130,7 +130,7 @@ public class NewObjectSnippets implements Snippets {
     }
 
     @Snippet
-    public static Object allocateInstance(@ConstantParameter int size, Word hub, Word prototypeMarkWord, @ConstantParameter boolean fillContents, @ConstantParameter Register threadRegister,
+    public static Object allocateInstance(@ConstantParameter int size, TypePointer hub, Word prototypeMarkWord, @ConstantParameter boolean fillContents, @ConstantParameter Register threadRegister,
                     @ConstantParameter boolean constantSize, @ConstantParameter String typeContext) {
         Object result;
         Word thread = registerAsWord(threadRegister);
@@ -163,7 +163,7 @@ public class NewObjectSnippets implements Snippets {
                  */
                 if (probability(FAST_PATH_PROBABILITY, (layoutHelper & 1) == 0)) {
                     Word prototypeMarkWord = hub.readWord(prototypeMarkWordOffset(), PROTOTYPE_MARK_WORD_LOCATION);
-                    return allocateInstance(layoutHelper, hub, prototypeMarkWord, fillContents, threadRegister, false, typeContext);
+                    return allocateInstance(layoutHelper, hub.toTypePointer(), prototypeMarkWord, fillContents, threadRegister, false, typeContext);
                 }
             }
         }
@@ -176,12 +176,12 @@ public class NewObjectSnippets implements Snippets {
     public static final int MAX_ARRAY_FAST_PATH_ALLOCATION_LENGTH = 0x00FFFFFF;
 
     @Snippet
-    public static Object allocateArray(Word hub, int length, Word prototypeMarkWord, @ConstantParameter int headerSize, @ConstantParameter int log2ElementSize,
+    public static Object allocateArray(TypePointer hub, int length, Word prototypeMarkWord, @ConstantParameter int headerSize, @ConstantParameter int log2ElementSize,
                     @ConstantParameter boolean fillContents, @ConstantParameter Register threadRegister, @ConstantParameter boolean maybeUnroll, @ConstantParameter String typeContext) {
         return allocateArrayImpl(hub, length, prototypeMarkWord, headerSize, log2ElementSize, fillContents, threadRegister, maybeUnroll, typeContext, false);
     }
 
-    private static Object allocateArrayImpl(Word hub, int length, Word prototypeMarkWord, int headerSize, int log2ElementSize, boolean fillContents, @ConstantParameter Register threadRegister,
+    private static Object allocateArrayImpl(TypePointer hub, int length, Word prototypeMarkWord, int headerSize, int log2ElementSize, boolean fillContents, @ConstantParameter Register threadRegister,
                     @ConstantParameter boolean maybeUnroll, String typeContext, boolean skipNegativeCheck) {
         Object result;
         int alignment = wordSize();
@@ -241,7 +241,7 @@ public class NewObjectSnippets implements Snippets {
         int log2ElementSize = (layoutHelper >> layoutHelperLog2ElementSizeShift()) & layoutHelperLog2ElementSizeMask();
         Word prototypeMarkWord = hub.readWord(prototypeMarkWordOffset(), PROTOTYPE_MARK_WORD_LOCATION);
 
-        return allocateArrayImpl(hub, length, prototypeMarkWord, headerSize, log2ElementSize, fillContents, threadRegister, false, "dynamic type", true);
+        return allocateArrayImpl(hub.toTypePointer(), length, prototypeMarkWord, headerSize, log2ElementSize, fillContents, threadRegister, false, "dynamic type", true);
     }
 
     /**
@@ -335,15 +335,15 @@ public class NewObjectSnippets implements Snippets {
      * Formats some allocated memory with an object header and zeroes out the rest. Disables asserts
      * since they can't be compiled in stubs.
      */
-    public static Object formatObjectForStub(Word hub, int size, Word memory, Word compileTimePrototypeMarkWord) {
+    public static Object formatObjectForStub(TypePointer hub, int size, Word memory, Word compileTimePrototypeMarkWord) {
         return formatObject(hub, size, memory, compileTimePrototypeMarkWord, true, false, false);
     }
 
     /**
      * Formats some allocated memory with an object header and zeroes out the rest.
      */
-    protected static Object formatObject(Word hub, int size, Word memory, Word compileTimePrototypeMarkWord, boolean fillContents, boolean constantSize, boolean useSnippetCounters) {
-        Word prototypeMarkWord = useBiasedLocking() ? hub.readWord(prototypeMarkWordOffset(), PROTOTYPE_MARK_WORD_LOCATION) : compileTimePrototypeMarkWord;
+    protected static Object formatObject(TypePointer hub, int size, Word memory, Word compileTimePrototypeMarkWord, boolean fillContents, boolean constantSize, boolean useSnippetCounters) {
+        Word prototypeMarkWord = useBiasedLocking() ? Word.fromTypePointer(hub).readWord(prototypeMarkWordOffset(), PROTOTYPE_MARK_WORD_LOCATION) : compileTimePrototypeMarkWord;
         initializeObjectHeader(memory, prototypeMarkWord, hub);
         if (fillContents) {
             zeroMemory(size, memory, constantSize, instanceHeaderSize(), false, useSnippetCounters);
@@ -354,7 +354,7 @@ public class NewObjectSnippets implements Snippets {
     /**
      * Formats some allocated memory with an object header and zeroes out the rest.
      */
-    public static Object formatArray(Word hub, int allocationSize, int length, int headerSize, Word memory, Word prototypeMarkWord, boolean fillContents, boolean maybeUnroll,
+    public static Object formatArray(TypePointer hub, int allocationSize, int length, int headerSize, Word memory, Word prototypeMarkWord, boolean fillContents, boolean maybeUnroll,
                     boolean useSnippetCounters) {
         memory.writeInt(arrayLengthOffset(), length, INIT_LOCATION);
         /*
@@ -387,7 +387,7 @@ public class NewObjectSnippets implements Snippets {
             StructuredGraph graph = newInstanceNode.graph();
             HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) newInstanceNode.instanceClass();
             assert !type.isArray();
-            ConstantNode hub = ConstantNode.forConstant(type.klass(), providers.getMetaAccess(), graph);
+            ConstantNode hub = ConstantNode.forConstant(StampFactory.forPointer(PointerType.Type), type.klass(), providers.getMetaAccess(), graph);
             int size = instanceSize(type);
 
             Arguments args = new Arguments(allocateInstance, graph.getGuardsStage(), tool.getLoweringStage());
@@ -412,7 +412,7 @@ public class NewObjectSnippets implements Snippets {
             ResolvedJavaType elementType = newArrayNode.elementType();
             HotSpotResolvedObjectType arrayType = (HotSpotResolvedObjectType) elementType.getArrayClass();
             Kind elementKind = elementType.getKind();
-            ConstantNode hub = ConstantNode.forConstant(arrayType.klass(), providers.getMetaAccess(), graph);
+            ConstantNode hub = ConstantNode.forConstant(StampFactory.forPointer(PointerType.Type), arrayType.klass(), providers.getMetaAccess(), graph);
             final int headerSize = HotSpotGraalRuntime.getArrayBaseOffset(elementKind);
             HotSpotLoweringProvider lowerer = (HotSpotLoweringProvider) providers.getLowerer();
             int log2ElementSize = CodeUtil.log2(lowerer.arrayScalingFactor(elementKind));
@@ -465,7 +465,7 @@ public class NewObjectSnippets implements Snippets {
                 dims[i] = newmultiarrayNode.dimension(i);
             }
             HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) newmultiarrayNode.type();
-            ConstantNode hub = ConstantNode.forConstant(type.klass(), providers.getMetaAccess(), graph);
+            ConstantNode hub = ConstantNode.forConstant(StampFactory.forPointer(PointerType.Type), type.klass(), providers.getMetaAccess(), graph);
 
             Arguments args = new Arguments(newmultiarray, graph.getGuardsStage(), tool.getLoweringStage());
             args.add("hub", hub);

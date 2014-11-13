@@ -43,11 +43,11 @@ public class LoadIndexedNode extends AccessIndexedNode implements Virtualizable 
      * @param elementKind the element type
      */
     public static LoadIndexedNode create(ValueNode array, ValueNode index, Kind elementKind) {
-        return new LoadIndexedNode(array, index, elementKind);
+        return new LoadIndexedNode(createStamp(array, elementKind), array, index, elementKind);
     }
 
-    protected LoadIndexedNode(ValueNode array, ValueNode index, Kind elementKind) {
-        super(createStamp(array, elementKind), array, index, elementKind);
+    protected LoadIndexedNode(Stamp stamp, ValueNode array, ValueNode index, Kind elementKind) {
+        super(stamp, array, index, elementKind);
     }
 
     private static Stamp createStamp(ValueNode array, Kind kind) {
