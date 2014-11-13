@@ -34,7 +34,6 @@ import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.replacements.Snippet.Fold;
 import com.oracle.graal.word.*;
 
 /**

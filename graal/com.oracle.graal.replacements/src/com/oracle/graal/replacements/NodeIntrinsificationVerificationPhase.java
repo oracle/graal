@@ -23,6 +23,7 @@
 package com.oracle.graal.replacements;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
@@ -30,7 +31,6 @@ import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.phases.*;
-import com.oracle.graal.replacements.Snippet.Fold;
 
 /**
  * Checks that a graph contains no calls to {@link NodeIntrinsic} or {@link Fold} methods.

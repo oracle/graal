@@ -24,10 +24,10 @@ package com.oracle.graal.hotspot.hsail.replacements;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.replacements.Snippet.Fold;
 import com.oracle.graal.word.*;
 
 //JaCoCo Exclude

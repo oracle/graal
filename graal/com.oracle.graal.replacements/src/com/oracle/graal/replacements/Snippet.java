@@ -25,6 +25,7 @@ package com.oracle.graal.replacements;
 import java.lang.annotation.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.replacements.nodes.*;
 import com.oracle.graal.word.*;
@@ -62,7 +63,7 @@ public @interface Snippet {
 
         /**
          * Determines if {@code method} should be inlined using its replacement graph.
-         * 
+         *
          * @return true if the replacement graph should be used, false for normal inlining.
          */
         boolean shouldUseReplacement(ResolvedJavaMethod callee, ResolvedJavaMethod methodToParse);
@@ -115,24 +116,12 @@ public @interface Snippet {
     }
 
     /**
-     * Annotates a method replaced by a compile-time constant. A (resolved) call to the annotated
-     * method is replaced with a constant obtained by calling the annotated method via reflection.
-     * 
-     * All arguments to such a method (including the receiver if applicable) must be compile-time
-     * constants.
-     */
-    @Retention(RetentionPolicy.RUNTIME)
-    @Target(ElementType.METHOD)
-    public static @interface Fold {
-    }
-
-    /**
      * Denotes a snippet parameter representing 0 or more arguments that will be bound during
      * snippet template {@linkplain SnippetTemplate#instantiate instantiation}. During snippet
      * template creation, its value must be an array whose length specifies the number of arguments
      * (the contents of the array are ignored) bound to the parameter during
      * {@linkplain SnippetTemplate#instantiate instantiation}.
-     * 
+     *
      * Such a parameter must be used in a counted loop in the snippet preceded by a call to
      * {@link ExplodeLoopNode#explodeLoop()}. The counted looped must be a standard iteration over
      * all the loop's elements (i.e. {@code for (T e : arr) ... }).

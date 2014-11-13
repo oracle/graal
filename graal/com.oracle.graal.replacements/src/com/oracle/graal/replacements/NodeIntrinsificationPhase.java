@@ -45,7 +45,6 @@ import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.util.*;
-import com.oracle.graal.replacements.Snippet.Fold;
 
 /**
  * Replaces calls to {@link NodeIntrinsic}s with nodes and calls to methods annotated with
