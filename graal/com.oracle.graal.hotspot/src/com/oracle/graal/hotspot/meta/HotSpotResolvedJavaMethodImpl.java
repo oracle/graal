@@ -121,7 +121,7 @@ public final class HotSpotResolvedJavaMethodImpl extends HotSpotMethod implement
 
     @Override
     public boolean equals(Object obj) {
-        if (obj instanceof HotSpotResolvedJavaMethod) {
+        if (obj instanceof HotSpotResolvedJavaMethodImpl) {
             HotSpotResolvedJavaMethodImpl that = (HotSpotResolvedJavaMethodImpl) obj;
             return that.metaspaceMethod == metaspaceMethod;
         }
