@@ -298,11 +298,6 @@ public class HotSpotResolvedJavaFieldImpl extends CompilerObject implements HotS
     }
 
     @Override
-    public Kind getKind() {
-        return getType().getKind();
-    }
-
-    @Override
     public String getName() {
         return name;
     }

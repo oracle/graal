@@ -72,20 +72,12 @@ public class TruffleDebugJavaMethod implements JavaMethod {
             return declaringClass;
         }
 
-        public Kind getReturnKind() {
-            return declaringClass.getKind();
-        }
-
         public JavaType getParameterType(int index, ResolvedJavaType accessingClass) {
             throw new IndexOutOfBoundsException();
         }
 
         public int getParameterSlots(boolean withReceiver) {
             return 0;
-        }
-
-        public Kind getParameterKind(int index) {
-            throw new IndexOutOfBoundsException();
         }
 
         public int getParameterCount(boolean receiver) {

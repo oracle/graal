@@ -59,7 +59,9 @@ public interface Signature extends Remote {
      * @param index the index into the parameters, with {@code 0} indicating the first parameter
      * @return the kind of the parameter at the specified position
      */
-    Kind getParameterKind(int index);
+    default Kind getParameterKind(int index) {
+        return getParameterType(index, null).getKind();
+    }
 
     /**
      * Gets the return type of this signature.
@@ -77,7 +79,9 @@ public interface Signature extends Remote {
      * Gets the return kind of this signature. This is the same as calling {@link #getReturnType}.
      * {@link JavaType#getKind getKind}.
      */
-    Kind getReturnKind();
+    default Kind getReturnKind() {
+        return getReturnType(null).getKind();
+    }
 
     /**
      * Gets the size, in Java slots, of the parameters to this signature.

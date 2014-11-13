@@ -44,7 +44,9 @@ public interface JavaField extends Remote {
      * Returns the kind of this field. This is the same as calling {@link #getType}.
      * {@link JavaType#getKind getKind}.
      */
-    Kind getKind();
+    default Kind getKind() {
+        return getType().getKind();
+    }
 
     /**
      * Returns the {@link JavaType} object representing the class or interface that declares this
