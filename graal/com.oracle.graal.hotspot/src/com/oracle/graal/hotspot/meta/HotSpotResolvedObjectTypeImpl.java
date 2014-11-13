@@ -833,7 +833,7 @@ public final class HotSpotResolvedObjectTypeImpl extends HotSpotResolvedJavaType
         Constructor<?>[] constructors = mirror().getDeclaredConstructors();
         ResolvedJavaMethod[] result = new ResolvedJavaMethod[constructors.length];
         for (int i = 0; i < constructors.length; i++) {
-            result[i] = runtime().getHostProviders().getMetaAccess().lookupJavaConstructor(constructors[i]);
+            result[i] = runtime().getHostProviders().getMetaAccess().lookupJavaMethod(constructors[i]);
             assert result[i].isConstructor();
         }
         return result;

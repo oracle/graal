@@ -53,14 +53,10 @@ public interface MetaAccessProvider extends Remote {
     }
 
     /**
-     * Provides the {@link ResolvedJavaMethod} for a {@link Method} obtained via reflection.
+     * Provides the {@link ResolvedJavaMethod} for a {@link Method} or {@link Constructor} obtained
+     * via reflection.
      */
-    ResolvedJavaMethod lookupJavaMethod(Method reflectionMethod);
-
-    /**
-     * Provides the {@link ResolvedJavaMethod} for a {@link Constructor} obtained via reflection.
-     */
-    ResolvedJavaMethod lookupJavaConstructor(Constructor<?> reflectionConstructor);
+    ResolvedJavaMethod lookupJavaMethod(Executable reflectionMethod);
 
     /**
      * Provides the {@link ResolvedJavaField} for a {@link Field} obtained via reflection.

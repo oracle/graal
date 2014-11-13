@@ -90,7 +90,7 @@ public class HSAILHotSpotReplacementsImpl extends ReplacementsImpl {
     }
 
     @Override
-    protected ResolvedJavaMethod registerMethodSubstitution(ClassReplacements cr, Member originalMethod, Method substituteMethod) {
+    protected ResolvedJavaMethod registerMethodSubstitution(ClassReplacements cr, Executable originalMethod, Method substituteMethod) {
         // TODO: decide if we want to override this in any way
         return super.registerMethodSubstitution(cr, originalMethod, substituteMethod);
     }

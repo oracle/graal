@@ -293,7 +293,7 @@ public final class CompileTheWorld {
 
                             // Compile each constructor/method in the class.
                             for (Constructor<?> constructor : javaClass.getDeclaredConstructors()) {
-                                HotSpotResolvedJavaMethod javaMethod = (HotSpotResolvedJavaMethod) metaAccess.lookupJavaConstructor(constructor);
+                                HotSpotResolvedJavaMethod javaMethod = (HotSpotResolvedJavaMethod) metaAccess.lookupJavaMethod(constructor);
                                 if (canBeCompiled(javaMethod, constructor.getModifiers())) {
                                     compileMethod(javaMethod);
                                 }

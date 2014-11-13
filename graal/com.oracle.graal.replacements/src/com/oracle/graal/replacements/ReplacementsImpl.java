@@ -114,7 +114,7 @@ public class ReplacementsImpl implements Replacements {
                         }
                         String originalName = originalName(substituteMethod, methodSubstitution.value());
                         JavaSignature originalSignature = originalSignature(substituteMethod, methodSubstitution.signature(), methodSubstitution.isStatic());
-                        Member originalMethod = originalMethod(classSubstitution, methodSubstitution.optional(), originalName, originalSignature);
+                        Executable originalMethod = originalMethod(classSubstitution, methodSubstitution.optional(), originalName, originalSignature);
                         if (originalMethod != null && (guard == null || guard.execute())) {
                             ResolvedJavaMethod original = registerMethodSubstitution(this, originalMethod, substituteMethod);
                             if (original != null && methodSubstitution.forced() && shouldIntrinsify(original)) {
@@ -127,7 +127,7 @@ public class ReplacementsImpl implements Replacements {
                     if (macroSubstitution != null && (defaultGuard == null || defaultGuard.execute())) {
                         String originalName = originalName(substituteMethod, macroSubstitution.value());
                         JavaSignature originalSignature = originalSignature(substituteMethod, macroSubstitution.signature(), macroSubstitution.isStatic());
-                        Member originalMethod = originalMethod(classSubstitution, macroSubstitution.optional(), originalName, originalSignature);
+                        Executable originalMethod = originalMethod(classSubstitution, macroSubstitution.optional(), originalName, originalSignature);
                         if (originalMethod != null) {
                             ResolvedJavaMethod original = registerMacroSubstitution(this, originalMethod, macroSubstitution.macro());
                             if (original != null && macroSubstitution.forced() && shouldIntrinsify(original)) {
@@ -160,7 +160,7 @@ public class ReplacementsImpl implements Replacements {
             return new JavaSignature(returnType, parameters);
         }
 
-        private Member originalMethod(ClassSubstitution classSubstitution, boolean optional, String name, JavaSignature signature) {
+        private Executable originalMethod(ClassSubstitution classSubstitution, boolean optional, String name, JavaSignature signature) {
             Class<?> originalClass = classSubstitution.value();
             if (originalClass == ClassSubstitution.class) {
                 originalClass = resolveClass(classSubstitution.className(), classSubstitution.optional());
@@ -346,15 +346,10 @@ public class ReplacementsImpl implements Replacements {
      * @param substituteMethod the substitute method
      * @return the original method
      */
-    protected ResolvedJavaMethod registerMethodSubstitution(ClassReplacements cr, Member originalMember, Method substituteMethod) {
+    protected ResolvedJavaMethod registerMethodSubstitution(ClassReplacements cr, Executable originalMember, Method substituteMethod) {
         MetaAccessProvider metaAccess = providers.getMetaAccess();
         ResolvedJavaMethod substitute = metaAccess.lookupJavaMethod(substituteMethod);
-        ResolvedJavaMethod original;
-        if (originalMember instanceof Method) {
-            original = metaAccess.lookupJavaMethod((Method) originalMember);
-        } else {
-            original = metaAccess.lookupJavaConstructor((Constructor<?>) originalMember);
-        }
+        ResolvedJavaMethod original = metaAccess.lookupJavaMethod(originalMember);
         if (Debug.isLogEnabled()) {
             Debug.log("substitution: %s --> %s", original.format("%H.%n(%p) %r"), substitute.format("%H.%n(%p) %r"));
         }
@@ -370,14 +365,9 @@ public class ReplacementsImpl implements Replacements {
      * @param macro the substitute macro node class
      * @return the original method
      */
-    protected ResolvedJavaMethod registerMacroSubstitution(ClassReplacements cr, Member originalMethod, Class<? extends FixedWithNextNode> macro) {
-        ResolvedJavaMethod originalJavaMethod;
+    protected ResolvedJavaMethod registerMacroSubstitution(ClassReplacements cr, Executable originalMethod, Class<? extends FixedWithNextNode> macro) {
         MetaAccessProvider metaAccess = providers.getMetaAccess();
-        if (originalMethod instanceof Method) {
-            originalJavaMethod = metaAccess.lookupJavaMethod((Method) originalMethod);
-        } else {
-            originalJavaMethod = metaAccess.lookupJavaConstructor((Constructor<?>) originalMethod);
-        }
+        ResolvedJavaMethod originalJavaMethod = metaAccess.lookupJavaMethod(originalMethod);
         cr.macroSubstitutions.put(originalJavaMethod, macro);
         return originalJavaMethod;
     }

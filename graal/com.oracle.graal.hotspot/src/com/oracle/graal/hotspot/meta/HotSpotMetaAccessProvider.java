@@ -90,21 +90,11 @@ public class HotSpotMetaAccessProvider implements MetaAccessProvider {
         }
     }
 
-    public ResolvedJavaMethod lookupJavaMethod(Method reflectionMethod) {
+    public ResolvedJavaMethod lookupJavaMethod(Executable reflectionMethod) {
         try {
             Class<?> holder = reflectionMethod.getDeclaringClass();
-            final int slot = reflectionMethodSlot.getInt(reflectionMethod);
-            final long metaspaceMethod = runtime.getCompilerToVM().getMetaspaceMethod(holder, slot);
-            return HotSpotResolvedJavaMethodImpl.fromMetaspace(metaspaceMethod);
-        } catch (IllegalArgumentException | IllegalAccessException e) {
-            throw new GraalInternalError(e);
-        }
-    }
-
-    public ResolvedJavaMethod lookupJavaConstructor(Constructor<?> reflectionConstructor) {
-        try {
-            Class<?> holder = reflectionConstructor.getDeclaringClass();
-            final int slot = reflectionConstructorSlot.getInt(reflectionConstructor);
+            Field slotField = reflectionMethod instanceof Constructor ? reflectionConstructorSlot : reflectionMethodSlot;
+            final int slot = slotField.getInt(reflectionMethod);
             final long metaspaceMethod = runtime.getCompilerToVM().getMetaspaceMethod(holder, slot);
             return HotSpotResolvedJavaMethodImpl.fromMetaspace(metaspaceMethod);
         } catch (IllegalArgumentException | IllegalAccessException e) {
