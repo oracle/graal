@@ -332,7 +332,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
 
         for (ParameterNode param : graph.getNodes(ParameterNode.class)) {
             Value paramValue = params[param.index()];
-            assert paramValue.getKind() == param.getKind().getStackKind();
+            assert paramValue.getLIRKind().equals(getLIRGeneratorTool().getLIRKind(param.stamp()));
             setResult(param, gen.emitMove(paramValue));
         }
     }
