@@ -713,7 +713,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     if (!holder.isInitialized() && ResolveClassBeforeStaticInvoke.getValue()) {
                         handleUnresolvedInvoke(target, InvokeKind.Static);
                     } else {
-                        ValueNode[] args = frameState.popArguments(resolvedTarget.getSignature().getParameterSlots(false), resolvedTarget.getSignature().getParameterCount(false));
+                        ValueNode[] args = frameState.popArguments(resolvedTarget.getSignature().getParameterCount(false));
                         appendInvoke(InvokeKind.Static, resolvedTarget, args);
                     }
                 } else {
@@ -724,7 +724,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             @Override
             protected void genInvokeInterface(JavaMethod target) {
                 if (callTargetIsResolved(target)) {
-                    ValueNode[] args = frameState.popArguments(target.getSignature().getParameterSlots(true), target.getSignature().getParameterCount(true));
+                    ValueNode[] args = frameState.popArguments(target.getSignature().getParameterCount(true));
                     appendInvoke(InvokeKind.Interface, (ResolvedJavaMethod) target, args);
                 } else {
                     handleUnresolvedInvoke(target, InvokeKind.Interface);
@@ -738,7 +738,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     if (appendix != null) {
                         frameState.apush(ConstantNode.forConstant(appendix, metaAccess, currentGraph));
                     }
-                    ValueNode[] args = frameState.popArguments(target.getSignature().getParameterSlots(false), target.getSignature().getParameterCount(false));
+                    ValueNode[] args = frameState.popArguments(target.getSignature().getParameterCount(false));
                     appendInvoke(InvokeKind.Static, (ResolvedJavaMethod) target, args);
                 } else {
                     handleUnresolvedInvoke(target, InvokeKind.Static);
@@ -760,7 +760,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     if (appendix != null) {
                         frameState.apush(ConstantNode.forConstant(appendix, metaAccess, currentGraph));
                     }
-                    ValueNode[] args = frameState.popArguments(target.getSignature().getParameterSlots(hasReceiver), target.getSignature().getParameterCount(hasReceiver));
+                    ValueNode[] args = frameState.popArguments(target.getSignature().getParameterCount(hasReceiver));
                     if (hasReceiver) {
                         appendInvoke(InvokeKind.Virtual, (ResolvedJavaMethod) target, args);
                     } else {
@@ -777,7 +777,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 if (callTargetIsResolved(target)) {
                     assert target != null;
                     assert target.getSignature() != null;
-                    ValueNode[] args = frameState.popArguments(target.getSignature().getParameterSlots(true), target.getSignature().getParameterCount(true));
+                    ValueNode[] args = frameState.popArguments(target.getSignature().getParameterCount(true));
                     appendInvoke(InvokeKind.Special, (ResolvedJavaMethod) target, args);
                 } else {
                     handleUnresolvedInvoke(target, InvokeKind.Special);

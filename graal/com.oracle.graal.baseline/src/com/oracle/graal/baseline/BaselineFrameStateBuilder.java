@@ -32,7 +32,7 @@ public class BaselineFrameStateBuilder extends AbstractFrameStateBuilder<Value, 
 
     public BaselineFrameStateBuilder(ResolvedJavaMethod method) {
         // we always need at least one stack slot (for exceptions)
-        super(method, new Value[method.getMaxLocals()], new Value[Math.max(1, method.getMaxStackSize())], EMPTY_ARRAY);
+        super(method);
     }
 
     protected BaselineFrameStateBuilder(BaselineFrameStateBuilder other) {
@@ -40,8 +40,8 @@ public class BaselineFrameStateBuilder extends AbstractFrameStateBuilder<Value, 
     }
 
     @Override
-    protected Value[] getEmptyArray() {
-        return EMPTY_ARRAY;
+    protected Value[] allocateArray(int length) {
+        return length == 0 ? EMPTY_ARRAY : new Value[length];
     }
 
     @Override
