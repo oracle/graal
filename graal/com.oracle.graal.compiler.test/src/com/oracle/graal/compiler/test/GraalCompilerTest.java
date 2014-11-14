@@ -702,8 +702,8 @@ public abstract class GraalCompilerTest extends GraalTest {
         return OUTPUT_DIR;
     }
 
-    protected String dissasembleToFile(CompilationResult original, ResolvedJavaMethod installedCodeOwner, String fileSuffix) {
-        String dis = getCodeCache().disassemble(original, null);
+    protected String dissasembleToFile(CompilationResult result, ResolvedJavaMethod installedCodeOwner, String fileSuffix) {
+        String dis = getCodeCache().disassemble(result, null);
         File disFile = new File(getOutputDir(), installedCodeOwner.format("%H.%n_%p").replace(", ", "__") + "." + fileSuffix);
         try (PrintStream ps = new PrintStream(new FileOutputStream(disFile))) {
             ps.println(dis);
@@ -713,18 +713,18 @@ public abstract class GraalCompilerTest extends GraalTest {
         }
     }
 
-    protected void checkCompilationResultsEqual(Context c, String prefix, CompilationResult original, CompilationResult derived, ResolvedJavaMethod installedCodeOwner) {
-        if (!derived.equals(original)) {
+    protected void checkCompilationResultsEqual(Context c, String prefix, CompilationResult expected, CompilationResult actual, ResolvedJavaMethod installedCodeOwner) {
+        if (!actual.equals(expected)) {
             Mode mode = c.getMode();
             // Temporarily force capturing mode as dumping/printing/disassembling
             // may need to execute proxy methods that have not yet been executed
             c.setMode(Mode.Capturing);
             try {
-                String originalDisFile = dissasembleToFile(original, installedCodeOwner, "original");
-                String derivedDisFile = dissasembleToFile(derived, installedCodeOwner, "derived");
-                String message = String.format("%s compilation result differs from original compilation result", prefix);
-                if (originalDisFile != null && derivedDisFile != null) {
-                    message += String.format(" [diff %s %s]", originalDisFile, derivedDisFile);
+                String expectedDisFile = dissasembleToFile(expected, installedCodeOwner, "expected");
+                String actualDisFile = dissasembleToFile(actual, installedCodeOwner, "actual");
+                String message = String.format("%s compilation result differs from expected compilation result", prefix);
+                if (expectedDisFile != null && actualDisFile != null) {
+                    message += String.format(" [diff %s %s]", expectedDisFile, actualDisFile);
                 }
                 if (TEST_REPLAY_MISMATCH_IS_FAILURE) {
                     Assert.fail(message);
@@ -737,50 +737,35 @@ public abstract class GraalCompilerTest extends GraalTest {
         }
     }
 
-    protected void testRecompile(Context c, Mode mode, CompilationResult originalResultInContext, ResolvedJavaMethod installedCodeOwner) {
+    protected CompilationResult testRecompile(Context c, Mode mode, CompilationResult expectedResult, ResolvedJavaMethod installedCodeOwner) {
         try (Debug.Scope s = Debug.scope(mode.name(), new DebugDumpScope(mode.name(), true))) {
 
             StructuredGraph graphToCompile = parseForCompile(installedCodeOwner);
+
             lastCompiledGraph = graphToCompile;
 
             CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graphToCompile.method(), false);
             Request<CompilationResult> request = c.get(new GraalCompiler.Request<>(graphToCompile, null, cc, installedCodeOwner, getProviders(), getBackend(), getCodeCache().getTarget(), null,
                             getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL, getProfilingInfo(graphToCompile), getSpeculationLog(), getSuites(), new CompilationResult(),
                             CompilationResultBuilderFactory.Default));
-            checkCompilationResultsEqual(c, mode.name(), originalResultInContext, GraalCompiler.compile(request), installedCodeOwner);
+            CompilationResult result = GraalCompiler.compile(request);
+            if (expectedResult != null) {
+                checkCompilationResultsEqual(c, mode.name(), expectedResult, result, installedCodeOwner);
+            }
+            return result;
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
     }
 
     protected void testReplayCompile(ResolvedJavaMethod installedCodeOwner) {
-        CompilationResult originalResult;
-
-        // Repeat the compilation without a context to account for any side-effects the
-        // initial compilation may have had. For example, if dumping was enabled then
-        // the dumping code may have changed profiles in methods that are inlined
-        // by the test method being compiled.
-        try (Debug.Scope s = Debug.scope("Repeating", new DebugDumpScope("Repeating", true))) {
-            StructuredGraph graphToCompile = parseForCompile(installedCodeOwner);
-            lastCompiledGraph = graphToCompile;
-            CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graphToCompile.method(), false);
-            originalResult = GraalCompiler.compileGraph(graphToCompile, null, cc, installedCodeOwner, getProviders(), getBackend(), getCodeCache().getTarget(), null, getDefaultGraphBuilderSuite(),
-                            OptimisticOptimizations.ALL, getProfilingInfo(graphToCompile), getSpeculationLog(), getSuites(), new CompilationResult(), CompilationResultBuilderFactory.Default);
-        } catch (Throwable e) {
-            throw Debug.handle(e);
-        }
-
         try (Context c = new Context()) {
-            // Need to use an 'in context' copy of the original result when comparing for
-            // equality against other 'in context' results so that proxies are compared
-            // against proxies
-            CompilationResult originalResultInContext = c.get(originalResult);
 
             // Capturing compilation
-            testRecompile(c, Mode.Capturing, originalResultInContext, installedCodeOwner);
+            CompilationResult expected = testRecompile(c, Mode.Capturing, null, installedCodeOwner);
 
             // Replay compilation
-            testRecompile(c, Mode.Replaying, originalResultInContext, installedCodeOwner);
+            testRecompile(c, Mode.Replaying, expected, installedCodeOwner);
         }
     }
 
