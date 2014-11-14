@@ -22,37 +22,28 @@
  */
 package com.oracle.graal.phases.common.inlining.walker;
 
-import com.oracle.graal.api.code.Assumptions;
-import com.oracle.graal.api.code.BailoutException;
-import com.oracle.graal.api.meta.JavaTypeProfile;
-import com.oracle.graal.api.meta.ResolvedJavaMethod;
-import com.oracle.graal.api.meta.ResolvedJavaType;
-import com.oracle.graal.compiler.common.GraalInternalError;
-import com.oracle.graal.compiler.common.type.ObjectStamp;
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugMetric;
-import com.oracle.graal.graph.Graph;
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.java.AbstractNewObjectNode;
-import com.oracle.graal.nodes.java.MethodCallTargetNode;
-import com.oracle.graal.nodes.virtual.AllocatedObjectNode;
-import com.oracle.graal.nodes.virtual.VirtualObjectNode;
-import com.oracle.graal.phases.OptimisticOptimizations;
-import com.oracle.graal.phases.common.CanonicalizerPhase;
-import com.oracle.graal.phases.common.inlining.InliningUtil;
-import com.oracle.graal.phases.common.inlining.info.*;
-import com.oracle.graal.phases.common.inlining.info.elem.Inlineable;
-import com.oracle.graal.phases.common.inlining.info.elem.InlineableGraph;
-import com.oracle.graal.phases.common.inlining.info.elem.InlineableMacroNode;
-import com.oracle.graal.phases.common.inlining.policy.InliningPolicy;
-import com.oracle.graal.phases.tiers.HighTierContext;
-import com.oracle.graal.phases.util.Providers;
+import static com.oracle.graal.compiler.common.GraalOptions.*;
+import static com.oracle.graal.phases.common.inlining.walker.CallsiteHolderDummy.*;
 
 import java.util.*;
 
-import static com.oracle.graal.compiler.common.GraalOptions.*;
-import static com.oracle.graal.phases.common.inlining.walker.CallsiteHolderDummy.DUMMY_CALLSITE_HOLDER;
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.debug.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.nodes.virtual.*;
+import com.oracle.graal.phases.*;
+import com.oracle.graal.phases.common.*;
+import com.oracle.graal.phases.common.inlining.*;
+import com.oracle.graal.phases.common.inlining.info.*;
+import com.oracle.graal.phases.common.inlining.info.elem.*;
+import com.oracle.graal.phases.common.inlining.policy.*;
+import com.oracle.graal.phases.tiers.*;
+import com.oracle.graal.phases.util.*;
 
 /**
  * <p>
@@ -368,7 +359,7 @@ public class InliningData {
         InlineInfo calleeInfo = calleeInvocation.callee();
         try {
             try (Debug.Scope scope = Debug.scope("doInline", callerGraph)) {
-                Set<Node> canonicalizedNodes = new HashSet<>();
+                Set<Node> canonicalizedNodes = Node.newNodeHashSet();
                 calleeInfo.invoke().asNode().usages().snapshotTo(canonicalizedNodes);
                 Collection<Node> parameterUsages = calleeInfo.inline(new Providers(context), callerAssumptions);
                 canonicalizedNodes.addAll(parameterUsages);

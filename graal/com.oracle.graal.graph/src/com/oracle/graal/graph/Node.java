@@ -31,13 +31,14 @@ import java.util.*;
 import sun.misc.*;
 
 import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.compiler.common.remote.*;
 import com.oracle.graal.graph.Graph.NodeEventListener;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 
 /**
- * This class is the base class for all nodes, it represent a node which can be inserted in a
+ * This class is the base class for all nodes. It represents a node that can be inserted in a
  * {@link Graph}.
  * <p>
  * Once a node has been added to a graph, it has a graph-unique {@link #id()}. Edges in the
@@ -47,6 +48,11 @@ import com.oracle.graal.nodeinfo.*;
  * this field points to.
  * <p>
  * Nodes which are be value numberable should implement the {@link ValueNumberable} interface.
+ *
+ * <h1>Replay Compilation</h1>
+ *
+ * To enable deterministic replay compilation, node hash set creation within a compilation scope
+ * must {@link #newNodeHashSet()} or {@link #newNodeHashSet(Collection)}.
  *
  * <h1>Assertions and Verification</h1>
  *
@@ -190,6 +196,22 @@ public abstract class Node implements Cloneable, Formattable {
 
     int id() {
         return id;
+    }
+
+    /**
+     * Creates a {@link Node} hash set. The return set will be a {@link LinkedHashSet} if the
+     * current thread has an active compilation replay scope. This is requires to make replay
+     * compilations deterministic.
+     */
+    public static <E extends Node> HashSet<E> newNodeHashSet() {
+        return Context.getCurrent() == null ? new HashSet<>() : new LinkedHashSet<>();
+    }
+
+    /**
+     * @see #newNodeHashSet()
+     */
+    public static <E extends Node> HashSet<E> newNodeHashSet(Collection<? extends E> c) {
+        return Context.getCurrent() == null ? new HashSet<>(c) : new LinkedHashSet<>(c);
     }
 
     /**

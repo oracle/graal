@@ -434,7 +434,7 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
 
             // build the intersection
             belowBound.intersect(aboveBound);
-            HashSet<Node> result = new HashSet<>();
+            HashSet<Node> result = Node.newNodeHashSet();
             for (Node node : belowBound) {
                 result.add(node);
             }
@@ -491,7 +491,7 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
         }
 
         private void processUsages(Node duplicated, HashSet<Node> duplicatedNodes, MergeNode newBottomMerge, Deque<Node> worklist) {
-            HashSet<Node> unique = new HashSet<>();
+            HashSet<Node> unique = Node.newNodeHashSet();
             duplicated.usages().snapshotTo(unique);
             Node newOutsideClone = null;
             for (Node usage : unique) {

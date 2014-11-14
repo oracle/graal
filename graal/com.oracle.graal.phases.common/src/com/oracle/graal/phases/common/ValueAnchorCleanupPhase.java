@@ -42,11 +42,11 @@ public class ValueAnchorCleanupPhase extends Phase {
         private final HashSet<Node> anchoredValues;
 
         public State() {
-            anchoredValues = new HashSet<>();
+            anchoredValues = Node.newNodeHashSet();
         }
 
         public State(State other) {
-            anchoredValues = new HashSet<>(other.anchoredValues);
+            anchoredValues = Node.newNodeHashSet(other.anchoredValues);
         }
 
         @Override
