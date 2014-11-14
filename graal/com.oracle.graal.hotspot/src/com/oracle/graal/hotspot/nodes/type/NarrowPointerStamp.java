@@ -84,6 +84,7 @@ public class NarrowPointerStamp extends AbstractPointerStamp {
 
     @Override
     public Stamp constant(Constant c, MetaAccessProvider meta) {
+        assert (c instanceof HotSpotMetaspaceConstantImpl) && ((HotSpotMetaspaceConstantImpl) c).isCompressed();
         return this;
     }
 

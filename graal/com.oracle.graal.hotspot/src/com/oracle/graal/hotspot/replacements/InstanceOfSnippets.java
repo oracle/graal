@@ -186,7 +186,7 @@ public class InstanceOfSnippets implements Snippets {
             return falseValue;
         }
         GuardingNode anchorNode = SnippetAnchorNode.anchor();
-        Word hub = loadWordFromObject(mirror, klassOffset(), CLASS_KLASS_LOCATION);
+        Pointer hub = Word.fromTypePointer(ClassGetHubNode.readClass(mirror, anchorNode));
         Pointer objectHub = Word.fromTypePointer(loadHubIntrinsic(object, anchorNode));
         if (hub.equal(0) || !checkUnknownSubType(hub, objectHub)) {
             return falseValue;

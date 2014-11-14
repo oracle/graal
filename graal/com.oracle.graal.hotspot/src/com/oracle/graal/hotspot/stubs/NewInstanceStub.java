@@ -102,7 +102,7 @@ public class NewInstanceStub extends SnippetStub {
          * raw number
          */
         Pointer hubPtr = Word.fromTypePointer(hub);
-        int sizeInBytes = hubPtr.readInt(klassLayoutHelperOffset(), KLASS_LAYOUT_HELPER_LOCATION);
+        int sizeInBytes = loadKlassLayoutHelperIntrinsic(hub);
         Word thread = registerAsWord(threadRegister);
         if (!forceSlowPath() && inlineContiguousAllocationSupported()) {
             if (isInstanceKlassFullyInitialized(hubPtr)) {

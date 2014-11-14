@@ -151,10 +151,11 @@ public class NewObjectSnippets implements Snippets {
 
     @Snippet
     public static Object allocateInstanceDynamic(Class<?> type, @ConstantParameter boolean fillContents, @ConstantParameter Register threadRegister, @ConstantParameter String typeContext) {
-        Word hub = loadWordFromObject(type, klassOffset(), CLASS_KLASS_LOCATION);
+        TypePointer hubPtr = ClassGetHubNode.readClass(type);
+        Pointer hub = Word.fromTypePointer(hubPtr);
         if (probability(FAST_PATH_PROBABILITY, !hub.equal(Word.zero()))) {
             if (probability(FAST_PATH_PROBABILITY, isInstanceKlassFullyInitialized(hub))) {
-                int layoutHelper = readLayoutHelper(hub);
+                int layoutHelper = readLayoutHelper(hubPtr);
                 /*
                  * src/share/vm/oops/klass.hpp: For instances, layout helper is a positive number,
                  * the instance size. This size is already passed through align_object_size and
@@ -223,7 +224,7 @@ public class NewObjectSnippets implements Snippets {
             return dynamicNewArrayStub(DYNAMIC_NEW_ARRAY, elementType, length);
         }
 
-        int layoutHelper = readLayoutHelper(hub);
+        int layoutHelper = readLayoutHelper(hub.toTypePointer());
         //@formatter:off
         // from src/share/vm/oops/klass.hpp:
         //
