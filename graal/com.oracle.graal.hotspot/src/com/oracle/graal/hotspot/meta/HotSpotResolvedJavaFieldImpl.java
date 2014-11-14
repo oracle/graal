@@ -220,7 +220,7 @@ public class HotSpotResolvedJavaFieldImpl extends CompilerObject implements HotS
                 if (isFinal()) {
                     if (isInObject(object)) {
                         JavaConstant value = readValue(receiver);
-                        if (assumeNonStaticFinalFieldsAsFinal(object.getClass()) || !value.isDefaultForKind()) {
+                        if (!value.isDefaultForKind() || assumeNonStaticFinalDefaultFieldsAsFinal(object.getClass())) {
                             return value;
                         }
                     }
@@ -274,7 +274,10 @@ public class HotSpotResolvedJavaFieldImpl extends CompilerObject implements HotS
         }
     }
 
-    private static boolean assumeNonStaticFinalFieldsAsFinal(Class<?> clazz) {
+    private static boolean assumeNonStaticFinalDefaultFieldsAsFinal(Class<?> clazz) {
+        if (TrustFinalDefaultFields.getValue()) {
+            return true;
+        }
         return clazz == SnippetCounter.class || clazz == NodeClass.class;
     }
 
