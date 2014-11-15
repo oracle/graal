@@ -84,7 +84,7 @@ public class NewArrayStub extends SnippetStub {
      */
     @Snippet
     private static Object newArray(TypePointer hub, int length, @ConstantParameter TypePointer intArrayHub, @ConstantParameter Register threadRegister) {
-        int layoutHelper = Word.fromTypePointer(hub).readInt(klassLayoutHelperOffset(), KLASS_LAYOUT_HELPER_LOCATION);
+        int layoutHelper = loadKlassLayoutHelperIntrinsic(hub);
         int log2ElementSize = (layoutHelper >> layoutHelperLog2ElementSizeShift()) & layoutHelperLog2ElementSizeMask();
         int headerSize = (layoutHelper >> layoutHelperHeaderSizeShift()) & layoutHelperHeaderSizeMask();
         int elementKind = (layoutHelper >> layoutHelperElementTypeShift()) & layoutHelperElementTypeMask();

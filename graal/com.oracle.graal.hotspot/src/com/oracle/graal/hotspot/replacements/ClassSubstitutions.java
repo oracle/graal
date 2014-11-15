@@ -40,21 +40,23 @@ import com.oracle.graal.word.*;
 public class ClassSubstitutions {
 
     @MacroSubstitution(macro = ClassGetModifiersNode.class, isStatic = false)
-    @MethodSubstitution(isStatic = false)
+    @MethodSubstitution(isStatic = false, forced = true)
     public static int getModifiers(final Class<?> thisObj) {
-        Word klass = loadWordFromObject(thisObj, klassOffset(), CLASS_KLASS_LOCATION);
-        if (klass.equal(0)) {
+        TypePointer klass = ClassGetHubNode.readClass(thisObj);
+        TypePointer zero = Word.unsigned(0).toTypePointer();
+        if (Word.equal(klass, zero)) {
             // Class for primitive type
             return Modifier.ABSTRACT | Modifier.FINAL | Modifier.PUBLIC;
         } else {
-            return klass.readInt(klassModifierFlagsOffset(), KLASS_MODIFIER_FLAGS_LOCATION);
+            return Word.fromTypePointer(klass).readInt(klassModifierFlagsOffset(), KLASS_MODIFIER_FLAGS_LOCATION);
         }
     }
 
+    // This MacroSubstitution should be removed once non-null klass pointers can be optimized
     @MacroSubstitution(macro = ClassIsInterfaceNode.class, isStatic = false)
-    @MethodSubstitution(isStatic = false)
+    @MethodSubstitution(isStatic = false, forced = true)
     public static boolean isInterface(final Class<?> thisObj) {
-        Word klass = loadWordFromObject(thisObj, klassOffset(), CLASS_KLASS_LOCATION);
+        Pointer klass = Word.fromTypePointer(ClassGetHubNode.readClass(thisObj));
         if (klass.equal(0)) {
             return false;
         } else {
@@ -63,21 +65,24 @@ public class ClassSubstitutions {
         }
     }
 
+    // This MacroSubstitution should be removed once non-null klass pointers can be optimized
     @MacroSubstitution(macro = ClassIsArrayNode.class, isStatic = false)
-    @MethodSubstitution(isStatic = false)
+    @MethodSubstitution(isStatic = false, forced = true)
     public static boolean isArray(final Class<?> thisObj) {
-        Word klass = loadWordFromObject(thisObj, klassOffset(), CLASS_KLASS_LOCATION);
+        TypePointer klassPtr = ClassGetHubNode.readClass(thisObj);
+        Pointer klass = Word.fromTypePointer(klassPtr);
         if (klass.equal(0)) {
             return false;
         } else {
-            return klassIsArray(klass);
+            return klassIsArray(klassPtr);
         }
     }
 
+    // This MacroSubstitution should be removed once non-null klass pointers can be optimized
     @MacroSubstitution(macro = ClassIsPrimitiveNode.class, isStatic = false)
-    @MethodSubstitution(isStatic = false)
+    @MethodSubstitution(isStatic = false, forced = true)
     public static boolean isPrimitive(final Class<?> thisObj) {
-        Word klass = loadWordFromObject(thisObj, klassOffset(), CLASS_KLASS_LOCATION);
+        Pointer klass = Word.fromTypePointer(ClassGetHubNode.readClass(thisObj));
         return klass.equal(0);
     }
 
@@ -87,11 +92,12 @@ public class ClassSubstitutions {
     @MacroSubstitution(macro = ClassGetSuperclassNode.class, isStatic = false)
     @MethodSubstitution(isStatic = false)
     public static Class<?> getSuperclass(final Class<?> thisObj) {
-        Word klass = loadWordFromObject(thisObj, klassOffset(), CLASS_KLASS_LOCATION);
+        TypePointer klassPtr = ClassGetHubNode.readClass(thisObj);
+        Pointer klass = Word.fromTypePointer(klassPtr);
         if (klass.notEqual(0)) {
             int accessFlags = klass.readInt(klassAccessFlagsOffset(), KLASS_ACCESS_FLAGS_LOCATION);
             if ((accessFlags & Modifier.INTERFACE) == 0) {
-                if (klassIsArray(klass)) {
+                if (klassIsArray(klassPtr)) {
                     return Object.class;
                 } else {
                     Word superKlass = klass.readWord(klassSuperKlassOffset(), KLASS_SUPER_KLASS_LOCATION);
@@ -109,9 +115,10 @@ public class ClassSubstitutions {
     @MacroSubstitution(macro = ClassGetComponentTypeNode.class, isStatic = false)
     @MethodSubstitution(isStatic = false)
     public static Class<?> getComponentType(final Class<?> thisObj) {
-        Word klass = loadWordFromObject(thisObj, klassOffset(), CLASS_KLASS_LOCATION);
+        TypePointer klassPtr = ClassGetHubNode.readClass(thisObj);
+        Pointer klass = Word.fromTypePointer(klassPtr);
         if (klass.notEqual(0)) {
-            if (klassIsArray(klass)) {
+            if (klassIsArray(klassPtr)) {
                 return piCastExactNonNull(klass.readObject(arrayKlassComponentMirrorOffset(), ARRAY_KLASS_COMPONENT_MIRROR), Class.class);
             }
         }
