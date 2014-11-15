@@ -52,7 +52,7 @@ final class LinkedIdentityHashMap<K, V> implements Map<K, V> {
      * Wrapper for an object that gives uses the object's identity for the purpose of equality
      * comparisons and computing a hash code.
      */
-    public static class Id<T> {
+    static final class Id<T> {
         final T object;
 
         public Id(T object) {
@@ -63,7 +63,7 @@ final class LinkedIdentityHashMap<K, V> implements Map<K, V> {
         @SuppressWarnings("unchecked")
         @Override
         public boolean equals(Object obj) {
-            return ((Id<T>) obj).object == object;
+            return obj instanceof Id && ((Id<T>) obj).object == object;
         }
 
         @Override
@@ -110,7 +110,10 @@ final class LinkedIdentityHashMap<K, V> implements Map<K, V> {
 
     @SuppressWarnings("unchecked")
     public void putAll(Map<? extends K, ? extends V> m) {
-        if (m != null && m.getClass() == getClass()) {
+        if (m == null) {
+            throw new NullPointerException();
+        }
+        if (m.getClass() == getClass()) {
             LinkedIdentityHashMap<K, V> that = (LinkedIdentityHashMap<K, V>) m;
             map.putAll(that.map);
 
