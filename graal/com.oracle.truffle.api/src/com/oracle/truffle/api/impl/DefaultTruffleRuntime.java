@@ -85,6 +85,11 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
     }
 
     @Override
+    public CompilerOptions createCompilerOptions() {
+        return new DefaultCompilerOptions();
+    }
+
+    @Override
     public Assumption createAssumption() {
         return createAssumption(null);
     }

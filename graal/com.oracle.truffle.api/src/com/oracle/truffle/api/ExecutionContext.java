@@ -26,6 +26,7 @@ package com.oracle.truffle.api;
 
 import java.util.*;
 
+import com.oracle.truffle.api.impl.*;
 import com.oracle.truffle.api.instrument.*;
 import com.oracle.truffle.api.instrument.impl.*;
 import com.oracle.truffle.api.source.*;
@@ -164,5 +165,12 @@ public abstract class ExecutionContext {
      * Establishes source event reporting.
      */
     protected abstract void setSourceCallback(SourceCallback sourceCallback);
+
+    /**
+     * Get compiler options specific to this <code>ExecutionContext</code>.
+     */
+    public CompilerOptions getCompilerOptions() {
+        return DefaultCompilerOptions.INSTANCE;
+    }
 
 }

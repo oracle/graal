@@ -112,6 +112,14 @@ public interface TruffleRuntime {
     MaterializedFrame createMaterializedFrame(Object[] arguments, FrameDescriptor frameDescriptor);
 
     /**
+     * Creates an object which allows you to test for support of and set options specific for this
+     * runtime.
+     *
+     * @return the newly created compiler options object
+     */
+    CompilerOptions createCompilerOptions();
+
+    /**
      * Accesses the current stack, i.e., the contents of the {@link Frame}s and the associated
      * {@link CallTarget}s. Iteration starts at the caller frame, i.e., it does not include the
      * current frame.

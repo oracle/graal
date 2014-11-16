@@ -27,6 +27,7 @@ package com.oracle.truffle.api.nodes;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.impl.*;
 import com.oracle.truffle.api.source.*;
 
 /**
@@ -124,6 +125,19 @@ public abstract class RootNode extends Node {
      */
     public ExecutionContext getExecutionContext() {
         return null;
+    }
+
+    /**
+     * Get compiler options specific to this <code>RootNode</code>.
+     */
+    public CompilerOptions getCompilerOptions() {
+        final ExecutionContext context = getExecutionContext();
+
+        if (context == null) {
+            return DefaultCompilerOptions.INSTANCE;
+        } else {
+            return context.getCompilerOptions();
+        }
     }
 
 }
