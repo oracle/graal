@@ -44,8 +44,8 @@ public class CompilationProfile {
     private long timestamp;
 
     public CompilationProfile() {
-        this.compilationCallThreshold = TruffleMinInvokeThreshold.getValue();
-        this.compilationCallAndLoopThreshold = TruffleCompilationThreshold.getValue();
+        compilationCallThreshold = TruffleMinInvokeThreshold.getValue();
+        compilationCallAndLoopThreshold = TruffleCompilationThreshold.getValue();
     }
 
     @Override

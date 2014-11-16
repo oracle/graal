@@ -22,12 +22,16 @@
  */
 package com.oracle.graal.truffle;
 
+import com.oracle.truffle.api.*;
+
 public class InterpreterOnlyCompilationPolicy implements CompilationPolicy {
 
-    public boolean shouldCompile(CompilationProfile profile) {
+    @Override
+    public boolean shouldCompile(CompilationProfile profile, CompilerOptions options) {
         return false;
     }
 
+    @Override
     public void recordCompilationFailure(Throwable t) {
     }
 

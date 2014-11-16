@@ -22,9 +22,11 @@
  */
 package com.oracle.graal.truffle;
 
+import com.oracle.truffle.api.*;
+
 public interface TruffleInliningPolicy {
 
-    boolean isAllowed(TruffleInliningProfile profile, int currentNodeCount);
+    boolean isAllowed(TruffleInliningProfile profile, int currentNodeCount, CompilerOptions options);
 
     double calculateScore(TruffleInliningProfile profile);
 

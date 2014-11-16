@@ -37,6 +37,7 @@ import com.oracle.graal.truffle.debug.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.impl.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.utilities.*;
@@ -300,12 +301,12 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
 
     private void interpreterCall() {
         CompilerAsserts.neverPartOfCompilation();
-        if (this.isValid()) {
+        if (isValid()) {
             // Stubs were deoptimized => reinstall.
             this.runtime.reinstallStubs();
         } else {
             compilationProfile.reportInterpreterCall();
-            if (compilationPolicy.shouldCompile(compilationProfile)) {
+            if (compilationPolicy.shouldCompile(compilationProfile, getCompilerOptions())) {
                 compile();
             }
         }
@@ -477,6 +478,16 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         } catch (NoSuchMethodException | SecurityException e) {
             throw new GraalInternalError(e);
         }
+    }
+
+    private CompilerOptions getCompilerOptions() {
+        final ExecutionContext context = rootNode.getExecutionContext();
+
+        if (context == null) {
+            return DefaultCompilerOptions.INSTANCE;
+        }
+
+        return context.getCompilerOptions();
     }
 
 }

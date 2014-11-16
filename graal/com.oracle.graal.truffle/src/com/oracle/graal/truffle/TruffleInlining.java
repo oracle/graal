@@ -33,18 +33,19 @@ public class TruffleInlining implements Iterable<TruffleInliningDecision> {
 
     private final List<TruffleInliningDecision> callSites;
 
-    TruffleInlining(List<TruffleInliningDecision> callSites) {
+    protected TruffleInlining(List<TruffleInliningDecision> callSites) {
         this.callSites = callSites;
     }
 
     public TruffleInlining(OptimizedCallTarget sourceTarget, TruffleInliningPolicy policy) {
-        this(createDecisions(sourceTarget, policy));
+        this(createDecisions(sourceTarget, policy, sourceTarget.getRootNode().getCompilerOptions()));
+
     }
 
-    private static List<TruffleInliningDecision> createDecisions(OptimizedCallTarget sourceTarget, TruffleInliningPolicy policy) {
+    private static List<TruffleInliningDecision> createDecisions(OptimizedCallTarget sourceTarget, TruffleInliningPolicy policy, CompilerOptions options) {
         int nodeCount = sourceTarget.countNonTrivialNodes(false);
         List<TruffleInliningDecision> exploredCallSites = exploreCallSites(new ArrayList<>(Arrays.asList(sourceTarget)), nodeCount, policy);
-        return decideInlining(exploredCallSites, policy, nodeCount);
+        return decideInlining(exploredCallSites, policy, nodeCount, options);
     }
 
     private static List<TruffleInliningDecision> exploreCallSites(List<OptimizedCallTarget> stack, int callStackNodeCount, TruffleInliningPolicy policy) {
@@ -72,11 +73,12 @@ public class TruffleInlining implements Iterable<TruffleInliningDecision> {
         if (!recursive && callStack.size() < 15) {
             /*
              * We make a preliminary optimistic inlining decision with best possible characteristics
-             * to avoid the exploration of unnecessary pathes in the inlining tree.
+             * to avoid the exploration of unnecessary paths in the inlining tree.
              */
-            if (policy.isAllowed(new TruffleInliningProfile(callNode, nodeCount, nodeCount, frequency, recursive), callStackNodeCount)) {
+            final CompilerOptions options = callNode.getRootNode().getCompilerOptions();
+            if (policy.isAllowed(new TruffleInliningProfile(callNode, nodeCount, nodeCount, frequency, recursive), callStackNodeCount, options)) {
                 List<TruffleInliningDecision> exploredCallSites = exploreCallSites(callStack, callStackNodeCount + nodeCount, policy);
-                childCallSites = decideInlining(exploredCallSites, policy, nodeCount);
+                childCallSites = decideInlining(exploredCallSites, policy, nodeCount, options);
                 for (TruffleInliningDecision childCallSite : childCallSites) {
                     if (childCallSite.isInline()) {
                         deepNodeCount += childCallSite.getProfile().getDeepNodeCount();
@@ -107,13 +109,13 @@ public class TruffleInlining implements Iterable<TruffleInliningDecision> {
         return false;
     }
 
-    private static List<TruffleInliningDecision> decideInlining(List<TruffleInliningDecision> callSites, TruffleInliningPolicy policy, int nodeCount) {
+    private static List<TruffleInliningDecision> decideInlining(List<TruffleInliningDecision> callSites, TruffleInliningPolicy policy, int nodeCount, CompilerOptions options) {
         int deepNodeCount = nodeCount;
         int index = 0;
         for (TruffleInliningDecision callSite : callSites.stream().sorted().collect(Collectors.toList())) {
             TruffleInliningProfile profile = callSite.getProfile();
             profile.setQueryIndex(index++);
-            if (policy.isAllowed(profile, deepNodeCount)) {
+            if (policy.isAllowed(profile, deepNodeCount, options)) {
                 callSite.setInline(true);
                 deepNodeCount += profile.getDeepNodeCount();
             }
