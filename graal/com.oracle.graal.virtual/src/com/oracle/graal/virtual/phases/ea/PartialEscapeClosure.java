@@ -22,12 +22,11 @@
  */
 package com.oracle.graal.virtual.phases.ea;
 
-import static com.oracle.graal.graph.util.CollectionsAccess.*;
-
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.remote.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
@@ -222,7 +221,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
 
     @Override
     protected void processLoopExit(LoopExitNode exitNode, BlockT initialState, BlockT exitState, GraphEffectList effects) {
-        HashMap<VirtualObjectNode, ProxyNode> proxies = new HashMap<>();
+        Map<VirtualObjectNode, ProxyNode> proxies = Node.newMap();
 
         for (ProxyNode proxy : exitNode.proxies()) {
             ObjectState obj = getObjectState(exitState, proxy.value());
@@ -272,9 +271,9 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
 
     protected class MergeProcessor extends EffectsClosure<BlockT>.MergeProcessor {
 
-        private final HashMap<Object, ValuePhiNode> materializedPhis = new HashMap<>();
-        private final Map<ValueNode, ValuePhiNode[]> valuePhis = newIdentityMap();
-        private final Map<ValuePhiNode, VirtualObjectNode> valueObjectVirtuals = newNodeIdentityMap();
+        private final HashMap<Object, ValuePhiNode> materializedPhis = Context.newMap();
+        private final Map<ValueNode, ValuePhiNode[]> valuePhis = Node.newIdentityMap();
+        private final Map<ValuePhiNode, VirtualObjectNode> valueObjectVirtuals = Node.newIdentityMap();
 
         public MergeProcessor(Block mergeBlock) {
             super(mergeBlock);
@@ -322,7 +321,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
             super.merge(states);
 
             // calculate the set of virtual objects that exist in all predecessors
-            HashSet<VirtualObjectNode> virtualObjTemp = new HashSet<>(states.get(0).getVirtualObjects());
+            Set<VirtualObjectNode> virtualObjTemp = Node.newSet(states.get(0).getVirtualObjects());
             for (int i = 1; i < states.size(); i++) {
                 virtualObjTemp.retainAll(states.get(i).getVirtualObjects());
             }

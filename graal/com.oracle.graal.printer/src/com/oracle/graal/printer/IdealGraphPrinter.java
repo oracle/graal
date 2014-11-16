@@ -84,7 +84,7 @@ public class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPr
     @Override
     public void print(Graph graph, String title, SchedulePhase predefinedSchedule) {
         beginGraph(title);
-        Set<Node> noBlockNodes = Node.newNodeHashSet();
+        Set<Node> noBlockNodes = Node.newSet();
         SchedulePhase schedule = predefinedSchedule;
         if (schedule == null && tryToSchedule) {
             if (PrintIdealGraphSchedule.getValue()) {
@@ -249,7 +249,7 @@ public class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPr
         endSuccessors();
         beginBlockNodes();
 
-        Set<Node> nodes = Node.newNodeHashSet();
+        Set<Node> nodes = Node.newSet();
 
         if (nodeToBlock != null) {
             for (Node n : graph.getNodes()) {
@@ -270,7 +270,7 @@ public class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPr
                 }
             }
 
-            Set<Node> snapshot = Node.newNodeHashSet(nodes);
+            Set<Node> snapshot = Node.newSet(nodes);
             // add all framestates and phis to their blocks
             for (Node node : snapshot) {
                 if (node instanceof StateSplit && ((StateSplit) node).stateAfter() != null) {

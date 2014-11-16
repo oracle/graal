@@ -25,7 +25,6 @@ package com.oracle.graal.replacements;
 import static com.oracle.graal.api.meta.LocationIdentity.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.debug.Debug.*;
-import static com.oracle.graal.graph.util.CollectionsAccess.*;
 import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionality.*;
 import static com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates.*;
 import static java.util.FormattableFlags.*;
@@ -569,7 +568,7 @@ public class SnippetTemplate {
 
         // Copy snippet graph, replacing constant parameters with given arguments
         final StructuredGraph snippetCopy = new StructuredGraph(snippetGraph.name, snippetGraph.method());
-        Map<Node, Node> nodeReplacements = newNodeIdentityMap();
+        Map<Node, Node> nodeReplacements = Node.newIdentityMap();
         nodeReplacements.put(snippetGraph.start(), snippetCopy.start());
 
         MetaAccessProvider metaAccess = providers.getMetaAccess();
@@ -863,7 +862,7 @@ public class SnippetTemplate {
      * @return the map that will be used to bind arguments to parameters when inlining this template
      */
     private Map<Node, Node> bind(StructuredGraph replaceeGraph, MetaAccessProvider metaAccess, Arguments args) {
-        Map<Node, Node> replacements = newNodeIdentityMap();
+        Map<Node, Node> replacements = Node.newIdentityMap();
         assert args.info.getParameterCount() == parameters.length : "number of args (" + args.info.getParameterCount() + ") != number of parameters (" + parameters.length + ")";
         for (int i = 0; i < parameters.length; i++) {
             Object parameter = parameters[i];

@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.phases.graph;
 
-import static com.oracle.graal.graph.util.CollectionsAccess.*;
-
 import java.util.*;
 
 import com.oracle.graal.graph.*;
@@ -37,8 +35,8 @@ public final class ReentrantNodeIterator {
         public final Map<LoopExitNode, StateT> exitStates;
 
         public LoopInfo(int endCount, int exitCount) {
-            endStates = newNodeIdentityMap(endCount);
-            exitStates = newNodeIdentityMap(exitCount);
+            endStates = Node.newIdentityMap(endCount);
+            exitStates = Node.newIdentityMap(exitCount);
         }
     }
 
@@ -90,7 +88,7 @@ public final class ReentrantNodeIterator {
     private static <StateT> Map<FixedNode, StateT> apply(NodeIteratorClosure<StateT> closure, FixedNode start, StateT initialState, LoopBeginNode boundary) {
         assert start != null;
         Deque<BeginNode> nodeQueue = new ArrayDeque<>();
-        Map<FixedNode, StateT> blockEndStates = newNodeIdentityMap();
+        Map<FixedNode, StateT> blockEndStates = Node.newIdentityMap();
 
         StateT state = initialState;
         FixedNode current = start;

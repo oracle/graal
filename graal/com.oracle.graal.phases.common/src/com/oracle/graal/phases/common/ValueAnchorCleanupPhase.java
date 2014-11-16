@@ -39,14 +39,14 @@ public class ValueAnchorCleanupPhase extends Phase {
 
     private static class State extends MergeableState<State> implements Cloneable {
 
-        private final HashSet<Node> anchoredValues;
+        private final Set<Node> anchoredValues;
 
         public State() {
-            anchoredValues = Node.newNodeHashSet();
+            anchoredValues = Node.newSet();
         }
 
         public State(State other) {
-            anchoredValues = Node.newNodeHashSet(other.anchoredValues);
+            anchoredValues = Node.newSet(other.anchoredValues);
         }
 
         @Override

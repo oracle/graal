@@ -59,6 +59,30 @@ public class Context implements AutoCloseable {
         this.mode = mode;
     }
 
+    public static <K, V> HashMap<K, V> newMap() {
+        return Context.getCurrent() == null ? new HashMap<>() : new LinkedHashMap<>();
+    }
+
+    public static <K, V> HashMap<K, V> newMap(Map<K, V> m) {
+        return Context.getCurrent() == null ? new HashMap<>(m) : new LinkedHashMap<>(m);
+    }
+
+    public static <K, V> HashMap<K, V> newMap(int initialCapacity) {
+        return Context.getCurrent() == null ? new HashMap<>(initialCapacity) : new LinkedHashMap<>(initialCapacity);
+    }
+
+    public static <K, V> Map<K, V> newIdentityMap() {
+        return Context.getCurrent() == null ? new IdentityHashMap<>() : new LinkedIdentityHashMap<>();
+    }
+
+    public static <K, V> Map<K, V> newIdentityMap(int expectedMaxSize) {
+        return Context.getCurrent() == null ? new IdentityHashMap<>(expectedMaxSize) : new LinkedIdentityHashMap<>();
+    }
+
+    public static <K, V> Map<K, V> newIdentityMap(Map<K, V> m) {
+        return Context.getCurrent() == null ? new IdentityHashMap<>(m) : new LinkedIdentityHashMap<>(m);
+    }
+
     /**
      * Gets a descriptor for the fields in a class that can be used for serialization.
      */

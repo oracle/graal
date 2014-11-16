@@ -26,7 +26,6 @@ import static com.oracle.graal.compiler.common.Fields.*;
 import static com.oracle.graal.graph.Edges.*;
 import static com.oracle.graal.graph.InputEdges.*;
 import static com.oracle.graal.graph.Node.*;
-import static com.oracle.graal.graph.util.CollectionsAccess.*;
 
 import java.lang.annotation.*;
 import java.lang.reflect.*;

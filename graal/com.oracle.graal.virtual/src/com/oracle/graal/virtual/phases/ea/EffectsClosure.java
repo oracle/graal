@@ -23,12 +23,11 @@
 package com.oracle.graal.virtual.phases.ea;
 
 import static com.oracle.graal.compiler.common.GraalOptions.*;
-import static com.oracle.graal.graph.util.CollectionsAccess.*;
-
 import java.util.*;
 
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.cfg.*;
+import com.oracle.graal.compiler.common.remote.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
@@ -46,8 +45,8 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
 
     protected final NodeMap<ValueNode> aliases;
     protected final BlockMap<GraphEffectList> blockEffects;
-    private final Map<Loop<Block>, GraphEffectList> loopMergeEffects = newIdentityMap();
-    private final Map<LoopBeginNode, BlockT> loopEntryStates = newNodeIdentityMap();
+    private final Map<Loop<Block>, GraphEffectList> loopMergeEffects = Context.newIdentityMap();
+    private final Map<LoopBeginNode, BlockT> loopEntryStates = Node.newIdentityMap();
 
     protected boolean changed;
 

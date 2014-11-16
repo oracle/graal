@@ -219,7 +219,7 @@ public class LoopBeginNode extends MergeNode implements IterableNodeType, LIRLow
      */
     public void removeDeadPhis() {
         if (phis().isNotEmpty()) {
-            Set<PhiNode> alive = new HashSet<>();
+            Set<PhiNode> alive = Node.newSet();
             for (PhiNode phi : phis()) {
                 NodePredicate isAlive = u -> !isPhiAtMerge(u) || alive.contains(u);
                 if (phi.usages().filter(isAlive).isNotEmpty()) {

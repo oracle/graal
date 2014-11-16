@@ -359,7 +359,7 @@ public class InliningData {
         InlineInfo calleeInfo = calleeInvocation.callee();
         try {
             try (Debug.Scope scope = Debug.scope("doInline", callerGraph)) {
-                Set<Node> canonicalizedNodes = Node.newNodeHashSet();
+                Set<Node> canonicalizedNodes = Node.newSet();
                 calleeInfo.invoke().asNode().usages().snapshotTo(canonicalizedNodes);
                 Collection<Node> parameterUsages = calleeInfo.inline(new Providers(context), callerAssumptions);
                 canonicalizedNodes.addAll(parameterUsages);

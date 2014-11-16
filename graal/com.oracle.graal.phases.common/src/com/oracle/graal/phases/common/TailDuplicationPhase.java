@@ -219,7 +219,7 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
         private final MergeNode merge;
         private final StructuredGraph graph;
 
-        private final HashMap<ValueNode, PhiNode> bottomPhis = new HashMap<>();
+        private final Map<ValueNode, PhiNode> bottomPhis = Node.newMap();
         private final List<GuardedValueNode> replacements;
 
         private final CanonicalizerPhase canonicalizer;
@@ -275,7 +275,7 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
             AbstractEndNode endAfter = createNewMerge(fixed, stateAfter);
             MergeNode mergeAfter = endAfter.merge();
             fixedNodes.add(endAfter);
-            final HashSet<Node> duplicatedNodes = buildDuplicatedNodeSet(fixedNodes, stateAfter);
+            final Set<Node> duplicatedNodes = buildDuplicatedNodeSet(fixedNodes, stateAfter);
             mergeAfter.clearEnds();
             expandDuplicated(duplicatedNodes, mergeAfter);
 
@@ -288,7 +288,7 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
                 if (replacements == null || replacements.get(endIndex) == null) {
                     duplicates = graph.addDuplicates(duplicatedNodes, graph, duplicatedNodes.size(), (DuplicationReplacement) null);
                 } else {
-                    HashMap<Node, Node> replace = new HashMap<>();
+                    Map<Node, Node> replace = Node.newMap();
                     replace.put(replacements.get(endIndex).object(), replacements.get(endIndex));
                     duplicates = graph.addDuplicates(duplicatedNodes, graph, duplicatedNodes.size(), replace);
                 }
@@ -359,7 +359,7 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
          *            from within the duplicated set of nodes.
          * @return The set of nodes that need to be duplicated.
          */
-        private HashSet<Node> buildDuplicatedNodeSet(final ArrayList<FixedNode> fixedNodes, FrameState stateAfter) {
+        private Set<Node> buildDuplicatedNodeSet(final ArrayList<FixedNode> fixedNodes, FrameState stateAfter) {
             final NodeBitMap aboveBound = graph.createNodeBitMap();
             final NodeBitMap belowBound = graph.createNodeBitMap();
 
@@ -434,7 +434,7 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
 
             // build the intersection
             belowBound.intersect(aboveBound);
-            HashSet<Node> result = Node.newNodeHashSet();
+            Set<Node> result = Node.newSet();
             for (Node node : belowBound) {
                 result.add(node);
             }
@@ -480,7 +480,7 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
          *            for newly created phis and to as a target for dependencies that pointed into
          *            the duplicated set of nodes.
          */
-        private void expandDuplicated(HashSet<Node> duplicatedNodes, MergeNode newBottomMerge) {
+        private void expandDuplicated(Set<Node> duplicatedNodes, MergeNode newBottomMerge) {
             Deque<Node> worklist = new ArrayDeque<>(duplicatedNodes);
 
             while (!worklist.isEmpty()) {
@@ -490,8 +490,8 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
             }
         }
 
-        private void processUsages(Node duplicated, HashSet<Node> duplicatedNodes, MergeNode newBottomMerge, Deque<Node> worklist) {
-            HashSet<Node> unique = Node.newNodeHashSet();
+        private void processUsages(Node duplicated, Set<Node> duplicatedNodes, MergeNode newBottomMerge, Deque<Node> worklist) {
+            Set<Node> unique = Node.newSet();
             duplicated.usages().snapshotTo(unique);
             Node newOutsideClone = null;
             for (Node usage : unique) {
@@ -542,7 +542,7 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
             }
         }
 
-        private void processInputs(Node duplicated, HashSet<Node> duplicatedNodes, Deque<Node> worklist) {
+        private void processInputs(Node duplicated, Set<Node> duplicatedNodes, Deque<Node> worklist) {
             // check if this node has an input that lies outside and cannot be shared
             NodePosIterator iter = duplicated.inputs().iterator();
             while (iter.hasNext()) {

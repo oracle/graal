@@ -23,7 +23,6 @@
 package com.oracle.graal.virtual.phases.ea;
 
 import static com.oracle.graal.compiler.common.GraalOptions.*;
-import static com.oracle.graal.graph.util.CollectionsAccess.*;
 
 import java.util.*;
 
@@ -43,7 +42,7 @@ public final class VirtualUtil {
         // helper code that determines the paths that keep obsolete nodes alive:
 
         NodeFlood flood = graph.createNodeFlood();
-        Map<Node, Node> path = newIdentityMap();
+        Map<Node, Node> path = Node.newIdentityMap();
         flood.add(graph.start());
         for (Node current : flood) {
             if (current instanceof AbstractEndNode) {

@@ -51,8 +51,18 @@ import com.oracle.graal.nodeinfo.*;
  *
  * <h1>Replay Compilation</h1>
  *
- * To enable deterministic replay compilation, node hash set creation within a compilation scope
- * must {@link #newNodeHashSet()} or {@link #newNodeHashSet(Collection)}.
+ * To enable deterministic replay compilation, node sets and node maps should be instantiated with
+ * the following methods:
+ * <ul>
+ * <li>{@link #newSet()}</li>
+ * <li>{@link #newSet(Collection)}</li>
+ * <li>{@link #newMap()}</li>
+ * <li>{@link #newMap(int)}</li>
+ * <li>{@link #newMap(Map)}</li>
+ * <li>{@link #newIdentityMap()}</li>
+ * <li>{@link #newIdentityMap(int)}</li>
+ * <li>{@link #newIdentityMap(Map)}</li>
+ * </ul>
  *
  * <h1>Assertions and Verification</h1>
  *
@@ -199,19 +209,56 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     /**
-     * Creates a {@link Node} hash set. The return set will be a {@link LinkedHashSet} if the
-     * current thread has an active compilation replay scope. This is requires to make replay
-     * compilations deterministic.
+     * Creates a {@link Node} set. If the current thread has a non-null
+     * {@linkplain Context#getCurrent() compilation replay scope}, the returned set will have a
+     * deterministic iteration order determined by the order in which elements are inserted in the
+     * map.
      */
-    public static <E extends Node> HashSet<E> newNodeHashSet() {
+    public static <E extends Node> Set<E> newSet() {
         return Context.getCurrent() == null ? new HashSet<>() : new LinkedHashSet<>();
     }
 
     /**
-     * @see #newNodeHashSet()
+     * @see #newSet()
      */
-    public static <E extends Node> HashSet<E> newNodeHashSet(Collection<? extends E> c) {
+    public static <E extends Node> Set<E> newSet(Collection<? extends E> c) {
         return Context.getCurrent() == null ? new HashSet<>(c) : new LinkedHashSet<>(c);
+    }
+
+    public static <K extends Node, V> Map<K, V> newMap() {
+        // Node.equals() and Node.hashCode() are final and are implemented
+        // purely in terms of identity so HashMap and IdentityHashMap with
+        // Node's as keys will behave the same. We choose to use the latter
+        // due to its lighter memory footprint.
+        return newIdentityMap();
+    }
+
+    public static <K extends Node, V> Map<K, V> newMap(Map<K, V> m) {
+        // Node.equals() and Node.hashCode() are final and are implemented
+        // purely in terms of identity so HashMap and IdentityHashMap with
+        // Node's as keys will behave the same. We choose to use the latter
+        // due to its lighter memory footprint.
+        return newIdentityMap(m);
+    }
+
+    public static <K extends Node, V> Map<K, V> newMap(int expectedMaxSize) {
+        // Node.equals() and Node.hashCode() are final and are implemented
+        // purely in terms of identity so HashMap and IdentityHashMap with
+        // Node's as keys will behave the same. We choose to use the latter
+        // due to its lighter memory footprint.
+        return newIdentityMap(expectedMaxSize);
+    }
+
+    public static <K extends Node, V> Map<K, V> newIdentityMap() {
+        return Context.newIdentityMap();
+    }
+
+    public static <K extends Node, V> Map<K, V> newIdentityMap(Map<K, V> m) {
+        return Context.newIdentityMap(m);
+    }
+
+    public static <K extends Node, V> Map<K, V> newIdentityMap(int expectedMaxSize) {
+        return Context.newIdentityMap(expectedMaxSize);
     }
 
     /**

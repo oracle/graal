@@ -25,7 +25,6 @@ package com.oracle.graal.phases.graph;
 import java.util.*;
 
 import com.oracle.graal.graph.*;
-import com.oracle.graal.graph.util.*;
 import com.oracle.graal.nodes.*;
 
 /**
@@ -137,7 +136,7 @@ public abstract class SinglePassNodeIterator<T extends MergeableState<T>> {
         StructuredGraph graph = start.graph();
         visitedEnds = graph.createNodeBitMap();
         nodeQueue = new ArrayDeque<>();
-        nodeStates = CollectionsAccess.newNodeIdentityMap();
+        nodeStates = Node.newIdentityMap();
         this.start = start;
         this.state = initialState;
     }

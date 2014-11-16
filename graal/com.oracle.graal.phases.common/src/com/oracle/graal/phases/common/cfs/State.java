@@ -22,14 +22,13 @@
  */
 package com.oracle.graal.phases.common.cfs;
 
-import static com.oracle.graal.graph.util.CollectionsAccess.*;
-
 import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
@@ -116,20 +115,20 @@ public final class State extends MergeableState<State> implements Cloneable {
     Map<LogicNode, GuardingNode> falseFacts;
 
     public State() {
-        this.typeRefinements = newNodeIdentityMap();
-        this.trueFacts = newNodeIdentityMap();
-        this.falseFacts = newNodeIdentityMap();
+        this.typeRefinements = Node.newIdentityMap();
+        this.trueFacts = Node.newIdentityMap();
+        this.falseFacts = Node.newIdentityMap();
     }
 
     public State(State other) {
         this.isUnreachable = other.isUnreachable;
         this.versionNr = other.versionNr;
-        this.typeRefinements = newNodeIdentityMap();
+        this.typeRefinements = Node.newIdentityMap();
         for (Map.Entry<ValueNode, Witness> entry : other.typeRefinements.entrySet()) {
             this.typeRefinements.put(entry.getKey(), new Witness(entry.getValue()));
         }
-        this.trueFacts = newNodeIdentityMap(other.trueFacts);
-        this.falseFacts = newNodeIdentityMap(other.falseFacts);
+        this.trueFacts = Node.newIdentityMap(other.trueFacts);
+        this.falseFacts = Node.newIdentityMap(other.falseFacts);
     }
 
     public boolean repOK() {
@@ -155,7 +154,7 @@ public final class State extends MergeableState<State> implements Cloneable {
     }
 
     private Map<ValueNode, Witness> mergeKnownTypes(MergeNode merge, ArrayList<State> withReachableStates) {
-        Map<ValueNode, Witness> newKnownTypes = newNodeIdentityMap();
+        Map<ValueNode, Witness> newKnownTypes = Node.newIdentityMap();
 
         for (Map.Entry<ValueNode, Witness> entry : typeRefinements.entrySet()) {
             ValueNode node = entry.getKey();
@@ -279,7 +278,7 @@ public final class State extends MergeableState<State> implements Cloneable {
     }
 
     private Map<LogicNode, GuardingNode> mergeTrueFacts(ArrayList<State> withReachableStates, GuardingNode merge) {
-        Map<LogicNode, GuardingNode> newTrueConditions = newNodeIdentityMap();
+        Map<LogicNode, GuardingNode> newTrueConditions = Node.newIdentityMap();
         for (Map.Entry<LogicNode, GuardingNode> entry : trueFacts.entrySet()) {
             LogicNode check = entry.getKey();
             GuardingNode guard = entry.getValue();
@@ -302,7 +301,7 @@ public final class State extends MergeableState<State> implements Cloneable {
     }
 
     private Map<LogicNode, GuardingNode> mergeFalseFacts(ArrayList<State> withReachableStates, GuardingNode merge) {
-        Map<LogicNode, GuardingNode> newFalseConditions = newNodeIdentityMap();
+        Map<LogicNode, GuardingNode> newFalseConditions = Node.newIdentityMap();
         for (Map.Entry<LogicNode, GuardingNode> entry : falseFacts.entrySet()) {
             LogicNode check = entry.getKey();
             GuardingNode guard = entry.getValue();
