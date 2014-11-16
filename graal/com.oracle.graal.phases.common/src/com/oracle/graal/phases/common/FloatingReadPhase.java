@@ -162,7 +162,7 @@ public class FloatingReadPhase extends Phase {
         if (updateExistingPhis) {
             for (MemoryPhiNode phi : merge.phis().filter(MemoryPhiNode.class)) {
                 if (existingPhis == null) {
-                    existingPhis = Context.newIdentityMap();
+                    existingPhis = Context.newMap();
                 }
                 phi.values().clear();
                 existingPhis.put(phi.getLocationIdentity(), phi);
