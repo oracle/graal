@@ -24,29 +24,10 @@
  */
 package com.oracle.truffle.api.nodes;
 
-import com.oracle.truffle.api.source.*;
-
 /**
  * Common base interface for all Truffle nodes.
  *
  * @see Node
  */
 public interface NodeInterface {
-    SourceSection getSourceSection();
-
-    SourceSection getEncapsulatingSourceSection();
-
-    Node copy();
-
-    <T extends Node> T replace(T newNode, CharSequence reason);
-
-    <T extends Node> T replace(T newNode);
-
-    Node getParent();
-
-    void accept(NodeVisitor nodeVisitor);
-
-    Iterable<Node> getChildren();
-
-    RootNode getRootNode();
 }
