@@ -685,7 +685,7 @@ public abstract class GraalCompilerTest extends GraalTest {
      * Determines if a {@link #checkCompilationResultsEqual mismatching} replay compilation result
      * results in a diagnostic message or a test error.
      */
-    private static final boolean TEST_REPLAY_MISMATCH_IS_FAILURE = Boolean.getBoolean("graal.testReplay.strict");
+    private static final boolean TEST_REPLAY_MISMATCH_IS_FAILURE = Boolean.parseBoolean(System.getProperty("graal.testReplay.strict", "true"));
 
     /**
      * Directory into which tests can dump content useful in debugging test failures.
@@ -713,31 +713,25 @@ public abstract class GraalCompilerTest extends GraalTest {
         }
     }
 
-    protected void checkCompilationResultsEqual(Context c, String prefix, CompilationResult expected, CompilationResult actual, ResolvedJavaMethod installedCodeOwner) {
+    protected void checkCompilationResultsEqual(CompilationResult expected, CompilationResult actual, ResolvedJavaMethod installedCodeOwner) {
         if (!actual.equals(expected)) {
-            Mode mode = c.getMode();
-            // Temporarily force capturing mode as dumping/printing/disassembling
+            // Reset to capturing mode as dumping/printing/disassembling
             // may need to execute proxy methods that have not yet been executed
-            c.setMode(Mode.Capturing);
-            try {
-                String expectedDisFile = dissasembleToFile(expected, installedCodeOwner, "expected");
-                String actualDisFile = dissasembleToFile(actual, installedCodeOwner, "actual");
-                String message = String.format("%s compilation result differs from expected compilation result", prefix);
-                if (expectedDisFile != null && actualDisFile != null) {
-                    message += String.format(" [diff %s %s]", expectedDisFile, actualDisFile);
-                }
-                if (TEST_REPLAY_MISMATCH_IS_FAILURE) {
-                    Assert.fail(message);
-                } else {
-                    System.out.println(message);
-                }
-            } finally {
-                c.setMode(mode);
+            String expectedDisFile = dissasembleToFile(expected, installedCodeOwner, "expected");
+            String actualDisFile = dissasembleToFile(actual, installedCodeOwner, "actual");
+            String message = "Reply compilation result differs from capturing compilation result";
+            if (expectedDisFile != null && actualDisFile != null) {
+                message += String.format(" [diff %s %s]", expectedDisFile, actualDisFile);
+            }
+            if (TEST_REPLAY_MISMATCH_IS_FAILURE) {
+                Assert.fail(message);
+            } else {
+                System.out.println(message);
             }
         }
     }
 
-    protected CompilationResult testRecompile(Context c, Mode mode, CompilationResult expectedResult, ResolvedJavaMethod installedCodeOwner) {
+    protected CompilationResult recompile(Context c, Mode mode, ResolvedJavaMethod installedCodeOwner) {
         try (Debug.Scope s = Debug.scope(mode.name(), new DebugDumpScope(mode.name(), true))) {
 
             StructuredGraph graphToCompile = parseForCompile(installedCodeOwner);
@@ -748,11 +742,7 @@ public abstract class GraalCompilerTest extends GraalTest {
             Request<CompilationResult> request = c.get(new GraalCompiler.Request<>(graphToCompile, null, cc, installedCodeOwner, getProviders(), getBackend(), getCodeCache().getTarget(), null,
                             getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL, getProfilingInfo(graphToCompile), getSpeculationLog(), getSuites(), new CompilationResult(),
                             CompilationResultBuilderFactory.Default));
-            CompilationResult result = GraalCompiler.compile(request);
-            if (expectedResult != null) {
-                checkCompilationResultsEqual(c, mode.name(), expectedResult, result, installedCodeOwner);
-            }
-            return result;
+            return GraalCompiler.compile(request);
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
@@ -762,10 +752,12 @@ public abstract class GraalCompilerTest extends GraalTest {
         try (Context c = new Context()) {
 
             // Capturing compilation
-            CompilationResult expected = testRecompile(c, Mode.Capturing, null, installedCodeOwner);
+            CompilationResult expected = recompile(c, Mode.Capturing, installedCodeOwner);
 
             // Replay compilation
-            testRecompile(c, Mode.Replaying, expected, installedCodeOwner);
+            CompilationResult actual = recompile(c, Mode.Replaying, installedCodeOwner);
+
+            checkCompilationResultsEqual(expected, actual, installedCodeOwner);
         }
     }
 
