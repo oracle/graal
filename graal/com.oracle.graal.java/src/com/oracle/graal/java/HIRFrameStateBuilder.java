@@ -45,7 +45,7 @@ public class HIRFrameStateBuilder extends AbstractFrameStateBuilder<ValueNode, H
     private final StructuredGraph graph;
 
     public HIRFrameStateBuilder(ResolvedJavaMethod method, StructuredGraph graph, boolean eagerResolve) {
-        super(method, new ValueNode[method.getMaxLocals()], new ValueNode[Math.max(1, method.getMaxStackSize())], EMPTY_ARRAY);
+        super(method);
 
         assert graph != null;
 
@@ -87,7 +87,7 @@ public class HIRFrameStateBuilder extends AbstractFrameStateBuilder<ValueNode, H
         super(other);
         assert other.graph != null;
         graph = other.graph;
-        monitorIds = other.monitorIds == EMPTY_MONITOR_ARRAY ? EMPTY_MONITOR_ARRAY : other.monitorIds.clone();
+        monitorIds = other.monitorIds.length == 0 ? other.monitorIds : other.monitorIds.clone();
 
         assert locals.length == method.getMaxLocals();
         assert stack.length == Math.max(1, method.getMaxStackSize());
@@ -95,8 +95,8 @@ public class HIRFrameStateBuilder extends AbstractFrameStateBuilder<ValueNode, H
     }
 
     @Override
-    protected ValueNode[] getEmptyArray() {
-        return EMPTY_ARRAY;
+    protected ValueNode[] allocateArray(int length) {
+        return length == 0 ? EMPTY_ARRAY : new ValueNode[length];
     }
 
     @Override

@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.phases.common;
 
-import static com.oracle.graal.graph.util.CollectionsAccess.*;
-
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
@@ -104,39 +102,39 @@ public class ConditionalEliminationPhase extends Phase {
     public static class State extends MergeableState<State> implements Cloneable {
 
         private Map<ValueNode, ResolvedJavaType> knownTypes;
-        private HashSet<ValueNode> knownNonNull;
-        private HashSet<ValueNode> knownNull;
+        private Set<ValueNode> knownNonNull;
+        private Set<ValueNode> knownNull;
         private Map<LogicNode, ValueNode> trueConditions;
         private Map<LogicNode, ValueNode> falseConditions;
         private Map<ValueNode, GuardedStamp> valueConstraints;
 
         public State() {
-            this.knownTypes = newNodeIdentityMap();
-            this.knownNonNull = new HashSet<>();
-            this.knownNull = new HashSet<>();
-            this.trueConditions = newNodeIdentityMap();
-            this.falseConditions = newNodeIdentityMap();
-            this.valueConstraints = newNodeIdentityMap();
+            this.knownTypes = Node.newIdentityMap();
+            this.knownNonNull = Node.newSet();
+            this.knownNull = Node.newSet();
+            this.trueConditions = Node.newIdentityMap();
+            this.falseConditions = Node.newIdentityMap();
+            this.valueConstraints = Node.newIdentityMap();
         }
 
         public State(State other) {
-            this.knownTypes = newNodeIdentityMap(other.knownTypes);
-            this.knownNonNull = new HashSet<>(other.knownNonNull);
-            this.knownNull = new HashSet<>(other.knownNull);
-            this.trueConditions = newNodeIdentityMap(other.trueConditions);
-            this.falseConditions = newNodeIdentityMap(other.falseConditions);
-            this.valueConstraints = newNodeIdentityMap(other.valueConstraints);
+            this.knownTypes = Node.newIdentityMap(other.knownTypes);
+            this.knownNonNull = Node.newSet(other.knownNonNull);
+            this.knownNull = Node.newSet(other.knownNull);
+            this.trueConditions = Node.newIdentityMap(other.trueConditions);
+            this.falseConditions = Node.newIdentityMap(other.falseConditions);
+            this.valueConstraints = Node.newIdentityMap(other.valueConstraints);
         }
 
         @Override
         public boolean merge(MergeNode merge, List<State> withStates) {
-            Map<ValueNode, ResolvedJavaType> newKnownTypes = newNodeIdentityMap();
-            Map<LogicNode, ValueNode> newTrueConditions = newNodeIdentityMap();
-            Map<LogicNode, ValueNode> newFalseConditions = newNodeIdentityMap();
-            Map<ValueNode, GuardedStamp> newValueConstraints = newNodeIdentityMap();
+            Map<ValueNode, ResolvedJavaType> newKnownTypes = Node.newIdentityMap();
+            Map<LogicNode, ValueNode> newTrueConditions = Node.newIdentityMap();
+            Map<LogicNode, ValueNode> newFalseConditions = Node.newIdentityMap();
+            Map<ValueNode, GuardedStamp> newValueConstraints = Node.newIdentityMap();
 
-            HashSet<ValueNode> newKnownNull = new HashSet<>(knownNull);
-            HashSet<ValueNode> newKnownNonNull = new HashSet<>(knownNonNull);
+            Set<ValueNode> newKnownNull = Node.newSet(knownNull);
+            Set<ValueNode> newKnownNonNull = Node.newSet(knownNonNull);
             for (State state : withStates) {
                 newKnownNull.retainAll(state.knownNull);
                 newKnownNonNull.retainAll(state.knownNonNull);
@@ -678,7 +676,7 @@ public class ConditionalEliminationPhase extends Phase {
                 }
 
                 // Collect the guards which have produced conditional stamps.
-                HashSet<GuardNode> provers = new HashSet<>();
+                Set<GuardNode> provers = Node.newSet();
                 for (Map.Entry<ValueNode, GuardedStamp> e : state.valueConstraints.entrySet()) {
                     provers.add(e.getValue().getGuard());
                 }

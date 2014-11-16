@@ -62,6 +62,9 @@ public class LoadHubNode extends FloatingGuardedNode implements Lowerable, Canon
 
     @Override
     public void lower(LoweringTool tool) {
+        if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.HIGH_TIER) {
+            return;
+        }
         tool.getLowerer().lower(this, tool);
     }
 

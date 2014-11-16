@@ -47,10 +47,6 @@ public class HotSpotUnresolvedField implements JavaField {
         return type;
     }
 
-    public Kind getKind() {
-        return type.getKind();
-    }
-
     public JavaType getDeclaringClass() {
         return holder;
     }

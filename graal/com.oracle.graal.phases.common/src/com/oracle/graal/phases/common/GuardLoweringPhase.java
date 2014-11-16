@@ -23,7 +23,6 @@
 package com.oracle.graal.phases.common;
 
 import static com.oracle.graal.compiler.common.GraalOptions.*;
-import static com.oracle.graal.graph.util.CollectionsAccess.*;
 
 import java.util.*;
 import java.util.Map.Entry;
@@ -62,7 +61,7 @@ public class GuardLoweringPhase extends BasePhase<MidTierContext> {
 
     private static class UseImplicitNullChecks extends ScheduledNodeIterator {
 
-        private final Map<ValueNode, GuardNode> nullGuarded = newIdentityMap();
+        private final Map<ValueNode, GuardNode> nullGuarded = Node.newIdentityMap();
         private final int implicitNullCheckLimit;
 
         UseImplicitNullChecks(int implicitNullCheckLimit) {

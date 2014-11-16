@@ -272,6 +272,8 @@ public final class GraalOptions {
     public static final OptionValue<Boolean> OptFoldMemory = new OptionValue<>(false);
     @Option(help = "Allow backend to match complex expressions.")
     public static final OptionValue<Boolean> MatchExpressions = new OptionValue<>(true);
+    @Option(help = "Constant fold final fields with default values.")
+    public static final OptionValue<Boolean> TrustFinalDefaultFields = new OptionValue<>(true);
 
 
     /**

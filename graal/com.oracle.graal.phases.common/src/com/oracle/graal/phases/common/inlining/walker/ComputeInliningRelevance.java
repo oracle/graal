@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.phases.common.inlining.walker;
 
-import static com.oracle.graal.graph.util.CollectionsAccess.*;
-
 import java.util.*;
 import java.util.function.*;
 
@@ -71,10 +69,10 @@ public class ComputeInliningRelevance {
             rootScope = new Scope(graph.start(), null);
         } else {
             if (nodeRelevances == null) {
-                nodeRelevances = newNodeIdentityMap(EXPECTED_MIN_INVOKE_COUNT + graph.getNodeCount() / EXPECTED_INVOKE_RATIO);
+                nodeRelevances = Node.newIdentityMap(EXPECTED_MIN_INVOKE_COUNT + graph.getNodeCount() / EXPECTED_INVOKE_RATIO);
             }
             NodeWorkList workList = graph.createNodeWorkList();
-            Map<LoopBeginNode, Scope> loops = newNodeIdentityMap(EXPECTED_LOOP_COUNT);
+            Map<LoopBeginNode, Scope> loops = Node.newIdentityMap(EXPECTED_LOOP_COUNT);
 
             loops.put(null, new Scope(graph.start(), null));
             for (LoopBeginNode loopBegin : graph.getNodes(LoopBeginNode.class)) {

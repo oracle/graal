@@ -23,6 +23,7 @@
 package com.oracle.graal.phases.common.inlining.walker;
 
 import com.oracle.graal.api.meta.ResolvedJavaMethod;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.graph.FixedNodeProbabilityCache;
 
@@ -93,7 +94,7 @@ public final class CallsiteHolderExplorable extends CallsiteHolder {
         if (freshlyInstantiatedArguments == null || freshlyInstantiatedArguments.isEmpty()) {
             return Collections.EMPTY_SET;
         }
-        Set<ParameterNode> result = new HashSet<>();
+        Set<ParameterNode> result = Node.newSet();
         for (ParameterNode p : graph.getNodes(ParameterNode.class)) {
             if (freshlyInstantiatedArguments.get(p.index())) {
                 result.add(p);

@@ -42,7 +42,7 @@ public class MethodUniverse extends TypeUniverse {
                 methods.put(m, method);
             }
             for (Constructor<?> m : c.getDeclaredConstructors()) {
-                constructors.put(m, metaAccess.lookupJavaConstructor(m));
+                constructors.put(m, metaAccess.lookupJavaMethod(m));
             }
         }
     }

@@ -676,13 +676,16 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     /**
-     * Determines if every compilation should also be attempted in a replay {@link Context}.
-     *
-     * <pre>
-     * -Dgraal.testReplay=true
-     * </pre>
+     * Determines if {@linkplain #compile(ResolvedJavaMethod, StructuredGraph) compilation} should
+     * also be attempted in a replay {@link Context} where possible.
      */
     private static final boolean TEST_REPLAY = Boolean.getBoolean("graal.testReplay");
+
+    /**
+     * Determines if a {@link #checkCompilationResultsEqual mismatching} replay compilation result
+     * results in a diagnostic message or a test error.
+     */
+    private static final boolean TEST_REPLAY_MISMATCH_IS_FAILURE = Boolean.parseBoolean(System.getProperty("graal.testReplay.strict", "true"));
 
     /**
      * Directory into which tests can dump content useful in debugging test failures.
@@ -699,8 +702,8 @@ public abstract class GraalCompilerTest extends GraalTest {
         return OUTPUT_DIR;
     }
 
-    protected String dissasembleToFile(CompilationResult original, ResolvedJavaMethod installedCodeOwner, String fileSuffix) {
-        String dis = getCodeCache().disassemble(original, null);
+    protected String dissasembleToFile(CompilationResult result, ResolvedJavaMethod installedCodeOwner, String fileSuffix) {
+        String dis = getCodeCache().disassemble(result, null);
         File disFile = new File(getOutputDir(), installedCodeOwner.format("%H.%n_%p").replace(", ", "__") + "." + fileSuffix);
         try (PrintStream ps = new PrintStream(new FileOutputStream(disFile))) {
             ps.println(dis);
@@ -710,60 +713,51 @@ public abstract class GraalCompilerTest extends GraalTest {
         }
     }
 
-    protected void assertCompilationResultsEqual(Context c, String prefix, CompilationResult original, CompilationResult derived, ResolvedJavaMethod installedCodeOwner) {
-        if (!derived.equals(original)) {
-            Mode mode = c.getMode();
-            // Temporarily force capturing mode as dumping/printing/disassembling
+    protected void checkCompilationResultsEqual(CompilationResult expected, CompilationResult actual, ResolvedJavaMethod installedCodeOwner) {
+        if (!actual.equals(expected)) {
+            // Reset to capturing mode as dumping/printing/disassembling
             // may need to execute proxy methods that have not yet been executed
-            c.setMode(Mode.Capturing);
-            try {
-                String originalDisFile = dissasembleToFile(original, installedCodeOwner, "original");
-                String derivedDisFile = dissasembleToFile(derived, installedCodeOwner, "derived");
-                String message = String.format("%s compilation result differs from original compilation result", prefix);
-                if (originalDisFile != null && derivedDisFile != null) {
-                    message += String.format(" [diff %s %s]", originalDisFile, derivedDisFile);
-                }
+            String expectedDisFile = dissasembleToFile(expected, installedCodeOwner, "expected");
+            String actualDisFile = dissasembleToFile(actual, installedCodeOwner, "actual");
+            String message = "Reply compilation result differs from capturing compilation result";
+            if (expectedDisFile != null && actualDisFile != null) {
+                message += String.format(" [diff %s %s]", expectedDisFile, actualDisFile);
+            }
+            if (TEST_REPLAY_MISMATCH_IS_FAILURE) {
                 Assert.fail(message);
-            } finally {
-                c.setMode(mode);
+            } else {
+                System.out.println(message);
             }
         }
     }
 
-    protected void replayCompile(CompilationResult originalResult, ResolvedJavaMethod installedCodeOwner, StructuredGraph graph) {
+    protected CompilationResult recompile(Context c, Mode mode, ResolvedJavaMethod installedCodeOwner) {
+        try (Debug.Scope s = Debug.scope(mode.name(), new DebugDumpScope(mode.name(), true))) {
 
-        StructuredGraph graphToCompile = graph == null ? parseForCompile(installedCodeOwner) : graph;
-        lastCompiledGraph = graphToCompile;
+            StructuredGraph graphToCompile = parseForCompile(installedCodeOwner);
 
-        CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graphToCompile.method(), false);
+            lastCompiledGraph = graphToCompile;
+
+            CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graphToCompile.method(), false);
+            Request<CompilationResult> request = c.get(new GraalCompiler.Request<>(graphToCompile, null, cc, installedCodeOwner, getProviders(), getBackend(), getCodeCache().getTarget(), null,
+                            getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL, getProfilingInfo(graphToCompile), getSpeculationLog(), getSuites(), new CompilationResult(),
+                            CompilationResultBuilderFactory.Default));
+            return GraalCompiler.compile(request);
+        } catch (Throwable e) {
+            throw Debug.handle(e);
+        }
+    }
+
+    protected void testReplayCompile(ResolvedJavaMethod installedCodeOwner) {
         try (Context c = new Context()) {
-            // Need to use an 'in context' copy of the original result when comparing for
-            // equality against other 'in context' results so that proxies are compared
-            // against proxies
-            CompilationResult originalResultInContext = c.get(originalResult);
 
             // Capturing compilation
-            Request<CompilationResult> capturingRequest = null;
-            try (Debug.Scope s = Debug.scope("CapturingCompiling", new DebugDumpScope("CAPTURE", true))) {
-                capturingRequest = c.get(new GraalCompiler.Request<>(graphToCompile, null, cc, installedCodeOwner, getProviders(), getBackend(), getCodeCache().getTarget(), null,
-                                getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL, getProfilingInfo(graphToCompile), getSpeculationLog(), getSuites(), new CompilationResult(),
-                                CompilationResultBuilderFactory.Default));
-                assertCompilationResultsEqual(c, "Capturing", originalResultInContext, GraalCompiler.compile(capturingRequest), installedCodeOwner);
-            } catch (Throwable e) {
-                throw Debug.handle(e);
-            }
+            CompilationResult expected = recompile(c, Mode.Capturing, installedCodeOwner);
 
             // Replay compilation
-            try (Debug.Scope s = Debug.scope("ReplayCompiling", new DebugDumpScope("REPLAY", true))) {
-                Request<CompilationResult> replyRequest = c.get(new GraalCompiler.Request<>(graphToCompile.copy(), null, cc, capturingRequest.installedCodeOwner, capturingRequest.providers,
-                                capturingRequest.backend, capturingRequest.target, null, capturingRequest.graphBuilderSuite, capturingRequest.optimisticOpts, capturingRequest.profilingInfo,
-                                capturingRequest.speculationLog, capturingRequest.suites, new CompilationResult(), capturingRequest.factory));
-                c.setMode(Mode.Replaying);
+            CompilationResult actual = recompile(c, Mode.Replaying, installedCodeOwner);
 
-                assertCompilationResultsEqual(c, "Replay", originalResultInContext, GraalCompiler.compile(replyRequest), installedCodeOwner);
-            } catch (Throwable e) {
-                throw Debug.handle(e);
-            }
+            checkCompilationResultsEqual(expected, actual, installedCodeOwner);
         }
     }
 
@@ -783,7 +777,7 @@ public abstract class GraalCompilerTest extends GraalTest {
                         OptimisticOptimizations.ALL, getProfilingInfo(graphToCompile), getSpeculationLog(), getSuites(), new CompilationResult(), CompilationResultBuilderFactory.Default);
 
         if (TEST_REPLAY && graph == null) {
-            replayCompile(res, installedCodeOwner, null);
+            testReplayCompile(installedCodeOwner);
         }
         return res;
     }

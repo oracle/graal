@@ -33,6 +33,7 @@ import static com.oracle.graal.replacements.nodes.ExplodeLoopNode.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.debug.*;
@@ -49,7 +50,6 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.Snippet.ConstantParameter;
-import com.oracle.graal.replacements.Snippet.Fold;
 import com.oracle.graal.replacements.Snippet.VarargsParameter;
 import com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates;
 import com.oracle.graal.replacements.SnippetTemplate.Arguments;
@@ -151,10 +151,11 @@ public class NewObjectSnippets implements Snippets {
 
     @Snippet
     public static Object allocateInstanceDynamic(Class<?> type, @ConstantParameter boolean fillContents, @ConstantParameter Register threadRegister, @ConstantParameter String typeContext) {
-        Word hub = loadWordFromObject(type, klassOffset(), CLASS_KLASS_LOCATION);
+        TypePointer hubPtr = ClassGetHubNode.readClass(type);
+        Pointer hub = Word.fromTypePointer(hubPtr);
         if (probability(FAST_PATH_PROBABILITY, !hub.equal(Word.zero()))) {
             if (probability(FAST_PATH_PROBABILITY, isInstanceKlassFullyInitialized(hub))) {
-                int layoutHelper = readLayoutHelper(hub);
+                int layoutHelper = readLayoutHelper(hubPtr);
                 /*
                  * src/share/vm/oops/klass.hpp: For instances, layout helper is a positive number,
                  * the instance size. This size is already passed through align_object_size and
@@ -223,7 +224,7 @@ public class NewObjectSnippets implements Snippets {
             return dynamicNewArrayStub(DYNAMIC_NEW_ARRAY, elementType, length);
         }
 
-        int layoutHelper = readLayoutHelper(hub);
+        int layoutHelper = readLayoutHelper(hub.toTypePointer());
         //@formatter:off
         // from src/share/vm/oops/klass.hpp:
         //

@@ -31,13 +31,14 @@ import java.util.*;
 import sun.misc.*;
 
 import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.compiler.common.remote.*;
 import com.oracle.graal.graph.Graph.NodeEventListener;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 
 /**
- * This class is the base class for all nodes, it represent a node which can be inserted in a
+ * This class is the base class for all nodes. It represents a node that can be inserted in a
  * {@link Graph}.
  * <p>
  * Once a node has been added to a graph, it has a graph-unique {@link #id()}. Edges in the
@@ -47,6 +48,21 @@ import com.oracle.graal.nodeinfo.*;
  * this field points to.
  * <p>
  * Nodes which are be value numberable should implement the {@link ValueNumberable} interface.
+ *
+ * <h1>Replay Compilation</h1>
+ *
+ * To enable deterministic replay compilation, node sets and node maps should be instantiated with
+ * the following methods:
+ * <ul>
+ * <li>{@link #newSet()}</li>
+ * <li>{@link #newSet(Collection)}</li>
+ * <li>{@link #newMap()}</li>
+ * <li>{@link #newMap(int)}</li>
+ * <li>{@link #newMap(Map)}</li>
+ * <li>{@link #newIdentityMap()}</li>
+ * <li>{@link #newIdentityMap(int)}</li>
+ * <li>{@link #newIdentityMap(Map)}</li>
+ * </ul>
  *
  * <h1>Assertions and Verification</h1>
  *
@@ -190,6 +206,59 @@ public abstract class Node implements Cloneable, Formattable {
 
     int id() {
         return id;
+    }
+
+    /**
+     * Creates a {@link Node} set. If the current thread has a non-null
+     * {@linkplain Context#getCurrent() compilation replay scope}, the returned set will have a
+     * deterministic iteration order determined by the order in which elements are inserted in the
+     * map.
+     */
+    public static <E extends Node> Set<E> newSet() {
+        return Context.getCurrent() == null ? new HashSet<>() : new LinkedHashSet<>();
+    }
+
+    /**
+     * @see #newSet()
+     */
+    public static <E extends Node> Set<E> newSet(Collection<? extends E> c) {
+        return Context.getCurrent() == null ? new HashSet<>(c) : new LinkedHashSet<>(c);
+    }
+
+    public static <K extends Node, V> Map<K, V> newMap() {
+        // Node.equals() and Node.hashCode() are final and are implemented
+        // purely in terms of identity so HashMap and IdentityHashMap with
+        // Node's as keys will behave the same. We choose to use the latter
+        // due to its lighter memory footprint.
+        return newIdentityMap();
+    }
+
+    public static <K extends Node, V> Map<K, V> newMap(Map<K, V> m) {
+        // Node.equals() and Node.hashCode() are final and are implemented
+        // purely in terms of identity so HashMap and IdentityHashMap with
+        // Node's as keys will behave the same. We choose to use the latter
+        // due to its lighter memory footprint.
+        return newIdentityMap(m);
+    }
+
+    public static <K extends Node, V> Map<K, V> newMap(int expectedMaxSize) {
+        // Node.equals() and Node.hashCode() are final and are implemented
+        // purely in terms of identity so HashMap and IdentityHashMap with
+        // Node's as keys will behave the same. We choose to use the latter
+        // due to its lighter memory footprint.
+        return newIdentityMap(expectedMaxSize);
+    }
+
+    public static <K extends Node, V> Map<K, V> newIdentityMap() {
+        return Context.newIdentityMap();
+    }
+
+    public static <K extends Node, V> Map<K, V> newIdentityMap(Map<K, V> m) {
+        return Context.newIdentityMap(m);
+    }
+
+    public static <K extends Node, V> Map<K, V> newIdentityMap(int expectedMaxSize) {
+        return Context.newIdentityMap(expectedMaxSize);
     }
 
     /**

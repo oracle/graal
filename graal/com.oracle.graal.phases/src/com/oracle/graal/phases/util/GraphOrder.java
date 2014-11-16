@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.phases.util;
 
-import static com.oracle.graal.graph.util.CollectionsAccess.*;
-
 import java.util.*;
 
 import com.oracle.graal.compiler.common.*;
@@ -138,7 +136,7 @@ public final class GraphOrder {
     public static boolean assertSchedulableGraph(final StructuredGraph graph) {
         try {
             final SchedulePhase schedule = new SchedulePhase(SchedulingStrategy.LATEST_OUT_OF_LOOPS, MemoryScheduling.NONE);
-            final Map<LoopBeginNode, NodeBitMap> loopEntryStates = newNodeIdentityMap();
+            final Map<LoopBeginNode, NodeBitMap> loopEntryStates = Node.newIdentityMap();
             schedule.apply(graph, false);
 
             BlockIteratorClosure<NodeBitMap> closure = new BlockIteratorClosure<NodeBitMap>() {

@@ -23,9 +23,9 @@
 package com.oracle.graal.hotspot.replacements;
 
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
-import static com.oracle.graal.nodes.PiNode.*;
 
 import com.oracle.graal.api.replacements.*;
+import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.word.*;
@@ -36,11 +36,10 @@ import com.oracle.graal.word.*;
 @ClassSubstitution(java.lang.Object.class)
 public class ObjectSubstitutions {
 
-    @MacroSubstitution(macro = ObjectGetClassNode.class, isStatic = false, forced = true)
     @MethodSubstitution(isStatic = false, forced = true)
     public static Class<?> getClass(final Object thisObj) {
-        Pointer hub = loadHub(thisObj);
-        return piCastExactNonNull(hub.readObject(Word.signed(classMirrorOffset()), CLASS_MIRROR_LOCATION), Class.class);
+        TypePointer hub = loadHub(GuardingPiNode.guardingNonNull(thisObj));
+        return HubGetClassNode.readClass(hub);
     }
 
     @MethodSubstitution(isStatic = false)

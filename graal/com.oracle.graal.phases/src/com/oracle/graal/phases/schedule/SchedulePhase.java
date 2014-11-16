@@ -835,7 +835,7 @@ public final class SchedulePhase extends Phase {
 
     private boolean noDuplicatedNodesInBlock(Block b) {
         List<ScheduledNode> list = blockToNodesMap.get(b);
-        HashSet<ScheduledNode> hashset = new HashSet<>(list);
+        Set<ScheduledNode> hashset = Node.newSet(list);
         return list.size() == hashset.size();
     }
 

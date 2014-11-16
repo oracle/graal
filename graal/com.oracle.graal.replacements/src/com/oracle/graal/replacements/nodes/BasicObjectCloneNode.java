@@ -47,7 +47,11 @@ public class BasicObjectCloneNode extends MacroStateSplitNode implements Virtual
 
     @Override
     public boolean inferStamp() {
-        return updateStamp(getObject().stamp());
+        Stamp objectStamp = getObject().stamp();
+        if (objectStamp instanceof ObjectStamp) {
+            objectStamp = objectStamp.join(StampFactory.objectNonNull());
+        }
+        return updateStamp(objectStamp);
     }
 
     public ValueNode getObject() {

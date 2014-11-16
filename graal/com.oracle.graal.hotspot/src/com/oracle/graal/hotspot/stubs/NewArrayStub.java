@@ -29,6 +29,7 @@ import static com.oracle.graal.hotspot.stubs.StubUtil.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
@@ -40,7 +41,6 @@ import com.oracle.graal.nodes.StructuredGraph.GuardsStage;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.Snippet.ConstantParameter;
-import com.oracle.graal.replacements.Snippet.Fold;
 import com.oracle.graal.replacements.SnippetTemplate.Arguments;
 import com.oracle.graal.replacements.SnippetTemplate.SnippetInfo;
 import com.oracle.graal.word.*;
@@ -84,7 +84,7 @@ public class NewArrayStub extends SnippetStub {
      */
     @Snippet
     private static Object newArray(TypePointer hub, int length, @ConstantParameter TypePointer intArrayHub, @ConstantParameter Register threadRegister) {
-        int layoutHelper = Word.fromTypePointer(hub).readInt(klassLayoutHelperOffset(), KLASS_LAYOUT_HELPER_LOCATION);
+        int layoutHelper = loadKlassLayoutHelperIntrinsic(hub);
         int log2ElementSize = (layoutHelper >> layoutHelperLog2ElementSizeShift()) & layoutHelperLog2ElementSizeMask();
         int headerSize = (layoutHelper >> layoutHelperHeaderSizeShift()) & layoutHelperHeaderSizeMask();
         int elementKind = (layoutHelper >> layoutHelperElementTypeShift()) & layoutHelperElementTypeMask();

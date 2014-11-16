@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,9 +20,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.common.type;
+package com.oracle.graal.api.replacements;
 
-public interface StampProvider {
+import java.lang.annotation.*;
 
-    Stamp stamp();
+/**
+ * Annotates a method replaced by a compile-time constant. A (resolved) call to the annotated method
+ * is replaced with a constant obtained by calling the annotated method via reflection.
+ *
+ * All arguments to such a method (including the receiver if applicable) must be compile-time
+ * constants.
+ */
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.METHOD)
+public @interface Fold {
 }

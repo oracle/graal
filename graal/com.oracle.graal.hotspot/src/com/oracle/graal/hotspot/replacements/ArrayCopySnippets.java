@@ -93,7 +93,7 @@ public class ArrayCopySnippets implements Snippets {
         UnsafeArrayCopyNode.arraycopy(nonNullSrc, srcPos, nonNullDest, destPos, length, baseKind);
     }
 
-    private static int checkArrayType(Pointer hub) {
+    private static int checkArrayType(TypePointer hub) {
         int layoutHelper = readLayoutHelper(hub);
         if (probability(SLOW_PATH_PROBABILITY, layoutHelper >= 0)) {
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
@@ -183,9 +183,9 @@ public class ArrayCopySnippets implements Snippets {
     public static void arraycopy(Object src, int srcPos, Object dest, int destPos, int length) {
         Object nonNullSrc = guardingNonNull(src);
         Object nonNullDest = guardingNonNull(dest);
-        Pointer srcHub = loadHub(nonNullSrc);
-        Pointer destHub = loadHub(nonNullDest);
-        if (probability(FAST_PATH_PROBABILITY, srcHub.equal(destHub)) && probability(FAST_PATH_PROBABILITY, nonNullSrc != nonNullDest)) {
+        TypePointer srcHub = loadHub(nonNullSrc);
+        TypePointer destHub = loadHub(nonNullDest);
+        if (probability(FAST_PATH_PROBABILITY, Word.equal(srcHub, destHub)) && probability(FAST_PATH_PROBABILITY, nonNullSrc != nonNullDest)) {
             int layoutHelper = checkArrayType(srcHub);
             final boolean isObjectArray = ((layoutHelper & layoutHelperElementTypePrimitiveInPlace()) == 0);
 

@@ -24,11 +24,10 @@ package com.oracle.graal.phases.common;
 
 import static com.oracle.graal.api.meta.LocationIdentity.*;
 import static com.oracle.graal.graph.Graph.NodeEvent.*;
-import static com.oracle.graal.graph.util.CollectionsAccess.*;
-
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.remote.*;
 import com.oracle.graal.graph.Graph.NodeEventScope;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
@@ -131,7 +130,7 @@ public class FloatingReadPhase extends Phase {
 
     @Override
     protected void run(StructuredGraph graph) {
-        Map<LoopBeginNode, Set<LocationIdentity>> modifiedInLoops = newNodeIdentityMap();
+        Map<LoopBeginNode, Set<LocationIdentity>> modifiedInLoops = Node.newIdentityMap();
         ReentrantNodeIterator.apply(new CollectMemoryCheckpointsClosure(modifiedInLoops), graph.start(), new HashSet<LocationIdentity>());
         HashSetNodeEventListener listener = new HashSetNodeEventListener(EnumSet.of(NODE_ADDED, ZERO_USAGES));
         try (NodeEventScope nes = graph.trackNodeEvents(listener)) {
@@ -163,7 +162,7 @@ public class FloatingReadPhase extends Phase {
         if (updateExistingPhis) {
             for (MemoryPhiNode phi : merge.phis().filter(MemoryPhiNode.class)) {
                 if (existingPhis == null) {
-                    existingPhis = newIdentityMap();
+                    existingPhis = Context.newMap();
                 }
                 phi.values().clear();
                 existingPhis.put(phi.getLocationIdentity(), phi);

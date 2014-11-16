@@ -79,7 +79,6 @@ public class CompressionNode extends UnaryNode implements ConvertNode, LIRLowera
         } else if (c instanceof HotSpotObjectConstant) {
             return ((HotSpotObjectConstant) c).compress();
         } else if (c instanceof HotSpotMetaspaceConstant) {
-            assert ((HotSpotMetaspaceConstant) c).stamp().getStackKind() == Kind.Long;
             return ((HotSpotMetaspaceConstant) c).compress(encoding);
         } else if (c instanceof PrimitiveConstant) {
             assert ((PrimitiveConstant) c).getKind() == Kind.Long;
@@ -95,7 +94,6 @@ public class CompressionNode extends UnaryNode implements ConvertNode, LIRLowera
         } else if (c instanceof HotSpotObjectConstant) {
             return ((HotSpotObjectConstant) c).uncompress();
         } else if (c instanceof HotSpotMetaspaceConstant) {
-            assert ((HotSpotMetaspaceConstant) c).stamp().getStackKind() == Kind.Int;
             return ((HotSpotMetaspaceConstant) c).uncompress(encoding);
         } else if (c instanceof PrimitiveConstant) {
             assert ((PrimitiveConstant) c).getKind() == Kind.Int;

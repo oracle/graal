@@ -25,7 +25,6 @@ package com.oracle.graal.hotspot.meta;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.hotspot.HotSpotVMConfig.CompressEncoding;
 
 public final class HotSpotMetaspaceConstantImpl extends PrimitiveConstant implements HotSpotMetaspaceConstant, VMConstant {
@@ -62,13 +61,6 @@ public final class HotSpotMetaspaceConstantImpl extends PrimitiveConstant implem
     @Override
     public String toString() {
         return super.toString() + "{" + metaspaceObject + (compressed ? ";compressed}" : "}");
-    }
-
-    public Stamp stamp() {
-        if (compressed) {
-            return StampFactory.forInteger(32);
-        }
-        return StampFactory.forInteger(64);
     }
 
     public boolean isCompressed() {

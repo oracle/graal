@@ -40,7 +40,7 @@ public class HashSetNodeEventListener implements NodeEventListener {
      * Creates a {@link NodeEventListener} that collects nodes from all events.
      */
     public HashSetNodeEventListener() {
-        this.nodes = new HashSet<>();
+        this.nodes = Node.newSet();
         this.filter = EnumSet.allOf(NodeEvent.class);
     }
 

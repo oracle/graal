@@ -29,7 +29,6 @@ import java.util.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.java.*;
 
 /**
  * Represents a method signature.
@@ -116,15 +115,6 @@ public class HotSpotSignature extends CompilerObject implements Signature {
     @Override
     public Kind getParameterKind(int index) {
         return Kind.fromTypeString(parameters.get(index));
-    }
-
-    @Override
-    public int getParameterSlots(boolean withReceiver) {
-        int argSlots = 0;
-        for (int i = 0; i < getParameterCount(false); i++) {
-            argSlots += HIRFrameStateBuilder.stackSlots(getParameterKind(i));
-        }
-        return argSlots + (withReceiver ? 1 : 0);
     }
 
     private static boolean checkValidCache(JavaType type, ResolvedJavaType accessingClass) {

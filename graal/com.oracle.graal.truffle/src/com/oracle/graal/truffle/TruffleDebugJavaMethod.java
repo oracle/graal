@@ -68,28 +68,19 @@ public class TruffleDebugJavaMethod implements JavaMethod {
 
     private static final Signature signature = new Signature() {
 
+        @Override
         public JavaType getReturnType(ResolvedJavaType accessingClass) {
             return declaringClass;
         }
 
-        public Kind getReturnKind() {
-            return declaringClass.getKind();
-        }
-
-        public JavaType getParameterType(int index, ResolvedJavaType accessingClass) {
-            throw new IndexOutOfBoundsException();
-        }
-
-        public int getParameterSlots(boolean withReceiver) {
-            return 0;
-        }
-
-        public Kind getParameterKind(int index) {
-            throw new IndexOutOfBoundsException();
-        }
-
+        @Override
         public int getParameterCount(boolean receiver) {
             return 0;
+        }
+
+        @Override
+        public JavaType getParameterType(int index, ResolvedJavaType accessingClass) {
+            throw new IndexOutOfBoundsException();
         }
     };
 

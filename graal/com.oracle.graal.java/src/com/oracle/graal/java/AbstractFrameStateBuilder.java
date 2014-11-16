@@ -23,8 +23,6 @@
 
 package com.oracle.graal.java;
 
-import java.util.*;
-
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.java.BciBlockMapping.BciBlock;
@@ -43,11 +41,11 @@ public abstract class AbstractFrameStateBuilder<T extends KindProvider, S extend
      */
     protected boolean rethrowException;
 
-    public AbstractFrameStateBuilder(ResolvedJavaMethod method, T[] l, T[] s, T[] lo) {
+    public AbstractFrameStateBuilder(ResolvedJavaMethod method) {
         this.method = method;
-        this.locals = l;
-        this.stack = s;
-        this.lockedObjects = lo;
+        this.locals = allocateArray(method.getMaxLocals());
+        this.stack = allocateArray(Math.max(1, method.getMaxStackSize()));
+        this.lockedObjects = allocateArray(0);
     }
 
     protected AbstractFrameStateBuilder(S other) {
@@ -55,7 +53,7 @@ public abstract class AbstractFrameStateBuilder<T extends KindProvider, S extend
         this.stackSize = other.stackSize;
         this.locals = other.locals.clone();
         this.stack = other.stack.clone();
-        this.lockedObjects = other.lockedObjects == getEmptyArray() ? getEmptyArray() : other.lockedObjects.clone();
+        this.lockedObjects = other.lockedObjects.length == 0 ? other.lockedObjects : other.lockedObjects.clone();
         this.rethrowException = other.rethrowException;
 
         assert locals.length == method.getMaxLocals();
@@ -64,7 +62,7 @@ public abstract class AbstractFrameStateBuilder<T extends KindProvider, S extend
 
     public abstract S copy();
 
-    protected abstract T[] getEmptyArray();
+    protected abstract T[] allocateArray(int length);
 
     public abstract boolean isCompatibleWith(S other);
 
@@ -360,18 +358,22 @@ public abstract class AbstractFrameStateBuilder<T extends KindProvider, S extend
      *
      * @return an array containing the arguments off of the stack
      */
-    public T[] popArguments(int slotSize, int argSize) {
-        int base = stackSize - slotSize;
-        List<T> r = new ArrayList<>(argSize);
-        int stackindex = 0;
-        while (stackindex < slotSize) {
-            T element = stack[base + stackindex];
-            assert element != null;
-            r.add(element);
-            stackindex += stackSlots(element.getKind());
+    public T[] popArguments(int argSize) {
+        T[] result = allocateArray(argSize);
+        int newStackSize = stackSize;
+        for (int i = argSize - 1; i >= 0; i--) {
+            newStackSize--;
+            if (stack[newStackSize] == null) {
+                /* Two-slot value. */
+                newStackSize--;
+                assert stackSlots(stack[newStackSize].getKind()) == 2;
+            } else {
+                assert stackSlots(stack[newStackSize].getKind()) == 1;
+            }
+            result[i] = stack[newStackSize];
         }
-        stackSize = base;
-        return r.toArray(getEmptyArray());
+        stackSize = newStackSize;
+        return result;
     }
 
     /**

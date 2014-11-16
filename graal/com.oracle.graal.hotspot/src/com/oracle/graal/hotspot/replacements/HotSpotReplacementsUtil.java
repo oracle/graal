@@ -29,13 +29,14 @@ import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.replacements.*;
-import com.oracle.graal.replacements.Snippet.Fold;
 import com.oracle.graal.replacements.nodes.*;
 import com.oracle.graal.word.*;
 
@@ -297,9 +298,17 @@ public class HotSpotReplacementsUtil {
         return config().klassLayoutHelperOffset;
     }
 
-    public static int readLayoutHelper(Pointer hub) {
-        return hub.readInt(klassLayoutHelperOffset(), KLASS_LAYOUT_HELPER_LOCATION);
+    public static int readLayoutHelper(TypePointer hub) {
+        // return hub.readInt(klassLayoutHelperOffset(), KLASS_LAYOUT_HELPER_LOCATION);
+        GuardingNode anchorNode = SnippetAnchorNode.anchor();
+        return loadKlassLayoutHelperIntrinsic(hub, anchorNode);
     }
+
+    @NodeIntrinsic(value = KlassLayoutHelperNode.class)
+    public static native int loadKlassLayoutHelperIntrinsic(TypePointer object, GuardingNode anchor);
+
+    @NodeIntrinsic(value = KlassLayoutHelperNode.class)
+    public static native int loadKlassLayoutHelperIntrinsic(TypePointer object);
 
     /**
      * Checks if class {@code klass} is an array.
@@ -309,7 +318,7 @@ public class HotSpotReplacementsUtil {
      * @param klass the class to be checked
      * @return true if klass is an array, false otherwise
      */
-    public static boolean klassIsArray(Word klass) {
+    public static boolean klassIsArray(TypePointer klass) {
         /*
          * The less-than check only works if both values are ints. We use local variables to make
          * sure these are still ints and haven't changed.
@@ -540,8 +549,8 @@ public class HotSpotReplacementsUtil {
     /**
      * Loads the hub of an object (without null checking it first).
      */
-    public static Pointer loadHub(Object object) {
-        return Word.fromTypePointer(loadHubIntrinsic(object));
+    public static TypePointer loadHub(Object object) {
+        return loadHubIntrinsic(object);
     }
 
     public static Object verifyOop(Object object) {

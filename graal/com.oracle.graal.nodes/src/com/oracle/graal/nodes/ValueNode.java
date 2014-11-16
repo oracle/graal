@@ -32,7 +32,7 @@ import com.oracle.graal.nodeinfo.*;
  * instructions.
  */
 @NodeInfo
-public abstract class ValueNode extends ScheduledNode implements StampProvider, KindProvider {
+public abstract class ValueNode extends ScheduledNode implements KindProvider {
 
     /**
      * The kind of this value. This is {@link Kind#Void} for instructions that produce no value.
