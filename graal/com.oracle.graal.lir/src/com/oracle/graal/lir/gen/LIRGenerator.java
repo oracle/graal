@@ -103,6 +103,10 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
         return providers.getForeignCalls();
     }
 
+    protected LIRKindTool getLIRKindTool() {
+        return lirKindTool;
+    }
+
     @Override
     public Variable newVariable(LIRKind lirKind) {
         return new Variable(lirKind, res.getLIR().nextVariable());

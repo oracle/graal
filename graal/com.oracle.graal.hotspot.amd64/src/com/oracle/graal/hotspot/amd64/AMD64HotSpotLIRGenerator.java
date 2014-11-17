@@ -35,6 +35,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.amd64.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
+import com.oracle.graal.compiler.common.spi.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.HotSpotVMConfig.CompressEncoding;
 import com.oracle.graal.hotspot.amd64.AMD64HotSpotMove.HotSpotStoreConstantOp;
@@ -63,7 +64,11 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     private HotSpotLockStack lockStack;
 
     protected AMD64HotSpotLIRGenerator(HotSpotProviders providers, HotSpotVMConfig config, CallingConvention cc, LIRGenerationResult lirGenRes) {
-        super(new HotSpotLIRKindTool(providers.getCodeCache().getTarget().wordKind), providers, cc, lirGenRes);
+        this(new HotSpotLIRKindTool(providers.getCodeCache().getTarget().wordKind), providers, config, cc, lirGenRes);
+    }
+
+    protected AMD64HotSpotLIRGenerator(LIRKindTool lirKindTool, HotSpotProviders providers, HotSpotVMConfig config, CallingConvention cc, LIRGenerationResult lirGenRes) {
+        super(lirKindTool, providers, cc, lirGenRes);
         assert config.basicLockSize == 8;
         this.config = config;
     }
