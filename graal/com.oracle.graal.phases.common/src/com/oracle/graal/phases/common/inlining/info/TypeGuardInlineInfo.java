@@ -24,17 +24,18 @@ package com.oracle.graal.phases.common.inlining.info;
 
 import java.util.*;
 
-import com.oracle.graal.api.code.Assumptions;
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.calc.Condition;
+import com.oracle.graal.compiler.common.calc.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
-import com.oracle.graal.nodes.calc.CompareNode;
-import com.oracle.graal.nodes.extended.LoadHubNode;
-import com.oracle.graal.phases.common.inlining.InliningUtil;
-import com.oracle.graal.phases.common.inlining.info.elem.Inlineable;
-import com.oracle.graal.phases.util.Providers;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.phases.common.inlining.*;
+import com.oracle.graal.phases.common.inlining.info.elem.*;
+import com.oracle.graal.phases.util.*;
 
 /**
  * Represents an inlining opportunity for which profiling information suggests a monomorphic
@@ -103,7 +104,7 @@ public class TypeGuardInlineInfo extends AbstractInlineInfo {
 
     private void createGuard(StructuredGraph graph, MetaAccessProvider metaAccess) {
         ValueNode nonNullReceiver = InliningUtil.nonNullReceiver(invoke);
-        LoadHubNode receiverHub = graph.unique(LoadHubNode.create(nonNullReceiver));
+        LoadHubNode receiverHub = graph.unique(LoadHubNode.create(StampFactory.forPointer(PointerType.Type), nonNullReceiver));
         ConstantNode typeHub = ConstantNode.forConstant(receiverHub.stamp(), type.getObjectHub(), metaAccess, graph);
 
         CompareNode typeCheck = CompareNode.createCompareNode(graph, Condition.EQ, receiverHub, typeHub);

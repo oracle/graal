@@ -214,7 +214,7 @@ public class NodeIntrinsificationPhase extends Phase {
 
         for (ResolvedJavaMethod m : nodeClass.getDeclaredMethods()) {
             if (m.getName().equals("create") && !m.isSynthetic()) {
-                JavaConstant[] match = match(graph, m, parameterTypes, nodeFactoryArguments);
+                JavaConstant[] match = match(graph, invokeStamp, m, parameterTypes, nodeFactoryArguments);
 
                 if (match != null) {
                     if (factory == null) {
@@ -267,7 +267,7 @@ public class NodeIntrinsificationPhase extends Phase {
         return false;
     }
 
-    private JavaConstant[] match(StructuredGraph graph, ResolvedJavaMethod m, ResolvedJavaType[] parameterTypes, JavaConstant[] nodeFactoryArguments) {
+    private JavaConstant[] match(StructuredGraph graph, Stamp invokeStamp, ResolvedJavaMethod m, ResolvedJavaType[] parameterTypes, JavaConstant[] nodeFactoryArguments) {
         JavaConstant[] arguments = null;
         JavaConstant[] injected = null;
 
@@ -284,6 +284,8 @@ public class NodeIntrinsificationPhase extends Phase {
                     injected[injected.length - 1] = snippetReflection.forObject(providers.getForeignCalls());
                 } else if (signature[i].equals(metaAccess.lookupJavaType(SnippetReflectionProvider.class))) {
                     injected[injected.length - 1] = snippetReflection.forObject(snippetReflection);
+                } else if (signature[i].isAssignableFrom(metaAccess.lookupJavaType(Stamp.class))) {
+                    injected[injected.length - 1] = snippetReflection.forObject(invokeStamp);
                 } else {
                     throw new GraalInternalError("Cannot handle injected argument of type %s in %s", signature[i].toJavaName(), m.format("%H.%n(%p)"));
                 }
