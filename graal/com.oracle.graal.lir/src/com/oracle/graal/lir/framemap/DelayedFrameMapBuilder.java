@@ -34,21 +34,16 @@ import com.oracle.graal.lir.gen.*;
  */
 public class DelayedFrameMapBuilder implements FrameMapBuilder {
 
-    @FunctionalInterface
-    public interface FrameMapFactory {
-        FrameMap newFrameMap(RegisterConfig registerConfig);
-    }
-
     private final RegisterConfig registerConfig;
     private final CodeCacheProvider codeCache;
     protected final FrameMap frameMap;
     private final List<VirtualStackSlot> stackSlots;
     private final List<CallingConvention> calls;
 
-    public DelayedFrameMapBuilder(FrameMapFactory factory, CodeCacheProvider codeCache, RegisterConfig registerConfig) {
+    public DelayedFrameMapBuilder(FrameMap frameMap, CodeCacheProvider codeCache, RegisterConfig registerConfig) {
         this.registerConfig = registerConfig == null ? codeCache.getRegisterConfig() : registerConfig;
         this.codeCache = codeCache;
-        this.frameMap = factory.newFrameMap(registerConfig);
+        this.frameMap = frameMap;
         this.stackSlots = new ArrayList<>();
         this.calls = new ArrayList<>();
         this.mappables = new ArrayList<>();

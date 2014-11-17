@@ -387,7 +387,7 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
 
     @Override
     public FrameMapBuilder newFrameMapBuilder(RegisterConfig registerConfig) {
-        return new DelayedFrameMapBuilder(this::newFrameMap, getCodeCache(), registerConfig);
+        return new DelayedFrameMapBuilder(newFrameMap(registerConfig), getCodeCache(), registerConfig);
     }
 
     /**
