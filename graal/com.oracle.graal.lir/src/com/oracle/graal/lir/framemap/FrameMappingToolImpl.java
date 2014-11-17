@@ -59,10 +59,10 @@ public class FrameMappingToolImpl implements FrameMappingTool {
     }
 
     protected StackSlot mapSimpleVirtualStackSlot(SimpleVirtualStackSlot virtualStackSlot) {
-        return virtualStackSlot.transform();
+        return builder.frameMap.allocateSpillSlot(virtualStackSlot.getLIRKind());
     }
 
     protected StackSlot mapVirtualStackSlotRange(VirtualStackSlotRange virtualStackSlot) {
-        return virtualStackSlot.transform();
+        return builder.frameMap.allocateStackSlots(virtualStackSlot.getSlots(), virtualStackSlot.getObjects());
     }
 }

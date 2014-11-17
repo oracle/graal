@@ -104,7 +104,15 @@ public class DelayedFrameMapBuilder implements FrameMapBuilder {
 
         @Override
         public StackSlot transform() {
-            return frameMap.allocateStackSlots(slots, objects);
+            return frameMap.allocateStackSlots(getSlots(), getObjects());
+        }
+
+        public int getSlots() {
+            return slots;
+        }
+
+        public BitSet getObjects() {
+            return (BitSet) objects.clone();
         }
 
     }
