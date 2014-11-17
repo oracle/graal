@@ -29,11 +29,11 @@ import com.oracle.graal.compiler.common.*;
 
 public class FrameMappingToolImpl implements FrameMappingTool {
 
-    private final Map<VirtualStackSlot, StackSlot> mapping;
+    private final HashMap<VirtualStackSlot, StackSlot> mapping;
     private final DelayedFrameMapBuilder builder;
 
-    public FrameMappingToolImpl(Map<VirtualStackSlot, StackSlot> mapping, DelayedFrameMapBuilder builder) {
-        this.mapping = mapping;
+    public FrameMappingToolImpl(DelayedFrameMapBuilder builder) {
+        this.mapping = new HashMap<>();
         this.builder = builder;
     }
 
@@ -41,7 +41,7 @@ public class FrameMappingToolImpl implements FrameMappingTool {
         return mapping.get(slot);
     }
 
-    public void mapStackSlots() {
+    void mapStackSlots() {
         for (VirtualStackSlot virtualSlot : builder.getStackSlots()) {
             final StackSlot slot;
             if (virtualSlot instanceof SimpleVirtualStackSlot) {

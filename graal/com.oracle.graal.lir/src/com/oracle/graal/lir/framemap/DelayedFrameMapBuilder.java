@@ -87,9 +87,7 @@ public class DelayedFrameMapBuilder implements FrameMapBuilder {
     }
 
     public FrameMap buildFrameMap(LIRGenerationResult res) {
-        HashMap<VirtualStackSlot, StackSlot> mapping = new HashMap<>();
-        // fill
-        FrameMappingToolImpl tool = new FrameMappingToolImpl(mapping, this);
+        FrameMappingToolImpl tool = new FrameMappingToolImpl(this);
         tool.mapStackSlots();
         for (CallingConvention cc : calls) {
             frameMap.callsMethod(cc);
