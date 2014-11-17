@@ -163,26 +163,24 @@ public class DelayedFrameMapBuilder implements FrameMapBuilder {
     public FrameMap buildFrameMap(LIRGenerationResult res) {
         HashMap<VirtualStackSlot, StackSlot> mapping = new HashMap<>();
         // fill
-        mapStackSlots(mapping);
+        FrameMappingToolImpl tool = new FrameMappingToolImpl(mapping, this);
+        tool.mapStackSlots();
         for (CallingConvention cc : calls) {
             frameMap.callsMethod(cc);
         }
         // rewrite
-        mappables.forEach(m -> m.map(mapping::get));
+        mappables.forEach(m -> m.map(tool));
 
         frameMap.finish();
         return frameMap;
     }
 
-    protected void mapStackSlots(HashMap<VirtualStackSlot, StackSlot> mapping) {
-        for (TrackedVirtualStackSlot virtualSlot : stackSlots) {
-            StackSlot slot = virtualSlot.transform();
-            mapping.put(virtualSlot, slot);
-        }
-    }
-
     public void requireMapping(FrameMappable mappable) {
         this.mappables.add(mappable);
+    }
+
+    List<TrackedVirtualStackSlot> getStackSlots() {
+        return stackSlots;
     }
 
 }
