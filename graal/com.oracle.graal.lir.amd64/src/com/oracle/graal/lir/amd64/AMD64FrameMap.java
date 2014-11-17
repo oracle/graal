@@ -112,9 +112,7 @@ public class AMD64FrameMap extends FrameMap {
      */
     StackSlot allocateRBPSpillSlot() {
         assert spillSize == initialSpillSize : "RBP spill slot can only be allocated before getting other stack slots";
-        int size = spillSlotSize(LIRKind.value(Kind.Long));
-        spillSize = NumUtil.roundUp(spillSize + size, size);
-        rbpSpillSlot = allocateNewSpillSlot(LIRKind.value(Kind.Long), 0);
+        rbpSpillSlot = allocateSpillSlot(LIRKind.value(Kind.Long));
         assert asStackSlot(rbpSpillSlot).getRawOffset() == -16 : asStackSlot(rbpSpillSlot).getRawOffset();
         return rbpSpillSlot;
     }
@@ -126,8 +124,6 @@ public class AMD64FrameMap extends FrameMap {
     }
 
     public StackSlot allocateDeoptimizationRescueSlot() {
-        int size = spillSlotSize(LIRKind.value(Kind.Long));
-        spillSize = NumUtil.roundUp(spillSize + size, size);
-        return allocateNewSpillSlot(LIRKind.value(Kind.Long), 0);
+        return allocateSpillSlot(LIRKind.value(Kind.Long));
     }
 }

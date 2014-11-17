@@ -26,7 +26,6 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.asm.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.lir.gen.*;
 
@@ -86,9 +85,7 @@ public class DelayedFrameMapBuilder implements FrameMapBuilder {
 
         @Override
         public StackSlot transform() {
-            int size = frameMap.spillSlotSize(getLIRKind());
-            frameMap.spillSize = NumUtil.roundUp(frameMap.spillSize + size, size);
-            return frameMap.allocateNewSpillSlot(getLIRKind(), 0);
+            return frameMap.allocateSpillSlot(getLIRKind());
         }
 
     }
