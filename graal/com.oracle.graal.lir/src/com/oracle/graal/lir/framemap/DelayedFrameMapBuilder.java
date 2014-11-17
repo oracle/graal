@@ -42,7 +42,7 @@ public class DelayedFrameMapBuilder implements FrameMapBuilder {
     private final RegisterConfig registerConfig;
     private final CodeCacheProvider codeCache;
     protected final FrameMap frameMap;
-    private final List<TrackedVirtualStackSlot> stackSlots;
+    private final List<VirtualStackSlot> stackSlots;
     private final List<CallingConvention> calls;
 
     public DelayedFrameMapBuilder(FrameMapFactory factory, CodeCacheProvider codeCache, RegisterConfig registerConfig) {
@@ -62,18 +62,7 @@ public class DelayedFrameMapBuilder implements FrameMapBuilder {
         return slot;
     }
 
-    abstract class TrackedVirtualStackSlot extends VirtualStackSlot {
-        /**
-         *
-         */
-        private static final long serialVersionUID = 408446797222290182L;
-
-        public TrackedVirtualStackSlot(LIRKind lirKind) {
-            super(lirKind);
-        }
-    }
-
-    class SimpleVirtualStackSlot extends TrackedVirtualStackSlot {
+    static class SimpleVirtualStackSlot extends VirtualStackSlot {
 
         private static final long serialVersionUID = 7654295701165421750L;
 
@@ -83,7 +72,7 @@ public class DelayedFrameMapBuilder implements FrameMapBuilder {
 
     }
 
-    class VirtualStackSlotRange extends TrackedVirtualStackSlot {
+    static class VirtualStackSlotRange extends VirtualStackSlot {
 
         private static final long serialVersionUID = 5152592950118317121L;
         private final BitSet objects;
@@ -148,7 +137,7 @@ public class DelayedFrameMapBuilder implements FrameMapBuilder {
         this.mappables.add(mappable);
     }
 
-    List<TrackedVirtualStackSlot> getStackSlots() {
+    List<VirtualStackSlot> getStackSlots() {
         return stackSlots;
     }
 

@@ -27,7 +27,6 @@ import java.util.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.lir.framemap.DelayedFrameMapBuilder.SimpleVirtualStackSlot;
-import com.oracle.graal.lir.framemap.DelayedFrameMapBuilder.TrackedVirtualStackSlot;
 import com.oracle.graal.lir.framemap.DelayedFrameMapBuilder.VirtualStackSlotRange;
 
 public class FrameMappingToolImpl implements FrameMappingTool {
@@ -45,7 +44,7 @@ public class FrameMappingToolImpl implements FrameMappingTool {
     }
 
     public void mapStackSlots() {
-        for (TrackedVirtualStackSlot virtualSlot : builder.getStackSlots()) {
+        for (VirtualStackSlot virtualSlot : builder.getStackSlots()) {
             final StackSlot slot;
             if (virtualSlot instanceof SimpleVirtualStackSlot) {
                 slot = mapSimpleVirtualStackSlot((SimpleVirtualStackSlot) virtualSlot);
