@@ -29,6 +29,7 @@ import java.lang.reflect.*;
 
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.hotspot.nodes.*;
+import com.oracle.graal.hotspot.word.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.word.*;
@@ -42,13 +43,13 @@ public class ClassSubstitutions {
     @MacroSubstitution(macro = ClassGetModifiersNode.class, isStatic = false)
     @MethodSubstitution(isStatic = false, forced = true)
     public static int getModifiers(final Class<?> thisObj) {
-        TypePointer klass = ClassGetHubNode.readClass(thisObj);
-        TypePointer zero = Word.unsigned(0).toTypePointer();
-        if (Word.equal(klass, zero)) {
+        KlassPointer klass = ClassGetHubNode.readClass(thisObj);
+        KlassPointer zero = KlassPointer.fromWord(Word.unsigned(0));
+        if (klass.equal(zero)) {
             // Class for primitive type
             return Modifier.ABSTRACT | Modifier.FINAL | Modifier.PUBLIC;
         } else {
-            return Word.fromTypePointer(klass).readInt(klassModifierFlagsOffset(), KLASS_MODIFIER_FLAGS_LOCATION);
+            return klass.asWord().readInt(klassModifierFlagsOffset(), KLASS_MODIFIER_FLAGS_LOCATION);
         }
     }
 
@@ -56,7 +57,7 @@ public class ClassSubstitutions {
     @MacroSubstitution(macro = ClassIsInterfaceNode.class, isStatic = false)
     @MethodSubstitution(isStatic = false, forced = true)
     public static boolean isInterface(final Class<?> thisObj) {
-        Pointer klass = Word.fromTypePointer(ClassGetHubNode.readClass(thisObj));
+        Pointer klass = ClassGetHubNode.readClass(thisObj).asWord();
         if (klass.equal(0)) {
             return false;
         } else {
@@ -69,8 +70,8 @@ public class ClassSubstitutions {
     @MacroSubstitution(macro = ClassIsArrayNode.class, isStatic = false)
     @MethodSubstitution(isStatic = false, forced = true)
     public static boolean isArray(final Class<?> thisObj) {
-        TypePointer klassPtr = ClassGetHubNode.readClass(thisObj);
-        Pointer klass = Word.fromTypePointer(klassPtr);
+        KlassPointer klassPtr = ClassGetHubNode.readClass(thisObj);
+        Pointer klass = klassPtr.asWord();
         if (klass.equal(0)) {
             return false;
         } else {
@@ -82,7 +83,7 @@ public class ClassSubstitutions {
     @MacroSubstitution(macro = ClassIsPrimitiveNode.class, isStatic = false)
     @MethodSubstitution(isStatic = false, forced = true)
     public static boolean isPrimitive(final Class<?> thisObj) {
-        Pointer klass = Word.fromTypePointer(ClassGetHubNode.readClass(thisObj));
+        Pointer klass = ClassGetHubNode.readClass(thisObj).asWord();
         return klass.equal(0);
     }
 
@@ -92,8 +93,8 @@ public class ClassSubstitutions {
     @MacroSubstitution(macro = ClassGetSuperclassNode.class, isStatic = false)
     @MethodSubstitution(isStatic = false)
     public static Class<?> getSuperclass(final Class<?> thisObj) {
-        TypePointer klassPtr = ClassGetHubNode.readClass(thisObj);
-        Pointer klass = Word.fromTypePointer(klassPtr);
+        KlassPointer klassPtr = ClassGetHubNode.readClass(thisObj);
+        Pointer klass = klassPtr.asWord();
         if (klass.notEqual(0)) {
             int accessFlags = klass.readInt(klassAccessFlagsOffset(), KLASS_ACCESS_FLAGS_LOCATION);
             if ((accessFlags & Modifier.INTERFACE) == 0) {
@@ -115,8 +116,8 @@ public class ClassSubstitutions {
     @MacroSubstitution(macro = ClassGetComponentTypeNode.class, isStatic = false)
     @MethodSubstitution(isStatic = false)
     public static Class<?> getComponentType(final Class<?> thisObj) {
-        TypePointer klassPtr = ClassGetHubNode.readClass(thisObj);
-        Pointer klass = Word.fromTypePointer(klassPtr);
+        KlassPointer klassPtr = ClassGetHubNode.readClass(thisObj);
+        Pointer klass = klassPtr.asWord();
         if (klass.notEqual(0)) {
             if (klassIsArray(klassPtr)) {
                 return piCastExactNonNull(klass.readObject(arrayKlassComponentMirrorOffset(), ARRAY_KLASS_COMPONENT_MIRROR), Class.class);

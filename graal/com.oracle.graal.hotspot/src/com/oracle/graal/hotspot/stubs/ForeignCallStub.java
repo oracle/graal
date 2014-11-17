@@ -26,6 +26,7 @@ import static com.oracle.graal.api.code.CallingConvention.Type.*;
 import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.RegisterEffect.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.hotspot.*;
@@ -33,7 +34,9 @@ import com.oracle.graal.hotspot.HotSpotForeignCallLinkage.Transition;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.replacements.*;
+import com.oracle.graal.hotspot.word.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.phases.util.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.nodes.*;
 import com.oracle.graal.word.*;
@@ -186,7 +189,7 @@ public class ForeignCallStub extends Stub {
 
         StructuredGraph graph = new StructuredGraph(toString(), null);
 
-        GraphKit kit = new GraphKit(graph, providers);
+        GraphKit kit = new HotSpotGraphKit(graph, providers);
         ParameterNode[] params = createParameters(kit, args);
 
         ReadRegisterNode thread = kit.append(ReadRegisterNode.create(providers.getRegisters().getThreadRegister(), true, false));
@@ -210,6 +213,18 @@ public class ForeignCallStub extends Stub {
         }
 
         return graph;
+    }
+
+    private static class HotSpotGraphKit extends GraphKit {
+
+        public HotSpotGraphKit(StructuredGraph graph, Providers providers) {
+            super(graph, providers);
+        }
+
+        @Override
+        public void rewriteWordTypes(SnippetReflectionProvider snippetReflection) {
+            new HotSpotWordTypeRewriterPhase(providers.getMetaAccess(), snippetReflection, providers.getCodeCache().getTarget().wordKind).apply(graph);
+        }
     }
 
     private ParameterNode[] createParameters(GraphKit kit, Class<?>[] args) {

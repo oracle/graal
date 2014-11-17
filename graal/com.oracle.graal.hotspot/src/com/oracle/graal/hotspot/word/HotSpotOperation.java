@@ -20,12 +20,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.word;
+package com.oracle.graal.hotspot.word;
 
-import com.oracle.graal.api.meta.*;
+import java.lang.annotation.*;
 
-/**
- * Marker interface for a metaspace pointer to a method.
- */
-public interface MethodPointer extends TrustedInterface {
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.METHOD)
+public @interface HotSpotOperation {
+
+    public enum HotspotOpcode {
+        FROM_POINTER,
+        TO_KLASS_POINTER,
+        TO_METHOD_POINTER,
+        POINTER_EQ,
+        POINTER_NE
+    }
+
+    HotspotOpcode opcode();
 }

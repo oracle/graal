@@ -229,7 +229,7 @@ public class StubUtil {
                     fatal("oop not in heap: %p", oop.rawValue());
                 }
 
-                Pointer klass = Word.fromTypePointer(loadHubIntrinsic(object, anchorNode));
+                Pointer klass = loadHubIntrinsic(object, anchorNode).asWord();
                 if (klass.equal(Word.zero())) {
                     fatal("klass for oop %p is null", oop.rawValue());
                 }

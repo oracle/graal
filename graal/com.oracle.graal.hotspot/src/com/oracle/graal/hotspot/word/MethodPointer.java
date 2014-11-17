@@ -20,27 +20,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.word.nodes;
+package com.oracle.graal.hotspot.word;
 
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.nodeinfo.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.java.*;
+import static com.oracle.graal.hotspot.word.HotSpotOperation.HotspotOpcode.*;
 
-@NodeInfo
-public class LoadIndexedPointerNode extends LoadIndexedNode {
+import com.oracle.graal.word.*;
 
-    public static LoadIndexedPointerNode create(Stamp stamp, ValueNode array, ValueNode index) {
-        return new LoadIndexedPointerNode(stamp, array, index);
-    }
+/**
+ * Marker type for a metaspace pointer to a method.
+ */
+public abstract class MethodPointer {
 
-    protected LoadIndexedPointerNode(Stamp stamp, ValueNode array, ValueNode index) {
-        super(stamp, array, index, Kind.Illegal);
-    }
+    @HotSpotOperation(opcode = POINTER_EQ)
+    public abstract boolean equal(KlassPointer other);
 
-    @Override
-    public boolean inferStamp() {
-        return false;
-    }
+    @HotSpotOperation(opcode = POINTER_NE)
+    public abstract boolean notEqual(KlassPointer other);
+
+    @HotSpotOperation(opcode = FROM_POINTER)
+    public abstract Pointer asWord();
+
+    @HotSpotOperation(opcode = TO_METHOD_POINTER)
+    public static native MethodPointer fromWord(Pointer pointer);
 }

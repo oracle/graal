@@ -27,6 +27,7 @@ import static com.oracle.graal.nodes.PiNode.*;
 
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.hotspot.word.*;
 import com.oracle.graal.word.*;
 
 @ClassSubstitution(Node.class)
@@ -41,7 +42,7 @@ public class HotSpotNodeSubstitutions {
         // HotSpot creates the NodeClass for each Node subclass while initializing it
         // so we are guaranteed to read a non-null value here. As long as NodeClass
         // is final, the stamp of the PiNode below will automatically be exact.
-        TypePointer klass = loadHub(node);
-        return piCastNonNull(Word.fromTypePointer(klass).readObject(Word.signed(instanceKlassNodeClassOffset()), KLASS_NODE_CLASS), NodeClass.class);
+        KlassPointer klass = loadHub(node);
+        return piCastNonNull(klass.asWord().readObject(Word.signed(instanceKlassNodeClassOffset()), KLASS_NODE_CLASS), NodeClass.class);
     }
 }

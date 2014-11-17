@@ -31,12 +31,12 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.hotspot.word.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.HeapAccess.BarrierType;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.word.*;
 
 /**
  * Read Class::_klass to get the hub for a {@link java.lang.Class}. This node mostly exists to
@@ -112,9 +112,9 @@ public class ClassGetHubNode extends FloatingGuardedNode implements Lowerable, C
     }
 
     @NodeIntrinsic
-    public static native TypePointer readClass(Class<?> clazz);
+    public static native KlassPointer readClass(Class<?> clazz);
 
     @NodeIntrinsic
-    public static native TypePointer readClass(Class<?> clazz, GuardingNode guard);
+    public static native KlassPointer readClass(Class<?> clazz, GuardingNode guard);
 
 }

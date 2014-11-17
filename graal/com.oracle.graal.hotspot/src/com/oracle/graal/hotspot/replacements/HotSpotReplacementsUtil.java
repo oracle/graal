@@ -35,6 +35,7 @@ import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.nodes.*;
+import com.oracle.graal.hotspot.word.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.nodes.*;
@@ -298,17 +299,17 @@ public class HotSpotReplacementsUtil {
         return config().klassLayoutHelperOffset;
     }
 
-    public static int readLayoutHelper(TypePointer hub) {
+    public static int readLayoutHelper(KlassPointer hub) {
         // return hub.readInt(klassLayoutHelperOffset(), KLASS_LAYOUT_HELPER_LOCATION);
         GuardingNode anchorNode = SnippetAnchorNode.anchor();
         return loadKlassLayoutHelperIntrinsic(hub, anchorNode);
     }
 
     @NodeIntrinsic(value = KlassLayoutHelperNode.class)
-    public static native int loadKlassLayoutHelperIntrinsic(TypePointer object, GuardingNode anchor);
+    public static native int loadKlassLayoutHelperIntrinsic(KlassPointer object, GuardingNode anchor);
 
     @NodeIntrinsic(value = KlassLayoutHelperNode.class)
-    public static native int loadKlassLayoutHelperIntrinsic(TypePointer object);
+    public static native int loadKlassLayoutHelperIntrinsic(KlassPointer object);
 
     /**
      * Checks if class {@code klass} is an array.
@@ -318,7 +319,7 @@ public class HotSpotReplacementsUtil {
      * @param klass the class to be checked
      * @return true if klass is an array, false otherwise
      */
-    public static boolean klassIsArray(TypePointer klass) {
+    public static boolean klassIsArray(KlassPointer klass) {
         /*
          * The less-than check only works if both values are ints. We use local variables to make
          * sure these are still ints and haven't changed.
@@ -358,7 +359,7 @@ public class HotSpotReplacementsUtil {
         return config().hubOffset;
     }
 
-    public static void initializeObjectHeader(Word memory, Word markWord, TypePointer hub) {
+    public static void initializeObjectHeader(Word memory, Word markWord, KlassPointer hub) {
         memory.writeWord(markOffset(), markWord, MARK_WORD_LOCATION);
         StoreHubNode.write(memory, hub);
     }
@@ -549,7 +550,7 @@ public class HotSpotReplacementsUtil {
     /**
      * Loads the hub of an object (without null checking it first).
      */
-    public static TypePointer loadHub(Object object) {
+    public static KlassPointer loadHub(Object object) {
         return loadHubIntrinsic(object);
     }
 
@@ -597,13 +598,13 @@ public class HotSpotReplacementsUtil {
 
     @SuppressWarnings("unused")
     @NodeIntrinsic(value = LoadHubNode.class)
-    public static TypePointer loadHubIntrinsic(Object object, GuardingNode anchor) {
-        return Word.unsigned(unsafeReadKlassPointer(object)).toTypePointer();
+    public static KlassPointer loadHubIntrinsic(Object object, GuardingNode anchor) {
+        return KlassPointer.fromWord(Word.unsigned(unsafeReadKlassPointer(object)));
     }
 
     @NodeIntrinsic(value = LoadHubNode.class)
-    public static TypePointer loadHubIntrinsic(Object object) {
-        return Word.unsigned(unsafeReadKlassPointer(object)).toTypePointer();
+    public static KlassPointer loadHubIntrinsic(Object object) {
+        return KlassPointer.fromWord(Word.unsigned(unsafeReadKlassPointer(object)));
     }
 
     @Fold

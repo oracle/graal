@@ -30,11 +30,11 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.hotspot.word.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.virtual.*;
-import com.oracle.graal.word.phases.*;
 
 /**
  * Utility creating a graph for a stub used to call a native function.
@@ -91,7 +91,7 @@ public class NativeCallStubGraphBuilder {
 
             ReturnNode returnNode = g.add(ReturnNode.create(boxedResult));
             callNode.setNext(returnNode);
-            (new WordTypeRewriterPhase(providers.getMetaAccess(), providers.getSnippetReflection(), Kind.Long)).apply(g);
+            (new HotSpotWordTypeRewriterPhase(providers.getMetaAccess(), providers.getSnippetReflection(), Kind.Long)).apply(g);
             return g;
         } catch (NoSuchMethodException e) {
             throw GraalInternalError.shouldNotReachHere("Call Stub method not found");

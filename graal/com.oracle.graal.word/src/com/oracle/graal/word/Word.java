@@ -72,11 +72,8 @@ public abstract class Word implements Signed, Unsigned, Pointer {
          FROM_UNSIGNED,
          FROM_SIGNED,
          FROM_OBJECT,
-         FROM_POINTER,
          FROM_ARRAY,
          TO_OBJECT,
-         TO_METHOD_POINTER,
-         TO_TYPE_POINTER,
          TO_RAW_VALUE,
     }
      // @formatter:on
@@ -176,38 +173,12 @@ public abstract class Word implements Signed, Unsigned, Pointer {
     @Operation(opcode = Opcode.FROM_OBJECT)
     public static native Pointer fromObject(Object val);
 
-    @Operation(opcode = Opcode.FROM_POINTER)
-    public static native Pointer fromMethodPointer(MethodPointer val);
-
-    @Operation(opcode = Opcode.FROM_POINTER)
-    public static native Pointer fromTypePointer(TypePointer val);
-
     @Operation(opcode = Opcode.FROM_ARRAY)
     public static native Pointer fromArray(Object oop, Object location);
 
     @Override
     @Operation(opcode = Opcode.TO_OBJECT)
     public native Object toObject();
-
-    @Override
-    @Operation(opcode = Opcode.TO_METHOD_POINTER)
-    public native MethodPointer toMethodPointer();
-
-    @Override
-    @Operation(opcode = Opcode.TO_TYPE_POINTER)
-    public native TypePointer toTypePointer();
-
-    @Operation(opcode = Opcode.COMPARISON, condition = Condition.EQ)
-    public static native boolean equal(MethodPointer a, MethodPointer b);
-
-    @Operation(opcode = Opcode.COMPARISON, condition = Condition.EQ)
-    public static native boolean equal(TypePointer a, TypePointer b);
-
-    @Operation(opcode = Opcode.COMPARISON, condition = Condition.NE)
-    public static native boolean notEqual(MethodPointer a, MethodPointer b);
-
-    @Operation(opcode = Opcode.COMPARISON, condition = Condition.NE)
-    public static native boolean notEqual(TypePointer a, TypePointer b);
 
     @Override
     @Operation(node = AddNode.class)

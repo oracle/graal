@@ -37,6 +37,7 @@ import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.replacements.*;
+import com.oracle.graal.hotspot.word.*;
 import com.oracle.graal.nodes.StructuredGraph.GuardsStage;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.replacements.*;
@@ -96,12 +97,12 @@ public class NewInstanceStub extends SnippetStub {
      * @param intArrayHub the hub for {@code int[].class}
      */
     @Snippet
-    private static Object newInstance(TypePointer hub, @ConstantParameter TypePointer intArrayHub, @ConstantParameter Register threadRegister) {
+    private static Object newInstance(KlassPointer hub, @ConstantParameter KlassPointer intArrayHub, @ConstantParameter Register threadRegister) {
         /*
          * The type is known to be an instance so Klass::_layout_helper is the instance size as a
          * raw number
          */
-        Pointer hubPtr = Word.fromTypePointer(hub);
+        Pointer hubPtr = hub.asWord();
         int sizeInBytes = loadKlassLayoutHelperIntrinsic(hub);
         Word thread = registerAsWord(threadRegister);
         if (!forceSlowPath() && inlineContiguousAllocationSupported()) {
@@ -134,7 +135,7 @@ public class NewInstanceStub extends SnippetStub {
      * @return the newly allocated, uninitialized chunk of memory, or {@link Word#zero()} if the
      *         operation was unsuccessful
      */
-    static Word refillAllocate(Word thread, TypePointer intArrayHub, int sizeInBytes, boolean log) {
+    static Word refillAllocate(Word thread, KlassPointer intArrayHub, int sizeInBytes, boolean log) {
         // If G1 is enabled, the "eden" allocation space is not the same always
         // and therefore we have to go to slowpath to allocate a new TLAB.
         if (useG1GC()) {
@@ -257,8 +258,8 @@ public class NewInstanceStub extends SnippetStub {
         return Boolean.getBoolean("graal.newInstanceStub.forceSlowPath");
     }
 
-    public static final ForeignCallDescriptor NEW_INSTANCE_C = newDescriptor(NewInstanceStub.class, "newInstanceC", void.class, Word.class, TypePointer.class);
+    public static final ForeignCallDescriptor NEW_INSTANCE_C = newDescriptor(NewInstanceStub.class, "newInstanceC", void.class, Word.class, KlassPointer.class);
 
     @NodeIntrinsic(StubForeignCallNode.class)
-    public static native void newInstanceC(@ConstantNodeParameter ForeignCallDescriptor newInstanceC, Word thread, TypePointer hub);
+    public static native void newInstanceC(@ConstantNodeParameter ForeignCallDescriptor newInstanceC, Word thread, KlassPointer hub);
 }

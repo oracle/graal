@@ -20,12 +20,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.word;
+package com.oracle.graal.hotspot.word;
 
-import com.oracle.graal.api.meta.*;
+import static com.oracle.graal.hotspot.word.HotSpotOperation.HotspotOpcode.*;
+
+import com.oracle.graal.word.*;
 
 /**
- * Marker interface for a metaspace pointer to a type.
+ * Marker type for a metaspace pointer to a type.
  */
-public interface TypePointer extends TrustedInterface {
+public abstract class KlassPointer {
+
+    @HotSpotOperation(opcode = POINTER_EQ)
+    public abstract boolean equal(KlassPointer other);
+
+    @HotSpotOperation(opcode = POINTER_NE)
+    public abstract boolean notEqual(KlassPointer other);
+
+    @HotSpotOperation(opcode = FROM_POINTER)
+    public abstract Pointer asWord();
+
+    @HotSpotOperation(opcode = TO_KLASS_POINTER)
+    public static native KlassPointer fromWord(Pointer pointer);
 }

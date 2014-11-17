@@ -37,6 +37,7 @@ import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.replacements.*;
+import com.oracle.graal.hotspot.word.*;
 import com.oracle.graal.nodes.StructuredGraph.GuardsStage;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.replacements.*;
@@ -83,7 +84,7 @@ public class NewArrayStub extends SnippetStub {
      * @param intArrayHub the hub for {@code int[].class}
      */
     @Snippet
-    private static Object newArray(TypePointer hub, int length, @ConstantParameter TypePointer intArrayHub, @ConstantParameter Register threadRegister) {
+    private static Object newArray(KlassPointer hub, int length, @ConstantParameter KlassPointer intArrayHub, @ConstantParameter Register threadRegister) {
         int layoutHelper = loadKlassLayoutHelperIntrinsic(hub);
         int log2ElementSize = (layoutHelper >> layoutHelperLog2ElementSizeShift()) & layoutHelperLog2ElementSizeMask();
         int headerSize = (layoutHelper >> layoutHelperHeaderSizeShift()) & layoutHelperHeaderSizeMask();
@@ -93,7 +94,7 @@ public class NewArrayStub extends SnippetStub {
             printf("newArray: element kind %d\n", elementKind);
             printf("newArray: array length %d\n", length);
             printf("newArray: array size %d\n", sizeInBytes);
-            printf("newArray: hub=%p\n", Word.fromTypePointer(hub).rawValue());
+            printf("newArray: hub=%p\n", hub.asWord().rawValue());
         }
 
         // check that array length is small enough for fast path.
@@ -116,8 +117,8 @@ public class NewArrayStub extends SnippetStub {
         return verifyObject(getAndClearObjectResult(thread));
     }
 
-    public static final ForeignCallDescriptor NEW_ARRAY_C = newDescriptor(NewArrayStub.class, "newArrayC", void.class, Word.class, TypePointer.class, int.class);
+    public static final ForeignCallDescriptor NEW_ARRAY_C = newDescriptor(NewArrayStub.class, "newArrayC", void.class, Word.class, KlassPointer.class, int.class);
 
     @NodeIntrinsic(StubForeignCallNode.class)
-    public static native void newArrayC(@ConstantNodeParameter ForeignCallDescriptor newArrayC, Word thread, TypePointer hub, int length);
+    public static native void newArrayC(@ConstantNodeParameter ForeignCallDescriptor newArrayC, Word thread, KlassPointer hub, int length);
 }

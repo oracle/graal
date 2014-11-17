@@ -46,10 +46,6 @@ public interface Pointer extends Unsigned, PointerBase {
      */
     Object toObject();
 
-    TypePointer toTypePointer();
-
-    MethodPointer toMethodPointer();
-
     /**
      * Reads the memory at address {@code (this + offset)}. Both the base address and offset are in
      * bytes.

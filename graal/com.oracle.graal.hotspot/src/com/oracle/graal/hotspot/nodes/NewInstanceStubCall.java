@@ -29,10 +29,10 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.stubs.*;
+import com.oracle.graal.hotspot.word.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.word.*;
 
 /**
  * A call to the {@link NewInstanceStub}.
@@ -70,5 +70,5 @@ public class NewInstanceStubCall extends DeoptimizingStubCall implements LIRLowe
     }
 
     @NodeIntrinsic
-    public static native Object call(TypePointer hub);
+    public static native Object call(KlassPointer hub);
 }

@@ -42,6 +42,7 @@ import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
+import com.oracle.graal.hotspot.word.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.debug.*;
 import com.oracle.graal.nodes.extended.*;
@@ -130,7 +131,7 @@ public class NewObjectSnippets implements Snippets {
     }
 
     @Snippet
-    public static Object allocateInstance(@ConstantParameter int size, TypePointer hub, Word prototypeMarkWord, @ConstantParameter boolean fillContents, @ConstantParameter Register threadRegister,
+    public static Object allocateInstance(@ConstantParameter int size, KlassPointer hub, Word prototypeMarkWord, @ConstantParameter boolean fillContents, @ConstantParameter Register threadRegister,
                     @ConstantParameter boolean constantSize, @ConstantParameter String typeContext) {
         Object result;
         Word thread = registerAsWord(threadRegister);
@@ -151,8 +152,8 @@ public class NewObjectSnippets implements Snippets {
 
     @Snippet
     public static Object allocateInstanceDynamic(Class<?> type, @ConstantParameter boolean fillContents, @ConstantParameter Register threadRegister, @ConstantParameter String typeContext) {
-        TypePointer hubPtr = ClassGetHubNode.readClass(type);
-        Pointer hub = Word.fromTypePointer(hubPtr);
+        KlassPointer hubPtr = ClassGetHubNode.readClass(type);
+        Pointer hub = hubPtr.asWord();
         if (probability(FAST_PATH_PROBABILITY, !hub.equal(Word.zero()))) {
             if (probability(FAST_PATH_PROBABILITY, isInstanceKlassFullyInitialized(hub))) {
                 int layoutHelper = readLayoutHelper(hubPtr);
@@ -164,7 +165,7 @@ public class NewObjectSnippets implements Snippets {
                  */
                 if (probability(FAST_PATH_PROBABILITY, (layoutHelper & 1) == 0)) {
                     Word prototypeMarkWord = hub.readWord(prototypeMarkWordOffset(), PROTOTYPE_MARK_WORD_LOCATION);
-                    return allocateInstance(layoutHelper, hub.toTypePointer(), prototypeMarkWord, fillContents, threadRegister, false, typeContext);
+                    return allocateInstance(layoutHelper, KlassPointer.fromWord(hub), prototypeMarkWord, fillContents, threadRegister, false, typeContext);
                 }
             }
         }
@@ -177,13 +178,13 @@ public class NewObjectSnippets implements Snippets {
     public static final int MAX_ARRAY_FAST_PATH_ALLOCATION_LENGTH = 0x00FFFFFF;
 
     @Snippet
-    public static Object allocateArray(TypePointer hub, int length, Word prototypeMarkWord, @ConstantParameter int headerSize, @ConstantParameter int log2ElementSize,
+    public static Object allocateArray(KlassPointer hub, int length, Word prototypeMarkWord, @ConstantParameter int headerSize, @ConstantParameter int log2ElementSize,
                     @ConstantParameter boolean fillContents, @ConstantParameter Register threadRegister, @ConstantParameter boolean maybeUnroll, @ConstantParameter String typeContext) {
         return allocateArrayImpl(hub, length, prototypeMarkWord, headerSize, log2ElementSize, fillContents, threadRegister, maybeUnroll, typeContext, false);
     }
 
-    private static Object allocateArrayImpl(TypePointer hub, int length, Word prototypeMarkWord, int headerSize, int log2ElementSize, boolean fillContents, @ConstantParameter Register threadRegister,
-                    @ConstantParameter boolean maybeUnroll, String typeContext, boolean skipNegativeCheck) {
+    private static Object allocateArrayImpl(KlassPointer hub, int length, Word prototypeMarkWord, int headerSize, int log2ElementSize, boolean fillContents,
+                    @ConstantParameter Register threadRegister, @ConstantParameter boolean maybeUnroll, String typeContext, boolean skipNegativeCheck) {
         Object result;
         int alignment = wordSize();
         int allocationSize = computeArrayAllocationSize(length, alignment, headerSize, log2ElementSize);
@@ -224,7 +225,8 @@ public class NewObjectSnippets implements Snippets {
             return dynamicNewArrayStub(DYNAMIC_NEW_ARRAY, elementType, length);
         }
 
-        int layoutHelper = readLayoutHelper(hub.toTypePointer());
+        KlassPointer klass = KlassPointer.fromWord(hub);
+        int layoutHelper = readLayoutHelper(klass);
         //@formatter:off
         // from src/share/vm/oops/klass.hpp:
         //
@@ -242,7 +244,7 @@ public class NewObjectSnippets implements Snippets {
         int log2ElementSize = (layoutHelper >> layoutHelperLog2ElementSizeShift()) & layoutHelperLog2ElementSizeMask();
         Word prototypeMarkWord = hub.readWord(prototypeMarkWordOffset(), PROTOTYPE_MARK_WORD_LOCATION);
 
-        return allocateArrayImpl(hub.toTypePointer(), length, prototypeMarkWord, headerSize, log2ElementSize, fillContents, threadRegister, false, "dynamic type", true);
+        return allocateArrayImpl(klass, length, prototypeMarkWord, headerSize, log2ElementSize, fillContents, threadRegister, false, "dynamic type", true);
     }
 
     /**
@@ -336,15 +338,15 @@ public class NewObjectSnippets implements Snippets {
      * Formats some allocated memory with an object header and zeroes out the rest. Disables asserts
      * since they can't be compiled in stubs.
      */
-    public static Object formatObjectForStub(TypePointer hub, int size, Word memory, Word compileTimePrototypeMarkWord) {
+    public static Object formatObjectForStub(KlassPointer hub, int size, Word memory, Word compileTimePrototypeMarkWord) {
         return formatObject(hub, size, memory, compileTimePrototypeMarkWord, true, false, false);
     }
 
     /**
      * Formats some allocated memory with an object header and zeroes out the rest.
      */
-    protected static Object formatObject(TypePointer hub, int size, Word memory, Word compileTimePrototypeMarkWord, boolean fillContents, boolean constantSize, boolean useSnippetCounters) {
-        Word prototypeMarkWord = useBiasedLocking() ? Word.fromTypePointer(hub).readWord(prototypeMarkWordOffset(), PROTOTYPE_MARK_WORD_LOCATION) : compileTimePrototypeMarkWord;
+    protected static Object formatObject(KlassPointer hub, int size, Word memory, Word compileTimePrototypeMarkWord, boolean fillContents, boolean constantSize, boolean useSnippetCounters) {
+        Word prototypeMarkWord = useBiasedLocking() ? hub.asWord().readWord(prototypeMarkWordOffset(), PROTOTYPE_MARK_WORD_LOCATION) : compileTimePrototypeMarkWord;
         initializeObjectHeader(memory, prototypeMarkWord, hub);
         if (fillContents) {
             zeroMemory(size, memory, constantSize, instanceHeaderSize(), false, useSnippetCounters);
@@ -355,7 +357,7 @@ public class NewObjectSnippets implements Snippets {
     /**
      * Formats some allocated memory with an object header and zeroes out the rest.
      */
-    public static Object formatArray(TypePointer hub, int allocationSize, int length, int headerSize, Word memory, Word prototypeMarkWord, boolean fillContents, boolean maybeUnroll,
+    public static Object formatArray(KlassPointer hub, int allocationSize, int length, int headerSize, Word memory, Word prototypeMarkWord, boolean fillContents, boolean maybeUnroll,
                     boolean useSnippetCounters) {
         memory.writeInt(arrayLengthOffset(), length, INIT_LOCATION);
         /*

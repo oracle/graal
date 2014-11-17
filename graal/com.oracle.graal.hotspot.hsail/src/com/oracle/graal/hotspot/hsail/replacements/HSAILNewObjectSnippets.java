@@ -38,6 +38,7 @@ import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.hotspot.stubs.*;
+import com.oracle.graal.hotspot.word.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
@@ -159,7 +160,7 @@ public class HSAILNewObjectSnippets extends NewObjectSnippets {
         return result;
     }
 
-    protected static Object addressToFormattedObject(Word addr, @ConstantParameter int size, TypePointer hub, Word prototypeMarkWord, @ConstantParameter boolean fillContents,
+    protected static Object addressToFormattedObject(Word addr, @ConstantParameter int size, KlassPointer hub, Word prototypeMarkWord, @ConstantParameter boolean fillContents,
                     @ConstantParameter String typeContext) {
         Object result = formatObject(hub, size, addr, prototypeMarkWord, fillContents, true, true);
         profileAllocation("instance", size, typeContext);
@@ -167,7 +168,7 @@ public class HSAILNewObjectSnippets extends NewObjectSnippets {
     }
 
     @Snippet
-    public static Object allocateInstanceAtomic(@ConstantParameter int size, TypePointer hub, Word prototypeMarkWord, @ConstantParameter boolean fillContents, @ConstantParameter String typeContext) {
+    public static Object allocateInstanceAtomic(@ConstantParameter int size, KlassPointer hub, Word prototypeMarkWord, @ConstantParameter boolean fillContents, @ConstantParameter String typeContext) {
         boolean haveResult = false;
         if (useTLAB()) {
             // inlining this manually here because it resulted in better fastpath codegen
@@ -206,7 +207,7 @@ public class HSAILNewObjectSnippets extends NewObjectSnippets {
     }
 
     @Snippet
-    public static Object allocateArrayAtomic(TypePointer hub, int length, Word prototypeMarkWord, @ConstantParameter int headerSize, @ConstantParameter int log2ElementSize,
+    public static Object allocateArrayAtomic(KlassPointer hub, int length, Word prototypeMarkWord, @ConstantParameter int headerSize, @ConstantParameter int log2ElementSize,
                     @ConstantParameter boolean fillContents, @ConstantParameter boolean maybeUnroll, @ConstantParameter String typeContext) {
         if (!belowThan(length, MAX_ARRAY_FAST_PATH_ALLOCATION_LENGTH)) {
             // This handles both negative array sizes and very large array sizes
@@ -215,7 +216,7 @@ public class HSAILNewObjectSnippets extends NewObjectSnippets {
         return allocateArrayAtomicImpl(hub, length, prototypeMarkWord, headerSize, log2ElementSize, fillContents, maybeUnroll, typeContext);
     }
 
-    protected static Object addressToFormattedArray(Word addr, int allocationSize, int length, int headerSize, TypePointer hub, Word prototypeMarkWord, boolean fillContents, boolean maybeUnroll,
+    protected static Object addressToFormattedArray(Word addr, int allocationSize, int length, int headerSize, KlassPointer hub, Word prototypeMarkWord, boolean fillContents, boolean maybeUnroll,
                     @ConstantParameter String typeContext) {
         // we are not in a stub so we can set useSnippetCounters to true
         Object result = formatArray(hub, allocationSize, length, headerSize, addr, prototypeMarkWord, fillContents, maybeUnroll, true);
@@ -223,7 +224,7 @@ public class HSAILNewObjectSnippets extends NewObjectSnippets {
         return piArrayCast(verifyOop(result), length, StampFactory.forNodeIntrinsic());
     }
 
-    private static Object allocateArrayAtomicImpl(TypePointer hub, int length, Word prototypeMarkWord, int headerSize, int log2ElementSize, boolean fillContents, boolean maybeUnroll,
+    private static Object allocateArrayAtomicImpl(KlassPointer hub, int length, Word prototypeMarkWord, int headerSize, int log2ElementSize, boolean fillContents, boolean maybeUnroll,
                     String typeContext) {
         int alignment = wordSize();
         int allocationSize = computeArrayAllocationSize(length, alignment, headerSize, log2ElementSize);
