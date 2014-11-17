@@ -107,31 +107,7 @@ public class DelayedFrameMapBuilder implements FrameMapBuilder {
 
         @Override
         public StackSlot transform() {
-            frameMap.spillSize += (slots * frameMap.getTarget().wordSize);
-
-            if (!objects.isEmpty()) {
-                assert objects.length() <= slots;
-                StackSlot result = null;
-                for (int slotIndex = 0; slotIndex < slots; slotIndex++) {
-                    StackSlot objectSlot = null;
-                    if (objects.get(slotIndex)) {
-                        objectSlot = frameMap.allocateNewSpillSlot(LIRKind.reference(Kind.Object), slotIndex * frameMap.getTarget().wordSize);
-                        frameMap.addObjectStackSlot(objectSlot);
-                    }
-                    if (slotIndex == 0) {
-                        if (objectSlot != null) {
-                            result = objectSlot;
-                        } else {
-                            result = frameMap.allocateNewSpillSlot(LIRKind.value(frameMap.getTarget().wordKind), 0);
-                        }
-                    }
-                }
-                assert result != null;
-                return result;
-
-            } else {
-                return frameMap.allocateNewSpillSlot(LIRKind.value(frameMap.getTarget().wordKind), 0);
-            }
+            return frameMap.allocateStackSlots(slots, objects);
         }
 
     }
