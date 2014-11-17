@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.lir.framemap;
 
+import com.oracle.graal.api.code.*;
+
 /**
- * This interface should be implemented by all classes that store virtual stack slots to convert
- * them into real stack slots when {@link FrameMapBuilder#buildFrameMap} is called. Implementors
- * should register themselves using {@link FrameMapBuilder#requireMapping(FrameMappable)}.
+ * A tool to get the real stack slot from a virtual stack slot.
  */
-public interface FrameMappable {
-    void map(FrameMappingTool tool);
+@FunctionalInterface
+public interface FrameMappingTool {
+    StackSlot getStackSlot(VirtualStackSlot slot);
 }

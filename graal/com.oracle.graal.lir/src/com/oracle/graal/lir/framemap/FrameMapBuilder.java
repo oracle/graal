@@ -35,14 +35,6 @@ import com.oracle.graal.lir.gen.*;
 public interface FrameMapBuilder {
 
     /**
-     * A tool to get the real stack slot from a virtual stack slot.
-     */
-    @FunctionalInterface
-    interface FrameMappingTool {
-        StackSlot getStackSlot(VirtualStackSlot slot);
-    }
-
-    /**
      * Reserves a spill slot in the frame of the method being compiled. The returned slot is aligned
      * on its natural alignment, i.e., an 8-byte spill slot is aligned at an 8-byte boundary, unless
      * overridden by a subclass.
