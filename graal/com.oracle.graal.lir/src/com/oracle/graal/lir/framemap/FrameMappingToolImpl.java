@@ -26,8 +26,6 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.lir.framemap.DelayedFrameMapBuilder.SimpleVirtualStackSlot;
-import com.oracle.graal.lir.framemap.DelayedFrameMapBuilder.VirtualStackSlotRange;
 
 public class FrameMappingToolImpl implements FrameMappingTool {
 

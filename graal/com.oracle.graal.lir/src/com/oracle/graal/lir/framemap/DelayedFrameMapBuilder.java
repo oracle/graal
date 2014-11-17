@@ -62,38 +62,6 @@ public class DelayedFrameMapBuilder implements FrameMapBuilder {
         return slot;
     }
 
-    static class SimpleVirtualStackSlot extends VirtualStackSlot {
-
-        private static final long serialVersionUID = 7654295701165421750L;
-
-        public SimpleVirtualStackSlot(LIRKind lirKind) {
-            super(lirKind);
-        }
-
-    }
-
-    static class VirtualStackSlotRange extends VirtualStackSlot {
-
-        private static final long serialVersionUID = 5152592950118317121L;
-        private final BitSet objects;
-        private final int slots;
-
-        public VirtualStackSlotRange(int slots, BitSet objects) {
-            super(LIRKind.reference(Kind.Object));
-            this.slots = slots;
-            this.objects = (BitSet) objects.clone();
-        }
-
-        public int getSlots() {
-            return slots;
-        }
-
-        public BitSet getObjects() {
-            return (BitSet) objects.clone();
-        }
-
-    }
-
     public VirtualStackSlot allocateStackSlots(int slots, BitSet objects, List<VirtualStackSlot> outObjectStackSlots) {
         if (slots == 0) {
             return null;
