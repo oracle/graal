@@ -159,7 +159,7 @@ public class PTXHotSpotBackend extends HotSpotBackend {
     @Override
     public FrameMapBuilder newFrameMapBuilder(RegisterConfig registerConfig) {
         RegisterConfig registerConfigNonNull = registerConfig == null ? getCodeCache().getRegisterConfig() : registerConfig;
-        return new DelayedFrameMapBuilder(newFrameMap(registerConfigNonNull), getCodeCache(), registerConfigNonNull);
+        return new FrameMapBuilderImpl(newFrameMap(registerConfigNonNull), getCodeCache(), registerConfigNonNull);
     }
 
     @Override

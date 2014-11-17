@@ -29,5 +29,5 @@ import com.oracle.graal.api.code.*;
  * stack slots into {@link StackSlot real} stack slots.
  */
 public interface StackSlotAllocator {
-    FrameMappingTool allocateStackSlots(DelayedFrameMapBuilder builder);
+    FrameMappingTool allocateStackSlots(FrameMapBuilderImpl builder);
 }

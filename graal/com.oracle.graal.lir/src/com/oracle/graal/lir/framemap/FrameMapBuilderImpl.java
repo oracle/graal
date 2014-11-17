@@ -32,7 +32,7 @@ import com.oracle.graal.lir.gen.*;
 /**
  * A FrameMapBuilder that records allocation.
  */
-public class DelayedFrameMapBuilder implements FrameMapBuilder {
+public class FrameMapBuilderImpl implements FrameMapBuilder {
 
     private final RegisterConfig registerConfig;
     private final CodeCacheProvider codeCache;
@@ -40,7 +40,7 @@ public class DelayedFrameMapBuilder implements FrameMapBuilder {
     private final List<VirtualStackSlot> stackSlots;
     private final List<CallingConvention> calls;
 
-    public DelayedFrameMapBuilder(FrameMap frameMap, CodeCacheProvider codeCache, RegisterConfig registerConfig) {
+    public FrameMapBuilderImpl(FrameMap frameMap, CodeCacheProvider codeCache, RegisterConfig registerConfig) {
         assert registerConfig != null : "No register config!";
         this.registerConfig = registerConfig == null ? codeCache.getRegisterConfig() : registerConfig;
         this.codeCache = codeCache;

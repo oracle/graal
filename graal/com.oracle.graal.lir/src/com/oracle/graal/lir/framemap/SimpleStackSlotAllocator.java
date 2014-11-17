@@ -29,7 +29,7 @@ import com.oracle.graal.compiler.common.*;
 
 public class SimpleStackSlotAllocator implements StackSlotAllocator {
 
-    public FrameMappingTool allocateStackSlots(DelayedFrameMapBuilder builder) {
+    public FrameMappingTool allocateStackSlots(FrameMapBuilderImpl builder) {
         HashMap<VirtualStackSlot, StackSlot> mapping = new HashMap<>();
         for (VirtualStackSlot virtualSlot : builder.getStackSlots()) {
             final StackSlot slot;
@@ -45,11 +45,11 @@ public class SimpleStackSlotAllocator implements StackSlotAllocator {
         return mapping::get;
     }
 
-    protected StackSlot mapSimpleVirtualStackSlot(DelayedFrameMapBuilder builder, SimpleVirtualStackSlot virtualStackSlot) {
+    protected StackSlot mapSimpleVirtualStackSlot(FrameMapBuilderImpl builder, SimpleVirtualStackSlot virtualStackSlot) {
         return builder.frameMap.allocateSpillSlot(virtualStackSlot.getLIRKind());
     }
 
-    protected StackSlot mapVirtualStackSlotRange(DelayedFrameMapBuilder builder, VirtualStackSlotRange virtualStackSlot) {
+    protected StackSlot mapVirtualStackSlotRange(FrameMapBuilderImpl builder, VirtualStackSlotRange virtualStackSlot) {
         return builder.frameMap.allocateStackSlots(virtualStackSlot.getSlots(), virtualStackSlot.getObjects());
     }
 }
