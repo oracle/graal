@@ -34,6 +34,7 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.lir.framemap.*;
 
 /**
  * Emits code that enters a stack frame which is tailored to call the C++ method

@@ -24,7 +24,7 @@ package com.oracle.graal.lir.asm;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.asm.*;
-import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.framemap.*;
 
 /**
  * Factory class for creating {@link CompilationResultBuilder}s.

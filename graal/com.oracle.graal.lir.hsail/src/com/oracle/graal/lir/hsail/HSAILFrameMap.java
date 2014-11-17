@@ -24,7 +24,7 @@ package com.oracle.graal.lir.hsail;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.framemap.*;
 
 /**
  * HSAIL specific frame map.

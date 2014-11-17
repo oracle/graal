@@ -23,6 +23,7 @@
 package com.oracle.graal.lir.gen;
 
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.framemap.*;
 
 public interface LIRGenerationResult {
 

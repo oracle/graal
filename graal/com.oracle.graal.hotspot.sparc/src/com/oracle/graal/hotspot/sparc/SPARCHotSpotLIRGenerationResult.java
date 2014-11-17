@@ -30,6 +30,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.*;
+import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.lir.gen.*;
 
 public class SPARCHotSpotLIRGenerationResult extends LIRGenerationResultBase {

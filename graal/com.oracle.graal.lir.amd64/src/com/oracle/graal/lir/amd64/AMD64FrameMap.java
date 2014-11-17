@@ -27,7 +27,7 @@ import static com.oracle.graal.api.code.ValueUtil.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
-import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.framemap.*;
 
 /**
  * AMD64 specific frame map.
@@ -36,7 +36,7 @@ import com.oracle.graal.lir.*;
  *
  * <pre>
  *   Base       Contents
- * 
+ *
  *            :                                :  -----
  *   caller   | incoming overflow argument n   |    ^
  *   frame    :     ...                        :    | positive

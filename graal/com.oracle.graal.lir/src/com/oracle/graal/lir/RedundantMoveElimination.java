@@ -33,6 +33,7 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.StandardOp.MoveOp;
+import com.oracle.graal.lir.framemap.*;
 
 /**
  * Removes move instructions, where the destination value is already in place.

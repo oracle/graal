@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot.hsail;
 import java.util.*;
 
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.hsail.HSAILControlFlow.DeoptimizingOp;
 

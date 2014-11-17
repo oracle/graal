@@ -33,7 +33,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.sparc.*;
 
 public class SPARCHotSpotRegisterConfig implements RegisterConfig {

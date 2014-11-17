@@ -32,6 +32,7 @@ import com.oracle.graal.asm.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.lir.framemap.*;
 
 /**
  * A collection of machine-independent LIR operations, as well as interfaces to be implemented for

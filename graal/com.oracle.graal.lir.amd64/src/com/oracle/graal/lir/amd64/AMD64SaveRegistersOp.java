@@ -32,6 +32,7 @@ import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.lir.framemap.*;
 
 /**
  * Saves registers to stack slots.

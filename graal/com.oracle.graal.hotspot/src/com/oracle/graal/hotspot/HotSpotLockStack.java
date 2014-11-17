@@ -26,7 +26,7 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.framemap.*;
 
 /**
  * Manages allocation and re-use of lock slots in a scoped manner. The slots are used in HotSpot's

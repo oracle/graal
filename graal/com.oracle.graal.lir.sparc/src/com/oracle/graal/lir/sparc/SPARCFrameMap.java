@@ -25,7 +25,7 @@ package com.oracle.graal.lir.sparc;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
-import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.sparc.*;
 
 /**

@@ -37,6 +37,7 @@ import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.framemap.*;
 
 /**
  * Fills in a {@link CompilationResult} as its code is being assembled.
