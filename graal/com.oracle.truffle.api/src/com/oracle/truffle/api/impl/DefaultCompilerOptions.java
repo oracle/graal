@@ -35,7 +35,7 @@ public class DefaultCompilerOptions implements CompilerOptions {
     }
 
     public void setOption(String name, Object value) {
-        throw new UnsupportedOperationException(String.format("Option %s is not supported by this runtime"));
+        throw new UnsupportedOperationException(String.format("Option %s is not supported by this runtime", name));
     }
 
 }
