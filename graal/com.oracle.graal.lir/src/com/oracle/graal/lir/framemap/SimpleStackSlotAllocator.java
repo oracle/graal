@@ -27,9 +27,9 @@ import java.util.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.compiler.common.*;
 
-public class SimpleStackSlotAllocator {
+public class SimpleStackSlotAllocator implements StackSlotAllocator {
 
-    FrameMappingTool allocateStackSlots(DelayedFrameMapBuilder builder) {
+    public FrameMappingTool allocateStackSlots(DelayedFrameMapBuilder builder) {
         HashMap<VirtualStackSlot, StackSlot> mapping = new HashMap<>();
         for (VirtualStackSlot virtualSlot : builder.getStackSlots()) {
             final StackSlot slot;
