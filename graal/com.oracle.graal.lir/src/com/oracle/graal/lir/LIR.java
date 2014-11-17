@@ -33,6 +33,7 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.StandardOp.LabelOp;
+import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.lir.framemap.FrameMapBuilder.*;
 
 /**
