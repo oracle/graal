@@ -83,13 +83,12 @@ public class DelayedFrameMapBuilder implements FrameMapBuilder {
     }
 
     public FrameMap buildFrameMap(LIRGenerationResult res) {
-        FrameMappingToolImpl tool = new FrameMappingToolImpl(this);
-        tool.mapStackSlots();
+        FrameMappingTool mapper = new SimpleStackSlotAllocator().allocateStackSlots(this);
         for (CallingConvention cc : calls) {
             frameMap.callsMethod(cc);
         }
         // rewrite
-        mappables.forEach(m -> m.map(tool));
+        mappables.forEach(m -> m.map(mapper));
 
         frameMap.finish();
         return frameMap;

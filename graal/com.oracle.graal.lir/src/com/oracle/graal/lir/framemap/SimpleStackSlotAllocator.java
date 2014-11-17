@@ -27,39 +27,29 @@ import java.util.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.compiler.common.*;
 
-public class FrameMappingToolImpl implements FrameMappingTool {
+public class SimpleStackSlotAllocator {
 
-    private final HashMap<VirtualStackSlot, StackSlot> mapping;
-    private final DelayedFrameMapBuilder builder;
-
-    public FrameMappingToolImpl(DelayedFrameMapBuilder builder) {
-        this.mapping = new HashMap<>();
-        this.builder = builder;
-    }
-
-    public StackSlot getStackSlot(VirtualStackSlot slot) {
-        return mapping.get(slot);
-    }
-
-    void mapStackSlots() {
+    FrameMappingTool allocateStackSlots(DelayedFrameMapBuilder builder) {
+        HashMap<VirtualStackSlot, StackSlot> mapping = new HashMap<>();
         for (VirtualStackSlot virtualSlot : builder.getStackSlots()) {
             final StackSlot slot;
             if (virtualSlot instanceof SimpleVirtualStackSlot) {
-                slot = mapSimpleVirtualStackSlot((SimpleVirtualStackSlot) virtualSlot);
+                slot = mapSimpleVirtualStackSlot(builder, (SimpleVirtualStackSlot) virtualSlot);
             } else if (virtualSlot instanceof VirtualStackSlotRange) {
-                slot = mapVirtualStackSlotRange((VirtualStackSlotRange) virtualSlot);
+                slot = mapVirtualStackSlotRange(builder, (VirtualStackSlotRange) virtualSlot);
             } else {
                 throw GraalInternalError.shouldNotReachHere("Unknown VirtualStackSlot: " + virtualSlot);
             }
             mapping.put(virtualSlot, slot);
         }
+        return mapping::get;
     }
 
-    protected StackSlot mapSimpleVirtualStackSlot(SimpleVirtualStackSlot virtualStackSlot) {
+    protected StackSlot mapSimpleVirtualStackSlot(DelayedFrameMapBuilder builder, SimpleVirtualStackSlot virtualStackSlot) {
         return builder.frameMap.allocateSpillSlot(virtualStackSlot.getLIRKind());
     }
 
-    protected StackSlot mapVirtualStackSlotRange(VirtualStackSlotRange virtualStackSlot) {
+    protected StackSlot mapVirtualStackSlotRange(DelayedFrameMapBuilder builder, VirtualStackSlotRange virtualStackSlot) {
         return builder.frameMap.allocateStackSlots(virtualStackSlot.getSlots(), virtualStackSlot.getObjects());
     }
 }
