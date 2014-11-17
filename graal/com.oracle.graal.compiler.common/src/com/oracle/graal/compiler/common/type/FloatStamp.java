@@ -45,6 +45,7 @@ public class FloatStamp extends PrimitiveStamp {
 
     public FloatStamp(int bits, double lowerBound, double upperBound, boolean nonNaN) {
         super(bits, OPS);
+        assert bits == 64 || (bits == 32 && (Double.isNaN(lowerBound) || (float) lowerBound == lowerBound) && (Double.isNaN(upperBound) || (float) upperBound == upperBound));
         this.lowerBound = lowerBound;
         this.upperBound = upperBound;
         this.nonNaN = nonNaN;
