@@ -62,7 +62,7 @@ public class DelayedFrameMapBuilder implements FrameMapBuilder {
         return slot;
     }
 
-    public abstract class TrackedVirtualStackSlot extends VirtualStackSlot {
+    abstract class TrackedVirtualStackSlot extends VirtualStackSlot {
         /**
          *
          */
@@ -75,7 +75,7 @@ public class DelayedFrameMapBuilder implements FrameMapBuilder {
         public abstract StackSlot transform();
     }
 
-    private class SimpleVirtualStackSlot extends TrackedVirtualStackSlot {
+    class SimpleVirtualStackSlot extends TrackedVirtualStackSlot {
 
         private static final long serialVersionUID = 7654295701165421750L;
 
@@ -90,7 +90,7 @@ public class DelayedFrameMapBuilder implements FrameMapBuilder {
 
     }
 
-    private class VirtualStackSlotRange extends TrackedVirtualStackSlot {
+    class VirtualStackSlotRange extends TrackedVirtualStackSlot {
 
         private static final long serialVersionUID = 5152592950118317121L;
         private final BitSet objects;
