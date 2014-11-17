@@ -71,8 +71,6 @@ public class DelayedFrameMapBuilder implements FrameMapBuilder {
         public TrackedVirtualStackSlot(LIRKind lirKind) {
             super(lirKind);
         }
-
-        public abstract StackSlot transform();
     }
 
     class SimpleVirtualStackSlot extends TrackedVirtualStackSlot {
@@ -81,11 +79,6 @@ public class DelayedFrameMapBuilder implements FrameMapBuilder {
 
         public SimpleVirtualStackSlot(LIRKind lirKind) {
             super(lirKind);
-        }
-
-        @Override
-        public StackSlot transform() {
-            return frameMap.allocateSpillSlot(getLIRKind());
         }
 
     }
@@ -100,11 +93,6 @@ public class DelayedFrameMapBuilder implements FrameMapBuilder {
             super(LIRKind.reference(Kind.Object));
             this.slots = slots;
             this.objects = (BitSet) objects.clone();
-        }
-
-        @Override
-        public StackSlot transform() {
-            return frameMap.allocateStackSlots(getSlots(), getObjects());
         }
 
         public int getSlots() {
