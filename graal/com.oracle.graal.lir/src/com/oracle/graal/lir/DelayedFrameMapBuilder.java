@@ -55,22 +55,9 @@ public class DelayedFrameMapBuilder implements FrameMapBuilder {
         this.mappables = new ArrayList<>();
     }
 
-    private Set<VirtualStackSlot> freedSlots;
     private final List<FrameMappable> mappables;
 
     public VirtualStackSlot allocateSpillSlot(LIRKind kind) {
-        if (freedSlots != null) {
-            for (Iterator<VirtualStackSlot> iter = freedSlots.iterator(); iter.hasNext();) {
-                VirtualStackSlot s = iter.next();
-                if (s.getLIRKind().equals(kind)) {
-                    iter.remove();
-                    if (freedSlots.isEmpty()) {
-                        freedSlots = null;
-                    }
-                    return s;
-                }
-            }
-        }
         SimpleVirtualStackSlot slot = new SimpleVirtualStackSlot(kind);
         stackSlots.add(slot);
         return slot;
@@ -169,13 +156,6 @@ public class DelayedFrameMapBuilder implements FrameMapBuilder {
         return codeCache;
     }
 
-    public void freeSpillSlot(VirtualStackSlot slot) {
-        if (freedSlots == null) {
-            freedSlots = new HashSet<>();
-        }
-        freedSlots.add(slot);
-    }
-
     public void callsMethod(CallingConvention cc) {
         calls.add(cc);
     }
@@ -189,21 +169,7 @@ public class DelayedFrameMapBuilder implements FrameMapBuilder {
         }
         // rewrite
         mappables.forEach(m -> m.map(mapping::get));
-        //
-        if (freedSlots != null) {
-            // If the freed slots cover the complete spill area (except for the return
-            // address slot), then the spill size is reset to its initial value.
-            // Without this, frameNeedsAllocating() would never return true.
-            int total = 0;
-            for (VirtualStackSlot s : freedSlots) {
-                total += frameMap.getTarget().getSizeInBytes(s.getKind());
-            }
-            if (total == frameMap.spillSize - frameMap.initialSpillSize) {
-                // reset spill area size
-                frameMap.spillSize = frameMap.initialSpillSize;
-            }
-            freedSlots = null;
-        }
+
         frameMap.finish();
         return frameMap;
     }

@@ -80,12 +80,6 @@ public interface FrameMapBuilder {
     CodeCacheProvider getCodeCache();
 
     /**
-     * Frees a spill slot that was obtained via {@link #allocateSpillSlot(LIRKind)} such that it can
-     * be reused for the next allocation request for the same kind of slot.
-     */
-    void freeSpillSlot(VirtualStackSlot reservedSlot);
-
-    /**
      * Informs the frame map that the compiled code calls a particular method, which may need stack
      * space for outgoing arguments.
      *
