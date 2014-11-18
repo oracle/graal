@@ -111,6 +111,7 @@ public final class SLContext extends ExecutionContext {
         installBuiltin(SLHelloEqualsWorldBuiltinFactory.getInstance());
         installBuiltin(SLAssertTrueBuiltinFactory.getInstance());
         installBuiltin(SLAssertFalseBuiltinFactory.getInstance());
+        installBuiltin(SLNewObjectBuiltinFactory.getInstance());
     }
 
     public void installBuiltin(NodeFactory<? extends SLBuiltinNode> factory) {

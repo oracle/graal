@@ -29,6 +29,7 @@ import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.sl.nodes.*;
+import com.oracle.truffle.sl.nodes.access.*;
 import com.oracle.truffle.sl.nodes.call.*;
 import com.oracle.truffle.sl.nodes.controlflow.*;
 import com.oracle.truffle.sl.nodes.expression.*;
@@ -265,16 +266,15 @@ public class SLNodeFactory {
     /**
      * Returns an {@link SLInvokeNode} for the given parameters.
      *
-     * @param nameToken The name of the function being called
+     * @param functionNode The function being called
      * @param parameterNodes The parameters of the function call
      * @param finalToken A token used to determine the end of the sourceSelection for this call
      * @return An SLInvokeNode for the given parameters.
      */
-    public SLExpressionNode createCall(Token nameToken, List<SLExpressionNode> parameterNodes, Token finalToken) {
-        final int startPos = nameToken.charPos;
+    public SLExpressionNode createCall(SLExpressionNode functionNode, List<SLExpressionNode> parameterNodes, Token finalToken) {
+        final int startPos = functionNode.getSourceSection().getCharIndex();
         final int endPos = finalToken.charPos + finalToken.val.length();
-        final SourceSection src = source.createSection(nameToken.val, startPos, endPos - startPos);
-        SLExpressionNode functionNode = createRead(nameToken);
+        final SourceSection src = source.createSection(functionNode.getSourceSection().getIdentifier(), startPos, endPos - startPos);
         return SLInvokeNode.create(src, functionNode, parameterNodes.toArray(new SLExpressionNode[parameterNodes.size()]));
     }
 
@@ -341,6 +341,35 @@ public class SLNodeFactory {
     public SLExpressionNode createParenExpression(SLExpressionNode expressionNode, int start, int length) {
         final SourceSection src = source.createSection("()", start, length);
         return new SLParenExpressionNode(src, expressionNode);
+    }
+
+    /**
+     * Returns an {@link SLReadPropertyNode} for the given parameters.
+     *
+     * @param receiverNode The receiver of the property access
+     * @param nameToken The name of the property being accessed
+     * @return An SLExpressionNode for the given parameters.
+     */
+    public SLExpressionNode createReadProperty(SLExpressionNode receiverNode, Token nameToken) {
+        final int startPos = receiverNode.getSourceSection().getCharIndex();
+        final int endPos = nameToken.charPos + nameToken.val.length();
+        final SourceSection src = source.createSection(".", startPos, endPos - startPos);
+        return SLReadPropertyNode.create(src, receiverNode, nameToken.val);
+    }
+
+    /**
+     * Returns an {@link SLWritePropertyNode} for the given parameters.
+     *
+     * @param receiverNode The receiver object of the property assignment
+     * @param nameToken The name of the property being assigned
+     * @param valueNode The value to be assigned
+     * @return An SLExpressionNode for the given parameters.
+     */
+    public SLExpressionNode createWriteProperty(SLExpressionNode receiverNode, Token nameToken, SLExpressionNode valueNode) {
+        final int start = receiverNode.getSourceSection().getCharIndex();
+        final int length = valueNode.getSourceSection().getCharEndIndex() - start;
+        SourceSection src = source.createSection("=", start, length);
+        return SLWritePropertyNode.create(src, receiverNode, nameToken.val, valueNode);
     }
 
     /**

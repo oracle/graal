@@ -39,7 +39,7 @@ public class Parser {
 	public static final int _identifier = 1;
 	public static final int _stringLiteral = 2;
 	public static final int _numericLiteral = 3;
-	public static final int maxT = 30;
+	public static final int maxT = 31;
 
     static final boolean T = true;
     static final boolean x = false;
@@ -200,7 +200,7 @@ public class Parser {
 			Expect(11);
 			break;
 		}
-		default: SynErr(31); break;
+		default: SynErr(32); break;
 		}
 		return result;
 	}
@@ -345,30 +345,10 @@ public class Parser {
 		result = null;
 		if (la.kind == 1) {
 			Get();
-			Token nameToken = t;
-			if (la.kind == 5) {
-				Get();
-				List<SLExpressionNode> parameters = new ArrayList<>();
-				SLExpressionNode parameter;
-				if (StartOf(2)) {
-					parameter = Expression();
-					parameters.add(parameter);
-					while (la.kind == 6) {
-						Get();
-						parameter = Expression();
-						parameters.add(parameter);
-					}
-				}
-				Expect(7);
-				Token finalToken = t;
-				result = factory.createCall(nameToken, parameters, finalToken);
-			} else if (la.kind == 29) {
-				Get();
-				SLExpressionNode value = Expression();
-				result = factory.createAssignment(nameToken, value);
-			} else if (StartOf(4)) {
-				result = factory.createRead(nameToken);
-			} else SynErr(32);
+			result = factory.createRead(t);
+			if (la.kind == 5 || la.kind == 29 || la.kind == 30) {
+				result = MemberExpression(result, null, t);
+			}
 		} else if (la.kind == 2) {
 			Get();
 			result = factory.createStringLiteral(t);
@@ -387,6 +367,48 @@ public class Parser {
 		return result;
 	}
 
+	SLExpressionNode  MemberExpression(SLExpressionNode receiver, SLExpressionNode assignmentReceiver, Token assignmentName) {
+		SLExpressionNode  result;
+		result = null;
+		Token nestedAssignmentName = null;
+		if (la.kind == 5) {
+			Get();
+			List<SLExpressionNode> parameters = new ArrayList<>();
+			SLExpressionNode parameter;
+			if (StartOf(2)) {
+				parameter = Expression();
+				parameters.add(parameter);
+				while (la.kind == 6) {
+					Get();
+					parameter = Expression();
+					parameters.add(parameter);
+				}
+			}
+			Expect(7);
+			Token finalToken = t;
+			result = factory.createCall(receiver, parameters, finalToken);
+		} else if (la.kind == 29) {
+			Get();
+			SLExpressionNode value = Expression();
+			if (assignmentName == null) {
+			   SemErr("invalid assignment target");
+			} else if (assignmentReceiver == null) {
+			   result = factory.createAssignment(assignmentName, value);
+			} else {
+			   result = factory.createWriteProperty(assignmentReceiver, assignmentName, value);
+			}
+		} else if (la.kind == 30) {
+			Get();
+			Expect(1);
+			result = factory.createReadProperty(receiver, t);
+			nestedAssignmentName = t;
+		} else SynErr(34);
+		if (la.kind == 5 || la.kind == 29 || la.kind == 30) {
+			result = MemberExpression(result, receiver, nestedAssignmentName);
+		}
+		return result;
+	}
+
 
 
     public void Parse() {
@@ -399,11 +421,10 @@ public class Parser {
     }
 
     private static final boolean[][] set = {
-		{T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x},
-		{x,T,T,T, x,T,x,x, x,x,T,x, T,T,T,x, T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x},
-		{x,T,T,T, x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x},
-		{x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,T, T,T,T,T, T,x,x,x, x,x,x,x},
-		{x,x,x,x, x,x,T,T, x,x,x,T, x,x,x,x, x,T,T,T, T,T,T,T, T,T,T,T, T,x,x,x}
+		{T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x},
+		{x,T,T,T, x,T,x,x, x,x,T,x, T,T,T,x, T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x},
+		{x,T,T,T, x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x},
+		{x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,T, T,T,T,T, T,x,x,x, x,x,x,x, x}
 
     };
 
@@ -476,10 +497,11 @@ class Errors {
 			case 27: s = "\"*\" expected"; break;
 			case 28: s = "\"/\" expected"; break;
 			case 29: s = "\"=\" expected"; break;
-			case 30: s = "??? expected"; break;
-			case 31: s = "invalid Statement"; break;
-			case 32: s = "invalid Factor"; break;
+			case 30: s = "\".\" expected"; break;
+			case 31: s = "??? expected"; break;
+			case 32: s = "invalid Statement"; break;
 			case 33: s = "invalid Factor"; break;
+			case 34: s = "invalid MemberExpression"; break;
             default:
                 s = "error " + n;
                 break;

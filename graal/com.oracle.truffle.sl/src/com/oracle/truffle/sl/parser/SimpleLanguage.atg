@@ -202,25 +202,10 @@ Factor<out result>
 Factor<out SLExpressionNode result>
 =                                               (. result = null; .)
 (
-    identifier                                  (. Token nameToken = t; .)
-    (
-        "("                                     (. List<SLExpressionNode> parameters = new ArrayList<>();
-                                                   SLExpressionNode parameter; .)
-        [
-            Expression<out parameter>           (. parameters.add(parameter); .)
-            {
-                ","
-                Expression<out parameter>       (. parameters.add(parameter); .)
-            }
-        ]
-        ")"                                     (. Token finalToken = t; .)
-                                                (. result = factory.createCall(nameToken, parameters, finalToken); .)
-    |
-        "="
-        Expression<out SLExpressionNode value>  (. result = factory.createAssignment(nameToken, value); .)
-    |
-                                                (. result = factory.createRead(nameToken); .)
-    )
+    identifier                                  (. result = factory.createRead(t); .)
+    [
+        MemberExpression<out result, result, null, t>
+    ]
 |
     stringLiteral                               (. result = factory.createStringLiteral(t); .)
 |
@@ -231,6 +216,42 @@ Factor<out SLExpressionNode result>
     ")"                                         (. int length = (t.charPos + t.val.length()) - start; .)
                                                 (. result = factory.createParenExpression(expr, start, length); .)
 )
+.
+
+
+MemberExpression<out SLExpressionNode result, SLExpressionNode receiver, SLExpressionNode assignmentReceiver, Token assignmentName>
+=                                               (. result = null;
+                                                   Token nestedAssignmentName = null; .)
+(
+    "("                                         (. List<SLExpressionNode> parameters = new ArrayList<>();
+                                                   SLExpressionNode parameter; .)
+    [
+        Expression<out parameter>               (. parameters.add(parameter); .)
+        {
+            ","
+            Expression<out parameter>           (. parameters.add(parameter); .)
+        }
+    ]
+    ")"                                         (. Token finalToken = t; .)
+                                                (. result = factory.createCall(receiver, parameters, finalToken); .)
+|
+    "="
+    Expression<out SLExpressionNode value>      (. if (assignmentName == null) {
+                                                       SemErr("invalid assignment target");
+                                                   } else if (assignmentReceiver == null) {
+                                                       result = factory.createAssignment(assignmentName, value);
+                                                   } else {
+                                                       result = factory.createWriteProperty(assignmentReceiver, assignmentName, value);
+                                                   } .)
+|
+    "."
+    identifier
+                                                (. result = factory.createReadProperty(receiver, t); .)
+                                                (. nestedAssignmentName = t; .)
+)
+[
+    MemberExpression<out result, result, receiver, nestedAssignmentName>
+]
 .
 
 
