@@ -22,6 +22,7 @@
 * Added `TruffleRuntime#getCapability` API method.
 * Added `NodeInterface` and allowed child field to be declared with interfaces that extend it.
 * Added `CompilerOptions` and allowed it to be set for `ExecutionContext` and `RootNode`.
+* Added experimental object API.
 * ...
 
 ## Version 0.5
