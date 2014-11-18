@@ -22,13 +22,13 @@
  */
 package com.oracle.truffle.sl.nodes.access;
 
-import java.util.*;
-
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.source.*;
+import com.oracle.truffle.api.utilities.*;
 import com.oracle.truffle.sl.*;
 import com.oracle.truffle.sl.nodes.*;
+import com.oracle.truffle.sl.runtime.*;
 
 /**
  * The node for setting a property of an object. When executed, this node first evaluates the value
@@ -46,21 +46,23 @@ public final class SLWritePropertyNode extends SLExpressionNode {
     @Child protected SLExpressionNode receiverNode;
     protected final String propertyName;
     @Child protected SLExpressionNode valueNode;
+    @Child protected SLWritePropertyCacheNode cacheNode;
+    private final ConditionProfile receiverTypeCondition = ConditionProfile.createBinaryProfile();
 
     private SLWritePropertyNode(SourceSection src, SLExpressionNode receiverNode, String propertyName, SLExpressionNode valueNode) {
         super(src);
         this.receiverNode = receiverNode;
         this.propertyName = propertyName;
         this.valueNode = valueNode;
+        this.cacheNode = SLWritePropertyCacheNode.create(propertyName);
     }
 
-    @SuppressWarnings("unchecked")
     @Override
     public Object executeGeneric(VirtualFrame frame) {
         Object value = valueNode.executeGeneric(frame);
         Object object = receiverNode.executeGeneric(frame);
-        if (object instanceof Map) {
-            ((Map<Object, Object>) object).put(propertyName, value);
+        if (receiverTypeCondition.profile(SLContext.isSLObject(object))) {
+            cacheNode.executeObject(SLContext.castSLObject(object), value);
         } else {
             throw new SLException("unexpected receiver type");
         }

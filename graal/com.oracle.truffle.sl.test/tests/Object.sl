@@ -15,10 +15,26 @@ function main() {
   obj3 = new();
   obj3.fn = mkobj;
   println(obj3.fn().z);
+
+  obj4 = new();
+  write(obj4, 1);
+  read(obj4);
+  write(obj4, 2);
+  read(obj4);
+  write(obj4, "three");
+  read(obj4);
 }
 
 function mkobj() {
   newobj = new();
   newobj.z = "zzz";
   return newobj;
+}
+
+function read(obj) {
+  return obj.prop;
+}
+
+function write(obj, value) {
+  return obj.prop = value;
 }

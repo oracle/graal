@@ -30,6 +30,7 @@ import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.instrument.*;
 import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.object.*;
 import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.sl.*;
 import com.oracle.truffle.sl.builtins.*;
@@ -49,9 +50,12 @@ import com.oracle.truffle.sl.parser.*;
  * context. Therefore, the context is not a singleton.
  */
 public final class SLContext extends ExecutionContext {
+    private static final Layout LAYOUT = Layout.createLayout();
+
     private final BufferedReader input;
     private final PrintStream output;
     private final SLFunctionRegistry functionRegistry;
+    private final Shape emptyShape;
     private SourceCallback sourceCallback = null;
 
     public SLContext(BufferedReader input, PrintStream output) {
@@ -59,6 +63,8 @@ public final class SLContext extends ExecutionContext {
         this.output = output;
         this.functionRegistry = new SLFunctionRegistry();
         installBuiltins();
+
+        this.emptyShape = LAYOUT.createShape(new ObjectType());
     }
 
     @Override
@@ -179,5 +185,17 @@ public final class SLContext extends ExecutionContext {
             throw new SLException("No function main() defined in SL source file.");
         }
         main.getCallTarget().call();
+    }
+
+    public DynamicObject createObject() {
+        return LAYOUT.newInstance(emptyShape);
+    }
+
+    public static boolean isSLObject(Object value) {
+        return LAYOUT.getType().isInstance(value);
+    }
+
+    public static DynamicObject castSLObject(Object value) {
+        return LAYOUT.getType().cast(value);
     }
 }

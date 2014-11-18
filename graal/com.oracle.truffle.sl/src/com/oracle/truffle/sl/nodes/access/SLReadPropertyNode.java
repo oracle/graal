@@ -22,13 +22,13 @@
  */
 package com.oracle.truffle.sl.nodes.access;
 
-import java.util.*;
-
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.source.*;
+import com.oracle.truffle.api.utilities.*;
 import com.oracle.truffle.sl.*;
 import com.oracle.truffle.sl.nodes.*;
+import com.oracle.truffle.sl.runtime.*;
 
 /**
  * The node for accessing a property of an object. When executed, this node first evaluates the
@@ -43,18 +43,21 @@ public final class SLReadPropertyNode extends SLExpressionNode {
 
     @Child protected SLExpressionNode receiverNode;
     protected final String propertyName;
+    @Child protected SLReadPropertyCacheNode cacheNode;
+    private final ConditionProfile receiverTypeCondition = ConditionProfile.createBinaryProfile();
 
     private SLReadPropertyNode(SourceSection src, SLExpressionNode receiverNode, String propertyName) {
         super(src);
         this.receiverNode = receiverNode;
         this.propertyName = propertyName;
+        this.cacheNode = SLReadPropertyCacheNode.create(propertyName);
     }
 
     @Override
     public Object executeGeneric(VirtualFrame frame) {
         Object object = receiverNode.executeGeneric(frame);
-        if (object instanceof Map) {
-            return ((Map<?, ?>) object).get(propertyName);
+        if (receiverTypeCondition.profile(SLContext.isSLObject(object))) {
+            return cacheNode.executeObject(SLContext.castSLObject(object));
         } else {
             throw new SLException("unexpected receiver type");
         }

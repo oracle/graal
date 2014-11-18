@@ -22,8 +22,6 @@
  */
 package com.oracle.truffle.sl.builtins;
 
-import java.util.*;
-
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.nodes.*;
@@ -48,6 +46,6 @@ public abstract class SLNewObjectBuiltin extends SLBuiltinNode {
 
     @Specialization
     public Object newObject() {
-        return new HashMap<>();
+        return getContext().createObject();
     }
 }
