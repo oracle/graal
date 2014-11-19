@@ -36,7 +36,7 @@ import com.oracle.graal.lir.framemap.*;
  *
  * <pre>
  *   Base       Contents
- *
+ * 
  *            :                                :  -----
  *   caller   | incoming overflow argument n   |    ^
  *   frame    :     ...                        :    | positive
@@ -111,7 +111,7 @@ public class AMD64FrameMap extends FrameMap {
      * runtime for walking/inspecting frames of such methods.
      */
     StackSlot allocateRBPSpillSlot() {
-        assert spillSize == initialSpillSize : "RBP spill slot can only be allocated before getting other stack slots";
+        assert spillSize == initialSpillSize : "RBP spill slot must be the first allocated stack slots";
         rbpSpillSlot = allocateSpillSlot(LIRKind.value(Kind.Long));
         assert asStackSlot(rbpSpillSlot).getRawOffset() == -16 : asStackSlot(rbpSpillSlot).getRawOffset();
         return rbpSpillSlot;
@@ -124,6 +124,7 @@ public class AMD64FrameMap extends FrameMap {
     }
 
     public StackSlot allocateDeoptimizationRescueSlot() {
+        assert spillSize == initialSpillSize || spillSize == initialSpillSize + spillSlotSize(LIRKind.value(Kind.Long)) : "Deoptimization rescue slot must be the first or second (if there is an RBP spill slot) stack slot";
         return allocateSpillSlot(LIRKind.value(Kind.Long));
     }
 }
