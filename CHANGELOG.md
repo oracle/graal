@@ -4,6 +4,7 @@
 ### Graal
 * Changed name suite specification from `mx/projects.py` to `mx/suite.py`.
 * Changed semantics (and signature) of `ResolvedJavaType#resolveMethod()` (old behavior available via `resolveConcreteMethod()`).
+* Moved `ResolvedJavaField#read[Constant]Value` and `getMethodHandleAccess()` to `ConstantReflectionProvider`.
 * ...
 
 ### Truffle
