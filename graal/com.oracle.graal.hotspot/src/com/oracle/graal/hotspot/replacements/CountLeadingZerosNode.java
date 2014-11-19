@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.replacements.nodes;
+package com.oracle.graal.hotspot.replacements;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
@@ -32,17 +32,16 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 
 /**
- * Determines the index of the most significant "1" bit. Note that the result is undefined if the
- * input is zero.
+ * Count the number of leading zeros.
  */
 @NodeInfo
-public class BitScanReverseNode extends UnaryNode implements LIRLowerable {
+public class CountLeadingZerosNode extends UnaryNode implements LIRLowerable {
 
-    public static BitScanReverseNode create(ValueNode value) {
-        return new BitScanReverseNode(value);
+    public static CountLeadingZerosNode create(ValueNode value) {
+        return new CountLeadingZerosNode(value);
     }
 
-    protected BitScanReverseNode(ValueNode value) {
+    protected CountLeadingZerosNode(ValueNode value) {
         super(StampFactory.forInteger(Kind.Int, 0, ((PrimitiveStamp) value.stamp()).getBits()), value);
         assert value.getKind() == Kind.Int || value.getKind() == Kind.Long;
     }
@@ -50,18 +49,9 @@ public class BitScanReverseNode extends UnaryNode implements LIRLowerable {
     @Override
     public boolean inferStamp() {
         IntegerStamp valueStamp = (IntegerStamp) getValue().stamp();
-        int min;
-        int max;
         long mask = CodeUtil.mask(valueStamp.getBits());
-        int lastAlwaysSetBit = scan(valueStamp.downMask() & mask);
-        if (lastAlwaysSetBit == -1) {
-            int firstMaybeSetBit = BitScanForwardNode.scan(valueStamp.upMask() & mask);
-            min = firstMaybeSetBit;
-        } else {
-            min = lastAlwaysSetBit;
-        }
-        int lastMaybeSetBit = scan(valueStamp.upMask() & mask);
-        max = lastMaybeSetBit;
+        int min = Long.numberOfLeadingZeros(valueStamp.upMask() & mask);
+        int max = Long.numberOfLeadingZeros(valueStamp.downMask() & mask);
         return updateStamp(StampFactory.forInteger(Kind.Int, min, max));
     }
 
@@ -69,55 +59,36 @@ public class BitScanReverseNode extends UnaryNode implements LIRLowerable {
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
         if (forValue.isConstant()) {
             JavaConstant c = forValue.asJavaConstant();
-            if (c.asLong() != 0) {
-                return ConstantNode.forInt(forValue.getKind() == Kind.Int ? scan(c.asInt()) : scan(c.asLong()));
+            if (forValue.getKind() == Kind.Int) {
+                return ConstantNode.forInt(Integer.numberOfLeadingZeros(c.asInt()));
+            } else {
+                return ConstantNode.forInt(Long.numberOfLeadingZeros(c.asLong()));
             }
         }
         return this;
     }
 
     /**
-     * Utility method with defined return value for 0.
+     * Raw intrinsic for lzcntq instruction.
      *
      * @param v
-     * @return index of first set bit or -1 if {@code v} == 0.
-     */
-    public static int scan(long v) {
-        return 63 - Long.numberOfLeadingZeros(v);
-    }
-
-    /**
-     * Utility method with defined return value for 0.
-     *
-     * @param v
-     * @return index of first set bit or -1 if {@code v} == 0.
-     */
-    public static int scan(int v) {
-        return 31 - Integer.numberOfLeadingZeros(v);
-    }
-
-    /**
-     * Raw intrinsic for bsr instruction.
-     *
-     * @param v
-     * @return index of first set bit or an undefined value if {@code v} == 0.
+     * @return number of trailing zeros
      */
     @NodeIntrinsic
-    public static native int unsafeScan(int v);
+    public static native int count(long v);
 
     /**
-     * Raw intrinsic for bsr instruction.
+     * Raw intrinsic for lzcntl instruction.
      *
      * @param v
-     * @return index of first set bit or an undefined value if {@code v} == 0.
+     * @return number of trailing zeros
      */
     @NodeIntrinsic
-    public static native int unsafeScan(long v);
+    public static native int count(int v);
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        Value result = gen.getLIRGeneratorTool().emitBitScanReverse(gen.operand(getValue()));
+        Value result = gen.getLIRGeneratorTool().emitCountLeadingZeros(gen.operand(getValue()));
         gen.setResult(this, result);
     }
-
 }

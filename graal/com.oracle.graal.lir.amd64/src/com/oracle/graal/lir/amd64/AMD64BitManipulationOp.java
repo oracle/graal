@@ -35,7 +35,11 @@ public class AMD64BitManipulationOp extends AMD64LIRInstruction {
         LPOPCNT,
         IBSR,
         LBSR,
-        BSF;
+        BSF,
+        ILZCNT,
+        LLZCNT,
+        ITZCNT,
+        LTZCNT
     }
 
     @Opcode private final IntrinsicOpcode opcode;
@@ -69,6 +73,18 @@ public class AMD64BitManipulationOp extends AMD64LIRInstruction {
                 case LBSR:
                     masm.bsrq(dst, src);
                     break;
+                case ILZCNT:
+                    masm.lzcntl(dst, src);
+                    break;
+                case LLZCNT:
+                    masm.lzcntq(dst, src);
+                    break;
+                case ITZCNT:
+                    masm.tzcntl(dst, src);
+                    break;
+                case LTZCNT:
+                    masm.tzcntq(dst, src);
+                    break;
             }
         } else {
             AMD64Address src = (AMD64Address) crb.asAddress(input);
@@ -87,6 +103,18 @@ public class AMD64BitManipulationOp extends AMD64LIRInstruction {
                     break;
                 case LBSR:
                     masm.bsrq(dst, src);
+                    break;
+                case ILZCNT:
+                    masm.lzcntl(dst, src);
+                    break;
+                case LLZCNT:
+                    masm.lzcntq(dst, src);
+                    break;
+                case ITZCNT:
+                    masm.tzcntl(dst, src);
+                    break;
+                case LTZCNT:
+                    masm.tzcntq(dst, src);
                     break;
             }
         }

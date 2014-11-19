@@ -164,7 +164,7 @@ public class BitOpNodesTest extends GraalCompilerTest {
     @Test
     public void testScanForwardLongEmpty() {
         ValueNode result = parseAndInline("scanForwardLongEmptySnippet");
-        Assert.assertEquals(StampFactory.forInteger(Kind.Int, -1, 64), result.stamp());
+        Assert.assertEquals(StampFactory.forInteger(Kind.Int, 24, 64), result.stamp());
     }
 
     /*

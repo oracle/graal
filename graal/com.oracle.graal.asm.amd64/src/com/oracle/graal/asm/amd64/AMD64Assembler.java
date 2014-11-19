@@ -500,7 +500,6 @@ public class AMD64Assembler extends Assembler {
     }
 
     public final void bsrq(Register dst, Register src) {
-        assert !supports(CPUFeature.LZCNT);
         int encode = prefixqAndEncode(dst.encoding, src.encoding);
         emitByte(0x0F);
         emitByte(0xBD);
@@ -508,7 +507,6 @@ public class AMD64Assembler extends Assembler {
     }
 
     public final void bsrq(Register dst, AMD64Address src) {
-        assert !supports(CPUFeature.LZCNT);
         prefixq(src, dst);
         emitByte(0x0F);
         emitByte(0xBD);
@@ -516,7 +514,6 @@ public class AMD64Assembler extends Assembler {
     }
 
     public final void bsrl(Register dst, Register src) {
-        assert !supports(CPUFeature.LZCNT);
         int encode = prefixAndEncode(dst.encoding, src.encoding);
         emitByte(0x0F);
         emitByte(0xBD);
@@ -524,7 +521,6 @@ public class AMD64Assembler extends Assembler {
     }
 
     public final void bsrl(Register dst, AMD64Address src) {
-        assert !supports(CPUFeature.LZCNT);
         prefix(src, dst);
         emitByte(0x0F);
         emitByte(0xBD);
@@ -1327,6 +1323,42 @@ public class AMD64Assembler extends Assembler {
         nop();
     }
 
+    public final void lzcntl(Register dst, Register src) {
+        assert supports(CPUFeature.LZCNT);
+        emitByte(0xF3);
+        int encode = prefixAndEncode(dst.encoding, src.encoding);
+        emitByte(0x0F);
+        emitByte(0xBD);
+        emitByte(0xC0 | encode);
+    }
+
+    public final void lzcntq(Register dst, Register src) {
+        assert supports(CPUFeature.LZCNT);
+        emitByte(0xF3);
+        int encode = prefixqAndEncode(dst.encoding, src.encoding);
+        emitByte(0x0F);
+        emitByte(0xBD);
+        emitByte(0xC0 | encode);
+    }
+
+    public final void lzcntl(Register dst, AMD64Address src) {
+        assert supports(CPUFeature.LZCNT);
+        emitByte(0xF3);
+        prefix(src, dst);
+        emitByte(0x0F);
+        emitByte(0xBD);
+        emitOperandHelper(dst, src);
+    }
+
+    public final void lzcntq(Register dst, AMD64Address src) {
+        assert supports(CPUFeature.LZCNT);
+        emitByte(0xF3);
+        prefixq(src, dst);
+        emitByte(0x0F);
+        emitByte(0xBD);
+        emitOperandHelper(dst, src);
+    }
+
     public final void nop() {
         nop(1);
     }
@@ -1875,6 +1907,42 @@ public class AMD64Assembler extends Assembler {
     public final void testl(Register dst, AMD64Address src) {
         prefix(src, dst);
         emitByte(0x85);
+        emitOperandHelper(dst, src);
+    }
+
+    public final void tzcntl(Register dst, Register src) {
+        assert supports(CPUFeature.BMI1);
+        emitByte(0xF3);
+        int encode = prefixAndEncode(dst.encoding, src.encoding);
+        emitByte(0x0F);
+        emitByte(0xBC);
+        emitByte(0xC0 | encode);
+    }
+
+    public final void tzcntq(Register dst, Register src) {
+        assert supports(CPUFeature.BMI1);
+        emitByte(0xF3);
+        int encode = prefixqAndEncode(dst.encoding, src.encoding);
+        emitByte(0x0F);
+        emitByte(0xBC);
+        emitByte(0xC0 | encode);
+    }
+
+    public final void tzcntl(Register dst, AMD64Address src) {
+        assert supports(CPUFeature.BMI1);
+        emitByte(0xF3);
+        prefix(src, dst);
+        emitByte(0x0F);
+        emitByte(0xBC);
+        emitOperandHelper(dst, src);
+    }
+
+    public final void tzcntq(Register dst, AMD64Address src) {
+        assert supports(CPUFeature.BMI1);
+        emitByte(0xF3);
+        prefixq(src, dst);
+        emitByte(0x0F);
+        emitByte(0xBC);
         emitOperandHelper(dst, src);
     }
 

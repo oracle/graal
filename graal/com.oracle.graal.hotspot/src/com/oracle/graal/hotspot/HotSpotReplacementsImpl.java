@@ -34,6 +34,8 @@ import com.oracle.graal.hotspot.word.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.replacements.*;
+import com.oracle.graal.replacements.IntegerSubstitutions;
+import com.oracle.graal.replacements.LongSubstitutions;
 import com.oracle.graal.word.phases.*;
 
 /**
@@ -63,7 +65,10 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
                 }
             } else if (substituteMethod.getName().equals("numberOfLeadingZeros")) {
                 if (config.useCountLeadingZerosInstruction) {
-                    // bsr is lzcnt
+                    return null;
+                }
+            } else if (substituteMethod.getName().equals("numberOfTrailingZeros")) {
+                if (config.useCountTrailingZerosInstruction) {
                     return null;
                 }
             }

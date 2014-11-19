@@ -1004,6 +1004,26 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         return result;
     }
 
+    public Value emitCountLeadingZeros(Value value) {
+        Variable result = newVariable(LIRKind.derive(value).changeType(Kind.Int));
+        if (value.getKind().getStackKind() == Kind.Int) {
+            append(new AMD64BitManipulationOp(ILZCNT, result, asAllocatable(value)));
+        } else {
+            append(new AMD64BitManipulationOp(LLZCNT, result, asAllocatable(value)));
+        }
+        return result;
+    }
+
+    public Value emitCountTrailingZeros(Value value) {
+        Variable result = newVariable(LIRKind.derive(value).changeType(Kind.Int));
+        if (value.getKind().getStackKind() == Kind.Int) {
+            append(new AMD64BitManipulationOp(ITZCNT, result, asAllocatable(value)));
+        } else {
+            append(new AMD64BitManipulationOp(LTZCNT, result, asAllocatable(value)));
+        }
+        return result;
+    }
+
     @Override
     public Value emitMathAbs(Value input) {
         Variable result = newVariable(LIRKind.derive(input));

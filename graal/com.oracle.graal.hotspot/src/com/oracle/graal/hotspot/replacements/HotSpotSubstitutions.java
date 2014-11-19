@@ -67,5 +67,7 @@ public class HotSpotSubstitutions implements ReplacementsProvider {
         replacements.registerSubstitutions(CompositeValueClass.class, CompositeValueClassSubstitutions.class);
         replacements.registerSubstitutions(new NamedType("com.sun.crypto.provider.AESCrypt"), AESCryptSubstitutions.class);
         replacements.registerSubstitutions(new NamedType("com.sun.crypto.provider.CipherBlockChaining"), CipherBlockChainingSubstitutions.class);
+        replacements.registerSubstitutions(Integer.class, IntegerSubstitutions.class);
+        replacements.registerSubstitutions(Long.class, LongSubstitutions.class);
     }
 }

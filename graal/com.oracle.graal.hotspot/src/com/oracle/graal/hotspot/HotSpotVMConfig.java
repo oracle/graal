@@ -726,6 +726,7 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMFlag(name = "UseBiasedLocking") @Stable public boolean useBiasedLocking;
     @HotSpotVMFlag(name = "UsePopCountInstruction") @Stable public boolean usePopCountInstruction;
     @HotSpotVMFlag(name = "UseCountLeadingZerosInstruction", archs = {"amd64"}) @Stable public boolean useCountLeadingZerosInstruction;
+    @HotSpotVMFlag(name = "UseCountTrailingZerosInstruction", archs = {"amd64"}) @Stable public boolean useCountTrailingZerosInstruction;
     @HotSpotVMFlag(name = "UseAESIntrinsics") @Stable public boolean useAESIntrinsics;
     @HotSpotVMFlag(name = "UseCRC32Intrinsics") @Stable public boolean useCRC32Intrinsics;
     @HotSpotVMFlag(name = "UseG1GC") @Stable public boolean useG1GC;
@@ -794,6 +795,7 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMConstant(name = "VM_Version::CPU_AES", archs = {"amd64"}) @Stable public int cpuAES;
     @HotSpotVMConstant(name = "VM_Version::CPU_ERMS", archs = {"amd64"}) @Stable public int cpuERMS;
     @HotSpotVMConstant(name = "VM_Version::CPU_CLMUL", archs = {"amd64"}) @Stable public int cpuCLMUL;
+    @HotSpotVMConstant(name = "VM_Version::CPU_BMI1", archs = {"amd64"}) @Stable public int cpuBMI1;
 
     // SPARC specific values
     @HotSpotVMField(name = "VM_Version::_features", type = "int", get = HotSpotVMField.Type.VALUE, archs = {"sparc"}) @Stable public int sparcFeatures;

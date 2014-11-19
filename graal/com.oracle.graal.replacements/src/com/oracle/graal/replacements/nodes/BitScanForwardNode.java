@@ -54,12 +54,12 @@ public class BitScanForwardNode extends UnaryNode implements LIRLowerable {
         int max;
         long mask = CodeUtil.mask(valueStamp.getBits());
         int firstAlwaysSetBit = scan(valueStamp.downMask() & mask);
+        int firstMaybeSetBit = scan(valueStamp.upMask() & mask);
         if (firstAlwaysSetBit == -1) {
             int lastMaybeSetBit = BitScanReverseNode.scan(valueStamp.upMask() & mask);
-            min = -1;
+            min = firstMaybeSetBit;
             max = lastMaybeSetBit;
         } else {
-            int firstMaybeSetBit = scan(valueStamp.upMask() & mask);
             min = firstMaybeSetBit;
             max = firstAlwaysSetBit;
         }

@@ -133,6 +133,7 @@ public class AMD64 extends Architecture {
         ERMS,
         AMD_3DNOW_PREFETCH,
         AES,
+        BMI1
     }
 
     private final EnumSet<CPUFeature> features;
