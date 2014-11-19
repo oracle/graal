@@ -232,24 +232,69 @@ public class StampFactory {
         return objectAlwaysNullStamp;
     }
 
+    /**
+     * Returns a {@link Stamp} for objects of type {@code type}, or one of its subtypes, or null.
+     */
     public static Stamp declared(ResolvedJavaType type) {
-        return declared(type, false);
+        return object(type, false, false, false);
     }
 
+    /**
+     * Returns a {@link Stamp} for objects of type {@code type}, or one of its subtypes, but not
+     * null.
+     */
     public static Stamp declaredNonNull(ResolvedJavaType type) {
-        return declared(type, true);
+        return object(type, false, true, false);
     }
 
-    public static Stamp declared(ResolvedJavaType type, boolean nonNull) {
-        return object(type, false, nonNull, false);
+    /**
+     * Returns a {@link Stamp} for objects of type {@code type}, or one of its subtypes, or null.
+     * Contrary to {@link #declared(ResolvedJavaType)}, interface types will be preserved in the
+     * stamp.
+     *
+     * In general interface types are not verified at class loading or run-time so this should be
+     * used with care.
+     */
+    public static Stamp declaredTrusted(ResolvedJavaType type) {
+        return object(type, false, false, true);
     }
 
-    public static Stamp declaredNonNull(ResolvedJavaType type, boolean trustInterfaces) {
-        return declared(type, true, trustInterfaces);
+    /**
+     * Returns a {@link Stamp} for objects of type {@code type}, or one of its subtypes, but not
+     * null. Contrary to {@link #declaredNonNull(ResolvedJavaType)}, interface types will be
+     * preserved in the stamp.
+     *
+     * In general interface types are not verified at class loading or run-time so this should be
+     * used with care.
+     */
+    public static Stamp declaredTrustedNonNull(ResolvedJavaType type) {
+        return declaredTrusted(type, true);
     }
 
-    public static Stamp declared(ResolvedJavaType type, boolean nonNull, boolean trustInterfaces) {
-        return object(type, false, nonNull, trustInterfaces);
+    public static Stamp declaredTrusted(ResolvedJavaType type, boolean nonNull) {
+        return object(type, false, nonNull, true);
+    }
+
+    /**
+     * Returns a {@link Stamp} for objects of exactly type {@code type}, or null.
+     */
+    public static Stamp exact(ResolvedJavaType type) {
+        if (ObjectStamp.isConcreteType(type)) {
+            return new ObjectStamp(type, true, false, false);
+        } else {
+            return illegal(Kind.Object);
+        }
+    }
+
+    /**
+     * Returns a {@link Stamp} for non-null objects of exactly type {@code type}.
+     */
+    public static Stamp exactNonNull(ResolvedJavaType type) {
+        if (ObjectStamp.isConcreteType(type)) {
+            return new ObjectStamp(type, true, true, false);
+        } else {
+            return illegal(Kind.Object);
+        }
     }
 
     private static ResolvedJavaType filterInterfaceTypesOut(ResolvedJavaType type) {
@@ -283,22 +328,6 @@ public class StampFactory {
         }
         assert !exactType || AbstractObjectStamp.isConcreteType(trustedtype);
         return new ObjectStamp(trustedtype, exactType, nonNull, false);
-    }
-
-    public static Stamp exactNonNull(ResolvedJavaType type) {
-        if (ObjectStamp.isConcreteType(type)) {
-            return new ObjectStamp(type, true, true, false);
-        } else {
-            return illegal(Kind.Object);
-        }
-    }
-
-    public static Stamp exact(ResolvedJavaType type) {
-        if (ObjectStamp.isConcreteType(type)) {
-            return new ObjectStamp(type, true, false, false);
-        } else {
-            return illegal(Kind.Object);
-        }
     }
 
     public static Stamp[] createParameterStamps(ResolvedJavaMethod method) {

@@ -124,14 +124,14 @@ public class ObjectStampJoinTest extends AbstractObjectStampTest {
     @Test
     public void testJoinInterface0() {
         Stamp a = StampFactory.declared(getType(A.class));
-        Stamp i = StampFactory.declared(getType(I.class), false, true);
+        Stamp i = StampFactory.declaredTrusted(getType(I.class));
         Assert.assertNotSame(StampFactory.illegal(Kind.Object), join(a, i));
     }
 
     @Test
     public void testJoinInterface1() {
         Stamp aNonNull = StampFactory.declaredNonNull(getType(A.class));
-        Stamp i = StampFactory.declared(getType(I.class), false, true);
+        Stamp i = StampFactory.declaredTrusted(getType(I.class));
         Stamp join = join(aNonNull, i);
         Assert.assertTrue(join instanceof ObjectStamp);
         Assert.assertTrue(((ObjectStamp) join).nonNull());
@@ -140,7 +140,7 @@ public class ObjectStampJoinTest extends AbstractObjectStampTest {
     @Test
     public void testJoinInterface2() {
         Stamp bExact = StampFactory.exactNonNull(getType(B.class));
-        Stamp i = StampFactory.declared(getType(I.class), false, true);
+        Stamp i = StampFactory.declaredTrusted(getType(I.class));
         Stamp join = join(i, bExact);
         Assert.assertEquals(StampFactory.illegal(Kind.Object), join);
     }

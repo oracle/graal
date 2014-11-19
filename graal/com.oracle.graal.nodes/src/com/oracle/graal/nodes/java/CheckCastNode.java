@@ -64,7 +64,7 @@ public class CheckCastNode extends FixedWithNextNode implements Canonicalizable,
     }
 
     protected CheckCastNode(ResolvedJavaType type, ValueNode object, JavaTypeProfile profile, boolean forStoreCheck) {
-        super(StampFactory.declared(type, false, true));
+        super(StampFactory.declaredTrusted(type));
         assert type != null;
         this.type = type;
         this.object = object;
@@ -104,7 +104,7 @@ public class CheckCastNode extends FixedWithNextNode implements Canonicalizable,
      */
     @Override
     public void lower(LoweringTool tool) {
-        Stamp newStamp = StampFactory.declared(type, false, true);
+        Stamp newStamp = StampFactory.declaredTrusted(type);
         if (stamp() instanceof ObjectStamp && object().stamp() instanceof ObjectStamp) {
             newStamp = ((ObjectStamp) object().stamp()).castTo((ObjectStamp) newStamp);
         }
@@ -113,7 +113,7 @@ public class CheckCastNode extends FixedWithNextNode implements Canonicalizable,
         if (newStamp instanceof IllegalStamp) {
             // This is a check cast that will always fail
             condition = LogicConstantNode.contradiction(graph());
-            newStamp = StampFactory.declared(type, false, true);
+            newStamp = StampFactory.declaredTrusted(type);
         } else if (StampTool.isObjectNonNull(object)) {
             condition = graph().addWithoutUnique(InstanceOfNode.create(type, object, profile));
         } else {
@@ -146,7 +146,7 @@ public class CheckCastNode extends FixedWithNextNode implements Canonicalizable,
     @Override
     public boolean inferStamp() {
         if (object().stamp() instanceof ObjectStamp) {
-            ObjectStamp castStamp = (ObjectStamp) StampFactory.declared(type, false, true);
+            ObjectStamp castStamp = (ObjectStamp) StampFactory.declaredTrusted(type);
             return updateStamp(((ObjectStamp) object().stamp()).castTo(castStamp));
         }
         return false;
