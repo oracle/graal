@@ -28,6 +28,7 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 @NodeInfo
@@ -156,33 +157,47 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
              * interface methods calls.
              */
             if (declaredReceiverType.isInterface() && !invokeKind().equals(InvokeKind.Virtual)) {
-                ResolvedJavaType singleImplementor = declaredReceiverType.getSingleImplementor();
-                if (singleImplementor != null && !singleImplementor.equals(declaredReceiverType)) {
-                    ResolvedJavaMethod singleImplementorMethod = singleImplementor.resolveMethod(targetMethod(), invoke().getContextType(), true);
-                    if (singleImplementorMethod != null) {
-                        assert graph().getGuardsStage().ordinal() < StructuredGraph.GuardsStage.FIXED_DEOPTS.ordinal() : "Graph already fixed!";
-                        /**
-                         * We have an invoke on an interface with a single implementor. We can
-                         * replace this with an invoke virtual.
-                         *
-                         * To do so we need to ensure two properties: 1) the receiver must implement
-                         * the interface (declaredReceiverType). The verifier does not prove this so
-                         * we need a dynamic check. 2) we need to ensure that there is still only
-                         * one implementor of this interface, i.e. that we are calling the right
-                         * method. We could do this with an assumption but as we need an instanceof
-                         * check anyway we can verify both properties by checking of the receiver is
-                         * an instance of the single implementor.
-                         */
-                        LogicNode condition = graph().unique(InstanceOfNode.create(singleImplementor, receiver, getProfile()));
-                        GuardNode guard = graph().unique(
-                                        GuardNode.create(condition, BeginNode.prevBegin(invoke().asNode()), DeoptimizationReason.OptimizedTypeCheckViolated, DeoptimizationAction.InvalidateRecompile,
-                                                        false, JavaConstant.NULL_OBJECT));
-                        PiNode piNode = graph().unique(PiNode.create(receiver, StampFactory.declaredNonNull(singleImplementor), guard));
-                        arguments().set(0, piNode);
-                        setInvokeKind(InvokeKind.Virtual);
-                        setTargetMethod(singleImplementorMethod);
+                tryCheckCastSingleImplementor(receiver, declaredReceiverType);
+            }
+
+            if (invokeKind().equals(InvokeKind.Interface) && receiver instanceof UncheckedInterfaceProvider) {
+                UncheckedInterfaceProvider uncheckedInterfaceProvider = (UncheckedInterfaceProvider) receiver;
+                Stamp uncheckedStamp = uncheckedInterfaceProvider.uncheckedStamp();
+                if (uncheckedStamp != null) {
+                    ResolvedJavaType uncheckedReceiverType = StampTool.typeOrNull(uncheckedStamp);
+                    if (uncheckedReceiverType.isInterface()) {
+                        tryCheckCastSingleImplementor(receiver, uncheckedReceiverType);
                     }
                 }
+            }
+        }
+    }
+
+    private void tryCheckCastSingleImplementor(ValueNode receiver, ResolvedJavaType declaredReceiverType) {
+        ResolvedJavaType singleImplementor = declaredReceiverType.getSingleImplementor();
+        if (singleImplementor != null && !singleImplementor.equals(declaredReceiverType)) {
+            ResolvedJavaMethod singleImplementorMethod = singleImplementor.resolveMethod(targetMethod(), invoke().getContextType(), true);
+            if (singleImplementorMethod != null) {
+                assert graph().getGuardsStage().ordinal() < StructuredGraph.GuardsStage.FIXED_DEOPTS.ordinal() : "Graph already fixed!";
+                /**
+                 * We have an invoke on an interface with a single implementor. We can replace this
+                 * with an invoke virtual.
+                 *
+                 * To do so we need to ensure two properties: 1) the receiver must implement the
+                 * interface (declaredReceiverType). The verifier does not prove this so we need a
+                 * dynamic check. 2) we need to ensure that there is still only one implementor of
+                 * this interface, i.e. that we are calling the right method. We could do this with
+                 * an assumption but as we need an instanceof check anyway we can verify both
+                 * properties by checking of the receiver is an instance of the single implementor.
+                 */
+                LogicNode condition = graph().unique(InstanceOfNode.create(singleImplementor, receiver, getProfile()));
+                GuardNode guard = graph().unique(
+                                GuardNode.create(condition, BeginNode.prevBegin(invoke().asNode()), DeoptimizationReason.OptimizedTypeCheckViolated, DeoptimizationAction.InvalidateRecompile, false,
+                                                JavaConstant.NULL_OBJECT));
+                PiNode piNode = graph().unique(PiNode.create(receiver, StampFactory.declaredNonNull(singleImplementor), guard));
+                arguments().set(0, piNode);
+                setInvokeKind(InvokeKind.Virtual);
+                setTargetMethod(singleImplementorMethod);
             }
         }
     }

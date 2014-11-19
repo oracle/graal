@@ -23,6 +23,7 @@
 package com.oracle.graal.nodes;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.extended.*;
@@ -30,7 +31,7 @@ import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
-public interface Invoke extends StateSplit, Lowerable, DeoptimizingNode.DeoptDuring, GuardedNode {
+public interface Invoke extends StateSplit, Lowerable, DeoptimizingNode.DeoptDuring, GuardedNode, UncheckedInterfaceProvider {
 
     FixedNode next();
 
@@ -103,5 +104,14 @@ public interface Invoke extends StateSplit, Lowerable, DeoptimizingNode.DeoptDur
 
     default InvokeKind getInvokeKind() {
         return callTarget().invokeKind();
+    }
+
+    default Stamp uncheckedStamp() {
+        if (callTarget() instanceof MethodCallTargetNode) {
+            MethodCallTargetNode methodCallTargetNode = (MethodCallTargetNode) callTarget();
+            JavaType returnType = methodCallTargetNode.targetMethod().getSignature().getReturnType(getContextType());
+            return UncheckedInterfaceProvider.uncheckedOrNull(returnType, asNode().stamp());
+        }
+        return null;
     }
 }

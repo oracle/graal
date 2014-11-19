@@ -22,15 +22,17 @@
  */
 package com.oracle.graal.nodes;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
+import com.oracle.graal.nodes.spi.*;
 
 /**
  * The {@code Parameter} instruction is a placeholder for an incoming argument to a function call.
  */
 @NodeInfo(nameTemplate = "Param({p#index})")
-public class ParameterNode extends AbstractLocalNode implements IterableNodeType {
+public class ParameterNode extends AbstractLocalNode implements IterableNodeType, UncheckedInterfaceProvider {
 
     public static ParameterNode create(int index, Stamp stamp) {
         return new ParameterNode(index, stamp);
@@ -38,5 +40,20 @@ public class ParameterNode extends AbstractLocalNode implements IterableNodeType
 
     protected ParameterNode(int index, Stamp stamp) {
         super(index, stamp);
+    }
+
+    public Stamp uncheckedStamp() {
+        ResolvedJavaMethod method = graph().method();
+        if (method != null) {
+            JavaType parameterType;
+            if (method.isStatic() || index() > 0) {
+                int signatureIndex = method.isStatic() ? index() : index() - 1;
+                parameterType = method.getSignature().getParameterType(signatureIndex, method.getDeclaringClass());
+            } else {
+                parameterType = method.getDeclaringClass();
+            }
+            return UncheckedInterfaceProvider.uncheckedOrNull(parameterType, stamp());
+        }
+        return null;
     }
 }
