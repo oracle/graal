@@ -44,8 +44,8 @@ public class WordTypeVerificationPhase extends Phase {
 
     private final WordTypeRewriterPhase wordAccess;
 
-    public WordTypeVerificationPhase(MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflection, Kind wordKind) {
-        this.wordAccess = new WordTypeRewriterPhase(metaAccess, snippetReflection, wordKind);
+    public WordTypeVerificationPhase(MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflection, ConstantReflectionProvider constantReflection, Kind wordKind) {
+        this.wordAccess = new WordTypeRewriterPhase(metaAccess, snippetReflection, constantReflection, wordKind);
     }
 
     @Override

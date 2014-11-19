@@ -40,15 +40,9 @@ import com.oracle.graal.hotspot.replacements.*;
 public class HotSpotMetaAccessProvider implements MetaAccessProvider {
 
     protected final HotSpotGraalRuntime runtime;
-    protected final HotSpotMethodHandleAccessProvider methodHandleAccess;
 
     public HotSpotMetaAccessProvider(HotSpotGraalRuntime runtime) {
         this.runtime = runtime;
-        methodHandleAccess = new HotSpotMethodHandleAccessProvider();
-    }
-
-    public MethodHandleAccessProvider getMethodHandleAccess() {
-        return methodHandleAccess;
     }
 
     public HotSpotResolvedJavaType lookupJavaType(Class<?> clazz) {

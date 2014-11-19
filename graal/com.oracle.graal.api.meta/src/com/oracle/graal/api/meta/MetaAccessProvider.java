@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.api.meta;
 
-import java.lang.invoke.*;
 import java.lang.reflect.*;
 
 /**
@@ -77,11 +76,6 @@ public interface MetaAccessProvider extends Remote {
      * @return the number of bytes occupied by this constant
      */
     long getMemorySize(JavaConstant constant);
-
-    /**
-     * Gets access to the internals of {@link MethodHandle}.
-     */
-    MethodHandleAccessProvider getMethodHandleAccess();
 
     /**
      * Parses a <a

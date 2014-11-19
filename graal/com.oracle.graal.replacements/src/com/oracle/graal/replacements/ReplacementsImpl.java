@@ -591,8 +591,8 @@ public class ReplacementsImpl implements Replacements {
 
         protected void afterParsing(StructuredGraph graph) {
             MetaAccessProvider metaAccess = replacements.providers.getMetaAccess();
-            new WordTypeVerificationPhase(metaAccess, replacements.snippetReflection, replacements.target.wordKind).apply(graph);
-            new WordTypeRewriterPhase(metaAccess, replacements.snippetReflection, replacements.target.wordKind).apply(graph);
+            new WordTypeVerificationPhase(metaAccess, replacements.snippetReflection, replacements.providers.getConstantReflection(), replacements.target.wordKind).apply(graph);
+            new WordTypeRewriterPhase(metaAccess, replacements.snippetReflection, replacements.providers.getConstantReflection(), replacements.target.wordKind).apply(graph);
         }
 
         protected Object beforeInline(@SuppressWarnings("unused") MethodCallTargetNode callTarget, @SuppressWarnings("unused") StructuredGraph callee) {

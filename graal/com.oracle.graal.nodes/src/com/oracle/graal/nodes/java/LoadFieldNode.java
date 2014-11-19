@@ -71,12 +71,13 @@ public class LoadFieldNode extends AccessFieldNode implements Canonicalizable.Un
             return null;
         }
         MetaAccessProvider metaAccess = tool.getMetaAccess();
+        ConstantReflectionProvider constantReflection = tool.getConstantReflection();
         if (tool.canonicalizeReads() && metaAccess != null) {
-            ConstantNode constant = asConstant(metaAccess, forObject);
+            ConstantNode constant = asConstant(metaAccess, constantReflection, forObject);
             if (constant != null) {
                 return constant;
             }
-            PhiNode phi = asPhi(metaAccess, forObject);
+            PhiNode phi = asPhi(metaAccess, constantReflection, forObject);
             if (phi != null) {
                 return phi;
             }
@@ -90,12 +91,12 @@ public class LoadFieldNode extends AccessFieldNode implements Canonicalizable.Un
     /**
      * Gets a constant value for this load if possible.
      */
-    public ConstantNode asConstant(MetaAccessProvider metaAccess, ValueNode forObject) {
+    public ConstantNode asConstant(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, ValueNode forObject) {
         JavaConstant constant = null;
         if (isStatic()) {
-            constant = field().readConstantValue(null);
+            constant = constantReflection.readConstantFieldValue(field(), null);
         } else if (forObject.isConstant() && !forObject.isNullConstant()) {
-            constant = field().readConstantValue(forObject.asJavaConstant());
+            constant = constantReflection.readConstantFieldValue(field(), forObject.asJavaConstant());
         }
         if (constant != null) {
             return ConstantNode.forConstant(constant, metaAccess);
@@ -103,12 +104,12 @@ public class LoadFieldNode extends AccessFieldNode implements Canonicalizable.Un
         return null;
     }
 
-    private PhiNode asPhi(MetaAccessProvider metaAccess, ValueNode forObject) {
+    private PhiNode asPhi(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, ValueNode forObject) {
         if (!isStatic() && field.isFinal() && forObject instanceof ValuePhiNode && ((ValuePhiNode) forObject).values().filter(isNotA(ConstantNode.class)).isEmpty()) {
             PhiNode phi = (PhiNode) forObject;
             JavaConstant[] constants = new JavaConstant[phi.valueCount()];
             for (int i = 0; i < phi.valueCount(); i++) {
-                JavaConstant constantValue = field().readConstantValue(phi.valueAt(i).asJavaConstant());
+                JavaConstant constantValue = constantReflection.readConstantFieldValue(field(), phi.valueAt(i).asJavaConstant());
                 if (constantValue == null) {
                     return null;
                 }

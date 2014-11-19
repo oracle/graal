@@ -182,7 +182,7 @@ public class GraphKit {
      * Rewrite all word types in the graph.
      */
     public void rewriteWordTypes(SnippetReflectionProvider snippetReflection) {
-        new WordTypeRewriterPhase(providers.getMetaAccess(), snippetReflection, providers.getCodeCache().getTarget().wordKind).apply(graph);
+        new WordTypeRewriterPhase(providers.getMetaAccess(), snippetReflection, providers.getConstantReflection(), providers.getCodeCache().getTarget().wordKind).apply(graph);
     }
 
     /**

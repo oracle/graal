@@ -98,7 +98,7 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
              * the VM replicates them for every signature that they are actually used for.
              * Therefore, we cannot use the usual annotation-driven mechanism to define the
              */
-            if (MethodHandleNode.lookupMethodHandleIntrinsic(method, providers.getMetaAccess().getMethodHandleAccess()) != null) {
+            if (MethodHandleNode.lookupMethodHandleIntrinsic(method, providers.getConstantReflection().getMethodHandleAccess()) != null) {
                 return MethodHandleNode.class;
             }
         }
@@ -119,8 +119,8 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
         @Override
         protected void afterParsing(StructuredGraph graph) {
             MetaAccessProvider metaAccess = replacements.providers.getMetaAccess();
-            new WordTypeVerificationPhase(metaAccess, replacements.snippetReflection, replacements.target.wordKind).apply(graph);
-            new HotSpotWordTypeRewriterPhase(metaAccess, replacements.snippetReflection, replacements.target.wordKind).apply(graph);
+            new WordTypeVerificationPhase(metaAccess, replacements.snippetReflection, replacements.providers.getConstantReflection(), replacements.target.wordKind).apply(graph);
+            new HotSpotWordTypeRewriterPhase(metaAccess, replacements.snippetReflection, replacements.providers.getConstantReflection(), replacements.target.wordKind).apply(graph);
         }
     }
 }

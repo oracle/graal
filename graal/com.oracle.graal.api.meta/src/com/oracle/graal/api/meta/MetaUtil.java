@@ -83,7 +83,7 @@ public class MetaUtil {
                     ResolvedJavaField[] instanceFields = type.getInstanceFields(true);
                     for (ResolvedJavaField f : instanceFields) {
                         if (f.getKind() == Kind.Object) {
-                            JavaConstant value = f.readValue(c);
+                            JavaConstant value = constantReflection.readFieldValue(f, c);
                             pushConstant(marked, stack, value);
                         }
                     }

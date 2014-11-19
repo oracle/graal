@@ -78,7 +78,7 @@ public class TestResolvedJavaField extends FieldUniverse {
             if (isStatic(field.getModifiers())) {
                 try {
                     Object expected = field.get(null);
-                    Object actual = snippetReflection.asBoxedValue(e.getValue().readConstantValue(null));
+                    Object actual = snippetReflection.asBoxedValue(constantReflection.readConstantFieldValue(e.getValue(), null));
                     assertEquals(expected, actual);
                 } catch (IllegalArgumentException | IllegalAccessException e1) {
                 }
@@ -86,7 +86,7 @@ public class TestResolvedJavaField extends FieldUniverse {
                 try {
                     Object receiver = field.getDeclaringClass().newInstance();
                     Object expected = field.get(receiver);
-                    Object actual = snippetReflection.asBoxedValue(e.getValue().readConstantValue(snippetReflection.forObject(receiver)));
+                    Object actual = snippetReflection.asBoxedValue(constantReflection.readConstantFieldValue(e.getValue(), snippetReflection.forObject(receiver)));
                     assertEquals(expected, actual);
                 } catch (InstantiationException | IllegalArgumentException | IllegalAccessException e1) {
                 }
@@ -95,13 +95,13 @@ public class TestResolvedJavaField extends FieldUniverse {
 
         ResolvedJavaField field = metaAccess.lookupJavaField(getClass().getDeclaredField("stringField"));
         for (Object receiver : new Object[]{this, null, new String()}) {
-            JavaConstant value = field.readConstantValue(snippetReflection.forObject(receiver));
+            JavaConstant value = constantReflection.readConstantFieldValue(field, snippetReflection.forObject(receiver));
             assertNull(value);
         }
 
         ResolvedJavaField constField = metaAccess.lookupJavaField(getClass().getDeclaredField("constantStringField"));
         for (Object receiver : new Object[]{this, null, new String()}) {
-            JavaConstant value = constField.readConstantValue(snippetReflection.forObject(receiver));
+            JavaConstant value = constantReflection.readConstantFieldValue(constField, snippetReflection.forObject(receiver));
             if (value != null) {
                 Object expected = "constantField";
                 assertTrue(snippetReflection.asObject(value) == expected);
@@ -117,7 +117,7 @@ public class TestResolvedJavaField extends FieldUniverse {
             if (isStatic(field.getModifiers())) {
                 try {
                     Object expected = field.get(null);
-                    Object actual = snippetReflection.asBoxedValue(e.getValue().readValue(null));
+                    Object actual = snippetReflection.asBoxedValue(constantReflection.readFieldValue(e.getValue(), null));
                     assertEquals(expected, actual);
                 } catch (IllegalArgumentException | IllegalAccessException e1) {
                 }
@@ -131,7 +131,7 @@ public class TestResolvedJavaField extends FieldUniverse {
             ResolvedJavaField rf = metaAccess.lookupJavaField(f);
             Object receiver = isStatic(f.getModifiers()) ? null : testString;
             Object expected = f.get(receiver);
-            Object actual = snippetReflection.asBoxedValue(rf.readValue(receiver == null ? null : snippetReflection.forObject(receiver)));
+            Object actual = snippetReflection.asBoxedValue(constantReflection.readFieldValue(rf, receiver == null ? null : snippetReflection.forObject(receiver)));
             assertEquals(expected, actual);
         }
     }

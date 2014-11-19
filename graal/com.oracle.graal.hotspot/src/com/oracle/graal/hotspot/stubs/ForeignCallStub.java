@@ -223,7 +223,7 @@ public class ForeignCallStub extends Stub {
 
         @Override
         public void rewriteWordTypes(SnippetReflectionProvider snippetReflection) {
-            new HotSpotWordTypeRewriterPhase(providers.getMetaAccess(), snippetReflection, providers.getCodeCache().getTarget().wordKind).apply(graph);
+            new HotSpotWordTypeRewriterPhase(providers.getMetaAccess(), snippetReflection, providers.getConstantReflection(), providers.getCodeCache().getTarget().wordKind).apply(graph);
         }
     }
 

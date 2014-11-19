@@ -54,15 +54,17 @@ public class WordTypeRewriterPhase extends Phase {
 
     protected final MetaAccessProvider metaAccess;
     protected final SnippetReflectionProvider snippetReflection;
+    protected final ConstantReflectionProvider constantReflection;
     protected final ResolvedJavaType wordBaseType;
     protected final ResolvedJavaType wordImplType;
     protected final ResolvedJavaType objectAccessType;
     protected final ResolvedJavaType barrieredAccessType;
     protected final Kind wordKind;
 
-    public WordTypeRewriterPhase(MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflection, Kind wordKind) {
+    public WordTypeRewriterPhase(MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflection, ConstantReflectionProvider constantReflection, Kind wordKind) {
         this.metaAccess = metaAccess;
         this.snippetReflection = snippetReflection;
+        this.constantReflection = constantReflection;
         this.wordKind = wordKind;
         this.wordBaseType = metaAccess.lookupJavaType(WordBase.class);
         this.wordImplType = metaAccess.lookupJavaType(Word.class);
@@ -134,7 +136,7 @@ public class WordTypeRewriterPhase extends Phase {
      * Fold constant field reads, e.g. enum constants.
      */
     protected void rewriteLoadField(StructuredGraph graph, LoadFieldNode node) {
-        ConstantNode constant = node.asConstant(metaAccess, node.object());
+        ConstantNode constant = node.asConstant(metaAccess, constantReflection, node.object());
         if (constant != null) {
             node.replaceAtUsages(graph.unique(constant));
             graph.removeFixed(node);

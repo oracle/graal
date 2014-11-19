@@ -58,7 +58,7 @@ final class PartialEvaluatorCanonicalizer extends CanonicalizerPhase.CustomCanon
             JavaType fieldType = field.getType();
             if (field.isFinal() || field.getAnnotation(CompilationFinal.class) != null ||
                             (fieldType.getKind() == Kind.Object && (field.getAnnotation(Child.class) != null || field.getAnnotation(Children.class) != null))) {
-                JavaConstant constant = field.readValue(loadFieldNode.object().asJavaConstant());
+                JavaConstant constant = constantReflection.readFieldValue(field, loadFieldNode.object().asJavaConstant());
                 assert verifyFieldValue(field, constant);
                 if (constant.isNonNull() && fieldType.getKind() == Kind.Object && fieldType.getComponentType() != null &&
                                 (field.getAnnotation(CompilationFinal.class) != null || field.getAnnotation(Children.class) != null)) {

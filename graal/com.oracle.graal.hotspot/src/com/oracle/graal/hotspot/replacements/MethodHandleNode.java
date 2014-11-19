@@ -82,7 +82,7 @@ public class MethodHandleNode extends MacroStateSplitNode implements Simplifiabl
     @Override
     public void simplify(SimplifierTool tool) {
         InvokeNode invoke;
-        IntrinsicMethod intrinsicMethod = lookupMethodHandleIntrinsic(targetMethod, tool.getMetaAccess().getMethodHandleAccess());
+        IntrinsicMethod intrinsicMethod = lookupMethodHandleIntrinsic(targetMethod, tool.getConstantReflection().getMethodHandleAccess());
         switch (intrinsicMethod) {
             case INVOKE_BASIC:
                 invoke = getInvokeBasicTarget(tool, intrinsicMethod);
@@ -131,7 +131,7 @@ public class MethodHandleNode extends MacroStateSplitNode implements Simplifiabl
     protected InvokeNode getInvokeBasicTarget(SimplifierTool tool, IntrinsicMethod intrinsicMethod) {
         ValueNode methodHandleNode = getReceiver();
         if (methodHandleNode.isConstant()) {
-            return getTargetInvokeNode(tool.getMetaAccess().getMethodHandleAccess().resolveInvokeBasicTarget(methodHandleNode.asJavaConstant(), false), intrinsicMethod);
+            return getTargetInvokeNode(tool.getConstantReflection().getMethodHandleAccess().resolveInvokeBasicTarget(methodHandleNode.asJavaConstant(), false), intrinsicMethod);
         }
         return null;
     }
@@ -147,7 +147,7 @@ public class MethodHandleNode extends MacroStateSplitNode implements Simplifiabl
     protected InvokeNode getLinkToTarget(SimplifierTool tool, IntrinsicMethod intrinsicMethod) {
         ValueNode memberNameNode = getMemberName();
         if (memberNameNode.isConstant()) {
-            return getTargetInvokeNode(tool.getMetaAccess().getMethodHandleAccess().resolveLinkToTarget(memberNameNode.asJavaConstant()), intrinsicMethod);
+            return getTargetInvokeNode(tool.getConstantReflection().getMethodHandleAccess().resolveLinkToTarget(memberNameNode.asJavaConstant()), intrinsicMethod);
         }
         return null;
     }

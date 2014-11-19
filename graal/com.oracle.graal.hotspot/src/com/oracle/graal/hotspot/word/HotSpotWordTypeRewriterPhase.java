@@ -43,8 +43,8 @@ public class HotSpotWordTypeRewriterPhase extends WordTypeRewriterPhase {
     private final ResolvedJavaType klassPointerType;
     private final ResolvedJavaType methodPointerType;
 
-    public HotSpotWordTypeRewriterPhase(MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflection, Kind wordKind) {
-        super(metaAccess, snippetReflection, wordKind);
+    public HotSpotWordTypeRewriterPhase(MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflection, ConstantReflectionProvider constantReflection, Kind wordKind) {
+        super(metaAccess, snippetReflection, constantReflection, wordKind);
         this.klassPointerType = metaAccess.lookupJavaType(KlassPointer.class);
         this.methodPointerType = metaAccess.lookupJavaType(MethodPointer.class);
     }

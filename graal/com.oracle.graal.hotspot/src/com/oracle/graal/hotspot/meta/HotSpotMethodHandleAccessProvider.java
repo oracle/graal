@@ -32,6 +32,12 @@ import com.oracle.graal.hotspot.*;
 
 public class HotSpotMethodHandleAccessProvider implements MethodHandleAccessProvider {
 
+    private final ConstantReflectionProvider constantReflection;
+
+    public HotSpotMethodHandleAccessProvider(ConstantReflectionProvider constantReflection) {
+        this.constantReflection = constantReflection;
+    }
+
     /**
      * Lazy initialization to break class initialization cycle. Field and method lookup is only
      * possible after the {@link HotSpotGraalRuntime} is fully initialized.
@@ -115,7 +121,7 @@ public class HotSpotMethodHandleAccessProvider implements MethodHandleAccessProv
         }
 
         /* Load non-public field: LambdaForm MethodHandle.form */
-        JavaConstant lambdaForm = LazyInitialization.methodHandleFormField.readValue(methodHandle);
+        JavaConstant lambdaForm = constantReflection.readFieldValue(LazyInitialization.methodHandleFormField, methodHandle);
         if (lambdaForm.isNull()) {
             return null;
         }
@@ -126,7 +132,7 @@ public class HotSpotMethodHandleAccessProvider implements MethodHandleAccessProv
             memberName = LazyInitialization.lambdaFormCompileToBytecodeMethod.invoke(lambdaForm, new JavaConstant[0]);
         } else {
             /* Load non-public field: MemberName LambdaForm.vmentry */
-            memberName = LazyInitialization.lambdaFormVmentryField.readValue(lambdaForm);
+            memberName = constantReflection.readFieldValue(LazyInitialization.lambdaFormVmentryField, lambdaForm);
         }
         return getTargetMethod(memberName);
     }
@@ -139,13 +145,13 @@ public class HotSpotMethodHandleAccessProvider implements MethodHandleAccessProv
     /**
      * Returns the {@link ResolvedJavaMethod} for the vmtarget of a java.lang.invoke.MemberName.
      */
-    private static ResolvedJavaMethod getTargetMethod(JavaConstant memberName) {
+    private ResolvedJavaMethod getTargetMethod(JavaConstant memberName) {
         if (memberName.isNull()) {
             return null;
         }
 
         /* Load injected field: JVM_Method* MemberName.vmtarget */
-        JavaConstant vmtarget = LazyInitialization.memberNameVmtargetField.readValue(memberName);
+        JavaConstant vmtarget = constantReflection.readFieldValue(LazyInitialization.memberNameVmtargetField, memberName);
         /* Create a method from the vmtarget method pointer. */
         return HotSpotResolvedJavaMethodImpl.fromMetaspace(vmtarget.asLong());
     }
