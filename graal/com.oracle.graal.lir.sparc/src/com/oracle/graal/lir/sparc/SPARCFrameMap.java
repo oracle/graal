@@ -35,7 +35,7 @@ import com.oracle.graal.sparc.*;
  *
  * <pre>
  *   Base       Contents
- *
+ * 
  *            :                                :  -----
  *   caller   | incoming overflow argument n   |    ^
  *   frame    :     ...                        :    | positive
@@ -130,5 +130,10 @@ public final class SPARCFrameMap extends FrameMap {
     @Override
     public boolean frameNeedsAllocating() {
         return super.frameNeedsAllocating() || spillSize > 0;
+    }
+
+    public StackSlot allocateDeoptimizationRescueSlot() {
+        assert spillSize == initialSpillSize : "Deoptimization rescue slot must be the first stack slot";
+        return allocateSpillSlot(LIRKind.value(Kind.Long));
     }
 }

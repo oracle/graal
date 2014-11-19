@@ -53,9 +53,6 @@ public class AMD64HotSpotLIRGenerationResult extends LIRGenerationResultBase {
     }
 
     StackSlot getDeoptimizationRescueSlot() {
-        if (deoptimizationRescueSlot == null) {
-            return null;
-        }
         return deoptimizationRescueSlot;
     }
 

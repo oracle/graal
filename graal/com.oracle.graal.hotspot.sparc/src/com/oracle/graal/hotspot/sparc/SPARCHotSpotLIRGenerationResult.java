@@ -22,14 +22,12 @@
  */
 package com.oracle.graal.hotspot.sparc;
 
-import static com.oracle.graal.api.code.ValueUtil.*;
-
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.StandardOp.*;
+import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.lir.gen.*;
 
@@ -40,7 +38,7 @@ public class SPARCHotSpotLIRGenerationResult extends LIRGenerationResultBase {
      * deoptimization. The return address slot in the callee is overwritten with the address of a
      * deoptimization stub.
      */
-    private VirtualStackSlot deoptimizationRescueSlot;
+    private StackSlot deoptimizationRescueSlot;
     private final Object stub;
 
     /**
@@ -55,14 +53,10 @@ public class SPARCHotSpotLIRGenerationResult extends LIRGenerationResultBase {
     }
 
     StackSlot getDeoptimizationRescueSlot() {
-        if (deoptimizationRescueSlot == null) {
-            return null;
-        }
-        assert isStackSlot(deoptimizationRescueSlot);
-        return asStackSlot(deoptimizationRescueSlot);
+        return deoptimizationRescueSlot;
     }
 
-    public final void setDeoptimizationRescueSlot(VirtualStackSlot stackSlot) {
+    public final void setDeoptimizationRescueSlot(StackSlot stackSlot) {
         this.deoptimizationRescueSlot = stackSlot;
     }
 
