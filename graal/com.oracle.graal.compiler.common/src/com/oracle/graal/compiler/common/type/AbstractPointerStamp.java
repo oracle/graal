@@ -32,13 +32,25 @@ import com.oracle.graal.compiler.common.spi.*;
 public abstract class AbstractPointerStamp extends Stamp {
 
     private final PointerType type;
+    private final boolean nonNull;
+    private final boolean alwaysNull;
 
-    protected AbstractPointerStamp(PointerType type) {
+    protected AbstractPointerStamp(PointerType type, boolean nonNull, boolean alwaysNull) {
         this.type = type;
+        this.nonNull = nonNull;
+        this.alwaysNull = alwaysNull;
     }
 
     public PointerType getType() {
         return type;
+    }
+
+    public boolean nonNull() {
+        return nonNull;
+    }
+
+    public boolean alwaysNull() {
+        return alwaysNull;
     }
 
     @Override
@@ -48,6 +60,28 @@ public abstract class AbstractPointerStamp extends Stamp {
             return this.type == other.type;
         }
         return false;
+    }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + (alwaysNull ? 1231 : 1237);
+        result = prime * result + (nonNull ? 1231 : 1237);
+        result = prime * result + ((type == null) ? 0 : type.hashCode());
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null || getClass() != obj.getClass()) {
+            return false;
+        }
+        AbstractPointerStamp other = (AbstractPointerStamp) obj;
+        return this.type == other.type && this.alwaysNull == other.alwaysNull && this.nonNull == other.nonNull;
     }
 
     @Override

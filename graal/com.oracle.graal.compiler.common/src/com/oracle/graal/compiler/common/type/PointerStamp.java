@@ -30,7 +30,7 @@ import com.oracle.graal.api.meta.*;
 public class PointerStamp extends AbstractPointerStamp {
 
     PointerStamp(PointerType type) {
-        super(type);
+        super(type, false, false);
         assert type != PointerType.Object : "object pointers should use ObjectStamp";
     }
 
