@@ -232,7 +232,13 @@ public final class HotSpotObjectConstantImpl extends AbstractValue implements Ho
 
     @Override
     public boolean equals(Object o) {
-        return o == this || (o instanceof HotSpotObjectConstantImpl && super.equals(o) && object == ((HotSpotObjectConstantImpl) o).object);
+        if (o == this) {
+            return true;
+        } else if (o instanceof HotSpotObjectConstantImpl) {
+            HotSpotObjectConstantImpl other = (HotSpotObjectConstantImpl) o;
+            return super.equals(o) && object == other.object && compressed == other.compressed;
+        }
+        return false;
     }
 
     @Override

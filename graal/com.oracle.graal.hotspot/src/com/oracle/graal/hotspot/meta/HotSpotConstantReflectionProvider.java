@@ -59,7 +59,13 @@ public class HotSpotConstantReflectionProvider implements ConstantReflectionProv
 
     @Override
     public Boolean constantEquals(Constant x, Constant y) {
-        return x.equals(y);
+        if (x == y) {
+            return true;
+        } else if (x instanceof HotSpotObjectConstantImpl) {
+            return y instanceof HotSpotObjectConstantImpl && ((HotSpotObjectConstantImpl) x).object() == ((HotSpotObjectConstantImpl) y).object();
+        } else {
+            return x.equals(y);
+        }
     }
 
     @Override
