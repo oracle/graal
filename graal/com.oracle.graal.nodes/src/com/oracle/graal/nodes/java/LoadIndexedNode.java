@@ -53,7 +53,7 @@ public class LoadIndexedNode extends AccessIndexedNode implements Virtualizable 
     private static Stamp createStamp(ValueNode array, Kind kind) {
         ResolvedJavaType type = StampTool.typeOrNull(array);
         if (kind == Kind.Object && type != null) {
-            return StampFactory.declared(type.getComponentType());
+            return StampFactory.declaredTrusted(type.getComponentType());
         } else {
             return StampFactory.forKind(kind);
         }
