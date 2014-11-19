@@ -110,9 +110,9 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
         return new HotSpotGraphMaker(this, substitute, original, frameStateProcessing);
     }
 
-    private static class HotSpotGraphMaker extends ReplacementsImpl.GraphMaker {
+    public static class HotSpotGraphMaker extends ReplacementsImpl.GraphMaker {
 
-        protected HotSpotGraphMaker(ReplacementsImpl replacements, ResolvedJavaMethod substitute, ResolvedJavaMethod substitutedMethod, FrameStateProcessing frameStateProcessing) {
+        public HotSpotGraphMaker(ReplacementsImpl replacements, ResolvedJavaMethod substitute, ResolvedJavaMethod substitutedMethod, FrameStateProcessing frameStateProcessing) {
             super(replacements, substitute, substitutedMethod, frameStateProcessing);
         }
 

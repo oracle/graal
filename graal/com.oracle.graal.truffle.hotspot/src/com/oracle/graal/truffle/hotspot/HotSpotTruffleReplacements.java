@@ -22,8 +22,10 @@
  */
 package com.oracle.graal.truffle.hotspot;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.api.runtime.*;
+import com.oracle.graal.hotspot.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.runtime.*;
@@ -39,5 +41,10 @@ public final class HotSpotTruffleReplacements extends TruffleReplacements {
         Providers providers = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getProviders();
         SnippetReflectionProvider snippetReflection = Graal.getRequiredCapability(SnippetReflectionProvider.class);
         return new HotSpotTruffleReplacements(providers, snippetReflection);
+    }
+
+    @Override
+    protected GraphMaker createGraphMaker(ResolvedJavaMethod substitute, ResolvedJavaMethod original, FrameStateProcessing frameStateProcessing) {
+        return new HotSpotReplacementsImpl.HotSpotGraphMaker(this, substitute, original, frameStateProcessing);
     }
 }
