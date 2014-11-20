@@ -64,7 +64,7 @@ public class CustomizedUnsafeLoadFinalNode extends FixedWithNextNode implements 
     @Override
     public Node canonical(CanonicalizerTool tool) {
         if (object.isConstant() && !object.isNullConstant() && offset.isConstant() && condition.isConstant() && condition.asJavaConstant().asInt() == 1) {
-            JavaConstant constant = tool.getConstantReflection().readUnsafeConstant(accessKind, object.asJavaConstant(), offset.asJavaConstant().asLong());
+            JavaConstant constant = tool.getConstantReflection().getMemoryAccessProvider().readUnsafeConstant(accessKind, object.asJavaConstant(), offset.asJavaConstant().asLong());
             return ConstantNode.forConstant(constant, tool.getMetaAccess());
         }
         return this;

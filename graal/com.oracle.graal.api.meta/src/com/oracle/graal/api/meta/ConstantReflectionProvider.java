@@ -105,38 +105,6 @@ public interface ConstantReflectionProvider extends Remote {
     JavaConstant readStableFieldValue(JavaField field, JavaConstant receiver, boolean isDefaultStable);
 
     /**
-     * Reads a value of this kind using a base address and a displacement. No bounds checking or
-     * type checking is performed. Returns {@code null} if the value is not available at this point.
-     *
-     * @param base the base address from which the value is read.
-     * @param displacement the displacement within the object in bytes
-     * @return the read value encapsulated in a {@link JavaConstant} object, or {@code null} if the
-     *         value cannot be read.
-     */
-    JavaConstant readUnsafeConstant(Kind kind, JavaConstant base, long displacement);
-
-    /**
-     * Reads a primitive value using a base address and a displacement.
-     *
-     * @param kind the {@link Kind} of the returned {@link JavaConstant} object
-     * @param base the base address from which the value is read
-     * @param displacement the displacement within the object in bytes
-     * @param bits the number of bits to read from memory
-     * @return the read value encapsulated in a {@link Constant} object of {@link Kind} kind
-     */
-    JavaConstant readRawConstant(Kind kind, Constant base, long displacement, int bits);
-
-    /**
-     * Reads a pointer value using a base address and a displacement.
-     *
-     * @param type the {@link PointerType} of the returned {@link Constant} object
-     * @param base the base address from which the value is read
-     * @param displacement the displacement within the object in bytes
-     * @return the read value encapsulated in a {@link Constant} object
-     */
-    Constant readPointerConstant(PointerType type, Constant base, long displacement);
-
-    /**
      * Converts the given {@link Kind#isPrimitive() primitive} constant to a boxed
      * {@link Kind#Object object} constant, according to the Java boxing rules. Returns {@code null}
      * if the source is is not a primitive constant, or the boxed value is not available at this
@@ -168,4 +136,9 @@ public interface ConstantReflectionProvider extends Remote {
      * Gets access to the internals of {@link MethodHandle}.
      */
     MethodHandleAccessProvider getMethodHandleAccess();
+
+    /**
+     * Gets raw memory access.
+     */
+    MemoryAccessProvider getMemoryAccessProvider();
 }

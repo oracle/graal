@@ -52,8 +52,8 @@ public abstract class PrimitiveStamp extends ArithmeticStamp {
     }
 
     @Override
-    public Constant readConstant(ConstantReflectionProvider provider, Constant base, long displacement) {
-        return provider.readRawConstant(getStackKind(), base, displacement, getBits());
+    public Constant readConstant(MemoryAccessProvider provider, Constant base, long displacement) {
+        return provider.readPrimitiveConstant(getStackKind(), base, displacement, getBits());
     }
 
     @Override

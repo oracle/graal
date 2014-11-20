@@ -122,7 +122,7 @@ public class ReadNode extends FloatableAccessNode implements LIRLowerable, Canon
             if (metaAccess != null && object != null && object.isConstant() && !object.isNullConstant()) {
                 if ((location.getLocationIdentity().isImmutable()) && location instanceof ConstantLocationNode) {
                     long displacement = ((ConstantLocationNode) location).getDisplacement();
-                    Constant constant = read.stamp().readConstant(tool.getConstantReflection(), object.asConstant(), displacement);
+                    Constant constant = read.stamp().readConstant(tool.getConstantReflection().getMemoryAccessProvider(), object.asConstant(), displacement);
                     if (constant != null) {
                         return ConstantNode.forConstant(read.stamp(), constant, metaAccess);
                     }

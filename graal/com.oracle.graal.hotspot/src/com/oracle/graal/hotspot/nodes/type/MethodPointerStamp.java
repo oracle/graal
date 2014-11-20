@@ -48,7 +48,7 @@ public final class MethodPointerStamp extends MetaspacePointerStamp {
     }
 
     @Override
-    public Constant readConstant(ConstantReflectionProvider provider, Constant base, long displacement) {
+    public Constant readConstant(MemoryAccessProvider provider, Constant base, long displacement) {
         return provider.readPointerConstant(PointerType.Method, base, displacement);
     }
 

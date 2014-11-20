@@ -116,7 +116,7 @@ public abstract class Stamp {
         return null;
     }
 
-    public abstract Constant readConstant(ConstantReflectionProvider provider, Constant base, long displacement);
+    public abstract Constant readConstant(MemoryAccessProvider provider, Constant base, long displacement);
 
     /**
      * Tries to improve this stamp with the stamp given as parameter. If successful, returns the new

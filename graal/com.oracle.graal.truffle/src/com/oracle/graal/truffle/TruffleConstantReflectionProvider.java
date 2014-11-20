@@ -88,18 +88,6 @@ public class TruffleConstantReflectionProvider implements ConstantReflectionProv
         return graalConstantReflection.readStableFieldValue(field, receiver, isDefaultStable);
     }
 
-    public JavaConstant readUnsafeConstant(Kind kind, JavaConstant base, long displacement) {
-        return graalConstantReflection.readUnsafeConstant(kind, base, displacement);
-    }
-
-    public JavaConstant readRawConstant(Kind kind, Constant base, long displacement, int bits) {
-        return graalConstantReflection.readRawConstant(kind, base, displacement, bits);
-    }
-
-    public Constant readPointerConstant(PointerType type, Constant base, long displacement) {
-        return graalConstantReflection.readPointerConstant(type, base, displacement);
-    }
-
     public JavaConstant boxPrimitive(JavaConstant source) {
         return graalConstantReflection.boxPrimitive(source);
     }
@@ -118,5 +106,9 @@ public class TruffleConstantReflectionProvider implements ConstantReflectionProv
 
     public MethodHandleAccessProvider getMethodHandleAccess() {
         return graalConstantReflection.getMethodHandleAccess();
+    }
+
+    public MemoryAccessProvider getMemoryAccessProvider() {
+        return graalConstantReflection.getMemoryAccessProvider();
     }
 }

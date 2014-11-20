@@ -80,8 +80,8 @@ public class NarrowOopStamp extends AbstractObjectStamp {
     }
 
     @Override
-    public Constant readConstant(ConstantReflectionProvider provider, Constant base, long displacement) {
-        return ((HotSpotConstantReflectionProvider) provider).readNarrowPointerConstant(PointerType.Object, base, displacement);
+    public Constant readConstant(MemoryAccessProvider provider, Constant base, long displacement) {
+        return ((HotSpotMemoryAccessProviderImpl) provider).readNarrowPointerConstant(PointerType.Object, base, displacement);
     }
 
     @Override

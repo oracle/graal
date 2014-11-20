@@ -75,7 +75,7 @@ public class ObjectStamp extends AbstractObjectStamp {
     }
 
     @Override
-    public Constant readConstant(ConstantReflectionProvider provider, Constant base, long displacement) {
+    public Constant readConstant(MemoryAccessProvider provider, Constant base, long displacement) {
         return provider.readPointerConstant(PointerType.Object, base, displacement);
     }
 }
