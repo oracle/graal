@@ -92,10 +92,11 @@ public final class KlassPointerStamp extends MetaspacePointerStamp {
 
     @Override
     public Constant readConstant(MemoryAccessProvider provider, Constant base, long displacement) {
+        HotSpotMemoryAccessProvider hsProvider = (HotSpotMemoryAccessProvider) provider;
         if (isCompressed()) {
-            return ((HotSpotMemoryAccessProviderImpl) provider).readNarrowPointerConstant(PointerType.Type, base, displacement);
+            return hsProvider.readNarrowKlassPointerConstant(base, displacement, encoding);
         } else {
-            return provider.readPointerConstant(PointerType.Type, base, displacement);
+            return hsProvider.readKlassPointerConstant(base, displacement);
         }
     }
 

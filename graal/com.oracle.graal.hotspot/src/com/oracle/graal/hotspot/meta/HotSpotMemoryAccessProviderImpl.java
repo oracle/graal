@@ -28,11 +28,12 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.HotSpotVMConfig.CompressEncoding;
 
 /**
  * HotSpot implementation of {@link MemoryAccessProvider}.
  */
-public class HotSpotMemoryAccessProviderImpl implements MemoryAccessProvider {
+public class HotSpotMemoryAccessProviderImpl implements HotSpotMemoryAccessProvider {
 
     protected final HotSpotGraalRuntime runtime;
 
@@ -141,36 +142,36 @@ public class HotSpotMemoryAccessProviderImpl implements MemoryAccessProvider {
         }
     }
 
-    public Constant readPointerConstant(PointerType type, Constant base, long displacement) {
-        switch (type) {
-            case Object:
-                return HotSpotObjectConstantImpl.forObject(readRawObject(base, displacement, false));
-            case Type:
-                long klass = readRawValue(base, displacement, runtime.getTarget().wordSize * 8);
-                HotSpotResolvedObjectType metaKlass = HotSpotResolvedObjectTypeImpl.fromMetaspaceKlass(klass);
-                return HotSpotMetaspaceConstantImpl.forMetaspaceObject(runtime.getTarget().wordKind, klass, metaKlass, false);
-            case Method:
-                long method = readRawValue(base, displacement, runtime.getTarget().wordSize * 8);
-                HotSpotResolvedJavaMethod metaMethod = HotSpotResolvedJavaMethodImpl.fromMetaspace(method);
-                return HotSpotMetaspaceConstantImpl.forMetaspaceObject(runtime.getTarget().wordKind, method, metaMethod, false);
-            default:
-                throw GraalInternalError.shouldNotReachHere();
-        }
+    @Override
+    public JavaConstant readObjectConstant(Constant base, long displacement) {
+        return HotSpotObjectConstantImpl.forObject(readRawObject(base, displacement, false));
     }
 
-    public Constant readNarrowPointerConstant(PointerType type, Constant base, long displacement) {
-        switch (type) {
-            case Object:
-                return HotSpotObjectConstantImpl.forObject(readRawObject(base, displacement, true), true);
-            case Type:
-                int compressed = (int) readRawValue(base, displacement, 32);
-                long klass = runtime.getConfig().getKlassEncoding().uncompress(compressed);
-                HotSpotResolvedObjectType metaKlass = HotSpotResolvedObjectTypeImpl.fromMetaspaceKlass(klass);
-                return HotSpotMetaspaceConstantImpl.forMetaspaceObject(Kind.Int, compressed, metaKlass, true);
-            case Method:
-                // there are no compressed method pointers
-            default:
-                throw GraalInternalError.shouldNotReachHere();
-        }
+    @Override
+    public JavaConstant readNarrowOopConstant(Constant base, long displacement, CompressEncoding encoding) {
+        assert encoding.equals(runtime.getConfig().getOopEncoding()) : "unexpected oop encoding: " + encoding + " != " + runtime.getConfig().getOopEncoding();
+        return HotSpotObjectConstantImpl.forObject(readRawObject(base, displacement, true), true);
+    }
+
+    @Override
+    public Constant readKlassPointerConstant(Constant base, long displacement) {
+        long klass = readRawValue(base, displacement, runtime.getTarget().wordSize * 8);
+        HotSpotResolvedObjectType metaKlass = HotSpotResolvedObjectTypeImpl.fromMetaspaceKlass(klass);
+        return HotSpotMetaspaceConstantImpl.forMetaspaceObject(runtime.getTarget().wordKind, klass, metaKlass, false);
+    }
+
+    @Override
+    public Constant readNarrowKlassPointerConstant(Constant base, long displacement, CompressEncoding encoding) {
+        int compressed = (int) readRawValue(base, displacement, 32);
+        long klass = encoding.uncompress(compressed);
+        HotSpotResolvedObjectType metaKlass = HotSpotResolvedObjectTypeImpl.fromMetaspaceKlass(klass);
+        return HotSpotMetaspaceConstantImpl.forMetaspaceObject(Kind.Int, compressed, metaKlass, true);
+    }
+
+    @Override
+    public Constant readMethodPointerConstant(Constant base, long displacement) {
+        long method = readRawValue(base, displacement, runtime.getTarget().wordSize * 8);
+        HotSpotResolvedJavaMethod metaMethod = HotSpotResolvedJavaMethodImpl.fromMetaspace(method);
+        return HotSpotMetaspaceConstantImpl.forMetaspaceObject(runtime.getTarget().wordKind, method, metaMethod, false);
     }
 }

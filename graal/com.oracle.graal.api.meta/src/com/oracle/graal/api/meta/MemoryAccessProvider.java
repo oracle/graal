@@ -50,12 +50,11 @@ public interface MemoryAccessProvider extends Remote {
     JavaConstant readPrimitiveConstant(Kind kind, Constant base, long displacement, int bits);
 
     /**
-     * Reads a pointer value using a base address and a displacement.
+     * Reads a Java {@link Object} value using a base address and a displacement.
      *
-     * @param type the {@link PointerType} of the returned {@link Constant} object
      * @param base the base address from which the value is read
      * @param displacement the displacement within the object in bytes
      * @return the read value encapsulated in a {@link Constant} object
      */
-    Constant readPointerConstant(PointerType type, Constant base, long displacement);
+    JavaConstant readObjectConstant(Constant base, long displacement);
 }

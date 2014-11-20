@@ -24,6 +24,7 @@ package com.oracle.graal.hotspot.nodes.type;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.hotspot.meta.*;
 
 public final class MethodPointerStamp extends MetaspacePointerStamp {
 
@@ -49,7 +50,8 @@ public final class MethodPointerStamp extends MetaspacePointerStamp {
 
     @Override
     public Constant readConstant(MemoryAccessProvider provider, Constant base, long displacement) {
-        return provider.readPointerConstant(PointerType.Method, base, displacement);
+        HotSpotMemoryAccessProvider hsProvider = (HotSpotMemoryAccessProvider) provider;
+        return hsProvider.readMethodPointerConstant(base, displacement);
     }
 
     @Override

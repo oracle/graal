@@ -20,10 +20,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.api.meta;
+package com.oracle.graal.hotspot.meta;
 
-public enum PointerType {
-    Object,
-    Type,
-    Method
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.hotspot.HotSpotVMConfig.CompressEncoding;
+
+/**
+ * HotSpot specific extension of {@link MemoryAccessProvider}.
+ */
+public interface HotSpotMemoryAccessProvider extends MemoryAccessProvider {
+
+    JavaConstant readNarrowOopConstant(Constant base, long displacement, CompressEncoding encoding);
+
+    Constant readKlassPointerConstant(Constant base, long displacement);
+
+    Constant readNarrowKlassPointerConstant(Constant base, long displacement, CompressEncoding encoding);
+
+    Constant readMethodPointerConstant(Constant base, long displacement);
 }
