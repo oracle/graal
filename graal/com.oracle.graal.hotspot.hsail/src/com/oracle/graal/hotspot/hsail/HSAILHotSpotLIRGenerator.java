@@ -265,14 +265,19 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator implements HotSp
 
     @Override
     public Value emitCompress(Value pointer, CompressEncoding encoding, boolean nonNull) {
-        Variable result = newVariable(LIRKind.reference(Kind.Int));
+        Variable result = newVariable(pointer.getLIRKind().changeType(Kind.Int));
         append(new HSAILMove.CompressPointer(result, newVariable(pointer.getLIRKind()), asAllocatable(pointer), encoding.base, encoding.shift, encoding.alignment, nonNull));
         return result;
     }
 
     @Override
     public Value emitUncompress(Value pointer, CompressEncoding encoding, boolean nonNull) {
-        Variable result = newVariable(LIRKind.reference(Kind.Object));
+        Variable result;
+        if (pointer.getLIRKind().isReference(0)) {
+            result = newVariable(LIRKind.reference(Kind.Object));
+        } else {
+            result = newVariable(LIRKind.value(Kind.Long));
+        }
         append(new HSAILMove.UncompressPointer(result, asAllocatable(pointer), encoding.base, encoding.shift, encoding.alignment, nonNull));
         return result;
     }
