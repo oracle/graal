@@ -22,15 +22,13 @@
  */
 package com.oracle.graal.lir.framemap;
 
-import java.util.*;
-
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.compiler.common.*;
 
 public class SimpleStackSlotAllocator implements StackSlotAllocator {
 
     public FrameMappingTool allocateStackSlots(FrameMapBuilderImpl builder) {
-        HashMap<VirtualStackSlot, StackSlot> mapping = new HashMap<>();
+        StackSlot[] mapping = new StackSlot[builder.getNumberOfStackSlots()];
         for (VirtualStackSlot virtualSlot : builder.getStackSlots()) {
             final StackSlot slot;
             if (virtualSlot instanceof SimpleVirtualStackSlot) {
@@ -40,9 +38,9 @@ public class SimpleStackSlotAllocator implements StackSlotAllocator {
             } else {
                 throw GraalInternalError.shouldNotReachHere("Unknown VirtualStackSlot: " + virtualSlot);
             }
-            mapping.put(virtualSlot, slot);
+            mapping[virtualSlot.getId()] = slot;
         }
-        return mapping::get;
+        return v -> mapping[v.getId()];
     }
 
     protected StackSlot mapSimpleVirtualStackSlot(FrameMapBuilderImpl builder, SimpleVirtualStackSlot virtualStackSlot) {
