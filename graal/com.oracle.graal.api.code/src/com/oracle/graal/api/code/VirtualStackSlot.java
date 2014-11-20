@@ -27,12 +27,11 @@ import com.oracle.graal.api.meta.*;
 public abstract class VirtualStackSlot extends StackSlotValue {
 
     private static final long serialVersionUID = 2823688688873398219L;
-    private static int idCounter = 0;
     private final int id;
 
-    public VirtualStackSlot(LIRKind lirKind) {
+    public VirtualStackSlot(int id, LIRKind lirKind) {
         super(lirKind);
-        id = idCounter++;
+        this.id = id;
     }
 
     public int getId() {

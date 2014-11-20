@@ -37,8 +37,8 @@ class VirtualStackSlotRange extends VirtualStackSlot {
     private final BitSet objects;
     private final int slots;
 
-    public VirtualStackSlotRange(int slots, BitSet objects) {
-        super(LIRKind.reference(Kind.Object));
+    public VirtualStackSlotRange(int id, int slots, BitSet objects) {
+        super(id, LIRKind.reference(Kind.Object));
         this.slots = slots;
         this.objects = (BitSet) objects.clone();
     }

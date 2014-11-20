@@ -32,8 +32,8 @@ class SimpleVirtualStackSlot extends VirtualStackSlot {
 
     private static final long serialVersionUID = 7654295701165421750L;
 
-    public SimpleVirtualStackSlot(LIRKind lirKind) {
-        super(lirKind);
+    public SimpleVirtualStackSlot(int id, LIRKind lirKind) {
+        super(id, lirKind);
     }
 
 }

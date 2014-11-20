@@ -39,6 +39,7 @@ public class FrameMapBuilderImpl implements FrameMapBuilder {
     protected final FrameMap frameMap;
     private final List<VirtualStackSlot> stackSlots;
     private final List<CallingConvention> calls;
+    private int numStackSlots;
 
     public FrameMapBuilderImpl(FrameMap frameMap, CodeCacheProvider codeCache, RegisterConfig registerConfig) {
         assert registerConfig != null : "No register config!";
@@ -48,12 +49,13 @@ public class FrameMapBuilderImpl implements FrameMapBuilder {
         this.stackSlots = new ArrayList<>();
         this.calls = new ArrayList<>();
         this.mappables = new ArrayList<>();
+        this.numStackSlots = 0;
     }
 
     private final List<FrameMappable> mappables;
 
     public VirtualStackSlot allocateSpillSlot(LIRKind kind) {
-        SimpleVirtualStackSlot slot = new SimpleVirtualStackSlot(kind);
+        SimpleVirtualStackSlot slot = new SimpleVirtualStackSlot(numStackSlots++, kind);
         stackSlots.add(slot);
         return slot;
     }
@@ -65,7 +67,7 @@ public class FrameMapBuilderImpl implements FrameMapBuilder {
         if (outObjectStackSlots != null) {
             throw GraalInternalError.unimplemented();
         }
-        VirtualStackSlotRange slot = new VirtualStackSlotRange(slots, objects);
+        VirtualStackSlotRange slot = new VirtualStackSlotRange(numStackSlots++, slots, objects);
         stackSlots.add(slot);
         return slot;
     }
@@ -76,6 +78,14 @@ public class FrameMapBuilderImpl implements FrameMapBuilder {
 
     public CodeCacheProvider getCodeCache() {
         return codeCache;
+    }
+
+    /**
+     * Returns the number of {@link VirtualStackSlot}s created by this {@link FrameMapBuilder}. Can
+     * be used as an upper bound for an array indexed by {@link VirtualStackSlot#getId()}.
+     */
+    public int getNumberOfStackSlots() {
+        return numStackSlots;
     }
 
     public void callsMethod(CallingConvention cc) {
