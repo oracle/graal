@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,17 +34,20 @@ public class PhaseContext {
     private final LoweringProvider lowerer;
     private final Replacements replacements;
     private final Assumptions assumptions;
+    private final StampProvider stampProvider;
 
-    public PhaseContext(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, LoweringProvider lowerer, Replacements replacements, Assumptions assumptions) {
+    public PhaseContext(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, LoweringProvider lowerer, Replacements replacements, Assumptions assumptions,
+                    StampProvider stampProvider) {
         this.metaAccess = metaAccess;
         this.constantReflection = constantReflection;
         this.lowerer = lowerer;
         this.replacements = replacements;
         this.assumptions = assumptions;
+        this.stampProvider = stampProvider;
     }
 
     public PhaseContext(Providers providers, Assumptions assumptions) {
-        this(providers.getMetaAccess(), providers.getConstantReflection(), providers.getLowerer(), providers.getReplacements(), assumptions);
+        this(providers.getMetaAccess(), providers.getConstantReflection(), providers.getLowerer(), providers.getReplacements(), assumptions, providers.getStampProvider());
     }
 
     public MetaAccessProvider getMetaAccess() {
@@ -65,5 +68,9 @@ public class PhaseContext {
 
     public Assumptions getAssumptions() {
         return assumptions;
+    }
+
+    public StampProvider getStampProvider() {
+        return stampProvider;
     }
 }

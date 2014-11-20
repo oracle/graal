@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,7 +42,7 @@ public class HotSpotProviders extends Providers {
     public HotSpotProviders(MetaAccessProvider metaAccess, HotSpotCodeCacheProvider codeCache, ConstantReflectionProvider constantReflection, HotSpotForeignCallsProvider foreignCalls,
                     LoweringProvider lowerer, Replacements replacements, HotSpotDisassemblerProvider disassembler, SuitesProvider suites, HotSpotRegistersProvider registers,
                     SnippetReflectionProvider snippetReflection) {
-        super(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, replacements);
+        super(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, replacements, new HotSpotStampProvider());
         this.disassembler = disassembler;
         this.suites = suites;
         this.registers = registers;

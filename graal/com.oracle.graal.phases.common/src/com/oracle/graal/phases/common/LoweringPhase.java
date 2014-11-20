@@ -131,6 +131,10 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
             return context.getAssumptions();
         }
 
+        public StampProvider getStampProvider() {
+            return context.getStampProvider();
+        }
+
         @Override
         public GuardingNode createGuard(FixedNode before, LogicNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action, boolean negated) {
             if (OptEliminateGuards.getValue()) {

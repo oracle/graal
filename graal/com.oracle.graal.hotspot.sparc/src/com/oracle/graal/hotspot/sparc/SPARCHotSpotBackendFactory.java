@@ -63,7 +63,7 @@ public class SPARCHotSpotBackendFactory implements HotSpotBackendFactory {
         // Replacements cannot have speculative optimizations since they have
         // to be valid for the entire run of the VM.
         Assumptions assumptions = new Assumptions(false);
-        Providers p = new Providers(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, null);
+        Providers p = new Providers(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, null, new HotSpotStampProvider());
         HotSpotSnippetReflectionProvider snippetReflection = new HotSpotSnippetReflectionProvider();
         HotSpotReplacementsImpl replacements = new HotSpotReplacementsImpl(p, snippetReflection, runtime.getConfig(), assumptions, target);
         HotSpotDisassemblerProvider disassembler = new HotSpotDisassemblerProvider(runtime);
