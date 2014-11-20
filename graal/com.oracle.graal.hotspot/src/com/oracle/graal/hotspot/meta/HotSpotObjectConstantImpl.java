@@ -51,6 +51,15 @@ public final class HotSpotObjectConstantImpl extends AbstractValue implements Ho
         }
     }
 
+    public static JavaConstant forStableArray(Object object, int stableDimension, boolean isDefaultStable) {
+        if (object == null) {
+            return JavaConstant.NULL_OBJECT;
+        } else {
+            assert object.getClass().isArray();
+            return new HotSpotObjectConstantImpl(object, false, stableDimension, isDefaultStable);
+        }
+    }
+
     public static JavaConstant forBoxedValue(Kind kind, Object value) {
         if (kind == Kind.Object) {
             return HotSpotObjectConstantImpl.forObject(value);
@@ -71,12 +80,23 @@ public final class HotSpotObjectConstantImpl extends AbstractValue implements Ho
 
     private final Object object;
     private final boolean compressed;
+    private final byte stableDimension;
+    private final boolean isDefaultStable;
 
-    private HotSpotObjectConstantImpl(Object object, boolean compressed) {
+    private HotSpotObjectConstantImpl(Object object, boolean compressed, int stableDimension, boolean isDefaultStable) {
         super(LIRKind.reference(compressed ? Kind.Int : Kind.Object));
         this.object = object;
         this.compressed = compressed;
+        this.stableDimension = (byte) stableDimension;
+        this.isDefaultStable = isDefaultStable;
         assert object != null;
+        assert stableDimension == 0 || (object != null && object.getClass().isArray());
+        assert stableDimension >= 0 && stableDimension <= 255;
+        assert !isDefaultStable || stableDimension > 0;
+    }
+
+    private HotSpotObjectConstantImpl(Object object, boolean compressed) {
+        this(object, compressed, 0, false);
     }
 
     /**
@@ -107,12 +127,12 @@ public final class HotSpotObjectConstantImpl extends AbstractValue implements Ho
 
     public JavaConstant compress() {
         assert !compressed;
-        return new HotSpotObjectConstantImpl(object, true);
+        return new HotSpotObjectConstantImpl(object, true, stableDimension, isDefaultStable);
     }
 
     public JavaConstant uncompress() {
         assert compressed;
-        return new HotSpotObjectConstantImpl(object, false);
+        return new HotSpotObjectConstantImpl(object, false, stableDimension, isDefaultStable);
     }
 
     public JavaConstant getClassLoader() {
@@ -236,7 +256,7 @@ public final class HotSpotObjectConstantImpl extends AbstractValue implements Ho
             return true;
         } else if (o instanceof HotSpotObjectConstantImpl) {
             HotSpotObjectConstantImpl other = (HotSpotObjectConstantImpl) o;
-            return super.equals(o) && object == other.object && compressed == other.compressed;
+            return super.equals(o) && object == other.object && compressed == other.compressed && stableDimension == other.stableDimension && isDefaultStable == other.isDefaultStable;
         }
         return false;
     }
@@ -253,5 +273,20 @@ public final class HotSpotObjectConstantImpl extends AbstractValue implements Ho
     @Override
     public String toString() {
         return (compressed ? "NarrowOop" : getKind().getJavaName()) + "[" + Kind.Object.format(object) + "]";
+    }
+
+    /**
+     * Number of stable dimensions if this constant is a stable array.
+     */
+    public int getStableDimension() {
+        return stableDimension & 0xff;
+    }
+
+    /**
+     * Returns {@code true} if this is a stable array constant and its elements should be considered
+     * as stable regardless of whether they are default values.
+     */
+    public boolean isDefaultStable() {
+        return isDefaultStable;
     }
 }

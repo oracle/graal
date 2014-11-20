@@ -24,6 +24,8 @@ package com.oracle.graal.nodes.java;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -33,7 +35,7 @@ import com.oracle.graal.nodes.type.*;
  * The {@code LoadIndexedNode} represents a read from an element of an array.
  */
 @NodeInfo
-public class LoadIndexedNode extends AccessIndexedNode implements Virtualizable {
+public class LoadIndexedNode extends AccessIndexedNode implements Virtualizable, Canonicalizable {
 
     /**
      * Creates a new LoadIndexedNode.
@@ -74,5 +76,18 @@ public class LoadIndexedNode extends AccessIndexedNode implements Virtualizable 
                 tool.replaceWith(arrayState.getEntry(idx));
             }
         }
+    }
+
+    public Node canonical(CanonicalizerTool tool) {
+        if (array().isConstant() && !array().isNullConstant() && index().isConstant()) {
+            JavaConstant arrayConstant = array().asJavaConstant();
+            if (arrayConstant != null) {
+                JavaConstant constant = tool.getConstantReflection().readConstantArrayElement(arrayConstant, index().asJavaConstant().asInt());
+                if (constant != null) {
+                    return ConstantNode.forConstant(constant, tool.getMetaAccess());
+                }
+            }
+        }
+        return this;
     }
 }

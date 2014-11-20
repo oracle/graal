@@ -81,6 +81,16 @@ public class HotSpotConstantReflectionProvider implements ConstantReflectionProv
         return Array.getLength(arrayObject);
     }
 
+    public JavaConstant readConstantArrayElement(JavaConstant array, int index) {
+        if (array instanceof HotSpotObjectConstantImpl && ((HotSpotObjectConstantImpl) array).getStableDimension() > 0) {
+            JavaConstant element = readArrayElement(array, index);
+            if (((HotSpotObjectConstantImpl) array).isDefaultStable() || !element.isDefaultForKind()) {
+                return element;
+            }
+        }
+        return null;
+    }
+
     private static long readRawValue(Constant baseConstant, long initialDisplacement, int bits) {
         Object base;
         long displacement;
@@ -227,7 +237,12 @@ public class HotSpotConstantReflectionProvider implements ConstantReflectionProv
         }
 
         if (a instanceof Object[]) {
-            return HotSpotObjectConstantImpl.forObject(((Object[]) a)[index]);
+            Object element = ((Object[]) a)[index];
+            if (((HotSpotObjectConstantImpl) array).getStableDimension() > 1) {
+                return HotSpotObjectConstantImpl.forStableArray(element, ((HotSpotObjectConstantImpl) array).getStableDimension() - 1, ((HotSpotObjectConstantImpl) array).isDefaultStable());
+            } else {
+                return HotSpotObjectConstantImpl.forObject(element);
+            }
         } else {
             return JavaConstant.forBoxedPrimitive(Array.get(a, index));
         }
@@ -334,7 +349,15 @@ public class HotSpotConstantReflectionProvider implements ConstantReflectionProv
 
     public JavaConstant readFieldValue(JavaField field, JavaConstant receiver) {
         HotSpotResolvedJavaField hotspotField = (HotSpotResolvedJavaField) field;
+        if (!hotspotField.isStable()) {
+            return readNonStableFieldValue(field, receiver);
+        } else {
+            return readStableFieldValue(field, receiver, false);
+        }
+    }
 
+    private JavaConstant readNonStableFieldValue(JavaField field, JavaConstant receiver) {
+        HotSpotResolvedJavaField hotspotField = (HotSpotResolvedJavaField) field;
         if (receiver == null) {
             assert hotspotField.isStatic();
             HotSpotResolvedJavaType holder = (HotSpotResolvedJavaType) hotspotField.getDeclaringClass();
@@ -347,6 +370,25 @@ public class HotSpotConstantReflectionProvider implements ConstantReflectionProv
             assert receiver.isNonNull() && hotspotField.isInObject(((HotSpotObjectConstantImpl) receiver).object());
             return readUnsafeConstant(hotspotField.getKind(), receiver, hotspotField.offset());
         }
+    }
+
+    public JavaConstant readStableFieldValue(JavaField field, JavaConstant receiver, boolean isDefaultStable) {
+        JavaConstant fieldValue = readNonStableFieldValue(field, receiver);
+        JavaType declaredType = field.getType();
+        if (declaredType.getComponentType() != null) {
+            int stableDimension = getArrayDimension(declaredType);
+            return HotSpotObjectConstantImpl.forStableArray(((HotSpotObjectConstantImpl) fieldValue).object(), stableDimension, isDefaultStable);
+        }
+        return fieldValue;
+    }
+
+    private static int getArrayDimension(JavaType type) {
+        int dimensions = 0;
+        JavaType componentType = type;
+        while ((componentType = componentType.getComponentType()) != null) {
+            dimensions++;
+        }
+        return dimensions;
     }
 
     /**
