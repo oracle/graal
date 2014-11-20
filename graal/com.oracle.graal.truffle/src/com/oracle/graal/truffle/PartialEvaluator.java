@@ -45,7 +45,6 @@ import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
-import com.oracle.graal.phases.common.CanonicalizerPhase.CustomCanonicalizer;
 import com.oracle.graal.phases.common.inlining.*;
 import com.oracle.graal.phases.common.inlining.info.*;
 import com.oracle.graal.phases.tiers.*;
@@ -75,8 +74,7 @@ public class PartialEvaluator {
 
     public PartialEvaluator(Providers providers, TruffleCache truffleCache) {
         this.providers = providers;
-        CustomCanonicalizer customCanonicalizer = new PartialEvaluatorCanonicalizer(providers.getMetaAccess(), providers.getConstantReflection());
-        this.canonicalizer = new CanonicalizerPhase(!ImmutableCode.getValue(), customCanonicalizer);
+        this.canonicalizer = new CanonicalizerPhase(!ImmutableCode.getValue());
         this.snippetReflection = Graal.getRequiredCapability(SnippetReflectionProvider.class);
         this.truffleCache = truffleCache;
         this.callDirectMethod = providers.getMetaAccess().lookupJavaMethod(OptimizedCallTarget.getCallDirectMethod());

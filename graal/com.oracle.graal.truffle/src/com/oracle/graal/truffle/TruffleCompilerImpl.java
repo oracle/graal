@@ -75,7 +75,8 @@ public class TruffleCompilerImpl {
         this.compilationNotify = graalTruffleRuntime.getCompilationNotify();
         this.backend = runtime.getHostBackend();
         Replacements truffleReplacements = graalTruffleRuntime.getReplacements();
-        this.providers = backend.getProviders().copyWith(truffleReplacements);
+        ConstantReflectionProvider constantReflection = new TruffleConstantReflectionProvider(backend.getProviders().getConstantReflection(), backend.getProviders().getMetaAccess());
+        this.providers = backend.getProviders().copyWith(truffleReplacements).copyWith(constantReflection);
         this.suites = backend.getSuites().getDefaultSuites();
 
         ResolvedJavaType[] skippedExceptionTypes = getSkippedExceptionTypes(providers.getMetaAccess());
