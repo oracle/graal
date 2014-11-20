@@ -396,7 +396,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
         assert vtableEntryOffset > 0;
         // We use LocationNode.ANY_LOCATION for the reads that access the vtable
         // entry as HotSpot does not guarantee that this is a final value.
-        Stamp methodStamp = StampFactory.forPointer(PointerType.Method);
+        Stamp methodStamp = MethodPointerStamp.method();
         ReadNode metaspaceMethod = graph.add(ReadNode.create(hub, ConstantLocationNode.create(ANY_LOCATION, wordKind, vtableEntryOffset, graph), methodStamp, BarrierType.NONE));
         return metaspaceMethod;
     }
@@ -408,11 +408,9 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
         LocationNode location = ConstantLocationNode.create(HUB_LOCATION, wordKind, config.hubOffset, graph);
         assert !object.isConstant() || object.asJavaConstant().isNull();
 
-        Stamp hubStamp;
+        KlassPointerStamp hubStamp = KlassPointerStamp.klassNonNull();
         if (config.useCompressedClassPointers) {
-            hubStamp = new NarrowPointerStamp(PointerType.Type, config.getKlassEncoding());
-        } else {
-            hubStamp = StampFactory.forPointer(PointerType.Type);
+            hubStamp = hubStamp.compressed(config.getKlassEncoding());
         }
 
         FloatingReadNode memoryRead = graph.unique(FloatingReadNode.create(object, location, null, hubStamp, guard, BarrierType.NONE));

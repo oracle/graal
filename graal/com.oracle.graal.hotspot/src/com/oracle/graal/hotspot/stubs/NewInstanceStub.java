@@ -30,12 +30,12 @@ import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
+import com.oracle.graal.hotspot.nodes.type.*;
 import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.hotspot.word.*;
 import com.oracle.graal.nodes.StructuredGraph.GuardsStage;
@@ -64,7 +64,7 @@ public class NewInstanceStub extends SnippetStub {
 
         Arguments args = new Arguments(stub, GuardsStage.FLOATING_GUARDS, LoweringTool.StandardLoweringStage.HIGH_TIER);
         args.add("hub", null);
-        args.addConst("intArrayHub", intArrayType.klass(), StampFactory.forPointer(PointerType.Type));
+        args.addConst("intArrayHub", intArrayType.klass(), KlassPointerStamp.klassNonNull());
         args.addConst("threadRegister", providers.getRegisters().getThreadRegister());
         return args;
     }

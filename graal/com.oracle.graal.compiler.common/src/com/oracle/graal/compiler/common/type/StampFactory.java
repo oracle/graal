@@ -31,7 +31,6 @@ public class StampFactory {
     // JaCoCo Exclude
 
     private static final Stamp[] stampCache = new Stamp[Kind.values().length];
-    private static final Stamp[] pointerStampCache = new Stamp[PointerType.values().length];
     private static final Stamp[] illegalStampCache = new Stamp[Kind.values().length];
     private static final Stamp objectStamp = new ObjectStamp(null, false, false, false);
     private static final Stamp objectNonNullStamp = new ObjectStamp(null, false, true, false);
@@ -79,13 +78,6 @@ public class StampFactory {
                 illegalStampCache[k.ordinal()] = IllegalStamp.getInstance();
             }
         }
-
-        pointerStampCache[PointerType.Object.ordinal()] = objectStamp;
-        for (PointerType t : PointerType.values()) {
-            if (t != PointerType.Object) {
-                pointerStampCache[t.ordinal()] = new PointerStamp(t);
-            }
-        }
     }
 
     /**
@@ -94,14 +86,6 @@ public class StampFactory {
     public static Stamp forKind(Kind kind) {
         assert stampCache[kind.ordinal()] != null : "unexpected forKind(" + kind + ")";
         return stampCache[kind.ordinal()];
-    }
-
-    /**
-     * Return a stamp for a pointer.
-     */
-    public static Stamp forPointer(PointerType type) {
-        assert pointerStampCache[type.ordinal()] != null;
-        return pointerStampCache[type.ordinal()];
     }
 
     /**

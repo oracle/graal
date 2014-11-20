@@ -23,36 +23,20 @@
 package com.oracle.graal.hotspot.nodes.type;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.spi.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.hotspot.HotSpotVMConfig.*;
 import com.oracle.graal.hotspot.meta.*;
 
-public class NarrowPointerStamp extends AbstractPointerStamp {
+public abstract class MetaspacePointerStamp extends AbstractPointerStamp {
 
-    private final CompressEncoding encoding;
-
-    public NarrowPointerStamp(PointerType type, CompressEncoding encoding) {
-        super(type, false, false);
-        assert type != PointerType.Object : "object pointers should use NarrowOopStamp";
-        this.encoding = encoding;
-    }
-
-    @Override
-    public boolean isCompatible(Stamp otherStamp) {
-        if (this == otherStamp) {
-            return true;
-        }
-        if (otherStamp instanceof NarrowPointerStamp) {
-            NarrowPointerStamp other = (NarrowPointerStamp) otherStamp;
-            return encoding.equals(other.encoding) && super.isCompatible(other);
-        }
-        return false;
+    protected MetaspacePointerStamp(boolean nonNull, boolean alwaysNull) {
+        super(nonNull, alwaysNull);
     }
 
     @Override
     public LIRKind getLIRKind(LIRKindTool tool) {
-        return LIRKind.value(Kind.Int);
+        return tool.getWordKind();
     }
 
     @Override
@@ -84,13 +68,8 @@ public class NarrowPointerStamp extends AbstractPointerStamp {
 
     @Override
     public Stamp constant(Constant c, MetaAccessProvider meta) {
-        assert (c instanceof HotSpotMetaspaceConstantImpl) && ((HotSpotMetaspaceConstantImpl) c).isCompressed();
+        assert c instanceof HotSpotMetaspaceConstant;
         return this;
-    }
-
-    @Override
-    public Constant readConstant(ConstantReflectionProvider provider, Constant base, long displacement) {
-        return ((HotSpotConstantReflectionProvider) provider).readNarrowPointerConstant(getType(), base, displacement);
     }
 
     @Override
@@ -99,7 +78,12 @@ public class NarrowPointerStamp extends AbstractPointerStamp {
     }
 
     @Override
-    public String toString() {
-        return "narrow " + super.toString();
+    public ResolvedJavaType javaType(MetaAccessProvider metaAccess) {
+        throw GraalInternalError.shouldNotReachHere("metaspace pointer has no Java type");
     }
+
+    protected void appendString(StringBuilder str) {
+        str.append(nonNull() ? "!" : "").append(alwaysNull() ? " NULL" : "");
+    }
+
 }

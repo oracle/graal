@@ -30,8 +30,8 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.hotspot.nodes.type.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.word.*;
@@ -126,7 +126,7 @@ public class TypeCheckSnippetUtils {
         int index = 0;
         for (int i = 0; i < hubs.length; i++) {
             if (!positiveOnly || hints.hints[i].positive) {
-                hubs[index] = ConstantNode.forConstant(StampFactory.forPointer(PointerType.Type), ((HotSpotResolvedObjectType) hints.hints[i].type).klass(), metaAccess, graph);
+                hubs[index] = ConstantNode.forConstant(KlassPointerStamp.klassNonNull(), ((HotSpotResolvedObjectType) hints.hints[i].type).klass(), metaAccess, graph);
                 isPositive[index] = hints.hints[i].positive;
                 index++;
             }

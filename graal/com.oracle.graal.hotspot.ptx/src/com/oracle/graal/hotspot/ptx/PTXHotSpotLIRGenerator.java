@@ -30,7 +30,6 @@ import com.oracle.graal.compiler.ptx.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.HotSpotVMConfig.CompressEncoding;
 import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.hotspot.nodes.type.*;
 import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 import com.oracle.graal.lir.gen.*;
 
@@ -40,7 +39,7 @@ import com.oracle.graal.lir.gen.*;
 public class PTXHotSpotLIRGenerator extends PTXLIRGenerator implements HotSpotLIRGenerator {
 
     protected PTXHotSpotLIRGenerator(HotSpotProviders providers, HotSpotVMConfig config, CallingConvention cc, LIRGenerationResult lirGenRes) {
-        super(new HotSpotLIRKindTool(providers.getCodeCache().getTarget().wordKind), providers, cc, lirGenRes);
+        super(new DefaultLIRKindTool(providers.getCodeCache().getTarget().wordKind), providers, cc, lirGenRes);
         assert config.basicLockSize == 8;
     }
 

@@ -37,6 +37,7 @@ import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.hotspot.nodes.type.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
@@ -69,7 +70,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         StructuredGraph result = compile("getStaticFinalObject", true);
         assertDeepEquals(1, getConstantNodes(result).count());
         Stamp constantStamp = getConstantNodes(result).first().stamp();
-        Assert.assertTrue(constantStamp instanceof AbstractPointerStamp && ((AbstractPointerStamp) constantStamp).getType() == PointerType.Type);
+        Assert.assertTrue(constantStamp instanceof KlassPointerStamp);
         assertDeepEquals(2, result.getNodes(FloatingReadNode.class).count());
         assertDeepEquals(0, result.getNodes().filter(ReadNode.class).count());
     }
@@ -124,7 +125,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         NodeIterable<ConstantNode> filter = getConstantNodes(result);
         assertDeepEquals(1, filter.count());
         Stamp constantStamp = filter.first().stamp();
-        Assert.assertTrue(constantStamp instanceof AbstractPointerStamp && ((AbstractPointerStamp) constantStamp).getType() == PointerType.Type);
+        Assert.assertTrue(constantStamp instanceof KlassPointerStamp);
 
         assertDeepEquals(2, result.getNodes(FloatingReadNode.class).count());
         assertDeepEquals(0, result.getNodes().filter(ReadNode.class).count());

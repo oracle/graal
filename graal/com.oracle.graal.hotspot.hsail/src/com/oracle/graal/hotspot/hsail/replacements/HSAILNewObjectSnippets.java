@@ -36,6 +36,7 @@ import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.hotspot.nodes.type.*;
 import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.hotspot.word.*;
@@ -284,7 +285,7 @@ public class HSAILNewObjectSnippets extends NewObjectSnippets {
             StructuredGraph graph = newInstanceNode.graph();
             HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) newInstanceNode.instanceClass();
             assert !type.isArray();
-            ConstantNode hub = ConstantNode.forConstant(StampFactory.forPointer(PointerType.Type), type.klass(), providers.getMetaAccess(), graph);
+            ConstantNode hub = ConstantNode.forConstant(KlassPointerStamp.klassNonNull(), type.klass(), providers.getMetaAccess(), graph);
             int size = instanceSize(type);
 
             Arguments args = new Arguments(allocateInstance, graph.getGuardsStage(), tool.getLoweringStage());
@@ -307,7 +308,7 @@ public class HSAILNewObjectSnippets extends NewObjectSnippets {
             ResolvedJavaType elementType = newArrayNode.elementType();
             HotSpotResolvedObjectType arrayType = (HotSpotResolvedObjectType) elementType.getArrayClass();
             Kind elementKind = elementType.getKind();
-            ConstantNode hub = ConstantNode.forConstant(StampFactory.forPointer(PointerType.Type), arrayType.klass(), providers.getMetaAccess(), graph);
+            ConstantNode hub = ConstantNode.forConstant(KlassPointerStamp.klassNonNull(), arrayType.klass(), providers.getMetaAccess(), graph);
             final int headerSize = HotSpotGraalRuntime.getArrayBaseOffset(elementKind);
             // lowerer extends HotSpotLoweringProvider so we can just use that
             HotSpotLoweringProvider lowerer = (HotSpotLoweringProvider) providers.getLowerer();

@@ -23,6 +23,7 @@
 package com.oracle.graal.compiler.common.type;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.spi.*;
 
 public class ObjectStamp extends AbstractObjectStamp {
 
@@ -66,5 +67,15 @@ public class ObjectStamp extends AbstractObjectStamp {
         } else {
             return null;
         }
+    }
+
+    @Override
+    public LIRKind getLIRKind(LIRKindTool tool) {
+        return tool.getObjectKind();
+    }
+
+    @Override
+    public Constant readConstant(ConstantReflectionProvider provider, Constant base, long displacement) {
+        return provider.readPointerConstant(PointerType.Object, base, displacement);
     }
 }

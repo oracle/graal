@@ -30,6 +30,7 @@ import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.nodes.*;
+import com.oracle.graal.hotspot.nodes.type.*;
 import com.oracle.graal.hotspot.word.HotSpotOperation.HotspotOpcode;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
@@ -50,24 +51,21 @@ public class HotSpotWordTypeRewriterPhase extends WordTypeRewriterPhase {
 
     @Override
     protected void changeToWord(StructuredGraph graph, ValueNode node) {
-        PointerType type = getPointerType(node);
-        if (type != null) {
-            node.setStamp(StampFactory.forPointer(type));
+        AbstractPointerStamp pointerStamp = getPointerStamp(node);
+        if (pointerStamp != null) {
+            node.setStamp(pointerStamp);
         } else {
             super.changeToWord(graph, node);
         }
     }
 
-    protected PointerType getPointerType(ValueNode node) {
-        return getPointerType(StampTool.typeOrNull(node));
-    }
-
-    protected PointerType getPointerType(ResolvedJavaType type) {
+    private AbstractPointerStamp getPointerStamp(ValueNode node) {
+        ResolvedJavaType type = StampTool.typeOrNull(node);
         if (type != null) {
             if (klassPointerType.isAssignableFrom(type)) {
-                return PointerType.Type;
+                return KlassPointerStamp.klass();
             } else if (methodPointerType.isAssignableFrom(type)) {
-                return PointerType.Method;
+                return MethodPointerStamp.method();
             }
         }
         return null;
@@ -75,9 +73,9 @@ public class HotSpotWordTypeRewriterPhase extends WordTypeRewriterPhase {
 
     @Override
     protected void rewriteAccessIndexed(StructuredGraph graph, AccessIndexedNode node) {
-        if (node.stamp() instanceof PointerStamp && node instanceof LoadIndexedNode && node.elementKind() != Kind.Illegal) {
+        if (node.stamp() instanceof MetaspacePointerStamp && node instanceof LoadIndexedNode && node.elementKind() != Kind.Illegal) {
             /*
-             * Prevent rewriting of the PointerStamp in the CanonicalizerPhase.
+             * Prevent rewriting of the MetaspacePointerStamp in the CanonicalizerPhase.
              */
             graph.replaceFixedWithFixed(node, graph.add(LoadIndexedPointerNode.create(node.stamp(), node.array(), node.index())));
         } else {
@@ -109,12 +107,12 @@ public class HotSpotWordTypeRewriterPhase extends WordTypeRewriterPhase {
 
                 case TO_KLASS_POINTER:
                     assert arguments.size() == 1;
-                    replace(invoke, graph.unique(PointerCastNode.create(StampFactory.forPointer(PointerType.Type), arguments.get(0))));
+                    replace(invoke, graph.unique(PointerCastNode.create(KlassPointerStamp.klass(), arguments.get(0))));
                     break;
 
                 case TO_METHOD_POINTER:
                     assert arguments.size() == 1;
-                    replace(invoke, graph.unique(PointerCastNode.create(StampFactory.forPointer(PointerType.Method), arguments.get(0))));
+                    replace(invoke, graph.unique(PointerCastNode.create(MethodPointerStamp.method(), arguments.get(0))));
                     break;
 
                 default:
@@ -124,7 +122,7 @@ public class HotSpotWordTypeRewriterPhase extends WordTypeRewriterPhase {
     }
 
     private static ValueNode pointerComparisonOp(StructuredGraph graph, HotspotOpcode opcode, ValueNode left, ValueNode right) {
-        assert left.stamp() instanceof PointerStamp && right.stamp() instanceof PointerStamp;
+        assert left.stamp() instanceof MetaspacePointerStamp && right.stamp() instanceof MetaspacePointerStamp;
         assert opcode == POINTER_EQ || opcode == POINTER_NE;
 
         PointerEqualsNode comparison = graph.unique(PointerEqualsNode.create(left, right));

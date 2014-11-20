@@ -33,7 +33,6 @@ import com.oracle.graal.compiler.hsail.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.HotSpotVMConfig.CompressEncoding;
 import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.hotspot.nodes.type.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 import com.oracle.graal.lir.gen.*;
@@ -61,7 +60,7 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator implements HotSp
     final HotSpotVMConfig config;
 
     public HSAILHotSpotLIRGenerator(Providers providers, HotSpotVMConfig config, CallingConvention cc, LIRGenerationResult lirGenRes) {
-        super(new HotSpotLIRKindTool(providers.getCodeCache().getTarget().wordKind), providers, cc, lirGenRes);
+        super(new DefaultLIRKindTool(providers.getCodeCache().getTarget().wordKind), providers, cc, lirGenRes);
         this.config = config;
     }
 

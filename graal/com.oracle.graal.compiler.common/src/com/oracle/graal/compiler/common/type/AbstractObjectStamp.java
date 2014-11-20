@@ -35,7 +35,7 @@ public abstract class AbstractObjectStamp extends AbstractPointerStamp {
     private final boolean exactType;
 
     protected AbstractObjectStamp(ResolvedJavaType type, boolean exactType, boolean nonNull, boolean alwaysNull) {
-        super(PointerType.Object, nonNull, alwaysNull);
+        super(nonNull, alwaysNull);
         this.type = type;
         this.exactType = exactType;
     }

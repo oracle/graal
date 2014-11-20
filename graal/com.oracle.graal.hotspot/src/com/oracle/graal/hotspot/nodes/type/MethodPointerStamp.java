@@ -20,54 +20,42 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.common.type;
+package com.oracle.graal.hotspot.nodes.type;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.type.*;
 
-/**
- * Type of all pointers that point to things other than Java objects.
- */
-public class PointerStamp extends AbstractPointerStamp {
+public final class MethodPointerStamp extends MetaspacePointerStamp {
 
-    PointerStamp(PointerType type) {
-        super(type, false, false);
-        assert type != PointerType.Object : "object pointers should use ObjectStamp";
+    public static MethodPointerStamp method() {
+        return new MethodPointerStamp(false, false);
+    }
+
+    public static MethodPointerStamp methodNonNull() {
+        return new MethodPointerStamp(true, false);
+    }
+
+    private MethodPointerStamp(boolean nonNull, boolean alwaysNull) {
+        super(nonNull, alwaysNull);
     }
 
     @Override
-    public Stamp meet(Stamp other) {
-        if (!isCompatible(other)) {
-            return StampFactory.illegal();
+    public boolean isCompatible(Stamp otherStamp) {
+        if (this == otherStamp) {
+            return true;
         }
-        return this;
+        return otherStamp instanceof MethodPointerStamp;
     }
 
     @Override
-    public Stamp join(Stamp other) {
-        if (!isCompatible(other)) {
-            return StampFactory.illegal();
-        }
-        return this;
+    public Constant readConstant(ConstantReflectionProvider provider, Constant base, long displacement) {
+        return provider.readPointerConstant(PointerType.Method, base, displacement);
     }
 
     @Override
-    public Stamp unrestricted() {
-        return this;
-    }
-
-    @Override
-    public Stamp illegal() {
-        // there is no illegal pointer stamp
-        return this;
-    }
-
-    @Override
-    public Stamp constant(Constant c, MetaAccessProvider meta) {
-        return this;
-    }
-
-    @Override
-    public boolean isLegal() {
-        return true;
+    public String toString() {
+        StringBuilder ret = new StringBuilder("Method*");
+        appendString(ret);
+        return ret.toString();
     }
 }

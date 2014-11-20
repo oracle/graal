@@ -33,5 +33,7 @@ public interface LIRKindTool {
 
     LIRKind getFloatingKind(int bits);
 
-    LIRKind getPointerKind(PointerType type);
+    LIRKind getObjectKind();
+
+    LIRKind getWordKind();
 }

@@ -132,9 +132,9 @@ public class CompressionNode extends UnaryNode implements ConvertNode, LIRLowera
                 if (input instanceof ObjectStamp) {
                     // compressed oop
                     return NarrowOopStamp.compressed((ObjectStamp) input, encoding);
-                } else if (input instanceof PointerStamp) {
-                    // compressed metaspace pointer
-                    return new NarrowPointerStamp(((PointerStamp) input).getType(), encoding);
+                } else if (input instanceof KlassPointerStamp) {
+                    // compressed klass pointer
+                    return ((KlassPointerStamp) input).compressed(encoding);
                 }
                 break;
             case Uncompress:
@@ -142,9 +142,10 @@ public class CompressionNode extends UnaryNode implements ConvertNode, LIRLowera
                     // oop
                     assert encoding.equals(((NarrowOopStamp) input).getEncoding());
                     return ((NarrowOopStamp) input).uncompressed();
-                } else if (input instanceof NarrowPointerStamp) {
+                } else if (input instanceof KlassPointerStamp) {
                     // metaspace pointer
-                    return StampFactory.forPointer(((NarrowPointerStamp) input).getType());
+                    assert encoding.equals(((KlassPointerStamp) input).getEncoding());
+                    return ((KlassPointerStamp) input).uncompressed();
                 }
                 break;
         }

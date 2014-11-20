@@ -23,26 +23,18 @@
 package com.oracle.graal.compiler.common.type;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.compiler.common.spi.*;
 
 /**
  * Abstract base class of all pointer types.
  */
 public abstract class AbstractPointerStamp extends Stamp {
 
-    private final PointerType type;
     private final boolean nonNull;
     private final boolean alwaysNull;
 
-    protected AbstractPointerStamp(PointerType type, boolean nonNull, boolean alwaysNull) {
-        this.type = type;
+    protected AbstractPointerStamp(boolean nonNull, boolean alwaysNull) {
         this.nonNull = nonNull;
         this.alwaysNull = alwaysNull;
-    }
-
-    public PointerType getType() {
-        return type;
     }
 
     public boolean nonNull() {
@@ -54,21 +46,11 @@ public abstract class AbstractPointerStamp extends Stamp {
     }
 
     @Override
-    public boolean isCompatible(Stamp otherStamp) {
-        if (otherStamp instanceof AbstractPointerStamp) {
-            AbstractPointerStamp other = (AbstractPointerStamp) otherStamp;
-            return this.type == other.type;
-        }
-        return false;
-    }
-
-    @Override
     public int hashCode() {
         final int prime = 31;
         int result = 1;
         result = prime * result + (alwaysNull ? 1231 : 1237);
         result = prime * result + (nonNull ? 1231 : 1237);
-        result = prime * result + ((type == null) ? 0 : type.hashCode());
         return result;
     }
 
@@ -81,31 +63,11 @@ public abstract class AbstractPointerStamp extends Stamp {
             return false;
         }
         AbstractPointerStamp other = (AbstractPointerStamp) obj;
-        return this.type == other.type && this.alwaysNull == other.alwaysNull && this.nonNull == other.nonNull;
-    }
-
-    @Override
-    public LIRKind getLIRKind(LIRKindTool tool) {
-        return tool.getPointerKind(getType());
+        return this.alwaysNull == other.alwaysNull && this.nonNull == other.nonNull;
     }
 
     @Override
     public Kind getStackKind() {
         return Kind.Illegal;
-    }
-
-    @Override
-    public Constant readConstant(ConstantReflectionProvider provider, Constant base, long displacement) {
-        return provider.readPointerConstant(type, base, displacement);
-    }
-
-    @Override
-    public ResolvedJavaType javaType(MetaAccessProvider metaAccess) {
-        throw GraalInternalError.shouldNotReachHere(type + " pointer has no Java type");
-    }
-
-    @Override
-    public String toString() {
-        return type + "*";
     }
 }

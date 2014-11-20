@@ -26,11 +26,11 @@ import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.hotspot.nodes.type.*;
 import com.oracle.graal.hotspot.word.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
@@ -56,12 +56,12 @@ public class ClassGetHubNode extends FloatingGuardedNode implements Lowerable, C
     }
 
     protected ClassGetHubNode(ValueNode clazz) {
-        super(StampFactory.forPointer(PointerType.Type), null);
+        super(KlassPointerStamp.klass(), null);
         this.clazz = clazz;
     }
 
     protected ClassGetHubNode(ValueNode clazz, ValueNode guard) {
-        super(StampFactory.forPointer(PointerType.Type), (GuardingNode) guard);
+        super(KlassPointerStamp.klass(), (GuardingNode) guard);
         this.clazz = clazz;
     }
 

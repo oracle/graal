@@ -28,9 +28,15 @@ import com.oracle.graal.compiler.common.spi.*;
 
 /**
  * Default implementation of {@link LIRKindTool}. Returns the normal Java kind for primitive types.
- * Subclasses still have to implement {@link #getPointerKind}.
+ * Subclasses still have to implement {@link #getObjectKind}.
  */
-public abstract class DefaultLIRKindTool implements LIRKindTool {
+public class DefaultLIRKindTool implements LIRKindTool {
+
+    private final PlatformKind wordKind;
+
+    public DefaultLIRKindTool(PlatformKind wordKind) {
+        this.wordKind = wordKind;
+    }
 
     public LIRKind getIntegerKind(int bits) {
         if (bits <= 8) {
@@ -54,5 +60,13 @@ public abstract class DefaultLIRKindTool implements LIRKindTool {
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }
+    }
+
+    public LIRKind getObjectKind() {
+        return LIRKind.reference(Kind.Object);
+    }
+
+    public LIRKind getWordKind() {
+        return LIRKind.value(wordKind);
     }
 }
