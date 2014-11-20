@@ -35,7 +35,6 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.word.nodes.*;
 import com.oracle.graal.word.phases.*;
 
 public class HotSpotWordTypeRewriterPhase extends WordTypeRewriterPhase {
@@ -105,31 +104,23 @@ public class HotSpotWordTypeRewriterPhase extends WordTypeRewriterPhase {
 
                 case FROM_POINTER:
                     assert arguments.size() == 1;
-                    WordCastNode ptrToWord = graph.add(WordCastNode.pointerToWord(arguments.get(0), wordKind));
-                    graph.addBeforeFixed(invoke.asNode(), ptrToWord);
-                    replace(invoke, ptrToWord);
+                    replace(invoke, graph.unique(PointerCastNode.create(StampFactory.forKind(wordKind), arguments.get(0))));
                     break;
 
                 case TO_KLASS_POINTER:
                     assert arguments.size() == 1;
-                    replaceToPointerOp(graph, invoke, PointerType.Type, arguments.get(0));
+                    replace(invoke, graph.unique(PointerCastNode.create(StampFactory.forPointer(PointerType.Type), arguments.get(0))));
                     break;
 
                 case TO_METHOD_POINTER:
                     assert arguments.size() == 1;
-                    replaceToPointerOp(graph, invoke, PointerType.Method, arguments.get(0));
+                    replace(invoke, graph.unique(PointerCastNode.create(StampFactory.forPointer(PointerType.Method), arguments.get(0))));
                     break;
 
                 default:
                     throw GraalInternalError.shouldNotReachHere("unknown operation: " + operation.opcode());
             }
         }
-    }
-
-    private void replaceToPointerOp(StructuredGraph graph, Invoke invoke, PointerType type, ValueNode word) {
-        WordCastNode wordToObject = graph.add(WordCastNode.wordToPointer(word, wordKind, type));
-        graph.addBeforeFixed(invoke.asNode(), wordToObject);
-        replace(invoke, wordToObject);
     }
 
     private static ValueNode pointerComparisonOp(StructuredGraph graph, HotspotOpcode opcode, ValueNode left, ValueNode right) {

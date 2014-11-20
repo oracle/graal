@@ -40,13 +40,13 @@ public class WordCastNode extends FixedWithNextNode implements LIRLowerable, Can
 
     @Input ValueNode input;
 
-    public static WordCastNode wordToPointer(ValueNode input, Kind wordKind, PointerType type) {
+    public static WordCastNode wordToObject(ValueNode input, Kind wordKind) {
         assert input.getKind() == wordKind;
-        return WordCastNode.create(StampFactory.forPointer(type), input);
+        return WordCastNode.create(StampFactory.object(), input);
     }
 
-    public static WordCastNode pointerToWord(ValueNode input, Kind wordKind) {
-        assert input.stamp() instanceof ObjectStamp || input.stamp() instanceof PointerStamp;
+    public static WordCastNode objectToWord(ValueNode input, Kind wordKind) {
+        assert input.stamp() instanceof ObjectStamp;
         return WordCastNode.create(StampFactory.forKind(wordKind), input);
     }
 

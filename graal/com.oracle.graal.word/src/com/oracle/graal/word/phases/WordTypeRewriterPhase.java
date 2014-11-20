@@ -277,7 +277,7 @@ public class WordTypeRewriterPhase extends Phase {
 
             case FROM_OBJECT:
                 assert arguments.size() == 1;
-                WordCastNode objectToWord = graph.add(WordCastNode.pointerToWord(arguments.get(0), wordKind));
+                WordCastNode objectToWord = graph.add(WordCastNode.objectToWord(arguments.get(0), wordKind));
                 graph.addBeforeFixed(invoke.asNode(), objectToWord);
                 replace(invoke, objectToWord);
                 break;
@@ -289,7 +289,7 @@ public class WordTypeRewriterPhase extends Phase {
 
             case TO_OBJECT:
                 assert arguments.size() == 1;
-                WordCastNode wordToObject = graph.add(WordCastNode.wordToPointer(arguments.get(0), wordKind, PointerType.Object));
+                WordCastNode wordToObject = graph.add(WordCastNode.wordToObject(arguments.get(0), wordKind));
                 graph.addBeforeFixed(invoke.asNode(), wordToObject);
                 replace(invoke, wordToObject);
                 break;
