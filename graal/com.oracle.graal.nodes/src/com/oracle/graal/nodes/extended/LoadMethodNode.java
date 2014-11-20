@@ -45,12 +45,12 @@ public class LoadMethodNode extends FixedWithNextNode implements Lowerable, Cano
         return hub;
     }
 
-    public static LoadMethodNode create(ResolvedJavaMethod method, ResolvedJavaType receiverType, ValueNode hub) {
-        return new LoadMethodNode(method, receiverType, hub);
+    public static LoadMethodNode create(@InjectedNodeParameter Stamp stamp, ResolvedJavaMethod method, ResolvedJavaType receiverType, ValueNode hub) {
+        return new LoadMethodNode(stamp, method, receiverType, hub);
     }
 
-    protected LoadMethodNode(ResolvedJavaMethod method, ResolvedJavaType receiverType, ValueNode hub) {
-        super(StampFactory.forPointer(PointerType.Method));
+    protected LoadMethodNode(Stamp stamp, ResolvedJavaMethod method, ResolvedJavaType receiverType, ValueNode hub) {
+        super(stamp);
         this.receiverType = receiverType;
         this.hub = hub;
         this.method = method;

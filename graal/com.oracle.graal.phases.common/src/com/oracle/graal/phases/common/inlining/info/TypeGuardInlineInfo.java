@@ -92,20 +92,21 @@ public class TypeGuardInlineInfo extends AbstractInlineInfo {
 
     @Override
     public Collection<Node> inline(Providers providers, Assumptions assumptions) {
-        createGuard(graph(), providers.getMetaAccess());
+        createGuard(graph(), providers);
         return inline(invoke, concrete, inlineableElement, assumptions, false);
     }
 
     @Override
-    public void tryToDevirtualizeInvoke(MetaAccessProvider metaAccess, Assumptions assumptions) {
-        createGuard(graph(), metaAccess);
+    public void tryToDevirtualizeInvoke(Providers providers, Assumptions assumptions) {
+        createGuard(graph(), providers);
         InliningUtil.replaceInvokeCallTarget(invoke, graph(), InvokeKind.Special, concrete);
     }
 
-    private void createGuard(StructuredGraph graph, MetaAccessProvider metaAccess) {
+    private void createGuard(StructuredGraph graph, Providers providers) {
         ValueNode nonNullReceiver = InliningUtil.nonNullReceiver(invoke);
-        LoadHubNode receiverHub = graph.unique(LoadHubNode.create(StampFactory.forPointer(PointerType.Type), nonNullReceiver));
-        ConstantNode typeHub = ConstantNode.forConstant(receiverHub.stamp(), type.getObjectHub(), metaAccess, graph);
+        ObjectStamp receiverStamp = (ObjectStamp) nonNullReceiver.stamp();
+        LoadHubNode receiverHub = graph.unique(LoadHubNode.create(providers.getStampProvider().createHubStamp(receiverStamp), nonNullReceiver));
+        ConstantNode typeHub = ConstantNode.forConstant(receiverHub.stamp(), type.getObjectHub(), providers.getMetaAccess(), graph);
 
         CompareNode typeCheck = CompareNode.createCompareNode(graph, Condition.EQ, receiverHub, typeHub);
         FixedGuardNode guard = graph.add(FixedGuardNode.create(typeCheck, DeoptimizationReason.TypeCheckedInliningViolated, DeoptimizationAction.InvalidateReprofile));

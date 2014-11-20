@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,13 +24,12 @@ package com.oracle.graal.phases.common.inlining.info;
 
 import java.util.*;
 
-import com.oracle.graal.api.code.Assumptions;
-import com.oracle.graal.api.meta.MetaAccessProvider;
-import com.oracle.graal.api.meta.ResolvedJavaMethod;
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.Invoke;
-import com.oracle.graal.phases.common.inlining.info.elem.Inlineable;
-import com.oracle.graal.phases.util.Providers;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.phases.common.inlining.info.elem.*;
+import com.oracle.graal.phases.util.*;
 
 /**
  * Represents an inlining opportunity where the compiler can statically determine a monomorphic
@@ -58,7 +57,7 @@ public class ExactInlineInfo extends AbstractInlineInfo {
     }
 
     @Override
-    public void tryToDevirtualizeInvoke(MetaAccessProvider metaAccess, Assumptions assumptions) {
+    public void tryToDevirtualizeInvoke(Providers providers, Assumptions assumptions) {
         // nothing todo, can already be bound statically
     }
 

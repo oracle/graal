@@ -38,6 +38,7 @@ import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.common.inlining.*;
@@ -143,7 +144,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
     @Override
     public Collection<Node> inline(Providers providers, Assumptions assumptions) {
         if (hasSingleMethod()) {
-            return inlineSingleMethod(graph(), providers.getMetaAccess(), assumptions);
+            return inlineSingleMethod(graph(), providers.getMetaAccess(), assumptions, providers.getStampProvider());
         } else {
             return inlineMultipleMethods(graph(), providers, assumptions);
         }
@@ -221,7 +222,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
         assert invoke.asNode().isAlive();
 
         // replace the invoke with a switch on the type of the actual receiver
-        boolean methodDispatch = createDispatchOnTypeBeforeInvoke(graph, successors, false, providers.getMetaAccess());
+        boolean methodDispatch = createDispatchOnTypeBeforeInvoke(graph, successors, false, providers.getMetaAccess(), providers.getStampProvider());
 
         assert invoke.next() == continuation;
         invoke.setNext(null);
@@ -326,24 +327,25 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
         return result;
     }
 
-    private Collection<Node> inlineSingleMethod(StructuredGraph graph, MetaAccessProvider metaAccess, Assumptions assumptions) {
+    private Collection<Node> inlineSingleMethod(StructuredGraph graph, MetaAccessProvider metaAccess, Assumptions assumptions, StampProvider stampProvider) {
         assert concretes.size() == 1 && inlineableElements.length == 1 && ptypes.size() > 1 && !shouldFallbackToInvoke() && notRecordedTypeProbability == 0;
 
         BeginNode calleeEntryNode = graph.add(BeginNode.create());
 
         BeginNode unknownTypeSux = createUnknownTypeSuccessor(graph);
         BeginNode[] successors = new BeginNode[]{calleeEntryNode, unknownTypeSux};
-        createDispatchOnTypeBeforeInvoke(graph, successors, false, metaAccess);
+        createDispatchOnTypeBeforeInvoke(graph, successors, false, metaAccess, stampProvider);
 
         calleeEntryNode.setNext(invoke.asNode());
 
         return inline(invoke, methodAt(0), inlineableElementAt(0), assumptions, false);
     }
 
-    private boolean createDispatchOnTypeBeforeInvoke(StructuredGraph graph, BeginNode[] successors, boolean invokeIsOnlySuccessor, MetaAccessProvider metaAccess) {
+    private boolean createDispatchOnTypeBeforeInvoke(StructuredGraph graph, BeginNode[] successors, boolean invokeIsOnlySuccessor, MetaAccessProvider metaAccess, StampProvider stampProvider) {
         assert ptypes.size() >= 1;
         ValueNode nonNullReceiver = InliningUtil.nonNullReceiver(invoke);
-        LoadHubNode hub = graph.unique(LoadHubNode.create(StampFactory.forPointer(PointerType.Type), nonNullReceiver));
+        ObjectStamp receiverStamp = (ObjectStamp) nonNullReceiver.stamp();
+        LoadHubNode hub = graph.unique(LoadHubNode.create(stampProvider.createHubStamp(receiverStamp), nonNullReceiver));
 
         if (!invokeIsOnlySuccessor && chooseMethodDispatch()) {
             assert successors.length == concretes.size() + 1;
@@ -356,7 +358,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
                 ResolvedJavaMethod firstMethod = concretes.get(i);
                 Constant firstMethodConstant = firstMethod.getEncoding();
 
-                ConstantNode firstMethodConstantNode = ConstantNode.forConstant(StampFactory.forPointer(PointerType.Method), firstMethodConstant, metaAccess, graph);
+                ConstantNode firstMethodConstantNode = ConstantNode.forConstant(stampProvider.createMethodStamp(), firstMethodConstant, metaAccess, graph);
                 constantMethods[i] = firstMethodConstantNode;
                 double concretesProbability = concretesProbabilities.get(i);
                 assert concretesProbability >= 0.0;
@@ -374,7 +376,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
             ResolvedJavaType receiverType = invoke.getReceiverType();
             FixedNode lastSucc = successors[concretes.size()];
             for (int i = concretes.size() - 1; i >= 0; --i) {
-                LoadMethodNode method = graph.add(LoadMethodNode.create(concretes.get(i), receiverType, hub));
+                LoadMethodNode method = graph.add(LoadMethodNode.create(stampProvider.createMethodStamp(), concretes.get(i), receiverType, hub));
                 CompareNode methodCheck = CompareNode.createCompareNode(graph, Condition.EQ, method, constantMethods[i]);
                 IfNode ifNode = graph.add(IfNode.create(methodCheck, successors[i], lastSucc, probability[i]));
                 method.setNext(ifNode);
@@ -510,15 +512,15 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
     }
 
     @Override
-    public void tryToDevirtualizeInvoke(MetaAccessProvider metaAccess, Assumptions assumptions) {
+    public void tryToDevirtualizeInvoke(Providers providers, Assumptions assumptions) {
         if (hasSingleMethod()) {
-            devirtualizeWithTypeSwitch(graph(), InvokeKind.Special, concretes.get(0), metaAccess);
+            devirtualizeWithTypeSwitch(graph(), InvokeKind.Special, concretes.get(0), providers.getMetaAccess(), providers.getStampProvider());
         } else {
-            tryToDevirtualizeMultipleMethods(graph(), metaAccess);
+            tryToDevirtualizeMultipleMethods(graph(), providers.getMetaAccess(), providers.getStampProvider());
         }
     }
 
-    private void tryToDevirtualizeMultipleMethods(StructuredGraph graph, MetaAccessProvider metaAccess) {
+    private void tryToDevirtualizeMultipleMethods(StructuredGraph graph, MetaAccessProvider metaAccess, StampProvider stampProvider) {
         MethodCallTargetNode methodCallTarget = (MethodCallTargetNode) invoke.callTarget();
         if (methodCallTarget.invokeKind() == InvokeKind.Interface) {
             ResolvedJavaMethod targetMethod = methodCallTarget.targetMethod();
@@ -530,17 +532,17 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
             if (!leastCommonType.isInterface() && targetMethod.getDeclaringClass().isAssignableFrom(leastCommonType)) {
                 ResolvedJavaMethod baseClassTargetMethod = leastCommonType.resolveConcreteMethod(targetMethod, contextType);
                 if (baseClassTargetMethod != null) {
-                    devirtualizeWithTypeSwitch(graph, InvokeKind.Virtual, leastCommonType.resolveConcreteMethod(targetMethod, contextType), metaAccess);
+                    devirtualizeWithTypeSwitch(graph, InvokeKind.Virtual, leastCommonType.resolveConcreteMethod(targetMethod, contextType), metaAccess, stampProvider);
                 }
             }
         }
     }
 
-    private void devirtualizeWithTypeSwitch(StructuredGraph graph, InvokeKind kind, ResolvedJavaMethod target, MetaAccessProvider metaAccess) {
+    private void devirtualizeWithTypeSwitch(StructuredGraph graph, InvokeKind kind, ResolvedJavaMethod target, MetaAccessProvider metaAccess, StampProvider stampProvider) {
         BeginNode invocationEntry = graph.add(BeginNode.create());
         BeginNode unknownTypeSux = createUnknownTypeSuccessor(graph);
         BeginNode[] successors = new BeginNode[]{invocationEntry, unknownTypeSux};
-        createDispatchOnTypeBeforeInvoke(graph, successors, true, metaAccess);
+        createDispatchOnTypeBeforeInvoke(graph, successors, true, metaAccess, stampProvider);
 
         invocationEntry.setNext(invoke.asNode());
         ValueNode receiver = ((MethodCallTargetNode) invoke.callTarget()).receiver();
