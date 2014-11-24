@@ -28,37 +28,49 @@ import java.io.*;
 import java.util.*;
 
 import com.oracle.truffle.api.instrument.*;
+import com.oracle.truffle.api.instrument.Probe.ProbeListener;
 import com.oracle.truffle.api.source.*;
 
 /**
  * A mapping from {@link LineLocation} (a line number in a specific piece of {@link Source} code) to
  * a collection of {@link Probe}s whose associated {@link SourceSection} starts on that line.
  */
-public class LineLocationToProbeCollectionMap implements ProbeListener {
+public class LineToProbesMap implements ProbeListener {
 
     private static final boolean TRACE = false;
     private static final PrintStream OUT = System.out;
+
+    private static void trace(String msg) {
+        OUT.println("LineToProbesMap: " + msg);
+    }
 
     /**
      * Map: Source line ==> probes associated with source sections starting on the line.
      */
     private final Map<LineLocation, Collection<Probe>> lineToProbesMap = new HashMap<>();
 
-    public LineLocationToProbeCollectionMap() {
+    public LineToProbesMap() {
     }
 
-    public void newProbeInserted(SourceSection source, Probe probe) {
-        if (source != null && !(source instanceof NullSourceSection)) {
-            final LineLocation lineLocation = source.getLineLocation();
+    public void startASTProbing(Source source) {
+    }
+
+    public void newProbeInserted(Probe probe) {
+        final SourceSection sourceSection = probe.getProbedSourceSection();
+        if (sourceSection != null && !(sourceSection instanceof NullSourceSection)) {
+            final LineLocation lineLocation = sourceSection.getLineLocation();
             if (TRACE) {
-                OUT.println("LineLocationToProbeCollectionMap: adding " + lineLocation + " Probe=" + probe);
+                trace("ADD " + lineLocation.getShortDescription() + " ==> " + probe.getShortDescription());
             }
             this.addProbeToLine(lineLocation, probe);
         }
     }
 
-    public void probeTaggedAs(Probe probe, SyntaxTag tag) {
+    public void probeTaggedAs(Probe probe, SyntaxTag tag, Object tagValue) {
         // This map ignores tags
+    }
+
+    public void endASTProbing(Source source) {
     }
 
     /**
@@ -68,11 +80,11 @@ public class LineLocationToProbeCollectionMap implements ProbeListener {
     public Probe findLineProbe(LineLocation lineLocation) {
         Probe probe = null;
         final Collection<Probe> probes = getProbesAtLine(lineLocation);
-        for (Probe probeOnLine : probes) {
+        for (Probe probesOnLine : probes) {
             if (probe == null) {
-                probe = probeOnLine;
-            } else if (probeOnLine.getSourceLocation().getCharIndex() < probe.getSourceLocation().getCharIndex()) {
-                probe = probeOnLine;
+                probe = probesOnLine;
+            } else if (probesOnLine.getProbedSourceSection().getCharIndex() < probe.getProbedSourceSection().getCharIndex()) {
+                probe = probesOnLine;
             }
         }
         return probe;
@@ -115,12 +127,12 @@ public class LineLocationToProbeCollectionMap implements ProbeListener {
      * @return A collection of probes at the given line.
      */
     public Collection<Probe> getProbesAtLine(LineLocation line) {
-        Collection<Probe> probeList = lineToProbesMap.get(line);
+        Collection<Probe> probesList = lineToProbesMap.get(line);
 
-        if (probeList == null) {
+        if (probesList == null) {
             return Collections.emptyList();
         }
-        return probeList;
+        return probesList;
     }
 
     /**

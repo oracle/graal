@@ -24,27 +24,16 @@
  */
 package com.oracle.truffle.api.instrument;
 
-import com.oracle.truffle.api.source.*;
+import com.oracle.truffle.api.nodes.*;
 
 /**
- * Instrumentation callback for guest language source-related events.
+ * A marker interface for Truffle {@linkplain Node nodes} that support <em>Instrumentation</em> and
+ * are should not be part of any Guest Language execution semantics.
  */
-public interface SourceCallback {
-
-    void startLoading(Source source);
-
-    void endLoading(Source source);
+public interface InstrumentationNode {
 
     /**
-     * Inert (singleton) implementation of {@link SourceCallback}.
+     * A short description of the particular role played by the node, intended to support debugging.
      */
-    SourceCallback NULL = new SourceCallback() {
-
-        public void startLoading(Source source) {
-        }
-
-        public void endLoading(Source source) {
-        }
-
-    };
+    String instrumentationInfo();
 }

@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -20,31 +22,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.sl.test.instrument;
-
-import java.io.*;
+package com.oracle.truffle.api.instrument.impl;
 
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.instrument.*;
 import com.oracle.truffle.api.nodes.*;
-import com.oracle.truffle.sl.nodes.local.*;
 
 /**
- * This sample instrument provides prints the value of an assignment (after the assignment is
- * complete) to the {@link PrintStream} specified in the constructor. This instrument can only be
- * attached to a wrapped {@link SLWriteLocalVariableNode}, but provides no guards to protect it from
- * being attached elsewhere.
+ * A receiver for AST {@linkplain TruffleEventReceiver execution events} that provides a no-op
+ * implementation of every event.
  */
-public final class SLPrintAssigmentValueInstrument extends Instrument {
+public class DefaultEventReceiver implements TruffleEventReceiver {
 
-    private PrintStream output;
-
-    public SLPrintAssigmentValueInstrument(PrintStream output) {
-        this.output = output;
+    public void enter(Node node, VirtualFrame frame) {
     }
 
-    @Override
-    public void leave(Node astNode, VirtualFrame frame, Object result) {
-        output.println(result);
+    public void returnVoid(Node node, VirtualFrame frame) {
     }
+
+    public void returnValue(Node node, VirtualFrame frame, Object result) {
+    }
+
+    public void returnExceptional(Node node, VirtualFrame frame, Exception exception) {
+    }
+
 }

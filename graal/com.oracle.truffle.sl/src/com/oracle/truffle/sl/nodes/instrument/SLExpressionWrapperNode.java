@@ -24,9 +24,9 @@ package com.oracle.truffle.sl.nodes.instrument;
 
 import java.math.*;
 
-import com.oracle.truffle.api.CompilerDirectives.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.instrument.*;
+import com.oracle.truffle.api.instrument.ProbeNode.WrapperNode;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.sl.nodes.*;
 import com.oracle.truffle.sl.runtime.*;
@@ -35,27 +35,26 @@ import com.oracle.truffle.sl.runtime.*;
  * A Truffle node that can be inserted into a Simple AST (assumed not to have executed yet) to
  * enable "instrumentation" of an {@link SLExpressionNode}. Tools wishing to interact with AST
  * execution may attach {@link Instrument}s to the {@link Probe} uniquely associated with the
- * wrapper, and to which this wrapper routes {@link ExecutionEvents}.
+ * wrapper, and to which this wrapper routes execution events.
  */
-
-public final class SLExpressionWrapper extends SLExpressionNode implements Wrapper {
+@NodeInfo(cost = NodeCost.NONE)
+public final class SLExpressionWrapperNode extends SLExpressionNode implements WrapperNode {
     @Child private SLExpressionNode child;
-
-    private final Probe probe;
+    @Child private ProbeNode probeNode;
 
     /**
      * Constructor.
      *
-     * @param context The current Simple execution context
      * @param child The {@link SLExpressionNode} that this wrapper is wrapping
      */
-    public SLExpressionWrapper(SLContext context, SLExpressionNode child) {
+    public SLExpressionWrapperNode(SLExpressionNode child) {
         super(child.getSourceSection());
-        assert !(child instanceof SLExpressionWrapper);
-        this.probe = context.createProbe(child.getSourceSection());
+        assert !(child instanceof SLExpressionWrapperNode);
         this.child = child;
-        // The child should only be inserted after a replace, so we defer inserting the child to the
-        // creator of the wrapper.
+    }
+
+    public String instrumentationInfo() {
+        return "Wrapper node for SL Expressions";
     }
 
     @Override
@@ -63,32 +62,33 @@ public final class SLExpressionWrapper extends SLExpressionNode implements Wrapp
         return child;
     }
 
-    @Override
+    public void insertProbe(ProbeNode newProbeNode) {
+        this.probeNode = newProbeNode;
+    }
+
+    public Probe getProbe() {
+        try {
+            return probeNode.getProbe();
+        } catch (IllegalStateException e) {
+            throw new IllegalStateException("A lite-Probed wrapper has no explicit Probe");
+        }
+    }
+
     public Node getChild() {
         return child;
     }
 
     @Override
-    public Probe getProbe() {
-        return probe;
-    }
-
-    @TruffleBoundary
-    public void tagAs(SyntaxTag tag) {
-        probe.tagAs(tag);
-    }
-
-    @Override
     public Object executeGeneric(VirtualFrame frame) {
-        this.tagAs(StandardSyntaxTag.STATEMENT);
-        probe.enter(child, frame);
+
+        probeNode.enter(child, frame);
         Object result;
 
         try {
             result = child.executeGeneric(frame);
-            probe.leave(child, frame, result);
+            probeNode.returnValue(child, frame, result);
         } catch (Exception e) {
-            probe.leaveExceptional(child, frame, e);
+            probeNode.returnExceptional(child, frame, e);
             throw (e);
         }
         return result;
@@ -96,39 +96,34 @@ public final class SLExpressionWrapper extends SLExpressionNode implements Wrapp
 
     @Override
     public long executeLong(VirtualFrame frame) throws UnexpectedResultException {
-        this.tagAs(StandardSyntaxTag.STATEMENT);
         return SLTypesGen.SLTYPES.expectLong(executeGeneric(frame));
     }
 
     @Override
     public BigInteger executeBigInteger(VirtualFrame frame) throws UnexpectedResultException {
-        this.tagAs(StandardSyntaxTag.STATEMENT);
         return SLTypesGen.SLTYPES.expectBigInteger(executeGeneric(frame));
     }
 
     @Override
     public boolean executeBoolean(VirtualFrame frame) throws UnexpectedResultException {
-        this.tagAs(StandardSyntaxTag.STATEMENT);
         return SLTypesGen.SLTYPES.expectBoolean(executeGeneric(frame));
     }
 
     @Override
     public String executeString(VirtualFrame frame) throws UnexpectedResultException {
-        this.tagAs(StandardSyntaxTag.STATEMENT);
         return SLTypesGen.SLTYPES.expectString(executeGeneric(frame));
     }
 
     @Override
     public SLFunction executeFunction(VirtualFrame frame) throws UnexpectedResultException {
-        this.tagAs(StandardSyntaxTag.STATEMENT);
-        probe.enter(child, frame);
+        probeNode.enter(child, frame);
         SLFunction result;
 
         try {
             result = child.executeFunction(frame);
-            probe.leave(child, frame, result);
+            probeNode.returnValue(child, frame, result);
         } catch (Exception e) {
-            probe.leaveExceptional(child, frame, e);
+            probeNode.returnExceptional(child, frame, e);
             throw (e);
         }
         return result;
@@ -139,4 +134,13 @@ public final class SLExpressionWrapper extends SLExpressionNode implements Wrapp
         return SLTypesGen.SLTYPES.expectSLNull(executeGeneric(frame));
     }
 
+    @Override
+    public Probe probe() {
+        throw new IllegalStateException("Cannot call probe() on a wrapper.");
+    }
+
+    @Override
+    public void probeLite(TruffleEventReceiver eventReceiver) {
+        throw new IllegalStateException("Cannot call probeLite() on a wrapper.");
+    }
 }

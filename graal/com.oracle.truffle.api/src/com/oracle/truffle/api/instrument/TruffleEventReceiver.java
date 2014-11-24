@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,27 +24,34 @@
  */
 package com.oracle.truffle.api.instrument;
 
-import com.oracle.truffle.api.source.*;
+import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.nodes.*;
 
 /**
- * Client for receiving events relate to {@link Probe} management. Does not report AST copying.
- * <p>
- * <strong>Disclaimer:</strong> experimental interface under development.
- *
- * @See Instrumentation
+ * A receiver of Truffle AST runtime execution events that can collect information and possibly
+ * intervene on behalf of an external tool.
  */
-public interface ProbeListener {
+public interface TruffleEventReceiver {
 
     /**
-     * Notifies that a newly created (untagged) {@link Probe} has been inserted into a Truffle AST.
-     * There will be no notification when an existing {@link Probe} is shared by an AST copy.
+     * Receive notification that an AST node's execute method is about to be called.
      */
-    void newProbeInserted(SourceSection source, Probe probe);
+    void enter(Node node, VirtualFrame frame);
 
     /**
-     * Notifies that a (fully constructed) {@link Probe} has been tagged. A subsequent marking with
-     * the same tag is idempotent and generates no notification.
+     * Receive notification that an AST Node's {@code void}-valued execute method has just returned.
      */
-    void probeTaggedAs(Probe probe, SyntaxTag tag);
+    void returnVoid(Node node, VirtualFrame frame);
+
+    /**
+     * Receive notification that an AST Node'sexecute method has just returned a value (boxed if
+     * primitive).
+     */
+    void returnValue(Node node, VirtualFrame frame, Object result);
+
+    /**
+     * Receive notification that an AST Node's execute method has just thrown an exception.
+     */
+    void returnExceptional(Node node, VirtualFrame frame, Exception exception);
 
 }

@@ -26,10 +26,10 @@ import java.io.*;
 
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.instrument.*;
+import com.oracle.truffle.api.instrument.ProbeNode.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.sl.nodes.instrument.*;
-import com.oracle.truffle.sl.runtime.*;
 
 /**
  * The base class of all Truffle nodes for SL. All nodes (even expressions) can be used as
@@ -90,28 +90,40 @@ public abstract class SLStatementNode extends Node implements Instrumentable {
         Node parent = getParent();
 
         if (parent == null) {
-            throw new IllegalStateException("Cannot probe a node without a parent");
+            throw new IllegalStateException("Cannot call probe() on a node without a parent.");
         }
 
-        if (parent instanceof SLStatementWrapper) {
-            return ((SLStatementWrapper) parent).getProbe();
+        if (parent instanceof SLStatementWrapperNode) {
+            return ((SLStatementWrapperNode) parent).getProbe();
         }
 
         // Create a new wrapper/probe with this node as its child.
-        final SLStatementWrapper wrapper = new SLStatementWrapper(getRootNodeSLContext(this), this);
+        final SLStatementWrapperNode wrapper = new SLStatementWrapperNode(this);
+
+        // Connect it to a Probe
+        final Probe probe = ProbeNode.insertProbe(wrapper);
 
         // Replace this node in the AST with the wrapper
         this.replace(wrapper);
 
-        return wrapper.getProbe();
+        return probe;
     }
 
-    protected SLContext getRootNodeSLContext(Node node) {
-        assert node != null;
+    @Override
+    public void probeLite(TruffleEventReceiver eventReceiver) {
+        Node parent = getParent();
 
-        if (node instanceof SLRootNode) {
-            return ((SLRootNode) node).getSLContext();
+        if (parent == null) {
+            throw new IllegalStateException("Cannot call probeLite() on a node without a parent");
         }
-        return getRootNodeSLContext(node.getParent());
+
+        if (parent instanceof SLStatementWrapperNode) {
+            throw new IllegalStateException("Cannot call probeLite() on a node that already has a wrapper.");
+        }
+
+        final SLStatementWrapperNode wrapper = new SLStatementWrapperNode(this);
+        ProbeNode.insertProbeLite(wrapper, eventReceiver);
+
+        this.replace(wrapper);
     }
 }

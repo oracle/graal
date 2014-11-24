@@ -38,4 +38,6 @@ public interface LineLocation {
      */
     int getLineNumber();
 
+    String getShortDescription();
+
 }

@@ -27,10 +27,10 @@ import java.math.*;
 
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.dsl.*;
-import com.oracle.truffle.api.instrument.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.sl.builtins.*;
+import com.oracle.truffle.sl.factory.*;
 import com.oracle.truffle.sl.nodes.*;
 import com.oracle.truffle.sl.nodes.call.*;
 import com.oracle.truffle.sl.nodes.controlflow.*;
@@ -119,7 +119,7 @@ public class SLMain {
      */
     public static void main(String[] args) throws IOException {
 
-        SLContext context = new SLContext(new BufferedReader(new InputStreamReader(System.in)), System.out);
+        SLContext context = SLContextFactory.create(new BufferedReader(new InputStreamReader(System.in)), System.out);
 
         Source source;
         if (args.length == 0) {
@@ -146,16 +146,9 @@ public class SLMain {
             // logOutput.println("Source = " + source.getCode());
         }
 
-        final SourceCallback sourceCallback = context.getSourceCallback();
-
         /* Parse the SL source file. */
-        if (sourceCallback != null) {
-            sourceCallback.startLoading(source);
-        }
         Parser.parseSL(context, source);
-        if (sourceCallback != null) {
-            sourceCallback.endLoading(source);
-        }
+
         /* Lookup our main entry point, which is per definition always named "main". */
         SLFunction main = context.getFunctionRegistry().lookup("main");
         if (main.getCallTarget() == null) {

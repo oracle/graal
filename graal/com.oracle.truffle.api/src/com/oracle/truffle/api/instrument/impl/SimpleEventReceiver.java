@@ -22,22 +22,45 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.instrument;
+package com.oracle.truffle.api.instrument.impl;
+
+import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.instrument.*;
+import com.oracle.truffle.api.nodes.*;
 
 /**
- * Any Truffle node implementing this interface can be "instrumented" by installing a {@link Probe}
- * that intercepts {@link ExecutionEvents} at the node and routes them to any {@link Instrument}s
- * that have been attached to the {@link Probe}. Only one {@link Probe} may be installed at each
- * node; subsequent calls return the one already installed.
+ * An abstract receiver for AST {@linkplain TruffleEventReceiver execution events} that ignores
+ * return values and supports handling all events by overriding only two methods:
+ * <ul>
+ * <li>{@link #enter(Node, VirtualFrame)}, and</li>
+ * <li>{@link #returnAny(Node, VirtualFrame)}.</li>
+ * </ul>
  */
-public interface Instrumentable {
+public abstract class SimpleEventReceiver implements TruffleEventReceiver {
+
+    public void enter(Node node, VirtualFrame frame) {
+    }
 
     /**
-     * Enables "instrumentation" of this Truffle node by tools, where this node is presumed to be
-     * part (and not the root of) of a well-formed Truffle AST that is not being executed. The AST
-     * may be modified.
+     * Receive notification that one of an AST Node's execute methods has just returned by any
+     * means: with or without a return value (ignored) or via exception (ignored).
      *
-     * @return The probe that was created.
+     * @param node
+     * @param frame
      */
-    Probe probe();
+    public void returnAny(Node node, VirtualFrame frame) {
+    }
+
+    public final void returnVoid(Node node, VirtualFrame frame) {
+        returnAny(node, frame);
+    }
+
+    public final void returnValue(Node node, VirtualFrame frame, Object result) {
+        returnAny(node, frame);
+    }
+
+    public final void returnExceptional(Node node, VirtualFrame frame, Exception e) {
+        returnAny(node, frame);
+    }
+
 }

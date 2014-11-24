@@ -904,8 +904,13 @@ public abstract class Source {
         }
 
         @Override
+        public String getShortDescription() {
+            return source.getShortName() + ":" + line;
+        }
+
+        @Override
         public String toString() {
-            return "SourceLine [" + source.getName() + ", " + line + "]";
+            return "Line[" + getShortDescription() + "]";
         }
 
         @Override

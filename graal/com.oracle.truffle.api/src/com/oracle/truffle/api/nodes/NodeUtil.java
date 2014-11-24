@@ -33,6 +33,8 @@ import java.util.*;
 import sun.misc.*;
 
 import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.instrument.*;
+import com.oracle.truffle.api.instrument.ProbeNode.WrapperNode;
 import com.oracle.truffle.api.nodes.Node.Child;
 import com.oracle.truffle.api.nodes.Node.Children;
 import com.oracle.truffle.api.source.*;
@@ -769,6 +771,9 @@ public final class NodeUtil {
         }
 
         sb.append("  (" + node.getClass().getSimpleName() + ")  ");
+
+        sb.append(printSyntaxTags(node));
+
         sb.append(displaySourceAttribution(node));
         p.println(sb.toString());
 
@@ -795,6 +800,34 @@ public final class NodeUtil {
             }
         }
         return defaultName;
+    }
+
+    /**
+     * Returns a string listing the {@linkplain SyntaxTag syntax tags}, if any, associated with a
+     * node:
+     * <ul>
+     * <li>"[{@linkplain StandardSyntaxTag#STATEMENT STATEMENT},
+     * {@linkplain StandardSyntaxTag#ASSIGNMENT ASSIGNMENT}]" if tags have been applied;</li>
+     * <li>"[]" if the node supports tags, but none are present; and</li>
+     * <li>"" if the node does not support tags.</li>
+     * </ul>
+     */
+    public static String printSyntaxTags(final Object node) {
+        if (node instanceof WrapperNode) {
+            final Probe probe = ((WrapperNode) node).getProbe();
+            final Collection<SyntaxTag> syntaxTags = probe.getSyntaxTags();
+            final StringBuilder sb = new StringBuilder();
+            String prefix = "";
+            sb.append("[");
+            for (SyntaxTag tag : syntaxTags) {
+                sb.append(prefix);
+                prefix = ",";
+                sb.append(tag.toString());
+            }
+            sb.append("]");
+            return sb.toString();
+        }
+        return "";
     }
 
     /**

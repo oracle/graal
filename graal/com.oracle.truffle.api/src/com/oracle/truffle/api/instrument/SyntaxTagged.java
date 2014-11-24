@@ -24,14 +24,13 @@
  */
 package com.oracle.truffle.api.instrument;
 
+import java.util.*;
+
 /**
  * Information about a guest language program element in a Truffle AST that can be marked as
  * belonging to 0 or more {@linkplain SyntaxTag tags}.
  * <p>
  * <strong>Disclaimer:</strong> experimental interface under development.
- *
- * @see Probe
- * @see Wrapper
  */
 public interface SyntaxTagged {
 
@@ -44,6 +43,6 @@ public interface SyntaxTagged {
     /**
      * In which user-sensible categories has this node been tagged (<em>empty set</em> if none).
      */
-    Iterable<SyntaxTag> getSyntaxTags();
+    Collection<SyntaxTag> getSyntaxTags();
 
 }

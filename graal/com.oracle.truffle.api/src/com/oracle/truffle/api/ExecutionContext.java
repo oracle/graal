@@ -24,12 +24,9 @@
  */
 package com.oracle.truffle.api;
 
-import java.util.*;
-
 import com.oracle.truffle.api.impl.*;
 import com.oracle.truffle.api.instrument.*;
 import com.oracle.truffle.api.instrument.impl.*;
-import com.oracle.truffle.api.source.*;
 
 /**
  * Access to information and basic services in the runtime context for a Truffle-implemented guest
@@ -39,105 +36,9 @@ import com.oracle.truffle.api.source.*;
  */
 public abstract class ExecutionContext {
 
-    private final ProbeManager probeManager = new ProbeManager();
-    private final List<SourceListener> sourceListeners = new ArrayList<>();
     private Visualizer visualizer = new DefaultVisualizer();
 
     protected ExecutionContext() {
-    }
-
-    /**
-     * Sets up the {@link SourceCallback} for this execution context.
-     */
-    public void initialize() {
-        setSourceCallback(new SourceCallback() {
-
-            public void startLoading(Source source) {
-                for (SourceListener listener : sourceListeners) {
-                    listener.loadStarting(source);
-                }
-            }
-
-            public void endLoading(Source source) {
-                for (SourceListener listener : sourceListeners) {
-                    listener.loadEnding(source);
-                }
-            }
-        });
-    }
-
-    /**
-     * Registers a tool interested in being notified about the loading of {@link Source}s.
-     */
-    public final void addSourceListener(SourceListener listener) {
-        assert listener != null;
-        sourceListeners.add(listener);
-    }
-
-    /**
-     * Unregisters a tool interested in being notified about the loading of {@link Source}s.
-     */
-    public final void removeSourceListener(SourceListener removeListener) {
-        final List<SourceListener> listeners = new ArrayList<>(sourceListeners);
-        for (SourceListener listener : listeners) {
-            if (listener == removeListener) {
-                sourceListeners.remove(listener);
-            }
-        }
-    }
-
-    /**
-     * Registers a tool interested in being notified about the insertion of a newly created
-     * {@link Probe} into a Truffle AST.
-     */
-    public final void addProbeListener(ProbeListener listener) {
-        probeManager.addProbeListener(listener);
-    }
-
-    /**
-     * Unregisters a tool interested in being notified about the insertion of a newly created
-     * {@link Probe} into a Truffle AST.
-     */
-    public final void removeProbeListener(ProbeListener listener) {
-        probeManager.removeProbeListener(listener);
-    }
-
-    /**
-     * Return a newly created, untagged, {@link Probe} associated with a particular source section,
-     * with no requirement that the association be unique.
-     *
-     * @return a probe associated with an extent of guest language source code.
-     */
-    public final Probe createProbe(SourceSection source) {
-        return probeManager.createProbe(source);
-    }
-
-    /**
-     * Returns all existing probes with specific tag, or all probes if {@code tag = null}; empty
-     * collection if no probes found.
-     */
-    public final Collection<Probe> findProbesTaggedAs(SyntaxTag tag) {
-        return probeManager.findProbesTaggedAs(tag);
-    }
-
-    /**
-     * Sets a trap that will make a callback at any AST location where a existing probe holds a
-     * specified tag; only one trap may be set at a time.
-     *
-     * @throws IllegalStateException if a trap is already set
-     */
-    public final void setTagTrap(SyntaxTagTrap trap) throws IllegalStateException {
-        // TODO (mlvdv) consider allowing multiple traps (without inhibiting Truffle inlining)
-        probeManager.setTagTrap(trap);
-    }
-
-    /**
-     * Clears a trap that will halt execution; only one trap may be set at a time.
-     *
-     * @throws IllegalStateException if no trap is set.
-     */
-    public final void clearTagTrap() {
-        probeManager.clearTagTrap();
     }
 
     /**
@@ -160,11 +61,6 @@ public abstract class ExecutionContext {
      * might be used for an interactive prompt.
      */
     public abstract String getLanguageShortName();
-
-    /**
-     * Establishes source event reporting.
-     */
-    protected abstract void setSourceCallback(SourceCallback sourceCallback);
 
     /**
      * Get compiler options specific to this <code>ExecutionContext</code>.

@@ -22,30 +22,32 @@
  */
 package com.oracle.truffle.sl.nodes.instrument;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.instrument.*;
+import com.oracle.truffle.api.instrument.ProbeNode.WrapperNode;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.sl.nodes.*;
-import com.oracle.truffle.sl.runtime.*;
 
 /**
  * A Truffle node that can be inserted into a Simple AST (assumed not to have executed yet) to
  * enable "instrumentation" of a {@link SLStatementNode}. Tools wishing to interact with AST
  * execution may attach {@link Instrument}s to the {@link Probe} uniquely associated with the
- * wrapper, and to which this wrapper routes {@link ExecutionEvents}.
+ * wrapper, and to which this wrapper routes execution events.
  */
-public final class SLStatementWrapper extends SLStatementNode implements Wrapper {
+@NodeInfo(cost = NodeCost.NONE)
+public final class SLStatementWrapperNode extends SLStatementNode implements WrapperNode {
 
     @Child private SLStatementNode child;
+    @Child private ProbeNode probeNode;
 
-    private final Probe probe;
-
-    public SLStatementWrapper(SLContext context, SLStatementNode child) {
+    public SLStatementWrapperNode(SLStatementNode child) {
         super(child.getSourceSection());
-        assert !(child instanceof SLStatementWrapper);
-        this.probe = context.createProbe(child.getSourceSection());
+        assert !(child instanceof SLStatementWrapperNode);
         this.child = child;
+    }
+
+    public String instrumentationInfo() {
+        return "Wrapper node for SL Statements";
     }
 
     @Override
@@ -53,33 +55,45 @@ public final class SLStatementWrapper extends SLStatementNode implements Wrapper
         return child;
     }
 
+    public void insertProbe(ProbeNode newProbeNode) {
+        this.probeNode = newProbeNode;
+    }
+
+    public Probe getProbe() {
+        try {
+            return probeNode.getProbe();
+        } catch (IllegalStateException e) {
+            throw new IllegalStateException("A lite-Probed wrapper has no explicit Probe");
+        }
+    }
+
+    @Override
     public Node getChild() {
         return child;
     }
 
-    public Probe getProbe() {
-        return probe;
-    }
-
-    @TruffleBoundary
-    public void tagAs(SyntaxTag tag) {
-        probe.tagAs(tag);
-    }
-
     @Override
     public void executeVoid(VirtualFrame frame) {
-        this.tagAs(StandardSyntaxTag.STATEMENT);
-        probe.enter(child, frame);
+        probeNode.enter(child, frame);
 
         try {
             child.executeVoid(frame);
-            probe.leave(child, frame);
+            probeNode.returnVoid(child, frame);
         } catch (KillException e) {
             throw (e);
         } catch (Exception e) {
-            probe.leaveExceptional(child, frame, e);
+            probeNode.returnExceptional(child, frame, e);
             throw (e);
         }
     }
 
+    @Override
+    public Probe probe() {
+        throw new IllegalStateException("Cannot call probe() on a wrapper.");
+    }
+
+    @Override
+    public void probeLite(TruffleEventReceiver eventReceiver) {
+        throw new IllegalStateException("Cannot call probeLite() on a wrapper.");
+    }
 }

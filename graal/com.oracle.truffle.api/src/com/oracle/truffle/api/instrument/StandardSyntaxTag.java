@@ -32,9 +32,8 @@ package com.oracle.truffle.api.instrument;
  * (for example for mostly expression-oriented languages) or even for specific languages.
  * <p>
  * <strong>Disclaimer:</strong> experimental interface under development.
- *
+ * 
  * @see Probe
- * @see Wrapper
  */
 public enum StandardSyntaxTag implements SyntaxTag {
 

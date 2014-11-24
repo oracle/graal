@@ -24,10 +24,11 @@
  */
 package com.oracle.truffle.api.nodes;
 
-import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.impl.*;
+import com.oracle.truffle.api.instrument.*;
 import com.oracle.truffle.api.source.*;
 
 /**
@@ -115,7 +116,7 @@ public abstract class RootNode extends Node {
      * stack) without prior knowledge of the language it has come from.
      *
      * Used for instance to determine the language of a <code>RootNode<code>:
-     *
+     * 
      * <pre>
      * <code>
      * rootNode.getExecutionContext().getLanguageShortName();
@@ -140,4 +141,19 @@ public abstract class RootNode extends Node {
         }
     }
 
+    /**
+     * Apply all registered instances of {@link ASTProber} to the AST, if any, held by this root
+     * node. This can only be done once the AST is complete, notably once all parent pointers are
+     * correctly assigned. But it also must be done before any AST cloning or execution.
+     * <p>
+     * If this is not done, then the AST will not be subject to debugging or any other
+     * instrumentation-supported tooling.
+     * <p>
+     * Implementations should ensure that instrumentation is never applied more than once to an AST,
+     * as this is not guaranteed to be error-free.
+     *
+     * @see Probe#registerASTProber(com.oracle.truffle.api.instrument.ASTProber)
+     */
+    public void applyInstrumentation() {
+    }
 }

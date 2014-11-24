@@ -22,9 +22,10 @@
  */
 package com.oracle.truffle.sl.nodes;
 
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.CompilerDirectives.*;
 import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.instrument.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.sl.builtins.*;
 import com.oracle.truffle.sl.nodes.controlflow.*;
@@ -77,6 +78,11 @@ public final class SLRootNode extends RootNode {
     @Override
     public boolean isCloningAllowed() {
         return isCloningAllowed;
+    }
+
+    @Override
+    public void applyInstrumentation() {
+        Probe.applyASTProbers(bodyNode);
     }
 
     @Override

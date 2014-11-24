@@ -28,6 +28,7 @@ import java.io.*;
 import java.util.*;
 
 import com.oracle.truffle.api.instrument.*;
+import com.oracle.truffle.api.instrument.Probe.*;
 import com.oracle.truffle.api.source.*;
 
 /**
@@ -36,31 +37,42 @@ import com.oracle.truffle.api.source.*;
  * are instrumented as it uses the {@link ProbeListener} interface to determine the source sections
  * that exist in the file.
  */
-public class LineLocationToSourceSectionCollectionMap implements ProbeListener {
+public class LineToSourceSectionMap implements ProbeListener {
 
     private static final boolean TRACE = false;
     private static final PrintStream OUT = System.out;
+
+    private static void trace(String msg) {
+        OUT.println("LineToSourceSectionMap: " + msg);
+    }
 
     /**
      * Map: Source line ==> source sections that exist on the line.
      */
     private final Map<LineLocation, Collection<SourceSection>> lineToSourceSectionsMap = new HashMap<>();
 
-    public LineLocationToSourceSectionCollectionMap() {
+    public LineToSourceSectionMap() {
     }
 
-    public void newProbeInserted(SourceSection sourceSection, Probe probe) {
+    public void startASTProbing(Source source) {
+    }
+
+    public void newProbeInserted(Probe probe) {
+        final SourceSection sourceSection = probe.getProbedSourceSection();
         if (sourceSection != null && !(sourceSection instanceof NullSourceSection)) {
             final LineLocation lineLocation = sourceSection.getLineLocation();
             if (TRACE) {
-                OUT.println("LineLocationToSourceSectionCollectionMap: adding " + lineLocation + " Probe=" + probe);
+                trace("NEW " + lineLocation.getShortDescription() + " Probe=" + probe);
             }
             this.addSourceSectionToLine(lineLocation, sourceSection);
         }
     }
 
-    public void probeTaggedAs(Probe probe, SyntaxTag tag) {
+    public void probeTaggedAs(Probe probe, SyntaxTag tag, Object tagValue) {
         // This map ignores tags, but this subclasses can override this method to operate on tags.
+    }
+
+    public void endASTProbing(Source source) {
     }
 
     /**

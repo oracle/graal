@@ -26,37 +26,23 @@ import java.io.*;
 import java.util.*;
 
 import com.oracle.truffle.api.instrument.*;
+import com.oracle.truffle.api.instrument.impl.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.nodes.NodeUtil.NodeClass;
 import com.oracle.truffle.api.nodes.NodeUtil.NodeField;
 import com.oracle.truffle.api.nodes.NodeUtil.NodeFieldKind;
-import com.oracle.truffle.api.source.*;
 
 /**
  * SLASTPrinter is used to print for SL's internal Truffle AST. This is used by
  * {@link SLDefaultVisualizer} to provide a means of displaying the internal Truffle AST
  */
-public final class SLASTPrinter implements ASTPrinter {
+public final class SLASTPrinter extends DefaultASTPrinter {
+
     public SLASTPrinter() {
     }
 
-    public void printTree(PrintWriter p, Node node, int maxDepth, Node markNode) {
-        printTree(p, node, maxDepth, markNode, 1);
-        p.println();
-        p.flush();
-    }
-
-    public String printTreeToString(Node node, int maxDepth, Node markNode) {
-        StringWriter out = new StringWriter();
-        printTree(new PrintWriter(out), node, maxDepth, markNode);
-        return out.toString();
-    }
-
-    public String printTreeToString(Node node, int maxDepth) {
-        return printTreeToString(node, maxDepth, null);
-    }
-
-    private static void printTree(PrintWriter p, Node node, int maxDepth, Node markNode, int level) {
+    @Override
+    protected void printTree(PrintWriter p, Node node, int maxDepth, Node markNode, int level) {
         if (node == null) {
             p.print("null");
             return;
@@ -64,29 +50,15 @@ public final class SLASTPrinter implements ASTPrinter {
 
         p.print(nodeName(node));
 
-        String sep = "";
         p.print("(");
 
-        final SourceSection src = node.getSourceSection();
-        if (src != null) {
-            if (!(src instanceof NullSourceSection)) {
-                p.print(src.getSource().getName() + ":" + src.getStartLine());
-            } else if (src instanceof NullSourceSection) {
-                final NullSourceSection nullSection = (NullSourceSection) src;
-                p.print(nullSection.getShortDescription());
-            }
+        if (node instanceof InstrumentationNode) {
+            p.print(instrumentInfo((InstrumentationNode) node));
         }
-        if (node instanceof SyntaxTagged) {
-            final SyntaxTagged taggedNode = (SyntaxTagged) node;
-            p.print("[");
-            String prefix = "";
-            for (SyntaxTag tag : taggedNode.getSyntaxTags()) {
-                p.print(prefix);
-                prefix = ",";
-                p.print(tag.toString());
-            }
-            p.print("]");
-        }
+
+        p.print(sourceInfo(node));
+
+        p.print(NodeUtil.printSyntaxTags(node));
 
         ArrayList<NodeField> childFields = new ArrayList<>();
 
@@ -120,23 +92,9 @@ public final class SLASTPrinter implements ASTPrinter {
                         p.print(field.getName());
                         p.print(" = null ");
                     } else if (field.getKind() == NodeFieldKind.CHILD) {
-                        final Node valueNode = (Node) value;
-                        printNewLine(p, level, valueNode == markNode);
-                        p.print(field.getName());
-                        p.print(" = ");
-                        printTree(p, valueNode, maxDepth, markNode, level + 1);
+                        printChild(p, maxDepth, markNode, level, field, value);
                     } else if (field.getKind() == NodeFieldKind.CHILDREN) {
-                        printNewLine(p, level);
-                        p.print(field.getName());
-                        Node[] children = (Node[]) value;
-                        p.print(" = [");
-                        sep = "";
-                        for (Node child : children) {
-                            p.print(sep);
-                            sep = ", ";
-                            printTree(p, child, maxDepth, markNode, level + 1);
-                        }
-                        p.print("]");
+                        printChildren(p, maxDepth, markNode, level, field, value);
                     } else {
                         printNewLine(p, level);
                         p.print(field.getName());
@@ -148,22 +106,4 @@ public final class SLASTPrinter implements ASTPrinter {
         }
     }
 
-    private static void printNewLine(PrintWriter p, int level, boolean mark) {
-        p.println();
-        for (int i = 0; i < level; i++) {
-            if (mark && i == 0) {
-                p.print(" -->");
-            } else {
-                p.print("    ");
-            }
-        }
-    }
-
-    private static void printNewLine(PrintWriter p, int level) {
-        printNewLine(p, level, false);
-    }
-
-    private static String nodeName(Node node) {
-        return node.getClass().getSimpleName();
-    }
 }

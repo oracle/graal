@@ -40,6 +40,7 @@ import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.sl.*;
 import com.oracle.truffle.sl.builtins.*;
+import com.oracle.truffle.sl.factory.*;
 import com.oracle.truffle.sl.runtime.*;
 import com.oracle.truffle.sl.test.SLTestRunner.TestCase;
 
@@ -166,7 +167,7 @@ public final class SLTestRunner extends ParentRunner<TestCase> {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         PrintStream printer = new PrintStream(out);
         try {
-            SLContext context = new SLContext(new BufferedReader(new StringReader(repeat(testCase.testInput, repeats))), printer);
+            SLContext context = SLContextFactory.create(new BufferedReader(new StringReader(repeat(testCase.testInput, repeats))), printer);
             for (NodeFactory<? extends SLBuiltinNode> builtin : builtins) {
                 context.installBuiltin(builtin);
             }

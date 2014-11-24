@@ -23,19 +23,16 @@
 package com.oracle.truffle.sl.runtime;
 
 import java.io.*;
-import java.util.*;
 
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.instrument.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.object.*;
 import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.sl.*;
 import com.oracle.truffle.sl.builtins.*;
 import com.oracle.truffle.sl.nodes.*;
-import com.oracle.truffle.sl.nodes.instrument.*;
 import com.oracle.truffle.sl.nodes.local.*;
 import com.oracle.truffle.sl.parser.*;
 
@@ -56,7 +53,6 @@ public final class SLContext extends ExecutionContext {
     private final PrintStream output;
     private final SLFunctionRegistry functionRegistry;
     private final Shape emptyShape;
-    private SourceCallback sourceCallback = null;
 
     public SLContext(BufferedReader input, PrintStream output) {
         this.input = input;
@@ -70,11 +66,6 @@ public final class SLContext extends ExecutionContext {
     @Override
     public String getLanguageShortName() {
         return "Simple";
-    }
-
-    @Override
-    public void setSourceCallback(SourceCallback sourceCallback) {
-        this.sourceCallback = sourceCallback;
     }
 
     /**
@@ -98,10 +89,6 @@ public final class SLContext extends ExecutionContext {
      */
     public SLFunctionRegistry getFunctionRegistry() {
         return functionRegistry;
-    }
-
-    public SourceCallback getSourceCallback() {
-        return sourceCallback;
     }
 
     /**
@@ -158,28 +145,7 @@ public final class SLContext extends ExecutionContext {
      * @param source The {@link Source} to execute.
      */
     public void executeMain(Source source) {
-
-        if (sourceCallback != null) {
-            sourceCallback.startLoading(source);
-        }
-
         Parser.parseSL(this, source);
-
-        List<SLFunction> functionList = getFunctionRegistry().getFunctions();
-
-        // Since only functions can be global in SL, this guarantees that we instrument
-        // everything of interest. Parsing must occur before accepting the visitors since
-        // the visitor which creates our instrumentation points expects a complete AST.
-
-        for (SLFunction function : functionList) {
-            RootCallTarget rootCallTarget = function.getCallTarget();
-            rootCallTarget.getRootNode().accept(new SLInstrumenter());
-        }
-
-        if (sourceCallback != null) {
-            sourceCallback.endLoading(source);
-        }
-
         SLFunction main = getFunctionRegistry().lookup("main");
         if (main.getCallTarget() == null) {
             throw new SLException("No function main() defined in SL source file.");

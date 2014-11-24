@@ -31,46 +31,52 @@ import com.oracle.truffle.sl.nodes.controlflow.*;
 import com.oracle.truffle.sl.nodes.local.*;
 
 /**
- * A visitor which traverses a completely parsed Simple AST (presumed not yet executed) and
- * instruments some of them.
+ * A visitor which traverses a completely parsed Simple AST (presumed not yet executed) and enables
+ * instrumentation at a few standard kinds of nodes.
  */
-public class SLInstrumenter implements NodeVisitor {
-
-    public SLInstrumenter() {
-    }
+public class SLStandardASTProber implements NodeVisitor, ASTProber {
 
     /**
+     * {@inheritDoc}
+     * <p>
      * Instruments and tags all relevant {@link SLStatementNode}s and {@link SLExpressionNode}s.
      * Currently, only SLStatementNodes that are not SLExpressionNodes are tagged as statements.
      */
     public boolean visit(Node node) {
-        // We have to distinguish between SLExpressionNode and SLStatementNode since some of the
-        // generated factories have methods that require SLExpressionNodes as parameters. Since
-        // SLExpressionNodes are a subclass of SLStatementNode, we check if something is an
-        // SLExpressionNode first.
-        if (node instanceof SLExpressionNode && node.getParent() != null) {
-            SLExpressionNode expressionNode = (SLExpressionNode) node;
-            if (expressionNode.getSourceSection() != null) {
-                Probe probe = expressionNode.probe();
-                // probe.tagAs(STATEMENT);
 
-                if (node instanceof SLWriteLocalVariableNode) {
-                    probe.tagAs(ASSIGNMENT);
+        if (node instanceof SLStatementNode) {
+
+            // We have to distinguish between SLExpressionNode and SLStatementNode since some of the
+            // generated factories have methods that require SLExpressionNodes as parameters. Since
+            // SLExpressionNodes are a subclass of SLStatementNode, we check if something is an
+            // SLExpressionNode first.
+            if (node instanceof SLExpressionNode && node.getParent() != null) {
+                SLExpressionNode expressionNode = (SLExpressionNode) node;
+                if (expressionNode.getSourceSection() != null) {
+                    Probe probe = expressionNode.probe();
+
+                    if (node instanceof SLWriteLocalVariableNode) {
+                        probe.tagAs(STATEMENT, null);
+                        probe.tagAs(ASSIGNMENT, null);
+                    }
                 }
-            }
-        } else if (node instanceof SLStatementNode && node.getParent() != null) {
+            } else if (node instanceof SLStatementNode && node.getParent() != null) {
 
-            SLStatementNode statementNode = (SLStatementNode) node;
-            if (statementNode.getSourceSection() != null) {
-                Probe probe = statementNode.probe();
-                probe.tagAs(STATEMENT);
+                SLStatementNode statementNode = (SLStatementNode) node;
+                if (statementNode.getSourceSection() != null) {
+                    Probe probe = statementNode.probe();
+                    probe.tagAs(STATEMENT, null);
 
-                if (node instanceof SLWhileNode) {
-                    probe.tagAs(START_LOOP);
+                    if (node instanceof SLWhileNode) {
+                        probe.tagAs(START_LOOP, null);
+                    }
                 }
             }
         }
-
         return true;
+    }
+
+    public void probeAST(Node node) {
+        node.accept(this);
     }
 }
