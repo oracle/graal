@@ -42,6 +42,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.util.*;
@@ -287,6 +288,8 @@ public class NodeIntrinsificationPhase extends Phase {
                     injected[injected.length - 1] = snippetReflection.forObject(snippetReflection);
                 } else if (signature[i].isAssignableFrom(metaAccess.lookupJavaType(Stamp.class))) {
                     injected[injected.length - 1] = snippetReflection.forObject(invokeStamp);
+                } else if (signature[i].isAssignableFrom(metaAccess.lookupJavaType(StampProvider.class))) {
+                    injected[injected.length - 1] = snippetReflection.forObject(providers.getStampProvider());
                 } else {
                     throw new GraalInternalError("Cannot handle injected argument of type %s in %s", signature[i].toJavaName(), m.format("%H.%n(%p)"));
                 }

@@ -27,7 +27,6 @@ import java.util.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.calc.*;
-import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.*;
@@ -104,8 +103,7 @@ public class TypeGuardInlineInfo extends AbstractInlineInfo {
 
     private void createGuard(StructuredGraph graph, Providers providers) {
         ValueNode nonNullReceiver = InliningUtil.nonNullReceiver(invoke);
-        ObjectStamp receiverStamp = (ObjectStamp) nonNullReceiver.stamp();
-        LoadHubNode receiverHub = graph.unique(LoadHubNode.create(providers.getStampProvider().createHubStamp(receiverStamp), nonNullReceiver));
+        LoadHubNode receiverHub = graph.unique(LoadHubNode.create(providers.getStampProvider(), nonNullReceiver));
         ConstantNode typeHub = ConstantNode.forConstant(receiverHub.stamp(), type.getObjectHub(), providers.getMetaAccess(), graph);
 
         CompareNode typeCheck = CompareNode.createCompareNode(graph, Condition.EQ, receiverHub, typeHub);

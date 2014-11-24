@@ -41,12 +41,17 @@ public class LoadHubNode extends FloatingGuardedNode implements Lowerable, Canon
         return value;
     }
 
-    public static LoadHubNode create(@InjectedNodeParameter Stamp stamp, ValueNode value) {
-        return new LoadHubNode(stamp, value, null);
+    public static LoadHubNode create(@InjectedNodeParameter StampProvider stampProvider, ValueNode value) {
+        return new LoadHubNode(hubStamp(stampProvider, value), value, null);
     }
 
-    public static LoadHubNode create(@InjectedNodeParameter Stamp stamp, ValueNode value, ValueNode guard) {
-        return new LoadHubNode(stamp, value, guard);
+    public static LoadHubNode create(@InjectedNodeParameter StampProvider stampProvider, ValueNode value, ValueNode guard) {
+        return new LoadHubNode(hubStamp(stampProvider, value), value, guard);
+    }
+
+    private static Stamp hubStamp(StampProvider stampProvider, ValueNode value) {
+        assert value.stamp() instanceof ObjectStamp;
+        return stampProvider.createHubStamp(((ObjectStamp) value.stamp()));
     }
 
     protected LoadHubNode(Stamp stamp, ValueNode value, ValueNode guard) {
