@@ -26,6 +26,12 @@ package com.oracle.graal.api.replacements;
 /**
  * Guards the installation of substitutions for {@link ClassSubstitution} and
  * {@link MethodSubstitution}.
+ * <p>
+ * Implementor must have a single public constructor with one of the following signatures:
+ * <ul>
+ * <li>{@code Guard(Architecture)}</li>
+ * <li>{@code Guard()} (an implicit constructor is OK as well)</li>
+ * </ul>
  */
 public interface SubstitutionGuard {
 

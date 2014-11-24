@@ -303,13 +303,27 @@ public class ReplacementsImpl implements Replacements {
         return assumptions;
     }
 
-    private static SubstitutionGuard getGuard(Class<? extends SubstitutionGuard> guardClass) {
+    private SubstitutionGuard getGuard(Class<? extends SubstitutionGuard> guardClass) {
         if (guardClass != SubstitutionGuard.class) {
+            Constructor<?>[] constructors = guardClass.getConstructors();
+            if (constructors.length != 1) {
+                throw new GraalInternalError("Substitution guard " + guardClass.getSimpleName() + " must have a single public constructor");
+            }
+            Constructor<?> constructor = constructors[0];
+            Class<?>[] paramTypes = constructor.getParameterTypes();
+            // Check for supported constructor signatures
             try {
-                return guardClass.newInstance();
+                if (constructor.getParameterCount() == 1 && paramTypes[0] == Architecture.class) {
+                    // Guard(Architecture)
+                    return (SubstitutionGuard) constructor.newInstance(target.arch);
+                } else if (constructor.getParameterCount() == 0) {
+                    // Guard()
+                    return (SubstitutionGuard) constructor.newInstance();
+                }
             } catch (Exception e) {
                 throw new GraalInternalError(e);
             }
+            throw new GraalInternalError("Unsupported constructor signature in substitution guard: " + constructor);
         }
         return null;
     }

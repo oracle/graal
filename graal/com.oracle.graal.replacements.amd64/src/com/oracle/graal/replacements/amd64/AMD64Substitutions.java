@@ -44,6 +44,8 @@ public class AMD64Substitutions implements ReplacementsProvider {
         if (Intrinsify.getValue()) {
             replacements.registerSubstitutions(Arrays.class, ArraysSubstitutions.class);
             replacements.registerSubstitutions(String.class, StringSubstitutions.class);
+            replacements.registerSubstitutions(Integer.class, AMD64IntegerSubstitutions.class);
+            replacements.registerSubstitutions(Long.class, AMD64LongSubstitutions.class);
         }
     }
 

@@ -40,7 +40,7 @@ import com.oracle.graal.phases.util.*;
 public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
 
     protected Architecture createArchitecture(HotSpotVMConfig config) {
-        return new AMD64(computeFeatures(config));
+        return new AMD64(computeFeatures(config), computeFlags(config));
     }
 
     protected EnumSet<AMD64.CPUFeature> computeFeatures(HotSpotVMConfig config) {
@@ -89,6 +89,17 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
             features.add(AMD64.CPUFeature.BMI1);
         }
         return features;
+    }
+
+    protected EnumSet<AMD64.Flag> computeFlags(HotSpotVMConfig config) {
+        EnumSet<AMD64.Flag> flags = EnumSet.noneOf(AMD64.Flag.class);
+        if (config.useCountLeadingZerosInstruction) {
+            flags.add(AMD64.Flag.UseCountLeadingZerosInstruction);
+        }
+        if (config.useCountTrailingZerosInstruction) {
+            flags.add(AMD64.Flag.UseCountTrailingZerosInstruction);
+        }
+        return flags;
     }
 
     protected TargetDescription createTarget(HotSpotVMConfig config) {
@@ -240,15 +251,15 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
         } else {
             /*
              * System V Application Binary Interface, AMD64 Architecture Processor Supplement
-             *
+             * 
              * Draft Version 0.96
-             *
+             * 
              * http://www.uclibc.org/docs/psABI-x86_64.pdf
-             *
+             * 
              * 3.2.1
-             *
+             * 
              * ...
-             *
+             * 
              * This subsection discusses usage of each register. Registers %rbp, %rbx and %r12
              * through %r15 "belong" to the calling function and the called function is required to
              * preserve their values. In other words, a called function must preserve these

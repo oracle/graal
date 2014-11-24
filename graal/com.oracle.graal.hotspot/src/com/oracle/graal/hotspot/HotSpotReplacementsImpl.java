@@ -34,8 +34,6 @@ import com.oracle.graal.hotspot.word.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.replacements.*;
-import com.oracle.graal.replacements.IntegerSubstitutions;
-import com.oracle.graal.replacements.LongSubstitutions;
 import com.oracle.graal.word.phases.*;
 
 /**

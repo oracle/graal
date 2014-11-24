@@ -138,14 +138,29 @@ public class AMD64 extends Architecture {
 
     private final EnumSet<CPUFeature> features;
 
-    public AMD64(EnumSet<CPUFeature> features) {
+    /**
+     * Set of flags to control code emission.
+     */
+    public static enum Flag {
+        UseCountLeadingZerosInstruction,
+        UseCountTrailingZerosInstruction
+    }
+
+    private final EnumSet<Flag> flags;
+
+    public AMD64(EnumSet<CPUFeature> features, EnumSet<Flag> flags) {
         super("AMD64", 8, ByteOrder.LITTLE_ENDIAN, true, allRegisters, LOAD_STORE | STORE_STORE, 1, cpuRegisters.length + (xmmRegisters.length << XMM_REFERENCE_MAP_SHIFT), 8);
         this.features = features;
+        this.flags = flags;
         assert features.contains(CPUFeature.SSE2) : "minimum config for x64";
     }
 
     public EnumSet<CPUFeature> getFeatures() {
         return features;
+    }
+
+    public EnumSet<Flag> getFlags() {
+        return flags;
     }
 
     @Override

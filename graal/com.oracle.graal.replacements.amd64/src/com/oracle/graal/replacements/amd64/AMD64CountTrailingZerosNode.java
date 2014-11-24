@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.replacements;
+package com.oracle.graal.replacements.amd64;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
@@ -32,16 +32,16 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 
 /**
- * Count the number of leading zeros.
+ * Count the number of trailing zeros.
  */
 @NodeInfo
-public class CountLeadingZerosNode extends UnaryNode implements LIRLowerable {
+public class AMD64CountTrailingZerosNode extends UnaryNode implements LIRLowerable {
 
-    public static CountLeadingZerosNode create(ValueNode value) {
-        return new CountLeadingZerosNode(value);
+    public static AMD64CountTrailingZerosNode create(ValueNode value) {
+        return new AMD64CountTrailingZerosNode(value);
     }
 
-    protected CountLeadingZerosNode(ValueNode value) {
+    protected AMD64CountTrailingZerosNode(ValueNode value) {
         super(StampFactory.forInteger(Kind.Int, 0, ((PrimitiveStamp) value.stamp()).getBits()), value);
         assert value.getKind() == Kind.Int || value.getKind() == Kind.Long;
     }
@@ -50,8 +50,8 @@ public class CountLeadingZerosNode extends UnaryNode implements LIRLowerable {
     public boolean inferStamp() {
         IntegerStamp valueStamp = (IntegerStamp) getValue().stamp();
         long mask = CodeUtil.mask(valueStamp.getBits());
-        int min = Long.numberOfLeadingZeros(valueStamp.upMask() & mask);
-        int max = Long.numberOfLeadingZeros(valueStamp.downMask() & mask);
+        int min = Long.numberOfTrailingZeros(valueStamp.upMask() & mask);
+        int max = Long.numberOfTrailingZeros(valueStamp.downMask() & mask);
         return updateStamp(StampFactory.forInteger(Kind.Int, min, max));
     }
 
@@ -60,16 +60,16 @@ public class CountLeadingZerosNode extends UnaryNode implements LIRLowerable {
         if (forValue.isConstant()) {
             JavaConstant c = forValue.asJavaConstant();
             if (forValue.getKind() == Kind.Int) {
-                return ConstantNode.forInt(Integer.numberOfLeadingZeros(c.asInt()));
+                return ConstantNode.forInt(Integer.numberOfTrailingZeros(c.asInt()));
             } else {
-                return ConstantNode.forInt(Long.numberOfLeadingZeros(c.asLong()));
+                return ConstantNode.forInt(Long.numberOfTrailingZeros(c.asLong()));
             }
         }
         return this;
     }
 
     /**
-     * Raw intrinsic for lzcntq instruction.
+     * Raw intrinsic for tzcntq instruction.
      *
      * @param v
      * @return number of trailing zeros
@@ -78,7 +78,7 @@ public class CountLeadingZerosNode extends UnaryNode implements LIRLowerable {
     public static native int count(long v);
 
     /**
-     * Raw intrinsic for lzcntl instruction.
+     * Raw intrinsic for tzcntl instruction.
      *
      * @param v
      * @return number of trailing zeros
@@ -88,7 +88,7 @@ public class CountLeadingZerosNode extends UnaryNode implements LIRLowerable {
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        Value result = gen.getLIRGeneratorTool().emitCountLeadingZeros(gen.operand(getValue()));
+        Value result = gen.getLIRGeneratorTool().emitCountTrailingZeros(gen.operand(getValue()));
         gen.setResult(this, result);
     }
 }

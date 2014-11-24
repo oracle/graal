@@ -21,20 +21,20 @@
  * questions.
  */
 
-package com.oracle.graal.hotspot.replacements;
+package com.oracle.graal.replacements.amd64;
 
 import com.oracle.graal.api.replacements.*;
 
 @ClassSubstitution(Integer.class)
-public class IntegerSubstitutions {
+public class AMD64IntegerSubstitutions {
 
-    @MethodSubstitution(guard = HotspotGuards.CountLeadingZerosSupported.class)
+    @MethodSubstitution(guard = AMD64Guards.CountLeadingZerosSupported.class)
     public static int numberOfLeadingZeros(int i) {
-        return CountLeadingZerosNode.count(i);
+        return AMD64CountLeadingZerosNode.count(i);
     }
 
-    @MethodSubstitution(guard = HotspotGuards.CountTrailingZerosSupported.class)
+    @MethodSubstitution(guard = AMD64Guards.CountTrailingZerosSupported.class)
     public static int numberOfTrailingZeros(int i) {
-        return CountTrailingZerosNode.count(i);
+        return AMD64CountTrailingZerosNode.count(i);
     }
 }
