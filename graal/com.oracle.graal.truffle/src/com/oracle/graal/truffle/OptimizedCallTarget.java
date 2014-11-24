@@ -89,6 +89,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         this.rootNode = rootNode;
         this.compilationPolicy = compilationPolicy;
         this.rootNode.adoptChildren();
+        this.rootNode.applyInstrumentation();
         this.rootNode.setCallTarget(this);
         this.uninitializedRootNode = sourceCallTarget == null ? cloneRootNode(rootNode) : sourceCallTarget.uninitializedRootNode;
         if (TruffleCallTargetProfiling.getValue()) {
