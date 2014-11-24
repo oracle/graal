@@ -47,8 +47,7 @@ public class ClassSubstitutions {
     @MethodSubstitution(isStatic = false, forced = true)
     public static int getModifiers(final Class<?> thisObj) {
         KlassPointer klass = ClassGetHubNode.readClass(thisObj);
-        KlassPointer zero = KlassPointer.fromWord(Word.unsigned(0));
-        if (klass.equal(zero)) {
+        if (klass.isNull()) {
             // Class for primitive type
             return Modifier.ABSTRACT | Modifier.FINAL | Modifier.PUBLIC;
         } else {
