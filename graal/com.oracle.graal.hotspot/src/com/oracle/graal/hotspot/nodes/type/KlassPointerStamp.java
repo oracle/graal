@@ -93,6 +93,15 @@ public final class KlassPointerStamp extends MetaspacePointerStamp {
     }
 
     @Override
+    public Constant asConstant() {
+        if (alwaysNull() && isCompressed()) {
+            return HotSpotCompressedNullConstant.COMPRESSED_NULL;
+        } else {
+            return super.asConstant();
+        }
+    }
+
+    @Override
     public LIRKind getLIRKind(LIRKindTool tool) {
         if (isCompressed()) {
             return LIRKind.value(Kind.Int);
