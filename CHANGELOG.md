@@ -8,6 +8,10 @@
 * ...
 
 ### Truffle
+* Instrumentation: major API revision, based around the Probe and Instrument classes.
+* Instrumentation: add Instrumentable API for language implementors, with most details automated.
+* Instrumentation: reimplemented to handle AST splitting automatically.
+* Instrumentation: more JUnit tests
 * Relaxed declared type restriction on child fields to allow for interface types in addition to Node subclasses.
 * The BranchProfile constructor is now private. Use BranchProfile#create() instead.
 * Renamed @CompilerDirectives.SlowPath to @CompilerDirectives.TruffleBoundary
