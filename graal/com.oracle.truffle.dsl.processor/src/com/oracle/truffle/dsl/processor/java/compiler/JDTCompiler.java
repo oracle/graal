@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,7 +26,6 @@ import java.util.*;
 
 import javax.annotation.processing.*;
 import javax.lang.model.element.*;
-import javax.lang.model.type.*;
 
 import com.oracle.truffle.dsl.processor.java.*;
 
@@ -43,6 +42,7 @@ public class JDTCompiler extends AbstractCompiler {
 
     public List<? extends Element> getAllMembersInDeclarationOrder(ProcessingEnvironment environment, TypeElement type) {
         return sortBySourceOrder(new ArrayList<>(environment.getElementUtils().getAllMembers(type)));
+
     }
 
     public List<? extends Element> getEnclosedElementsInDeclarationOrder(TypeElement type) {
@@ -50,65 +50,96 @@ public class JDTCompiler extends AbstractCompiler {
     }
 
     private static List<? extends Element> sortBySourceOrder(List<Element> elements) {
-        final Map<TypeElement, List<Object>> declarationOrders = new HashMap<>();
+        Map<TypeElement, List<Element>> groupedByEnclosing = new HashMap<>();
+        for (Element element : elements) {
+            Element enclosing = element.getEnclosingElement();
+            List<Element> grouped = groupedByEnclosing.get(enclosing);
+            if (grouped == null) {
+                grouped = new ArrayList<>();
+                groupedByEnclosing.put((TypeElement) enclosing, grouped);
+            }
+            grouped.add(element);
+        }
+
+        for (TypeElement enclosing : groupedByEnclosing.keySet()) {
+            Collections.sort(groupedByEnclosing.get(enclosing), createSourceOrderComparator(enclosing));
+        }
+
+        if (groupedByEnclosing.size() == 1) {
+            return groupedByEnclosing.get(groupedByEnclosing.keySet().iterator().next());
+        } else {
+            List<TypeElement> enclosingTypes = new ArrayList<>(groupedByEnclosing.keySet());
+
+            Collections.sort(enclosingTypes, new Comparator<TypeElement>() {
+                public int compare(TypeElement o1, TypeElement o2) {
+                    if (ElementUtils.isSubtype(o1.asType(), o2.asType())) {
+                        return 1;
+                    } else {
+                        return -1;
+                    }
+                }
+            });
+
+            List<Element> sourceOrderElements = new ArrayList<>();
+            for (TypeElement typeElement : enclosingTypes) {
+                sourceOrderElements.addAll(groupedByEnclosing.get(typeElement));
+            }
+            return sourceOrderElements;
+        }
+
+    }
+
+    private static Comparator<Element> createSourceOrderComparator(final TypeElement enclosing) {
 
         Comparator<Element> comparator = new Comparator<Element>() {
+
+            final List<Object> declarationOrder = lookupDeclarationOrder(enclosing);
+
             public int compare(Element o1, Element o2) {
                 try {
-                    TypeMirror enclosing1 = o1.getEnclosingElement().asType();
-                    TypeMirror enclosing2 = o2.getEnclosingElement().asType();
+                    Element enclosing1Element = o1.getEnclosingElement();
+                    Element enclosing2Element = o2.getEnclosingElement();
 
-                    if (ElementUtils.typeEquals(enclosing1, enclosing2)) {
-                        List<Object> declarationOrder = lookupDeclarationOrder(declarationOrders, (TypeElement) o1.getEnclosingElement());
-
-                        if (declarationOrder == null) {
-                            return 0;
-                        }
-                        Object o1Binding = field(o1, "_binding");
-                        Object o2Binding = field(o2, "_binding");
-
-                        int i1 = declarationOrder.indexOf(o1Binding);
-                        int i2 = declarationOrder.indexOf(o2Binding);
-
-                        if (i1 == -1 || i2 == -1) {
-                            return 0;
-                        }
-
-                        return i1 - i2;
-                    } else {
-                        if (ElementUtils.isSubtype(enclosing1, enclosing2)) {
-                            return 1;
-                        } else {
-                            return -1;
-                        }
+                    if (!ElementUtils.typeEquals(enclosing1Element.asType(), enclosing2Element.asType())) {
+                        throw new AssertionError();
                     }
+
+                    Object o1Binding = field(o1, "_binding");
+                    Object o2Binding = field(o2, "_binding");
+
+                    int i1 = declarationOrder.indexOf(o1Binding);
+                    int i2 = declarationOrder.indexOf(o2Binding);
+
+                    if (i1 == -1 || i2 == -1) {
+                        return 0;
+                    }
+
+                    return i1 - i2;
                 } catch (Exception e) {
                     throw new RuntimeException(e);
                 }
             }
         };
-
-        Collections.sort(elements, comparator);
-        return elements;
+        return comparator;
     }
 
-    private static List<Object> lookupDeclarationOrder(Map<TypeElement, List<Object>> declarationOrders, TypeElement type) throws Exception, ClassNotFoundException {
-        if (declarationOrders.containsKey(type)) {
-            return declarationOrders.get(type);
+    private static List<Object> lookupDeclarationOrder(TypeElement type) {
+
+        List<Object> declarationOrder;
+        try {
+            Object binding = field(type, "_binding");
+            Class<?> sourceTypeBinding = Class.forName("org.eclipse.jdt.internal.compiler.lookup.SourceTypeBinding");
+            Class<?> binaryTypeBinding = Class.forName("org.eclipse.jdt.internal.compiler.lookup.BinaryTypeBinding");
+
+            declarationOrder = null;
+            if (sourceTypeBinding.isAssignableFrom(binding.getClass())) {
+                declarationOrder = findSourceTypeOrder(binding);
+            } else if (binaryTypeBinding.isAssignableFrom(binding.getClass())) {
+                declarationOrder = findBinaryTypeOrder(binding);
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
-
-        Object binding = field(type, "_binding");
-        Class<?> sourceTypeBinding = Class.forName("org.eclipse.jdt.internal.compiler.lookup.SourceTypeBinding");
-        Class<?> binaryTypeBinding = Class.forName("org.eclipse.jdt.internal.compiler.lookup.BinaryTypeBinding");
-
-        List<Object> declarationOrder = null;
-        if (sourceTypeBinding.isAssignableFrom(binding.getClass())) {
-            declarationOrder = findSourceTypeOrder(binding);
-        } else if (binaryTypeBinding.isAssignableFrom(binding.getClass())) {
-            declarationOrder = findBinaryTypeOrder(binding);
-        }
-
-        declarationOrders.put(type, declarationOrder);
 
         return declarationOrder;
     }
