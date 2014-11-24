@@ -61,7 +61,7 @@ public class EscapeAnalysisTest extends EATestBase {
 
     @Test
     public void test3() {
-        testEscapeAnalysis("test3Snippet", JavaConstant.NULL_OBJECT, false);
+        testEscapeAnalysis("test3Snippet", JavaConstant.NULL_POINTER, false);
     }
 
     public static Object test3Snippet() {

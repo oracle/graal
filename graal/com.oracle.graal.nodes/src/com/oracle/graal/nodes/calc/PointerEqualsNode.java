@@ -64,6 +64,10 @@ public class PointerEqualsNode extends CompareNode {
             return LogicConstantNode.tautology();
         } else if (forX.stamp().alwaysDistinct(forY.stamp())) {
             return LogicConstantNode.contradiction();
+        } else if (((AbstractPointerStamp) forX.stamp()).alwaysNull()) {
+            return IsNullNode.create(forY);
+        } else if (((AbstractPointerStamp) forY.stamp()).alwaysNull()) {
+            return IsNullNode.create(forX);
         }
         return super.canonical(tool, forX, forY);
     }

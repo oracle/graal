@@ -49,6 +49,16 @@ public final class MethodPointerStamp extends MetaspacePointerStamp {
     }
 
     @Override
+    public Stamp constant(Constant c, MetaAccessProvider meta) {
+        if (JavaConstant.NULL_POINTER.equals(c)) {
+            return new MethodPointerStamp(false, true);
+        } else {
+            assert c instanceof HotSpotMetaspaceConstant;
+            return this;
+        }
+    }
+
+    @Override
     public Constant readConstant(MemoryAccessProvider provider, Constant base, long displacement) {
         HotSpotMemoryAccessProvider hsProvider = (HotSpotMemoryAccessProvider) provider;
         return hsProvider.readMethodPointerConstant(base, displacement);

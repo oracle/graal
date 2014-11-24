@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -63,7 +63,7 @@ public class ObjectStampJoinTest extends AbstractObjectStampTest {
     public void testJoin3() {
         Stamp d = StampFactory.declared(getType(D.class));
         Stamp c = StampFactory.declared(getType(C.class));
-        Assert.assertTrue(StampTool.isObjectAlwaysNull(join(c, d)));
+        Assert.assertTrue(StampTool.isPointerAlwaysNull(join(c, d)));
     }
 
     @Test
@@ -78,7 +78,7 @@ public class ObjectStampJoinTest extends AbstractObjectStampTest {
         Stamp dExact = StampFactory.exact(getType(D.class));
         Stamp c = StampFactory.declared(getType(C.class));
         Stamp join = join(c, dExact);
-        Assert.assertTrue(StampTool.isObjectAlwaysNull(join));
+        Assert.assertTrue(StampTool.isPointerAlwaysNull(join));
         Assert.assertNull(StampTool.typeOrNull(join));
         Assert.assertFalse(StampTool.isExactType(join));
     }
@@ -89,8 +89,8 @@ public class ObjectStampJoinTest extends AbstractObjectStampTest {
         Stamp alwaysNull = StampFactory.alwaysNull();
         Stamp join = join(alwaysNull, dExactNonNull);
         Assert.assertFalse(join.isLegal());
-        Assert.assertFalse(StampTool.isObjectNonNull(join));
-        Assert.assertFalse(StampTool.isObjectAlwaysNull(join));
+        Assert.assertFalse(StampTool.isPointerNonNull(join));
+        Assert.assertFalse(StampTool.isPointerAlwaysNull(join));
     }
 
     @Test
@@ -98,7 +98,7 @@ public class ObjectStampJoinTest extends AbstractObjectStampTest {
         Stamp aExact = StampFactory.exact(getType(A.class));
         Stamp e = StampFactory.declared(getType(E.class));
         Stamp join = join(aExact, e);
-        Assert.assertTrue(StampTool.isObjectAlwaysNull(join));
+        Assert.assertTrue(StampTool.isPointerAlwaysNull(join));
         Assert.assertNull(StampTool.typeOrNull(join));
         Assert.assertFalse(StampTool.isExactType(join));
     }
@@ -116,7 +116,7 @@ public class ObjectStampJoinTest extends AbstractObjectStampTest {
         Stamp bExact = StampFactory.exact(getType(B.class));
         Stamp dExact = StampFactory.exact(getType(D.class));
         Stamp join = join(bExact, dExact);
-        Assert.assertTrue(StampTool.isObjectAlwaysNull(join));
+        Assert.assertTrue(StampTool.isPointerAlwaysNull(join));
         Assert.assertNull(StampTool.typeOrNull(join));
         Assert.assertNull(StampTool.typeOrNull(join));
     }

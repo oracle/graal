@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -79,12 +79,12 @@ public class WriteBarrierAdditionPhase extends Phase {
     }
 
     protected void addG1PostWriteBarrier(FixedAccessNode node, ValueNode object, ValueNode value, LocationNode location, boolean precise, StructuredGraph graph) {
-        final boolean alwaysNull = StampTool.isObjectAlwaysNull(value);
+        final boolean alwaysNull = StampTool.isPointerAlwaysNull(value);
         graph.addAfterFixed(node, graph.add(G1PostWriteBarrier.create(object, value, location, precise, alwaysNull)));
     }
 
     protected void addSerialPostWriteBarrier(FixedAccessNode node, ValueNode object, ValueNode value, LocationNode location, boolean precise, StructuredGraph graph) {
-        final boolean alwaysNull = StampTool.isObjectAlwaysNull(value);
+        final boolean alwaysNull = StampTool.isPointerAlwaysNull(value);
         final LocationNode loc = (precise ? location : null);
         graph.addAfterFixed(node, graph.add(SerialWriteBarrier.create(object, loc, precise, alwaysNull)));
     }

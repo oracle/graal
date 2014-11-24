@@ -112,7 +112,7 @@ public class TypeProfileProxyNode extends UnaryNode implements IterableNodeType,
                 return this;
             }
             lastCheckedType = type;
-            JavaTypeProfile newProfile = this.profile.restrict(type, StampTool.isObjectNonNull(forValue));
+            JavaTypeProfile newProfile = this.profile.restrict(type, StampTool.isPointerNonNull(forValue));
             if (newProfile != this.profile) {
                 Debug.log("Improved profile via static type information.");
                 if (newProfile.getTypes().length == 0) {

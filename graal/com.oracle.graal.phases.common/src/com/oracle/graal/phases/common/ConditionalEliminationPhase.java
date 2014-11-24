@@ -235,11 +235,11 @@ public class ConditionalEliminationPhase extends Phase {
         }
 
         public boolean isNull(ValueNode value) {
-            return StampTool.isObjectAlwaysNull(value) || knownNull.contains(GraphUtil.unproxify(value));
+            return StampTool.isPointerAlwaysNull(value) || knownNull.contains(GraphUtil.unproxify(value));
         }
 
         public boolean isNonNull(ValueNode value) {
-            return StampTool.isObjectNonNull(value) || knownNonNull.contains(GraphUtil.unproxify(value));
+            return StampTool.isPointerNonNull(value) || knownNonNull.contains(GraphUtil.unproxify(value));
         }
 
         @Override

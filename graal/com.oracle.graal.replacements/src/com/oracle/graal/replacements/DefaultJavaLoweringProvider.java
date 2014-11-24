@@ -178,7 +178,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         ValueNode value = storeIndexed.value();
         ValueNode array = storeIndexed.array();
         FixedWithNextNode checkCastNode = null;
-        if (elementKind == Kind.Object && !StampTool.isObjectAlwaysNull(value)) {
+        if (elementKind == Kind.Object && !StampTool.isPointerAlwaysNull(value)) {
             /* Array store check. */
             ResolvedJavaType arrayType = StampTool.typeOrNull(array);
             if (arrayType != null && StampTool.isExactType(array)) {
@@ -708,7 +708,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     }
 
     protected GuardingNode createNullCheck(ValueNode object, FixedNode before, LoweringTool tool) {
-        if (StampTool.isObjectNonNull(object)) {
+        if (StampTool.isPointerNonNull(object)) {
             return null;
         }
         return tool.createGuard(before, before.graph().unique(IsNullNode.create(object)), DeoptimizationReason.NullCheckException, DeoptimizationAction.InvalidateReprofile, true);

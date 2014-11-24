@@ -114,7 +114,7 @@ public class CheckCastNode extends FixedWithNextNode implements Canonicalizable,
             // This is a check cast that will always fail
             condition = LogicConstantNode.contradiction(graph());
             newStamp = StampFactory.declaredTrusted(type);
-        } else if (StampTool.isObjectNonNull(object)) {
+        } else if (StampTool.isPointerNonNull(object)) {
             condition = graph().addWithoutUnique(InstanceOfNode.create(type, object, profile));
         } else {
             if (profile != null && profile.getNullSeen() == TriState.FALSE) {
@@ -161,7 +161,7 @@ public class CheckCastNode extends FixedWithNextNode implements Canonicalizable,
             return object();
         }
 
-        if (StampTool.isObjectAlwaysNull(object())) {
+        if (StampTool.isPointerAlwaysNull(object())) {
             return object();
         }
 

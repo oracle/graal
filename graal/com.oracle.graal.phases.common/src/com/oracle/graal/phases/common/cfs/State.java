@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -336,7 +336,7 @@ public final class State extends MergeableState<State> implements Cloneable {
      */
     public boolean isNull(ValueNode object) {
         assert FlowUtil.hasLegalObjectStamp(object);
-        if (StampTool.isObjectAlwaysNull(object)) {
+        if (StampTool.isPointerAlwaysNull(object)) {
             return true;
         }
         ValueNode scrutinee = GraphUtil.unproxify(object);
@@ -364,7 +364,7 @@ public final class State extends MergeableState<State> implements Cloneable {
      */
     public boolean isNonNull(ValueNode object) {
         assert FlowUtil.hasLegalObjectStamp(object);
-        if (StampTool.isObjectNonNull(object)) {
+        if (StampTool.isPointerNonNull(object)) {
             return true;
         }
         Witness w = typeInfo(object);
@@ -847,7 +847,7 @@ public final class State extends MergeableState<State> implements Cloneable {
      */
     public GuardingNode nonTrivialNullAnchor(ValueNode object) {
         assert FlowUtil.hasLegalObjectStamp(object);
-        if (StampTool.isObjectAlwaysNull(object)) {
+        if (StampTool.isPointerAlwaysNull(object)) {
             return null;
         }
         ValueNode scrutinee = GraphUtil.unproxify(object);

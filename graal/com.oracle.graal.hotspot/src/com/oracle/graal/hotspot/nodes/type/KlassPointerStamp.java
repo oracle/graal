@@ -64,6 +64,22 @@ public final class KlassPointerStamp extends MetaspacePointerStamp {
     }
 
     @Override
+    public Stamp constant(Constant c, MetaAccessProvider meta) {
+        if (isCompressed()) {
+            if (HotSpotCompressedNullConstant.COMPRESSED_NULL.equals(c)) {
+                return new KlassPointerStamp(false, true, encoding);
+            }
+        } else {
+            if (JavaConstant.NULL_POINTER.equals(c)) {
+                return new KlassPointerStamp(false, true);
+            }
+        }
+
+        assert c instanceof HotSpotMetaspaceConstant;
+        return this;
+    }
+
+    @Override
     public LIRKind getLIRKind(LIRKindTool tool) {
         if (isCompressed()) {
             return LIRKind.value(Kind.Int);

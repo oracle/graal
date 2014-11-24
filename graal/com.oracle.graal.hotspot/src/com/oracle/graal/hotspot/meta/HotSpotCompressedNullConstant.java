@@ -25,7 +25,7 @@ package com.oracle.graal.hotspot.meta;
 import com.oracle.graal.api.meta.*;
 
 /**
- * The compressed representation of the {@link JavaConstant#NULL_OBJECT null constant}.
+ * The compressed representation of the {@link JavaConstant#NULL_POINTER null constant}.
  */
 public final class HotSpotCompressedNullConstant extends AbstractValue implements JavaConstant, HotSpotConstant {
 
@@ -94,7 +94,6 @@ public final class HotSpotCompressedNullConstant extends AbstractValue implement
 
     @Override
     public boolean equals(Object o) {
-        assert o == this || !(o instanceof HotSpotCompressedNullConstant) : "null constant is a singleton";
-        return o == this;
+        return o instanceof HotSpotCompressedNullConstant;
     }
 }

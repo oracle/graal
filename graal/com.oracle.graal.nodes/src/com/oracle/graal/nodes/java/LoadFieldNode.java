@@ -67,7 +67,7 @@ public class LoadFieldNode extends AccessFieldNode implements Canonicalizable.Un
     }
 
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forObject) {
-        if (usages().isEmpty() && !isVolatile() && (isStatic() || StampTool.isObjectNonNull(forObject.stamp()))) {
+        if (usages().isEmpty() && !isVolatile() && (isStatic() || StampTool.isPointerNonNull(forObject.stamp()))) {
             return null;
         }
         MetaAccessProvider metaAccess = tool.getMetaAccess();

@@ -465,7 +465,7 @@ public class ConstantNode extends FloatingNode implements LIRLowerable {
             case Long:
                 return ConstantNode.forLong(0L, graph);
             case Object:
-                return ConstantNode.forConstant(JavaConstant.NULL_OBJECT, null, graph);
+                return ConstantNode.forConstant(JavaConstant.NULL_POINTER, null, graph);
             default:
                 return null;
         }

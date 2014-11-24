@@ -23,7 +23,7 @@
 package com.oracle.graal.api.meta;
 
 /**
- * The implementation type of the {@link JavaConstant#NULL_OBJECT null constant}.
+ * The implementation type of the {@link JavaConstant#NULL_POINTER null constant}.
  */
 final class NullConstant extends AbstractValue implements JavaConstant {
 

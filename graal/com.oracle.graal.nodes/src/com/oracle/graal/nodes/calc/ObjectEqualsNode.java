@@ -24,11 +24,9 @@ package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 
 @NodeInfo(shortName = "==")
 public class ObjectEqualsNode extends PointerEqualsNode implements Virtualizable {
@@ -47,20 +45,6 @@ public class ObjectEqualsNode extends PointerEqualsNode implements Virtualizable
         super(x, y);
         assert x.stamp() instanceof AbstractObjectStamp;
         assert y.stamp() instanceof AbstractObjectStamp;
-    }
-
-    @Override
-    public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
-        ValueNode result = super.canonical(tool, forX, forY);
-        if (result != this) {
-            return result;
-        }
-        if (StampTool.isObjectAlwaysNull(forX)) {
-            return IsNullNode.create(forY);
-        } else if (StampTool.isObjectAlwaysNull(forY)) {
-            return IsNullNode.create(forX);
-        }
-        return this;
     }
 
     private void virtualizeNonVirtualComparison(State state, ValueNode other, VirtualizerTool tool) {

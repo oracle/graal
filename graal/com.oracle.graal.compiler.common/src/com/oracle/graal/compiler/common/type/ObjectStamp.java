@@ -61,15 +61,6 @@ public class ObjectStamp extends AbstractObjectStamp {
     }
 
     @Override
-    public JavaConstant asConstant() {
-        if (alwaysNull()) {
-            return JavaConstant.NULL_OBJECT;
-        } else {
-            return null;
-        }
-    }
-
-    @Override
     public LIRKind getLIRKind(LIRKindTool tool) {
         return tool.getObjectKind();
     }

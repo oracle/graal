@@ -67,6 +67,15 @@ public abstract class AbstractPointerStamp extends Stamp {
     }
 
     @Override
+    public Constant asConstant() {
+        if (alwaysNull) {
+            return JavaConstant.NULL_POINTER;
+        } else {
+            return null;
+        }
+    }
+
+    @Override
     public Kind getStackKind() {
         return Kind.Illegal;
     }

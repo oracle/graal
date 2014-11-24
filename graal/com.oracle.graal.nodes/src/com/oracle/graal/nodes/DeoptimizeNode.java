@@ -39,7 +39,7 @@ public class DeoptimizeNode extends AbstractDeoptimizeNode implements Lowerable,
     }
 
     protected DeoptimizeNode(DeoptimizationAction action, DeoptimizationReason reason) {
-        this(action, reason, 0, JavaConstant.NULL_OBJECT, null);
+        this(action, reason, 0, JavaConstant.NULL_POINTER, null);
     }
 
     public static DeoptimizeNode create(DeoptimizationAction action, DeoptimizationReason reason, int debugId, JavaConstant speculation, FrameState stateBefore) {

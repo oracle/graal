@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -111,7 +111,7 @@ public abstract class CheckCastReduction extends GuardingPiReduction {
 
         // --------- checkCast deemed redundant by subject-stamp alone ---------
         // --------- in particular due to stamp informing always null ----------
-        boolean isRedundantPerStamp = StampTool.isObjectAlwaysNull(subject) || (subjectType != null && toType.isAssignableFrom(subjectType));
+        boolean isRedundantPerStamp = StampTool.isPointerAlwaysNull(subject) || (subjectType != null && toType.isAssignableFrom(subjectType));
         if (isRedundantPerStamp) {
             metricCheckCastRemoved.increment();
             checkCast.replaceAtUsages(subject);
@@ -119,7 +119,7 @@ public abstract class CheckCastReduction extends GuardingPiReduction {
             return;
         }
 
-        assert !StampTool.isObjectAlwaysNull(subject) : "Null as per stamp subjects should have been handled above";
+        assert !StampTool.isPointerAlwaysNull(subject) : "Null as per stamp subjects should have been handled above";
 
         // --------- checkCast deemed unsatisfiable by subject-stamp alone ---------
         if (state.knownNotToPassCheckCast(subject, toType)) {

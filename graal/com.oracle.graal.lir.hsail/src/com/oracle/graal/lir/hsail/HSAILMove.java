@@ -78,7 +78,7 @@ public class HSAILMove {
 
         private void checkForNullObjectInput() {
             if (result.getKind() == Kind.Object && isConstant(input) && input.getKind() == Kind.Long && ((JavaConstant) input).asLong() == 0) {
-                input = JavaConstant.NULL_OBJECT;
+                input = JavaConstant.NULL_POINTER;
             }
         }
 

@@ -26,7 +26,6 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.spi.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.hotspot.meta.*;
 
 public abstract class MetaspacePointerStamp extends AbstractPointerStamp {
 
@@ -63,12 +62,6 @@ public abstract class MetaspacePointerStamp extends AbstractPointerStamp {
     @Override
     public Stamp illegal() {
         // there is no illegal pointer stamp
-        return this;
-    }
-
-    @Override
-    public Stamp constant(Constant c, MetaAccessProvider meta) {
-        assert c instanceof HotSpotMetaspaceConstant;
         return this;
     }
 

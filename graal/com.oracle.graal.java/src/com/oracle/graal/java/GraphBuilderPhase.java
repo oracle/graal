@@ -336,7 +336,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             protected void handleUnresolvedCheckCast(JavaType type, ValueNode object) {
                 assert !graphBuilderConfig.eagerResolving();
                 append(FixedGuardNode.create(currentGraph.unique(IsNullNode.create(object)), Unresolved, InvalidateRecompile));
-                frameState.apush(appendConstant(JavaConstant.NULL_OBJECT));
+                frameState.apush(appendConstant(JavaConstant.NULL_POINTER));
             }
 
             /**
@@ -652,7 +652,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             @Override
             protected void emitNullCheck(ValueNode receiver) {
-                if (StampTool.isObjectNonNull(receiver.stamp())) {
+                if (StampTool.isPointerNonNull(receiver.stamp())) {
                     return;
                 }
                 BlockPlaceholderNode trueSucc = currentGraph.add(BlockPlaceholderNode.create(this));

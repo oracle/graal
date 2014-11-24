@@ -406,7 +406,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
 
     @Override
     public void emitDeoptimizeCaller(DeoptimizationAction action, DeoptimizationReason reason) {
-        moveDeoptValuesToThread(getMetaAccess().encodeDeoptActionAndReason(action, reason, 0), JavaConstant.NULL_OBJECT);
+        moveDeoptValuesToThread(getMetaAccess().encodeDeoptActionAndReason(action, reason, 0), JavaConstant.NULL_POINTER);
         append(new AMD64HotSpotDeoptimizeCallerOp());
     }
 
@@ -581,7 +581,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
                 append(new AMD64Move.NullCheckOp(load(uncompress), state));
             }
         } else {
-            assert address.getKind() == Kind.Object : address + " - " + address.getKind() + " not an object!";
+            assert address.getKind() == Kind.Object || address.getKind() == Kind.Long : address + " - " + address.getKind() + " not a pointer!";
             append(new AMD64Move.NullCheckOp(load(address), state));
         }
     }

@@ -26,7 +26,7 @@ package com.oracle.graal.api.meta;
  * Represents a constant (boxed) value, such as an integer, floating point number, or object
  * reference, within the compiler and across the compiler/runtime interface. Exports a set of
  * {@code JavaConstant} instances that represent frequently used constant values, such as
- * {@link #NULL_OBJECT}.
+ * {@link #NULL_POINTER}.
  */
 public interface JavaConstant extends Constant, JavaValue, Value {
 
@@ -34,7 +34,7 @@ public interface JavaConstant extends Constant, JavaValue, Value {
      * Using a larger cache for integers leads to only a slight increase in cache hit ratio which is
      * not enough to justify the impact on startup time.
      */
-    JavaConstant NULL_OBJECT = new NullConstant();
+    JavaConstant NULL_POINTER = new NullConstant();
     PrimitiveConstant INT_MINUS_1 = new PrimitiveConstant(Kind.Int, -1);
     PrimitiveConstant INT_0 = new PrimitiveConstant(Kind.Int, 0);
     PrimitiveConstant INT_1 = new PrimitiveConstant(Kind.Int, 1);
@@ -346,7 +346,7 @@ public interface JavaConstant extends Constant, JavaValue, Value {
             case Long:
                 return LONG_0;
             case Object:
-                return NULL_OBJECT;
+                return NULL_POINTER;
             default:
                 throw new IllegalArgumentException(kind.toString());
         }

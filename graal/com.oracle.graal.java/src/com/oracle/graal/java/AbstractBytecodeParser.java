@@ -520,7 +520,7 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
     }
 
     private void genIfNull(Condition cond) {
-        T y = appendConstant(JavaConstant.NULL_OBJECT);
+        T y = appendConstant(JavaConstant.NULL_POINTER);
         T x = frameState.apop();
         genIf(x, cond, y);
     }
@@ -927,7 +927,7 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
         // @formatter:off
     switch (opcode) {
         case NOP            : /* nothing to do */ break;
-        case ACONST_NULL    : frameState.apush(appendConstant(JavaConstant.NULL_OBJECT)); break;
+        case ACONST_NULL    : frameState.apush(appendConstant(JavaConstant.NULL_POINTER)); break;
         case ICONST_M1      : // fall through
         case ICONST_0       : // fall through
         case ICONST_1       : // fall through

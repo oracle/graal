@@ -95,7 +95,7 @@ public class CheckCastDynamicNode extends FixedWithNextNode implements Canonical
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forObject, ValueNode forHub) {
-        if (StampTool.isObjectAlwaysNull(forObject)) {
+        if (StampTool.isPointerAlwaysNull(forObject)) {
             return forObject;
         }
         if (forHub.isConstant()) {

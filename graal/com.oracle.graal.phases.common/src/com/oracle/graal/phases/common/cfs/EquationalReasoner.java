@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -575,7 +575,7 @@ public final class EquationalReasoner {
         if (FlowUtil.isLiteralNode(object)) {
             return object;
         }
-        if (StampTool.isObjectAlwaysNull(object.stamp())) {
+        if (StampTool.isPointerAlwaysNull(object.stamp())) {
             return object;
         }
 
@@ -696,7 +696,7 @@ public final class EquationalReasoner {
         if (anchor == null) {
             return null;
         }
-        if (object instanceof GuardedNode && StampTool.isObjectAlwaysNull(object.stamp())) {
+        if (object instanceof GuardedNode && StampTool.isPointerAlwaysNull(object.stamp())) {
             return (PiNode) object;
         }
         // notice nullConstant is wrapped, not object

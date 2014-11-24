@@ -362,7 +362,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
             case Long:
                 return JavaConstant.forLong(dead);
             case Object:
-                return JavaConstant.NULL_OBJECT;
+                return JavaConstant.NULL_POINTER;
             default:
                 throw new IllegalArgumentException(kind.toString());
         }

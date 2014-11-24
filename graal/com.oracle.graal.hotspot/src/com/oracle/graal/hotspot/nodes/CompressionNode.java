@@ -74,7 +74,7 @@ public class CompressionNode extends UnaryNode implements ConvertNode, LIRLowera
     }
 
     private static Constant compress(Constant c, CompressEncoding encoding) {
-        if (JavaConstant.NULL_OBJECT.equals(c)) {
+        if (JavaConstant.NULL_POINTER.equals(c)) {
             return HotSpotCompressedNullConstant.COMPRESSED_NULL;
         } else if (c instanceof HotSpotObjectConstant) {
             return ((HotSpotObjectConstant) c).compress();
@@ -87,7 +87,7 @@ public class CompressionNode extends UnaryNode implements ConvertNode, LIRLowera
 
     private static Constant uncompress(Constant c, CompressEncoding encoding) {
         if (HotSpotCompressedNullConstant.COMPRESSED_NULL.equals(c)) {
-            return JavaConstant.NULL_OBJECT;
+            return JavaConstant.NULL_POINTER;
         } else if (c instanceof HotSpotObjectConstant) {
             return ((HotSpotObjectConstant) c).uncompress();
         } else if (c instanceof HotSpotMetaspaceConstant) {
@@ -174,7 +174,7 @@ public class CompressionNode extends UnaryNode implements ConvertNode, LIRLowera
         HotSpotLIRGenerator hsGen = (HotSpotLIRGenerator) gen.getLIRGeneratorTool();
         boolean nonNull;
         if (getValue().stamp() instanceof AbstractObjectStamp) {
-            nonNull = StampTool.isObjectNonNull(getValue().stamp());
+            nonNull = StampTool.isPointerNonNull(getValue().stamp());
         } else {
             // metaspace pointers are never null
             nonNull = true;

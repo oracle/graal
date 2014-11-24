@@ -450,7 +450,7 @@ public enum Kind implements PlatformKind {
             case Double:
                 return JavaConstant.DOUBLE_0;
             case Object:
-                return JavaConstant.NULL_OBJECT;
+                return JavaConstant.NULL_POINTER;
             case Byte:
             case Char:
             case Short:

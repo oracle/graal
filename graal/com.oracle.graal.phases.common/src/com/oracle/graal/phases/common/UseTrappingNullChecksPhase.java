@@ -100,7 +100,7 @@ public class UseTrappingNullChecksPhase extends BasePhase<LowTierContext> {
             for (AbstractEndNode end : merge.cfgPredecessors().snapshot()) {
                 ValueNode thisReason = reasons != null ? reasons.get(index) : reason;
                 ValueNode thisSpeculation = speculations != null ? speculations.get(index++) : speculation;
-                if (!thisReason.isConstant() || !thisSpeculation.isConstant() || !thisSpeculation.asConstant().equals(JavaConstant.NULL_OBJECT)) {
+                if (!thisReason.isConstant() || !thisSpeculation.isConstant() || !thisSpeculation.asConstant().equals(JavaConstant.NULL_POINTER)) {
                     continue;
                 }
                 DeoptimizationReason deoptimizationReason = metaAccessProvider.decodeDeoptReason(thisReason.asJavaConstant());
@@ -113,7 +113,7 @@ public class UseTrappingNullChecksPhase extends BasePhase<LowTierContext> {
         if (deoptimizationReason != DeoptimizationReason.NullCheckException && deoptimizationReason != DeoptimizationReason.UnreachedCode) {
             return;
         }
-        if (speculation != null && !speculation.equals(JavaConstant.NULL_OBJECT)) {
+        if (speculation != null && !speculation.equals(JavaConstant.NULL_POINTER)) {
             return;
         }
         if (predecessor instanceof MergeNode) {

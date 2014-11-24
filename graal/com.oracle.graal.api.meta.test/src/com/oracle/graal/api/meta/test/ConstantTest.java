@@ -36,7 +36,7 @@ public class ConstantTest extends FieldUniverse {
 
     @Test
     public void testNullIsNull() {
-        Assert.assertTrue(JavaConstant.NULL_OBJECT.isNull());
+        Assert.assertTrue(JavaConstant.NULL_POINTER.isNull());
     }
 
     @Test

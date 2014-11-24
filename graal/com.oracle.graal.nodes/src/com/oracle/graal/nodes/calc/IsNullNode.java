@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.nodes.calc;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
@@ -57,18 +56,15 @@ public class IsNullNode extends UnaryOpLogicNode implements LIRLowerable, Virtua
     @Override
     public boolean verify() {
         assertTrue(getValue() != null, "is null input must not be null");
-        assertTrue(getValue().stamp() instanceof AbstractObjectStamp, "is null input must be an object");
+        assertTrue(getValue().stamp() instanceof AbstractPointerStamp, "is null input must be a pointer");
         return super.verify();
     }
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
-        JavaConstant constant = forValue.asJavaConstant();
-        if (constant != null) {
-            assert constant.getKind() == Kind.Object;
-            return LogicConstantNode.forBoolean(constant.isNull());
-        }
-        if (StampTool.isObjectNonNull(forValue.stamp())) {
+        if (StampTool.isPointerAlwaysNull(forValue)) {
+            return LogicConstantNode.tautology();
+        } else if (StampTool.isPointerNonNull(forValue)) {
             return LogicConstantNode.contradiction();
         }
         return this;

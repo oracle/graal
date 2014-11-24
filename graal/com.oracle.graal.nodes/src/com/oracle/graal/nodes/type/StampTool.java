@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -174,53 +174,53 @@ public class StampTool {
     }
 
     /**
-     * Checks whether this {@link ValueNode} represents a {@linkplain Stamp#isLegal() legal} Object
+     * Checks whether this {@link ValueNode} represents a {@linkplain Stamp#isLegal() legal} pointer
      * value which is known to be always null.
      *
      * @param node the node to check
      * @return true if this node represents a legal object value which is known to be always null
      */
-    public static boolean isObjectAlwaysNull(ValueNode node) {
-        return isObjectAlwaysNull(node.stamp());
+    public static boolean isPointerAlwaysNull(ValueNode node) {
+        return isPointerAlwaysNull(node.stamp());
     }
 
     /**
-     * Checks whether this {@link Stamp} represents a {@linkplain Stamp#isLegal() legal} Object
+     * Checks whether this {@link Stamp} represents a {@linkplain Stamp#isLegal() legal} pointer
      * stamp whose values are known to be always null.
      *
      * @param stamp the stamp to check
      * @return true if this stamp represents a legal object stamp whose values are known to be
      *         always null
      */
-    public static boolean isObjectAlwaysNull(Stamp stamp) {
-        if (stamp instanceof AbstractObjectStamp && stamp.isLegal()) {
-            return ((AbstractObjectStamp) stamp).alwaysNull();
+    public static boolean isPointerAlwaysNull(Stamp stamp) {
+        if (stamp instanceof AbstractPointerStamp && stamp.isLegal()) {
+            return ((AbstractPointerStamp) stamp).alwaysNull();
         }
         return false;
     }
 
     /**
-     * Checks whether this {@link ValueNode} represents a {@linkplain Stamp#isLegal() legal} Object
+     * Checks whether this {@link ValueNode} represents a {@linkplain Stamp#isLegal() legal} pointer
      * value which is known to never be null.
      *
      * @param node the node to check
      * @return true if this node represents a legal object value which is known to never be null
      */
-    public static boolean isObjectNonNull(ValueNode node) {
-        return isObjectNonNull(node.stamp());
+    public static boolean isPointerNonNull(ValueNode node) {
+        return isPointerNonNull(node.stamp());
     }
 
     /**
-     * Checks whether this {@link Stamp} represents a {@linkplain Stamp#isLegal() legal} Object
+     * Checks whether this {@link Stamp} represents a {@linkplain Stamp#isLegal() legal} pointer
      * stamp whose values known to be always null.
      *
      * @param stamp the stamp to check
      * @return true if this stamp represents a legal object stamp whose values are known to be
      *         always null
      */
-    public static boolean isObjectNonNull(Stamp stamp) {
-        if (stamp instanceof AbstractObjectStamp && stamp.isLegal()) {
-            return ((AbstractObjectStamp) stamp).nonNull();
+    public static boolean isPointerNonNull(Stamp stamp) {
+        if (stamp instanceof AbstractPointerStamp && stamp.isLegal()) {
+            return ((AbstractPointerStamp) stamp).nonNull();
         }
         return false;
     }

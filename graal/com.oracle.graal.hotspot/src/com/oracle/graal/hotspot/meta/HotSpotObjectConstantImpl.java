@@ -45,7 +45,7 @@ public final class HotSpotObjectConstantImpl extends AbstractValue implements Ho
 
     public static JavaConstant forObject(Object object, boolean compressed) {
         if (object == null) {
-            return compressed ? HotSpotCompressedNullConstant.COMPRESSED_NULL : JavaConstant.NULL_OBJECT;
+            return compressed ? HotSpotCompressedNullConstant.COMPRESSED_NULL : JavaConstant.NULL_POINTER;
         } else {
             return new HotSpotObjectConstantImpl(object, compressed);
         }
@@ -53,7 +53,7 @@ public final class HotSpotObjectConstantImpl extends AbstractValue implements Ho
 
     public static JavaConstant forStableArray(Object object, int stableDimension, boolean isDefaultStable) {
         if (object == null) {
-            return JavaConstant.NULL_OBJECT;
+            return JavaConstant.NULL_POINTER;
         } else {
             assert object.getClass().isArray();
             return new HotSpotObjectConstantImpl(object, false, stableDimension, isDefaultStable);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -214,7 +214,7 @@ public abstract class GuardingPiReduction extends BaseReduction {
                 /*
                  * GuardingPiNode succeeds if payload null
                  */
-                ValueNode replacement = StampTool.isObjectAlwaysNull(payload) ? payload : reasoner.nonTrivialNull(payload);
+                ValueNode replacement = StampTool.isPointerAlwaysNull(payload) ? payload : reasoner.nonTrivialNull(payload);
                 if (replacement != null) {
                     // replacement == null means !isKnownNull(payload)
                     removeGuardingPiNode(envelope, replacement);
@@ -274,7 +274,7 @@ public abstract class GuardingPiReduction extends BaseReduction {
             return true;
         }
 
-        if (StampTool.isObjectNonNull(payload)) {
+        if (StampTool.isPointerNonNull(payload)) {
             // payload needs no downcasting, it satisfies as-is the GuardingPiNode's condition.
             if (precisionLoss(envelope, payload)) {
                 /*
@@ -334,7 +334,7 @@ public abstract class GuardingPiReduction extends BaseReduction {
             return false;
         }
 
-        if (StampTool.isObjectAlwaysNull(d)) {
+        if (StampTool.isPointerAlwaysNull(d)) {
             removeGuardingPiNode(envelope, d);
             return true;
         }

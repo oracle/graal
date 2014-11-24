@@ -79,7 +79,7 @@ public class TestConstantReflectionProvider extends TypeUniverse {
         assertEquals(Byte.valueOf((byte) 123), snippetReflection.asObject(constantReflection.boxPrimitive(JavaConstant.forByte((byte) 123))));
         assertSame(Boolean.TRUE, snippetReflection.asObject(constantReflection.boxPrimitive(JavaConstant.forBoolean(true))));
 
-        assertNull(constantReflection.boxPrimitive(JavaConstant.NULL_OBJECT));
+        assertNull(constantReflection.boxPrimitive(JavaConstant.NULL_POINTER));
         assertNull(constantReflection.boxPrimitive(snippetReflection.forObject("abc")));
     }
 
@@ -97,7 +97,7 @@ public class TestConstantReflectionProvider extends TypeUniverse {
         assertEquals(JavaConstant.forByte((byte) 123), constantReflection.unboxPrimitive(snippetReflection.forObject(Byte.valueOf((byte) 123))));
         assertSame(JavaConstant.forBoolean(true), constantReflection.unboxPrimitive(snippetReflection.forObject(Boolean.TRUE)));
 
-        assertNull(constantReflection.unboxPrimitive(JavaConstant.NULL_OBJECT));
+        assertNull(constantReflection.unboxPrimitive(JavaConstant.NULL_POINTER));
         assertNull(constantReflection.unboxPrimitive(snippetReflection.forObject("abc")));
     }
 
