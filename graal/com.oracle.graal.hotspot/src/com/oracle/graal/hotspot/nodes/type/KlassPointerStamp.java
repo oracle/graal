@@ -32,14 +32,20 @@ import com.oracle.graal.hotspot.meta.*;
 
 public final class KlassPointerStamp extends MetaspacePointerStamp {
 
+    private static final KlassPointerStamp KLASS = new KlassPointerStamp(false, false);
+
+    private static final KlassPointerStamp KLASS_NON_NULL = new KlassPointerStamp(true, false);
+
+    private static final KlassPointerStamp KLASS_ALWAYS_NULL = new KlassPointerStamp(false, true);
+
     private final CompressEncoding encoding;
 
     public static KlassPointerStamp klass() {
-        return new KlassPointerStamp(false, false, null);
+        return KLASS;
     }
 
     public static KlassPointerStamp klassNonNull() {
-        return new KlassPointerStamp(true, false, null);
+        return KLASS_NON_NULL;
     }
 
     private KlassPointerStamp(boolean nonNull, boolean alwaysNull) {
@@ -71,12 +77,19 @@ public final class KlassPointerStamp extends MetaspacePointerStamp {
             }
         } else {
             if (JavaConstant.NULL_POINTER.equals(c)) {
-                return new KlassPointerStamp(false, true);
+                return KLASS_ALWAYS_NULL;
             }
         }
 
         assert c instanceof HotSpotMetaspaceConstant;
-        return this;
+        if (nonNull()) {
+            return this;
+        }
+        if (isCompressed()) {
+            return new KlassPointerStamp(true, false, encoding);
+        } else {
+            return KLASS_NON_NULL;
+        }
     }
 
     @Override

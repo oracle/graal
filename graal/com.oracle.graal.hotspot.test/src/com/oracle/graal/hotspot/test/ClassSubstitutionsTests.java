@@ -108,11 +108,10 @@ public class ClassSubstitutionsTests extends GraalCompilerTest {
     }
 
     @Test
-    public void testFoldComponenetType() {
+    public void testFoldComponentType() {
         testConstantReturn("foldComponentType", 1);
     }
 
-    @Ignore("Can't constant fold LoadHubNode == 0 yet")
     @Test
     public void testFieldIsArray() {
         testConstantReturn("fieldIsArray", 1);

@@ -93,8 +93,7 @@ public class KlassLayoutHelperNode extends FloatingGuardedNode implements Canoni
             return null;
         } else {
             if (klass.isConstant()) {
-                long base = klass.asJavaConstant().asLong();
-                if (base != 0L) {
+                if (!klass.asConstant().isDefaultForKind()) {
                     Constant constant = stamp().readConstant(tool.getConstantReflection().getMemoryAccessProvider(), klass.asJavaConstant(), runtime().getConfig().klassLayoutHelperOffset);
                     return ConstantNode.forConstant(stamp(), constant, tool.getMetaAccess());
                 }
