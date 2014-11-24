@@ -116,6 +116,9 @@ public abstract class Stamp {
         return null;
     }
 
+    /**
+     * Read a value of this stamp from memory.
+     */
     public abstract Constant readConstant(MemoryAccessProvider provider, Constant base, long displacement);
 
     /**
