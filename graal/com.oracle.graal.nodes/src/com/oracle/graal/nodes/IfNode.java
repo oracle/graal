@@ -483,7 +483,7 @@ public class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerab
 
     private static boolean valuesDistinct(ConstantReflectionProvider constantReflection, ValueNode a, ValueNode b) {
         if (a.isConstant() && b.isConstant()) {
-            Boolean equal = constantReflection.constantEquals(a.asJavaConstant(), b.asJavaConstant());
+            Boolean equal = constantReflection.constantEquals(a.asConstant(), b.asConstant());
             if (equal != null) {
                 return !equal.booleanValue();
             }
@@ -696,8 +696,8 @@ public class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerab
         List<AbstractEndNode> mergePredecessors = merge.cfgPredecessors().snapshot();
         assert phi.valueCount() == merge.forwardEndCount();
 
-        JavaConstant[] xs = constantValues(compare.getX(), merge, false);
-        JavaConstant[] ys = constantValues(compare.getY(), merge, false);
+        Constant[] xs = constantValues(compare.getX(), merge, false);
+        Constant[] ys = constantValues(compare.getY(), merge, false);
         if (xs == null || ys == null) {
             return false;
         }
@@ -889,23 +889,23 @@ public class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerab
      * @return null if {@code node} is neither a {@link ConstantNode} nor a {@link PhiNode} whose
      *         input values are all constants
      */
-    public static JavaConstant[] constantValues(ValueNode node, MergeNode merge, boolean allowNull) {
+    public static Constant[] constantValues(ValueNode node, MergeNode merge, boolean allowNull) {
         if (node.isConstant()) {
             JavaConstant[] result = new JavaConstant[merge.forwardEndCount()];
-            Arrays.fill(result, node.asJavaConstant());
+            Arrays.fill(result, node.asConstant());
             return result;
         }
 
         if (node instanceof PhiNode) {
             PhiNode phi = (PhiNode) node;
             if (phi.merge() == merge && phi instanceof ValuePhiNode && phi.valueCount() == merge.forwardEndCount()) {
-                JavaConstant[] result = new JavaConstant[merge.forwardEndCount()];
+                Constant[] result = new Constant[merge.forwardEndCount()];
                 int i = 0;
                 for (ValueNode n : phi.values()) {
                     if (!allowNull && !n.isConstant()) {
                         return null;
                     }
-                    result[i++] = n.asJavaConstant();
+                    result[i++] = n.asConstant();
                 }
                 return result;
             }

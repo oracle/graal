@@ -55,7 +55,7 @@ public class AheadOfTimeVerificationPhase extends VerifyPhase<PhaseContext> {
     }
 
     private static boolean isNullReference(ConstantNode node) {
-        return isObject(node) && node.asJavaConstant().isNull();
+        return isObject(node) && node.isNullConstant();
     }
 
     private static boolean isDirectMethodHandle(ConstantNode node) {

@@ -55,7 +55,7 @@ public class ClassGetComponentTypeNode extends MacroNode implements Canonicaliza
     public Node canonical(CanonicalizerTool tool) {
         ValueNode javaClass = getJavaClass();
         if (javaClass.isConstant()) {
-            HotSpotObjectConstant c = (HotSpotObjectConstant) javaClass.asJavaConstant();
+            HotSpotObjectConstant c = (HotSpotObjectConstant) javaClass.asConstant();
             JavaConstant componentType = c.getComponentType();
             if (componentType != null) {
                 return ConstantNode.forConstant(componentType, tool.getMetaAccess());

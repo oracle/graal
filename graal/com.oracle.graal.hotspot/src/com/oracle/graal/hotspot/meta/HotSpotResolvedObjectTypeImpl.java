@@ -69,9 +69,9 @@ public final class HotSpotResolvedObjectTypeImpl extends HotSpotResolvedJavaType
      * @param metaspaceKlass a metaspace Klass object boxed in a {@link JavaConstant}
      * @return the {@link HotSpotResolvedObjectTypeImpl} corresponding to {@code klassConstant}
      */
-    public static HotSpotResolvedObjectTypeImpl fromMetaspaceKlass(JavaConstant metaspaceKlass) {
-        assert metaspaceKlass.getKind() == Kind.Long;
-        return fromMetaspaceKlass(metaspaceKlass.asLong());
+    public static ResolvedJavaType fromMetaspaceKlass(Constant metaspaceKlass) {
+        HotSpotMetaspaceConstant klass = (HotSpotMetaspaceConstant) metaspaceKlass;
+        return klass.asResolvedJavaType();
     }
 
     /**
@@ -93,7 +93,7 @@ public final class HotSpotResolvedObjectTypeImpl extends HotSpotResolvedJavaType
      * <p>
      * <b>NOTE</b>: Creating an instance of this class does not install the mirror for the
      * {@link Class} type. Use {@link #fromObjectClass(Class)},
-     * {@link #fromMetaspaceKlass(JavaConstant)} or {@link #fromMetaspaceKlass(long)} instead.
+     * {@link #fromMetaspaceKlass(Constant)} or {@link #fromMetaspaceKlass(long)} instead.
      * </p>
      *
      * @param javaClass the Class to create the mirror for

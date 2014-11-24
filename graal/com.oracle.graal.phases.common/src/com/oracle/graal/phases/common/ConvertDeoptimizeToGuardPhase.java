@@ -75,11 +75,11 @@ public class ConvertDeoptimizeToGuardPhase extends Phase {
                     CompareNode compare = (CompareNode) fixedGuard.condition();
                     List<AbstractEndNode> mergePredecessors = merge.cfgPredecessors().snapshot();
 
-                    JavaConstant[] xs = IfNode.constantValues(compare.getX(), merge, true);
+                    Constant[] xs = IfNode.constantValues(compare.getX(), merge, true);
                     if (xs == null) {
                         continue;
                     }
-                    JavaConstant[] ys = IfNode.constantValues(compare.getY(), merge, true);
+                    Constant[] ys = IfNode.constantValues(compare.getY(), merge, true);
                     if (ys == null) {
                         continue;
                     }
@@ -94,7 +94,7 @@ public class ConvertDeoptimizeToGuardPhase extends Phase {
                         if (ys[i] == null) {
                             continue;
                         }
-                        if (xs[i].getKind() != Kind.Object && ys[i].getKind() != Kind.Object &&
+                        if (xs[i] instanceof PrimitiveConstant && ys[i] instanceof PrimitiveConstant &&
                                         compare.condition().foldCondition(xs[i], ys[i], null, compare.unorderedIsTrue()) == fixedGuard.isNegated()) {
                             visitDeoptBegin(BeginNode.prevBegin(mergePredecessor), fixedGuard.getAction(), fixedGuard.getReason(), graph);
                         }

@@ -144,7 +144,7 @@ public class HotSpotConstantReflectionProvider implements ConstantReflectionProv
     }
 
     @Override
-    public ResolvedJavaType asJavaType(JavaConstant constant) {
+    public ResolvedJavaType asJavaType(Constant constant) {
         if (constant instanceof HotSpotObjectConstant) {
             Object obj = ((HotSpotObjectConstantImpl) constant).object();
             if (obj instanceof Class) {

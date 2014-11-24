@@ -56,7 +56,7 @@ public class VerifyUsageWithEquals extends VerifyPhase<PhaseContext> {
     }
 
     private static boolean isNullConstant(ValueNode node) {
-        return node.isConstant() && node.asJavaConstant().isNull();
+        return node.isConstant() && node.isNullConstant();
     }
 
     private boolean checkUsage(ValueNode x, ValueNode y, MetaAccessProvider metaAccess) {

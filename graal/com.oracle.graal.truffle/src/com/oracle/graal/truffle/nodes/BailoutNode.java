@@ -54,7 +54,7 @@ public class BailoutNode extends MacroNode implements Canonicalizable {
     @Override
     public Node canonical(CanonicalizerTool tool) {
         if (getMessage().isConstant()) {
-            throw new BailoutException(getMessage().asJavaConstant().toValueString());
+            throw new BailoutException(getMessage().asConstant().toValueString());
         }
         return this;
     }

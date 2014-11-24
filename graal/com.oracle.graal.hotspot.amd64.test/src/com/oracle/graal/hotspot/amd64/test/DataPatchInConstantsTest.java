@@ -172,7 +172,7 @@ public class DataPatchInConstantsTest extends GraalCompilerTest {
             LIRGeneratorTool gen = generator.getLIRGeneratorTool();
             Variable ret = gen.newVariable(gen.getLIRKind(stamp()));
 
-            gen.append(new LoadThroughPatchOp(input.asJavaConstant(), stamp() instanceof NarrowOopStamp, ret));
+            gen.append(new LoadThroughPatchOp(input.asConstant(), stamp() instanceof NarrowOopStamp, ret));
             generator.setResult(this, ret);
         }
 

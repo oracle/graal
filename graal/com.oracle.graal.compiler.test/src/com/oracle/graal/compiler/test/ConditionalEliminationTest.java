@@ -97,7 +97,7 @@ public class ConditionalEliminationTest extends GraalCompilerTest {
         new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
         canonicalizer.apply(graph, context);
         new FloatingReadPhase().apply(graph);
-        new ConditionalEliminationPhase(getMetaAccess()).apply(graph, context);
+        new ConditionalEliminationPhase().apply(graph, context);
         canonicalizer.apply(graph, context);
 
         assertDeepEquals(1, graph.getNodes().filter(GuardNode.class).count());
@@ -120,7 +120,7 @@ public class ConditionalEliminationTest extends GraalCompilerTest {
 
         new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
         canonicalizer.apply(graph, context);
-        new ConditionalEliminationPhase(getMetaAccess()).apply(graph, context);
+        new ConditionalEliminationPhase().apply(graph, context);
         canonicalizer.apply(graph, context);
 
         assertDeepEquals(0, graph.getNodes().filter(GuardNode.class).count());

@@ -130,7 +130,7 @@ public interface ConstantReflectionProvider extends Remote {
      * as a class by the VM) encapsulated in the given constant. Returns {@code null} if the
      * constant does not encapsulate a class, or if the type is not available at this point.
      */
-    ResolvedJavaType asJavaType(JavaConstant constant);
+    ResolvedJavaType asJavaType(Constant constant);
 
     /**
      * Gets access to the internals of {@link MethodHandle}.

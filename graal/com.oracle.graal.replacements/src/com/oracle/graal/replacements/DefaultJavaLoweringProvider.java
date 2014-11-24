@@ -402,7 +402,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                         ValueNode value = commit.getValues().get(valuePos);
                         assert value instanceof VirtualObjectNode;
                         ValueNode allocValue = allocations[commit.getVirtualObjects().indexOf(value)];
-                        if (!(allocValue.isConstant() && allocValue.asJavaConstant().isDefaultForKind())) {
+                        if (!(allocValue.isConstant() && allocValue.asConstant().isDefaultForKind())) {
                             assert virtual.entryKind(i) == Kind.Object && allocValue.getKind() == Kind.Object;
                             LocationNode location;
                             BarrierType barrierType;

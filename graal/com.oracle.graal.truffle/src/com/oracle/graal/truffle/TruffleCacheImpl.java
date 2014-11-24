@@ -177,7 +177,7 @@ public class TruffleCacheImpl implements TruffleCache {
                 partialEscapePhase.apply(graph, phaseContext);
 
                 // Conditional elimination.
-                ConditionalEliminationPhase conditionalEliminationPhase = new ConditionalEliminationPhase(phaseContext.getMetaAccess());
+                ConditionalEliminationPhase conditionalEliminationPhase = new ConditionalEliminationPhase();
                 conditionalEliminationPhase.apply(graph);
 
                 // Canonicalize / constant propagate.

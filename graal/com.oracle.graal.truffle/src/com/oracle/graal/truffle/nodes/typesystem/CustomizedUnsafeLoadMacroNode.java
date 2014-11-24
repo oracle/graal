@@ -64,7 +64,7 @@ public class CustomizedUnsafeLoadMacroNode extends NeverPartOfCompilationNode im
             ValueNode offsetArgument = arguments.get(OFFSET_ARGUMENT_INDEX);
             ValueNode conditionArgument = arguments.get(CONDITION_ARGUMENT_INDEX);
             LocationIdentity locationIdentity;
-            if (locationArgument.asJavaConstant().isNull()) {
+            if (locationArgument.isNullConstant()) {
                 locationIdentity = LocationIdentity.ANY_LOCATION;
             } else {
                 locationIdentity = ObjectLocationIdentity.create(locationArgument.asJavaConstant());

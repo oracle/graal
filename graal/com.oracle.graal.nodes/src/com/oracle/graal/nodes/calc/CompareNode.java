@@ -64,8 +64,8 @@ public abstract class CompareNode extends BinaryOpLogicNode {
     public abstract boolean unorderedIsTrue();
 
     private ValueNode optimizeConditional(Constant constant, ConditionalNode conditionalNode, ConstantReflectionProvider constantReflection, Condition cond) {
-        JavaConstant trueConstant = conditionalNode.trueValue().asJavaConstant();
-        JavaConstant falseConstant = conditionalNode.falseValue().asJavaConstant();
+        Constant trueConstant = conditionalNode.trueValue().asConstant();
+        Constant falseConstant = conditionalNode.falseValue().asConstant();
 
         if (falseConstant != null && trueConstant != null && constantReflection != null) {
             boolean trueResult = cond.foldCondition(trueConstant, constant, constantReflection, unorderedIsTrue());

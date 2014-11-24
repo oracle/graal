@@ -61,7 +61,7 @@ public class DeferredPiNode extends FloatingNode implements Canonicalizable {
     @Override
     public Node canonical(CanonicalizerTool tool) {
         if (type.isConstant()) {
-            ResolvedJavaType javaType = tool.getConstantReflection().asJavaType(type.asJavaConstant());
+            ResolvedJavaType javaType = tool.getConstantReflection().asJavaType(type.asConstant());
             ObjectStamp objectStamp = (ObjectStamp) stamp();
             return PiNode.create(object, javaType, objectStamp.isExactType(), objectStamp.nonNull());
         }

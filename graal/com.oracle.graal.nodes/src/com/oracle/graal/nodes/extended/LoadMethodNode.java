@@ -81,7 +81,7 @@ public class LoadMethodNode extends FixedWithNextNode implements Lowerable, Cano
             }
         }
         if (hub.isConstant()) {
-            return resolveExactMethod(tool, tool.getConstantReflection().asJavaType(hub.asJavaConstant()));
+            return resolveExactMethod(tool, tool.getConstantReflection().asJavaType(hub.asConstant()));
         }
 
         return this;

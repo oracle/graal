@@ -294,9 +294,9 @@ public class PartialEvaluator {
             for (ParameterNode param : graphCopy.getNodes(ParameterNode.class).snapshot()) {
                 ValueNode arg = arguments.get(param.index());
                 if (arg.isConstant()) {
-                    JavaConstant constant = arg.asJavaConstant();
+                    Constant constant = arg.asConstant();
                     param.usages().snapshotTo(modifiedNodes);
-                    param.replaceAndDelete(ConstantNode.forConstant(constant, phaseContext.getMetaAccess(), graphCopy));
+                    param.replaceAndDelete(ConstantNode.forConstant(arg.stamp(), constant, phaseContext.getMetaAccess(), graphCopy));
                 } else {
                     ValueNode length = GraphUtil.arrayLength(arg);
                     if (length != null && length.isConstant()) {

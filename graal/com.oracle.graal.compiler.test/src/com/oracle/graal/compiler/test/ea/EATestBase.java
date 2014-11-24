@@ -139,7 +139,7 @@ public class EATestBase extends GraalCompilerTest {
         if (expectedConstantResult != null) {
             for (ReturnNode returnNode : returnNodes) {
                 Assert.assertTrue(returnNode.result().toString(), returnNode.result().isConstant());
-                Assert.assertEquals(expectedConstantResult, returnNode.result().asJavaConstant());
+                Assert.assertEquals(expectedConstantResult, returnNode.result().asConstant());
             }
         }
         int newInstanceCount = graph.getNodes().filter(NewInstanceNode.class).count() + graph.getNodes().filter(NewArrayNode.class).count() +

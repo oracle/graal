@@ -62,7 +62,7 @@ public class ClassIsInstanceNode extends MacroNode implements Canonicalizable {
         if (javaClass.isConstant()) {
             ValueNode object = getObject();
             ConstantReflectionProvider constantReflection = tool.getConstantReflection();
-            ResolvedJavaType type = constantReflection.asJavaType(javaClass.asJavaConstant());
+            ResolvedJavaType type = constantReflection.asJavaType(javaClass.asConstant());
             if (type != null) {
                 if (type.isPrimitive()) {
                     return ConstantNode.forBoolean(false);

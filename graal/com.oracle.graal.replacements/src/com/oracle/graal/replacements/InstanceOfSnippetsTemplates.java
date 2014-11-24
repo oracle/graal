@@ -139,7 +139,7 @@ public abstract class InstanceOfSnippetsTemplates extends AbstractTemplates {
             assert isInitialized();
             if (result.isConstant()) {
                 assert testValue.isConstant();
-                return LogicConstantNode.forBoolean(result.asJavaConstant().equals(testValue.asJavaConstant()), result.graph());
+                return LogicConstantNode.forBoolean(result.asConstant().equals(testValue.asConstant()), result.graph());
             }
             if (condition == null || condition.getY() != testValue) {
                 // Re-use previously generated condition if the trueValue for the test is the same

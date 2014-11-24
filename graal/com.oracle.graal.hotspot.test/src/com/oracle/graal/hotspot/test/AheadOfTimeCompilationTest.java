@@ -95,7 +95,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         NodeIterable<ConstantNode> filter = getConstantNodes(result);
         assertDeepEquals(1, filter.count());
         HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) getMetaAccess().lookupJavaType(AheadOfTimeCompilationTest.class);
-        assertDeepEquals(type.klass(), filter.first().asJavaConstant());
+        assertDeepEquals(type.klass(), filter.first().asConstant());
 
         assertDeepEquals(1, result.getNodes(FloatingReadNode.class).count());
         assertDeepEquals(0, result.getNodes().filter(ReadNode.class).count());
@@ -107,7 +107,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
 
         NodeIterable<ConstantNode> filter = getConstantNodes(result);
         assertDeepEquals(1, filter.count());
-        HotSpotObjectConstantImpl c = (HotSpotObjectConstantImpl) filter.first().asJavaConstant();
+        HotSpotObjectConstantImpl c = (HotSpotObjectConstantImpl) filter.first().asConstant();
         Assert.assertEquals(Class.class, c.getObjectClass());
         Assert.assertTrue(c.isEqualTo(AheadOfTimeCompilationTest.class));
 
@@ -136,7 +136,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         StructuredGraph result = compile("getPrimitiveClassObject", false);
         NodeIterable<ConstantNode> filter = getConstantNodes(result);
         assertDeepEquals(1, filter.count());
-        HotSpotObjectConstantImpl c = (HotSpotObjectConstantImpl) filter.first().asJavaConstant();
+        HotSpotObjectConstantImpl c = (HotSpotObjectConstantImpl) filter.first().asConstant();
         Assert.assertEquals(Class.class, c.getObjectClass());
         Assert.assertTrue(c.isEqualTo(Integer.TYPE));
 
@@ -164,7 +164,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
 
         NodeIterable<ConstantNode> filter = getConstantNodes(result);
         assertDeepEquals(1, filter.count());
-        HotSpotObjectConstantImpl c = (HotSpotObjectConstantImpl) filter.first().asJavaConstant();
+        HotSpotObjectConstantImpl c = (HotSpotObjectConstantImpl) filter.first().asConstant();
         Assert.assertEquals(String.class, c.getObjectClass());
         Assert.assertTrue(c.isEqualTo("test string"));
 
@@ -186,7 +186,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         assertDeepEquals(1, getConstantNodes(result).count());
         ConstantNode constant = getConstantNodes(result).first();
         assertDeepEquals(Kind.Long, constant.getKind());
-        assertDeepEquals(((HotSpotResolvedObjectType) getMetaAccess().lookupJavaType(Boolean.class)).klass(), constant.asJavaConstant());
+        assertDeepEquals(((HotSpotResolvedObjectType) getMetaAccess().lookupJavaType(Boolean.class)).klass(), constant.asConstant());
     }
 
     @Test
@@ -198,7 +198,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         ConstantNode constant = getConstantNodes(result).first();
         assertDeepEquals(Kind.Object, constant.getKind());
 
-        HotSpotObjectConstantImpl c = (HotSpotObjectConstantImpl) constant.asJavaConstant();
+        HotSpotObjectConstantImpl c = (HotSpotObjectConstantImpl) constant.asConstant();
         Assert.assertTrue(c.isEqualTo(Boolean.TRUE));
     }
 

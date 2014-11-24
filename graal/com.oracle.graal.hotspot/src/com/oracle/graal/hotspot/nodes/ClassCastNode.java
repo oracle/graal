@@ -65,7 +65,7 @@ public class ClassCastNode extends MacroStateSplitNode implements Canonicalizabl
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forJavaClass, ValueNode forObject) {
         if (forJavaClass.isConstant()) {
-            ResolvedJavaType type = tool.getConstantReflection().asJavaType(forJavaClass.asJavaConstant());
+            ResolvedJavaType type = tool.getConstantReflection().asJavaType(forJavaClass.asConstant());
             if (type != null && !type.isPrimitive()) {
                 return CheckCastNode.create(type, forObject, null, false);
             }

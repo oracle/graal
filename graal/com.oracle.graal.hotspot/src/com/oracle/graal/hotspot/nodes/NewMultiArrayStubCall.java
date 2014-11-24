@@ -60,7 +60,7 @@ public class NewMultiArrayStubCall extends ForeignCallNode {
     @Override
     public boolean inferStamp() {
         if (stamp() == defaultStamp && hub.isConstant()) {
-            updateStamp(StampFactory.exactNonNull(HotSpotResolvedObjectTypeImpl.fromMetaspaceKlass(hub.asJavaConstant())));
+            updateStamp(StampFactory.exactNonNull(HotSpotResolvedObjectTypeImpl.fromMetaspaceKlass(hub.asConstant())));
             return true;
         }
         return false;

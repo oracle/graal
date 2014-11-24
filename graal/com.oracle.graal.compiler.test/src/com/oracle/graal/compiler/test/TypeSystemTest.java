@@ -203,7 +203,7 @@ public class TypeSystemTest extends GraalCompilerTest {
          * tail-duplication gets activated thus resulting in a graph with more nodes than the
          * reference graph.
          */
-        new ConditionalEliminationPhase(getMetaAccess()).apply(graph, new PhaseContext(getProviders(), assumptions));
+        new ConditionalEliminationPhase().apply(graph, new PhaseContext(getProviders(), assumptions));
         new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders(), assumptions));
         // a second canonicalizer is needed to process nested MaterializeNodes
         new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders(), assumptions));

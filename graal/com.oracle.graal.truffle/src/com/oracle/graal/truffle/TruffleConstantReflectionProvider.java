@@ -100,7 +100,7 @@ public class TruffleConstantReflectionProvider implements ConstantReflectionProv
         return graalConstantReflection.forString(value);
     }
 
-    public ResolvedJavaType asJavaType(JavaConstant constant) {
+    public ResolvedJavaType asJavaType(Constant constant) {
         return graalConstantReflection.asJavaType(constant);
     }
 

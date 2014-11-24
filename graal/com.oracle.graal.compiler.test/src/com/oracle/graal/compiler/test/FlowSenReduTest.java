@@ -222,7 +222,7 @@ public class FlowSenReduTest extends GraalCompilerTest {
         ConstantNode c2 = (ConstantNode) iter.next().result();
 
         assertDeepEquals(c1, c2);
-        Assert.assertTrue(c1.asJavaConstant().isNull());
+        Assert.assertTrue(c1.isNullConstant());
     }
 
     /*

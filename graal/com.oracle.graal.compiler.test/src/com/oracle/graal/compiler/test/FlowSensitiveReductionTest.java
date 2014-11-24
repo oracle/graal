@@ -148,7 +148,7 @@ public class FlowSensitiveReductionTest extends GraalCompilerTest {
         new FlowSensitiveReductionPhase(getMetaAccess()).apply(graph, context);
         new CanonicalizerPhase(true).apply(graph, context);
         for (ConstantNode constant : getConstantNodes(graph)) {
-            assertTrue("unexpected constant: " + constant, constant.asJavaConstant().isNull() || constant.asJavaConstant().asInt() > 0);
+            assertTrue("unexpected constant: " + constant, constant.isNullConstant() || constant.asJavaConstant().asInt() > 0);
         }
     }
 
@@ -184,7 +184,7 @@ public class FlowSensitiveReductionTest extends GraalCompilerTest {
         new FlowSensitiveReductionPhase(getMetaAccess()).apply(graph, new PhaseContext(getProviders(), null));
         new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders(), null));
         for (ConstantNode constant : getConstantNodes(graph)) {
-            assertTrue("unexpected constant: " + constant, constant.asJavaConstant().isNull() || constant.asJavaConstant().asInt() > 0);
+            assertTrue("unexpected constant: " + constant, constant.isNullConstant() || constant.asJavaConstant().asInt() > 0);
         }
     }
 

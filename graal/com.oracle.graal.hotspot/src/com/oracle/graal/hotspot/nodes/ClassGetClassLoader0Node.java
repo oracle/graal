@@ -56,7 +56,7 @@ public class ClassGetClassLoader0Node extends MacroStateSplitNode implements Can
     public Node canonical(CanonicalizerTool tool) {
         ValueNode javaClass = getJavaClass();
         if (javaClass.isConstant()) {
-            HotSpotObjectConstant c = (HotSpotObjectConstant) javaClass.asJavaConstant();
+            HotSpotObjectConstant c = (HotSpotObjectConstant) javaClass.asConstant();
             JavaConstant classLoader = c.getClassLoader();
             if (classLoader != null) {
                 return ConstantNode.forConstant(classLoader, tool.getMetaAccess());

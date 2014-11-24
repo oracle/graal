@@ -435,7 +435,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                             Kind valueKind = value.getKind();
                             if (valueKind != twoSlotKinds[valueIndex]) {
                                 ValueNode nextValue = objStates[i].getEntry(valueIndex + 1);
-                                if (value.isConstant() && value.asJavaConstant().equals(JavaConstant.INT_0) && nextValue.isConstant() && nextValue.asJavaConstant().equals(JavaConstant.INT_0)) {
+                                if (value.isConstant() && value.asConstant().equals(JavaConstant.INT_0) && nextValue.isConstant() && nextValue.asConstant().equals(JavaConstant.INT_0)) {
                                     // rewrite to a zero constant of the larger kind
                                     objStates[i].setEntry(valueIndex, ConstantNode.defaultForKind(twoSlotKinds[valueIndex], merge.graph()));
                                     objStates[i].setEntry(valueIndex + 1, ConstantNode.forConstant(JavaConstant.forIllegal(), tool.getMetaAccessProvider(), merge.graph()));

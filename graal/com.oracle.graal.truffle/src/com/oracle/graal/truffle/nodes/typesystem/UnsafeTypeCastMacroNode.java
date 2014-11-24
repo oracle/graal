@@ -61,7 +61,7 @@ public class UnsafeTypeCastMacroNode extends NeverPartOfCompilationNode implemen
         if (classArgument.isConstant() && nonNullArgument.isConstant()) {
             ValueNode objectArgument = arguments.get(OBJECT_ARGUMENT_INDEX);
             ValueNode conditionArgument = arguments.get(CONDITION_ARGUMENT_INDEX);
-            ResolvedJavaType lookupJavaType = tool.getConstantReflection().asJavaType(classArgument.asJavaConstant());
+            ResolvedJavaType lookupJavaType = tool.getConstantReflection().asJavaType(classArgument.asConstant());
             tool.addToWorkList(usages());
             if (lookupJavaType == null) {
                 replaceAtUsages(objectArgument);

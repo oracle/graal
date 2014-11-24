@@ -169,22 +169,23 @@ public class NodeIntrinsificationPhase extends Phase {
                     return null;
                 }
                 ConstantNode constantNode = (ConstantNode) argument;
-                JavaConstant constant = constantNode.asJavaConstant();
+                Constant constant = constantNode.asConstant();
                 ResolvedJavaType type = providers.getConstantReflection().asJavaType(constant);
                 if (type != null) {
                     reflectionCallArguments[i] = snippetReflection.forObject(type);
                     parameterTypes[i] = providers.getMetaAccess().lookupJavaType(ResolvedJavaType.class);
                 } else {
+                    JavaConstant javaConstant = (JavaConstant) constant;
                     if (parameterTypes[i].getKind() == Kind.Boolean) {
-                        reflectionCallArguments[i] = snippetReflection.forObject(Boolean.valueOf(constant.asInt() != 0));
+                        reflectionCallArguments[i] = snippetReflection.forObject(Boolean.valueOf(javaConstant.asInt() != 0));
                     } else if (parameterTypes[i].getKind() == Kind.Byte) {
-                        reflectionCallArguments[i] = snippetReflection.forObject(Byte.valueOf((byte) constant.asInt()));
+                        reflectionCallArguments[i] = snippetReflection.forObject(Byte.valueOf((byte) javaConstant.asInt()));
                     } else if (parameterTypes[i].getKind() == Kind.Short) {
-                        reflectionCallArguments[i] = snippetReflection.forObject(Short.valueOf((short) constant.asInt()));
+                        reflectionCallArguments[i] = snippetReflection.forObject(Short.valueOf((short) javaConstant.asInt()));
                     } else if (parameterTypes[i].getKind() == Kind.Char) {
-                        reflectionCallArguments[i] = snippetReflection.forObject(Character.valueOf((char) constant.asInt()));
+                        reflectionCallArguments[i] = snippetReflection.forObject(Character.valueOf((char) javaConstant.asInt()));
                     } else {
-                        reflectionCallArguments[i] = constant;
+                        reflectionCallArguments[i] = javaConstant;
                     }
                 }
             } else {

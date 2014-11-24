@@ -211,7 +211,7 @@ public class InliningUtil {
             return "the invoke is marked to be not used for inlining";
         }
         ValueNode receiver = callTarget.receiver();
-        if (receiver != null && receiver.isConstant() && receiver.asJavaConstant().isNull()) {
+        if (receiver != null && receiver.isConstant() && receiver.isNullConstant()) {
             return "receiver is null";
         }
         return null;
