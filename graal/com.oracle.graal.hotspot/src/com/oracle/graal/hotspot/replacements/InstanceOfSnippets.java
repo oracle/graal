@@ -161,18 +161,18 @@ public class InstanceOfSnippets implements Snippets {
             return falseValue;
         }
         GuardingNode anchorNode = SnippetAnchorNode.anchor();
-        Pointer objectHub = loadHubIntrinsic(object, anchorNode).asWord();
+        KlassPointer objectHub = loadHubIntrinsic(object, anchorNode);
         // if we get an exact match: succeed immediately
         ExplodeLoopNode.explodeLoop();
         for (int i = 0; i < hints.length; i++) {
-            Pointer hintHub = hints[i].asWord();
+            KlassPointer hintHub = hints[i];
             boolean positive = hintIsPositive[i];
             if (probability(NOT_FREQUENT_PROBABILITY, hintHub.equal(objectHub))) {
                 hintsHit.inc();
                 return positive ? trueValue : falseValue;
             }
         }
-        if (!checkSecondarySubType(hub.asWord(), objectHub)) {
+        if (!checkSecondarySubType(hub.asWord(), objectHub.asWord())) {
             return falseValue;
         }
         return trueValue;
@@ -188,9 +188,9 @@ public class InstanceOfSnippets implements Snippets {
             return falseValue;
         }
         GuardingNode anchorNode = SnippetAnchorNode.anchor();
-        Pointer hub = ClassGetHubNode.readClass(mirror, anchorNode).asWord();
-        Pointer objectHub = loadHubIntrinsic(object, anchorNode).asWord();
-        if (hub.equal(0) || !checkUnknownSubType(hub, objectHub)) {
+        KlassPointer hub = ClassGetHubNode.readClass(mirror, anchorNode);
+        KlassPointer objectHub = loadHubIntrinsic(object, anchorNode);
+        if (hub.isNull() || !checkUnknownSubType(hub.asWord(), objectHub.asWord())) {
             return falseValue;
         }
         return trueValue;

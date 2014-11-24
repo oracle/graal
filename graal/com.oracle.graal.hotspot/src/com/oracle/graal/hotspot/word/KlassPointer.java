@@ -29,16 +29,13 @@ import com.oracle.graal.word.*;
 /**
  * Marker type for a metaspace pointer to a type.
  */
-public abstract class KlassPointer {
+public abstract class KlassPointer extends MetaspacePointer {
 
     @HotSpotOperation(opcode = POINTER_EQ)
     public abstract boolean equal(KlassPointer other);
 
     @HotSpotOperation(opcode = POINTER_NE)
     public abstract boolean notEqual(KlassPointer other);
-
-    @HotSpotOperation(opcode = FROM_POINTER)
-    public abstract Pointer asWord();
 
     @HotSpotOperation(opcode = TO_KLASS_POINTER)
     public static native KlassPointer fromWord(Pointer pointer);

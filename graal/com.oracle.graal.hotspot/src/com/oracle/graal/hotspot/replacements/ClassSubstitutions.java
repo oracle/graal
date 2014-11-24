@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -57,11 +57,11 @@ public class ClassSubstitutions {
     @MacroSubstitution(macro = ClassIsInterfaceNode.class, isStatic = false)
     @MethodSubstitution(isStatic = false, forced = true)
     public static boolean isInterface(final Class<?> thisObj) {
-        Pointer klass = ClassGetHubNode.readClass(thisObj).asWord();
-        if (klass.equal(0)) {
+        KlassPointer klass = ClassGetHubNode.readClass(thisObj);
+        if (klass.isNull()) {
             return false;
         } else {
-            int accessFlags = klass.readInt(klassAccessFlagsOffset(), KLASS_ACCESS_FLAGS_LOCATION);
+            int accessFlags = klass.asWord().readInt(klassAccessFlagsOffset(), KLASS_ACCESS_FLAGS_LOCATION);
             return (accessFlags & Modifier.INTERFACE) != 0;
         }
     }
@@ -70,12 +70,11 @@ public class ClassSubstitutions {
     @MacroSubstitution(macro = ClassIsArrayNode.class, isStatic = false)
     @MethodSubstitution(isStatic = false, forced = true)
     public static boolean isArray(final Class<?> thisObj) {
-        KlassPointer klassPtr = ClassGetHubNode.readClass(thisObj);
-        Pointer klass = klassPtr.asWord();
-        if (klass.equal(0)) {
+        KlassPointer klass = ClassGetHubNode.readClass(thisObj);
+        if (klass.isNull()) {
             return false;
         } else {
-            return klassIsArray(klassPtr);
+            return klassIsArray(klass);
         }
     }
 
@@ -83,8 +82,8 @@ public class ClassSubstitutions {
     @MacroSubstitution(macro = ClassIsPrimitiveNode.class, isStatic = false)
     @MethodSubstitution(isStatic = false, forced = true)
     public static boolean isPrimitive(final Class<?> thisObj) {
-        Pointer klass = ClassGetHubNode.readClass(thisObj).asWord();
-        return klass.equal(0);
+        KlassPointer klass = ClassGetHubNode.readClass(thisObj);
+        return klass.isNull();
     }
 
     @MacroSubstitution(macro = ClassGetClassLoader0Node.class, isStatic = false)
@@ -94,8 +93,8 @@ public class ClassSubstitutions {
     @MethodSubstitution(isStatic = false)
     public static Class<?> getSuperclass(final Class<?> thisObj) {
         KlassPointer klassPtr = ClassGetHubNode.readClass(thisObj);
-        Pointer klass = klassPtr.asWord();
-        if (klass.notEqual(0)) {
+        if (!klassPtr.isNull()) {
+            Pointer klass = klassPtr.asWord();
             int accessFlags = klass.readInt(klassAccessFlagsOffset(), KLASS_ACCESS_FLAGS_LOCATION);
             if ((accessFlags & Modifier.INTERFACE) == 0) {
                 if (klassIsArray(klassPtr)) {
@@ -116,11 +115,10 @@ public class ClassSubstitutions {
     @MacroSubstitution(macro = ClassGetComponentTypeNode.class, isStatic = false)
     @MethodSubstitution(isStatic = false)
     public static Class<?> getComponentType(final Class<?> thisObj) {
-        KlassPointer klassPtr = ClassGetHubNode.readClass(thisObj);
-        Pointer klass = klassPtr.asWord();
-        if (klass.notEqual(0)) {
-            if (klassIsArray(klassPtr)) {
-                return piCastExactNonNull(klass.readObject(arrayKlassComponentMirrorOffset(), ARRAY_KLASS_COMPONENT_MIRROR), Class.class);
+        KlassPointer klass = ClassGetHubNode.readClass(thisObj);
+        if (!klass.isNull()) {
+            if (klassIsArray(klass)) {
+                return piCastExactNonNull(klass.asWord().readObject(arrayKlassComponentMirrorOffset(), ARRAY_KLASS_COMPONENT_MIRROR), Class.class);
             }
         }
         return null;

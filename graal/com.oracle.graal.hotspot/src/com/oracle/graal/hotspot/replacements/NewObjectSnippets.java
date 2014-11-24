@@ -154,8 +154,8 @@ public class NewObjectSnippets implements Snippets {
     @Snippet
     public static Object allocateInstanceDynamic(Class<?> type, @ConstantParameter boolean fillContents, @ConstantParameter Register threadRegister, @ConstantParameter String typeContext) {
         KlassPointer hubPtr = ClassGetHubNode.readClass(type);
-        Pointer hub = hubPtr.asWord();
-        if (probability(FAST_PATH_PROBABILITY, !hub.equal(Word.zero()))) {
+        if (probability(FAST_PATH_PROBABILITY, !hubPtr.isNull())) {
+            Pointer hub = hubPtr.asWord();
             if (probability(FAST_PATH_PROBABILITY, isInstanceKlassFullyInitialized(hub))) {
                 int layoutHelper = readLayoutHelper(hubPtr);
                 /*

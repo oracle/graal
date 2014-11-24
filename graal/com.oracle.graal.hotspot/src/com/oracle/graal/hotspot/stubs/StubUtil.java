@@ -36,6 +36,7 @@ import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.nodes.*;
+import com.oracle.graal.hotspot.word.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.word.*;
@@ -229,8 +230,8 @@ public class StubUtil {
                     fatal("oop not in heap: %p", oop.rawValue());
                 }
 
-                Pointer klass = loadHubIntrinsic(object, anchorNode).asWord();
-                if (klass.equal(Word.zero())) {
+                KlassPointer klass = loadHubIntrinsic(object, anchorNode);
+                if (klass.isNull()) {
                     fatal("klass for oop %p is null", oop.rawValue());
                 }
             }

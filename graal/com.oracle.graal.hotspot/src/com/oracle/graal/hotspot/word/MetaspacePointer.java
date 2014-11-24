@@ -22,20 +22,18 @@
  */
 package com.oracle.graal.hotspot.word;
 
-import java.lang.annotation.*;
+import static com.oracle.graal.hotspot.word.HotSpotOperation.HotspotOpcode.*;
 
-@Retention(RetentionPolicy.RUNTIME)
-@Target(ElementType.METHOD)
-public @interface HotSpotOperation {
+import com.oracle.graal.word.*;
 
-    public enum HotspotOpcode {
-        FROM_POINTER,
-        TO_KLASS_POINTER,
-        TO_METHOD_POINTER,
-        POINTER_EQ,
-        POINTER_NE,
-        IS_NULL
-    }
+/**
+ * Marker type for a metaspace pointer.
+ */
+public abstract class MetaspacePointer {
 
-    HotspotOpcode opcode();
+    @HotSpotOperation(opcode = IS_NULL)
+    public abstract boolean isNull();
+
+    @HotSpotOperation(opcode = FROM_POINTER)
+    public abstract Pointer asWord();
 }

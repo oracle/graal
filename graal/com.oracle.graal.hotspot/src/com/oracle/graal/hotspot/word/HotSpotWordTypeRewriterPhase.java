@@ -100,6 +100,11 @@ public class HotSpotWordTypeRewriterPhase extends WordTypeRewriterPhase {
                     replace(invoke, pointerComparisonOp(graph, operation.opcode(), arguments.get(0), arguments.get(1)));
                     break;
 
+                case IS_NULL:
+                    assert arguments.size() == 1;
+                    replace(invoke, pointerIsNullOp(graph, arguments.get(0)));
+                    break;
+
                 case FROM_POINTER:
                     assert arguments.size() == 1;
                     replace(invoke, graph.unique(PointerCastNode.create(StampFactory.forKind(wordKind), arguments.get(0))));
@@ -129,5 +134,12 @@ public class HotSpotWordTypeRewriterPhase extends WordTypeRewriterPhase {
         ValueNode eqValue = ConstantNode.forBoolean(opcode == POINTER_EQ, graph);
         ValueNode neValue = ConstantNode.forBoolean(opcode == POINTER_NE, graph);
         return graph.unique(ConditionalNode.create(comparison, eqValue, neValue));
+    }
+
+    private static ValueNode pointerIsNullOp(StructuredGraph graph, ValueNode pointer) {
+        assert pointer.stamp() instanceof MetaspacePointerStamp;
+
+        IsNullNode isNull = graph.unique(IsNullNode.create(pointer));
+        return graph.unique(ConditionalNode.create(isNull, ConstantNode.forBoolean(true, graph), ConstantNode.forBoolean(false, graph)));
     }
 }
