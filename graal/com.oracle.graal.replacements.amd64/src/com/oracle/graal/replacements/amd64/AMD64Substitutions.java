@@ -27,6 +27,7 @@ import static com.oracle.graal.compiler.common.GraalOptions.*;
 
 import java.util.*;
 
+import com.oracle.graal.amd64.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
@@ -41,7 +42,7 @@ import com.oracle.graal.replacements.*;
 public class AMD64Substitutions implements ReplacementsProvider {
 
     public void registerReplacements(MetaAccessProvider metaAccess, LoweringProvider lowerer, SnippetReflectionProvider snippetReflection, Replacements replacements, TargetDescription target) {
-        if (Intrinsify.getValue()) {
+        if (Intrinsify.getValue() && target.arch instanceof AMD64) {
             replacements.registerSubstitutions(Arrays.class, ArraysSubstitutions.class);
             replacements.registerSubstitutions(String.class, StringSubstitutions.class);
             replacements.registerSubstitutions(Integer.class, AMD64IntegerSubstitutions.class);
