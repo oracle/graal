@@ -274,6 +274,8 @@ public final class GraalOptions {
     public static final OptionValue<Boolean> MatchExpressions = new OptionValue<>(true);
     @Option(help = "Constant fold final fields with default values.")
     public static final OptionValue<Boolean> TrustFinalDefaultFields = new OptionValue<>(true);
+    @Option(help = "Mark well-known stable fields as such.")
+    public static final OptionValue<Boolean> ImplicitStableValues = new OptionValue<>(true);
 
 
     /**

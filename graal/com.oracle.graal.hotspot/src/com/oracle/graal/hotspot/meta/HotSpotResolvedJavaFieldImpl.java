@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.hotspot.meta;
 
+import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.hotspot.meta.HotSpotResolvedObjectTypeImpl.*;
 
@@ -143,6 +144,9 @@ public class HotSpotResolvedJavaFieldImpl extends CompilerObject implements HotS
             return true;
         }
         assert getAnnotation(Stable.class) == null;
+        if (ImplicitStableValues.getValue() && isImplicitStableField()) {
+            return true;
+        }
         return false;
     }
 
@@ -164,5 +168,34 @@ public class HotSpotResolvedJavaFieldImpl extends CompilerObject implements HotS
         } catch (NoSuchFieldException e) {
             return null;
         }
+    }
+
+    private boolean isArray() {
+        JavaType fieldType = getType();
+        return fieldType instanceof ResolvedJavaType && ((ResolvedJavaType) fieldType).isArray();
+    }
+
+    private boolean isImplicitStableField() {
+        if (isSynthetic()) {
+            if (isSyntheticImplicitStableField()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean isSyntheticImplicitStableField() {
+        assert this.isSynthetic();
+        if (isStatic() && isArray()) {
+            if (isFinal() && name.equals("$VALUES") || name.equals("ENUM$VALUES")) {
+                // generated int[] field for EnumClass::values()
+                return true;
+            } else if (name.startsWith("$SwitchMap$") || name.startsWith("$SWITCH_TABLE$")) {
+                // javac and ecj generate a static field in an inner class for a switch on an enum
+                // named $SwitchMap$p$k$g$EnumClass and $SWITCH_TABLE$p$k$g$EnumClass, respectively
+                return true;
+            }
+        }
+        return false;
     }
 }
