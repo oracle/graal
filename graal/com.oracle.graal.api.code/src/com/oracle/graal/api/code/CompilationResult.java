@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.api.code;
 
+import static com.oracle.graal.api.meta.MetaUtil.*;
 import static java.util.Collections.*;
 
 import java.io.*;
@@ -56,6 +57,11 @@ public class CompilationResult implements Serializable {
         @Override
         public final int hashCode() {
             throw new UnsupportedOperationException("hashCode");
+        }
+
+        @Override
+        public String toString() {
+            return identityHashCodeString(this);
         }
 
         @Override
@@ -316,6 +322,11 @@ public class CompilationResult implements Serializable {
         }
 
         @Override
+        public String toString() {
+            return identityHashCodeString(this);
+        }
+
+        @Override
         public abstract boolean equals(Object obj);
     }
 
@@ -525,6 +536,11 @@ public class CompilationResult implements Serializable {
     public int hashCode() {
         // CompilationResult instances should not be used as hash map keys
         throw new UnsupportedOperationException("hashCode");
+    }
+
+    @Override
+    public String toString() {
+        return identityHashCodeString(this);
     }
 
     @Override

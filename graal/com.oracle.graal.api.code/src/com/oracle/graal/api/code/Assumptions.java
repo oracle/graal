@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.api.code;
 
+import static com.oracle.graal.api.meta.MetaUtil.*;
+
 import java.io.*;
 import java.lang.invoke.*;
 import java.util.*;
@@ -277,6 +279,11 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
     @Override
     public int hashCode() {
         throw new UnsupportedOperationException("hashCode");
+    }
+
+    @Override
+    public String toString() {
+        return identityHashCodeString(this);
     }
 
     @Override

@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.api.code;
 
+import static com.oracle.graal.api.meta.MetaUtil.*;
+
 import com.oracle.graal.api.meta.*;
 
 /**
@@ -107,6 +109,11 @@ public abstract class TargetDescription {
             // @formatter:on
         }
         return false;
+    }
+
+    @Override
+    public String toString() {
+        return identityHashCodeString(this);
     }
 
     public int getSizeInBytes(PlatformKind kind) {

@@ -326,4 +326,16 @@ public class MetaUtil {
         }
         return indentation + lines.replace(newLine, newLine + indentation);
     }
+
+    /**
+     * Gets a string representation of an object based soley on its class and its
+     * {@linkplain System#identityHashCode(Object) identity hash code}. This avoids and calls to
+     * virtual methods on the object such as {@link Object#hashCode()}.
+     */
+    public static String identityHashCodeString(Object obj) {
+        if (obj == null) {
+            return "null";
+        }
+        return obj.getClass().getName() + "@" + System.identityHashCode(obj);
+    }
 }

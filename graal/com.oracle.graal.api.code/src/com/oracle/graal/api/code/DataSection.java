@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.api.code;
 
+import static com.oracle.graal.api.meta.MetaUtil.*;
+
 import java.io.*;
 import java.nio.*;
 import java.util.*;
@@ -139,6 +141,11 @@ public final class DataSection implements Serializable, Iterable<Data> {
         }
 
         @Override
+        public String toString() {
+            return identityHashCodeString(this);
+        }
+
+        @Override
         public boolean equals(Object obj) {
             assert ref != null;
             if (obj == this) {
@@ -164,6 +171,11 @@ public final class DataSection implements Serializable, Iterable<Data> {
     public int hashCode() {
         // DataSection instances should not be used as hash map keys
         throw new UnsupportedOperationException("hashCode");
+    }
+
+    @Override
+    public String toString() {
+        return identityHashCodeString(this);
     }
 
     @Override
