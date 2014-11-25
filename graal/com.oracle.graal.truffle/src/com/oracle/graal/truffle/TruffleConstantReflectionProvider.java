@@ -60,12 +60,16 @@ public class TruffleConstantReflectionProvider implements ConstantReflectionProv
                             (fieldType.getKind() == Kind.Object && (field.getAnnotation(Child.class) != null || field.getAnnotation(Children.class) != null))) {
                 JavaConstant constant = graalConstantReflection.readFieldValue(field, receiver);
                 assert verifyFieldValue(field, constant);
-                if (constant.isNonNull() && fieldType.getKind() == Kind.Object && fieldType.getComponentType() != null &&
+                if (constant.isNonNull() && fieldType.getKind() == Kind.Object && fieldType instanceof ResolvedJavaType && ((ResolvedJavaType) fieldType).isArray() &&
                                 (field.getAnnotation(CompilationFinal.class) != null || field.getAnnotation(Children.class) != null)) {
                     return graalConstantReflection.readStableFieldValue(field, receiver, true);
                 } else {
                     return graalConstantReflection.readFieldValue(field, receiver);
                 }
+            }
+        } else if (field.isStatic()) {
+            if (field.getAnnotation(CompilationFinal.class) != null) {
+                return graalConstantReflection.readStableFieldValue(field, receiver, true);
             }
         }
         return graalConstantReflection.readConstantFieldValue(field, receiver);
