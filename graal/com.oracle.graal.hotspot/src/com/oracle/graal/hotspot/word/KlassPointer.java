@@ -24,7 +24,10 @@ package com.oracle.graal.hotspot.word;
 
 import static com.oracle.graal.hotspot.word.HotSpotOperation.HotspotOpcode.*;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.word.*;
+import com.oracle.graal.word.Word.Opcode;
+import com.oracle.graal.word.Word.Operation;
 
 /**
  * Marker type for a metaspace pointer to a type.
@@ -39,4 +42,10 @@ public abstract class KlassPointer extends MetaspacePointer {
 
     @HotSpotOperation(opcode = TO_KLASS_POINTER)
     public static native KlassPointer fromWord(Pointer pointer);
+
+    @HotSpotOperation(opcode = READ_KLASS_POINTER)
+    public native KlassPointer readKlassPointer(int secondarySuperCacheOffset, LocationIdentity secondarySuperCacheLocation);
+
+    @Operation(opcode = Opcode.WRITE_POINTER)
+    public native void writeKlassPointer(int secondarySuperCacheOffset, KlassPointer t, LocationIdentity secondarySuperCacheLocation);
 }

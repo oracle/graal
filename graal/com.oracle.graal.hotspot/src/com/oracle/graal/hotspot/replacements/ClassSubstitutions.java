@@ -51,7 +51,7 @@ public class ClassSubstitutions {
             // Class for primitive type
             return Modifier.ABSTRACT | Modifier.FINAL | Modifier.PUBLIC;
         } else {
-            return klass.asWord().readInt(klassModifierFlagsOffset(), KLASS_MODIFIER_FLAGS_LOCATION);
+            return klass.readInt(klassModifierFlagsOffset(), KLASS_MODIFIER_FLAGS_LOCATION);
         }
     }
 
@@ -63,7 +63,7 @@ public class ClassSubstitutions {
         if (klass.isNull()) {
             return false;
         } else {
-            int accessFlags = klass.asWord().readInt(klassAccessFlagsOffset(), KLASS_ACCESS_FLAGS_LOCATION);
+            int accessFlags = klass.readInt(klassAccessFlagsOffset(), KLASS_ACCESS_FLAGS_LOCATION);
             return (accessFlags & Modifier.INTERFACE) != 0;
         }
     }
@@ -94,12 +94,11 @@ public class ClassSubstitutions {
     @MacroSubstitution(macro = ClassGetSuperclassNode.class, isStatic = false)
     @MethodSubstitution(isStatic = false)
     public static Class<?> getSuperclass(final Class<?> thisObj) {
-        KlassPointer klassPtr = ClassGetHubNode.readClass(thisObj);
-        if (!klassPtr.isNull()) {
-            Pointer klass = klassPtr.asWord();
+        KlassPointer klass = ClassGetHubNode.readClass(thisObj);
+        if (!klass.isNull()) {
             int accessFlags = klass.readInt(klassAccessFlagsOffset(), KLASS_ACCESS_FLAGS_LOCATION);
             if ((accessFlags & Modifier.INTERFACE) == 0) {
-                if (klassIsArray(klassPtr)) {
+                if (klassIsArray(klass)) {
                     return Object.class;
                 } else {
                     Word superKlass = klass.readWord(klassSuperKlassOffset(), KLASS_SUPER_KLASS_LOCATION);
@@ -120,7 +119,7 @@ public class ClassSubstitutions {
         KlassPointer klass = ClassGetHubNode.readClass(thisObj);
         if (!klass.isNull()) {
             if (klassIsArray(klass)) {
-                return piCastExactNonNull(klass.asWord().readObject(arrayKlassComponentMirrorOffset(), ARRAY_KLASS_COMPONENT_MIRROR), Class.class);
+                return piCastExactNonNull(klass.readObject(arrayKlassComponentMirrorOffset(), ARRAY_KLASS_COMPONENT_MIRROR), Class.class);
             }
         }
         return null;
@@ -146,7 +145,7 @@ public class ClassSubstitutions {
             // primitive types, only true if equal.
             return thisClass == otherClass;
         }
-        if (!TypeCheckSnippetUtils.checkUnknownSubType(thisHub.asWord(), otherHub.asWord())) {
+        if (!TypeCheckSnippetUtils.checkUnknownSubType(thisHub, otherHub)) {
             return false;
         }
         return true;

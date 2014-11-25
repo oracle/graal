@@ -32,6 +32,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.type.*;
+import com.oracle.graal.hotspot.word.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.word.*;
@@ -43,9 +44,9 @@ import com.oracle.graal.word.*;
  */
 public class TypeCheckSnippetUtils {
 
-    static boolean checkSecondarySubType(Pointer t, Pointer s) {
+    static boolean checkSecondarySubType(KlassPointer t, KlassPointer s) {
         // if (S.cache == T) return true
-        if (s.readWord(secondarySuperCacheOffset(), SECONDARY_SUPER_CACHE_LOCATION).equal(t)) {
+        if (s.readKlassPointer(secondarySuperCacheOffset(), SECONDARY_SUPER_CACHE_LOCATION).equal(t)) {
             cacheHit.inc();
             return true;
         }
@@ -53,13 +54,13 @@ public class TypeCheckSnippetUtils {
         return checkSelfAndSupers(t, s);
     }
 
-    static boolean checkUnknownSubType(Pointer t, Pointer s) {
+    static boolean checkUnknownSubType(KlassPointer t, KlassPointer s) {
         // int off = T.offset
         int superCheckOffset = t.readInt(superCheckOffsetOffset(), KLASS_SUPER_CHECK_OFFSET_LOCATION);
         boolean primary = superCheckOffset != secondarySuperCacheOffset();
 
         // if (T = S[off]) return true
-        if (s.readWord(superCheckOffset, PRIMARY_SUPERS_LOCATION).equal(t)) {
+        if (s.readKlassPointer(superCheckOffset, PRIMARY_SUPERS_LOCATION).equal(t)) {
             if (primary) {
                 cacheHit.inc();
             } else {
@@ -77,7 +78,7 @@ public class TypeCheckSnippetUtils {
         return checkSelfAndSupers(t, s);
     }
 
-    private static boolean checkSelfAndSupers(Pointer t, Pointer s) {
+    private static boolean checkSelfAndSupers(KlassPointer t, KlassPointer s) {
         // if (T == S) return true
         if (s.equal(t)) {
             T_equals_S.inc();
@@ -89,7 +90,7 @@ public class TypeCheckSnippetUtils {
         int length = secondarySupers.readInt(metaspaceArrayLengthOffset(), METASPACE_ARRAY_LENGTH_LOCATION);
         for (int i = 0; i < length; i++) {
             if (probability(NOT_LIKELY_PROBABILITY, t.equal(loadSecondarySupersElement(secondarySupers, i)))) {
-                s.writeWord(secondarySuperCacheOffset(), t, SECONDARY_SUPER_CACHE_LOCATION);
+                s.writeKlassPointer(secondarySuperCacheOffset(), t, SECONDARY_SUPER_CACHE_LOCATION);
                 secondariesHit.inc();
                 return true;
             }
@@ -139,8 +140,8 @@ public class TypeCheckSnippetUtils {
         return new Hints(hubs, isPositive);
     }
 
-    static Word loadSecondarySupersElement(Word metaspaceArray, int index) {
-        return metaspaceArray.readWord(metaspaceArrayBaseOffset() + index * wordSize(), SECONDARY_SUPERS_ELEMENT_LOCATION);
+    static KlassPointer loadSecondarySupersElement(Word metaspaceArray, int index) {
+        return KlassPointer.fromWord(metaspaceArray.readWord(metaspaceArrayBaseOffset() + index * wordSize(), SECONDARY_SUPERS_ELEMENT_LOCATION));
     }
 
     private static final SnippetCounter.Group counters = SnippetCounters.getValue() ? new SnippetCounter.Group("TypeCheck") : null;

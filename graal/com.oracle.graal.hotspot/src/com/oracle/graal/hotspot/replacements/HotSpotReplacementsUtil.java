@@ -629,11 +629,11 @@ public class HotSpotReplacementsUtil {
      * @param hub the hub of an InstanceKlass
      * @return true is the InstanceKlass represented by hub is fully initialized
      */
-    public static boolean isInstanceKlassFullyInitialized(Pointer hub) {
+    public static boolean isInstanceKlassFullyInitialized(KlassPointer hub) {
         return readInstanceKlassState(hub) == instanceKlassStateFullyInitialized();
     }
 
-    private static byte readInstanceKlassState(Pointer hub) {
+    private static byte readInstanceKlassState(KlassPointer hub) {
         return hub.readByte(instanceKlassInitStateOffset(), CLASS_STATE_LOCATION);
     }
 

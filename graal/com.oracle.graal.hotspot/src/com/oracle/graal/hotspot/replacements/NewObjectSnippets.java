@@ -153,11 +153,10 @@ public class NewObjectSnippets implements Snippets {
 
     @Snippet
     public static Object allocateInstanceDynamic(Class<?> type, @ConstantParameter boolean fillContents, @ConstantParameter Register threadRegister, @ConstantParameter String typeContext) {
-        KlassPointer hubPtr = ClassGetHubNode.readClass(type);
-        if (probability(FAST_PATH_PROBABILITY, !hubPtr.isNull())) {
-            Pointer hub = hubPtr.asWord();
+        KlassPointer hub = ClassGetHubNode.readClass(type);
+        if (probability(FAST_PATH_PROBABILITY, !hub.isNull())) {
             if (probability(FAST_PATH_PROBABILITY, isInstanceKlassFullyInitialized(hub))) {
-                int layoutHelper = readLayoutHelper(hubPtr);
+                int layoutHelper = readLayoutHelper(hub);
                 /*
                  * src/share/vm/oops/klass.hpp: For instances, layout helper is a positive number,
                  * the instance size. This size is already passed through align_object_size and
@@ -166,7 +165,7 @@ public class NewObjectSnippets implements Snippets {
                  */
                 if (probability(FAST_PATH_PROBABILITY, (layoutHelper & 1) == 0)) {
                     Word prototypeMarkWord = hub.readWord(prototypeMarkWordOffset(), PROTOTYPE_MARK_WORD_LOCATION);
-                    return allocateInstance(layoutHelper, KlassPointer.fromWord(hub), prototypeMarkWord, fillContents, threadRegister, false, typeContext);
+                    return allocateInstance(layoutHelper, hub, prototypeMarkWord, fillContents, threadRegister, false, typeContext);
                 }
             }
         }
@@ -347,7 +346,7 @@ public class NewObjectSnippets implements Snippets {
      * Formats some allocated memory with an object header and zeroes out the rest.
      */
     protected static Object formatObject(KlassPointer hub, int size, Word memory, Word compileTimePrototypeMarkWord, boolean fillContents, boolean constantSize, boolean useSnippetCounters) {
-        Word prototypeMarkWord = useBiasedLocking() ? hub.asWord().readWord(prototypeMarkWordOffset(), PROTOTYPE_MARK_WORD_LOCATION) : compileTimePrototypeMarkWord;
+        Word prototypeMarkWord = useBiasedLocking() ? hub.readWord(prototypeMarkWordOffset(), PROTOTYPE_MARK_WORD_LOCATION) : compileTimePrototypeMarkWord;
         initializeObjectHeader(memory, prototypeMarkWord, hub);
         if (fillContents) {
             zeroMemory(size, memory, constantSize, instanceHeaderSize(), false, useSnippetCounters);

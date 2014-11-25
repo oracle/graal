@@ -102,14 +102,13 @@ public class NewInstanceStub extends SnippetStub {
          * The type is known to be an instance so Klass::_layout_helper is the instance size as a
          * raw number
          */
-        Pointer hubPtr = hub.asWord();
         int sizeInBytes = loadKlassLayoutHelperIntrinsic(hub);
         Word thread = registerAsWord(threadRegister);
         if (!forceSlowPath() && inlineContiguousAllocationSupported()) {
-            if (isInstanceKlassFullyInitialized(hubPtr)) {
+            if (isInstanceKlassFullyInitialized(hub)) {
                 Word memory = refillAllocate(thread, intArrayHub, sizeInBytes, logging());
                 if (memory.notEqual(0)) {
-                    Word prototypeMarkWord = hubPtr.readWord(prototypeMarkWordOffset(), PROTOTYPE_MARK_WORD_LOCATION);
+                    Word prototypeMarkWord = hub.readWord(prototypeMarkWordOffset(), PROTOTYPE_MARK_WORD_LOCATION);
                     NewObjectSnippets.formatObjectForStub(hub, sizeInBytes, memory, prototypeMarkWord);
                     return verifyObject(memory.toObject());
                 }

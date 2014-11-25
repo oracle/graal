@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.hotspot.word;
 
+import static com.oracle.graal.api.meta.LocationIdentity.*;
 import static com.oracle.graal.hotspot.word.HotSpotOperation.HotspotOpcode.*;
 
 import com.oracle.graal.api.meta.*;
@@ -33,9 +34,13 @@ import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.nodes.type.*;
 import com.oracle.graal.hotspot.word.HotSpotOperation.HotspotOpcode;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.HeapAccess.*;
 import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.word.*;
+import com.oracle.graal.word.Word.*;
 import com.oracle.graal.word.phases.*;
 
 public class HotSpotWordTypeRewriterPhase extends WordTypeRewriterPhase {
@@ -51,24 +56,22 @@ public class HotSpotWordTypeRewriterPhase extends WordTypeRewriterPhase {
 
     @Override
     protected void changeToWord(StructuredGraph graph, ValueNode node) {
-        AbstractPointerStamp pointerStamp = getPointerStamp(node);
-        if (pointerStamp != null) {
-            node.setStamp(pointerStamp);
+        ResolvedJavaType baseType = StampTool.typeOrNull(node);
+        if (baseType != null && baseType.equals(klassPointerType)) {
+            node.setStamp(KlassPointerStamp.klass());
+        } else if (baseType != null && baseType.equals(methodPointerType)) {
+            node.setStamp(MethodPointerStamp.method());
         } else {
             super.changeToWord(graph, node);
         }
     }
 
-    private AbstractPointerStamp getPointerStamp(ValueNode node) {
-        ResolvedJavaType type = StampTool.typeOrNull(node);
-        if (type != null) {
-            if (klassPointerType.isAssignableFrom(type)) {
-                return KlassPointerStamp.klass();
-            } else if (methodPointerType.isAssignableFrom(type)) {
-                return MethodPointerStamp.method();
-            }
+    @Override
+    protected Kind asKind(JavaType type) {
+        if (type.equals(klassPointerType) || type.equals(methodPointerType)) {
+            return wordKind;
         }
-        return null;
+        return super.asKind(type);
     }
 
     @Override
@@ -88,7 +91,12 @@ public class HotSpotWordTypeRewriterPhase extends WordTypeRewriterPhase {
         ResolvedJavaMethod targetMethod = callTargetNode.targetMethod();
         HotSpotOperation operation = targetMethod.getAnnotation(HotSpotOperation.class);
         if (operation == null) {
-            super.rewriteInvoke(graph, callTargetNode);
+            Operation wordOperation = targetMethod.getAnnotation(Word.Operation.class);
+            if (wordOperation != null) {
+                super.rewriteWordOperation(graph, callTargetNode, targetMethod);
+            } else {
+                super.rewriteInvoke(graph, callTargetNode);
+            }
         } else {
             Invoke invoke = callTargetNode.invoke();
             NodeInputList<ValueNode> arguments = callTargetNode.arguments();
@@ -120,10 +128,38 @@ public class HotSpotWordTypeRewriterPhase extends WordTypeRewriterPhase {
                     replace(invoke, graph.unique(PointerCastNode.create(MethodPointerStamp.method(), arguments.get(0))));
                     break;
 
+                case READ_KLASS_POINTER:
+                    assert arguments.size() == 2 || arguments.size() == 3;
+                    Kind readKind = asKind(callTargetNode.returnType());
+                    Stamp readStamp = KlassPointerStamp.klass();
+                    LocationNode location;
+                    if (arguments.size() == 2) {
+                        location = makeLocation(graph, arguments.get(1), readKind, ANY_LOCATION);
+                    } else {
+                        location = makeLocation(graph, arguments.get(1), readKind, arguments.get(2));
+                    }
+                    replace(invoke, readKlassOp(graph, arguments.get(0), invoke, location, readStamp, operation.opcode()));
+                    break;
+
                 default:
                     throw GraalInternalError.shouldNotReachHere("unknown operation: " + operation.opcode());
             }
         }
+    }
+
+    protected ValueNode readKlassOp(StructuredGraph graph, ValueNode base, Invoke invoke, LocationNode location, Stamp readStamp, HotspotOpcode op) {
+        assert op == READ_KLASS_POINTER;
+        final BarrierType barrier = BarrierType.NONE;
+        final boolean compressible = false;
+
+        JavaReadNode read = graph.add(JavaReadNode.create(base, location, readStamp, barrier, compressible));
+        graph.addBeforeFixed(invoke.asNode(), read);
+        /*
+         * The read must not float outside its block otherwise it may float above an explicit zero
+         * check on its base address.
+         */
+        read.setGuard(BeginNode.prevBegin(invoke.asNode()));
+        return read;
     }
 
     private static ValueNode pointerComparisonOp(StructuredGraph graph, HotspotOpcode opcode, ValueNode left, ValueNode right) {

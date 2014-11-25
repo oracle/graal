@@ -185,11 +185,16 @@ public class WordTypeRewriterPhase extends Phase {
             return;
         }
 
-        Invoke invoke = callTargetNode.invoke();
         if (!callTargetNode.isStatic()) {
             assert callTargetNode.receiver().getKind() == wordKind : "changeToWord() missed the receiver " + callTargetNode.receiver();
-            targetMethod = wordImplType.resolveConcreteMethod(targetMethod, invoke.getContextType());
+            assert wordImplType.isLinked();
+            targetMethod = wordImplType.resolveConcreteMethod(targetMethod, callTargetNode.invoke().getContextType());
         }
+        rewriteWordOperation(graph, callTargetNode, targetMethod);
+    }
+
+    protected void rewriteWordOperation(StructuredGraph graph, MethodCallTargetNode callTargetNode, ResolvedJavaMethod targetMethod) throws GraalInternalError {
+        Invoke invoke = callTargetNode.invoke();
         Operation operation = targetMethod.getAnnotation(Word.Operation.class);
         assert operation != null : targetMethod;
 
@@ -374,7 +379,7 @@ public class WordTypeRewriterPhase extends Phase {
         return materialize;
     }
 
-    private LocationNode makeLocation(StructuredGraph graph, ValueNode offset, Kind readKind, ValueNode locationIdentity) {
+    protected LocationNode makeLocation(StructuredGraph graph, ValueNode offset, Kind readKind, ValueNode locationIdentity) {
         if (locationIdentity.isConstant()) {
             return makeLocation(graph, offset, readKind, (LocationIdentity) snippetReflection.asObject(locationIdentity.asJavaConstant()));
         }

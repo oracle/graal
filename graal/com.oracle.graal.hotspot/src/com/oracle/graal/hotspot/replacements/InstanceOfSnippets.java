@@ -50,7 +50,6 @@ import com.oracle.graal.replacements.Snippet.VarargsParameter;
 import com.oracle.graal.replacements.SnippetTemplate.Arguments;
 import com.oracle.graal.replacements.SnippetTemplate.SnippetInfo;
 import com.oracle.graal.replacements.nodes.*;
-import com.oracle.graal.word.*;
 
 /**
  * Snippets used for implementing the type test of an instanceof instruction. Since instanceof is a
@@ -142,8 +141,8 @@ public class InstanceOfSnippets implements Snippets {
             return falseValue;
         }
         GuardingNode anchorNode = SnippetAnchorNode.anchor();
-        Pointer objectHub = loadHubIntrinsic(object, anchorNode).asWord();
-        if (probability(NOT_LIKELY_PROBABILITY, objectHub.readWord(superCheckOffset, PRIMARY_SUPERS_LOCATION).notEqual(hub.asWord()))) {
+        KlassPointer objectHub = loadHubIntrinsic(object, anchorNode);
+        if (probability(NOT_LIKELY_PROBABILITY, objectHub.readKlassPointer(superCheckOffset, PRIMARY_SUPERS_LOCATION).notEqual(hub))) {
             displayMiss.inc();
             return falseValue;
         }
@@ -172,7 +171,7 @@ public class InstanceOfSnippets implements Snippets {
                 return positive ? trueValue : falseValue;
             }
         }
-        if (!checkSecondarySubType(hub.asWord(), objectHub.asWord())) {
+        if (!checkSecondarySubType(hub, objectHub)) {
             return falseValue;
         }
         return trueValue;
@@ -190,7 +189,7 @@ public class InstanceOfSnippets implements Snippets {
         GuardingNode anchorNode = SnippetAnchorNode.anchor();
         KlassPointer hub = ClassGetHubNode.readClass(mirror, anchorNode);
         KlassPointer objectHub = loadHubIntrinsic(object, anchorNode);
-        if (hub.isNull() || !checkUnknownSubType(hub.asWord(), objectHub.asWord())) {
+        if (hub.isNull() || !checkUnknownSubType(hub, objectHub)) {
             return falseValue;
         }
         return trueValue;

@@ -40,6 +40,7 @@ import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
+import com.oracle.graal.hotspot.word.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.debug.*;
@@ -128,7 +129,7 @@ public class MonitorSnippets implements Snippets {
             } else {
                 // The bias pattern is present in the object's mark word. Need to check
                 // whether the bias owner and the epoch are both still current.
-                Pointer hub = loadHubIntrinsic(object, anchorNode).asWord();
+                KlassPointer hub = loadHubIntrinsic(object, anchorNode);
                 final Word prototypeMarkWord = hub.readWord(prototypeMarkWordOffset(), PROTOTYPE_MARK_WORD_LOCATION);
                 final Word thread = registerAsWord(threadRegister);
                 final Word tmp = prototypeMarkWord.or(thread).xor(mark).and(~ageMaskInPlace());

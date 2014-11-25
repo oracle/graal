@@ -34,7 +34,8 @@ public @interface HotSpotOperation {
         TO_METHOD_POINTER,
         POINTER_EQ,
         POINTER_NE,
-        IS_NULL
+        IS_NULL,
+        READ_KLASS_POINTER
     }
 
     HotspotOpcode opcode();

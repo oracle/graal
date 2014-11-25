@@ -35,6 +35,7 @@ import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
+import com.oracle.graal.hotspot.word.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
@@ -43,7 +44,6 @@ import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates;
 import com.oracle.graal.replacements.SnippetTemplate.Arguments;
 import com.oracle.graal.replacements.SnippetTemplate.SnippetInfo;
-import com.oracle.graal.word.*;
 
 /**
  * Snippet used for lowering {@link CheckCastDynamicNode}.
@@ -51,12 +51,12 @@ import com.oracle.graal.word.*;
 public class CheckCastDynamicSnippets implements Snippets {
 
     @Snippet
-    public static Object checkcastDynamic(Word hub, Object object) {
+    public static Object checkcastDynamic(KlassPointer hub, Object object) {
         if (probability(NOT_FREQUENT_PROBABILITY, object == null)) {
             isNull.inc();
         } else {
             GuardingNode anchorNode = SnippetAnchorNode.anchor();
-            Pointer objectHub = loadHubIntrinsic(object, anchorNode).asWord();
+            KlassPointer objectHub = loadHubIntrinsic(object, anchorNode);
             if (!checkUnknownSubType(hub, objectHub)) {
                 DeoptimizeNode.deopt(InvalidateReprofile, ClassCastException);
             }
