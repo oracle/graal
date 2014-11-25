@@ -183,7 +183,12 @@ public class EffectList implements Iterable<EffectList.Effect> {
         for (Field field : effect.getClass().getDeclaredFields()) {
             try {
                 field.setAccessible(true);
-                str.append(first ? "" : ", ").append(format(field.get(effect)));
+                Object object = field.get(effect);
+                if (object == this) {
+                    // Inner classes could capture the EffectList itself.
+                    continue;
+                }
+                str.append(first ? "" : ", ").append(format(object));
                 first = false;
             } catch (SecurityException | IllegalAccessException e) {
                 throw new RuntimeException(e);
