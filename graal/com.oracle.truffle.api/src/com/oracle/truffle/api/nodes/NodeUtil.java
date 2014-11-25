@@ -179,6 +179,7 @@ public final class NodeUtil {
         private final long parentOffset;
         private final long[] childOffsets;
         private final long[] childrenOffsets;
+        private final long[] cloneableOffsets;
         private final Class<? extends Node> clazz;
 
         public static NodeClass get(Class<? extends Node> clazz) {
@@ -190,6 +191,7 @@ public final class NodeUtil {
             long parentFieldOffset = -1;
             List<Long> childOffsetsList = new ArrayList<>();
             List<Long> childrenOffsetsList = new ArrayList<>();
+            List<Long> cloneableOffsetsList = new ArrayList<>();
 
             for (Field field : getAllFields(clazz)) {
                 if (Modifier.isStatic(field.getModifiers()) || field.isSynthetic()) {
@@ -209,6 +211,9 @@ public final class NodeUtil {
                     checkChildrenField(field);
                     kind = NodeFieldKind.CHILDREN;
                     childrenOffsetsList.add(fieldOffsetProvider.objectFieldOffset(field));
+                } else if (NodeCloneable.class.isAssignableFrom(field.getType())) {
+                    kind = NodeFieldKind.DATA;
+                    cloneableOffsetsList.add(fieldOffsetProvider.objectFieldOffset(field));
                 } else {
                     kind = NodeFieldKind.DATA;
                 }
@@ -223,6 +228,7 @@ public final class NodeUtil {
             this.parentOffset = parentFieldOffset;
             this.childOffsets = toLongArray(childOffsetsList);
             this.childrenOffsets = toLongArray(childrenOffsetsList);
+            this.cloneableOffsets = toLongArray(cloneableOffsetsList);
             this.clazz = clazz;
         }
 
@@ -469,6 +475,12 @@ public final class NodeUtil {
                     }
                 }
                 unsafe.putObject(clone, fieldOffset, clonedChildren);
+            }
+        }
+        for (long fieldOffset : nodeClass.cloneableOffsets) {
+            Object cloneable = unsafe.getObject(clone, fieldOffset);
+            if (cloneable != null && cloneable == unsafe.getObject(orig, fieldOffset)) {
+                unsafe.putObject(clone, fieldOffset, ((NodeCloneable) cloneable).clone());
             }
         }
         return (T) clone;
