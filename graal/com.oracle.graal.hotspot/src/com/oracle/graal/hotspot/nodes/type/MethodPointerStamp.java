@@ -28,12 +28,18 @@ import com.oracle.graal.hotspot.meta.*;
 
 public final class MethodPointerStamp extends MetaspacePointerStamp {
 
+    private static final MethodPointerStamp METHOD = new MethodPointerStamp(false, false);
+
+    private static final MethodPointerStamp METHOD_NON_NULL = new MethodPointerStamp(true, false);
+
+    private static final MethodPointerStamp METHOD_ALWAYS_NULL = new MethodPointerStamp(false, true);
+
     public static MethodPointerStamp method() {
-        return new MethodPointerStamp(false, false);
+        return METHOD;
     }
 
     public static MethodPointerStamp methodNonNull() {
-        return new MethodPointerStamp(true, false);
+        return METHOD_NON_NULL;
     }
 
     private MethodPointerStamp(boolean nonNull, boolean alwaysNull) {
@@ -51,10 +57,10 @@ public final class MethodPointerStamp extends MetaspacePointerStamp {
     @Override
     public Stamp constant(Constant c, MetaAccessProvider meta) {
         if (JavaConstant.NULL_POINTER.equals(c)) {
-            return new MethodPointerStamp(false, true);
+            return METHOD_ALWAYS_NULL;
         } else {
             assert c instanceof HotSpotMetaspaceConstant;
-            return this;
+            return METHOD_NON_NULL;
         }
     }
 
