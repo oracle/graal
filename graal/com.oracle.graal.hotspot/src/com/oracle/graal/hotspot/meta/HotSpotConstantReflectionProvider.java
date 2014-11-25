@@ -90,7 +90,7 @@ public class HotSpotConstantReflectionProvider implements ConstantReflectionProv
     public JavaConstant readConstantArrayElement(JavaConstant array, int index) {
         if (array instanceof HotSpotObjectConstantImpl && ((HotSpotObjectConstantImpl) array).getStableDimension() > 0) {
             JavaConstant element = readArrayElement(array, index);
-            if (((HotSpotObjectConstantImpl) array).isDefaultStable() || !element.isDefaultForKind()) {
+            if (element != null && (((HotSpotObjectConstantImpl) array).isDefaultStable() || !element.isDefaultForKind())) {
                 return element;
             }
         }
