@@ -383,7 +383,7 @@ public abstract class Node implements NodeInterface, Cloneable {
         try {
             return (Node) super.clone();
         } catch (CloneNotSupportedException e) {
-            return null;
+            throw new AssertionError(e);
         }
     }
 
