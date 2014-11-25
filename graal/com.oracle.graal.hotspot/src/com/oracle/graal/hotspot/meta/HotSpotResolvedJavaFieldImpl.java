@@ -30,6 +30,7 @@ import java.lang.annotation.*;
 import java.lang.reflect.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.hotspot.*;
 
 /**
@@ -180,6 +181,8 @@ public class HotSpotResolvedJavaFieldImpl extends CompilerObject implements HotS
             if (isSyntheticImplicitStableField()) {
                 return true;
             }
+        } else if (isWellKnownImplicitStableField()) {
+            return true;
         }
         return false;
     }
@@ -197,5 +200,28 @@ public class HotSpotResolvedJavaFieldImpl extends CompilerObject implements HotS
             }
         }
         return false;
+    }
+
+    private boolean isWellKnownImplicitStableField() {
+        return WellKnownImplicitStableField.test(this);
+    }
+
+    static class WellKnownImplicitStableField {
+        /**
+         * @return {@code true} if the field is a well-known stable field.
+         */
+        public static boolean test(HotSpotResolvedJavaField field) {
+            return field == STRING_VALUE_FIELD;
+        }
+
+        private static final ResolvedJavaField STRING_VALUE_FIELD;
+        static {
+            try {
+                MetaAccessProvider metaAccess = runtime().getHostProviders().getMetaAccess();
+                STRING_VALUE_FIELD = metaAccess.lookupJavaField(String.class.getDeclaredField("value"));
+            } catch (SecurityException | NoSuchFieldException e) {
+                throw new GraalInternalError(e);
+            }
+        }
     }
 }
