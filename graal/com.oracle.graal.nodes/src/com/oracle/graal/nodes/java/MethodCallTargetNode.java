@@ -112,52 +112,20 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
             }
 
             // check if the type of the receiver can narrow the result
-            ValueNode receiver = receiver();
-            ResolvedJavaType type = StampTool.typeOrNull(receiver);
-            if (type == null && invokeKind == InvokeKind.Virtual) {
-                // For virtual calls, we are guaranteed to receive a correct receiver type.
-                type = targetMethod.getDeclaringClass();
+            if (tryToResolveMethod(tool)) {
+                return;
             }
-            if (type != null && (invoke().stateAfter() != null || invoke().stateDuring() != null)) {
-                /*
-                 * either the holder class is exact, or the receiver object has an exact type, or
-                 * it's an array type
-                 */
-                ResolvedJavaMethod resolvedMethod = type.resolveConcreteMethod(targetMethod(), invoke().getContextType());
-                if (resolvedMethod != null && (resolvedMethod.canBeStaticallyBound() || StampTool.isExactType(receiver) || type.isArray())) {
-                    setInvokeKind(InvokeKind.Special);
-                    setTargetMethod(resolvedMethod);
-                    return;
-                }
-                if (tool.assumptions() != null && tool.assumptions().useOptimisticAssumptions()) {
-                    ResolvedJavaType uniqueConcreteType = type.findUniqueConcreteSubtype();
-                    if (uniqueConcreteType != null) {
-                        ResolvedJavaMethod methodFromUniqueType = uniqueConcreteType.resolveConcreteMethod(targetMethod(), invoke().getContextType());
-                        if (methodFromUniqueType != null) {
-                            tool.assumptions().recordConcreteSubtype(type, uniqueConcreteType);
-                            setInvokeKind(InvokeKind.Special);
-                            setTargetMethod(methodFromUniqueType);
-                            return;
-                        }
-                    }
 
-                    ResolvedJavaMethod uniqueConcreteMethod = type.findUniqueConcreteMethod(targetMethod());
-                    if (uniqueConcreteMethod != null) {
-                        tool.assumptions().recordConcreteMethod(targetMethod(), type, uniqueConcreteMethod);
-                        setInvokeKind(InvokeKind.Special);
-                        setTargetMethod(uniqueConcreteMethod);
-                        return;
-                    }
-                }
-            }
-            // try to turn a interface call into a virtual call
+            ValueNode receiver = receiver();
+
+            // try to turn an interface call into a virtual call
             ResolvedJavaType declaredReceiverType = targetMethod().getDeclaringClass();
             /*
              * We need to check the invoke kind to avoid recursive simplification for virtual
              * interface methods calls.
              */
             if (declaredReceiverType.isInterface() && !invokeKind().equals(InvokeKind.Virtual)) {
-                tryCheckCastSingleImplementor(receiver, declaredReceiverType);
+                tryCheckCastSingleImplementor(tool, receiver, declaredReceiverType);
             }
 
             if (invokeKind().equals(InvokeKind.Interface) && receiver instanceof UncheckedInterfaceProvider) {
@@ -166,14 +134,62 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
                 if (uncheckedStamp != null) {
                     ResolvedJavaType uncheckedReceiverType = StampTool.typeOrNull(uncheckedStamp);
                     if (uncheckedReceiverType.isInterface()) {
-                        tryCheckCastSingleImplementor(receiver, uncheckedReceiverType);
+                        tryCheckCastSingleImplementor(tool, receiver, uncheckedReceiverType);
                     }
                 }
             }
         }
     }
 
-    private void tryCheckCastSingleImplementor(ValueNode receiver, ResolvedJavaType declaredReceiverType) {
+    /**
+     * Try to use receiver type information to statically bind the method.
+     *
+     * @param tool
+     * @return true if successfully converted to InvokeKind.Special
+     */
+    private boolean tryToResolveMethod(SimplifierTool tool) {
+        ValueNode receiver = receiver();
+        ResolvedJavaType type = StampTool.typeOrNull(receiver);
+        if (type == null && invokeKind == InvokeKind.Virtual) {
+            // For virtual calls, we are guaranteed to receive a correct receiver type.
+            type = targetMethod.getDeclaringClass();
+        }
+        if (type != null && (invoke().stateAfter() != null || invoke().stateDuring() != null)) {
+            /*
+             * either the holder class is exact, or the receiver object has an exact type, or it's
+             * an array type
+             */
+            ResolvedJavaMethod resolvedMethod = type.resolveConcreteMethod(targetMethod(), invoke().getContextType());
+            if (resolvedMethod != null && (resolvedMethod.canBeStaticallyBound() || StampTool.isExactType(receiver) || type.isArray())) {
+                setInvokeKind(InvokeKind.Special);
+                setTargetMethod(resolvedMethod);
+                return true;
+            }
+            if (tool.assumptions() != null && tool.assumptions().useOptimisticAssumptions()) {
+                ResolvedJavaType uniqueConcreteType = type.findUniqueConcreteSubtype();
+                if (uniqueConcreteType != null) {
+                    ResolvedJavaMethod methodFromUniqueType = uniqueConcreteType.resolveConcreteMethod(targetMethod(), invoke().getContextType());
+                    if (methodFromUniqueType != null) {
+                        tool.assumptions().recordConcreteSubtype(type, uniqueConcreteType);
+                        setInvokeKind(InvokeKind.Special);
+                        setTargetMethod(methodFromUniqueType);
+                        return true;
+                    }
+                }
+
+                ResolvedJavaMethod uniqueConcreteMethod = type.findUniqueConcreteMethod(targetMethod());
+                if (uniqueConcreteMethod != null) {
+                    tool.assumptions().recordConcreteMethod(targetMethod(), type, uniqueConcreteMethod);
+                    setInvokeKind(InvokeKind.Special);
+                    setTargetMethod(uniqueConcreteMethod);
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private void tryCheckCastSingleImplementor(SimplifierTool tool, ValueNode receiver, ResolvedJavaType declaredReceiverType) {
         ResolvedJavaType singleImplementor = declaredReceiverType.getSingleImplementor();
         if (singleImplementor != null && !singleImplementor.equals(declaredReceiverType)) {
             ResolvedJavaMethod singleImplementorMethod = singleImplementor.resolveMethod(targetMethod(), invoke().getContextType(), true);
@@ -198,6 +214,8 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
                 arguments().set(0, piNode);
                 setInvokeKind(InvokeKind.Virtual);
                 setTargetMethod(singleImplementorMethod);
+                // Now try to bind the method exactly.
+                tryToResolveMethod(tool);
             }
         }
     }
