@@ -25,8 +25,15 @@
 package com.oracle.truffle.api.nodes;
 
 /**
- * Declarative interface for node fields that are to be cloned together with the containing node.
+ * Declarative base class for node fields that are to be cloned together with the containing node.
  */
-public interface NodeCloneable extends Cloneable {
-    public Object clone();
+public abstract class NodeCloneable implements Cloneable {
+    @Override
+    protected Object clone() {
+        try {
+            return super.clone();
+        } catch (CloneNotSupportedException e) {
+            throw new AssertionError();
+        }
+    }
 }
