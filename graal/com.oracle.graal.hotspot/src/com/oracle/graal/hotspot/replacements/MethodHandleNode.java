@@ -57,7 +57,7 @@ public class MethodHandleNode extends MacroStateSplitNode implements Simplifiabl
     protected MethodHandleNode(Invoke invoke) {
         super(invoke);
 
-        MethodCallTargetNode callTarget = (MethodCallTargetNode) invoke.callTarget();
+        CallTargetNode callTarget = invoke.callTarget();
 
         // See if we need to save some replacement method data.
         if (callTarget instanceof SelfReplacingMethodCallTargetNode) {
@@ -237,7 +237,6 @@ public class MethodHandleNode extends MacroStateSplitNode implements Simplifiabl
      */
     private InvokeNode createTargetInvokeNode(ResolvedJavaMethod target, IntrinsicMethod intrinsicMethod) {
         InvokeKind targetInvokeKind = target.isStatic() ? InvokeKind.Static : InvokeKind.Special;
-        JavaType targetReturnType = target.getSignature().getReturnType(null);
 
         // MethodHandleLinkTo* nodes have a trailing MemberName argument which
         // needs to be popped.
@@ -258,12 +257,12 @@ public class MethodHandleNode extends MacroStateSplitNode implements Simplifiabl
         }
 
         // If there is already replacement information, use that instead.
-        MethodCallTargetNode callTarget;
+        CallTargetNode callTarget;
         if (replacementTargetMethod == null) {
-            callTarget = SelfReplacingMethodCallTargetNode.create(targetInvokeKind, target, targetArguments, targetReturnType, getTargetMethod(), originalArguments, getReturnType());
+            callTarget = SelfReplacingMethodCallTargetNode.create(targetInvokeKind, target, targetArguments, getTargetMethod(), originalArguments, getReturnType());
         } else {
             ValueNode[] args = replacementArguments.toArray(new ValueNode[replacementArguments.size()]);
-            callTarget = SelfReplacingMethodCallTargetNode.create(targetInvokeKind, target, targetArguments, targetReturnType, replacementTargetMethod, args, replacementReturnType);
+            callTarget = SelfReplacingMethodCallTargetNode.create(targetInvokeKind, target, targetArguments, replacementTargetMethod, args, replacementReturnType);
         }
         graph().add(callTarget);
 
