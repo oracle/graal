@@ -85,7 +85,7 @@ public class SnippetLocationNode extends LocationNode implements Canonicalizable
     @Override
     public Kind getValueKind() {
         if (valueKind.isConstant()) {
-            return (Kind) snippetReflection.asObject(valueKind.asJavaConstant());
+            return snippetReflection.asObject(Kind.class, valueKind.asJavaConstant());
         }
         throw new GraalInternalError("Cannot access kind yet because it is not constant: " + valueKind);
     }
@@ -93,7 +93,8 @@ public class SnippetLocationNode extends LocationNode implements Canonicalizable
     @Override
     public LocationIdentity getLocationIdentity() {
         if (locationIdentity.isConstant()) {
-            return (LocationIdentity) snippetReflection.asObject(locationIdentity.asJavaConstant());
+            LocationIdentity identity = snippetReflection.asObject(LocationIdentity.class, locationIdentity.asJavaConstant());
+            return identity;
         }
         // We do not know our actual location identity yet, so be conservative.
         return ANY_LOCATION;
@@ -102,8 +103,8 @@ public class SnippetLocationNode extends LocationNode implements Canonicalizable
     @Override
     public Node canonical(CanonicalizerTool tool) {
         if (valueKind.isConstant() && locationIdentity.isConstant() && displacement.isConstant() && (indexScaling == null || indexScaling.isConstant())) {
-            Kind constKind = (Kind) snippetReflection.asObject(valueKind.asJavaConstant());
-            LocationIdentity constLocation = (LocationIdentity) snippetReflection.asObject(locationIdentity.asJavaConstant());
+            Kind constKind = snippetReflection.asObject(Kind.class, valueKind.asJavaConstant());
+            LocationIdentity constLocation = snippetReflection.asObject(LocationIdentity.class, locationIdentity.asJavaConstant());
             long constDisplacement = displacement.asJavaConstant().asLong();
             int constIndexScaling = indexScaling == null ? 0 : indexScaling.asJavaConstant().asInt();
 

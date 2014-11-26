@@ -433,7 +433,7 @@ public class PartialEvaluator {
         }
 
         JavaConstant constantCallNode = node.asJavaConstant();
-        Object value = snippetReflection.asObject(constantCallNode);
+        Object value = snippetReflection.asObject(Object.class, constantCallNode);
 
         if (!(value instanceof OptimizedDirectCallNode)) {
             // might be an indirect call.

@@ -205,6 +205,20 @@ public final class HotSpotObjectConstantImpl extends AbstractValue implements Ho
         return false;
     }
 
+    public <T> T asObject(Class<T> type) {
+        if (type.isInstance(object)) {
+            return type.cast(object);
+        }
+        return null;
+    }
+
+    public Object asObject(ResolvedJavaType type) {
+        if (type.isInstance(this)) {
+            return object;
+        }
+        return null;
+    }
+
     @Override
     public boolean isNull() {
         return false;

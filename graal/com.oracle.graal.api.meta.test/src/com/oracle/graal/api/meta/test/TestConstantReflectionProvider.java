@@ -54,12 +54,12 @@ public class TestConstantReflectionProvider extends TypeUniverse {
     public void readArrayLengthTest() {
         for (JavaConstant c : constants) {
             Integer actual = constantReflection.readArrayLength(c);
-            if (c.getKind() != Kind.Object || c.isNull() || !snippetReflection.asObject(c).getClass().isArray()) {
+            if (c.getKind() != Kind.Object || c.isNull() || !snippetReflection.asObject(Object.class, c).getClass().isArray()) {
                 assertNull(actual);
             } else {
                 assertNotNull(actual);
                 int actualInt = actual;
-                assertEquals(Array.getLength(snippetReflection.asObject(c)), actualInt);
+                assertEquals(Array.getLength(snippetReflection.asObject(Object.class, c)), actualInt);
             }
         }
     }
@@ -74,10 +74,10 @@ public class TestConstantReflectionProvider extends TypeUniverse {
             }
         }
 
-        assertEquals(Long.valueOf(42), snippetReflection.asObject(constantReflection.boxPrimitive(JavaConstant.forLong(42))));
-        assertEquals(Integer.valueOf(666), snippetReflection.asObject(constantReflection.boxPrimitive(JavaConstant.forInt(666))));
-        assertEquals(Byte.valueOf((byte) 123), snippetReflection.asObject(constantReflection.boxPrimitive(JavaConstant.forByte((byte) 123))));
-        assertSame(Boolean.TRUE, snippetReflection.asObject(constantReflection.boxPrimitive(JavaConstant.forBoolean(true))));
+        assertEquals(Long.valueOf(42), snippetReflection.asObject(Long.class, constantReflection.boxPrimitive(JavaConstant.forLong(42))));
+        assertEquals(Integer.valueOf(666), snippetReflection.asObject(Integer.class, constantReflection.boxPrimitive(JavaConstant.forInt(666))));
+        assertEquals(Byte.valueOf((byte) 123), snippetReflection.asObject(Byte.class, constantReflection.boxPrimitive(JavaConstant.forByte((byte) 123))));
+        assertSame(Boolean.TRUE, snippetReflection.asObject(Boolean.class, constantReflection.boxPrimitive(JavaConstant.forBoolean(true))));
 
         assertNull(constantReflection.boxPrimitive(JavaConstant.NULL_POINTER));
         assertNull(constantReflection.boxPrimitive(snippetReflection.forObject("abc")));
@@ -99,20 +99,5 @@ public class TestConstantReflectionProvider extends TypeUniverse {
 
         assertNull(constantReflection.unboxPrimitive(JavaConstant.NULL_POINTER));
         assertNull(constantReflection.unboxPrimitive(snippetReflection.forObject("abc")));
-    }
-
-    @Test
-    public void testAsJavaType() {
-        for (JavaConstant c : constants) {
-            ResolvedJavaType type = constantReflection.asJavaType(c);
-
-            Object o = snippetReflection.asBoxedValue(c);
-            if (o instanceof Class) {
-                assertEquals(metaAccess.lookupJavaType((Class<?>) o), type);
-            } else {
-                assertNull(type);
-            }
-        }
-
     }
 }

@@ -87,7 +87,7 @@ public class NewFrameNode extends FixedWithNextNode implements IterableNodeType,
 
     private FrameDescriptor getConstantFrameDescriptor() {
         assert descriptor.isConstant() && !descriptor.isNullConstant();
-        return (FrameDescriptor) getSnippetReflection().asObject(descriptor.asJavaConstant());
+        return getSnippetReflection().asObject(FrameDescriptor.class, descriptor.asJavaConstant());
     }
 
     private int getFrameSize() {

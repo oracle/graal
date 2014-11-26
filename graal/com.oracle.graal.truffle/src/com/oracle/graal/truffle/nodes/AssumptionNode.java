@@ -69,7 +69,7 @@ public class AssumptionNode extends MacroNode implements com.oracle.graal.graph.
         if (tool.assumptions() != null && assumption.isConstant()) {
             JavaConstant c = assumption.asJavaConstant();
             assert c.getKind() == Kind.Object;
-            Object object = getSnippetReflection().asObject(c);
+            Object object = getSnippetReflection().asObject(Object.class, c);
             OptimizedAssumption assumptionObject = (OptimizedAssumption) object;
             StructuredGraph graph = graph();
             if (assumptionObject.isValid()) {

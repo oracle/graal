@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.api.meta.test;
 
-import static java.lang.reflect.Modifier.*;
 import static org.junit.Assert.*;
 
 import java.lang.annotation.*;
@@ -73,26 +72,6 @@ public class TestResolvedJavaField extends FieldUniverse {
 
     @Test
     public void readConstantValueTest() throws NoSuchFieldException {
-        for (Map.Entry<Field, ResolvedJavaField> e : fields.entrySet()) {
-            Field field = e.getKey();
-            if (isStatic(field.getModifiers())) {
-                try {
-                    Object expected = field.get(null);
-                    Object actual = snippetReflection.asBoxedValue(constantReflection.readConstantFieldValue(e.getValue(), null));
-                    assertEquals(expected, actual);
-                } catch (IllegalArgumentException | IllegalAccessException e1) {
-                }
-            } else {
-                try {
-                    Object receiver = field.getDeclaringClass().newInstance();
-                    Object expected = field.get(receiver);
-                    Object actual = snippetReflection.asBoxedValue(constantReflection.readConstantFieldValue(e.getValue(), snippetReflection.forObject(receiver)));
-                    assertEquals(expected, actual);
-                } catch (InstantiationException | IllegalArgumentException | IllegalAccessException e1) {
-                }
-            }
-        }
-
         ResolvedJavaField field = metaAccess.lookupJavaField(getClass().getDeclaredField("stringField"));
         for (Object receiver : new Object[]{this, null, new String()}) {
             JavaConstant value = constantReflection.readConstantFieldValue(field, snippetReflection.forObject(receiver));
@@ -104,35 +83,8 @@ public class TestResolvedJavaField extends FieldUniverse {
             JavaConstant value = constantReflection.readConstantFieldValue(constField, snippetReflection.forObject(receiver));
             if (value != null) {
                 Object expected = "constantField";
-                assertTrue(snippetReflection.asObject(value) == expected);
+                assertTrue(snippetReflection.asObject(Object.class, value) == expected);
             }
-        }
-    }
-
-    @Test
-    public void readValueTest() throws IllegalArgumentException, IllegalAccessException {
-        for (Map.Entry<Field, ResolvedJavaField> e : fields.entrySet()) {
-            Field field = e.getKey();
-            field.setAccessible(true);
-            if (isStatic(field.getModifiers())) {
-                try {
-                    Object expected = field.get(null);
-                    Object actual = snippetReflection.asBoxedValue(constantReflection.readFieldValue(e.getValue(), null));
-                    assertEquals(expected, actual);
-                } catch (IllegalArgumentException | IllegalAccessException e1) {
-                }
-            }
-        }
-
-        String testString = "a test string";
-        testString.hashCode(); // create hash
-        for (Field f : String.class.getDeclaredFields()) {
-            f.setAccessible(true);
-            ResolvedJavaField rf = metaAccess.lookupJavaField(f);
-            Object receiver = isStatic(f.getModifiers()) ? null : testString;
-            Object expected = f.get(receiver);
-            Object actual = snippetReflection.asBoxedValue(constantReflection.readFieldValue(rf, receiver == null ? null : snippetReflection.forObject(receiver)));
-            assertEquals(expected, actual);
         }
     }
 

@@ -40,18 +40,20 @@ public class HotSpotSnippetReflectionProvider implements SnippetReflectionProvid
     }
 
     @Override
-    public Object asObject(JavaConstant constant) {
-        return ((HotSpotObjectConstantImpl) constant).object();
+    public Object asObject(ResolvedJavaType type, JavaConstant constant) {
+        HotSpotObjectConstant hsConstant = (HotSpotObjectConstant) constant;
+        return hsConstant.asObject(type);
+    }
+
+    @Override
+    public <T> T asObject(Class<T> type, JavaConstant constant) {
+        HotSpotObjectConstant hsConstant = (HotSpotObjectConstant) constant;
+        return hsConstant.asObject(type);
     }
 
     @Override
     public JavaConstant forBoxed(Kind kind, Object value) {
         return HotSpotObjectConstantImpl.forBoxedValue(kind, value);
-    }
-
-    @Override
-    public Object asBoxedValue(JavaConstant constant) {
-        return HotSpotObjectConstantImpl.asBoxedValue(constant);
     }
 
     public Object getSubstitutionGuardParameter(Class<?> type) {

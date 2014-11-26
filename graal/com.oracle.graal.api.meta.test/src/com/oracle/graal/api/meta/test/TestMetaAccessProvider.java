@@ -81,7 +81,7 @@ public class TestMetaAccessProvider extends TypeUniverse {
     public void lookupJavaTypeConstantTest() {
         for (JavaConstant c : constants) {
             if (c.getKind() == Kind.Object && !c.isNull()) {
-                Object o = snippetReflection.asObject(c);
+                Object o = snippetReflection.asObject(Object.class, c);
                 ResolvedJavaType type = metaAccess.lookupJavaType(c);
                 assertNotNull(type);
                 assertTrue(type.equals(metaAccess.lookupJavaType(o.getClass())));

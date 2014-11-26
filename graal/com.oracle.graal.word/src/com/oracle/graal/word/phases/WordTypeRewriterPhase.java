@@ -96,7 +96,7 @@ public class WordTypeRewriterPhase extends Phase {
             if (node.isConstant()) {
                 ConstantNode oldConstant = (ConstantNode) node;
                 assert oldConstant.asJavaConstant().getKind() == Kind.Object;
-                WordBase value = (WordBase) snippetReflection.asObject(oldConstant.asJavaConstant());
+                WordBase value = snippetReflection.asObject(WordBase.class, oldConstant.asJavaConstant());
                 ConstantNode newConstant = ConstantNode.forIntegerKind(wordKind, value.rawValue(), node.graph());
                 graph.replaceFloating(oldConstant, newConstant);
 
@@ -241,7 +241,7 @@ public class WordTypeRewriterPhase extends Phase {
                 assert arguments.size() == 3;
                 Kind readKind = asKind(callTargetNode.returnType());
                 LocationNode location = makeLocation(graph, arguments.get(1), readKind, ANY_LOCATION);
-                BarrierType barrierType = (BarrierType) snippetReflection.asObject(arguments.get(2).asJavaConstant());
+                BarrierType barrierType = snippetReflection.asObject(BarrierType.class, arguments.get(2).asJavaConstant());
                 replace(invoke, readOp(graph, arguments.get(0), invoke, location, barrierType, true));
                 break;
             }
@@ -381,7 +381,7 @@ public class WordTypeRewriterPhase extends Phase {
 
     protected LocationNode makeLocation(StructuredGraph graph, ValueNode offset, Kind readKind, ValueNode locationIdentity) {
         if (locationIdentity.isConstant()) {
-            return makeLocation(graph, offset, readKind, (LocationIdentity) snippetReflection.asObject(locationIdentity.asJavaConstant()));
+            return makeLocation(graph, offset, readKind, snippetReflection.asObject(LocationIdentity.class, locationIdentity.asJavaConstant()));
         }
         return SnippetLocationNode.create(snippetReflection, locationIdentity, ConstantNode.forConstant(snippetReflection.forObject(readKind), metaAccess, graph), ConstantNode.forLong(0, graph),
                         fromSigned(graph, offset), ConstantNode.forInt(1, graph), graph);

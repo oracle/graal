@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot.meta;
 
 import java.lang.invoke.*;
+import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
@@ -101,4 +102,28 @@ public interface HotSpotObjectConstant extends JavaConstant, HotSpotConstant, VM
      * Determines if this constant represents an {@linkplain String#intern() interned} string.
      */
     boolean isInternedString();
+
+    /**
+     * Gets the object represented by this constant represents if it is of a given type.
+     *
+     * @param type the expected type of the object represented by this constant. If the object is
+     *            required to be of this type, then wrap the call to this method in
+     *            {@link Objects#requireNonNull(Object)}.
+     * @return the object value represented by this constant if it is an
+     *         {@link ResolvedJavaType#isInstance(JavaConstant) instance of} {@code type} otherwise
+     *         {@code null}
+     */
+    <T> T asObject(Class<T> type);
+
+    /**
+     * Gets the object represented by this constant represents if it is of a given type.
+     *
+     * @param type the expected type of the object represented by this constant. If the object is
+     *            required to be of this type, then wrap the call to this method in
+     *            {@link Objects#requireNonNull(Object)}.
+     * @return the object value represented by this constant if it is an
+     *         {@link ResolvedJavaType#isInstance(JavaConstant) instance of} {@code type} otherwise
+     *         {@code null}
+     */
+    Object asObject(ResolvedJavaType type);
 }
