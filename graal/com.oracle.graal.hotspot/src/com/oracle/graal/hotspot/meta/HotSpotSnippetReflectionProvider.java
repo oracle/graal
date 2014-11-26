@@ -24,8 +24,15 @@ package com.oracle.graal.hotspot.meta;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
+import com.oracle.graal.hotspot.*;
 
 public class HotSpotSnippetReflectionProvider implements SnippetReflectionProvider {
+
+    private final HotSpotGraalRuntime runtime;
+
+    public HotSpotSnippetReflectionProvider(HotSpotGraalRuntime runtime) {
+        this.runtime = runtime;
+    }
 
     @Override
     public JavaConstant forObject(Object object) {
@@ -45,5 +52,12 @@ public class HotSpotSnippetReflectionProvider implements SnippetReflectionProvid
     @Override
     public Object asBoxedValue(JavaConstant constant) {
         return HotSpotObjectConstantImpl.asBoxedValue(constant);
+    }
+
+    public Object getSubstitutionGuardParameter(Class<?> type) {
+        if (type.isInstance(runtime)) {
+            return runtime;
+        }
+        return null;
     }
 }

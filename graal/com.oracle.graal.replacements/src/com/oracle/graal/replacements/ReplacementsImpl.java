@@ -313,17 +313,22 @@ public class ReplacementsImpl implements Replacements {
             Class<?>[] paramTypes = constructor.getParameterTypes();
             // Check for supported constructor signatures
             try {
-                if (constructor.getParameterCount() == 1 && paramTypes[0] == Architecture.class) {
-                    // Guard(Architecture)
-                    return (SubstitutionGuard) constructor.newInstance(target.arch);
-                } else if (constructor.getParameterCount() == 0) {
-                    // Guard()
-                    return (SubstitutionGuard) constructor.newInstance();
+                Object[] args = new Object[constructor.getParameterCount()];
+                for (int i = 0; i < args.length; i++) {
+                    Object arg = snippetReflection.getSubstitutionGuardParameter(paramTypes[0]);
+                    if (arg != null) {
+                        args[i] = arg;
+                    } else if (paramTypes[0].isInstance(target.arch)) {
+                        args[i] = target.arch;
+                    } else {
+                        throw new GraalInternalError("Unsupported type %s in substitution guard constructor: %s", paramTypes[i].getName(), constructor);
+                    }
                 }
+
+                return (SubstitutionGuard) constructor.newInstance(args);
             } catch (Exception e) {
                 throw new GraalInternalError(e);
             }
-            throw new GraalInternalError("Unsupported constructor signature in substitution guard: " + constructor);
         }
         return null;
     }

@@ -157,7 +157,7 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
             Assumptions assumptions = new Assumptions(false);
             Providers p = new Providers(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, null, new HotSpotStampProvider());
             try (InitTimer rt = timer("create SnippetReflection provider")) {
-                snippetReflection = createSnippetReflection();
+                snippetReflection = createSnippetReflection(runtime);
             }
             try (InitTimer rt = timer("create Replacements provider")) {
                 replacements = createReplacements(runtime, assumptions, p, snippetReflection);
@@ -216,8 +216,8 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
         return new HotSpotSuitesProvider(runtime);
     }
 
-    protected HotSpotSnippetReflectionProvider createSnippetReflection() {
-        return new HotSpotSnippetReflectionProvider();
+    protected HotSpotSnippetReflectionProvider createSnippetReflection(HotSpotGraalRuntime runtime) {
+        return new HotSpotSnippetReflectionProvider(runtime);
     }
 
     protected HotSpotLoweringProvider createLowerer(HotSpotGraalRuntime runtime, HotSpotMetaAccessProvider metaAccess, HotSpotForeignCallsProvider foreignCalls, HotSpotRegistersProvider registers,
