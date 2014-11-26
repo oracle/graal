@@ -77,10 +77,6 @@ class LinearScanWalker extends IntervalWalker {
     LinearScanWalker(LinearScan allocator, Interval unhandledFixedFirst, Interval unhandledAnyFirst) {
         super(allocator, unhandledFixedFirst, unhandledAnyFirst);
 
-        // If all allocatable registers are caller saved, then no registers are live across a call
-        // site. The register allocator can save time not trying to find a register at a call site.
-        allocator.callKillsRegisters = allocator.frameMapBuilder.getRegisterConfig().areAllAllocatableRegistersCallerSaved();
-
         moveResolver = new MoveResolver(allocator);
         spillIntervals = Util.uncheckedCast(new List[allocator.registers.length]);
         for (int i = 0; i < allocator.registers.length; i++) {

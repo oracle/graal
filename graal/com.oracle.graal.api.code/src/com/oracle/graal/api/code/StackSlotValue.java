@@ -24,6 +24,10 @@ package com.oracle.graal.api.code;
 
 import com.oracle.graal.api.meta.*;
 
+/**
+ * Common base class for {@linkplain StackSlot real} and {@linkplain VirtualStackSlot virtual} stack
+ * slots.
+ */
 public abstract class StackSlotValue extends AllocatableValue {
 
     private static final long serialVersionUID = 5106407801795483337L;

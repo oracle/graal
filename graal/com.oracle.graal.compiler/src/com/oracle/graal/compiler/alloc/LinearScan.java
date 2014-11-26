@@ -66,7 +66,7 @@ public final class LinearScan {
     final RegisterAttributes[] registerAttributes;
     final Register[] registers;
 
-    boolean callKillsRegisters;
+    final boolean callKillsRegisters;
 
     public static final int DOMINATOR_SPILL_MOVE_ID = -2;
     private static final int SPLIT_INTERVALS_CAPACITY_RIGHT_SHIFT = 1;
@@ -173,6 +173,10 @@ public final class LinearScan {
         this.registers = target.arch.getRegisters();
         this.firstVariableNumber = registers.length;
         this.blockData = new BlockMap<>(ir.getControlFlowGraph());
+
+        // If all allocatable registers are caller saved, then no registers are live across a call
+        // site. The register allocator can save time not trying to find a register at a call site.
+        this.callKillsRegisters = this.frameMapBuilder.getRegisterConfig().areAllAllocatableRegistersCallerSaved();
     }
 
     public int getFirstLirInstructionId(AbstractBlock<?> block) {
