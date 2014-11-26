@@ -25,7 +25,7 @@ package com.oracle.graal.hotspot.amd64;
 import static com.oracle.graal.amd64.AMD64.*;
 import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.hotspot.HotSpotBackend.*;
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
+//import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 
 import java.util.*;
 
@@ -166,7 +166,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         if (pollOnReturnScratchRegister == null) {
             pollOnReturnScratchRegister = findPollOnReturnScratchRegister();
         }
-        append(new AMD64HotSpotReturnOp(operand, getStub() != null, pollOnReturnScratchRegister));
+        append(new AMD64HotSpotReturnOp(operand, getStub() != null, pollOnReturnScratchRegister, config));
     }
 
     @Override
@@ -387,8 +387,8 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     }
 
     private void moveDeoptValuesToThread(Value actionAndReason, Value speculation) {
-        moveValueToThread(actionAndReason, runtime().getConfig().pendingDeoptimizationOffset);
-        moveValueToThread(speculation, runtime().getConfig().pendingFailedSpeculationOffset);
+        moveValueToThread(actionAndReason, config.pendingDeoptimizationOffset);
+        moveValueToThread(speculation, config.pendingFailedSpeculationOffset);
     }
 
     private void moveValueToThread(Value v, int offset) {
@@ -438,7 +438,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         Variable framePcVariable = load(framePc);
         Variable senderSpVariable = load(senderSp);
         Variable initialInfoVariable = load(initialInfo);
-        append(new AMD64HotSpotPushInterpreterFrameOp(frameSizeVariable, framePcVariable, senderSpVariable, initialInfoVariable));
+        append(new AMD64HotSpotPushInterpreterFrameOp(frameSizeVariable, framePcVariable, senderSpVariable, initialInfoVariable, config));
     }
 
     @Override

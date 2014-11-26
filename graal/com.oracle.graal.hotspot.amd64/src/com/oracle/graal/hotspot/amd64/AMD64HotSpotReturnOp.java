@@ -22,12 +22,12 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.amd64.*;
+import com.oracle.graal.hotspot.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.asm.*;
@@ -41,11 +41,13 @@ final class AMD64HotSpotReturnOp extends AMD64HotSpotEpilogueOp implements Block
     @Use({REG, ILLEGAL}) protected Value value;
     private final boolean isStub;
     private final Register scratchForSafepointOnReturn;
+    private final HotSpotVMConfig config;
 
-    AMD64HotSpotReturnOp(Value value, boolean isStub, Register scratchForSafepointOnReturn) {
+    AMD64HotSpotReturnOp(Value value, boolean isStub, Register scratchForSafepointOnReturn, HotSpotVMConfig config) {
         this.value = value;
         this.isStub = isStub;
         this.scratchForSafepointOnReturn = scratchForSafepointOnReturn;
+        this.config = config;
     }
 
     @Override
@@ -53,7 +55,7 @@ final class AMD64HotSpotReturnOp extends AMD64HotSpotEpilogueOp implements Block
         leaveFrameAndRestoreRbp(crb, masm);
         if (!isStub) {
             // Every non-stub compile method must have a poll before the return.
-            AMD64HotSpotSafepointOp.emitCode(crb, masm, runtime().getConfig(), true, null, scratchForSafepointOnReturn);
+            AMD64HotSpotSafepointOp.emitCode(crb, masm, config, true, null, scratchForSafepointOnReturn);
         }
         masm.ret(0);
     }

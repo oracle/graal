@@ -44,12 +44,14 @@ final class AMD64HotSpotPushInterpreterFrameOp extends AMD64LIRInstruction {
     @Alive(REG) AllocatableValue framePc;
     @Alive(REG) AllocatableValue senderSp;
     @Alive(REG) AllocatableValue initialInfo;
+    private final HotSpotVMConfig config;
 
-    AMD64HotSpotPushInterpreterFrameOp(AllocatableValue frameSize, AllocatableValue framePc, AllocatableValue senderSp, AllocatableValue initialInfo) {
+    AMD64HotSpotPushInterpreterFrameOp(AllocatableValue frameSize, AllocatableValue framePc, AllocatableValue senderSp, AllocatableValue initialInfo, HotSpotVMConfig config) {
         this.frameSize = frameSize;
         this.framePc = framePc;
         this.senderSp = senderSp;
         this.initialInfo = initialInfo;
+        this.config = config;
     }
 
     @Override
@@ -58,8 +60,7 @@ final class AMD64HotSpotPushInterpreterFrameOp extends AMD64LIRInstruction {
         final Register framePcRegister = asRegister(framePc);
         final Register senderSpRegister = asRegister(senderSp);
         final Register initialInfoRegister = asRegister(initialInfo);
-        final HotSpotVMConfig config = HotSpotGraalRuntime.runtime().getConfig();
-        final int wordSize = HotSpotGraalRuntime.runtime().getTarget().wordSize;
+        final int wordSize = 8;
 
         // We'll push PC and BP by hand.
         masm.subq(frameSizeRegister, 2 * wordSize);

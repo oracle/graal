@@ -33,10 +33,10 @@ final class AMD64UncommonTrapStub extends UncommonTrapStub {
 
     private RegisterConfig registerConfig;
 
-    public AMD64UncommonTrapStub(HotSpotProviders providers, TargetDescription target, HotSpotForeignCallLinkage linkage) {
+    public AMD64UncommonTrapStub(HotSpotProviders providers, TargetDescription target, HotSpotVMConfig config, HotSpotForeignCallLinkage linkage) {
         super(providers, target, linkage);
         Register[] allocatable = new Register[]{rbx, rcx, rdx, rsi, rdi, r8, r9, r10, r11, r13, r14};
-        registerConfig = new AMD64HotSpotRegisterConfig(target.arch, HotSpotGraalRuntime.runtime().getConfig(), allocatable);
+        registerConfig = new AMD64HotSpotRegisterConfig(target.arch, config, allocatable);
     }
 
     @Override

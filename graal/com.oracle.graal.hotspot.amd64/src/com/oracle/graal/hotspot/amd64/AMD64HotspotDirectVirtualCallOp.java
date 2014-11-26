@@ -40,10 +40,12 @@ import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 final class AMD64HotspotDirectVirtualCallOp extends DirectCallOp {
 
     private final InvokeKind invokeKind;
+    private final HotSpotVMConfig config;
 
-    AMD64HotspotDirectVirtualCallOp(ResolvedJavaMethod target, Value result, Value[] parameters, Value[] temps, LIRFrameState state, InvokeKind invokeKind) {
+    AMD64HotspotDirectVirtualCallOp(ResolvedJavaMethod target, Value result, Value[] parameters, Value[] temps, LIRFrameState state, InvokeKind invokeKind, HotSpotVMConfig config) {
         super(target, result, parameters, temps, state);
         this.invokeKind = invokeKind;
+        this.config = config;
         assert invokeKind == InvokeKind.Interface || invokeKind == InvokeKind.Virtual;
     }
 
@@ -53,7 +55,7 @@ final class AMD64HotspotDirectVirtualCallOp extends DirectCallOp {
         // instruction that loads the Klass from the inline cache.
         MarkId.recordMark(crb, invokeKind == InvokeKind.Virtual ? MarkId.INVOKEVIRTUAL : MarkId.INVOKEINTERFACE);
         // This must be emitted exactly like this to ensure it's patchable
-        masm.movq(AMD64.rax, HotSpotGraalRuntime.runtime().getConfig().nonOopBits);
+        masm.movq(AMD64.rax, config.nonOopBits);
         super.emitCode(crb, masm);
     }
 }
