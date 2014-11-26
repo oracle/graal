@@ -34,4 +34,6 @@ public interface HotSpotMetaspaceConstant extends HotSpotConstant, VMConstant {
     Constant uncompress(CompressEncoding encoding);
 
     HotSpotResolvedObjectType asResolvedJavaType();
+
+    long rawValue();
 }
