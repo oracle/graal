@@ -56,6 +56,8 @@ public class WriteBarrierVerificationTest extends GraalCompilerTest {
 
     public static int barrierIndex;
 
+    private final HotSpotVMConfig config = HotSpotGraalRuntime.runtime().getConfig();
+
     public static class Container {
 
         public Container a;
@@ -624,11 +626,10 @@ public class WriteBarrierVerificationTest extends GraalCompilerTest {
             new LoopSafepointInsertionPhase().apply(graph);
             new LoweringPhase(new CanonicalizerPhase(true), LoweringTool.StandardLoweringStage.MID_TIER).apply(graph, highTierContext);
 
-            new WriteBarrierAdditionPhase().apply(graph);
+            new WriteBarrierAdditionPhase(config).apply(graph);
 
             int barriers = 0;
             // First, the total number of expected barriers is checked.
-            HotSpotVMConfig config = HotSpotGraalRuntime.runtime().getConfig();
             if (config.useG1GC) {
                 barriers = graph.getNodes().filter(G1PreWriteBarrier.class).count() + graph.getNodes().filter(G1PostWriteBarrier.class).count() +
                                 graph.getNodes().filter(G1ArrayRangePreWriteBarrier.class).count() + graph.getNodes().filter(G1ArrayRangePostWriteBarrier.class).count();

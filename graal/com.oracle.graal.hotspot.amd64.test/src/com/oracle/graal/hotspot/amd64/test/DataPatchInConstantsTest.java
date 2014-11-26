@@ -32,11 +32,11 @@ import com.oracle.graal.amd64.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.asm.amd64.*;
-import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.nodes.CompressionNode.CompressionOp;
 import com.oracle.graal.hotspot.nodes.type.*;
+import com.oracle.graal.hotspot.test.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.gen.*;
@@ -44,7 +44,7 @@ import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
-public class DataPatchInConstantsTest extends GraalCompilerTest {
+public class DataPatchInConstantsTest extends HotSpotGraalCompilerTest {
 
     @Before
     public void checkAMD64() {

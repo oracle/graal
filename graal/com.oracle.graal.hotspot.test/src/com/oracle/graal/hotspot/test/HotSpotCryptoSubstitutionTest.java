@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.hotspot.test;
 
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
-
 import java.io.*;
 import java.lang.reflect.*;
 import java.security.*;
@@ -34,7 +32,6 @@ import org.junit.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.bridge.CompilerToVM.CodeInstallResult;
 import com.oracle.graal.hotspot.meta.*;
@@ -43,7 +40,7 @@ import com.oracle.graal.nodes.*;
 /**
  * Tests the intrinsification of certain crypto methods.
  */
-public class HotSpotCryptoSubstitutionTest extends GraalCompilerTest {
+public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
 
     @Override
     protected InstalledCode addMethod(ResolvedJavaMethod method, CompilationResult compResult) {

@@ -22,10 +22,9 @@
  */
 package com.oracle.graal.hotspot.phases;
 
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
-
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.nodes.HeapAccess.BarrierType;
 import com.oracle.graal.nodes.*;
@@ -36,7 +35,10 @@ import com.oracle.graal.phases.*;
 
 public class WriteBarrierAdditionPhase extends Phase {
 
-    public WriteBarrierAdditionPhase() {
+    private HotSpotVMConfig config;
+
+    public WriteBarrierAdditionPhase(HotSpotVMConfig config) {
+        this.config = config;
     }
 
     @Override
@@ -60,9 +62,9 @@ public class WriteBarrierAdditionPhase extends Phase {
         }
     }
 
-    private static void addReadNodeBarriers(ReadNode node, StructuredGraph graph) {
+    private void addReadNodeBarriers(ReadNode node, StructuredGraph graph) {
         if (node.getBarrierType() == BarrierType.PRECISE) {
-            assert useG1GC();
+            assert config.useG1GC;
             G1ReferentFieldReadBarrier barrier = graph.add(G1ReferentFieldReadBarrier.create(node.object(), node, node.location(), false));
             graph.addAfterFixed(node, barrier);
         } else {
@@ -98,7 +100,7 @@ public class WriteBarrierAdditionPhase extends Phase {
             case IMPRECISE:
             case PRECISE:
                 boolean precise = barrierType == BarrierType.PRECISE;
-                if (useG1GC()) {
+                if (config.useG1GC) {
                     if (!node.isInitialization()) {
                         addG1PreWriteBarrier(node, node.object(), null, node.location(), true, node.getNullCheck(), graph);
                     }
@@ -121,7 +123,7 @@ public class WriteBarrierAdditionPhase extends Phase {
             case IMPRECISE:
             case PRECISE:
                 boolean precise = barrierType == BarrierType.PRECISE;
-                if (useG1GC()) {
+                if (config.useG1GC) {
                     addG1PreWriteBarrier(node, node.object(), null, node.location(), true, node.getNullCheck(), graph);
                     addG1PostWriteBarrier(node, node.object(), node.getNewValue(), node.location(), precise, graph);
                 } else {
@@ -142,7 +144,7 @@ public class WriteBarrierAdditionPhase extends Phase {
             case IMPRECISE:
             case PRECISE:
                 boolean precise = barrierType == BarrierType.PRECISE;
-                if (useG1GC()) {
+                if (config.useG1GC) {
                     addG1PreWriteBarrier(node, node.object(), node.getExpectedValue(), node.location(), false, false, graph);
                     addG1PostWriteBarrier(node, node.object(), node.getNewValue(), node.location(), precise, graph);
                 } else {
@@ -154,8 +156,8 @@ public class WriteBarrierAdditionPhase extends Phase {
         }
     }
 
-    private static void addArrayRangeBarriers(ArrayRangeWriteNode node, StructuredGraph graph) {
-        if (useG1GC()) {
+    private void addArrayRangeBarriers(ArrayRangeWriteNode node, StructuredGraph graph) {
+        if (config.useG1GC) {
             if (!node.isInitialization()) {
                 G1ArrayRangePreWriteBarrier g1ArrayRangePreWriteBarrier = graph.add(G1ArrayRangePreWriteBarrier.create(node.getArray(), node.getIndex(), node.getLength()));
                 graph.addBeforeFixed(node, g1ArrayRangePreWriteBarrier);
