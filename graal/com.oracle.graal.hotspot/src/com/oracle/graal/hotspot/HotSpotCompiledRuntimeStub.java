@@ -72,7 +72,7 @@ public final class HotSpotCompiledRuntimeStub extends HotSpotCompiledCode {
             Call call = (Call) infopoint;
             assert call.target instanceof HotSpotForeignCallLinkage : this + " cannot have non runtime call: " + call.target;
             HotSpotForeignCallLinkage linkage = (HotSpotForeignCallLinkage) call.target;
-            assert !linkage.isCompiledStub() || linkage.getDescriptor() == UNCOMMON_TRAP_HANDLER : this + " cannot call compiled stub " + linkage;
+            assert !linkage.isCompiledStub() || linkage.getDescriptor().equals(UNCOMMON_TRAP_HANDLER) : this + " cannot call compiled stub " + linkage;
         }
         return true;
     }
