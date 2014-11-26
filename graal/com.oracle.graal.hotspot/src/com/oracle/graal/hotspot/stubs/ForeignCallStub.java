@@ -52,6 +52,8 @@ import com.oracle.graal.word.*;
  */
 public class ForeignCallStub extends Stub {
 
+    private final HotSpotGraalRuntimeProvider runtime;
+
     /**
      * The target of the call.
      */
@@ -75,10 +77,11 @@ public class ForeignCallStub extends Stub {
      *            be re-executed.
      * @param killedLocations the memory locations killed by the stub call
      */
-    public ForeignCallStub(HotSpotProviders providers, long address, ForeignCallDescriptor descriptor, boolean prependThread, Transition transition, boolean reexecutable,
-                    LocationIdentity... killedLocations) {
+    public ForeignCallStub(HotSpotGraalRuntimeProvider runtime, HotSpotProviders providers, long address, ForeignCallDescriptor descriptor, boolean prependThread, Transition transition,
+                    boolean reexecutable, LocationIdentity... killedLocations) {
         super(providers, HotSpotForeignCallLinkageImpl.create(providers.getMetaAccess(), providers.getCodeCache(), providers.getForeignCalls(), descriptor, 0L, PRESERVES_REGISTERS, JavaCall,
                         JavaCallee, transition, reexecutable, killedLocations));
+        this.runtime = runtime;
         this.prependThread = prependThread;
         Class<?>[] targetParameterTypes = createTargetParameters(descriptor);
         ForeignCallDescriptor targetSig = new ForeignCallDescriptor(descriptor.getName() + ":C", descriptor.getResultType(), targetParameterTypes);
@@ -121,7 +124,7 @@ public class ForeignCallStub extends Stub {
                 for (int i = 0; i < arguments.length; i++) {
                     parameters[i] = metaAccess.lookupJavaType(arguments[i]);
                 }
-                return new HotSpotSignature(metaAccess.lookupJavaType(d.getResultType()), parameters);
+                return new HotSpotSignature(runtime, metaAccess.lookupJavaType(d.getResultType()), parameters);
             }
 
             public String getName() {

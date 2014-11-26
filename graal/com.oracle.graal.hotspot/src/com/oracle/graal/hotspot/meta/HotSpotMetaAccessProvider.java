@@ -62,7 +62,7 @@ public class HotSpotMetaAccessProvider implements MetaAccessProvider, Remote {
     }
 
     public Signature parseMethodDescriptor(String signature) {
-        return new HotSpotSignature(signature);
+        return new HotSpotSignature(runtime, signature);
     }
 
     /**

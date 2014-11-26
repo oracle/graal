@@ -417,7 +417,7 @@ public class HotSpotConstantPool extends CompilerObject implements ConstantPool,
 
     @Override
     public Signature lookupSignature(int cpi) {
-        return new HotSpotSignature(lookupUtf8(cpi));
+        return new HotSpotSignature(runtime(), lookupUtf8(cpi));
     }
 
     @Override
@@ -444,7 +444,7 @@ public class HotSpotConstantPool extends CompilerObject implements ConstantPool,
         if ((metaspacePointer & config.compilerToVMSymbolTag) != 0) {
             final long metaspaceSymbol = metaspacePointer & ~config.compilerToVMSymbolTag;
             String name = runtime.getCompilerToVM().getSymbol(metaspaceSymbol);
-            return HotSpotUnresolvedJavaType.create("L" + name + ";");
+            return HotSpotUnresolvedJavaType.create(runtime(), "L" + name + ";");
         } else {
             assert (metaspacePointer & config.compilerToVMKlassTag) == 0;
             return HotSpotResolvedObjectTypeImpl.fromMetaspaceKlass(metaspacePointer);
@@ -460,9 +460,9 @@ public class HotSpotConstantPool extends CompilerObject implements ConstantPool,
         } else {
             // Get the method's name and signature.
             String name = getNameRefAt(index);
-            String signature = getSignatureRefAt(index);
+            HotSpotSignature signature = new HotSpotSignature(runtime(), getSignatureRefAt(index));
             if (opcode == Bytecodes.INVOKEDYNAMIC) {
-                HotSpotResolvedObjectTypeImpl holder = HotSpotResolvedObjectTypeImpl.fromObjectClass(MethodHandle.class);
+                HotSpotResolvedObjectType holder = HotSpotResolvedObjectTypeImpl.fromObjectClass(MethodHandle.class);
                 return new HotSpotMethodUnresolved(name, signature, holder);
             } else {
                 final int klassIndex = getKlassRefIndexAt(index);

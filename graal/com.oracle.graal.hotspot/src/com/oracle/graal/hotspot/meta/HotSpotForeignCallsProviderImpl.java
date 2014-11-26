@@ -120,7 +120,7 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
      */
     public void linkForeignCall(HotSpotProviders providers, ForeignCallDescriptor descriptor, long address, boolean prependThread, Transition transition, boolean reexecutable,
                     LocationIdentity... killedLocations) {
-        ForeignCallStub stub = new ForeignCallStub(providers, address, descriptor, prependThread, transition, reexecutable, killedLocations);
+        ForeignCallStub stub = new ForeignCallStub(runtime, providers, address, descriptor, prependThread, transition, reexecutable, killedLocations);
         HotSpotForeignCallLinkage linkage = stub.getLinkage();
         HotSpotForeignCallLinkage targetLinkage = stub.getTargetLinkage();
         linkage.setCompiledStub(stub);

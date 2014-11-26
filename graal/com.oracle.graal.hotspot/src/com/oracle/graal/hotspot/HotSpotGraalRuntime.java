@@ -399,7 +399,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, R
 
         if (metaspaceKlass == 0L) {
             assert resolve == false;
-            return HotSpotUnresolvedJavaType.create(name);
+            return HotSpotUnresolvedJavaType.create(this, name);
         }
         return HotSpotResolvedObjectTypeImpl.fromMetaspaceKlass(metaspaceKlass);
     }

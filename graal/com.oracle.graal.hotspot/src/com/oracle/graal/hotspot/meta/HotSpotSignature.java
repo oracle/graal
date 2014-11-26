@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.hotspot.meta;
 
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
-
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
@@ -41,8 +39,10 @@ public class HotSpotSignature extends CompilerObject implements Signature {
     private final String originalString;
     private ResolvedJavaType[] parameterTypes;
     private ResolvedJavaType returnTypeCache;
+    private final HotSpotGraalRuntimeProvider runtime;
 
-    public HotSpotSignature(String signature) {
+    public HotSpotSignature(HotSpotGraalRuntimeProvider runtime, String signature) {
+        this.runtime = runtime;
         assert signature.length() > 0;
         this.originalString = signature;
 
@@ -63,7 +63,8 @@ public class HotSpotSignature extends CompilerObject implements Signature {
         }
     }
 
-    public HotSpotSignature(ResolvedJavaType returnType, ResolvedJavaType... parameterTypes) {
+    public HotSpotSignature(HotSpotGraalRuntimeProvider runtime, ResolvedJavaType returnType, ResolvedJavaType... parameterTypes) {
+        this.runtime = runtime;
         this.parameterTypes = parameterTypes.clone();
         this.returnTypeCache = returnType;
         this.returnType = returnType.getName();
@@ -74,7 +75,7 @@ public class HotSpotSignature extends CompilerObject implements Signature {
         }
         sb.append(")").append(returnType.getName());
         this.originalString = sb.toString();
-        assert new HotSpotSignature(originalString).equals(this);
+        assert new HotSpotSignature(runtime, originalString).equals(this);
     }
 
     private static int parseSignature(String signature, int start) {
@@ -129,12 +130,12 @@ public class HotSpotSignature extends CompilerObject implements Signature {
         return true;
     }
 
-    private static JavaType getUnresolvedOrPrimitiveType(String name) {
+    private static JavaType getUnresolvedOrPrimitiveType(HotSpotGraalRuntimeProvider runtime, String name) {
         if (name.length() == 1) {
             Kind kind = Kind.fromPrimitiveOrVoidTypeChar(name.charAt(0));
-            return HotSpotResolvedPrimitiveType.fromKind(kind);
+            return runtime.getHostProviders().getMetaAccess().lookupJavaType(kind.toJavaClass());
         }
-        return new HotSpotUnresolvedJavaType(name);
+        return new HotSpotUnresolvedJavaType(name, runtime);
     }
 
     @Override
@@ -142,7 +143,7 @@ public class HotSpotSignature extends CompilerObject implements Signature {
         if (accessingClass == null) {
             // Caller doesn't care about resolution context so return an unresolved
             // or primitive type (primitive type resolution is context free)
-            return getUnresolvedOrPrimitiveType(parameters.get(index));
+            return getUnresolvedOrPrimitiveType(runtime, parameters.get(index));
         }
         if (parameterTypes == null) {
             parameterTypes = new ResolvedJavaType[parameters.size()];
@@ -150,7 +151,7 @@ public class HotSpotSignature extends CompilerObject implements Signature {
 
         ResolvedJavaType type = parameterTypes[index];
         if (!checkValidCache(type, accessingClass)) {
-            type = (ResolvedJavaType) runtime().lookupType(parameters.get(index), (HotSpotResolvedObjectTypeImpl) accessingClass, true);
+            type = (ResolvedJavaType) runtime.lookupType(parameters.get(index), (HotSpotResolvedObjectType) accessingClass, true);
             parameterTypes[index] = type;
         }
         return type;
@@ -172,10 +173,10 @@ public class HotSpotSignature extends CompilerObject implements Signature {
         if (accessingClass == null) {
             // Caller doesn't care about resolution context so return an unresolved
             // or primitive type (primitive type resolution is context free)
-            return getUnresolvedOrPrimitiveType(returnType);
+            return getUnresolvedOrPrimitiveType(runtime, returnType);
         }
         if (!checkValidCache(returnTypeCache, accessingClass)) {
-            returnTypeCache = (ResolvedJavaType) runtime().lookupType(returnType, (HotSpotResolvedObjectTypeImpl) accessingClass, true);
+            returnTypeCache = (ResolvedJavaType) runtime.lookupType(returnType, (HotSpotResolvedObjectType) accessingClass, true);
         }
         return returnTypeCache;
     }
