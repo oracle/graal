@@ -286,12 +286,12 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
 
     @Override
     protected BarrierType fieldInitializationBarrier(Kind entryKind) {
-        return (entryKind == Kind.Object && !useDeferredInitBarriers()) ? BarrierType.IMPRECISE : BarrierType.NONE;
+        return (entryKind == Kind.Object && !runtime.getConfig().useDeferredInitBarriers) ? BarrierType.IMPRECISE : BarrierType.NONE;
     }
 
     @Override
     protected BarrierType arrayInitializationBarrier(Kind entryKind) {
-        return (entryKind == Kind.Object && !useDeferredInitBarriers()) ? BarrierType.PRECISE : BarrierType.NONE;
+        return (entryKind == Kind.Object && !runtime.getConfig().useDeferredInitBarriers) ? BarrierType.PRECISE : BarrierType.NONE;
     }
 
     private void lowerOSRStartNode(OSRStartNode osrStart) {
@@ -378,8 +378,8 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
         }
     }
 
-    private static boolean addReadBarrier(UnsafeLoadNode load) {
-        if (useG1GC() && load.graph().getGuardsStage() == StructuredGraph.GuardsStage.FIXED_DEOPTS && load.object().getKind() == Kind.Object && load.accessKind() == Kind.Object &&
+    private boolean addReadBarrier(UnsafeLoadNode load) {
+        if (runtime.getConfig().useG1GC && load.graph().getGuardsStage() == StructuredGraph.GuardsStage.FIXED_DEOPTS && load.object().getKind() == Kind.Object && load.accessKind() == Kind.Object &&
                         !StampTool.isPointerAlwaysNull(load.object())) {
             ResolvedJavaType type = StampTool.typeOrNull(load.object());
             if (type != null && !type.isArray()) {
@@ -439,7 +439,8 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
     protected BarrierType fieldLoadBarrierType(ResolvedJavaField f) {
         HotSpotResolvedJavaField loadField = (HotSpotResolvedJavaField) f;
         BarrierType barrierType = BarrierType.NONE;
-        if (config().useG1GC && loadField.getKind() == Kind.Object && metaAccess.lookupJavaType(Reference.class).equals(loadField.getDeclaringClass()) && loadField.getName().equals("referent")) {
+        if (runtime.getConfig().useG1GC && loadField.getKind() == Kind.Object && metaAccess.lookupJavaType(Reference.class).equals(loadField.getDeclaringClass()) &&
+                        loadField.getName().equals("referent")) {
             barrierType = BarrierType.PRECISE;
         }
         return barrierType;
@@ -453,7 +454,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
 
     @Override
     public int arrayScalingFactor(Kind kind) {
-        if (useCompressedOops() && kind == Kind.Object) {
+        if (runtime.getConfig().useCompressedOops && kind == Kind.Object) {
             return this.runtime.getTarget().getSizeInBytes(Kind.Int);
         }
         return super.arrayScalingFactor(kind);
@@ -466,7 +467,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
 
     @Override
     protected int arrayLengthOffset() {
-        return config().arrayLengthOffset;
+        return runtime.getConfig().arrayLengthOffset;
     }
 
     @Override
