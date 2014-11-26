@@ -144,15 +144,19 @@ public class TruffleCacheImpl implements TruffleCache {
             lookupExceedsMaxSize();
         }
 
+        StructuredGraph graph;
+        PhaseContext phaseContext = new PhaseContext(providers, new Assumptions(false));
         try (Scope s = Debug.scope("TruffleCache", providers.getMetaAccess(), method)) {
 
-            final PhaseContext phaseContext = new PhaseContext(providers, new Assumptions(false));
-            Mark mark = null;
-
-            final StructuredGraph graph = parseGraph(method, phaseContext);
+            graph = parseGraph(method, phaseContext);
             if (graph == null) {
                 return null;
             }
+        } catch (Throwable e) {
+            throw Debug.handle(e);
+        }
+
+        try (Scope s = Debug.scope("TruffleCache", providers.getMetaAccess(), method, graph)) {
 
             lastUsed.put(key, counter++);
             cache.put(key, markerGraph);
@@ -172,6 +176,7 @@ public class TruffleCacheImpl implements TruffleCache {
 
             PartialEscapePhase partialEscapePhase = new PartialEscapePhase(false, canonicalizer);
 
+            Mark mark = null;
             while (true) {
 
                 partialEscapePhase.apply(graph, phaseContext);
