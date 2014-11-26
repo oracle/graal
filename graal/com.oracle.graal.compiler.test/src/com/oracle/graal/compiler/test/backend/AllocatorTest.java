@@ -37,7 +37,7 @@ import com.oracle.graal.nodes.*;
 
 public class AllocatorTest extends BackendTest {
 
-    protected void test(String snippet, final int expectedRegisters, final int expectedRegRegMoves, final int expectedSpillMoves) {
+    protected void testAllocation(String snippet, final int expectedRegisters, final int expectedRegRegMoves, final int expectedSpillMoves) {
         final StructuredGraph graph = parseEager(snippet);
         try (Scope s = Debug.scope("AllocatorTest", graph, graph.method(), getCodeCache())) {
             final RegisterStats stats = new RegisterStats(getLIRGenerationResult(graph).getLIR());
