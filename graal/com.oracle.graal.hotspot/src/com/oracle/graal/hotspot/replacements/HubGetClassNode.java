@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 
 import com.oracle.graal.api.meta.*;
@@ -38,20 +37,22 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 
 /**
- * Read Klass::_java_mirror and incorporate non-null type information into stamp. This is also used
- * by {@link ClassGetHubNode} to eliminate chains of klass._java_mirror._klass.
+ * Read {@code Klass::_java_mirror} and incorporate non-null type information into stamp. This is
+ * also used by {@link ClassGetHubNode} to eliminate chains of {@code klass._java_mirror._klass}.
  */
 @NodeInfo
 public class HubGetClassNode extends FloatingGuardedNode implements Lowerable, Canonicalizable {
     @Input protected ValueNode hub;
+    protected final HotSpotVMConfig config;
 
-    public static HubGetClassNode create(ValueNode hub) {
-        return new HubGetClassNode(hub);
+    public static HubGetClassNode create(@InjectedNodeParameter MetaAccessProvider metaAccess, @InjectedNodeParameter HotSpotVMConfig config, ValueNode hub) {
+        return new HubGetClassNode(hub, metaAccess, config);
     }
 
-    protected HubGetClassNode(ValueNode hub) {
-        super(StampFactory.declaredNonNull(runtime().fromClass(Class.class)), null);
+    protected HubGetClassNode(ValueNode hub, MetaAccessProvider metaAccess, HotSpotVMConfig config) {
+        super(StampFactory.declaredNonNull(metaAccess.lookupJavaType(Class.class)), null);
         this.hub = hub;
+        this.config = config;
     }
 
     public ValueNode getHub() {
@@ -80,7 +81,6 @@ public class HubGetClassNode extends FloatingGuardedNode implements Lowerable, C
             return;
         }
 
-        HotSpotVMConfig config = runtime().getConfig();
         LocationNode location = ConstantLocationNode.create(CLASS_MIRROR_LOCATION, Kind.Object, config.classMirrorOffset, graph());
         assert !hub.isConstant();
         FloatingReadNode read = graph().unique(FloatingReadNode.create(hub, location, null, stamp(), getGuard(), BarrierType.NONE));
