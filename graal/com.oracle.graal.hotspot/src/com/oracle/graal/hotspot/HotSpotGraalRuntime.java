@@ -60,7 +60,7 @@ import com.oracle.graal.runtime.*;
 /**
  * Singleton class holding the instance of the {@link GraalRuntime}.
  */
-public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider, StackIntrospection {
+public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
 
     private static final HotSpotGraalRuntime instance;
 
@@ -327,11 +327,6 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider,
         return backend;
     }
 
-    /**
-     * Gets the Graal mirror for a {@link Class} object.
-     *
-     * @return the {@link ResolvedJavaType} corresponding to {@code javaClass}
-     */
     public ResolvedJavaType fromClass(Class<?> javaClass) {
         return graalMirrors.get(javaClass);
     }
@@ -376,19 +371,6 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider,
         return compilerToVm;
     }
 
-    /**
-     * Converts a name to a Java type. This method attempts to resolve {@code name} to a
-     * {@link ResolvedJavaType}.
-     *
-     * @param name a well formed Java type in {@linkplain JavaType#getName() internal} format
-     * @param accessingType the context of resolution which must be non-null
-     * @param resolve specifies whether resolution failure results in an unresolved type being
-     *            return or a {@link LinkageError} being thrown
-     * @return a Java type for {@code name} which is guaranteed to be of type
-     *         {@link ResolvedJavaType} if {@code resolve == true}
-     * @throws LinkageError if {@code resolve == true} and the resolution failed
-     * @throws NullPointerException if {@code accessingClass} is {@code null}
-     */
     public JavaType lookupType(String name, HotSpotResolvedObjectType accessingType, boolean resolve) {
         Objects.requireNonNull(accessingType, "cannot resolve type without an accessing class");
         // If the name represents a primitive type we can short-circuit the lookup.
@@ -465,12 +447,7 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider,
         return Collections.unmodifiableMap(backends);
     }
 
-    /**
-     * The offset from the origin of an array to the first element.
-     *
-     * @return the offset in bytes
-     */
-    public static int getArrayBaseOffset(Kind kind) {
+    public int getArrayBaseOffset(Kind kind) {
         switch (kind) {
             case Boolean:
                 return Unsafe.ARRAY_BOOLEAN_BASE_OFFSET;
@@ -495,12 +472,7 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider,
         }
     }
 
-    /**
-     * The scale used for the index when accessing elements of an array of this kind.
-     *
-     * @return the scale in order to convert the index into a byte offset
-     */
-    public static int getArrayIndexScale(Kind kind) {
+    public int getArrayIndexScale(Kind kind) {
         switch (kind) {
             case Boolean:
                 return Unsafe.ARRAY_BOOLEAN_INDEX_SCALE;

@@ -67,7 +67,7 @@ public class HSAILHotSpotLoweringProvider extends DefaultHotSpotLoweringProvider
                 if (n instanceof NewInstanceNode) {
                     hsailNewObjectSnippets.lower((NewInstanceNode) n, tool);
                 } else if (n instanceof NewArrayNode) {
-                    hsailNewObjectSnippets.lower((NewArrayNode) n, tool);
+                    hsailNewObjectSnippets.lower((NewArrayNode) n, runtime, tool);
                 }
             }
         }

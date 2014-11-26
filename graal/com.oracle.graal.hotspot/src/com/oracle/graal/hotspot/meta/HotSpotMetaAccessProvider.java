@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot.meta;
 
 import static com.oracle.graal.compiler.common.UnsafeAccess.*;
+import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.hotspot.meta.HotSpotResolvedJavaType.*;
 import static com.oracle.graal.hotspot.meta.HotSpotResolvedObjectTypeImpl.*;
 
@@ -295,7 +296,7 @@ public class HotSpotMetaAccessProvider implements MetaAccessProvider {
                     int length = Array.getLength(((HotSpotObjectConstantImpl) constant).object());
                     ResolvedJavaType elementType = lookupJavaType.getComponentType();
                     Kind elementKind = elementType.getKind();
-                    final int headerSize = HotSpotGraalRuntime.getArrayBaseOffset(elementKind);
+                    final int headerSize = runtime().getArrayBaseOffset(elementKind);
                     int sizeOfElement = HotSpotGraalRuntime.runtime().getTarget().getSizeInBytes(elementKind);
                     int alignment = HotSpotGraalRuntime.runtime().getTarget().wordSize;
                     int log2ElementSize = CodeUtil.log2(sizeOfElement);

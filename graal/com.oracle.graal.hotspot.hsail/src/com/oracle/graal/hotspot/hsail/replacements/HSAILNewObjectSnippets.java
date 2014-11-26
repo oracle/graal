@@ -303,13 +303,13 @@ public class HSAILNewObjectSnippets extends NewObjectSnippets {
         /**
          * Lowers a {@link NewArrayNode}.
          */
-        public void lower(NewArrayNode newArrayNode, LoweringTool tool) {
+        public void lower(NewArrayNode newArrayNode, HotSpotGraalRuntimeProvider runtime, LoweringTool tool) {
             StructuredGraph graph = newArrayNode.graph();
             ResolvedJavaType elementType = newArrayNode.elementType();
             HotSpotResolvedObjectType arrayType = (HotSpotResolvedObjectType) elementType.getArrayClass();
             Kind elementKind = elementType.getKind();
             ConstantNode hub = ConstantNode.forConstant(KlassPointerStamp.klassNonNull(), arrayType.klass(), providers.getMetaAccess(), graph);
-            final int headerSize = HotSpotGraalRuntime.getArrayBaseOffset(elementKind);
+            final int headerSize = runtime.getArrayBaseOffset(elementKind);
             // lowerer extends HotSpotLoweringProvider so we can just use that
             HotSpotLoweringProvider lowerer = (HotSpotLoweringProvider) providers.getLowerer();
             int log2ElementSize = CodeUtil.log2(lowerer.arrayScalingFactor(elementKind));

@@ -58,7 +58,7 @@ import com.oracle.graal.replacements.nodes.*;
  */
 public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider implements HotSpotLoweringProvider {
 
-    protected final HotSpotGraalRuntime runtime;
+    protected final HotSpotGraalRuntimeProvider runtime;
     protected final ForeignCallsProvider foreignCalls;
     protected final HotSpotRegistersProvider registers;
 
@@ -71,7 +71,8 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
     protected UnsafeLoadSnippets.Templates unsafeLoadSnippets;
     protected AssertionSnippets.Templates assertionSnippets;
 
-    public DefaultHotSpotLoweringProvider(HotSpotGraalRuntime runtime, MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, HotSpotRegistersProvider registers, TargetDescription target) {
+    public DefaultHotSpotLoweringProvider(HotSpotGraalRuntimeProvider runtime, MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, HotSpotRegistersProvider registers,
+                    TargetDescription target) {
         super(metaAccess, target);
         this.runtime = runtime;
         this.foreignCalls = foreignCalls;
@@ -129,7 +130,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
             }
         } else if (n instanceof NewArrayNode) {
             if (graph.getGuardsStage() == StructuredGraph.GuardsStage.AFTER_FSA) {
-                newObjectSnippets.lower((NewArrayNode) n, registers, tool);
+                newObjectSnippets.lower((NewArrayNode) n, registers, runtime, tool);
             }
         } else if (n instanceof DynamicNewArrayNode) {
             if (graph.getGuardsStage() == StructuredGraph.GuardsStage.AFTER_FSA) {
@@ -460,7 +461,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
 
     @Override
     protected int arrayBaseOffset(Kind kind) {
-        return HotSpotGraalRuntime.getArrayBaseOffset(kind);
+        return runtime.getArrayBaseOffset(kind);
     }
 
     @Override

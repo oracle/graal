@@ -426,12 +426,12 @@ public class HotSpotReplacementsUtil {
 
     @Fold
     public static int arrayBaseOffset(Kind elementKind) {
-        return HotSpotGraalRuntime.getArrayBaseOffset(elementKind);
+        return runtime().getArrayBaseOffset(elementKind);
     }
 
     @Fold
     public static int arrayIndexScale(Kind elementKind) {
-        return HotSpotGraalRuntime.getArrayIndexScale(elementKind);
+        return runtime().getArrayIndexScale(elementKind);
     }
 
     @Fold
