@@ -139,6 +139,7 @@ public class PartialEvaluator {
             // EA frame and clean up.
             try (Scope pe = Debug.scope("TrufflePartialEscape", graph)) {
                 new PartialEscapePhase(true, canonicalizer).apply(graph, tierContext);
+                new IncrementalCanonicalizerPhase<>(canonicalizer, new ConditionalEliminationPhase()).apply(graph, tierContext);
             } catch (Throwable t) {
                 Debug.handle(t);
             }
@@ -147,6 +148,7 @@ public class PartialEvaluator {
             while (expandTree(graph, assumptions, expansionLogger)) {
                 try (Scope pe = Debug.scope("TrufflePartialEscape", graph)) {
                     new PartialEscapePhase(true, canonicalizer).apply(graph, tierContext);
+                    new IncrementalCanonicalizerPhase<>(canonicalizer, new ConditionalEliminationPhase()).apply(graph, tierContext);
                 } catch (Throwable t) {
                     Debug.handle(t);
                 }
