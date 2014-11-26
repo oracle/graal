@@ -788,17 +788,6 @@ public class HotSpotReplacementsUtil {
         return config().layoutHelperElementTypePrimitiveInPlace();
     }
 
-    static {
-        assert arrayIndexScale(Kind.Byte) == 1;
-        assert arrayIndexScale(Kind.Boolean) == 1;
-        assert arrayIndexScale(Kind.Char) == 2;
-        assert arrayIndexScale(Kind.Short) == 2;
-        assert arrayIndexScale(Kind.Int) == 4;
-        assert arrayIndexScale(Kind.Long) == 8;
-        assert arrayIndexScale(Kind.Float) == 4;
-        assert arrayIndexScale(Kind.Double) == 8;
-    }
-
     static int computeHashCode(Object x) {
         Word mark = loadWordFromObject(x, markOffset());
 

@@ -154,7 +154,21 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
 
         BenchmarkCounters.initialize(toVM);
 
+        assert checkArrayIndexScaleInvariants();
+
         runtimeStartTime = System.nanoTime();
+    }
+
+    private boolean checkArrayIndexScaleInvariants() {
+        assert getArrayIndexScale(Kind.Byte) == 1;
+        assert getArrayIndexScale(Kind.Boolean) == 1;
+        assert getArrayIndexScale(Kind.Char) == 2;
+        assert getArrayIndexScale(Kind.Short) == 2;
+        assert getArrayIndexScale(Kind.Int) == 4;
+        assert getArrayIndexScale(Kind.Long) == 8;
+        assert getArrayIndexScale(Kind.Float) == 4;
+        assert getArrayIndexScale(Kind.Double) == 8;
+        return true;
     }
 
     public static class Options {
