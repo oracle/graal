@@ -604,7 +604,7 @@ public final class HotSpotResolvedJavaMethodImpl extends HotSpotMethod implement
             String localName = getConstantPool().lookupUtf8(nameCpIndex);
             String localType = getConstantPool().lookupUtf8(typeCpIndex);
 
-            locals[i] = new LocalImpl(localName, localType, holder, startBci, endBci, slot);
+            locals[i] = new LocalImpl(localName, runtime().lookupType(localType, holder, false), startBci, endBci, slot);
 
             // Go to the next LocalVariableTableElement
             localVariableTableElement += config.localVariableTableElementSize;

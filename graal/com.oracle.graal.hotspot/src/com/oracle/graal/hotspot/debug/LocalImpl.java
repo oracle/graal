@@ -22,10 +22,7 @@
  */
 package com.oracle.graal.hotspot.debug;
 
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
-
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.hotspot.meta.*;
 
 public class LocalImpl implements Local {
 
@@ -35,12 +32,12 @@ public class LocalImpl implements Local {
     private final int slot;
     private final JavaType type;
 
-    public LocalImpl(String name, String type, HotSpotResolvedObjectType holder, int startBci, int endBci, int slot) {
+    public LocalImpl(String name, JavaType type, int startBci, int endBci, int slot) {
         this.name = name;
         this.startBci = startBci;
         this.endBci = endBci;
         this.slot = slot;
-        this.type = runtime().lookupType(type, holder, false);
+        this.type = type;
     }
 
     @Override
