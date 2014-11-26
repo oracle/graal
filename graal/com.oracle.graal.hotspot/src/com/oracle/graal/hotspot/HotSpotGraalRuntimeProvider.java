@@ -35,7 +35,7 @@ import com.oracle.graal.runtime.*;
 /**
  * Configuration information for the HotSpot Graal runtime.
  */
-public interface HotSpotGraalRuntimeProvider extends GraalRuntime, RuntimeProvider, StackIntrospection, Remote {
+public interface HotSpotGraalRuntimeProvider extends GraalRuntime, RuntimeProvider, StackIntrospection {
 
     HotSpotVMConfig getConfig();
 

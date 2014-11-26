@@ -38,7 +38,7 @@ import com.oracle.graal.hotspot.replacements.*;
 /**
  * HotSpot implementation of {@link MetaAccessProvider}.
  */
-public class HotSpotMetaAccessProvider implements MetaAccessProvider {
+public class HotSpotMetaAccessProvider implements MetaAccessProvider, Remote {
 
     protected final HotSpotGraalRuntimeProvider runtime;
 

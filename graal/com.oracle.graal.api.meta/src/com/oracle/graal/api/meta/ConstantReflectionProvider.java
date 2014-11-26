@@ -32,7 +32,7 @@ import java.lang.invoke.*;
  * result is not available at this point. The caller is responsible to check for {@code null}
  * results and handle them properly, e.g., not perform an optimization.
  */
-public interface ConstantReflectionProvider extends Remote {
+public interface ConstantReflectionProvider {
 
     /**
      * Compares two constants for equality. The equality relationship is symmetric. Returns

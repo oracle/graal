@@ -25,7 +25,7 @@ package com.oracle.graal.api.meta;
 /**
  * Provides memory access operations for the target VM.
  */
-public interface MemoryAccessProvider extends Remote {
+public interface MemoryAccessProvider {
 
     /**
      * Reads a value of this kind using a base address and a displacement. No bounds checking or

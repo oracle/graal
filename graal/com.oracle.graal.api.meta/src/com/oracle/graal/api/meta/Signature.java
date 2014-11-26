@@ -28,7 +28,7 @@ package com.oracle.graal.api.meta;
  * @see <a href="http://docs.oracle.com/javase/specs/jvms/se7/html/jvms-4.html#jvms-4.3.3">Method
  *      Descriptors</a>
  */
-public interface Signature extends Remote {
+public interface Signature {
 
     /**
      * Returns the number of parameters in this signature, adding 1 for a receiver if requested.

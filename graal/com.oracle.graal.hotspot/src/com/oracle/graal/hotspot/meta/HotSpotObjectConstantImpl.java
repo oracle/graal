@@ -35,7 +35,7 @@ import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
  * Represents a constant non-{@code null} object reference, within the compiler and across the
  * compiler/runtime interface.
  */
-public final class HotSpotObjectConstantImpl extends AbstractValue implements HotSpotObjectConstant {
+public final class HotSpotObjectConstantImpl extends AbstractValue implements HotSpotObjectConstant, Remote {
 
     private static final long serialVersionUID = 3592151693708093496L;
 

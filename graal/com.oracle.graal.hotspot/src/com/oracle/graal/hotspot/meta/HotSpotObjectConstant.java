@@ -33,7 +33,7 @@ import com.oracle.graal.lir.*;
  * Represents a constant non-{@code null} object reference, within the compiler and across the
  * compiler/runtime interface.
  */
-public interface HotSpotObjectConstant extends JavaConstant, HotSpotConstant, VMConstant, Remote {
+public interface HotSpotObjectConstant extends JavaConstant, HotSpotConstant, VMConstant {
 
     JavaConstant compress();
 

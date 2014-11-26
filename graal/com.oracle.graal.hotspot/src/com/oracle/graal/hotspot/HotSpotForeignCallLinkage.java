@@ -30,7 +30,7 @@ import com.oracle.graal.hotspot.stubs.*;
 /**
  * The details required to link a HotSpot runtime or stub call.
  */
-public interface HotSpotForeignCallLinkage extends ForeignCallLinkage, InvokeTarget, Remote {
+public interface HotSpotForeignCallLinkage extends ForeignCallLinkage, InvokeTarget {
 
     /**
      * Constants for specifying whether a foreign call destroys or preserves registers. A foreign

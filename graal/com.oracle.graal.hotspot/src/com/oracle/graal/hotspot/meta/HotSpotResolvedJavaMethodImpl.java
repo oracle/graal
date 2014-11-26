@@ -42,7 +42,7 @@ import com.oracle.graal.nodes.*;
 /**
  * Implementation of {@link JavaMethod} for resolved HotSpot methods.
  */
-public final class HotSpotResolvedJavaMethodImpl extends HotSpotMethod implements HotSpotResolvedJavaMethod {
+public final class HotSpotResolvedJavaMethodImpl extends HotSpotMethod implements HotSpotResolvedJavaMethod, Remote {
 
     private static final long serialVersionUID = -5486975070147586588L;
 

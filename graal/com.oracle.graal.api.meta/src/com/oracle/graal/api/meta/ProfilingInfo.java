@@ -28,7 +28,7 @@ package com.oracle.graal.api.meta;
  * multiple times, it may return significantly different results for every invocation as the
  * profiling information may be changed by other Java threads at any time.
  */
-public interface ProfilingInfo extends Remote {
+public interface ProfilingInfo {
 
     /**
      * Represents the three possibilities that an exception was seen at a specific BCI.

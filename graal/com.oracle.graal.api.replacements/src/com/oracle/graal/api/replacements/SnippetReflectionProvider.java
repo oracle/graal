@@ -31,7 +31,7 @@ import com.oracle.graal.api.meta.*;
  * <p>
  * This interface must not be used in Graal code that is not related to snippet processing.
  */
-public interface SnippetReflectionProvider extends Remote {
+public interface SnippetReflectionProvider {
 
     /**
      * Creates a boxed {@link Kind#Object object} constant.

@@ -34,7 +34,7 @@ import com.oracle.graal.compiler.common.*;
 /**
  * Implementation of {@link JavaType} for primitive HotSpot types.
  */
-public final class HotSpotResolvedPrimitiveType extends HotSpotResolvedJavaType {
+public final class HotSpotResolvedPrimitiveType extends HotSpotResolvedJavaType implements Remote {
 
     private static final long serialVersionUID = -6208552348908071473L;
     private final Kind kind;
