@@ -144,7 +144,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
             operand = resultOperandFor(input.getLIRKind());
             emitMove(operand, input);
         }
-        append(new SPARCHotSpotReturnOp(operand, getStub() != null));
+        append(new SPARCHotSpotReturnOp(operand, getStub() != null, runtime().getConfig()));
     }
 
     @Override
@@ -164,8 +164,8 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
     }
 
     private void moveDeoptValuesToThread(Value actionAndReason, Value speculation) {
-        moveValueToThread(actionAndReason, runtime().getConfig().pendingDeoptimizationOffset);
-        moveValueToThread(speculation, runtime().getConfig().pendingFailedSpeculationOffset);
+        moveValueToThread(actionAndReason, config.pendingDeoptimizationOffset);
+        moveValueToThread(speculation, config.pendingFailedSpeculationOffset);
     }
 
     private void moveValueToThread(Value v, int offset) {
