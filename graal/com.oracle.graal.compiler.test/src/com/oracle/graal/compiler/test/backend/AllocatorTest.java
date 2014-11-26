@@ -22,34 +22,25 @@
  */
 package com.oracle.graal.compiler.test.backend;
 
-import static com.oracle.graal.api.code.CodeUtil.*;
-import static com.oracle.graal.compiler.common.GraalOptions.*;
-
 import java.util.*;
 
 import org.junit.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.common.cfg.*;
-import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.MoveOp;
-import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.schedule.*;
 
-public class AllocatorTest extends GraalCompilerTest {
+public class AllocatorTest extends BackendTest {
 
     protected void test(String snippet, final int expectedRegisters, final int expectedRegRegMoves, final int expectedSpillMoves) {
         final StructuredGraph graph = parseEager(snippet);
         try (Scope s = Debug.scope("AllocatorTest", graph, graph.method(), getCodeCache())) {
-            final RegisterStats stats = getRegisterStats(graph);
+            final RegisterStats stats = new RegisterStats(getLIRGenerationResult(graph).getLIR());
             try (Scope s2 = Debug.scope("Assertions", stats.lir)) {
                 Assert.assertEquals("register count", expectedRegisters, stats.registers.size());
                 Assert.assertEquals("reg-reg moves", expectedRegRegMoves, stats.regRegMoves);
@@ -103,21 +94,5 @@ public class AllocatorTest extends GraalCompilerTest {
                 }
             }
         }
-    }
-
-    private RegisterStats getRegisterStats(final StructuredGraph graph) {
-        final Assumptions assumptions = new Assumptions(OptAssumptions.getValue());
-
-        SchedulePhase schedule = null;
-        try (Scope s = Debug.scope("FrontEnd")) {
-            schedule = GraalCompiler.emitFrontEnd(getProviders(), getBackend().getTarget(), graph, assumptions, null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.NONE,
-                            graph.method().getProfilingInfo(), null, getSuites());
-        } catch (Throwable e) {
-            throw Debug.handle(e);
-        }
-
-        CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graph.method(), false);
-        LIRGenerationResult lirGen = GraalCompiler.emitLIR(getBackend(), getBackend().getTarget(), schedule, graph, null, cc, null);
-        return new RegisterStats(lirGen.getLIR());
     }
 }
