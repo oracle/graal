@@ -113,4 +113,9 @@ public class HotSpotNmethod extends HotSpotInstalledCode {
     public long getStart() {
         return isValid() ? super.getStart() : 0;
     }
+
+    public JavaConstant asConstant() {
+        return HotSpotObjectConstantImpl.forObject(this);
+    }
+
 }
