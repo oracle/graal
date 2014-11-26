@@ -110,7 +110,7 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
     }
 
     @Override
-    public HotSpotBackend createBackend(HotSpotGraalRuntime runtime, HotSpotBackend host) {
+    public HotSpotBackend createBackend(HotSpotGraalRuntimeProvider runtime, HotSpotBackend host) {
         assert host == null;
         TargetDescription target = createTarget(runtime.getConfig());
 
@@ -175,7 +175,7 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
         }
     }
 
-    protected AMD64HotSpotBackend createBackend(HotSpotGraalRuntime runtime, HotSpotProviders providers) {
+    protected AMD64HotSpotBackend createBackend(HotSpotGraalRuntimeProvider runtime, HotSpotProviders providers) {
         return new AMD64HotSpotBackend(runtime, providers);
     }
 
@@ -183,44 +183,44 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
         return new HotSpotRegisters(AMD64.r15, AMD64.r12, AMD64.rsp);
     }
 
-    protected HotSpotDisassemblerProvider createDisassembler(HotSpotGraalRuntime runtime) {
+    protected HotSpotDisassemblerProvider createDisassembler(HotSpotGraalRuntimeProvider runtime) {
         return new HotSpotDisassemblerProvider(runtime);
     }
 
-    protected Replacements createReplacements(HotSpotGraalRuntime runtime, Assumptions assumptions, Providers p, SnippetReflectionProvider snippetReflection) {
+    protected Replacements createReplacements(HotSpotGraalRuntimeProvider runtime, Assumptions assumptions, Providers p, SnippetReflectionProvider snippetReflection) {
         return new HotSpotReplacementsImpl(p, snippetReflection, runtime.getConfig(), assumptions, p.getCodeCache().getTarget());
     }
 
-    protected AMD64HotSpotForeignCallsProvider createForeignCalls(HotSpotGraalRuntime runtime, HotSpotMetaAccessProvider metaAccess, HotSpotCodeCacheProvider codeCache,
+    protected AMD64HotSpotForeignCallsProvider createForeignCalls(HotSpotGraalRuntimeProvider runtime, HotSpotMetaAccessProvider metaAccess, HotSpotCodeCacheProvider codeCache,
                     Value[] nativeABICallerSaveRegisters) {
         return new AMD64HotSpotForeignCallsProvider(runtime, metaAccess, codeCache, nativeABICallerSaveRegisters);
     }
 
-    protected HotSpotConstantReflectionProvider createConstantReflection(HotSpotGraalRuntime runtime) {
+    protected HotSpotConstantReflectionProvider createConstantReflection(HotSpotGraalRuntimeProvider runtime) {
         return new HotSpotConstantReflectionProvider(runtime);
     }
 
-    protected RegisterConfig createRegisterConfig(HotSpotGraalRuntime runtime, TargetDescription target) {
+    protected RegisterConfig createRegisterConfig(HotSpotGraalRuntimeProvider runtime, TargetDescription target) {
         return new AMD64HotSpotRegisterConfig(target.arch, runtime.getConfig());
     }
 
-    protected HotSpotCodeCacheProvider createCodeCache(HotSpotGraalRuntime runtime, TargetDescription target, RegisterConfig regConfig) {
+    protected HotSpotCodeCacheProvider createCodeCache(HotSpotGraalRuntimeProvider runtime, TargetDescription target, RegisterConfig regConfig) {
         return new HotSpotCodeCacheProvider(runtime, target, regConfig);
     }
 
-    protected HotSpotMetaAccessProvider createMetaAccess(HotSpotGraalRuntime runtime) {
+    protected HotSpotMetaAccessProvider createMetaAccess(HotSpotGraalRuntimeProvider runtime) {
         return new HotSpotMetaAccessProvider(runtime);
     }
 
-    protected HotSpotSuitesProvider createSuites(HotSpotGraalRuntime runtime) {
+    protected HotSpotSuitesProvider createSuites(HotSpotGraalRuntimeProvider runtime) {
         return new HotSpotSuitesProvider(runtime);
     }
 
-    protected HotSpotSnippetReflectionProvider createSnippetReflection(HotSpotGraalRuntime runtime) {
+    protected HotSpotSnippetReflectionProvider createSnippetReflection(HotSpotGraalRuntimeProvider runtime) {
         return new HotSpotSnippetReflectionProvider(runtime);
     }
 
-    protected HotSpotLoweringProvider createLowerer(HotSpotGraalRuntime runtime, HotSpotMetaAccessProvider metaAccess, HotSpotForeignCallsProvider foreignCalls, HotSpotRegistersProvider registers,
+    protected HotSpotLoweringProvider createLowerer(HotSpotGraalRuntimeProvider runtime, HotSpotMetaAccessProvider metaAccess, HotSpotForeignCallsProvider foreignCalls, HotSpotRegistersProvider registers,
                     TargetDescription target) {
         return new AMD64HotSpotLoweringProvider(runtime, metaAccess, foreignCalls, registers, target);
     }

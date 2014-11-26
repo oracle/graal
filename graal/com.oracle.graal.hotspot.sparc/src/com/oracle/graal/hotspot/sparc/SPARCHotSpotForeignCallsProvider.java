@@ -39,7 +39,7 @@ public class SPARCHotSpotForeignCallsProvider extends HotSpotHostForeignCallsPro
 
     private final Value[] nativeABICallerSaveRegisters;
 
-    public SPARCHotSpotForeignCallsProvider(HotSpotGraalRuntime runtime, MetaAccessProvider metaAccess, CodeCacheProvider codeCache, Value[] nativeABICallerSaveRegisters) {
+    public SPARCHotSpotForeignCallsProvider(HotSpotGraalRuntimeProvider runtime, MetaAccessProvider metaAccess, CodeCacheProvider codeCache, Value[] nativeABICallerSaveRegisters) {
         super(runtime, metaAccess, codeCache);
         this.nativeABICallerSaveRegisters = nativeABICallerSaveRegisters;
     }

@@ -39,7 +39,7 @@ public final class HotSpotVmSymbols {
      * @return the symbol at position id
      */
     public static String symbolAt(int index) {
-        HotSpotGraalRuntime runtime = runtime();
+        HotSpotGraalRuntimeProvider runtime = runtime();
         HotSpotVMConfig config = runtime.getConfig();
         assert config.vmSymbolsFirstSID <= index && index < config.vmSymbolsSIDLimit : "index " + index + " is out of bounds";
         assert config.symbolPointerSize == Unsafe.ADDRESS_SIZE : "the following address read is broken";

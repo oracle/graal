@@ -57,7 +57,7 @@ import com.oracle.nfi.api.*;
  */
 public class AMD64HotSpotBackend extends HotSpotHostBackend {
 
-    public AMD64HotSpotBackend(HotSpotGraalRuntime runtime, HotSpotProviders providers) {
+    public AMD64HotSpotBackend(HotSpotGraalRuntimeProvider runtime, HotSpotProviders providers) {
         super(runtime, providers);
     }
 

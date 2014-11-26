@@ -42,9 +42,9 @@ public class HotSpotSuitesProvider implements SuitesProvider, Supplier<Suites> {
 
     protected final DerivedOptionValue<Suites> defaultSuites;
     protected final PhaseSuite<HighTierContext> defaultGraphBuilderSuite;
-    protected final HotSpotGraalRuntime runtime;
+    protected final HotSpotGraalRuntimeProvider runtime;
 
-    public HotSpotSuitesProvider(HotSpotGraalRuntime runtime) {
+    public HotSpotSuitesProvider(HotSpotGraalRuntimeProvider runtime) {
         this.runtime = runtime;
         this.defaultGraphBuilderSuite = createGraphBuilderSuite();
         this.defaultSuites = new DerivedOptionValue<>(this);

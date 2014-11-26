@@ -143,7 +143,7 @@ public final class CompileTheWorld {
     }
 
     // Some runtime instances we need.
-    private final HotSpotGraalRuntime runtime = runtime();
+    private final HotSpotGraalRuntimeProvider runtime = runtime();
 
     /** List of Zip/Jar files to compile (see {@link Options#CompileTheWorldClasspath}). */
     private final String files;

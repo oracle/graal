@@ -53,7 +53,7 @@ public abstract class HotSpotHostBackend extends HotSpotBackend {
      */
     protected final int pagesToBang;
 
-    public HotSpotHostBackend(HotSpotGraalRuntime runtime, HotSpotProviders providers) {
+    public HotSpotHostBackend(HotSpotGraalRuntimeProvider runtime, HotSpotProviders providers) {
         super(runtime, providers);
         this.pagesToBang = runtime.getConfig().useStackBanging ? runtime.getConfig().stackShadowPages : 0;
     }

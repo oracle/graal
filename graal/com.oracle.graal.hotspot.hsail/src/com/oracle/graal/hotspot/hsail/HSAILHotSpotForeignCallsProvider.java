@@ -29,7 +29,7 @@ import com.oracle.graal.hotspot.meta.*;
 
 public class HSAILHotSpotForeignCallsProvider extends HotSpotForeignCallsProviderImpl {
 
-    public HSAILHotSpotForeignCallsProvider(HotSpotGraalRuntime runtime, MetaAccessProvider metaAccess, CodeCacheProvider codeCache) {
+    public HSAILHotSpotForeignCallsProvider(HotSpotGraalRuntimeProvider runtime, MetaAccessProvider metaAccess, CodeCacheProvider codeCache) {
         super(runtime, metaAccess, codeCache);
     }
 

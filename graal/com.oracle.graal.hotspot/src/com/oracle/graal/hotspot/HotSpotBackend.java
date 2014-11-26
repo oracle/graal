@@ -73,7 +73,7 @@ public abstract class HotSpotBackend extends Backend {
      */
     public static final ForeignCallDescriptor EXCEPTION_HANDLER_IN_CALLER = new ForeignCallDescriptor("exceptionHandlerInCaller", void.class, Object.class, Word.class);
 
-    private final HotSpotGraalRuntime runtime;
+    private final HotSpotGraalRuntimeProvider runtime;
 
     /**
      * @see DeoptimizationFetchUnrollInfoCallNode
@@ -130,12 +130,12 @@ public abstract class HotSpotBackend extends Backend {
      */
     public static final ForeignCallDescriptor UNCOMMON_TRAP = new ForeignCallDescriptor("uncommonTrap", Word.class, Word.class, int.class);
 
-    public HotSpotBackend(HotSpotGraalRuntime runtime, HotSpotProviders providers) {
+    public HotSpotBackend(HotSpotGraalRuntimeProvider runtime, HotSpotProviders providers) {
         super(providers);
         this.runtime = runtime;
     }
 
-    public HotSpotGraalRuntime getRuntime() {
+    public HotSpotGraalRuntimeProvider getRuntime() {
         return runtime;
     }
 

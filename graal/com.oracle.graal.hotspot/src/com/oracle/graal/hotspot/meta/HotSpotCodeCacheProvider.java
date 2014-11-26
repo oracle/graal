@@ -52,11 +52,11 @@ import com.oracle.graal.printer.*;
  */
 public class HotSpotCodeCacheProvider implements CodeCacheProvider {
 
-    protected final HotSpotGraalRuntime runtime;
+    protected final HotSpotGraalRuntimeProvider runtime;
     protected final TargetDescription target;
     protected final RegisterConfig regConfig;
 
-    public HotSpotCodeCacheProvider(HotSpotGraalRuntime runtime, TargetDescription target, RegisterConfig regConfig) {
+    public HotSpotCodeCacheProvider(HotSpotGraalRuntimeProvider runtime, TargetDescription target, RegisterConfig regConfig) {
         this.runtime = runtime;
         this.target = target;
         this.regConfig = regConfig;

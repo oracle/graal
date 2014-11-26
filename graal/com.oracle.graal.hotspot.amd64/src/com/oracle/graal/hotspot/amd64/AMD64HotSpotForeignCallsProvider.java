@@ -42,7 +42,7 @@ public class AMD64HotSpotForeignCallsProvider extends HotSpotHostForeignCallsPro
 
     private final Value[] nativeABICallerSaveRegisters;
 
-    public AMD64HotSpotForeignCallsProvider(HotSpotGraalRuntime runtime, MetaAccessProvider metaAccess, CodeCacheProvider codeCache, Value[] nativeABICallerSaveRegisters) {
+    public AMD64HotSpotForeignCallsProvider(HotSpotGraalRuntimeProvider runtime, MetaAccessProvider metaAccess, CodeCacheProvider codeCache, Value[] nativeABICallerSaveRegisters) {
         super(runtime, metaAccess, codeCache);
         this.nativeABICallerSaveRegisters = nativeABICallerSaveRegisters;
     }

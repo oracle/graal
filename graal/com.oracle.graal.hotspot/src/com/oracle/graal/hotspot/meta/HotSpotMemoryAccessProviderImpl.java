@@ -35,9 +35,9 @@ import com.oracle.graal.hotspot.HotSpotVMConfig.CompressEncoding;
  */
 public class HotSpotMemoryAccessProviderImpl implements HotSpotMemoryAccessProvider {
 
-    protected final HotSpotGraalRuntime runtime;
+    protected final HotSpotGraalRuntimeProvider runtime;
 
-    public HotSpotMemoryAccessProviderImpl(HotSpotGraalRuntime runtime) {
+    public HotSpotMemoryAccessProviderImpl(HotSpotGraalRuntimeProvider runtime) {
         this.runtime = runtime;
     }
 

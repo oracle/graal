@@ -100,7 +100,7 @@ public class PTXHotSpotBackend extends HotSpotBackend {
 
     // @formatter:on
 
-    public PTXHotSpotBackend(HotSpotGraalRuntime runtime, HotSpotProviders providers) {
+    public PTXHotSpotBackend(HotSpotGraalRuntimeProvider runtime, HotSpotProviders providers) {
         super(runtime, providers);
         if (OmitDeviceInit) {
             deviceInitialized = true;

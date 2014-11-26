@@ -48,13 +48,13 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
 
     public static final ForeignCallDescriptor TEST_DEOPTIMIZE_CALL_INT = new ForeignCallDescriptor("test_deoptimize_call_int", int.class, int.class);
 
-    protected final HotSpotGraalRuntime runtime;
+    protected final HotSpotGraalRuntimeProvider runtime;
 
     protected final Map<ForeignCallDescriptor, HotSpotForeignCallLinkage> foreignCalls = new HashMap<>();
     protected final MetaAccessProvider metaAccess;
     protected final CodeCacheProvider codeCache;
 
-    public HotSpotForeignCallsProviderImpl(HotSpotGraalRuntime runtime, MetaAccessProvider metaAccess, CodeCacheProvider codeCache) {
+    public HotSpotForeignCallsProviderImpl(HotSpotGraalRuntimeProvider runtime, MetaAccessProvider metaAccess, CodeCacheProvider codeCache) {
         this.runtime = runtime;
         this.metaAccess = metaAccess;
         this.codeCache = codeCache;

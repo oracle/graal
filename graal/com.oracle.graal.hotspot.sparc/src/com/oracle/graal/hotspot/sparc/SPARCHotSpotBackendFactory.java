@@ -48,7 +48,7 @@ public class SPARCHotSpotBackendFactory implements HotSpotBackendFactory {
         return new HotSpotTargetDescription(createArchitecture(config), true, stackFrameAlignment, implicitNullCheckLimit, inlineObjects);
     }
 
-    public HotSpotBackend createBackend(HotSpotGraalRuntime runtime, HotSpotBackend host) {
+    public HotSpotBackend createBackend(HotSpotGraalRuntimeProvider runtime, HotSpotBackend host) {
         assert host == null;
         TargetDescription target = createTarget(runtime.getConfig());
 

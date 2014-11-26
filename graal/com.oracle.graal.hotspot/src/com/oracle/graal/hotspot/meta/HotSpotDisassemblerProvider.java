@@ -30,9 +30,9 @@ import com.oracle.graal.hotspot.*;
  */
 public class HotSpotDisassemblerProvider implements DisassemblerProvider {
 
-    protected final HotSpotGraalRuntime runtime;
+    protected final HotSpotGraalRuntimeProvider runtime;
 
-    public HotSpotDisassemblerProvider(HotSpotGraalRuntime runtime) {
+    public HotSpotDisassemblerProvider(HotSpotGraalRuntimeProvider runtime) {
         this.runtime = runtime;
     }
 

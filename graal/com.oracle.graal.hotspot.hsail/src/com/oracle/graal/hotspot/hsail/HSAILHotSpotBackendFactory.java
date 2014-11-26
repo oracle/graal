@@ -36,13 +36,13 @@ import com.oracle.graal.phases.util.*;
 @ServiceProvider(HotSpotBackendFactory.class)
 public class HSAILHotSpotBackendFactory implements HotSpotBackendFactory {
 
-    protected HotSpotLoweringProvider createLowerer(HotSpotGraalRuntime runtime, MetaAccessProvider metaAccess, HotSpotForeignCallsProvider foreignCalls, HotSpotRegistersProvider registers,
+    protected HotSpotLoweringProvider createLowerer(HotSpotGraalRuntimeProvider runtime, MetaAccessProvider metaAccess, HotSpotForeignCallsProvider foreignCalls, HotSpotRegistersProvider registers,
                     TargetDescription target) {
         return new HSAILHotSpotLoweringProvider(runtime, metaAccess, foreignCalls, registers, target);
     }
 
     @Override
-    public HSAILHotSpotBackend createBackend(HotSpotGraalRuntime runtime, HotSpotBackend hostBackend) {
+    public HSAILHotSpotBackend createBackend(HotSpotGraalRuntimeProvider runtime, HotSpotBackend hostBackend) {
         HotSpotProviders host = hostBackend.getProviders();
 
         HotSpotRegisters registers = new HotSpotRegisters(HSAIL.threadRegister, Register.None, Register.None);

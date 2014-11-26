@@ -99,7 +99,7 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
     // TODO: get maximum Concurrency from okra
     private int maxDeoptIndex = 8 * 40 * 64;   // see gpu_hsail.hpp
 
-    public HSAILHotSpotBackend(HotSpotGraalRuntime runtime, HotSpotProviders providers) {
+    public HSAILHotSpotBackend(HotSpotGraalRuntimeProvider runtime, HotSpotProviders providers) {
         super(runtime, providers);
         paramTypeMap.put("HotSpotResolvedPrimitiveType<int>", "s32");
         paramTypeMap.put("HotSpotResolvedPrimitiveType<float>", "f32");

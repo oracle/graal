@@ -37,7 +37,7 @@ import com.oracle.graal.ptx.*;
 @ServiceProvider(HotSpotBackendFactory.class)
 public class PTXHotSpotBackendFactory implements HotSpotBackendFactory {
 
-    public HotSpotBackend createBackend(HotSpotGraalRuntime runtime, HotSpotBackend hostBackend) {
+    public HotSpotBackend createBackend(HotSpotGraalRuntimeProvider runtime, HotSpotBackend hostBackend) {
         HotSpotProviders host = hostBackend.getProviders();
         MetaAccessProvider metaAccess;
         PTXHotSpotCodeCacheProvider codeCache;

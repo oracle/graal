@@ -63,7 +63,7 @@ import com.oracle.graal.sparc.*;
  */
 public class SPARCHotSpotBackend extends HotSpotHostBackend {
 
-    public SPARCHotSpotBackend(HotSpotGraalRuntime runtime, HotSpotProviders providers) {
+    public SPARCHotSpotBackend(HotSpotGraalRuntimeProvider runtime, HotSpotProviders providers) {
         super(runtime, providers);
     }
 

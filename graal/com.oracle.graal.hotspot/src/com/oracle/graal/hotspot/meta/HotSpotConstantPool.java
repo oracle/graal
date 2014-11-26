@@ -439,7 +439,7 @@ public class HotSpotConstantPool extends CompilerObject implements ConstantPool 
      * @param metaspacePointer either a metaspace Klass or a metaspace Symbol
      */
     private static JavaType getJavaType(final long metaspacePointer) {
-        HotSpotGraalRuntime runtime = runtime();
+        HotSpotGraalRuntimeProvider runtime = runtime();
         HotSpotVMConfig config = runtime.getConfig();
         if ((metaspacePointer & config.compilerToVMSymbolTag) != 0) {
             final long metaspaceSymbol = metaspacePointer & ~config.compilerToVMSymbolTag;

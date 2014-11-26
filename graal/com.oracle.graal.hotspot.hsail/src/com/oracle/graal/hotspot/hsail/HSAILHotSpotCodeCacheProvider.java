@@ -30,7 +30,7 @@ import com.oracle.graal.hotspot.meta.*;
 
 public class HSAILHotSpotCodeCacheProvider extends HotSpotCodeCacheProvider {
 
-    public HSAILHotSpotCodeCacheProvider(HotSpotGraalRuntime runtime, TargetDescription target) {
+    public HSAILHotSpotCodeCacheProvider(HotSpotGraalRuntimeProvider runtime, TargetDescription target) {
         super(runtime, target, new HSAILHotSpotRegisterConfig());
 
     }

@@ -27,7 +27,7 @@ import com.oracle.graal.hotspot.HotSpotGraalRuntime.Options;
 
 public interface HotSpotBackendFactory extends Service {
 
-    HotSpotBackend createBackend(HotSpotGraalRuntime runtime, HotSpotBackend host);
+    HotSpotBackend createBackend(HotSpotGraalRuntimeProvider runtime, HotSpotBackend host);
 
     /**
      * Gets the CPU architecture of this backend.
