@@ -41,7 +41,7 @@ public final class HotSpotObjectConstantImpl extends AbstractValue implements Ho
 
     private static final long serialVersionUID = 3592151693708093496L;
 
-    public static JavaConstant forObject(Object object) {
+    static JavaConstant forObject(Object object) {
         return forObject(object, false);
     }
 
