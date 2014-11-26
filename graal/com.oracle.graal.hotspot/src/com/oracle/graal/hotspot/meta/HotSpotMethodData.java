@@ -176,7 +176,7 @@ public final class HotSpotMethodData extends CompilerObject {
      */
     private long readUnsignedInt(int position, int offsetInBytes) {
         long fullOffsetInBytes = computeFullOffset(position, offsetInBytes);
-        return unsafeReadWord(metaspaceMethodData + fullOffsetInBytes) & 0xFFFFFFFFL;
+        return unsafe.getAddress(metaspaceMethodData + fullOffsetInBytes) & 0xFFFFFFFFL;
     }
 
     private int readUnsignedIntAsSignedInt(int position, int offsetInBytes) {
@@ -191,12 +191,12 @@ public final class HotSpotMethodData extends CompilerObject {
      */
     private int readInt(int position, int offsetInBytes) {
         long fullOffsetInBytes = computeFullOffset(position, offsetInBytes);
-        return (int) unsafeReadWord(metaspaceMethodData + fullOffsetInBytes);
+        return (int) unsafe.getAddress(metaspaceMethodData + fullOffsetInBytes);
     }
 
     private long readWord(int position, int offsetInBytes) {
         long fullOffsetInBytes = computeFullOffset(position, offsetInBytes);
-        return unsafeReadWord(metaspaceMethodData + fullOffsetInBytes);
+        return unsafe.getAddress(metaspaceMethodData + fullOffsetInBytes);
     }
 
     private static int truncateLongToInt(long value) {
@@ -332,7 +332,11 @@ public final class HotSpotMethodData extends CompilerObject {
             return data.readUnsignedByte(position, config.dataLayoutFlagsOffset);
         }
 
-        protected int getDynamicSize(@SuppressWarnings("unused") HotSpotMethodData data, @SuppressWarnings("unused") int position) {
+        /**
+         * @param data
+         * @param position
+         */
+        protected int getDynamicSize(HotSpotMethodData data, int position) {
             return 0;
         }
 
