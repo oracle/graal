@@ -43,6 +43,11 @@ public interface HotSpotObjectConstant extends JavaConstant, HotSpotConstant, VM
     boolean isCompressed();
 
     /**
+     * Gets the resolved Java type of the object represented by this constant.
+     */
+    HotSpotResolvedObjectType getType();
+
+    /**
      * Gets the result of {@link Class#getClassLoader()} for the {@link Class} object represented by
      * this constant.
      *
