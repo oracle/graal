@@ -23,7 +23,6 @@
 package com.oracle.graal.api.meta;
 
 import java.lang.annotation.*;
-import java.lang.reflect.*;
 import java.net.*;
 
 /**
@@ -342,12 +341,6 @@ public interface ResolvedJavaType extends JavaType, ModifiersProvider {
      * Returns the {@code <clinit>} method for this class if there is one.
      */
     ResolvedJavaMethod getClassInitializer();
-
-    /**
-     * Creates a new array with this type as the component type and the specified length. This
-     * method is similar to {@link Array#newInstance(Class, int)}.
-     */
-    JavaConstant newArray(int length);
 
     /**
      * Returns true if this type represents and interface and it should be trusted even in places

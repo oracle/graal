@@ -859,11 +859,6 @@ public final class HotSpotResolvedObjectTypeImpl extends HotSpotResolvedJavaType
     }
 
     @Override
-    public JavaConstant newArray(int length) {
-        return HotSpotObjectConstantImpl.forObject(Array.newInstance(mirror(), length));
-    }
-
-    @Override
     public String toString() {
         return "HotSpotType<" + getName() + ", resolved>";
     }
