@@ -24,7 +24,6 @@ package com.oracle.graal.hotspot.replacements;
 
 import static com.oracle.graal.api.meta.DeoptimizationAction.*;
 import static com.oracle.graal.api.meta.DeoptimizationReason.*;
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.hotspot.replacements.InstanceOfSnippets.Options.*;
 import static com.oracle.graal.hotspot.replacements.TypeCheckSnippetUtils.*;
@@ -70,15 +69,15 @@ public class InstanceOfSnippets implements Snippets {
      * 100000 executions are for an object whose type is not one of the top N profiled types (where
      * {@code N == } {@link Options#TypeCheckMaxHints}).
      */
-    public static double hintHitProbabilityThresholdForDeoptimizingSnippet() {
-        return 1.0D - (1.0D / (runtime().getConfig().compileThreshold * 10));
+    public static double hintHitProbabilityThresholdForDeoptimizingSnippet(long compilationThreshold) {
+        return 1.0D - (1.0D / (compilationThreshold * 10));
     }
 
     /**
      * A test against a set of hints derived from a profile with very close to 100% precise coverage
      * of seen types. This snippet deoptimizes on hint miss paths.
      *
-     * @see #hintHitProbabilityThresholdForDeoptimizingSnippet()
+     * @see #hintHitProbabilityThresholdForDeoptimizingSnippet(long)
      */
     @Snippet
     public static Object instanceofWithProfile(Object object, @VarargsParameter KlassPointer[] hints, @VarargsParameter boolean[] hintIsPositive, Object trueValue, Object falseValue,
@@ -215,9 +214,11 @@ public class InstanceOfSnippets implements Snippets {
         private final SnippetInfo instanceofPrimary = snippet(InstanceOfSnippets.class, "instanceofPrimary");
         private final SnippetInfo instanceofSecondary = snippet(InstanceOfSnippets.class, "instanceofSecondary");
         private final SnippetInfo instanceofDynamic = snippet(InstanceOfSnippets.class, "instanceofDynamic");
+        private final long compilationThreshold;
 
-        public Templates(HotSpotProviders providers, TargetDescription target) {
+        public Templates(HotSpotProviders providers, TargetDescription target, long compilationThreshold) {
             super(providers, providers.getSnippetReflection(), target);
+            this.compilationThreshold = compilationThreshold;
         }
 
         @Override
@@ -232,7 +233,7 @@ public class InstanceOfSnippets implements Snippets {
                 Arguments args;
 
                 StructuredGraph graph = instanceOf.graph();
-                if (hintInfo.hintHitProbability >= hintHitProbabilityThresholdForDeoptimizingSnippet() && hintInfo.exact == null) {
+                if (hintInfo.hintHitProbability >= hintHitProbabilityThresholdForDeoptimizingSnippet(compilationThreshold) && hintInfo.exact == null) {
                     Hints hints = createHints(hintInfo, providers.getMetaAccess(), false, graph);
                     args = new Arguments(instanceofWithProfile, graph.getGuardsStage(), tool.getLoweringStage());
                     args.add("object", object);
@@ -257,7 +258,7 @@ public class InstanceOfSnippets implements Snippets {
                 }
                 args.add("trueValue", replacer.trueValue);
                 args.add("falseValue", replacer.falseValue);
-                if (hintInfo.hintHitProbability >= hintHitProbabilityThresholdForDeoptimizingSnippet() && hintInfo.exact == null) {
+                if (hintInfo.hintHitProbability >= hintHitProbabilityThresholdForDeoptimizingSnippet(compilationThreshold) && hintInfo.exact == null) {
                     args.addConst("nullSeen", hintInfo.profile.getNullSeen() != TriState.FALSE);
                 }
                 return args;
