@@ -41,6 +41,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.compiler.common.remote.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
@@ -80,10 +81,26 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, R
     }
 
     /**
+     * Checks that all accesses to a {@link HotSpotGraalRuntimeProvider} within a replay context are
+     * through references to a captured {@link HotSpotGraalRuntimeProvider}, not through the static
+     * {@link HotSpotGraalRuntimeProvider} instance of the runtime hosting the replay.
+     */
+    private static boolean checkRuntimeAccess() {
+        Context c = Context.getCurrent();
+        if (c != null) {
+            if (!c.inProxyInvocation()) {
+                throw new GraalInternalError("Cannot access HotSpotGraalRuntime statically in replay/remote context");
+            }
+        }
+        return true;
+    }
+
+    /**
      * Gets the singleton {@link HotSpotGraalRuntime} object.
      */
     public static HotSpotGraalRuntime runtime() {
         assert instance != null;
+        assert checkRuntimeAccess();
         return instance;
     }
 

@@ -734,11 +734,15 @@ public abstract class GraalCompilerTest extends GraalTest {
     protected CompilationResult recompile(Context c, Mode mode, ResolvedJavaMethod installedCodeOwner) {
         try (Debug.Scope s = Debug.scope(mode.name(), new DebugDumpScope(mode.name(), true))) {
 
-            StructuredGraph graphToCompile = parseForCompile(installedCodeOwner);
+            StructuredGraph graphToCompile;
+            CallingConvention cc;
 
-            lastCompiledGraph = graphToCompile;
-
-            CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graphToCompile.method(), false);
+            try (Context.NoContext l = c.leave()) {
+                graphToCompile = parseForCompile(installedCodeOwner);
+                lastCompiledGraph = graphToCompile;
+                cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graphToCompile.method(), false);
+            }
+            graphToCompile = c.get(graphToCompile);
             Request<CompilationResult> request = c.get(new GraalCompiler.Request<>(graphToCompile, null, cc, installedCodeOwner, getProviders(), getBackend(), getCodeCache().getTarget(), null,
                             getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL, getProfilingInfo(graphToCompile), getSpeculationLog(), getSuites(), new CompilationResult(),
                             CompilationResultBuilderFactory.Default));
