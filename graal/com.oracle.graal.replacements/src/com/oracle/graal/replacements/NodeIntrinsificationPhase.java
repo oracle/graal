@@ -278,7 +278,10 @@ public class NodeIntrinsificationPhase extends Phase {
         for (int i = 0; i < signature.length; i++) {
             if (m.getParameterAnnotation(InjectedNodeParameter.class, i) != null) {
                 injected = injected == null ? new JavaConstant[1] : Arrays.copyOf(injected, injected.length + 1);
-                if (signature[i].equals(metaAccess.lookupJavaType(MetaAccessProvider.class))) {
+                Object injectedParameter = snippetReflection.getInjectedNodeIntrinsicParameter(signature[i]);
+                if (injectedParameter != null) {
+                    injected[injected.length - 1] = snippetReflection.forObject(injectedParameter);
+                } else if (signature[i].equals(metaAccess.lookupJavaType(MetaAccessProvider.class))) {
                     injected[injected.length - 1] = snippetReflection.forObject(metaAccess);
                 } else if (signature[i].equals(metaAccess.lookupJavaType(StructuredGraph.class))) {
                     injected[injected.length - 1] = snippetReflection.forObject(graph);

@@ -76,4 +76,13 @@ public interface SnippetReflectionProvider extends Remote {
      *         if this provider cannot provide a value of the requested type
      */
     Object getSubstitutionGuardParameter(Class<?> type);
+
+    /**
+     * Gets the value to bind to an injected parameter in a node intrinsic.
+     *
+     * @param type the type of a parameter in a node intrinsic constructor
+     * @return the value that should be bound to the parameter when invoking the constructor or null
+     *         if this provider cannot provide a value of the requested type
+     */
+    Object getInjectedNodeIntrinsicParameter(ResolvedJavaType type);
 }

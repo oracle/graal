@@ -60,4 +60,14 @@ public class HotSpotSnippetReflectionProvider implements SnippetReflectionProvid
         }
         return null;
     }
+
+    public Object getInjectedNodeIntrinsicParameter(ResolvedJavaType type) {
+        if (type.isInstance(forObject(runtime))) {
+            return runtime;
+        }
+        if (type.isInstance(forObject(runtime.getConfig()))) {
+            return runtime.getConfig();
+        }
+        return null;
+    }
 }
