@@ -41,6 +41,7 @@ import com.oracle.graal.compiler.common.type.*;
 public class Context implements AutoCloseable {
 
     private static final ThreadLocal<Context> currentContext = new ThreadLocal<>();
+    private static final ThreadLocal<Context> previousContext = new ThreadLocal<>();
 
     private final Map<Class<?>, Fields> fieldsMap = new HashMap<>();
 
@@ -328,13 +329,15 @@ public class Context implements AutoCloseable {
                 return srcValue;
             }
             dstValue = pool.get(srcValue);
+            if (dstValue == null && previousPool != null) {
+                dstValue = previousPool.get(srcValue);
+            }
             if (dstValue == null) {
                 if (srcValue instanceof Remote) {
                     dstValue = get(srcValue);
                 } else {
                     dstValue = copies.get(srcValue);
                     if (dstValue == null) {
-                        assert !worklist.contains(srcValue) : id(srcValue);
                         // System.out.printf("worklist+: %s%n", s(srcValue));
                         worklist.add(srcValue);
                         copies.put(srcValue, copies);
@@ -356,6 +359,7 @@ public class Context implements AutoCloseable {
      * In addition, copies in {@link #pool} are re-used.
      */
     private Object copy(Object root) {
+        long start = System.currentTimeMillis();
         assert !(isAssignableTo(root.getClass(), DontCopyClasses) || SharedGlobals.containsKey(root));
         // System.out.printf("----- %s ------%n", s(obj));
         assert pool.get(root) == null;
@@ -364,6 +368,12 @@ public class Context implements AutoCloseable {
         IdentityHashMap<Object, Object> copies = new IdentityHashMap<>();
         copies.put(root, copies);
         copy0(worklist, copies);
+        if (DEBUG) {
+            long duration = System.currentTimeMillis() - start;
+            if (duration > 10) {
+                System.out.printf("After copying %s (proxies: %d, pool: %d) %d ms%n", root.getClass().getSimpleName(), proxies.size(), pool.size(), duration);
+            }
+        }
         return pool.get(root);
     }
 
@@ -382,10 +392,22 @@ public class Context implements AutoCloseable {
     public Context() {
         assert currentContext.get() == null : currentContext.get();
         currentContext.set(this);
+        Context previous = previousContext.get();
+        if (previous != null) {
+            previousPool = previous.pool;
+            pool = new IdentityHashMap<>(previousPool.size());
+        } else {
+            pool = new IdentityHashMap<>();
+            previousPool = null;
+        }
     }
 
     private final Map<Object, Object> proxies = new IdentityHashMap<>();
-    private final Map<Object, Object> pool = new IdentityHashMap<>();
+    private final Map<Object, Object> pool;
+    private final Map<Object, Object> previousPool;
+
+    int invocationCacheHits;
+    int invocationCacheMisses;
 
     /**
      * Gets the value of a given object within this context.
@@ -399,7 +421,7 @@ public class Context implements AutoCloseable {
             Object proxy = proxies.get(obj);
             if (proxy == null) {
                 Class<?>[] interfaces = ProxyUtil.getAllInterfaces(obj.getClass());
-                proxy = Proxy.newProxyInstance(obj.getClass().getClassLoader(), interfaces, new Handler<>(obj, this));
+                proxy = Proxy.newProxyInstance(obj.getClass().getClassLoader(), interfaces, new Handler<>(obj));
                 proxies.put(obj, proxy);
             }
             return (T) proxy;
@@ -421,9 +443,27 @@ public class Context implements AutoCloseable {
         }
     }
 
+    private static final boolean DEBUG = Boolean.getBoolean("graal.replayContext.debug");
+
     public void close() {
         assert currentContext.get() == this : currentContext.get();
+        if (DEBUG) {
+            int overlap = 0;
+            if (previousPool != null) {
+                for (Object key : previousPool.keySet()) {
+                    if (pool.containsKey(key)) {
+                        overlap++;
+                    }
+                }
+            }
+            if (DEBUG) {
+                System.out.printf("proxies: %d, pool: %d, overlap: %d, invocation cache hits: %d, invocation cache misses: %d%n", proxies.size(), pool.size(), overlap, invocationCacheHits,
+                                invocationCacheMisses);
+            }
+        }
         currentContext.set(null);
+        previousContext.set(this);
+
     }
 
     /**
@@ -439,13 +479,37 @@ public class Context implements AutoCloseable {
                         throw new GraalInternalError("Expecting proxy, found instance of %s", o.getClass());
                     }
                 } else {
-                    if (!Proxy.isProxyClass(o.getClass())) {
+                    if (Proxy.isProxyClass(o.getClass())) {
                         throw new GraalInternalError("Expecting instance of %s, found proxy", o.getClass());
                     }
                 }
             }
         }
         return true;
+    }
+
+    private Leave leave;
+    int activeInvocations;
+
+    public Leave leave() {
+        return new Leave();
+    }
+
+    public class Leave implements AutoCloseable {
+
+        Leave() {
+            assert currentContext.get() == Context.this;
+            assert Context.this.leave == null;
+            Context.this.leave = this;
+            currentContext.set(null);
+        }
+
+        public void close() {
+            assert leave == this;
+            assert currentContext.get() == null;
+            currentContext.set(Context.this);
+            leave = null;
+        }
     }
 
     /**
@@ -455,5 +519,15 @@ public class Context implements AutoCloseable {
      */
     public static Context getCurrent() {
         return currentContext.get();
+    }
+
+    public boolean inProxyInvocation() {
+        return activeInvocations != 0;
+    }
+
+    public static void breakpoint() {
+        if (getCurrent() != null) {
+            System.console();
+        }
     }
 }
