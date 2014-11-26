@@ -121,7 +121,8 @@ public class HSAILHotSpotLoweringProvider extends DefaultHotSpotLoweringProvider
         return strategyMap.get(n.getNodeClass());
     }
 
-    public HSAILHotSpotLoweringProvider(HotSpotGraalRuntimeProvider runtime, MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, HotSpotRegistersProvider registers, TargetDescription target) {
+    public HSAILHotSpotLoweringProvider(HotSpotGraalRuntimeProvider runtime, MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, HotSpotRegistersProvider registers,
+                    TargetDescription target) {
         super(runtime, metaAccess, foreignCalls, registers, target);
         initStrategyMap();
     }
