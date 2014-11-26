@@ -52,7 +52,7 @@ public final class HotSpotResolvedObjectTypeImpl extends HotSpotResolvedJavaType
     private HotSpotResolvedJavaField[] instanceFields;
     private HotSpotResolvedObjectTypeImpl[] interfaces;
     private ConstantPool constantPool;
-    private HotSpotResolvedObjectTypeImpl arrayOfType;
+    private HotSpotResolvedObjectType arrayOfType;
 
     /**
      * Gets the Graal mirror for a {@link Class} object.
@@ -61,17 +61,6 @@ public final class HotSpotResolvedObjectTypeImpl extends HotSpotResolvedJavaType
      */
     public static HotSpotResolvedObjectTypeImpl fromObjectClass(Class<?> javaClass) {
         return (HotSpotResolvedObjectTypeImpl) runtime().fromClass(javaClass);
-    }
-
-    /**
-     * Gets the Graal mirror from a HotSpot metaspace Klass native object.
-     *
-     * @param metaspaceKlass a metaspace Klass object boxed in a {@link JavaConstant}
-     * @return the {@link HotSpotResolvedObjectTypeImpl} corresponding to {@code klassConstant}
-     */
-    public static ResolvedJavaType fromMetaspaceKlass(Constant metaspaceKlass) {
-        HotSpotMetaspaceConstant klass = (HotSpotMetaspaceConstant) metaspaceKlass;
-        return klass.asResolvedJavaType();
     }
 
     /**
@@ -92,8 +81,8 @@ public final class HotSpotResolvedObjectTypeImpl extends HotSpotResolvedJavaType
      *
      * <p>
      * <b>NOTE</b>: Creating an instance of this class does not install the mirror for the
-     * {@link Class} type. Use {@link #fromObjectClass(Class)},
-     * {@link #fromMetaspaceKlass(Constant)} or {@link #fromMetaspaceKlass(long)} instead.
+     * {@link Class} type. Use {@link #fromObjectClass(Class)} or {@link #fromMetaspaceKlass(long)}
+     * instead.
      * </p>
      *
      * @param javaClass the Class to create the mirror for
@@ -118,7 +107,10 @@ public final class HotSpotResolvedObjectTypeImpl extends HotSpotResolvedJavaType
      * Gets the metaspace Klass for this type.
      */
     public long getMetaspaceKlass() {
-        return HotSpotGraalRuntime.unsafeReadWord(javaClass, runtime().getConfig().klassOffset);
+        if (HotSpotGraalRuntime.getHostWordKind() == Kind.Long) {
+            return unsafe.getLong(javaClass, (long) runtime().getConfig().klassOffset);
+        }
+        return unsafe.getInt(javaClass, (long) runtime().getConfig().klassOffset) & 0xFFFFFFFFL;
     }
 
     @Override
@@ -169,7 +161,7 @@ public final class HotSpotResolvedObjectTypeImpl extends HotSpotResolvedJavaType
             HotSpotResolvedObjectTypeImpl type = this;
             while (type.isAbstract()) {
                 long subklass = type.getSubklass();
-                if (subklass == 0 || unsafeReadWord(subklass + config.nextSiblingOffset) != 0) {
+                if (subklass == 0 || unsafe.getAddress(subklass + config.nextSiblingOffset) != 0) {
                     return null;
                 }
                 type = fromMetaspaceKlass(subklass);
@@ -198,7 +190,7 @@ public final class HotSpotResolvedObjectTypeImpl extends HotSpotResolvedJavaType
      * @return value of the subklass field as metaspace klass pointer
      */
     private long getSubklass() {
-        return unsafeReadWord(getMetaspaceKlass() + runtime().getConfig().subklassOffset);
+        return unsafe.getAddress(getMetaspaceKlass() + runtime().getConfig().subklassOffset);
     }
 
     @Override
@@ -791,7 +783,7 @@ public final class HotSpotResolvedObjectTypeImpl extends HotSpotResolvedJavaType
         if (isArray()) {
             return config.arrayPrototypeMarkWord();
         } else {
-            return unsafeReadWord(getMetaspaceKlass() + config.prototypeMarkWordOffset);
+            return unsafe.getAddress(getMetaspaceKlass() + config.prototypeMarkWordOffset);
         }
     }
 

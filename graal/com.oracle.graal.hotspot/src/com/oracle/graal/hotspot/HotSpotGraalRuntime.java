@@ -390,7 +390,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, R
         // If the name represents a primitive type we can short-circuit the lookup.
         if (name.length() == 1) {
             Kind kind = Kind.fromPrimitiveOrVoidTypeChar(name.charAt(0));
-            return HotSpotResolvedPrimitiveType.fromKind(kind);
+            return fromClass(kind.toJavaClass());
         }
 
         // Resolve non-primitive types in the VM.
