@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 
 import com.oracle.graal.api.meta.*;
@@ -39,30 +38,28 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 
 /**
- * Read Class::_klass to get the hub for a {@link java.lang.Class}. This node mostly exists to
- * replace _klass._java_mirror._klass with _klass. The constant folding could be handled by
+ * Read {@code Class::_klass} to get the hub for a {@link java.lang.Class}. This node mostly exists
+ * to replace {@code _klass._java_mirror._klass} with {@code _klass}. The constant folding could be
+ * handled by
  * {@link ReadNode#canonicalizeRead(ValueNode, LocationNode, ValueNode, CanonicalizerTool)}.
  */
 @NodeInfo
 public class ClassGetHubNode extends FloatingGuardedNode implements Lowerable, Canonicalizable {
     @Input protected ValueNode clazz;
+    protected final HotSpotGraalRuntimeProvider runtime;
 
-    public static ClassGetHubNode create(ValueNode clazz) {
-        return new ClassGetHubNode(clazz);
+    public static ClassGetHubNode create(@InjectedNodeParameter HotSpotGraalRuntimeProvider runtime, ValueNode clazz) {
+        return new ClassGetHubNode(clazz, null, runtime);
     }
 
-    public static ClassGetHubNode create(ValueNode clazz, ValueNode guard) {
-        return new ClassGetHubNode(clazz, guard);
+    public static ClassGetHubNode create(@InjectedNodeParameter HotSpotGraalRuntimeProvider runtime, ValueNode clazz, ValueNode guard) {
+        return new ClassGetHubNode(clazz, guard, runtime);
     }
 
-    protected ClassGetHubNode(ValueNode clazz) {
-        super(KlassPointerStamp.klass(), null);
-        this.clazz = clazz;
-    }
-
-    protected ClassGetHubNode(ValueNode clazz, ValueNode guard) {
+    protected ClassGetHubNode(ValueNode clazz, ValueNode guard, HotSpotGraalRuntimeProvider runtime) {
         super(KlassPointerStamp.klass(), (GuardingNode) guard);
         this.clazz = clazz;
+        this.runtime = runtime;
     }
 
     public ValueNode getHub() {
@@ -77,7 +74,7 @@ public class ClassGetHubNode extends FloatingGuardedNode implements Lowerable, C
             if (clazz.isConstant()) {
                 MetaAccessProvider metaAccess = tool.getMetaAccess();
                 if (metaAccess != null) {
-                    HotSpotResolvedJavaType exactType = (HotSpotResolvedJavaType) tool.getConstantReflection().asJavaType(clazz.asJavaConstant());
+                    ResolvedJavaType exactType = tool.getConstantReflection().asJavaType(clazz.asJavaConstant());
                     if (exactType instanceof HotSpotResolvedObjectType) {
                         HotSpotResolvedObjectType objectType = (HotSpotResolvedObjectType) exactType;
                         ConstantNode cn = ConstantNode.forConstant(stamp(), objectType.getObjectHub(), metaAccess);
@@ -101,8 +98,7 @@ public class ClassGetHubNode extends FloatingGuardedNode implements Lowerable, C
             return;
         }
 
-        HotSpotVMConfig config = runtime().getConfig();
-        LocationNode location = ConstantLocationNode.create(CLASS_KLASS_LOCATION, getWordKind(), config.klassOffset, graph());
+        LocationNode location = ConstantLocationNode.create(CLASS_KLASS_LOCATION, runtime.getTarget().wordKind, runtime.getConfig().klassOffset, graph());
         assert !clazz.isConstant();
         FloatingReadNode read = graph().unique(FloatingReadNode.create(clazz, location, null, stamp(), getGuard(), BarrierType.NONE));
         graph().replaceFloating(this, read);
