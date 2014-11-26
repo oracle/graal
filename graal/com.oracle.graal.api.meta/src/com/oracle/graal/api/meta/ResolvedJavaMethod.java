@@ -207,16 +207,6 @@ public interface ResolvedJavaMethod extends JavaMethod, InvokeTarget, ModifiersP
     JavaConstant invoke(JavaConstant receiver, JavaConstant[] arguments);
 
     /**
-     * Uses the constructor represented by this object to create and initialize a new instance of
-     * the constructor's declaring class, with the specified initialization parameters. This method
-     * is similar to a reflective instantiation by {@link Constructor#newInstance}.
-     *
-     * @param arguments The arguments for the constructor.
-     * @return The newly created and initialized object.
-     */
-    JavaConstant newInstance(JavaConstant[] arguments);
-
-    /**
      * Gets the encoding of (that is, a constant representing the value of) this method.
      *
      * @return a constant representing a reference to this method

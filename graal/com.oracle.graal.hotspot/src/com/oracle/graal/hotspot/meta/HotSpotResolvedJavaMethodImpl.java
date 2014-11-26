@@ -723,27 +723,6 @@ public final class HotSpotResolvedJavaMethodImpl extends HotSpotMethod implement
         }
     }
 
-    @Override
-    public JavaConstant newInstance(JavaConstant[] arguments) {
-        assert isConstructor();
-        Constructor<?> javaConstructor = toJavaConstructor();
-        javaConstructor.setAccessible(true);
-
-        Object[] objArguments = new Object[arguments.length];
-        for (int i = 0; i < arguments.length; i++) {
-            objArguments[i] = HotSpotObjectConstantImpl.asBoxedValue(arguments[i]);
-        }
-
-        try {
-            Object objResult = javaConstructor.newInstance(objArguments);
-            assert objResult != null;
-            return HotSpotObjectConstantImpl.forObject(objResult);
-
-        } catch (IllegalAccessException | InvocationTargetException | InstantiationException ex) {
-            throw new IllegalArgumentException(ex);
-        }
-    }
-
     /**
      * Allocates a compile id for this method by asking the VM for one.
      *
