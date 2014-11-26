@@ -22,13 +22,13 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
@@ -37,30 +37,27 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 
 /**
- * Read Klass::_layout_helper and incorporate any useful stamp information based on any type
+ * Read {@code Klass::_layout_helper} and incorporate any useful stamp information based on any type
  * information in {@code klass}.
  */
 @NodeInfo
 public class KlassLayoutHelperNode extends FloatingGuardedNode implements Canonicalizable, Lowerable {
 
     @Input protected ValueNode klass;
+    protected final HotSpotVMConfig config;
 
-    public static KlassLayoutHelperNode create(ValueNode klass) {
-        return new KlassLayoutHelperNode(klass);
+    public static KlassLayoutHelperNode create(@InjectedNodeParameter HotSpotVMConfig config, ValueNode klass) {
+        return new KlassLayoutHelperNode(config, klass, null);
     }
 
-    public static KlassLayoutHelperNode create(ValueNode klass, ValueNode guard) {
-        return new KlassLayoutHelperNode(klass, guard);
+    public static KlassLayoutHelperNode create(@InjectedNodeParameter HotSpotVMConfig config, ValueNode klass, ValueNode guard) {
+        return new KlassLayoutHelperNode(config, klass, guard);
     }
 
-    protected KlassLayoutHelperNode(ValueNode klass) {
-        super(StampFactory.forKind(Kind.Int));
-        this.klass = klass;
-    }
-
-    protected KlassLayoutHelperNode(ValueNode klass, ValueNode guard) {
+    protected KlassLayoutHelperNode(HotSpotVMConfig config, ValueNode klass, ValueNode guard) {
         super(StampFactory.forKind(Kind.Int), (GuardingNode) guard);
         this.klass = klass;
+        this.config = config;
     }
 
     @Override
@@ -76,10 +73,10 @@ public class KlassLayoutHelperNode extends FloatingGuardedNode implements Canoni
                         /*
                          * Definitely some form of instance type.
                          */
-                        return updateStamp(StampFactory.forInteger(Kind.Int, runtime().getConfig().klassLayoutHelperNeutralValue, Integer.MAX_VALUE));
+                        return updateStamp(StampFactory.forInteger(Kind.Int, config.klassLayoutHelperNeutralValue, Integer.MAX_VALUE));
                     }
                     if (type.isArray()) {
-                        return updateStamp(StampFactory.forInteger(Kind.Int, Integer.MIN_VALUE, runtime().getConfig().klassLayoutHelperNeutralValue - 1));
+                        return updateStamp(StampFactory.forInteger(Kind.Int, Integer.MIN_VALUE, config.klassLayoutHelperNeutralValue - 1));
                     }
                 }
             }
@@ -94,7 +91,7 @@ public class KlassLayoutHelperNode extends FloatingGuardedNode implements Canoni
         } else {
             if (klass.isConstant()) {
                 if (!klass.asConstant().isDefaultForKind()) {
-                    Constant constant = stamp().readConstant(tool.getConstantReflection().getMemoryAccessProvider(), klass.asJavaConstant(), runtime().getConfig().klassLayoutHelperOffset);
+                    Constant constant = stamp().readConstant(tool.getConstantReflection().getMemoryAccessProvider(), klass.asJavaConstant(), config.klassLayoutHelperOffset);
                     return ConstantNode.forConstant(stamp(), constant, tool.getMetaAccess());
                 }
             }
@@ -106,7 +103,7 @@ public class KlassLayoutHelperNode extends FloatingGuardedNode implements Canoni
                     HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) ostamp.type();
                     if (type != null && type.isArray() && !type.getComponentType().isPrimitive()) {
                         // The layout for all object arrays is the same.
-                        Constant constant = stamp().readConstant(tool.getConstantReflection().getMemoryAccessProvider(), type.klass(), runtime().getConfig().klassLayoutHelperOffset);
+                        Constant constant = stamp().readConstant(tool.getConstantReflection().getMemoryAccessProvider(), type.klass(), config.klassLayoutHelperOffset);
                         return ConstantNode.forConstant(stamp(), constant, tool.getMetaAccess());
                     }
                 }
@@ -120,7 +117,7 @@ public class KlassLayoutHelperNode extends FloatingGuardedNode implements Canoni
         if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.HIGH_TIER) {
             return;
         }
-        LocationNode location = ConstantLocationNode.create(KLASS_LAYOUT_HELPER_LOCATION, Kind.Int, runtime().getConfig().klassLayoutHelperOffset, graph());
+        LocationNode location = ConstantLocationNode.create(KLASS_LAYOUT_HELPER_LOCATION, Kind.Int, config.klassLayoutHelperOffset, graph());
         assert !klass.isConstant();
         graph().replaceFloating(this, graph().unique(FloatingReadNode.create(klass, location, null, stamp(), getGuard(), BarrierType.NONE)));
     }
