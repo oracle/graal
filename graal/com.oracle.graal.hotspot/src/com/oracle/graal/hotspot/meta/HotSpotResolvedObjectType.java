@@ -91,4 +91,6 @@ public interface HotSpotResolvedObjectType extends ResolvedJavaType {
     HotSpotResolvedObjectType getEnclosingType();
 
     ResolvedJavaMethod getClassInitializer();
+
+    ResolvedJavaField createField(String name, JavaType type, long offset, int modifiers);
 }
