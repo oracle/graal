@@ -24,7 +24,6 @@ package com.oracle.graal.nodes.java;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
@@ -38,21 +37,21 @@ import com.oracle.graal.nodes.spi.*;
  * inlined.
  */
 @NodeInfo
-public class SelfReplacingMethodCallTargetNode extends CallTargetNode implements Lowerable {
+public class SelfReplacingMethodCallTargetNode extends MethodCallTargetNode implements Lowerable {
 
     // Replacement method data
     protected final ResolvedJavaMethod replacementTargetMethod;
     protected final JavaType replacementReturnType;
     @Input NodeInputList<ValueNode> replacementArguments;
 
-    public static SelfReplacingMethodCallTargetNode create(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, ResolvedJavaMethod replacementTargetMethod,
-                    ValueNode[] replacementArguments, JavaType replacementReturnType) {
-        return new SelfReplacingMethodCallTargetNode(invokeKind, targetMethod, arguments, replacementTargetMethod, replacementArguments, replacementReturnType);
+    public static SelfReplacingMethodCallTargetNode create(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, JavaType returnType,
+                    ResolvedJavaMethod replacementTargetMethod, ValueNode[] replacementArguments, JavaType replacementReturnType) {
+        return new SelfReplacingMethodCallTargetNode(invokeKind, targetMethod, arguments, returnType, replacementTargetMethod, replacementArguments, replacementReturnType);
     }
 
-    protected SelfReplacingMethodCallTargetNode(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, ResolvedJavaMethod replacementTargetMethod,
+    protected SelfReplacingMethodCallTargetNode(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, JavaType returnType, ResolvedJavaMethod replacementTargetMethod,
                     ValueNode[] replacementArguments, JavaType replacementReturnType) {
-        super(arguments, targetMethod, invokeKind);
+        super(invokeKind, targetMethod, arguments, returnType);
         this.replacementTargetMethod = replacementTargetMethod;
         this.replacementReturnType = replacementReturnType;
         this.replacementArguments = new NodeInputList<>(this, replacementArguments);
@@ -83,23 +82,5 @@ public class SelfReplacingMethodCallTargetNode extends CallTargetNode implements
     @Override
     public void generate(NodeLIRBuilderTool gen) {
         throw GraalInternalError.shouldNotReachHere("should have replaced itself");
-    }
-
-    @Override
-    public Stamp returnStamp() {
-        Kind returnKind = targetMethod().getSignature().getReturnKind();
-        if (returnKind == Kind.Object && replacementReturnType instanceof ResolvedJavaType) {
-            return StampFactory.declared((ResolvedJavaType) replacementReturnType);
-        } else {
-            return StampFactory.forKind(returnKind);
-        }
-    }
-
-    @Override
-    public String targetName() {
-        if (targetMethod() == null) {
-            return "??Invalid!";
-        }
-        return targetMethod().format("%h.%n");
     }
 }
