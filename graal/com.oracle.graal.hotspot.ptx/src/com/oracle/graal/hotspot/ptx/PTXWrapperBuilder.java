@@ -192,7 +192,7 @@ public class PTXWrapperBuilder extends GraphKit {
 
         InvokeNode kernelStart = createInvoke(getClass(), "getKernelStart", ConstantNode.forConstant(kernel.asConstant(), providers.getMetaAccess(), getGraph()));
 
-        AllocaNode buf = append(AllocaNode.create(bufSize / wordSize, new BitSet()));
+        AllocaNode buf = append(AllocaNode.create(bufSize / wordSize, wordKind, new BitSet()));
         ValueNode objectParametersOffsets;
         ValueNode pinnedObjects;
         ConstantNode nullWord = ConstantNode.forIntegerKind(wordKind, 0L, getGraph());
@@ -202,9 +202,9 @@ public class PTXWrapperBuilder extends GraphKit {
         } else {
             int intsPerWord = wordSize / intSize;
             int slots = roundUp(objectSlots.size(), intsPerWord);
-            objectParametersOffsets = append(AllocaNode.create(slots, new BitSet()));
+            objectParametersOffsets = append(AllocaNode.create(slots, wordKind, new BitSet()));
             // No refmap for pinned objects list since kernel execution is (currently) GC unsafe
-            pinnedObjects = append(AllocaNode.create(objectSlots.size(), new BitSet()));
+            pinnedObjects = append(AllocaNode.create(objectSlots.size(), wordKind, new BitSet()));
 
             // Initialize the object parameter offsets array
             int index = 0;
