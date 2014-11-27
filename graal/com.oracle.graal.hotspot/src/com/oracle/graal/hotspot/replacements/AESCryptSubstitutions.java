@@ -44,8 +44,13 @@ import com.oracle.graal.word.*;
 public class AESCryptSubstitutions {
 
     public static class Guard implements SubstitutionGuard {
+        private HotSpotVMConfig config;
+
+        public Guard(HotSpotVMConfig config) {
+            this.config = config;
+        }
+
         public boolean execute() {
-            HotSpotVMConfig config = HotSpotGraalRuntime.runtime().getConfig();
             if (config.useAESIntrinsics) {
                 assert config.aescryptEncryptBlockStub != 0L;
                 assert config.aescryptDecryptBlockStub != 0L;

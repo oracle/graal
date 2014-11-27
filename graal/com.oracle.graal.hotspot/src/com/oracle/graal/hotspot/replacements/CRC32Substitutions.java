@@ -44,14 +44,14 @@ public class CRC32Substitutions {
 
     public static class Guard implements SubstitutionGuard {
 
-        private HotSpotGraalRuntimeProvider runtime;
+        private HotSpotVMConfig config;
 
-        public Guard(HotSpotGraalRuntimeProvider runtime) {
-            this.runtime = runtime;
+        public Guard(HotSpotVMConfig config) {
+            this.config = config;
         }
 
         public boolean execute() {
-            return runtime.getConfig().useCRC32Intrinsics;
+            return config.useCRC32Intrinsics;
         }
     }
 
