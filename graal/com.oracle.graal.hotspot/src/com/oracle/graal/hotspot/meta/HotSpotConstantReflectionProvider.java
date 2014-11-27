@@ -249,10 +249,12 @@ public class HotSpotConstantReflectionProvider implements ConstantReflectionProv
 
     public JavaConstant readStableFieldValue(JavaField field, JavaConstant receiver, boolean isDefaultStable) {
         JavaConstant fieldValue = readNonStableFieldValue(field, receiver);
-        JavaType declaredType = field.getType();
-        if (declaredType.getComponentType() != null) {
-            int stableDimension = getArrayDimension(declaredType);
-            return HotSpotObjectConstantImpl.forStableArray(((HotSpotObjectConstantImpl) fieldValue).object(), stableDimension, isDefaultStable);
+        if (fieldValue.isNonNull()) {
+            JavaType declaredType = field.getType();
+            if (declaredType.getComponentType() != null) {
+                int stableDimension = getArrayDimension(declaredType);
+                return HotSpotObjectConstantImpl.forStableArray(((HotSpotObjectConstantImpl) fieldValue).object(), stableDimension, isDefaultStable);
+            }
         }
         return fieldValue;
     }
