@@ -455,8 +455,7 @@ public abstract class ShapeImpl extends Shape {
     @Override
     public final List<Property> getPropertyList(Pred<Property> filter) {
         LinkedList<Property> props = new LinkedList<>();
-        next: for (ShapeImpl current = this; current != getRoot(); current = current.parent) {
-            Property currentProperty = current.getLastProperty();
+        next: for (Property currentProperty : this.propertyMap.reverseOrderValues()) {
             if (!currentProperty.isHidden() && filter.test(currentProperty)) {
                 if (currentProperty.getLocation() instanceof DeclaredLocation) {
                     for (Iterator<Property> iter = props.iterator(); iter.hasNext();) {
@@ -488,11 +487,11 @@ public abstract class ShapeImpl extends Shape {
     @Override
     public final List<Property> getPropertyListInternal(boolean ascending) {
         LinkedList<Property> props = new LinkedList<>();
-        for (ShapeImpl current = this; current != getRoot(); current = current.parent) {
+        for (Property current : this.propertyMap.reverseOrderValues()) {
             if (ascending) {
-                props.addFirst(current.getLastProperty());
+                props.addFirst(current);
             } else {
-                props.add(current.getLastProperty());
+                props.add(current);
             }
         }
         return props;
@@ -507,8 +506,7 @@ public abstract class ShapeImpl extends Shape {
     @Override
     public final List<Object> getKeyList(Pred<Property> filter) {
         LinkedList<Object> keys = new LinkedList<>();
-        for (ShapeImpl current = this; current != getRoot(); current = current.parent) {
-            Property currentProperty = current.getLastProperty();
+        for (Property currentProperty : this.propertyMap.reverseOrderValues()) {
             if (!currentProperty.isHidden() && filter.test(currentProperty) && !currentProperty.isShadow()) {
                 keys.addFirst(currentProperty.getKey());
             }
