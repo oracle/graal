@@ -49,13 +49,14 @@ public final class BinaryConditionProfile extends ConditionProfile {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 wasTrue = true;
             }
+            return true;
         } else {
             if (!wasFalse) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 wasFalse = true;
             }
+            return false;
         }
-        return value;
     }
 
     public boolean wasTrue() {
