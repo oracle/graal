@@ -85,14 +85,8 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, R
      * through references to a captured {@link HotSpotGraalRuntimeProvider}, not through the static
      * {@link HotSpotGraalRuntimeProvider} instance of the runtime hosting the replay.
      */
-    private static boolean checkRuntimeAccess() {
-        Context c = Context.getCurrent();
-        if (c != null) {
-            if (!c.inProxyInvocation()) {
-                throw new GraalInternalError("Cannot access HotSpotGraalRuntime statically in replay/remote context");
-            }
-        }
-        return true;
+    public static boolean checkRuntimeAccess() {
+        return Context.assertInLocal("Cannot access HotSpotGraalRuntime statically in replay/remote context");
     }
 
     /**

@@ -37,6 +37,10 @@ import com.oracle.graal.compiler.common.type.*;
 
 /**
  * Manages a context for replay or remote compilation.
+ *
+ * With respect to replay or remote compilation, certain objects only exist on the VM side of the
+ * VM-compiler boundary. These are objects that encapsulate compiler references to user heap objects
+ * or other VM data such as native VM objects representing Java classes and methods.
  */
 public class Context implements AutoCloseable {
 
@@ -458,6 +462,24 @@ public class Context implements AutoCloseable {
                         throw new GraalInternalError("Expecting instance of %s, found proxy", o.getClass());
                     }
                 }
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Asserts that the current caller is in code that is on the VM side.
+     *
+     * @param errorMessage the error message used for the {@link GraalInternalError} thrown if the
+     *            check fails
+     * @return true if the check succeeds
+     * @throw AssertionError if the check fails
+     */
+    public static boolean assertInLocal(String errorMessage) {
+        Context c = Context.getCurrent();
+        if (c != null) {
+            if (!c.inProxyInvocation()) {
+                throw new AssertionError(errorMessage);
             }
         }
         return true;
