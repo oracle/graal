@@ -101,7 +101,7 @@ public class Handler<T> implements InvocationHandler {
             Object result = invocation.invoke();
             result = context.get(result);
             if (isCacheable) {
-                context.invocationCacheHits--;
+                context.invocationCacheHits++;
                 cachedInvocations.put(invocation, result == null ? NULL_RESULT : result);
             }
             return result;
