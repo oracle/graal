@@ -31,7 +31,7 @@ public class CounterAndTimeBasedCompilationPolicy extends CounterBasedCompilatio
     @Override
     public boolean shouldCompile(CompilationProfile profile, CompilerOptions options) {
         if (super.shouldCompile(profile, options)) {
-            long threshold = TruffleTimeThreshold.getValue() * 1_000_000L;
+            long threshold = TruffleTimeThreshold.getValue();
 
             if (options instanceof GraalCompilerOptions) {
                 threshold = Math.max(threshold, ((GraalCompilerOptions) options).getMinTimeThreshold());
@@ -42,7 +42,7 @@ public class CounterAndTimeBasedCompilationPolicy extends CounterBasedCompilatio
                 throw new AssertionError();
             }
             long timeElapsed = System.nanoTime() - time;
-            if (timeElapsed > threshold) {
+            if (timeElapsed > threshold * 1_000_000) {
                 profile.deferCompilation();
                 return false;
             }

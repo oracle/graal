@@ -109,8 +109,7 @@ public interface Invoke extends StateSplit, Lowerable, DeoptimizingNode.DeoptDur
     default Stamp uncheckedStamp() {
         if (callTarget() instanceof MethodCallTargetNode) {
             MethodCallTargetNode methodCallTargetNode = (MethodCallTargetNode) callTarget();
-            JavaType returnType = methodCallTargetNode.targetMethod().getSignature().getReturnType(getContextType());
-            return UncheckedInterfaceProvider.uncheckedOrNull(returnType, asNode().stamp());
+            return UncheckedInterfaceProvider.uncheckedOrNull(methodCallTargetNode.returnType(), asNode().stamp());
         }
         return null;
     }

@@ -151,7 +151,7 @@ public class HotSpotSignature extends CompilerObject implements Signature {
 
         ResolvedJavaType type = parameterTypes[index];
         if (!checkValidCache(type, accessingClass)) {
-            type = (ResolvedJavaType) runtime.lookupType(parameters.get(index), (HotSpotResolvedObjectType) accessingClass, true);
+            type = (ResolvedJavaType) runtime.lookupType(parameters.get(index), (HotSpotResolvedObjectType) accessingClass, false);
             parameterTypes[index] = type;
         }
         return type;
@@ -176,7 +176,7 @@ public class HotSpotSignature extends CompilerObject implements Signature {
             return getUnresolvedOrPrimitiveType(runtime, returnType);
         }
         if (!checkValidCache(returnTypeCache, accessingClass)) {
-            returnTypeCache = (ResolvedJavaType) runtime.lookupType(returnType, (HotSpotResolvedObjectType) accessingClass, true);
+            returnTypeCache = (ResolvedJavaType) runtime.lookupType(returnType, (HotSpotResolvedObjectType) accessingClass, false);
         }
         return returnTypeCache;
     }
