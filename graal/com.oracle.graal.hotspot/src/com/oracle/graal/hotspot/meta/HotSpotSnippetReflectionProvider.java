@@ -60,6 +60,9 @@ public class HotSpotSnippetReflectionProvider implements SnippetReflectionProvid
         if (type.isInstance(runtime)) {
             return runtime;
         }
+        if (type.isInstance(runtime.getConfig())) {
+            return runtime.getConfig();
+        }
         return null;
     }
 
