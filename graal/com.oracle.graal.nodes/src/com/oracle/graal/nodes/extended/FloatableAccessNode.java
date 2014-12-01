@@ -53,6 +53,6 @@ public abstract class FloatableAccessNode extends FixedAccessNode {
      * an attached write barrier with pre-semantics can not also float.
      */
     public boolean canFloat() {
-        return location().getLocationIdentity() != LocationIdentity.ANY_LOCATION && getBarrierType() == BarrierType.NONE;
+        return !location().getLocationIdentity().equals(LocationIdentity.ANY_LOCATION) && getBarrierType() == BarrierType.NONE;
     }
 }

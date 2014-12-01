@@ -1045,9 +1045,9 @@ public final class SchedulePhase extends Phase {
             LocationIdentity readLocation = frn.location().getLocationIdentity();
             assert !readLocation.isImmutable();
             if (frn.getLastLocationAccess() == node) {
-                assert identity == ANY_LOCATION || readLocation == identity || node instanceof MemoryCheckpoint.Multi : "location doesn't match: " + readLocation + ", " + identity;
+                assert identity.equals(ANY_LOCATION) || readLocation.equals(identity) || node instanceof MemoryCheckpoint.Multi : "location doesn't match: " + readLocation + ", " + identity;
                 state.clearBeforeLastLocation(frn);
-            } else if (!state.isBeforeLastLocation(frn) && (readLocation == identity || (node != getCFG().graph.start() && ANY_LOCATION == identity))) {
+            } else if (!state.isBeforeLastLocation(frn) && (readLocation.equals(identity) || (node != getCFG().graph.start() && ANY_LOCATION.equals(identity)))) {
                 state.removeRead(frn);
                 addToLatestSorting(frn, state);
             }

@@ -148,7 +148,7 @@ public class ConditionalEliminationPhase extends Phase {
                         break;
                     }
                 }
-                if (type != null && type != StampTool.typeOrNull(node)) {
+                if (type != null && !type.equals(StampTool.typeOrNull(node))) {
                     newKnownTypes.put(node, type);
                 }
             }

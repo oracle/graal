@@ -118,7 +118,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
         } else if (node instanceof UnsafeAccessNode) {
             if (node instanceof UnsafeLoadNode) {
                 UnsafeLoadNode load = (UnsafeLoadNode) node;
-                if (load.offset().isConstant() && load.getLocationIdentity() != LocationIdentity.ANY_LOCATION) {
+                if (load.offset().isConstant() && !load.getLocationIdentity().equals(LocationIdentity.ANY_LOCATION)) {
                     ValueNode object = GraphUtil.unproxify(load.object());
                     UnsafeLoadCacheEntry identifier = new UnsafeLoadCacheEntry(object, load.offset(), load.getLocationIdentity());
                     ValueNode cachedValue = state.getCacheEntry(identifier);
@@ -133,7 +133,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
             } else {
                 assert node instanceof UnsafeStoreNode;
                 UnsafeStoreNode write = (UnsafeStoreNode) node;
-                if (write.offset().isConstant() && write.getLocationIdentity() != LocationIdentity.ANY_LOCATION) {
+                if (write.offset().isConstant() && !write.getLocationIdentity().equals(LocationIdentity.ANY_LOCATION)) {
                     ValueNode object = GraphUtil.unproxify(write.object());
                     UnsafeLoadCacheEntry identifier = new UnsafeLoadCacheEntry(object, write.offset(), write.getLocationIdentity());
                     ValueNode cachedValue = state.getCacheEntry(identifier);
@@ -161,7 +161,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
     }
 
     private static void processIdentity(ReadEliminationBlockState state, LocationIdentity identity) {
-        if (identity == ANY_LOCATION) {
+        if (identity.equals(ANY_LOCATION)) {
             state.killReadCache();
             return;
         }

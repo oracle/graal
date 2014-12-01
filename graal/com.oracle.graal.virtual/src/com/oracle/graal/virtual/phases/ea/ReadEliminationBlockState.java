@@ -80,7 +80,7 @@ public class ReadEliminationBlockState extends EffectsBlockState<ReadElimination
 
         @Override
         public boolean conflicts(LocationIdentity other) {
-            return identity == other;
+            return identity.equals(other);
         }
     }
 
@@ -106,7 +106,7 @@ public class ReadEliminationBlockState extends EffectsBlockState<ReadElimination
 
         @Override
         public boolean conflicts(LocationIdentity other) {
-            return locationIdentity == other;
+            return locationIdentity.equals(other);
         }
     }
 
@@ -123,7 +123,7 @@ public class ReadEliminationBlockState extends EffectsBlockState<ReadElimination
 
         @Override
         public boolean conflicts(LocationIdentity other) {
-            return identity.getLocationIdentity() == other;
+            return identity.getLocationIdentity().equals(other);
         }
     }
 

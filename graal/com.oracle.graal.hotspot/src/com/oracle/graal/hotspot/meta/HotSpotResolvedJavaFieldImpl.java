@@ -211,7 +211,7 @@ public class HotSpotResolvedJavaFieldImpl extends CompilerObject implements HotS
          * @return {@code true} if the field is a well-known stable field.
          */
         public static boolean test(HotSpotResolvedJavaField field) {
-            return field == STRING_VALUE_FIELD;
+            return field.equals(STRING_VALUE_FIELD);
         }
 
         private static final ResolvedJavaField STRING_VALUE_FIELD;
