@@ -31,7 +31,6 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.replacements.*;
 
 /**
  * Method substitutions that are VM-independent but AMD64-dependent.
