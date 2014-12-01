@@ -25,6 +25,7 @@ package com.oracle.graal.replacements;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 
 import java.lang.reflect.*;
+import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
@@ -42,7 +43,9 @@ public class GraalMethodSubstitutions implements ReplacementsProvider {
     public void registerReplacements(MetaAccessProvider metaAccess, LoweringProvider loweringProvider, SnippetReflectionProvider snippetReflection, Replacements replacements, TargetDescription target) {
         BoxingSubstitutions.registerReplacements(replacements);
         if (Intrinsify.getValue()) {
+            replacements.registerSubstitutions(Arrays.class, ArraysSubstitutions.class);
             replacements.registerSubstitutions(Array.class, ArraySubstitutions.class);
+            replacements.registerSubstitutions(String.class, StringSubstitutions.class);
             replacements.registerSubstitutions(Math.class, MathSubstitutionsX86.class);
             replacements.registerSubstitutions(Double.class, DoubleSubstitutions.class);
             replacements.registerSubstitutions(Float.class, FloatSubstitutions.class);
