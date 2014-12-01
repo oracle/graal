@@ -33,7 +33,7 @@ import java.util.*;
  * comparing two {@link LocationIdentity} values for equality. Likewise, they must not use
  * {@link IdentityHashMap}s with {@link LocationIdentity} values as keys.
  */
-public interface LocationIdentity {
+public interface LocationIdentity extends TrustedInterface {
 
     /**
      * Denotes any location. A write to such a location kills all values in a memory map during an

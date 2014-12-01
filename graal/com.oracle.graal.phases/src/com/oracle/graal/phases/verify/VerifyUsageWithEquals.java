@@ -34,6 +34,8 @@ import com.oracle.graal.phases.tiers.*;
  * For certain types, object identity should not be used for object equality check. This phase
  * checks the correct usage of the given type. Equality checks with == or != (except null checks)
  * results in an {@link AssertionError}.
+ *
+ * Note that only {@link TrustedInterface}s can be verified.
  */
 public class VerifyUsageWithEquals extends VerifyPhase<PhaseContext> {
 
@@ -42,8 +44,9 @@ public class VerifyUsageWithEquals extends VerifyPhase<PhaseContext> {
      */
     private final Class<?> restrictedClass;
 
-    public VerifyUsageWithEquals(Class<?> klass) {
-        this.restrictedClass = klass;
+    public VerifyUsageWithEquals(Class<?> restrictedClass) {
+        this.restrictedClass = restrictedClass;
+        assert !restrictedClass.isInterface() || TrustedInterface.class.isAssignableFrom(restrictedClass);
     }
 
     /**
