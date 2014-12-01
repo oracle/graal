@@ -896,6 +896,7 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMConstant(name = "JVM_ACC_FIELD_INTERNAL") @Stable public int jvmAccFieldInternal;
     @HotSpotVMConstant(name = "JVM_ACC_FIELD_STABLE") @Stable public int jvmAccFieldStable;
     @HotSpotVMConstant(name = "JVM_ACC_FIELD_HAS_GENERIC_SIGNATURE") @Stable public int jvmAccFieldHasGenericSignature;
+    @HotSpotVMConstant(name = "JVM_ACC_WRITTEN_FLAGS") @Stable public int jvmAccWrittenFlags;
 
     @HotSpotVMField(name = "Thread::_tlab", type = "ThreadLocalAllocBuffer", get = HotSpotVMField.Type.OFFSET) @Stable public int threadTlabOffset;
 

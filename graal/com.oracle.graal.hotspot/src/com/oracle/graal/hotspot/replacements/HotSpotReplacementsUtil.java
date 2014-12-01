@@ -290,6 +290,11 @@ public class HotSpotReplacementsUtil {
         return config().klassAccessFlagsOffset;
     }
 
+    @Fold
+    public static int jvmAccWrittenFlags() {
+        return config().jvmAccWrittenFlags;
+    }
+
     public static final LocationIdentity KLASS_LAYOUT_HELPER_LOCATION = NamedLocationIdentity.immutable("Klass::_layout_helper");
 
     @Fold
