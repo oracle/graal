@@ -26,7 +26,7 @@ package com.oracle.graal.api.meta;
  * Interface for values manipulated by the compiler. All values have a {@linkplain Kind kind} and
  * are immutable.
  */
-public interface Value extends KindProvider {
+public interface Value extends KindProvider, TrustedInterface {
 
     @SuppressWarnings("serial") AllocatableValue ILLEGAL = new AllocatableValue(LIRKind.Illegal) {
 
