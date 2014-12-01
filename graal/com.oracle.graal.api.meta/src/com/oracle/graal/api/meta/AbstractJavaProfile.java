@@ -84,7 +84,7 @@ public abstract class AbstractJavaProfile<T extends AbstractProfiledItem<U>, U> 
     public T findEntry(ResolvedJavaType type) {
         if (pitems != null) {
             for (T pt : pitems) {
-                if (pt.getItem() == type) {
+                if (pt.getItem().equals(type)) {
                     return pt;
                 }
             }

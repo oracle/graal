@@ -1016,7 +1016,7 @@ public class SnippetTemplate {
         if (replacee instanceof MemoryCheckpoint.Single) {
             // check if some node in snippet graph also kills the same location
             LocationIdentity locationIdentity = ((MemoryCheckpoint.Single) replacee).getLocationIdentity();
-            if (locationIdentity == ANY_LOCATION) {
+            if (locationIdentity.equals(ANY_LOCATION)) {
                 assert !(memoryMap.getLastLocationAccess(ANY_LOCATION) instanceof MemoryAnchorNode) : replacee + " kills ANY_LOCATION, but snippet does not";
             }
             assert kills.contains(locationIdentity) : replacee + " kills " + locationIdentity + ", but snippet doesn't contain a kill to this location";
@@ -1046,7 +1046,7 @@ public class SnippetTemplate {
             if (SnippetCounters.getValue()) {
                 // accesses to snippet counters are artificially introduced and violate the memory
                 // semantics.
-                if (locationIdentity == SnippetCounter.SNIPPET_COUNTER_LOCATION) {
+                if (locationIdentity.equals(SnippetCounter.SNIPPET_COUNTER_LOCATION)) {
                     continue;
                 }
             }

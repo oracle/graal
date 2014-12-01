@@ -111,7 +111,7 @@ public class PEReadEliminationClosure extends PartialEscapeClosure<PEReadElimina
     private static void processIdentity(PEReadEliminationBlockState state, LocationIdentity identity) {
         if (identity instanceof ResolvedJavaField) {
             state.killReadCache((ResolvedJavaField) identity);
-        } else if (identity == ANY_LOCATION) {
+        } else if (identity.equals(ANY_LOCATION)) {
             state.killReadCache();
         }
     }

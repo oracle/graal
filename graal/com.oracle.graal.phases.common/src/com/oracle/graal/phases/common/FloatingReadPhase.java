@@ -304,7 +304,7 @@ public class FloatingReadPhase extends Phase {
 
         private static void processAccess(MemoryAccess access, MemoryMapImpl state) {
             LocationIdentity locationIdentity = access.getLocationIdentity();
-            if (locationIdentity != LocationIdentity.ANY_LOCATION) {
+            if (!locationIdentity.equals(LocationIdentity.ANY_LOCATION)) {
                 MemoryNode lastLocationAccess = state.getLastLocationAccess(locationIdentity);
                 access.setLastLocationAccess(lastLocationAccess);
             }
@@ -321,7 +321,7 @@ public class FloatingReadPhase extends Phase {
         }
 
         private static void processIdentity(LocationIdentity identity, MemoryCheckpoint checkpoint, MemoryMapImpl state) {
-            if (identity == ANY_LOCATION) {
+            if (identity.equals(ANY_LOCATION)) {
                 state.lastMemorySnapshot.clear();
             }
             state.lastMemorySnapshot.put(identity, checkpoint);
