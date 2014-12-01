@@ -65,20 +65,47 @@ public class VerifyUsageWithEquals extends VerifyPhase<PhaseContext> {
         return node.isConstant() && node.isNullConstant();
     }
 
+    private static boolean isEqualsMethod(ResolvedJavaMethod method) {
+        if (method.getName().equals("equals")) {
+            Signature sig = method.getSignature();
+            if (sig.getReturnKind() == Kind.Boolean) {
+                if (sig.getParameterCount(false) == 1) {
+                    ResolvedJavaType ptype = (ResolvedJavaType) sig.getParameterType(0, method.getDeclaringClass());
+                    if (ptype.isJavaLangObject()) {
+                        return true;
+                    }
+
+                }
+            }
+        }
+        return false;
+    }
+
+    private static boolean isThisParameter(ValueNode node) {
+        return node instanceof ParameterNode && ((ParameterNode) node).index() == 0;
+    }
+
     /**
      * Checks whether the type of {@code x} is assignable to the restricted type and that {@code y}
      * is not a null constant.
      */
-    private boolean isIllegalUsage(ValueNode x, ValueNode y, MetaAccessProvider metaAccess) {
-        return isAssignableToRestrictedType(x, metaAccess) && !isNullConstant(y);
+    private boolean isIllegalUsage(ResolvedJavaMethod method, ValueNode x, ValueNode y, MetaAccessProvider metaAccess) {
+        if (isAssignableToRestrictedType(x, metaAccess) && !isNullConstant(y)) {
+            if (isEqualsMethod(method) && isThisParameter(x) || isThisParameter(y)) {
+                return false;
+            }
+            return true;
+        }
+        return false;
     }
 
     @Override
     protected boolean verify(StructuredGraph graph, PhaseContext context) {
         for (ObjectEqualsNode cn : graph.getNodes().filter(ObjectEqualsNode.class)) {
             // bail out if we compare an object of type klass with == or != (except null checks)
-            if (isIllegalUsage(cn.getX(), cn.getY(), context.getMetaAccess()) || isIllegalUsage(cn.getY(), cn.getX(), context.getMetaAccess())) {
-                throw new VerificationError("Verification of " + restrictedClass.getName() + " usage failed: Comparing " + cn.getX() + " and " + cn.getY() + " in " + graph.method() +
+            ResolvedJavaMethod method = graph.method();
+            if (isIllegalUsage(method, cn.getX(), cn.getY(), context.getMetaAccess()) || isIllegalUsage(method, cn.getY(), cn.getX(), context.getMetaAccess())) {
+                throw new VerificationError("Verification of " + restrictedClass.getName() + " usage failed: Comparing " + cn.getX() + " and " + cn.getY() + " in " + method +
                                 " must use .equals() for object equality, not '==' or '!='");
             }
         }
