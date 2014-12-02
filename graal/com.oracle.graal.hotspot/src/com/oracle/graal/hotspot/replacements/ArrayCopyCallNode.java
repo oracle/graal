@@ -27,7 +27,6 @@ import static com.oracle.graal.api.meta.LocationIdentity.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.runtime.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
@@ -116,10 +115,6 @@ public class ArrayCopyCallNode extends AbstractMemoryCheckpoint implements Lower
 
     public Kind getElementKind() {
         return elementKind;
-    }
-
-    private boolean shouldUnroll() {
-        return getLength().isConstant() && getLength().asJavaConstant().asInt() <= GraalOptions.MaximumEscapeAnalysisArrayLength.getValue();
     }
 
     private ValueNode computeBase(ValueNode base, ValueNode pos) {
