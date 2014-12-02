@@ -79,6 +79,17 @@ public final class HotSpotReferenceMap implements ReferenceMap, Serializable {
         this.target = target;
     }
 
+    private HotSpotReferenceMap(HotSpotReferenceMap other) {
+        this.registerRefMap = (BitSet) other.registerRefMap.clone();
+        this.frameRefMap = (BitSet) other.frameRefMap.clone();
+        this.target = other.target;
+    }
+
+    @Override
+    public ReferenceMap clone() {
+        return new HotSpotReferenceMap(this);
+    }
+
     // setters
 
     private static void setOop(BitSet map, int startIdx, LIRKind kind) {
