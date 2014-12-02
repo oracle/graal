@@ -66,6 +66,10 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         stub.getLinkage().setCompiledStub(stub);
     }
 
+    public static ForeignCallDescriptor lookupCheckcastArraycopyDescriptor(boolean uninit) {
+        return checkcastArraycopyDescriptors[uninit ? 1 : 0];
+    }
+
     public static ForeignCallDescriptor lookupArraycopyDescriptor(Kind kind, boolean aligned, boolean disjoint, boolean uninit) {
         if (uninit) {
             assert kind == Kind.Object;
@@ -77,6 +81,7 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
     @SuppressWarnings("unchecked") private static final EnumMap<Kind, ForeignCallDescriptor>[][] arraycopyDescriptors = new EnumMap[2][2];
 
     private static final ForeignCallDescriptor[][] uninitObjectArraycopyDescriptors = new ForeignCallDescriptor[2][2];
+    private static final ForeignCallDescriptor[] checkcastArraycopyDescriptors = new ForeignCallDescriptor[2];
 
     static {
         // Populate the EnumMap instances
@@ -102,6 +107,21 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         } else {
             arraycopyDescriptors[aligned ? 1 : 0][disjoint ? 1 : 0].put(kind, desc);
         }
+    }
+
+    private void registerCheckcastArraycopyDescriptor(boolean uninit, long routine) {
+        String name = "Object" + (uninit ? "Uninit" : "") + "Checkcast";
+        // Input:
+        // c_rarg0 - source array address
+        // c_rarg1 - destination array address
+        // c_rarg2 - element count, treated as ssize_t, can be zero
+        // c_rarg3 - size_t ckoff (super_check_offset)
+        // c_rarg4 - oop ckval (super_klass)
+        // return: 0 = success, n = number of copied elements xor'd with -1.
+        ForeignCallDescriptor desc = new ForeignCallDescriptor(name, int.class, Word.class, Word.class, Word.class, Word.class, Word.class);
+        LocationIdentity killed = NamedLocationIdentity.getArrayLocation(Kind.Object);
+        registerForeignCall(desc, routine, NativeCall, DESTROYS_REGISTERS, LEAF_NOFP, NOT_REEXECUTABLE, killed);
+        checkcastArraycopyDescriptors[uninit ? 1 : 0] = desc;
     }
 
     private void registerArrayCopy(Map<Long, ForeignCallDescriptor> descMap, Kind kind, long routine, long alignedRoutine, long disjointRoutine, long alignedDisjointRoutine) {
@@ -188,6 +208,9 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         registerArrayCopy(descMap, Kind.Double, c.jlongArraycopy, c.jlongAlignedArraycopy, c.jlongDisjointArraycopy, c.jlongAlignedDisjointArraycopy);
         registerArrayCopy(descMap, Kind.Object, c.oopArraycopy, c.oopAlignedArraycopy, c.oopDisjointArraycopy, c.oopAlignedDisjointArraycopy);
         registerArrayCopy(descMap, Kind.Object, c.oopArraycopyUninit, c.oopAlignedArraycopyUninit, c.oopDisjointArraycopyUninit, c.oopAlignedDisjointArraycopyUninit, true);
+
+        registerCheckcastArraycopyDescriptor(true, c.checkcastArraycopyUninit);
+        registerCheckcastArraycopyDescriptor(false, c.checkcastArraycopy);
 
         if (c.useAESIntrinsics) {
             /*
