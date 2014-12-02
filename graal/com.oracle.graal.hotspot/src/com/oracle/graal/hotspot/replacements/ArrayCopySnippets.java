@@ -79,11 +79,13 @@ public class ArrayCopySnippets implements Snippets {
     public static Method getSnippetForKind(Kind kind, boolean shouldUnroll, boolean exact) {
         Method m = null;
         if (!shouldUnroll && exact) {
+            // use hotspot stubs
             m = arraycopyCalls.get(kind);
             if (m != null) {
                 return m;
             }
         }
+        // use snippets
         return arraycopyMethods.get(kind);
     }
 
