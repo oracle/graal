@@ -195,7 +195,7 @@ public class ArrayCopySnippets implements Snippets {
     }
 
     private static void checkcastArraycopyHelper(int srcPos, int destPos, int length, Object nonNullSrc, Object nonNullDest, KlassPointer destElemKlass) {
-        int superCheckOffset = destElemKlass.readInt(superCheckOffsetOffset(), KLASS_SUPER_CHECK_OFFSET_LOCATION);
+        Word superCheckOffset = Word.signed(destElemKlass.readInt(superCheckOffsetOffset(), KLASS_SUPER_CHECK_OFFSET_LOCATION));
         int copiedElements = CheckcastArrayCopyCallNode.checkcastArraycopy(nonNullSrc, srcPos, nonNullDest, destPos, length, superCheckOffset, destElemKlass, false);
         if (copiedElements != 0) {
             // the checkcast stub doesn't throw the ArrayStoreException, but returns the number of

@@ -35,6 +35,7 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.runtime.*;
+import com.oracle.graal.word.*;
 
 @NodeInfo(allowedUsageTypes = {InputType.Memory, InputType.Value})
 public class CheckcastArrayCopyCallNode extends AbstractMemoryCheckpoint implements Lowerable, MemoryCheckpoint.Single {
@@ -125,5 +126,5 @@ public class CheckcastArrayCopyCallNode extends AbstractMemoryCheckpoint impleme
     }
 
     @NodeIntrinsic
-    public static native int checkcastArraycopy(Object src, int srcPos, Object dest, int destPos, int length, int superCheckOffset, Object destElemKlass, @ConstantNodeParameter boolean uninit);
+    public static native int checkcastArraycopy(Object src, int srcPos, Object dest, int destPos, int length, Word superCheckOffset, Object destElemKlass, @ConstantNodeParameter boolean uninit);
 }
