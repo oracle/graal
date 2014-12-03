@@ -22,12 +22,19 @@
  */
 package com.oracle.graal.lir.framemap;
 
+import static com.oracle.graal.api.code.ValueUtil.*;
+
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.compiler.common.cfg.*;
+import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug.*;
+import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.gen.*;
 
 public class SimpleStackSlotAllocator implements StackSlotAllocator {
 
-    public FrameMappingTool allocateStackSlots(FrameMapBuilderImpl builder) {
+    public void allocateStackSlots(FrameMapBuilderImpl builder, LIRGenerationResult res) {
         StackSlot[] mapping = new StackSlot[builder.getNumberOfStackSlots()];
         for (VirtualStackSlot virtualSlot : builder.getStackSlots()) {
             final StackSlot slot;
@@ -40,7 +47,33 @@ public class SimpleStackSlotAllocator implements StackSlotAllocator {
             }
             mapping[virtualSlot.getId()] = slot;
         }
-        return v -> mapping[v.getId()];
+        updateLIR(res, mapping);
+    }
+
+    protected void updateLIR(LIRGenerationResult res, StackSlot[] mapping) {
+        try (Scope scope = Debug.scope("StackSlotMappingLIR")) {
+            ValueProcedure updateProc = (value, mode, flags) -> {
+                if (isVirtualStackSlot(value)) {
+                    StackSlot stackSlot = mapping[asVirtualStackSlot(value).getId()];
+                    Debug.log("map %s -> %s", value, stackSlot);
+                    return stackSlot;
+                }
+                return value;
+            };
+            for (AbstractBlock<?> block : res.getLIR().getControlFlowGraph().getBlocks()) {
+                try (Indent indent0 = Debug.logAndIndent("block: %s", block)) {
+                    for (LIRInstruction inst : res.getLIR().getLIRforBlock(block)) {
+                        try (Indent indent1 = Debug.logAndIndent("Inst: %d: %s", inst.id(), inst)) {
+                            inst.forEachAlive(updateProc);
+                            inst.forEachInput(updateProc);
+                            inst.forEachOutput(updateProc);
+                            inst.forEachTemp(updateProc);
+                            inst.forEachState(updateProc);
+                        }
+                    }
+                }
+            }
+        }
     }
 
     protected StackSlot mapSimpleVirtualStackSlot(FrameMapBuilderImpl builder, SimpleVirtualStackSlot virtualStackSlot) {
