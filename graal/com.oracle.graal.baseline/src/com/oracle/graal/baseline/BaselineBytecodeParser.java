@@ -154,22 +154,17 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, Baseli
                 try (Scope s = Debug.scope("Allocator")) {
                     if (backend.shouldAllocateRegisters()) {
                         LinearScan.allocate(target, lirGenRes);
-                    } else if (!LocationMarker.Options.UseLocationMarker.getValue()) {
-                        // build frame map for targets that do not allocate registers
-                        lirGenRes.buildFrameMap();
                     }
                 }
-                if (LocationMarker.Options.UseLocationMarker.getValue()) {
-                    try (Scope s1 = Debug.scope("BuildFrameMap")) {
-                        // build frame map
-                        lirGenRes.buildFrameMap();
-                        Debug.dump(lir, "After FrameMap building");
-                    }
-                    try (Scope s1 = Debug.scope("MarkLocations")) {
-                        if (backend.shouldAllocateRegisters()) {
-                            // currently we mark locations only if we do register allocation
-                            LocationMarker.markLocations(lir, lirGenRes.getFrameMap());
-                        }
+                try (Scope s1 = Debug.scope("BuildFrameMap")) {
+                    // build frame map
+                    lirGenRes.buildFrameMap();
+                    Debug.dump(lir, "After FrameMap building");
+                }
+                try (Scope s1 = Debug.scope("MarkLocations")) {
+                    if (backend.shouldAllocateRegisters()) {
+                        // currently we mark locations only if we do register allocation
+                        LocationMarker.markLocations(lir, lirGenRes.getFrameMap());
                     }
                 }
 
