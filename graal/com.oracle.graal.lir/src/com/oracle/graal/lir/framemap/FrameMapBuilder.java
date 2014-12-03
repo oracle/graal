@@ -75,5 +75,5 @@ public interface FrameMapBuilder {
      * Creates a {@linkplain FrameMap} based on the information collected by this
      * {@linkplain FrameMapBuilder}.
      */
-    FrameMap buildFrameMap(LIRGenerationResult result);
+    FrameMap buildFrameMap(LIRGenerationResult result, StackSlotAllocator allocator);
 }

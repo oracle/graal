@@ -157,7 +157,7 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, Baseli
                 }
                 try (Scope s1 = Debug.scope("BuildFrameMap")) {
                     // build frame map
-                    lirGenRes.buildFrameMap();
+                    lirGenRes.buildFrameMap(new SimpleStackSlotAllocator());
                     Debug.dump(lir, "After FrameMap building");
                 }
                 try (Scope s1 = Debug.scope("MarkLocations")) {

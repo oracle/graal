@@ -89,8 +89,8 @@ public class FrameMapBuilderImpl implements FrameMapBuilder {
         calls.add(cc);
     }
 
-    public FrameMap buildFrameMap(LIRGenerationResult res) {
-        new SimpleStackSlotAllocator().allocateStackSlots(this, res);
+    public FrameMap buildFrameMap(LIRGenerationResult res, StackSlotAllocator allocator) {
+        allocator.allocateStackSlots(this, res);
         for (CallingConvention cc : calls) {
             frameMap.callsMethod(cc);
         }
