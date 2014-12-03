@@ -22,11 +22,17 @@
  */
 package com.oracle.graal.lir.framemap;
 
+import static com.oracle.graal.api.code.ValueUtil.*;
+
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.compiler.common.cfg.*;
+import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug.Scope;
+import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.gen.*;
 
 /**
@@ -48,11 +54,8 @@ public class FrameMapBuilderImpl implements FrameMapBuilder {
         this.frameMap = frameMap;
         this.stackSlots = new ArrayList<>();
         this.calls = new ArrayList<>();
-        this.mappables = new ArrayList<>();
         this.numStackSlots = 0;
     }
-
-    private final List<FrameMappable> mappables;
 
     public VirtualStackSlot allocateSpillSlot(LIRKind kind) {
         SimpleVirtualStackSlot slot = new SimpleVirtualStackSlot(numStackSlots++, kind);
@@ -97,15 +100,33 @@ public class FrameMapBuilderImpl implements FrameMapBuilder {
         for (CallingConvention cc : calls) {
             frameMap.callsMethod(cc);
         }
-        // rewrite
-        mappables.forEach(m -> m.map(mapper));
+        // update LIR
+        try (Scope scope = Debug.scope("StackSlotMappingLIR")) {
+            ValueProcedure updateProc = (value, mode, flags) -> {
+                if (isVirtualStackSlot(value)) {
+                    StackSlot stackSlot = mapper.getStackSlot(asVirtualStackSlot(value));
+                    Debug.log("map %s -> %s", value, stackSlot);
+                    return stackSlot;
+                }
+                return value;
+            };
+            for (AbstractBlock<?> block : res.getLIR().getControlFlowGraph().getBlocks()) {
+                try (Indent indent0 = Debug.logAndIndent("block: %s", block)) {
+                    for (LIRInstruction inst : res.getLIR().getLIRforBlock(block)) {
+                        try (Indent indent1 = Debug.logAndIndent("Inst: %d: %s", inst.id(), inst)) {
+                            inst.forEachAlive(updateProc);
+                            inst.forEachInput(updateProc);
+                            inst.forEachOutput(updateProc);
+                            inst.forEachTemp(updateProc);
+                            inst.forEachState(updateProc);
+                        }
+                    }
+                }
+            }
+        }
 
         frameMap.finish();
         return frameMap;
-    }
-
-    public void requireMapping(FrameMappable mappable) {
-        this.mappables.add(mappable);
     }
 
     List<VirtualStackSlot> getStackSlots() {

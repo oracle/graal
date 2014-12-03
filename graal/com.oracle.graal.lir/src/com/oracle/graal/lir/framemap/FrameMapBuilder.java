@@ -72,12 +72,6 @@ public interface FrameMapBuilder {
     void callsMethod(CallingConvention cc);
 
     /**
-     * Registers a FrameMappable class so that virtual stack slots can be changed to real stack
-     * slots.
-     */
-    void requireMapping(FrameMappable mappable);
-
-    /**
      * Creates a {@linkplain FrameMap} based on the information collected by this
      * {@linkplain FrameMapBuilder}.
      */

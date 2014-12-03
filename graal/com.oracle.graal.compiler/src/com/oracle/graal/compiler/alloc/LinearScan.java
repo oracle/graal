@@ -1749,31 +1749,6 @@ public final class LinearScan {
         }
     }
 
-    private class Mapper implements FrameMappable {
-
-        public void map(FrameMappingTool tool) {
-            try (Scope scope = Debug.scope("StackSlotMappingLSRA")) {
-                for (Interval current : intervals) {
-                    if (current != null) {
-                        if (isVirtualStackSlot(current.location())) {
-                            VirtualStackSlot value = asVirtualStackSlot(current.location());
-                            StackSlot stackSlot = tool.getStackSlot(value);
-                            Debug.log("map %s -> %s", value, stackSlot);
-                            current.assignLocation(stackSlot);
-                        }
-                        if (current.isSplitParent() && current.spillSlot() != null && isVirtualStackSlot(current.spillSlot())) {
-                            VirtualStackSlot value = asVirtualStackSlot(current.spillSlot());
-                            StackSlot stackSlot = tool.getStackSlot(value);
-                            Debug.log("map %s -> %s", value, stackSlot);
-                            current.setSpillSlot(stackSlot);
-                        }
-                    }
-                }
-            }
-        }
-
-    }
-
     public static void allocate(TargetDescription target, LIRGenerationResult res) {
         new LinearScan(target, res).allocate();
     }
@@ -1820,9 +1795,6 @@ public final class LinearScan {
             try (Scope s = Debug.scope("DebugInfo")) {
                 printIntervals("After register allocation");
                 printLir("After register allocation", true);
-
-                // register interval mapper
-                frameMapBuilder.requireMapping(new Mapper());
 
                 sortIntervalsAfterAllocation();
 
