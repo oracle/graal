@@ -29,7 +29,11 @@ public interface ReferenceMap {
 
     void setRegister(int idx, LIRKind kind);
 
+    void clearRegister(int idx, LIRKind kind);
+
     void setStackSlot(int offset, LIRKind kind);
+
+    void clearStackSlot(int offset, LIRKind kind);
 
     boolean hasRegisterRefMap();
 

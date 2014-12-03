@@ -79,6 +79,8 @@ public final class HotSpotReferenceMap implements ReferenceMap, Serializable {
         this.target = target;
     }
 
+    // setters
+
     private static void setOop(BitSet map, int startIdx, LIRKind kind) {
         int length = kind.getPlatformKind().getVectorLength();
         map.clear(BITS_PER_WORD * startIdx, BITS_PER_WORD * (startIdx + length) - 1);
@@ -146,6 +148,69 @@ public final class HotSpotReferenceMap implements ReferenceMap, Serializable {
                         frameRefMap.set(BITS_PER_WORD * idx + 1);
                     } else {
                         frameRefMap.set(BITS_PER_WORD * idx + 2);
+                    }
+                }
+            }
+        } else {
+            assert kind.isValue() : "unknown reference kind " + kind;
+        }
+    }
+
+    // clear
+
+    private static void clearOop(BitSet map, int startIdx, LIRKind kind) {
+        int length = kind.getPlatformKind().getVectorLength();
+        map.clear(BITS_PER_WORD * startIdx, BITS_PER_WORD * (startIdx + length) - 1);
+    }
+
+    private static void clearNarrowOop(BitSet map, int idx, LIRKind kind) {
+        int length = kind.getPlatformKind().getVectorLength();
+        int nextIdx = idx + (length + 1) / 2;
+        map.clear(BITS_PER_WORD * idx, BITS_PER_WORD * nextIdx - 1);
+    }
+
+    public void clearRegister(int idx, LIRKind kind) {
+
+        PlatformKind platformKind = kind.getPlatformKind();
+        int bytesPerElement = target.getSizeInBytes(platformKind) / platformKind.getVectorLength();
+
+        if (bytesPerElement == target.wordSize) {
+            clearOop(registerRefMap, idx, kind);
+        } else if (bytesPerElement == target.wordSize / 2) {
+            clearNarrowOop(registerRefMap, idx, kind);
+        } else {
+            assert kind.isValue() : "unsupported reference kind " + kind;
+        }
+    }
+
+    public void clearStackSlot(int offset, LIRKind kind) {
+
+        PlatformKind platformKind = kind.getPlatformKind();
+        int bytesPerElement = target.getSizeInBytes(platformKind) / platformKind.getVectorLength();
+        assert offset % bytesPerElement == 0 : "unaligned value in ReferenceMap";
+
+        if (bytesPerElement == target.wordSize) {
+            clearOop(frameRefMap, offset / target.wordSize, kind);
+        } else if (bytesPerElement == target.wordSize / 2) {
+            if (platformKind.getVectorLength() > 1) {
+                clearNarrowOop(frameRefMap, offset / target.wordSize, kind);
+            } else {
+                // in this case, offset / target.wordSize may not divide evenly
+                // so setNarrowOop won't work correctly
+                int idx = offset / target.wordSize;
+                if (kind.isReference(0)) {
+                    if (offset % target.wordSize == 0) {
+                        frameRefMap.clear(BITS_PER_WORD * idx + 1);
+                        if (!frameRefMap.get(BITS_PER_WORD * idx + 2)) {
+                            // only reset the first bit if there is no other narrow oop
+                            frameRefMap.clear(BITS_PER_WORD * idx);
+                        }
+                    } else {
+                        frameRefMap.clear(BITS_PER_WORD * idx + 2);
+                        if (!frameRefMap.get(BITS_PER_WORD * idx + 1)) {
+                            // only reset the first bit if there is no other narrow oop
+                            frameRefMap.clear(BITS_PER_WORD * idx);
+                        }
                     }
                 }
             }
