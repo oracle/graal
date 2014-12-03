@@ -34,7 +34,7 @@ import com.oracle.graal.lir.gen.*;
 
 public class SimpleStackSlotAllocator implements StackSlotAllocator {
 
-    public void allocateStackSlots(FrameMapBuilderImpl builder, LIRGenerationResult res) {
+    public void allocateStackSlots(FrameMapBuilderTool builder, LIRGenerationResult res) {
         StackSlot[] mapping = new StackSlot[builder.getNumberOfStackSlots()];
         for (VirtualStackSlot virtualSlot : builder.getStackSlots()) {
             final StackSlot slot;
@@ -76,11 +76,11 @@ public class SimpleStackSlotAllocator implements StackSlotAllocator {
         }
     }
 
-    protected StackSlot mapSimpleVirtualStackSlot(FrameMapBuilderImpl builder, SimpleVirtualStackSlot virtualStackSlot) {
+    protected StackSlot mapSimpleVirtualStackSlot(FrameMapBuilderTool builder, SimpleVirtualStackSlot virtualStackSlot) {
         return builder.getFrameMap().allocateSpillSlot(virtualStackSlot.getLIRKind());
     }
 
-    protected StackSlot mapVirtualStackSlotRange(FrameMapBuilderImpl builder, VirtualStackSlotRange virtualStackSlot) {
+    protected StackSlot mapVirtualStackSlotRange(FrameMapBuilderTool builder, VirtualStackSlotRange virtualStackSlot) {
         return builder.getFrameMap().allocateStackSlots(virtualStackSlot.getSlots(), virtualStackSlot.getObjects());
     }
 }

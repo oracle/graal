@@ -32,7 +32,7 @@ import com.oracle.graal.lir.gen.*;
 /**
  * A FrameMapBuilder that records allocation.
  */
-public class FrameMapBuilderImpl implements FrameMapBuilder {
+public class FrameMapBuilderImpl implements FrameMapBuilderTool {
 
     private final RegisterConfig registerConfig;
     private final CodeCacheProvider codeCache;
@@ -81,10 +81,6 @@ public class FrameMapBuilderImpl implements FrameMapBuilder {
         return frameMap;
     }
 
-    /**
-     * Returns the number of {@link VirtualStackSlot}s created by this {@link FrameMapBuilder}. Can
-     * be used as an upper bound for an array indexed by {@link VirtualStackSlot#getId()}.
-     */
     public int getNumberOfStackSlots() {
         return numStackSlots;
     }
@@ -102,7 +98,7 @@ public class FrameMapBuilderImpl implements FrameMapBuilder {
         return frameMap;
     }
 
-    List<VirtualStackSlot> getStackSlots() {
+    public List<VirtualStackSlot> getStackSlots() {
         return stackSlots;
     }
 

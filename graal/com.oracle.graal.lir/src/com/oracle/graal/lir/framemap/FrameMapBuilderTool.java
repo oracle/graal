@@ -22,14 +22,23 @@
  */
 package com.oracle.graal.lir.framemap;
 
+import java.util.*;
+
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.lir.gen.*;
 
 /**
- * A {@link StackSlotAllocator} is responsible for translating {@link VirtualStackSlot virtual}
- * stack slots into {@link StackSlot real} stack slots. This includes changing all occurrences of
- * {@link VirtualStackSlot} in the {@link LIRGenerationResult#getLIR() LIR} to {@link StackSlot}.
+ * A {@link FrameMapBuilder} that allows access to the underlying {@link FrameMap}.
  */
-public interface StackSlotAllocator {
-    void allocateStackSlots(FrameMapBuilderTool builder, LIRGenerationResult res);
+public interface FrameMapBuilderTool extends FrameMapBuilder {
+
+    /**
+     * Returns the number of {@link VirtualStackSlot}s created by this {@link FrameMapBuilder}. Can
+     * be used as an upper bound for an array indexed by {@link VirtualStackSlot#getId()}.
+     */
+    int getNumberOfStackSlots();
+
+    List<VirtualStackSlot> getStackSlots();
+
+    FrameMap getFrameMap();
+
 }
