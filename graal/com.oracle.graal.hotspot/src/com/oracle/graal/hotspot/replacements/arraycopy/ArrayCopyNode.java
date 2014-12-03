@@ -97,7 +97,7 @@ public class ArrayCopyNode extends BasicArrayCopyNode implements Virtualizable, 
             ResolvedJavaType srcComponentType = srcType == null ? null : srcType.getComponentType();
             ResolvedJavaType destComponentType = destType == null ? null : destType.getComponentType();
             ResolvedJavaMethod snippetMethod = null;
-            if (srcComponentType != null && destComponentType != null && srcComponentType.getKind().equals(Kind.Object) && destComponentType.getKind().equals(Kind.Object)) {
+            if (srcComponentType != null && destComponentType != null && !srcComponentType.isPrimitive() && !destComponentType.isPrimitive()) {
                 snippetMethod = tool.getMetaAccess().lookupJavaMethod(ArrayCopySnippets.checkcastArraycopySnippet);
             } else {
                 snippetMethod = tool.getMetaAccess().lookupJavaMethod(ArrayCopySnippets.genericArraycopySnippet);
