@@ -322,12 +322,12 @@ public class NodeCodeGenerator extends AbstractCompilationUnitFactory<NodeData> 
     /**
      * <pre>
      * variant1 $condition != null
-     * 
+     *
      * $type $name = defaultValue($type);
      * if ($condition) {
      *     $name = $value;
      * }
-     * 
+     *
      * variant2 $condition != null
      * $type $name = $value;
      * </pre>
@@ -1993,7 +1993,7 @@ public class NodeCodeGenerator extends AbstractCompilationUnitFactory<NodeData> 
             }
             String prefix = expect ? "expect" : "execute";
             String suffix = execution.getIndex() > -1 ? String.valueOf(execution.getIndex()) : "";
-            return prefix + ElementUtils.firstLetterUpperCase(child.getName()) + ElementUtils.firstLetterUpperCase(ElementUtils.getSimpleName(param.getType())) + suffix;
+            return prefix + ElementUtils.firstLetterUpperCase(child.getName()) + ElementUtils.firstLetterUpperCase(ElementUtils.getTypeId(param.getType())) + suffix;
         }
 
         private List<CodeExecutableElement> createExecuteChilds(Parameter param, Set<TypeData> expectTypes) {

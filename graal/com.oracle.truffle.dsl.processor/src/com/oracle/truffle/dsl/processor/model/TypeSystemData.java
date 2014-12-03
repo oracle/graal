@@ -139,7 +139,7 @@ public class TypeSystemData extends Template {
 
     public TypeData findType(String simpleName) {
         for (TypeData type : types) {
-            if (ElementUtils.getSimpleName(type.getBoxedType()).equals(simpleName)) {
+            if (ElementUtils.getTypeId(type.getBoxedType()).equals(simpleName)) {
                 return type;
             }
         }

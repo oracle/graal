@@ -672,10 +672,6 @@ public class CodeTreeBuilder {
     }
 
     public CodeTreeBuilder instanceOf(String var, TypeMirror type) {
-        TypeElement element = ElementUtils.fromTypeMirror(type);
-        if (element == null) {
-            throw new IllegalArgumentException("Cannot call instanceof for a non supported type: " + type.getKind());
-        }
         return instanceOf(singleString(var), singleType(type));
     }
 
