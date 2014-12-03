@@ -44,4 +44,9 @@ public interface ReferenceMap extends Cloneable {
     void appendFrameMap(StringBuilder sb, RefMapFormatter formatterArg);
 
     ReferenceMap clone();
+
+    /**
+     * Merge in references marked in the {@code other} {@link ReferenceMap}.
+     */
+    void mergeMaps(ReferenceMap other);
 }

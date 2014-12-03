@@ -230,6 +230,131 @@ public final class HotSpotReferenceMap implements ReferenceMap, Serializable {
         }
     }
 
+    public void mergeMaps(ReferenceMap otherArg) {
+        HotSpotReferenceMap other = (HotSpotReferenceMap) otherArg;
+        if (registerRefMap != null) {
+            assert other.registerRefMap != null;
+            mergeBitSetRaw(registerRefMap, other.registerRefMap);
+        } else {
+            assert other.registerRefMap == null || other.registerRefMap.cardinality() == 0 : "Target register reference map is empty but the source is not: " + other.registerRefMap;
+        }
+        mergeBitSetRaw(frameRefMap, other.frameRefMap);
+    }
+
+    /**
+     * Merge the references from {@code src} into {@code dst}.
+     *
+     * @see HotSpotReferenceMap#registerRefMap
+     * @see HotSpotReferenceMap#frameRefMap
+     */
+    private static void mergeBitSetRaw(BitSet dst, BitSet src) {
+        assert dst.size() == src.size();
+        assert MergeVerifier.verifyMerge(dst, src);
+        dst.or(src);
+    }
+
+    private enum MergeVerifier {
+        NoReference,
+        WideOop,
+        NarrowOopLowerHalf,
+        NarrowOopUpperHalf,
+        TwoNarrowOops,
+        Illegal;
+
+        /**
+         * Create enum values from BitSet.
+         * <p>
+         * These bits can have the following values (LSB first):
+         *
+         * <pre>
+         * 000 - contains no references
+         * 100 - contains a wide oop
+         * 110 - contains a narrow oop in the lower half
+         * 101 - contains a narrow oop in the upper half
+         * 111 - contains two narrow oops
+         * </pre>
+         *
+         * @see HotSpotReferenceMap#registerRefMap
+         * @see HotSpotReferenceMap#frameRefMap
+         */
+        static MergeVerifier getFromBits(int idx, BitSet set) {
+            int n = (set.get(idx) ? 1 : 0) << 0 | (set.get(idx + 1) ? 1 : 0) << 1 | (set.get(idx + 2) ? 1 : 0) << 2;
+            switch (n) {
+                case 0:
+                    return NoReference;
+                case 1:
+                    return WideOop;
+                case 3:
+                    return NarrowOopLowerHalf;
+                case 5:
+                    return NarrowOopUpperHalf;
+                case 7:
+                    return TwoNarrowOops;
+                default:
+                    return Illegal;
+            }
+        }
+
+        String toBitString() {
+            int bits = toBit(this);
+            if (bits == -1) {
+                return "---";
+            }
+            return String.format("%3s", Integer.toBinaryString(bits)).replace(' ', '0');
+        }
+
+        static int toBit(MergeVerifier type) {
+            switch (type) {
+                case NoReference:
+                    return 0;
+                case WideOop:
+                    return 1;
+                case NarrowOopLowerHalf:
+                    return 3;
+                case NarrowOopUpperHalf:
+                    return 5;
+                case TwoNarrowOops:
+                    return 7;
+                default:
+                    return -1;
+            }
+        }
+
+        private static boolean verifyMerge(BitSet dst, BitSet src) {
+            for (int idx = 0; idx < dst.size(); idx += BITS_PER_WORD) {
+                if (!verifyMergeEntry(idx, dst, src)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        private static boolean verifyMergeEntry(int idx, BitSet dst, BitSet src) {
+            MergeVerifier dstType = MergeVerifier.getFromBits(idx, dst);
+            MergeVerifier srcType = MergeVerifier.getFromBits(idx, src);
+
+            if (dstType == MergeVerifier.Illegal || srcType == MergeVerifier.Illegal) {
+                assert false : String.format("Illegal RefMap bit pattern: %s (0b%s), %s (0b%s)", dstType, dstType.toBitString(), srcType, srcType.toBitString());
+                return false;
+            }
+            switch (dstType) {
+                case NoReference:
+                    return true;
+                case WideOop:
+                    switch (srcType) {
+                        case NoReference:
+                        case WideOop:
+                            return true;
+                        default:
+                            assert false : String.format("Illegal RefMap combination: %s (0b%s), %s (0b%s)", dstType, dstType.toBitString(), srcType, srcType.toBitString());
+                            return false;
+                    }
+                default:
+                    return true;
+            }
+        }
+    }
+
     @Override
     public int hashCode() {
         throw new UnsupportedOperationException();

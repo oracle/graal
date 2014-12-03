@@ -133,6 +133,10 @@ public class LIRFrameState {
         frameMap.setReference(location, debugInfo.getReferenceMap());
     }
 
+    public void markLocation(ReferenceMap refMap) {
+        debugInfo.getReferenceMap().mergeMaps(refMap);
+    }
+
     /**
      * Called by the register allocator after all locations are marked.
      *
