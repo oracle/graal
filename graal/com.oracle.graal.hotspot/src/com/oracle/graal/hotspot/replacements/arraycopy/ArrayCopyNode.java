@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.replacements;
+package com.oracle.graal.hotspot.replacements.arraycopy;
 
 import static com.oracle.graal.compiler.GraalCompiler.*;
 

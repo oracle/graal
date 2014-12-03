@@ -21,7 +21,7 @@
  * questions.
  */
 //JaCoCo Exclude
-package com.oracle.graal.hotspot.replacements;
+package com.oracle.graal.hotspot.replacements.arraycopy;
 
 import static com.oracle.graal.api.meta.LocationIdentity.*;
 

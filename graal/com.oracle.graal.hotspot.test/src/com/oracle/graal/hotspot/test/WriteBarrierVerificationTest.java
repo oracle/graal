@@ -35,7 +35,7 @@ import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.phases.*;
-import com.oracle.graal.hotspot.replacements.*;
+import com.oracle.graal.hotspot.replacements.arraycopy.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
