@@ -190,8 +190,12 @@ public class ArrayCopySnippets implements Snippets {
         Object nonNullSrc = guardingNonNull(src);
         Object nonNullDest = guardingNonNull(dest);
         checkLimits(nonNullSrc, srcPos, nonNullDest, destPos, length);
-        KlassPointer destElemKlass = loadHub(nonNullDest);
-        checkcastArraycopyHelper(srcPos, destPos, length, nonNullSrc, nonNullDest, destElemKlass);
+        if (probability(SLOW_PATH_PROBABILITY, nonNullSrc == nonNullDest)) {
+            System.arraycopy(nonNullSrc, srcPos, nonNullDest, destPos, length);
+        } else {
+            KlassPointer destElemKlass = loadHub(nonNullDest);
+            checkcastArraycopyHelper(srcPos, destPos, length, nonNullSrc, nonNullDest, destElemKlass);
+        }
     }
 
     private static void checkcastArraycopyHelper(int srcPos, int destPos, int length, Object nonNullSrc, Object nonNullDest, KlassPointer destElemKlass) {
