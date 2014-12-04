@@ -133,10 +133,10 @@ public abstract class Transition {
         }
     }
 
-    public static final class PropertyTypeTransition extends PropertyTransition {
+    public static final class ReplacePropertyTransition extends PropertyTransition {
         private final Property after;
 
-        public PropertyTypeTransition(Property before, Property after) {
+        public ReplacePropertyTransition(Property before, Property after) {
             super(before);
             this.after = after;
         }

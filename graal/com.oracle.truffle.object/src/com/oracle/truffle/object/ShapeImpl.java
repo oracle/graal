@@ -526,10 +526,6 @@ public abstract class ShapeImpl extends Shape {
         return getKeyList();
     }
 
-    public final void setTypeTransition(ShapeImpl successorShape, Property before, Property after) {
-        getTransitionMapForWrite().put(new Transition.PropertyTypeTransition(before, after), successorShape);
-    }
-
     @Override
     public final boolean isValid() {
         return getValidAssumption().isValid();
@@ -686,14 +682,20 @@ public abstract class ShapeImpl extends Shape {
      * Duplicate shape exchanging existing property with new property.
      */
     @Override
-    public final ShapeImpl replaceProperty(Property oldProperty, Property newProp) {
+    public final ShapeImpl replaceProperty(Property oldProperty, Property newProperty) {
+        Transition replacePropertyTransition = new Transition.ReplacePropertyTransition(oldProperty, newProperty);
+        ShapeImpl cachedShape = getTransitionMapForRead().get(replacePropertyTransition);
+        if (cachedShape != null) {
+            return (ShapeImpl) layout.getStrategy().returnCached(cachedShape);
+        }
+
         ShapeImpl top = this;
         List<Transition> transitionList = new ArrayList<>();
         boolean found = false;
         while (top != getRoot() && !found) {
             Transition transition = top.getTransitionFromParent();
             transitionList.add(transition);
-            if (transition instanceof AddPropertyTransition && ((AddPropertyTransition) transition).getProperty().getKey().equals(newProp.getKey())) {
+            if (transition instanceof AddPropertyTransition && ((AddPropertyTransition) transition).getProperty().getKey().equals(newProperty.getKey())) {
                 found = true;
             }
             top = top.parent;
@@ -701,12 +703,13 @@ public abstract class ShapeImpl extends Shape {
         ShapeImpl newShape = top;
         for (ListIterator<Transition> iterator = transitionList.listIterator(transitionList.size()); iterator.hasPrevious();) {
             Transition transition = iterator.previous();
-            if (transition instanceof AddPropertyTransition && ((AddPropertyTransition) transition).getProperty().getKey().equals(newProp.getKey())) {
-                newShape = newShape.addProperty(newProp);
+            if (transition instanceof AddPropertyTransition && ((AddPropertyTransition) transition).getProperty().getKey().equals(newProperty.getKey())) {
+                newShape = newShape.addProperty(newProperty);
             } else {
                 newShape = newShape.applyTransition(transition, false);
             }
         }
+        addIndirectTransition(replacePropertyTransition, newShape);
         return newShape;
     }
 
