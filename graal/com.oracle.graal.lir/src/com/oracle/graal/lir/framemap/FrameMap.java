@@ -337,4 +337,16 @@ public abstract class FrameMap {
             assert isConstant(location);
         }
     }
+
+    public void clearReference(Value location, ReferenceMap refMap) {
+        LIRKind kind = location.getLIRKind();
+        if (isRegister(location)) {
+            refMap.clearRegister(asRegister(location).getReferenceMapIndex(), kind);
+        } else if (isStackSlot(location)) {
+            int offset = offsetForStackSlot(asStackSlot(location));
+            refMap.clearStackSlot(offset, kind);
+        } else {
+            assert isConstant(location);
+        }
+    }
 }

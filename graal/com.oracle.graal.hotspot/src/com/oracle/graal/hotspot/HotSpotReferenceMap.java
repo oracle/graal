@@ -79,6 +79,19 @@ public final class HotSpotReferenceMap implements ReferenceMap, Serializable {
         this.target = target;
     }
 
+    private HotSpotReferenceMap(HotSpotReferenceMap other) {
+        this.registerRefMap = (BitSet) other.registerRefMap.clone();
+        this.frameRefMap = (BitSet) other.frameRefMap.clone();
+        this.target = other.target;
+    }
+
+    @Override
+    public ReferenceMap clone() {
+        return new HotSpotReferenceMap(this);
+    }
+
+    // setters
+
     private static void setOop(BitSet map, int startIdx, LIRKind kind) {
         int length = kind.getPlatformKind().getVectorLength();
         map.clear(BITS_PER_WORD * startIdx, BITS_PER_WORD * (startIdx + length) - 1);
@@ -151,6 +164,194 @@ public final class HotSpotReferenceMap implements ReferenceMap, Serializable {
             }
         } else {
             assert kind.isValue() : "unknown reference kind " + kind;
+        }
+    }
+
+    // clear
+
+    private static void clearOop(BitSet map, int startIdx, LIRKind kind) {
+        int length = kind.getPlatformKind().getVectorLength();
+        map.clear(BITS_PER_WORD * startIdx, BITS_PER_WORD * (startIdx + length) - 1);
+    }
+
+    private static void clearNarrowOop(BitSet map, int idx, LIRKind kind) {
+        int length = kind.getPlatformKind().getVectorLength();
+        int nextIdx = idx + (length + 1) / 2;
+        map.clear(BITS_PER_WORD * idx, BITS_PER_WORD * nextIdx - 1);
+    }
+
+    public void clearRegister(int idx, LIRKind kind) {
+
+        PlatformKind platformKind = kind.getPlatformKind();
+        int bytesPerElement = target.getSizeInBytes(platformKind) / platformKind.getVectorLength();
+
+        if (bytesPerElement == target.wordSize) {
+            clearOop(registerRefMap, idx, kind);
+        } else if (bytesPerElement == target.wordSize / 2) {
+            clearNarrowOop(registerRefMap, idx, kind);
+        } else {
+            assert kind.isValue() : "unsupported reference kind " + kind;
+        }
+    }
+
+    public void clearStackSlot(int offset, LIRKind kind) {
+
+        PlatformKind platformKind = kind.getPlatformKind();
+        int bytesPerElement = target.getSizeInBytes(platformKind) / platformKind.getVectorLength();
+        assert offset % bytesPerElement == 0 : "unaligned value in ReferenceMap";
+
+        if (bytesPerElement == target.wordSize) {
+            clearOop(frameRefMap, offset / target.wordSize, kind);
+        } else if (bytesPerElement == target.wordSize / 2) {
+            if (platformKind.getVectorLength() > 1) {
+                clearNarrowOop(frameRefMap, offset / target.wordSize, kind);
+            } else {
+                // in this case, offset / target.wordSize may not divide evenly
+                // so setNarrowOop won't work correctly
+                int idx = offset / target.wordSize;
+                if (kind.isReference(0)) {
+                    if (offset % target.wordSize == 0) {
+                        frameRefMap.clear(BITS_PER_WORD * idx + 1);
+                        if (!frameRefMap.get(BITS_PER_WORD * idx + 2)) {
+                            // only reset the first bit if there is no other narrow oop
+                            frameRefMap.clear(BITS_PER_WORD * idx);
+                        }
+                    } else {
+                        frameRefMap.clear(BITS_PER_WORD * idx + 2);
+                        if (!frameRefMap.get(BITS_PER_WORD * idx + 1)) {
+                            // only reset the first bit if there is no other narrow oop
+                            frameRefMap.clear(BITS_PER_WORD * idx);
+                        }
+                    }
+                }
+            }
+        } else {
+            assert kind.isValue() : "unknown reference kind " + kind;
+        }
+    }
+
+    public void updateUnion(ReferenceMap otherArg) {
+        HotSpotReferenceMap other = (HotSpotReferenceMap) otherArg;
+        if (registerRefMap != null) {
+            assert other.registerRefMap != null;
+            updateUnionBitSetRaw(registerRefMap, other.registerRefMap);
+        } else {
+            assert other.registerRefMap == null || other.registerRefMap.cardinality() == 0 : "Target register reference map is empty but the source is not: " + other.registerRefMap;
+        }
+        updateUnionBitSetRaw(frameRefMap, other.frameRefMap);
+    }
+
+    /**
+     * Update {@code src} with the union of {@code src} and {@code dst}.
+     *
+     * @see HotSpotReferenceMap#registerRefMap
+     * @see HotSpotReferenceMap#frameRefMap
+     */
+    private static void updateUnionBitSetRaw(BitSet dst, BitSet src) {
+        assert dst.size() == src.size();
+        assert UpdateUnionVerifier.verifyUpate(dst, src);
+        dst.or(src);
+    }
+
+    private enum UpdateUnionVerifier {
+        NoReference,
+        WideOop,
+        NarrowOopLowerHalf,
+        NarrowOopUpperHalf,
+        TwoNarrowOops,
+        Illegal;
+
+        /**
+         * Create enum values from BitSet.
+         * <p>
+         * These bits can have the following values (LSB first):
+         *
+         * <pre>
+         * 000 - contains no references
+         * 100 - contains a wide oop
+         * 110 - contains a narrow oop in the lower half
+         * 101 - contains a narrow oop in the upper half
+         * 111 - contains two narrow oops
+         * </pre>
+         *
+         * @see HotSpotReferenceMap#registerRefMap
+         * @see HotSpotReferenceMap#frameRefMap
+         */
+        static UpdateUnionVerifier getFromBits(int idx, BitSet set) {
+            int n = (set.get(idx) ? 1 : 0) << 0 | (set.get(idx + 1) ? 1 : 0) << 1 | (set.get(idx + 2) ? 1 : 0) << 2;
+            switch (n) {
+                case 0:
+                    return NoReference;
+                case 1:
+                    return WideOop;
+                case 3:
+                    return NarrowOopLowerHalf;
+                case 5:
+                    return NarrowOopUpperHalf;
+                case 7:
+                    return TwoNarrowOops;
+                default:
+                    return Illegal;
+            }
+        }
+
+        String toBitString() {
+            int bits = toBit(this);
+            if (bits == -1) {
+                return "---";
+            }
+            return String.format("%3s", Integer.toBinaryString(bits)).replace(' ', '0');
+        }
+
+        static int toBit(UpdateUnionVerifier type) {
+            switch (type) {
+                case NoReference:
+                    return 0;
+                case WideOop:
+                    return 1;
+                case NarrowOopLowerHalf:
+                    return 3;
+                case NarrowOopUpperHalf:
+                    return 5;
+                case TwoNarrowOops:
+                    return 7;
+                default:
+                    return -1;
+            }
+        }
+
+        private static boolean verifyUpate(BitSet dst, BitSet src) {
+            for (int idx = 0; idx < dst.size(); idx += BITS_PER_WORD) {
+                if (!verifyUpdateEntry(idx, dst, src)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        private static boolean verifyUpdateEntry(int idx, BitSet dst, BitSet src) {
+            UpdateUnionVerifier dstType = UpdateUnionVerifier.getFromBits(idx, dst);
+            UpdateUnionVerifier srcType = UpdateUnionVerifier.getFromBits(idx, src);
+
+            if (dstType == UpdateUnionVerifier.Illegal || srcType == UpdateUnionVerifier.Illegal) {
+                assert false : String.format("Illegal RefMap bit pattern: %s (0b%s), %s (0b%s)", dstType, dstType.toBitString(), srcType, srcType.toBitString());
+                return false;
+            }
+            switch (dstType) {
+                case NoReference:
+                    return true;
+                case WideOop:
+                    switch (srcType) {
+                        case NoReference:
+                        case WideOop:
+                            return true;
+                        default:
+                            assert false : String.format("Illegal RefMap combination: %s (0b%s), %s (0b%s)", dstType, dstType.toBitString(), srcType, srcType.toBitString());
+                            return false;
+                    }
+                default:
+                    return true;
+            }
         }
     }
 

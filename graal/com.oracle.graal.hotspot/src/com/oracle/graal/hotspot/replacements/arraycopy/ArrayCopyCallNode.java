@@ -21,13 +21,12 @@
  * questions.
  */
 //JaCoCo Exclude
-package com.oracle.graal.hotspot.replacements;
+package com.oracle.graal.hotspot.replacements.arraycopy;
 
 import static com.oracle.graal.api.meta.LocationIdentity.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.runtime.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
@@ -37,7 +36,6 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.replacements.SnippetTemplate.Arguments;
 import com.oracle.graal.runtime.*;
 
 @NodeInfo(allowedUsageTypes = {InputType.Memory})
@@ -106,20 +104,8 @@ public class ArrayCopyCallNode extends AbstractMemoryCheckpoint implements Lower
         return length;
     }
 
-    public void addSnippetArguments(Arguments args) {
-        args.add("src", src);
-        args.add("srcPos", srcPos);
-        args.add("dest", dest);
-        args.add("destPos", destPos);
-        args.add("length", length);
-    }
-
     public Kind getElementKind() {
         return elementKind;
-    }
-
-    private boolean shouldUnroll() {
-        return getLength().isConstant() && getLength().asJavaConstant().asInt() <= GraalOptions.MaximumEscapeAnalysisArrayLength.getValue();
     }
 
     private ValueNode computeBase(ValueNode base, ValueNode pos) {

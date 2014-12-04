@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.replacements;
+package com.oracle.graal.hotspot.replacements.arraycopy;
 
 import static com.oracle.graal.compiler.GraalCompiler.*;
 
@@ -92,7 +92,16 @@ public class ArrayCopyNode extends BasicArrayCopyNode implements Virtualizable, 
         final Replacements replacements = tool.getReplacements();
         StructuredGraph snippetGraph = selectSnippet(tool, replacements);
         if (snippetGraph == null) {
-            final ResolvedJavaMethod snippetMethod = tool.getMetaAccess().lookupJavaMethod(ArrayCopySnippets.genericArraycopySnippet);
+            ResolvedJavaType srcType = StampTool.typeOrNull(getSource().stamp());
+            ResolvedJavaType destType = StampTool.typeOrNull(getDestination().stamp());
+            ResolvedJavaType srcComponentType = srcType == null ? null : srcType.getComponentType();
+            ResolvedJavaType destComponentType = destType == null ? null : destType.getComponentType();
+            ResolvedJavaMethod snippetMethod = null;
+            if (srcComponentType != null && destComponentType != null && !srcComponentType.isPrimitive() && !destComponentType.isPrimitive()) {
+                snippetMethod = tool.getMetaAccess().lookupJavaMethod(ArrayCopySnippets.checkcastArraycopySnippet);
+            } else {
+                snippetMethod = tool.getMetaAccess().lookupJavaMethod(ArrayCopySnippets.genericArraycopySnippet);
+            }
             snippetGraph = null;
             try (Scope s = Debug.scope("ArrayCopySnippet", snippetMethod)) {
                 snippetGraph = replacements.getSnippet(snippetMethod, getTargetMethod()).copy();

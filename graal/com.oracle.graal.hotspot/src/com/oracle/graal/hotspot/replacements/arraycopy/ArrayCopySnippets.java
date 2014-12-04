@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.replacements;
+package com.oracle.graal.hotspot.replacements.arraycopy;
 
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
@@ -46,6 +46,7 @@ public class ArrayCopySnippets implements Snippets {
     private static final EnumMap<Kind, Method> arraycopyMethods = new EnumMap<>(Kind.class);
     private static final EnumMap<Kind, Method> arraycopyCalls = new EnumMap<>(Kind.class);
 
+    public static final Method checkcastArraycopySnippet;
     public static final Method genericArraycopySnippet;
 
     private static void addArraycopySnippetMethod(Kind kind, Class<?> arrayClass) throws NoSuchMethodException {
@@ -70,6 +71,7 @@ public class ArrayCopySnippets implements Snippets {
             addArraycopySnippetMethod(Kind.Float, float[].class);
             addArraycopySnippetMethod(Kind.Double, double[].class);
             addArraycopySnippetMethod(Kind.Object, Object[].class);
+            checkcastArraycopySnippet = ArrayCopySnippets.class.getDeclaredMethod("checkcastArraycopy", Object[].class, int.class, Object[].class, int.class, int.class);
             genericArraycopySnippet = ArrayCopySnippets.class.getDeclaredMethod("arraycopy", Object.class, int.class, Object.class, int.class, int.class);
         } catch (SecurityException | NoSuchMethodException e) {
             throw new GraalInternalError(e);
@@ -79,11 +81,13 @@ public class ArrayCopySnippets implements Snippets {
     public static Method getSnippetForKind(Kind kind, boolean shouldUnroll, boolean exact) {
         Method m = null;
         if (!shouldUnroll && exact) {
+            // use hotspot stubs
             m = arraycopyCalls.get(kind);
             if (m != null) {
                 return m;
             }
         }
+        // use snippets
         return arraycopyMethods.get(kind);
     }
 
@@ -181,6 +185,32 @@ public class ArrayCopySnippets implements Snippets {
     }
 
     @Snippet
+    public static void checkcastArraycopy(Object[] src, int srcPos, Object[] dest, int destPos, int length) {
+        objectCheckcastCounter.inc();
+        Object nonNullSrc = guardingNonNull(src);
+        Object nonNullDest = guardingNonNull(dest);
+        checkLimits(nonNullSrc, srcPos, nonNullDest, destPos, length);
+        if (probability(SLOW_PATH_PROBABILITY, nonNullSrc == nonNullDest)) {
+            // no storecheck required.
+            ArrayCopyCallNode.arraycopy(nonNullSrc, srcPos, nonNullDest, destPos, length, Kind.Object, false, false);
+        } else {
+            KlassPointer destElemKlass = loadHub(nonNullDest);
+            checkcastArraycopyHelper(srcPos, destPos, length, nonNullSrc, nonNullDest, destElemKlass);
+        }
+    }
+
+    private static void checkcastArraycopyHelper(int srcPos, int destPos, int length, Object nonNullSrc, Object nonNullDest, KlassPointer destElemKlass) {
+        Word superCheckOffset = Word.signed(destElemKlass.readInt(superCheckOffsetOffset(), KLASS_SUPER_CHECK_OFFSET_LOCATION));
+        int copiedElements = CheckcastArrayCopyCallNode.checkcastArraycopy(nonNullSrc, srcPos, nonNullDest, destPos, length, superCheckOffset, destElemKlass, false);
+        if (copiedElements != 0) {
+            // the checkcast stub doesn't throw the ArrayStoreException, but returns the number of
+            // copied elements (xor'd with -1).
+            copiedElements ^= -1;
+            System.arraycopy(nonNullSrc, srcPos + copiedElements, nonNullDest, destPos + copiedElements, length - copiedElements);
+        }
+    }
+
+    @Snippet
     public static void arraycopy(Object src, int srcPos, Object dest, int destPos, int length) {
         Object nonNullSrc = guardingNonNull(src);
         Object nonNullDest = guardingNonNull(dest);
@@ -189,7 +219,6 @@ public class ArrayCopySnippets implements Snippets {
         if (probability(FAST_PATH_PROBABILITY, srcHub.equal(destHub)) && probability(FAST_PATH_PROBABILITY, nonNullSrc != nonNullDest)) {
             int layoutHelper = checkArrayType(srcHub);
             final boolean isObjectArray = ((layoutHelper & layoutHelperElementTypePrimitiveInPlace()) == 0);
-
             checkLimits(nonNullSrc, srcPos, nonNullDest, destPos, length);
             if (probability(FAST_PATH_PROBABILITY, isObjectArray)) {
                 genericObjectExactCallCounter.inc();
@@ -273,6 +302,7 @@ public class ArrayCopySnippets implements Snippets {
     private static final SnippetCounter booleanCounter = new SnippetCounter(counters, "boolean[]", "arraycopy for boolean[] arrays");
     private static final SnippetCounter longCounter = new SnippetCounter(counters, "long[]", "arraycopy for long[] arrays");
     private static final SnippetCounter objectCounter = new SnippetCounter(counters, "Object[]", "arraycopy for Object[] arrays");
+    private static final SnippetCounter objectCheckcastCounter = new SnippetCounter(counters, "Object[]", "arraycopy for non-exact Object[] arrays");
     private static final SnippetCounter floatCounter = new SnippetCounter(counters, "float[]", "arraycopy for float[] arrays");
     private static final SnippetCounter doubleCounter = new SnippetCounter(counters, "double[]", "arraycopy for double[] arrays");
 

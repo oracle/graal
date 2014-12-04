@@ -35,6 +35,7 @@ import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.phases.*;
+import com.oracle.graal.hotspot.replacements.arraycopy.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
@@ -610,10 +611,20 @@ public class WriteBarrierVerificationTest extends GraalCompilerTest {
 
     @Test
     public void test61() {
-        test("test13Snippet", 1, new int[]{});
+        GraphPredicate checkForUnsafeArrayCopy = graph -> graph.getNodes().filter(UnsafeArrayCopyNode.class).count() > 0 ? 1 : 0;
+        testPredicate("test13Snippet", checkForUnsafeArrayCopy, new int[]{});
+    }
+
+    private interface GraphPredicate {
+        int apply(StructuredGraph graph);
     }
 
     private void test(final String snippet, final int expectedBarriers, final int... removedBarrierIndices) {
+        GraphPredicate noCheck = noArg -> expectedBarriers;
+        testPredicate(snippet, noCheck, removedBarrierIndices);
+    }
+
+    private void testPredicate(final String snippet, final GraphPredicate expectedBarriers, final int... removedBarrierIndices) {
         try (Scope d = Debug.scope("WriteBarrierVerificationTest", new DebugDumpScope(snippet))) {
             final StructuredGraph graph = parseEager(snippet);
             HighTierContext highTierContext = new HighTierContext(getProviders(), new Assumptions(false), null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
@@ -633,10 +644,10 @@ public class WriteBarrierVerificationTest extends GraalCompilerTest {
             if (config.useG1GC) {
                 barriers = graph.getNodes().filter(G1PreWriteBarrier.class).count() + graph.getNodes().filter(G1PostWriteBarrier.class).count() +
                                 graph.getNodes().filter(G1ArrayRangePreWriteBarrier.class).count() + graph.getNodes().filter(G1ArrayRangePostWriteBarrier.class).count();
-                Assert.assertTrue(expectedBarriers * 2 == barriers);
+                Assert.assertTrue(expectedBarriers.apply(graph) * 2 == barriers);
             } else {
                 barriers = graph.getNodes().filter(SerialWriteBarrier.class).count() + graph.getNodes().filter(SerialArrayRangeWriteBarrier.class).count();
-                Assert.assertTrue(expectedBarriers == barriers);
+                Assert.assertTrue(expectedBarriers.apply(graph) == barriers);
             }
             // Iterate over all write nodes and remove barriers according to input indices.
             NodeIteratorClosure<Boolean> closure = new NodeIteratorClosure<Boolean>() {
