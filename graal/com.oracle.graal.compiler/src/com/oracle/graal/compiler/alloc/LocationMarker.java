@@ -203,7 +203,7 @@ public final class LocationMarker {
         if (!info.hasDebugInfo()) {
             info.initDebugInfo(frameMap, !op.destroysCallerSavedRegisters() || !frameMap.getRegisterConfig().areAllAllocatableRegistersCallerSaved());
         }
-        info.markLocation(refMap);
+        info.updateUnion(refMap);
     }
 
     /**
