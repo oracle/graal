@@ -77,10 +77,10 @@ public class SimpleStackSlotAllocator implements StackSlotAllocator {
     }
 
     protected StackSlot mapSimpleVirtualStackSlot(FrameMapBuilderImpl builder, SimpleVirtualStackSlot virtualStackSlot) {
-        return builder.frameMap.allocateSpillSlot(virtualStackSlot.getLIRKind());
+        return builder.getFrameMap().allocateSpillSlot(virtualStackSlot.getLIRKind());
     }
 
     protected StackSlot mapVirtualStackSlotRange(FrameMapBuilderImpl builder, VirtualStackSlotRange virtualStackSlot) {
-        return builder.frameMap.allocateStackSlots(virtualStackSlot.getSlots(), virtualStackSlot.getObjects());
+        return builder.getFrameMap().allocateStackSlots(virtualStackSlot.getSlots(), virtualStackSlot.getObjects());
     }
 }
