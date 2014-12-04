@@ -264,6 +264,16 @@ public abstract class FrameMap {
     }
 
     /**
+     * Returns the size of the stack slot range for {@code slots} objects.
+     *
+     * @param slots The number of slots.
+     * @return The size in byte
+     */
+    public int spillSlotRangeSize(int slots) {
+        return slots * getTarget().wordSize;
+    }
+
+    /**
      * Reserves a number of contiguous slots in the frame of the method being compiled. If the
      * requested number of slots is 0, this method returns {@code null}.
      *
@@ -279,7 +289,7 @@ public abstract class FrameMap {
         if (slots == 0) {
             return null;
         }
-        spillSize += (slots * getTarget().wordSize);
+        spillSize += spillSlotRangeSize(slots);
 
         if (!objects.isEmpty()) {
             assert objects.length() <= slots;
