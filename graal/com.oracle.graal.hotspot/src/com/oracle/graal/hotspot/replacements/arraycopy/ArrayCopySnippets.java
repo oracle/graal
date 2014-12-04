@@ -191,7 +191,8 @@ public class ArrayCopySnippets implements Snippets {
         Object nonNullDest = guardingNonNull(dest);
         checkLimits(nonNullSrc, srcPos, nonNullDest, destPos, length);
         if (probability(SLOW_PATH_PROBABILITY, nonNullSrc == nonNullDest)) {
-            System.arraycopy(nonNullSrc, srcPos, nonNullDest, destPos, length);
+            // no storecheck required.
+            ArrayCopyCallNode.arraycopy(nonNullSrc, srcPos, nonNullDest, destPos, length, Kind.Object, false, false);
         } else {
             KlassPointer destElemKlass = loadHub(nonNullDest);
             checkcastArraycopyHelper(srcPos, destPos, length, nonNullSrc, nonNullDest, destElemKlass);
