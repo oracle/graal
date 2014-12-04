@@ -35,10 +35,10 @@ import com.oracle.truffle.object.Locations.DeclaredDualLocation;
 import com.oracle.truffle.object.Locations.DeclaredLocation;
 import com.oracle.truffle.object.Locations.DualLocation;
 import com.oracle.truffle.object.Locations.ValueLocation;
-import com.oracle.truffle.object.Transition.AddTransition;
-import com.oracle.truffle.object.Transition.OperationsTransition;
+import com.oracle.truffle.object.Transition.AddPropertyTransition;
+import com.oracle.truffle.object.Transition.ObjectTypeTransition;
 import com.oracle.truffle.object.Transition.PropertyTransition;
-import com.oracle.truffle.object.Transition.RemoveTransition;
+import com.oracle.truffle.object.Transition.RemovePropertyTransition;
 
 /**
  * Shape objects create a mapping of Property objects to indexes. The mapping of those indexes to an
@@ -340,7 +340,7 @@ public abstract class ShapeImpl extends Shape {
         assert !getPropertyListInternal(false).contains(prop);
         // invalidatePropertyAssumption(prop.getName());
 
-        Transition.AddTransition key = new Transition.AddTransition(prop);
+        Transition.AddPropertyTransition key = new Transition.AddPropertyTransition(prop);
         Map<Transition, ShapeImpl> transitionMapForRead = this.getTransitionMapForRead();
         ShapeImpl cachedShape = transitionMapForRead.get(key);
         if (cachedShape != null) { // Shape already exists?
@@ -388,7 +388,7 @@ public abstract class ShapeImpl extends Shape {
     /**
      * Create a new shape that adds a property to the parent shape.
      */
-    private static ShapeImpl makeShapeWithAddedProperty(ShapeImpl parent, AddTransition addTransition) {
+    private static ShapeImpl makeShapeWithAddedProperty(ShapeImpl parent, AddPropertyTransition addTransition) {
         Property addend = addTransition.getProperty();
         BaseAllocator allocator = parent.allocator().addLocation(addend.getLocation());
 
@@ -527,7 +527,7 @@ public abstract class ShapeImpl extends Shape {
     }
 
     public final void setTypeTransition(ShapeImpl successorShape, Property before, Property after) {
-        getTransitionMapForWrite().put(new Transition.TypeTransition(before, after), successorShape);
+        getTransitionMapForWrite().put(new Transition.PropertyTypeTransition(before, after), successorShape);
     }
 
     private static Assumption createValidAssumption() {
@@ -611,7 +611,7 @@ public abstract class ShapeImpl extends Shape {
     @TruffleBoundary
     @Override
     public final ShapeImpl removeProperty(Property prop) {
-        RemoveTransition transition = new RemoveTransition(prop);
+        RemovePropertyTransition transition = new RemovePropertyTransition(prop);
         ShapeImpl cachedShape = getTransitionMapForRead().get(transition);
         if (cachedShape != null) {
             return (ShapeImpl) layout.getStrategy().returnCached(cachedShape);
@@ -809,12 +809,12 @@ public abstract class ShapeImpl extends Shape {
     @Override
     @TruffleBoundary
     public final ShapeImpl changeType(ObjectType newOps) {
-        OperationsTransition transition = new OperationsTransition(newOps);
+        ObjectTypeTransition transition = new ObjectTypeTransition(newOps);
         ShapeImpl cachedShape = getTransitionMapForRead().get(transition);
         if (cachedShape != null) {
             return cachedShape;
         } else {
-            ShapeImpl newShape = createShape(layout, extraData, this, newOps, propertyMap, allocator(), id);
+            ShapeImpl newShape = createShape(layout, sharedData, this, newOps, propertyMap, allocator(), id);
             addTransition(transition, newShape);
             return newShape;
         }

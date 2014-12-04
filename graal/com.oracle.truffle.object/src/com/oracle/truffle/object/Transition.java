@@ -79,47 +79,47 @@ public abstract class Transition {
         }
     }
 
-    public static final class AddTransition extends PropertyTransition {
-        public AddTransition(Property property) {
+    public static final class AddPropertyTransition extends PropertyTransition {
+        public AddPropertyTransition(Property property) {
             super(property);
         }
     }
 
-    public static final class RemoveTransition extends PropertyTransition {
-        public RemoveTransition(Property property) {
+    public static final class RemovePropertyTransition extends PropertyTransition {
+        public RemovePropertyTransition(Property property) {
             super(property);
         }
     }
 
-    public static final class OperationsTransition extends Transition {
-        private final ObjectType operations;
+    public static final class ObjectTypeTransition extends Transition {
+        private final ObjectType objectType;
 
-        public OperationsTransition(ObjectType operations) {
-            this.operations = operations;
+        public ObjectTypeTransition(ObjectType objectType) {
+            this.objectType = objectType;
         }
 
-        public ObjectType getOperations() {
-            return operations;
+        public ObjectType getObjectType() {
+            return objectType;
         }
 
         @Override
         public boolean equals(Object other) {
-            return super.equals(other) && Objects.equals(operations, ((OperationsTransition) other).operations);
+            return super.equals(other) && Objects.equals(objectType, ((ObjectTypeTransition) other).objectType);
         }
 
         @Override
         public int hashCode() {
             final int prime = 31;
             int result = super.hashCode();
-            result = prime * result + ((operations == null) ? 0 : operations.hashCode());
+            result = prime * result + ((objectType == null) ? 0 : objectType.hashCode());
             return result;
         }
     }
 
-    public static final class TypeTransition extends PropertyTransition {
+    public static final class PropertyTypeTransition extends PropertyTransition {
         private final Property after;
 
-        public TypeTransition(Property before, Property after) {
+        public PropertyTypeTransition(Property before, Property after) {
             super(before);
             this.after = after;
         }
