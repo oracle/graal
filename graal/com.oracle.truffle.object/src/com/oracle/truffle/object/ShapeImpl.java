@@ -29,6 +29,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.object.*;
+import com.oracle.truffle.api.utilities.*;
 import com.oracle.truffle.object.LocationImpl.InternalLongLocation;
 import com.oracle.truffle.object.Locations.ConstantLocation;
 import com.oracle.truffle.object.Locations.DeclaredDualLocation;
@@ -78,7 +79,7 @@ public abstract class ShapeImpl extends Shape {
     protected Property[] propertyArray;
 
     protected final Assumption validAssumption;
-    protected final Assumption leafAssumption;
+    @CompilationFinal protected volatile Assumption leafAssumption;
 
     /**
      * Shape transition map; lazily initialized.
@@ -125,7 +126,6 @@ public abstract class ShapeImpl extends Shape {
         }
 
         this.validAssumption = createValidAssumption();
-        this.leafAssumption = createLeafAssumption();
 
         this.id = id;
         shapeCount.inc();
@@ -530,8 +530,9 @@ public abstract class ShapeImpl extends Shape {
         getTransitionMapForWrite().put(new Transition.PropertyTypeTransition(before, after), successorShape);
     }
 
-    private static Assumption createValidAssumption() {
-        return Truffle.getRuntime().createAssumption("valid shape");
+    @Override
+    public final boolean isValid() {
+        return getValidAssumption().isValid();
     }
 
     @Override
@@ -539,27 +540,47 @@ public abstract class ShapeImpl extends Shape {
         return validAssumption;
     }
 
+    private static Assumption createValidAssumption() {
+        return Truffle.getRuntime().createAssumption("valid shape");
+    }
+
+    public final void invalidateValidAssumption() {
+        getValidAssumption().invalidate();
+    }
+
     @Override
-    public final boolean isValid() {
-        return getValidAssumption().isValid();
+    public final boolean isLeaf() {
+        return leafAssumption == null || leafAssumption.isValid();
+    }
+
+    @Override
+    public final Assumption getLeafAssumption() {
+        if (leafAssumption == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            synchronized (getMutex()) {
+                if (leafAssumption == null) {
+                    leafAssumption = isLeafHelper() ? createLeafAssumption() : NeverValidAssumption.INSTANCE;
+                }
+            }
+        }
+        return leafAssumption;
+    }
+
+    private boolean isLeafHelper() {
+        return getTransitionMapForRead().isEmpty();
     }
 
     private static Assumption createLeafAssumption() {
         return Truffle.getRuntime().createAssumption("leaf shape");
     }
 
-    @Override
-    public final Assumption getLeafAssumption() {
-        return leafAssumption;
-    }
-
-    @Override
-    public final boolean isLeaf() {
-        return getLeafAssumption().isValid();
-    }
-
     private void invalidateLeafAssumption() {
-        getLeafAssumption().invalidate();
+        Assumption assumption = leafAssumption;
+        if (assumption != null) {
+            assumption.invalidate();
+        } else {
+            leafAssumption = NeverValidAssumption.INSTANCE;
+        }
     }
 
     @Override
