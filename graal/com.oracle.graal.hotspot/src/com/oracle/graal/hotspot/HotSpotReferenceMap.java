@@ -230,30 +230,30 @@ public final class HotSpotReferenceMap implements ReferenceMap, Serializable {
         }
     }
 
-    public void mergeMaps(ReferenceMap otherArg) {
+    public void updateUnion(ReferenceMap otherArg) {
         HotSpotReferenceMap other = (HotSpotReferenceMap) otherArg;
         if (registerRefMap != null) {
             assert other.registerRefMap != null;
-            mergeBitSetRaw(registerRefMap, other.registerRefMap);
+            updateUnionBitSetRaw(registerRefMap, other.registerRefMap);
         } else {
             assert other.registerRefMap == null || other.registerRefMap.cardinality() == 0 : "Target register reference map is empty but the source is not: " + other.registerRefMap;
         }
-        mergeBitSetRaw(frameRefMap, other.frameRefMap);
+        updateUnionBitSetRaw(frameRefMap, other.frameRefMap);
     }
 
     /**
-     * Merge the references from {@code src} into {@code dst}.
+     * Update {@code src} with the union of {@code src} and {@code dst}.
      *
      * @see HotSpotReferenceMap#registerRefMap
      * @see HotSpotReferenceMap#frameRefMap
      */
-    private static void mergeBitSetRaw(BitSet dst, BitSet src) {
+    private static void updateUnionBitSetRaw(BitSet dst, BitSet src) {
         assert dst.size() == src.size();
-        assert MergeVerifier.verifyMerge(dst, src);
+        assert UpdateUnionVerifier.verifyUpate(dst, src);
         dst.or(src);
     }
 
-    private enum MergeVerifier {
+    private enum UpdateUnionVerifier {
         NoReference,
         WideOop,
         NarrowOopLowerHalf,
@@ -277,7 +277,7 @@ public final class HotSpotReferenceMap implements ReferenceMap, Serializable {
          * @see HotSpotReferenceMap#registerRefMap
          * @see HotSpotReferenceMap#frameRefMap
          */
-        static MergeVerifier getFromBits(int idx, BitSet set) {
+        static UpdateUnionVerifier getFromBits(int idx, BitSet set) {
             int n = (set.get(idx) ? 1 : 0) << 0 | (set.get(idx + 1) ? 1 : 0) << 1 | (set.get(idx + 2) ? 1 : 0) << 2;
             switch (n) {
                 case 0:
@@ -303,7 +303,7 @@ public final class HotSpotReferenceMap implements ReferenceMap, Serializable {
             return String.format("%3s", Integer.toBinaryString(bits)).replace(' ', '0');
         }
 
-        static int toBit(MergeVerifier type) {
+        static int toBit(UpdateUnionVerifier type) {
             switch (type) {
                 case NoReference:
                     return 0;
@@ -320,20 +320,20 @@ public final class HotSpotReferenceMap implements ReferenceMap, Serializable {
             }
         }
 
-        private static boolean verifyMerge(BitSet dst, BitSet src) {
+        private static boolean verifyUpate(BitSet dst, BitSet src) {
             for (int idx = 0; idx < dst.size(); idx += BITS_PER_WORD) {
-                if (!verifyMergeEntry(idx, dst, src)) {
+                if (!verifyUpdateEntry(idx, dst, src)) {
                     return false;
                 }
             }
             return true;
         }
 
-        private static boolean verifyMergeEntry(int idx, BitSet dst, BitSet src) {
-            MergeVerifier dstType = MergeVerifier.getFromBits(idx, dst);
-            MergeVerifier srcType = MergeVerifier.getFromBits(idx, src);
+        private static boolean verifyUpdateEntry(int idx, BitSet dst, BitSet src) {
+            UpdateUnionVerifier dstType = UpdateUnionVerifier.getFromBits(idx, dst);
+            UpdateUnionVerifier srcType = UpdateUnionVerifier.getFromBits(idx, src);
 
-            if (dstType == MergeVerifier.Illegal || srcType == MergeVerifier.Illegal) {
+            if (dstType == UpdateUnionVerifier.Illegal || srcType == UpdateUnionVerifier.Illegal) {
                 assert false : String.format("Illegal RefMap bit pattern: %s (0b%s), %s (0b%s)", dstType, dstType.toBitString(), srcType, srcType.toBitString());
                 return false;
             }

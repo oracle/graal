@@ -134,7 +134,7 @@ public class LIRFrameState {
     }
 
     public void markLocation(ReferenceMap refMap) {
-        debugInfo.getReferenceMap().mergeMaps(refMap);
+        debugInfo.getReferenceMap().updateUnion(refMap);
     }
 
     /**

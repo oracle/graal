@@ -46,7 +46,7 @@ public interface ReferenceMap extends Cloneable {
     ReferenceMap clone();
 
     /**
-     * Merge in references marked in the {@code other} {@link ReferenceMap}.
+     * Updates this map with all references marked in {@code other}.
      */
-    void mergeMaps(ReferenceMap other);
+    void updateUnion(ReferenceMap other);
 }
