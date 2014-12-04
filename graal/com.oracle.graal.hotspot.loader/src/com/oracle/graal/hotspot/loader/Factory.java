@@ -26,19 +26,31 @@ import java.io.*;
 import java.net.*;
 
 /**
- * Utility to create a separate class loader for loading classes in {@code graal.jar} and
- * {@code graal-truffle.jar}.
+ * Utility to create and register a separate class loader for loading Graal classes (i.e., those in
+ * {@code graal.jar} and {@code graal-truffle.jar}).
  */
 public class Factory {
 
     /**
-     * Creates a new class loader for loading classes in {@code graal.jar} and
-     * {@code graal-truffle.jar}
-     *
-     * Called from the VM.
+     * Copy of the {@code UseGraalClassLoader} VM option. Set by the VM before the static
+     * initializer is called.
      */
-    @SuppressWarnings("unused")
-    private static ClassLoader newClassLoader() throws MalformedURLException {
+    private static boolean useGraalClassLoader;
+
+    /**
+     * Registers the Graal class loader in the VM.
+     */
+    private static native void init(ClassLoader loader);
+
+    static {
+        init(useGraalClassLoader ? newClassLoader() : null);
+    }
+
+    /**
+     * Creates a new class loader for loading classes in {@code graal.jar} and
+     * {@code graal-truffle.jar}.
+     */
+    private static ClassLoader newClassLoader() {
         URL[] urls = {getGraalJarUrl("graal"), getGraalJarUrl("graal-truffle")};
         ClassLoader parent = null;
         return URLClassLoader.newInstance(urls, parent);
@@ -47,7 +59,7 @@ public class Factory {
     /**
      * Gets the URL for {@code base.jar}.
      */
-    private static URL getGraalJarUrl(String base) throws MalformedURLException {
+    private static URL getGraalJarUrl(String base) {
         File file = new File(System.getProperty("java.home"));
         for (String name : new String[]{"lib", base + ".jar"}) {
             file = new File(file, name);
@@ -57,6 +69,10 @@ public class Factory {
             throw new InternalError(file + " does not exist");
         }
 
-        return file.toURI().toURL();
+        try {
+            return file.toURI().toURL();
+        } catch (MalformedURLException e) {
+            throw new InternalError(e);
+        }
     }
 }
