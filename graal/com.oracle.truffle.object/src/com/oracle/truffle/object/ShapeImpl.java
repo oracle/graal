@@ -288,12 +288,12 @@ public abstract class ShapeImpl extends Shape {
     }
 
     protected final void addDirectTransition(Transition transition, ShapeImpl next) {
-        assert next.getParent() == this;
+        assert next.getParent() == this && transition.isDirect();
         addTransitionInternal(transition, next);
     }
 
     public final void addIndirectTransition(Transition transition, ShapeImpl next) {
-        assert next.getParent() != this;
+        assert next.getParent() != this && !transition.isDirect();
         addTransitionInternal(transition, next);
     }
 

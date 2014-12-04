@@ -47,6 +47,8 @@ public abstract class Transition {
         return true;
     }
 
+    public abstract boolean isDirect();
+
     public abstract static class PropertyTransition extends Transition {
         private final Property property;
 
@@ -83,11 +85,21 @@ public abstract class Transition {
         public AddPropertyTransition(Property property) {
             super(property);
         }
+
+        @Override
+        public boolean isDirect() {
+            return true;
+        }
     }
 
     public static final class RemovePropertyTransition extends PropertyTransition {
         public RemovePropertyTransition(Property property) {
             super(property);
+        }
+
+        @Override
+        public boolean isDirect() {
+            return false;
         }
     }
 
@@ -114,6 +126,11 @@ public abstract class Transition {
             result = prime * result + ((objectType == null) ? 0 : objectType.hashCode());
             return result;
         }
+
+        @Override
+        public boolean isDirect() {
+            return true;
+        }
     }
 
     public static final class PropertyTypeTransition extends PropertyTransition {
@@ -131,10 +148,20 @@ public abstract class Transition {
         public Property getPropertyAfter() {
             return after;
         }
+
+        @Override
+        public boolean isDirect() {
+            return false;
+        }
     }
 
     public static final class ReservePrimitiveArrayTransition extends Transition {
         public ReservePrimitiveArrayTransition() {
+        }
+
+        @Override
+        public boolean isDirect() {
+            return true;
         }
     }
 
