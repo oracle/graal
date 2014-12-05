@@ -33,11 +33,11 @@ import com.oracle.graal.phases.common.inlining.info.elem.Inlineable;
 
 import java.util.Map;
 
-import static com.oracle.graal.compiler.common.GraalOptions.RelevanceCapForInlining;
 import static com.oracle.graal.phases.common.inlining.InliningPhase.Options.AlwaysInlineIntrinsics;
 
 public abstract class AbstractInliningPolicy implements InliningPolicy {
-
+    public static final float RelevanceCapForInlining = 1.0f;
+    public static final float CapInheritedRelevance = 1.0f;
     protected final Map<Invoke, Double> hints;
 
     public AbstractInliningPolicy(Map<Invoke, Double> hints) {
@@ -45,7 +45,7 @@ public abstract class AbstractInliningPolicy implements InliningPolicy {
     }
 
     protected double computeMaximumSize(double relevance, int configuredMaximum) {
-        double inlineRatio = Math.min(RelevanceCapForInlining.getValue(), relevance);
+        double inlineRatio = Math.min(RelevanceCapForInlining, relevance);
         return configuredMaximum * inlineRatio;
     }
 

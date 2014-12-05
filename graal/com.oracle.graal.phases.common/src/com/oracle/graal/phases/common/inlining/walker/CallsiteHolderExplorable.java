@@ -25,12 +25,11 @@ package com.oracle.graal.phases.common.inlining.walker;
 import com.oracle.graal.api.meta.ResolvedJavaMethod;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.phases.common.inlining.policy.*;
 import com.oracle.graal.phases.graph.FixedNodeProbabilityCache;
 
 import java.util.*;
 import java.util.function.ToDoubleFunction;
-
-import static com.oracle.graal.compiler.common.GraalOptions.CapInheritedRelevance;
 
 /**
  * <p>
@@ -204,7 +203,7 @@ public final class CallsiteHolderExplorable extends CallsiteHolder {
     }
 
     public double invokeRelevance(Invoke invoke) {
-        return Math.min(CapInheritedRelevance.getValue(), relevance) * computeInliningRelevance.getRelevance(invoke);
+        return Math.min(AbstractInliningPolicy.CapInheritedRelevance, relevance) * computeInliningRelevance.getRelevance(invoke);
     }
 
     @Override
