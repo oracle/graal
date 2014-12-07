@@ -134,6 +134,13 @@ public class LIRFrameState {
     }
 
     /**
+     * Updates this reference map with all references that are marked in {@code refMap}.
+     */
+    public void updateUnion(ReferenceMap refMap) {
+        debugInfo.getReferenceMap().updateUnion(refMap);
+    }
+
+    /**
      * Called by the register allocator after all locations are marked.
      *
      * @param op The instruction to which this frame state belongs.

@@ -25,11 +25,15 @@ package com.oracle.graal.api.code;
 import com.oracle.graal.api.code.CodeUtil.RefMapFormatter;
 import com.oracle.graal.api.meta.*;
 
-public interface ReferenceMap {
+public interface ReferenceMap extends Cloneable {
 
     void setRegister(int idx, LIRKind kind);
 
+    void clearRegister(int idx, LIRKind kind);
+
     void setStackSlot(int offset, LIRKind kind);
+
+    void clearStackSlot(int offset, LIRKind kind);
 
     boolean hasRegisterRefMap();
 
@@ -38,4 +42,11 @@ public interface ReferenceMap {
     void appendRegisterMap(StringBuilder sb, RefMapFormatter formatterArg);
 
     void appendFrameMap(StringBuilder sb, RefMapFormatter formatterArg);
+
+    ReferenceMap clone();
+
+    /**
+     * Updates this map with all references marked in {@code other}.
+     */
+    void updateUnion(ReferenceMap other);
 }

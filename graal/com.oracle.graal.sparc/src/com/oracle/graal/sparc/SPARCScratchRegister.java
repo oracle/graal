@@ -30,6 +30,7 @@ public final class SPARCScratchRegister implements AutoCloseable {
     private final Register register;
     private static final SPARCScratchRegister scratch1 = new SPARCScratchRegister(SPARC.g3);
     private static final SPARCScratchRegister scratch2 = new SPARCScratchRegister(SPARC.g1);
+    private static final boolean LOG_REQUEST_STACK = false;
 
     private SPARCScratchRegister(Register register) {
         super();
@@ -42,10 +43,14 @@ public final class SPARCScratchRegister implements AutoCloseable {
         }
         boolean isLocked = locked.get();
         if (isLocked) {
-            where.get().printStackTrace();
+            if (LOG_REQUEST_STACK) {
+                where.get().printStackTrace();
+            }
             throw new RuntimeException("Temp Register is already taken!");
         } else {
-            where.set(new Exception());
+            if (LOG_REQUEST_STACK) {
+                where.set(new Exception());
+            }
             locked.set(true);
             return register;
         }
