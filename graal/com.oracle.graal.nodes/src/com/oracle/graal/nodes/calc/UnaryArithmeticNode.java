@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes.calc;
 
+import java.io.*;
 import java.util.function.*;
 
 import com.oracle.graal.compiler.common.type.*;
@@ -39,6 +40,7 @@ public abstract class UnaryArithmeticNode<OP> extends UnaryNode implements Arith
     protected UnaryArithmeticNode(Function<ArithmeticOpTable, UnaryOp<OP>> getOp, ValueNode value) {
         super(getOp.apply(ArithmeticOpTable.forStamp(value.stamp())).foldStamp(value.stamp()), value);
         this.getOp = getOp;
+        assert getOp instanceof Serializable;
     }
 
     protected final UnaryOp<OP> getOp(ValueNode forValue) {

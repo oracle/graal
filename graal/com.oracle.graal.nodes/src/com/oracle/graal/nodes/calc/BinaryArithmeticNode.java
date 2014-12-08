@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes.calc;
 
+import java.io.*;
 import java.util.function.*;
 
 import com.oracle.graal.api.meta.*;
@@ -43,6 +44,7 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
     public BinaryArithmeticNode(Function<ArithmeticOpTable, BinaryOp<OP>> getOp, ValueNode x, ValueNode y) {
         super(getOp.apply(ArithmeticOpTable.forStamp(x.stamp())).foldStamp(x.stamp(), y.stamp()), x, y);
         this.getOp = getOp;
+        assert getOp instanceof Serializable;
     }
 
     protected final BinaryOp<OP> getOp(ValueNode forX, ValueNode forY) {

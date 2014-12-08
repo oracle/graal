@@ -22,8 +22,12 @@
  */
 package com.oracle.graal.replacements.amd64;
 
+import java.io.*;
+import java.util.function.*;
+
 import com.oracle.graal.compiler.common.calc.*;
-import com.oracle.graal.compiler.common.type.ArithmeticOpTable.FloatConvertOp;
+import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodeinfo.*;
@@ -46,7 +50,7 @@ public class AMD64FloatConvertNode extends UnaryArithmeticNode<FloatConvertOp> i
     }
 
     protected AMD64FloatConvertNode(FloatConvert op, ValueNode value) {
-        super(table -> table.getFloatConvert(op), value);
+        super((Function<ArithmeticOpTable, UnaryOp<FloatConvertOp>> & Serializable) table -> table.getFloatConvert(op), value);
         this.op = op;
     }
 

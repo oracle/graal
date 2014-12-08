@@ -22,10 +22,14 @@
  */
 package com.oracle.graal.nodes.calc;
 
+import java.io.*;
+import java.util.function.*;
+
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.FloatConvertOp;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.UnaryOp;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodeinfo.*;
@@ -46,7 +50,7 @@ public class FloatConvertNode extends UnaryArithmeticNode<FloatConvertOp> implem
     }
 
     protected FloatConvertNode(FloatConvert op, ValueNode input) {
-        super(table -> table.getFloatConvert(op), input);
+        super((Function<ArithmeticOpTable, UnaryOp<FloatConvertOp>> & Serializable) table -> table.getFloatConvert(op), input);
         this.op = op;
     }
 

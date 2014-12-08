@@ -22,6 +22,9 @@
  */
 package com.oracle.graal.nodes.calc;
 
+import java.io.*;
+import java.util.function.*;
+
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp;
@@ -40,7 +43,7 @@ public class AddNode extends BinaryArithmeticNode<Add> implements NarrowableArit
     }
 
     protected AddNode(ValueNode x, ValueNode y) {
-        super(ArithmeticOpTable::getAdd, x, y);
+        super((Function<ArithmeticOpTable, BinaryOp<Add>> & Serializable) ArithmeticOpTable::getAdd, x, y);
     }
 
     @Override

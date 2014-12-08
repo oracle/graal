@@ -22,11 +22,14 @@
  */
 package com.oracle.graal.nodes.calc;
 
+import java.io.*;
+import java.util.function.*;
+
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp;
-import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp.Mul;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodeinfo.*;
@@ -41,7 +44,7 @@ public class MulNode extends BinaryArithmeticNode<Mul> implements NarrowableArit
     }
 
     protected MulNode(ValueNode x, ValueNode y) {
-        super(ArithmeticOpTable::getMul, x, y);
+        super((Function<ArithmeticOpTable, BinaryOp<Mul>> & Serializable) ArithmeticOpTable::getMul, x, y);
     }
 
     @Override

@@ -22,10 +22,14 @@
  */
 package com.oracle.graal.nodes.calc;
 
+import java.io.*;
+import java.util.function.*;
+
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp.Xor;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.*;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodeinfo.*;
@@ -41,7 +45,7 @@ public class XorNode extends BinaryArithmeticNode<Xor> {
     }
 
     protected XorNode(ValueNode x, ValueNode y) {
-        super(ArithmeticOpTable::getXor, x, y);
+        super((Function<ArithmeticOpTable, BinaryOp<Xor>> & Serializable) ArithmeticOpTable::getXor, x, y);
         assert x.stamp().isCompatible(y.stamp());
     }
 
