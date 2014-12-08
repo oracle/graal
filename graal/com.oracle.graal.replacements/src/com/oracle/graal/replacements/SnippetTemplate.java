@@ -534,8 +534,9 @@ public class SnippetTemplate {
         }
     }
 
-    private static final Object UNUSED_PARAMETER = "DEAD PARAMETER";
-    private static final Object CONSTANT_PARAMETER = "CONSTANT";
+    // These values must be compared with equals() not '==' to support replay compilation.
+    private static final Object UNUSED_PARAMETER = "UNUSED_PARAMETER";
+    private static final Object CONSTANT_PARAMETER = "CONSTANT_PARAMETER";
 
     /**
      * Determines if any parameter of a given method is annotated with {@link ConstantParameter}.
@@ -905,7 +906,7 @@ public class SnippetTemplate {
                     }
                 }
             } else {
-                assert parameter == CONSTANT_PARAMETER || parameter == UNUSED_PARAMETER : "unexpected entry for parameter: " + args.info.getParameterName(i) + " -> " + parameter;
+                assert parameter.equals(CONSTANT_PARAMETER) || parameter.equals(UNUSED_PARAMETER) : "unexpected entry for parameter: " + args.info.getParameterName(i) + " -> " + parameter;
             }
         }
         return replacements;
@@ -1298,9 +1299,9 @@ public class SnippetTemplate {
             sep = ", ";
             if (value == null) {
                 buf.append("<null> ").append(name);
-            } else if (value == UNUSED_PARAMETER) {
+            } else if (value.equals(UNUSED_PARAMETER)) {
                 buf.append("<unused> ").append(name);
-            } else if (value == CONSTANT_PARAMETER) {
+            } else if (value.equals(CONSTANT_PARAMETER)) {
                 buf.append("<constant> ").append(name);
             } else if (value instanceof ParameterNode) {
                 ParameterNode param = (ParameterNode) value;
