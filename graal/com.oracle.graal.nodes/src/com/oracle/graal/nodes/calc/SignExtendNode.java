@@ -22,11 +22,7 @@
  */
 package com.oracle.graal.nodes.calc;
 
-import java.io.*;
-import java.util.function.*;
-
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.compiler.common.type.ArithmeticOpTable.*;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.IntegerConvertOp.Narrow;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.IntegerConvertOp.SignExtend;
 import com.oracle.graal.graph.spi.*;
@@ -52,8 +48,7 @@ public class SignExtendNode extends IntegerConvertNode<SignExtend, Narrow> {
     }
 
     protected SignExtendNode(ValueNode input, int inputBits, int resultBits) {
-        super((Function<ArithmeticOpTable, IntegerConvertOp<SignExtend>> & Serializable) ArithmeticOpTable::getSignExtend,
-                        (Function<ArithmeticOpTable, IntegerConvertOp<Narrow>> & Serializable) ArithmeticOpTable::getNarrow, inputBits, resultBits, input);
+        super(ArithmeticOpTable::getSignExtend, ArithmeticOpTable::getNarrow, inputBits, resultBits, input);
     }
 
     @Override

@@ -22,14 +22,11 @@
  */
 package com.oracle.graal.nodes.calc;
 
-import java.io.*;
-import java.util.function.*;
-
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.compiler.common.type.ArithmeticOpTable.*;
-import com.oracle.graal.compiler.common.type.ArithmeticOpTable.IntegerConvertOp.*;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.IntegerConvertOp.Narrow;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.IntegerConvertOp.ZeroExtend;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodeinfo.*;
@@ -53,8 +50,7 @@ public class ZeroExtendNode extends IntegerConvertNode<ZeroExtend, Narrow> {
     }
 
     protected ZeroExtendNode(ValueNode input, int inputBits, int resultBits) {
-        super((Function<ArithmeticOpTable, IntegerConvertOp<ZeroExtend>> & Serializable) ArithmeticOpTable::getZeroExtend,
-                        (Function<ArithmeticOpTable, IntegerConvertOp<Narrow>> & Serializable) ArithmeticOpTable::getNarrow, inputBits, resultBits, input);
+        super(ArithmeticOpTable::getZeroExtend, ArithmeticOpTable::getNarrow, inputBits, resultBits, input);
     }
 
     @Override

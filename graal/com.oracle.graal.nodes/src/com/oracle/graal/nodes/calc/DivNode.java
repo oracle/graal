@@ -22,14 +22,10 @@
  */
 package com.oracle.graal.nodes.calc;
 
-import java.io.*;
-import java.util.function.*;
-
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.compiler.common.type.ArithmeticOpTable.*;
-import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp.*;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp.Div;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodeinfo.*;
@@ -44,7 +40,7 @@ public class DivNode extends BinaryArithmeticNode<Div> {
     }
 
     protected DivNode(ValueNode x, ValueNode y) {
-        super((Function<ArithmeticOpTable, BinaryOp<Div>> & Serializable) ArithmeticOpTable::getDiv, x, y);
+        super(ArithmeticOpTable::getDiv, x, y);
     }
 
     @Override

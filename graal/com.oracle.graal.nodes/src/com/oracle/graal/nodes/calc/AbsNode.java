@@ -22,11 +22,7 @@
  */
 package com.oracle.graal.nodes.calc;
 
-import java.io.*;
-import java.util.function.*;
-
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.compiler.common.type.ArithmeticOpTable.*;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.UnaryOp.Abs;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
@@ -45,7 +41,7 @@ public class AbsNode extends UnaryArithmeticNode<Abs> implements ArithmeticLIRLo
     }
 
     protected AbsNode(ValueNode x) {
-        super((Function<ArithmeticOpTable, UnaryOp<Abs>> & Serializable) ArithmeticOpTable::getAbs, x);
+        super(ArithmeticOpTable::getAbs, x);
     }
 
     @Override

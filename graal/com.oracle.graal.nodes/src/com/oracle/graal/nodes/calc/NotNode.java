@@ -22,12 +22,8 @@
  */
 package com.oracle.graal.nodes.calc;
 
-import java.io.*;
-import java.util.function.*;
-
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.compiler.common.type.ArithmeticOpTable.*;
-import com.oracle.graal.compiler.common.type.ArithmeticOpTable.UnaryOp.*;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.UnaryOp.Not;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodeinfo.*;
@@ -50,7 +46,7 @@ public class NotNode extends UnaryArithmeticNode<Not> implements ArithmeticLIRLo
     }
 
     protected NotNode(ValueNode x) {
-        super((Function<ArithmeticOpTable, UnaryOp<Not>> & Serializable) ArithmeticOpTable::getNot, x);
+        super(ArithmeticOpTable::getNot, x);
     }
 
     @Override

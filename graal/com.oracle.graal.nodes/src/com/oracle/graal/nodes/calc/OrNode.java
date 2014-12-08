@@ -22,14 +22,10 @@
  */
 package com.oracle.graal.nodes.calc;
 
-import java.io.*;
-import java.util.function.*;
-
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.compiler.common.type.ArithmeticOpTable.*;
-import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp.*;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp.Or;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodeinfo.*;
@@ -45,7 +41,7 @@ public class OrNode extends BinaryArithmeticNode<Or> {
     }
 
     protected OrNode(ValueNode x, ValueNode y) {
-        super((Function<ArithmeticOpTable, BinaryOp<Or>> & Serializable) ArithmeticOpTable::getOr, x, y);
+        super(ArithmeticOpTable::getOr, x, y);
     }
 
     @Override

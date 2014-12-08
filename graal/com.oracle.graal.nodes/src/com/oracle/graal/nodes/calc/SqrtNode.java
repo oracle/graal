@@ -22,12 +22,8 @@
  */
 package com.oracle.graal.nodes.calc;
 
-import java.io.*;
-import java.util.function.*;
-
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.compiler.common.type.ArithmeticOpTable.*;
-import com.oracle.graal.compiler.common.type.ArithmeticOpTable.UnaryOp.*;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.UnaryOp.Sqrt;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
@@ -44,7 +40,7 @@ public class SqrtNode extends UnaryArithmeticNode<Sqrt> implements ArithmeticLIR
     }
 
     protected SqrtNode(ValueNode x) {
-        super((Function<ArithmeticOpTable, UnaryOp<Sqrt>> & Serializable) ArithmeticOpTable::getSqrt, x);
+        super(ArithmeticOpTable::getSqrt, x);
     }
 
     @Override

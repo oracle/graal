@@ -22,12 +22,8 @@
  */
 package com.oracle.graal.nodes.calc;
 
-import java.io.*;
-import java.util.function.*;
-
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.compiler.common.type.ArithmeticOpTable.*;
-import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp.*;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp.Rem;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
@@ -41,7 +37,7 @@ public class RemNode extends BinaryArithmeticNode<Rem> implements Lowerable {
     }
 
     protected RemNode(ValueNode x, ValueNode y) {
-        super((Function<ArithmeticOpTable, BinaryOp<Rem>> & Serializable) ArithmeticOpTable::getRem, x, y);
+        super(ArithmeticOpTable::getRem, x, y);
     }
 
     @Override
