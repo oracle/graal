@@ -150,9 +150,8 @@ public class HotSpotWordTypeRewriterPhase extends WordTypeRewriterPhase {
     protected ValueNode readKlassOp(StructuredGraph graph, ValueNode base, Invoke invoke, LocationNode location, Stamp readStamp, HotspotOpcode op) {
         assert op == READ_KLASS_POINTER;
         final BarrierType barrier = BarrierType.NONE;
-        final boolean compressible = false;
 
-        JavaReadNode read = graph.add(JavaReadNode.create(base, location, readStamp, barrier, compressible));
+        ReadNode read = graph.add(ReadNode.create(base, location, readStamp, barrier));
         graph.addBeforeFixed(invoke.asNode(), read);
         /*
          * The read must not float outside its block otherwise it may float above an explicit zero
