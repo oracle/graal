@@ -25,7 +25,7 @@ package com.oracle.graal.hotspot.amd64;
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.compiler.common.remote.*;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
@@ -46,7 +46,7 @@ public class AMD64HotSpotLIRGenerationResult extends LIRGenerationResultBase {
      * Map from debug infos that need to be updated with callee save information to the operations
      * that provide the information.
      */
-    private Map<LIRFrameState, SaveRegistersOp> calleeSaveInfo = Context.newMap();
+    private Map<LIRFrameState, SaveRegistersOp> calleeSaveInfo = CollectionsFactory.newMap();
 
     public AMD64HotSpotLIRGenerationResult(LIR lir, FrameMapBuilder frameMapBuilder, Object stub) {
         super(lir, frameMapBuilder);

@@ -29,7 +29,7 @@ import static com.oracle.graal.lir.LIRValueUtil.*;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.remote.*;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodes.*;
 
@@ -120,7 +120,7 @@ public class PhiResolver {
     /**
      * Maps operands to nodes.
      */
-    private final HashMap<Value, PhiResolverNode> operandToNodeMap = Context.newMap();
+    private final HashMap<Value, PhiResolverNode> operandToNodeMap = CollectionsFactory.newMap();
 
     public PhiResolver(LIRGeneratorTool gen) {
         this.gen = gen;

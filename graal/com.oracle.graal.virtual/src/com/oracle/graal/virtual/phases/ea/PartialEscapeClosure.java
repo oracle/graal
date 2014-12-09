@@ -26,7 +26,7 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.remote.*;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
@@ -271,7 +271,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
 
     protected class MergeProcessor extends EffectsClosure<BlockT>.MergeProcessor {
 
-        private final HashMap<Object, ValuePhiNode> materializedPhis = Context.newMap();
+        private final HashMap<Object, ValuePhiNode> materializedPhis = CollectionsFactory.newMap();
         private final Map<ValueNode, ValuePhiNode[]> valuePhis = Node.newIdentityMap();
         private final Map<ValuePhiNode, VirtualObjectNode> valueObjectVirtuals = Node.newIdentityMap();
 

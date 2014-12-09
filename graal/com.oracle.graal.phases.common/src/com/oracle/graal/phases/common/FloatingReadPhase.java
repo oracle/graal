@@ -24,10 +24,11 @@ package com.oracle.graal.phases.common;
 
 import static com.oracle.graal.api.meta.LocationIdentity.*;
 import static com.oracle.graal.graph.Graph.NodeEvent.*;
+
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.remote.*;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.graph.Graph.NodeEventScope;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
@@ -162,7 +163,7 @@ public class FloatingReadPhase extends Phase {
         if (updateExistingPhis) {
             for (MemoryPhiNode phi : merge.phis().filter(MemoryPhiNode.class)) {
                 if (existingPhis == null) {
-                    existingPhis = Context.newMap();
+                    existingPhis = CollectionsFactory.newMap();
                 }
                 phi.values().clear();
                 existingPhis.put(phi.getLocationIdentity(), phi);

@@ -31,6 +31,7 @@ import static com.oracle.graal.hotspot.InitTimer.*;
 
 import java.lang.reflect.*;
 import java.util.*;
+import java.util.function.*;
 
 import sun.misc.*;
 
@@ -41,7 +42,6 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.compiler.common.remote.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
@@ -80,13 +80,10 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, R
         }
     }
 
-    /**
-     * Checks that all accesses to a {@link HotSpotGraalRuntimeProvider} within a replay context are
-     * through references to a captured {@link HotSpotGraalRuntimeProvider}, not through the static
-     * {@link HotSpotGraalRuntimeProvider} instance of the runtime hosting the replay.
-     */
-    public static boolean checkRuntimeAccess() {
-        return Context.assertInLocal("Cannot access HotSpotGraalRuntime statically in replay/remote context");
+    private static Predicate<Void> runtimeAccessCheck;
+
+    public static void setRuntimeAccessCheck(Predicate<Void> predicate) {
+        runtimeAccessCheck = predicate;
     }
 
     /**
@@ -94,7 +91,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, R
      */
     public static HotSpotGraalRuntime runtime() {
         assert instance != null;
-        assert checkRuntimeAccess();
+        assert runtimeAccessCheck == null || runtimeAccessCheck.test(null);
         return instance;
     }
 
