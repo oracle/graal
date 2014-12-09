@@ -102,8 +102,20 @@ public class LoopParseLong extends JTTTest {
     @Test
     public void run0() throws Throwable {
         runTest("testShortened", "7", 10);
+    }
+
+    @Test
+    public void run1() throws Throwable {
         runTest("testShortened", "-100", 10);
+    }
+
+    @Test
+    public void run2() throws Throwable {
         runTest("test", "7", 10);
+    }
+
+    @Test
+    public void run3() throws Throwable {
         runTest("test", "-100", 10);
     }
 }
