@@ -68,8 +68,9 @@ public class Graph {
 
     // these two arrays contain one entry for each NodeClass, indexed by NodeClass.iterableId.
     // they contain the first and last pointer to a linked list of all nodes with this type.
-    private final ArrayList<Node> nodeCacheFirst;
-    private final ArrayList<Node> nodeCacheLast;
+    private final ArrayList<Node> iterableNodesFirst;
+    private final ArrayList<Node> iterableNodesLast;
+
     private int nodesDeletedSinceLastCompression;
     private int nodesDeletedBeforeLastCompression;
 
@@ -153,8 +154,8 @@ public class Graph {
      */
     public Graph(String name) {
         nodes = new Node[INITIAL_NODES_SIZE];
-        nodeCacheFirst = new ArrayList<>(NodeClass.cacheSize());
-        nodeCacheLast = new ArrayList<>(NodeClass.cacheSize());
+        iterableNodesFirst = new ArrayList<>(NodeClass.allocatedNodeIterabledIds());
+        iterableNodesLast = new ArrayList<>(NodeClass.allocatedNodeIterabledIds());
         this.name = name;
         if (MODIFICATION_COUNTS_ENABLED) {
             nodeModCounts = new int[INITIAL_NODES_SIZE];
@@ -708,7 +709,7 @@ public class Graph {
     }
 
     Node getStartNode(int iterableId) {
-        Node start = nodeCacheFirst.size() <= iterableId ? null : nodeCacheFirst.get(iterableId);
+        Node start = iterableNodesFirst.size() <= iterableId ? null : iterableNodesFirst.get(iterableId);
         return start;
     }
 
@@ -742,24 +743,47 @@ public class Graph {
         nodes[id] = node;
         nodesSize++;
 
-        int nodeClassId = node.getNodeClass().iterableId();
-        if (nodeClassId != Node.NOT_ITERABLE) {
-            while (nodeCacheFirst.size() <= nodeClassId) {
-                nodeCacheFirst.add(null);
-                nodeCacheLast.add(null);
-            }
-            Node prev = nodeCacheLast.get(nodeClassId);
-            if (prev != null) {
-                prev.typeCacheNext = node;
-            } else {
-                nodeCacheFirst.set(nodeClassId, node);
-            }
-            nodeCacheLast.set(nodeClassId, node);
-        }
+        updateNodeCaches(node);
 
         node.id = id;
         if (nodeEventListener != null) {
             nodeEventListener.nodeAdded(node);
+        }
+    }
+
+    @SuppressWarnings("unused")
+    private void postDeserialization() {
+        recomputeIterableNodeLists();
+    }
+
+    /**
+     * Rebuilds the lists used to support {@link #getNodes(Class)}. This is useful for serialization
+     * where the underlying {@linkplain NodeClass#iterableId() iterable ids} may have changed.
+     */
+    private void recomputeIterableNodeLists() {
+        iterableNodesFirst.clear();
+        iterableNodesLast.clear();
+        for (Node node : nodes) {
+            if (node != null && node.isAlive()) {
+                updateNodeCaches(node);
+            }
+        }
+    }
+
+    private void updateNodeCaches(Node node) {
+        int nodeClassId = node.getNodeClass().iterableId();
+        if (nodeClassId != Node.NOT_ITERABLE) {
+            while (iterableNodesFirst.size() <= nodeClassId) {
+                iterableNodesFirst.add(null);
+                iterableNodesLast.add(null);
+            }
+            Node prev = iterableNodesLast.get(nodeClassId);
+            if (prev != null) {
+                prev.typeCacheNext = node;
+            } else {
+                iterableNodesFirst.set(nodeClassId, node);
+            }
+            iterableNodesLast.set(nodeClassId, node);
         }
     }
 
