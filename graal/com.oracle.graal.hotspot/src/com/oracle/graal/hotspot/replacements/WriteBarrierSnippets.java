@@ -481,7 +481,7 @@ public class WriteBarrierSnippets implements Snippets {
     public static void validateObject(Object parent, Object child) {
         if (verifyOops() && child != null && !validateOop(VALIDATE_OBJECT, parent, child)) {
             log(true, "Verification ERROR, Parent: %p Child: %p\n", Word.fromObject(parent).rawValue(), Word.fromObject(child).rawValue());
-            DirectObjectStoreNode.storeObject(null, 0, 0, null, LocationIdentity.ANY_LOCATION);
+            DirectObjectStoreNode.storeObject(null, 0, 0, null, LocationIdentity.ANY_LOCATION, Kind.Object);
         }
     }
 

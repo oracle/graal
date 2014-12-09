@@ -73,7 +73,7 @@ public class AtomicReadAndAddNode extends AbstractMemoryCheckpoint implements LI
     }
 
     public void generate(NodeLIRBuilderTool gen) {
-        LocationNode location = IndexedLocationNode.create(getLocationIdentity(), delta.getKind(), 0, offset, graph(), 1);
+        LocationNode location = IndexedLocationNode.create(getLocationIdentity(), 0, offset, graph(), 1);
         Value address = location.generateAddress(gen, gen.getLIRGeneratorTool(), gen.operand(object()));
         Value result = gen.getLIRGeneratorTool().emitAtomicReadAndAdd(address, gen.operand(delta));
         gen.setResult(this, result);

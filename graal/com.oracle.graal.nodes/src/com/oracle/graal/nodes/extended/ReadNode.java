@@ -23,6 +23,7 @@
 package com.oracle.graal.nodes.extended;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
@@ -31,7 +32,6 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
-import com.oracle.graal.nodes.virtual.*;
 
 /**
  * Reads an {@linkplain FixedAccessNode accessed} value.
@@ -171,17 +171,7 @@ public class ReadNode extends FloatableAccessNode implements LIRLowerable, Canon
 
     @Override
     public void virtualize(VirtualizerTool tool) {
-        if (location() instanceof ConstantLocationNode) {
-            ConstantLocationNode constantLocation = (ConstantLocationNode) location();
-            State state = tool.getObjectState(object());
-            if (state != null && state.getState() == EscapeState.Virtual) {
-                VirtualObjectNode virtual = state.getVirtualObject();
-                int entryIndex = virtual.entryIndexForOffset(constantLocation.getDisplacement());
-                if (entryIndex != -1 && virtual.entryKind(entryIndex) == constantLocation.getValueKind()) {
-                    tool.replaceWith(state.getEntry(entryIndex));
-                }
-            }
-        }
+        throw GraalInternalError.shouldNotReachHere("unexpected ReadNode before PEA");
     }
 
     public boolean canNullCheck() {

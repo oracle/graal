@@ -130,13 +130,12 @@ public class HotSpotWordTypeRewriterPhase extends WordTypeRewriterPhase {
 
                 case READ_KLASS_POINTER:
                     assert arguments.size() == 2 || arguments.size() == 3;
-                    Kind readKind = asKind(callTargetNode.returnType());
                     Stamp readStamp = KlassPointerStamp.klass();
                     LocationNode location;
                     if (arguments.size() == 2) {
-                        location = makeLocation(graph, arguments.get(1), readKind, ANY_LOCATION);
+                        location = makeLocation(graph, arguments.get(1), ANY_LOCATION);
                     } else {
-                        location = makeLocation(graph, arguments.get(1), readKind, arguments.get(2));
+                        location = makeLocation(graph, arguments.get(1), arguments.get(2));
                     }
                     replace(invoke, readKlassOp(graph, arguments.get(0), invoke, location, readStamp, operation.opcode()));
                     break;

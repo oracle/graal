@@ -98,7 +98,7 @@ public class ClassGetHubNode extends FloatingGuardedNode implements Lowerable, C
             return;
         }
 
-        LocationNode location = ConstantLocationNode.create(CLASS_KLASS_LOCATION, runtime.getTarget().wordKind, runtime.getConfig().klassOffset, graph());
+        LocationNode location = ConstantLocationNode.create(CLASS_KLASS_LOCATION, runtime.getConfig().klassOffset, graph());
         assert !clazz.isConstant();
         FloatingReadNode read = graph().unique(FloatingReadNode.create(clazz, location, null, stamp(), getGuard(), BarrierType.NONE));
         graph().replaceFloating(this, read);

@@ -51,7 +51,7 @@ public class AddLocationNode extends LocationNode implements Canonicalizable.Bin
     }
 
     public static AddLocationNode create(LocationNode x, LocationNode y, Graph graph) {
-        assert x.getValueKind().equals(y.getValueKind()) && x.getLocationIdentity().equals(y.getLocationIdentity());
+        assert x.getLocationIdentity().equals(y.getLocationIdentity());
         return graph.unique(AddLocationNode.create(x, y));
     }
 
@@ -63,11 +63,6 @@ public class AddLocationNode extends LocationNode implements Canonicalizable.Bin
         super(StampFactory.forVoid());
         this.x = x;
         this.y = y;
-    }
-
-    @Override
-    public Kind getValueKind() {
-        return getX().getValueKind();
     }
 
     @Override
@@ -88,7 +83,7 @@ public class AddLocationNode extends LocationNode implements Canonicalizable.Bin
             if (xIdx.getIndexScaling() == yIdx.getIndexScaling()) {
                 long displacement = xIdx.getDisplacement() + yIdx.getDisplacement();
                 ValueNode index = BinaryArithmeticNode.add(xIdx.getIndex(), yIdx.getIndex());
-                return IndexedLocationNode.create(getLocationIdentity(), getValueKind(), displacement, index, xIdx.getIndexScaling());
+                return IndexedLocationNode.create(getLocationIdentity(), displacement, index, xIdx.getIndexScaling());
             }
         }
         return this;
@@ -97,10 +92,10 @@ public class AddLocationNode extends LocationNode implements Canonicalizable.Bin
     private LocationNode canonical(ConstantLocationNode constant, LocationNode other) {
         if (other instanceof ConstantLocationNode) {
             ConstantLocationNode otherConst = (ConstantLocationNode) other;
-            return ConstantLocationNode.create(getLocationIdentity(), getValueKind(), otherConst.getDisplacement() + constant.getDisplacement());
+            return ConstantLocationNode.create(getLocationIdentity(), otherConst.getDisplacement() + constant.getDisplacement());
         } else if (other instanceof IndexedLocationNode) {
             IndexedLocationNode otherIdx = (IndexedLocationNode) other;
-            return IndexedLocationNode.create(getLocationIdentity(), getValueKind(), otherIdx.getDisplacement() + constant.getDisplacement(), otherIdx.getIndex(), otherIdx.getIndexScaling());
+            return IndexedLocationNode.create(getLocationIdentity(), otherIdx.getDisplacement() + constant.getDisplacement(), otherIdx.getIndex(), otherIdx.getIndexScaling());
         } else if (other instanceof AddLocationNode) {
             AddLocationNode otherAdd = (AddLocationNode) other;
             LocationNode newInner = otherAdd.canonical(constant, otherAdd.getX());

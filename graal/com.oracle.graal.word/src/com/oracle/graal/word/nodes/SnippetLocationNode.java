@@ -48,46 +48,36 @@ public class SnippetLocationNode extends LocationNode implements Canonicalizable
 
     protected final SnippetReflectionProvider snippetReflection;
 
-    @Input ValueNode valueKind;
     @Input(InputType.Association) ValueNode locationIdentity;
     @Input ValueNode displacement;
     @Input ValueNode index;
     @Input ValueNode indexScaling;
 
-    public static SnippetLocationNode create(@InjectedNodeParameter SnippetReflectionProvider snippetReflection, ValueNode identity, ValueNode kind, ValueNode displacement, ValueNode index,
-                    ValueNode indexScaling, Graph graph) {
-        return graph.unique(SnippetLocationNode.create(snippetReflection, identity, kind, displacement, index, indexScaling));
+    public static SnippetLocationNode create(@InjectedNodeParameter SnippetReflectionProvider snippetReflection, ValueNode identity, ValueNode displacement, ValueNode index, ValueNode indexScaling,
+                    Graph graph) {
+        return graph.unique(SnippetLocationNode.create(snippetReflection, identity, displacement, index, indexScaling));
     }
 
-    public static SnippetLocationNode create(@InjectedNodeParameter SnippetReflectionProvider snippetReflection, ValueNode locationIdentity, ValueNode kind, ValueNode displacement) {
-        return new SnippetLocationNode(snippetReflection, locationIdentity, kind, displacement);
+    public static SnippetLocationNode create(@InjectedNodeParameter SnippetReflectionProvider snippetReflection, ValueNode locationIdentity, ValueNode displacement) {
+        return new SnippetLocationNode(snippetReflection, locationIdentity, displacement);
     }
 
-    protected SnippetLocationNode(@InjectedNodeParameter SnippetReflectionProvider snippetReflection, ValueNode locationIdentity, ValueNode kind, ValueNode displacement) {
-        this(snippetReflection, locationIdentity, kind, displacement, null, null);
+    protected SnippetLocationNode(@InjectedNodeParameter SnippetReflectionProvider snippetReflection, ValueNode locationIdentity, ValueNode displacement) {
+        this(snippetReflection, locationIdentity, displacement, null, null);
     }
 
-    public static SnippetLocationNode create(@InjectedNodeParameter SnippetReflectionProvider snippetReflection, ValueNode locationIdentity, ValueNode kind, ValueNode displacement, ValueNode index,
+    public static SnippetLocationNode create(@InjectedNodeParameter SnippetReflectionProvider snippetReflection, ValueNode locationIdentity, ValueNode displacement, ValueNode index,
                     ValueNode indexScaling) {
-        return new SnippetLocationNode(snippetReflection, locationIdentity, kind, displacement, index, indexScaling);
+        return new SnippetLocationNode(snippetReflection, locationIdentity, displacement, index, indexScaling);
     }
 
-    protected SnippetLocationNode(SnippetReflectionProvider snippetReflection, ValueNode locationIdentity, ValueNode kind, ValueNode displacement, ValueNode index, ValueNode indexScaling) {
+    protected SnippetLocationNode(SnippetReflectionProvider snippetReflection, ValueNode locationIdentity, ValueNode displacement, ValueNode index, ValueNode indexScaling) {
         super(StampFactory.object());
         this.snippetReflection = snippetReflection;
-        this.valueKind = kind;
         this.locationIdentity = locationIdentity;
         this.displacement = displacement;
         this.index = index;
         this.indexScaling = indexScaling;
-    }
-
-    @Override
-    public Kind getValueKind() {
-        if (valueKind.isConstant()) {
-            return snippetReflection.asObject(Kind.class, valueKind.asJavaConstant());
-        }
-        throw new GraalInternalError("Cannot access kind yet because it is not constant: " + valueKind);
     }
 
     @Override
@@ -102,18 +92,17 @@ public class SnippetLocationNode extends LocationNode implements Canonicalizable
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (valueKind.isConstant() && locationIdentity.isConstant() && displacement.isConstant() && (indexScaling == null || indexScaling.isConstant())) {
-            Kind constKind = snippetReflection.asObject(Kind.class, valueKind.asJavaConstant());
+        if (locationIdentity.isConstant() && displacement.isConstant() && (indexScaling == null || indexScaling.isConstant())) {
             LocationIdentity constLocation = snippetReflection.asObject(LocationIdentity.class, locationIdentity.asJavaConstant());
             long constDisplacement = displacement.asJavaConstant().asLong();
             int constIndexScaling = indexScaling == null ? 0 : indexScaling.asJavaConstant().asInt();
 
             if (index == null || constIndexScaling == 0) {
-                return ConstantLocationNode.create(constLocation, constKind, constDisplacement, graph());
+                return ConstantLocationNode.create(constLocation, constDisplacement, graph());
             } else if (index.isConstant()) {
-                return ConstantLocationNode.create(constLocation, constKind, index.asJavaConstant().asLong() * constIndexScaling + constDisplacement, graph());
+                return ConstantLocationNode.create(constLocation, index.asJavaConstant().asLong() * constIndexScaling + constDisplacement, graph());
             } else {
-                return IndexedLocationNode.create(constLocation, constKind, constDisplacement, index, graph(), constIndexScaling);
+                return IndexedLocationNode.create(constLocation, constDisplacement, index, graph(), constIndexScaling);
             }
         }
         return this;
@@ -130,8 +119,8 @@ public class SnippetLocationNode extends LocationNode implements Canonicalizable
     }
 
     @NodeIntrinsic
-    public static native Location constantLocation(LocationIdentity identity, Kind kind, long displacement);
+    public static native Location constantLocation(LocationIdentity identity, long displacement);
 
     @NodeIntrinsic
-    public static native Location indexedLocation(LocationIdentity identity, Kind kind, long displacement, int index, int indexScaling);
+    public static native Location indexedLocation(LocationIdentity identity, long displacement, int index, int indexScaling);
 }

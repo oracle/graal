@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes.spi;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
@@ -36,9 +37,10 @@ public interface LoweringProvider {
     /**
      * Reconstructs the array index from a location node that was created as a lowering of an
      * indexed access to an array.
-     * 
+     *
+     * @param elementKind the {@link Kind} of the array elements
      * @param location a location pointing to an element in an array
      * @return a node that gives the index of the element
      */
-    ValueNode reconstructArrayIndex(LocationNode location);
+    ValueNode reconstructArrayIndex(Kind elementKind, LocationNode location);
 }

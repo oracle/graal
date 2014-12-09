@@ -120,7 +120,7 @@ public class NativeCallStubGraphBuilder {
                 int displacement = runtime().getArrayBaseOffset(arrayElementKind);
                 ConstantNode index = ConstantNode.forInt(0, g);
                 int indexScaling = runtime().getArrayIndexScale(arrayElementKind);
-                IndexedLocationNode locationNode = IndexedLocationNode.create(locationIdentity, arrayElementKind, displacement, index, g, indexScaling);
+                IndexedLocationNode locationNode = IndexedLocationNode.create(locationIdentity, displacement, index, g, indexScaling);
                 Stamp wordStamp = StampFactory.forKind(providers.getCodeCache().getTarget().wordKind);
                 ComputeAddressNode arrayAddress = g.unique(ComputeAddressNode.create(boxedElement, locationNode, wordStamp));
                 args.add(arrayAddress);

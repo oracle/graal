@@ -85,21 +85,21 @@ public class PointerTest extends GraalCompilerTest implements Snippets {
     @Test
     public void testWrite1() {
         for (Kind kind : KINDS) {
-            assertWrite(parseEager("write" + kind.name() + "1"), kind, true, ID);
+            assertWrite(parseEager("write" + kind.name() + "1"), true, ID);
         }
     }
 
     @Test
     public void testWrite2() {
         for (Kind kind : KINDS) {
-            assertWrite(parseEager("write" + kind.name() + "2"), kind, true, ID);
+            assertWrite(parseEager("write" + kind.name() + "2"), true, ID);
         }
     }
 
     @Test
     public void testWrite3() {
         for (Kind kind : KINDS) {
-            assertWrite(parseEager("write" + kind.name() + "3"), kind, true, LocationIdentity.ANY_LOCATION);
+            assertWrite(parseEager("write" + kind.name() + "3"), true, LocationIdentity.ANY_LOCATION);
         }
     }
 
@@ -114,7 +114,6 @@ public class PointerTest extends GraalCompilerTest implements Snippets {
         Assert.assertEquals(target.wordKind, cast.stamp().getStackKind());
 
         IndexedLocationNode location = (IndexedLocationNode) read.location();
-        Assert.assertEquals(kind, location.getValueKind());
         Assert.assertEquals(locationIdentity, location.getLocationIdentity());
         Assert.assertEquals(1, location.getIndexScaling());
 
@@ -131,7 +130,7 @@ public class PointerTest extends GraalCompilerTest implements Snippets {
         Assert.assertEquals(read, ret.result());
     }
 
-    private void assertWrite(StructuredGraph graph, Kind kind, boolean indexConvert, LocationIdentity locationIdentity) {
+    private void assertWrite(StructuredGraph graph, boolean indexConvert, LocationIdentity locationIdentity) {
         WordCastNode cast = (WordCastNode) graph.start().next();
 
         JavaWriteNode write = (JavaWriteNode) cast.next();
@@ -143,7 +142,6 @@ public class PointerTest extends GraalCompilerTest implements Snippets {
         Assert.assertEquals(target.wordKind, cast.stamp().getStackKind());
 
         IndexedLocationNode location = (IndexedLocationNode) write.location();
-        Assert.assertEquals(kind, location.getValueKind());
         Assert.assertEquals(locationIdentity, location.getLocationIdentity());
         Assert.assertEquals(1, location.getIndexScaling());
 

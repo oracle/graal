@@ -117,7 +117,7 @@ public class KlassLayoutHelperNode extends FloatingGuardedNode implements Canoni
         if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.HIGH_TIER) {
             return;
         }
-        LocationNode location = ConstantLocationNode.create(KLASS_LAYOUT_HELPER_LOCATION, Kind.Int, config.klassLayoutHelperOffset, graph());
+        LocationNode location = ConstantLocationNode.create(KLASS_LAYOUT_HELPER_LOCATION, config.klassLayoutHelperOffset, graph());
         assert !klass.isConstant();
         graph().replaceFloating(this, graph().unique(FloatingReadNode.create(klass, location, null, stamp(), getGuard(), BarrierType.NONE)));
     }

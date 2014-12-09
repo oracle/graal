@@ -1228,10 +1228,10 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
         int intSize = providers.getCodeCache().getTarget().arch.getSizeInBytes(Kind.Int);
         if (regNumber >= HSAIL.s0.number && regNumber <= HSAIL.s31.number) {
             long offset = config.hsailFrameHeaderSize + intSize * (regNumber - HSAIL.s0.number);
-            location = ConstantLocationNode.create(FINAL_LOCATION, valueKind, offset, hostGraph);
+            location = ConstantLocationNode.create(FINAL_LOCATION, offset, hostGraph);
         } else if (regNumber >= HSAIL.d0.number && regNumber <= HSAIL.d15.number) {
             long offset = config.hsailFrameHeaderSize + intSize * numSRegs + longSize * (regNumber - HSAIL.d0.number);
-            location = ConstantLocationNode.create(FINAL_LOCATION, valueKind, offset, hostGraph);
+            location = ConstantLocationNode.create(FINAL_LOCATION, offset, hostGraph);
         } else {
             throw GraalInternalError.shouldNotReachHere("unknown hsail register: " + regNumber);
         }
@@ -1246,7 +1246,7 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
             int longSize = providers.getCodeCache().getTarget().arch.getSizeInBytes(Kind.Long);
             int intSize = providers.getCodeCache().getTarget().arch.getSizeInBytes(Kind.Int);
             long offset = config.hsailFrameHeaderSize + (intSize * numSRegs) + (longSize * numDRegs) + HSAIL.getStackOffsetStart(slot, slotSizeInBits);
-            LocationNode location = ConstantLocationNode.create(FINAL_LOCATION, valueKind, offset, hostGraph);
+            LocationNode location = ConstantLocationNode.create(FINAL_LOCATION, offset, hostGraph);
             ValueNode valueNode = hostGraph.unique(FloatingReadNode.create(hsailFrame, location, null, StampFactory.forKind(valueKind)));
             return valueNode;
         } else {

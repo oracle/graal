@@ -211,7 +211,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     protected void lowerArrayLengthNode(ArrayLengthNode arrayLengthNode, LoweringTool tool) {
         StructuredGraph graph = arrayLengthNode.graph();
         ValueNode array = arrayLengthNode.array();
-        ConstantLocationNode location = ConstantLocationNode.create(ARRAY_LENGTH_LOCATION, Kind.Int, arrayLengthOffset(), graph);
+        ConstantLocationNode location = ConstantLocationNode.create(ARRAY_LENGTH_LOCATION, arrayLengthOffset(), graph);
 
         ReadNode arrayLengthRead = graph.add(ReadNode.create(array, location, StampFactory.positiveInt(), BarrierType.NONE));
         arrayLengthRead.setGuard(createNullCheck(array, arrayLengthNode, tool));
@@ -243,7 +243,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     protected void lowerAtomicReadAndWriteNode(AtomicReadAndWriteNode n) {
         StructuredGraph graph = n.graph();
         Kind valueKind = n.getValueKind();
-        LocationNode location = IndexedLocationNode.create(n.getLocationIdentity(), valueKind, 0, n.offset(), graph, 1);
+        LocationNode location = IndexedLocationNode.create(n.getLocationIdentity(), 0, n.offset(), graph, 1);
 
         ValueNode newValue = implicitStoreConvert(graph, valueKind, n.newValue());
 
@@ -312,7 +312,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
 
     protected void lowerJavaReadNode(JavaReadNode read) {
         StructuredGraph graph = read.graph();
-        Kind valueKind = read.location().getValueKind();
+        Kind valueKind = read.getReadKind();
         Stamp loadStamp = loadStamp(read.stamp(), valueKind, read.isCompressible());
 
         ReadNode memoryRead = graph.add(ReadNode.create(read.object(), read.location(), loadStamp, read.getBarrierType()));
@@ -324,7 +324,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
 
     protected void lowerJavaWriteNode(JavaWriteNode write) {
         StructuredGraph graph = write.graph();
-        Kind valueKind = write.location().getValueKind();
+        Kind valueKind = write.getWriteKind();
         ValueNode value = implicitStoreConvert(graph, valueKind, write.value(), write.isCompressible());
 
         WriteNode memoryWrite = graph.add(WriteNode.create(write.object(), value, write.location(), write.getBarrierType(), write.isInitialization()));
@@ -366,7 +366,6 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                         Kind entryKind = virtual.entryKind(i);
 
                         // Truffle requires some leniency in terms of what can be put where:
-                        Kind accessKind = valueKind.getStackKind() == entryKind.getStackKind() ? entryKind : valueKind;
                         assert valueKind.getStackKind() == entryKind.getStackKind() ||
                                         (valueKind == Kind.Long || valueKind == Kind.Double || (valueKind == Kind.Int && virtual instanceof VirtualArrayNode));
                         ConstantLocationNode location = null;
@@ -375,11 +374,11 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                             ResolvedJavaField field = ((VirtualInstanceNode) virtual).field(i);
                             long offset = fieldOffset(field);
                             if (offset >= 0) {
-                                location = ConstantLocationNode.create(initLocationIdentity(), accessKind, offset, graph);
+                                location = ConstantLocationNode.create(initLocationIdentity(), offset, graph);
                                 barrierType = fieldInitializationBarrier(entryKind);
                             }
                         } else {
-                            location = ConstantLocationNode.create(initLocationIdentity(), accessKind, arrayBaseOffset(entryKind) + i * arrayScalingFactor(entryKind), graph);
+                            location = ConstantLocationNode.create(initLocationIdentity(), arrayBaseOffset(entryKind) + i * arrayScalingFactor(entryKind), graph);
                             barrierType = arrayInitializationBarrier(entryKind);
                         }
                         if (location != null) {
@@ -583,7 +582,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         int offset = fieldOffset(field);
         if (offset >= 0) {
             LocationIdentity loc = initialization ? initLocationIdentity() : field;
-            return ConstantLocationNode.create(loc, field.getKind(), offset, graph);
+            return ConstantLocationNode.create(loc, offset, graph);
         } else {
             return null;
         }
@@ -612,7 +611,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         ValueNode offset = offsetNode;
         if (offset.isConstant()) {
             long offsetValue = offset.asJavaConstant().asLong();
-            return ConstantLocationNode.create(locationIdentity, accessKind, offsetValue, offset.graph());
+            return ConstantLocationNode.create(locationIdentity, offsetValue, offset.graph());
         }
 
         long displacement = 0;
@@ -673,12 +672,12 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             // If we were using sign extended values before restore the sign extension.
             offset = offset.graph().addOrUnique(SignExtendNode.create(offset, 64));
         }
-        return IndexedLocationNode.create(locationIdentity, accessKind, displacement, offset, offset.graph(), indexScaling);
+        return IndexedLocationNode.create(locationIdentity, displacement, offset, offset.graph(), indexScaling);
     }
 
     public IndexedLocationNode createArrayLocation(Graph graph, Kind elementKind, ValueNode index, boolean initialization) {
         LocationIdentity loc = initialization ? initLocationIdentity() : NamedLocationIdentity.getArrayLocation(elementKind);
-        return IndexedLocationNode.create(loc, elementKind, arrayBaseOffset(elementKind), index, graph, arrayScalingFactor(elementKind));
+        return IndexedLocationNode.create(loc, arrayBaseOffset(elementKind), index, graph, arrayScalingFactor(elementKind));
     }
 
     protected GuardingNode createBoundsCheck(AccessIndexedNode n, LoweringTool tool) {
@@ -687,7 +686,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         ValueNode arrayLength = readArrayLength(array, tool.getConstantReflection());
         if (arrayLength == null) {
             Stamp stamp = StampFactory.positiveInt();
-            ReadNode readArrayLength = graph.add(ReadNode.create(array, ConstantLocationNode.create(ARRAY_LENGTH_LOCATION, Kind.Int, arrayLengthOffset(), graph), stamp, BarrierType.NONE));
+            ReadNode readArrayLength = graph.add(ReadNode.create(array, ConstantLocationNode.create(ARRAY_LENGTH_LOCATION, arrayLengthOffset(), graph), stamp, BarrierType.NONE));
             graph.addBeforeFixed(n, readArrayLength);
             readArrayLength.setGuard(createNullCheck(array, readArrayLength, tool));
             arrayLength = readArrayLength;
@@ -715,8 +714,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     }
 
     @Override
-    public ValueNode reconstructArrayIndex(LocationNode location) {
-        Kind elementKind = location.getValueKind();
+    public ValueNode reconstructArrayIndex(Kind elementKind, LocationNode location) {
         assert location.getLocationIdentity().equals(NamedLocationIdentity.getArrayLocation(elementKind));
 
         long base;
