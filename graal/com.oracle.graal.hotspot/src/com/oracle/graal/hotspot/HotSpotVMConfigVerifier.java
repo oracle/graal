@@ -84,16 +84,15 @@ final class HotSpotVMConfigVerifier extends ClassVisitor {
         this.sourceFile = source;
     }
 
-    void verify(boolean condition, String name, String signature, String message) {
+    void verify(boolean condition, String message) {
         if (!condition) {
-            error(message, name, signature);
+            error(message);
         }
     }
 
-    void error(String message, String name, String signature) {
-        String errorMessage = format(
-                        "%s:%d: Use of Unsafe in %s.%s%s is not allowed in the context of compilation replay. The unsafe access should be moved into the %s constructor and the result cached in a field that will be returned by %s%s%n",
-                        sourceFile, lineNo, HotSpotVMConfig.class.getSimpleName(), name, signature, message, HotSpotVMConfig.class.getSimpleName(), name, signature);
+    void error(String message) {
+        String errorMessage = format("%s:%d: %s is not allowed in the context of compilation replay. The unsafe access should be moved into the %s constructor and the result cached in a field",
+                        sourceFile, lineNo, message, HotSpotVMConfig.class.getSimpleName());
         throw new InternalError(errorMessage);
 
     }
@@ -147,7 +146,7 @@ final class HotSpotVMConfigVerifier extends ClassVisitor {
                 @Override
                 public void visitMethodInsn(int opcode, String owner, String methodName, String methodDesc, boolean itf) {
                     Executable callee = resolveMethod(owner, methodName, methodDesc);
-                    verify(checkInvokeTarget(callee), name, d, "invocation of " + callee);
+                    verify(checkInvokeTarget(callee), "invocation of " + callee);
                 }
             };
         } else {
