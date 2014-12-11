@@ -686,28 +686,7 @@ public abstract class GraalCompilerTest extends GraalTest {
         CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graphToCompile.method(), false);
         Request<CompilationResult> request = new Request<>(graphToCompile, null, cc, installedCodeOwner, getProviders(), getBackend(), getCodeCache().getTarget(), null, getDefaultGraphBuilderSuite(),
                         OptimisticOptimizations.ALL, getProfilingInfo(graphToCompile), getSpeculationLog(), getSuites(), new CompilationResult(), CompilationResultBuilderFactory.Default);
-        return compiler.compile(request);
-    }
-
-    public static final Compiler DEFAULT_COMPILER = new Compiler();
-
-    private static Compiler compiler = DEFAULT_COMPILER;
-
-    public static Compiler getCompiler() {
-        return compiler;
-    }
-
-    public static void setCompiler(Compiler comp) {
-        compiler = comp;
-    }
-
-    /**
-     * Pluggable compiler for servicing a compilation {@link Request}.
-     */
-    public static class Compiler {
-        public <T extends CompilationResult> T compile(Request<T> request) {
-            return GraalCompiler.compile(request);
-        }
+        return GraalCompiler.compile(request);
     }
 
     protected StructuredGraph lastCompiledGraph;
