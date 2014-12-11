@@ -207,6 +207,8 @@ public class CFGPrinterObserver implements DebugDumpHandler {
         if (cfgPrinter != null) {
             cfgPrinter.close();
             cfgPrinter = null;
+            curDecorators = Collections.emptyList();
+            curMethod = null;
         }
     }
 }
