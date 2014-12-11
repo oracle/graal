@@ -82,7 +82,14 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, R
 
     private static Predicate<Void> runtimeAccessCheck;
 
+    /**
+     * Sets a predicate which will be used to assert a valid calling context for a call to
+     * {@link #runtime()}. This is useful for verifying execution scopes that should not make a
+     * static access to {@link HotSpotGraalRuntime}. Such scopes are responsible for resetting the
+     * predicate to null.
+     */
     public static void setRuntimeAccessCheck(Predicate<Void> predicate) {
+        assert runtimeAccessCheck == null || predicate == null : "at most once runtime access check can be active";
         runtimeAccessCheck = predicate;
     }
 
