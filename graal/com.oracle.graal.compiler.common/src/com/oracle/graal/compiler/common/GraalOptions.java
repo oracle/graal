@@ -270,6 +270,9 @@ public final class GraalOptions {
     @Option(help = "Try to avoid emitting code where patching is required")
     public static final OptionValue<Boolean> ImmutableCode = new OptionValue<>(false);
 
+    @Option(help = "Generate position independent code")
+    public static final OptionValue<Boolean> GeneratePIC = new OptionValue<>(false);
+
     @Option(help = "")
     public static final OptionValue<Boolean> CallArrayCopy = new OptionValue<>(true);
 
