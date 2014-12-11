@@ -34,7 +34,7 @@ public final class HotSpotReferenceMap implements ReferenceMap, Serializable {
 
     private static final long serialVersionUID = -1052183095979496819L;
 
-    private static final int BITS_PER_WORD = 3;
+    public static final int BITS_PER_WORD = 3;
 
     /**
      * Contains 3 bits per scalar register, and n*3 bits per n-word vector register (e.g., on a
@@ -165,6 +165,14 @@ public final class HotSpotReferenceMap implements ReferenceMap, Serializable {
         } else {
             assert kind.isValue() : "unknown reference kind " + kind;
         }
+    }
+
+    public BitSet getFrameMap() {
+        return (BitSet) frameRefMap.clone();
+    }
+
+    public BitSet getRegisterMap() {
+        return (BitSet) registerRefMap.clone();
     }
 
     // clear
