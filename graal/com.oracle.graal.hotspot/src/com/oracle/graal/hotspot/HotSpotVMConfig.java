@@ -1554,6 +1554,8 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMConstant(name = "CodeInstaller::POLL_RETURN_NEAR") @Stable public int codeInstallerMarkIdPollReturnNear;
     @HotSpotVMConstant(name = "CodeInstaller::POLL_FAR") @Stable public int codeInstallerMarkIdPollFar;
     @HotSpotVMConstant(name = "CodeInstaller::POLL_RETURN_FAR") @Stable public int codeInstallerMarkIdPollReturnFar;
+    @HotSpotVMConstant(name = "CodeInstaller::CARD_TABLE_SHIFT") @Stable public int codeInstallerMarkIdCardTableShift;
+    @HotSpotVMConstant(name = "CodeInstaller::CARD_TABLE_ADDRESS") @Stable public int codeInstallerMarkIdCardTableAddress;
     @HotSpotVMConstant(name = "CodeInstaller::INVOKE_INVALID") @Stable public int codeInstallerMarkIdInvokeInvalid;
 
     public boolean check() {
