@@ -1039,6 +1039,18 @@ public abstract class SPARCAssembler extends Assembler {
             this(rd.encoding(), op3.getValue(), rs1.encoding(), 1, getXBit(op3), 0, 0, simm13);
         }
 
+        /**
+         * Used for trap on Integer Condition Codes (Tcc)
+         *
+         * @param op3
+         * @param rs1
+         * @param simm13
+         * @param cf
+         */
+        public Fmt10(Op3s op3, Register rs1, int simm13, ConditionFlag cf) {
+            this(cf.getValue(), op3.getValue(), rs1.encoding(), 1, getXBit(op3), 0, 0, simm13);
+        }
+
         public Fmt10(Op3s op3) {
             this(0, op3.getValue(), 0, 0, getXBit(op3), 0, 0, 0);
         }
@@ -1261,16 +1273,17 @@ public abstract class SPARCAssembler extends Assembler {
         }
     }
 
-    public static class Fmt4a {
-
-        public Fmt4a(SPARCAssembler masm, int op, int op3, int cc, int rs1, int regOrImmediate, int rd) {
-            assert op == 2;
-            assert rs1 >= 0 && rs1 < 0x20;
-            assert rd >= 0 && rd < 0x10;
-
-            masm.emitInt(op << 30 | rd << 25 | op3 << 19 | rs1 << 14 | ((cc << 11) & 0x000001800) | regOrImmediate);
-        }
-    }
+// public static class Fmt4a {
+//
+// public Fmt4a(SPARCAssembler masm, int op, int op3, int cc, int rs1, int regOrImmediate, int rd) {
+// assert op == 2;
+// assert rs1 >= 0 && rs1 < 0x20;
+// assert rd >= 0 && rd < 0x10;
+//
+// masm.emitInt(op << 30 | rd << 25 | op3 << 19 | rs1 << 14 | ((cc << 11) & 0x000001800) |
+// regOrImmediate);
+// }
+// }
 
     // @formatter:off
     /**
@@ -4396,14 +4409,17 @@ public abstract class SPARCAssembler extends Assembler {
         }
     }
 
-    public static class Ta extends Fmt4a {
+    public static class Ta extends Fmt10 {
 
-        public Ta(SPARCAssembler asm, CC cc, Register src1, int trap) {
-            super(asm, Ops.ArithOp.getValue(), Op3s.Trap.getValue(), cc.getValue(), src1.encoding(), trap, ConditionFlag.Always.getValue());
+        public Ta(int trap) {
+            super(Op3s.Trap, g0, trap, ConditionFlag.Always);
         }
+    }
 
-        public Ta(SPARCAssembler asm, CC cc, Register src1, Register src2) {
-            super(asm, Ops.ArithOp.getValue(), Op3s.Trap.getValue(), cc.getValue(), src1.encoding(), src2.encoding(), ConditionFlag.Always.getValue());
+    public static class Tcc extends Fmt10 {
+
+        public Tcc(ConditionFlag flag, int trap) {
+            super(Op3s.Trap, g0, trap, flag);
         }
     }
 
@@ -4418,127 +4434,6 @@ public abstract class SPARCAssembler extends Assembler {
         }
     }
 
-    public static class Tcc extends Fmt4a {
-
-        public Tcc(SPARCAssembler asm, CC cc, Register src1, int trap) {
-            super(asm, Ops.ArithOp.getValue(), Op3s.Trap.getValue(), cc.getValue(), src1.encoding(), trap, ConditionFlag.CarryClear.getValue());
-        }
-
-        public Tcc(SPARCAssembler asm, CC cc, Register src1, Register src2) {
-            super(asm, Ops.ArithOp.getValue(), Op3s.Trap.getValue(), cc.getValue(), src1.encoding(), src2.encoding(), ConditionFlag.CarryClear.getValue());
-        }
-    }
-
-    public static class Tcs extends Fmt4a {
-
-        public Tcs(SPARCAssembler asm, CC cc, Register src1, int trap) {
-            super(asm, Ops.ArithOp.getValue(), Op3s.Trap.getValue(), cc.getValue(), src1.encoding(), trap, ConditionFlag.CarrySet.getValue());
-        }
-
-        public Tcs(SPARCAssembler asm, CC cc, Register src1, Register src2) {
-            super(asm, Ops.ArithOp.getValue(), Op3s.Trap.getValue(), cc.getValue(), src1.encoding(), src2.encoding(), ConditionFlag.CarrySet.getValue());
-        }
-    }
-
-    public static class Te extends Fmt4a {
-
-        public Te(SPARCAssembler asm, CC cc, Register src1, int trap) {
-            super(asm, Ops.ArithOp.getValue(), Op3s.Trap.getValue(), cc.getValue(), src1.encoding(), trap, ConditionFlag.Equal.getValue());
-        }
-
-        public Te(SPARCAssembler asm, CC cc, Register src1, Register src2) {
-            super(asm, Ops.ArithOp.getValue(), Op3s.Trap.getValue(), cc.getValue(), src1.encoding(), src2.encoding(), ConditionFlag.Equal.getValue());
-        }
-    }
-
-    public static class Tg extends Fmt4a {
-
-        public Tg(SPARCAssembler asm, CC cc, Register src1, int trap) {
-            super(asm, Ops.ArithOp.getValue(), Op3s.Trap.getValue(), cc.getValue(), src1.encoding(), trap, ConditionFlag.Greater.getValue());
-        }
-
-        public Tg(SPARCAssembler asm, CC cc, Register src1, Register src2) {
-            super(asm, Ops.ArithOp.getValue(), Op3s.Trap.getValue(), cc.getValue(), src1.encoding(), src2.encoding(), ConditionFlag.Greater.getValue());
-        }
-    }
-
-    public static class Tge extends Fmt4a {
-
-        public Tge(SPARCAssembler asm, CC cc, Register src1, int trap) {
-            super(asm, Ops.ArithOp.getValue(), Op3s.Trap.getValue(), cc.getValue(), src1.encoding(), trap, ConditionFlag.GreaterEqual.getValue());
-        }
-
-        public Tge(SPARCAssembler asm, CC cc, Register src1, Register src2) {
-            super(asm, Ops.ArithOp.getValue(), Op3s.Trap.getValue(), cc.getValue(), src1.encoding(), src2.encoding(), ConditionFlag.GreaterEqual.getValue());
-        }
-    }
-
-    public static class Tle extends Fmt4a {
-
-        public Tle(SPARCAssembler asm, CC cc, Register src1, int trap) {
-            super(asm, Ops.ArithOp.getValue(), Op3s.Trap.getValue(), cc.getValue(), src1.encoding(), trap, ConditionFlag.LessEqual.getValue());
-        }
-
-        public Tle(SPARCAssembler asm, CC cc, Register src1, Register src2) {
-            super(asm, Ops.ArithOp.getValue(), Op3s.Trap.getValue(), cc.getValue(), src1.encoding(), src2.encoding(), ConditionFlag.LessEqual.getValue());
-        }
-    }
-
-    public static class Tleu extends Fmt4a {
-
-        public Tleu(SPARCAssembler asm, CC cc, Register src1, int trap) {
-            super(asm, Ops.ArithOp.getValue(), Op3s.Trap.getValue(), cc.getValue(), src1.encoding(), trap, ConditionFlag.LessEqualUnsigned.getValue());
-        }
-
-        public Tleu(SPARCAssembler asm, CC cc, Register src1, Register src2) {
-            super(asm, Ops.ArithOp.getValue(), Op3s.Trap.getValue(), cc.getValue(), src1.encoding(), src2.encoding(), ConditionFlag.LessEqualUnsigned.getValue());
-        }
-    }
-
-    public static class Tn extends Fmt4a {
-
-        public Tn(SPARCAssembler asm, CC cc, Register src1, int trap) {
-            super(asm, Ops.ArithOp.getValue(), Op3s.Trap.getValue(), cc.getValue(), src1.encoding(), trap, ConditionFlag.Never.getValue());
-        }
-
-        public Tn(SPARCAssembler asm, CC cc, Register src1, Register src2) {
-            super(asm, Ops.ArithOp.getValue(), Op3s.Trap.getValue(), cc.getValue(), src1.encoding(), src2.encoding(), ConditionFlag.Never.getValue());
-        }
-    }
-
-    public static class Tne extends Fmt4a {
-
-        public Tne(SPARCAssembler asm, CC cc, Register src1, int trap) {
-            super(asm, Ops.ArithOp.getValue(), Op3s.Trap.getValue(), cc.getValue(), src1.encoding(), trap, ConditionFlag.NotEqual.getValue());
-        }
-
-        public Tne(SPARCAssembler asm, CC cc, Register src1, Register src2) {
-            super(asm, Ops.ArithOp.getValue(), Op3s.Trap.getValue(), cc.getValue(), src1.encoding(), src2.encoding(), ConditionFlag.NotEqual.getValue());
-        }
-    }
-
-    public static class Tneg extends Fmt4a {
-
-        public Tneg(SPARCAssembler asm, CC cc, Register src1, int trap) {
-            super(asm, Ops.ArithOp.getValue(), Op3s.Trap.getValue(), cc.getValue(), src1.encoding(), trap, ConditionFlag.Negative.getValue());
-        }
-
-        public Tneg(SPARCAssembler asm, CC cc, Register src1, Register src2) {
-            super(asm, Ops.ArithOp.getValue(), Op3s.Trap.getValue(), cc.getValue(), src1.encoding(), src2.encoding(), ConditionFlag.Negative.getValue());
-        }
-    }
-
-    public static class Tpos extends Fmt4a {
-
-        public Tpos(SPARCAssembler asm, CC cc, Register src1, int trap) {
-            super(asm, Ops.ArithOp.getValue(), Op3s.Trap.getValue(), cc.getValue(), src1.encoding(), trap, ConditionFlag.Positive.getValue());
-        }
-
-        public Tpos(SPARCAssembler asm, CC cc, Register src1, Register src2) {
-            super(asm, Ops.ArithOp.getValue(), Op3s.Trap.getValue(), cc.getValue(), src1.encoding(), src2.encoding(), ConditionFlag.Positive.getValue());
-        }
-    }
-
     public static class Tsubcc extends Fmt10 {
 
         public Tsubcc(Register src1, int simm13, Register dst) {
@@ -4547,28 +4442,6 @@ public abstract class SPARCAssembler extends Assembler {
 
         public Tsubcc(Register src1, Register src2, Register dst) {
             super(Op3s.Tsubcc, src1, src2, dst);
-        }
-    }
-
-    public static class Tvc extends Fmt4a {
-
-        public Tvc(SPARCAssembler asm, CC cc, Register src1, int trap) {
-            super(asm, Ops.ArithOp.getValue(), Op3s.Trap.getValue(), cc.getValue(), src1.encoding(), trap, ConditionFlag.OverflowClear.getValue());
-        }
-
-        public Tvc(SPARCAssembler asm, CC cc, Register src1, Register src2) {
-            super(asm, Ops.ArithOp.getValue(), Op3s.Trap.getValue(), cc.getValue(), src1.encoding(), src2.encoding(), ConditionFlag.OverflowClear.getValue());
-        }
-    }
-
-    public static class Tvs extends Fmt4a {
-
-        public Tvs(SPARCAssembler asm, CC cc, Register src1, int trap) {
-            super(asm, Ops.ArithOp.getValue(), Op3s.Trap.getValue(), cc.getValue(), src1.encoding(), trap, ConditionFlag.OverflowSet.getValue());
-        }
-
-        public Tvs(SPARCAssembler asm, CC cc, Register src1, Register src2) {
-            super(asm, Ops.ArithOp.getValue(), Op3s.Trap.getValue(), cc.getValue(), src1.encoding(), src2.encoding(), ConditionFlag.OverflowSet.getValue());
         }
     }
 
