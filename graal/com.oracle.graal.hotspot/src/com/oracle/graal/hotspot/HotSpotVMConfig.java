@@ -74,7 +74,29 @@ public class HotSpotVMConfig extends CompilerObject {
         oopEncoding = new CompressEncoding(narrowOopBase, narrowOopShift, logMinObjAlignment());
         klassEncoding = new CompressEncoding(narrowKlassBase, narrowKlassShift, logKlassAlignment);
 
+        codeCacheLowBoundary = unsafe.getAddress(codeCacheHeap + codeHeapMemoryOffset + virtualSpaceLowBoundaryOffset);
+        codeCacheHighBoundary = unsafe.getAddress(codeCacheHeap + codeHeapMemoryOffset + virtualSpaceHighBoundaryOffset);
+
+        final long barrierSetAddress = unsafe.getAddress(universeCollectedHeap + collectedHeapBarrierSetOffset);
+        final int kind = unsafe.getInt(barrierSetAddress + barrierSetKindOffset);
+        if ((kind == barrierSetCardTableModRef) || (kind == barrierSetCardTableExtension) || (kind == barrierSetG1SATBCT) || (kind == barrierSetG1SATBCTLogging)) {
+            final long base = unsafe.getAddress(barrierSetAddress + cardTableModRefBSByteMapBaseOffset);
+            assert base != 0 : "unexpected byte_map_base: " + base;
+            cardtableStartAddress = base;
+            cardtableShift = cardTableModRefBSCardShift;
+        } else if ((kind == barrierSetModRef) || (kind == barrierSetOther)) {
+            // No post barriers
+            cardtableStartAddress = 0;
+            cardtableShift = 0;
+        } else {
+            cardtableStartAddress = -1;
+            cardtableShift = -1;
+        }
+
+        inlineCacheMissStub = inlineCacheMissBlob + unsafe.getInt(inlineCacheMissBlob + codeBlobCodeOffsetOffset);
+
         assert check();
+        assert HotSpotVMConfigVerifier.check();
     }
 
     /**
@@ -1205,32 +1227,21 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMValue(expression = "(jbyte)CardTableModRefBS::dirty_card_val()") @Stable public byte dirtyCardValue;
     @HotSpotVMValue(expression = "(jbyte)G1SATBCardTableModRefBS::g1_young_card_val()") @Stable public byte g1YoungCardValue;
 
+    private final long cardtableStartAddress;
+    private final int cardtableShift;
+
     public long cardtableStartAddress() {
-        final long barrierSetAddress = unsafe.getAddress(universeCollectedHeap + collectedHeapBarrierSetOffset);
-        final int kind = unsafe.getInt(barrierSetAddress + barrierSetKindOffset);
-        if ((kind == barrierSetCardTableModRef) || (kind == barrierSetCardTableExtension) || (kind == barrierSetG1SATBCT) || (kind == barrierSetG1SATBCTLogging)) {
-            final long base = unsafe.getAddress(barrierSetAddress + cardTableModRefBSByteMapBaseOffset);
-            assert base != 0 : "unexpected byte_map_base: " + base;
-            return base;
+        if (cardtableStartAddress == -1) {
+            throw GraalInternalError.shouldNotReachHere();
         }
-        if ((kind == barrierSetModRef) || (kind == barrierSetOther)) {
-            // No post barriers
-            return 0;
-        }
-        throw GraalInternalError.shouldNotReachHere("kind: " + kind);
+        return cardtableStartAddress;
     }
 
     public int cardtableShift() {
-        final long barrierSetAddress = unsafe.getAddress(universeCollectedHeap + collectedHeapBarrierSetOffset);
-        final int kind = unsafe.getInt(barrierSetAddress + barrierSetKindOffset);
-        if ((kind == barrierSetCardTableModRef) || (kind == barrierSetCardTableExtension) || (kind == barrierSetG1SATBCT) || (kind == barrierSetG1SATBCTLogging)) {
-            return cardTableModRefBSCardShift;
+        if (cardtableShift == -1) {
+            throw GraalInternalError.shouldNotReachHere();
         }
-        if ((kind == barrierSetModRef) || (kind == barrierSetOther)) {
-            // No post barriers
-            return 0;
-        }
-        throw GraalInternalError.shouldNotReachHere("kind: " + kind);
+        return cardtableShift;
     }
 
     @HotSpotVMField(name = "os::_polling_page", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long safepointPollingAddress;
@@ -1367,8 +1378,10 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMField(name = "CodeBlob::_code_offset", type = "int", get = HotSpotVMField.Type.OFFSET) @Stable private int codeBlobCodeOffsetOffset;
     @HotSpotVMField(name = "SharedRuntime::_ic_miss_blob", type = "RuntimeStub*", get = HotSpotVMField.Type.VALUE) @Stable private long inlineCacheMissBlob;
 
+    private final long inlineCacheMissStub;
+
     public long inlineCacheMissStub() {
-        return inlineCacheMissBlob + unsafe.getInt(inlineCacheMissBlob + codeBlobCodeOffsetOffset);
+        return inlineCacheMissStub;
     }
 
     @HotSpotVMField(name = "CodeCache::_heap", type = "CodeHeap*", get = HotSpotVMField.Type.VALUE) @Stable private long codeCacheHeap;
@@ -1376,18 +1389,21 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMField(name = "VirtualSpace::_low_boundary", type = "char*", get = HotSpotVMField.Type.OFFSET) @Stable private int virtualSpaceLowBoundaryOffset;
     @HotSpotVMField(name = "VirtualSpace::_high_boundary", type = "char*", get = HotSpotVMField.Type.OFFSET) @Stable private int virtualSpaceHighBoundaryOffset;
 
+    private final long codeCacheLowBoundary;
+    private final long codeCacheHighBoundary;
+
     /**
      * @return CodeCache::_heap-&gt;_memory._low_boundary
      */
     public long codeCacheLowBoundary() {
-        return unsafe.getAddress(codeCacheHeap + codeHeapMemoryOffset + virtualSpaceLowBoundaryOffset);
+        return codeCacheLowBoundary;
     }
 
     /**
      * @return CodeCache::_heap-&gt;_memory._high_boundary
      */
     public long codeCacheHighBoundary() {
-        return unsafe.getAddress(codeCacheHeap + codeHeapMemoryOffset + virtualSpaceHighBoundaryOffset);
+        return codeCacheHighBoundary;
     }
 
     @HotSpotVMField(name = "StubRoutines::_aescrypt_encryptBlock", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long aescryptEncryptBlockStub;
@@ -1538,6 +1554,8 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMConstant(name = "CodeInstaller::POLL_RETURN_NEAR") @Stable public int codeInstallerMarkIdPollReturnNear;
     @HotSpotVMConstant(name = "CodeInstaller::POLL_FAR") @Stable public int codeInstallerMarkIdPollFar;
     @HotSpotVMConstant(name = "CodeInstaller::POLL_RETURN_FAR") @Stable public int codeInstallerMarkIdPollReturnFar;
+    @HotSpotVMConstant(name = "CodeInstaller::CARD_TABLE_SHIFT") @Stable public int codeInstallerMarkIdCardTableShift;
+    @HotSpotVMConstant(name = "CodeInstaller::CARD_TABLE_ADDRESS") @Stable public int codeInstallerMarkIdCardTableAddress;
     @HotSpotVMConstant(name = "CodeInstaller::INVOKE_INVALID") @Stable public int codeInstallerMarkIdInvokeInvalid;
 
     public boolean check() {

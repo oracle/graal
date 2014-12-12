@@ -810,6 +810,16 @@ public class HotSpotReplacementsUtil {
     public static native int identityHashCode(@ConstantNodeParameter ForeignCallDescriptor descriptor, Object object);
 
     @Fold
+    public static boolean isImmutableCode() {
+        return GraalOptions.ImmutableCode.getValue();
+    }
+
+    @Fold
+    public static boolean generatePIC() {
+        return GraalOptions.GeneratePIC.getValue();
+    }
+
+    @Fold
     public static int verifiedEntryPointOffset() {
         return config().nmethodEntryOffset;
     }

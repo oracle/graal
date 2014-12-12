@@ -41,7 +41,6 @@ import com.oracle.graal.nodes.type.*;
 @NodeInfo(nameTemplate = "IdxLoc {p#locationIdentity/s}")
 public class IndexedLocationNode extends LocationNode implements Canonicalizable {
 
-    protected final Kind valueKind;
     protected final LocationIdentity locationIdentity;
     protected final long displacement;
     @Input ValueNode index;
@@ -65,29 +64,22 @@ public class IndexedLocationNode extends LocationNode implements Canonicalizable
         return indexScaling;
     }
 
-    public static IndexedLocationNode create(LocationIdentity identity, Kind kind, long displacement, ValueNode index, Graph graph, int indexScaling) {
-        return graph.unique(IndexedLocationNode.create(identity, kind, displacement, index, indexScaling));
+    public static IndexedLocationNode create(LocationIdentity identity, long displacement, ValueNode index, Graph graph, int indexScaling) {
+        return graph.unique(IndexedLocationNode.create(identity, displacement, index, indexScaling));
     }
 
-    public static IndexedLocationNode create(LocationIdentity identity, Kind kind, long displacement, ValueNode index, int indexScaling) {
-        return new IndexedLocationNode(identity, kind, displacement, index, indexScaling);
+    public static IndexedLocationNode create(LocationIdentity identity, long displacement, ValueNode index, int indexScaling) {
+        return new IndexedLocationNode(identity, displacement, index, indexScaling);
     }
 
-    protected IndexedLocationNode(LocationIdentity identity, Kind kind, long displacement, ValueNode index, int indexScaling) {
+    protected IndexedLocationNode(LocationIdentity identity, long displacement, ValueNode index, int indexScaling) {
         super(StampFactory.forVoid());
         assert index != null;
         assert indexScaling != 0;
-        assert kind != Kind.Illegal && kind != Kind.Void;
-        this.valueKind = kind;
         this.locationIdentity = identity;
         this.index = index;
         this.displacement = displacement;
         this.indexScaling = indexScaling;
-    }
-
-    @Override
-    public Kind getValueKind() {
-        return valueKind;
     }
 
     @Override
@@ -98,7 +90,7 @@ public class IndexedLocationNode extends LocationNode implements Canonicalizable
     @Override
     public Node canonical(CanonicalizerTool tool) {
         if (index.isConstant()) {
-            return ConstantLocationNode.create(getLocationIdentity(), getValueKind(), index.asJavaConstant().asLong() * indexScaling + displacement);
+            return ConstantLocationNode.create(getLocationIdentity(), index.asJavaConstant().asLong() * indexScaling + displacement);
         }
         return this;
     }

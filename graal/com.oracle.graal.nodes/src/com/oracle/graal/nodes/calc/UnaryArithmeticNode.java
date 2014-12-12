@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes.calc;
 
+import java.io.*;
 import java.util.function.*;
 
 import com.oracle.graal.compiler.common.type.*;
@@ -34,9 +35,12 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public abstract class UnaryArithmeticNode<OP> extends UnaryNode implements ArithmeticLIRLowerable {
 
-    protected final Function<ArithmeticOpTable, UnaryOp<OP>> getOp;
+    protected interface SerializableUnaryFunction<T> extends Function<ArithmeticOpTable, UnaryOp<T>>, Serializable {
+    }
 
-    protected UnaryArithmeticNode(Function<ArithmeticOpTable, UnaryOp<OP>> getOp, ValueNode value) {
+    protected final SerializableUnaryFunction<OP> getOp;
+
+    protected UnaryArithmeticNode(SerializableUnaryFunction<OP> getOp, ValueNode value) {
         super(getOp.apply(ArithmeticOpTable.forStamp(value.stamp())).foldStamp(value.stamp()), value);
         this.getOp = getOp;
     }

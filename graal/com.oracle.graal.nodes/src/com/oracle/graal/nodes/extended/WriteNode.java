@@ -23,12 +23,12 @@
 package com.oracle.graal.nodes.extended;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.LocationNode.Location;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.virtual.*;
 
 /**
  * Writes a given {@linkplain #value() value} a {@linkplain FixedAccessNode memory location}.
@@ -79,18 +79,7 @@ public class WriteNode extends AbstractWriteNode implements LIRLowerable, Simpli
 
     @Override
     public void virtualize(VirtualizerTool tool) {
-        if (location() instanceof ConstantLocationNode) {
-            ConstantLocationNode constantLocation = (ConstantLocationNode) location();
-            State state = tool.getObjectState(object());
-            if (state != null && state.getState() == EscapeState.Virtual) {
-                VirtualObjectNode virtual = state.getVirtualObject();
-                int entryIndex = virtual.entryIndexForOffset(constantLocation.getDisplacement());
-                if (entryIndex != -1 && virtual.entryKind(entryIndex) == constantLocation.getValueKind()) {
-                    tool.setVirtualEntry(state, entryIndex, value(), false);
-                    tool.delete();
-                }
-            }
-        }
+        throw GraalInternalError.shouldNotReachHere("unexpected WriteNode before PEA");
     }
 
     public boolean canNullCheck() {

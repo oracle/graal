@@ -70,7 +70,7 @@ public class LoadJavaMirrorWithKlassPhase extends BasePhase<PhaseContext> {
                 Constant klass;
                 LocationNode location;
                 if (type instanceof HotSpotResolvedObjectType) {
-                    location = ConstantLocationNode.create(CLASS_MIRROR_LOCATION, Kind.Object, classMirrorOffset, graph);
+                    location = ConstantLocationNode.create(CLASS_MIRROR_LOCATION, classMirrorOffset, graph);
                     klass = ((HotSpotResolvedObjectType) type).klass();
                 } else {
                     /*
@@ -91,7 +91,7 @@ public class LoadJavaMirrorWithKlassPhase extends BasePhase<PhaseContext> {
                     if (typeField == null) {
                         throw new GraalInternalError("Can't find TYPE field in class");
                     }
-                    location = ConstantLocationNode.create(FINAL_LOCATION, Kind.Object, typeField.offset(), graph);
+                    location = ConstantLocationNode.create(FINAL_LOCATION, typeField.offset(), graph);
                 }
                 ConstantNode klassNode = ConstantNode.forConstant(KlassPointerStamp.klassNonNull(), klass, metaAccess, graph);
 

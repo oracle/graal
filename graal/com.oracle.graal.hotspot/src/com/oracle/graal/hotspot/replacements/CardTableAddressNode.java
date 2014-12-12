@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,27 +20,32 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.common.remote;
+package com.oracle.graal.hotspot.replacements;
 
-import java.util.*;
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.hotspot.*;
+import com.oracle.graal.nodeinfo.*;
+import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.spi.*;
 
-public final class ProxyUtil {
+@NodeInfo
+public class CardTableAddressNode extends FloatingNode implements LIRLowerable {
 
-    public static Class<?>[] getAllInterfaces(Class<?> clazz) {
-        HashSet<Class<?>> interfaces = new HashSet<>();
-        getAllInterfaces(clazz, interfaces);
-        return interfaces.toArray(new Class<?>[interfaces.size()]);
+    public static CardTableAddressNode create() {
+        return new CardTableAddressNode();
     }
 
-    private static void getAllInterfaces(Class<?> clazz, HashSet<Class<?>> interfaces) {
-        for (Class<?> iface : clazz.getInterfaces()) {
-            if (!interfaces.contains(iface)) {
-                interfaces.add(iface);
-                getAllInterfaces(iface, interfaces);
-            }
-        }
-        if (clazz.getSuperclass() != null) {
-            getAllInterfaces(clazz.getSuperclass(), interfaces);
-        }
+    protected CardTableAddressNode() {
+        super(StampFactory.forKind(Kind.Long));
     }
+
+    @Override
+    public void generate(NodeLIRBuilderTool generator) {
+        Value res = ((HotSpotLIRGenerator) generator.getLIRGeneratorTool()).emitCardTableAddress();
+        generator.setResult(this, res);
+    }
+
+    @NodeIntrinsic
+    public static native long cardTableAddress();
 }

@@ -79,21 +79,21 @@ public class ObjectAccessTest extends GraalCompilerTest implements Snippets {
     @Test
     public void testWrite1() {
         for (Kind kind : KINDS) {
-            assertWrite(parseEager("write" + kind.name() + "1"), kind, true, ID);
+            assertWrite(parseEager("write" + kind.name() + "1"), true, ID);
         }
     }
 
     @Test
     public void testWrite2() {
         for (Kind kind : KINDS) {
-            assertWrite(parseEager("write" + kind.name() + "2"), kind, true, ID);
+            assertWrite(parseEager("write" + kind.name() + "2"), true, ID);
         }
     }
 
     @Test
     public void testWrite3() {
         for (Kind kind : KINDS) {
-            assertWrite(parseEager("write" + kind.name() + "3"), kind, true, LocationIdentity.ANY_LOCATION);
+            assertWrite(parseEager("write" + kind.name() + "3"), true, LocationIdentity.ANY_LOCATION);
         }
     }
 
@@ -103,7 +103,6 @@ public class ObjectAccessTest extends GraalCompilerTest implements Snippets {
         Assert.assertEquals(graph.getParameter(0), read.object());
 
         IndexedLocationNode location = (IndexedLocationNode) read.location();
-        Assert.assertEquals(kind, location.getValueKind());
         Assert.assertEquals(locationIdentity, location.getLocationIdentity());
         Assert.assertEquals(1, location.getIndexScaling());
 
@@ -120,14 +119,13 @@ public class ObjectAccessTest extends GraalCompilerTest implements Snippets {
         Assert.assertEquals(read, ret.result());
     }
 
-    private static void assertWrite(StructuredGraph graph, Kind kind, boolean indexConvert, LocationIdentity locationIdentity) {
+    private static void assertWrite(StructuredGraph graph, boolean indexConvert, LocationIdentity locationIdentity) {
         JavaWriteNode write = (JavaWriteNode) graph.start().next();
         Assert.assertEquals(graph.getParameter(2), write.value());
         Assert.assertEquals(graph.getParameter(0), write.object());
         Assert.assertEquals(BytecodeFrame.AFTER_BCI, write.stateAfter().bci);
 
         IndexedLocationNode location = (IndexedLocationNode) write.location();
-        Assert.assertEquals(kind, location.getValueKind());
         Assert.assertEquals(locationIdentity, location.getLocationIdentity());
         Assert.assertEquals(1, location.getIndexScaling());
 

@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.nodes.calc;
 
+import java.io.*;
 import java.util.function.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.compiler.common.type.ArithmeticOpTable.IntegerConvertOp;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
@@ -38,14 +39,16 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public abstract class IntegerConvertNode<OP, REV> extends UnaryNode implements ConvertNode, ArithmeticLIRLowerable {
 
-    protected final Function<ArithmeticOpTable, IntegerConvertOp<OP>> getOp;
-    protected final Function<ArithmeticOpTable, IntegerConvertOp<REV>> getReverseOp;
+    protected final SerializableIntegerConvertFunction<OP> getOp;
+    protected final SerializableIntegerConvertFunction<REV> getReverseOp;
 
     protected final int inputBits;
     protected final int resultBits;
 
-    protected IntegerConvertNode(Function<ArithmeticOpTable, IntegerConvertOp<OP>> getOp, Function<ArithmeticOpTable, IntegerConvertOp<REV>> getReverseOp, int inputBits, int resultBits,
-                    ValueNode input) {
+    protected interface SerializableIntegerConvertFunction<T> extends Function<ArithmeticOpTable, IntegerConvertOp<T>>, Serializable {
+    }
+
+    protected IntegerConvertNode(SerializableIntegerConvertFunction<OP> getOp, SerializableIntegerConvertFunction<REV> getReverseOp, int inputBits, int resultBits, ValueNode input) {
         super(getOp.apply(ArithmeticOpTable.forStamp(input.stamp())).foldStamp(inputBits, resultBits, input.stamp()), input);
         this.getOp = getOp;
         this.getReverseOp = getReverseOp;

@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot.amd64;
 import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
+import com.oracle.graal.hotspot.HotSpotGraalRuntime;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.amd64.*;
@@ -66,14 +67,31 @@ public class AMD64HotSpotCompare {
                     masm.cmpq(asRegister(x), patch);
                 }
             } else if (y instanceof HotSpotMetaspaceConstant) {
+                boolean isImmutable = GraalOptions.ImmutableCode.getValue();
+                boolean generatePIC = GraalOptions.GeneratePIC.getValue();
                 if (y.getKind() == Kind.Int) {
                     // compressed metaspace pointer
                     crb.recordInlineDataInCode(y);
-                    masm.cmpl(asRegister(x), y.asInt());
+                    if (isImmutable && generatePIC) {
+                        Kind hostWordKind = HotSpotGraalRuntime.getHostWordKind();
+                        int alignment = hostWordKind.getBitCount() / Byte.SIZE;
+                        // recordDataReferenceInCode forces the mov to be rip-relative
+                        masm.cmpl(asRegister(x), (AMD64Address) crb.recordDataReferenceInCode(JavaConstant.INT_0, alignment));
+                    } else {
+                        masm.cmpl(asRegister(x), y.asInt());
+                    }
                 } else {
                     // uncompressed metaspace pointer
-                    AMD64Address patch = (AMD64Address) crb.recordDataReferenceInCode(y, 8);
-                    masm.cmpq(asRegister(x), patch);
+                    if (isImmutable && generatePIC) {
+                        crb.recordInlineDataInCode(y);
+                        Kind hostWordKind = HotSpotGraalRuntime.getHostWordKind();
+                        int alignment = hostWordKind.getBitCount() / Byte.SIZE;
+                        // recordDataReferenceInCode forces the mov to be rip-relative
+                        masm.cmpq(asRegister(x), (AMD64Address) crb.recordDataReferenceInCode(JavaConstant.INT_0, alignment));
+                    } else {
+                        AMD64Address patch = (AMD64Address) crb.recordDataReferenceInCode(y, 8);
+                        masm.cmpq(asRegister(x), patch);
+                    }
                 }
             } else {
                 throw GraalInternalError.shouldNotReachHere();

@@ -211,6 +211,20 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         append(new AMD64HotSpotLeaveUnpackFramesStackFrameOp(threadRegister, config.threadLastJavaSpOffset(), config.threadLastJavaPcOffset(), config.threadLastJavaFpOffset(), saveRegisterOp));
     }
 
+    @Override
+    public Value emitCardTableShift() {
+        Variable result = newVariable(LIRKind.value(Kind.Long));
+        append(new AMD64HotSpotCardTableShiftOp(result));
+        return result;
+    }
+
+    @Override
+    public Value emitCardTableAddress() {
+        Variable result = newVariable(LIRKind.value(Kind.Long));
+        append(new AMD64HotSpotCardTableAddressOp(result));
+        return result;
+    }
+
     /**
      * @param savedRegisters the registers saved by this operation which may be subject to pruning
      * @param savedRegisterLocations the slots to which the registers are saved

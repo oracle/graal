@@ -20,16 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.common.remote;
+package com.oracle.graal.compiler.common;
 
 import java.util.*;
 import java.util.function.*;
 
-import com.oracle.graal.compiler.common.remote.Context.Mode;
-
 /**
  * A map that combines {@link IdentityHashMap} with {@link LinkedHashMap} for the purpose of
- * ensuring a deterministic execution order during {@link Mode#Capturing}.
+ * ensuring a deterministic execution order during a capturing compilation.
  */
 final class LinkedIdentityHashMap<K, V> implements Map<K, V> {
 

@@ -210,7 +210,7 @@ public class PTXWrapperBuilder extends GraphKit {
             int index = 0;
             for (int slot : objectSlots) {
                 int offset = slot * wordSize;
-                LocationNode location = ConstantLocationNode.create(FINAL_LOCATION, Kind.Int, index * intSize, getGraph());
+                LocationNode location = ConstantLocationNode.create(FINAL_LOCATION, index * intSize, getGraph());
                 append(WriteNode.create(objectParametersOffsets, ConstantNode.forInt(offset, getGraph()), location, BarrierType.NONE, false));
                 index++;
             }
@@ -233,12 +233,12 @@ public class PTXWrapperBuilder extends GraphKit {
         for (javaParametersIndex = 0; javaParametersIndex < javaParameters.length; javaParametersIndex++) {
             ParameterNode javaParameter = javaParameters[javaParametersIndex];
             int javaParameterOffset = javaParameterOffsetsInKernelParametersBuffer[javaParametersIndex];
-            LocationNode location = ConstantLocationNode.create(FINAL_LOCATION, javaParameter.getKind(), javaParameterOffset, getGraph());
+            LocationNode location = ConstantLocationNode.create(FINAL_LOCATION, javaParameterOffset, getGraph());
             append(WriteNode.create(buf, javaParameter, location, BarrierType.NONE, false));
             updateDimArg(method, sig, sigIndex++, args, javaParameter);
         }
         if (returnKind != Kind.Void) {
-            LocationNode location = ConstantLocationNode.create(FINAL_LOCATION, wordKind, bufSize - wordSize, getGraph());
+            LocationNode location = ConstantLocationNode.create(FINAL_LOCATION, bufSize - wordSize, getGraph());
             append(WriteNode.create(buf, nullWord, location, BarrierType.NONE, false));
         }
 

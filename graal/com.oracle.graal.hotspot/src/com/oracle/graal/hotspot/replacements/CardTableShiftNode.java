@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,27 +20,32 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.spi;
+package com.oracle.graal.hotspot.replacements;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.hotspot.*;
+import com.oracle.graal.nodeinfo.*;
+import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.spi.*;
 
-/**
- * Provides a capability for replacing a higher node with one or more lower level nodes.
- */
-public interface LoweringProvider {
+@NodeInfo
+public class CardTableShiftNode extends FloatingNode implements LIRLowerable {
 
-    void lower(Node n, LoweringTool tool);
+    public static CardTableShiftNode create() {
+        return new CardTableShiftNode();
+    }
 
-    /**
-     * Reconstructs the array index from a location node that was created as a lowering of an
-     * indexed access to an array.
-     *
-     * @param elementKind the {@link Kind} of the array elements
-     * @param location a location pointing to an element in an array
-     * @return a node that gives the index of the element
-     */
-    ValueNode reconstructArrayIndex(Kind elementKind, LocationNode location);
+    protected CardTableShiftNode() {
+        super(StampFactory.intValue());
+    }
+
+    @Override
+    public void generate(NodeLIRBuilderTool generator) {
+        Value res = ((HotSpotLIRGenerator) generator.getLIRGeneratorTool()).emitCardTableShift();
+        generator.setResult(this, res);
+    }
+
+    @NodeIntrinsic
+    public static native int cardTableShift();
 }

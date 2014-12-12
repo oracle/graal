@@ -49,11 +49,6 @@ public abstract class LocationNode extends FloatingNode implements LIRLowerable,
     }
 
     /**
-     * Returns the kind of the accessed memory value.
-     */
-    public abstract Kind getValueKind();
-
-    /**
      * Returns the identity of the accessed memory location.
      */
     public abstract LocationIdentity getLocationIdentity();

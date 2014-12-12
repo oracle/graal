@@ -1273,18 +1273,6 @@ public abstract class SPARCAssembler extends Assembler {
         }
     }
 
-// public static class Fmt4a {
-//
-// public Fmt4a(SPARCAssembler masm, int op, int op3, int cc, int rs1, int regOrImmediate, int rd) {
-// assert op == 2;
-// assert rs1 >= 0 && rs1 < 0x20;
-// assert rd >= 0 && rd < 0x10;
-//
-// masm.emitInt(op << 30 | rd << 25 | op3 << 19 | rs1 << 14 | ((cc << 11) & 0x000001800) |
-// regOrImmediate);
-// }
-// }
-
     // @formatter:off
     /**
      * Instruction format for Movcc.

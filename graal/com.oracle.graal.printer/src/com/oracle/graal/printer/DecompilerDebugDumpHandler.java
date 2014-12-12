@@ -108,6 +108,8 @@ public class DecompilerDebugDumpHandler implements DebugDumpHandler {
         try {
             printStream.close();
             fos.close();
+            printStream = null;
+            fos = null;
         } catch (IOException e) {
             throw new IllegalStateException(e);
         }

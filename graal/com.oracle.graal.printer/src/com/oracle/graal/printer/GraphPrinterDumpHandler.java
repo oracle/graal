@@ -160,7 +160,7 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
             final Graph graph = (Graph) object;
 
             if (printer != null) {
-                // Get all current RiResolvedMethod instances in the context.
+                // Get all current JavaMethod instances in the context.
                 List<String> inlineContext = getInlineContext();
 
                 // Reverse list such that inner method comes after outer method.
@@ -272,6 +272,7 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
         }
         if (printer != null) {
             printer.close();
+            printer = null;
         }
     }
 }

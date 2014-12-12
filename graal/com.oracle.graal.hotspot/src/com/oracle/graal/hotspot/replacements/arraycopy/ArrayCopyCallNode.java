@@ -111,7 +111,7 @@ public class ArrayCopyCallNode extends AbstractMemoryCheckpoint implements Lower
     private ValueNode computeBase(ValueNode base, ValueNode pos) {
         FixedWithNextNode basePtr = graph().add(GetObjectAddressNode.create(base));
         graph().addBeforeFixed(this, basePtr);
-        ValueNode loc = IndexedLocationNode.create(getLocationIdentity(), elementKind, runtime.getArrayBaseOffset(elementKind), pos, graph(), runtime.getArrayIndexScale(elementKind));
+        ValueNode loc = IndexedLocationNode.create(getLocationIdentity(), runtime.getArrayBaseOffset(elementKind), pos, graph(), runtime.getArrayIndexScale(elementKind));
         return graph().unique(ComputeAddressNode.create(basePtr, loc, StampFactory.forKind(Kind.Long)));
     }
 

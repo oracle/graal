@@ -130,13 +130,12 @@ public class HotSpotWordTypeRewriterPhase extends WordTypeRewriterPhase {
 
                 case READ_KLASS_POINTER:
                     assert arguments.size() == 2 || arguments.size() == 3;
-                    Kind readKind = asKind(callTargetNode.returnType());
                     Stamp readStamp = KlassPointerStamp.klass();
                     LocationNode location;
                     if (arguments.size() == 2) {
-                        location = makeLocation(graph, arguments.get(1), readKind, ANY_LOCATION);
+                        location = makeLocation(graph, arguments.get(1), ANY_LOCATION);
                     } else {
-                        location = makeLocation(graph, arguments.get(1), readKind, arguments.get(2));
+                        location = makeLocation(graph, arguments.get(1), arguments.get(2));
                     }
                     replace(invoke, readKlassOp(graph, arguments.get(0), invoke, location, readStamp, operation.opcode()));
                     break;
@@ -150,9 +149,8 @@ public class HotSpotWordTypeRewriterPhase extends WordTypeRewriterPhase {
     protected ValueNode readKlassOp(StructuredGraph graph, ValueNode base, Invoke invoke, LocationNode location, Stamp readStamp, HotspotOpcode op) {
         assert op == READ_KLASS_POINTER;
         final BarrierType barrier = BarrierType.NONE;
-        final boolean compressible = false;
 
-        JavaReadNode read = graph.add(JavaReadNode.create(base, location, readStamp, barrier, compressible));
+        ReadNode read = graph.add(ReadNode.create(base, location, readStamp, barrier));
         graph.addBeforeFixed(invoke.asNode(), read);
         /*
          * The read must not float outside its block otherwise it may float above an explicit zero

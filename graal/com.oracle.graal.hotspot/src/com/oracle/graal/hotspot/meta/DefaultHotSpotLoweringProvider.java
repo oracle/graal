@@ -198,11 +198,11 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
                     Kind wordKind = runtime.getTarget().wordKind;
                     ValueNode hub = createReadHub(graph, receiver, receiverNullCheck);
 
-                    ReadNode metaspaceMethod = createReadVirtualMethod(graph, wordKind, hub, hsMethod, receiverType);
+                    ReadNode metaspaceMethod = createReadVirtualMethod(graph, hub, hsMethod, receiverType);
                     // We use LocationNode.ANY_LOCATION for the reads that access the
                     // compiled code entry as HotSpot does not guarantee they are final
                     // values.
-                    ReadNode compiledEntry = graph.add(ReadNode.create(metaspaceMethod, ConstantLocationNode.create(ANY_LOCATION, wordKind, runtime.getConfig().methodCompiledEntryOffset, graph),
+                    ReadNode compiledEntry = graph.add(ReadNode.create(metaspaceMethod, ConstantLocationNode.create(ANY_LOCATION, runtime.getConfig().methodCompiledEntryOffset, graph),
                                     StampFactory.forKind(wordKind), BarrierType.NONE));
 
                     loweredCallTarget = graph.add(HotSpotIndirectCallTargetNode.create(metaspaceMethod, compiledEntry, parameters, invoke.asNode().stamp(), signature, callTarget.targetMethod(),
@@ -254,8 +254,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
 
     @Override
     protected ValueNode createReadArrayComponentHub(StructuredGraph graph, ValueNode arrayHub, FixedNode anchor) {
-        Kind wordKind = runtime.getTarget().wordKind;
-        LocationNode location = ConstantLocationNode.create(OBJ_ARRAY_KLASS_ELEMENT_KLASS_LOCATION, wordKind, runtime.getConfig().arrayClassElementOffset, graph);
+        LocationNode location = ConstantLocationNode.create(OBJ_ARRAY_KLASS_ELEMENT_KLASS_LOCATION, runtime.getConfig().arrayClassElementOffset, graph);
         /*
          * Anchor the read of the element klass to the cfg, because it is only valid when arrayClass
          * is an object class, which might not be the case in other parts of the compiled method.
@@ -273,15 +272,15 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
         }
     }
 
-    private void lowerLoadMethodNode(LoadMethodNode loadMethodNode) {
+    private static void lowerLoadMethodNode(LoadMethodNode loadMethodNode) {
         StructuredGraph graph = loadMethodNode.graph();
         HotSpotResolvedJavaMethod method = (HotSpotResolvedJavaMethod) loadMethodNode.getMethod();
-        ReadNode metaspaceMethod = createReadVirtualMethod(graph, runtime.getTarget().wordKind, loadMethodNode.getHub(), method, loadMethodNode.getReceiverType());
+        ReadNode metaspaceMethod = createReadVirtualMethod(graph, loadMethodNode.getHub(), method, loadMethodNode.getReceiverType());
         graph.replaceFixed(loadMethodNode, metaspaceMethod);
     }
 
     private void lowerStoreHubNode(StoreHubNode storeHub, StructuredGraph graph) {
-        WriteNode hub = createWriteHub(graph, runtime.getTarget().wordKind, storeHub.getObject(), storeHub.getValue());
+        WriteNode hub = createWriteHub(graph, storeHub.getObject(), storeHub.getValue());
         graph.replaceFixed(storeHub, hub);
     }
 
@@ -314,7 +313,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
             for (OSRLocalNode osrLocal : graph.getNodes(OSRLocalNode.class)) {
                 int size = HIRFrameStateBuilder.stackSlots(osrLocal.getKind());
                 int offset = localsOffset - (osrLocal.index() + size - 1) * 8;
-                IndexedLocationNode location = IndexedLocationNode.create(ANY_LOCATION, osrLocal.getKind(), offset, ConstantNode.forLong(0, graph), graph, 1);
+                IndexedLocationNode location = IndexedLocationNode.create(ANY_LOCATION, offset, ConstantNode.forLong(0, graph), graph, 1);
                 ReadNode load = graph.add(ReadNode.create(buffer, location, osrLocal.stamp(), BarrierType.NONE));
                 osrLocal.replaceAndDelete(load);
                 graph.addBeforeFixed(migrationEnd, load);
@@ -390,24 +389,23 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
         return false;
     }
 
-    private static ReadNode createReadVirtualMethod(StructuredGraph graph, Kind wordKind, ValueNode hub, HotSpotResolvedJavaMethod method, ResolvedJavaType receiverType) {
-        return createReadVirtualMethod(graph, wordKind, hub, method.vtableEntryOffset(receiverType));
+    private static ReadNode createReadVirtualMethod(StructuredGraph graph, ValueNode hub, HotSpotResolvedJavaMethod method, ResolvedJavaType receiverType) {
+        return createReadVirtualMethod(graph, hub, method.vtableEntryOffset(receiverType));
     }
 
-    private static ReadNode createReadVirtualMethod(StructuredGraph graph, Kind wordKind, ValueNode hub, int vtableEntryOffset) {
+    private static ReadNode createReadVirtualMethod(StructuredGraph graph, ValueNode hub, int vtableEntryOffset) {
         assert vtableEntryOffset > 0;
         // We use LocationNode.ANY_LOCATION for the reads that access the vtable
         // entry as HotSpot does not guarantee that this is a final value.
         Stamp methodStamp = MethodPointerStamp.method();
-        ReadNode metaspaceMethod = graph.add(ReadNode.create(hub, ConstantLocationNode.create(ANY_LOCATION, wordKind, vtableEntryOffset, graph), methodStamp, BarrierType.NONE));
+        ReadNode metaspaceMethod = graph.add(ReadNode.create(hub, ConstantLocationNode.create(ANY_LOCATION, vtableEntryOffset, graph), methodStamp, BarrierType.NONE));
         return metaspaceMethod;
     }
 
     @Override
     protected ValueNode createReadHub(StructuredGraph graph, ValueNode object, GuardingNode guard) {
-        Kind wordKind = target.wordKind;
         HotSpotVMConfig config = runtime.getConfig();
-        LocationNode location = ConstantLocationNode.create(HUB_LOCATION, wordKind, config.hubOffset, graph);
+        LocationNode location = ConstantLocationNode.create(HUB_LOCATION, config.hubOffset, graph);
         assert !object.isConstant() || object.isNullConstant();
 
         KlassPointerStamp hubStamp = KlassPointerStamp.klassNonNull();
@@ -423,9 +421,9 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
         }
     }
 
-    private WriteNode createWriteHub(StructuredGraph graph, Kind wordKind, ValueNode object, ValueNode value) {
+    private WriteNode createWriteHub(StructuredGraph graph, ValueNode object, ValueNode value) {
         HotSpotVMConfig config = runtime.getConfig();
-        LocationNode location = ConstantLocationNode.create(HUB_WRITE_LOCATION, wordKind, config.hubOffset, graph);
+        LocationNode location = ConstantLocationNode.create(HUB_WRITE_LOCATION, config.hubOffset, graph);
         assert !object.isConstant() || object.isNullConstant();
 
         ValueNode writeValue = value;

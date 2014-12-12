@@ -28,7 +28,6 @@ import java.lang.invoke.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.remote.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 
@@ -96,7 +95,6 @@ public final class HotSpotObjectConstantImpl extends AbstractValue implements Ho
         assert stableDimension == 0 || (object != null && object.getClass().isArray());
         assert stableDimension >= 0 && stableDimension <= 255;
         assert !isDefaultStable || stableDimension > 0;
-        assert Context.assertInLocal("Should not create object constants here");
     }
 
     private HotSpotObjectConstantImpl(Object object, boolean compressed) {

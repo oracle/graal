@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.hotspot.ptx;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
@@ -51,7 +52,7 @@ public class PTXHotSpotLoweringProvider implements LoweringProvider {
         }
     }
 
-    public ValueNode reconstructArrayIndex(LocationNode location) {
+    public ValueNode reconstructArrayIndex(Kind elementKind, LocationNode location) {
         throw GraalInternalError.unimplemented();
     }
 }

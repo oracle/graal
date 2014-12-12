@@ -81,7 +81,7 @@ public class HubGetClassNode extends FloatingGuardedNode implements Lowerable, C
             return;
         }
 
-        LocationNode location = ConstantLocationNode.create(CLASS_MIRROR_LOCATION, Kind.Object, config.classMirrorOffset, graph());
+        LocationNode location = ConstantLocationNode.create(CLASS_MIRROR_LOCATION, config.classMirrorOffset, graph());
         assert !hub.isConstant();
         FloatingReadNode read = graph().unique(FloatingReadNode.create(hub, location, null, stamp(), getGuard(), BarrierType.NONE));
         graph().replaceFloating(this, read);

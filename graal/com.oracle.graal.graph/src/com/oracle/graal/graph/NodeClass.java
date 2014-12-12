@@ -255,7 +255,7 @@ public final class NodeClass extends FieldIntrospection {
         return isSimplifiable;
     }
 
-    public static int cacheSize() {
+    static int allocatedNodeIterabledIds() {
         return nextIterableId;
     }
 

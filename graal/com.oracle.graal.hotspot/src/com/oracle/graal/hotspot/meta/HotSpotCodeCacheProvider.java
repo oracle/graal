@@ -80,7 +80,9 @@ public class HotSpotCodeCacheProvider implements CodeCacheProvider {
         POLL_NEAR(config().codeInstallerMarkIdPollNear),
         POLL_RETURN_NEAR(config().codeInstallerMarkIdPollReturnNear),
         POLL_FAR(config().codeInstallerMarkIdPollFar),
-        POLL_RETURN_FAR(config().codeInstallerMarkIdPollReturnFar);
+        POLL_RETURN_FAR(config().codeInstallerMarkIdPollReturnFar),
+        CARD_TABLE_SHIFT(config().codeInstallerMarkIdCardTableShift),
+        CARD_TABLE_ADDRESS(config().codeInstallerMarkIdCardTableAddress);
 
         private final int value;
 

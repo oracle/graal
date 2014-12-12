@@ -98,7 +98,7 @@ public class CheckcastArrayCopyCallNode extends AbstractMemoryCheckpoint impleme
     private ValueNode computeBase(ValueNode base, ValueNode pos) {
         FixedWithNextNode basePtr = graph().add(GetObjectAddressNode.create(base));
         graph().addBeforeFixed(this, basePtr);
-        ValueNode loc = IndexedLocationNode.create(getLocationIdentity(), Kind.Object, runtime.getArrayBaseOffset(Kind.Object), pos, graph(), runtime.getArrayIndexScale(Kind.Object));
+        ValueNode loc = IndexedLocationNode.create(getLocationIdentity(), runtime.getArrayBaseOffset(Kind.Object), pos, graph(), runtime.getArrayIndexScale(Kind.Object));
         return graph().unique(ComputeAddressNode.create(basePtr, loc, StampFactory.forKind(Kind.Long)));
     }
 
