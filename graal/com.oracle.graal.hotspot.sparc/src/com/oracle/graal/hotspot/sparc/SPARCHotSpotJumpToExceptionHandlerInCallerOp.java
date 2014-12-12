@@ -69,6 +69,7 @@ final class SPARCHotSpotJumpToExceptionHandlerInCallerOp extends SPARCHotSpotEpi
         new Cmp(o7, o7).emit(masm);
         new Movcc(ConditionFlag.NotZero, CC.Icc, l7, sp).emit(masm);
 
+        new Mov(i7, o7).emit(masm);
         new Jmpl(asRegister(handlerInCallerPc), 0, g0).emit(masm);
         new Nop().emit(masm);
     }
