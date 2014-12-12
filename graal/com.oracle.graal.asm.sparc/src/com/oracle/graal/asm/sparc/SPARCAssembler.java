@@ -1040,7 +1040,7 @@ public abstract class SPARCAssembler extends Assembler {
         }
 
         /**
-         * Used for trap on Integer Condition Codes (Tcc)
+         * Used for trap on Integer Condition Codes (Tcc).
          *
          * @param op3
          * @param rs1
