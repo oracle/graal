@@ -35,7 +35,7 @@ import java.util.*;
  * <ul>
  * <li><strong>Literal:</strong> A named text string. These are not indexed and should be considered
  * value objects; equality is defined based on contents. <br>
- * See {@link Source#fromText(String, String)}</li>
+ * See {@link Source#fromText(CharSequence, String)}</li>
  * <p>
  * <li><strong>File:</strong> Each file is represented as a canonical object, indexed by the
  * absolute, canonical path name of the file. File contents are <em>read lazily</em> and contents
@@ -53,7 +53,7 @@ import java.util.*;
  * <p>
  * <li><strong>Pseudo File:</strong> A literal text string that can be retrieved by name as if it
  * were a file, unlike literal sources; useful for testing. <br>
- * See {@link Source#asPseudoFile(String, String)}</li>
+ * See {@link Source#asPseudoFile(CharSequence, String)}</li>
  * </ul>
  * <p>
  * <strong>File cache:</strong>
@@ -122,27 +122,28 @@ public abstract class Source {
     }
 
     /**
-     * Creates a non-canonical source from literal text.
+     * Creates a non-canonical source from literal text. If an already created literal source must
+     * be retrievable by name, use {@link #asPseudoFile(CharSequence, String)}.
      *
-     * @param code textual source code
+     * @param chars textual source code
      * @param description a note about the origin, for error messages and debugging
      * @return a newly created, non-indexed source representation
      */
-    public static Source fromText(String code, String description) {
-        assert code != null;
-        return new LiteralSource(description, code);
+    public static Source fromText(CharSequence chars, String description) {
+        assert chars != null;
+        return new LiteralSource(description, chars.toString());
     }
 
     /**
      * Creates a source whose contents will be read immediately from a URL and cached.
      *
      * @param url
-     * @param name identifies the origin, possibly useful for debugging
+     * @param description identifies the origin, possibly useful for debugging
      * @return a newly created, non-indexed source representation
      * @throws IOException if reading fails
      */
-    public static Source fromURL(URL url, String name) throws IOException {
-        return URLSource.get(url, name);
+    public static Source fromURL(URL url, String description) throws IOException {
+        return URLSource.get(url, description);
     }
 
     /**
@@ -192,12 +193,12 @@ public abstract class Source {
      * Creates a source from literal text, but which acts as a file and can be retrieved by name
      * (unlike other literal sources); intended for testing.
      *
-     * @param code textual source code
+     * @param chars textual source code
      * @param pseudoFileName string to use for indexing/lookup
      * @return a newly created, source representation, canonical with respect to its name
      */
-    public static Source asPseudoFile(String code, String pseudoFileName) {
-        final Source source = new LiteralSource(pseudoFileName, code);
+    public static Source asPseudoFile(CharSequence chars, String pseudoFileName) {
+        final Source source = new LiteralSource(pseudoFileName, chars.toString());
         filePathToSource.put(pseudoFileName, new WeakReference<>(source));
         return source;
     }
@@ -212,11 +213,12 @@ public abstract class Source {
     }
 
     private static String read(Reader reader) throws IOException {
+        final BufferedReader bufferedReader = new BufferedReader(reader);
         final StringBuilder builder = new StringBuilder();
         final char[] buffer = new char[1024];
 
         while (true) {
-            final int n = reader.read(buffer);
+            final int n = bufferedReader.read(buffer);
             if (n == -1) {
                 break;
             }
