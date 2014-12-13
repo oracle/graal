@@ -69,7 +69,7 @@ public class NewObjectSnippets implements Snippets {
     static class Options {
 
         //@formatter:off
-        @Option(help = "")
+        @Option(help = "", type = OptionType.Debug)
         static final OptionValue<Boolean> ProfileAllocations = new OptionValue<>(false);
         //@formatter:on
     }

@@ -36,7 +36,7 @@ public class LowTier extends PhaseSuite<LowTierContext> {
     static class Options {
 
         // @formatter:off
-        @Option(help = "")
+        @Option(help = "", type = OptionType.Debug)
         public static final OptionValue<Boolean> ProfileCompiledMethods = new OptionValue<>(false);
         // @formatter:on
 

@@ -189,10 +189,10 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, R
     public static class Options {
 
         // @formatter:off
-        @Option(help = "The runtime configuration to use")
+        @Option(help = "The runtime configuration to use", type = OptionType.Expert)
         static final OptionValue<String> GraalRuntime = new OptionValue<>("");
 
-        @Option(help = "File to which logging is sent.  A %p in the name will be replaced with a string identifying the process, usually the process id.")
+        @Option(help = "File to which logging is sent.  A %p in the name will be replaced with a string identifying the process, usually the process id.", type = OptionType.Expert)
         public static final PrintStreamOption LogFile = new PrintStreamOption();
         // @formatter:on
     }

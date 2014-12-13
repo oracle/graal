@@ -56,19 +56,19 @@ public final class CompileTheWorld {
 
     public static class Options {
         // @formatter:off
-        @Option(help = "Compile all methods in all classes on given class path")
+        @Option(help = "Compile all methods in all classes on given class path", type = OptionType.Debug)
         public static final OptionValue<String> CompileTheWorldClasspath = new OptionValue<>(SUN_BOOT_CLASS_PATH);
-        @Option(help = "Verbose CompileTheWorld operation")
+        @Option(help = "Verbose CompileTheWorld operation", type = OptionType.Debug)
         public static final OptionValue<Boolean> CompileTheWorldVerbose = new OptionValue<>(true);
-        @Option(help = "The number of CompileTheWorld iterations to perform")
+        @Option(help = "The number of CompileTheWorld iterations to perform", type = OptionType.Debug)
         public static final OptionValue<Integer> CompileTheWorldIterations = new OptionValue<>(1);
-        @Option(help = "First class to consider when using -XX:+CompileTheWorld")
+        @Option(help = "First class to consider when using -XX:+CompileTheWorld", type = OptionType.Debug)
         public static final OptionValue<Integer> CompileTheWorldStartAt = new OptionValue<>(1);
-        @Option(help = "Last class to consider when using -XX:+CompileTheWorld")
+        @Option(help = "Last class to consider when using -XX:+CompileTheWorld", type = OptionType.Debug)
         public static final OptionValue<Integer> CompileTheWorldStopAt = new OptionValue<>(Integer.MAX_VALUE);
         @Option(help = "Option value overrides to use during compile the world. For example, " +
                        "to disable inlining and partial escape analysis specify '-PartialEscapeAnalysis -Inline'. " +
-                       "The format for each option is the same as on the command line just without the '-G:' prefix.")
+                       "The format for each option is the same as on the command line just without the '-G:' prefix.", type = OptionType.Debug)
         public static final OptionValue<String> CompileTheWorldConfig = new OptionValue<>(null);
         // @formatter:on
 

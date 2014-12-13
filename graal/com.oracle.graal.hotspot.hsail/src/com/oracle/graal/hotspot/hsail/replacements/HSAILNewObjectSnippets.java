@@ -59,13 +59,13 @@ public class HSAILNewObjectSnippets extends NewObjectSnippets {
     public static class Options {
 
         // @formatter:off
-        @Option(help = "In HSAIL allocation, allow allocation from eden as fallback if TLAB is full")
+        @Option(help = "In HSAIL allocation, allow allocation from eden as fallback if TLAB is full", type = OptionType.Debug)
         static final OptionValue<Boolean> HsailUseEdenAllocate = new OptionValue<>(false);
 
-        @Option(help = "In HSAIL allocation, allow GPU to allocate a new tlab if TLAB is full")
+        @Option(help = "In HSAIL allocation, allow GPU to allocate a new tlab if TLAB is full", type = OptionType.Debug)
         static final OptionValue<Boolean> HsailNewTlabAllocate = new OptionValue<>(true);
 
-        @Option(help = "Estimate of number of bytes allocated by each HSAIL workitem, used to size TLABs")
+        @Option(help = "Estimate of number of bytes allocated by each HSAIL workitem, used to size TLABs", type = OptionType.Debug)
         public  static  final OptionValue<Integer> HsailAllocBytesPerWorkitem = new OptionValue<>(64);
 
         // @formatter:on

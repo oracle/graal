@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,32 +22,23 @@
  */
 package com.oracle.graal.options;
 
-import java.lang.annotation.*;
-
 /**
- * Describes the attributes of an option whose {@link OptionValue value} is in a static field
- * annotated by this annotation type.
+ * Classifies Graal options in several categories depending on who this option is relevant for.
  *
- * @see OptionProcessor
- * @see OptionDescriptor
  */
-@Retention(RetentionPolicy.CLASS)
-@Target(ElementType.FIELD)
-public @interface Option {
+public enum OptionType {
+    /**
+     * An option common for users to apply.
+     */
+    User,
 
     /**
-     * Gets a help message for the option. New lines can be embedded in the message with
-     * {@code "%n"}.
+     * An option only relevant in corner cases and for fine-tuning.
      */
-    String help();
+    Expert,
 
     /**
-     * The name of the option. By default, the name of the annotated field should be used.
+     * An option only relevant when debugging the compiler.
      */
-    String name() default "";
-
-    /**
-     * Specifies the type of the option.
-     */
-    OptionType type() default OptionType.Debug;
+    Debug
 }

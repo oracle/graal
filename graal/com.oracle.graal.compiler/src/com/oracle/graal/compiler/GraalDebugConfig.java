@@ -38,31 +38,31 @@ import com.oracle.graal.options.*;
 public class GraalDebugConfig implements DebugConfig {
 
     // @formatter:off
-    @Option(help = "Pattern for scope(s) in which dumping is enabled (see DebugFilter and Debug.dump)")
+    @Option(help = "Pattern for scope(s) in which dumping is enabled (see DebugFilter and Debug.dump)", type = OptionType.Debug)
     public static final OptionValue<String> Dump = new OptionValue<>(null);
-    @Option(help = "Pattern for scope(s) in which metering is enabled (see DebugFilter and Debug.metric)")
+    @Option(help = "Pattern for scope(s) in which metering is enabled (see DebugFilter and Debug.metric)", type = OptionType.Debug)
     public static final OptionValue<String> Meter = new OptionValue<>(null);
-    @Option(help = "Pattern for scope(s) in which verification is enabled (see DebugFilter and Debug.verify)")
+    @Option(help = "Pattern for scope(s) in which verification is enabled (see DebugFilter and Debug.verify)", type = OptionType.Debug)
     public static final OptionValue<String> Verify = new OptionValue<>(null);
-    @Option(help = "Pattern for scope(s) in which memory use tracking is enabled (see DebugFilter and Debug.metric)")
+    @Option(help = "Pattern for scope(s) in which memory use tracking is enabled (see DebugFilter and Debug.metric)", type = OptionType.Debug)
     public static final OptionValue<String> TrackMemUse = new OptionValue<>(null);
-    @Option(help = "Pattern for scope(s) in which timing is enabled (see DebugFilter and Debug.timer)")
+    @Option(help = "Pattern for scope(s) in which timing is enabled (see DebugFilter and Debug.timer)", type = OptionType.Debug)
     public static final OptionValue<String> Time = new OptionValue<>(null);
-    @Option(help = "Pattern for scope(s) in which logging is enabled (see DebugFilter and Debug.log)")
+    @Option(help = "Pattern for scope(s) in which logging is enabled (see DebugFilter and Debug.log)", type = OptionType.Debug)
     public static final OptionValue<String> Log = new OptionValue<>(null);
-    @Option(help = "Pattern for filtering debug scope output based on method context (see MethodFilter)")
+    @Option(help = "Pattern for filtering debug scope output based on method context (see MethodFilter)", type = OptionType.Debug)
     public static final OptionValue<String> MethodFilter = new OptionValue<>(null);
     @Option(help = "How to print metric and timing values:%n" +
                    "Name - aggregate by unqualified name%n" +
                    "Partial - aggregate by partially qualified name (e.g., A.B.C.D.Counter and X.Y.Z.D.Counter will be merged to D.Counter)%n" +
                    "Complete - aggregate by qualified name%n" +
-                   "Thread - aggregate by qualified name and thread")
+                   "Thread - aggregate by qualified name and thread", type = OptionType.Debug)
     public static final OptionValue<String> DebugValueSummary = new OptionValue<>("Name");
-    @Option(help = "Omit reporting 0-value metrics")
+    @Option(help = "Omit reporting 0-value metrics", type = OptionType.Debug)
     public static final OptionValue<Boolean> SuppressZeroDebugValues = new OptionValue<>(false);
-    @Option(help = "Send Graal IR to dump handlers on error")
+    @Option(help = "Send Graal IR to dump handlers on error", type = OptionType.Debug)
     public static final OptionValue<Boolean> DumpOnError = new OptionValue<>(false);
-    @Option(help = "Enable expensive assertions")
+    @Option(help = "Enable expensive assertions", type = OptionType.Debug)
     public static final OptionValue<Boolean> DetailedAsserts = new StableOptionValue<Boolean>() {
         @Override
         protected Boolean initialValue() {
@@ -72,7 +72,7 @@ public class GraalDebugConfig implements DebugConfig {
             return enabled;
         }
     };
-    @Option(help = "Enable more verbose log output when available")
+    @Option(help = "Enable more verbose log output when available", type = OptionType.Debug)
     public static final OptionValue<Boolean> LogVerbose = new OptionValue<>(false);
     // @formatter:on
 

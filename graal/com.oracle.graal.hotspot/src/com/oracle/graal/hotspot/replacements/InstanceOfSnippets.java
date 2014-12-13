@@ -198,11 +198,11 @@ public class InstanceOfSnippets implements Snippets {
 
         // @formatter:off
         @Option(help = "If the probability that a type check will hit one the profiled types (up to " +
-                       "TypeCheckMaxHints) is below this value, the type check will be compiled without profiling info")
+                       "TypeCheckMaxHints) is below this value, the type check will be compiled without profiling info", type = OptionType.Expert)
         static final OptionValue<Double> TypeCheckMinProfileHitProbability = new OptionValue<>(0.5);
 
         @Option(help = "The maximum number of profiled types that will be used when compiling a profiled type check. " +
-                        "Note that TypeCheckMinProfileHitProbability also influences whether profiling info is used in compiled type checks.")
+                        "Note that TypeCheckMinProfileHitProbability also influences whether profiling info is used in compiled type checks.", type = OptionType.Expert)
         static final OptionValue<Integer> TypeCheckMaxHints = new OptionValue<>(2);
         // @formatter:on
     }

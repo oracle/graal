@@ -89,7 +89,7 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
     public static class Options {
 
         // @formatter:off
-        @Option(help = "Number of TLABs used for HSAIL kernels which allocate")
+        @Option(help = "Number of TLABs used for HSAIL kernels which allocate", type = OptionType.Debug)
         public static  final OptionValue<Integer> HsailKernelTlabs = new OptionValue<>(4);
         // @formatter:on
     }

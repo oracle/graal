@@ -36,7 +36,7 @@ public final class Suites {
     static class Options {
 
         // @formatter:off
-        @Option(help = "The compiler configuration to use")
+        @Option(help = "The compiler configuration to use", type = OptionType.User)
         static final OptionValue<String> CompilerConfiguration = new OptionValue<>("");
         // @formatter:on
     }

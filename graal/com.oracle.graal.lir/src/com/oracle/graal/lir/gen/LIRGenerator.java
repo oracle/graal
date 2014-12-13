@@ -48,9 +48,9 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
 
     public static class Options {
         // @formatter:off
-        @Option(help = "Print HIR along side LIR as the latter is generated")
+        @Option(help = "Print HIR along side LIR as the latter is generated", type = OptionType.Debug)
         public static final OptionValue<Boolean> PrintIRWithLIR = new OptionValue<>(false);
-        @Option(help = "The trace level for the LIR generator")
+        @Option(help = "The trace level for the LIR generator", type = OptionType.Debug)
         public static final OptionValue<Integer> TraceLIRGeneratorLevel = new OptionValue<>(0);
         // @formatter:on
     }

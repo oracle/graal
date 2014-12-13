@@ -48,7 +48,7 @@ public class NoDeadCodeVerifyHandler implements DebugVerifyHandler {
 
     static class Options {
         // @formatter:off
-        @Option(help = "Run level for NoDeadCodeVerifyHandler (0 = off, 1 = info, 2 = verbose, 3 = fatal)")
+        @Option(help = "Run level for NoDeadCodeVerifyHandler (0 = off, 1 = info, 2 = verbose, 3 = fatal)", type = OptionType.Debug)
         public static final OptionValue<Integer> NDCV = new OptionValue<>(0);
         // @formatter:on
     }

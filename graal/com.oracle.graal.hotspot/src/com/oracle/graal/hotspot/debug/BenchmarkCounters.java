@@ -84,16 +84,16 @@ public class BenchmarkCounters {
     static class Options {
 
         //@formatter:off
-        @Option(help = "Turn on the benchmark counters, and displays the results on VM shutdown")
+        @Option(help = "Turn on the benchmark counters, and displays the results on VM shutdown", type = OptionType.Debug)
         private static final OptionValue<Boolean> GenericDynamicCounters = new OptionValue<>(false);
-        @Option(help = "Turn on the benchmark counters, and displays the results every n milliseconds")
+        @Option(help = "Turn on the benchmark counters, and displays the results every n milliseconds", type = OptionType.Debug)
         private static final OptionValue<Integer> TimedDynamicCounters = new OptionValue<>(-1);
 
         @Option(help = "Turn on the benchmark counters, and listen for specific patterns on System.out/System.err:%n" +
                        "Format: (err|out),start pattern,end pattern (~ matches multiple digits)%n" +
                        "Examples:%n" +
                        "  dacapo = 'err, starting =====, PASSED in'%n" +
-                       "  specjvm2008 = 'out,Iteration ~ (~s) begins:,Iteration ~ (~s) ends:'")
+                       "  specjvm2008 = 'out,Iteration ~ (~s) begins:,Iteration ~ (~s) ends:'", type = OptionType.Debug)
         private static final OptionValue<String> BenchmarkDynamicCounters = new OptionValue<>(null);
         //@formatter:on
     }

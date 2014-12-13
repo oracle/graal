@@ -44,7 +44,7 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
 
     static class Options {
         // @formatter:off
-        @Option(help = "The trace level for the bytecode parser used when building a graph from bytecode")
+        @Option(help = "The trace level for the bytecode parser used when building a graph from bytecode", type = OptionType.Debug)
         public static final OptionValue<Integer> TraceBytecodeParserLevel = new OptionValue<>(0);
         // @formatter:on
     }
