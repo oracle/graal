@@ -156,24 +156,25 @@ public abstract class DynamicObjectImpl implements DynamicObject, Cloneable {
     }
 
     public final void copyProperties(DynamicObject fromObject, Shape ancestor) {
-        Shape fromShape = fromObject.getShape();
-        Shape toShape = getShape();
+        ShapeImpl fromShape = (ShapeImpl) fromObject.getShape();
+        ShapeImpl toShape = getShape();
         assert toShape.isRelated(ancestor);
         assert toShape.isValid();
         assert ancestor.isValid();
         for (; toShape != ancestor; toShape = toShape.getParent()) {
-            Property toProperty = toShape.getLastProperty();
-            // assumption: hidden properties won't change and don't need copying
-            if (!toProperty.isHidden()) {
-                assert fromShape.hasProperty(toProperty.getKey());
+            Transition transitionFromParent = toShape.getTransitionFromParent();
+            if (transitionFromParent instanceof Transition.AddPropertyTransition) {
+                Property toProperty = ((Transition.AddPropertyTransition) transitionFromParent).getProperty();
                 Property fromProperty = fromShape.getProperty(toProperty.getKey());
+
                 // copy only if property has a location and it's not the same as the source location
                 if (toProperty.getLocation() != null && !(toProperty.getLocation() instanceof ValueLocation) && !toProperty.getLocation().equals(fromProperty.getLocation())) {
                     toProperty.setInternal(this, fromProperty.get(fromObject, false));
                     assert toShape.isValid();
                 }
 
-                if (fromShape.getLastProperty() == fromProperty) {
+                if (fromShape.getTransitionFromParent() instanceof Transition.AddPropertyTransition &&
+                                ((Transition.AddPropertyTransition) fromShape.getTransitionFromParent()).getProperty() == fromProperty) {
                     // no property is looked up twice, so we can skip over to parent
                     fromShape = fromShape.getParent();
                 }
