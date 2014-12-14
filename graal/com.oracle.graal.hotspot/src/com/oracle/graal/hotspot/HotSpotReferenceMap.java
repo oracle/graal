@@ -168,11 +168,11 @@ public final class HotSpotReferenceMap implements ReferenceMap, Serializable {
     }
 
     public BitSet getFrameMap() {
-        return (BitSet) frameRefMap.clone();
+        return frameRefMap == null ? null : (BitSet) frameRefMap.clone();
     }
 
     public BitSet getRegisterMap() {
-        return (BitSet) registerRefMap.clone();
+        return registerRefMap == null ? null : (BitSet) registerRefMap.clone();
     }
 
     // clear
