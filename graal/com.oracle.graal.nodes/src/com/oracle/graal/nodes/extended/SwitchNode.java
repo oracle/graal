@@ -156,6 +156,6 @@ public abstract class SwitchNode extends ControlSplitNode {
         if (defaultSuccessorIndex() == -1) {
             throw new GraalInternalError("unexpected");
         }
-        return defaultSuccessorIndex() == -1 ? null : successors.get(defaultSuccessorIndex());
+        return successors.get(defaultSuccessorIndex());
     }
 }

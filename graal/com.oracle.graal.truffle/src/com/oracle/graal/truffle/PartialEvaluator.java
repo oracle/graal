@@ -224,9 +224,28 @@ public class PartialEvaluator {
         PhaseContext phaseContext = new PhaseContext(providers, assumptions);
         boolean changed = false;
         boolean changedInIteration;
+        ArrayDeque<MethodCallTargetNode> queue = new ArrayDeque<>();
+        MetaAccessProvider metaAccess = providers.getMetaAccess();
+        ResolvedJavaType profileClass = metaAccess.lookupJavaType(NodeCloneable.class);
         do {
             changedInIteration = false;
             for (MethodCallTargetNode methodCallTargetNode : graph.getNodes(MethodCallTargetNode.class)) {
+                InvokeKind kind = methodCallTargetNode.invokeKind();
+                if (kind == InvokeKind.Static || kind == InvokeKind.Special) {
+                    ValueNode receiver = methodCallTargetNode.receiver();
+                    if (receiver != null && receiver.isConstant() && profileClass.isAssignableFrom(receiver.stamp().javaType(metaAccess))) {
+                        queue.addFirst(methodCallTargetNode);
+                    } else {
+                        queue.addLast(methodCallTargetNode);
+                    }
+                }
+            }
+
+            while (!queue.isEmpty()) {
+                MethodCallTargetNode methodCallTargetNode = queue.removeFirst();
+                if (!methodCallTargetNode.isAlive()) {
+                    continue;
+                }
                 InvokeKind kind = methodCallTargetNode.invokeKind();
                 try (Indent id1 = Debug.logAndIndent("try inlining %s, kind = %s", methodCallTargetNode.targetMethod(), kind)) {
                     if (kind == InvokeKind.Static || kind == InvokeKind.Special) {
