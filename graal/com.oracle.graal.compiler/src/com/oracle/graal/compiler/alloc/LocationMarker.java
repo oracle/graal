@@ -28,6 +28,7 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.lir.*;
@@ -188,11 +189,14 @@ public final class LocationMarker {
             if (shouldProcessValue(operand)) {
                 Debug.log("clear operand: %s", operand);
                 frameMap.clearReference(operand, currentSet);
+            } else {
+                assert isIllegal(operand) || operand.getPlatformKind() != Kind.Illegal || mode == OperandMode.TEMP : String.format("Illegal PlatformKind is only allowed for TEMP mode: %s, %s",
+                                operand, mode);
             }
         }
 
         protected boolean shouldProcessValue(Value operand) {
-            return (isRegister(operand) && attributes(asRegister(operand)).isAllocatable() || isStackSlot(operand)) && operand.getKind() != Kind.Illegal;
+            return (isRegister(operand) && attributes(asRegister(operand)).isAllocatable() || isStackSlot(operand)) && operand.getPlatformKind() != Kind.Illegal;
         }
     }
 
