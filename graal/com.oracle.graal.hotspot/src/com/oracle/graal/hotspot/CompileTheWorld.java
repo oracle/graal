@@ -38,9 +38,9 @@ import com.oracle.graal.api.meta.ProfilingInfo.TriState;
 import com.oracle.graal.bytecode.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.debug.*;
-import com.oracle.graal.hotspot.HotSpotOptions.OptionConsumer;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.options.*;
+import com.oracle.graal.options.OptionUtils.OptionConsumer;
 import com.oracle.graal.options.OptionValue.OverrideScope;
 import com.oracle.graal.replacements.*;
 
