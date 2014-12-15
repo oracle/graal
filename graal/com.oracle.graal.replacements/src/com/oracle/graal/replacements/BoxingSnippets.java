@@ -177,7 +177,7 @@ public class BoxingSnippets implements Snippets {
         if (value.isConstant()) {
             JavaConstant sourceConstant = value.asJavaConstant();
             JavaConstant boxedConstant = constantReflection.boxPrimitive(sourceConstant);
-            if (boxedConstant != null && boxedConstant.getKind() == box.getBoxingKind()) {
+            if (boxedConstant != null && sourceConstant.getKind() == box.getBoxingKind()) {
                 return ConstantNode.forConstant(boxedConstant, metaAccess, box.graph());
             }
         }
