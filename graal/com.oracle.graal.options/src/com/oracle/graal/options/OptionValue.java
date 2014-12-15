@@ -130,6 +130,8 @@ public class OptionValue<T> {
 
     static final ThreadLocal<OverrideScope> overrideScopes = new ThreadLocal<>();
 
+    private T initialValue;
+
     /**
      * The raw option value.
      */
@@ -152,8 +154,10 @@ public class OptionValue<T> {
         }
     }
 
+    @SuppressWarnings("unchecked")
     public OptionValue(T value) {
-        this.value = value;
+        this.initialValue = value;
+        this.value = (T) UNINITIALIZED;
         addToHistogram(this);
     }
 
@@ -165,6 +169,7 @@ public class OptionValue<T> {
      */
     @SuppressWarnings("unchecked")
     protected OptionValue() {
+        this.initialValue = (T) UNINITIALIZED;
         this.value = (T) UNINITIALIZED;
         addToHistogram(this);
     }
@@ -184,6 +189,14 @@ public class OptionValue<T> {
     }
 
     /**
+     * Returns the descriptor for this option, if it has been set by
+     * {@link #setDescriptor(OptionDescriptor)}.
+     */
+    public OptionDescriptor getDescriptor() {
+        return descriptor;
+    }
+
+    /**
      * Gets the name of this option. The name for an option value with a null
      * {@linkplain #setDescriptor(OptionDescriptor) descriptor} is the value of
      * {@link Object#toString()}.
@@ -195,6 +208,34 @@ public class OptionValue<T> {
     @Override
     public String toString() {
         return getName() + "=" + getValue();
+    }
+
+    /**
+     * The initial value specified in source code. The returned value is not affected by calls to
+     * {@link #setValue(Object)} or registering {@link OverrideScope}s. Therefore, it is also not
+     * affected by options set on the command line.
+     */
+    public T getInitialValue() {
+        if (initialValue == UNINITIALIZED) {
+            initialValue = initialValue();
+        }
+        return initialValue;
+    }
+
+    /**
+     * Returns true if the option has the same value that was set in the source code.
+     */
+    public boolean hasInitialValue() {
+        if (!(this instanceof StableOptionValue)) {
+            OverrideScope overrideScope = overrideScopes.get();
+            if (overrideScope != null) {
+                T override = overrideScope.getOverride(this);
+                if (override != null) {
+                    return false;
+                }
+            }
+        }
+        return value == UNINITIALIZED || Objects.equals(value, getInitialValue());
     }
 
     /**
@@ -213,10 +254,11 @@ public class OptionValue<T> {
                 }
             }
         }
-        if (value == UNINITIALIZED) {
-            value = initialValue();
+        if (value != UNINITIALIZED) {
+            return value;
+        } else {
+            return getInitialValue();
         }
-        return value;
     }
 
     /**
