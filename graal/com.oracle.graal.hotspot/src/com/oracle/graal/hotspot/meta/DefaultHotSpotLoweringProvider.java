@@ -137,6 +137,10 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
             if (graph.getGuardsStage() == StructuredGraph.GuardsStage.AFTER_FSA) {
                 newObjectSnippets.lower((DynamicNewArrayNode) n, registers, tool);
             }
+        } else if (n instanceof VerifyHeapNode) {
+            if (graph.getGuardsStage() == StructuredGraph.GuardsStage.AFTER_FSA) {
+                newObjectSnippets.lower((VerifyHeapNode) n, registers, runtime, tool);
+            }
         } else if (n instanceof MonitorEnterNode) {
             if (graph.getGuardsStage() == StructuredGraph.GuardsStage.AFTER_FSA) {
                 monitorSnippets.lower((MonitorEnterNode) n, registers, tool);

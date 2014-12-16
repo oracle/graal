@@ -24,6 +24,7 @@ package com.oracle.graal.hotspot.replacements;
 
 import static com.oracle.graal.api.code.UnsignedMath.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
+import static com.oracle.graal.hotspot.nodes.CStringNode.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.hotspot.replacements.NewObjectSnippets.Options.*;
 import static com.oracle.graal.nodes.PiArrayNode.*;
@@ -49,6 +50,7 @@ import com.oracle.graal.nodes.debug.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.Snippet.ConstantParameter;
@@ -354,6 +356,18 @@ public class NewObjectSnippets implements Snippets {
         return memory.toObject();
     }
 
+    @Snippet
+    protected static void verifyHeap(@ConstantParameter Register threadRegister) {
+        Word thread = registerAsWord(threadRegister);
+        Word topValue = readTlabTop(thread);
+        if (!topValue.equal(Word.zero())) {
+            Word topValueContents = topValue.readWord(0, MARK_WORD_LOCATION);
+            if (topValueContents.equal(Word.zero())) {
+                AssertionSnippets.vmMessageC(AssertionSnippets.ASSERTION_VM_MESSAGE_C, true, cstring("overzeroing of TLAB detected"), 0L, 0L, 0L);
+            }
+        }
+    }
+
     /**
      * Formats some allocated memory with an object header and zeroes out the rest.
      */
@@ -378,6 +392,7 @@ public class NewObjectSnippets implements Snippets {
         private final SnippetInfo allocateArrayDynamic = snippet(NewObjectSnippets.class, "allocateArrayDynamic");
         private final SnippetInfo allocateInstanceDynamic = snippet(NewObjectSnippets.class, "allocateInstanceDynamic");
         private final SnippetInfo newmultiarray = snippet(NewObjectSnippets.class, "newmultiarray");
+        private final SnippetInfo verifyHeap = snippet(NewObjectSnippets.class, "verifyHeap");
 
         public Templates(HotSpotProviders providers, TargetDescription target) {
             super(providers, providers.getSnippetReflection(), target);
@@ -481,6 +496,28 @@ public class NewObjectSnippets implements Snippets {
             int size = type.instanceSize();
             assert size >= 0;
             return size;
+        }
+
+        static class WarnOnce {
+            static {
+                System.out.println("VerifyHeapNode requires a VM with asserts enabled.");
+            }
+
+            static void warn() {
+            }
+        }
+
+        public void lower(VerifyHeapNode verifyHeapNode, HotSpotRegistersProvider registers, HotSpotGraalRuntimeProvider runtime, LoweringTool tool) {
+            if (runtime.getConfig().cAssertions) {
+                Arguments args = new Arguments(verifyHeap, verifyHeapNode.graph().getGuardsStage(), tool.getLoweringStage());
+                args.addConst("threadRegister", registers.getThreadRegister());
+
+                SnippetTemplate template = template(args);
+                template.instantiate(providers.getMetaAccess(), verifyHeapNode, DEFAULT_REPLACER, args);
+            } else {
+                WarnOnce.warn();
+                GraphUtil.removeFixedWithUnusedInputs(verifyHeapNode);
+            }
         }
     }
 

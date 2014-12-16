@@ -153,6 +153,9 @@ public final class GraalOptions {
     @Option(help = "", type = OptionType.Debug)
     public static final OptionValue<Integer> GCDebugStartCycle = new OptionValue<>(-1);
 
+    @Option(help = "Perform platform dependent validation of the Java heap at returns", type = OptionType.Debug)
+    public static final OptionValue<Boolean> VerifyHeapAtReturn = new OptionValue<>(false);
+
     // Ideal graph visualizer output settings
     @Option(help = "Dump IdealGraphVisualizer output in binary format", type = OptionType.Debug)
     public static final OptionValue<Boolean> PrintBinaryGraphs = new OptionValue<>(true);
