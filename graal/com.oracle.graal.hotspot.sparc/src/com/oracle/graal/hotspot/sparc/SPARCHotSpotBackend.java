@@ -313,8 +313,7 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
             for (int i = instructions.size() - 1; i >= 0; i--) {
                 LIRInstruction inst = instructions.get(i);
                 boolean adjacent = delayTransferPosition - i == 1;
-
-                if ((!adjacent && inst.hasState()) || inst.destroysCallerSavedRegisters() || leavesRegisterWindow(inst)) {
+                if (!adjacent || inst.destroysCallerSavedRegisters() || leavesRegisterWindow(inst)) {
                     delayedTransfer = null;
                 }
                 if (inst instanceof SPARCDelayedControlTransfer) {
@@ -327,11 +326,12 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
                         // We have found a non overlapping LIR instruction which can be delayed
                         ((SPARCTailDelayedLIRInstruction) inst).setDelayedControlTransfer(delayedTransfer);
                         delayedTransfer = null;
-                        if (!adjacent) {
-                            // If not adjacent, we make it adjacent
-                            instructions.remove(i);
-                            instructions.add(delayTransferPosition - 1, inst);
-                        }
+                        // Removed the moving as it causes problems (Nullpointer exceptions)
+                        // if (!adjacent) {
+                        // // If not adjacent, we make it adjacent
+                        // instructions.remove(i);
+                        // instructions.add(delayTransferPosition - 1, inst);
+                        // }
                     }
                 }
             }
