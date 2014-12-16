@@ -50,8 +50,9 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
 
     @Override
     protected void emitIndirectCall(IndirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState) {
-        AllocatableValue targetAddress = AMD64.rax.asValue();
-        gen.emitMove(targetAddress, operand(callTarget.computedAddress()));
+        Value targetAddressSrc = operand(callTarget.computedAddress());
+        AllocatableValue targetAddress = AMD64.rax.asValue(targetAddressSrc.getLIRKind());
+        gen.emitMove(targetAddress, targetAddressSrc);
         append(new AMD64Call.IndirectCallOp(callTarget.targetMethod(), result, parameters, temps, targetAddress, callState));
     }
 
