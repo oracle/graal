@@ -111,11 +111,13 @@ public class SPARCHotSpotNodeLIRBuilder extends SPARCNodeLIRBuilder implements H
 
     @Override
     protected void emitIndirectCall(IndirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState) {
-        AllocatableValue metaspaceMethod = g5.asValue();
-        gen.emitMove(metaspaceMethod, operand(((HotSpotIndirectCallTargetNode) callTarget).metaspaceMethod()));
+        Value metaspaceMethodSrc = operand(((HotSpotIndirectCallTargetNode) callTarget).metaspaceMethod());
+        AllocatableValue metaspaceMethod = g5.asValue(metaspaceMethodSrc.getLIRKind());
+        gen.emitMove(metaspaceMethod, metaspaceMethodSrc);
 
-        AllocatableValue targetAddress = o7.asValue();
-        gen.emitMove(targetAddress, operand(callTarget.computedAddress()));
+        Value targetAddressSrc = operand(callTarget.computedAddress());
+        AllocatableValue targetAddress = o7.asValue(targetAddressSrc.getLIRKind());
+        gen.emitMove(targetAddress, targetAddressSrc);
         append(new SPARCIndirectCallOp(callTarget.targetMethod(), result, parameters, temps, metaspaceMethod, targetAddress, callState));
     }
 

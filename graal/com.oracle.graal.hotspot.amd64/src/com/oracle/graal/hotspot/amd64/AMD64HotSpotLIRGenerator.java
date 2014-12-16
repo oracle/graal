@@ -377,8 +377,9 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         getResult().getFrameMapBuilder().callsMethod(nativeCallingConvention);
         // TODO(mg): in case a native function uses floating point varargs, the ABI requires that
         // RAX contains the length of the varargs
-        AllocatableValue numberOfFloatingPointArgumentsRegister = AMD64.rax.asValue();
-        emitMove(numberOfFloatingPointArgumentsRegister, JavaConstant.forInt(numberOfFloatingPointArguments));
+        PrimitiveConstant intConst = JavaConstant.forInt(numberOfFloatingPointArguments);
+        AllocatableValue numberOfFloatingPointArgumentsRegister = AMD64.rax.asValue(intConst.getLIRKind());
+        emitMove(numberOfFloatingPointArgumentsRegister, intConst);
         for (int i = 0; i < args.length; i++) {
             Value arg = args[i];
             AllocatableValue loc = nativeCallingConvention.getArgument(i);

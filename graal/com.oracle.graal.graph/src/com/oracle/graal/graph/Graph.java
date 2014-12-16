@@ -40,7 +40,7 @@ import com.oracle.graal.options.*;
 public class Graph {
 
     static class Options {
-        @Option(help = "Verify graphs often during compilation when assertions are turned on")//
+        @Option(help = "Verify graphs often during compilation when assertions are turned on", type = OptionType.Debug)//
         public static final OptionValue<Boolean> VerifyGraalGraphs = new OptionValue<>(true);
     }
 

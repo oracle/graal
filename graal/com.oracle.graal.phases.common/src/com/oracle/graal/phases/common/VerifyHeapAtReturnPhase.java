@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,34 +20,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.options;
+package com.oracle.graal.phases.common;
 
-import java.lang.annotation.*;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.debug.*;
+import com.oracle.graal.phases.*;
 
-/**
- * Describes the attributes of an option whose {@link OptionValue value} is in a static field
- * annotated by this annotation type.
- *
- * @see OptionProcessor
- * @see OptionDescriptor
- */
-@Retention(RetentionPolicy.CLASS)
-@Target(ElementType.FIELD)
-public @interface Option {
+public class VerifyHeapAtReturnPhase extends Phase {
 
-    /**
-     * Gets a help message for the option. New lines can be embedded in the message with
-     * {@code "%n"}.
-     */
-    String help();
-
-    /**
-     * The name of the option. By default, the name of the annotated field should be used.
-     */
-    String name() default "";
-
-    /**
-     * Specifies the type of the option.
-     */
-    OptionType type() default OptionType.Debug;
+    @Override
+    protected void run(StructuredGraph graph) {
+        for (ReturnNode returnNode : graph.getNodes(ReturnNode.class)) {
+            VerifyHeapNode.addBefore(returnNode);
+        }
+    }
 }

@@ -84,16 +84,16 @@ public class BenchmarkCounters {
     static class Options {
 
         //@formatter:off
-        @Option(help = "Turn on the benchmark counters, and displays the results on VM shutdown")
+        @Option(help = "Turn on the benchmark counters, and displays the results on VM shutdown", type = OptionType.Debug)
         private static final OptionValue<Boolean> GenericDynamicCounters = new OptionValue<>(false);
-        @Option(help = "Turn on the benchmark counters, and displays the results every n milliseconds")
+        @Option(help = "Turn on the benchmark counters, and displays the results every n milliseconds", type = OptionType.Debug)
         private static final OptionValue<Integer> TimedDynamicCounters = new OptionValue<>(-1);
 
         @Option(help = "Turn on the benchmark counters, and listen for specific patterns on System.out/System.err:%n" +
                        "Format: (err|out),start pattern,end pattern (~ matches multiple digits)%n" +
                        "Examples:%n" +
                        "  dacapo = 'err, starting =====, PASSED in'%n" +
-                       "  specjvm2008 = 'out,Iteration ~ (~s) begins:,Iteration ~ (~s) ends:'")
+                       "  specjvm2008 = 'out,Iteration ~ (~s) begins:,Iteration ~ (~s) ends:'", type = OptionType.Debug)
         private static final OptionValue<String> BenchmarkDynamicCounters = new OptionValue<>(null);
         //@formatter:on
     }
@@ -374,6 +374,8 @@ public class BenchmarkCounters {
         }
     }
 
+    private static final LocationIdentity COUNTER_LOCATION = NamedLocationIdentity.mutable("COUNTER_LOCATION");
+
     public static void lower(DynamicCounterNode counter, HotSpotRegistersProvider registers, HotSpotVMConfig config, Kind wordKind) {
         StructuredGraph graph = counter.graph();
 
@@ -383,9 +385,9 @@ public class BenchmarkCounters {
         if (index >= config.graalCountersSize) {
             throw new GraalInternalError("too many counters, reduce number of counters or increase -XX:GraalCounterSize=... (current value: " + config.graalCountersSize + ")");
         }
-        ConstantLocationNode arrayLocation = ConstantLocationNode.create(LocationIdentity.ANY_LOCATION, config.graalCountersThreadOffset, graph);
+        ConstantLocationNode arrayLocation = ConstantLocationNode.create(COUNTER_LOCATION, config.graalCountersThreadOffset, graph);
         ReadNode readArray = graph.add(ReadNode.create(thread, arrayLocation, StampFactory.forKind(wordKind), BarrierType.NONE));
-        ConstantLocationNode location = ConstantLocationNode.create(LocationIdentity.ANY_LOCATION, Unsafe.ARRAY_LONG_INDEX_SCALE * index, graph);
+        ConstantLocationNode location = ConstantLocationNode.create(COUNTER_LOCATION, Unsafe.ARRAY_LONG_INDEX_SCALE * index, graph);
         ReadNode read = graph.add(ReadNode.create(readArray, location, StampFactory.forKind(Kind.Long), BarrierType.NONE));
         AddNode add = graph.unique(AddNode.create(read, counter.getIncrement()));
         WriteNode write = graph.add(WriteNode.create(readArray, add, location, BarrierType.NONE));

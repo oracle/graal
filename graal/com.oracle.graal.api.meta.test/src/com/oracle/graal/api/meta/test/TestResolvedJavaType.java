@@ -847,7 +847,8 @@ public class TestResolvedJavaType extends TypeUniverse {
         "isJavaLangObject",
         "isMember",
         "getElementalType",
-        "getEnclosingType"
+        "getEnclosingType",
+        "$jacocoInit"
     };
     // @formatter:on
 

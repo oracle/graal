@@ -73,7 +73,7 @@ public final class LinearScan {
 
     public static class Options {
         // @formatter:off
-        @Option(help = "Enable spill position optimization")
+        @Option(help = "Enable spill position optimization", type = OptionType.Debug)
         public static final OptionValue<Boolean> LSRAOptimizeSpillPosition = new OptionValue<>(true);
         // @formatter:on
     }

@@ -40,10 +40,12 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.HeapAccess.BarrierType;
 import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.debug.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.phases.util.*;
 
@@ -99,9 +101,15 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             boxingSnippets.lower((BoxNode) n, tool);
         } else if (n instanceof UnboxNode) {
             boxingSnippets.lower((UnboxNode) n, tool);
+        } else if (n instanceof VerifyHeapNode) {
+            lowerVerifyHeap((VerifyHeapNode) n);
         } else {
             throw GraalInternalError.shouldNotReachHere("Node implementing Lowerable not handled: " + n);
         }
+    }
+
+    protected void lowerVerifyHeap(VerifyHeapNode n) {
+        GraphUtil.removeFixedWithUnusedInputs(n);
     }
 
     protected void lowerLoadFieldNode(LoadFieldNode loadField, LoweringTool tool) {

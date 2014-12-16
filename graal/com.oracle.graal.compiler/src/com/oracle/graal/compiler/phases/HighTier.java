@@ -41,7 +41,7 @@ public class HighTier extends PhaseSuite<HighTierContext> {
     public static class Options {
 
         // @formatter:off
-        @Option(help = "Enable inlining")
+        @Option(help = "Enable inlining", type = OptionType.Expert)
         public static final OptionValue<Boolean> Inline = new OptionValue<>(true);
         // @formatter:on
     }

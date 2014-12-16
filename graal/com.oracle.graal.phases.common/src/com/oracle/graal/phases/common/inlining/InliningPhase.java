@@ -37,7 +37,7 @@ public class InliningPhase extends AbstractInliningPhase {
     public static class Options {
 
         // @formatter:off
-        @Option(help = "Unconditionally inline intrinsics")
+        @Option(help = "Unconditionally inline intrinsics", type = OptionType.Debug)
         public static final OptionValue<Boolean> AlwaysInlineIntrinsics = new OptionValue<>(false);
         // @formatter:on
     }

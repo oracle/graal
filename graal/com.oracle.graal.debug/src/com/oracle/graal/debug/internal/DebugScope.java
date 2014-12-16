@@ -169,6 +169,58 @@ public final class DebugScope implements Debug.Scope {
         return currentDumpLevel >= dumpLevel;
     }
 
+    /**
+     * Enable dumping at the new {@code dumpLevel} for remainder of compile. Requires a
+     * TopLevelDebugConfig
+     *
+     * @param dumpLevel
+     */
+    public static void setDumpLevel(int dumpLevel) {
+        TopLevelDebugConfig config = fetchTopLevelDebugConfig("setLogLevel");
+        if (config != null) {
+            config.override(DelegatingDebugConfig.Level.DUMP, dumpLevel);
+            recursiveUpdateFlags();
+        }
+    }
+
+    /**
+     * Enable logging at the new {@code logLevel} for remainder of compile. Requires a
+     * TopLevelDebugConfig
+     *
+     * @param logLevel
+     */
+    public static void setLogLevel(int logLevel) {
+        TopLevelDebugConfig config = fetchTopLevelDebugConfig("setLogLevel");
+        if (config != null) {
+            config.override(DelegatingDebugConfig.Level.LOG, logLevel);
+            config.delegate(DelegatingDebugConfig.Feature.LOG_METHOD);
+            recursiveUpdateFlags();
+        }
+    }
+
+    private static void recursiveUpdateFlags() {
+        DebugScope c = DebugScope.getInstance();
+        while (c != null) {
+            c.updateFlags();
+            c = c.parent;
+        }
+    }
+
+    private static TopLevelDebugConfig fetchTopLevelDebugConfig(String msg) {
+        DebugConfig config = getConfig();
+        if (config instanceof TopLevelDebugConfig) {
+            return (TopLevelDebugConfig) config;
+        } else {
+            PrintStream out = System.out;
+            if (config == null) {
+                out.printf("DebugScope.%s ignored because debugging is disabled%n", msg);
+            } else {
+                out.printf("DebugScope.%s ignored because top level delegate config missing%n", msg);
+            }
+            return null;
+        }
+    }
+
     public boolean isVerifyEnabled() {
         return verifyEnabled;
     }

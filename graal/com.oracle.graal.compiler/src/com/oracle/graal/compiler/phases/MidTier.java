@@ -81,6 +81,10 @@ public class MidTier extends PhaseSuite<MidTierContext> {
 
         appendPhase(new IncrementalCanonicalizerPhase<>(canonicalizer, new GuardLoweringPhase()));
 
+        if (VerifyHeapAtReturn.getValue()) {
+            appendPhase(new VerifyHeapAtReturnPhase());
+        }
+
         appendPhase(new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.MID_TIER));
 
         appendPhase(new FrameStateAssignmentPhase());

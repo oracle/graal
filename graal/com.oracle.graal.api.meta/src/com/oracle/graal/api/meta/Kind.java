@@ -24,6 +24,8 @@ package com.oracle.graal.api.meta;
 
 import java.lang.reflect.*;
 
+//JaCoCo Exclude
+
 /**
  * Denotes the basic kinds of types in CRI, including the all the Java primitive types, for example,
  * {@link Kind#Int} for {@code int} and {@link Kind#Object} for all object types. A kind has a
