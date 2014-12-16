@@ -27,6 +27,7 @@ import static com.oracle.graal.api.code.CodeUtil.*;
 import static com.oracle.graal.compiler.GraalCompiler.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.compiler.common.UnsafeAccess.*;
+import static com.oracle.graal.debug.Debug.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.hotspot.InitTimer.*;
 import static com.oracle.graal.hotspot.meta.HotSpotSuitesProvider.*;
@@ -365,7 +366,9 @@ public class CompilationTask {
     static void compileMethod(HotSpotResolvedJavaMethod method, int entryBCI, long ctask, int id) {
         HotSpotBackend backend = runtime().getHostBackend();
         CompilationTask task = new CompilationTask(backend, method, entryBCI, ctask, id, true);
-        task.runCompilation();
+        try (DebugConfigScope dcs = setConfig(new TopLevelDebugConfig())) {
+            task.runCompilation();
+        }
         return;
     }
 }
