@@ -62,7 +62,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                 LoadCacheEntry identifier = new LoadCacheEntry(object, access.field());
                 ValueNode cachedValue = state.getCacheEntry(identifier);
                 if (node instanceof LoadFieldNode) {
-                    if (cachedValue != null) {
+                    if (cachedValue != null && access.stamp().isCompatible(cachedValue.stamp())) {
                         effects.replaceAtUsages(access, cachedValue);
                         addScalarAlias(access, cachedValue);
                         deleted = true;
@@ -87,7 +87,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                 ValueNode object = GraphUtil.unproxify(read.object());
                 ReadCacheEntry identifier = new ReadCacheEntry(object, read.location());
                 ValueNode cachedValue = state.getCacheEntry(identifier);
-                if (cachedValue != null) {
+                if (cachedValue != null && read.stamp().isCompatible(cachedValue.stamp())) {
                     if (read.getGuard() != null && !(read.getGuard() instanceof FixedNode)) {
                         effects.addFixedNodeBefore(ValueAnchorNode.create((ValueNode) read.getGuard()), read);
                     }
@@ -122,7 +122,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                     ValueNode object = GraphUtil.unproxify(load.object());
                     UnsafeLoadCacheEntry identifier = new UnsafeLoadCacheEntry(object, load.offset(), load.getLocationIdentity());
                     ValueNode cachedValue = state.getCacheEntry(identifier);
-                    if (cachedValue != null) {
+                    if (cachedValue != null && load.stamp().isCompatible(cachedValue.stamp())) {
                         effects.replaceAtUsages(load, cachedValue);
                         addScalarAlias(load, cachedValue);
                         deleted = true;
