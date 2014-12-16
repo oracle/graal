@@ -28,7 +28,6 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.lir.*;
@@ -42,7 +41,7 @@ public final class LocationMarker {
     public static class Options {
         // @formatter:off
         @Option(help = "Use decoupled pass for location marking (instead of using LSRA marking)", type = OptionType.Debug)
-        public static final OptionValue<Boolean> UseLocationMarker = new OptionValue<>(false);
+        public static final OptionValue<Boolean> UseLocationMarker = new OptionValue<>(true);
         // @formatter:on
     }
 
