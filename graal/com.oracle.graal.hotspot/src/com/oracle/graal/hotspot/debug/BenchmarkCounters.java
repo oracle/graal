@@ -374,6 +374,8 @@ public class BenchmarkCounters {
         }
     }
 
+    private static final LocationIdentity COUNTER_LOCATION = NamedLocationIdentity.mutable("COUNTER_LOCATION");
+
     public static void lower(DynamicCounterNode counter, HotSpotRegistersProvider registers, HotSpotVMConfig config, Kind wordKind) {
         StructuredGraph graph = counter.graph();
 
@@ -383,9 +385,9 @@ public class BenchmarkCounters {
         if (index >= config.graalCountersSize) {
             throw new GraalInternalError("too many counters, reduce number of counters or increase -XX:GraalCounterSize=... (current value: " + config.graalCountersSize + ")");
         }
-        ConstantLocationNode arrayLocation = ConstantLocationNode.create(LocationIdentity.ANY_LOCATION, config.graalCountersThreadOffset, graph);
+        ConstantLocationNode arrayLocation = ConstantLocationNode.create(COUNTER_LOCATION, config.graalCountersThreadOffset, graph);
         ReadNode readArray = graph.add(ReadNode.create(thread, arrayLocation, StampFactory.forKind(wordKind), BarrierType.NONE));
-        ConstantLocationNode location = ConstantLocationNode.create(LocationIdentity.ANY_LOCATION, Unsafe.ARRAY_LONG_INDEX_SCALE * index, graph);
+        ConstantLocationNode location = ConstantLocationNode.create(COUNTER_LOCATION, Unsafe.ARRAY_LONG_INDEX_SCALE * index, graph);
         ReadNode read = graph.add(ReadNode.create(readArray, location, StampFactory.forKind(Kind.Long), BarrierType.NONE));
         AddNode add = graph.unique(AddNode.create(read, counter.getIncrement()));
         WriteNode write = graph.add(WriteNode.create(readArray, add, location, BarrierType.NONE));
