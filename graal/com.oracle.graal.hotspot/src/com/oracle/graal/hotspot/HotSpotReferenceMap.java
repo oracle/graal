@@ -94,7 +94,7 @@ public final class HotSpotReferenceMap implements ReferenceMap, Serializable {
 
     private static void setOop(BitSet map, int startIdx, LIRKind kind) {
         int length = kind.getPlatformKind().getVectorLength();
-        map.clear(BITS_PER_WORD * startIdx, BITS_PER_WORD * (startIdx + length) - 1);
+        map.clear(BITS_PER_WORD * startIdx, BITS_PER_WORD * (startIdx + length));
         for (int i = 0, idx = BITS_PER_WORD * startIdx; i < length; i++, idx += BITS_PER_WORD) {
             if (kind.isReference(i)) {
                 map.set(idx);
@@ -105,7 +105,7 @@ public final class HotSpotReferenceMap implements ReferenceMap, Serializable {
     private static void setNarrowOop(BitSet map, int idx, LIRKind kind) {
         int length = kind.getPlatformKind().getVectorLength();
         int nextIdx = idx + (length + 1) / 2;
-        map.clear(BITS_PER_WORD * idx, BITS_PER_WORD * nextIdx - 1);
+        map.clear(BITS_PER_WORD * idx, BITS_PER_WORD * nextIdx);
         for (int i = 0, regIdx = BITS_PER_WORD * idx; i < length; i += 2, regIdx += BITS_PER_WORD) {
             if (kind.isReference(i)) {
                 map.set(regIdx);
@@ -179,13 +179,13 @@ public final class HotSpotReferenceMap implements ReferenceMap, Serializable {
 
     private static void clearOop(BitSet map, int startIdx, LIRKind kind) {
         int length = kind.getPlatformKind().getVectorLength();
-        map.clear(BITS_PER_WORD * startIdx, BITS_PER_WORD * (startIdx + length) - 1);
+        map.clear(BITS_PER_WORD * startIdx, BITS_PER_WORD * (startIdx + length));
     }
 
     private static void clearNarrowOop(BitSet map, int idx, LIRKind kind) {
         int length = kind.getPlatformKind().getVectorLength();
         int nextIdx = idx + (length + 1) / 2;
-        map.clear(BITS_PER_WORD * idx, BITS_PER_WORD * nextIdx - 1);
+        map.clear(BITS_PER_WORD * idx, BITS_PER_WORD * nextIdx);
     }
 
     public void clearRegister(int idx, LIRKind kind) {
