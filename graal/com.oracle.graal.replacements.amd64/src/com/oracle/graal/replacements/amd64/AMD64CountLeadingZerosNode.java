@@ -48,10 +48,14 @@ public class AMD64CountLeadingZerosNode extends UnaryNode implements LIRLowerabl
 
     @Override
     public boolean inferStamp() {
+        assert value.getKind() == Kind.Int || value.getKind() == Kind.Long;
         IntegerStamp valueStamp = (IntegerStamp) getValue().stamp();
         long mask = CodeUtil.mask(valueStamp.getBits());
-        int min = Long.numberOfLeadingZeros(valueStamp.upMask() & mask);
-        int max = Long.numberOfLeadingZeros(valueStamp.downMask() & mask);
+        // Don't count zeros from the mask in the result.
+        int adjust = Long.numberOfLeadingZeros(mask);
+        assert adjust == 0 || adjust == 32;
+        int min = Long.numberOfLeadingZeros(valueStamp.upMask() & mask) - adjust;
+        int max = Long.numberOfLeadingZeros(valueStamp.downMask() & mask) - adjust;
         return updateStamp(StampFactory.forInteger(Kind.Int, min, max));
     }
 
