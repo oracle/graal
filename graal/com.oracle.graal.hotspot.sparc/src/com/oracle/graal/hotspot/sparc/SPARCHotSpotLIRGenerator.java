@@ -353,7 +353,8 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
     }
 
     public void emitNullCheck(Value address, LIRFrameState state) {
-        assert address.getKind() == Kind.Object : address + " - " + address.getKind() + " not an object!";
+        PlatformKind kind = address.getLIRKind().getPlatformKind();
+        assert kind == Kind.Object || kind == Kind.Long : address + " - " + kind + " not an object!";
         append(new NullCheckOp(load(address), state));
     }
 }

@@ -1263,9 +1263,9 @@ public abstract class SPARCAssembler extends Assembler {
         }
 
         public void verify() {
-            assert ((rd << RD_SHIFT) & RD_MASK) == (rd << RD_SHIFT);
-            assert ((op3 << OP3_SHIFT) & OP3_MASK) == (op3 << OP3_SHIFT);
-            assert ((rs1 << RS1_SHIFT) & RS1_MASK) == (rs1 << RS1_SHIFT);
+            assert ((rd << RD_SHIFT) & RD_MASK) == (rd << RD_SHIFT) : rd;
+            assert ((op3 << OP3_SHIFT) & OP3_MASK) == (op3 << OP3_SHIFT) : op3;
+            assert ((rs1 << RS1_SHIFT) & RS1_MASK) == (rs1 << RS1_SHIFT) : rs1;
             assert ((i << I_SHIFT) & I_MASK) == (i << I_SHIFT);
             assert ((immAsi << IMM_ASI_SHIFT) & IMM_ASI_MASK) == (immAsi << IMM_ASI_SHIFT);
             assert ((rs2 << RS2_SHIFT) & RS2_MASK) == (rs2 << RS2_SHIFT);
