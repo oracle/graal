@@ -170,13 +170,13 @@ public final class DebugScope implements Debug.Scope {
     }
 
     /**
-     * Enable dumping at the new {@code dumpLevel} for remainder of compile. Requires a
-     * TopLevelDebugConfig
+     * Enable dumping at the new {@code dumpLevel} for the remainder of enclosing scopes. This only
+     * works if a {@link TopLevelDebugConfig} was installed at a higher scope.
      *
      * @param dumpLevel
      */
     public static void setDumpLevel(int dumpLevel) {
-        TopLevelDebugConfig config = fetchTopLevelDebugConfig("setLogLevel");
+        TopLevelDebugConfig config = fetchTopLevelDebugConfig("setDebugLevel");
         if (config != null) {
             config.override(DelegatingDebugConfig.Level.DUMP, dumpLevel);
             recursiveUpdateFlags();
@@ -184,8 +184,8 @@ public final class DebugScope implements Debug.Scope {
     }
 
     /**
-     * Enable logging at the new {@code logLevel} for remainder of compile. Requires a
-     * TopLevelDebugConfig
+     * Enable logging at the new {@code logLevel} for the remainder of enclosing scopes. This only
+     * works if a {@link TopLevelDebugConfig} was installed at a higher scope.
      *
      * @param logLevel
      */
