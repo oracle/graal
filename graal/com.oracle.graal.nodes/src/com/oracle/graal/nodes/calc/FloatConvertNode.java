@@ -55,12 +55,12 @@ public class FloatConvertNode extends UnaryArithmeticNode<FloatConvertOp> implem
     }
 
     @Override
-    public Constant convert(Constant c) {
+    public Constant convert(Constant c, ConstantReflectionProvider constantReflection) {
         return getOp(getValue()).foldConstant(c);
     }
 
     @Override
-    public Constant reverse(Constant c) {
+    public Constant reverse(Constant c, ConstantReflectionProvider constantReflection) {
         FloatConvertOp reverse = ArithmeticOpTable.forStamp(stamp()).getFloatConvert(op.reverse());
         return reverse.foldConstant(c);
     }

@@ -35,9 +35,9 @@ public interface ConvertNode extends ArithmeticOperation, NodeInterface {
 
     ValueNode getValue();
 
-    Constant convert(Constant c);
+    Constant convert(Constant c, ConstantReflectionProvider constantReflection);
 
-    Constant reverse(Constant c);
+    Constant reverse(Constant c, ConstantReflectionProvider constantReflection);
 
     /**
      * Check whether a conversion is lossless.
@@ -61,9 +61,10 @@ public interface ConvertNode extends ArithmeticOperation, NodeInterface {
      *
      * @param op a comparison operator
      * @param value
+     * @param constantReflection
      * @return true iff (c1 op value) == (convert(c1) op convert(value)) for value and all c1
      */
-    default boolean preservesOrder(Condition op, Constant value) {
+    default boolean preservesOrder(Condition op, Constant value, ConstantReflectionProvider constantReflection) {
         return preservesOrder(op);
     }
 

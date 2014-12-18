@@ -176,9 +176,49 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
             // zero and the MIN_VALUE / -1 cases.
         } else if (n instanceof AbstractDeoptimizeNode || n instanceof UnwindNode || n instanceof RemNode) {
             /* No lowering, we generate LIR directly for these nodes. */
+        } else if (n instanceof ClassGetHubNode) {
+            lowerClassGetHubNode((ClassGetHubNode) n, tool);
+        } else if (n instanceof HubGetClassNode) {
+            lowerHubGetClassNode((HubGetClassNode) n, tool);
+        } else if (n instanceof KlassLayoutHelperNode) {
+            lowerKlassLayoutHelperNode((KlassLayoutHelperNode) n, tool);
         } else {
             super.lower(n, tool);
         }
+    }
+
+    private void lowerKlassLayoutHelperNode(KlassLayoutHelperNode n, LoweringTool tool) {
+        if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.HIGH_TIER) {
+            return;
+        }
+        StructuredGraph graph = n.graph();
+        LocationNode location = ConstantLocationNode.create(KLASS_LAYOUT_HELPER_LOCATION, runtime.getConfig().klassLayoutHelperOffset, graph);
+        assert !n.getHub().isConstant();
+        graph.replaceFloating(n, graph.unique(FloatingReadNode.create(n.getHub(), location, null, n.stamp(), n.getGuard(), BarrierType.NONE)));
+    }
+
+    private void lowerHubGetClassNode(HubGetClassNode n, LoweringTool tool) {
+        if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.HIGH_TIER) {
+            return;
+        }
+
+        StructuredGraph graph = n.graph();
+        LocationNode location = ConstantLocationNode.create(CLASS_MIRROR_LOCATION, runtime.getConfig().classMirrorOffset, graph);
+        assert !n.getHub().isConstant();
+        FloatingReadNode read = graph.unique(FloatingReadNode.create(n.getHub(), location, null, n.stamp(), n.getGuard(), BarrierType.NONE));
+        graph.replaceFloating(n, read);
+    }
+
+    private void lowerClassGetHubNode(ClassGetHubNode n, LoweringTool tool) {
+        if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.HIGH_TIER) {
+            return;
+        }
+
+        StructuredGraph graph = n.graph();
+        LocationNode location = ConstantLocationNode.create(CLASS_KLASS_LOCATION, runtime.getConfig().klassOffset, graph);
+        assert !n.getValue().isConstant();
+        FloatingReadNode read = graph.unique(FloatingReadNode.create(n.getValue(), location, null, n.stamp(), n.getGuard(), BarrierType.NONE));
+        graph.replaceFloating(n, read);
     }
 
     private void lowerInvoke(Invoke invoke, LoweringTool tool, StructuredGraph graph) {

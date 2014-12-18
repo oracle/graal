@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
-
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
@@ -32,7 +30,6 @@ import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.HeapAccess.BarrierType;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 
@@ -114,11 +111,10 @@ public class KlassLayoutHelperNode extends FloatingGuardedNode implements Canoni
 
     @Override
     public void lower(LoweringTool tool) {
-        if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.HIGH_TIER) {
-            return;
-        }
-        LocationNode location = ConstantLocationNode.create(KLASS_LAYOUT_HELPER_LOCATION, config.klassLayoutHelperOffset, graph());
-        assert !klass.isConstant();
-        graph().replaceFloating(this, graph().unique(FloatingReadNode.create(klass, location, null, stamp(), getGuard(), BarrierType.NONE)));
+        tool.getLowerer().lower(this, tool);
+    }
+
+    public ValueNode getHub() {
+        return klass;
     }
 }

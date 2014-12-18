@@ -69,12 +69,12 @@ public abstract class IntegerConvertNode<OP, REV> extends UnaryNode implements C
     }
 
     @Override
-    public Constant convert(Constant c) {
+    public Constant convert(Constant c, ConstantReflectionProvider constantReflection) {
         return getOp(getValue()).foldConstant(getInputBits(), getResultBits(), c);
     }
 
     @Override
-    public Constant reverse(Constant c) {
+    public Constant reverse(Constant c, ConstantReflectionProvider constantReflection) {
         IntegerConvertOp<REV> reverse = getReverseOp.apply(ArithmeticOpTable.forStamp(stamp()));
         return reverse.foldConstant(getResultBits(), getInputBits(), c);
     }
@@ -89,7 +89,7 @@ public abstract class IntegerConvertNode<OP, REV> extends UnaryNode implements C
         if (inputBits == resultBits) {
             return value;
         } else if (value.isConstant()) {
-            return ConstantNode.forPrimitive(stamp(), convert(forValue.asConstant()));
+            return ConstantNode.forPrimitive(stamp(), convert(forValue.asConstant(), tool.getConstantReflection()));
         } else {
             return this;
         }

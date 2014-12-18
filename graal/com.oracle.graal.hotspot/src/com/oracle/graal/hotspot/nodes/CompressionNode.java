@@ -98,7 +98,7 @@ public class CompressionNode extends UnaryNode implements ConvertNode, LIRLowera
     }
 
     @Override
-    public Constant convert(Constant c) {
+    public Constant convert(Constant c, ConstantReflectionProvider constantReflection) {
         switch (op) {
             case Compress:
                 return compress(c, encoding);
@@ -110,7 +110,7 @@ public class CompressionNode extends UnaryNode implements ConvertNode, LIRLowera
     }
 
     @Override
-    public Constant reverse(Constant c) {
+    public Constant reverse(Constant c, ConstantReflectionProvider constantReflection) {
         switch (op) {
             case Compress:
                 return uncompress(c, encoding);
@@ -159,7 +159,7 @@ public class CompressionNode extends UnaryNode implements ConvertNode, LIRLowera
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
         if (forValue.isConstant()) {
-            return ConstantNode.forConstant(stamp(), convert(forValue.asConstant()), tool.getMetaAccess());
+            return ConstantNode.forConstant(stamp(), convert(forValue.asConstant(), tool.getConstantReflection()), tool.getMetaAccess());
         } else if (forValue instanceof CompressionNode) {
             CompressionNode other = (CompressionNode) forValue;
             if (op != other.op && encoding.equals(other.encoding)) {
