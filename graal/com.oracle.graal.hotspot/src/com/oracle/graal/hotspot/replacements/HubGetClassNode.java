@@ -99,11 +99,17 @@ public class HubGetClassNode extends FloatingGuardedNode implements Lowerable, C
 
     @Override
     public Constant convert(Constant c) {
+        if (JavaConstant.NULL_POINTER.equals(c)) {
+            return c;
+        }
         return runtime.getHostProviders().getConstantReflection().asJavaType(c).getJavaClass();
     }
 
     @Override
     public Constant reverse(Constant c) {
+        if (JavaConstant.NULL_POINTER.equals(c)) {
+            return c;
+        }
         ResolvedJavaType type = runtime.getHostProviders().getConstantReflection().asJavaType(c);
         if (type instanceof HotSpotResolvedObjectType) {
             return ((HotSpotResolvedObjectType) type).getObjectHub();
