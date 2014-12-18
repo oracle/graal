@@ -137,7 +137,7 @@ public abstract class CompareNode extends BinaryOpLogicNode {
     }
 
     private ConstantNode canonicalConvertConstant(CanonicalizerTool tool, ConvertNode convert, Constant constant) {
-        if (convert.preservesOrder(condition())) {
+        if (convert.preservesOrder(condition(), constant)) {
             Constant reverseConverted = convert.reverse(constant);
             if (convert.convert(reverseConverted).equals(constant)) {
                 return ConstantNode.forConstant(convert.getValue().stamp(), reverseConverted, tool.getMetaAccess());

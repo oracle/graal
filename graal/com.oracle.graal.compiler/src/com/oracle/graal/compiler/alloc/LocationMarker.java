@@ -41,7 +41,7 @@ public final class LocationMarker {
     public static class Options {
         // @formatter:off
         @Option(help = "Use decoupled pass for location marking (instead of using LSRA marking)", type = OptionType.Debug)
-        public static final OptionValue<Boolean> UseLocationMarker = new OptionValue<>(false);
+        public static final OptionValue<Boolean> UseLocationMarker = new OptionValue<>(true);
         // @formatter:on
     }
 
@@ -188,11 +188,14 @@ public final class LocationMarker {
             if (shouldProcessValue(operand)) {
                 Debug.log("clear operand: %s", operand);
                 frameMap.clearReference(operand, currentSet);
+            } else {
+                assert isIllegal(operand) || operand.getPlatformKind() != Kind.Illegal || mode == OperandMode.TEMP : String.format("Illegal PlatformKind is only allowed for TEMP mode: %s, %s",
+                                operand, mode);
             }
         }
 
         protected boolean shouldProcessValue(Value operand) {
-            return (isRegister(operand) && attributes(asRegister(operand)).isAllocatable() || isStackSlot(operand)) && operand.getKind() != Kind.Illegal;
+            return (isRegister(operand) && attributes(asRegister(operand)).isAllocatable() || isStackSlot(operand)) && operand.getPlatformKind() != Kind.Illegal;
         }
     }
 
