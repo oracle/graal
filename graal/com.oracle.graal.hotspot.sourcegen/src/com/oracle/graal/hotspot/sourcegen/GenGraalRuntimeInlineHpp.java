@@ -34,7 +34,22 @@ import com.oracle.graal.hotspot.*;
 import com.oracle.graal.options.*;
 
 /**
- * Command line utility for generating the source code of {@code GraalRuntime.inline.hpp}.
+ * Command line utility for generating the source code of {@code graalRuntime.inline.hpp}. The
+ * generated code is comprised of:
+ * <ul>
+ * <li>{@code -G} command line option parsing {@linkplain #genSetOption(PrintStream) helper}</li>
+ * <li>{@link Service} loading {@linkplain #genGetServiceImpls(PrintStream) helper}</li>
+ * </ul>
+ *
+ * The purpose of the generated code is to avoid executing Graal related Java code as much as
+ * possible during initialization of the Graal runtime. Future solutions such as some kind of AOT
+ * system may make such a mechanism redundant in terms of minimizing Graal's impact on VM startup
+ * time.
+ *
+ * The input for the generation is all classes that implement {@link Service} or contain fields
+ * annotated by {@link Option}. As such, the code generation process must be executed with a class
+ * path including all Graal jars that contains such classes. Currently, this is
+ * {@code graal-truffle.jar}.
  */
 public class GenGraalRuntimeInlineHpp {
 
