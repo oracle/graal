@@ -285,6 +285,8 @@ public interface CompilerToVM {
 
     long readUnsafeKlassPointer(Object o);
 
+    Object readUnsafeOop(Object base, long displacement, boolean compressed);
+
     void doNotInlineOrCompile(long metaspaceMethod);
 
     /**
