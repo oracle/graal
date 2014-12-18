@@ -35,6 +35,7 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.Graph.Mark;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.loop.*;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
@@ -229,19 +230,26 @@ public class PartialEvaluator {
         ResolvedJavaType profileClass = metaAccess.lookupJavaType(NodeCloneable.class);
         do {
             changedInIteration = false;
-            for (MethodCallTargetNode methodCallTargetNode : graph.getNodes(MethodCallTargetNode.class)) {
-                InvokeKind kind = methodCallTargetNode.invokeKind();
-                if (kind == InvokeKind.Static || kind == InvokeKind.Special) {
-                    ValueNode receiver = methodCallTargetNode.receiver();
-                    if (receiver != null && receiver.isConstant() && profileClass.isAssignableFrom(receiver.stamp().javaType(metaAccess))) {
-                        queue.addFirst(methodCallTargetNode);
-                    } else {
-                        queue.addLast(methodCallTargetNode);
+
+            Mark mark = null;
+            while (true) {
+
+                for (MethodCallTargetNode methodCallTargetNode : graph.getNewNodes(mark).filter(MethodCallTargetNode.class)) {
+                    InvokeKind kind = methodCallTargetNode.invokeKind();
+                    if (kind == InvokeKind.Static || kind == InvokeKind.Special) {
+                        ValueNode receiver = methodCallTargetNode.receiver();
+                        if (receiver != null && receiver.isConstant() && profileClass.isAssignableFrom(receiver.stamp().javaType(metaAccess))) {
+                            queue.addFirst(methodCallTargetNode);
+                        } else {
+                            queue.addLast(methodCallTargetNode);
+                        }
                     }
                 }
-            }
+                mark = graph.getMark();
 
-            while (!queue.isEmpty()) {
+                if (queue.isEmpty()) {
+                    break;
+                }
                 MethodCallTargetNode methodCallTargetNode = queue.removeFirst();
                 if (!methodCallTargetNode.isAlive()) {
                     continue;
