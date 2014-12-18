@@ -23,6 +23,7 @@
 package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
@@ -84,7 +85,7 @@ public class ObjectEqualsNode extends PointerEqualsNode implements Virtualizable
                 /*
                  * One of the two objects has identity, the other doesn't. In code, this looks like
                  * "Integer.valueOf(a) == new Integer(b)", which is always false.
-                 * 
+                 *
                  * In other words: an object created via valueOf can never be equal to one created
                  * by new in the same compilation unit.
                  */
@@ -111,6 +112,11 @@ public class ObjectEqualsNode extends PointerEqualsNode implements Virtualizable
 
     @Override
     protected CompareNode duplicateModified(ValueNode newX, ValueNode newY) {
-        return ObjectEqualsNode.create(newX, newY);
+        if (newX.stamp() instanceof ObjectStamp && newY.stamp() instanceof ObjectStamp) {
+            return ObjectEqualsNode.create(newX, newY);
+        } else if (newX.stamp() instanceof AbstractPointerStamp && newY.stamp() instanceof AbstractPointerStamp) {
+            return PointerEqualsNode.create(newX, newY);
+        }
+        throw GraalInternalError.shouldNotReachHere();
     }
 }

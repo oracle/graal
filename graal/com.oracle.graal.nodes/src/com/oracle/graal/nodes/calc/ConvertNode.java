@@ -56,5 +56,16 @@ public interface ConvertNode extends ArithmeticOperation, NodeInterface {
         return isLossless();
     }
 
+    /**
+     * Check whether a conversion preserves comparison order against a particular constant value.
+     *
+     * @param op a comparison operator
+     * @param value
+     * @return true iff (c1 op value) == (convert(c1) op convert(value)) for value and all c1
+     */
+    default boolean preservesOrder(Condition op, Constant value) {
+        return preservesOrder(op);
+    }
+
     ValueNode asNode();
 }

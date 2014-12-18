@@ -29,10 +29,12 @@ import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.word.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.HeapAccess.BarrierType;
+import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 
@@ -41,18 +43,18 @@ import com.oracle.graal.nodes.spi.*;
  * also used by {@link ClassGetHubNode} to eliminate chains of {@code klass._java_mirror._klass}.
  */
 @NodeInfo
-public class HubGetClassNode extends FloatingGuardedNode implements Lowerable, Canonicalizable {
+public class HubGetClassNode extends FloatingGuardedNode implements Lowerable, Canonicalizable, ConvertNode {
     @Input protected ValueNode hub;
-    protected final HotSpotVMConfig config;
+    protected final HotSpotGraalRuntimeProvider runtime;
 
-    public static HubGetClassNode create(@InjectedNodeParameter MetaAccessProvider metaAccess, @InjectedNodeParameter HotSpotVMConfig config, ValueNode hub) {
-        return new HubGetClassNode(hub, metaAccess, config);
+    public static HubGetClassNode create(@InjectedNodeParameter MetaAccessProvider metaAccess, @InjectedNodeParameter HotSpotGraalRuntimeProvider runtime, ValueNode hub) {
+        return new HubGetClassNode(hub, metaAccess, runtime);
     }
 
-    protected HubGetClassNode(ValueNode hub, MetaAccessProvider metaAccess, HotSpotVMConfig config) {
+    protected HubGetClassNode(ValueNode hub, MetaAccessProvider metaAccess, HotSpotGraalRuntimeProvider runtime) {
         super(StampFactory.declaredNonNull(metaAccess.lookupJavaType(Class.class)), null);
         this.hub = hub;
-        this.config = config;
+        this.runtime = runtime;
     }
 
     public ValueNode getHub() {
@@ -81,7 +83,7 @@ public class HubGetClassNode extends FloatingGuardedNode implements Lowerable, C
             return;
         }
 
-        LocationNode location = ConstantLocationNode.create(CLASS_MIRROR_LOCATION, config.classMirrorOffset, graph());
+        LocationNode location = ConstantLocationNode.create(CLASS_MIRROR_LOCATION, runtime.getConfig().classMirrorOffset, graph());
         assert !hub.isConstant();
         FloatingReadNode read = graph().unique(FloatingReadNode.create(hub, location, null, stamp(), getGuard(), BarrierType.NONE));
         graph().replaceFloating(this, read);
@@ -90,4 +92,32 @@ public class HubGetClassNode extends FloatingGuardedNode implements Lowerable, C
     @NodeIntrinsic
     public static native Class<?> readClass(KlassPointer hub);
 
+    @Override
+    public ValueNode getValue() {
+        return hub;
+    }
+
+    @Override
+    public Constant convert(Constant c) {
+        return runtime.getHostProviders().getConstantReflection().asJavaType(c).getJavaClass();
+    }
+
+    @Override
+    public Constant reverse(Constant c) {
+        ResolvedJavaType type = runtime.getHostProviders().getConstantReflection().asJavaType(c);
+        if (type instanceof HotSpotResolvedObjectType) {
+            return ((HotSpotResolvedObjectType) type).getObjectHub();
+        } else {
+            assert type instanceof HotSpotResolvedPrimitiveType;
+            return JavaConstant.NULL_POINTER;
+        }
+    }
+
+    @Override
+    public boolean isLossless() {
+        /*
+         * Any concrete Klass* has a corresponding java.lang.Class
+         */
+        return true;
+    }
 }

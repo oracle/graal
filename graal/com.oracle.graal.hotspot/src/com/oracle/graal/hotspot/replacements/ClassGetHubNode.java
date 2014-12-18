@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot.replacements;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.hotspot.*;
@@ -34,6 +35,7 @@ import com.oracle.graal.hotspot.word.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.HeapAccess.BarrierType;
+import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 
@@ -44,7 +46,7 @@ import com.oracle.graal.nodes.spi.*;
  * {@link ReadNode#canonicalizeRead(ValueNode, LocationNode, ValueNode, CanonicalizerTool)}.
  */
 @NodeInfo
-public class ClassGetHubNode extends FloatingGuardedNode implements Lowerable, Canonicalizable {
+public class ClassGetHubNode extends FloatingGuardedNode implements Lowerable, Canonicalizable, ConvertNode {
     @Input protected ValueNode clazz;
     protected final HotSpotGraalRuntimeProvider runtime;
 
@@ -109,5 +111,37 @@ public class ClassGetHubNode extends FloatingGuardedNode implements Lowerable, C
 
     @NodeIntrinsic
     public static native KlassPointer readClass(Class<?> clazz, GuardingNode guard);
+
+    public ValueNode getValue() {
+        return clazz;
+    }
+
+    public Constant convert(Constant c) {
+        ResolvedJavaType exactType = runtime.getHostProviders().getConstantReflection().asJavaType(c);
+        if (exactType instanceof HotSpotResolvedObjectType) {
+            HotSpotResolvedObjectType objectType = (HotSpotResolvedObjectType) exactType;
+            return objectType.getObjectHub();
+        } else {
+            assert exactType instanceof HotSpotResolvedPrimitiveType;
+            return JavaConstant.NULL_POINTER;
+        }
+    }
+
+    public Constant reverse(Constant c) {
+        assert !c.equals(JavaConstant.NULL_POINTER);
+        ResolvedJavaType objectType = runtime.getHostProviders().getConstantReflection().asJavaType(c);
+        return objectType.getJavaClass();
+    }
+
+    public boolean isLossless() {
+        return false;
+    }
+
+    @Override
+    public boolean preservesOrder(Condition op, Constant value) {
+        assert op == Condition.EQ || op == Condition.NE;
+        ResolvedJavaType exactType = runtime.getHostProviders().getConstantReflection().asJavaType(value);
+        return exactType instanceof HotSpotResolvedObjectType;
+    }
 
 }
