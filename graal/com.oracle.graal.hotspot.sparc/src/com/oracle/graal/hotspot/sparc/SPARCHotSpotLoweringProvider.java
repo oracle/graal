@@ -24,13 +24,25 @@ package com.oracle.graal.hotspot.sparc;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.spi.*;
 
 public class SPARCHotSpotLoweringProvider extends DefaultHotSpotLoweringProvider {
 
     public SPARCHotSpotLoweringProvider(HotSpotGraalRuntimeProvider runtime, MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, HotSpotRegistersProvider registers,
                     TargetDescription target) {
         super(runtime, metaAccess, foreignCalls, registers, target);
+    }
+
+    @Override
+    public void lower(Node n, LoweringTool tool) {
+        if (n instanceof FloatConvertNode) {
+            // FloatConvertNodes are handled in SPARCLIRGenerator.emitConvert
+        } else {
+            super.lower(n, tool);
+        }
     }
 }
