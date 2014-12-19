@@ -2,14 +2,22 @@
 
 This changelog summarizes major changes between Graal versions relevant to languages implementors building upon the Truffle framework and developers building technology on top of Graal. The main focus is on APIs exported by Graal and Truffle.
 
+
 ## `tip`
+### Graal
+* ...
+
+### Truffle
+* ...
+
+## Version 0.6
+19-Dec-2014, [Repository Revision](http://hg.openjdk.java.net/graal/graal/shortlog/graal-0.6)
 ### Graal
 * Merged with jdk8u25-b17.
 * Added `com.oracle.graal.api.meta.Remote` interface for future support of remote and replay compilation.
 * Changed name suite specification from `mx/projects.py` to `mx/suite.py`.
 * Changed semantics (and signature) of `ResolvedJavaType#resolveMethod()` (old behavior available via `resolveConcreteMethod()`).
 * Moved `ResolvedJavaField#read[Constant]Value` and `getMethodHandleAccess()` to `ConstantReflectionProvider`.
-* ...
 
 ### Truffle
 * Instrumentation: add Instrumentable API for language implementors, with most details automated (see package `com.oracle.truffle.api.instrument`).
@@ -29,7 +37,6 @@ This changelog summarizes major changes between Graal versions relevant to langu
 * Added `NodeInterface` and allowed child field to be declared with interfaces that extend it.
 * Added `CompilerOptions` and allowed it to be set for `ExecutionContext` and `RootNode`.
 * Added experimental object API (see new project `com.oracle.truffle.api.object`).
-* ...
 
 ## Version 0.5
 23-Sep-2014, [Repository Revision](http://hg.openjdk.java.net/graal/graal/shortlog/graal-0.5)
