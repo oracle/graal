@@ -28,7 +28,7 @@ This changelog summarizes major changes between Graal versions relevant to langu
 * Added `TruffleRuntime#getCapability` API method.
 * Added `NodeInterface` and allowed child field to be declared with interfaces that extend it.
 * Added `CompilerOptions` and allowed it to be set for `ExecutionContext` and `RootNode`.
-* Added experimental object API.
+* Added experimental object API (see new project `com.oracle.truffle.api.object`).
 * ...
 
 ## Version 0.5
