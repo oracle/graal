@@ -51,7 +51,6 @@ public class ConditionalEliminationPhase extends Phase {
     private static final DebugMetric metricNullCheckRemoved = Debug.metric("NullCheckRemoved");
     private static final DebugMetric metricObjectEqualsRemoved = Debug.metric("ObjectEqualsRemoved");
     private static final DebugMetric metricGuardsRemoved = Debug.metric("GuardsRemoved");
-    private static final DebugMetric metricShortCircuitOrRemoved = Debug.metric("ShortCircuitOrRemoved");
 
     private StructuredGraph graph;
 
@@ -633,16 +632,6 @@ public class ConditionalEliminationPhase extends Phase {
                     } else if (state.isNull(x) && state.isNull(y)) {
                         metricObjectEqualsRemoved.increment();
                         return trueValue;
-                    }
-                } else if (condition instanceof ShortCircuitOrNode) {
-                    ShortCircuitOrNode shortCircuitOr = (ShortCircuitOrNode) condition;
-                    T xResult = evaluateCondition(shortCircuitOr.getX(), trueValue, falseValue);
-                    if (xResult != null) {
-                        if (xResult == (shortCircuitOr.isXNegated() ? trueValue : falseValue)) {
-                            // x condition is false => short circuit result is false
-                            metricShortCircuitOrRemoved.increment();
-                            return falseValue;
-                        }
                     }
                 }
             }
