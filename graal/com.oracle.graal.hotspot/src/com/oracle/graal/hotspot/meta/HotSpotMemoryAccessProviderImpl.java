@@ -182,6 +182,9 @@ public class HotSpotMemoryAccessProviderImpl implements HotSpotMemoryAccessProvi
     @Override
     public Constant readKlassPointerConstant(Constant base, long displacement) {
         long klass = readRawValue(base, displacement, runtime.getTarget().wordSize * 8);
+        if (klass == 0) {
+            return JavaConstant.NULL_POINTER;
+        }
         HotSpotResolvedObjectType metaKlass = HotSpotResolvedObjectTypeImpl.fromMetaspaceKlass(klass);
         return HotSpotMetaspaceConstantImpl.forMetaspaceObject(runtime.getTarget().wordKind, klass, metaKlass, false);
     }
@@ -190,6 +193,9 @@ public class HotSpotMemoryAccessProviderImpl implements HotSpotMemoryAccessProvi
     public Constant readNarrowKlassPointerConstant(Constant base, long displacement, CompressEncoding encoding) {
         int compressed = (int) readRawValue(base, displacement, 32);
         long klass = encoding.uncompress(compressed);
+        if (klass == 0) {
+            return JavaConstant.NULL_POINTER;
+        }
         HotSpotResolvedObjectType metaKlass = HotSpotResolvedObjectTypeImpl.fromMetaspaceKlass(klass);
         return HotSpotMetaspaceConstantImpl.forMetaspaceObject(Kind.Int, compressed, metaKlass, true);
     }
