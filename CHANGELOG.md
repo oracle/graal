@@ -1,18 +1,18 @@
 # GraalVM Changelog
 
+This changelog summarizes major changes between Graal versions relevant to languages implementors building upon the Truffle framework and developers building technology on top of Graal. The main focus is on APIs exported by Graal and Truffle.
+
 ## `tip`
 ### Graal
+* Merged with jdk8u25-b17.
+* Added `com.oracle.graal.api.meta.Remote` interface for future support of remote and replay compilation.
 * Changed name suite specification from `mx/projects.py` to `mx/suite.py`.
 * Changed semantics (and signature) of `ResolvedJavaType#resolveMethod()` (old behavior available via `resolveConcreteMethod()`).
 * Moved `ResolvedJavaField#read[Constant]Value` and `getMethodHandleAccess()` to `ConstantReflectionProvider`.
 * ...
 
 ### Truffle
-* Instrumentation: major API revision, based around the Probe and Instrument classes.
-* Instrumentation: add Instrumentable API for language implementors, with most details automated.
-* Instrumentation: reimplemented to handle AST splitting automatically.
-* Instrumentation: more JUnit tests
-* Relaxed declared type restriction on child fields to allow for interface types in addition to Node subclasses.
+* Instrumentation: add Instrumentable API for language implementors, with most details automated (see package `com.oracle.truffle.api.instrument`).
 * The BranchProfile constructor is now private. Use BranchProfile#create() instead.
 * Renamed @CompilerDirectives.SlowPath to @CompilerDirectives.TruffleBoundary
 * Renamed RootNode#isSplittable to RootNode#isCloningAllowed
