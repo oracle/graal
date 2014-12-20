@@ -16,7 +16,6 @@ The GraalVM is based on the source code of HotSpot. The following authors have c
 * Roland Schatz (rschatz)
 * Doug Simon (dnsimon)
 * Lukas Stadler (lstadler)
-* Roland Schatz (rschatz)
 * Alexander Stipsits
 * Katrin Strassl
 * Christian Thalinger (twisti)
