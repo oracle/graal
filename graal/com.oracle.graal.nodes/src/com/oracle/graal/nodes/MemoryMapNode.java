@@ -27,6 +27,7 @@ import static com.oracle.graal.api.meta.LocationIdentity.*;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
@@ -90,7 +91,7 @@ public class MemoryMapNode extends FloatingNode implements MemoryMap, LIRLowerab
     }
 
     public Map<LocationIdentity, MemoryNode> toMap() {
-        HashMap<LocationIdentity, MemoryNode> res = new HashMap<>(locationIdentities.size());
+        HashMap<LocationIdentity, MemoryNode> res = CollectionsFactory.newMap(locationIdentities.size());
         for (int i = 0; i < nodes.size(); i++) {
             res.put(locationIdentities.get(i), (MemoryNode) nodes.get(i));
         }

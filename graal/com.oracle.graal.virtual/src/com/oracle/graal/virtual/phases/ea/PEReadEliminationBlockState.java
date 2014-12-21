@@ -25,6 +25,7 @@ package com.oracle.graal.virtual.phases.ea;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.virtual.*;
 
@@ -64,12 +65,12 @@ public class PEReadEliminationBlockState extends PartialEscapeBlockState<PEReadE
     }
 
     public PEReadEliminationBlockState() {
-        readCache = new HashMap<>();
+        readCache = CollectionsFactory.newMap();
     }
 
     public PEReadEliminationBlockState(PEReadEliminationBlockState other) {
         super(other);
-        readCache = new HashMap<>(other.readCache);
+        readCache = CollectionsFactory.newMap(other.readCache);
     }
 
     @Override

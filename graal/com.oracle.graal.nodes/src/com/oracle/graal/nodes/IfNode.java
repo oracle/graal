@@ -709,7 +709,7 @@ public class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerab
 
         List<AbstractEndNode> falseEnds = new ArrayList<>(mergePredecessors.size());
         List<AbstractEndNode> trueEnds = new ArrayList<>(mergePredecessors.size());
-        Map<AbstractEndNode, ValueNode> phiValues = new HashMap<>(mergePredecessors.size());
+        Map<AbstractEndNode, ValueNode> phiValues = CollectionsFactory.newMap(mergePredecessors.size());
 
         BeginNode oldFalseSuccessor = falseSuccessor();
         BeginNode oldTrueSuccessor = trueSuccessor();

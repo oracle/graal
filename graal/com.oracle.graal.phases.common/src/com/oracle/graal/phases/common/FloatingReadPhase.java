@@ -52,16 +52,16 @@ public class FloatingReadPhase extends Phase {
         private final Map<LocationIdentity, MemoryNode> lastMemorySnapshot;
 
         public MemoryMapImpl(MemoryMapImpl memoryMap) {
-            lastMemorySnapshot = new HashMap<>(memoryMap.lastMemorySnapshot);
+            lastMemorySnapshot = CollectionsFactory.newMap(memoryMap.lastMemorySnapshot);
         }
 
         public MemoryMapImpl(StartNode start) {
-            lastMemorySnapshot = new HashMap<>();
+            lastMemorySnapshot = CollectionsFactory.newMap();
             lastMemorySnapshot.put(ANY_LOCATION, start);
         }
 
         public MemoryMapImpl() {
-            lastMemorySnapshot = new HashMap<>();
+            lastMemorySnapshot = CollectionsFactory.newMap();
         }
 
         @Override
@@ -132,7 +132,7 @@ public class FloatingReadPhase extends Phase {
     @Override
     protected void run(StructuredGraph graph) {
         Map<LoopBeginNode, Set<LocationIdentity>> modifiedInLoops = Node.newIdentityMap();
-        ReentrantNodeIterator.apply(new CollectMemoryCheckpointsClosure(modifiedInLoops), graph.start(), new HashSet<LocationIdentity>());
+        ReentrantNodeIterator.apply(new CollectMemoryCheckpointsClosure(modifiedInLoops), graph.start(), CollectionsFactory.newSet());
         HashSetNodeEventListener listener = new HashSetNodeEventListener(EnumSet.of(NODE_ADDED, ZERO_USAGES));
         try (NodeEventScope nes = graph.trackNodeEvents(listener)) {
             ReentrantNodeIterator.apply(new FloatingReadClosure(modifiedInLoops, createFloatingReads, createMemoryMapNodes, updateExistingPhis), graph.start(), new MemoryMapImpl(graph.start()));
@@ -153,7 +153,7 @@ public class FloatingReadPhase extends Phase {
     public static MemoryMapImpl mergeMemoryMaps(MergeNode merge, List<? extends MemoryMap> states, boolean updateExistingPhis) {
         MemoryMapImpl newState = new MemoryMapImpl();
 
-        Set<LocationIdentity> keys = new HashSet<>();
+        Set<LocationIdentity> keys = CollectionsFactory.newSet();
         for (MemoryMap other : states) {
             keys.addAll(other.getLocations());
         }
@@ -238,7 +238,7 @@ public class FloatingReadPhase extends Phase {
 
         @Override
         protected Set<LocationIdentity> merge(MergeNode merge, List<Set<LocationIdentity>> states) {
-            Set<LocationIdentity> result = new HashSet<>();
+            Set<LocationIdentity> result = CollectionsFactory.newSet();
             for (Set<LocationIdentity> other : states) {
                 result.addAll(other);
             }
@@ -247,13 +247,13 @@ public class FloatingReadPhase extends Phase {
 
         @Override
         protected Set<LocationIdentity> afterSplit(BeginNode node, Set<LocationIdentity> oldState) {
-            return new HashSet<>(oldState);
+            return CollectionsFactory.newSet(oldState);
         }
 
         @Override
         protected Map<LoopExitNode, Set<LocationIdentity>> processLoop(LoopBeginNode loop, Set<LocationIdentity> initialState) {
-            LoopInfo<Set<LocationIdentity>> loopInfo = ReentrantNodeIterator.processLoop(this, loop, new HashSet<LocationIdentity>());
-            Set<LocationIdentity> modifiedLocations = new HashSet<>();
+            LoopInfo<Set<LocationIdentity>> loopInfo = ReentrantNodeIterator.processLoop(this, loop, CollectionsFactory.newSet());
+            Set<LocationIdentity> modifiedLocations = CollectionsFactory.newSet();
             for (Set<LocationIdentity> end : loopInfo.endStates.values()) {
                 modifiedLocations.addAll(end);
             }
@@ -372,11 +372,11 @@ public class FloatingReadPhase extends Phase {
             Set<LocationIdentity> modifiedLocations = modifiedInLoops.get(loop);
             if (modifiedLocations.contains(ANY_LOCATION)) {
                 // create phis for all locations if ANY is modified in the loop
-                modifiedLocations = new HashSet<>(modifiedLocations);
+                modifiedLocations = CollectionsFactory.newSet(modifiedLocations);
                 modifiedLocations.addAll(initialState.lastMemorySnapshot.keySet());
             }
 
-            Map<LocationIdentity, MemoryPhiNode> phis = new HashMap<>();
+            Map<LocationIdentity, MemoryPhiNode> phis = CollectionsFactory.newMap();
 
             if (updateExistingPhis) {
                 for (MemoryPhiNode phi : loop.phis().filter(MemoryPhiNode.class).snapshot()) {

@@ -294,8 +294,8 @@ public class LoopFragmentInside extends LoopFragment {
     private BeginNode mergeEnds() {
         assert isDuplicate();
         List<AbstractEndNode> endsToMerge = new LinkedList<>();
-        Map<AbstractEndNode, LoopEndNode> reverseEnds = new HashMap<>(); // map peel's exit to the
-        // corresponding loop exits
+        // map peel exits to the corresponding loop exits
+        Map<AbstractEndNode, LoopEndNode> reverseEnds = CollectionsFactory.newMap();
         LoopBeginNode loopBegin = original().loop().loopBegin();
         for (LoopEndNode le : loopBegin.loopEnds()) {
             AbstractEndNode duplicate = getDuplicatedNode(le);

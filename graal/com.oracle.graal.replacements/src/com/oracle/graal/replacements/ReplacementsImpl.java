@@ -75,8 +75,8 @@ public class ReplacementsImpl implements Replacements {
      * Encapsulates method and macro substitutions for a single class.
      */
     protected class ClassReplacements {
-        public final Map<ResolvedJavaMethod, ResolvedJavaMethod> methodSubstitutions = new HashMap<>();
-        public final Map<ResolvedJavaMethod, Class<? extends FixedWithNextNode>> macroSubstitutions = new HashMap<>();
+        public final Map<ResolvedJavaMethod, ResolvedJavaMethod> methodSubstitutions = CollectionsFactory.newMap();
+        public final Map<ResolvedJavaMethod, Class<? extends FixedWithNextNode>> macroSubstitutions = CollectionsFactory.newMap();
         public final Set<ResolvedJavaMethod> forcedSubstitutions = new HashSet<>();
 
         public ClassReplacements(Class<?>[] substitutionClasses, AtomicReference<ClassReplacements> ref) {
@@ -201,13 +201,13 @@ public class ReplacementsImpl implements Replacements {
 
     public ReplacementsImpl(Providers providers, SnippetReflectionProvider snippetReflection, Assumptions assumptions, TargetDescription target) {
         this.providers = providers.copyWith(this);
-        this.classReplacements = new HashMap<>();
-        this.internalNameToSubstitutionClasses = new HashMap<>();
+        this.classReplacements = CollectionsFactory.newMap();
+        this.internalNameToSubstitutionClasses = CollectionsFactory.newMap();
         this.snippetReflection = snippetReflection;
         this.target = target;
         this.assumptions = assumptions;
         this.graphs = new ConcurrentHashMap<>();
-        this.snippetTemplateCache = new HashMap<>();
+        this.snippetTemplateCache = CollectionsFactory.newMap();
     }
 
     private static final boolean UseSnippetGraphCache = Boolean.parseBoolean(System.getProperty("graal.useSnippetGraphCache", "true"));

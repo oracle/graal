@@ -24,6 +24,7 @@ package com.oracle.graal.phases.graph;
 
 import java.util.*;
 
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
@@ -60,7 +61,7 @@ public final class ReentrantBlockIterator {
     }
 
     public static <StateT> LoopInfo<StateT> processLoop(BlockIteratorClosure<StateT> closure, Loop<Block> loop, StateT initialState) {
-        Map<FixedNode, StateT> blockEndStates = apply(closure, loop.getHeader(), initialState, new HashSet<>(loop.getBlocks()));
+        Map<FixedNode, StateT> blockEndStates = apply(closure, loop.getHeader(), initialState, CollectionsFactory.newSet(loop.getBlocks()));
 
         List<Block> predecessors = loop.getHeader().getPredecessors();
         LoopInfo<StateT> info = new LoopInfo<>(predecessors.size() - 1, loop.getExits().size());
