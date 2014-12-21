@@ -31,7 +31,6 @@ import java.util.*;
 import sun.misc.*;
 
 import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.compiler.common.CollectionsFactory.Mode;
 import com.oracle.graal.graph.Graph.NodeEventListener;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.graph.spi.*;
@@ -209,20 +208,17 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     /**
-     * Creates a {@link Node} set. If the current thread is
-     * {@linkplain CollectionsFactory#getMode() using} {@link Mode#DETERMINISTIC_ITERATION_ORDER}
-     * collections, the returned set will have an iteration order determined by the order in which
-     * elements are inserted in the set.
+     * @see CollectionsFactory#newSet()
      */
     public static <E extends Node> Set<E> newSet() {
-        return CollectionsFactory.getMode() == Mode.STANDARD ? new HashSet<>() : new LinkedHashSet<>();
+        return CollectionsFactory.newSet();
     }
 
     /**
      * @see #newSet()
      */
     public static <E extends Node> Set<E> newSet(Collection<? extends E> c) {
-        return CollectionsFactory.getMode() == Mode.STANDARD ? new HashSet<>(c) : new LinkedHashSet<>(c);
+        return CollectionsFactory.newSet(c);
     }
 
     public static <K extends Node, V> Map<K, V> newMap() {

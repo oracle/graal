@@ -104,4 +104,21 @@ public class CollectionsFactory {
     public static <K, V> Map<K, V> newIdentityMap(Map<K, V> m) {
         return getMode() == STANDARD ? new IdentityHashMap<>(m) : new LinkedIdentityHashMap<>(m);
     }
+
+    /**
+     * Creates a set. If the current thread is {@linkplain CollectionsFactory#getMode() using}
+     * {@link Mode#DETERMINISTIC_ITERATION_ORDER} collections, the returned set will have an
+     * iteration order determined by the order in which elements are inserted in the set.
+     */
+    public static <E> Set<E> newSet() {
+        return CollectionsFactory.getMode() == Mode.STANDARD ? new HashSet<>() : new LinkedHashSet<>();
+    }
+
+    /**
+     * @see #newSet()
+     */
+    public static <E> Set<E> newSet(Collection<? extends E> c) {
+        return CollectionsFactory.getMode() == Mode.STANDARD ? new HashSet<>(c) : new LinkedHashSet<>(c);
+    }
+
 }
