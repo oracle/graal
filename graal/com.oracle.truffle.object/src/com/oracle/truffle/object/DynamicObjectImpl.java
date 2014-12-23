@@ -25,6 +25,7 @@ package com.oracle.truffle.object;
 import java.util.*;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.*;
 import com.oracle.truffle.api.object.*;
 import com.oracle.truffle.object.Locations.ValueLocation;
 import com.oracle.truffle.object.debug.*;
@@ -360,5 +361,9 @@ public abstract class DynamicObjectImpl implements DynamicObject, Cloneable {
 
     private static void trackObject(DynamicObject obj) {
         ShapeProfiler.getInstance().track(obj);
+    }
+
+    public ForeignAccessFactory getForeignAccessFactory() {
+        return getShape().getForeignAccessFactory();
     }
 }

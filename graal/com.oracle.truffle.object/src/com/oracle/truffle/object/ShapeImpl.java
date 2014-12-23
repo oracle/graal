@@ -27,6 +27,7 @@ import java.util.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.object.*;
 import com.oracle.truffle.api.utilities.*;
@@ -1099,4 +1100,8 @@ public abstract class ShapeImpl extends Shape {
 
     protected static final DebugCounter propertyListAllocCount = DebugCounter.create("Property lists allocated");
     protected static final DebugCounter propertyListShareCount = DebugCounter.create("Property lists shared");
+
+    public ForeignAccessFactory getForeignAccessFactory() {
+        return getObjectType().getForeignAccessFactory();
+    }
 }
