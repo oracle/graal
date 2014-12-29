@@ -54,7 +54,6 @@ public final class OrganizedImports {
     private void organizeImpl() {
         ImportTypeReferenceVisitor reference = new ImportTypeReferenceVisitor();
         topLevelClass.accept(reference, null);
-
     }
 
     public String createTypeReference(Element enclosedElement, TypeMirror type) {
@@ -212,7 +211,9 @@ public final class OrganizedImports {
         for (TypeElement superType : superTypes) {
             List<TypeElement> declaredTypes = getDeclaredTypes(superType);
             for (TypeElement declaredType : declaredTypes) {
-                autoImportedTypes.add(getQualifiedName(declaredType));
+                if (!superTypes.contains(declaredType)) {
+                    autoImportedTypes.add(getQualifiedName(declaredType));
+                }
             }
         }
     }
