@@ -62,7 +62,7 @@ public class GenericParser extends NodeMethodParser<SpecializationData> {
 
     @Override
     public SpecializationData create(TemplateMethod method, boolean invalid) {
-        return new SpecializationData(getNode(), method, SpecializationKind.GENERIC);
+        return new SpecializationData(getNode(), method, SpecializationKind.FALLBACK);
     }
 
     @Override

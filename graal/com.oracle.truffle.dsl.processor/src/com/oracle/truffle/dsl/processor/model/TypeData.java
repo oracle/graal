@@ -156,6 +156,14 @@ public class TypeData extends MessageContainer implements Comparable<TypeData> {
         return ElementUtils.isPrimitive(getPrimitiveType());
     }
 
+    public List<TypeData> getImplicitSourceTypes() {
+        return getTypeSystem().lookupSourceTypes(this);
+    }
+
+    public boolean hasImplicitSourceTypes() {
+        return getTypeSystem().hasImplicitSourceTypes(this);
+    }
+
     public boolean isImplicitSubtypeOf(TypeData other) {
         List<ImplicitCastData> casts = other.getTypeSystem().lookupByTargetType(other);
         for (ImplicitCastData cast : casts) {

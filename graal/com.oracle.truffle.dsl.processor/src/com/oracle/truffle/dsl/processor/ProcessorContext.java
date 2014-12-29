@@ -83,6 +83,10 @@ public class ProcessorContext {
         return model;
     }
 
+    public DeclaredType getDeclaredType(Class<?> element) {
+        return (DeclaredType) ElementUtils.getType(environment, element);
+    }
+
     public TypeMirror getType(Class<?> element) {
         return ElementUtils.getType(environment, element);
     }

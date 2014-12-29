@@ -56,7 +56,7 @@ public class NodeData extends Template implements Comparable<NodeData> {
 
     public NodeData(ProcessorContext context, TypeElement type, String shortName, TypeSystemData typeSystem, List<NodeChildData> children, List<NodeExecutionData> executions,
                     List<NodeFieldData> fields, List<String> assumptions, boolean generateFactory) {
-        super(context, type, null, null);
+        super(context, type, null);
         this.nodeId = type.getSimpleName().toString();
         this.shortName = shortName;
         this.typeSystem = typeSystem;
@@ -96,6 +96,35 @@ public class NodeData extends Template implements Comparable<NodeData> {
 
     public List<NodeExecutionData> getChildExecutions() {
         return childExecutions;
+    }
+
+    public Set<TypeData> findSpecializedTypes(NodeExecutionData execution) {
+        Set<TypeData> types = new HashSet<>();
+        for (SpecializationData specialization : getSpecializations()) {
+            if (!specialization.isSpecialized()) {
+                continue;
+            }
+            List<Parameter> parameters = specialization.findByExecutionData(execution);
+            for (Parameter parameter : parameters) {
+                TypeData type = parameter.getTypeSystemType();
+                if (type == null) {
+                    throw new AssertionError();
+                }
+                types.add(type);
+            }
+        }
+        return types;
+    }
+
+    public Collection<TypeData> findSpecializedReturnTypes() {
+        Set<TypeData> types = new HashSet<>();
+        for (SpecializationData specialization : getSpecializations()) {
+            if (!specialization.isSpecialized()) {
+                continue;
+            }
+            types.add(specialization.getReturnType().getTypeSystemType());
+        }
+        return types;
     }
 
     public int getSignatureSize() {
@@ -353,7 +382,7 @@ public class NodeData extends Template implements Comparable<NodeData> {
 
     public SpecializationData getGenericSpecialization() {
         for (SpecializationData specialization : specializations) {
-            if (specialization.isGeneric()) {
+            if (specialization.isFallback()) {
                 return specialization;
             }
         }

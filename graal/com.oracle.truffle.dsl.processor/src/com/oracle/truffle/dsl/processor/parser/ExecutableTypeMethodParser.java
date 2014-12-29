@@ -28,7 +28,9 @@ import java.util.*;
 import javax.lang.model.element.*;
 import javax.lang.model.type.*;
 
+import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.dsl.processor.*;
+import com.oracle.truffle.dsl.processor.java.*;
 import com.oracle.truffle.dsl.processor.model.*;
 
 public class ExecutableTypeMethodParser extends NodeMethodParser<ExecutableTypeData> {
@@ -76,6 +78,8 @@ public class ExecutableTypeMethodParser extends NodeMethodParser<ExecutableTypeD
         if (method.getModifiers().contains(Modifier.STATIC)) {
             return false;
         } else if (method.getModifiers().contains(Modifier.NATIVE)) {
+            return false;
+        } else if (ElementUtils.findAnnotationMirror(getContext().getEnvironment(), method, Specialization.class) != null) {
             return false;
         }
         return method.getSimpleName().toString().startsWith("execute");

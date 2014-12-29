@@ -54,8 +54,12 @@ public class ContainsTest {
                         new ExecutionListener() {
                             public void afterExecution(TestRootNode<? extends ValueNode> node, int index, Object value, Object expectedResult, Object actualResult, boolean last) {
                                 if (value instanceof String) {
-                                    // assert that the final specialization is always Object
-                                    Assert.assertEquals(Object.class, ((DSLNode) node.getNode()).getMetadata0().getSpecializedTypes()[0]);
+                                    if (node.getNode() instanceof DSLNode) {
+                                        // assert that the final specialization is always Object
+                                        Assert.assertEquals(Object.class, ((DSLNode) node.getNode()).getMetadata0().getSpecializedTypes()[0]);
+                                    } else {
+                                        Assert.assertTrue(((SpecializedNode) node.getNode()).getSpecializationNode().toString().startsWith("ObjectNode"));
+                                    }
                                 }
                             }
                         });

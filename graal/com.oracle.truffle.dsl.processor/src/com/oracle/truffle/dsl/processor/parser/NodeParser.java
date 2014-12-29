@@ -151,6 +151,22 @@ public class NodeParser extends AbstractParser<NodeData> {
         node.setExecutableTypes(groupExecutableTypes(new ExecutableTypeMethodParser(context, node).parse(elements)));
         initializeChildren(node);
 
+        // ensure the processed element has at least one @Specialization annotation.
+        boolean foundSpecialization = false;
+        for (ExecutableElement method : ElementFilter.methodsIn(elements)) {
+            if (ElementUtils.findAnnotationMirror(processingEnv, method, Specialization.class) != null) {
+                foundSpecialization = true;
+                break;
+            }
+        }
+        if (!foundSpecialization) {
+            return node;
+        }
+
+        if (node.hasErrors()) {
+            return node; // error sync point
+        }
+
         node.getSpecializations().addAll(new SpecializationMethodParser(context, node).parse(elements));
         node.getSpecializations().addAll(new GenericParser(context, node).parse(elements));
         node.getCasts().addAll(new CreateCastParser(context, node).parse(elements));
@@ -224,7 +240,7 @@ public class NodeParser extends AbstractParser<NodeData> {
         final TypeSystemData typeSystem = (TypeSystemData) context.getTemplate(typeSystemType, true);
         if (typeSystem == null) {
             NodeData nodeData = new NodeData(context, templateType);
-            nodeData.addError("The used type system '%s' is invalid or not a Node.", ElementUtils.getQualifiedName(typeSystemType));
+            nodeData.addError("The used type system '%s' is invalid. Fix errors in the type system first.", ElementUtils.getQualifiedName(typeSystemType));
             return nodeData;
         }
 
@@ -565,14 +581,25 @@ public class NodeParser extends AbstractParser<NodeData> {
         initializeReachability(node);
         initializeContains(node);
 
-        if (!node.hasErrors()) {
+        if (!node.hasErrors() && !node.getTypeSystem().getOptions().useNewLayout()) {
             initializeExceptions(node);
         }
         resolveContains(node);
 
+        if (node.getTypeSystem().getOptions().useNewLayout()) {
+            List<SpecializationData> specializations = node.getSpecializations();
+            for (SpecializationData cur : specializations) {
+                for (SpecializationData child : specializations) {
+                    if (child != null && child != cur && child.getContains().contains(cur)) {
+                        cur.getExcludedBy().add(child);
+                    }
+                }
+            }
+        }
+
         List<SpecializationData> needsId = new ArrayList<>();
         for (SpecializationData specialization : node.getSpecializations()) {
-            if (specialization.isGeneric()) {
+            if (specialization.isFallback()) {
                 specialization.setId("Generic");
             } else if (specialization.isUninitialized()) {
                 specialization.setId("Uninitialized");
@@ -643,6 +670,7 @@ public class NodeParser extends AbstractParser<NodeData> {
 
     private static void initializeExceptions(NodeData node) {
         List<SpecializationData> specializations = node.getSpecializations();
+
         for (int i = 0; i < specializations.size(); i++) {
             SpecializationData cur = specializations.get(i);
             if (cur.getExceptions().isEmpty()) {
@@ -671,6 +699,7 @@ public class NodeParser extends AbstractParser<NodeData> {
                 }
             }
         }
+
     }
 
     private static void initializeContains(NodeData node) {
@@ -771,7 +800,7 @@ public class NodeParser extends AbstractParser<NodeData> {
                     name.append(shadowSpecialization.createReferenceName());
                     sep = ", ";
                 }
-                current.addError("%s is not reachable. It is shadowed by %s.", current.isGeneric() ? "Generic" : "Specialization", name);
+                current.addError("%s is not reachable. It is shadowed by %s.", current.isFallback() ? "Generic" : "Specialization", name);
             }
             current.setReachable(shadowedBy == null);
         }
@@ -966,7 +995,7 @@ public class NodeParser extends AbstractParser<NodeData> {
 
         List<SpecializationData> generics = new ArrayList<>();
         for (SpecializationData spec : node.getSpecializations()) {
-            if (spec.isGeneric()) {
+            if (spec.isFallback()) {
                 generics.add(spec);
             }
         }
@@ -1313,6 +1342,24 @@ public class NodeParser extends AbstractParser<NodeData> {
     }
 
     private void verifyConstructors(NodeData nodeData) {
+        if (nodeData.getTypeSystem().getOptions().useNewLayout()) {
+            List<ExecutableElement> constructors = ElementFilter.constructorsIn(nodeData.getTemplateType().getEnclosedElements());
+            if (constructors.isEmpty()) {
+                return;
+            }
+
+            boolean oneNonPrivate = false;
+            for (ExecutableElement constructor : constructors) {
+                if (ElementUtils.getVisibility(constructor.getModifiers()) != Modifier.PRIVATE) {
+                    oneNonPrivate = true;
+                    break;
+                }
+            }
+            if (!oneNonPrivate && !nodeData.getTemplateType().getModifiers().contains(Modifier.PRIVATE)) {
+                nodeData.addError("At least one constructor must be non-private.");
+            }
+            return;
+        }
         if (!nodeData.needsRewrites(context)) {
             // no specialization constructor is needed if the node never rewrites.
             return;

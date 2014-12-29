@@ -444,4 +444,5 @@ public final class SpecializationGroup {
 
         return false;
     }
+
 }

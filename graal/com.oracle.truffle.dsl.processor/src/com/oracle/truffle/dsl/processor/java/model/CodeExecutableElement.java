@@ -123,6 +123,17 @@ public class CodeExecutableElement extends CodeElement<Element> implements Execu
         return builder;
     }
 
+    public CodeTreeBuilder appendBuilder() {
+        CodeTreeBuilder builder = new CodeTreeBuilder(null);
+        builder.setEnclosingElement(this);
+        if (bodyTree != null) {
+            builder.tree(bodyTree);
+        }
+        this.bodyTree = builder.getTree();
+        this.body = null;
+        return builder;
+    }
+
     public void setBodyTree(CodeTree body) {
         this.bodyTree = body;
     }

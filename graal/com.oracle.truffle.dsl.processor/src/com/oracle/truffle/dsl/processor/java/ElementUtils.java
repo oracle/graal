@@ -844,6 +844,7 @@ public class ElementUtils {
         PrintWriter writer = new PrintWriter(string);
         e.printStackTrace(writer);
         writer.flush();
+        string.flush();
         return e.getMessage() + "\r\n" + string.toString();
     }
 

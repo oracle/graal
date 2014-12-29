@@ -31,18 +31,31 @@ import javax.lang.model.element.*;
 import javax.lang.model.type.*;
 import javax.lang.model.util.*;
 
+import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.api.dsl.internal.DSLOptions.*;
 import com.oracle.truffle.dsl.processor.*;
 import com.oracle.truffle.dsl.processor.java.model.*;
 import com.oracle.truffle.dsl.processor.model.*;
 
 public class GeneratorUtils {
 
-    public static CodeExecutableElement createConstructorUsingFields(ProcessorContext context, Set<Modifier> modifiers, CodeTypeElement clazz) {
-        CodeExecutableElement method = new CodeExecutableElement(modifiers, null, clazz.getSimpleName().toString());
-        CodeTreeBuilder builder = method.createBuilder();
+    public static CodeTree createTransferToInterpreterAndInvalidate() {
+        ProcessorContext context = ProcessorContext.getInstance();
+        CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
+        builder.startStatement().startStaticCall(context.getType(CompilerDirectives.class), "transferToInterpreterAndInvalidate").end().end();
+        return builder.build();
+    }
+
+    public static CodeExecutableElement createConstructorUsingFields(Set<Modifier> modifiers, CodeTypeElement clazz) {
         TypeElement superClass = fromTypeMirror(clazz.getSuperclass());
         ExecutableElement constructor = findConstructor(superClass);
+        return createConstructorUsingFields(modifiers, clazz, constructor);
+    }
+
+    public static CodeExecutableElement createConstructorUsingFields(Set<Modifier> modifiers, CodeTypeElement clazz, ExecutableElement constructor) {
+        CodeExecutableElement method = new CodeExecutableElement(modifiers, null, clazz.getSimpleName().toString());
+        CodeTreeBuilder builder = method.createBuilder();
         if (constructor != null && constructor.getParameters().size() > 0) {
             builder.startStatement();
             builder.startSuperCall();
@@ -64,15 +77,24 @@ public class GeneratorUtils {
             builder.string("this.");
             builder.string(fieldName);
             builder.string(" = ");
-            if (isAssignable(field.asType(), context.getTruffleTypes().getNode())) {
-                builder.string("adoptChild(").string(fieldName).string(")");
-            } else {
-                builder.string(fieldName);
-            }
+            builder.string(fieldName);
             builder.end(); // statement
         }
 
         return method;
+    }
+
+    public static boolean isTypeBoxingOptimized(TypeBoxingOptimization boxing, TypeData type) {
+        switch (boxing) {
+            case NONE:
+                return false;
+            case ALWAYS:
+                return !type.isGeneric() && !type.isVoid();
+            case PRIMITIVE:
+                return type.isPrimitive();
+            default:
+                throw new AssertionError();
+        }
     }
 
     private static ExecutableElement findConstructor(TypeElement clazz) {
@@ -103,13 +125,13 @@ public class GeneratorUtils {
         return executable;
     }
 
-    public static CodeTypeElement createClass(Template model, Set<Modifier> modifiers, String simpleName, TypeMirror superType, boolean enumType) {
-        TypeElement templateType = model.getTemplateType();
+    public static CodeTypeElement createClass(Template sourceModel, TemplateMethod sourceMethod, Set<Modifier> modifiers, String simpleName, TypeMirror superType) {
+        TypeElement templateType = sourceModel.getTemplateType();
 
         ProcessorContext context = ProcessorContext.getInstance();
 
         PackageElement pack = context.getEnvironment().getElementUtils().getPackageOf(templateType);
-        CodeTypeElement clazz = new CodeTypeElement(modifiers, enumType ? ElementKind.ENUM : ElementKind.CLASS, pack, simpleName);
+        CodeTypeElement clazz = new CodeTypeElement(modifiers, ElementKind.CLASS, pack, simpleName);
         TypeMirror resolvedSuperType = superType;
         if (resolvedSuperType == null) {
             resolvedSuperType = context.getType(Object.class);
@@ -118,8 +140,8 @@ public class GeneratorUtils {
 
         CodeAnnotationMirror generatedByAnnotation = new CodeAnnotationMirror((DeclaredType) context.getType(GeneratedBy.class));
         generatedByAnnotation.setElementValue(generatedByAnnotation.findExecutableElement("value"), new CodeAnnotationValue(templateType.asType()));
-        if (model.getTemplateMethodName() != null) {
-            generatedByAnnotation.setElementValue(generatedByAnnotation.findExecutableElement("methodName"), new CodeAnnotationValue(model.getTemplateMethodName()));
+        if (sourceMethod != null && sourceMethod.getMethod() != null) {
+            generatedByAnnotation.setElementValue(generatedByAnnotation.findExecutableElement("methodName"), new CodeAnnotationValue(sourceMethod.createReferenceName()));
         }
 
         clazz.addAnnotationMirror(generatedByAnnotation);

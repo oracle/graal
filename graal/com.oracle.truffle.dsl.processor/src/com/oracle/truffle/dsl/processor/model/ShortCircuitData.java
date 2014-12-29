@@ -55,7 +55,7 @@ public class ShortCircuitData extends TemplateMethod {
     }
 
     public boolean isCompatibleTo(SpecializationData specialization) {
-        if (isGeneric() && specialization.isGeneric()) {
+        if (isGeneric() && specialization.isFallback()) {
             return true;
         }
 

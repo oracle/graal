@@ -525,9 +525,6 @@ public abstract class AbstractCodeWriter extends CodeElementScanner<Void, Void> 
         return null;
     }
 
-    public void foo() {
-    }
-
     @Override
     public void visitTree(CodeTree e, Void p, Element enclosingElement) {
         CodeTreeKind kind = e.getCodeKind();

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,39 +28,54 @@ import static org.junit.Assert.*;
 import org.junit.*;
 
 import com.oracle.truffle.api.dsl.*;
-import com.oracle.truffle.api.dsl.test.BinaryNodeTest.BinaryNode;
-import com.oracle.truffle.api.dsl.test.PolymorphicTest2Factory.Polymorphic1Factory;
+import com.oracle.truffle.api.dsl.test.TestSerializationFactory.SerializedNodeFactory;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
+import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 import com.oracle.truffle.api.nodes.*;
 
-public class PolymorphicTest2 {
+public class TestSerialization {
 
     @Test
-    public void testMultipleTypes() {
+    public void testUpdateRoot() {
         /* Tests the unexpected polymorphic case. */
-        TestRootNode<Polymorphic1> node = TestHelper.createRoot(Polymorphic1Factory.getInstance());
-        assertEquals(21, executeWith(node, false, false));
-        assertEquals(42, executeWith(node, 21, 21));
-        assertEquals("(boolean,int)", executeWith(node, false, 42));
+        TestRootNode<SerializedNode> node = TestHelper.createRoot(SerializedNodeFactory.getInstance());
+        assertEquals(true, executeWith(node, true));
+        assertEquals(21, executeWith(node, 21));
+        assertEquals("s", executeWith(node, "s"));
+        assertEquals(3, node.getNode().invocations);
         assertEquals(NodeCost.POLYMORPHIC, node.getNode().getCost());
+
+        @SuppressWarnings("unchecked")
+        TestRootNode<SerializedNode> copiedNode = (TestRootNode<SerializedNode>) node.deepCopy();
+        copiedNode.adoptChildren();
+        assertTrue(copiedNode != node);
+        assertEquals(true, executeWith(copiedNode, true));
+        assertEquals(21, executeWith(copiedNode, 21));
+        assertEquals("s", executeWith(copiedNode, "s"));
+        assertEquals(6, copiedNode.getNode().invocations);
     }
 
-    @SuppressWarnings("unused")
-    abstract static class Polymorphic1 extends BinaryNode {
+    @NodeChild
+    abstract static class SerializedNode extends ValueNode {
+
+        int invocations;
 
         @Specialization
-        int add(int left, int right) {
-            return 42;
+        int add(int left) {
+            invocations++;
+            return left;
         }
 
         @Specialization
-        int add(boolean left, boolean right) {
-            return 21;
+        boolean add(boolean left) {
+            invocations++;
+            return left;
         }
 
         @Specialization
-        String add(boolean left, int right) {
-            return "(boolean,int)";
+        String add(String left) {
+            invocations++;
+            return left;
         }
 
     }

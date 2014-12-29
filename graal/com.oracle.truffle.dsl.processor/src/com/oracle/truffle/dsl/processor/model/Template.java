@@ -33,13 +33,11 @@ public abstract class Template extends MessageContainer {
 
     private final ProcessorContext context;
     private final TypeElement templateType;
-    private final String templateMethodName;
     private final AnnotationMirror annotation;
 
-    public Template(ProcessorContext context, TypeElement templateType, String templateMethodName, AnnotationMirror annotation) {
+    public Template(ProcessorContext context, TypeElement templateType, AnnotationMirror annotation) {
         this.context = context;
         this.templateType = templateType;
-        this.templateMethodName = templateMethodName;
         this.annotation = annotation;
     }
 
@@ -62,10 +60,6 @@ public abstract class Template extends MessageContainer {
     @Override
     protected List<MessageContainer> findChildContainers() {
         return Collections.emptyList();
-    }
-
-    public String getTemplateMethodName() {
-        return templateMethodName;
     }
 
     public TypeElement getTemplateType() {

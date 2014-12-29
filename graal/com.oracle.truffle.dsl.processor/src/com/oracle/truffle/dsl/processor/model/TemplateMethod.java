@@ -68,6 +68,13 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
         this.id = id;
     }
 
+    public String createReferenceName() {
+        if (getMethod() == null) {
+            return "-";
+        }
+        return ElementUtils.createReferenceName(getMethod());
+    }
+
     public int getNaturalOrder() {
         return naturalOrder;
     }
@@ -158,6 +165,15 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
             }
         }
         return foundParameters;
+    }
+
+    public Parameter findParameterOrDie(NodeExecutionData execution) {
+        for (Parameter parameter : parameters) {
+            if (parameter.getSpecification().isSignature() && parameter.getSpecification().getExecution() == execution) {
+                return parameter;
+            }
+        }
+        throw new AssertionError("Could not find parameter for execution");
     }
 
     public List<Parameter> findByExecutionData(NodeExecutionData execution) {

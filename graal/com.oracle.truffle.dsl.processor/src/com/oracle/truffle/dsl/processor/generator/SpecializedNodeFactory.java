@@ -54,7 +54,7 @@ class SpecializedNodeFactory extends NodeBaseFactory {
         if (nodeGen != null) {
             baseType = nodeGen.asType();
         }
-        CodeTypeElement clazz = GeneratorUtils.createClass(node, modifiers(PRIVATE, FINAL), nodeSpecializationClassName(specialization), baseType, false);
+        CodeTypeElement clazz = GeneratorUtils.createClass(node, null, modifiers(PRIVATE, FINAL), nodeSpecializationClassName(specialization), baseType);
 
         if (specialization.isSpecialized() || specialization.isUninitialized()) {
             clazz.add(createGetMetadata0(false));
@@ -62,7 +62,7 @@ class SpecializedNodeFactory extends NodeBaseFactory {
         }
 
         NodeCost cost;
-        if (specialization.isGeneric()) {
+        if (specialization.isFallback()) {
             cost = NodeCost.MEGAMORPHIC;
         } else if (specialization.isUninitialized()) {
             cost = NodeCost.UNINITIALIZED;
@@ -162,7 +162,7 @@ class SpecializedNodeFactory extends NodeBaseFactory {
             builder.end();
         }
 
-        return builder.getRoot();
+        return builder.build();
     }
 
     private CodeTree createSpecializationListLiteral(CodeTreeBuilder parent, Set<SpecializationData> list) {
@@ -175,7 +175,7 @@ class SpecializedNodeFactory extends NodeBaseFactory {
             builder.startNewArray(classArray, null);
             for (SpecializationData current : list) {
                 SpecializationData s = current;
-                if (s.isGeneric() || s.isPolymorphic()) {
+                if (s.isFallback() || s.isPolymorphic()) {
                     s = getSpecialization().getNode().getUninitializedSpecialization();
                 }
                 builder.startGroup().string(nodeSpecializationClassName(s)).string(".class").end();
@@ -183,7 +183,7 @@ class SpecializedNodeFactory extends NodeBaseFactory {
             builder.end();
         }
 
-        return builder.getRoot();
+        return builder.build();
     }
 
     protected CodeAnnotationMirror createNodeInfo(NodeCost cost) {
@@ -295,7 +295,7 @@ class SpecializedNodeFactory extends NodeBaseFactory {
                 public CodeTree create(CodeTreeBuilder b, SpecializationData current) {
                     return createGenericInvoke(b, polymorphic, current);
                 }
-            }, elseBuilder.getRoot(), false, true, true, false));
+            }, elseBuilder.build(), false, true, true, false));
         }
         clazz.add(executeMethod);
     }
@@ -309,7 +309,7 @@ class SpecializedNodeFactory extends NodeBaseFactory {
         } else {
             builder.tree(createDeoptimize(builder));
         }
-        return builder.getRoot();
+        return builder.build();
     }
 
     private CodeTree createExecuteBody(CodeTreeBuilder parent, ExecutableTypeData execType, List<ExecutableTypeData> primaryExecutes) {
@@ -324,7 +324,7 @@ class SpecializedNodeFactory extends NodeBaseFactory {
             return null;
         }
 
-        return builder.getRoot();
+        return builder.build();
     }
 
     private CodeExecutableElement createExecutableTypeOverride(ExecutableTypeData execType, boolean evaluated) {
@@ -444,7 +444,7 @@ class SpecializedNodeFactory extends NodeBaseFactory {
             CodeTreeBuilder returnBuilder = new CodeTreeBuilder(builder);
             returnBuilder.tree(createDeoptimize(builder));
             returnBuilder.tree(createCallRewriteMonomorphic(builder, executable.hasUnexpectedValue(context), executable.getType(), null, "One of guards " + specialization.getGuards() + " failed"));
-            returnSpecialized = returnBuilder.getRoot();
+            returnSpecialized = returnBuilder.build();
         }
 
         builder.tree(createExecuteTree(builder, specialization, SpecializationGroup.create(specialization), new CodeBlock<SpecializationData>() {
@@ -454,7 +454,7 @@ class SpecializedNodeFactory extends NodeBaseFactory {
             }
         }, returnSpecialized, false, false, false, false));
 
-        return builder.getRoot();
+        return builder.build();
     }
 
     private CodeTree createExecute(CodeTreeBuilder parent, ExecutableTypeData executable) {
@@ -490,17 +490,17 @@ class SpecializedNodeFactory extends NodeBaseFactory {
 
             builder.startReturn();
             if (targetType == null || sourceType == null) {
-                builder.tree(returnBuilder.getRoot());
+                builder.tree(returnBuilder.build());
             } else if (sourceType.needsCastTo(targetType)) {
                 CodeTree cast;
                 if (executable.hasUnexpectedValue(context)) {
-                    cast = TypeSystemCodeGenerator.expect(targetType, returnBuilder.getRoot());
+                    cast = TypeSystemCodeGenerator.expect(targetType, returnBuilder.build());
                 } else {
-                    cast = TypeSystemCodeGenerator.cast(targetType, returnBuilder.getRoot());
+                    cast = TypeSystemCodeGenerator.cast(targetType, returnBuilder.build());
                 }
                 builder.tree(cast);
             } else {
-                builder.tree(returnBuilder.getRoot());
+                builder.tree(returnBuilder.build());
             }
             builder.end();
         }
@@ -519,7 +519,7 @@ class SpecializedNodeFactory extends NodeBaseFactory {
             builder.end();
         }
 
-        return builder.getRoot();
+        return builder.build();
     }
 
     private CodeExecutableElement createCopyConstructorFactoryMethod(CodeTypeElement clazz, TypeMirror baseType) {

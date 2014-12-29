@@ -161,10 +161,10 @@ public class ExecuteEvaluatedTest {
         Assert.assertEquals(42, root.getNode().execute1(null, 42));
     }
 
-    @Test(expected = AssertionError.class)
+    @Test(expected = Throwable.class)
     public void test1VarArgs2() {
         TestRootNode<TestEvaluatedVarArgs2> root = TestHelper.createRoot(TestEvaluatedVarArgs2Factory.getInstance());
-        Assert.assertEquals(-1, root.getNode().execute1(null));
+        root.getNode().execute1(null);
     }
 
     abstract static class TestEvaluatedVarArgs1 extends ChildrenNode {
@@ -183,16 +183,16 @@ public class ExecuteEvaluatedTest {
         Assert.assertEquals(42, root.getNode().execute1(null, 21, 21));
     }
 
-    @Test(expected = AssertionError.class)
+    @Test(expected = Throwable.class)
     public void test2VarArgs2() {
         TestRootNode<TestEvaluatedVarArgs2> root = TestHelper.createRoot(TestEvaluatedVarArgs2Factory.getInstance());
-        Assert.assertEquals(-1, root.getNode().execute1(null, 42));
+        root.getNode().execute1(null, 42);
     }
 
-    @Test(expected = AssertionError.class)
+    @Test(expected = Throwable.class)
     public void test2VarArgs3() {
         TestRootNode<TestEvaluatedVarArgs2> root = TestHelper.createRoot(TestEvaluatedVarArgs2Factory.getInstance());
-        Assert.assertEquals(-1, root.getNode().execute1(null));
+        root.getNode().execute1(null);
     }
 
     abstract static class TestEvaluatedVarArgs2 extends ChildrenNode {

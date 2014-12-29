@@ -31,6 +31,7 @@ import org.junit.experimental.theories.*;
 import org.junit.runner.*;
 
 import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.api.dsl.internal.*;
 import com.oracle.truffle.api.dsl.test.SourceSectionTestFactory.SourceSection0Factory;
 import com.oracle.truffle.api.dsl.test.SourceSectionTestFactory.SourceSection1Factory;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ArgumentNode;
@@ -61,7 +62,7 @@ public class SourceSectionTest {
     private static void expectSourceSection(Node root, SourceSection section) {
         assertThat(root.getSourceSection(), is(sameInstance(section)));
         for (Node child : root.getChildren()) {
-            if (child instanceof ArgumentNode) {
+            if (child instanceof ArgumentNode || child instanceof SpecializationNode) {
                 continue;
             }
             if (child != null) {

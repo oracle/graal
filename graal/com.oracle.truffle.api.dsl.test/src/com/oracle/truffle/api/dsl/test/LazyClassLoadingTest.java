@@ -28,28 +28,45 @@ import org.junit.*;
 
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.dsl.test.LazyClassLoadingTestFactory.TestNodeFactory;
-import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
+import com.oracle.truffle.api.dsl.test.TypeSystemTest.*;
 
 public class LazyClassLoadingTest {
     @Test
     public void test() {
-        String testClassName = getClass().getName();
-        String factoryClassName = testClassName + "Factory";
-        String nodeFactoryClassName = factoryClassName + "$TestNodeFactory";
-
-        Assert.assertFalse(isLoaded(factoryClassName + "$TestNode"));
-        Assert.assertFalse(isLoaded(nodeFactoryClassName));
+        String factoryName = TestNodeFactory.class.getName();
+        String nodeName = factoryName + "$" + TestNode.class.getSimpleName() + "Gen";
+        Assert.assertTrue(isLoaded(factoryName));
+        Assert.assertFalse(isLoaded(nodeName));
 
         NodeFactory<TestNode> factory = TestNodeFactory.getInstance();
+        Assert.assertTrue(isLoaded(factoryName));
+        Assert.assertTrue(isLoaded(nodeName));
 
-        Assert.assertTrue(isLoaded(nodeFactoryClassName));
-        Assert.assertFalse(isLoaded(nodeFactoryClassName + "$TestBaseNode"));
+        Assert.assertFalse(isLoaded(nodeName + "$UninitializedNode"));
+        Assert.assertFalse(isLoaded(nodeName + "$BaseNode"));
+        Assert.assertFalse(isLoaded(nodeName + "$IntNode"));
+        Assert.assertFalse(isLoaded(nodeName + "$BooleanNode"));
+        Assert.assertFalse(isLoaded(nodeName + "$PolymorphicNode"));
 
-        TestHelper.createRoot(factory);
+        TestRootNode<TestNode> root = TestHelper.createRoot(factory);
 
-        Assert.assertTrue(isLoaded(nodeFactoryClassName + "$TestBaseNode"));
-        Assert.assertTrue(isLoaded(nodeFactoryClassName + "$TestUninitializedNode"));
-        Assert.assertFalse(isLoaded(nodeFactoryClassName + "$TestGenericNode"));
+        Assert.assertTrue(isLoaded(nodeName + "$BaseNode"));
+        Assert.assertTrue(isLoaded(nodeName + "$UninitializedNode"));
+        Assert.assertFalse(isLoaded(nodeName + "$IntNode"));
+        Assert.assertFalse(isLoaded(nodeName + "$BooleanNode"));
+        Assert.assertFalse(isLoaded(nodeName + "$PolymorphicNode"));
+
+        Assert.assertEquals(42, TestHelper.executeWith(root, 42));
+
+        Assert.assertTrue(isLoaded(nodeName + "$IntNode"));
+        Assert.assertFalse(isLoaded(nodeName + "$BooleanNode"));
+        Assert.assertFalse(isLoaded(nodeName + "$PolymorphicNode"));
+
+        Assert.assertEquals(true, TestHelper.executeWith(root, true));
+
+        Assert.assertTrue(isLoaded(nodeName + "$IntNode"));
+        Assert.assertTrue(isLoaded(nodeName + "$BooleanNode"));
+        Assert.assertTrue(isLoaded(nodeName + "$PolymorphicNode"));
     }
 
     private boolean isLoaded(String className) {
@@ -64,22 +81,18 @@ public class LazyClassLoadingTest {
         }
     }
 
-    @SuppressWarnings("unused")
-    @NodeChildren({@NodeChild("left"), @NodeChild("right")})
+    @NodeChild("a")
     abstract static class TestNode extends ValueNode {
-        @Specialization(order = 1)
-        int add(int left, int right) {
-            return 42;
+
+        @Specialization
+        int s(int a) {
+            return a;
         }
 
-        @Specialization(order = 2)
-        int add(boolean left, boolean right) {
-            return 21;
+        @Specialization
+        boolean s(boolean a) {
+            return a;
         }
 
-        @Specialization(order = 4)
-        String add(boolean left, int right) {
-            return "(boolean,int)";
-        }
     }
 }

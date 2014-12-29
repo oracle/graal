@@ -80,4 +80,26 @@ public class CodeTree {
         this.type = type;
     }
 
+    public boolean isEmpty() {
+        return children == null || children.isEmpty();
+    }
+
+    public boolean containsKind(CodeTreeKind k) {
+        if (this.kind == k) {
+            return true;
+        }
+        if (children != null) {
+            for (CodeTree child : children) {
+                if (child.containsKind(k)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public boolean isSingleLine() {
+        return !containsKind(CodeTreeKind.NEW_LINE);
+    }
+
 }

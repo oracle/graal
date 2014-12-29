@@ -33,7 +33,7 @@ public final class SpecializationData extends TemplateMethod {
         UNINITIALIZED,
         SPECIALIZED,
         POLYMORPHIC,
-        GENERIC
+        FALLBACK
     }
 
     private final NodeData node;
@@ -221,13 +221,6 @@ public final class SpecializationData extends TemplateMethod {
         return true;
     }
 
-    public String createReferenceName() {
-        if (getMethod() == null) {
-            return "-";
-        }
-        return ElementUtils.createReferenceName(getMethod());
-    }
-
     public NodeData getNode() {
         return node;
     }
@@ -240,8 +233,8 @@ public final class SpecializationData extends TemplateMethod {
         return kind == SpecializationKind.SPECIALIZED;
     }
 
-    public boolean isGeneric() {
-        return kind == SpecializationKind.GENERIC;
+    public boolean isFallback() {
+        return kind == SpecializationKind.FALLBACK;
     }
 
     public boolean isUninitialized() {

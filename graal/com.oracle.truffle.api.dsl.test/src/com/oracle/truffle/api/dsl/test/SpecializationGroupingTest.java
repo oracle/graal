@@ -45,10 +45,9 @@ public class SpecializationGroupingTest {
     @Test
     public void testGrouping() {
         MockAssumption a1 = new MockAssumption(true);
-        MockAssumption a2 = new MockAssumption(false);
         MockAssumption a3 = new MockAssumption(true);
 
-        TestRootNode<TestGrouping> root = TestHelper.createRoot(TestGroupingFactory.getInstance(), a1, a2, a3);
+        TestRootNode<TestGrouping> root = TestHelper.createRoot(TestGroupingFactory.getInstance(), a1, a3);
 
         SimpleTypes.intCast = 0;
         SimpleTypes.intCheck = 0;
@@ -64,10 +63,9 @@ public class SpecializationGroupingTest {
         Assert.assertEquals(4, TestGrouping.true2);
         Assert.assertEquals(5, TestGrouping.false2);
         Assert.assertEquals(5, TestGrouping.true3);
-        Assert.assertEquals(8, SimpleTypes.intCheck);
+        Assert.assertEquals(10, SimpleTypes.intCheck);
         Assert.assertEquals(8, SimpleTypes.intCast);
         Assert.assertEquals(4, a1.checked);
-        Assert.assertEquals(0, a2.checked);
         Assert.assertEquals(4, a3.checked);
 
         Assert.assertEquals(42, TestHelper.executeWith(root, 21, 21));
@@ -78,16 +76,15 @@ public class SpecializationGroupingTest {
         Assert.assertEquals(6, TestGrouping.true3);
 
         Assert.assertEquals(5, a1.checked);
-        Assert.assertEquals(0, a2.checked);
         Assert.assertEquals(5, a3.checked);
-        Assert.assertEquals(8, SimpleTypes.intCheck);
+        Assert.assertEquals(10, SimpleTypes.intCheck);
         Assert.assertEquals(8, SimpleTypes.intCast);
 
     }
 
     @SuppressWarnings("unused")
     @NodeChildren({@NodeChild, @NodeChild})
-    @NodeAssumptions({"a1", "a2", "a3"})
+    @NodeAssumptions({"a1", "a3"})
     public abstract static class TestGrouping extends ValueNode {
 
         private static int true1;

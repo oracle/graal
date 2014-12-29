@@ -95,19 +95,21 @@ public class NodeCodeGenerator extends CodeTypeElementFactory<NodeData> {
         } else {
             // wrap all types into the first node
             CodeTypeElement first = generatedNodes.get(0);
-            CodeTypeElement last = generatedNodes.get(1);
-
-            for (CodeTypeElement generatedNode : generatedNodes) {
-                if (first != generatedNode) {
-                    first.add(makeInnerClass(generatedNode));
+            CodeTypeElement second = first;
+            if (generatedNodes.size() > 1) {
+                second = generatedNodes.get(1);
+                for (CodeTypeElement generatedNode : generatedNodes) {
+                    if (first != generatedNode) {
+                        first.add(makeInnerClass(generatedNode));
+                    }
                 }
             }
+            new NodeFactoryFactory(context, node, second).createFactoryMethods(first, ElementUtils.getVisibility(node.getTemplateType().getModifiers()));
             ElementUtils.setVisibility(first.getModifiers(), ElementUtils.getVisibility(node.getTemplateType().getModifiers()));
             for (ExecutableElement constructor : ElementFilter.constructorsIn(first.getEnclosedElements())) {
                 ElementUtils.setVisibility(((CodeExecutableElement) constructor).getModifiers(), Modifier.PRIVATE);
             }
 
-            NodeFactoryFactory.createFactoryMethods(context, node, first, last, ElementUtils.getVisibility(node.getTemplateType().getModifiers()));
             return first;
         }
     }
@@ -116,7 +118,7 @@ public class NodeCodeGenerator extends CodeTypeElementFactory<NodeData> {
         CodeTypeElement container;
         Modifier visibility = ElementUtils.getVisibility(node.getTemplateType().getModifiers());
         String containerName = NodeFactoryFactory.factoryClassName(node);
-        container = GeneratorUtils.createClass(node, modifiers(), containerName, null, false);
+        container = GeneratorUtils.createClass(node, null, modifiers(), containerName, null);
         if (visibility != null) {
             container.getModifiers().add(visibility);
         }
@@ -133,13 +135,21 @@ public class NodeCodeGenerator extends CodeTypeElementFactory<NodeData> {
         if (!node.needsFactory()) {
             return Collections.emptyList();
         }
+        if (node.getTypeSystem().getOptions().useNewLayout()) {
+            return Arrays.asList(new NodeGenFactory(context, node).create());
+        } else {
+            return generateNodesOld(context, node);
+        }
+    }
+
+    private static List<CodeTypeElement> generateNodesOld(ProcessorContext context, NodeData node) {
         List<CodeTypeElement> nodeTypes = new ArrayList<>();
         SpecializationData generic = node.getGenericSpecialization() == null ? node.getSpecializations().get(0) : node.getGenericSpecialization();
         CodeTypeElement baseNode = new NodeBaseFactory(context, node, generic).create();
         nodeTypes.add(baseNode);
 
         for (SpecializationData specialization : node.getSpecializations()) {
-            if (!specialization.isReachable() || specialization.isGeneric()) {
+            if (!specialization.isReachable() || specialization.isFallback()) {
                 continue;
             }
             if (specialization.isPolymorphic() && node.isPolymorphic(context)) {

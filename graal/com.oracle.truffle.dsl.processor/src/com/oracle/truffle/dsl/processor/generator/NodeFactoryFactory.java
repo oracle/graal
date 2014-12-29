@@ -31,6 +31,7 @@ import javax.lang.model.element.*;
 import javax.lang.model.type.*;
 
 import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.api.dsl.internal.*;
 import com.oracle.truffle.dsl.processor.*;
 import com.oracle.truffle.dsl.processor.java.*;
 import com.oracle.truffle.dsl.processor.java.model.*;
@@ -43,12 +44,16 @@ class NodeFactoryFactory {
 
     private final ProcessorContext context;
     private final NodeData node;
+    private final TypeSystemData typeSystem;
+    private final DSLOptions options;
     private final CodeTypeElement createdFactoryElement;
 
     public NodeFactoryFactory(ProcessorContext context, NodeData node, CodeTypeElement createdClass) {
         this.context = context;
         this.node = node;
         this.createdFactoryElement = createdClass;
+        this.typeSystem = node.getTypeSystem();
+        this.options = typeSystem.getOptions();
     }
 
     public static String factoryClassName(NodeData node) {
@@ -59,14 +64,14 @@ class NodeFactoryFactory {
         Modifier visibility = ElementUtils.getVisibility(node.getTemplateType().getModifiers());
         TypeMirror nodeFactory = ElementUtils.getDeclaredType(ElementUtils.fromTypeMirror(context.getTruffleTypes().getNodeFactoryBase()), node.getNodeType());
 
-        CodeTypeElement clazz = GeneratorUtils.createClass(node, modifiers(), factoryClassName(node), null, false);
+        CodeTypeElement clazz = GeneratorUtils.createClass(node, null, modifiers(), factoryClassName(node), null);
         if (visibility != null) {
             clazz.getModifiers().add(visibility);
         }
         clazz.getModifiers().add(Modifier.FINAL);
 
         if (createdFactoryElement != null) {
-            createFactoryMethods(context, node, clazz, createdFactoryElement, visibility);
+            createFactoryMethods(clazz, visibility);
             clazz.setSuperClass(nodeFactory);
             clazz.add(createNodeFactoryConstructor());
             clazz.add(createCreateNodeMethod());
@@ -224,14 +229,14 @@ class NodeFactoryFactory {
         return var;
     }
 
-    public static void createFactoryMethods(ProcessorContext context, NodeData node, CodeTypeElement clazz, CodeTypeElement createdFactoryElement, Modifier createVisibility) {
+    public void createFactoryMethods(CodeTypeElement clazz, Modifier createVisibility) {
         List<ExecutableElement> constructors = NodeBaseFactory.findUserConstructors(createdFactoryElement.asType());
         for (ExecutableElement constructor : constructors) {
-            clazz.add(createCreateMethod(context, node, createVisibility, constructor));
+            clazz.add(createCreateMethod(createVisibility, constructor));
         }
     }
 
-    private static CodeExecutableElement createCreateMethod(ProcessorContext context, NodeData node, Modifier visibility, ExecutableElement constructor) {
+    private CodeExecutableElement createCreateMethod(Modifier visibility, ExecutableElement constructor) {
         CodeExecutableElement method = CodeExecutableElement.clone(context.getEnvironment(), constructor);
         method.setSimpleName(CodeNames.of("create"));
         method.getModifiers().clear();
@@ -246,14 +251,18 @@ class NodeFactoryFactory {
         if (node.getSpecializations().isEmpty()) {
             body.nullLiteral();
         } else {
-            body.startCall(NodeBaseFactory.nodeSpecializationClassName(node.getSpecializations().get(0)), FACTORY_METHOD_NAME);
+            if (options.useNewLayout()) {
+                body.startNew(NodeGenFactory.nodeType(node));
+            } else {
+                body.startCall(NodeBaseFactory.nodeSpecializationClassName(node.getSpecializations().get(0)), FACTORY_METHOD_NAME);
+            }
             for (VariableElement var : method.getParameters()) {
                 body.string(var.getSimpleName().toString());
             }
             body.end();
+
         }
         body.end();
         return method;
     }
-
 }

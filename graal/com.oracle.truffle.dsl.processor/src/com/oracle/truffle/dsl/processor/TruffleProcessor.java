@@ -93,7 +93,7 @@ public class TruffleProcessor extends AbstractProcessor implements ProcessCallba
     }
 
     private static void handleThrowable(AnnotationProcessor<?> generator, Throwable t, Element e) {
-        String message = "Uncaught error in " + generator.getClass().getSimpleName() + " while processing " + e;
+        String message = "Uncaught error in " + generator.getClass().getSimpleName() + " while processing " + e + " ";
         ProcessorContext.getInstance().getEnvironment().getMessager().printMessage(Kind.ERROR, message + ": " + ElementUtils.printException(t), e);
     }
 
