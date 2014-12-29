@@ -492,11 +492,13 @@ class SpecializedNodeFactory extends NodeBaseFactory {
             if (targetType == null || sourceType == null) {
                 builder.tree(returnBuilder.getRoot());
             } else if (sourceType.needsCastTo(targetType)) {
-                String castMethodName = TypeSystemCodeGenerator.expectTypeMethodName(targetType);
-                if (!executable.hasUnexpectedValue(context)) {
-                    castMethodName = TypeSystemCodeGenerator.asTypeMethodName(targetType);
+                CodeTree cast;
+                if (executable.hasUnexpectedValue(context)) {
+                    cast = TypeSystemCodeGenerator.expect(targetType, returnBuilder.getRoot());
+                } else {
+                    cast = TypeSystemCodeGenerator.cast(targetType, returnBuilder.getRoot());
                 }
-                builder.tree(createCallTypeSystemMethod(parent, node, castMethodName, returnBuilder.getRoot()));
+                builder.tree(cast);
             } else {
                 builder.tree(returnBuilder.getRoot());
             }

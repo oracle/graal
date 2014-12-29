@@ -52,6 +52,14 @@ public class TypeData extends MessageContainer implements Comparable<TypeData> {
         return index;
     }
 
+    public boolean isDefaultCast() {
+        return getTypeCasts().isEmpty();
+    }
+
+    public boolean isDefaultCheck() {
+        return getTypeChecks().isEmpty();
+    }
+
     @Override
     public Element getMessageElement() {
         return typeSystem.getMessageElement();

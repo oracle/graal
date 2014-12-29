@@ -931,8 +931,6 @@ class NodeBaseFactory {
     }
 
     private CodeTree createTypeGuard(CodeTreeBuilder parent, NodeExecutionData execution, Parameter source, TypeData targetType, boolean typedCasts) {
-        NodeData childNode = execution.getChild().getNodeData();
-
         CodeTreeBuilder builder = new CodeTreeBuilder(parent);
 
         TypeData sourceType = source.getTypeSystemType();
@@ -951,24 +949,22 @@ class NodeBaseFactory {
             builder.string(" || ");
         }
 
-        String castMethodName;
-        String castTypeName = null;
         List<TypeData> types = getSpecialization().getNode().getTypeSystem().lookupSourceTypes(targetType);
         if (types.size() > 1) {
-            castMethodName = TypeSystemCodeGenerator.isImplicitTypeMethodName(targetType);
+            String castTypeName = null;
             if (typedCasts) {
                 castTypeName = implicitTypeName(source);
             }
+            CodeTree check;
+            if (castTypeName == null) {
+                check = TypeSystemCodeGenerator.implicitCheck(targetType, valueName(source), null);
+            } else {
+                check = TypeSystemCodeGenerator.implicitCheck(targetType, valueName(source), castTypeName);
+            }
+            builder.tree(check);
         } else {
-            castMethodName = TypeSystemCodeGenerator.isTypeMethodName(targetType);
+            builder.tree(TypeSystemCodeGenerator.check(targetType, valueName(source)));
         }
-
-        startCallTypeSystemMethod(builder, childNode.getTypeSystem(), castMethodName);
-        builder.string(valueName(source));
-        if (castTypeName != null) {
-            builder.string(castTypeName);
-        }
-        builder.end().end(); // call
 
         if (execution.isShortCircuit()) {
             builder.string(")");
@@ -981,7 +977,6 @@ class NodeBaseFactory {
 
     // TODO merge redundancies with #createTypeGuard
     private CodeTree createCast(CodeTreeBuilder parent, NodeExecutionData execution, Parameter source, TypeData targetType, boolean typedCasts) {
-        NodeData childNode = execution.getChild().getNodeData();
         TypeData sourceType = source.getTypeSystemType();
 
         if (!sourceType.needsCastTo(targetType)) {
@@ -995,25 +990,17 @@ class NodeBaseFactory {
             condition = CodeTreeBuilder.singleString(valueName(shortCircuit));
         }
 
-        String castMethodName;
-        String castTypeName = null;
+        CodeTree cast;
         List<TypeData> types = getSpecialization().getNode().getTypeSystem().lookupSourceTypes(targetType);
         if (types.size() > 1) {
-            castMethodName = TypeSystemCodeGenerator.asImplicitTypeMethodName(targetType);
+            String castTypeName = null;
             if (typedCasts) {
                 castTypeName = implicitTypeName(source);
             }
+            cast = TypeSystemCodeGenerator.implicitCast(targetType, valueName(source), castTypeName);
         } else {
-            castMethodName = TypeSystemCodeGenerator.asTypeMethodName(targetType);
+            cast = TypeSystemCodeGenerator.cast(targetType, valueName(source));
         }
-
-        List<CodeTree> args = new ArrayList<>();
-        args.add(CodeTreeBuilder.singleString(valueName(source)));
-        if (castTypeName != null) {
-            args.add(CodeTreeBuilder.singleString(castTypeName));
-        }
-
-        CodeTree cast = createCallTypeSystemMethod(parent, childNode, castMethodName, args.toArray(new CodeTree[0]));
 
         CodeTreeBuilder builder = parent.create();
         builder.tree(createLazyAssignment(parent, castValueName(source), targetType.getPrimitiveType(), condition, cast));
@@ -1032,8 +1019,7 @@ class NodeBaseFactory {
         CodeTreeBuilder builder = parent.create();
         List<TypeData> types = getSpecialization().getNode().getTypeSystem().lookupSourceTypes(targetType);
         if (types.size() > 1) {
-            CodeTree castType = createCallTypeSystemMethod(parent, execution.getChild().getNodeData(), TypeSystemCodeGenerator.getImplicitClass(targetType),
-                            CodeTreeBuilder.singleString(valueName(source)));
+            CodeTree castType = TypeSystemCodeGenerator.implicitType(targetType, valueName(source));
             builder.tree(createLazyAssignment(builder, implicitTypeName(source), context.getType(Class.class), condition, castType));
         }
         return builder.getRoot();
@@ -1127,7 +1113,7 @@ class NodeBaseFactory {
                 builder.string("// ignore").newLine();
             } else {
                 builder.startReturn();
-                builder.tree(createExpectExecutableType(node, specialization.getNode().getTypeSystem().getGenericTypeData(), hasUnexpected, executable.getType(),
+                builder.tree(createExpectExecutableType(specialization.getNode().getTypeSystem().getGenericTypeData(), hasUnexpected, executable.getType(),
                                 CodeTreeBuilder.singleString("ex.getResult()")));
                 builder.end();
             }
@@ -1135,7 +1121,7 @@ class NodeBaseFactory {
 
             if (!returnVoid) {
                 builder.startReturn();
-                builder.tree(createExpectExecutableType(node, castExecutable.getReturnType().getTypeSystemType(), hasUnexpected, executable.getType(), CodeTreeBuilder.singleString("value")));
+                builder.tree(createExpectExecutableType(castExecutable.getReturnType().getTypeSystemType(), hasUnexpected, executable.getType(), CodeTreeBuilder.singleString("value")));
                 builder.end();
             }
         } else {
@@ -1143,7 +1129,7 @@ class NodeBaseFactory {
                 builder.statement(primaryExecuteCall);
             } else {
                 builder.startReturn();
-                builder.tree(createExpectExecutableType(node, castExecutable.getReturnType().getTypeSystemType(), hasUnexpected, executable.getType(), primaryExecuteCall));
+                builder.tree(createExpectExecutableType(castExecutable.getReturnType().getTypeSystemType(), hasUnexpected, executable.getType(), primaryExecuteCall));
                 builder.end();
             }
         }
@@ -1151,8 +1137,8 @@ class NodeBaseFactory {
         return builder.getRoot();
     }
 
-    private static CodeTree createExpectExecutableType(NodeData node, TypeData sourceType, boolean hasUnexpected, TypeData exepctedType, CodeTree value) {
-        return createCastType(node.getTypeSystem(), sourceType, exepctedType, hasUnexpected, value);
+    private static CodeTree createExpectExecutableType(TypeData sourceType, boolean hasUnexpected, TypeData exepctedType, CodeTree value) {
+        return createCastType(sourceType, exepctedType, hasUnexpected, value);
     }
 
     protected CodeTree createExecuteChildren(CodeTreeBuilder parent, ExecutableTypeData sourceExecutable, SpecializationData currentSpecialization, List<Parameter> targetParameters,
@@ -1399,10 +1385,9 @@ class NodeBaseFactory {
         }
 
         // target = expectTargetType(implicitCast(expectCastSourceType(source)))
-        TypeSystemData typeSystem = execution.getChild().getNodeData().getTypeSystem();
-        expression = createExpectType(typeSystem, sourceType, castSourceType, expression);
-        expression = createImplicitCast(parent, typeSystem, cast, expression);
-        expression = createExpectType(typeSystem, castTargetType, targetType, expression);
+        expression = createExpectType(sourceType, castSourceType, expression);
+        expression = createImplicitCast(cast, expression);
+        expression = createExpectType(castTargetType, targetType, expression);
 
         CodeTreeBuilder builder = parent.create();
         builder.string(valueName(targetParameter));
@@ -1411,15 +1396,11 @@ class NodeBaseFactory {
         return builder.getRoot();
     }
 
-    private static CodeTree createImplicitCast(CodeTreeBuilder parent, TypeSystemData typeSystem, ImplicitCastData cast, CodeTree expression) {
+    private static CodeTree createImplicitCast(ImplicitCastData cast, CodeTree expression) {
         if (cast == null) {
             return expression;
         }
-        CodeTreeBuilder builder = parent.create();
-        startCallTypeSystemMethod(builder, typeSystem, cast.getMethodName());
-        builder.tree(expression);
-        builder.end().end();
-        return builder.getRoot();
+        return TypeSystemCodeGenerator.invokeImplicitCast(cast, expression);
     }
 
     private boolean containsNewLine(CodeTree tree) {
@@ -1540,7 +1521,7 @@ class NodeBaseFactory {
 
         TypeData sourceType = polymorphic.getReturnType().getTypeSystemType();
 
-        builder.tree(createExpectExecutableType(node, sourceType, currentExecutable.hasUnexpectedValue(context), currentExecutable.getType(), execute.getRoot()));
+        builder.tree(createExpectExecutableType(sourceType, currentExecutable.hasUnexpectedValue(context), currentExecutable.getType(), execute.getRoot()));
 
         builder.end();
         return builder.getRoot();
@@ -1588,7 +1569,7 @@ class NodeBaseFactory {
                     CodeTree value = CodeTreeBuilder.singleString(localName);
 
                     if (sourceType.needsCastTo(targetType)) {
-                        value = createCallTypeSystemMethod(builder, getSpecialization().getNode(), TypeSystemCodeGenerator.asTypeMethodName(targetType), value);
+                        value = TypeSystemCodeGenerator.cast(targetType, value);
                     }
                     builder.tree(value);
                 } else {
@@ -1657,7 +1638,7 @@ class NodeBaseFactory {
         CodeTreeBuilder builder = new CodeTreeBuilder(parent);
 
         builder.startReturn();
-        builder.tree(createExpectExecutableType(node, generic.getReturnType().getTypeSystemType(), hasUnexpected, returnType, specializeCall.getRoot()));
+        builder.tree(createExpectExecutableType(generic.getReturnType().getTypeSystemType(), hasUnexpected, returnType, specializeCall.getRoot()));
         builder.end();
 
         return builder.getRoot();
@@ -1854,23 +1835,6 @@ class NodeBaseFactory {
         return name;
     }
 
-    static CodeTree createCallTypeSystemMethod(CodeTreeBuilder parent, NodeData node, String methodName, CodeTree... args) {
-        CodeTreeBuilder builder = new CodeTreeBuilder(parent);
-        startCallTypeSystemMethod(builder, node.getTypeSystem(), methodName);
-        for (CodeTree arg : args) {
-            builder.tree(arg);
-        }
-        builder.end().end();
-        return builder.getRoot();
-    }
-
-    private static void startCallTypeSystemMethod(CodeTreeBuilder body, TypeSystemData typeSystem, String methodName) {
-        GeneratedTypeMirror typeMirror = new GeneratedTypeMirror(ElementUtils.getPackageName(typeSystem.getTemplateType()), TypeSystemCodeGenerator.typeName(typeSystem));
-        body.startGroup();
-        body.staticReference(typeMirror, TypeSystemCodeGenerator.singletonName(typeSystem));
-        body.string(".").startCall(methodName);
-    }
-
     /**
      * <pre>
      * variant1 $condition != null
@@ -1972,28 +1936,22 @@ class NodeBaseFactory {
         return nodeid;
     }
 
-    private static CodeTree createCastType(TypeSystemData typeSystem, TypeData sourceType, TypeData targetType, boolean expect, CodeTree value) {
+    private static CodeTree createCastType(TypeData sourceType, TypeData targetType, boolean expect, CodeTree value) {
         if (targetType == null) {
             return value;
         } else if (sourceType != null && !sourceType.needsCastTo(targetType)) {
             return value;
         }
 
-        CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
-        String targetMethodName;
         if (expect) {
-            targetMethodName = TypeSystemCodeGenerator.expectTypeMethodName(targetType);
+            return TypeSystemCodeGenerator.expect(targetType, value);
         } else {
-            targetMethodName = TypeSystemCodeGenerator.asTypeMethodName(targetType);
+            return TypeSystemCodeGenerator.cast(targetType, value);
         }
-        startCallTypeSystemMethod(builder, typeSystem, targetMethodName);
-        builder.tree(value);
-        builder.end().end();
-        return builder.getRoot();
     }
 
-    private static CodeTree createExpectType(TypeSystemData typeSystem, TypeData sourceType, TypeData targetType, CodeTree expression) {
-        return createCastType(typeSystem, sourceType, targetType, true, expression);
+    private static CodeTree createExpectType(TypeData sourceType, TypeData targetType, CodeTree expression) {
+        return createCastType(sourceType, targetType, true, expression);
     }
 
     static CodeTree createDeoptimize(CodeTreeBuilder parent) {

@@ -53,6 +53,9 @@ class TypeCheckParser extends TypeSystemMethodParser<TypeCheckData> {
         assert checkedType != null;
         Parameter parameter = method.findParameter("valueValue");
         assert parameter != null;
+        if (!method.getMethod().getModifiers().contains(Modifier.STATIC)) {
+            method.addError("@%s annotated method %s must be static.", TypeCheck.class.getSimpleName(), method.getMethodName());
+        }
         return new TypeCheckData(method, checkedType, parameter.getTypeSystemType());
     }
 

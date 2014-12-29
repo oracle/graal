@@ -63,6 +63,10 @@ class TypeCastParser extends TypeSystemMethodParser<TypeCastData> {
         }
         TypeCastData cast = new TypeCastData(method, sourceType, targetType);
 
+        if (!method.getMethod().getModifiers().contains(Modifier.STATIC)) {
+            cast.addError("@%s annotated method %s must be static.", TypeCast.class.getSimpleName(), method.getMethodName());
+        }
+
         if (targetType != method.getReturnType().getTypeSystemType()) {
             cast.addError("Cast type %s does not match to the returned type %s.", ElementUtils.getSimpleName(targetType.getPrimitiveType()),
                             method.getReturnType() != null ? ElementUtils.getSimpleName(method.getReturnType().getTypeSystemType().getPrimitiveType()) : null);

@@ -663,8 +663,11 @@ public class CodeTreeBuilder {
     }
 
     public CodeTreeBuilder instanceOf(CodeTree var, CodeTree type) {
-        tree(var).string(" instanceof ").tree(type);
-        return this;
+        return tree(var).string(" instanceof ").tree(type);
+    }
+
+    public CodeTreeBuilder instanceOf(CodeTree var, TypeMirror type) {
+        return tree(var).string(" instanceof ").type(type);
     }
 
     public CodeTreeBuilder instanceOf(String var, String type) {

@@ -68,6 +68,10 @@ public class ImplicitCastParser extends TypeSystemMethodParser<ImplicitCastData>
             method.addError("Target type and source type of an @%s must not be the same type.", ImplicitCast.class.getSimpleName());
         }
 
+        if (!method.getMethod().getModifiers().contains(Modifier.STATIC)) {
+            method.addError("@%s annotated method %s must be static.", ImplicitCast.class.getSimpleName(), method.getMethodName());
+        }
+
         return new ImplicitCastData(method, sourceType, targetType);
     }
 }
