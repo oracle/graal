@@ -126,12 +126,24 @@ public final class SLContext extends ExecutionContext {
         /* Instantiate the builtin node. This node performs the actual functionality. */
         SLBuiltinNode builtinBodyNode = factory.createNode(argumentNodes, this);
         /* The name of the builtin function is specified via an annotation on the node class. */
-        String name = builtinBodyNode.getClass().getAnnotation(NodeInfo.class).shortName();
+        String name = lookupNodeInfo(builtinBodyNode.getClass()).shortName();
         /* Wrap the builtin in a RootNode. Truffle requires all AST to start with a RootNode. */
         SLRootNode rootNode = new SLRootNode(this, new FrameDescriptor(), builtinBodyNode, name);
 
         /* Register the builtin function in our function registry. */
         getFunctionRegistry().register(name, rootNode);
+    }
+
+    public static NodeInfo lookupNodeInfo(Class<?> clazz) {
+        if (clazz == null) {
+            return null;
+        }
+        NodeInfo info = clazz.getAnnotation(NodeInfo.class);
+        if (info != null) {
+            return info;
+        } else {
+            return lookupNodeInfo(clazz.getSuperclass());
+        }
     }
 
     /**

@@ -244,8 +244,11 @@ public class SLMain {
             }
         }
         result.append(": operation");
-        if (ex.getNode() != null && ex.getNode().getClass().getAnnotation(NodeInfo.class) != null) {
-            result.append(" \"").append(ex.getNode().getClass().getAnnotation(NodeInfo.class).shortName()).append("\"");
+        if (ex.getNode() != null) {
+            NodeInfo nodeInfo = SLContext.lookupNodeInfo(ex.getNode().getClass());
+            if (nodeInfo != null) {
+                result.append(" \"").append(nodeInfo.shortName()).append("\"");
+            }
         }
         result.append(" not defined for");
 
