@@ -41,6 +41,7 @@ import com.oracle.truffle.sl.runtime.*;
  */
 @NodeChild(value = "arguments", type = SLExpressionNode[].class)
 @NodeField(name = "context", type = SLContext.class)
+@GenerateNodeFactory
 public abstract class SLBuiltinNode extends SLExpressionNode {
 
     public SLBuiltinNode(SourceSection src) {

@@ -235,29 +235,29 @@ public class SLNodeFactory {
         final SourceSection src = source.createSection(opToken.val, start, length);
         switch (opToken.val) {
             case "+":
-                return SLAddNodeFactory.create(src, leftNode, rightNode);
+                return SLAddNodeGen.create(src, leftNode, rightNode);
             case "*":
-                return SLMulNodeFactory.create(src, leftNode, rightNode);
+                return SLMulNodeGen.create(src, leftNode, rightNode);
             case "/":
-                return SLDivNodeFactory.create(src, leftNode, rightNode);
+                return SLDivNodeGen.create(src, leftNode, rightNode);
             case "-":
-                return SLSubNodeFactory.create(src, leftNode, rightNode);
+                return SLSubNodeGen.create(src, leftNode, rightNode);
             case "<":
-                return SLLessThanNodeFactory.create(src, leftNode, rightNode);
+                return SLLessThanNodeGen.create(src, leftNode, rightNode);
             case "<=":
-                return SLLessOrEqualNodeFactory.create(src, leftNode, rightNode);
+                return SLLessOrEqualNodeGen.create(src, leftNode, rightNode);
             case ">":
-                return SLLogicalNotNodeFactory.create(src, SLLessOrEqualNodeFactory.create(null, leftNode, rightNode));
+                return SLLogicalNotNodeGen.create(src, SLLessOrEqualNodeGen.create(null, leftNode, rightNode));
             case ">=":
-                return SLLogicalNotNodeFactory.create(src, SLLessThanNodeFactory.create(null, leftNode, rightNode));
+                return SLLogicalNotNodeGen.create(src, SLLessThanNodeGen.create(null, leftNode, rightNode));
             case "==":
-                return SLEqualNodeFactory.create(src, leftNode, rightNode);
+                return SLEqualNodeGen.create(src, leftNode, rightNode);
             case "!=":
-                return SLLogicalNotNodeFactory.create(src, SLEqualNodeFactory.create(null, leftNode, rightNode));
+                return SLLogicalNotNodeGen.create(src, SLEqualNodeGen.create(null, leftNode, rightNode));
             case "&&":
-                return SLLogicalAndNodeFactory.create(src, leftNode, rightNode);
+                return SLLogicalAndNodeGen.create(src, leftNode, rightNode);
             case "||":
-                return SLLogicalOrNodeFactory.create(src, leftNode, rightNode);
+                return SLLogicalOrNodeGen.create(src, leftNode, rightNode);
             default:
                 throw new RuntimeException("unexpected operation: " + opToken.val);
         }
@@ -290,7 +290,7 @@ public class SLNodeFactory {
         lexicalScope.locals.put(nameToken.val, frameSlot);
         final int start = nameToken.charPos;
         final int length = valueNode.getSourceSection().getCharEndIndex() - start;
-        return SLWriteLocalVariableNodeFactory.create(source.createSection("=", start, length), valueNode, frameSlot);
+        return SLWriteLocalVariableNodeGen.create(source.createSection("=", start, length), valueNode, frameSlot);
     }
 
     /**
@@ -310,7 +310,7 @@ public class SLNodeFactory {
         final SourceSection src = srcFromToken(nameToken);
         if (frameSlot != null) {
             /* Read of a local variable. */
-            return SLReadLocalVariableNodeFactory.create(src, frameSlot);
+            return SLReadLocalVariableNodeGen.create(src, frameSlot);
         } else {
             /* Read of a global name. In our language, the only global names are functions. */
             return new SLFunctionLiteralNode(src, context.getFunctionRegistry().lookup(nameToken.val));
