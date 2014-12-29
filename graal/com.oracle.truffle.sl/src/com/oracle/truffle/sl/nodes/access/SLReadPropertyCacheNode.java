@@ -90,7 +90,7 @@ public abstract class SLReadPropertyCacheNode extends Node {
         protected abstract Object executeObjectUnchecked(DynamicObject receiver, boolean condition);
 
         protected long executeLongUnchecked(DynamicObject receiver, boolean condition) throws UnexpectedResultException {
-            return SLTypesGen.SLTYPES.expectLong(executeObjectUnchecked(receiver, condition));
+            return SLTypesGen.expectLong(executeObjectUnchecked(receiver, condition));
         }
     }
 
@@ -185,7 +185,7 @@ public abstract class SLReadPropertyCacheNode extends Node {
 
         @Override
         public long executeLong(DynamicObject receiver) throws UnexpectedResultException {
-            return SLTypesGen.SLTYPES.expectLong(executeObject(receiver));
+            return SLTypesGen.expectLong(executeObject(receiver));
         }
     }
 }

@@ -67,27 +67,27 @@ public abstract class SLExpressionNode extends SLStatementNode {
      */
 
     public long executeLong(VirtualFrame frame) throws UnexpectedResultException {
-        return SLTypesGen.SLTYPES.expectLong(executeGeneric(frame));
+        return SLTypesGen.expectLong(executeGeneric(frame));
     }
 
     public BigInteger executeBigInteger(VirtualFrame frame) throws UnexpectedResultException {
-        return SLTypesGen.SLTYPES.expectBigInteger(executeGeneric(frame));
+        return SLTypesGen.expectBigInteger(executeGeneric(frame));
     }
 
     public boolean executeBoolean(VirtualFrame frame) throws UnexpectedResultException {
-        return SLTypesGen.SLTYPES.expectBoolean(executeGeneric(frame));
+        return SLTypesGen.expectBoolean(executeGeneric(frame));
     }
 
     public String executeString(VirtualFrame frame) throws UnexpectedResultException {
-        return SLTypesGen.SLTYPES.expectString(executeGeneric(frame));
+        return SLTypesGen.expectString(executeGeneric(frame));
     }
 
     public SLFunction executeFunction(VirtualFrame frame) throws UnexpectedResultException {
-        return SLTypesGen.SLTYPES.expectSLFunction(executeGeneric(frame));
+        return SLTypesGen.expectSLFunction(executeGeneric(frame));
     }
 
     public SLNull executeNull(VirtualFrame frame) throws UnexpectedResultException {
-        return SLTypesGen.SLTYPES.expectSLNull(executeGeneric(frame));
+        return SLTypesGen.expectSLNull(executeGeneric(frame));
     }
 
     @Override

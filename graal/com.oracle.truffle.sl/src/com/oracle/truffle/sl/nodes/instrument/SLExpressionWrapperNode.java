@@ -96,22 +96,22 @@ public final class SLExpressionWrapperNode extends SLExpressionNode implements W
 
     @Override
     public long executeLong(VirtualFrame frame) throws UnexpectedResultException {
-        return SLTypesGen.SLTYPES.expectLong(executeGeneric(frame));
+        return SLTypesGen.expectLong(executeGeneric(frame));
     }
 
     @Override
     public BigInteger executeBigInteger(VirtualFrame frame) throws UnexpectedResultException {
-        return SLTypesGen.SLTYPES.expectBigInteger(executeGeneric(frame));
+        return SLTypesGen.expectBigInteger(executeGeneric(frame));
     }
 
     @Override
     public boolean executeBoolean(VirtualFrame frame) throws UnexpectedResultException {
-        return SLTypesGen.SLTYPES.expectBoolean(executeGeneric(frame));
+        return SLTypesGen.expectBoolean(executeGeneric(frame));
     }
 
     @Override
     public String executeString(VirtualFrame frame) throws UnexpectedResultException {
-        return SLTypesGen.SLTYPES.expectString(executeGeneric(frame));
+        return SLTypesGen.expectString(executeGeneric(frame));
     }
 
     @Override
@@ -131,7 +131,7 @@ public final class SLExpressionWrapperNode extends SLExpressionNode implements W
 
     @Override
     public SLNull executeNull(VirtualFrame frame) throws UnexpectedResultException {
-        return SLTypesGen.SLTYPES.expectSLNull(executeGeneric(frame));
+        return SLTypesGen.expectSLNull(executeGeneric(frame));
     }
 
     @Override

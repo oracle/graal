@@ -44,7 +44,7 @@ public abstract class SLTypes {
      * singleton} instance.
      */
     @TypeCheck
-    public boolean isSLNull(Object value) {
+    public static boolean isSLNull(Object value) {
         return value == SLNull.SINGLETON;
     }
 
@@ -54,7 +54,7 @@ public abstract class SLTypes {
      * because we know that there is only a {@link SLNull#SINGLETON singleton} instance.
      */
     @TypeCast
-    public SLNull asSLNull(Object value) {
+    public static SLNull asSLNull(Object value) {
         assert isSLNull(value);
         return SLNull.SINGLETON;
     }
@@ -67,7 +67,7 @@ public abstract class SLTypes {
      * {@link BigInteger} arithmetic for values that fit into a 64-bit primitive value.
      */
     @ImplicitCast
-    public BigInteger castBigInteger(long value) {
+    public static BigInteger castBigInteger(long value) {
         return BigInteger.valueOf(value);
     }
 }
