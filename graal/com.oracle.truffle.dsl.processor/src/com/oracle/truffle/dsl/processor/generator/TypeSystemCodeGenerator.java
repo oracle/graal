@@ -39,7 +39,7 @@ public class TypeSystemCodeGenerator extends AbstractCompilationUnitFactory<Type
         return "is" + ElementUtils.getTypeId(type.getBoxedType());
     }
 
-    public static String isImplicitTypeMethodName(TypeData type) {
+    static String isImplicitTypeMethodName(TypeData type) {
         return "isImplicit" + ElementUtils.getTypeId(type.getBoxedType());
     }
 
@@ -47,11 +47,11 @@ public class TypeSystemCodeGenerator extends AbstractCompilationUnitFactory<Type
         return "as" + ElementUtils.getTypeId(type.getBoxedType());
     }
 
-    public static String asImplicitTypeMethodName(TypeData type) {
+    static String asImplicitTypeMethodName(TypeData type) {
         return "asImplicit" + ElementUtils.getTypeId(type.getBoxedType());
     }
 
-    public static String getImplicitClass(TypeData type) {
+    static String getImplicitClass(TypeData type) {
         return "getImplicit" + ElementUtils.getTypeId(type.getBoxedType()) + "Class";
     }
 
@@ -59,12 +59,12 @@ public class TypeSystemCodeGenerator extends AbstractCompilationUnitFactory<Type
         return "expect" + ElementUtils.getTypeId(type.getBoxedType());
     }
 
-    public static String typeName(TypeSystemData typeSystem) {
+    static String typeName(TypeSystemData typeSystem) {
         String name = getSimpleName(typeSystem.getTemplateType());
         return name + "Gen";
     }
 
-    public static String singletonName(TypeSystemData type) {
+    static String singletonName(TypeSystemData type) {
         return createConstantName(getSimpleName(type.getTemplateType().asType()));
     }
 

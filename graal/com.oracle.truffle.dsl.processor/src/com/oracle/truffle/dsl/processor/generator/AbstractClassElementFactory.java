@@ -35,7 +35,7 @@ import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.dsl.processor.java.model.*;
 import com.oracle.truffle.dsl.processor.model.*;
 
-public abstract class AbstractClassElementFactory<M> extends AbstractCodeElementFactory<M> {
+abstract class AbstractClassElementFactory<M> extends AbstractCodeElementFactory<M> {
 
     @Override
     protected abstract CodeTypeElement create(M m);

@@ -27,7 +27,7 @@ import javax.lang.model.element.*;
 import com.oracle.truffle.dsl.processor.*;
 import com.oracle.truffle.dsl.processor.java.model.*;
 
-public abstract class AbstractCodeElementFactory<M> {
+abstract class AbstractCodeElementFactory<M> {
 
     protected final ProcessorContext context;
     private M model;
