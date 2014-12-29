@@ -71,7 +71,7 @@ class NodeBaseFactory {
     }
 
     public CodeTypeElement create() {
-        CodeTypeElement clazz = GeneratorUtils.createClass(node, modifiers(PRIVATE, ABSTRACT, STATIC), baseClassName(node), node.getNodeType(), false);
+        CodeTypeElement clazz = GeneratorUtils.createClass(node, modifiers(PRIVATE, ABSTRACT), baseClassName(node), node.getNodeType(), false);
         clazz.getImplements().add(context.getTruffleTypes().getDslNode());
 
         for (NodeChildData child : node.getChildren()) {
@@ -1847,10 +1847,10 @@ class NodeBaseFactory {
         return builder.getRoot();
     }
 
-    private static String baseClassName(NodeData node) {
+    public static String baseClassName(NodeData node) {
         String nodeid = resolveNodeId(node);
         String name = ElementUtils.firstLetterUpperCase(nodeid);
-        name += "BaseNode";
+        name += "NodeGen";
         return name;
     }
 
@@ -1874,12 +1874,12 @@ class NodeBaseFactory {
     /**
      * <pre>
      * variant1 $condition != null
-     *
+     * 
      * $type $name = defaultValue($type);
      * if ($condition) {
      *     $name = $value;
      * }
-     *
+     * 
      * variant2 $condition != null
      * $type $name = $value;
      * </pre>

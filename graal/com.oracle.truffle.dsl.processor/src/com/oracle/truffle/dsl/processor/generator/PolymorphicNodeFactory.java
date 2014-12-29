@@ -46,7 +46,7 @@ class PolymorphicNodeFactory extends SpecializedNodeFactory {
         if (nodeGen != null) {
             baseType = nodeGen.asType();
         }
-        CodeTypeElement clazz = GeneratorUtils.createClass(node, modifiers(PRIVATE, STATIC, FINAL), nodePolymorphicClassName(node), baseType, false);
+        CodeTypeElement clazz = GeneratorUtils.createClass(node, modifiers(PRIVATE, FINAL), nodePolymorphicClassName(node), baseType, false);
 
         clazz.getAnnotationMirrors().add(createNodeInfo(NodeCost.POLYMORPHIC));
 

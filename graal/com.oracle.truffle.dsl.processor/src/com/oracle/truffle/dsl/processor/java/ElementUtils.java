@@ -998,6 +998,18 @@ public class ElementUtils {
         return false;
     }
 
+    public static void setVisibility(Set<Modifier> modifiers, Modifier visibility) {
+        Modifier current = getVisibility(modifiers);
+        if (current != visibility) {
+            if (current != null) {
+                modifiers.remove(current);
+            }
+            if (visibility != null) {
+                modifiers.add(visibility);
+            }
+        }
+    }
+
     public static Modifier getVisibility(Set<Modifier> modifier) {
         for (Modifier mod : modifier) {
             if (mod == Modifier.PUBLIC || mod == Modifier.PRIVATE || mod == Modifier.PROTECTED) {

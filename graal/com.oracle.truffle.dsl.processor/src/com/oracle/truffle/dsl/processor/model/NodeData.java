@@ -52,9 +52,10 @@ public class NodeData extends Template implements Comparable<NodeData> {
     private Map<Integer, List<ExecutableTypeData>> executableTypes;
 
     private final NodeExecutionData thisExecution;
+    private final boolean generateFactory;
 
     public NodeData(ProcessorContext context, TypeElement type, String shortName, TypeSystemData typeSystem, List<NodeChildData> children, List<NodeExecutionData> executions,
-                    List<NodeFieldData> fields, List<String> assumptions) {
+                    List<NodeFieldData> fields, List<String> assumptions, boolean generateFactory) {
         super(context, type, null, null);
         this.nodeId = type.getSimpleName().toString();
         this.shortName = shortName;
@@ -65,10 +66,15 @@ public class NodeData extends Template implements Comparable<NodeData> {
         this.assumptions = assumptions;
         this.thisExecution = new NodeExecutionData(new NodeChildData(null, null, "this", getNodeType(), getNodeType(), null, Cardinality.ONE), -1, false);
         this.thisExecution.getChild().setNode(this);
+        this.generateFactory = generateFactory;
     }
 
     public NodeData(ProcessorContext context, TypeElement type) {
-        this(context, type, null, null, null, null, null, null);
+        this(context, type, null, null, null, null, null, null, false);
+    }
+
+    public boolean isGenerateFactory() {
+        return generateFactory;
     }
 
     public NodeExecutionData getThisExecution() {
@@ -231,13 +237,13 @@ public class NodeData extends Template implements Comparable<NodeData> {
         return null;
     }
 
-    public List<NodeData> getNodeDeclaringChildren() {
+    public List<NodeData> getNodesWithFactories() {
         List<NodeData> nodeChildren = new ArrayList<>();
         for (NodeData child : getEnclosingNodes()) {
-            if (child.needsFactory()) {
+            if (child.needsFactory() && child.isGenerateFactory()) {
                 nodeChildren.add(child);
             }
-            nodeChildren.addAll(child.getNodeDeclaringChildren());
+            nodeChildren.addAll(child.getNodesWithFactories());
         }
         return nodeChildren;
     }

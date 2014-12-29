@@ -251,8 +251,9 @@ public class NodeParser extends AbstractParser<NodeData> {
         List<NodeFieldData> fields = parseFields(typeHierarchy, elements);
         List<NodeChildData> children = parseChildren(typeHierarchy, elements);
         List<NodeExecutionData> executions = parseExecutions(children, elements);
+        boolean useNodeFactory = findFirstAnnotation(typeHierarchy, GenerateNodeFactory.class) != null;
 
-        NodeData nodeData = new NodeData(context, templateType, shortName, typeSystem, children, executions, fields, assumptionsList);
+        NodeData nodeData = new NodeData(context, templateType, shortName, typeSystem, children, executions, fields, assumptionsList, useNodeFactory);
 
         parsedNodes.put(ElementUtils.getQualifiedName(templateType), nodeData);
 

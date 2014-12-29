@@ -54,7 +54,7 @@ class SpecializedNodeFactory extends NodeBaseFactory {
         if (nodeGen != null) {
             baseType = nodeGen.asType();
         }
-        CodeTypeElement clazz = GeneratorUtils.createClass(node, modifiers(PRIVATE, STATIC, FINAL), nodeSpecializationClassName(specialization), baseType, false);
+        CodeTypeElement clazz = GeneratorUtils.createClass(node, modifiers(PRIVATE, FINAL), nodeSpecializationClassName(specialization), baseType, false);
 
         if (specialization.isSpecialized() || specialization.isUninitialized()) {
             clazz.add(createGetMetadata0(false));

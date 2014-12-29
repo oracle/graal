@@ -29,7 +29,6 @@ import java.util.*;
 
 import javax.lang.model.element.*;
 import javax.lang.model.type.*;
-import javax.lang.model.util.*;
 
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.dsl.processor.*;
@@ -52,7 +51,7 @@ class NodeFactoryFactory {
         this.createdFactoryElement = createdClass;
     }
 
-    private static String factoryClassName(NodeData node) {
+    public static String factoryClassName(NodeData node) {
         return node.getNodeId() + "Factory";
     }
 
@@ -67,18 +66,12 @@ class NodeFactoryFactory {
         clazz.getModifiers().add(Modifier.FINAL);
 
         if (createdFactoryElement != null) {
-            createFactoryMethods(clazz, visibility);
-
+            createFactoryMethods(context, node, clazz, createdFactoryElement, visibility);
             clazz.setSuperClass(nodeFactory);
             clazz.add(createNodeFactoryConstructor());
             clazz.add(createCreateNodeMethod());
             clazz.add(createGetInstanceMethod(visibility));
             clazz.add(createInstanceConstant(clazz.asType()));
-        }
-
-        List<NodeData> children = node.getNodeDeclaringChildren();
-        if (node.getDeclaringNode() == null && children.size() > 0) {
-            clazz.add(createGetFactories());
         }
 
         return clazz;
@@ -231,68 +224,14 @@ class NodeFactoryFactory {
         return var;
     }
 
-    private ExecutableElement createGetFactories() {
-        List<NodeData> children = node.getNodeDeclaringChildren();
-        if (node.needsFactory()) {
-            children.add(node);
-        }
-
-        List<TypeMirror> nodeTypesList = new ArrayList<>();
-        TypeMirror prev = null;
-        boolean allSame = true;
-        for (NodeData child : children) {
-            nodeTypesList.add(child.getNodeType());
-            if (prev != null && !ElementUtils.typeEquals(child.getNodeType(), prev)) {
-                allSame = false;
-            }
-            prev = child.getNodeType();
-        }
-        TypeMirror commonNodeSuperType = ElementUtils.getCommonSuperType(context, nodeTypesList.toArray(new TypeMirror[nodeTypesList.size()]));
-
-        Types types = context.getEnvironment().getTypeUtils();
-        TypeMirror factoryType = context.getType(NodeFactory.class);
-        TypeMirror baseType;
-        if (allSame) {
-            baseType = ElementUtils.getDeclaredType(ElementUtils.fromTypeMirror(factoryType), commonNodeSuperType);
-        } else {
-            baseType = ElementUtils.getDeclaredType(ElementUtils.fromTypeMirror(factoryType), types.getWildcardType(commonNodeSuperType, null));
-        }
-        TypeMirror listType = ElementUtils.getDeclaredType(ElementUtils.fromTypeMirror(context.getType(List.class)), baseType);
-
-        CodeExecutableElement method = new CodeExecutableElement(modifiers(PUBLIC, STATIC), listType, "getFactories");
-
-        CodeTreeBuilder builder = method.createBuilder();
-        builder.startReturn();
-        builder.startStaticCall(context.getType(Arrays.class), "asList");
-
-        for (NodeData child : children) {
-            builder.startGroup();
-            NodeData childNode = child;
-            List<NodeData> factories = new ArrayList<>();
-            while (childNode.getDeclaringNode() != null) {
-                factories.add(childNode);
-                childNode = childNode.getDeclaringNode();
-            }
-            Collections.reverse(factories);
-            for (NodeData nodeData : factories) {
-                builder.string(factoryClassName(nodeData)).string(".");
-            }
-            builder.string("getInstance()");
-            builder.end();
-        }
-        builder.end();
-        builder.end();
-        return method;
-    }
-
-    private void createFactoryMethods(CodeTypeElement clazz, Modifier createVisibility) {
+    public static void createFactoryMethods(ProcessorContext context, NodeData node, CodeTypeElement clazz, CodeTypeElement createdFactoryElement, Modifier createVisibility) {
         List<ExecutableElement> constructors = NodeBaseFactory.findUserConstructors(createdFactoryElement.asType());
         for (ExecutableElement constructor : constructors) {
-            clazz.add(createCreateMethod(createVisibility, constructor));
+            clazz.add(createCreateMethod(context, node, createVisibility, constructor));
         }
     }
 
-    private CodeExecutableElement createCreateMethod(Modifier visibility, ExecutableElement constructor) {
+    private static CodeExecutableElement createCreateMethod(ProcessorContext context, NodeData node, Modifier visibility, ExecutableElement constructor) {
         CodeExecutableElement method = CodeExecutableElement.clone(context.getEnvironment(), constructor);
         method.setSimpleName(CodeNames.of("create"));
         method.getModifiers().clear();

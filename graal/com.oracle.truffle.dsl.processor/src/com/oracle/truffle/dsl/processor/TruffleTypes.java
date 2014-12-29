@@ -69,6 +69,7 @@ public final class TruffleTypes {
     private final DeclaredType nodeFactoryBase;
     private final DeclaredType dslMetadata;
     private final DeclaredType implies;
+    private final DeclaredType generateNodeFactory;
     private final TypeElement expectError;
 
     private final List<String> errors = new ArrayList<>();
@@ -98,6 +99,11 @@ public final class TruffleTypes {
         dslMetadata = getRequired(context, DSLMetadata.class);
         implies = getRequired(context, Implies.class);
         expectError = (TypeElement) getRequired(context, ExpectError.class).asElement();
+        generateNodeFactory = getRequired(context, GenerateNodeFactory.class);
+    }
+
+    public DeclaredType getGenerateNodeFactory() {
+        return generateNodeFactory;
     }
 
     public DeclaredType getImplies() {

@@ -22,11 +22,18 @@
  */
 package com.oracle.truffle.dsl.processor.generator;
 
+import static com.oracle.truffle.dsl.processor.java.ElementUtils.*;
+import static javax.lang.model.element.Modifier.*;
+
 import java.util.*;
 
 import javax.lang.model.element.*;
+import javax.lang.model.type.*;
+import javax.lang.model.util.*;
 
+import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.dsl.processor.*;
+import com.oracle.truffle.dsl.processor.java.*;
 import com.oracle.truffle.dsl.processor.java.model.*;
 import com.oracle.truffle.dsl.processor.model.*;
 
@@ -44,28 +51,82 @@ public class NodeCodeGenerator extends CodeTypeElementFactory<NodeData> {
         List<CodeTypeElement> generatedNodes = generateNodes(context, node);
 
         if (!generatedNodes.isEmpty() || !enclosedTypes.isEmpty()) {
-            CodeTypeElement type = wrapGeneratedNodes(context, node, generatedNodes);
+
+            CodeTypeElement type;
+            if (generatedNodes.isEmpty()) {
+                type = createContainer(node);
+            } else {
+                type = wrapGeneratedNodes(context, node, generatedNodes);
+            }
 
             for (CodeTypeElement enclosedFactory : enclosedTypes) {
-                Set<Modifier> modifiers = enclosedFactory.getModifiers();
-                if (!modifiers.contains(Modifier.STATIC)) {
-                    modifiers.add(Modifier.STATIC);
-                }
-                type.add(enclosedFactory);
+                type.add(makeInnerClass(enclosedFactory));
             }
+
+            if (node.getDeclaringNode() == null && enclosedTypes.size() > 0) {
+                ExecutableElement getFactories = createGetFactories(context, node);
+                if (getFactories != null) {
+                    type.add(getFactories);
+                }
+            }
+
             return type;
         } else {
             return null;
         }
     }
 
-    private static CodeTypeElement wrapGeneratedNodes(ProcessorContext context, NodeData node, List<CodeTypeElement> generatedNodes) {
-        // wrap all types into a generated factory
-        CodeTypeElement factoryElement = new NodeFactoryFactory(context, node, generatedNodes.isEmpty() ? null : generatedNodes.get(0)).create();
-        for (CodeTypeElement generatedNode : generatedNodes) {
-            factoryElement.add(generatedNode);
+    private static CodeTypeElement makeInnerClass(CodeTypeElement type) {
+        Set<Modifier> modifiers = type.getModifiers();
+        if (!modifiers.contains(Modifier.STATIC)) {
+            modifiers.add(Modifier.STATIC);
         }
-        return factoryElement;
+        return type;
+    }
+
+    private static CodeTypeElement wrapGeneratedNodes(ProcessorContext context, NodeData node, List<CodeTypeElement> generatedNodes) {
+        if (node.isGenerateFactory()) {
+            // wrap all types into a generated factory
+            CodeTypeElement factoryElement = new NodeFactoryFactory(context, node, generatedNodes.get(0)).create();
+            for (CodeTypeElement generatedNode : generatedNodes) {
+                factoryElement.add(makeInnerClass(generatedNode));
+            }
+            return factoryElement;
+        } else {
+            // wrap all types into the first node
+            CodeTypeElement first = generatedNodes.get(0);
+            CodeTypeElement last = generatedNodes.get(1);
+
+            for (CodeTypeElement generatedNode : generatedNodes) {
+                if (first != generatedNode) {
+                    first.add(makeInnerClass(generatedNode));
+                }
+            }
+            ElementUtils.setVisibility(first.getModifiers(), ElementUtils.getVisibility(node.getTemplateType().getModifiers()));
+            for (ExecutableElement constructor : ElementFilter.constructorsIn(first.getEnclosedElements())) {
+                ElementUtils.setVisibility(((CodeExecutableElement) constructor).getModifiers(), Modifier.PRIVATE);
+            }
+
+            NodeFactoryFactory.createFactoryMethods(context, node, first, last, ElementUtils.getVisibility(node.getTemplateType().getModifiers()));
+            return first;
+        }
+    }
+
+    private static CodeTypeElement createContainer(NodeData node) {
+        CodeTypeElement container;
+        Modifier visibility = ElementUtils.getVisibility(node.getTemplateType().getModifiers());
+        String containerName = NodeFactoryFactory.factoryClassName(node);
+        container = GeneratorUtils.createClass(node, modifiers(), containerName, null, false);
+        if (visibility != null) {
+            container.getModifiers().add(visibility);
+        }
+        container.getModifiers().add(Modifier.FINAL);
+
+        return container;
+    }
+
+    private static String getAccessorClassName(NodeData node) {
+        return node.isGenerateFactory() ? NodeFactoryFactory.factoryClassName(node) : NodeBaseFactory.baseClassName(node);
     }
 
     private static List<CodeTypeElement> generateNodes(ProcessorContext context, NodeData node) {
@@ -89,6 +150,66 @@ public class NodeCodeGenerator extends CodeTypeElementFactory<NodeData> {
             nodeTypes.add(new SpecializedNodeFactory(context, node, specialization, baseNode).create());
         }
         return nodeTypes;
+    }
+
+    private static ExecutableElement createGetFactories(ProcessorContext context, NodeData node) {
+        List<NodeData> factoryList = node.getNodesWithFactories();
+        if (node.needsFactory() && node.isGenerateFactory()) {
+            factoryList.add(node);
+        }
+
+        if (factoryList.isEmpty()) {
+            return null;
+        }
+
+        List<TypeMirror> nodeTypesList = new ArrayList<>();
+        TypeMirror prev = null;
+        boolean allSame = true;
+        for (NodeData child : factoryList) {
+            nodeTypesList.add(child.getNodeType());
+            if (prev != null && !ElementUtils.typeEquals(child.getNodeType(), prev)) {
+                allSame = false;
+            }
+            prev = child.getNodeType();
+        }
+        TypeMirror commonNodeSuperType = ElementUtils.getCommonSuperType(context, nodeTypesList.toArray(new TypeMirror[nodeTypesList.size()]));
+
+        Types types = context.getEnvironment().getTypeUtils();
+        TypeMirror factoryType = context.getType(NodeFactory.class);
+        TypeMirror baseType;
+        if (allSame) {
+            baseType = ElementUtils.getDeclaredType(ElementUtils.fromTypeMirror(factoryType), commonNodeSuperType);
+        } else {
+            baseType = ElementUtils.getDeclaredType(ElementUtils.fromTypeMirror(factoryType), types.getWildcardType(commonNodeSuperType, null));
+        }
+        TypeMirror listType = ElementUtils.getDeclaredType(ElementUtils.fromTypeMirror(context.getType(List.class)), baseType);
+
+        CodeExecutableElement method = new CodeExecutableElement(modifiers(PUBLIC, STATIC), listType, "getFactories");
+
+        CodeTreeBuilder builder = method.createBuilder();
+        builder.startReturn();
+        builder.startStaticCall(context.getType(Arrays.class), "asList");
+
+        for (NodeData child : factoryList) {
+            builder.startGroup();
+            NodeData childNode = child;
+            List<NodeData> factories = new ArrayList<>();
+            while (childNode.getDeclaringNode() != null) {
+                factories.add(childNode);
+                childNode = childNode.getDeclaringNode();
+            }
+            Collections.reverse(factories);
+            for (NodeData nodeData : factories) {
+
+                builder.string(getAccessorClassName(nodeData)).string(".");
+            }
+            builder.string("getInstance()");
+            builder.end();
+        }
+        builder.end();
+        builder.end();
+
+        return method;
     }
 
 }
