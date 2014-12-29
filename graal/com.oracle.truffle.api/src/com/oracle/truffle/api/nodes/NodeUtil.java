@@ -118,6 +118,11 @@ public final class NodeUtil {
             return offset;
         }
 
+        public void putObject(Object receiver, Object value) {
+            assert value == null || type.isInstance(value);
+            unsafe.putObject(receiver, offset, value);
+        }
+
         public Object loadValue(Node node) {
             if (type == boolean.class) {
                 return unsafe.getBoolean(node, offset);
