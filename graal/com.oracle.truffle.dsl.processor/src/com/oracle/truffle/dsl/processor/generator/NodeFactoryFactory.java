@@ -32,100 +32,59 @@ import javax.lang.model.type.*;
 import javax.lang.model.util.*;
 
 import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.dsl.processor.*;
 import com.oracle.truffle.dsl.processor.java.*;
 import com.oracle.truffle.dsl.processor.java.model.*;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.ArrayCodeTypeMirror;
 import com.oracle.truffle.dsl.processor.model.*;
 
-class NodeFactoryFactory extends AbstractClassElementFactory<NodeData> {
+class NodeFactoryFactory {
 
     static final String FACTORY_METHOD_NAME = "create0";
 
-    private final Map<NodeData, List<TypeElement>> childTypes;
-    private CodeTypeElement generatedNode;
+    private final ProcessorContext context;
+    private final NodeData node;
+    private final CodeTypeElement createdFactoryElement;
 
-    NodeFactoryFactory(Map<NodeData, List<TypeElement>> childElements) {
-        this.childTypes = childElements;
+    public NodeFactoryFactory(ProcessorContext context, NodeData node, CodeTypeElement createdClass) {
+        this.context = context;
+        this.node = node;
+        this.createdFactoryElement = createdClass;
     }
 
     private static String factoryClassName(NodeData node) {
         return node.getNodeId() + "Factory";
     }
 
-    @Override
-    protected CodeTypeElement create(NodeData node) {
+    public CodeTypeElement create() {
         Modifier visibility = ElementUtils.getVisibility(node.getTemplateType().getModifiers());
+        TypeMirror nodeFactory = ElementUtils.getDeclaredType(ElementUtils.fromTypeMirror(context.getTruffleTypes().getNodeFactoryBase()), node.getNodeType());
 
-        CodeTypeElement clazz = createClass(node, modifiers(), factoryClassName(node), null, false);
+        CodeTypeElement clazz = GeneratorUtils.createClass(node, modifiers(), factoryClassName(node), null, false);
         if (visibility != null) {
             clazz.getModifiers().add(visibility);
         }
         clazz.getModifiers().add(Modifier.FINAL);
-        return clazz;
-    }
 
-    @Override
-    protected void createChildren(NodeData node) {
-        CodeTypeElement clazz = getElement();
+        if (createdFactoryElement != null) {
+            createFactoryMethods(clazz, visibility);
 
-        Modifier createVisibility = ElementUtils.getVisibility(clazz.getModifiers());
-
-        if (node.needsFactory()) {
-            NodeBaseFactory factory = new NodeBaseFactory();
-            add(factory, node.getGenericSpecialization() == null ? node.getSpecializations().get(0) : node.getGenericSpecialization());
-            generatedNode = factory.getElement();
-
-            createFactoryMethods(node, clazz, createVisibility);
-
-            for (SpecializationData specialization : node.getSpecializations()) {
-                if (!specialization.isReachable() || specialization.isGeneric()) {
-                    continue;
-                }
-
-                if (specialization.isPolymorphic() && node.isPolymorphic(context)) {
-                    PolymorphicNodeFactory polymorphicFactory = new PolymorphicNodeFactory(generatedNode);
-                    add(polymorphicFactory, specialization);
-                    continue;
-                }
-
-                add(new SpecializedNodeFactory(generatedNode), specialization);
-            }
-
-            TypeMirror nodeFactory = ElementUtils.getDeclaredType(ElementUtils.fromTypeMirror(getContext().getTruffleTypes().getNodeFactoryBase()), node.getNodeType());
             clazz.setSuperClass(nodeFactory);
-            clazz.add(createNodeFactoryConstructor(node));
-            clazz.add(createCreateNodeMethod(node));
-            clazz.add(createGetInstanceMethod(node, createVisibility));
-            clazz.add(createInstanceConstant(node, clazz.asType()));
-        }
-
-        for (NodeData childNode : childTypes.keySet()) {
-            if (childNode.getTemplateType().getModifiers().contains(Modifier.PRIVATE)) {
-                continue;
-            }
-
-            for (TypeElement type : childTypes.get(childNode)) {
-                Set<Modifier> typeModifiers = ((CodeTypeElement) type).getModifiers();
-                Modifier visibility = ElementUtils.getVisibility(type.getModifiers());
-                typeModifiers.clear();
-                if (visibility != null) {
-                    typeModifiers.add(visibility);
-                }
-
-                typeModifiers.add(Modifier.STATIC);
-                typeModifiers.add(Modifier.FINAL);
-                clazz.add(type);
-            }
+            clazz.add(createNodeFactoryConstructor());
+            clazz.add(createCreateNodeMethod());
+            clazz.add(createGetInstanceMethod(visibility));
+            clazz.add(createInstanceConstant(clazz.asType()));
         }
 
         List<NodeData> children = node.getNodeDeclaringChildren();
         if (node.getDeclaringNode() == null && children.size() > 0) {
-            clazz.add(createGetFactories(node));
+            clazz.add(createGetFactories());
         }
 
+        return clazz;
     }
 
-    private Element createNodeFactoryConstructor(NodeData node) {
+    private Element createNodeFactoryConstructor() {
         CodeExecutableElement method = new CodeExecutableElement(modifiers(PRIVATE), null, factoryClassName(node));
         CodeTreeBuilder builder = method.createBuilder();
         builder.startStatement();
@@ -150,7 +109,7 @@ class NodeFactoryFactory extends AbstractClassElementFactory<NodeData> {
         // node signatures
         builder.startGroup();
         builder.startNewArray(new ArrayCodeTypeMirror(new ArrayCodeTypeMirror(context.getType(Class.class))), null);
-        List<ExecutableElement> constructors = NodeBaseFactory.findUserConstructors(generatedNode.asType());
+        List<ExecutableElement> constructors = NodeBaseFactory.findUserConstructors(createdFactoryElement.asType());
         for (ExecutableElement constructor : constructors) {
             builder.startGroup();
             if (constructor.getParameters().isEmpty()) {
@@ -171,14 +130,14 @@ class NodeFactoryFactory extends AbstractClassElementFactory<NodeData> {
         return method;
     }
 
-    private CodeExecutableElement createCreateNodeMethod(NodeData node) {
+    private CodeExecutableElement createCreateNodeMethod() {
         CodeExecutableElement method = new CodeExecutableElement(modifiers(PUBLIC), node.getNodeType(), "createNode");
-        CodeVariableElement arguments = new CodeVariableElement(getContext().getType(Object.class), "arguments");
+        CodeVariableElement arguments = new CodeVariableElement(context.getType(Object.class), "arguments");
         method.setVarArgs(true);
         method.addParameter(arguments);
 
         CodeTreeBuilder builder = method.createBuilder();
-        List<ExecutableElement> signatures = NodeBaseFactory.findUserConstructors(generatedNode.asType());
+        List<ExecutableElement> signatures = NodeBaseFactory.findUserConstructors(createdFactoryElement.asType());
         boolean ifStarted = false;
 
         for (ExecutableElement element : signatures) {
@@ -195,7 +154,7 @@ class NodeFactoryFactory extends AbstractClassElementFactory<NodeData> {
                     builder.string("(arguments[" + index + "] == null || ");
                 }
                 builder.string("arguments[" + index + "] instanceof ");
-                builder.type(ElementUtils.boxType(getContext(), param.asType()));
+                builder.type(ElementUtils.boxType(context, param.asType()));
                 if (!param.asType().getKind().isPrimitive()) {
                     builder.string(")");
                 }
@@ -221,15 +180,15 @@ class NodeFactoryFactory extends AbstractClassElementFactory<NodeData> {
         }
 
         builder.startElseBlock();
-        builder.startThrow().startNew(getContext().getType(IllegalArgumentException.class));
+        builder.startThrow().startNew(context.getType(IllegalArgumentException.class));
         builder.doubleQuote("Invalid create signature.");
         builder.end().end();
         builder.end(); // else block
         return method;
     }
 
-    private ExecutableElement createGetInstanceMethod(NodeData node, Modifier visibility) {
-        TypeElement nodeFactoryType = ElementUtils.fromTypeMirror(getContext().getType(NodeFactory.class));
+    private ExecutableElement createGetInstanceMethod(Modifier visibility) {
+        TypeElement nodeFactoryType = ElementUtils.fromTypeMirror(context.getType(NodeFactory.class));
         TypeMirror returnType = ElementUtils.getDeclaredType(nodeFactoryType, node.getNodeType());
 
         CodeExecutableElement method = new CodeExecutableElement(modifiers(), returnType, "getInstance");
@@ -264,7 +223,7 @@ class NodeFactoryFactory extends AbstractClassElementFactory<NodeData> {
         }
     }
 
-    private static CodeVariableElement createInstanceConstant(NodeData node, TypeMirror factoryType) {
+    private CodeVariableElement createInstanceConstant(TypeMirror factoryType) {
         String varName = instanceVarName(node);
         CodeVariableElement var = new CodeVariableElement(modifiers(), factoryType, varName);
         var.getModifiers().add(Modifier.PRIVATE);
@@ -272,7 +231,7 @@ class NodeFactoryFactory extends AbstractClassElementFactory<NodeData> {
         return var;
     }
 
-    private ExecutableElement createGetFactories(NodeData node) {
+    private ExecutableElement createGetFactories() {
         List<NodeData> children = node.getNodeDeclaringChildren();
         if (node.needsFactory()) {
             children.add(node);
@@ -288,23 +247,23 @@ class NodeFactoryFactory extends AbstractClassElementFactory<NodeData> {
             }
             prev = child.getNodeType();
         }
-        TypeMirror commonNodeSuperType = ElementUtils.getCommonSuperType(getContext(), nodeTypesList.toArray(new TypeMirror[nodeTypesList.size()]));
+        TypeMirror commonNodeSuperType = ElementUtils.getCommonSuperType(context, nodeTypesList.toArray(new TypeMirror[nodeTypesList.size()]));
 
-        Types types = getContext().getEnvironment().getTypeUtils();
-        TypeMirror factoryType = getContext().getType(NodeFactory.class);
+        Types types = context.getEnvironment().getTypeUtils();
+        TypeMirror factoryType = context.getType(NodeFactory.class);
         TypeMirror baseType;
         if (allSame) {
             baseType = ElementUtils.getDeclaredType(ElementUtils.fromTypeMirror(factoryType), commonNodeSuperType);
         } else {
             baseType = ElementUtils.getDeclaredType(ElementUtils.fromTypeMirror(factoryType), types.getWildcardType(commonNodeSuperType, null));
         }
-        TypeMirror listType = ElementUtils.getDeclaredType(ElementUtils.fromTypeMirror(getContext().getType(List.class)), baseType);
+        TypeMirror listType = ElementUtils.getDeclaredType(ElementUtils.fromTypeMirror(context.getType(List.class)), baseType);
 
         CodeExecutableElement method = new CodeExecutableElement(modifiers(PUBLIC, STATIC), listType, "getFactories");
 
         CodeTreeBuilder builder = method.createBuilder();
         builder.startReturn();
-        builder.startStaticCall(getContext().getType(Arrays.class), "asList");
+        builder.startStaticCall(context.getType(Arrays.class), "asList");
 
         for (NodeData child : children) {
             builder.startGroup();
@@ -326,15 +285,15 @@ class NodeFactoryFactory extends AbstractClassElementFactory<NodeData> {
         return method;
     }
 
-    private void createFactoryMethods(NodeData node, CodeTypeElement clazz, Modifier createVisibility) {
-        List<ExecutableElement> constructors = NodeBaseFactory.findUserConstructors(generatedNode.asType());
+    private void createFactoryMethods(CodeTypeElement clazz, Modifier createVisibility) {
+        List<ExecutableElement> constructors = NodeBaseFactory.findUserConstructors(createdFactoryElement.asType());
         for (ExecutableElement constructor : constructors) {
-            clazz.add(createCreateMethod(node, createVisibility, constructor));
+            clazz.add(createCreateMethod(createVisibility, constructor));
         }
     }
 
-    private CodeExecutableElement createCreateMethod(NodeData node, Modifier visibility, ExecutableElement constructor) {
-        CodeExecutableElement method = CodeExecutableElement.clone(getContext().getEnvironment(), constructor);
+    private CodeExecutableElement createCreateMethod(Modifier visibility, ExecutableElement constructor) {
+        CodeExecutableElement method = CodeExecutableElement.clone(context.getEnvironment(), constructor);
         method.setSimpleName(CodeNames.of("create"));
         method.getModifiers().clear();
         if (visibility != null) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,22 +22,11 @@
  */
 package com.oracle.truffle.dsl.processor.generator;
 
+import com.oracle.truffle.dsl.processor.*;
 import com.oracle.truffle.dsl.processor.java.model.*;
 
-public abstract class AbstractCompilationUnitFactory<M> extends AbstractCodeElementFactory<M> {
+public abstract class CodeTypeElementFactory<M> {
 
-    @Override
-    public final CodeCompilationUnit create(M m) {
-        return new CodeCompilationUnit();
-    }
-
-    @SuppressWarnings("rawtypes")
-    @Override
-    public CodeCompilationUnit process(CodeElement parent, M m) {
-        return (CodeCompilationUnit) super.process(parent, m);
-    }
-
-    @Override
-    protected abstract void createChildren(M m);
+    public abstract CodeTypeElement create(ProcessorContext context, M m);
 
 }

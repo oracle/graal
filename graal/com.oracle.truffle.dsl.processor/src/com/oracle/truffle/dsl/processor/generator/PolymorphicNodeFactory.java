@@ -30,61 +30,56 @@ import java.util.*;
 import javax.lang.model.type.*;
 
 import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.dsl.processor.*;
 import com.oracle.truffle.dsl.processor.java.model.*;
 import com.oracle.truffle.dsl.processor.model.*;
 
 class PolymorphicNodeFactory extends SpecializedNodeFactory {
 
-    public PolymorphicNodeFactory(CodeTypeElement nodeGen) {
-        super(nodeGen);
+    public PolymorphicNodeFactory(ProcessorContext context, NodeData node, SpecializationData specialization, CodeTypeElement nodeGen) {
+        super(context, node, specialization, nodeGen);
     }
 
     @Override
-    public CodeTypeElement create(SpecializationData polymorph) {
-        NodeData node = polymorph.getNode();
+    public CodeTypeElement create() {
         TypeMirror baseType = node.getNodeType();
         if (nodeGen != null) {
             baseType = nodeGen.asType();
         }
-        CodeTypeElement clazz = createClass(node, modifiers(PRIVATE, STATIC, FINAL), nodePolymorphicClassName(node), baseType, false);
+        CodeTypeElement clazz = GeneratorUtils.createClass(node, modifiers(PRIVATE, STATIC, FINAL), nodePolymorphicClassName(node), baseType, false);
 
-        clazz.getAnnotationMirrors().add(createNodeInfo(node, NodeCost.POLYMORPHIC));
+        clazz.getAnnotationMirrors().add(createNodeInfo(NodeCost.POLYMORPHIC));
 
-        for (Parameter polymorphParameter : polymorph.getSignatureParameters()) {
+        for (Parameter polymorphParameter : specialization.getSignatureParameters()) {
             if (!polymorphParameter.getTypeSystemType().isGeneric()) {
                 continue;
             }
             Set<TypeData> types = new HashSet<>();
-            for (SpecializationData specialization : node.getSpecializations()) {
-                if (!specialization.isSpecialized()) {
+            for (SpecializationData otherSpecialization : node.getSpecializations()) {
+                if (!otherSpecialization.isSpecialized()) {
                     continue;
                 }
-                Parameter parameter = specialization.findParameter(polymorphParameter.getLocalName());
+                Parameter parameter = otherSpecialization.findParameter(polymorphParameter.getLocalName());
                 assert parameter != null;
                 types.add(parameter.getTypeSystemType());
             }
 
         }
 
-        for (NodeExecutionData execution : getModel().getNode().getChildExecutions()) {
+        for (NodeExecutionData execution : node.getChildExecutions()) {
             String fieldName = polymorphicTypeName(execution);
-            CodeVariableElement var = new CodeVariableElement(modifiers(PRIVATE), getContext().getType(Class.class), fieldName);
-            var.getAnnotationMirrors().add(new CodeAnnotationMirror(getContext().getTruffleTypes().getCompilationFinal()));
+            CodeVariableElement var = new CodeVariableElement(modifiers(PRIVATE), context.getType(Class.class), fieldName);
+            var.getAnnotationMirrors().add(new CodeAnnotationMirror(context.getTruffleTypes().getCompilationFinal()));
             clazz.add(var);
         }
 
-        return clazz;
-    }
-
-    @Override
-    protected void createChildren(SpecializationData specialization) {
-        CodeTypeElement clazz = getElement();
-
         createConstructors(clazz);
-        createExecuteMethods(specialization);
+        createExecuteMethods(clazz);
 
         clazz.add(createUpdateTypes0());
-        createCachedExecuteMethods(specialization);
+        createCachedExecuteMethods(clazz);
+
+        return clazz;
     }
 
 }

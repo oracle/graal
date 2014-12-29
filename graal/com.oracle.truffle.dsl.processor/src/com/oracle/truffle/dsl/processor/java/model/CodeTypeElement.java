@@ -108,7 +108,7 @@ public class CodeTypeElement extends CodeElement<Element> implements TypeElement
     }
 
     public boolean isTopLevelClass() {
-        return super.getEnclosingElement() instanceof CodeCompilationUnit;
+        return super.getEnclosingElement() instanceof CodeCompilationUnit || super.getEnclosingElement() == null;
     }
 
     private Name createQualifiedName() {

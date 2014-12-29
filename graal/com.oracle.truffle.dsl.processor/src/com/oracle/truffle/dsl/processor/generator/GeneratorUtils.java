@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,20 +32,13 @@ import javax.lang.model.type.*;
 import javax.lang.model.util.*;
 
 import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.dsl.processor.*;
 import com.oracle.truffle.dsl.processor.java.model.*;
 import com.oracle.truffle.dsl.processor.model.*;
 
-abstract class AbstractClassElementFactory<M> extends AbstractCodeElementFactory<M> {
+public class GeneratorUtils {
 
-    @Override
-    protected abstract CodeTypeElement create(M m);
-
-    @Override
-    public CodeTypeElement getElement() {
-        return (CodeTypeElement) super.getElement();
-    }
-
-    protected CodeExecutableElement createConstructorUsingFields(Set<Modifier> modifiers, CodeTypeElement clazz) {
+    public static CodeExecutableElement createConstructorUsingFields(ProcessorContext context, Set<Modifier> modifiers, CodeTypeElement clazz) {
         CodeExecutableElement method = new CodeExecutableElement(modifiers, null, clazz.getSimpleName().toString());
         CodeTreeBuilder builder = method.createBuilder();
         TypeElement superClass = fromTypeMirror(clazz.getSuperclass());
@@ -71,7 +64,7 @@ abstract class AbstractClassElementFactory<M> extends AbstractCodeElementFactory
             builder.string("this.");
             builder.string(fieldName);
             builder.string(" = ");
-            if (isAssignable(field.asType(), getContext().getTruffleTypes().getNode())) {
+            if (isAssignable(field.asType(), context.getTruffleTypes().getNode())) {
                 builder.string("adoptChild(").string(fieldName).string(")");
             } else {
                 builder.string(fieldName);
@@ -91,11 +84,11 @@ abstract class AbstractClassElementFactory<M> extends AbstractCodeElementFactory
         }
     }
 
-    protected CodeExecutableElement createSuperConstructor(TypeElement type, ExecutableElement element) {
+    public static CodeExecutableElement createSuperConstructor(ProcessorContext context, TypeElement type, ExecutableElement element) {
         if (element.getModifiers().contains(Modifier.PRIVATE)) {
             return null;
         }
-        CodeExecutableElement executable = CodeExecutableElement.clone(getContext().getEnvironment(), element);
+        CodeExecutableElement executable = CodeExecutableElement.clone(context.getEnvironment(), element);
         executable.setReturnType(null);
         executable.setSimpleName(CodeNames.of(type.getSimpleName().toString()));
         CodeTreeBuilder b = executable.createBuilder();
@@ -110,18 +103,20 @@ abstract class AbstractClassElementFactory<M> extends AbstractCodeElementFactory
         return executable;
     }
 
-    protected CodeTypeElement createClass(Template model, Set<Modifier> modifiers, String simpleName, TypeMirror superType, boolean enumType) {
+    public static CodeTypeElement createClass(Template model, Set<Modifier> modifiers, String simpleName, TypeMirror superType, boolean enumType) {
         TypeElement templateType = model.getTemplateType();
 
-        PackageElement pack = getContext().getEnvironment().getElementUtils().getPackageOf(templateType);
+        ProcessorContext context = ProcessorContext.getInstance();
+
+        PackageElement pack = context.getEnvironment().getElementUtils().getPackageOf(templateType);
         CodeTypeElement clazz = new CodeTypeElement(modifiers, enumType ? ElementKind.ENUM : ElementKind.CLASS, pack, simpleName);
         TypeMirror resolvedSuperType = superType;
         if (resolvedSuperType == null) {
-            resolvedSuperType = getContext().getType(Object.class);
+            resolvedSuperType = context.getType(Object.class);
         }
         clazz.setSuperClass(resolvedSuperType);
 
-        CodeAnnotationMirror generatedByAnnotation = new CodeAnnotationMirror((DeclaredType) getContext().getType(GeneratedBy.class));
+        CodeAnnotationMirror generatedByAnnotation = new CodeAnnotationMirror((DeclaredType) context.getType(GeneratedBy.class));
         generatedByAnnotation.setElementValue(generatedByAnnotation.findExecutableElement("value"), new CodeAnnotationValue(templateType.asType()));
         if (model.getTemplateMethodName() != null) {
             generatedByAnnotation.setElementValue(generatedByAnnotation.findExecutableElement("methodName"), new CodeAnnotationValue(model.getTemplateMethodName()));
@@ -130,4 +125,5 @@ abstract class AbstractClassElementFactory<M> extends AbstractCodeElementFactory
         clazz.addAnnotationMirror(generatedByAnnotation);
         return clazz;
     }
+
 }

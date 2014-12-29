@@ -26,27 +26,69 @@ import java.util.*;
 
 import javax.lang.model.element.*;
 
+import com.oracle.truffle.dsl.processor.*;
 import com.oracle.truffle.dsl.processor.java.model.*;
 import com.oracle.truffle.dsl.processor.model.*;
 
-public class NodeCodeGenerator extends AbstractCompilationUnitFactory<NodeData> {
+public class NodeCodeGenerator extends CodeTypeElementFactory<NodeData> {
 
     @Override
-    @SuppressWarnings("unchecked")
-    protected void createChildren(NodeData node) {
-        List<CodeTypeElement> casts = new ArrayList<>(getElement().getEnclosedElements());
-        getElement().getEnclosedElements().clear();
-
-        Map<NodeData, List<TypeElement>> childTypes = new LinkedHashMap<>();
-        for (NodeData nodeChild : node.getEnclosingNodes()) {
-            NodeCodeGenerator generator = new NodeCodeGenerator();
-            childTypes.put(nodeChild, generator.process(null, nodeChild).getEnclosedElements());
+    public CodeTypeElement create(ProcessorContext context, NodeData node) {
+        List<CodeTypeElement> enclosedTypes = new ArrayList<>();
+        for (NodeData childNode : node.getEnclosingNodes()) {
+            CodeTypeElement type = create(context, childNode);
+            if (type != null) {
+                enclosedTypes.add(type);
+            }
         }
+        List<CodeTypeElement> generatedNodes = generateNodes(context, node);
 
-        if (node.needsFactory() || node.getNodeDeclaringChildren().size() > 0) {
-            NodeFactoryFactory factory = new NodeFactoryFactory(childTypes);
-            add(factory, node);
-            factory.getElement().getEnclosedElements().addAll(casts);
+        if (!generatedNodes.isEmpty() || !enclosedTypes.isEmpty()) {
+            CodeTypeElement type = wrapGeneratedNodes(context, node, generatedNodes);
+
+            for (CodeTypeElement enclosedFactory : enclosedTypes) {
+                Set<Modifier> modifiers = enclosedFactory.getModifiers();
+                if (!modifiers.contains(Modifier.STATIC)) {
+                    modifiers.add(Modifier.STATIC);
+                }
+                type.add(enclosedFactory);
+            }
+            return type;
+        } else {
+            return null;
         }
     }
+
+    private static CodeTypeElement wrapGeneratedNodes(ProcessorContext context, NodeData node, List<CodeTypeElement> generatedNodes) {
+        // wrap all types into a generated factory
+        CodeTypeElement factoryElement = new NodeFactoryFactory(context, node, generatedNodes.isEmpty() ? null : generatedNodes.get(0)).create();
+        for (CodeTypeElement generatedNode : generatedNodes) {
+            factoryElement.add(generatedNode);
+        }
+        return factoryElement;
+    }
+
+    private static List<CodeTypeElement> generateNodes(ProcessorContext context, NodeData node) {
+        if (!node.needsFactory()) {
+            return Collections.emptyList();
+        }
+        List<CodeTypeElement> nodeTypes = new ArrayList<>();
+        SpecializationData generic = node.getGenericSpecialization() == null ? node.getSpecializations().get(0) : node.getGenericSpecialization();
+        CodeTypeElement baseNode = new NodeBaseFactory(context, node, generic).create();
+        nodeTypes.add(baseNode);
+
+        for (SpecializationData specialization : node.getSpecializations()) {
+            if (!specialization.isReachable() || specialization.isGeneric()) {
+                continue;
+            }
+            if (specialization.isPolymorphic() && node.isPolymorphic(context)) {
+                nodeTypes.add(new PolymorphicNodeFactory(context, node, specialization, baseNode).create());
+                continue;
+            }
+
+            nodeTypes.add(new SpecializedNodeFactory(context, node, specialization, baseNode).create());
+        }
+        return nodeTypes;
+    }
+
 }
