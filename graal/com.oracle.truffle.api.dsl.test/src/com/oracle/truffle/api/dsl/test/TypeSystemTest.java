@@ -69,6 +69,7 @@ public class TypeSystemTest {
     }
 
     @TypeSystemReference(SimpleTypes.class)
+    @GenerateNodeFactory
     public static class ValueNode extends Node {
 
         public ValueNode() {
@@ -134,6 +135,7 @@ public class TypeSystemTest {
     }
 
     @NodeChild(value = "children", type = ValueNode[].class)
+    @GenerateNodeFactory
     public abstract static class ChildrenNode extends ValueNode {
 
     }
