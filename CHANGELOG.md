@@ -8,7 +8,7 @@ This changelog summarizes major changes between Graal versions relevant to langu
 * ...
 
 ### Truffle
-* ...
+* Added Node#deepCopy as primary method to copy ASTs.
 
 ## Version 0.6
 19-Dec-2014, [Repository Revision](http://hg.openjdk.java.net/graal/graal/shortlog/graal-0.6)

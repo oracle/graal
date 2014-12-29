@@ -450,6 +450,10 @@ public final class NodeUtil {
 
     @SuppressWarnings("unchecked")
     public static <T extends Node> T cloneNode(T orig) {
+        return (T) orig.deepCopy();
+    }
+
+    static Node deepCopyImpl(Node orig) {
         final Node clone = orig.copy();
         NodeClass nodeClass = NodeClass.get(clone.getClass());
 
@@ -458,7 +462,7 @@ public final class NodeUtil {
         for (long fieldOffset : nodeClass.childOffsets) {
             Node child = (Node) unsafe.getObject(orig, fieldOffset);
             if (child != null) {
-                Node clonedChild = cloneNode(child);
+                Node clonedChild = child.deepCopy();
                 unsafe.putObject(clonedChild, nodeClass.parentOffset, clone);
                 unsafe.putObject(clone, fieldOffset, clonedChild);
             }
@@ -469,7 +473,7 @@ public final class NodeUtil {
                 Object[] clonedChildren = (Object[]) Array.newInstance(children.getClass().getComponentType(), children.length);
                 for (int i = 0; i < children.length; i++) {
                     if (children[i] != null) {
-                        Node clonedChild = cloneNode((Node) children[i]);
+                        Node clonedChild = ((Node) children[i]).deepCopy();
                         clonedChildren[i] = clonedChild;
                         unsafe.putObject(clonedChild, nodeClass.parentOffset, clone);
                     }
@@ -483,7 +487,7 @@ public final class NodeUtil {
                 unsafe.putObject(clone, fieldOffset, ((NodeCloneable) cloneable).clone());
             }
         }
-        return (T) clone;
+        return clone;
     }
 
     public static List<Node> findNodeChildren(Node node) {

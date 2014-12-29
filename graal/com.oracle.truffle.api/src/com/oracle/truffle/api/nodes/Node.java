@@ -388,6 +388,15 @@ public abstract class Node implements NodeInterface, Cloneable {
     }
 
     /**
+     * Creates a deep copy of this node.
+     *
+     * @return the new deep copy
+     */
+    public Node deepCopy() {
+        return NodeUtil.deepCopyImpl(this);
+    }
+
+    /**
      * This method must never be called. It enforces that {@link Object#clone} is not directly
      * called by subclasses. Use the {@link #copy()} method instead.
      */
