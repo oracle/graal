@@ -36,7 +36,6 @@ import com.oracle.truffle.dsl.processor.java.model.*;
 public final class OrganizedImports {
 
     private final Map<String, String> classImportUsage = new HashMap<>();
-    private final Map<String, String> staticImportUsage = new HashMap<>();
     private final Map<String, Set<String>> autoImportCache = new HashMap<>();
 
     private final CodeTypeElement topLevelClass;
@@ -90,14 +89,8 @@ public final class OrganizedImports {
     }
 
     private String createStaticReference(Element enclosedElement, TypeMirror type, String name) {
-        String qualifiedName = staticImportUsage.get(name);
-        if (qualifiedName == null) {
-            // ambiguous import
-            return createTypeReference(enclosedElement, type) + "." + name;
-        } else {
-            // import declared and not ambiguous
-            return name;
-        }
+        // ambiguous import
+        return createTypeReference(enclosedElement, type) + "." + name;
     }
 
     private String createWildcardName(Element enclosedElement, WildcardType type) {
@@ -150,7 +143,6 @@ public final class OrganizedImports {
         Set<CodeImport> imports = new HashSet<>();
 
         imports.addAll(generateImports(classImportUsage));
-        imports.addAll(generateStaticImports(staticImportUsage));
 
         return imports;
     }
@@ -216,31 +208,6 @@ public final class OrganizedImports {
                 }
             }
         }
-    }
-
-    private Set<CodeImport> generateStaticImports(Map<String, String> toGenerate) {
-        Set<String> autoImportedStaticTypes = new HashSet<>();
-
-        // if type is declared inside a super type of this class -> no import
-        autoImportedStaticTypes.add(getQualifiedName(topLevelClass));
-        autoImportedStaticTypes.addAll(getQualifiedSuperTypeNames(topLevelClass));
-
-        TreeSet<CodeImport> importObjects = new TreeSet<>();
-        for (String symbol : toGenerate.keySet()) {
-            String qualifiedName = toGenerate.get(symbol);
-            if (qualifiedName == null) {
-                // ambiguous
-                continue;
-            }
-            // not not import
-            if (autoImportedStaticTypes.contains(qualifiedName)) {
-                continue;
-            }
-
-            importObjects.add(new CodeImport(qualifiedName, symbol, true));
-        }
-
-        return importObjects;
     }
 
     private abstract static class TypeReferenceVisitor extends CodeElementScanner<Void, Void> {
@@ -414,12 +381,12 @@ public final class OrganizedImports {
 
         @Override
         public void visitStaticFieldReference(Element enclosedType, TypeMirror type, String elementName) {
-            registerSymbol(staticImportUsage, ElementUtils.getQualifiedName(type), elementName);
+            visitTypeReference(enclosedType, type);
         }
 
         @Override
         public void visitStaticMethodReference(Element enclosedType, TypeMirror type, String elementName) {
-            registerSymbol(staticImportUsage, ElementUtils.getQualifiedName(type), elementName);
+            visitTypeReference(enclosedType, type);
         }
 
         @Override
