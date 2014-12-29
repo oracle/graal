@@ -57,7 +57,7 @@ public @interface DSLOptions {
         /** Perform no informed optimization for implicit casts. */
         NONE,
 
-        /** Duplicate specializations for each used implicit cast combination */
+        /** Duplicate specializations for each used implicit cast combination. */
         DUPLICATE_TAIL,
 
         /**

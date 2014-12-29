@@ -126,7 +126,6 @@ public class DSLShare {
 
                 oldNode.replace(polymorphic, message);
 
-                assert polymorphic.getNext0() == currentCopy;
                 assert newNode != null ? currentCopy.getNext0() == newNode : currentCopy.getNext0() == uninitialized;
                 assert uninitializedDSL.getNext0() == null;
                 return polymorphic;

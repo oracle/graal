@@ -324,7 +324,7 @@ class NodeBaseFactory {
         return builder.build();
     }
 
-    private final void addInternalValueParameters(CodeExecutableElement executableMethod, TemplateMethod method, boolean forceFrame, boolean disableFrame, boolean evaluated) {
+    private void addInternalValueParameters(CodeExecutableElement executableMethod, TemplateMethod method, boolean forceFrame, boolean disableFrame, boolean evaluated) {
         if (forceFrame && !disableFrame && method.getSpecification().findParameterSpec("frame") != null) {
             executableMethod.addParameter(new CodeVariableElement(context.getTruffleTypes().getFrame(), "frameValue"));
         }
@@ -1222,7 +1222,7 @@ class NodeBaseFactory {
         return parameter;
     }
 
-    private final List<TypeData> lookupPolymorphicTargetTypes(Parameter param) {
+    private List<TypeData> lookupPolymorphicTargetTypes(Parameter param) {
         Set<TypeData> possiblePolymorphicTypes = new HashSet<>();
         for (SpecializationData otherSpecialization : specialization.getNode().getSpecializations()) {
             if (!otherSpecialization.isSpecialized()) {
@@ -1838,12 +1838,12 @@ class NodeBaseFactory {
     /**
      * <pre>
      * variant1 $condition != null
-     * 
+     *
      * $type $name = defaultValue($type);
      * if ($condition) {
      *     $name = $value;
      * }
-     * 
+     *
      * variant2 $condition != null
      * $type $name = $value;
      * </pre>
