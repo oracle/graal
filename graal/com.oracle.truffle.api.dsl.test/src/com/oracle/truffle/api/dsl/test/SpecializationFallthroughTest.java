@@ -334,36 +334,37 @@ public class SpecializationFallthroughTest {
 
     }
 
+    /* Throwing RuntimeExceptions without rewriteOn is allowed. */
     @NodeChildren({@NodeChild("a")})
-    static class FallthroughTest6 extends ValueNode {
-
-        static int fallthrough1;
-        static int fallthrough2;
-        static int fallthrough3;
-        static int fallthrough4;
-
-        @Specialization(order = 1, rewriteOn = ArithmeticException.class)
-        int do4(int a) throws ArithmeticException {
-            return a;
-        }
-
-        @Specialization(order = 2, rewriteOn = ArithmeticException.class)
-        int do2(int a) throws ArithmeticException {
-            return a;
-        }
-
-        @Specialization(order = 3, rewriteOn = ArithmeticException.class)
-        int do3(int a) throws ArithmeticException {
-            return a;
-        }
-
-        @Specialization(order = 4, rewriteOn = ArithmeticException.class)
-        int do1(int a) throws ArithmeticException {
-            return a;
-        }
+    static class FallthroughExceptionType0 extends ValueNode {
 
         @Specialization
-        double do5(double a) {
+        int do4(int a) throws RuntimeException {
+            return a;
+        }
+
+    }
+
+    /* Non runtime exceptions must be verified. */
+    @NodeChildren({@NodeChild("a")})
+    static class FallthroughExceptionType1 extends ValueNode {
+
+        @ExpectError("A rewriteOn checked exception was specified but not thrown in the method's throws clause. The @Specialization method must specify a throws clause with the exception type 'java.lang.Throwable'.")
+        @Specialization(rewriteOn = Throwable.class)
+        int do4(int a) {
+            return a;
+        }
+
+    }
+
+    /* Checked exception must be verified. */
+    @NodeChildren({@NodeChild("a")})
+    static class FallthroughExceptionType2 extends ValueNode {
+
+        @ExpectError("A checked exception 'java.lang.Throwable' is thrown but is not specified using the rewriteOn property. "
+                        + "Checked exceptions that are not used for rewriting are not handled by the DSL. Use RuntimeExceptions for this purpose instead.")
+        @Specialization
+        int do4(int a) throws Throwable {
             return a;
         }
 

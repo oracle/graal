@@ -59,12 +59,23 @@ public class SpecializationMethodParser extends NodeMethodParser<SpecializationD
         AnnotationValue rewriteValue = ElementUtils.getAnnotationValue(method.getMarkerAnnotation(), "rewriteOn");
         List<TypeMirror> exceptionTypes = ElementUtils.getAnnotationValueList(TypeMirror.class, method.getMarkerAnnotation(), "rewriteOn");
         List<SpecializationThrowsData> exceptionData = new ArrayList<>();
+        List<TypeMirror> rewriteOnTypes = new ArrayList<>();
         for (TypeMirror exceptionType : exceptionTypes) {
             SpecializationThrowsData throwsData = new SpecializationThrowsData(method.getMarkerAnnotation(), rewriteValue, exceptionType);
             if (!ElementUtils.canThrowType(method.getMethod().getThrownTypes(), exceptionType)) {
-                throwsData.addError("Method must specify a throws clause with the exception type '%s'.", ElementUtils.getQualifiedName(exceptionType));
+                method.addError("A rewriteOn checked exception was specified but not thrown in the method's throws clause. The @%s method must specify a throws clause with the exception type '%s'.",
+                                Specialization.class.getSimpleName(), ElementUtils.getQualifiedName(exceptionType));
             }
+            rewriteOnTypes.add(throwsData.getJavaClass());
             exceptionData.add(throwsData);
+        }
+
+        for (TypeMirror typeMirror : method.getMethod().getThrownTypes()) {
+            if (!ElementUtils.canThrowType(rewriteOnTypes, typeMirror)) {
+                method.addError(rewriteValue,
+                                "A checked exception '%s' is thrown but is not specified using the rewriteOn property. Checked exceptions that are not used for rewriting are not handled by the DSL. Use RuntimeExceptions for this purpose instead.",
+                                ElementUtils.getQualifiedName(typeMirror));
+            }
         }
 
         Collections.sort(exceptionData, new Comparator<SpecializationThrowsData>() {
