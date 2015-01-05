@@ -33,7 +33,9 @@ import com.oracle.truffle.dsl.processor.java.model.*;
  */
 public class Log {
 
-    public static final boolean DEBUG = false;
+    public static boolean isDebug() {
+        return false;
+    }
 
     private final ProcessingEnvironment processingEnv;
 

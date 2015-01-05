@@ -954,6 +954,14 @@ public class ElementUtils {
         }
     }
 
+    public static List<String> getUniqueIdentifiers(List<TypeMirror> typeMirror) {
+        List<String> ids = new ArrayList<>();
+        for (TypeMirror type : typeMirror) {
+            ids.add(getUniqueIdentifier(type));
+        }
+        return ids;
+    }
+
     public static String getUniqueIdentifier(TypeMirror typeMirror) {
         if (typeMirror.getKind() == TypeKind.ARRAY) {
             return getUniqueIdentifier(((ArrayType) typeMirror).getComponentType()) + "[]";

@@ -559,7 +559,7 @@ class NodeBaseFactory {
         addInternalValueParameters(method, generic, true, false, false);
         CodeTreeBuilder builder = method.createBuilder();
 
-        boolean needsFrame = node.isFrameUsedByAnyGuard(context);
+        boolean needsFrame = node.isFrameUsedByAnyGuard();
         CodeTreeBuilder createSpecializationCall = builder.create();
         createSpecializationCall.startCall(SPECIALIZE);
         addInternalValueParameterNames(createSpecializationCall, generic, generic, null, needsFrame, !needsFrame, null);
@@ -607,7 +607,7 @@ class NodeBaseFactory {
         addInternalValueParameters(method, generic, true, false, false);
         method.addParameter(new CodeVariableElement(context.getType(String.class), "reason"));
 
-        boolean needsFrame = node.isFrameUsedByAnyGuard(context);
+        boolean needsFrame = node.isFrameUsedByAnyGuard();
         CodeTreeBuilder builder = method.createBuilder();
 
         builder.startStatement().startStaticCall(context.getTruffleTypes().getCompilerAsserts(), "neverPartOfCompilation").end().end();
@@ -669,7 +669,7 @@ class NodeBaseFactory {
         CodeExecutableElement method = new CodeExecutableElement(modifiers(PROTECTED, FINAL), new GeneratedTypeMirror(ElementUtils.getPackageName(node.getTemplateType()), baseClassName(node)),
                         SPECIALIZE);
 
-        final boolean needsFrame = node.isFrameUsedByAnyGuard(context);
+        final boolean needsFrame = node.isFrameUsedByAnyGuard();
 
         if (!needsFrame) {
             method.getAnnotationMirrors().add(new CodeAnnotationMirror(context.getTruffleTypes().getTruffleBoundary()));

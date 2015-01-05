@@ -118,6 +118,14 @@ public class TypeSystemCodeGenerator extends CodeTypeElementFactory<TypeSystemDa
         return builder.build();
     }
 
+    public static CodeTree cast(TypeData sourceType, TypeData targetType, CodeTree content) {
+        if (sourceType != null && !sourceType.needsCastTo(targetType)) {
+            return content;
+        } else {
+            return cast(targetType, content);
+        }
+    }
+
     public static CodeTree expect(TypeData type, CodeTree content) {
         if (type.isGeneric() || type.isVoid()) {
             return content;

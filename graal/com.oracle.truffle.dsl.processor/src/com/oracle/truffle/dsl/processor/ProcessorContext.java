@@ -29,6 +29,7 @@ import javax.lang.model.element.*;
 import javax.lang.model.type.*;
 import javax.lang.model.util.*;
 
+import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.dsl.processor.java.*;
 import com.oracle.truffle.dsl.processor.java.model.*;
 import com.oracle.truffle.dsl.processor.model.*;
@@ -136,5 +137,9 @@ public class ProcessorContext {
 
     public static ProcessorContext getInstance() {
         return instance.get();
+    }
+
+    public List<TypeMirror> getFrameTypes() {
+        return Arrays.asList(getType(VirtualFrame.class), getType(MaterializedFrame.class), getType(Frame.class));
     }
 }

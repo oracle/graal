@@ -49,6 +49,16 @@ public class ParameterSpec {
         this.allowedTypesIdentifier = typeIdentifiers;
     }
 
+    public ParameterSpec(String name, List<TypeMirror> allowedTypes) {
+        this.name = name;
+        this.allowedTypes = allowedTypes;
+        Set<String> typeIdentifiers = new HashSet<>();
+        for (TypeMirror type : allowedTypes) {
+            typeIdentifiers.add(ElementUtils.getUniqueIdentifier(type));
+        }
+        this.allowedTypesIdentifier = typeIdentifiers;
+    }
+
     public ParameterSpec(String name, TypeMirror type) {
         this(name, Arrays.asList(type), new HashSet<>(Arrays.asList(ElementUtils.getUniqueIdentifier(type))));
     }

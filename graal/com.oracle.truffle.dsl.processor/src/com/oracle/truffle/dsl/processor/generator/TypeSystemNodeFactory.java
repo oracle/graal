@@ -98,7 +98,7 @@ public class TypeSystemNodeFactory {
         TypeData voidType = typeSystem.getVoidType();
         String methodName = voidBoxingExecuteName(type);
         CodeExecutableElement method = new CodeExecutableElement(modifiers(PROTECTED, FINAL), voidType.getPrimitiveType(), methodName);
-        method.addParameter(new CodeVariableElement(context.getType(VirtualFrame.class), "frame"));
+        method.addParameter(new CodeVariableElement(context.getType(Frame.class), "frame"));
 
         CodeTreeBuilder builder = method.createBuilder();
         builder.startTryBlock();
@@ -114,7 +114,7 @@ public class TypeSystemNodeFactory {
         TypeData genericType = typeSystem.getGenericTypeData();
         String methodName = executeName(type);
         CodeExecutableElement method = new CodeExecutableElement(modifiers(PUBLIC), type.getPrimitiveType(), methodName);
-        method.addParameter(new CodeVariableElement(context.getType(VirtualFrame.class), "frame"));
+        method.addParameter(new CodeVariableElement(context.getType(Frame.class), "frame"));
 
         if (type.isGeneric()) {
             method.getModifiers().add(ABSTRACT);

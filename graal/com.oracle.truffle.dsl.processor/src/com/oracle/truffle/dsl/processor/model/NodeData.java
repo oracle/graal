@@ -54,23 +54,24 @@ public class NodeData extends Template implements Comparable<NodeData> {
     private final NodeExecutionData thisExecution;
     private final boolean generateFactory;
 
-    public NodeData(ProcessorContext context, TypeElement type, String shortName, TypeSystemData typeSystem, List<NodeChildData> children, List<NodeExecutionData> executions,
-                    List<NodeFieldData> fields, List<String> assumptions, boolean generateFactory) {
+    private TypeMirror frameType;
+
+    public NodeData(ProcessorContext context, TypeElement type, String shortName, TypeSystemData typeSystem, boolean generateFactory) {
         super(context, type, null);
-        this.nodeId = type.getSimpleName().toString();
+        this.nodeId = ElementUtils.getSimpleName(type);
         this.shortName = shortName;
         this.typeSystem = typeSystem;
-        this.fields = fields;
-        this.children = children;
-        this.childExecutions = executions;
-        this.assumptions = assumptions;
+        this.fields = new ArrayList<>();
+        this.children = new ArrayList<>();
+        this.childExecutions = new ArrayList<>();
+        this.assumptions = new ArrayList<>();
         this.thisExecution = new NodeExecutionData(new NodeChildData(null, null, "this", getNodeType(), getNodeType(), null, Cardinality.ONE), -1, false);
         this.thisExecution.getChild().setNode(this);
         this.generateFactory = generateFactory;
     }
 
     public NodeData(ProcessorContext context, TypeElement type) {
-        this(context, type, null, null, null, null, null, null, false);
+        this(context, type, null, null, false);
     }
 
     public boolean isGenerateFactory() {
@@ -87,6 +88,14 @@ public class NodeData extends Template implements Comparable<NodeData> {
             return generic.isReachable();
         }
         return false;
+    }
+
+    public void setFrameType(TypeMirror frameType) {
+        this.frameType = frameType;
+    }
+
+    public TypeMirror getFrameType() {
+        return frameType;
     }
 
     public void addEnclosedNode(NodeData node) {
@@ -134,12 +143,12 @@ public class NodeData extends Template implements Comparable<NodeData> {
         return 0;
     }
 
-    public boolean isFrameUsedByAnyGuard(ProcessorContext context) {
+    public boolean isFrameUsedByAnyGuard() {
         for (SpecializationData specialization : specializations) {
             if (!specialization.isReachable()) {
                 continue;
             }
-            if (specialization.isFrameUsedByGuard(context)) {
+            if (specialization.isFrameUsedByGuard()) {
                 return true;
             }
         }
