@@ -23,22 +23,62 @@
 package com.oracle.truffle.api.dsl.test;
 
 import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.api.dsl.test.TypeSystemErrorsTest.Types1.Type1;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 
 public class TypeSystemErrorsTest {
 
     @TypeSystem({int.class, boolean.class})
-    public static class Types0 {
+    public static class ErrorTypes0 {
 
     }
 
     @ExpectError("Invalid type order. The type(s) [java.lang.String] are inherited from a earlier defined type java.lang.CharSequence.")
     @TypeSystem({CharSequence.class, String.class})
-    public static class Types1 {
+    public static class ErrorTypes1 {
 
     }
 
-    @TypeSystemReference(Types0.class)
+    public static class Types1 {
+        public static class Type1 {
+        }
+    }
+
+    public static class Types2 {
+        public static class Type1 {
+        }
+    }
+
+    // verify boxed type overlay
+    @ExpectError("Two types result in the same boxed name: Type1.")
+    @TypeSystem({Type1.class, com.oracle.truffle.api.dsl.test.TypeSystemErrorsTest.Types2.Type1.class})
+    public static class ErrorTypes2 {
+
+    }
+
+    public static class Types3 {
+        public static class Object {
+        }
+    }
+
+    // verify Object name cannot appear
+    @ExpectError("Two types result in the same boxed name: Object.")
+    @TypeSystem({com.oracle.truffle.api.dsl.test.TypeSystemErrorsTest.Types3.Object.class})
+    public static class ErrorTypes3 {
+    }
+
+    public static class Types4 {
+        public static class Integer {
+        }
+    }
+
+    // verify int boxed name
+    @ExpectError("Two types result in the same boxed name: Integer.")
+    @TypeSystem({int.class, com.oracle.truffle.api.dsl.test.TypeSystemErrorsTest.Types4.Integer.class})
+    public static class ErrorTypes4 {
+    }
+
+    @TypeSystemReference(ErrorTypes0.class)
     @NodeChild
     @ExpectError("The @TypeSystem of the node and the @TypeSystem of the @NodeChild does not match. Types0 != SimpleTypes. ")
     abstract static class ErrorNode1 extends ValueNode {

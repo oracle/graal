@@ -280,15 +280,17 @@ public class TypeSystemParser extends AbstractParser<TypeSystemData> {
     }
 
     private static void verifyNamesUnique(TypeSystemData typeSystem) {
-        List<TypeData> types = typeSystem.getTypes();
-        for (int i = 0; i < types.size(); i++) {
-            for (int j = i + 1; j < types.size(); j++) {
-                String name1 = ElementUtils.getSimpleName(types.get(i).getBoxedType());
-                String name2 = ElementUtils.getSimpleName(types.get(j).getBoxedType());
-                if (name1.equalsIgnoreCase(name2)) {
-                    typeSystem.addError("Two types result in the same name: %s, %s.", name1, name2);
-                }
+        Set<String> usedNames = new HashSet<>();
+        for (TypeData type : typeSystem.getTypes()) {
+            String boxedName = ElementUtils.getSimpleName(type.getBoxedType());
+            String primitiveName = ElementUtils.getSimpleName(type.getPrimitiveType());
+            if (usedNames.contains(boxedName)) {
+                typeSystem.addError("Two types result in the same boxed name: %s.", boxedName);
+            } else if (usedNames.contains(primitiveName)) {
+                typeSystem.addError("Two types result in the same primitive name: %s.", primitiveName);
             }
+            usedNames.add(boxedName);
+            usedNames.add(primitiveName);
         }
     }
 }
