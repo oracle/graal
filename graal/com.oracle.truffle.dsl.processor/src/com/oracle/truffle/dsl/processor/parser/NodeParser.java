@@ -148,7 +148,7 @@ public class NodeParser extends AbstractParser<NodeData> {
             return node; // error sync point
         }
 
-        node.setExecutableTypes(groupExecutableTypes(new ExecutableTypeMethodParser(context, node).parse(elements)));
+        initializeExecutableTypes(elements, node);
         initializeChildren(node);
 
         // ensure the processed element has at least one @Specialization annotation.
@@ -374,7 +374,6 @@ public class NodeParser extends AbstractParser<NodeData> {
                 }
 
                 Element getter = findGetter(elements, name, childType);
-
                 NodeChildData nodeChild = new NodeChildData(type, childMirror, name, childType, originalChildType, getter, cardinality);
 
                 parsedChildren.add(nodeChild);
@@ -527,6 +526,31 @@ public class NodeParser extends AbstractParser<NodeData> {
         return executions;
     }
 
+    private void initializeExecutableTypes(List<Element> elements, NodeData node) {
+        node.setExecutableTypes(groupExecutableTypes(new ExecutableTypeMethodParser(context, node).parse(elements)));
+        List<ExecutableTypeData> genericExecutes = node.getThisExecution().getChild().findGenericExecutableTypes(context);
+
+        List<ExecutableTypeData> overridableGenericExecutes = new ArrayList<>();
+        for (ExecutableTypeData executableTypeData : genericExecutes) {
+            if (!executableTypeData.getMethod().getModifiers().contains(Modifier.FINAL)) {
+                overridableGenericExecutes.add(executableTypeData);
+            }
+        }
+
+        if (overridableGenericExecutes.isEmpty()) {
+            node.addError("No accessible and overridable generic execute method found. Generic execute methods usually have the "
+                            + "signature 'public abstract {Type} executeGeneric(VirtualFrame)' and must not throw any checked exceptions.");
+        }
+
+        if (overridableGenericExecutes.size() > 1) {
+            List<String> methodSignatures = new ArrayList<>();
+            for (ExecutableTypeData type : overridableGenericExecutes) {
+                methodSignatures.add(type.createReferenceName());
+            }
+            node.addWarning("Multiple accessible and overridable generic execute methods found %s. Remove all but one or mark all but one as final.", methodSignatures);
+        }
+    }
+
     private static Map<Integer, List<ExecutableTypeData>> groupExecutableTypes(List<ExecutableTypeData> executableTypes) {
         Map<Integer, List<ExecutableTypeData>> groupedTypes = new TreeMap<>();
         for (ExecutableTypeData type : executableTypes) {
@@ -556,6 +580,9 @@ public class NodeParser extends AbstractParser<NodeData> {
                 nodeChild.addError("The @%s of the node and the @%s of the @%s does not match. %s != %s. ", TypeSystem.class.getSimpleName(), TypeSystem.class.getSimpleName(),
                                 NodeChild.class.getSimpleName(), ElementUtils.getSimpleName(node.getTypeSystem().getTemplateType()),
                                 ElementUtils.getSimpleName(fieldNodeData.getTypeSystem().getTemplateType()));
+            } else if (nodeChild.findAnyGenericExecutableType(context) == null) {
+                nodeChild.addError("No generic execute method found for child type %s. Generic execute methods usually have the signature 'Object executeGeneric(VirtualFrame)'.",
+                                ElementUtils.getQualifiedName(nodeChild.getNodeType()));
             }
             if (fieldNodeData != null) {
                 List<ExecutableTypeData> types = nodeChild.findGenericExecutableTypes(context);
@@ -983,13 +1010,18 @@ public class NodeParser extends AbstractParser<NodeData> {
             NodeChildData child = execution.getChild();
             TypeData genericType = null;
             if (types.size() == 1) {
-                ExecutableTypeData executable = child.findExecutableType(context, types.iterator().next());
+                TypeData singleType = types.iterator().next();
+                ExecutableTypeData executable = child.findExecutableType(singleType);
                 if (executable != null && (signatureIndex == 0 || !executable.hasUnexpectedValue(context))) {
-                    genericType = types.iterator().next();
+                    genericType = singleType;
                 }
             }
             if (genericType == null) {
-                genericType = child.findAnyGenericExecutableType(context).getType();
+                ExecutableTypeData type = child.findAnyGenericExecutableType(context);
+                if (type == null) {
+                    throw new AssertionError("No generic type not yet catched by parser.");
+                }
+                genericType = type.getType();
             }
             return genericType.getPrimitiveType();
         }

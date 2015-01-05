@@ -1170,7 +1170,7 @@ class NodeBaseFactory {
     }
 
     private ExecutableTypeData resolveExecutableType(NodeExecutionData execution, TypeData type) {
-        ExecutableTypeData targetExecutable = execution.getChild().findExecutableType(context, type);
+        ExecutableTypeData targetExecutable = execution.getChild().findExecutableType(type);
         if (targetExecutable == null) {
             targetExecutable = execution.getChild().findAnyGenericExecutableType(context);
         }
@@ -1343,14 +1343,14 @@ class NodeBaseFactory {
                 builder.startElseBlock();
             }
 
-            ExecutableTypeData implictExecutableTypeData = execution.getChild().findExecutableType(context, sourceType);
+            ExecutableTypeData implictExecutableTypeData = execution.getChild().findExecutableType(sourceType);
             if (implictExecutableTypeData == null) {
                 /*
                  * For children with executeWith.size() > 0 an executable type may not exist so use
                  * the generic executable type which is guaranteed to exist. An expect call is
                  * inserted automatically by #createExecuteExpression.
                  */
-                implictExecutableTypeData = execution.getChild().getNodeData().findExecutableType(node.getTypeSystem().getGenericTypeData(), execution.getChild().getExecuteWith().size());
+                implictExecutableTypeData = execution.getChild().getNodeData().findAnyGenericExecutableType(context, execution.getChild().getExecuteWith().size());
             }
 
             ImplicitCastData cast = execution.getChild().getNodeData().getTypeSystem().lookupCast(sourceType, targetParameter.getTypeSystemType());
@@ -1838,12 +1838,12 @@ class NodeBaseFactory {
     /**
      * <pre>
      * variant1 $condition != null
-     *
+     * 
      * $type $name = defaultValue($type);
      * if ($condition) {
      *     $name = $value;
      * }
-     *
+     * 
      * variant2 $condition != null
      * $type $name = $value;
      * </pre>

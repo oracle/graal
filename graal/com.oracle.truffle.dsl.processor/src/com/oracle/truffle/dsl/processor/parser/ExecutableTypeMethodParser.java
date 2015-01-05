@@ -81,6 +81,8 @@ public class ExecutableTypeMethodParser extends NodeMethodParser<ExecutableTypeD
             return false;
         } else if (ElementUtils.findAnnotationMirror(getContext().getEnvironment(), method, Specialization.class) != null) {
             return false;
+        } else if (method.getModifiers().contains(Modifier.PRIVATE)) {
+            return false;
         }
         return method.getSimpleName().toString().startsWith("execute");
     }
