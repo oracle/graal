@@ -151,16 +151,7 @@ public class NodeGenFactory {
             }
         }
 
-        List<? extends ExecutableElement> superConstructors = ElementFilter.constructorsIn(node.getTemplateType().getEnclosedElements());
-        for (ExecutableElement superConstructor : superConstructors) {
-            if (getVisibility(superConstructor.getModifiers()) == PRIVATE) {
-                continue;
-            }
-            if (superConstructors.size() > 1 && superConstructor.getParameters().size() > 0 &&
-                            ElementUtils.typeEquals(superConstructor.getEnclosingElement().asType(), superConstructor.getParameters().get(0).asType())) {
-                // constructor is copy constructor
-                continue;
-            }
+        for (ExecutableElement superConstructor : NodeBaseFactory.findUserConstructors(node.getTemplateType().asType())) {
             clazz.add(createNodeConstructor(clazz, superConstructor));
         }
 
@@ -207,7 +198,8 @@ public class NodeGenFactory {
     }
 
     private CodeExecutableElement createNodeConstructor(CodeTypeElement clazz, ExecutableElement superConstructor) {
-        CodeExecutableElement constructor = GeneratorUtils.createConstructorUsingFields(modifiers(PUBLIC), clazz, superConstructor);
+        CodeExecutableElement constructor = GeneratorUtils.createConstructorUsingFields(modifiers(), clazz, superConstructor);
+        ElementUtils.setVisibility(constructor.getModifiers(), ElementUtils.getVisibility(superConstructor.getModifiers()));
 
         List<CodeVariableElement> childParameters = new ArrayList<>();
         for (NodeChildData child : node.getChildren()) {

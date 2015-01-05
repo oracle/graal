@@ -71,12 +71,12 @@ class NodeFactoryFactory {
         clazz.getModifiers().add(Modifier.FINAL);
 
         if (createdFactoryElement != null) {
-            createFactoryMethods(clazz, visibility);
             clazz.setSuperClass(nodeFactory);
             clazz.add(createNodeFactoryConstructor());
             clazz.add(createCreateNodeMethod());
             clazz.add(createGetInstanceMethod(visibility));
             clazz.add(createInstanceConstant(clazz.asType()));
+            createFactoryMethods(clazz);
         }
 
         return clazz;
@@ -229,14 +229,18 @@ class NodeFactoryFactory {
         return var;
     }
 
-    public void createFactoryMethods(CodeTypeElement clazz, Modifier createVisibility) {
+    public void createFactoryMethods(CodeTypeElement clazz) {
         List<ExecutableElement> constructors = NodeBaseFactory.findUserConstructors(createdFactoryElement.asType());
         for (ExecutableElement constructor : constructors) {
-            clazz.add(createCreateMethod(createVisibility, constructor));
+            clazz.add(createCreateMethod(constructor));
+            if (constructor instanceof CodeExecutableElement) {
+                ElementUtils.setVisibility(constructor.getModifiers(), Modifier.PRIVATE);
+            }
         }
     }
 
-    private CodeExecutableElement createCreateMethod(Modifier visibility, ExecutableElement constructor) {
+    private CodeExecutableElement createCreateMethod(ExecutableElement constructor) {
+        Modifier visibility = ElementUtils.getVisibility(constructor.getModifiers());
         CodeExecutableElement method = CodeExecutableElement.clone(context.getEnvironment(), constructor);
         method.setSimpleName(CodeNames.of("create"));
         method.getModifiers().clear();
