@@ -42,31 +42,31 @@ public class LazyClassLoadingTest {
         Assert.assertTrue(isLoaded(factoryName));
         Assert.assertTrue(isLoaded(nodeName));
 
-        Assert.assertFalse(isLoaded(nodeName + "$UninitializedNode"));
-        Assert.assertFalse(isLoaded(nodeName + "$BaseNode"));
-        Assert.assertFalse(isLoaded(nodeName + "$DoInt0Node"));
-        Assert.assertFalse(isLoaded(nodeName + "$DoBoolean0Node"));
-        Assert.assertFalse(isLoaded(nodeName + "$PolymorphicNode"));
+        Assert.assertFalse(isLoaded(nodeName + "$UninitializedNode_"));
+        Assert.assertFalse(isLoaded(nodeName + "$BaseNode_"));
+        Assert.assertFalse(isLoaded(nodeName + "$IntNode_"));
+        Assert.assertFalse(isLoaded(nodeName + "$BooleanNode_"));
+        Assert.assertFalse(isLoaded(nodeName + "$PolymorphicNode_"));
 
         TestRootNode<TestNode> root = TestHelper.createRoot(factory);
 
-        Assert.assertTrue(isLoaded(nodeName + "$BaseNode"));
-        Assert.assertTrue(isLoaded(nodeName + "$UninitializedNode"));
-        Assert.assertFalse(isLoaded(nodeName + "$DoInt0Node"));
-        Assert.assertFalse(isLoaded(nodeName + "$DoBoolean0Node"));
-        Assert.assertFalse(isLoaded(nodeName + "$PolymorphicNode"));
+        Assert.assertTrue(isLoaded(nodeName + "$UninitializedNode_"));
+        Assert.assertTrue(isLoaded(nodeName + "$BaseNode_"));
+        Assert.assertFalse(isLoaded(nodeName + "$IntNode_"));
+        Assert.assertFalse(isLoaded(nodeName + "$BooleanNode_"));
+        Assert.assertFalse(isLoaded(nodeName + "$PolymorphicNode_"));
 
         Assert.assertEquals(42, TestHelper.executeWith(root, 42));
 
-        Assert.assertTrue(isLoaded(nodeName + "$DoInt0Node"));
-        Assert.assertFalse(isLoaded(nodeName + "$DoBoolean0Node"));
-        Assert.assertFalse(isLoaded(nodeName + "$PolymorphicNode"));
+        Assert.assertTrue(isLoaded(nodeName + "$IntNode_"));
+        Assert.assertFalse(isLoaded(nodeName + "$BooleanNode_"));
+        Assert.assertFalse(isLoaded(nodeName + "$PolymorphicNode_"));
 
         Assert.assertEquals(true, TestHelper.executeWith(root, true));
 
-        Assert.assertTrue(isLoaded(nodeName + "$DoInt0Node"));
-        Assert.assertTrue(isLoaded(nodeName + "$DoBoolean0Node"));
-        Assert.assertTrue(isLoaded(nodeName + "$PolymorphicNode"));
+        Assert.assertTrue(isLoaded(nodeName + "$IntNode_"));
+        Assert.assertTrue(isLoaded(nodeName + "$BooleanNode_"));
+        Assert.assertTrue(isLoaded(nodeName + "$PolymorphicNode_"));
     }
 
     private boolean isLoaded(String className) {
