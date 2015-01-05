@@ -28,17 +28,21 @@ import static org.junit.Assert.*;
 import org.junit.*;
 
 import com.oracle.truffle.api.dsl.*;
-import com.oracle.truffle.api.dsl.test.BinaryNodeTest.*;
-import com.oracle.truffle.api.dsl.test.MethodGuardsTestFactory.GlobalFlagGuardFactory;
+import com.oracle.truffle.api.dsl.test.MethodGuardsTestFactory.Guard1Factory;
+import com.oracle.truffle.api.dsl.test.MethodGuardsTestFactory.Guard2Factory;
 import com.oracle.truffle.api.dsl.test.MethodGuardsTestFactory.GuardWithBaseClassFactory;
 import com.oracle.truffle.api.dsl.test.MethodGuardsTestFactory.GuardWithBoxedPrimitiveFactory;
 import com.oracle.truffle.api.dsl.test.MethodGuardsTestFactory.GuardWithObjectFactory;
-import com.oracle.truffle.api.dsl.test.MethodGuardsTestFactory.InvocationGuardFactory;
 import com.oracle.truffle.api.dsl.test.MethodGuardsTestFactory.TestAbstractGuard1Factory;
 import com.oracle.truffle.api.dsl.test.MethodGuardsTestFactory.TestGuardResolve1Factory;
 import com.oracle.truffle.api.dsl.test.MethodGuardsTestFactory.TestGuardResolve2Factory;
 import com.oracle.truffle.api.dsl.test.MethodGuardsTestFactory.TestGuardResolve3Factory;
-import com.oracle.truffle.api.dsl.test.TypeSystemTest.*;
+import com.oracle.truffle.api.dsl.test.TypeSystemTest.Abstract;
+import com.oracle.truffle.api.dsl.test.TypeSystemTest.BExtendsAbstract;
+import com.oracle.truffle.api.dsl.test.TypeSystemTest.CExtendsAbstract;
+import com.oracle.truffle.api.dsl.test.TypeSystemTest.Interface;
+import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
+import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 
 @SuppressWarnings("unused")
 public class MethodGuardsTest {
@@ -46,56 +50,56 @@ public class MethodGuardsTest {
     private static final Object NULL = new Object();
 
     @Test
-    public void testGuardInvocations() {
-        TestRootNode<InvocationGuard> root = createRoot(InvocationGuardFactory.getInstance());
+    public void testInvocations() {
+        TestRootNode<Guard1> root = createRoot(Guard1Factory.getInstance());
 
-        assertEquals(Integer.MAX_VALUE, executeWith(root, Integer.MAX_VALUE - 1, 1));
-        assertEquals(1, InvocationGuard.specializedInvocations);
-        assertEquals(0, InvocationGuard.genericInvocations);
+        assertEquals(Integer.MAX_VALUE, executeWith(root, Integer.MAX_VALUE - 1));
+        assertEquals(1, Guard1.specializedInvocations);
+        assertEquals(0, Guard1.genericInvocations);
 
-        assertEquals(42, executeWith(root, Integer.MAX_VALUE, 1));
-        assertEquals(1, InvocationGuard.specializedInvocations);
-        assertEquals(1, InvocationGuard.genericInvocations);
+        assertEquals(42, executeWith(root, Integer.MAX_VALUE));
+        assertEquals(1, Guard1.specializedInvocations);
+        assertEquals(1, Guard1.genericInvocations);
     }
 
-    @NodeChildren({@NodeChild("value0"), @NodeChild("value1")})
-    public abstract static class InvocationGuard extends ValueNode {
+    @NodeChild
+    static class Guard1 extends ValueNode {
 
         static int specializedInvocations = 0;
         static int genericInvocations = 0;
 
-        boolean guard(int value0, int value1) {
+        boolean g(int value0) {
             return value0 != Integer.MAX_VALUE;
         }
 
-        @Specialization(guards = "guard")
-        int doSpecialized(int value0, int value1) {
+        @Specialization(guards = "g")
+        int f1(int value0) {
             specializedInvocations++;
-            return value0 + value1;
+            return value0 + 1;
         }
 
         @Fallback
-        int doGeneric(Object value0, Object value1) {
+        int f2(Object value0) {
             genericInvocations++;
-            return 42; // the generic answer to all questions
+            return 42;
         }
     }
 
     @Test
-    public void testGuardGlobal() {
-        TestRootNode<GlobalFlagGuard> root = createRoot(GlobalFlagGuardFactory.getInstance());
+    public void testGuardSideEffect() {
+        TestRootNode<Guard2> root = createRoot(Guard2Factory.getInstance());
 
         assertEquals(42, executeWith(root, NULL));
 
-        GlobalFlagGuard.globalFlag = true;
+        Guard2.globalFlag = true;
         assertEquals(41, executeWith(root, NULL));
 
-        GlobalFlagGuard.globalFlag = false;
+        Guard2.globalFlag = false;
         assertEquals(42, executeWith(root, NULL));
     }
 
-    @NodeChild("expression")
-    public abstract static class GlobalFlagGuard extends ValueNode {
+    @NodeChild
+    static class Guard2 extends ValueNode {
 
         static boolean globalFlag = false;
 
@@ -104,12 +108,12 @@ public class MethodGuardsTest {
         }
 
         @Specialization(guards = "globalFlagGuard")
-        int doSpecialized(Object value0) {
+        int f1(Object value0) {
             return 41;
         }
 
         @Fallback
-        int doGeneric(Object value0) {
+        int f2(Object value0) {
             return 42; // the generic answer to all questions
         }
     }
