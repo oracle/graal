@@ -505,7 +505,7 @@ public final class HotSpotResolvedObjectTypeImpl extends HotSpotResolvedJavaType
             return hmethod.uniqueConcreteMethod(declaredHolder);
         }
         /*
-         * The holder may be a subtype of the decaredHolder so make sure to resolve the method to
+         * The holder may be a subtype of the declaredHolder so make sure to resolve the method to
          * the correct method for the subtype.
          */
         HotSpotResolvedJavaMethod resolvedMethod = (HotSpotResolvedJavaMethod) resolveMethod(hmethod, this, true);
