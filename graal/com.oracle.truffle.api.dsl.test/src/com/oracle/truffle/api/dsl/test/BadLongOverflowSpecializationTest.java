@@ -25,59 +25,36 @@ package com.oracle.truffle.api.dsl.test;
 import static com.oracle.truffle.api.dsl.test.TestHelper.*;
 import static org.junit.Assert.*;
 
-import java.math.*;
-
 import org.junit.*;
 
-import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.dsl.*;
-import com.oracle.truffle.api.dsl.test.BadLongOverflowSpecializationTestFactory.AddNodeFactory;
+import com.oracle.truffle.api.dsl.test.BadLongOverflowSpecializationTestFactory.ImplicitCastExclusionFactory;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 
 public class BadLongOverflowSpecializationTest {
 
-    @NodeChildren({@NodeChild("left"), @NodeChild("right")})
-    abstract static class BinaryNode extends ValueNode {
-    }
+    /* Regression test for */
 
-    abstract static class AddNode extends BinaryNode {
-        @Specialization(rewriteOn = ArithmeticException.class)
-        int add(int left, int right) {
-            return ExactMath.addExact(left, right);
+    @NodeChild
+    @SuppressWarnings("unused")
+    abstract static class ImplicitCastExclusion extends ValueNode {
+
+        @Specialization(rewriteOn = RuntimeException.class)
+        String f1(long a) {
+            return "triggered1";
         }
 
         @Specialization
-        long addIntWithOverflow(int left, int right) {
-            return (long) left + (long) right;
-        }
-
-        @Specialization(rewriteOn = ArithmeticException.class)
-        Object add(long left, long right) {
-            return ExactMath.addExact(left, right);
-        }
-
-        @Specialization
-        BigInteger addSlow(long left, long right) {
-            return BigInteger.valueOf(left).add(BigInteger.valueOf(right));
+        String f2(long a) {
+            return "triggered2";
         }
     }
 
     @Test
-    @Ignore
     public void testAdd() {
-        TestRootNode<AddNode> node = createRoot(AddNodeFactory.getInstance());
-
-        long index = -1;
-        int baseStep = 0;
-        Object r1 = executeWith(node, index, baseStep);
-        assertEquals(-1L, r1);
-
-        long err = 5000;
-        long errStep = 2000;
-        Object r2 = executeWith(node, err, errStep);
-
-        assertEquals(Long.class, r2.getClass());
-        assertEquals(7000L, r2);
+        TestRootNode<ImplicitCastExclusion> node = createRoot(ImplicitCastExclusionFactory.getInstance());
+        assertEquals("triggered1", executeWith(node, -1));
+        assertEquals("triggered1", executeWith(node, 5000L));
     }
 }
