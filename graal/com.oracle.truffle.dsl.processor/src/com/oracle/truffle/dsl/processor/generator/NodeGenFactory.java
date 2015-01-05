@@ -125,10 +125,8 @@ public class NodeGenFactory {
     }
 
     public CodeTypeElement create() {
-        String typeName = nodeTypeName(node);
-        TypeMirror baseType = node.getTemplateType().asType();
-        CodeTypeElement clazz = GeneratorUtils.createClass(node, null, modifiers(PUBLIC, FINAL), typeName, baseType);
-
+        CodeTypeElement clazz = GeneratorUtils.createClass(node, null, modifiers(FINAL), nodeTypeName(node), node.getTemplateType().asType());
+        ElementUtils.setVisibility(clazz.getModifiers(), ElementUtils.getVisibility(node.getTemplateType().getModifiers()));
         clazz.getImplements().add(getType(SpecializedNode.class));
 
         for (String assumption : node.getAssumptions()) {
