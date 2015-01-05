@@ -183,6 +183,7 @@ public class TypeSystemTest {
 
         @Override
         public int executeInt(VirtualFrame frame) throws UnexpectedResultException {
+            invocationCount++;
             // avoid casts for some tests
             Object o = frame.getArguments()[index];
             if (o instanceof Integer) {

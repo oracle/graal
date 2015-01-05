@@ -166,4 +166,15 @@ public class ImplicitCastTest {
 
     }
 
+    @TypeSystem({String.class, boolean.class})
+    static class ImplicitCastError2 {
+
+        @ImplicitCast
+        @ExpectError("Target type and source type of an @ImplicitCast must not be the same type.")
+        static String castInvalid(@SuppressWarnings("unused") String value) {
+            throw new AssertionError();
+        }
+
+    }
+
 }

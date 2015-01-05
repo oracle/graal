@@ -23,6 +23,7 @@
 package com.oracle.truffle.sl.nodes.expression;
 
 import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.sl.nodes.*;
@@ -48,7 +49,7 @@ public abstract class SLLogicalOrNode extends SLBinaryNode {
         return left instanceof Boolean && needsRightNode(((Boolean) left).booleanValue());
     }
 
-    @Specialization
+    @Specialization(rewriteOn = RuntimeException.class)
     protected boolean doBoolean(boolean left, boolean hasRight, boolean right) {
         return left || right;
     }
