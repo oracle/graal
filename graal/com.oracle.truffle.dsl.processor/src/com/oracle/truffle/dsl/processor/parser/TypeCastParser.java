@@ -25,6 +25,7 @@ package com.oracle.truffle.dsl.processor.parser;
 import java.lang.annotation.*;
 
 import javax.lang.model.element.*;
+import javax.lang.model.type.*;
 
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.dsl.processor.*;
@@ -39,39 +40,17 @@ class TypeCastParser extends TypeSystemMethodParser<TypeCastData> {
 
     @Override
     public MethodSpec createSpecification(ExecutableElement method, AnnotationMirror mirror) {
-        TypeData targetType = findTypeByMethodName(method.getSimpleName().toString(), "as");
-        if (targetType == null) {
-            return null;
-        }
-        MethodSpec spec = new MethodSpec(new ParameterSpec("returnType", targetType.getPrimitiveType()));
-        spec.addRequired(new ParameterSpec("value", getTypeSystem().getPrimitiveTypeMirrors(), getTypeSystem().getTypeIdentifiers()));
+        TypeMirror targetTypeMirror = ElementUtils.getAnnotationValue(TypeMirror.class, mirror, "value");
+        MethodSpec spec = new MethodSpec(new ParameterSpec("returnType", targetTypeMirror));
+        spec.addRequired(new ParameterSpec("value", getTypeSystem().getGenericType()));
         return spec;
     }
 
     @Override
     public TypeCastData create(TemplateMethod method, boolean invalid) {
-        if (invalid) {
-            return new TypeCastData(method, null, null);
-        }
-
-        TypeData targetType = findTypeByMethodName(method, "as");
-        Parameter parameter = method.findParameter("valueValue");
-
-        TypeData sourceType = null;
-        if (parameter != null) {
-            sourceType = getTypeSystem().findTypeData(parameter.getType());
-        }
-        TypeCastData cast = new TypeCastData(method, sourceType, targetType);
-
-        if (!method.getMethod().getModifiers().contains(Modifier.STATIC)) {
-            cast.addError("@%s annotated method %s must be static.", TypeCast.class.getSimpleName(), method.getMethodName());
-        }
-
-        if (targetType != method.getReturnType().getTypeSystemType()) {
-            cast.addError("Cast type %s does not match to the returned type %s.", ElementUtils.getSimpleName(targetType.getPrimitiveType()),
-                            method.getReturnType() != null ? ElementUtils.getSimpleName(method.getReturnType().getTypeSystemType().getPrimitiveType()) : null);
-        }
-        return cast;
+        TypeData targetType = resolveCastOrCheck(method);
+        TypeData sourceType = getTypeSystem().getGenericTypeData();
+        return new TypeCastData(method, sourceType, targetType);
     }
 
     @Override

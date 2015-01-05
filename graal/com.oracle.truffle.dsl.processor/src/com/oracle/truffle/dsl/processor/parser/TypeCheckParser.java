@@ -38,25 +38,15 @@ class TypeCheckParser extends TypeSystemMethodParser<TypeCheckData> {
 
     @Override
     public MethodSpec createSpecification(ExecutableElement method, AnnotationMirror mirror) {
-        TypeData targetType = findTypeByMethodName(method.getSimpleName().toString(), "is");
-        if (targetType == null) {
-            return null;
-        }
         MethodSpec spec = new MethodSpec(new ParameterSpec("returnType", getContext().getType(boolean.class)));
-        spec.addRequired(new ParameterSpec("value", getTypeSystem().getPrimitiveTypeMirrors(), getTypeSystem().getTypeIdentifiers()));
+        spec.addRequired(new ParameterSpec("value", getTypeSystem().getGenericType()));
         return spec;
     }
 
     @Override
     public TypeCheckData create(TemplateMethod method, boolean invalid) {
-        TypeData checkedType = findTypeByMethodName(method, "is");
-        assert checkedType != null;
-        Parameter parameter = method.findParameter("valueValue");
-        assert parameter != null;
-        if (!method.getMethod().getModifiers().contains(Modifier.STATIC)) {
-            method.addError("@%s annotated method %s must be static.", TypeCheck.class.getSimpleName(), method.getMethodName());
-        }
-        return new TypeCheckData(method, checkedType, parameter.getTypeSystemType());
+        TypeData targetType = resolveCastOrCheck(method);
+        return new TypeCheckData(method, targetType, targetType);
     }
 
     @Override

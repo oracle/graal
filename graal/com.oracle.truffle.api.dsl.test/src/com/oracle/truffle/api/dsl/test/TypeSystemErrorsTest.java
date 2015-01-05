@@ -38,33 +38,82 @@ public class TypeSystemErrorsTest {
 
     }
 
-    @TypeSystem({int.class, boolean.class})
-    public static class Types2 {
-
-        @TypeCast
-        @ExpectError("The provided return type \"String\" does not match expected return type \"int\".%")
-        String asInteger(Object value) {
-            return (String) value;
-        }
-
-    }
-
-    @TypeSystem({int.class, boolean.class})
-    public static class Types3 {
-
-        @TypeCast
-        @ExpectError("The provided return type \"boolean\" does not match expected return type \"int\".%")
-        boolean asInteger(Object value) {
-            return (boolean) value;
-        }
-
-    }
-
     @TypeSystemReference(Types0.class)
     @NodeChild
     @ExpectError("The @TypeSystem of the node and the @TypeSystem of the @NodeChild does not match. Types0 != SimpleTypes. ")
     abstract static class ErrorNode1 extends ValueNode {
+    }
 
+    @TypeSystem({int.class})
+    public static class CastError1 {
+        @TypeCast(int.class)
+        @ExpectError("The provided return type \"String\" does not match expected return type \"int\".%")
+        public static String asInteger(Object value) {
+            return (String) value;
+        }
+    }
+
+    @TypeSystem({int.class})
+    public static class CastError2 {
+        @TypeCast(int.class)
+        @ExpectError("The provided return type \"boolean\" does not match expected return type \"int\".%")
+        public static boolean asInteger(Object value) {
+            return (boolean) value;
+        }
+    }
+
+    @TypeSystem({boolean.class})
+    public static class CastError3 {
+        @ExpectError("The type 'int' is not declared in the @TypeSystem.")
+        @TypeCast(int.class)
+        public static int asInt(Object value) {
+            return (int) value;
+        }
+    }
+
+    @TypeSystem({int.class})
+    public static class CastError4 {
+        @ExpectError("@TypeCast annotated method asInt must be public and static.")
+        @TypeCast(int.class)
+        public int asInt(Object value) {
+            return (int) value;
+        }
+    }
+
+    @TypeSystem({int.class})
+    public static class CastError5 {
+        @ExpectError("@TypeCast annotated method asInt must be public and static.")
+        @TypeCast(int.class)
+        static int asInt(Object value) {
+            return (int) value;
+        }
+    }
+
+    @TypeSystem({boolean.class})
+    public static class CheckError1 {
+        @ExpectError("The type 'int' is not declared in the @TypeSystem.")
+        @TypeCheck(int.class)
+        public static boolean isInt(Object value) {
+            return value instanceof Integer;
+        }
+    }
+
+    @TypeSystem({int.class})
+    public static class CheckError2 {
+        @ExpectError("@TypeCheck annotated method isInt must be public and static.")
+        @TypeCheck(int.class)
+        public boolean isInt(Object value) {
+            return value instanceof Integer;
+        }
+    }
+
+    @TypeSystem({int.class})
+    public static class CheckError3 {
+        @ExpectError("@TypeCheck annotated method isInt must be public and static.")
+        @TypeCheck(int.class)
+        static boolean isInt(Object value) {
+            return value instanceof Integer;
+        }
     }
 
 }

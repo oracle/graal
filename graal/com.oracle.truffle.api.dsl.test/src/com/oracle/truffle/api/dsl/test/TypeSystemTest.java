@@ -41,13 +41,13 @@ public class TypeSystemTest {
         static int intCheck;
         static int intCast;
 
-        @TypeCheck
+        @TypeCheck(int.class)
         public static boolean isInteger(Object value) {
             intCheck++;
             return value instanceof Integer;
         }
 
-        @TypeCast
+        @TypeCast(int.class)
         public static int asInteger(Object value) {
             intCast++;
             return (int) value;

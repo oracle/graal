@@ -121,7 +121,6 @@ public class TypeSystemParser extends AbstractParser<TypeSystemData> {
             cast.getTargetType().addTypeCast(cast);
         }
 
-        verifyGenericTypeChecksAndCasts(typeSystem);
         verifyMethodSignatures(typeSystem);
         verifyNamesUnique(typeSystem);
 
@@ -146,39 +145,6 @@ public class TypeSystemParser extends AbstractParser<TypeSystemData> {
                 }
 
                 template.addError("Non exclusive usage of annotations %s.", annotationNames);
-            }
-        }
-    }
-
-    private static void verifyGenericTypeChecksAndCasts(TypeSystemData typeSystem) {
-        for (TypeData type : typeSystem.getTypes()) {
-            if (!type.getTypeChecks().isEmpty()) {
-                boolean hasGeneric = false;
-                for (TypeCheckData typeCheck : type.getTypeChecks()) {
-                    if (typeCheck.isGeneric()) {
-                        hasGeneric = true;
-                        break;
-                    }
-                }
-                if (!hasGeneric) {
-                    type.addError("No generic but specific @%s method %s for type %s specified. " + "Specify a generic @%s method with parameter type %s to resolve this.",
-                                    TypeCheck.class.getSimpleName(), TypeSystemCodeGenerator.isTypeMethodName(type), ElementUtils.getSimpleName(type.getBoxedType()), TypeCheck.class.getSimpleName(),
-                                    Object.class.getSimpleName());
-                }
-            }
-            if (!type.getTypeCasts().isEmpty()) {
-                boolean hasGeneric = false;
-                for (TypeCastData typeCast : type.getTypeCasts()) {
-                    if (typeCast.isGeneric()) {
-                        hasGeneric = true;
-                        break;
-                    }
-                }
-                if (!hasGeneric) {
-                    type.addError("No generic but specific @%s method %s for type %s specified. " + "Specify a generic @%s method with parameter type %s to resolve this.",
-                                    TypeCast.class.getSimpleName(), TypeSystemCodeGenerator.asTypeMethodName(type), ElementUtils.getSimpleName(type.getBoxedType()), TypeCast.class.getSimpleName(),
-                                    Object.class.getSimpleName());
-                }
             }
         }
     }

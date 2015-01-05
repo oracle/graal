@@ -45,7 +45,7 @@ public abstract class SLTypes {
      * {@code instanceof} check, because we know that there is only a {@link SLNull#SINGLETON
      * singleton} instance.
      */
-    @TypeCheck
+    @TypeCheck(SLNull.class)
     public static boolean isSLNull(Object value) {
         return value == SLNull.SINGLETON;
     }
@@ -55,7 +55,7 @@ public abstract class SLTypes {
      * that the Truffle DSL would generate. For {@link SLNull}, we do not need an actual cast,
      * because we know that there is only a {@link SLNull#SINGLETON singleton} instance.
      */
-    @TypeCast
+    @TypeCast(SLNull.class)
     public static SLNull asSLNull(Object value) {
         assert isSLNull(value);
         return SLNull.SINGLETON;

@@ -27,54 +27,29 @@ package com.oracle.truffle.api.dsl;
 import java.lang.annotation.*;
 
 /**
- * <p>
- * Provides a way to define a custom type check for a defined type. The name of the annotated method
- * must fit to the pattern is${typeName} (eg. isInteger), where ${typeName} must be a valid type
- * defined in the parent {@link TypeSystem}. The annotated method must have exactly one argument
- * where the type of the argument is the generic type {@link Object} or a more specific one from the
- * {@link TypeSystem}. You can define multiple overloaded {@link TypeCheck} methods for the same
- * type. This can be used to reduce the boxing overhead in type conversions.
- * </p>
+ * Overrides the standard way of checking for a certain type in a {@link TypeSystem}. This is useful
+ * for types where the guest language specific type check can be implemented more efficiently than a
+ * direct cast. The annotated method must be contained in a {@link TypeSystem} annotated class. Type
+ * checks must conform to the following signature: <code>public static boolean is{TypeName}(Object
+ * value)</code>. The checked type must be a type declared in the {@link TypeSystem}.
  *
  * <p>
- * By default the system generates type checks for all types in the parent {@link TypeSystem} which
- * look like the follows:
+ * If no {@link TypeCheck} is declared then the type system implicitly uses a type check that can be
+ * declared as follows:
  *
  * <pre>
- * {@literal @}TypeCheck
- * boolean is${typeName}(Object value) {
- *         return value instanceof ${typeName};
+ * {@literal @}TypeCheck(Type.class)
+ * public static boolean isType(Object value) {
+ *         return value instanceof Type;
  * }
  * </pre>
  *
- * <b>Example:</b>
- * <p>
- * A type check for BigInteger with one overloaded optimized variant to reduce boxing.
- * </p>
- *
- * <pre>
- *
- *
- * {@literal @}TypeSystem(types = {int.class, BigInteger.class, String.class}, nodeBaseClass = TypedNode.class)
- * public abstract class Types {
- * 
- *     {@literal @}TypeCheck
- *     public boolean isBigInteger(Object value) {
- *         return value instanceof Integer || value instanceof BigInteger;
- *     }
- * 
- *     {@literal @}TypeCheck
- *     public boolean isBigInteger(int value) {
- *         return true;
- *     }
- * 
- * }
- * </pre>
- *
- *
+ * @see TypeCast
  */
 @Retention(RetentionPolicy.CLASS)
 @Target({ElementType.METHOD})
 public @interface TypeCheck {
+
+    Class<?> value();
 
 }
