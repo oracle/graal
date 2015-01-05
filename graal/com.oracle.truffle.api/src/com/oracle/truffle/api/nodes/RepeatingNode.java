@@ -29,7 +29,7 @@ import com.oracle.truffle.api.frame.*;
 /**
  * Experimental API: may change significantly without notice.
  */
-public interface RepeatingNode {
+public interface RepeatingNode extends NodeInterface {
 
     boolean executeRepeating(VirtualFrame frame);
 
