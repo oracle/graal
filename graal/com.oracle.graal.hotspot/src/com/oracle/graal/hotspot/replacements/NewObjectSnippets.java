@@ -498,15 +498,6 @@ public class NewObjectSnippets implements Snippets {
             return size;
         }
 
-        static class WarnOnce {
-            static {
-                System.out.println("VerifyHeapNode requires a VM with asserts enabled.");
-            }
-
-            static void warn() {
-            }
-        }
-
         public void lower(VerifyHeapNode verifyHeapNode, HotSpotRegistersProvider registers, HotSpotGraalRuntimeProvider runtime, LoweringTool tool) {
             if (runtime.getConfig().cAssertions) {
                 Arguments args = new Arguments(verifyHeap, verifyHeapNode.graph().getGuardsStage(), tool.getLoweringStage());
@@ -515,7 +506,6 @@ public class NewObjectSnippets implements Snippets {
                 SnippetTemplate template = template(args);
                 template.instantiate(providers.getMetaAccess(), verifyHeapNode, DEFAULT_REPLACER, args);
             } else {
-                WarnOnce.warn();
                 GraphUtil.removeFixedWithUnusedInputs(verifyHeapNode);
             }
         }
