@@ -1724,12 +1724,12 @@ public class NodeGenFactory {
                 polyChainBuilder.tree(TypeSystemCodeGenerator.check(executableType.getType(), CodeTreeBuilder.singleString(valueFieldName)));
                 polyChainBuilder.end();
                 polyChainBuilder.startBlock();
-                polyChainBuilder.startStatement().string(profileField).string(" = ").typeLiteral(executableType.getType().getPrimitiveType()).end();
+                polyChainBuilder.startStatement().tree(accessParent(profileField)).string(" = ").typeLiteral(executableType.getType().getPrimitiveType()).end();
                 polyChainBuilder.end();
             }
 
             polyChainBuilder.startElseBlock();
-            polyChainBuilder.startStatement().string(profileField).string(" = ").typeLiteral(genericType.getPrimitiveType()).end();
+            polyChainBuilder.startStatement().tree(accessParent(profileField)).string(" = ").typeLiteral(genericType.getPrimitiveType()).end();
             polyChainBuilder.end();
             polyChainBuilder.startReturn().string(valueFieldName).end();
             polyChainBuilder.end();
@@ -1745,7 +1745,7 @@ public class NodeGenFactory {
                 builder.tree(executePolymorphic);
                 builder.end();
                 builder.startCatchBlock(getType(UnexpectedResultException.class), "ex");
-                builder.startStatement().string(profileField).string(" = ").typeLiteral(genericType.getPrimitiveType()).end();
+                builder.startStatement().tree(accessParent(profileField)).string(" = ").typeLiteral(genericType.getPrimitiveType()).end();
                 builder.startReturn().string("ex.getResult()").end();
                 builder.end();
             } else {
