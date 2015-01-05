@@ -92,7 +92,14 @@ public class NodeParser extends AbstractParser<NodeData> {
                 enclosedNodes.add(enclosedChild);
             }
         }
-        NodeData node = parseNode(rootType);
+        NodeData node;
+        try {
+            node = parseNode(rootType);
+        } catch (CompileErrorException e) {
+            throw e;
+        } catch (Throwable e) {
+            throw new RuntimeException(String.format("Parsing of Node %s failed.", ElementUtils.getQualifiedName(rootType)), e);
+        }
         if (node == null && !enclosedNodes.isEmpty()) {
             node = new NodeData(context, rootType);
         }

@@ -77,7 +77,12 @@ class AnnotationProcessor<M extends Template> {
             context.registerTemplate(type, model);
 
             if (model != null) {
-                CodeTypeElement unit = factory.create(ProcessorContext.getInstance(), model);
+                CodeTypeElement unit;
+                try {
+                    unit = factory.create(ProcessorContext.getInstance(), model);
+                } catch (Throwable e) {
+                    throw new RuntimeException(String.format("Failed to write code for %s. Parserdump:%s.", ElementUtils.getQualifiedName(type), model.dump()));
+                }
                 if (unit == null) {
                     return;
                 }
@@ -95,5 +100,4 @@ class AnnotationProcessor<M extends Template> {
             }
         }
     }
-
 }

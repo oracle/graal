@@ -57,6 +57,10 @@ public abstract class Template extends MessageContainer {
         return templateType;
     }
 
+    public String dump() {
+        return toString();
+    }
+
     @Override
     protected List<MessageContainer> findChildContainers() {
         return Collections.emptyList();
