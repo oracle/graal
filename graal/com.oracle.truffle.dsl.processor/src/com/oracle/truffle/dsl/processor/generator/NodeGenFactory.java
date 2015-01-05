@@ -52,6 +52,8 @@ public class NodeGenFactory {
 
     private static final String FRAME_VALUE = "frameValue";
 
+    private static final String NAME_SUFFIX = "_";
+
     private final ProcessorContext context;
     private final NodeData node;
     private final TypeSystemData typeSystem;
@@ -83,7 +85,7 @@ public class NodeGenFactory {
     }
 
     private static String specializationTypeName(SpecializationData specialization) {
-        return specialization.getId() + "Node";
+        return specialization.getId() + "Node_";
     }
 
     private static TypeMirror specializationType(SpecializationData specialization) {
@@ -91,23 +93,23 @@ public class NodeGenFactory {
     }
 
     private static String polymorphicTypeProfileFieldName(NodeExecutionData execution) {
-        return execution.getName() + "Type_";
+        return execution.getName() + "Type" + NAME_SUFFIX;
     }
 
     private static String nodeFieldName(NodeExecutionData execution) {
-        return execution.getName() + "_";
+        return execution.getName() + NAME_SUFFIX;
     }
 
     private static String specializationStartFieldName() {
-        return "specialization_";
+        return "specialization" + NAME_SUFFIX;
     }
 
     private static String excludedFieldName(SpecializationData specialization) {
-        return "exclude" + specialization.getId() + "_";
+        return "exclude" + specialization.getId() + NAME_SUFFIX;
     }
 
     private static String executeChildMethodName(NodeExecutionData execution, TypeData type) {
-        return "execute" + ElementUtils.firstLetterUpperCase(execution.getName()) + (type.isGeneric() ? "" : getTypeId(type.getBoxedType())) + "_";
+        return "execute" + ElementUtils.firstLetterUpperCase(execution.getName()) + (type.isGeneric() ? "" : getTypeId(type.getBoxedType())) + NAME_SUFFIX;
     }
 
     private static CodeTree accessParent(String name) {
@@ -309,7 +311,7 @@ public class NodeGenFactory {
     // create specialization
 
     private CodeTypeElement createBaseSpecialization(CodeTypeElement parentClass) {
-        CodeTypeElement clazz = createClass(node, null, modifiers(PRIVATE, STATIC, ABSTRACT), "BaseNode", TypeSystemNodeFactory.nodeType(typeSystem));
+        CodeTypeElement clazz = createClass(node, null, modifiers(PRIVATE, ABSTRACT, STATIC), "BaseNode_", TypeSystemNodeFactory.nodeType(typeSystem));
 
         clazz.addOptional(createSpecializationConstructor(clazz, null, null));
         clazz.add(new CodeVariableElement(modifiers(PROTECTED, FINAL), nodeType(node), "root"));

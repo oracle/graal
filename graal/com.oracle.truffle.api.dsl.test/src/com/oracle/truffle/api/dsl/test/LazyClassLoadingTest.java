@@ -44,28 +44,28 @@ public class LazyClassLoadingTest {
 
         Assert.assertFalse(isLoaded(nodeName + "$UninitializedNode"));
         Assert.assertFalse(isLoaded(nodeName + "$BaseNode"));
-        Assert.assertFalse(isLoaded(nodeName + "$IntNode"));
-        Assert.assertFalse(isLoaded(nodeName + "$BooleanNode"));
+        Assert.assertFalse(isLoaded(nodeName + "$DoInt0Node"));
+        Assert.assertFalse(isLoaded(nodeName + "$DoBoolean0Node"));
         Assert.assertFalse(isLoaded(nodeName + "$PolymorphicNode"));
 
         TestRootNode<TestNode> root = TestHelper.createRoot(factory);
 
         Assert.assertTrue(isLoaded(nodeName + "$BaseNode"));
         Assert.assertTrue(isLoaded(nodeName + "$UninitializedNode"));
-        Assert.assertFalse(isLoaded(nodeName + "$IntNode"));
-        Assert.assertFalse(isLoaded(nodeName + "$BooleanNode"));
+        Assert.assertFalse(isLoaded(nodeName + "$DoInt0Node"));
+        Assert.assertFalse(isLoaded(nodeName + "$DoBoolean0Node"));
         Assert.assertFalse(isLoaded(nodeName + "$PolymorphicNode"));
 
         Assert.assertEquals(42, TestHelper.executeWith(root, 42));
 
-        Assert.assertTrue(isLoaded(nodeName + "$IntNode"));
-        Assert.assertFalse(isLoaded(nodeName + "$BooleanNode"));
+        Assert.assertTrue(isLoaded(nodeName + "$DoInt0Node"));
+        Assert.assertFalse(isLoaded(nodeName + "$DoBoolean0Node"));
         Assert.assertFalse(isLoaded(nodeName + "$PolymorphicNode"));
 
         Assert.assertEquals(true, TestHelper.executeWith(root, true));
 
-        Assert.assertTrue(isLoaded(nodeName + "$IntNode"));
-        Assert.assertTrue(isLoaded(nodeName + "$BooleanNode"));
+        Assert.assertTrue(isLoaded(nodeName + "$DoInt0Node"));
+        Assert.assertTrue(isLoaded(nodeName + "$DoBoolean0Node"));
         Assert.assertTrue(isLoaded(nodeName + "$PolymorphicNode"));
     }
 
@@ -85,12 +85,12 @@ public class LazyClassLoadingTest {
     abstract static class TestNode extends ValueNode {
 
         @Specialization
-        int s(int a) {
+        int doInt(int a) {
             return a;
         }
 
         @Specialization
-        boolean s(boolean a) {
+        boolean doBoolean(boolean a) {
             return a;
         }
 

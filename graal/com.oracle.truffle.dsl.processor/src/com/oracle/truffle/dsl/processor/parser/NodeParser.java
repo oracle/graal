@@ -597,27 +597,8 @@ public class NodeParser extends AbstractParser<NodeData> {
             }
         }
 
-        List<SpecializationData> needsId = new ArrayList<>();
-        for (SpecializationData specialization : node.getSpecializations()) {
-            if (specialization.isFallback()) {
-                specialization.setId("Generic");
-            } else if (specialization.isUninitialized()) {
-                specialization.setId("Uninitialized");
-            } else if (specialization.isPolymorphic()) {
-                specialization.setId("Polymorphic");
-            } else if (specialization.isSpecialized()) {
-                needsId.add(specialization);
-            } else {
-                throw new AssertionError();
-            }
-        }
-
         // verify specialization parameter length
-        List<String> ids = initializeSpecializationIds(needsId);
-        for (int i = 0; i < ids.size(); i++) {
-            needsId.get(i).setId(ids.get(i));
-        }
-
+        initializeSpecializationIdsWithMethodNames(node.getSpecializations());
     }
 
     private static void initializeOrder(NodeData node) {
@@ -806,91 +787,34 @@ public class NodeParser extends AbstractParser<NodeData> {
         }
     }
 
-    private static List<String> initializeSpecializationIds(List<SpecializationData> specializations) {
-        int lastSize = -1;
-        List<List<String>> signatureChunks = new ArrayList<>();
-        for (SpecializationData other : specializations) {
-            if (!other.isSpecialized()) {
-                continue;
-            }
-            List<String> paramIds = new LinkedList<>();
-            paramIds.add(ElementUtils.getTypeId(other.getReturnType().getType()));
-            for (Parameter param : other.getParameters()) {
-                if (param.getSpecification().getExecution() == null) {
-                    continue;
-                }
-                paramIds.add(ElementUtils.getTypeId(param.getType()));
-            }
-            assert lastSize == -1 || lastSize == paramIds.size();
-            if (lastSize != -1 && lastSize != paramIds.size()) {
-                throw new AssertionError();
-            }
-            signatureChunks.add(paramIds);
-            lastSize = paramIds.size();
-        }
-
-        // reduce id vertically
-        for (int i = 0; i < lastSize; i++) {
-            String prev = null;
-            boolean allSame = true;
-            for (List<String> signature : signatureChunks) {
-                String arg = signature.get(i);
-                if (prev == null) {
-                    prev = arg;
-                    continue;
-                } else if (!prev.equals(arg)) {
-                    allSame = false;
-                    break;
-                }
-                prev = arg;
-            }
-
-            if (allSame) {
-                for (List<String> signature : signatureChunks) {
-                    signature.remove(i);
-                }
-                lastSize--;
-            }
-        }
-
-        // reduce id horizontally
-        for (List<String> signature : signatureChunks) {
-            if (signature.isEmpty()) {
-                continue;
-            }
-            String prev = null;
-            boolean allSame = true;
-            for (String arg : signature) {
-                if (prev == null) {
-                    prev = arg;
-                    continue;
-                } else if (!prev.equals(arg)) {
-                    allSame = false;
-                    break;
-                }
-                prev = arg;
-            }
-
-            if (allSame) {
-                signature.clear();
-                signature.add(prev);
-            }
-        }
-
-        // create signatures
+    private static void initializeSpecializationIdsWithMethodNames(List<SpecializationData> specializations) {
         List<String> signatures = new ArrayList<>();
-        for (List<String> signatureChunk : signatureChunks) {
-            StringBuilder b = new StringBuilder();
-            if (signatureChunk.isEmpty()) {
-                b.append("Default");
+        for (SpecializationData specialization : specializations) {
+            if (specialization.isFallback()) {
+                signatures.add("Fallback");
+            } else if (specialization.isUninitialized()) {
+                signatures.add("Uninitialized");
+            } else if (specialization.isPolymorphic()) {
+                signatures.add("Polymorphic");
             } else {
-                for (String s : signatureChunk) {
-                    b.append(s);
+                String name = specialization.getMethodName();
+
+                // hack for name clashes with BaseNode.
+                if (name.equalsIgnoreCase("base")) {
+                    name = name + "0";
                 }
+
+                signatures.add(ElementUtils.firstLetterUpperCase(name));
             }
-            signatures.add(b.toString());
         }
 
+        renameDuplicateIds(signatures);
+        for (int i = 0; i < specializations.size(); i++) {
+            specializations.get(i).setId(signatures.get(i));
+        }
+    }
+
+    private static void renameDuplicateIds(List<String> signatures) {
         Map<String, Integer> counts = new HashMap<>();
         for (String s1 : signatures) {
             Integer count = counts.get(s1);
@@ -914,8 +838,6 @@ public class NodeParser extends AbstractParser<NodeData> {
                 }
             }
         }
-
-        return signatures;
     }
 
     private void initializeGuards(List<? extends Element> elements, NodeData node) {
