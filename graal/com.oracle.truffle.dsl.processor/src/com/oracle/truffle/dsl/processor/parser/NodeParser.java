@@ -802,8 +802,12 @@ public class NodeParser extends AbstractParser<NodeData> {
                 // hack for name clashes with BaseNode.
                 if (name.equalsIgnoreCase("base")) {
                     name = name + "0";
+                } else if (name.startsWith("do")) {
+                    String filteredDo = name.substring(2, name.length());
+                    if (!filteredDo.isEmpty() && Character.isJavaIdentifierStart(filteredDo.charAt(0))) {
+                        name = filteredDo;
+                    }
                 }
-
                 signatures.add(ElementUtils.firstLetterUpperCase(name));
             }
         }
