@@ -257,7 +257,7 @@ public class NodeGenFactory {
 
             if (execution.isIndexed()) {
                 CodeTreeBuilder nullCheck = builder.create();
-                nullCheck.string(name).string(" != null ? ");
+                nullCheck.string(name).string(" != null && ").string(String.valueOf(execution.getIndex())).string(" < ").string(name).string(".length").string(" ? ");
                 nullCheck.tree(accessor);
                 nullCheck.string(" : null");
                 accessor = nullCheck.build();
