@@ -199,4 +199,9 @@
     <property name="onCommentFormat" value="CheckStyle: resume line length check"/>
     <property name="checkFormat" value="LineLength"/>
   </module>
+  <module name="SuppressionCommentFilter">
+    <property name="offCommentFormat" value="CheckStyle: start generated"/>
+    <property name="onCommentFormat" value="CheckStyle: stop generated"/>
+    <property name="checkFormat" value=".*Name|.*LineLength"/>
+  </module>
 </module>
