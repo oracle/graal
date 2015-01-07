@@ -69,7 +69,7 @@ public final class OptimizedAssumption extends AbstractAssumption {
         while (e != null) {
             InstalledCode installedCode = e.installedCode.get();
             if (installedCode != null && installedCode.getVersion() == e.version) {
-                installedCode.invalidate();
+                invalidateWithReason(installedCode, "assumption invalidated");
                 invalidatedInstalledCode = true;
                 if (TraceTruffleAssumptions.getValue()) {
                     logInvalidatedInstalledCode(installedCode);
@@ -94,6 +94,18 @@ public final class OptimizedAssumption extends AbstractAssumption {
             e.version = installedCode.getVersion();
             e.next = first;
             first = e;
+        } else {
+            invalidateWithReason(installedCode, "assumption already invalidated when installing code");
+            if (TraceTruffleAssumptions.getValue()) {
+                logInvalidatedInstalledCode(installedCode);
+                logStackTrace();
+            }
+        }
+    }
+
+    private void invalidateWithReason(InstalledCode installedCode, String reason) {
+        if (installedCode instanceof OptimizedCallTarget) {
+            ((OptimizedCallTarget) installedCode).invalidate(this, reason);
         } else {
             installedCode.invalidate();
         }

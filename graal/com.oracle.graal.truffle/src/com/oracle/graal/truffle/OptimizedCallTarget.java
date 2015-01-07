@@ -282,7 +282,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         invalidate(null, null);
     }
 
-    protected void invalidate(Node source, CharSequence reason) {
+    protected void invalidate(Object source, CharSequence reason) {
         if (isValid()) {
             this.runtime.invalidateInstalledCode(this, source, reason);
         }
