@@ -1726,7 +1726,7 @@ public class NodeGenFactory {
         final Set<ExecutableTypeData> executableTypes = findSpecializedExecutableTypes(execution, target.getType());
         if (executableTypes.isEmpty()) {
             throw new AssertionError(); // cannot execute child
-        } else if (executableTypes.size() == 1) {
+        } else if (executableTypes.size() == 1 && !target.getType().hasImplicitSourceTypes()) {
             ExecutableTypeData executableType = executableTypes.iterator().next();
             if (target.getType().isGeneric() && executableType.getEvaluatedCount() == 0) {
                 return createPolymorphicExecuteChild(execution, target, currentValues, shared);
