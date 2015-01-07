@@ -31,7 +31,7 @@ import com.oracle.truffle.api.interop.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.object.*;
 import com.oracle.truffle.api.utilities.*;
-import com.oracle.truffle.object.LocationImpl.InternalLongLocation;
+import com.oracle.truffle.object.LocationImpl.*;
 import com.oracle.truffle.object.Locations.ConstantLocation;
 import com.oracle.truffle.object.Locations.DeclaredDualLocation;
 import com.oracle.truffle.object.Locations.DeclaredLocation;
@@ -954,7 +954,7 @@ public abstract class ShapeImpl extends Shape {
         return null;
     }
 
-    public abstract static class BaseAllocator extends Allocator {
+    public abstract static class BaseAllocator extends Allocator implements LocationVisitor {
         protected final LayoutImpl layout;
         protected int objectArraySize;
         protected int objectFieldSize;
@@ -1056,15 +1056,13 @@ public abstract class ShapeImpl extends Shape {
         protected <T extends Location> T advance(T location0) {
             if (location0 instanceof LocationImpl) {
                 LocationImpl location = (LocationImpl) location0;
-                objectArraySize += location.objectArrayCount();
-                primitiveArraySize += location.primitiveArrayCount();
-                primitiveFieldSize += location.primitiveFieldCount();
+                if (location != layout.getPrimitiveArrayLocation()) {
+                    location.accept(this);
+                }
                 if (layout.hasPrimitiveExtensionArray()) {
-                    hasPrimitiveArray |= location == layout.getPrimitiveArrayLocation() || location.primitiveArrayCount() != 0;
-                    objectFieldSize = location == layout.getPrimitiveArrayLocation() ? objectFieldSize : Math.max(objectFieldSize, layout.objectFieldIndex(location) + location.objectFieldCount());
+                    hasPrimitiveArray |= location == layout.getPrimitiveArrayLocation() || primitiveArraySize > 0;
                 } else {
-                    assert !hasPrimitiveArray && location.primitiveArrayCount() == 0;
-                    objectFieldSize += location.objectFieldCount();
+                    assert !hasPrimitiveArray && primitiveArraySize == 0;
                 }
             }
             depth++;
@@ -1075,6 +1073,22 @@ public abstract class ShapeImpl extends Shape {
         public BaseAllocator addLocation(Location location) {
             advance(location);
             return this;
+        }
+
+        public void visitObjectField(int index, int count) {
+            objectFieldSize = Math.max(objectFieldSize, index + count);
+        }
+
+        public void visitObjectArray(int index, int count) {
+            objectArraySize = Math.max(objectArraySize, index + count);
+        }
+
+        public void visitPrimitiveArray(int index, int count) {
+            primitiveArraySize = Math.max(primitiveArraySize, index + count);
+        }
+
+        public void visitPrimitiveField(int index, int count) {
+            primitiveFieldSize = Math.max(primitiveFieldSize, index + count);
         }
     }
 

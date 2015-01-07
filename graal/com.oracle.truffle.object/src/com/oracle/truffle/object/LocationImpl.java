@@ -25,6 +25,29 @@ package com.oracle.truffle.object;
 import com.oracle.truffle.api.object.*;
 
 public abstract class LocationImpl extends Location {
+
+    public interface EffectivelyFinalLocation<T extends Location> {
+        T toNonFinalLocation();
+    }
+
+    public interface TypedObjectLocation<T extends Location & ObjectLocation> extends ObjectLocation {
+        T toUntypedLocation();
+    }
+
+    public interface InternalLongLocation extends LongLocation {
+        void setLongInternal(DynamicObject store, long value);
+    }
+
+    public interface LocationVisitor {
+        void visitObjectField(int index, int count);
+
+        void visitObjectArray(int index, int count);
+
+        void visitPrimitiveField(int index, int count);
+
+        void visitPrimitiveArray(int index, int count);
+    }
+
     @Override
     public void set(DynamicObject store, Object value, Shape shape) throws IncompatibleLocationException, FinalLocationException {
         setInternal(store, value);
@@ -51,18 +74,6 @@ public abstract class LocationImpl extends Location {
     @SuppressWarnings("unused")
     protected boolean canStoreFinal(DynamicObject store, Object value) {
         return true;
-    }
-
-    public interface EffectivelyFinalLocation<T extends Location> {
-        T toNonFinalLocation();
-    }
-
-    public interface TypedObjectLocation<T extends Location & ObjectLocation> extends ObjectLocation {
-        T toUntypedLocation();
-    }
-
-    public interface InternalLongLocation extends LongLocation {
-        void setLongInternal(DynamicObject store, long value);
     }
 
     @Override
@@ -140,6 +151,13 @@ public abstract class LocationImpl extends Location {
     public int primitiveArrayCount() {
         return 0;
     }
+
+    /**
+     * Accept a visitor for location allocation for this and every nested location.
+     *
+     * @param locationVisitor visitor to be notified of every allocated slot in use by this location
+     */
+    public abstract void accept(LocationVisitor locationVisitor);
 
     /**
      * Boxed values need to be compared by value not by reference.

@@ -164,6 +164,11 @@ public abstract class BasicLocations {
         public int objectArrayCount() {
             return OBJECT_SIZE;
         }
+
+        @Override
+        public final void accept(LocationVisitor locationVisitor) {
+            locationVisitor.visitObjectArray(index, OBJECT_SIZE);
+        }
     }
 
     public static class ObjectFieldLocation extends MethodHandleFieldLocation implements ObjectLocation {
@@ -209,6 +214,11 @@ public abstract class BasicLocations {
         public int objectFieldCount() {
             return OBJECT_SIZE;
         }
+
+        @Override
+        public final void accept(LocationVisitor locationVisitor) {
+            locationVisitor.visitObjectField(getIndex(), OBJECT_SIZE);
+        }
     }
 
     public abstract static class SimpleObjectFieldLocation extends FieldLocation implements ObjectLocation {
@@ -239,6 +249,11 @@ public abstract class BasicLocations {
         @Override
         public int objectFieldCount() {
             return OBJECT_SIZE;
+        }
+
+        @Override
+        public final void accept(LocationVisitor locationVisitor) {
+            locationVisitor.visitObjectField(getIndex(), OBJECT_SIZE);
         }
     }
 
@@ -302,13 +317,18 @@ public abstract class BasicLocations {
             return value instanceof Long || (allowInt && value instanceof Integer);
         }
 
-        public Class<Long> getType() {
+        public final Class<Long> getType() {
             return long.class;
         }
 
         @Override
         public int primitiveArrayCount() {
             return LONG_SIZE;
+        }
+
+        @Override
+        public final void accept(LocationVisitor locationVisitor) {
+            locationVisitor.visitPrimitiveArray(getIndex(), LONG_SIZE);
         }
     }
 
@@ -385,8 +405,13 @@ public abstract class BasicLocations {
             return LONG_SIZE;
         }
 
-        public Class<Long> getType() {
+        public final Class<Long> getType() {
             return long.class;
+        }
+
+        @Override
+        public final void accept(LocationVisitor locationVisitor) {
+            locationVisitor.visitPrimitiveField(getIndex(), LONG_SIZE);
         }
     }
 
@@ -480,8 +505,13 @@ public abstract class BasicLocations {
             return LONG_SIZE;
         }
 
-        public Class<Long> getType() {
+        public final Class<Long> getType() {
             return long.class;
+        }
+
+        @Override
+        public final void accept(LocationVisitor locationVisitor) {
+            locationVisitor.visitPrimitiveField(getIndex(), LONG_SIZE);
         }
     }
 
@@ -520,6 +550,11 @@ public abstract class BasicLocations {
         @Override
         public final int primitiveArrayCount() {
             return ((LocationImpl) longLocation).primitiveArrayCount();
+        }
+
+        @Override
+        public final void accept(LocationVisitor locationVisitor) {
+            ((LocationImpl) longLocation).accept(locationVisitor);
         }
     }
 

@@ -98,6 +98,10 @@ public abstract class Locations {
         public String toString() {
             return "=" + String.valueOf(value);
         }
+
+        @Override
+        public final void accept(LocationVisitor locationVisitor) {
+        }
     }
 
     public static final class ConstantLocation extends ValueLocation {
@@ -201,6 +205,12 @@ public abstract class Locations {
         @Override
         public int objectArrayCount() {
             return ((LocationImpl) objectLocation).objectArrayCount();
+        }
+
+        @Override
+        public final void accept(LocationVisitor locationVisitor) {
+            ((LocationImpl) primitiveLocation).accept(locationVisitor);
+            ((LocationImpl) objectLocation).accept(locationVisitor);
         }
 
         @Override
