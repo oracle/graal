@@ -20,46 +20,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.common.type;
+package com.oracle.graal.api.meta;
 
 import java.nio.*;
 
-import com.oracle.graal.api.meta.*;
-
 /**
- * Type describing values that support arithmetic operations.
+ * Represents a compile-time constant that can be converted to a byte array.
  */
-public abstract class ArithmeticStamp extends Stamp {
+public interface SerializableConstant extends Constant {
 
-    private final ArithmeticOpTable ops;
+    /**
+     * Return the size in bytes of the serialized representation of this constant.
+     */
+    int getSerializedSize();
 
-    protected ArithmeticStamp(ArithmeticOpTable ops) {
-        this.ops = ops;
-    }
-
-    public ArithmeticOpTable getOps() {
-        return ops;
-    }
-
-    public abstract SerializableConstant deserialize(ByteBuffer buffer);
-
-    @Override
-    public int hashCode() {
-        final int prime = 31;
-        int result = 1;
-        result = prime * result + ops.hashCode();
-        return result;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        }
-        if (!(obj instanceof ArithmeticStamp)) {
-            return false;
-        }
-        assert this.ops.toString().equals(((ArithmeticStamp) obj).ops.toString());
-        return true;
-    }
+    /**
+     * Serialize the constant into the ByteBuffer. There must be at least
+     * {@link #getSerializedSize()} bytes available capacity in the buffer.
+     */
+    void serialize(ByteBuffer buffer);
 }

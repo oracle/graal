@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@ package com.oracle.graal.compiler.common.type;
 
 import static com.oracle.graal.compiler.common.calc.FloatConvert.*;
 
+import java.nio.*;
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
@@ -95,6 +96,24 @@ public class IntegerStamp extends PrimitiveStamp {
             return StampFactory.forInteger(getBits(), value, value);
         }
         return this;
+    }
+
+    @Override
+    public SerializableConstant deserialize(ByteBuffer buffer) {
+        switch (getBits()) {
+            case 1:
+                return JavaConstant.forBoolean(buffer.get() != 0);
+            case 8:
+                return JavaConstant.forByte(buffer.get());
+            case 16:
+                return JavaConstant.forShort(buffer.getShort());
+            case 32:
+                return JavaConstant.forInt(buffer.getInt());
+            case 64:
+                return JavaConstant.forLong(buffer.getLong());
+            default:
+                throw GraalInternalError.shouldNotReachHere();
+        }
     }
 
     @Override
