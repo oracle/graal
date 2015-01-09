@@ -442,16 +442,13 @@ class NodeBaseFactory {
 
     private CodeExecutableElement createUserConstructor(CodeTypeElement type, ExecutableElement superConstructor) {
         CodeExecutableElement method = new CodeExecutableElement(null, type.getSimpleName().toString());
-        ElementUtils.setVisibility(method.getModifiers(), ElementUtils.getVisibility(superConstructor.getModifiers()));
         CodeTreeBuilder builder = method.createBuilder();
 
         if (superConstructor != null) {
+            ElementUtils.setVisibility(method.getModifiers(), ElementUtils.getVisibility(superConstructor.getModifiers()));
             for (VariableElement param : superConstructor.getParameters()) {
                 method.getParameters().add(CodeVariableElement.clone(param));
             }
-        }
-
-        if (superConstructor != null) {
             builder.startStatement().startSuperCall();
             for (VariableElement param : superConstructor.getParameters()) {
                 builder.string(param.getSimpleName().toString());
