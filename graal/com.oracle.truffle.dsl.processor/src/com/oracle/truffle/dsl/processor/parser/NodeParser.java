@@ -526,7 +526,6 @@ public class NodeParser extends AbstractParser<NodeData> {
     }
 
     private void initializeExecutableTypes(NodeData node) {
-        List<ExecutableTypeData> genericExecutes = node.findGenericExecutableTypes(context, 0);
         List<ExecutableTypeData> allExecutes = node.getExecutableTypes();
 
         Set<String> inconsistentFrameTypes = new HashSet<>();
@@ -561,31 +560,51 @@ public class NodeParser extends AbstractParser<NodeData> {
         }
         node.setFrameType(frameType);
 
-        int nonFinalCount = 0;
-        int voidCount = 0;
-        for (ExecutableTypeData executableTypeData : genericExecutes) {
-            if (!executableTypeData.getMethod().getModifiers().contains(Modifier.FINAL)) {
-                nonFinalCount++;
+        int totalGenericCount = 0;
+        int totalVoidCount = 0;
+        for (Integer evaluatedCount : evaluatedCounts) {
+            List<ExecutableTypeData> genericExecutes = node.findGenericExecutableTypes(context, evaluatedCount);
+            int genericCount = 0;
+            int voidCount = 0;
+            for (ExecutableTypeData executableTypeData : genericExecutes) {
+                if (!executableTypeData.getMethod().getModifiers().contains(Modifier.FINAL)) {
+                    if (ElementUtils.isVoid(executableTypeData.getReturnType().getType())) {
+                        voidCount++;
+                    } else {
+                        genericCount++;
+                    }
+                }
             }
-            if (ElementUtils.isVoid(executableTypeData.getReturnType().getType())) {
-                voidCount++;
+            // multiple generic execute
+            if (evaluatedCount == 0) {
+                if (voidCount > 1) {
+                    List<String> methodSignatures = new ArrayList<>();
+                    for (ExecutableTypeData type : genericExecutes) {
+                        if (type.getType().isVoid()) {
+                            methodSignatures.add(type.createReferenceName());
+                        }
+                    }
+                    node.addWarning("Multiple accessible and overridable generic execute methods found %s. Remove all but one or mark all but one as final.", methodSignatures);
+                } else if (genericCount > 1) {
+                    List<String> methodSignatures = new ArrayList<>();
+                    for (ExecutableTypeData type : genericExecutes) {
+                        if (!type.getType().isVoid()) {
+                            methodSignatures.add(type.createReferenceName());
+                        }
+                    }
+                    node.addWarning("Multiple accessible and overridable generic execute methods found %s. Remove all but one or mark all but one as final.", methodSignatures);
+                }
             }
+            totalGenericCount += genericCount;
+            totalVoidCount += voidCount;
         }
 
         // no generic executes
-        if (nonFinalCount == 0 && voidCount == 0) {
+        if (totalGenericCount + totalVoidCount == 0) {
             node.addError("No accessible and overridable generic execute method found. Generic execute methods usually have the "
                             + "signature 'public abstract {Type} execute(VirtualFrame)' and must not throw any checked exceptions.");
         }
 
-        // multiple generic execute
-        if (voidCount > 1 || (nonFinalCount - voidCount) > 1) {
-            List<String> methodSignatures = new ArrayList<>();
-            for (ExecutableTypeData type : genericExecutes) {
-                methodSignatures.add(type.createReferenceName());
-            }
-            node.addWarning("Multiple accessible and overridable generic execute methods found %s. Remove all but one or mark all but one as final.", methodSignatures);
-        }
     }
 
     private static Map<Integer, List<ExecutableTypeData>> groupExecutableTypes(List<ExecutableTypeData> executableTypes) {
@@ -907,13 +926,17 @@ public class NodeParser extends AbstractParser<NodeData> {
             }
         }
 
-        renameDuplicateIds(signatures);
+        while (renameDuplicateIds(signatures)) {
+            // fix point
+        }
+
         for (int i = 0; i < specializations.size(); i++) {
             specializations.get(i).setId(signatures.get(i));
         }
     }
 
-    private static void renameDuplicateIds(List<String> signatures) {
+    private static boolean renameDuplicateIds(List<String> signatures) {
+        boolean changed = false;
         Map<String, Integer> counts = new HashMap<>();
         for (String s1 : signatures) {
             Integer count = counts.get(s1);
@@ -927,6 +950,7 @@ public class NodeParser extends AbstractParser<NodeData> {
         for (String s : counts.keySet()) {
             int count = counts.get(s);
             if (count > 1) {
+                changed = true;
                 int number = 0;
                 for (ListIterator<String> iterator = signatures.listIterator(); iterator.hasNext();) {
                     String s2 = iterator.next();
@@ -937,6 +961,7 @@ public class NodeParser extends AbstractParser<NodeData> {
                 }
             }
         }
+        return changed;
     }
 
     private void initializeGuards(List<? extends Element> elements, NodeData node) {
