@@ -186,7 +186,7 @@ abstract class RewriteEvent implements CharSequence {
 
         private final Object[] args;
 
-        public RewriteEventN(Node source, String reason, Object[] args) {
+        public RewriteEventN(Node source, String reason, Object... args) {
             super(source, reason);
             this.args = args;
         }
