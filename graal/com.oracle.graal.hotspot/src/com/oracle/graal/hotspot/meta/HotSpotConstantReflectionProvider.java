@@ -120,9 +120,37 @@ public class HotSpotConstantReflectionProvider implements ConstantReflectionProv
         }
     }
 
+    /**
+     * Check if the constant is a boxed value that is guaranteed to be cached by the platform.
+     * Otherwise the generated code might be the only reference to the boxed value and since object
+     * references from nmethods are weak this can cause GC problems.
+     *
+     * @param source
+     * @return true if the box is cached
+     */
+    private static boolean isBoxCached(JavaConstant source) {
+        switch (source.getKind()) {
+            case Boolean:
+                return true;
+            case Char:
+                return source.asInt() <= 127;
+            case Byte:
+            case Short:
+            case Int:
+                return source.asInt() >= -128 && source.asInt() <= 127;
+            case Long:
+                return source.asLong() >= -128 && source.asLong() <= 127;
+            case Float:
+            case Double:
+                return false;
+            default:
+                throw new IllegalArgumentException("unexpected kind " + source.getKind());
+        }
+    }
+
     @Override
     public JavaConstant boxPrimitive(JavaConstant source) {
-        if (!source.getKind().isPrimitive()) {
+        if (!source.getKind().isPrimitive() || !isBoxCached(source)) {
             return null;
         }
         return HotSpotObjectConstantImpl.forObject(source.asBoxedPrimitive());

@@ -75,7 +75,7 @@ public class TestConstantReflectionProvider extends TypeUniverse {
         }
 
         assertEquals(Long.valueOf(42), snippetReflection.asObject(Long.class, constantReflection.boxPrimitive(JavaConstant.forLong(42))));
-        assertEquals(Integer.valueOf(666), snippetReflection.asObject(Integer.class, constantReflection.boxPrimitive(JavaConstant.forInt(666))));
+        assertEquals(Integer.valueOf(66), snippetReflection.asObject(Integer.class, constantReflection.boxPrimitive(JavaConstant.forInt(66))));
         assertEquals(Byte.valueOf((byte) 123), snippetReflection.asObject(Byte.class, constantReflection.boxPrimitive(JavaConstant.forByte((byte) 123))));
         assertSame(Boolean.TRUE, snippetReflection.asObject(Boolean.class, constantReflection.boxPrimitive(JavaConstant.forBoolean(true))));
 
@@ -93,7 +93,7 @@ public class TestConstantReflectionProvider extends TypeUniverse {
         }
 
         assertEquals(JavaConstant.forLong(42), constantReflection.unboxPrimitive(snippetReflection.forObject(Long.valueOf(42))));
-        assertEquals(JavaConstant.forInt(666), constantReflection.unboxPrimitive(snippetReflection.forObject(Integer.valueOf(666))));
+        assertEquals(JavaConstant.forInt(66), constantReflection.unboxPrimitive(snippetReflection.forObject(Integer.valueOf(66))));
         assertEquals(JavaConstant.forByte((byte) 123), constantReflection.unboxPrimitive(snippetReflection.forObject(Byte.valueOf((byte) 123))));
         assertSame(JavaConstant.forBoolean(true), constantReflection.unboxPrimitive(snippetReflection.forObject(Boolean.TRUE)));
 
