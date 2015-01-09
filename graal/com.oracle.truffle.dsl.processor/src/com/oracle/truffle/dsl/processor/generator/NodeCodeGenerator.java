@@ -103,9 +103,6 @@ public class NodeCodeGenerator extends CodeTypeElementFactory<NodeData> {
             }
             new NodeFactoryFactory(context, node, second).createFactoryMethods(first);
             ElementUtils.setVisibility(first.getModifiers(), ElementUtils.getVisibility(node.getTemplateType().getModifiers()));
-            for (ExecutableElement constructor : ElementFilter.constructorsIn(first.getEnclosedElements())) {
-                ElementUtils.setVisibility(((CodeExecutableElement) constructor).getModifiers(), Modifier.PRIVATE);
-            }
 
             return first;
         }
