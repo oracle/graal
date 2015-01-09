@@ -61,6 +61,7 @@ public class NodeGenFactory {
     private final TypeData genericType;
     private final DSLOptions options;
     private final boolean singleSpecializable;
+    private final int varArgsThreshold;
 
     public NodeGenFactory(ProcessorContext context, NodeData node) {
         this.context = context;
@@ -69,6 +70,21 @@ public class NodeGenFactory {
         this.genericType = typeSystem.getGenericTypeData();
         this.options = typeSystem.getOptions();
         this.singleSpecializable = isSingleSpecializableImpl();
+        this.varArgsThreshold = calculateVarArgsThresHold();
+
+    }
+
+    private int calculateVarArgsThresHold() {
+        TypeMirror specialization = context.getType(SpecializationNode.class);
+        TypeElement specializationType = fromTypeMirror(specialization);
+
+        int maxParameters = 0;
+        for (ExecutableElement element : ElementFilter.methodsIn(specializationType.getEnclosedElements())) {
+            if (element.getSimpleName().contentEquals("acceptAndExecute")) {
+                maxParameters = Math.max(maxParameters, element.getParameters().size());
+            }
+        }
+        return maxParameters;
     }
 
     public static String nodeTypeName(NodeData node) {
@@ -760,16 +776,22 @@ public class NodeGenFactory {
         final TypeData executedType = execType.getEvaluatedCount() > 0 ? null : returnType;
 
         CodeExecutableElement method = cloneExecutableTypeOverride(execType, varArgsName);
-        LocalContext locals = LocalContext.load(this, execType.getSignatureSize());
+        LocalContext locals = LocalContext.load(this, execType.getSignatureSize(), Integer.MAX_VALUE);
 
         // rename varargs parameter
         int signatureIndex = 0;
         for (Parameter parameter : execType.getSignatureParameters()) {
-            if (parameter.isTypeVarArgs()) {
-                String newName = varArgsName + "[" + parameter.getTypeVarArgsIndex() + "]";
-                NodeExecutionData execution = node.getChildExecutions().get(signatureIndex);
-                locals.setValue(execution, locals.getValue(execution).accessWith(CodeTreeBuilder.singleString(newName)));
+            LocalVariable var = locals.get(parameter, signatureIndex);
+            if (var != null) {
+                if (parameter.isTypeVarArgs()) {
+                    var = var.accessWith(CodeTreeBuilder.singleString(varArgsName + "[" + parameter.getTypeVarArgsIndex() + "]"));
+                }
+                if (!parameter.getTypeSystemType().isGeneric()) {
+                    var = var.newType(parameter.getTypeSystemType());
+                }
+                locals.setValue(node.getChildExecutions().get(signatureIndex), var);
             }
+
             signatureIndex++;
         }
 
@@ -1276,7 +1298,7 @@ public class NodeGenFactory {
 
     private Element createFastPathExecuteMethod(SpecializationData specialization, final TypeData forType, int evaluatedArguments) {
         TypeData type = forType == null ? genericType : forType;
-        LocalContext currentLocals = LocalContext.load(this, evaluatedArguments);
+        LocalContext currentLocals = LocalContext.load(this, evaluatedArguments, varArgsThreshold);
 
         CodeExecutableElement executable = currentLocals.createMethod(modifiers(PUBLIC), type.getPrimitiveType(), TypeSystemNodeFactory.executeName(forType), FRAME_VALUE);
         executable.getAnnotationMirrors().add(new CodeAnnotationMirror(context.getDeclaredType(Override.class)));
@@ -1534,7 +1556,7 @@ public class NodeGenFactory {
     }
 
     private CodeExecutableElement createExecuteChildMethod(NodeExecutionData execution, TypeData targetType) {
-        LocalContext locals = LocalContext.load(this, 0);
+        LocalContext locals = LocalContext.load(this, 0, varArgsThreshold);
 
         CodeExecutableElement method = locals.createMethod(modifiers(PROTECTED, FINAL), targetType.getPrimitiveType(), executeChildMethodName(execution, targetType), FRAME_VALUE);
         if (hasUnexpectedResult(execution, targetType)) {
@@ -1891,9 +1913,7 @@ public class NodeGenFactory {
         }
 
         LocalVariable genericValue = target.makeGeneric().nextName();
-        LocalVariable genericShortCircuit = resolveShortCircuit(null, execution, currentValues);
-
-        builder.tree(createAssignExecuteChild(execution, genericValue.getType(), genericValue, genericShortCircuit, currentValues));
+        builder.tree(createAssignExecuteChild(execution, genericValue.getType(), genericValue, null, currentValues));
         if (executableTypes.size() == sourceTypes.size()) {
             builder.startThrow().startNew(getType(UnexpectedResultException.class)).tree(genericValue.createReference()).end().end();
         } else {
@@ -2026,14 +2046,14 @@ public class NodeGenFactory {
             return method;
         }
 
-        public static LocalContext load(NodeGenFactory factory, int signatureSize) {
+        public static LocalContext load(NodeGenFactory factory, int signatureSize, int varargsThreshold) {
             LocalContext context = new LocalContext(factory);
-            context.loadValues(signatureSize);
+            context.loadValues(signatureSize, varargsThreshold);
             return context;
         }
 
         public static LocalContext load(NodeGenFactory factory) {
-            return load(factory, factory.node.getSignatureSize());
+            return load(factory, factory.node.getSignatureSize(), factory.varArgsThreshold);
         }
 
         public LocalContext copy() {
@@ -2075,8 +2095,11 @@ public class NodeGenFactory {
             LocalVariable var = get(parameter.getLocalName());
             if (var == null && parameter.getSpecification().isSignature()) {
                 // lookup by signature index for executeWith
-                NodeExecutionData execution = factory.node.getChildExecutions().get(signatureIndex);
-                var = getValue(execution);
+                List<NodeExecutionData> childExecutions = factory.node.getChildExecutions();
+                if (signatureIndex < childExecutions.size() && signatureIndex >= 0) {
+                    NodeExecutionData execution = childExecutions.get(signatureIndex);
+                    var = getValue(execution);
+                }
             }
             return var;
         }
@@ -2104,7 +2127,7 @@ public class NodeGenFactory {
             values.put(shortCircuitName(execution), var);
         }
 
-        private boolean needsVarargs(boolean requireLoaded) {
+        private boolean needsVarargs(boolean requireLoaded, int varArgsThreshold) {
             int size = 0;
             for (NodeExecutionData execution : factory.node.getChildExecutions()) {
                 if (requireLoaded && getValue(execution) == null) {
@@ -2116,10 +2139,10 @@ public class NodeGenFactory {
                     size++;
                 }
             }
-            return size > 4;
+            return size >= varArgsThreshold;
         }
 
-        private void loadValues(int evaluatedArguments) {
+        private void loadValues(int evaluatedArguments, int varargsThreshold) {
             values.put(FRAME_VALUE, new LocalVariable(null, factory.getType(Frame.class), FRAME_VALUE, null));
 
             for (NodeFieldData field : factory.node.getFields()) {
@@ -2127,9 +2150,13 @@ public class NodeGenFactory {
                 values.put(fieldName, new LocalVariable(null, field.getType(), fieldName, factory.accessParent(field.getName())));
             }
 
-            boolean varargs = needsVarargs(false);
+            boolean varargs = needsVarargs(false, varargsThreshold);
             for (int i = 0; i < evaluatedArguments; i++) {
-                NodeExecutionData execution = factory.node.getChildExecutions().get(i);
+                List<NodeExecutionData> childExecutions = factory.node.getChildExecutions();
+                if (i >= childExecutions.size()) {
+                    break;
+                }
+                NodeExecutionData execution = childExecutions.get(i);
                 if (execution.isShortCircuit()) {
                     LocalVariable shortCircuit = createShortCircuitValue(execution).makeGeneric();
                     if (varargs) {
@@ -2187,7 +2214,7 @@ public class NodeGenFactory {
                     method.addParameter(local.createParameter());
                 }
             }
-            if (needsVarargs(true)) {
+            if (needsVarargs(true, factory.varArgsThreshold)) {
                 method.addParameter(new CodeVariableElement(factory.getType(Object[].class), "args_"));
                 method.setVarArgs(true);
             } else {

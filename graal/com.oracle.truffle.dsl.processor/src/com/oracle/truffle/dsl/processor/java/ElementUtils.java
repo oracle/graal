@@ -1079,4 +1079,42 @@ public class ElementUtils {
         return new DeclaredCodeTypeMirror((TypeElement) declaredType.asElement());
     }
 
+    public static ExecutableElement findMethod(TypeElement type, Set<Modifier> includeModifiers, Set<Modifier> excludeModifiers, String methodName, List<TypeMirror> types) {
+        outer: for (ExecutableElement executable : ElementFilter.methodsIn(type.getEnclosedElements())) {
+            if (includeModifiers != null) {
+                if (!executable.getModifiers().containsAll(includeModifiers)) {
+                    continue;
+                }
+            }
+            if (excludeModifiers != null) {
+                if (executable.getModifiers().containsAll(excludeModifiers)) {
+                    continue;
+                }
+            }
+            if (!executable.getSimpleName().toString().equals(methodName)) {
+                continue;
+            }
+            if (types.size() != executable.getParameters().size()) {
+                continue;
+            }
+            for (int i = 0; i < types.size(); i++) {
+                TypeMirror var1 = types.get(i);
+                VariableElement var2 = executable.getParameters().get(i);
+                if (ElementUtils.typeEquals(var1, var2.asType())) {
+                    continue outer;
+                }
+            }
+            return executable;
+        }
+        return null;
+    }
+
+    public static List<TypeMirror> asTypes(List<? extends Element> elements) {
+        List<TypeMirror> types = new ArrayList<>(elements.size());
+        for (Element element : elements) {
+            types.add(element.asType());
+        }
+        return types;
+    }
+
 }
