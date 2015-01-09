@@ -195,6 +195,10 @@ public abstract class SpecializationNode extends Node {
         throw new UnsupportedOperationException();
     }
 
+    public Object acceptAndExecute(Frame frame, Object o1, Object o2, Object o3, Object o4, Object o5) {
+        throw new UnsupportedOperationException();
+    }
+
     public Object acceptAndExecute(Frame frame, Object... args) {
         throw new UnsupportedOperationException();
     }
@@ -224,6 +228,10 @@ public abstract class SpecializationNode extends Node {
     }
 
     protected SpecializationNode createNext(Frame frame, Object o1, Object o2, Object o3, Object o4) {
+        throw new UnsupportedOperationException();
+    }
+
+    protected SpecializationNode createNext(Frame frame, Object o1, Object o2, Object o3, Object o4, Object o5) {
         throw new UnsupportedOperationException();
     }
 
@@ -291,6 +299,18 @@ public abstract class SpecializationNode extends Node {
         return insertSpecialization(nextSpecialization, new RewriteEvent4(findParentNode(), "inserts new specialization", o1, o2, o3, o4)).acceptAndExecute(frame, o1, o2, o3, o4);
     }
 
+    protected final Object uninitialized(Frame frame, Object o1, Object o2, Object o3, Object o4, Object o5) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        SpecializationNode nextSpecialization = createNext(frame, o1, o2, o3, o4, o5);
+        if (nextSpecialization == null) {
+            nextSpecialization = createFallback();
+        }
+        if (nextSpecialization == null) {
+            unsupported(frame, o1, o2, o3, o4, o5);
+        }
+        return insertSpecialization(nextSpecialization, new RewriteEventN(findParentNode(), "inserts new specialization", o1, o2, o3, o4, o5)).acceptAndExecute(frame, o1, o2, o3, o4, o5);
+    }
+
     protected final Object uninitialized(Frame frame, Object... args) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         SpecializationNode nextSpecialization = createNext(frame, args);
@@ -327,6 +347,10 @@ public abstract class SpecializationNode extends Node {
         return removeSame(new RewriteEvent4(findParentNode(), reason, o1, o2, o3, o4)).acceptAndExecute(frame, o1, o2, o3, o4);
     }
 
+    protected final Object remove(String reason, Frame frame, Object o1, Object o2, Object o3, Object o4, Object o5) {
+        return removeSame(new RewriteEventN(findParentNode(), reason, o1, o2, o3, o4, o5)).acceptAndExecute(frame, o1, o2, o3, o4, o5);
+    }
+
     protected final Object remove(String reason, Frame frame, Object... args) {
         return removeSame(new RewriteEventN(findParentNode(), reason, args)).acceptAndExecute(frame, args);
     }
@@ -349,6 +373,10 @@ public abstract class SpecializationNode extends Node {
 
     protected Object unsupported(Frame frame, Object o1, Object o2, Object o3, Object o4) {
         throw new UnsupportedSpecializationException(findParentNode(), getSuppliedChildren(), o1, o2, o3, o4);
+    }
+
+    protected Object unsupported(Frame frame, Object o1, Object o2, Object o3, Object o4, Object o5) {
+        throw new UnsupportedSpecializationException(findParentNode(), getSuppliedChildren(), o1, o2, o3, o4, o5);
     }
 
     protected Object unsupported(Frame frame, Object... args) {
