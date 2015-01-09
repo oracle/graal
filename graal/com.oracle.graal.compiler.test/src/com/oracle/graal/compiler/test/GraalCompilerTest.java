@@ -231,7 +231,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     protected void assertEquals(StructuredGraph expected, StructuredGraph graph, boolean excludeVirtual, boolean checkConstants) {
         String expectedString = getCanonicalGraphString(expected, excludeVirtual, checkConstants);
         String actualString = getCanonicalGraphString(graph, excludeVirtual, checkConstants);
-        String mismatchString = "mismatch in graphs:\n========= expected (" + expected + ") =========\n" + expectedString + "\n\n========= actual (" + graph + ") =========\n" + actualString;
+        String mismatchString = compareGraphStrings(expected, expectedString, graph, actualString);
 
         if (!excludeVirtual && getNodeCountExcludingUnusedConstants(expected) != getNodeCountExcludingUnusedConstants(graph)) {
             Debug.dump(expected, "Node count not matching - expected");
@@ -242,6 +242,42 @@ public abstract class GraalCompilerTest extends GraalTest {
             Debug.dump(expected, "mismatching graphs - expected");
             Debug.dump(graph, "mismatching graphs - actual");
             Assert.fail(mismatchString);
+        }
+    }
+
+    private static String compareGraphStrings(StructuredGraph expectedGraph, String expectedString, StructuredGraph actualGraph, String actualString) {
+        if (!expectedString.equals(actualString)) {
+            String[] expectedLines = expectedString.split("\n");
+            String[] actualLines = actualString.split("\n");
+            int diffIndex = -1;
+            int limit = Math.min(actualLines.length, expectedLines.length);
+            String marker = " <<<";
+            for (int i = 0; i < limit; i++) {
+                if (!expectedLines[i].equals(actualLines[i])) {
+                    diffIndex = i;
+                    break;
+                }
+            }
+            if (diffIndex == -1) {
+                // Prefix is the same so add some space after the prefix
+                diffIndex = limit;
+                if (actualLines.length == limit) {
+                    actualLines = Arrays.copyOf(actualLines, limit + 1);
+                    actualLines[diffIndex] = "";
+                } else {
+                    assert expectedLines.length == limit;
+                    expectedLines = Arrays.copyOf(expectedLines, limit + 1);
+                    expectedLines[diffIndex] = "";
+                }
+            }
+            // Place a marker next to the first line that differs
+            expectedLines[diffIndex] = expectedLines[diffIndex] + marker;
+            actualLines[diffIndex] = actualLines[diffIndex] + marker;
+            String ediff = String.join("\n", expectedLines);
+            String adiff = String.join("\n", actualLines);
+            return "mismatch in graphs:\n========= expected (" + expectedGraph + ") =========\n" + ediff + "\n\n========= actual (" + actualGraph + ") =========\n" + adiff;
+        } else {
+            return "mismatch in graphs";
         }
     }
 
