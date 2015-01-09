@@ -36,7 +36,7 @@ import com.oracle.truffle.dsl.processor.java.model.*;
 
 public abstract class AbstractCodeWriter extends CodeElementScanner<Void, Void> {
 
-    private static final int MAX_LINE_LENGTH = 200;
+    private static final int MAX_LINE_LENGTH = Integer.MAX_VALUE; // line wrapping disabled
     private static final int LINE_WRAP_INDENTS = 3;
     private static final String IDENT_STRING = "    ";
     private static final String LN = "\n"; /* unix style */
