@@ -295,18 +295,15 @@ public final class SchedulePhase extends Phase {
         earliestCache = graph.createNodeMap();
         blockToNodesMap = new BlockMap<>(cfg);
 
-        if (memsched == MemoryScheduling.OPTIMAL && selectedStrategy != SchedulingStrategy.EARLIEST && graph.getNodes(FloatingReadNode.class).isNotEmpty()) {
+        if (memsched == MemoryScheduling.OPTIMAL && selectedStrategy != SchedulingStrategy.EARLIEST) {
             blockToKillSet = new BlockMap<>(cfg);
-
-            assignBlockToNodes(graph, selectedStrategy);
-            printSchedule("after assign nodes to blocks");
-
-            sortNodesWithinBlocks(graph, selectedStrategy);
-            printSchedule("after sorting nodes within blocks");
-        } else {
-            assignBlockToNodes(graph, selectedStrategy);
-            sortNodesWithinBlocks(graph, selectedStrategy);
         }
+
+        assignBlockToNodes(graph, selectedStrategy);
+        printSchedule("after assign nodes to blocks");
+
+        sortNodesWithinBlocks(graph, selectedStrategy);
+        printSchedule("after sorting nodes within blocks");
     }
 
     private Block blockForMemoryNode(MemoryNode memory) {
@@ -321,37 +318,41 @@ public final class SchedulePhase extends Phase {
 
     private void printSchedule(String desc) {
         if (Debug.isLogEnabled()) {
-            Formatter buf = new Formatter();
-            buf.format("=== %s / %s / %s (%s) ===%n", getCFG().getStartBlock().getBeginNode().graph(), selectedStrategy, memsched, desc);
-            for (Block b : getCFG().getBlocks()) {
-                buf.format("==== b: %s (loopDepth: %s). ", b, b.getLoopDepth());
-                buf.format("dom: %s. ", b.getDominator());
-                buf.format("post-dom: %s. ", b.getPostdominator());
-                buf.format("preds: %s. ", b.getPredecessors());
-                buf.format("succs: %s ====%n", b.getSuccessors());
-                BlockMap<KillSet> killSets = blockToKillSet;
-                if (killSets != null) {
-                    buf.format("X block kills: %n");
-                    if (killSets.get(b) != null) {
-                        for (LocationIdentity locId : killSets.get(b)) {
-                            buf.format("X %s killed by %s%n", locId, "dunno anymore");
-                        }
-                    }
-                }
+            printScheduleHelper(desc);
+        }
+    }
 
-                if (blockToNodesMap.get(b) != null) {
-                    for (Node n : nodesFor(b)) {
-                        printNode(n);
-                    }
-                } else {
-                    for (Node n : b.getNodes()) {
-                        printNode(n);
+    private void printScheduleHelper(String desc) {
+        Formatter buf = new Formatter();
+        buf.format("=== %s / %s / %s (%s) ===%n", getCFG().getStartBlock().getBeginNode().graph(), selectedStrategy, memsched, desc);
+        for (Block b : getCFG().getBlocks()) {
+            buf.format("==== b: %s (loopDepth: %s). ", b, b.getLoopDepth());
+            buf.format("dom: %s. ", b.getDominator());
+            buf.format("post-dom: %s. ", b.getPostdominator());
+            buf.format("preds: %s. ", b.getPredecessors());
+            buf.format("succs: %s ====%n", b.getSuccessors());
+            BlockMap<KillSet> killSets = blockToKillSet;
+            if (killSets != null) {
+                buf.format("X block kills: %n");
+                if (killSets.get(b) != null) {
+                    for (LocationIdentity locId : killSets.get(b)) {
+                        buf.format("X %s killed by %s%n", locId, "dunno anymore");
                     }
                 }
             }
-            buf.format("%n");
-            Debug.log("%s", buf);
+
+            if (blockToNodesMap.get(b) != null) {
+                for (Node n : nodesFor(b)) {
+                    printNode(n);
+                }
+            } else {
+                for (Node n : b.getNodes()) {
+                    printNode(n);
+                }
+            }
         }
+        buf.format("%n");
+        Debug.log("%s", buf);
     }
 
     private static void printNode(Node n) {

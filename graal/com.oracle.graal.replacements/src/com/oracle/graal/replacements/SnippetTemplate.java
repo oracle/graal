@@ -997,7 +997,7 @@ public class SnippetTemplate {
         }
     };
 
-    private boolean checkSnippetKills(ScheduledNode replacee) {
+    private boolean assertSnippetKills(ScheduledNode replacee) {
         if (!replacee.graph().isAfterFloatingReadPhase()) {
             // no floating reads yet, ignore locations created while lowering
             return true;
@@ -1042,7 +1042,7 @@ public class SnippetTemplate {
          * specific, so the runtime independent InstanceOfNode can not kill this location. However,
          * if no FloatingReadNode is reading from this location, the kill to this location is fine.
          */
-        for (FloatingReadNode frn : replacee.graph().getNodes(FloatingReadNode.class)) {
+        for (FloatingReadNode frn : replacee.graph().getNodes().filter(FloatingReadNode.class)) {
             LocationIdentity locationIdentity = frn.location().getLocationIdentity();
             if (SnippetCounters.getValue()) {
                 // accesses to snippet counters are artificially introduced and violate the memory
@@ -1095,7 +1095,7 @@ public class SnippetTemplate {
      * @return the map of duplicated nodes (original -&gt; duplicate)
      */
     public Map<Node, Node> instantiate(MetaAccessProvider metaAccess, FixedNode replacee, UsageReplacer replacer, Arguments args) {
-        assert checkSnippetKills(replacee);
+        assert assertSnippetKills(replacee);
         try (TimerCloseable a = args.info.instantiationTimer.start(); TimerCloseable b = instantiationTimer.start()) {
             args.info.instantiationCounter.increment();
             instantiationCounter.increment();
@@ -1242,7 +1242,7 @@ public class SnippetTemplate {
      * @param args the arguments to be bound to the flattened positional parameters of the snippet
      */
     public void instantiate(MetaAccessProvider metaAccess, FloatingNode replacee, UsageReplacer replacer, LoweringTool tool, Arguments args) {
-        assert checkSnippetKills(replacee);
+        assert assertSnippetKills(replacee);
         try (TimerCloseable a = args.info.instantiationTimer.start()) {
             args.info.instantiationCounter.increment();
             instantiationCounter.increment();

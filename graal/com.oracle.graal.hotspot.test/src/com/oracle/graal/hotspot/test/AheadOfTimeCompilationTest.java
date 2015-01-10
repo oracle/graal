@@ -71,7 +71,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         assertDeepEquals(1, getConstantNodes(result).count());
         Stamp constantStamp = getConstantNodes(result).first().stamp();
         Assert.assertTrue(constantStamp instanceof KlassPointerStamp);
-        assertDeepEquals(2, result.getNodes(FloatingReadNode.class).count());
+        assertDeepEquals(2, result.getNodes().filter(FloatingReadNode.class).count());
         assertDeepEquals(0, result.getNodes().filter(ReadNode.class).count());
     }
 
@@ -80,7 +80,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         StructuredGraph result = compile("getStaticFinalObject", false);
         assertDeepEquals(1, getConstantNodes(result).count());
         assertDeepEquals(Kind.Object, getConstantNodes(result).first().getKind());
-        assertDeepEquals(0, result.getNodes(FloatingReadNode.class).count());
+        assertDeepEquals(0, result.getNodes().filter(FloatingReadNode.class).count());
         assertDeepEquals(0, result.getNodes().filter(ReadNode.class).count());
     }
 
@@ -97,7 +97,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) getMetaAccess().lookupJavaType(AheadOfTimeCompilationTest.class);
         assertDeepEquals(type.klass(), filter.first().asConstant());
 
-        assertDeepEquals(1, result.getNodes(FloatingReadNode.class).count());
+        assertDeepEquals(1, result.getNodes().filter(FloatingReadNode.class).count());
         assertDeepEquals(0, result.getNodes().filter(ReadNode.class).count());
     }
 
@@ -111,7 +111,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         Assert.assertEquals(Class.class, c.getObjectClass());
         Assert.assertTrue(c.isEqualTo(AheadOfTimeCompilationTest.class));
 
-        assertDeepEquals(0, result.getNodes(FloatingReadNode.class).count());
+        assertDeepEquals(0, result.getNodes().filter(FloatingReadNode.class).count());
         assertDeepEquals(0, result.getNodes().filter(ReadNode.class).count());
     }
 
@@ -127,7 +127,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         Stamp constantStamp = filter.first().stamp();
         Assert.assertTrue(constantStamp instanceof KlassPointerStamp);
 
-        assertDeepEquals(2, result.getNodes(FloatingReadNode.class).count());
+        assertDeepEquals(2, result.getNodes().filter(FloatingReadNode.class).count());
         assertDeepEquals(0, result.getNodes().filter(ReadNode.class).count());
     }
 
@@ -140,7 +140,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         Assert.assertEquals(Class.class, c.getObjectClass());
         Assert.assertTrue(c.isEqualTo(Integer.TYPE));
 
-        assertDeepEquals(0, result.getNodes(FloatingReadNode.class).count());
+        assertDeepEquals(0, result.getNodes().filter(FloatingReadNode.class).count());
         assertDeepEquals(0, result.getNodes().filter(ReadNode.class).count());
     }
 
@@ -168,7 +168,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         Assert.assertEquals(String.class, c.getObjectClass());
         Assert.assertTrue(c.isEqualTo("test string"));
 
-        assertDeepEquals(0, result.getNodes(FloatingReadNode.class).count());
+        assertDeepEquals(0, result.getNodes().filter(FloatingReadNode.class).count());
         assertDeepEquals(0, result.getNodes().filter(ReadNode.class).count());
     }
 
@@ -181,7 +181,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
     public void testBoxedBooleanAOT() {
         StructuredGraph result = compile("getBoxedBoolean", true);
 
-        assertDeepEquals(2, result.getNodes(FloatingReadNode.class).count());
+        assertDeepEquals(2, result.getNodes().filter(FloatingReadNode.class).count());
         assertDeepEquals(1, result.getNodes(PiNode.class).count());
         assertDeepEquals(1, getConstantNodes(result).count());
         ConstantNode constant = getConstantNodes(result).first();
@@ -192,7 +192,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
     @Test
     public void testBoxedBoolean() {
         StructuredGraph result = compile("getBoxedBoolean", false);
-        assertDeepEquals(0, result.getNodes(FloatingReadNode.class).count());
+        assertDeepEquals(0, result.getNodes().filter(FloatingReadNode.class).count());
         assertDeepEquals(0, result.getNodes(PiNode.class).count());
         assertDeepEquals(1, getConstantNodes(result).count());
         ConstantNode constant = getConstantNodes(result).first();
