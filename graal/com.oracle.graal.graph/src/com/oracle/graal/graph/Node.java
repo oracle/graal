@@ -190,12 +190,14 @@ public abstract class Node implements Cloneable, Formattable {
     Node[] extraUsages;
 
     private Node predecessor;
+    private NodeClass nodeClass;
 
     public static final int NODE_LIST = -2;
     public static final int NOT_ITERABLE = -1;
 
     public Node() {
         init();
+        this.nodeClass = NodeClass.get(this.getClass());
     }
 
     final void init() {
@@ -603,7 +605,7 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     public final NodeClass getNodeClass() {
-        return NodeClass.get(getClass());
+        return nodeClass;
     }
 
     public boolean isAllowedUsageType(InputType type) {
@@ -812,15 +814,15 @@ public abstract class Node implements Cloneable, Formattable {
      * @param edgesToCopy if {@code type} is in this set, the edges are copied otherwise they are
      *            cleared
      */
-    private void copyOrClearEdgesForClone(NodeClass nodeClass, Node newNode, Edges.Type type, EnumSet<Edges.Type> edgesToCopy) {
+    private void copyOrClearEdgesForClone(Node newNode, Edges.Type type, EnumSet<Edges.Type> edgesToCopy) {
         if (edgesToCopy.contains(type)) {
-            nodeClass.getEdges(type).copy(this, newNode);
+            getNodeClass().getEdges(type).copy(this, newNode);
         } else {
             if (USE_UNSAFE_TO_CLONE) {
                 // The direct edges are already null
-                nodeClass.getEdges(type).initializeLists(newNode, this);
+                getNodeClass().getEdges(type).initializeLists(newNode, this);
             } else {
-                nodeClass.getEdges(type).clear(newNode);
+                getNodeClass().getEdges(type).clear(newNode);
             }
         }
     }
@@ -841,10 +843,10 @@ public abstract class Node implements Cloneable, Formattable {
      * @return the copy of this node
      */
     final Node clone(Graph into, EnumSet<Edges.Type> edgesToCopy) {
-        NodeClass nodeClass = getNodeClass();
+        final NodeClass nodeClassTmp = getNodeClass();
         boolean useIntoLeafNodeCache = false;
         if (into != null) {
-            if (nodeClass.valueNumberable() && nodeClass.isLeafNode()) {
+            if (nodeClassTmp.valueNumberable() && nodeClassTmp.isLeafNode()) {
                 useIntoLeafNodeCache = true;
                 Node otherNode = into.findNodeInCache(this);
                 if (otherNode != null) {
@@ -857,17 +859,18 @@ public abstract class Node implements Cloneable, Formattable {
         try {
             if (USE_UNSAFE_TO_CLONE) {
                 newNode = (Node) UnsafeAccess.unsafe.allocateInstance(getClass());
-                nodeClass.getData().copy(this, newNode);
-                copyOrClearEdgesForClone(nodeClass, newNode, Inputs, edgesToCopy);
-                copyOrClearEdgesForClone(nodeClass, newNode, Successors, edgesToCopy);
+                newNode.nodeClass = nodeClassTmp;
+                nodeClassTmp.getData().copy(this, newNode);
+                copyOrClearEdgesForClone(newNode, Inputs, edgesToCopy);
+                copyOrClearEdgesForClone(newNode, Successors, edgesToCopy);
             } else {
                 newNode = (Node) this.clone();
                 newNode.typeCacheNext = null;
                 newNode.usage0 = null;
                 newNode.usage1 = null;
                 newNode.predecessor = null;
-                copyOrClearEdgesForClone(nodeClass, newNode, Inputs, edgesToCopy);
-                copyOrClearEdgesForClone(nodeClass, newNode, Successors, edgesToCopy);
+                copyOrClearEdgesForClone(newNode, Inputs, edgesToCopy);
+                copyOrClearEdgesForClone(newNode, Successors, edgesToCopy);
             }
         } catch (Exception e) {
             throw new GraalGraphInternalError(e).addContext(this);
@@ -988,8 +991,7 @@ public abstract class Node implements Cloneable, Formattable {
      * @param map
      */
     public Map<Object, Object> getDebugProperties(Map<Object, Object> map) {
-        NodeClass nodeClass = getNodeClass();
-        Fields properties = nodeClass.getData();
+        Fields properties = getNodeClass().getData();
         for (int i = 0; i < properties.getCount(); i++) {
             map.put(properties.getName(i), properties.get(this, i));
         }
