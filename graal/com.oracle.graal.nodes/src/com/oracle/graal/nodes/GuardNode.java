@@ -42,7 +42,7 @@ import com.oracle.graal.nodes.extended.*;
  * control flow would have reached the guarded node (without taking exceptions into account).
  */
 @NodeInfo(nameTemplate = "Guard(!={p#negated}) {p#reason/s}", allowedUsageTypes = {InputType.Guard})
-public class GuardNode extends FloatingAnchoredNode implements Canonicalizable, IterableNodeType, GuardingNode {
+public class GuardNode extends FloatingAnchoredNode implements Canonicalizable, GuardingNode {
 
     @Input(InputType.Condition) protected LogicNode condition;
     protected final DeoptimizationReason reason;
