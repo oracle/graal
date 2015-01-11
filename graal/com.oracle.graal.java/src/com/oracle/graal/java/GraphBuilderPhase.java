@@ -745,9 +745,6 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 if (graphBuilderConfig.omitAllExceptionEdges() || (optimisticOpts.useExceptionProbability() && profilingInfo.getExceptionSeen(bci()) == TriState.FALSE)) {
                     createInvoke(callTarget, resultType);
                 } else {
-                    assert bci() == currentBlock.endBci;
-                    frameState.clearNonLiveLocals(currentBlock, liveness, false);
-
                     InvokeWithExceptionNode invoke = createInvokeWithException(callTarget, resultType);
                     BeginNode beginNode = currentGraph.add(KillingBeginNode.create(LocationIdentity.ANY_LOCATION));
                     invoke.setNext(beginNode);
