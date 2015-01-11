@@ -288,6 +288,30 @@ public class TestResolvedJavaMethod extends MethodUniverse {
         }
     }
 
+    @Test
+    public void hasReceiverTest() {
+        for (Map.Entry<Method, ResolvedJavaMethod> e : methods.entrySet()) {
+            ResolvedJavaMethod m = e.getValue();
+            assertTrue(m.hasReceiver() != Modifier.isStatic(e.getKey().getModifiers()));
+        }
+        for (Map.Entry<Constructor<?>, ResolvedJavaMethod> e : constructors.entrySet()) {
+            ResolvedJavaMethod m = e.getValue();
+            assertTrue(m.hasReceiver());
+        }
+    }
+
+    @Test
+    public void hasBytecodesTest() {
+        for (Map.Entry<Method, ResolvedJavaMethod> e : methods.entrySet()) {
+            ResolvedJavaMethod m = e.getValue();
+            assertTrue(m.hasBytecodes() == m.isConcrete() && !m.isNative());
+        }
+        for (Map.Entry<Constructor<?>, ResolvedJavaMethod> e : constructors.entrySet()) {
+            ResolvedJavaMethod m = e.getValue();
+            assertTrue(m.hasBytecodes());
+        }
+    }
+
     private Method findTestMethod(Method apiMethod) {
         String testName = apiMethod.getName() + "Test";
         for (Method m : getClass().getDeclaredMethods()) {
