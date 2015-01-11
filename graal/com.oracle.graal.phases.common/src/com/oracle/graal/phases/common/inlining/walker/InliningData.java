@@ -239,7 +239,7 @@ public class InliningData {
             }
 
             ResolvedJavaType type = ptypes[0].getType();
-            assert type.isArray() || !type.isAbstract();
+            assert type.isArray() || type.isConcrete();
             ResolvedJavaMethod concrete = type.resolveConcreteMethod(targetMethod, contextType);
             if (!checkTargetConditions(invoke, concrete)) {
                 return null;
@@ -339,19 +339,19 @@ public class InliningData {
     }
 
     private InlineInfo getAssumptionInlineInfo(Invoke invoke, ResolvedJavaMethod concrete, Assumptions.Assumption takenAssumption) {
-        assert !concrete.isAbstract();
-        if (!checkTargetConditions(invoke, concrete)) {
-            return null;
+        assert concrete.isConcrete();
+        if (checkTargetConditions(invoke, concrete)) {
+            return new AssumptionInlineInfo(invoke, concrete, takenAssumption);
         }
-        return new AssumptionInlineInfo(invoke, concrete, takenAssumption);
+        return null;
     }
 
     private InlineInfo getExactInlineInfo(Invoke invoke, ResolvedJavaMethod targetMethod) {
-        assert !targetMethod.isAbstract();
-        if (!checkTargetConditions(invoke, targetMethod)) {
-            return null;
+        assert targetMethod.isConcrete();
+        if (checkTargetConditions(invoke, targetMethod)) {
+            return new ExactInlineInfo(invoke, targetMethod);
         }
-        return new ExactInlineInfo(invoke, targetMethod);
+        return null;
     }
 
     private void doInline(CallsiteHolderExplorable callerCallsiteHolder, MethodInvocation calleeInvocation, Assumptions callerAssumptions) {

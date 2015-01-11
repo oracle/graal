@@ -113,7 +113,7 @@ public class ObjectStampMeetTest extends AbstractObjectStampTest {
         for (Class<?> clazz : new Class<?>[]{A.class, B.class, C.class, D.class, E.class, I.class, Object.class}) {
             ResolvedJavaType type = getType(clazz);
             for (Stamp test : new Stamp[]{StampFactory.declared(type), StampFactory.declaredNonNull(type), StampFactory.exact(type), StampFactory.exactNonNull(type)}) {
-                if (!type.isAbstract() || !((ObjectStamp) test).isExactType()) {
+                if (type.isConcrete() || !((ObjectStamp) test).isExactType()) {
                     Assert.assertEquals("meeting illegal and " + test, test, meet(StampFactory.illegal(Kind.Object), test));
                 }
             }

@@ -81,7 +81,7 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
             assertTrue(n instanceof Invoke, "call target can only be used from an invoke (%s)", n);
         }
         if (invokeKind().isDirect()) {
-            assertFalse(targetMethod().isAbstract(), "special calls or static calls are only allowed for concrete methods (%s)", targetMethod());
+            assertTrue(targetMethod().isConcrete(), "special calls or static calls are only allowed for concrete methods (%s)", targetMethod());
         }
         if (invokeKind() == InvokeKind.Static) {
             assertTrue(targetMethod().isStatic(), "static calls are only allowed for static methods (%s)", targetMethod());

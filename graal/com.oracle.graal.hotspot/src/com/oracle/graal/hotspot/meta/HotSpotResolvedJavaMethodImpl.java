@@ -187,7 +187,7 @@ public final class HotSpotResolvedJavaMethodImpl extends HotSpotMethod implement
 
     @Override
     public boolean canBeStaticallyBound() {
-        return (isFinal() || isPrivate() || isStatic() || holder.isFinal()) && !isAbstract();
+        return (isFinal() || isPrivate() || isStatic() || holder.isFinal()) && isConcrete();
     }
 
     @Override
@@ -547,7 +547,7 @@ public final class HotSpotResolvedJavaMethodImpl extends HotSpotMethod implement
         if (isDontInline()) {
             return false;
         }
-        return runtime().getCompilerToVM().canInlineMethod(metaspaceMethod);
+        return this.hasBytecodes() && runtime().getCompilerToVM().canInlineMethod(metaspaceMethod);
     }
 
     @Override

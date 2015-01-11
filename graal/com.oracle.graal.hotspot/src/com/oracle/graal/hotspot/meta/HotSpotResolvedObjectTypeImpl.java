@@ -383,7 +383,7 @@ public final class HotSpotResolvedObjectTypeImpl extends HotSpotResolvedJavaType
             return resolveConcreteMethod(method, callerType);
         }
         assert !callerType.isArray();
-        if (!method.isAbstract() && method.getDeclaringClass().equals(this) && method.isPublic()) {
+        if (method.isConcrete() && method.getDeclaringClass().equals(this) && method.isPublic()) {
             return method;
         }
         if (!method.getDeclaringClass().isAssignableFrom(this)) {

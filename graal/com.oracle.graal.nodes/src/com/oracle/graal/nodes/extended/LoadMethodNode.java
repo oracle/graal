@@ -54,8 +54,8 @@ public class LoadMethodNode extends FixedWithNextNode implements Lowerable, Cano
         this.receiverType = receiverType;
         this.hub = hub;
         this.method = method;
-        assert !method.isAbstract() : "Cannot load abstract method from a hub";
-        assert !method.isStatic() : "Cannot load a static method from a hub";
+        assert method.isConcrete() : "Cannot load abstract method from a hub";
+        assert method.hasReceiver() : "Cannot load a static method from a hub";
         assert method.isInVirtualMethodTable(receiverType);
     }
 

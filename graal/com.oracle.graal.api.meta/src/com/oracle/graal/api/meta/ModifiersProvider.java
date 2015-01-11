@@ -128,4 +128,13 @@ public interface ModifiersProvider {
     default boolean isAbstract() {
         return Modifier.isAbstract(getModifiers());
     }
+
+    /**
+     * Checks that the method is concrete and not abstract.
+     *
+     * @return whether the method is a concrete method
+     */
+    default boolean isConcrete() {
+        return !isAbstract();
+    }
 }

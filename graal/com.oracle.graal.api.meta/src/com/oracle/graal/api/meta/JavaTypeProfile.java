@@ -150,7 +150,7 @@ public final class JavaTypeProfile extends AbstractJavaProfile<ProfiledType, Res
 
         public ProfiledType(ResolvedJavaType type, double probability) {
             super(type, probability);
-            assert type.isArray() || !type.isAbstract() : type;
+            assert type.isArray() || type.isConcrete() : type;
         }
 
         /**

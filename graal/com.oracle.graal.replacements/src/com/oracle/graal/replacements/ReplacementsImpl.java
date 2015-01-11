@@ -236,7 +236,7 @@ public class ReplacementsImpl implements Replacements {
     @Override
     public StructuredGraph getSnippet(ResolvedJavaMethod method, ResolvedJavaMethod recursiveEntry) {
         assert method.getAnnotation(Snippet.class) != null : "Snippet must be annotated with @" + Snippet.class.getSimpleName();
-        assert !method.isAbstract() && !method.isNative() : "Snippet must not be abstract or native";
+        assert method.hasBytecodes() : "Snippet must not be abstract or native";
 
         StructuredGraph graph = UseSnippetGraphCache ? graphs.get(method) : null;
         if (graph == null) {
@@ -643,7 +643,7 @@ public class ReplacementsImpl implements Replacements {
 
         private StructuredGraph buildGraph(final ResolvedJavaMethod methodToParse, final SnippetInliningPolicy policy, int inliningDepth) {
             assert inliningDepth < MAX_GRAPH_INLINING_DEPTH : "inlining limit exceeded";
-            assert isInlinable(methodToParse) : methodToParse;
+            assert methodToParse.hasBytecodes() : methodToParse;
             final StructuredGraph graph = buildInitialGraph(methodToParse);
             try (Scope s = Debug.scope("buildGraph", graph)) {
                 Set<MethodCallTargetNode> doNotInline = null;
@@ -657,7 +657,7 @@ public class ReplacementsImpl implements Replacements {
                          * Ensure that calls to the original method inside of a substitution ends up
                          * calling it instead of the Graal substitution.
                          */
-                        if (isInlinable(substitutedMethod)) {
+                        if (substitutedMethod.hasBytecodes()) {
                             final StructuredGraph originalGraph = buildInitialGraph(substitutedMethod);
                             Mark mark = graph.getMark();
                             InliningUtil.inline(callTarget.invoke(), originalGraph, true, null);
@@ -713,10 +713,6 @@ public class ReplacementsImpl implements Replacements {
             }
             return graph;
         }
-    }
-
-    private static boolean isInlinable(final ResolvedJavaMethod method) {
-        return !method.isAbstract() && !method.isNative();
     }
 
     private static String originalName(Method substituteMethod, String methodSubstitution) {

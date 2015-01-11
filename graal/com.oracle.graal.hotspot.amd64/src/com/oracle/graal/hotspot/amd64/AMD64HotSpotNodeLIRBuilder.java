@@ -155,7 +155,7 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
         } else {
             assert invokeKind.isDirect();
             HotSpotResolvedJavaMethod resolvedMethod = (HotSpotResolvedJavaMethod) callTarget.targetMethod();
-            assert !resolvedMethod.isAbstract() : "Cannot make direct call to abstract method.";
+            assert resolvedMethod.isConcrete() : "Cannot make direct call to abstract method.";
             append(new AMD64HotspotDirectStaticCallOp(callTarget.targetMethod(), result, parameters, temps, callState, invokeKind));
         }
     }

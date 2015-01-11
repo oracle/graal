@@ -51,7 +51,7 @@ public class TypeGuardInlineInfo extends AbstractInlineInfo {
         super(invoke);
         this.concrete = concrete;
         this.type = type;
-        assert type.isArray() || !type.isAbstract() : type;
+        assert type.isArray() || type.isConcrete() : type;
     }
 
     @Override

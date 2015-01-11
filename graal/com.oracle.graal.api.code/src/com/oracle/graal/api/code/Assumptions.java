@@ -96,7 +96,7 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
         public ConcreteSubtype(ResolvedJavaType context, ResolvedJavaType subtype) {
             this.context = context;
             this.subtype = subtype;
-            assert !subtype.isAbstract() : subtype.toString() + " : " + context.toString();
+            assert subtype.isConcrete() : subtype.toString() + " : " + context.toString();
             assert !subtype.isArray() || subtype.getElementalType().isFinal() : subtype.toString() + " : " + context.toString();
         }
 
