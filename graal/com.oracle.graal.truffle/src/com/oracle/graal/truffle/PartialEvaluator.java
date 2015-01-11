@@ -270,7 +270,7 @@ public class PartialEvaluator {
                         StructuredGraph inlineGraph = replacements.getMethodSubstitution(methodCallTargetNode.targetMethod());
 
                         ResolvedJavaMethod targetMethod = methodCallTargetNode.targetMethod();
-                        if (inlineGraph == null && targetMethod.canBeInlined()) {
+                        if (inlineGraph == null && targetMethod.hasBytecodes()) {
                             inlineGraph = parseGraph(methodCallTargetNode.targetMethod(), methodCallTargetNode.arguments(), phaseContext);
                         }
 

@@ -547,7 +547,7 @@ public final class HotSpotResolvedJavaMethodImpl extends HotSpotMethod implement
         if (isDontInline()) {
             return false;
         }
-        return this.hasBytecodes() && runtime().getCompilerToVM().canInlineMethod(metaspaceMethod);
+        return runtime().getCompilerToVM().canInlineMethod(metaspaceMethod);
     }
 
     @Override
