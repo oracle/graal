@@ -1031,13 +1031,15 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                      * return a placeholder that later can be replaced with a MergeNode when we see
                      * this block again.
                      */
-                    block.firstInstruction = currentGraph.add(BlockPlaceholderNode.create(this));
-                    Target target = checkLoopExit(block.firstInstruction, block, state);
+                    FixedNode targetNode;
+                    block.firstInstruction = currentGraph.add(BeginNode.create());
+                    targetNode = block.firstInstruction;
+                    Target target = checkLoopExit(targetNode, block, state);
                     FixedNode result = target.fixed;
                     block.entryState = target.state == state ? state.copy() : target.state;
                     block.entryState.clearNonLiveLocals(block, liveness, true);
 
-                    Debug.log("createTarget %s: first visit, result: %s", block, block.firstInstruction);
+                    Debug.log("createTarget %s: first visit, result: %s", block, targetNode);
                     return result;
                 }
 
@@ -1063,13 +1065,13 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 assert currentBlock == null || currentBlock.getId() < block.getId() : "must not be backward branch";
                 assert block.firstInstruction.next() == null : "bytecodes already parsed for block";
 
-                if (block.firstInstruction instanceof BlockPlaceholderNode) {
+                if (block.firstInstruction instanceof BeginNode) {
                     /*
                      * This is the second time we see this block. Create the actual MergeNode and
                      * the End Node for the already existing edge. For simplicity, we leave the
                      * placeholder in the graph and just append the new nodes after the placeholder.
                      */
-                    BlockPlaceholderNode placeholder = (BlockPlaceholderNode) block.firstInstruction;
+                    BeginNode placeholder = (BeginNode) block.firstInstruction;
 
                     // The EndNode for the already existing edge.
                     AbstractEndNode end = currentGraph.add(EndNode.create());
