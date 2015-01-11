@@ -265,7 +265,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                         blockMap.startBlock.firstInstruction = lastInstr;
                     }
 
-                    for (BciBlock block : blockMap.blocks) {
+                    for (BciBlock block : blockMap.getBlocks()) {
                         processBlock(block);
                     }
                     processBlock(unwindBlock);

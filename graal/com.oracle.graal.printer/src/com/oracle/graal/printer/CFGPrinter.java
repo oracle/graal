@@ -74,7 +74,7 @@ class CFGPrinter extends CompilationPrinter {
     public void printCFG(String label, BciBlockMapping blockMap) {
         begin("cfg");
         out.print("name \"").print(label).println('"');
-        for (BciBlockMapping.BciBlock block : blockMap.blocks) {
+        for (BciBlockMapping.BciBlock block : blockMap.getBlocks()) {
             begin("block");
             printBlock(block);
             end("block");
