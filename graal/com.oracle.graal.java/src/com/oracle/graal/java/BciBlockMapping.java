@@ -652,6 +652,7 @@ public final class BciBlockMapping {
                     } else {
                         successor.initJsrAlternatives();
                         clone = successor.copy();
+                        blocksNotYetAssignedId++;
                         clone.setJsrScope(nextScope);
                         successor.getJsrAlternatives().put(nextScope, clone);
                     }
