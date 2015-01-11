@@ -5,6 +5,7 @@ This changelog summarizes major changes between Graal versions relevant to langu
 
 ## `tip`
 ### Graal
+* Add utilities ModifiersProvider#isConcrete, ResolvedJavaMethod#hasBytecodes, ResolvedJavaMethod#hasReceiver to Graal API.
 * ...
 
 ### Truffle
