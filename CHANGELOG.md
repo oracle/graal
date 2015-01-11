@@ -9,6 +9,7 @@ This changelog summarizes major changes between Graal versions relevant to langu
 
 ### Truffle
 * Added Node#deepCopy as primary method to copy ASTs.
+* Disable inlining across Truffle boundary by default. New option TruffleInlineAcrossTruffleBoundary default false.
 
 ### Truffle-DSL
 * All methods enclosed in a @TypeSystem must now be static. 

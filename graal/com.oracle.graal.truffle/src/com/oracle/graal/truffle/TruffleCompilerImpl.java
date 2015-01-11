@@ -40,6 +40,7 @@ import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.tiers.*;
@@ -121,6 +122,13 @@ public class TruffleCompilerImpl {
 
             if (Thread.currentThread().isInterrupted()) {
                 return;
+            }
+
+            if (!TruffleCompilerOptions.TruffleInlineAcrossTruffleBoundary.getValue()) {
+                // Do not inline across Truffle boundaries.
+                for (MethodCallTargetNode mct : graph.getNodes(MethodCallTargetNode.class)) {
+                    mct.invoke().setUseForInlining(false);
+                }
             }
 
             compilationNotify.notifyCompilationTruffleTierFinished(compilable, graph);
