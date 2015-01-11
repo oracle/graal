@@ -42,7 +42,6 @@ import com.oracle.graal.graph.Node.ValueNumberable;
 import com.oracle.graal.java.BciBlockMapping.BciBlock;
 import com.oracle.graal.java.BciBlockMapping.ExceptionDispatchBlock;
 import com.oracle.graal.java.BciBlockMapping.LocalLiveness;
-import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.calc.*;
@@ -92,37 +91,6 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
         private final GraphBuilderConfiguration graphBuilderConfig;
         private final OptimisticOptimizations optimisticOpts;
-
-        /**
-         * Node that marks the begin of block during bytecode parsing. When a block is identified
-         * the first time as a jump target, the placeholder is created and used as the successor for
-         * the jump. When the block is seen the second time, a {@link MergeNode} is created to
-         * correctly merge the now two different predecessor states.
-         */
-        @NodeInfo
-        protected static class BlockPlaceholderNode extends FixedWithNextNode {
-
-            /*
-             * Cannot be explicitly declared as a Node type since it is not an input; would cause
-             * the !NODE_CLASS.isAssignableFrom(type) guarantee in
-             * NodeClass.FieldScanner.scanField() to fail.
-             */
-            protected final Object nextPlaceholder;
-
-            public static BlockPlaceholderNode create(BytecodeParser builder) {
-                return new BlockPlaceholderNode(builder);
-            }
-
-            protected BlockPlaceholderNode(BytecodeParser builder) {
-                super(StampFactory.forVoid());
-                nextPlaceholder = builder.placeholders;
-                builder.placeholders = this;
-            }
-
-            BlockPlaceholderNode nextPlaceholder() {
-                return (BlockPlaceholderNode) nextPlaceholder;
-            }
-        }
 
         /**
          * Gets the current frame state being processed by this builder.
@@ -198,10 +166,6 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             private BciBlock[] loopHeaders;
             private LocalLiveness liveness;
-            /**
-             * Head of placeholder list.
-             */
-            public BlockPlaceholderNode placeholders;
 
             public BytecodeParser(MetaAccessProvider metaAccess, ResolvedJavaMethod method, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts,
                             HIRFrameStateBuilder frameState, BytecodeStream stream, ProfilingInfo profilingInfo, ConstantPool constantPool, int entryBCI) {
@@ -262,14 +226,6 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     Debug.dump(currentGraph, "After bytecode parsing");
 
                     connectLoopEndToBegin();
-
-                    // remove Placeholders
-                    for (BlockPlaceholderNode n = placeholders; n != null; n = n.nextPlaceholder()) {
-                        if (!n.isDeleted()) {
-                            currentGraph.removeFixed(n);
-                        }
-                    }
-                    placeholders = null;
 
                     // remove dead parameters
                     for (ParameterNode param : currentGraph.getNodes(ParameterNode.class)) {
