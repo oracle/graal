@@ -108,7 +108,6 @@ public final class BciBlockMapping {
 
         public BciBlock() {
             this.successors = new ArrayList<>(4);
-            this.predecessors = new ArrayList<>(4);
         }
 
         public BciBlock exceptionDispatchBlock() {
@@ -178,10 +177,6 @@ public final class BciBlockMapping {
 
         public BciBlock getSuccessor(int index) {
             return successors.get(index);
-        }
-
-        public BciBlock getPredecessor(int index) {
-            return predecessors.get(index);
         }
 
         /**
