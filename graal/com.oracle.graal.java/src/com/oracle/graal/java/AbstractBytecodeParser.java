@@ -920,7 +920,7 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
 
     protected abstract void iterateBytecodesForBlock(BciBlock block);
 
-    public void processBytecode(int bci, int opcode) {
+    public final void processBytecode(int bci, int opcode) {
         int cpi;
 
         // Checkstyle: stop
@@ -1148,26 +1148,28 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
         return frameState;
     }
 
-    protected final int traceLevel = Options.TraceBytecodeParserLevel.getValue();
-
     protected void traceInstruction(int bci, int opcode, boolean blockStart) {
-        if (traceLevel >= TRACELEVEL_INSTRUCTIONS && Debug.isLogEnabled()) {
-            StringBuilder sb = new StringBuilder(40);
-            sb.append(blockStart ? '+' : '|');
-            if (bci < 10) {
-                sb.append("  ");
-            } else if (bci < 100) {
-                sb.append(' ');
-            }
-            sb.append(bci).append(": ").append(Bytecodes.nameOf(opcode));
-            for (int i = bci + 1; i < stream.nextBCI(); ++i) {
-                sb.append(' ').append(stream.readUByte(i));
-            }
-            if (!currentBlock.jsrScope.isEmpty()) {
-                sb.append(' ').append(currentBlock.jsrScope);
-            }
-            Debug.log("%s", sb);
+        if (Debug.isEnabled() && Options.TraceBytecodeParserLevel.getValue() >= TRACELEVEL_INSTRUCTIONS && Debug.isLogEnabled()) {
+            traceInstructionHelper(bci, opcode, blockStart);
         }
+    }
+
+    private void traceInstructionHelper(int bci, int opcode, boolean blockStart) {
+        StringBuilder sb = new StringBuilder(40);
+        sb.append(blockStart ? '+' : '|');
+        if (bci < 10) {
+            sb.append("  ");
+        } else if (bci < 100) {
+            sb.append(' ');
+        }
+        sb.append(bci).append(": ").append(Bytecodes.nameOf(opcode));
+        for (int i = bci + 1; i < stream.nextBCI(); ++i) {
+            sb.append(' ').append(stream.readUByte(i));
+        }
+        if (!currentBlock.jsrScope.isEmpty()) {
+            sb.append(' ').append(currentBlock.jsrScope);
+        }
+        Debug.log("%s", sb);
     }
 
 }

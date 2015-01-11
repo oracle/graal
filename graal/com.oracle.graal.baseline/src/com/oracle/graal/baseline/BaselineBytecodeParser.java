@@ -100,7 +100,7 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, Baseli
                 throw Debug.handle(e);
             }
 
-            loopHeaders = blockMap.loopHeaders;
+            loopHeaders = blockMap.getLoopHeaders();
             liveness = blockMap.liveness;
             blockVisited = new BciBlockBitMap(blockMap);
             // add predecessors

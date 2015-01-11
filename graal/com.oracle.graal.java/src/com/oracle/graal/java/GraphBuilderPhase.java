@@ -230,7 +230,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
                     // compute the block map, setup exception handlers and get the entrypoint(s)
                     BciBlockMapping blockMap = BciBlockMapping.create(method, graphBuilderConfig.doLivenessAnalysis());
-                    loopHeaders = blockMap.loopHeaders;
+                    loopHeaders = blockMap.getLoopHeaders();
                     liveness = blockMap.liveness;
 
                     lastInstr = currentGraph.start();
@@ -1386,16 +1386,20 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             }
 
             private void traceState() {
-                if (traceLevel >= TRACELEVEL_STATE && Debug.isLogEnabled()) {
-                    Debug.log(String.format("|   state [nr locals = %d, stack depth = %d, method = %s]", frameState.localsSize(), frameState.stackSize(), method));
-                    for (int i = 0; i < frameState.localsSize(); ++i) {
-                        ValueNode value = frameState.localAt(i);
-                        Debug.log(String.format("|   local[%d] = %-8s : %s", i, value == null ? "bogus" : value.getKind().getJavaName(), value));
-                    }
-                    for (int i = 0; i < frameState.stackSize(); ++i) {
-                        ValueNode value = frameState.stackAt(i);
-                        Debug.log(String.format("|   stack[%d] = %-8s : %s", i, value == null ? "bogus" : value.getKind().getJavaName(), value));
-                    }
+                if (Debug.isEnabled() && Options.TraceBytecodeParserLevel.getValue() >= TRACELEVEL_STATE && Debug.isLogEnabled()) {
+                    traceStateHelper();
+                }
+            }
+
+            private void traceStateHelper() {
+                Debug.log(String.format("|   state [nr locals = %d, stack depth = %d, method = %s]", frameState.localsSize(), frameState.stackSize(), method));
+                for (int i = 0; i < frameState.localsSize(); ++i) {
+                    ValueNode value = frameState.localAt(i);
+                    Debug.log(String.format("|   local[%d] = %-8s : %s", i, value == null ? "bogus" : value.getKind().getJavaName(), value));
+                }
+                for (int i = 0; i < frameState.stackSize(); ++i) {
+                    ValueNode value = frameState.stackAt(i);
+                    Debug.log(String.format("|   stack[%d] = %-8s : %s", i, value == null ? "bogus" : value.getKind().getJavaName(), value));
                 }
             }
 

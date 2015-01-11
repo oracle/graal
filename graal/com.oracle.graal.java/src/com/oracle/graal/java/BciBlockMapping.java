@@ -272,7 +272,10 @@ public final class BciBlockMapping {
     private final BytecodeStream stream;
     private final ExceptionHandler[] exceptionHandlers;
     private BciBlock[] blockMap;
-    public BciBlock[] loopHeaders;
+    private BciBlock[] loopHeaders;
+
+    private static final int LOOP_HEADER_MAX_CAPACITY = Long.SIZE;
+    private static final int LOOP_HEADER_INITIAL_CAPACITY = 4;
 
     private final boolean doLivenessAnalysis;
     public LocalLiveness liveness;
@@ -285,12 +288,11 @@ public final class BciBlockMapping {
     private BciBlockMapping(ResolvedJavaMethod method, boolean doLivenessAnalysis) {
         this.doLivenessAnalysis = doLivenessAnalysis;
         this.method = method;
-        exceptionHandlers = method.getExceptionHandlers();
-        stream = new BytecodeStream(method.getCode());
+        this.exceptionHandlers = method.getExceptionHandlers();
+        this.stream = new BytecodeStream(method.getCode());
         int codeSize = method.getCodeSize();
         this.blockMap = new BciBlock[codeSize];
         this.blocks = new ArrayList<>();
-        this.loopHeaders = new BciBlock[codeSize < 64 ? codeSize : 64];
     }
 
     /**
@@ -744,7 +746,7 @@ public final class BciBlockMapping {
                 // checking for correctness.
                 throw new BailoutException("Loop formed by an exception handler");
             }
-            if (nextLoop >= Long.SIZE) {
+            if (nextLoop >= LOOP_HEADER_MAX_CAPACITY) {
                 // This restriction can be removed by using a fall-back to a BitSet in case we have
                 // more than 64 loops
                 // Don't compile such methods for now, until we see a concrete case that allows
@@ -755,6 +757,11 @@ public final class BciBlockMapping {
             assert block.loops == 0;
             block.loops = 1L << nextLoop;
             Debug.log("makeLoopHeader(%s) -> %x", block, block.loops);
+            if (loopHeaders == null) {
+                loopHeaders = new BciBlock[LOOP_HEADER_INITIAL_CAPACITY];
+            } else if (nextLoop >= loopHeaders.length) {
+                loopHeaders = Arrays.copyOf(loopHeaders, LOOP_HEADER_MAX_CAPACITY);
+            }
             loopHeaders[nextLoop] = block;
             block.loopId = nextLoop;
             nextLoop++;
@@ -1082,10 +1089,11 @@ public final class BciBlockMapping {
         private final long[] localsLiveKill;
 
         public SmallLocalLiveness() {
-            localsLiveIn = new long[blocks.size()];
-            localsLiveOut = new long[blocks.size()];
-            localsLiveGen = new long[blocks.size()];
-            localsLiveKill = new long[blocks.size()];
+            int blockSize = blocks.size();
+            localsLiveIn = new long[blockSize];
+            localsLiveOut = new long[blockSize];
+            localsLiveGen = new long[blockSize];
+            localsLiveKill = new long[blockSize];
         }
 
         private String debugString(long value) {
@@ -1248,5 +1256,9 @@ public final class BciBlockMapping {
         public boolean localIsLiveOut(BciBlock block, int local) {
             return block.getId() >= Integer.MAX_VALUE ? true : localsLiveOut[block.getId()].get(local);
         }
+    }
+
+    public BciBlock[] getLoopHeaders() {
+        return loopHeaders;
     }
 }
