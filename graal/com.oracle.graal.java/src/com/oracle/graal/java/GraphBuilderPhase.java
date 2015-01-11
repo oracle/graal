@@ -183,17 +183,6 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             return getName() + " " + parser.getMethod().format("%H.%n(%p):%r");
         }
 
-        public static class ExceptionInfo {
-
-            public final FixedWithNextNode exceptionEdge;
-            public final ValueNode exception;
-
-            public ExceptionInfo(FixedWithNextNode exceptionEdge, ValueNode exception) {
-                this.exceptionEdge = exceptionEdge;
-                this.exception = exception;
-            }
-        }
-
         private static class Target {
 
             FixedNode fixed;
