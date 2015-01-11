@@ -716,7 +716,8 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
 
     protected void emitExplicitExceptions(T receiver, T outOfBoundsIndex) {
         assert receiver != null;
-        if (graphBuilderConfig.omitAllExceptionEdges() || (optimisticOpts.useExceptionProbabilityForOperations() && profilingInfo.getExceptionSeen(bci()) == TriState.FALSE)) {
+        if (graphBuilderConfig.omitAllExceptionEdges() ||
+                        (optimisticOpts.useExceptionProbabilityForOperations() && profilingInfo.getExceptionSeen(bci()) == TriState.FALSE && !GraalOptions.StressExplicitExceptionCode.getValue())) {
             return;
         }
 
