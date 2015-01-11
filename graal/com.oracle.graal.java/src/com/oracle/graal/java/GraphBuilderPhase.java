@@ -282,13 +282,6 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     }
                     placeholders = null;
 
-                    // remove dead FrameStates
-                    for (Node n : currentGraph.getNodes(FrameState.class)) {
-                        if (n.usages().isEmpty() && n.predecessor() == null) {
-                            n.safeDelete();
-                        }
-                    }
-
                     // remove dead parameters
                     for (ParameterNode param : currentGraph.getNodes(ParameterNode.class)) {
                         if (param.usages().isEmpty()) {
