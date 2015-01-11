@@ -235,8 +235,7 @@ public class PartialEvaluator {
             while (true) {
 
                 for (MethodCallTargetNode methodCallTargetNode : graph.getNewNodes(mark).filter(MethodCallTargetNode.class)) {
-                    InvokeKind kind = methodCallTargetNode.invokeKind();
-                    if (kind == InvokeKind.Static || kind == InvokeKind.Special) {
+                    if (methodCallTargetNode.invokeKind().isDirect()) {
                         ValueNode receiver = methodCallTargetNode.receiver();
                         if (receiver != null && receiver.isConstant() && profileClass.isAssignableFrom(receiver.stamp().javaType(metaAccess))) {
                             queue.addFirst(methodCallTargetNode);
@@ -256,7 +255,7 @@ public class PartialEvaluator {
                 }
                 InvokeKind kind = methodCallTargetNode.invokeKind();
                 try (Indent id1 = Debug.logAndIndent("try inlining %s, kind = %s", methodCallTargetNode.targetMethod(), kind)) {
-                    if (kind == InvokeKind.Static || kind == InvokeKind.Special) {
+                    if (kind.isDirect()) {
                         if ((TraceTruffleCompilationHistogram.getValue() || TraceTruffleCompilationDetails.getValue()) && kind == InvokeKind.Special && methodCallTargetNode.receiver().isConstant()) {
                             constantReceivers.add(methodCallTargetNode.receiver().asJavaConstant());
                         }

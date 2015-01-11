@@ -158,7 +158,7 @@ public class InliningData {
             return getExactInlineInfo(invoke, targetMethod);
         }
 
-        assert callTarget.invokeKind() == CallTargetNode.InvokeKind.Virtual || callTarget.invokeKind() == CallTargetNode.InvokeKind.Interface;
+        assert callTarget.invokeKind().isIndirect();
 
         ResolvedJavaType holder = targetMethod.getDeclaringClass();
         if (!(callTarget.receiver().stamp() instanceof ObjectStamp)) {

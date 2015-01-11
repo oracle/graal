@@ -789,18 +789,18 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 if (graphBuilderConfig.eagerResolving()) {
                     returnType = returnType.resolve(targetMethod.getDeclaringClass());
                 }
-                if (invokeKind != InvokeKind.Static) {
+                if (invokeKind.hasReceiver()) {
                     emitExplicitExceptions(args[0], null);
-                    if (invokeKind != InvokeKind.Special && this.optimisticOpts.useTypeCheckHints()) {
+                    if (invokeKind.isIndirect() && this.optimisticOpts.useTypeCheckHints()) {
                         JavaTypeProfile profile = profilingInfo.getTypeProfile(bci());
                         args[0] = TypeProfileProxyNode.proxify(args[0], profile);
                     }
                 }
+
                 MethodCallTargetNode callTarget = currentGraph.add(createMethodCallTarget(invokeKind, targetMethod, args, returnType));
 
                 // be conservative if information was not recorded (could result in endless
-                // recompiles
-                // otherwise)
+                // recompiles otherwise)
                 if (graphBuilderConfig.omitAllExceptionEdges() || (optimisticOpts.useExceptionProbability() && profilingInfo.getExceptionSeen(bci()) == TriState.FALSE)) {
                     createInvoke(callTarget, resultType);
                 } else {

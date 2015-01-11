@@ -797,7 +797,7 @@ public class ConditionalEliminationPhase extends Phase {
                 if (invoke.callTarget() instanceof MethodCallTargetNode) {
                     MethodCallTargetNode callTarget = (MethodCallTargetNode) invoke.callTarget();
                     ValueNode receiver = callTarget.receiver();
-                    if (receiver != null && (callTarget.invokeKind() == InvokeKind.Interface || callTarget.invokeKind() == InvokeKind.Virtual)) {
+                    if (receiver != null && callTarget.invokeKind().isIndirect()) {
                         ResolvedJavaType type = state.getNodeType(receiver);
                         if (!Objects.equals(type, StampTool.typeOrNull(receiver))) {
                             ResolvedJavaMethod method = type.resolveConcreteMethod(callTarget.targetMethod(), invoke.getContextType());

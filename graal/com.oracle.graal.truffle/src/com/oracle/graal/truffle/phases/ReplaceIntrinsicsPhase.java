@@ -46,7 +46,7 @@ public class ReplaceIntrinsicsPhase extends Phase {
         for (MethodCallTargetNode methodCallTarget : graph.getNodes(MethodCallTargetNode.class)) {
             if (methodCallTarget.isAlive()) {
                 InvokeKind invokeKind = methodCallTarget.invokeKind();
-                if (invokeKind == InvokeKind.Static || invokeKind == InvokeKind.Special) {
+                if (invokeKind.isDirect()) {
                     Class<? extends FixedWithNextNode> macroSubstitution = replacements.getMacroSubstitution(methodCallTarget.targetMethod());
                     if (macroSubstitution != null) {
                         InliningUtil.inlineMacroNode(methodCallTarget.invoke(), methodCallTarget.targetMethod(), macroSubstitution);

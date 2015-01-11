@@ -34,7 +34,6 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.java.*;
-import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.type.*;
@@ -331,8 +330,8 @@ public class TruffleCacheImpl implements TruffleCache {
     }
 
     protected boolean shouldInline(MethodCallTargetNode methodCallTargetNode) {
-        boolean result = (methodCallTargetNode.invokeKind() == InvokeKind.Special || methodCallTargetNode.invokeKind() == InvokeKind.Static) && methodCallTargetNode.targetMethod().canBeInlined() &&
-                        !methodCallTargetNode.targetMethod().isNative() && methodCallTargetNode.targetMethod().getAnnotation(ExplodeLoop.class) == null &&
+        boolean result = methodCallTargetNode.invokeKind().isDirect() && methodCallTargetNode.targetMethod().canBeInlined() && !methodCallTargetNode.targetMethod().isNative() &&
+                        methodCallTargetNode.targetMethod().getAnnotation(ExplodeLoop.class) == null &&
                         methodCallTargetNode.targetMethod().getAnnotation(CompilerDirectives.TruffleBoundary.class) == null &&
                         !methodCallTargetNode.targetMethod().getDeclaringClass().equals(stringBuilderClass);
         return result;

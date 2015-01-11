@@ -526,7 +526,7 @@ public class InliningUtil {
     public static FixedWithNextNode inlineMacroNode(Invoke invoke, ResolvedJavaMethod concrete, Class<? extends FixedWithNextNode> macroNodeClass) throws GraalInternalError {
         StructuredGraph graph = invoke.asNode().graph();
         if (!concrete.equals(((MethodCallTargetNode) invoke.callTarget()).targetMethod())) {
-            assert ((MethodCallTargetNode) invoke.callTarget()).invokeKind() != InvokeKind.Static;
+            assert ((MethodCallTargetNode) invoke.callTarget()).invokeKind().hasReceiver();
             InliningUtil.replaceInvokeCallTarget(invoke, graph, InvokeKind.Special, concrete);
         }
 

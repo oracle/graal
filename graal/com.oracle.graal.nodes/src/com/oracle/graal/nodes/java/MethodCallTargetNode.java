@@ -80,7 +80,7 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
         for (Node n : usages()) {
             assertTrue(n instanceof Invoke, "call target can only be used from an invoke (%s)", n);
         }
-        if (invokeKind() == InvokeKind.Special || invokeKind() == InvokeKind.Static) {
+        if (invokeKind().isDirect()) {
             assertFalse(targetMethod().isAbstract(), "special calls or static calls are only allowed for concrete methods (%s)", targetMethod());
         }
         if (invokeKind() == InvokeKind.Static) {
@@ -102,7 +102,7 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
 
     @Override
     public void simplify(SimplifierTool tool) {
-        if (invokeKind() == InvokeKind.Interface || invokeKind() == InvokeKind.Virtual) {
+        if (invokeKind().isIndirect()) {
             // attempt to devirtualize the call
 
             // check for trivial cases (e.g. final methods, nonvirtual methods)

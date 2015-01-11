@@ -41,7 +41,7 @@ final class SPARCHotspotDirectStaticCallOp extends DirectCallOp {
 
     SPARCHotspotDirectStaticCallOp(ResolvedJavaMethod target, Value result, Value[] parameters, Value[] temps, LIRFrameState state, InvokeKind invokeKind) {
         super(target, result, parameters, temps, state);
-        assert invokeKind == InvokeKind.Static || invokeKind == InvokeKind.Special;
+        assert invokeKind.isDirect();
         this.invokeKind = invokeKind;
     }
 
