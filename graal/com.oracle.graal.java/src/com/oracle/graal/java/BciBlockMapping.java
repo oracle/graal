@@ -97,17 +97,20 @@ public final class BciBlockMapping {
         private boolean visited;
         private boolean active;
         public long loops;
+        public JSRData jsrData;
 
-        public HashMap<JsrScope, BciBlock> jsrAlternatives;
-        public JsrScope jsrScope = JsrScope.EMPTY_SCOPE;
-        public BciBlock jsrSuccessor;
-        public int jsrReturnBci;
-        public BciBlock retSuccessor;
-        public boolean endsWithRet = false;
+        public static class JSRData {
+            public HashMap<JsrScope, BciBlock> jsrAlternatives;
+            public JsrScope jsrScope = JsrScope.EMPTY_SCOPE;
+            public BciBlock jsrSuccessor;
+            public int jsrReturnBci;
+            public BciBlock retSuccessor;
+            public boolean endsWithRet = false;
+        }
 
         public BciBlock() {
-            this.successors = new ArrayList<>();
-            this.predecessors = new ArrayList<>();
+            this.successors = new ArrayList<>(4);
+            this.predecessors = new ArrayList<>(4);
         }
 
         public BciBlock exceptionDispatchBlock() {
@@ -250,6 +253,88 @@ public final class BciBlockMapping {
 
         public BciBlock getPostdominator() {
             return null;
+        }
+
+        private JSRData getOrCreateJSRData() {
+            if (jsrData == null) {
+                jsrData = new JSRData();
+            }
+            return jsrData;
+        }
+
+        public void setEndsWithRet() {
+            getOrCreateJSRData().endsWithRet = true;
+        }
+
+        public JsrScope getJsrScope() {
+            if (this.jsrData == null) {
+                return JsrScope.EMPTY_SCOPE;
+            } else {
+                return jsrData.jsrScope;
+            }
+        }
+
+        public boolean endsWithRet() {
+            if (this.jsrData == null) {
+                return false;
+            } else {
+                return jsrData.endsWithRet;
+            }
+        }
+
+        public void setRetSuccessor(BciBlock bciBlock) {
+            this.getOrCreateJSRData().retSuccessor = bciBlock;
+        }
+
+        public BciBlock getRetSuccessor() {
+            if (this.jsrData == null) {
+                return null;
+            } else {
+                return jsrData.retSuccessor;
+            }
+        }
+
+        public BciBlock getJsrSuccessor() {
+            if (this.jsrData == null) {
+                return null;
+            } else {
+                return jsrData.jsrSuccessor;
+            }
+        }
+
+        public int getJsrReturnBci() {
+            if (this.jsrData == null) {
+                return -1;
+            } else {
+                return jsrData.jsrReturnBci;
+            }
+        }
+
+        public HashMap<JsrScope, BciBlock> getJsrAlternatives() {
+            if (this.jsrData == null) {
+                return null;
+            } else {
+                return jsrData.jsrAlternatives;
+            }
+        }
+
+        public void initJsrAlternatives() {
+            JSRData data = this.getOrCreateJSRData();
+            if (data.jsrAlternatives == null) {
+                data.jsrAlternatives = new HashMap<>();
+            }
+        }
+
+        public void setJsrScope(JsrScope nextScope) {
+            this.getOrCreateJSRData().jsrScope = nextScope;
+        }
+
+        public void setJsrSuccessor(BciBlock clone) {
+            this.getOrCreateJSRData().jsrSuccessor = clone;
+        }
+
+        public void setJsrReturnBci(int bci) {
+            this.getOrCreateJSRData().jsrReturnBci = bci;
         }
     }
 
@@ -445,14 +530,14 @@ public final class BciBlockMapping {
                         throw new JsrNotSupportedBailout("jsr target bci 0 not allowed");
                     }
                     BciBlock b1 = makeBlock(target);
-                    current.jsrSuccessor = b1;
-                    current.jsrReturnBci = stream.nextBCI();
+                    current.setJsrSuccessor(b1);
+                    current.setJsrReturnBci(stream.nextBCI());
                     current = null;
                     addSuccessor(bci, b1);
                     break;
                 }
                 case RET: {
-                    current.endsWithRet = true;
+                    current.setEndsWithRet();
                     current = null;
                     break;
                 }
@@ -553,46 +638,44 @@ public final class BciBlockMapping {
 
     private void createJsrAlternatives(BciBlock block) {
         jsrVisited.add(block);
-        JsrScope scope = block.jsrScope;
+        JsrScope scope = block.getJsrScope();
 
-        if (block.endsWithRet) {
-            block.retSuccessor = blockMap[scope.nextReturnAddress()];
-            block.getSuccessors().add(block.retSuccessor);
-            assert block.retSuccessor != block.jsrSuccessor;
+        if (block.endsWithRet()) {
+            block.setRetSuccessor(blockMap[scope.nextReturnAddress()]);
+            block.getSuccessors().add(block.getRetSuccessor());
+            assert block.getRetSuccessor() != block.getJsrSuccessor();
         }
-        Debug.log("JSR alternatives block %s  sux %s  jsrSux %s  retSux %s  jsrScope %s", block, block.getSuccessors(), block.jsrSuccessor, block.retSuccessor, block.jsrScope);
+        Debug.log("JSR alternatives block %s  sux %s  jsrSux %s  retSux %s  jsrScope %s", block, block.getSuccessors(), block.getJsrSuccessor(), block.getRetSuccessor(), block.getJsrScope());
 
-        if (block.jsrSuccessor != null || !scope.isEmpty()) {
+        if (block.getJsrSuccessor() != null || !scope.isEmpty()) {
             for (int i = 0; i < block.getSuccessorCount(); i++) {
                 BciBlock successor = block.getSuccessor(i);
                 JsrScope nextScope = scope;
-                if (successor == block.jsrSuccessor) {
-                    nextScope = scope.push(block.jsrReturnBci);
+                if (successor == block.getJsrSuccessor()) {
+                    nextScope = scope.push(block.getJsrReturnBci());
                 }
-                if (successor == block.retSuccessor) {
+                if (successor == block.getRetSuccessor()) {
                     nextScope = scope.pop();
                 }
-                if (!successor.jsrScope.isPrefixOf(nextScope)) {
-                    throw new JsrNotSupportedBailout("unstructured control flow  (" + successor.jsrScope + " " + nextScope + ")");
+                if (!successor.getJsrScope().isPrefixOf(nextScope)) {
+                    throw new JsrNotSupportedBailout("unstructured control flow  (" + successor.getJsrScope() + " " + nextScope + ")");
                 }
                 if (!nextScope.isEmpty()) {
                     BciBlock clone;
-                    if (successor.jsrAlternatives != null && successor.jsrAlternatives.containsKey(nextScope)) {
-                        clone = successor.jsrAlternatives.get(nextScope);
+                    if (successor.getJsrAlternatives() != null && successor.getJsrAlternatives().containsKey(nextScope)) {
+                        clone = successor.getJsrAlternatives().get(nextScope);
                     } else {
-                        if (successor.jsrAlternatives == null) {
-                            successor.jsrAlternatives = new HashMap<>();
-                        }
+                        successor.initJsrAlternatives();
                         clone = successor.copy();
-                        clone.jsrScope = nextScope;
-                        successor.jsrAlternatives.put(nextScope, clone);
+                        clone.setJsrScope(nextScope);
+                        successor.getJsrAlternatives().put(nextScope, clone);
                     }
                     block.getSuccessors().set(i, clone);
-                    if (successor == block.jsrSuccessor) {
-                        block.jsrSuccessor = clone;
+                    if (successor == block.getJsrSuccessor()) {
+                        block.setJsrSuccessor(clone);
                     }
-                    if (successor == block.retSuccessor) {
-                        block.retSuccessor = clone;
+                    if (successor == block.getRetSuccessor()) {
+                        block.setRetSuccessor(clone);
                     }
                 }
             }
