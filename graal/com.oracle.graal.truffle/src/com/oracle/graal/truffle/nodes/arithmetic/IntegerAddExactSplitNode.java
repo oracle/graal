@@ -41,6 +41,6 @@ public class IntegerAddExactSplitNode extends IntegerExactArithmeticSplitNode {
 
     @Override
     protected Value generateArithmetic(NodeLIRBuilderTool gen) {
-        return gen.getLIRGeneratorTool().emitAdd(gen.operand(getX()), gen.operand(getY()));
+        return gen.getLIRGeneratorTool().emitAdd(gen.operand(getX()), gen.operand(getY()), true);
     }
 }

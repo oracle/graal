@@ -145,7 +145,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
                     if (CodeUtil.isPowerOf2(scale)) {
                         indexRegister = emitShl(longIndex, JavaConstant.forLong(CodeUtil.log2(scale)));
                     } else {
-                        indexRegister = emitMul(longIndex, JavaConstant.forLong(scale));
+                        indexRegister = emitMul(longIndex, JavaConstant.forLong(scale), false);
                     }
                 } else {
                     indexRegister = asAllocatable(index);
@@ -171,7 +171,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
                 } else {
                     Variable longBaseRegister = newVariable(LIRKind.derivedReference(Kind.Long));
                     emitMove(longBaseRegister, baseRegister);
-                    baseRegister = emitAdd(longBaseRegister, JavaConstant.forLong(finalDisp));
+                    baseRegister = emitAdd(longBaseRegister, JavaConstant.forLong(finalDisp), false);
                 }
             }
         }
@@ -253,8 +253,9 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitOverflowCheckBranch(LabelRef overflow, LabelRef noOverflow, double overflowProbability) {
-        append(new BranchOp(ConditionFlag.OverflowSet, overflow, noOverflow, Kind.Long));
+    public void emitOverflowCheckBranch(LabelRef overflow, LabelRef noOverflow, LIRKind cmpLIRKind, double overflowProbability) {
+        Kind cmpKind = (Kind) cmpLIRKind.getPlatformKind();
+        append(new BranchOp(ConditionFlag.OverflowSet, overflow, noOverflow, cmpKind));
     }
 
     @Override
@@ -584,12 +585,12 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitAdd(Value a, Value b) {
+    public Variable emitAdd(Value a, Value b, boolean setFlags) {
         switch (a.getKind().getStackKind()) {
             case Int:
-                return emitBinary(IADD, true, a, b);
+                return emitBinary(setFlags ? IADDCC : IADD, true, a, b);
             case Long:
-                return emitBinary(LADD, true, a, b);
+                return emitBinary(setFlags ? LADDCC : LADD, true, a, b);
             case Float:
                 return emitBinary(FADD, true, a, b);
             case Double:
@@ -600,12 +601,12 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitSub(Value a, Value b) {
+    public Variable emitSub(Value a, Value b, boolean setFlags) {
         switch (a.getKind().getStackKind()) {
             case Int:
-                return emitBinary(ISUB, false, a, b);
+                return emitBinary(setFlags ? ISUBCC : ISUB, false, a, b);
             case Long:
-                return emitBinary(LSUB, false, a, b);
+                return emitBinary(setFlags ? LSUBCC : LSUB, false, a, b);
             case Float:
                 return emitBinary(FSUB, false, a, b);
             case Double:
@@ -616,12 +617,18 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitMul(Value a, Value b) {
+    public Variable emitMul(Value a, Value b, boolean setFlags) {
         switch (a.getKind().getStackKind()) {
             case Int:
-                return emitBinary(IMUL, true, a, b);
+                return emitBinary(setFlags ? IMULCC : IMUL, true, a, b);
             case Long:
-                return emitBinary(LMUL, true, a, b);
+                if (setFlags) {
+                    Variable result = newVariable(LIRKind.derive(a, b));
+                    append(new SPARCLMulccOp(result, a, b, this));
+                    return result;
+                } else {
+                    return emitBinary(LMUL, true, a, b);
+                }
             case Float:
                 return emitBinary(FMUL, true, a, b);
             case Double:

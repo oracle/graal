@@ -598,8 +598,10 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
         return getDebugInfoBuilder().build(state, exceptionEdge);
     }
 
-    public void emitOverflowCheckBranch(BeginNode overflowSuccessor, BeginNode next, double probability) {
-        gen.emitOverflowCheckBranch(getLIRBlock(overflowSuccessor), getLIRBlock(next), probability);
+    @Override
+    public void emitOverflowCheckBranch(BeginNode overflowSuccessor, BeginNode next, Stamp stamp, double probability) {
+        LIRKind cmpKind = getLIRGeneratorTool().getLIRKind(stamp);
+        gen.emitOverflowCheckBranch(getLIRBlock(overflowSuccessor), getLIRBlock(next), cmpKind, probability);
     }
 
     @Override

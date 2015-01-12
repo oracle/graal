@@ -102,6 +102,6 @@ public class AddNode extends BinaryArithmeticNode<Add> implements NarrowableArit
             op1 = op2;
             op2 = tmp;
         }
-        builder.setResult(this, gen.emitAdd(op1, op2));
+        builder.setResult(this, gen.emitAdd(op1, op2, false));
     }
 }

@@ -110,6 +110,6 @@ public class MulNode extends BinaryArithmeticNode<Mul> implements NarrowableArit
             op1 = op2;
             op2 = tmp;
         }
-        builder.setResult(this, gen.emitMul(op1, op2));
+        builder.setResult(this, gen.emitMul(op1, op2, false));
     }
 }

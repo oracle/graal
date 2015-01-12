@@ -85,10 +85,10 @@ public class SPARCHotSpotNodeLIRBuilder extends SPARCNodeLIRBuilder implements H
             assert !gen.getCodeCache().needsDataPatch(asConstant(offset));
             Variable longAddress = gen.newVariable(LIRKind.value(Kind.Long));
             gen.emitMove(longAddress, address);
-            address = getGen().emitAdd(longAddress, asConstant(offset));
+            address = getGen().emitAdd(longAddress, asConstant(offset), false);
         } else {
             if (isLegal(offset)) {
-                address = getGen().emitAdd(address, offset);
+                address = getGen().emitAdd(address, offset, false);
             }
         }
 

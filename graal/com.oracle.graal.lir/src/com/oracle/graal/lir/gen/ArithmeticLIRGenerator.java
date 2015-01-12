@@ -29,6 +29,12 @@ import com.oracle.graal.lir.*;
 
 /**
  * This interface can be used to generate LIR for arithmetic operations.
+ *
+ * The setFlags flag in emitAdd, emitSub and emitMul indicates, that the instruction must set the
+ * flags register to be used for a later branch. (On AMD64, the condition codes are set in every
+ * arithmetic instruction, but other architectures optionally set the flags register) If setFlags is
+ * set, the instruction must set the flags register; if false, the instruction may or may not set
+ * the flags register.
  */
 public interface ArithmeticLIRGenerator {
 
@@ -36,11 +42,11 @@ public interface ArithmeticLIRGenerator {
 
     Value emitNegate(Value input);
 
-    Value emitAdd(Value a, Value b);
+    Value emitAdd(Value a, Value b, boolean setFlags);
 
-    Value emitSub(Value a, Value b);
+    Value emitSub(Value a, Value b, boolean setFlags);
 
-    Value emitMul(Value a, Value b);
+    Value emitMul(Value a, Value b, boolean setFlags);
 
     Value emitMulHigh(Value a, Value b);
 

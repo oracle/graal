@@ -47,12 +47,20 @@ public class ExactMathTest extends GraalCompilerTest {
     public void testAdd() {
         test("add", 1, 2);
         test("add", Integer.MAX_VALUE, 2);
+        test("add", Integer.MIN_VALUE, -1);
+        test("add", -1, 2);
     }
 
     @Test
     public void testMul() {
         test("mul", 1, 2);
+        test("mul", -1, 2);
+        test("mul", Integer.MIN_VALUE, 1);
+        test("mul", Integer.MIN_VALUE, 2);
+        test("mul", Integer.MIN_VALUE, Integer.MIN_VALUE);
+        test("mul", Integer.MAX_VALUE, 1);
         test("mul", Integer.MAX_VALUE, 2);
+        test("mul", Integer.MAX_VALUE, Integer.MAX_VALUE);
     }
 
     @Test
@@ -90,6 +98,10 @@ public class ExactMathTest extends GraalCompilerTest {
         test("longMul", (long) Integer.MAX_VALUE, 2L);
         test("longMul", (long) Integer.MIN_VALUE, 2L);
         test("longMul", Long.MAX_VALUE, 2L);
+        test("longMul", Long.MAX_VALUE, 1L);
+        test("longMul", Long.MAX_VALUE, Long.MAX_VALUE);
+        test("longMul", Long.MIN_VALUE, Long.MIN_VALUE);
+        test("longMul", Long.MIN_VALUE, Long.MAX_VALUE);
     }
 
     @Test

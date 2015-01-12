@@ -27,6 +27,7 @@ import java.util.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.cfg.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodes.*;
@@ -66,7 +67,7 @@ public interface NodeLIRBuilderTool extends NodeMappableLIRBuilder {
 
     LIRGeneratorTool getLIRGeneratorTool();
 
-    void emitOverflowCheckBranch(BeginNode overflowSuccessor, BeginNode next, double probability);
+    void emitOverflowCheckBranch(BeginNode overflowSuccessor, BeginNode next, Stamp compareStamp, double probability);
 
     Value[] visitInvokeArguments(CallingConvention cc, Collection<ValueNode> arguments);
 

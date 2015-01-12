@@ -142,7 +142,7 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
                 if (baseRegister.equals(Value.ILLEGAL)) {
                     baseRegister = asAllocatable(indexRegister);
                 } else {
-                    baseRegister = emitAdd(baseRegister, indexRegister);
+                    baseRegister = emitAdd(baseRegister, indexRegister, false);
                 }
             }
         }
@@ -201,7 +201,7 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitOverflowCheckBranch(LabelRef overflow, LabelRef noOverflow, double overflowProbability) {
+    public void emitOverflowCheckBranch(LabelRef overflow, LabelRef noOverflow, LIRKind cmpLIRKind, double overflowProbability) {
         throw GraalInternalError.unimplemented();
     }
 
@@ -321,7 +321,7 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitAdd(Value a, Value b) {
+    public Variable emitAdd(Value a, Value b, boolean setFlags) {
         Variable result = newVariable(LIRKind.derive(a, b));
         switch (a.getKind()) {
             case Int:
@@ -346,7 +346,7 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitSub(Value a, Value b) {
+    public Variable emitSub(Value a, Value b, boolean setFlags) {
         Variable result = newVariable(LIRKind.derive(a, b));
         switch (a.getKind()) {
             case Int:
@@ -368,7 +368,7 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitMul(Value a, Value b) {
+    public Variable emitMul(Value a, Value b, boolean setFlags) {
         Variable result = newVariable(LIRKind.derive(a, b));
         switch (a.getKind()) {
             case Int:

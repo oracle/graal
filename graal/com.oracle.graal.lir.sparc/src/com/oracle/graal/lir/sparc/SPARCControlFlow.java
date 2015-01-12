@@ -413,7 +413,7 @@ public class SPARCControlFlow {
                 if (actualCondition != null) {
                     emitBranch(masm, actualTarget, actualCondition, cc, false);
                 } else if (actualConditionFlag != null) {
-                    emitBranch(masm, actualTarget, actualConditionFlag);
+                    emitBranch(masm, actualTarget, actualConditionFlag, cc);
                 } else {
                     GraalInternalError.shouldNotReachHere();
                 }
@@ -475,8 +475,8 @@ public class SPARCControlFlow {
         }
     }
 
-    private static void emitBranch(SPARCMacroAssembler masm, Label target, ConditionFlag actualCondition) {
-        new Fmt00b(false, actualCondition, Op2s.Br, target).emit(masm);
+    private static void emitBranch(SPARCMacroAssembler masm, Label target, ConditionFlag actualCondition, CC cc) {
+        new Fmt00c(0, actualCondition, Op2s.Bp, cc, 0, target).emit(masm);
     }
 
     private static void emitBranch(SPARCMacroAssembler masm, Label target, Condition actualCondition, CC cc, boolean predictTaken) {
