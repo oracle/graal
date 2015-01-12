@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -838,6 +838,19 @@ public class AMD64Assembler extends Assembler {
         } else {
             emitByte(0x69);
             emitByte(0xC0 | encode);
+            emitInt(value);
+        }
+    }
+
+    public final void imull(Register dst, AMD64Address src, int value) {
+        prefix(src, dst);
+        if (isByte(value)) {
+            emitByte(0x6B);
+            emitOperandHelper(dst, src);
+            emitByte(value & 0xFF);
+        } else {
+            emitByte(0x69);
+            emitOperandHelper(dst, src);
             emitInt(value);
         }
     }
@@ -2496,6 +2509,19 @@ public class AMD64Assembler extends Assembler {
         } else {
             emitByte(0x69);
             emitByte(0xC0 | encode);
+            emitInt(value);
+        }
+    }
+
+    public final void imulq(Register dst, AMD64Address src, int value) {
+        prefixq(src, dst);
+        if (isByte(value)) {
+            emitByte(0x6B);
+            emitOperandHelper(dst, src);
+            emitByte(value & 0xFF);
+        } else {
+            emitByte(0x69);
+            emitOperandHelper(dst, src);
             emitInt(value);
         }
     }
