@@ -34,7 +34,6 @@ public class NeverInlineMacroNode extends MacroStateSplitNode implements com.ora
         super(invoke);
     }
 
-
     @Override
     public void lower(LoweringTool tool) {
         InvokeNode invoke = createInvoke();

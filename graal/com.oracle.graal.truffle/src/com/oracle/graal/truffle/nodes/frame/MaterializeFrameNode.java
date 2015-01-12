@@ -40,7 +40,6 @@ public class MaterializeFrameNode extends FixedWithNextNode implements IterableN
         this.frame = frame;
     }
 
-
     public ValueNode getFrame() {
         return frame;
     }

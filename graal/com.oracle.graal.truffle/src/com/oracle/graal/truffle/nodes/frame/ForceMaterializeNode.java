@@ -37,7 +37,6 @@ public class ForceMaterializeNode extends FixedWithNextNode implements LIRLowera
         this.object = object;
     }
 
-
     public void generate(NodeLIRBuilderTool generator) {
         // nothing to do
     }

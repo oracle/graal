@@ -57,11 +57,9 @@ public class NewFrameNode extends FixedWithNextNode implements IterableNodeType,
         this.arguments = arguments;
     }
 
-
     public NewFrameNode(ResolvedJavaType frameType, ValueNode descriptor, ValueNode arguments) {
         this(StampFactory.exactNonNull(frameType), descriptor, arguments);
     }
-
 
     public ValueNode getDescriptor() {
         return descriptor;
@@ -105,7 +103,6 @@ public class NewFrameNode extends FixedWithNextNode implements IterableNodeType,
         public VirtualOnlyInstanceNode(ResolvedJavaType type, ResolvedJavaField[] fields) {
             super(type, fields, true);
         }
-
 
         @Override
         public ValueNode getMaterializedRepresentation(FixedNode fixed, ValueNode[] entries, LockState locks) {
