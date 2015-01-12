@@ -24,6 +24,8 @@ package com.oracle.graal.nodes.extended;
 
 import static com.oracle.graal.compiler.common.UnsafeAccess.*;
 
+import java.nio.*;
+
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.nodeinfo.*;
@@ -94,18 +96,21 @@ public class UnsafeStoreNode extends UnsafeAccessNode implements StateSplit, Low
                 if (entryIndex != -1) {
                     Kind entryKind = state.getVirtualObject().entryKind(entryIndex);
                     ValueNode entry = state.getEntry(entryIndex);
-                    if (entry.getKind() == value.getKind() || entryKind == accessKind()) {
-                        tool.setVirtualEntry(state, entryIndex, value(), true);
-                        tool.delete();
-                    } else {
-                        if ((accessKind() == Kind.Long || accessKind() == Kind.Double) && entryKind == Kind.Int) {
-                            int nextIndex = state.getVirtualObject().entryIndexForOffset(off + 4);
-                            if (nextIndex != -1) {
-                                Kind nextKind = state.getVirtualObject().entryKind(nextIndex);
-                                if (nextKind == Kind.Int) {
-                                    tool.setVirtualEntry(state, entryIndex, value(), true);
-                                    tool.setVirtualEntry(state, nextIndex, ConstantNode.forConstant(JavaConstant.forIllegal(), tool.getMetaAccessProvider(), graph()), true);
-                                    tool.delete();
+                    boolean isLoadSafe = ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN || accessKind() == entry.getKind();
+                    if (isLoadSafe) {
+                        if (entry.getKind() == value.getKind() || entryKind == accessKind()) {
+                            tool.setVirtualEntry(state, entryIndex, value(), true);
+                            tool.delete();
+                        } else {
+                            if ((accessKind() == Kind.Long || accessKind() == Kind.Double) && entryKind == Kind.Int) {
+                                int nextIndex = state.getVirtualObject().entryIndexForOffset(off + 4);
+                                if (nextIndex != -1) {
+                                    Kind nextKind = state.getVirtualObject().entryKind(nextIndex);
+                                    if (nextKind == Kind.Int) {
+                                        tool.setVirtualEntry(state, entryIndex, value(), true);
+                                        tool.setVirtualEntry(state, nextIndex, ConstantNode.forConstant(JavaConstant.forIllegal(), tool.getMetaAccessProvider(), graph()), true);
+                                        tool.delete();
+                                    }
                                 }
                             }
                         }

@@ -24,6 +24,8 @@ package com.oracle.graal.nodes.extended;
 
 import static com.oracle.graal.compiler.common.UnsafeAccess.*;
 
+import java.nio.*;
+
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.nodeinfo.*;
@@ -73,9 +75,11 @@ public class UnsafeLoadNode extends UnsafeAccessNode implements Lowerable, Virtu
             if (offsetValue.isConstant()) {
                 long off = offsetValue.asJavaConstant().asLong();
                 int entryIndex = state.getVirtualObject().entryIndexForOffset(off);
+
                 if (entryIndex != -1) {
                     ValueNode entry = state.getEntry(entryIndex);
-                    if (entry.getKind() == getKind() || state.getVirtualObject().entryKind(entryIndex) == accessKind()) {
+                    boolean isLoadSafe = ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN || accessKind() == entry.getKind();
+                    if (isLoadSafe && (entry.getKind() == getKind() || state.getVirtualObject().entryKind(entryIndex) == accessKind())) {
                         tool.replaceWith(entry);
                     }
                 }
