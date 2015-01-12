@@ -171,7 +171,7 @@ public class PTXLIRGenerator extends LIRGenerator {
                     if (CodeUtil.isPowerOf2(scale)) {
                         indexRegister = emitShl(convertedIndex, JavaConstant.forInt(CodeUtil.log2(scale)));
                     } else {
-                        indexRegister = emitMul(convertedIndex, JavaConstant.forInt(scale));
+                        indexRegister = emitMul(convertedIndex, JavaConstant.forInt(scale), false);
                     }
                 } else {
                     indexRegister = convertedIndex;
@@ -181,7 +181,7 @@ public class PTXLIRGenerator extends LIRGenerator {
                 } else {
                     Variable longBaseRegister = newVariable(LIRKind.derivedReference(Kind.Long));
                     emitMove(longBaseRegister, baseRegister);
-                    baseRegister = emitAdd(longBaseRegister, indexRegister);
+                    baseRegister = emitAdd(longBaseRegister, indexRegister, false);
                 }
             }
         }
@@ -255,7 +255,7 @@ public class PTXLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitOverflowCheckBranch(LabelRef overflow, LabelRef noOverflow, double overflowProbability) {
+    public void emitOverflowCheckBranch(LabelRef overflow, LabelRef noOverflow, LIRKind cmpLIRKind, double overflowProbability) {
         throw GraalInternalError.unimplemented("PTXLIRGenerator.emitOverflowCheckBranch()");
     }
 
@@ -391,7 +391,7 @@ public class PTXLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitAdd(Value a, Value b) {
+    public Variable emitAdd(Value a, Value b, boolean setFlags) {
         Variable result = newVariable(LIRKind.derive(a, b));
         switch (a.getKind()) {
             case Int:
@@ -413,7 +413,7 @@ public class PTXLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitSub(Value a, Value b) {
+    public Variable emitSub(Value a, Value b, boolean setFlags) {
         Variable result = newVariable(LIRKind.derive(a, b));
         switch (a.getKind()) {
             case Int:
@@ -435,7 +435,7 @@ public class PTXLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitMul(Value a, Value b) {
+    public Variable emitMul(Value a, Value b, boolean setFlags) {
         Variable result = newVariable(LIRKind.derive(a, b));
         switch (a.getKind()) {
             case Int:

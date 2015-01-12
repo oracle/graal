@@ -26,6 +26,7 @@ import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.sparc.*;
@@ -34,11 +35,15 @@ import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.gen.*;
+import com.oracle.graal.sparc.SPARC.CPUFeature;
+import com.oracle.graal.sparc.*;
 
 public enum SPARCArithmetic {
     // @formatter:off
     IADD, ISUB, IMUL, IUMUL, IDIV, IREM, IUDIV, IUREM, IAND, IOR, IXOR, ISHL, ISHR, IUSHR,
     LADD, LSUB, LMUL, LUMUL, LDIV, LREM, LUDIV, LUREM, LAND, LOR, LXOR, LSHL, LSHR, LUSHR,
+    IADDCC, ISUBCC, IMULCC,
+    LADDCC, LSUBCC, LMULCC,
     FADD, FSUB, FMUL, FDIV, FREM, FAND, FOR, FXOR,
     DADD, DSUB, DMUL, DDIV, DREM, DAND, DOR, DXOR,
     INEG, LNEG, FNEG, DNEG, INOT, LNOT,
@@ -175,6 +180,49 @@ public enum SPARCArithmetic {
         }
     }
 
+    /**
+     * Calculates the product and condition code for long multiplication of long values.
+     */
+    public static class SPARCLMulccOp extends SPARCLIRInstruction {
+        @Def({REG}) protected Value result;
+        @Alive({REG}) protected Value x;
+        @Alive({REG}) protected Value y;
+        @Temp({REG}) protected Value scratch1;
+        @Temp({REG}) protected Value scratch2;
+
+        public SPARCLMulccOp(Value result, Value x, Value y, LIRGeneratorTool gen) {
+            this.result = result;
+            this.x = x;
+            this.y = y;
+            this.scratch1 = gen.newVariable(LIRKind.derive(x, y));
+            this.scratch2 = gen.newVariable(LIRKind.derive(x, y));
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
+            Label noOverflow = new Label();
+            new Mulx(asLongReg(x), asLongReg(y), asLongReg(result)).emit(masm);
+
+            // Calculate the upper 64 bit signed := (umulxhi product - (x{63}&y + y{63}&x))
+            new Umulxhi(asLongReg(x), asLongReg(y), asLongReg(scratch1)).emit(masm);
+            new Srax(asLongReg(x), 63, asLongReg(scratch2)).emit(masm);
+            new And(asLongReg(scratch2), asLongReg(y), asLongReg(scratch2)).emit(masm);
+            new Sub(asLongReg(scratch1), asLongReg(scratch2), asLongReg(scratch1)).emit(masm);
+
+            new Srax(asLongReg(y), 63, asLongReg(scratch2)).emit(masm);
+            new And(asLongReg(scratch2), asLongReg(x), asLongReg(scratch2)).emit(masm);
+            new Sub(asLongReg(scratch1), asLongReg(scratch2), asLongReg(scratch1)).emit(masm);
+
+            // Now construct the lower half and compare
+            new Srax(asLongReg(result), 63, asLongReg(scratch2)).emit(masm);
+            new Cmp(asLongReg(scratch1), asLongReg(scratch2)).emit(masm);
+            new Bpe(CC.Xcc, false, true, noOverflow).emit(masm);
+            new Nop().emit(masm);
+            new Wrccr(SPARC.g0, 1 << (CCR_XCC_SHIFT + CCR_V_SHIFT)).emit(masm);
+            masm.bind(noOverflow);
+        }
+    }
+
     private static void emitRegConstant(CompilationResultBuilder crb, SPARCMacroAssembler masm, SPARCArithmetic opcode, Value dst, Value src1, JavaConstant src2, LIRFrameState info,
                     SPARCDelayedControlTransfer delaySlotLir) {
         assert isSimm13(crb.asIntConst(src2)) : src2;
@@ -185,12 +233,20 @@ public enum SPARCArithmetic {
             case IADD:
                 new Add(asIntReg(src1), constant, asIntReg(dst)).emit(masm);
                 break;
+            case IADDCC:
+                new Addcc(asIntReg(src1), constant, asIntReg(dst)).emit(masm);
+                break;
             case ISUB:
                 new Sub(asIntReg(src1), constant, asIntReg(dst)).emit(masm);
+                break;
+            case ISUBCC:
+                new Subcc(asIntReg(src1), constant, asIntReg(dst)).emit(masm);
                 break;
             case IMUL:
                 new Mulx(asIntReg(src1), constant, asIntReg(dst)).emit(masm);
                 break;
+            case IMULCC:
+                throw GraalInternalError.unimplemented();
             case IDIV:
                 new Sdivx(asIntReg(src1), constant, asIntReg(dst)).emit(masm);
                 break;
@@ -218,8 +274,14 @@ public enum SPARCArithmetic {
             case LADD:
                 new Add(asLongReg(src1), constant, asLongReg(dst)).emit(masm);
                 break;
+            case LADDCC:
+                new Addcc(asLongReg(src1), constant, asLongReg(dst)).emit(masm);
+                break;
             case LSUB:
                 new Sub(asLongReg(src1), constant, asLongReg(dst)).emit(masm);
+                break;
+            case LSUBCC:
+                new Subcc(asLongReg(src1), constant, asLongReg(dst)).emit(masm);
                 break;
             case LMUL:
                 new Mulx(asLongReg(src1), constant, asLongReg(dst)).emit(masm);
@@ -276,13 +338,41 @@ public enum SPARCArithmetic {
                 delaySlotLir.emitControlTransfer(crb, masm);
                 new Add(asIntReg(src1), asIntReg(src2), asIntReg(dst)).emit(masm);
                 break;
+            case IADDCC:
+                delaySlotLir.emitControlTransfer(crb, masm);
+                new Addcc(asIntReg(src1), asIntReg(src2), asIntReg(dst)).emit(masm);
+                break;
             case ISUB:
                 delaySlotLir.emitControlTransfer(crb, masm);
                 new Sub(asIntReg(src1), asIntReg(src2), asIntReg(dst)).emit(masm);
                 break;
+            case ISUBCC:
+                delaySlotLir.emitControlTransfer(crb, masm);
+                new Subcc(asIntReg(src1), asIntReg(src2), asIntReg(dst)).emit(masm);
+                break;
             case IMUL:
                 delaySlotLir.emitControlTransfer(crb, masm);
                 new Mulx(asIntReg(src1), asIntReg(src2), asIntReg(dst)).emit(masm);
+                break;
+            case IMULCC:
+                try (SPARCScratchRegister tmpScratch = SPARCScratchRegister.get()) {
+                    Register tmp = tmpScratch.getRegister();
+                    new Mulx(asIntReg(src1), asIntReg(src2), asIntReg(dst)).emit(masm);
+                    Label noOverflow = new Label();
+                    new Sra(asIntReg(dst), 0, tmp).emit(masm);
+                    new Xorcc(SPARC.g0, SPARC.g0, SPARC.g0).emit(masm);
+                    if (masm.hasFeature(CPUFeature.CBCOND)) {
+                        new CBcondx(ConditionFlag.Equal, tmp, asIntReg(dst), noOverflow).emit(masm);
+                        // Is necessary, otherwise we will have a penalty of 5 cycles in S3
+                        new Nop().emit(masm);
+                    } else {
+                        new Cmp(tmp, asIntReg(dst)).emit(masm);
+                        new Bpe(CC.Xcc, noOverflow).emit(masm);
+                        new Nop().emit(masm);
+                    }
+                    new Wrccr(SPARC.g0, 1 << (SPARCAssembler.CCR_ICC_SHIFT + SPARCAssembler.CCR_V_SHIFT)).emit(masm);
+                    masm.bind(noOverflow);
+                }
                 break;
             case IDIV:
                 new Signx(asIntReg(src1), asIntReg(src1)).emit(masm);
@@ -328,14 +418,24 @@ public enum SPARCArithmetic {
                 delaySlotLir.emitControlTransfer(crb, masm);
                 new Add(asLongReg(src1), asLongReg(src2), asLongReg(dst)).emit(masm);
                 break;
+            case LADDCC:
+                delaySlotLir.emitControlTransfer(crb, masm);
+                new Addcc(asLongReg(src1), asLongReg(src2), asLongReg(dst)).emit(masm);
+                break;
             case LSUB:
                 delaySlotLir.emitControlTransfer(crb, masm);
                 new Sub(asLongReg(src1), asLongReg(src2), asLongReg(dst)).emit(masm);
+                break;
+            case LSUBCC:
+                delaySlotLir.emitControlTransfer(crb, masm);
+                new Subcc(asLongReg(src1), asLongReg(src2), asLongReg(dst)).emit(masm);
                 break;
             case LMUL:
                 delaySlotLir.emitControlTransfer(crb, masm);
                 new Mulx(asLongReg(src1), asLongReg(src2), asLongReg(dst)).emit(masm);
                 break;
+            case LMULCC:
+                throw GraalInternalError.unimplemented();
             case LDIV:
                 delaySlotLir.emitControlTransfer(crb, masm);
                 exceptionOffset = masm.position();
@@ -659,8 +759,11 @@ public enum SPARCArithmetic {
 
         switch (opcode) {
             case IADD:
+            case IADDCC:
             case ISUB:
+            case ISUBCC:
             case IMUL:
+            case IMULCC:
             case IDIV:
             case IREM:
             case IAND:
@@ -681,8 +784,11 @@ public enum SPARCArithmetic {
                 assert valid : "rk: " + rk + " xsk: " + xsk + " ysk: " + ysk;
                 break;
             case LADD:
+            case LADDCC:
             case LSUB:
+            case LSUBCC:
             case LMUL:
+            case LMULCC:
             case LDIV:
             case LREM:
             case LAND:

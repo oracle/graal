@@ -155,7 +155,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
                 if (CodeUtil.isPowerOf2(scale)) {
                     indexRegister = emitShl(longIndex, JavaConstant.forLong(CodeUtil.log2(scale)));
                 } else {
-                    indexRegister = emitMul(longIndex, JavaConstant.forLong(scale));
+                    indexRegister = emitMul(longIndex, JavaConstant.forLong(scale), false);
                 }
                 scaleEnum = Scale.Times1;
 
@@ -179,7 +179,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
                 indexRegister = displacementRegister;
                 scaleEnum = Scale.Times1;
             } else {
-                baseRegister = emitAdd(baseRegister, displacementRegister);
+                baseRegister = emitAdd(baseRegister, displacementRegister, false);
             }
         }
 
@@ -231,7 +231,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitOverflowCheckBranch(LabelRef overflow, LabelRef noOverflow, double overflowProbability) {
+    public void emitOverflowCheckBranch(LabelRef overflow, LabelRef noOverflow, LIRKind cmpLIRKind, double overflowProbability) {
         append(new BranchOp(ConditionFlag.Overflow, overflow, noOverflow, overflowProbability));
     }
 
@@ -498,7 +498,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitAdd(Value a, Value b) {
+    public Variable emitAdd(Value a, Value b, boolean setFlags) {
         switch (a.getKind().getStackKind()) {
             case Int:
                 return emitBinary(IADD, true, a, b);
@@ -514,7 +514,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitSub(Value a, Value b) {
+    public Variable emitSub(Value a, Value b, boolean setFlags) {
         switch (a.getKind().getStackKind()) {
             case Int:
                 return emitBinary(ISUB, false, a, b);
@@ -530,7 +530,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitMul(Value a, Value b) {
+    public Variable emitMul(Value a, Value b, boolean setFlags) {
         switch (a.getKind().getStackKind()) {
             case Int:
                 return emitBinary(IMUL, true, a, b);

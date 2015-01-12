@@ -53,6 +53,13 @@ public abstract class SPARCAssembler extends Assembler {
         void emit(SPARCAssembler masm);
     }
 
+    public static final int CCR_ICC_SHIFT = 0;
+    public static final int CCR_XCC_SHIFT = 4;
+    public static final int CCR_C_SHIFT = 0;
+    public static final int CCR_V_SHIFT = 1;
+    public static final int CCR_Z_SHIFT = 2;
+    public static final int CCR_N_SHIFT = 3;
+
     // @formatter:off
     /**
      * Instruction format for Fmt00 instructions. This abstraction is needed as it
@@ -1468,19 +1475,6 @@ public abstract class SPARCAssembler extends Assembler {
         }
     }
 
-    public static class Fmt4d {
-
-        public Fmt4d(SPARCAssembler masm, int op, int op3, int cond, int cc, int simm11, int rd) {
-            assert op == 2;
-            assert op3 >= 0 && op3 < 0x40;
-            assert cc >= 0 && cc < 0x8;
-            assert cond >= 0 && cond < 0x10;
-            assert rd >= 0 && rd < 0x20;
-
-            masm.emitInt(op << 30 | rd << 25 | op3 << 19 | ImmedTrue | ((cc << 15) & 0x00040000) | cond << 14 | ((cc << 11) & 0x3) | simm11 & 0x00004000);
-        }
-    }
-
     public static class Fmt5a {
 
         public Fmt5a(SPARCAssembler masm, int op, int op3, int op5, int rs1, int rs2, int rs3, int rd) {
@@ -1588,10 +1582,11 @@ public abstract class SPARCAssembler extends Assembler {
         Orncc(0x16, "orncc"),
         Xnorcc(0x17, "xnorcc"),
         Addccc(0x18, "addccc"),
-        Mulxcc(0x19, "mulxcc"),
+        // dos not exist
+        // Mulxcc(0x19, "mulxcc"),
         Umulcc(0x1A, "umulcc"),
         Smulcc(0x1B, "smulcc"),
-        Subccc(0x1C0, "subccc"),
+        Subccc(0x1C, "subccc"),
         Udivcc(0x1E, "udivcc"),
         Sdivcc(0x1F, "sdivcc"),
 
@@ -1655,8 +1650,10 @@ public abstract class SPARCAssembler extends Assembler {
         Stf   (0b10_0100, "stf"),
         Stfsr (0b10_0101, "stfsr"),
         Staf  (0x10_0110, "staf"),
+        Rd    (0b10_1000, "rd"),
         Stdf  (0b10_0111, "stdf"),
 
+        Wr    (0b11_0000, "wr"),
         Fcmp  (0b11_0101, "fcmp"),
 
         Ldxa  (0b01_1011, "ldxa"),
@@ -1814,6 +1811,7 @@ public abstract class SPARCAssembler extends Assembler {
         Movxtod(0x118, "movxtod"),
         Movwtos(0b1_0001_1001, "movwtos"),
         UMulxhi(0b0_0001_0110, "umulxhi"),
+        Lzcnt  (0b0_0001_0111, "lzcnt"),
         // end VIS3
 
         // start CAMMELLIA
@@ -2392,6 +2390,14 @@ public abstract class SPARCAssembler extends Assembler {
         public Alignaddrl(Register src1, Register src2, Register dst) {
             /* VIS1 only */
             super(Ops.ArithOp, Op3s.Impdep1, Opfs.AlignAddressLittle, src1, src2, dst);
+        }
+    }
+
+    public static class Lzcnt extends Fmt3p {
+
+        public Lzcnt(Register src1, Register dst) {
+            /* VIS3 only */
+            super(Ops.ArithOp, Op3s.Impdep1, Opfs.Lzcnt, g0, src1, dst);
         }
     }
 
@@ -3990,6 +3996,17 @@ public abstract class SPARCAssembler extends Assembler {
 
         public Mulx(Register src1, Register src2, Register dst) {
             super(Op3s.Mulx, src1, src2, dst);
+        }
+    }
+
+    public static class SMulcc extends Fmt10 {
+
+        public SMulcc(Register src1, int simm13, Register dst) {
+            super(Op3s.Smulcc, src1, simm13, dst);
+        }
+
+        public SMulcc(Register src1, Register src2, Register dst) {
+            super(Op3s.Smulcc, src1, src2, dst);
         }
     }
 

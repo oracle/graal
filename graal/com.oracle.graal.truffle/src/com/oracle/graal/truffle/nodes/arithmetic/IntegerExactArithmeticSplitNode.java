@@ -69,7 +69,7 @@ public abstract class IntegerExactArithmeticSplitNode extends ControlSplitNode i
     @Override
     public void generate(NodeLIRBuilderTool generator) {
         generator.setResult(this, generateArithmetic(generator));
-        generator.emitOverflowCheckBranch(getOverflowSuccessor(), getNext(), probability(getOverflowSuccessor()));
+        generator.emitOverflowCheckBranch(getOverflowSuccessor(), getNext(), stamp, probability(getOverflowSuccessor()));
     }
 
     protected abstract Value generateArithmetic(NodeLIRBuilderTool generator);

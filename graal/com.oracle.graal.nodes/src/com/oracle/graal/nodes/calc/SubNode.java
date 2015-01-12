@@ -133,6 +133,6 @@ public class SubNode extends BinaryArithmeticNode<Sub> implements NarrowableArit
 
     @Override
     public void generate(NodeMappableLIRBuilder builder, ArithmeticLIRGenerator gen) {
-        builder.setResult(this, gen.emitSub(builder.operand(getX()), builder.operand(getY())));
+        builder.setResult(this, gen.emitSub(builder.operand(getX()), builder.operand(getY()), false));
     }
 }
