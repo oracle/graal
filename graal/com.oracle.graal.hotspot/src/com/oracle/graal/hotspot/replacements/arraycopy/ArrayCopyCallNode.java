@@ -58,9 +58,14 @@ public class ArrayCopyCallNode extends AbstractMemoryCheckpoint implements Lower
 
     protected final HotSpotGraalRuntimeProvider runtime;
 
-    public static ArrayCopyCallNode create(@InjectedNodeParameter HotSpotGraalRuntimeProvider runtime, ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length,
-                    Kind elementKind, boolean aligned, boolean disjoint, boolean uninitialized) {
-        return new ArrayCopyCallNode(src, srcPos, dest, destPos, length, elementKind, aligned, disjoint, uninitialized, runtime);
+    public ArrayCopyCallNode(@InjectedNodeParameter HotSpotGraalRuntimeProvider runtime, ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, Kind elementKind,
+                    boolean aligned, boolean disjoint, boolean uninitialized) {
+        this(src, srcPos, dest, destPos, length, elementKind, aligned, disjoint, uninitialized, runtime);
+    }
+
+    public ArrayCopyCallNode(@InjectedNodeParameter HotSpotGraalRuntimeProvider runtime, ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, Kind elementKind,
+                    boolean disjoint) {
+        this(src, srcPos, dest, destPos, length, elementKind, false, disjoint, false, runtime);
     }
 
     protected ArrayCopyCallNode(ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, Kind elementKind, boolean aligned, boolean disjoint, boolean uninitialized,
@@ -77,11 +82,6 @@ public class ArrayCopyCallNode extends AbstractMemoryCheckpoint implements Lower
         this.disjoint = disjoint;
         this.uninitialized = uninitialized;
         this.runtime = runtime;
-    }
-
-    public static ArrayCopyCallNode create(@InjectedNodeParameter HotSpotGraalRuntimeProvider runtime, ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length,
-                    Kind elementKind, boolean disjoint) {
-        return new ArrayCopyCallNode(src, srcPos, dest, destPos, length, elementKind, false, disjoint, false, runtime);
     }
 
     public ValueNode getSource() {
@@ -109,10 +109,10 @@ public class ArrayCopyCallNode extends AbstractMemoryCheckpoint implements Lower
     }
 
     private ValueNode computeBase(ValueNode base, ValueNode pos) {
-        FixedWithNextNode basePtr = graph().add(GetObjectAddressNode.create(base));
+        FixedWithNextNode basePtr = graph().add(new GetObjectAddressNode(base));
         graph().addBeforeFixed(this, basePtr);
-        ValueNode loc = IndexedLocationNode.create(getLocationIdentity(), runtime.getArrayBaseOffset(elementKind), pos, graph(), runtime.getArrayIndexScale(elementKind));
-        return graph().unique(ComputeAddressNode.create(basePtr, loc, StampFactory.forKind(Kind.Long)));
+        ValueNode loc = graph().unique(new IndexedLocationNode(getLocationIdentity(), runtime.getArrayBaseOffset(elementKind), pos, runtime.getArrayIndexScale(elementKind)));
+        return graph().unique(new ComputeAddressNode(basePtr, loc, StampFactory.forKind(Kind.Long)));
     }
 
     @Override
@@ -127,7 +127,7 @@ public class ArrayCopyCallNode extends AbstractMemoryCheckpoint implements Lower
             if (len.stamp().getStackKind() != Kind.Long) {
                 len = IntegerConvertNode.convert(len, StampFactory.forKind(Kind.Long), graph());
             }
-            ForeignCallNode call = graph.add(ForeignCallNode.create(Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getForeignCalls(), desc, srcAddr, destAddr, len));
+            ForeignCallNode call = graph.add(new ForeignCallNode(Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getForeignCalls(), desc, srcAddr, destAddr, len));
             call.setStateAfter(stateAfter());
             graph.replaceFixedWithFixed(this, call);
 

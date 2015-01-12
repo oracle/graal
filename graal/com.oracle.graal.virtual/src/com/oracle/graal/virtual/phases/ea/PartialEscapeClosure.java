@@ -188,9 +188,9 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                             }
                         }
                     }
-                    v = VirtualObjectState.create(obj.virtual, fieldState);
+                    v = new VirtualObjectState(obj.virtual, fieldState);
                 } else {
-                    v = MaterializedObjectState.create(obj.virtual, obj.getMaterializedValue());
+                    v = new MaterializedObjectState(obj.virtual, obj.getMaterializedValue());
                 }
                 effects.addVirtualMapping(frameState, v);
             }
@@ -237,7 +237,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                         ValueNode value = obj.getEntry(i);
                         if (!(value instanceof VirtualObjectNode || value.isConstant())) {
                             if (exitNode.loopBegin().isPhiAtMerge(value) || initialObj == null || !initialObj.isVirtual() || initialObj.getEntry(i) != value) {
-                                ProxyNode proxy = ValueProxyNode.create(value, exitNode);
+                                ProxyNode proxy = new ValueProxyNode(value, exitNode);
                                 obj.setEntry(i, proxy);
                                 effects.addFloatingNode(proxy, "virtualProxy");
                             }
@@ -247,7 +247,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                     if (initialObj == null || initialObj.isVirtual()) {
                         ProxyNode proxy = proxies.get(obj.virtual);
                         if (proxy == null) {
-                            proxy = ValueProxyNode.create(obj.getMaterializedValue(), exitNode);
+                            proxy = new ValueProxyNode(obj.getMaterializedValue(), exitNode);
                             effects.addFloatingNode(proxy, "proxy");
                         } else {
                             effects.replaceFirstInput(proxy, proxy.value(), obj.getMaterializedValue());
@@ -282,7 +282,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
         protected <T> PhiNode getCachedPhi(T virtual, Stamp stamp) {
             ValuePhiNode result = materializedPhis.get(virtual);
             if (result == null) {
-                result = ValuePhiNode.create(stamp, merge);
+                result = new ValuePhiNode(stamp, merge);
                 materializedPhis.put(virtual, result);
             }
             return result;
@@ -457,11 +457,11 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                     for (int i = 1; i < objStates.length; i++) {
                         ValueNode[] fields = objStates[i].getEntries();
                         if (phis[valueIndex] == null && values[valueIndex] != fields[valueIndex]) {
-                            phis[valueIndex] = ValuePhiNode.create(values[valueIndex].stamp().unrestricted(), merge);
+                            phis[valueIndex] = new ValuePhiNode(values[valueIndex].stamp().unrestricted(), merge);
                         }
                     }
                     if (phis[valueIndex] != null && !phis[valueIndex].stamp().isCompatible(values[valueIndex].stamp())) {
-                        phis[valueIndex] = ValuePhiNode.create(values[valueIndex].stamp().unrestricted(), merge);
+                        phis[valueIndex] = new ValuePhiNode(values[valueIndex].stamp().unrestricted(), merge);
                     }
                     if (twoSlotKinds != null && twoSlotKinds[valueIndex] != null) {
                         // skip an entry after a long/double value that occupies two int slots

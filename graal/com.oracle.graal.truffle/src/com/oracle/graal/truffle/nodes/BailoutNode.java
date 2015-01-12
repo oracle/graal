@@ -33,11 +33,7 @@ import com.oracle.graal.replacements.nodes.*;
 @NodeInfo
 public class BailoutNode extends MacroNode implements Canonicalizable {
 
-    public static BailoutNode create(Invoke invoke) {
-        return new BailoutNode(invoke);
-    }
-
-    protected BailoutNode(Invoke invoke) {
+    public BailoutNode(Invoke invoke) {
         super(invoke);
         assert arguments.size() == 1;
     }

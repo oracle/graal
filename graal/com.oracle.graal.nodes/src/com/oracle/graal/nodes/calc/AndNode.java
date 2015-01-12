@@ -36,11 +36,7 @@ import com.oracle.graal.nodes.util.*;
 @NodeInfo(shortName = "&")
 public class AndNode extends BinaryArithmeticNode<And> implements NarrowableArithmeticNode {
 
-    public static AndNode create(ValueNode x, ValueNode y) {
-        return new AndNode(x, y);
-    }
-
-    protected AndNode(ValueNode x, ValueNode y) {
+    public AndNode(ValueNode x, ValueNode y) {
         super(ArithmeticOpTable::getAnd, x, y);
     }
 
@@ -55,7 +51,7 @@ public class AndNode extends BinaryArithmeticNode<And> implements NarrowableArit
             return forX;
         }
         if (forX.isConstant() && !forY.isConstant()) {
-            return AndNode.create(forY, forX);
+            return new AndNode(forY, forX);
         }
         if (forY.isConstant()) {
             Constant c = forY.asConstant();
@@ -72,7 +68,7 @@ public class AndNode extends BinaryArithmeticNode<And> implements NarrowableArit
                 if (forX instanceof SignExtendNode) {
                     SignExtendNode ext = (SignExtendNode) forX;
                     if (rawY == ((1L << ext.getInputBits()) - 1)) {
-                        return ZeroExtendNode.create(ext.getValue(), ext.getResultBits());
+                        return new ZeroExtendNode(ext.getValue(), ext.getResultBits());
                     }
                 }
                 IntegerStamp xStamp = (IntegerStamp) forX.stamp();

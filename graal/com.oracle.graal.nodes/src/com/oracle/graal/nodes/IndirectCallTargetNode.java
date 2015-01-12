@@ -34,12 +34,7 @@ public class IndirectCallTargetNode extends LoweredCallTargetNode {
 
     @Input protected ValueNode computedAddress;
 
-    public static IndirectCallTargetNode create(ValueNode computedAddress, List<ValueNode> arguments, Stamp returnStamp, JavaType[] signature, ResolvedJavaMethod target,
-                    CallingConvention.Type callType, InvokeKind invokeKind) {
-        return new IndirectCallTargetNode(computedAddress, arguments, returnStamp, signature, target, callType, invokeKind);
-    }
-
-    protected IndirectCallTargetNode(ValueNode computedAddress, List<ValueNode> arguments, Stamp returnStamp, JavaType[] signature, ResolvedJavaMethod target, CallingConvention.Type callType,
+    public IndirectCallTargetNode(ValueNode computedAddress, List<ValueNode> arguments, Stamp returnStamp, JavaType[] signature, ResolvedJavaMethod target, CallingConvention.Type callType,
                     InvokeKind invokeKind) {
         super(arguments, returnStamp, signature, target, callType, invokeKind);
         this.computedAddress = computedAddress;

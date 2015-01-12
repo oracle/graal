@@ -37,11 +37,7 @@ import com.oracle.graal.truffle.*;
 @NodeInfo
 public class AssumptionNode extends MacroNode implements com.oracle.graal.graph.IterableNodeType, Simplifiable {
 
-    public static AssumptionNode create(Invoke invoke) {
-        return new AssumptionNode(invoke);
-    }
-
-    protected AssumptionNode(Invoke invoke) {
+    public AssumptionNode(Invoke invoke) {
         super(invoke);
         assert super.arguments.size() == 1;
     }
@@ -84,7 +80,7 @@ public class AssumptionNode extends MacroNode implements com.oracle.graal.graph.
                     graph.replaceFixedWithFloating(this, ConstantNode.forBoolean(false, graph()));
                 } else {
                     tool.deleteBranch(this.next());
-                    this.replaceAndDelete(graph.add(DeoptimizeNode.create(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.None)));
+                    this.replaceAndDelete(graph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.None)));
                 }
             }
         }

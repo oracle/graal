@@ -39,17 +39,12 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public class ZeroExtendNode extends IntegerConvertNode<ZeroExtend, Narrow> {
 
-    public static ZeroExtendNode create(ValueNode input, int resultBits) {
-        int inputBits = PrimitiveStamp.getBits(input.stamp());
-        assert 0 < inputBits && inputBits <= resultBits;
-        return create(input, inputBits, resultBits);
+    public ZeroExtendNode(ValueNode input, int resultBits) {
+        this(input, PrimitiveStamp.getBits(input.stamp()), resultBits);
+        assert 0 < PrimitiveStamp.getBits(input.stamp()) && PrimitiveStamp.getBits(input.stamp()) <= resultBits;
     }
 
-    public static ZeroExtendNode create(ValueNode input, int inputBits, int resultBits) {
-        return new ZeroExtendNode(input, inputBits, resultBits);
-    }
-
-    protected ZeroExtendNode(ValueNode input, int inputBits, int resultBits) {
+    public ZeroExtendNode(ValueNode input, int inputBits, int resultBits) {
         super(ArithmeticOpTable::getZeroExtend, ArithmeticOpTable::getNarrow, inputBits, resultBits, input);
     }
 
@@ -82,7 +77,7 @@ public class ZeroExtendNode extends IntegerConvertNode<ZeroExtend, Narrow> {
             // xxxx -(zero-extend)-> 0000 xxxx -(zero-extend)-> 00000000 0000xxxx
             // ==> xxxx -(zero-extend)-> 00000000 0000xxxx
             ZeroExtendNode other = (ZeroExtendNode) forValue;
-            return ZeroExtendNode.create(other.getValue(), other.getInputBits(), getResultBits());
+            return new ZeroExtendNode(other.getValue(), other.getInputBits(), getResultBits());
         }
         if (forValue instanceof NarrowNode) {
             NarrowNode narrow = (NarrowNode) forValue;

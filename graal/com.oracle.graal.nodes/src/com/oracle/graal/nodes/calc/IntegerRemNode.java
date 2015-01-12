@@ -32,11 +32,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(shortName = "%")
 public class IntegerRemNode extends FixedBinaryNode implements Lowerable, LIRLowerable {
 
-    public static IntegerRemNode create(ValueNode x, ValueNode y) {
-        return new IntegerRemNode(x, y);
-    }
-
-    protected IntegerRemNode(ValueNode x, ValueNode y) {
+    public IntegerRemNode(ValueNode x, ValueNode y) {
         super(IntegerStamp.OPS.getRem().foldStamp(x.stamp(), y.stamp()), x, y);
     }
 
@@ -59,7 +55,7 @@ public class IntegerRemNode extends FixedBinaryNode implements Lowerable, LIRLow
             if (c == 1 || c == -1) {
                 return ConstantNode.forIntegerStamp(stamp(), 0);
             } else if (c > 0 && CodeUtil.isPowerOf2(c) && forX.stamp() instanceof IntegerStamp && ((IntegerStamp) forX.stamp()).isPositive()) {
-                return AndNode.create(forX, ConstantNode.forIntegerStamp(stamp(), c - 1));
+                return new AndNode(forX, ConstantNode.forIntegerStamp(stamp(), c - 1));
             }
         }
         return this;

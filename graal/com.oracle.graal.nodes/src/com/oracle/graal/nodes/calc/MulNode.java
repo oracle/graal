@@ -36,11 +36,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(shortName = "*")
 public class MulNode extends BinaryArithmeticNode<Mul> implements NarrowableArithmeticNode {
 
-    public static MulNode create(ValueNode x, ValueNode y) {
-        return new MulNode(x, y);
-    }
-
-    protected MulNode(ValueNode x, ValueNode y) {
+    public MulNode(ValueNode x, ValueNode y) {
         super(ArithmeticOpTable::getMul, x, y);
     }
 
@@ -52,7 +48,7 @@ public class MulNode extends BinaryArithmeticNode<Mul> implements NarrowableArit
         }
 
         if (forX.isConstant() && !forY.isConstant()) {
-            return MulNode.create(forY, forX);
+            return new MulNode(forY, forX);
         }
         if (forY.isConstant()) {
             BinaryOp<Mul> op = getOp(forX, forY);
@@ -74,18 +70,18 @@ public class MulNode extends BinaryArithmeticNode<Mul> implements NarrowableArit
                     long bit2 = i - bit1;
                     bit2 = bit2 & -bit2;    // Extract 2nd bit
                     if (CodeUtil.isPowerOf2(i)) { //
-                        mulResult = LeftShiftNode.create(forX, ConstantNode.forInt(CodeUtil.log2(i)));
+                        mulResult = new LeftShiftNode(forX, ConstantNode.forInt(CodeUtil.log2(i)));
                     } else if (bit2 + bit1 == i) { // We can work with two shifts and add
-                        ValueNode shift1 = LeftShiftNode.create(forX, ConstantNode.forInt(CodeUtil.log2(bit1)));
-                        ValueNode shift2 = LeftShiftNode.create(forX, ConstantNode.forInt(CodeUtil.log2(bit2)));
-                        mulResult = AddNode.create(shift1, shift2);
+                        ValueNode shift1 = new LeftShiftNode(forX, ConstantNode.forInt(CodeUtil.log2(bit1)));
+                        ValueNode shift2 = new LeftShiftNode(forX, ConstantNode.forInt(CodeUtil.log2(bit2)));
+                        mulResult = new AddNode(shift1, shift2);
                     } else if (CodeUtil.isPowerOf2(i + 1)) { // shift and subtract
-                        ValueNode shift1 = LeftShiftNode.create(forX, ConstantNode.forInt(CodeUtil.log2(i + 1)));
-                        mulResult = SubNode.create(shift1, forX);
+                        ValueNode shift1 = new LeftShiftNode(forX, ConstantNode.forInt(CodeUtil.log2(i + 1)));
+                        mulResult = new SubNode(shift1, forX);
                     }
                     if (mulResult != null) {
                         if (signFlip) {
-                            return NegateNode.create(mulResult);
+                            return new NegateNode(mulResult);
                         } else {
                             return mulResult;
                         }

@@ -37,11 +37,7 @@ import com.oracle.graal.nodes.virtual.*;
 @NodeInfo
 public class BasicObjectCloneNode extends MacroStateSplitNode implements VirtualizableAllocation, ArrayLengthProvider {
 
-    public static BasicObjectCloneNode create(Invoke invoke) {
-        return new BasicObjectCloneNode(invoke);
-    }
-
-    protected BasicObjectCloneNode(Invoke invoke) {
+    public BasicObjectCloneNode(Invoke invoke) {
         super(invoke);
     }
 
@@ -117,7 +113,7 @@ public class BasicObjectCloneNode extends MacroStateSplitNode implements Virtual
                 ValueNode[] state = new ValueNode[fields.length];
                 final LoadFieldNode[] loads = new LoadFieldNode[fields.length];
                 for (int i = 0; i < fields.length; i++) {
-                    state[i] = loads[i] = LoadFieldNode.create(obj, fields[i]);
+                    state[i] = loads[i] = new LoadFieldNode(obj, fields[i]);
                     tool.addNode(loads[i]);
                 }
                 tool.createVirtualObject(newVirtual, state, Collections.<MonitorIdNode> emptyList());
@@ -127,7 +123,7 @@ public class BasicObjectCloneNode extends MacroStateSplitNode implements Virtual
     }
 
     protected VirtualInstanceNode createVirtualInstanceNode(ResolvedJavaType type, boolean hasIdentity) {
-        return VirtualInstanceNode.create(type, hasIdentity);
+        return new VirtualInstanceNode(type, hasIdentity);
     }
 
     @Override

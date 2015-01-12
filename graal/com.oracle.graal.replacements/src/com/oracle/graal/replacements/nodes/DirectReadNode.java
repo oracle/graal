@@ -41,11 +41,7 @@ public class DirectReadNode extends FixedWithNextNode implements LIRLowerable {
     @Input protected ValueNode address;
     protected final Kind readKind;
 
-    public static DirectReadNode create(ValueNode address, Kind readKind) {
-        return new DirectReadNode(address, readKind);
-    }
-
-    protected DirectReadNode(ValueNode address, Kind readKind) {
+    public DirectReadNode(ValueNode address, Kind readKind) {
         super(StampFactory.forKind(readKind.getStackKind()));
         this.address = address;
         this.readKind = readKind;

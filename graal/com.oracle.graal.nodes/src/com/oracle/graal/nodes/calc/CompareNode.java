@@ -79,7 +79,7 @@ public abstract class CompareNode extends BinaryOpLogicNode {
                     return conditionalNode.condition();
                 } else {
                     assert falseResult == true;
-                    return LogicNegationNode.create(conditionalNode.condition());
+                    return new LogicNegationNode(conditionalNode.condition());
 
                 }
             }
@@ -159,20 +159,20 @@ public abstract class CompareNode extends BinaryOpLogicNode {
         CompareNode comparison;
         if (condition == Condition.EQ) {
             if (x.stamp() instanceof AbstractObjectStamp) {
-                comparison = ObjectEqualsNode.create(x, y);
+                comparison = new ObjectEqualsNode(x, y);
             } else if (x.stamp() instanceof AbstractPointerStamp) {
-                comparison = PointerEqualsNode.create(x, y);
+                comparison = new PointerEqualsNode(x, y);
             } else {
                 assert x.getKind().isNumericInteger();
-                comparison = IntegerEqualsNode.create(x, y);
+                comparison = new IntegerEqualsNode(x, y);
             }
         } else if (condition == Condition.LT) {
             assert x.getKind().isNumericInteger();
-            comparison = IntegerLessThanNode.create(x, y);
+            comparison = new IntegerLessThanNode(x, y);
         } else {
             assert condition == Condition.BT;
             assert x.getKind().isNumericInteger();
-            comparison = IntegerBelowNode.create(x, y);
+            comparison = new IntegerBelowNode(x, y);
         }
 
         return comparison;

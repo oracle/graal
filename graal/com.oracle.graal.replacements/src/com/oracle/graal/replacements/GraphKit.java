@@ -131,7 +131,7 @@ public class GraphKit {
         JavaType returnType = signature.getReturnType(null);
         assert checkArgs(method, args);
         MethodCallTargetNode callTarget = graph.add(createMethodCallTarget(invokeKind, method, args, returnType, bci));
-        InvokeNode invoke = append(InvokeNode.create(callTarget, bci));
+        InvokeNode invoke = append(new InvokeNode(callTarget, bci));
 
         if (frameStateBuilder != null) {
             if (invoke.getKind() != Kind.Void) {
@@ -146,7 +146,7 @@ public class GraphKit {
     }
 
     protected MethodCallTargetNode createMethodCallTarget(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, JavaType returnType, @SuppressWarnings("unused") int bci) {
-        return MethodCallTargetNode.create(invokeKind, targetMethod, args, returnType);
+        return new MethodCallTargetNode(invokeKind, targetMethod, args, returnType);
     }
 
     /**
@@ -246,9 +246,9 @@ public class GraphKit {
      * @param trueProbability The estimated probability the the condition is true
      */
     public void startIf(LogicNode condition, double trueProbability) {
-        BeginNode thenSuccessor = graph.add(BeginNode.create());
-        BeginNode elseSuccessor = graph.add(BeginNode.create());
-        append(IfNode.create(condition, thenSuccessor, elseSuccessor, trueProbability));
+        BeginNode thenSuccessor = graph.add(new BeginNode());
+        BeginNode elseSuccessor = graph.add(new BeginNode());
+        append(new IfNode(condition, thenSuccessor, elseSuccessor, trueProbability));
         lastFixedNode = null;
 
         IfStructure s = new IfStructure();
@@ -298,12 +298,12 @@ public class GraphKit {
 
         if (thenPart != null && elsePart != null) {
             /* Both parts are alive, we need a real merge. */
-            EndNode thenEnd = graph.add(EndNode.create());
+            EndNode thenEnd = graph.add(new EndNode());
             graph.addAfterFixed(thenPart, thenEnd);
-            EndNode elseEnd = graph.add(EndNode.create());
+            EndNode elseEnd = graph.add(new EndNode());
             graph.addAfterFixed(elsePart, elseEnd);
 
-            MergeNode merge = graph.add(MergeNode.create());
+            MergeNode merge = graph.add(new MergeNode());
             merge.addForwardEnd(thenEnd);
             merge.addForwardEnd(elseEnd);
 

@@ -87,15 +87,15 @@ public abstract class AbstractFixedGuardNode extends DeoptimizingFixedWithNextNo
     public DeoptimizeNode lowerToIf() {
         FixedNode currentNext = next();
         setNext(null);
-        DeoptimizeNode deopt = graph().add(DeoptimizeNode.create(action, reason));
+        DeoptimizeNode deopt = graph().add(new DeoptimizeNode(action, reason));
         deopt.setStateBefore(stateBefore());
         IfNode ifNode;
         BeginNode noDeoptSuccessor;
         if (negated) {
-            ifNode = graph().add(IfNode.create(condition, deopt, currentNext, 0));
+            ifNode = graph().add(new IfNode(condition, deopt, currentNext, 0));
             noDeoptSuccessor = ifNode.falseSuccessor();
         } else {
-            ifNode = graph().add(IfNode.create(condition, currentNext, deopt, 1));
+            ifNode = graph().add(new IfNode(condition, currentNext, deopt, 1));
             noDeoptSuccessor = ifNode.trueSuccessor();
         }
         ((FixedWithNextNode) predecessor()).setNext(ifNode);

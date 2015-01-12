@@ -39,11 +39,7 @@ public class SaveAllRegistersNode extends FixedWithNextNode implements LIRLowera
 
     protected SaveRegistersOp saveRegistersOp;
 
-    public static SaveAllRegistersNode create() {
-        return new SaveAllRegistersNode();
-    }
-
-    protected SaveAllRegistersNode() {
+    public SaveAllRegistersNode() {
         super(StampFactory.forKind(Kind.Long));
     }
 

@@ -38,11 +38,7 @@ public class DeoptimizeCallerNode extends ControlSinkNode implements LIRLowerabl
     protected final DeoptimizationAction action;
     protected final DeoptimizationReason reason;
 
-    public static DeoptimizeCallerNode create(DeoptimizationAction action, DeoptimizationReason reason) {
-        return new DeoptimizeCallerNode(action, reason);
-    }
-
-    protected DeoptimizeCallerNode(DeoptimizationAction action, DeoptimizationReason reason) {
+    public DeoptimizeCallerNode(DeoptimizationAction action, DeoptimizationReason reason) {
         super(StampFactory.forVoid());
         this.action = action;
         this.reason = reason;

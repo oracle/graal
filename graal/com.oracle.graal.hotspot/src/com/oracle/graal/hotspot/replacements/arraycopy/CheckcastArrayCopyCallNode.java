@@ -52,13 +52,8 @@ public class CheckcastArrayCopyCallNode extends AbstractMemoryCheckpoint impleme
 
     protected final HotSpotGraalRuntimeProvider runtime;
 
-    public static CheckcastArrayCopyCallNode create(@InjectedNodeParameter HotSpotGraalRuntimeProvider runtime, ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length,
+    protected CheckcastArrayCopyCallNode(@InjectedNodeParameter HotSpotGraalRuntimeProvider runtime, ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length,
                     ValueNode superCheckOffset, ValueNode destElemKlass, boolean uninit) {
-        return new CheckcastArrayCopyCallNode(src, srcPos, dest, destPos, length, superCheckOffset, destElemKlass, uninit, runtime);
-    }
-
-    protected CheckcastArrayCopyCallNode(ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, ValueNode superCheckOffset, ValueNode destElemKlass, boolean uninit,
-                    HotSpotGraalRuntimeProvider runtime) {
         super(StampFactory.forKind(Kind.Int));
         this.src = src;
         this.srcPos = srcPos;
@@ -96,10 +91,10 @@ public class CheckcastArrayCopyCallNode extends AbstractMemoryCheckpoint impleme
     }
 
     private ValueNode computeBase(ValueNode base, ValueNode pos) {
-        FixedWithNextNode basePtr = graph().add(GetObjectAddressNode.create(base));
+        FixedWithNextNode basePtr = graph().add(new GetObjectAddressNode(base));
         graph().addBeforeFixed(this, basePtr);
-        ValueNode loc = IndexedLocationNode.create(getLocationIdentity(), runtime.getArrayBaseOffset(Kind.Object), pos, graph(), runtime.getArrayIndexScale(Kind.Object));
-        return graph().unique(ComputeAddressNode.create(basePtr, loc, StampFactory.forKind(Kind.Long)));
+        ValueNode loc = graph().unique(new IndexedLocationNode(getLocationIdentity(), runtime.getArrayBaseOffset(Kind.Object), pos, runtime.getArrayIndexScale(Kind.Object)));
+        return graph().unique(new ComputeAddressNode(basePtr, loc, StampFactory.forKind(Kind.Long)));
     }
 
     @Override
@@ -113,8 +108,8 @@ public class CheckcastArrayCopyCallNode extends AbstractMemoryCheckpoint impleme
             if (len.stamp().getStackKind() != Kind.Long) {
                 len = IntegerConvertNode.convert(len, StampFactory.forKind(Kind.Long), graph());
             }
-            ForeignCallNode call = graph.add(ForeignCallNode.create(Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getForeignCalls(), desc, srcAddr, destAddr, len,
-                            superCheckOffset, destElemKlass));
+            ForeignCallNode call = graph.add(new ForeignCallNode(Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getForeignCalls(), desc, srcAddr, destAddr, len, superCheckOffset,
+                            destElemKlass));
             call.setStateAfter(stateAfter());
             graph.replaceFixedWithFixed(this, call);
         }

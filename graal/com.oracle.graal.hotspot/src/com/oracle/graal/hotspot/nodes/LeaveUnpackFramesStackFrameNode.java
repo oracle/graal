@@ -38,11 +38,7 @@ public class LeaveUnpackFramesStackFrameNode extends FixedWithNextNode implement
 
     @Input SaveAllRegistersNode registerSaver;
 
-    public static LeaveUnpackFramesStackFrameNode create(ValueNode registerSaver) {
-        return new LeaveUnpackFramesStackFrameNode(registerSaver);
-    }
-
-    protected LeaveUnpackFramesStackFrameNode(ValueNode registerSaver) {
+    public LeaveUnpackFramesStackFrameNode(ValueNode registerSaver) {
         super(StampFactory.forVoid());
         this.registerSaver = (SaveAllRegistersNode) registerSaver;
     }

@@ -37,11 +37,7 @@ public class PatchReturnAddressNode extends FixedWithNextNode implements LIRLowe
 
     @Input ValueNode address;
 
-    public static PatchReturnAddressNode create(ValueNode address) {
-        return new PatchReturnAddressNode(address);
-    }
-
-    protected PatchReturnAddressNode(ValueNode address) {
+    public PatchReturnAddressNode(ValueNode address) {
         super(StampFactory.forVoid());
         this.address = address;
     }

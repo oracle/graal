@@ -53,11 +53,7 @@ public class BranchProbabilityNode extends FloatingNode implements Simplifiable,
     @Input ValueNode probability;
     @Input ValueNode condition;
 
-    public static BranchProbabilityNode create(ValueNode probability, ValueNode condition) {
-        return new BranchProbabilityNode(probability, condition);
-    }
-
-    protected BranchProbabilityNode(ValueNode probability, ValueNode condition) {
+    public BranchProbabilityNode(ValueNode probability, ValueNode condition) {
         super(condition.stamp());
         this.probability = probability;
         this.condition = condition;

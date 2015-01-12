@@ -31,11 +31,7 @@ public class LoopExitNode extends BeginStateSplitNode implements IterableNodeTyp
 
     @Input(InputType.Association) LoopBeginNode loopBegin;
 
-    public static LoopExitNode create(LoopBeginNode loop) {
-        return new LoopExitNode(loop);
-    }
-
-    protected LoopExitNode(LoopBeginNode loop) {
+    public LoopExitNode(LoopBeginNode loop) {
         assert loop != null;
         loopBegin = loop;
     }

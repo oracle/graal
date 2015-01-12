@@ -35,11 +35,7 @@ public class LoopEndNode extends AbstractEndNode {
     protected boolean canSafepoint;
     protected int endIndex;
 
-    public static LoopEndNode create(LoopBeginNode begin) {
-        return new LoopEndNode(begin);
-    }
-
-    protected LoopEndNode(LoopBeginNode begin) {
+    public LoopEndNode(LoopBeginNode begin) {
         int idx = begin.nextEndIndex();
         assert idx >= 0;
         this.endIndex = idx;

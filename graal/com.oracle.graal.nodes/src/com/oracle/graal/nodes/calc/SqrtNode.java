@@ -35,11 +35,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public class SqrtNode extends UnaryArithmeticNode<Sqrt> implements ArithmeticLIRLowerable, NarrowableArithmeticNode {
 
-    public static SqrtNode create(ValueNode x) {
-        return new SqrtNode(x);
-    }
-
-    protected SqrtNode(ValueNode x) {
+    public SqrtNode(ValueNode x) {
         super(ArithmeticOpTable::getSqrt, x);
     }
 

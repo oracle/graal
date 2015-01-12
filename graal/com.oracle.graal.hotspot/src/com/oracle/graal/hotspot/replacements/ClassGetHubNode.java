@@ -45,15 +45,11 @@ import com.oracle.graal.nodes.spi.*;
 public class ClassGetHubNode extends FloatingGuardedNode implements Lowerable, Canonicalizable, ConvertNode {
     @Input protected ValueNode clazz;
 
-    public static ClassGetHubNode create(ValueNode clazz) {
-        return new ClassGetHubNode(clazz, null);
+    public ClassGetHubNode(ValueNode clazz) {
+        this(clazz, null);
     }
 
-    public static ClassGetHubNode create(ValueNode clazz, ValueNode guard) {
-        return new ClassGetHubNode(clazz, guard);
-    }
-
-    protected ClassGetHubNode(ValueNode clazz, ValueNode guard) {
+    public ClassGetHubNode(ValueNode clazz, ValueNode guard) {
         super(KlassPointerStamp.klass(), (GuardingNode) guard);
         this.clazz = clazz;
     }

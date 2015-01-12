@@ -35,16 +35,7 @@ import com.oracle.graal.nodes.type.*;
 @NodeInfo
 public class IsNullNode extends UnaryOpLogicNode implements LIRLowerable, Virtualizable, PiPushable {
 
-    /**
-     * Constructs a new IsNullNode instruction.
-     *
-     * @param object the instruction producing the object to check against null
-     */
-    public static IsNullNode create(ValueNode object) {
-        return new IsNullNode(object);
-    }
-
-    protected IsNullNode(ValueNode object) {
+    public IsNullNode(ValueNode object) {
         super(object);
     }
 

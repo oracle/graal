@@ -110,10 +110,16 @@ public interface SnippetReflectionProvider {
             }
 
             Class<?> c = resolveClassForSnippet(method.getDeclaringClass());
-            Method javaMethod = c.getDeclaredMethod(method.getName(), parameterClasses);
-            javaMethod.setAccessible(true);
-            return javaMethod.invoke(receiver, args);
-        } catch (IllegalAccessException | InvocationTargetException | ClassNotFoundException | NoSuchMethodException ex) {
+            if (method.isConstructor()) {
+                Constructor<?> javaConstructor = c.getDeclaredConstructor(parameterClasses);
+                javaConstructor.setAccessible(true);
+                return javaConstructor.newInstance(args);
+            } else {
+                Method javaMethod = c.getDeclaredMethod(method.getName(), parameterClasses);
+                javaMethod.setAccessible(true);
+                return javaMethod.invoke(receiver, args);
+            }
+        } catch (IllegalAccessException | InstantiationException | InvocationTargetException | ClassNotFoundException | NoSuchMethodException ex) {
             throw new IllegalArgumentException(ex);
         }
     }

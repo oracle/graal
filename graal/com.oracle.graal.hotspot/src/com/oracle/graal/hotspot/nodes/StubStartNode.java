@@ -34,11 +34,7 @@ public class StubStartNode extends StartNode {
 
     protected final Stub stub;
 
-    public static StubStartNode create(Stub stub) {
-        return new StubStartNode(stub);
-    }
-
-    protected StubStartNode(Stub stub) {
+    public StubStartNode(Stub stub) {
         this.stub = stub;
     }
 

@@ -29,11 +29,7 @@ import com.oracle.graal.nodes.*;
 @NodeInfo
 public class DeoptimizingStubCall extends DeoptimizingFixedWithNextNode {
 
-    public static DeoptimizingStubCall create(Stamp stamp) {
-        return new DeoptimizingStubCall(stamp);
-    }
-
-    protected DeoptimizingStubCall(Stamp stamp) {
+    public DeoptimizingStubCall(Stamp stamp) {
         super(stamp);
     }
 

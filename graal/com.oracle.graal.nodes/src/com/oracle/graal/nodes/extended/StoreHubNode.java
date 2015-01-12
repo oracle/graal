@@ -41,11 +41,7 @@ public class StoreHubNode extends FixedWithNextNode implements Lowerable {
         return object;
     }
 
-    public static StoreHubNode create(ValueNode object, ValueNode value) {
-        return new StoreHubNode(object, value);
-    }
-
-    protected StoreHubNode(ValueNode object, ValueNode value) {
+    public StoreHubNode(ValueNode object, ValueNode value) {
         super(StampFactory.forVoid());
         this.value = value;
         this.object = object;

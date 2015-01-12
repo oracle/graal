@@ -48,19 +48,11 @@ public class DynamicNewArrayNode extends AbstractNewArrayNode {
      */
     protected final Kind knownElementKind;
 
-    public static DynamicNewArrayNode create(ValueNode elementType, ValueNode length) {
-        return new DynamicNewArrayNode(elementType, length);
-    }
-
-    protected DynamicNewArrayNode(ValueNode elementType, ValueNode length) {
+    public DynamicNewArrayNode(ValueNode elementType, ValueNode length) {
         this(elementType, length, true, null);
     }
 
-    public static DynamicNewArrayNode create(ValueNode elementType, ValueNode length, boolean fillContents, Kind knownElementKind) {
-        return new DynamicNewArrayNode(elementType, length, fillContents, knownElementKind);
-    }
-
-    protected DynamicNewArrayNode(ValueNode elementType, ValueNode length, boolean fillContents, Kind knownElementKind) {
+    public DynamicNewArrayNode(ValueNode elementType, ValueNode length, boolean fillContents, Kind knownElementKind) {
         super(StampFactory.objectNonNull(), length, fillContents);
         this.elementType = elementType;
         this.knownElementKind = knownElementKind;
@@ -76,7 +68,7 @@ public class DynamicNewArrayNode extends AbstractNewArrayNode {
 
     protected NewArrayNode forConstantType(ResolvedJavaType type) {
         ValueNode len = length();
-        NewArrayNode ret = graph().add(NewArrayNode.create(type, len.isAlive() ? len : graph().addOrUniqueWithInputs(len), fillContents()));
+        NewArrayNode ret = graph().add(new NewArrayNode(type, len.isAlive() ? len : graph().addOrUniqueWithInputs(len), fillContents()));
         if (stateBefore() != null) {
             ret.setStateBefore(stateBefore());
         }

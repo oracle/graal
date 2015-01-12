@@ -38,11 +38,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public class BitScanForwardNode extends UnaryNode implements LIRLowerable {
 
-    public static BitScanForwardNode create(ValueNode value) {
-        return new BitScanForwardNode(value);
-    }
-
-    protected BitScanForwardNode(ValueNode value) {
+    public BitScanForwardNode(ValueNode value) {
         super(StampFactory.forInteger(Kind.Int, 0, ((PrimitiveStamp) value.stamp()).getBits()), value);
         assert value.getKind() == Kind.Int || value.getKind() == Kind.Long;
     }

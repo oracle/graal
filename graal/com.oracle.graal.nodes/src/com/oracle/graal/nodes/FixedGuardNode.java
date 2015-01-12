@@ -32,19 +32,11 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(nameTemplate = "FixedGuard(!={p#negated}) {p#reason/s}", allowedUsageTypes = {InputType.Guard})
 public class FixedGuardNode extends AbstractFixedGuardNode implements Lowerable, IterableNodeType {
 
-    public static FixedGuardNode create(LogicNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action) {
-        return new FixedGuardNode(condition, deoptReason, action);
-    }
-
-    protected FixedGuardNode(LogicNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action) {
+    public FixedGuardNode(LogicNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action) {
         this(condition, deoptReason, action, false);
     }
 
-    public static FixedGuardNode create(LogicNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action, boolean negated) {
-        return new FixedGuardNode(condition, deoptReason, action, negated);
-    }
-
-    protected FixedGuardNode(LogicNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action, boolean negated) {
+    public FixedGuardNode(LogicNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action, boolean negated) {
         super(condition, deoptReason, action, negated);
     }
 
@@ -60,7 +52,7 @@ public class FixedGuardNode extends AbstractFixedGuardNode implements Lowerable,
                     tool.deleteBranch(currentNext);
                 }
 
-                DeoptimizeNode deopt = graph().add(DeoptimizeNode.create(getAction(), getReason()));
+                DeoptimizeNode deopt = graph().add(new DeoptimizeNode(getAction(), getReason()));
                 deopt.setStateBefore(stateBefore());
                 setNext(deopt);
             }
@@ -69,8 +61,8 @@ public class FixedGuardNode extends AbstractFixedGuardNode implements Lowerable,
         } else if (condition() instanceof ShortCircuitOrNode) {
             ShortCircuitOrNode shortCircuitOr = (ShortCircuitOrNode) condition();
             if (isNegated() && usages().isEmpty()) {
-                graph().addAfterFixed(this, graph().add(FixedGuardNode.create(shortCircuitOr.getY(), getReason(), getAction(), !shortCircuitOr.isYNegated())));
-                graph().replaceFixedWithFixed(this, graph().add(FixedGuardNode.create(shortCircuitOr.getX(), getReason(), getAction(), !shortCircuitOr.isXNegated())));
+                graph().addAfterFixed(this, graph().add(new FixedGuardNode(shortCircuitOr.getY(), getReason(), getAction(), !shortCircuitOr.isYNegated())));
+                graph().replaceFixedWithFixed(this, graph().add(new FixedGuardNode(shortCircuitOr.getX(), getReason(), getAction(), !shortCircuitOr.isXNegated())));
             }
         }
     }
@@ -80,7 +72,7 @@ public class FixedGuardNode extends AbstractFixedGuardNode implements Lowerable,
         if (graph().getGuardsStage() == StructuredGraph.GuardsStage.FLOATING_GUARDS) {
             ValueNode guard = tool.createGuard(this, condition(), getReason(), getAction(), isNegated()).asNode();
             this.replaceAtUsages(guard);
-            ValueAnchorNode newAnchor = graph().add(ValueAnchorNode.create(guard.asNode()));
+            ValueAnchorNode newAnchor = graph().add(new ValueAnchorNode(guard.asNode()));
             graph().replaceFixedWithFixed(this, newAnchor);
         } else {
             lowerToIf().lower(tool);

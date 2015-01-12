@@ -66,11 +66,7 @@ public class MacroNode extends FixedWithNextNode implements Lowerable {
     protected final JavaType returnType;
     protected final InvokeKind invokeKind;
 
-    public static MacroNode create(Invoke invoke) {
-        return new MacroNode(invoke);
-    }
-
-    protected MacroNode(Invoke invoke) {
+    public MacroNode(Invoke invoke) {
         super(StampFactory.forKind(((MethodCallTargetNode) invoke.callTarget()).targetMethod().getSignature().getReturnKind()));
         MethodCallTargetNode methodCallTarget = (MethodCallTargetNode) invoke.callTarget();
         this.arguments = new NodeInputList<>(this, methodCallTarget.arguments());
@@ -188,8 +184,8 @@ public class MacroNode extends FixedWithNextNode implements Lowerable {
     }
 
     protected InvokeNode createInvoke() {
-        MethodCallTargetNode callTarget = graph().add(MethodCallTargetNode.create(invokeKind, targetMethod, arguments.toArray(new ValueNode[arguments.size()]), returnType));
-        InvokeNode invoke = graph().add(InvokeNode.create(callTarget, bci));
+        MethodCallTargetNode callTarget = graph().add(new MethodCallTargetNode(invokeKind, targetMethod, arguments.toArray(new ValueNode[arguments.size()]), returnType));
+        InvokeNode invoke = graph().add(new InvokeNode(callTarget, bci));
         if (stateAfter() != null) {
             invoke.setStateAfter(stateAfter().duplicate());
             if (getKind() != Kind.Void) {

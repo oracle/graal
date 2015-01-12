@@ -35,17 +35,7 @@ import com.oracle.graal.nodes.*;
 @NodeInfo
 public class IntegerTestNode extends BinaryOpLogicNode {
 
-    /**
-     * Constructs a new Test instruction.
-     *
-     * @param x the instruction producing the first input to the instruction
-     * @param y the instruction that produces the second input to this instruction
-     */
-    public static IntegerTestNode create(ValueNode x, ValueNode y) {
-        return new IntegerTestNode(x, y);
-    }
-
-    protected IntegerTestNode(ValueNode x, ValueNode y) {
+    public IntegerTestNode(ValueNode x, ValueNode y) {
         super(x, y);
     }
 

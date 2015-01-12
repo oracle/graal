@@ -56,27 +56,12 @@ public class StoreFieldNode extends AccessFieldNode implements StateSplit, Virtu
         return value;
     }
 
-    /**
-     * Creates a new StoreFieldNode.
-     *
-     * @param object the receiver object
-     * @param field the compiler interface field
-     * @param value the node representing the value to store to the field
-     */
-    public static StoreFieldNode create(ValueNode object, ResolvedJavaField field, ValueNode value) {
-        return new StoreFieldNode(object, field, value);
-    }
-
-    protected StoreFieldNode(ValueNode object, ResolvedJavaField field, ValueNode value) {
+    public StoreFieldNode(ValueNode object, ResolvedJavaField field, ValueNode value) {
         super(StampFactory.forVoid(), object, field);
         this.value = value;
     }
 
-    public static StoreFieldNode create(ValueNode object, ResolvedJavaField field, ValueNode value, FrameState stateAfter) {
-        return new StoreFieldNode(object, field, value, stateAfter);
-    }
-
-    protected StoreFieldNode(ValueNode object, ResolvedJavaField field, ValueNode value, FrameState stateAfter) {
+    public StoreFieldNode(ValueNode object, ResolvedJavaField field, ValueNode value, FrameState stateAfter) {
         super(StampFactory.forVoid(), object, field);
         this.value = value;
         this.stateAfter = stateAfter;

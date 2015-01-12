@@ -38,11 +38,7 @@ public class PointerCastNode extends FloatingNode implements LIRLowerable {
 
     @Input ValueNode input;
 
-    public static PointerCastNode create(Stamp stamp, ValueNode input) {
-        return new PointerCastNode(stamp, input);
-    }
-
-    protected PointerCastNode(Stamp stamp, ValueNode input) {
+    public PointerCastNode(Stamp stamp, ValueNode input) {
         super(stamp);
         this.input = input;
     }

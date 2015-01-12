@@ -32,19 +32,11 @@ public class VirtualInstanceNode extends VirtualObjectNode {
     protected final ResolvedJavaType type;
     protected final ResolvedJavaField[] fields;
 
-    public static VirtualInstanceNode create(ResolvedJavaType type, boolean hasIdentity) {
-        return new VirtualInstanceNode(type, hasIdentity);
-    }
-
-    protected VirtualInstanceNode(ResolvedJavaType type, boolean hasIdentity) {
+    public VirtualInstanceNode(ResolvedJavaType type, boolean hasIdentity) {
         this(type, type.getInstanceFields(true), hasIdentity);
     }
 
-    public static VirtualInstanceNode create(ResolvedJavaType type, ResolvedJavaField[] fields, boolean hasIdentity) {
-        return new VirtualInstanceNode(type, fields, hasIdentity);
-    }
-
-    protected VirtualInstanceNode(ResolvedJavaType type, ResolvedJavaField[] fields, boolean hasIdentity) {
+    public VirtualInstanceNode(ResolvedJavaType type, ResolvedJavaField[] fields, boolean hasIdentity) {
         super(type, hasIdentity);
         this.type = type;
         this.fields = fields;
@@ -105,11 +97,11 @@ public class VirtualInstanceNode extends VirtualObjectNode {
 
     @Override
     public VirtualInstanceNode duplicate() {
-        return VirtualInstanceNode.create(type, fields, super.hasIdentity());
+        return new VirtualInstanceNode(type, fields, super.hasIdentity());
     }
 
     @Override
     public ValueNode getMaterializedRepresentation(FixedNode fixed, ValueNode[] entries, LockState locks) {
-        return AllocatedObjectNode.create(this);
+        return new AllocatedObjectNode(this);
     }
 }

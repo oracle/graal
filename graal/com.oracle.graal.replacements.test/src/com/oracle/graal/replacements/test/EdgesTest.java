@@ -48,13 +48,9 @@ public class EdgesTest extends GraalCompilerTest {
         @Input ConstantNode i1;
         @Input FloatingNode i2;
 
-        public static TestNode create() {
-            return new TestNode();
+        public TestNode() {
         }
 
-        protected TestNode() {
-            // TODO Auto-generated constructor stub
-        }
     }
 
     StructuredGraph graph = new StructuredGraph();
@@ -66,7 +62,7 @@ public class EdgesTest extends GraalCompilerTest {
     Edges inputs;
 
     public EdgesTest() {
-        node = TestNode.create();
+        node = new TestNode();
         i1 = ConstantNode.forInt(1, graph);
         i2 = ConstantNode.forDouble(1.0d, graph);
         i3 = ConstantNode.forInt(4, graph);

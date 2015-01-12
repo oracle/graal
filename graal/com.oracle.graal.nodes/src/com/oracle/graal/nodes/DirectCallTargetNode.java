@@ -32,11 +32,7 @@ import com.oracle.graal.nodeinfo.*;
 @NodeInfo
 public class DirectCallTargetNode extends LoweredCallTargetNode {
 
-    public static DirectCallTargetNode create(List<ValueNode> arguments, Stamp returnStamp, JavaType[] signature, ResolvedJavaMethod target, CallingConvention.Type callType, InvokeKind invokeKind) {
-        return new DirectCallTargetNode(arguments, returnStamp, signature, target, callType, invokeKind);
-    }
-
-    protected DirectCallTargetNode(List<ValueNode> arguments, Stamp returnStamp, JavaType[] signature, ResolvedJavaMethod target, CallingConvention.Type callType, InvokeKind invokeKind) {
+    public DirectCallTargetNode(List<ValueNode> arguments, Stamp returnStamp, JavaType[] signature, ResolvedJavaMethod target, CallingConvention.Type callType, InvokeKind invokeKind) {
         super(arguments, returnStamp, signature, target, callType, invokeKind);
     }
 

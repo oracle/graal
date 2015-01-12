@@ -48,11 +48,7 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Invoke,
     protected boolean useForInlining;
     protected double exceptionProbability;
 
-    public static InvokeWithExceptionNode create(CallTargetNode callTarget, BeginNode exceptionEdge, int bci) {
-        return new InvokeWithExceptionNode(callTarget, exceptionEdge, bci);
-    }
-
-    protected InvokeWithExceptionNode(CallTargetNode callTarget, BeginNode exceptionEdge, int bci) {
+    public InvokeWithExceptionNode(CallTargetNode callTarget, BeginNode exceptionEdge, int bci) {
         super(callTarget.returnStamp());
         this.exceptionEdge = exceptionEdge;
         this.bci = bci;

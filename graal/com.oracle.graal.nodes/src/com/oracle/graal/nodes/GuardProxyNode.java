@@ -33,11 +33,7 @@ public class GuardProxyNode extends ProxyNode implements GuardingNode, Proxy, LI
 
     @Input(InputType.Guard) GuardingNode value;
 
-    public static GuardProxyNode create(GuardingNode value, BeginNode proxyPoint) {
-        return new GuardProxyNode(value, proxyPoint);
-    }
-
-    protected GuardProxyNode(GuardingNode value, BeginNode proxyPoint) {
+    public GuardProxyNode(GuardingNode value, BeginNode proxyPoint) {
         super(StampFactory.forVoid(), proxyPoint);
         this.value = value;
     }

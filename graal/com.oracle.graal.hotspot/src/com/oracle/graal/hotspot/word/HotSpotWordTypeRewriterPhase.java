@@ -80,7 +80,7 @@ public class HotSpotWordTypeRewriterPhase extends WordTypeRewriterPhase {
             /*
              * Prevent rewriting of the MetaspacePointerStamp in the CanonicalizerPhase.
              */
-            graph.replaceFixedWithFixed(node, graph.add(LoadIndexedPointerNode.create(node.stamp(), node.array(), node.index())));
+            graph.replaceFixedWithFixed(node, graph.add(new LoadIndexedPointerNode(node.stamp(), node.array(), node.index())));
         } else {
             super.rewriteAccessIndexed(graph, node);
         }
@@ -115,17 +115,17 @@ public class HotSpotWordTypeRewriterPhase extends WordTypeRewriterPhase {
 
                 case FROM_POINTER:
                     assert arguments.size() == 1;
-                    replace(invoke, graph.unique(PointerCastNode.create(StampFactory.forKind(wordKind), arguments.get(0))));
+                    replace(invoke, graph.unique(new PointerCastNode(StampFactory.forKind(wordKind), arguments.get(0))));
                     break;
 
                 case TO_KLASS_POINTER:
                     assert arguments.size() == 1;
-                    replace(invoke, graph.unique(PointerCastNode.create(KlassPointerStamp.klass(), arguments.get(0))));
+                    replace(invoke, graph.unique(new PointerCastNode(KlassPointerStamp.klass(), arguments.get(0))));
                     break;
 
                 case TO_METHOD_POINTER:
                     assert arguments.size() == 1;
-                    replace(invoke, graph.unique(PointerCastNode.create(MethodPointerStamp.method(), arguments.get(0))));
+                    replace(invoke, graph.unique(new PointerCastNode(MethodPointerStamp.method(), arguments.get(0))));
                     break;
 
                 case READ_KLASS_POINTER:
@@ -150,7 +150,7 @@ public class HotSpotWordTypeRewriterPhase extends WordTypeRewriterPhase {
         assert op == READ_KLASS_POINTER;
         final BarrierType barrier = BarrierType.NONE;
 
-        ReadNode read = graph.add(ReadNode.create(base, location, readStamp, barrier));
+        ReadNode read = graph.add(new ReadNode(base, location, readStamp, barrier));
         graph.addBeforeFixed(invoke.asNode(), read);
         /*
          * The read must not float outside its block otherwise it may float above an explicit zero
@@ -164,16 +164,16 @@ public class HotSpotWordTypeRewriterPhase extends WordTypeRewriterPhase {
         assert left.stamp() instanceof MetaspacePointerStamp && right.stamp() instanceof MetaspacePointerStamp;
         assert opcode == POINTER_EQ || opcode == POINTER_NE;
 
-        PointerEqualsNode comparison = graph.unique(PointerEqualsNode.create(left, right));
+        PointerEqualsNode comparison = graph.unique(new PointerEqualsNode(left, right));
         ValueNode eqValue = ConstantNode.forBoolean(opcode == POINTER_EQ, graph);
         ValueNode neValue = ConstantNode.forBoolean(opcode == POINTER_NE, graph);
-        return graph.unique(ConditionalNode.create(comparison, eqValue, neValue));
+        return graph.unique(new ConditionalNode(comparison, eqValue, neValue));
     }
 
     private static ValueNode pointerIsNullOp(StructuredGraph graph, ValueNode pointer) {
         assert pointer.stamp() instanceof MetaspacePointerStamp;
 
-        IsNullNode isNull = graph.unique(IsNullNode.create(pointer));
-        return graph.unique(ConditionalNode.create(isNull, ConstantNode.forBoolean(true, graph), ConstantNode.forBoolean(false, graph)));
+        IsNullNode isNull = graph.unique(new IsNullNode(pointer));
+        return graph.unique(new ConditionalNode(isNull, ConstantNode.forBoolean(true, graph), ConstantNode.forBoolean(false, graph)));
     }
 }

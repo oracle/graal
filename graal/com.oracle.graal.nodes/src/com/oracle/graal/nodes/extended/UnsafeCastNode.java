@@ -42,29 +42,17 @@ public class UnsafeCastNode extends FloatingGuardedNode implements LIRLowerable,
 
     @Input ValueNode object;
 
-    public static UnsafeCastNode create(ValueNode object, Stamp stamp) {
-        return new UnsafeCastNode(object, stamp);
-    }
-
-    protected UnsafeCastNode(ValueNode object, Stamp stamp) {
+    public UnsafeCastNode(ValueNode object, Stamp stamp) {
         super(stamp);
         this.object = object;
     }
 
-    public static UnsafeCastNode create(ValueNode object, Stamp stamp, ValueNode anchor) {
-        return new UnsafeCastNode(object, stamp, anchor);
-    }
-
-    protected UnsafeCastNode(ValueNode object, Stamp stamp, ValueNode anchor) {
+    public UnsafeCastNode(ValueNode object, Stamp stamp, ValueNode anchor) {
         super(stamp, (GuardingNode) anchor);
         this.object = object;
     }
 
-    public static UnsafeCastNode create(ValueNode object, ResolvedJavaType toType, boolean exactType, boolean nonNull) {
-        return new UnsafeCastNode(object, toType, exactType, nonNull);
-    }
-
-    protected UnsafeCastNode(ValueNode object, ResolvedJavaType toType, boolean exactType, boolean nonNull) {
+    public UnsafeCastNode(ValueNode object, ResolvedJavaType toType, boolean exactType, boolean nonNull) {
         this(object, toType.getKind() == Kind.Object ? StampFactory.object(toType, exactType, nonNull || StampTool.isPointerNonNull(object.stamp()), true) : StampFactory.forKind(toType.getKind()));
     }
 

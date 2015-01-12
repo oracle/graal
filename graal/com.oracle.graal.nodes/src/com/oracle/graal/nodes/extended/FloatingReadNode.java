@@ -39,27 +39,15 @@ public class FloatingReadNode extends FloatingAccessNode implements LIRLowerable
 
     @OptionalInput(InputType.Memory) MemoryNode lastLocationAccess;
 
-    public static FloatingReadNode create(ValueNode object, LocationNode location, MemoryNode lastLocationAccess, Stamp stamp) {
-        return new FloatingReadNode(object, location, lastLocationAccess, stamp);
-    }
-
-    protected FloatingReadNode(ValueNode object, LocationNode location, MemoryNode lastLocationAccess, Stamp stamp) {
+    public FloatingReadNode(ValueNode object, LocationNode location, MemoryNode lastLocationAccess, Stamp stamp) {
         this(object, location, lastLocationAccess, stamp, null, BarrierType.NONE);
     }
 
-    public static FloatingReadNode create(ValueNode object, LocationNode location, MemoryNode lastLocationAccess, Stamp stamp, GuardingNode guard) {
-        return new FloatingReadNode(object, location, lastLocationAccess, stamp, guard);
-    }
-
-    protected FloatingReadNode(ValueNode object, LocationNode location, MemoryNode lastLocationAccess, Stamp stamp, GuardingNode guard) {
+    public FloatingReadNode(ValueNode object, LocationNode location, MemoryNode lastLocationAccess, Stamp stamp, GuardingNode guard) {
         this(object, location, lastLocationAccess, stamp, guard, BarrierType.NONE);
     }
 
-    public static FloatingReadNode create(ValueNode object, LocationNode location, MemoryNode lastLocationAccess, Stamp stamp, GuardingNode guard, BarrierType barrierType) {
-        return new FloatingReadNode(object, location, lastLocationAccess, stamp, guard, barrierType);
-    }
-
-    protected FloatingReadNode(ValueNode object, LocationNode location, MemoryNode lastLocationAccess, Stamp stamp, GuardingNode guard, BarrierType barrierType) {
+    public FloatingReadNode(ValueNode object, LocationNode location, MemoryNode lastLocationAccess, Stamp stamp, GuardingNode guard, BarrierType barrierType) {
         super(object, location, stamp, guard, barrierType);
         this.lastLocationAccess = lastLocationAccess;
     }
@@ -83,14 +71,14 @@ public class FloatingReadNode extends FloatingAccessNode implements LIRLowerable
     @Override
     public Node canonical(CanonicalizerTool tool) {
         if (object() instanceof PiNode && ((PiNode) object()).getGuard() == getGuard()) {
-            return FloatingReadNode.create(((PiNode) object()).getOriginalNode(), location(), getLastLocationAccess(), stamp(), getGuard(), getBarrierType());
+            return new FloatingReadNode(((PiNode) object()).getOriginalNode(), location(), getLastLocationAccess(), stamp(), getGuard(), getBarrierType());
         }
         return ReadNode.canonicalizeRead(this, location(), object(), tool);
     }
 
     @Override
     public FixedAccessNode asFixedNode() {
-        return graph().add(ReadNode.create(object(), accessLocation(), stamp(), getGuard(), getBarrierType()));
+        return graph().add(new ReadNode(object(), accessLocation(), stamp(), getGuard(), getBarrierType()));
     }
 
     @Override

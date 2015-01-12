@@ -45,15 +45,7 @@ public class CheckCastDynamicNode extends FixedWithNextNode implements Canonical
      */
     protected final boolean forStoreCheck;
 
-    /**
-     * @param hub the type being cast to
-     * @param object the object being cast
-     */
-    public static CheckCastDynamicNode create(ValueNode hub, ValueNode object, boolean forStoreCheck) {
-        return new CheckCastDynamicNode(hub, object, forStoreCheck);
-    }
-
-    protected CheckCastDynamicNode(ValueNode hub, ValueNode object, boolean forStoreCheck) {
+    public CheckCastDynamicNode(ValueNode hub, ValueNode object, boolean forStoreCheck) {
         super(object.stamp());
         this.hub = hub;
         this.object = object;
@@ -101,7 +93,7 @@ public class CheckCastDynamicNode extends FixedWithNextNode implements Canonical
         if (forHub.isConstant()) {
             ResolvedJavaType t = tool.getConstantReflection().asJavaType(forHub.asConstant());
             if (t != null) {
-                return CheckCastNode.create(t, forObject, null, forStoreCheck);
+                return new CheckCastNode(t, forObject, null, forStoreCheck);
             }
         }
         return this;

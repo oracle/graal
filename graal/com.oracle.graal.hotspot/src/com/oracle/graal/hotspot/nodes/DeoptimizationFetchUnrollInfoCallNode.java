@@ -44,11 +44,7 @@ public class DeoptimizationFetchUnrollInfoCallNode extends FixedWithNextNode imp
     @Input SaveAllRegistersNode registerSaver;
     protected final ForeignCallsProvider foreignCalls;
 
-    public static DeoptimizationFetchUnrollInfoCallNode create(@InjectedNodeParameter ForeignCallsProvider foreignCalls, ValueNode registerSaver) {
-        return new DeoptimizationFetchUnrollInfoCallNode(foreignCalls, registerSaver);
-    }
-
-    protected DeoptimizationFetchUnrollInfoCallNode(ForeignCallsProvider foreignCalls, ValueNode registerSaver) {
+    public DeoptimizationFetchUnrollInfoCallNode(@InjectedNodeParameter ForeignCallsProvider foreignCalls, ValueNode registerSaver) {
         super(StampFactory.forKind(Kind.fromJavaClass(FETCH_UNROLL_INFO.getResultType())));
         this.registerSaver = (SaveAllRegistersNode) registerSaver;
         this.foreignCalls = foreignCalls;

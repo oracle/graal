@@ -42,11 +42,7 @@ public class CurrentJavaThreadNode extends FloatingNode implements LIRLowerable 
 
     protected LIRKind wordKind;
 
-    public static CurrentJavaThreadNode create(Kind kind) {
-        return new CurrentJavaThreadNode(kind);
-    }
-
-    protected CurrentJavaThreadNode(Kind kind) {
+    public CurrentJavaThreadNode(Kind kind) {
         super(StampFactory.forKind(kind));
         this.wordKind = LIRKind.value(kind);
     }

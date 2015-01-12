@@ -44,12 +44,7 @@ public class SelfReplacingMethodCallTargetNode extends MethodCallTargetNode impl
     protected final JavaType replacementReturnType;
     @Input NodeInputList<ValueNode> replacementArguments;
 
-    public static SelfReplacingMethodCallTargetNode create(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, JavaType returnType,
-                    ResolvedJavaMethod replacementTargetMethod, ValueNode[] replacementArguments, JavaType replacementReturnType) {
-        return new SelfReplacingMethodCallTargetNode(invokeKind, targetMethod, arguments, returnType, replacementTargetMethod, replacementArguments, replacementReturnType);
-    }
-
-    protected SelfReplacingMethodCallTargetNode(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, JavaType returnType, ResolvedJavaMethod replacementTargetMethod,
+    public SelfReplacingMethodCallTargetNode(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, JavaType returnType, ResolvedJavaMethod replacementTargetMethod,
                     ValueNode[] replacementArguments, JavaType replacementReturnType) {
         super(invokeKind, targetMethod, arguments, returnType);
         this.replacementTargetMethod = replacementTargetMethod;
@@ -73,7 +68,7 @@ public class SelfReplacingMethodCallTargetNode extends MethodCallTargetNode impl
     public void lower(LoweringTool tool) {
         InvokeKind replacementInvokeKind = replacementTargetMethod.isStatic() ? InvokeKind.Static : InvokeKind.Special;
         MethodCallTargetNode replacement = graph().add(
-                        MethodCallTargetNode.create(replacementInvokeKind, replacementTargetMethod, replacementArguments.toArray(new ValueNode[replacementArguments.size()]), replacementReturnType));
+                        new MethodCallTargetNode(replacementInvokeKind, replacementTargetMethod, replacementArguments.toArray(new ValueNode[replacementArguments.size()]), replacementReturnType));
 
         // Replace myself...
         this.replaceAndDelete(replacement);

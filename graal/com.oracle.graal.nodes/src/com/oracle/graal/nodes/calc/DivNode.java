@@ -35,11 +35,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(shortName = "/")
 public class DivNode extends BinaryArithmeticNode<Div> {
 
-    public static DivNode create(ValueNode x, ValueNode y) {
-        return new DivNode(x, y);
-    }
-
-    protected DivNode(ValueNode x, ValueNode y) {
+    public DivNode(ValueNode x, ValueNode y) {
         super(ArithmeticOpTable::getDiv, x, y);
     }
 
@@ -64,11 +60,11 @@ public class DivNode extends BinaryArithmeticNode<Div> {
                 }
                 ValueNode divResult = null;
                 if (CodeUtil.isPowerOf2(i)) {
-                    divResult = RightShiftNode.create(forX, ConstantNode.forInt(CodeUtil.log2(i)));
+                    divResult = new RightShiftNode(forX, ConstantNode.forInt(CodeUtil.log2(i)));
                 }
                 if (divResult != null) {
                     if (signFlip) {
-                        return NegateNode.create(divResult);
+                        return new NegateNode(divResult);
                     } else {
                         return divResult;
                     }

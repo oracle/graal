@@ -31,11 +31,7 @@ public class SerialWriteBarrier extends WriteBarrier {
 
     protected final boolean alwaysNull;
 
-    public static SerialWriteBarrier create(ValueNode object, LocationNode location, boolean precise, boolean alwaysNull) {
-        return new SerialWriteBarrier(object, location, precise, alwaysNull);
-    }
-
-    protected SerialWriteBarrier(ValueNode object, LocationNode location, boolean precise, boolean alwaysNull) {
+    public SerialWriteBarrier(ValueNode object, LocationNode location, boolean precise, boolean alwaysNull) {
         super(object, null, location, precise);
         this.alwaysNull = alwaysNull;
     }

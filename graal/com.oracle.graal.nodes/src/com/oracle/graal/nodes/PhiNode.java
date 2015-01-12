@@ -143,17 +143,13 @@ public abstract class PhiNode extends FloatingNode implements Simplifiable {
     @NodeInfo
     static class MultipleValuesNode extends ValueNode {
 
-        public static MultipleValuesNode create() {
-            return new MultipleValuesNode();
-        }
-
-        protected MultipleValuesNode() {
+        public MultipleValuesNode() {
             super(null);
         }
 
     }
 
-    public static final ValueNode MULTIPLE_VALUES = MultipleValuesNode.create();
+    public static final ValueNode MULTIPLE_VALUES = new MultipleValuesNode();
 
     /**
      * If all inputs are the same value, this value is returned, otherwise {@link #MULTIPLE_VALUES}.

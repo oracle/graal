@@ -34,11 +34,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(nameTemplate = "Param({p#index})")
 public class ParameterNode extends AbstractLocalNode implements IterableNodeType, UncheckedInterfaceProvider {
 
-    public static ParameterNode create(int index, Stamp stamp) {
-        return new ParameterNode(index, stamp);
-    }
-
-    protected ParameterNode(int index, Stamp stamp) {
+    public ParameterNode(int index, Stamp stamp) {
         super(index, stamp);
     }
 

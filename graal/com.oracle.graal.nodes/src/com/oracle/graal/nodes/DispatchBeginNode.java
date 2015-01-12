@@ -31,18 +31,11 @@ import com.oracle.graal.nodeinfo.*;
 @NodeInfo
 public class DispatchBeginNode extends BeginStateSplitNode {
 
-    public static DispatchBeginNode create() {
-        return new DispatchBeginNode();
+    public DispatchBeginNode() {
     }
 
-    protected DispatchBeginNode() {
-    }
-
-    public static DispatchBeginNode create(Stamp stamp) {
-        return new DispatchBeginNode(stamp);
-    }
-
-    protected DispatchBeginNode(Stamp stamp) {
+    public DispatchBeginNode(Stamp stamp) {
         super(stamp);
     }
+
 }

@@ -53,25 +53,11 @@ public class SnippetLocationNode extends LocationNode implements Canonicalizable
     @Input ValueNode index;
     @Input ValueNode indexScaling;
 
-    public static SnippetLocationNode create(@InjectedNodeParameter SnippetReflectionProvider snippetReflection, ValueNode identity, ValueNode displacement, ValueNode index, ValueNode indexScaling,
-                    Graph graph) {
-        return graph.unique(SnippetLocationNode.create(snippetReflection, identity, displacement, index, indexScaling));
-    }
-
-    public static SnippetLocationNode create(@InjectedNodeParameter SnippetReflectionProvider snippetReflection, ValueNode locationIdentity, ValueNode displacement) {
-        return new SnippetLocationNode(snippetReflection, locationIdentity, displacement);
-    }
-
-    protected SnippetLocationNode(@InjectedNodeParameter SnippetReflectionProvider snippetReflection, ValueNode locationIdentity, ValueNode displacement) {
+    public SnippetLocationNode(@InjectedNodeParameter SnippetReflectionProvider snippetReflection, ValueNode locationIdentity, ValueNode displacement) {
         this(snippetReflection, locationIdentity, displacement, null, null);
     }
 
-    public static SnippetLocationNode create(@InjectedNodeParameter SnippetReflectionProvider snippetReflection, ValueNode locationIdentity, ValueNode displacement, ValueNode index,
-                    ValueNode indexScaling) {
-        return new SnippetLocationNode(snippetReflection, locationIdentity, displacement, index, indexScaling);
-    }
-
-    protected SnippetLocationNode(SnippetReflectionProvider snippetReflection, ValueNode locationIdentity, ValueNode displacement, ValueNode index, ValueNode indexScaling) {
+    public SnippetLocationNode(@InjectedNodeParameter SnippetReflectionProvider snippetReflection, ValueNode locationIdentity, ValueNode displacement, ValueNode index, ValueNode indexScaling) {
         super(StampFactory.object());
         this.snippetReflection = snippetReflection;
         this.locationIdentity = locationIdentity;
@@ -98,11 +84,11 @@ public class SnippetLocationNode extends LocationNode implements Canonicalizable
             int constIndexScaling = indexScaling == null ? 0 : indexScaling.asJavaConstant().asInt();
 
             if (index == null || constIndexScaling == 0) {
-                return ConstantLocationNode.create(constLocation, constDisplacement, graph());
+                return graph().unique(new ConstantLocationNode(constLocation, constDisplacement));
             } else if (index.isConstant()) {
-                return ConstantLocationNode.create(constLocation, index.asJavaConstant().asLong() * constIndexScaling + constDisplacement, graph());
+                return graph().unique(new ConstantLocationNode(constLocation, index.asJavaConstant().asLong() * constIndexScaling + constDisplacement));
             } else {
-                return IndexedLocationNode.create(constLocation, constDisplacement, index, graph(), constIndexScaling);
+                return graph().unique(new IndexedLocationNode(constLocation, constDisplacement, index, constIndexScaling));
             }
         }
         return this;

@@ -68,5 +68,4 @@ public class LIRGenerationResultBase implements LIRGenerationResult {
         assert frameMap != null : "getFrameMap() can only be used after calling buildFrameMap()!";
         return frameMap;
     }
-
 }

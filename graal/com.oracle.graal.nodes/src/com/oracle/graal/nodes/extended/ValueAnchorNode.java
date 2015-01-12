@@ -38,11 +38,7 @@ public class ValueAnchorNode extends FixedWithNextNode implements LIRLowerable, 
 
     @OptionalInput(InputType.Guard) ValueNode anchored;
 
-    public static ValueAnchorNode create(ValueNode value) {
-        return new ValueAnchorNode(value);
-    }
-
-    protected ValueAnchorNode(ValueNode value) {
+    public ValueAnchorNode(ValueNode value) {
         super(StampFactory.forVoid());
         this.anchored = value;
     }

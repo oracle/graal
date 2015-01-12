@@ -34,17 +34,7 @@ import com.oracle.graal.nodes.util.*;
 @NodeInfo(shortName = "<")
 public class IntegerLessThanNode extends CompareNode {
 
-    /**
-     * Constructs a new integer comparison node.
-     *
-     * @param x the instruction producing the first input to the instruction
-     * @param y the instruction that produces the second input to this instruction
-     */
-    public static IntegerLessThanNode create(ValueNode x, ValueNode y) {
-        return new IntegerLessThanNode(x, y);
-    }
-
-    protected IntegerLessThanNode(ValueNode x, ValueNode y) {
+    public IntegerLessThanNode(ValueNode x, ValueNode y) {
         super(x, y);
         assert !x.getKind().isNumericFloat() && x.getKind() != Kind.Object;
         assert !y.getKind().isNumericFloat() && y.getKind() != Kind.Object;
@@ -69,9 +59,9 @@ public class IntegerLessThanNode extends CompareNode {
             ValueNode b = mirrored ? normalizeNode.getX() : normalizeNode.getY();
 
             if (normalizeNode.getX().getKind() == Kind.Double || normalizeNode.getX().getKind() == Kind.Float) {
-                return FloatLessThanNode.create(a, b, mirrored ^ normalizeNode.isUnorderedLess);
+                return new FloatLessThanNode(a, b, mirrored ^ normalizeNode.isUnorderedLess);
             } else {
-                return IntegerLessThanNode.create(a, b);
+                return new IntegerLessThanNode(a, b);
             }
         }
         return this;
@@ -96,7 +86,7 @@ public class IntegerLessThanNode extends CompareNode {
         }
         if (forX.stamp() instanceof IntegerStamp && forY.stamp() instanceof IntegerStamp) {
             if (IntegerStamp.sameSign((IntegerStamp) forX.stamp(), (IntegerStamp) forY.stamp())) {
-                return IntegerBelowNode.create(forX, forY);
+                return new IntegerBelowNode(forX, forY);
             }
         }
         return this;
@@ -105,9 +95,9 @@ public class IntegerLessThanNode extends CompareNode {
     @Override
     protected CompareNode duplicateModified(ValueNode newX, ValueNode newY) {
         if (newX.stamp() instanceof FloatStamp && newY.stamp() instanceof FloatStamp) {
-            return FloatLessThanNode.create(newX, newY, true);
+            return new FloatLessThanNode(newX, newY, true);
         } else if (newX.stamp() instanceof IntegerStamp && newY.stamp() instanceof IntegerStamp) {
-            return IntegerLessThanNode.create(newX, newY);
+            return new IntegerLessThanNode(newX, newY);
         }
         throw GraalInternalError.shouldNotReachHere();
     }

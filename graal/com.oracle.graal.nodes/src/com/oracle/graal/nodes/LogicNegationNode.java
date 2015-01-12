@@ -33,11 +33,7 @@ public class LogicNegationNode extends LogicNode implements Canonicalizable.Unar
 
     @Input(InputType.Condition) LogicNode value;
 
-    public static LogicNegationNode create(LogicNode value) {
-        return new LogicNegationNode(value);
-    }
-
-    protected LogicNegationNode(LogicNode value) {
+    public LogicNegationNode(LogicNode value) {
         this.value = value;
     }
 

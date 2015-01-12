@@ -38,11 +38,7 @@ public class CurrentLockNode extends FixedWithNextNode implements LIRLowerable {
 
     protected int lockDepth;
 
-    public static CurrentLockNode create(int lockDepth) {
-        return new CurrentLockNode(lockDepth);
-    }
-
-    protected CurrentLockNode(int lockDepth) {
+    public CurrentLockNode(int lockDepth) {
         super(null);
         this.lockDepth = lockDepth;
     }

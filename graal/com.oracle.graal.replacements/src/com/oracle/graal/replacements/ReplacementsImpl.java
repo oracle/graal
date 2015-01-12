@@ -588,7 +588,7 @@ public class ReplacementsImpl implements Replacements {
                 MetaAccessProvider metaAccess = replacements.providers.getMetaAccess();
 
                 if (MethodsElidedInSnippets != null && methodToParse.getSignature().getReturnKind() == Kind.Void && MethodFilter.matches(MethodsElidedInSnippets, methodToParse)) {
-                    graph.addAfterFixed(graph.start(), graph.add(ReturnNode.create(null)));
+                    graph.addAfterFixed(graph.start(), graph.add(new ReturnNode(null)));
                 } else {
                     createGraphBuilder(metaAccess, GraphBuilderConfiguration.getSnippetDefault(), OptimisticOptimizations.NONE).apply(graph);
                 }

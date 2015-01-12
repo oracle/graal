@@ -31,11 +31,7 @@ public class KillingBeginNode extends BeginNode implements MemoryCheckpoint.Sing
 
     protected LocationIdentity locationIdentity;
 
-    public static KillingBeginNode create(LocationIdentity locationIdentity) {
-        return new KillingBeginNode(locationIdentity);
-    }
-
-    protected KillingBeginNode(LocationIdentity locationIdentity) {
+    public KillingBeginNode(LocationIdentity locationIdentity) {
         this.locationIdentity = locationIdentity;
     }
 
@@ -43,7 +39,7 @@ public class KillingBeginNode extends BeginNode implements MemoryCheckpoint.Sing
         if (with instanceof KillingBeginNode) {
             return (KillingBeginNode) with;
         }
-        KillingBeginNode begin = with.graph().add(KillingBeginNode.create(locationIdentity));
+        KillingBeginNode begin = with.graph().add(new KillingBeginNode(locationIdentity));
         begin.setNext(with);
         return begin;
     }
