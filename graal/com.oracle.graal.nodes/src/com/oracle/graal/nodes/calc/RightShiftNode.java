@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,48 +22,37 @@
  */
 package com.oracle.graal.nodes.calc;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.ShiftOp.Shr;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 
 @NodeInfo(shortName = ">>")
-public class RightShiftNode extends ShiftNode {
+public class RightShiftNode extends ShiftNode<Shr> {
 
     public static RightShiftNode create(ValueNode x, ValueNode y) {
         return new RightShiftNode(x, y);
     }
 
     protected RightShiftNode(ValueNode x, ValueNode y) {
-        super(x, y);
-    }
-
-    @Override
-    public boolean inferStamp() {
-        return updateStamp(StampTool.rightShift(getX().stamp(), getY().stamp()));
-    }
-
-    private static JavaConstant evalConst(JavaConstant a, JavaConstant b) {
-        if (a.getKind() == Kind.Int) {
-            return JavaConstant.forInt(a.asInt() >> b.asInt());
-        } else {
-            assert a.getKind() == Kind.Long;
-            return JavaConstant.forLong(a.asLong() >> b.asLong());
-        }
+        super(ArithmeticOpTable::getShr, x, y);
     }
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
+        ValueNode ret = super.canonical(tool, forX, forY);
+        if (ret != this) {
+            return ret;
+        }
+
         if (forX.stamp() instanceof IntegerStamp && ((IntegerStamp) forX.stamp()).isPositive()) {
             return UnsignedRightShiftNode.create(forX, forY);
         }
-        if (forX.isConstant() && forY.isConstant()) {
-            return ConstantNode.forPrimitive(evalConst(forX.asJavaConstant(), forY.asJavaConstant()));
-        } else if (forY.isConstant()) {
+
+        if (forY.isConstant()) {
             int amount = forY.asJavaConstant().asInt();
             int originalAmout = amount;
             int mask = getShiftAmountMask();
@@ -72,7 +61,7 @@ public class RightShiftNode extends ShiftNode {
                 return forX;
             }
             if (forX instanceof ShiftNode) {
-                ShiftNode other = (ShiftNode) forX;
+                ShiftNode<?> other = (ShiftNode<?>) forX;
                 if (other.getY().isConstant()) {
                     int otherAmount = other.getY().asJavaConstant().asInt() & mask;
                     if (other instanceof RightShiftNode) {

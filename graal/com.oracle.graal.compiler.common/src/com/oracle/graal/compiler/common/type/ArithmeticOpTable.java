@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,6 +41,9 @@ import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp.Xor;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.IntegerConvertOp.Narrow;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.IntegerConvertOp.SignExtend;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.IntegerConvertOp.ZeroExtend;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.ShiftOp.Shl;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.ShiftOp.Shr;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.ShiftOp.UShr;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.UnaryOp.Abs;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.UnaryOp.Neg;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.UnaryOp.Not;
@@ -64,6 +67,10 @@ public final class ArithmeticOpTable {
     private final BinaryOp<Or> or;
     private final BinaryOp<Xor> xor;
 
+    private final ShiftOp<Shl> shl;
+    private final ShiftOp<Shr> shr;
+    private final ShiftOp<UShr> ushr;
+
     private final UnaryOp<Abs> abs;
     private final UnaryOp<Sqrt> sqrt;
 
@@ -81,12 +88,12 @@ public final class ArithmeticOpTable {
         }
     }
 
-    public static final ArithmeticOpTable EMPTY = new ArithmeticOpTable(null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+    public static final ArithmeticOpTable EMPTY = new ArithmeticOpTable(null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
     public ArithmeticOpTable(UnaryOp<Neg> neg, BinaryOp<Add> add, BinaryOp<Sub> sub, BinaryOp<Mul> mul, BinaryOp<Div> div, BinaryOp<Rem> rem, UnaryOp<Not> not, BinaryOp<And> and, BinaryOp<Or> or,
-                    BinaryOp<Xor> xor, UnaryOp<Abs> abs, UnaryOp<Sqrt> sqrt, IntegerConvertOp<ZeroExtend> zeroExtend, IntegerConvertOp<SignExtend> signExtend, IntegerConvertOp<Narrow> narrow,
-                    FloatConvertOp... floatConvert) {
-        this(neg, add, sub, mul, div, rem, not, and, or, xor, abs, sqrt, zeroExtend, signExtend, narrow, Stream.of(floatConvert));
+                    BinaryOp<Xor> xor, ShiftOp<Shl> shl, ShiftOp<Shr> shr, ShiftOp<UShr> ushr, UnaryOp<Abs> abs, UnaryOp<Sqrt> sqrt, IntegerConvertOp<ZeroExtend> zeroExtend,
+                    IntegerConvertOp<SignExtend> signExtend, IntegerConvertOp<Narrow> narrow, FloatConvertOp... floatConvert) {
+        this(neg, add, sub, mul, div, rem, not, and, or, xor, shl, shr, ushr, abs, sqrt, zeroExtend, signExtend, narrow, Stream.of(floatConvert));
     }
 
     public interface ArithmeticOpWrapper {
@@ -94,6 +101,8 @@ public final class ArithmeticOpTable {
         <OP> UnaryOp<OP> wrapUnaryOp(UnaryOp<OP> op);
 
         <OP> BinaryOp<OP> wrapBinaryOp(BinaryOp<OP> op);
+
+        <OP> ShiftOp<OP> wrapShiftOp(ShiftOp<OP> op);
 
         <OP> IntegerConvertOp<OP> wrapIntegerConvertOp(IntegerConvertOp<OP> op);
 
@@ -122,6 +131,10 @@ public final class ArithmeticOpTable {
         BinaryOp<Or> or = wrapIfNonNull(wrapper::wrapBinaryOp, inner.getOr());
         BinaryOp<Xor> xor = wrapIfNonNull(wrapper::wrapBinaryOp, inner.getXor());
 
+        ShiftOp<Shl> shl = wrapIfNonNull(wrapper::wrapShiftOp, inner.getShl());
+        ShiftOp<Shr> shr = wrapIfNonNull(wrapper::wrapShiftOp, inner.getShr());
+        ShiftOp<UShr> ushr = wrapIfNonNull(wrapper::wrapShiftOp, inner.getUShr());
+
         UnaryOp<Abs> abs = wrapIfNonNull(wrapper::wrapUnaryOp, inner.getAbs());
         UnaryOp<Sqrt> sqrt = wrapIfNonNull(wrapper::wrapUnaryOp, inner.getSqrt());
 
@@ -131,12 +144,12 @@ public final class ArithmeticOpTable {
 
         Stream<FloatConvertOp> floatConvert = Stream.of(inner.floatConvert).filter(Objects::nonNull).map(wrapper::wrapFloatConvertOp);
 
-        return new ArithmeticOpTable(neg, add, sub, mul, div, rem, not, and, or, xor, abs, sqrt, zeroExtend, signExtend, narrow, floatConvert);
+        return new ArithmeticOpTable(neg, add, sub, mul, div, rem, not, and, or, xor, shl, shr, ushr, abs, sqrt, zeroExtend, signExtend, narrow, floatConvert);
     }
 
     private ArithmeticOpTable(UnaryOp<Neg> neg, BinaryOp<Add> add, BinaryOp<Sub> sub, BinaryOp<Mul> mul, BinaryOp<Div> div, BinaryOp<Rem> rem, UnaryOp<Not> not, BinaryOp<And> and, BinaryOp<Or> or,
-                    BinaryOp<Xor> xor, UnaryOp<Abs> abs, UnaryOp<Sqrt> sqrt, IntegerConvertOp<ZeroExtend> zeroExtend, IntegerConvertOp<SignExtend> signExtend, IntegerConvertOp<Narrow> narrow,
-                    Stream<FloatConvertOp> floatConvert) {
+                    BinaryOp<Xor> xor, ShiftOp<Shl> shl, ShiftOp<Shr> shr, ShiftOp<UShr> ushr, UnaryOp<Abs> abs, UnaryOp<Sqrt> sqrt, IntegerConvertOp<ZeroExtend> zeroExtend,
+                    IntegerConvertOp<SignExtend> signExtend, IntegerConvertOp<Narrow> narrow, Stream<FloatConvertOp> floatConvert) {
         this.neg = neg;
         this.add = add;
         this.sub = sub;
@@ -147,6 +160,9 @@ public final class ArithmeticOpTable {
         this.and = and;
         this.or = or;
         this.xor = xor;
+        this.shl = shl;
+        this.shr = shr;
+        this.ushr = ushr;
         this.abs = abs;
         this.sqrt = sqrt;
         this.zeroExtend = zeroExtend;
@@ -227,6 +243,27 @@ public final class ArithmeticOpTable {
     }
 
     /**
+     * Describes the shift left operation.
+     */
+    public ShiftOp<Shl> getShl() {
+        return shl;
+    }
+
+    /**
+     * Describes the signed shift right operation.
+     */
+    public ShiftOp<Shr> getShr() {
+        return shr;
+    }
+
+    /**
+     * Describes the unsigned shift right operation.
+     */
+    public ShiftOp<UShr> getUShr() {
+        return ushr;
+    }
+
+    /**
      * Describes the absolute value operation.
      */
     public UnaryOp<Abs> getAbs() {
@@ -274,8 +311,8 @@ public final class ArithmeticOpTable {
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + "[" + toString(neg, add, sub, mul, div, rem, not, and, or, xor, abs, sqrt, zeroExtend, signExtend, narrow) + ",floatConvert[" + toString(floatConvert) +
-                        "]]";
+        return getClass().getSimpleName() + "[" + toString(neg, add, sub, mul, div, rem, not, and, or, xor, shl, shr, ushr, abs, sqrt, zeroExtend, signExtend, narrow) + ",floatConvert[" +
+                        toString(floatConvert) + "]]";
     }
 
     public abstract static class Op {
@@ -500,6 +537,53 @@ public final class ArithmeticOpTable {
             }
             return super.toString();
         }
+    }
+
+    /**
+     * Describes a shift operation. The right argument of a shift operation always has kind
+     * {@link Kind#Int}.
+     */
+    public abstract static class ShiftOp<OP> extends Op {
+
+        public abstract static class Shl extends ShiftOp<Shl> {
+
+            public Shl() {
+                super("<<");
+            }
+        }
+
+        public abstract static class Shr extends ShiftOp<Shr> {
+
+            public Shr() {
+                super(">>");
+            }
+        }
+
+        public abstract static class UShr extends ShiftOp<UShr> {
+
+            public UShr() {
+                super(">>>");
+            }
+        }
+
+        protected ShiftOp(String operation) {
+            super(operation);
+        }
+
+        /**
+         * Apply the shift to a constant.
+         */
+        public abstract Constant foldConstant(Constant c, int amount);
+
+        /**
+         * Apply the shift to a stamp.
+         */
+        public abstract Stamp foldStamp(Stamp s, IntegerStamp amount);
+
+        /**
+         * Get the shift amount mask for a given result stamp.
+         */
+        public abstract int getShiftAmountMask(Stamp s);
     }
 
     public abstract static class FloatConvertOp extends UnaryOp<FloatConvertOp> {

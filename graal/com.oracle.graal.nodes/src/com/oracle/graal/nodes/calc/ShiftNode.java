@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,7 +22,13 @@
  */
 package com.oracle.graal.nodes.calc;
 
+import java.io.*;
+import java.util.function.*;
+
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.ShiftOp;
+import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -31,7 +37,12 @@ import com.oracle.graal.nodes.spi.*;
  * The {@code ShiftOp} class represents shift operations.
  */
 @NodeInfo
-public abstract class ShiftNode extends BinaryNode implements ArithmeticLIRLowerable {
+public abstract class ShiftNode<OP> extends BinaryNode implements ArithmeticLIRLowerable {
+
+    protected interface SerializableShiftFunction<T> extends Function<ArithmeticOpTable, ShiftOp<T>>, Serializable {
+    }
+
+    protected final SerializableShiftFunction<OP> getOp;
 
     /**
      * Creates a new shift operation.
@@ -39,19 +50,33 @@ public abstract class ShiftNode extends BinaryNode implements ArithmeticLIRLower
      * @param x the first input value
      * @param s the second input value
      */
-    public ShiftNode(ValueNode x, ValueNode s) {
-        super(x.stamp().unrestricted(), x, s);
-        assert s.getKind() == Kind.Int;
+    public ShiftNode(SerializableShiftFunction<OP> getOp, ValueNode x, ValueNode s) {
+        super(getOp.apply(ArithmeticOpTable.forStamp(x.stamp())).foldStamp(x.stamp(), (IntegerStamp) s.stamp()), x, s);
+        assert ((IntegerStamp) s.stamp()).getBits() == 32;
+        this.getOp = getOp;
+    }
+
+    protected final ShiftOp<OP> getOp(ValueNode forValue) {
+        return getOp.apply(ArithmeticOpTable.forStamp(forValue.stamp()));
+    }
+
+    @Override
+    public boolean inferStamp() {
+        return updateStamp(getOp(getX()).foldStamp(getX().stamp(), (IntegerStamp) getY().stamp()));
+    }
+
+    @Override
+    public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
+        if (forX.isConstant() && forY.isConstant()) {
+            JavaConstant amount = forY.asJavaConstant();
+            assert amount.getKind() == Kind.Int;
+            return ConstantNode.forPrimitive(stamp(), getOp(forX).foldConstant(forX.asConstant(), amount.asInt()));
+        }
+        return this;
     }
 
     public int getShiftAmountMask() {
-        int mask;
-        if (getKind() == Kind.Int) {
-            mask = 0x1f;
-        } else {
-            assert getKind() == Kind.Long;
-            mask = 0x3f;
-        }
-        return mask;
+        return getOp(getX()).getShiftAmountMask(stamp());
     }
+
 }

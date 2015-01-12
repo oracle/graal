@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -102,7 +102,7 @@ public class IntegerEqualsNode extends CompareNode {
             if (nonConstant instanceof AndNode) {
                 AndNode andNode = (AndNode) nonConstant;
                 return IntegerTestNode.create(andNode.getX(), andNode.getY());
-            } else if (nonConstant instanceof ShiftNode) {
+            } else if (nonConstant instanceof ShiftNode && nonConstant.stamp() instanceof IntegerStamp) {
                 if (nonConstant instanceof LeftShiftNode) {
                     LeftShiftNode shift = (LeftShiftNode) nonConstant;
                     if (shift.getY().isConstant()) {

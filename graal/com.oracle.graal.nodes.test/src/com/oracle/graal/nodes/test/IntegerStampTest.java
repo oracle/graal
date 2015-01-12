@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,9 +28,9 @@ import org.junit.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.IntegerConvertOp;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.ShiftOp;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.type.*;
 
 /**
  * This class tests that integer stamps are created correctly for constants.
@@ -311,13 +311,14 @@ public class IntegerStampTest {
 
     @Test
     public void testShiftLeft() {
-        assertEquals(new IntegerStamp(32, 0, 0x1ff, 0, 0x1ff), StampTool.leftShift(new IntegerStamp(32, 0, 0xff, 0, 0xff), new IntegerStamp(32, 0, 1, 0, 1)));
-        assertEquals(new IntegerStamp(32, 0, 0x1fe0, 0, 0x1fe0), StampTool.leftShift(new IntegerStamp(32, 0, 0xff, 0, 0xff), new IntegerStamp(32, 5, 5, 5, 5)));
-        assertEquals(new IntegerStamp(32, 0x1e0, 0x1fe0, 0, 0x1fe0), StampTool.leftShift(new IntegerStamp(32, 0xf, 0xff, 0, 0xff), new IntegerStamp(32, 5, 5, 5, 5)));
+        ShiftOp<?> shl = IntegerStamp.OPS.getShl();
+        assertEquals(new IntegerStamp(32, 0, 0x1ff, 0, 0x1ff), shl.foldStamp(new IntegerStamp(32, 0, 0xff, 0, 0xff), new IntegerStamp(32, 0, 1, 0, 1)));
+        assertEquals(new IntegerStamp(32, 0, 0x1fe0, 0, 0x1fe0), shl.foldStamp(new IntegerStamp(32, 0, 0xff, 0, 0xff), new IntegerStamp(32, 5, 5, 5, 5)));
+        assertEquals(new IntegerStamp(32, 0x1e0, 0x1fe0, 0, 0x1fe0), shl.foldStamp(new IntegerStamp(32, 0xf, 0xff, 0, 0xff), new IntegerStamp(32, 5, 5, 5, 5)));
 
-        assertEquals(new IntegerStamp(64, 0, 0x1ff, 0, 0x1ff), StampTool.leftShift(new IntegerStamp(64, 0, 0xff, 0, 0xff), new IntegerStamp(32, 0, 1, 0, 1)));
-        assertEquals(new IntegerStamp(64, 0, 0x1fe0, 0, 0x1fe0), StampTool.leftShift(new IntegerStamp(64, 0, 0xff, 0, 0xff), new IntegerStamp(32, 5, 5, 5, 5)));
-        assertEquals(new IntegerStamp(64, 0x1e0, 0x1fe0, 0, 0x1fe0), StampTool.leftShift(new IntegerStamp(64, 0xf, 0xff, 0, 0xff), new IntegerStamp(32, 5, 5, 5, 5)));
+        assertEquals(new IntegerStamp(64, 0, 0x1ff, 0, 0x1ff), shl.foldStamp(new IntegerStamp(64, 0, 0xff, 0, 0xff), new IntegerStamp(32, 0, 1, 0, 1)));
+        assertEquals(new IntegerStamp(64, 0, 0x1fe0, 0, 0x1fe0), shl.foldStamp(new IntegerStamp(64, 0, 0xff, 0, 0xff), new IntegerStamp(32, 5, 5, 5, 5)));
+        assertEquals(new IntegerStamp(64, 0x1e0, 0x1fe0, 0, 0x1fe0), shl.foldStamp(new IntegerStamp(64, 0xf, 0xff, 0, 0xff), new IntegerStamp(32, 5, 5, 5, 5)));
 
     }
 }
