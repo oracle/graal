@@ -304,7 +304,7 @@ public class TestResolvedJavaMethod extends MethodUniverse {
     public void hasBytecodesTest() {
         for (Map.Entry<Method, ResolvedJavaMethod> e : methods.entrySet()) {
             ResolvedJavaMethod m = e.getValue();
-            assertTrue(m.hasBytecodes() == m.isConcrete() && !m.isNative());
+            assertTrue(m.hasBytecodes() == (m.isConcrete() && !m.isNative()));
         }
         for (Map.Entry<Constructor<?>, ResolvedJavaMethod> e : constructors.entrySet()) {
             ResolvedJavaMethod m = e.getValue();
