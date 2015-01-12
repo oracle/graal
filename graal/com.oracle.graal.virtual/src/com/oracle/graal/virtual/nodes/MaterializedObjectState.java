@@ -39,18 +39,14 @@ public class MaterializedObjectState extends EscapeObjectState implements Node.V
         return materializedValue;
     }
 
-    public static MaterializedObjectState create(VirtualObjectNode object, ValueNode materializedValue) {
-        return new MaterializedObjectState(object, materializedValue);
-    }
-
-    protected MaterializedObjectState(VirtualObjectNode object, ValueNode materializedValue) {
+    public MaterializedObjectState(VirtualObjectNode object, ValueNode materializedValue) {
         super(object);
         this.materializedValue = materializedValue;
     }
 
     @Override
     public MaterializedObjectState duplicateWithVirtualState() {
-        return graph().addWithoutUnique(MaterializedObjectState.create(object(), materializedValue));
+        return graph().addWithoutUnique(new MaterializedObjectState(object(), materializedValue));
     }
 
     @Override

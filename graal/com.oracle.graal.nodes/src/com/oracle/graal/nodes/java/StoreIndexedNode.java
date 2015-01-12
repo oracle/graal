@@ -56,19 +56,7 @@ public class StoreIndexedNode extends AccessIndexedNode implements StateSplit, L
         return value;
     }
 
-    /**
-     * Creates a new StoreIndexedNode.
-     *
-     * @param array the node producing the array
-     * @param index the node producing the index
-     * @param elementKind the element type
-     * @param value the value to store into the array
-     */
-    public static StoreIndexedNode create(ValueNode array, ValueNode index, Kind elementKind, ValueNode value) {
-        return new StoreIndexedNode(array, index, elementKind, value);
-    }
-
-    protected StoreIndexedNode(ValueNode array, ValueNode index, Kind elementKind, ValueNode value) {
+    public StoreIndexedNode(ValueNode array, ValueNode index, Kind elementKind, ValueNode value) {
         super(StampFactory.forVoid(), array, index, elementKind);
         this.value = value;
     }

@@ -35,19 +35,7 @@ public class FloatLessThanNode extends CompareNode {
 
     protected final boolean unorderedIsTrue;
 
-    /**
-     * Constructs a new floating point comparison node.
-     *
-     * @param x the instruction producing the first input to the instruction
-     * @param y the instruction that produces the second input to this instruction
-     * @param unorderedIsTrue whether a comparison that is undecided (involving NaNs, etc.) leads to
-     *            a "true" result
-     */
-    public static FloatLessThanNode create(ValueNode x, ValueNode y, boolean unorderedIsTrue) {
-        return new FloatLessThanNode(x, y, unorderedIsTrue);
-    }
-
-    protected FloatLessThanNode(ValueNode x, ValueNode y, boolean unorderedIsTrue) {
+    public FloatLessThanNode(ValueNode x, ValueNode y, boolean unorderedIsTrue) {
         super(x, y);
         assert x.stamp() instanceof FloatStamp && y.stamp() instanceof FloatStamp;
         assert x.stamp().isCompatible(y.stamp());
@@ -79,9 +67,9 @@ public class FloatLessThanNode extends CompareNode {
     @Override
     protected CompareNode duplicateModified(ValueNode newX, ValueNode newY) {
         if (newX.stamp() instanceof FloatStamp && newY.stamp() instanceof FloatStamp) {
-            return FloatLessThanNode.create(newX, newY, unorderedIsTrue);
+            return new FloatLessThanNode(newX, newY, unorderedIsTrue);
         } else if (newX.stamp() instanceof IntegerStamp && newY.stamp() instanceof IntegerStamp) {
-            return IntegerLessThanNode.create(newX, newY);
+            return new IntegerLessThanNode(newX, newY);
         }
         throw GraalInternalError.shouldNotReachHere();
     }

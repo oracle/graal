@@ -38,11 +38,7 @@ public class AMD64RawNativeCallNode extends FixedWithNextNode implements LIRLowe
     protected final JavaConstant functionPointer;
     @Input NodeInputList<ValueNode> args;
 
-    public static AMD64RawNativeCallNode create(Kind returnType, JavaConstant functionPointer, ValueNode[] args) {
-        return new AMD64RawNativeCallNode(returnType, functionPointer, args);
-    }
-
-    protected AMD64RawNativeCallNode(Kind returnType, JavaConstant functionPointer, ValueNode[] args) {
+    public AMD64RawNativeCallNode(Kind returnType, JavaConstant functionPointer, ValueNode[] args) {
         super(StampFactory.forKind(returnType));
         this.functionPointer = functionPointer;
         this.args = new NodeInputList<>(this, args);

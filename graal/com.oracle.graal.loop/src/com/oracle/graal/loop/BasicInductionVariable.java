@@ -86,7 +86,7 @@ public class BasicInductionVariable extends InductionVariable {
             return rawStride;
         }
         if (op instanceof SubNode) {
-            return graph().unique(NegateNode.create(rawStride));
+            return graph().unique(new NegateNode(rawStride));
         }
         throw GraalInternalError.shouldNotReachHere();
     }

@@ -61,11 +61,7 @@ public class LoweredCompareAndSwapNode extends FixedAccessNode implements StateS
         return newValue;
     }
 
-    public static LoweredCompareAndSwapNode create(ValueNode object, LocationNode location, ValueNode expectedValue, ValueNode newValue, BarrierType barrierType) {
-        return new LoweredCompareAndSwapNode(object, location, expectedValue, newValue, barrierType);
-    }
-
-    protected LoweredCompareAndSwapNode(ValueNode object, LocationNode location, ValueNode expectedValue, ValueNode newValue, BarrierType barrierType) {
+    public LoweredCompareAndSwapNode(ValueNode object, LocationNode location, ValueNode expectedValue, ValueNode newValue, BarrierType barrierType) {
         super(object, location, StampFactory.forKind(Kind.Boolean.getStackKind()), barrierType);
         assert expectedValue.getKind() == newValue.getKind();
         this.expectedValue = expectedValue;

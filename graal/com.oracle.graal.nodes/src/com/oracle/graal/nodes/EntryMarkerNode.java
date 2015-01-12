@@ -35,11 +35,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(allowedUsageTypes = {InputType.Association})
 public class EntryMarkerNode extends BeginStateSplitNode implements IterableNodeType, Simplifiable, LIRLowerable {
 
-    public static EntryMarkerNode create() {
-        return new EntryMarkerNode();
-    }
-
-    protected EntryMarkerNode() {
+    public EntryMarkerNode() {
     }
 
     @Override

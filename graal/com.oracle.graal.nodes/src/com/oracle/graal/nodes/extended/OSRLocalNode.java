@@ -30,11 +30,7 @@ import com.oracle.graal.nodes.*;
 @NodeInfo(nameTemplate = "OSRLocal({p#index})")
 public class OSRLocalNode extends AbstractLocalNode implements IterableNodeType {
 
-    public static OSRLocalNode create(int index, Stamp stamp) {
-        return new OSRLocalNode(index, stamp);
-    }
-
-    protected OSRLocalNode(int index, Stamp stamp) {
+    public OSRLocalNode(int index, Stamp stamp) {
         super(index, stamp);
     }
 

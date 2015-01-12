@@ -36,11 +36,7 @@ public class PrefetchAllocateNode extends FixedWithNextNode implements LIRLowera
     @Input ValueNode distance;
     @Input ValueNode address;
 
-    public static PrefetchAllocateNode create(ValueNode address, ValueNode distance) {
-        return new PrefetchAllocateNode(address, distance);
-    }
-
-    protected PrefetchAllocateNode(ValueNode address, ValueNode distance) {
+    public PrefetchAllocateNode(ValueNode address, ValueNode distance) {
         super(StampFactory.forVoid());
         this.address = address;
         this.distance = distance;

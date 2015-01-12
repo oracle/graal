@@ -42,21 +42,7 @@ public class TypeSwitchNode extends SwitchNode implements LIRLowerable, Simplifi
 
     protected final ResolvedJavaType[] keys;
 
-    /**
-     * Constructs a type switch instruction. The keyProbabilities array contain key.length + 1
-     * entries. The last entry in every array describes the default case.
-     *
-     * @param value the instruction producing the value being switched on, the object hub
-     * @param successors the list of successors
-     * @param keys the list of types
-     * @param keyProbabilities the probabilities of the keys
-     * @param keySuccessors the successor index for each key
-     */
-    public static TypeSwitchNode create(ValueNode value, BeginNode[] successors, ResolvedJavaType[] keys, double[] keyProbabilities, int[] keySuccessors) {
-        return new TypeSwitchNode(value, successors, keys, keyProbabilities, keySuccessors);
-    }
-
-    protected TypeSwitchNode(ValueNode value, BeginNode[] successors, ResolvedJavaType[] keys, double[] keyProbabilities, int[] keySuccessors) {
+    public TypeSwitchNode(ValueNode value, BeginNode[] successors, ResolvedJavaType[] keys, double[] keyProbabilities, int[] keySuccessors) {
         super(value, successors, keySuccessors, keyProbabilities);
         assert successors.length <= keys.length + 1;
         assert keySuccessors.length == keyProbabilities.length;
@@ -205,7 +191,7 @@ public class TypeSwitchNode extends SwitchNode implements LIRLowerable, Simplifi
                     }
 
                     BeginNode[] successorsArray = newSuccessors.toArray(new BeginNode[newSuccessors.size()]);
-                    TypeSwitchNode newSwitch = graph().add(TypeSwitchNode.create(value(), successorsArray, newKeys, newKeyProbabilities, newKeySuccessors));
+                    TypeSwitchNode newSwitch = graph().add(new TypeSwitchNode(value(), successorsArray, newKeys, newKeyProbabilities, newKeySuccessors));
                     ((FixedWithNextNode) predecessor()).setNext(newSwitch);
                     GraphUtil.killWithUnusedFloatingInputs(this);
                 }

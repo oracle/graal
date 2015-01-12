@@ -49,11 +49,7 @@ public class MathIntrinsicNode extends UnaryNode implements ArithmeticLIRLowerab
         return operation;
     }
 
-    public static MathIntrinsicNode create(ValueNode value, Operation op) {
-        return new MathIntrinsicNode(value, op);
-    }
-
-    protected MathIntrinsicNode(ValueNode value, Operation op) {
+    public MathIntrinsicNode(ValueNode value, Operation op) {
         super(StampFactory.forKind(Kind.Double), value);
         assert value.stamp() instanceof FloatStamp && PrimitiveStamp.getBits(value.stamp()) == 64;
         this.operation = op;

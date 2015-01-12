@@ -46,32 +46,11 @@ public class InvokeNode extends AbstractMemoryCheckpoint implements Invoke, LIRL
     protected boolean polymorphic;
     protected boolean useForInlining;
 
-    /**
-     * Constructs a new Invoke instruction.
-     *
-     * @param callTarget the target method being called
-     * @param bci the bytecode index of the original invoke (used for debug infos)
-     */
-    public static InvokeNode create(CallTargetNode callTarget, int bci) {
-        return new InvokeNode(callTarget, bci);
-    }
-
-    protected InvokeNode(CallTargetNode callTarget, int bci) {
+    public InvokeNode(CallTargetNode callTarget, int bci) {
         this(callTarget, bci, callTarget.returnStamp());
     }
 
-    /**
-     * Constructs a new Invoke instruction.
-     *
-     * @param callTarget the target method being called
-     * @param bci the bytecode index of the original invoke (used for debug infos)
-     * @param stamp the stamp to be used for this value
-     */
-    public static InvokeNode create(CallTargetNode callTarget, int bci, Stamp stamp) {
-        return new InvokeNode(callTarget, bci, stamp);
-    }
-
-    protected InvokeNode(CallTargetNode callTarget, int bci, Stamp stamp) {
+    public InvokeNode(CallTargetNode callTarget, int bci, Stamp stamp) {
         super(stamp);
         this.callTarget = callTarget;
         this.bci = bci;

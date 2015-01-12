@@ -35,11 +35,7 @@ public class UnboxNode extends UnaryNode implements Virtualizable, Lowerable {
 
     protected final Kind boxingKind;
 
-    public static UnboxNode create(ValueNode value, Kind boxingKind) {
-        return new UnboxNode(value, boxingKind);
-    }
-
-    protected UnboxNode(ValueNode value, Kind boxingKind) {
+    public UnboxNode(ValueNode value, Kind boxingKind) {
         super(StampFactory.forKind(boxingKind.getStackKind()), value);
         this.boxingKind = boxingKind;
     }

@@ -96,11 +96,7 @@ public class DataPatchTest extends GraalCompilerTest {
 
         @Input protected ValueNode input;
 
-        public static ConstantFoldBarrier create(ValueNode input) {
-            return new ConstantFoldBarrier(input);
-        }
-
-        protected ConstantFoldBarrier(ValueNode input) {
+        public ConstantFoldBarrier(ValueNode input) {
             super(input.stamp());
             this.input = input;
         }

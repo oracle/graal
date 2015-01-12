@@ -43,11 +43,7 @@ public class AssertionNode extends FixedWithNextNode implements Lowerable, Canon
     protected final boolean compileTimeAssertion;
     protected final String message;
 
-    public static AssertionNode create(boolean compileTimeAssertion, ValueNode value, String message) {
-        return new AssertionNode(compileTimeAssertion, value, message);
-    }
-
-    protected AssertionNode(boolean compileTimeAssertion, ValueNode value, String message) {
+    public AssertionNode(boolean compileTimeAssertion, ValueNode value, String message) {
         super(StampFactory.forVoid());
         this.value = value;
         this.compileTimeAssertion = compileTimeAssertion;

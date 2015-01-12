@@ -36,27 +36,15 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public class WriteNode extends AbstractWriteNode implements LIRLowerable, Simplifiable, Virtualizable {
 
-    public static WriteNode create(ValueNode object, ValueNode value, ValueNode location, BarrierType barrierType) {
-        return new WriteNode(object, value, location, barrierType);
-    }
-
-    protected WriteNode(ValueNode object, ValueNode value, ValueNode location, BarrierType barrierType) {
+    public WriteNode(ValueNode object, ValueNode value, ValueNode location, BarrierType barrierType) {
         super(object, value, location, barrierType);
     }
 
-    public static WriteNode create(ValueNode object, ValueNode value, ValueNode location, BarrierType barrierType, boolean initialization) {
-        return new WriteNode(object, value, location, barrierType, initialization);
-    }
-
-    protected WriteNode(ValueNode object, ValueNode value, ValueNode location, BarrierType barrierType, boolean initialization) {
+    public WriteNode(ValueNode object, ValueNode value, ValueNode location, BarrierType barrierType, boolean initialization) {
         super(object, value, location, barrierType, initialization);
     }
 
-    public static WriteNode create(ValueNode object, ValueNode value, ValueNode location, BarrierType barrierType, GuardingNode guard, boolean initialization) {
-        return new WriteNode(object, value, location, barrierType, guard, initialization);
-    }
-
-    protected WriteNode(ValueNode object, ValueNode value, ValueNode location, BarrierType barrierType, GuardingNode guard, boolean initialization) {
+    public WriteNode(ValueNode object, ValueNode value, ValueNode location, BarrierType barrierType, GuardingNode guard, boolean initialization) {
         super(object, value, location, barrierType, guard, initialization);
     }
 

@@ -70,7 +70,7 @@ public class LoadJavaMirrorWithKlassPhase extends BasePhase<PhaseContext> {
                 Constant klass;
                 LocationNode location;
                 if (type instanceof HotSpotResolvedObjectType) {
-                    location = ConstantLocationNode.create(CLASS_MIRROR_LOCATION, classMirrorOffset, graph);
+                    location = graph.unique(new ConstantLocationNode(CLASS_MIRROR_LOCATION, classMirrorOffset));
                     klass = ((HotSpotResolvedObjectType) type).klass();
                 } else {
                     /*
@@ -91,12 +91,12 @@ public class LoadJavaMirrorWithKlassPhase extends BasePhase<PhaseContext> {
                     if (typeField == null) {
                         throw new GraalInternalError("Can't find TYPE field in class");
                     }
-                    location = ConstantLocationNode.create(FINAL_LOCATION, typeField.offset(), graph);
+                    location = graph.unique(new ConstantLocationNode(FINAL_LOCATION, typeField.offset()));
                 }
                 ConstantNode klassNode = ConstantNode.forConstant(KlassPointerStamp.klassNonNull(), klass, metaAccess, graph);
 
                 Stamp stamp = StampFactory.exactNonNull(metaAccess.lookupJavaType(Class.class));
-                FloatingReadNode freadNode = graph.unique(FloatingReadNode.create(klassNode, location, null, stamp));
+                FloatingReadNode freadNode = graph.unique(new FloatingReadNode(klassNode, location, null, stamp));
 
                 if (((HotSpotObjectConstant) constant).isCompressed()) {
                     return CompressionNode.compress(freadNode, oopEncoding);

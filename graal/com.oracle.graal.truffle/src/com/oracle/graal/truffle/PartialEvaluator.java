@@ -329,8 +329,8 @@ public class PartialEvaluator {
                     ValueNode length = GraphUtil.arrayLength(arg);
                     if (length != null && length.isConstant()) {
                         param.usages().snapshotTo(modifiedNodes);
-                        ParameterNode newParam = graphCopy.addWithoutUnique(ParameterNode.create(param.index(), param.stamp()));
-                        param.replaceAndDelete(graphCopy.addWithoutUnique(PiArrayNode.create(newParam, ConstantNode.forInt(length.asJavaConstant().asInt(), graphCopy), param.stamp())));
+                        ParameterNode newParam = graphCopy.addWithoutUnique(new ParameterNode(param.index(), param.stamp()));
+                        param.replaceAndDelete(graphCopy.addWithoutUnique(new PiArrayNode(newParam, ConstantNode.forInt(length.asJavaConstant().asInt(), graphCopy), param.stamp())));
                     }
                 }
             }

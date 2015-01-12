@@ -85,15 +85,15 @@ public class NodeIntrinsificationPhase extends Phase {
 
             ResolvedJavaType[] parameterTypes = resolveJavaTypes(target.toParameterTypes(), declaringClass);
 
-            // Prepare the arguments for the reflective factory method call on the node class.
-            Object[] nodeFactoryArguments = prepareArguments(methodCallTargetNode, parameterTypes, target, false);
-            if (nodeFactoryArguments == null) {
+            // Prepare the arguments for the reflective constructor call on the node class.
+            Object[] nodeConstructorArguments = prepareArguments(methodCallTargetNode, parameterTypes, target, false);
+            if (nodeConstructorArguments == null) {
                 return false;
             }
 
             // Create the new node instance.
             ResolvedJavaType c = getNodeClass(target, intrinsic);
-            Node newInstance = createNodeInstance(graph, c, parameterTypes, methodCallTargetNode.invoke().asNode().stamp(), intrinsic.setStampFromReturnType(), nodeFactoryArguments);
+            Node newInstance = createNodeInstance(graph, c, parameterTypes, methodCallTargetNode.invoke().asNode().stamp(), intrinsic.setStampFromReturnType(), nodeConstructorArguments);
 
             // Replace the invoke with the new node.
             newInstance = graph.addOrUnique(newInstance);
@@ -150,7 +150,7 @@ public class NodeIntrinsificationPhase extends Phase {
 
     /**
      * Converts the arguments of an invoke node to object values suitable for use as the arguments
-     * to a reflective invocation of a Java method.
+     * to a reflective invocation of a Java constructor or method.
      *
      * @param folding specifies if the invocation is for handling a {@link Fold} annotation
      * @return the arguments for the reflective invocation or null if an argument of {@code invoke}
@@ -220,38 +220,35 @@ public class NodeIntrinsificationPhase extends Phase {
     }
 
     protected Node createNodeInstance(StructuredGraph graph, ResolvedJavaType nodeClass, ResolvedJavaType[] parameterTypes, Stamp invokeStamp, boolean setStampFromReturnType,
-                    Object[] nodeFactoryArguments) {
-        ResolvedJavaMethod factory = null;
+                    Object[] nodeConstructorArguments) {
+        ResolvedJavaMethod constructor = null;
         Object[] arguments = null;
 
-        for (ResolvedJavaMethod m : nodeClass.getDeclaredMethods()) {
-            if (m.getName().equals("create") && !m.isSynthetic()) {
-                Object[] match = match(graph, invokeStamp, m, parameterTypes, nodeFactoryArguments);
+        for (ResolvedJavaMethod c : nodeClass.getDeclaredConstructors()) {
+            Object[] match = match(graph, invokeStamp, c, parameterTypes, nodeConstructorArguments);
 
-                if (match != null) {
-                    if (factory == null) {
-                        factory = m;
-                        arguments = match;
-                    } else {
-                        throw new GraalInternalError("Found multiple factory methods in %s compatible with signature %s: %s, %s", nodeClass.toJavaName(), sigString(parameterTypes),
-                                        factory.format("%n(%p)%r"), m.format("%n(%p)%r"));
-                    }
+            if (match != null) {
+                if (constructor == null) {
+                    constructor = c;
+                    arguments = match;
+                } else {
+                    throw new GraalInternalError("Found multiple constructors in %s compatible with signature %s: %s, %s", nodeClass.toJavaName(), sigString(parameterTypes), constructor, c);
                 }
             }
         }
-        if (factory == null) {
-            throw new GraalInternalError("Could not find factory method in %s compatible with signature %s", nodeClass.toJavaName(), sigString(parameterTypes));
+        if (constructor == null) {
+            throw new GraalInternalError("Could not find constructor in %s compatible with signature %s", nodeClass.toJavaName(), sigString(parameterTypes));
         }
 
         try {
-            ValueNode intrinsicNode = (ValueNode) snippetReflection.invoke(factory, null, arguments);
+            ValueNode intrinsicNode = (ValueNode) snippetReflection.invoke(constructor, null, arguments);
 
             if (setStampFromReturnType) {
                 intrinsicNode.setStamp(invokeStamp);
             }
             return intrinsicNode;
         } catch (Exception e) {
-            throw new RuntimeException(factory + Arrays.toString(nodeFactoryArguments), e);
+            throw new RuntimeException(constructor + Arrays.toString(nodeConstructorArguments), e);
         }
     }
 
@@ -277,14 +274,14 @@ public class NodeIntrinsificationPhase extends Phase {
         return true;
     }
 
-    private Object[] match(StructuredGraph graph, Stamp invokeStamp, ResolvedJavaMethod m, ResolvedJavaType[] parameterTypes, Object[] nodeFactoryArguments) {
+    private Object[] match(StructuredGraph graph, Stamp invokeStamp, ResolvedJavaMethod c, ResolvedJavaType[] parameterTypes, Object[] nodeConstructorArguments) {
         Object[] arguments = null;
         Object[] injected = null;
 
-        ResolvedJavaType[] signature = resolveJavaTypes(m.getSignature().toParameterTypes(null), m.getDeclaringClass());
+        ResolvedJavaType[] signature = resolveJavaTypes(c.getSignature().toParameterTypes(null), c.getDeclaringClass());
         MetaAccessProvider metaAccess = providers.getMetaAccess();
         for (int i = 0; i < signature.length; i++) {
-            if (m.getParameterAnnotation(InjectedNodeParameter.class, i) != null) {
+            if (c.getParameterAnnotation(InjectedNodeParameter.class, i) != null) {
                 injected = injected == null ? new Object[1] : Arrays.copyOf(injected, injected.length + 1);
                 Object injectedParameter = snippetReflection.getInjectedNodeIntrinsicParameter(signature[i]);
                 if (injectedParameter != null) {
@@ -302,24 +299,24 @@ public class NodeIntrinsificationPhase extends Phase {
                 } else if (signature[i].isAssignableFrom(metaAccess.lookupJavaType(StampProvider.class))) {
                     injected[injected.length - 1] = providers.getStampProvider();
                 } else {
-                    throw new GraalInternalError("Cannot handle injected argument of type %s in %s", signature[i].toJavaName(), m.format("%H.%n(%p)"));
+                    throw new GraalInternalError("Cannot handle injected argument of type %s in %s", signature[i].toJavaName(), c.format("%H.%n(%p)"));
                 }
             } else {
                 if (i > 0) {
                     // Chop injected arguments from signature
                     signature = Arrays.copyOfRange(signature, i, signature.length);
                 }
-                assert checkNoMoreInjected(m, i);
+                assert checkNoMoreInjected(c, i);
                 break;
             }
         }
 
         if (Arrays.equals(parameterTypes, signature)) {
             // Exact match
-            arguments = nodeFactoryArguments;
+            arguments = nodeConstructorArguments;
 
         } else if (signature.length > 0 && signature[signature.length - 1].isArray()) {
-            // Last parameter is an array, so check if we have a vararg match
+            // Last constructor parameter is an array, so check if we have a vararg match
             int fixedArgs = signature.length - 1;
             if (parameterTypes.length < fixedArgs) {
                 return null;
@@ -332,20 +329,20 @@ public class NodeIntrinsificationPhase extends Phase {
 
             ResolvedJavaType componentType = signature[fixedArgs].getComponentType();
             assert componentType != null;
-            for (int i = fixedArgs; i < nodeFactoryArguments.length; i++) {
+            for (int i = fixedArgs; i < nodeConstructorArguments.length; i++) {
                 if (!parameterTypes[i].equals(componentType)) {
                     return null;
                 }
             }
-            arguments = Arrays.copyOf(nodeFactoryArguments, fixedArgs + 1);
-            arguments[fixedArgs] = snippetReflection.newArray(componentType, nodeFactoryArguments.length - fixedArgs);
+            arguments = Arrays.copyOf(nodeConstructorArguments, fixedArgs + 1);
+            arguments[fixedArgs] = snippetReflection.newArray(componentType, nodeConstructorArguments.length - fixedArgs);
 
             Object varargs = arguments[fixedArgs];
-            for (int i = fixedArgs; i < nodeFactoryArguments.length; i++) {
+            for (int i = fixedArgs; i < nodeConstructorArguments.length; i++) {
                 if (componentType.isPrimitive()) {
-                    Array.set(varargs, i - fixedArgs, nodeFactoryArguments[i]);
+                    Array.set(varargs, i - fixedArgs, nodeConstructorArguments[i]);
                 } else {
-                    ((Object[]) varargs)[i - fixedArgs] = nodeFactoryArguments[i];
+                    ((Object[]) varargs)[i - fixedArgs] = nodeConstructorArguments[i];
                 }
             }
         } else {

@@ -24,7 +24,7 @@ package com.oracle.graal.api.code;
 
 /**
  * Constants and intrinsic definition for memory barriers.
- *
+ * 
  * The documentation for each constant is taken from Doug Lea's <a
  * href="http://gee.cs.oswego.edu/dl/jmm/cookbook.html">The JSR-133 Cookbook for Compiler
  * Writers</a>.
@@ -32,7 +32,7 @@ package com.oracle.graal.api.code;
  * The {@code JMM_*} constants capture the memory barriers necessary to implement the Java Memory
  * Model with respect to volatile field accesses. Their values are explained by this comment from
  * templateTable_i486.cpp in the HotSpot source code:
- *
+ * 
  * <pre>
  * Volatile variables demand their effects be made known to all CPU's in
  * order.  Store buffers on most chips allow reads &amp; writes to reorder; the

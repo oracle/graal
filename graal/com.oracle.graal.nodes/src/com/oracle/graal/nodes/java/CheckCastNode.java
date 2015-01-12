@@ -53,17 +53,7 @@ public class CheckCastNode extends FixedWithNextNode implements Canonicalizable,
      */
     protected final boolean forStoreCheck;
 
-    /**
-     * Creates a new CheckCast instruction.
-     *
-     * @param type the type being cast to
-     * @param object the instruction producing the object
-     */
-    public static CheckCastNode create(ResolvedJavaType type, ValueNode object, JavaTypeProfile profile, boolean forStoreCheck) {
-        return new CheckCastNode(type, object, profile, forStoreCheck);
-    }
-
-    protected CheckCastNode(ResolvedJavaType type, ValueNode object, JavaTypeProfile profile, boolean forStoreCheck) {
+    public CheckCastNode(ResolvedJavaType type, ValueNode object, JavaTypeProfile profile, boolean forStoreCheck) {
         super(StampFactory.declaredTrusted(type));
         assert type != null;
         this.type = type;
@@ -115,12 +105,12 @@ public class CheckCastNode extends FixedWithNextNode implements Canonicalizable,
             condition = LogicConstantNode.contradiction(graph());
             newStamp = StampFactory.declaredTrusted(type);
         } else if (StampTool.isPointerNonNull(object)) {
-            condition = graph().addWithoutUnique(InstanceOfNode.create(type, object, profile));
+            condition = graph().addWithoutUnique(new InstanceOfNode(type, object, profile));
         } else {
             if (profile != null && profile.getNullSeen() == TriState.FALSE) {
-                FixedGuardNode nullCheck = graph().add(FixedGuardNode.create(graph().unique(IsNullNode.create(object)), UnreachedCode, InvalidateReprofile, true));
-                PiNode nullGuarded = graph().unique(PiNode.create(object, object().stamp().join(StampFactory.objectNonNull()), nullCheck));
-                InstanceOfNode typeTest = graph().addWithoutUnique(InstanceOfNode.create(type, nullGuarded, profile));
+                FixedGuardNode nullCheck = graph().add(new FixedGuardNode(graph().unique(new IsNullNode(object)), UnreachedCode, InvalidateReprofile, true));
+                PiNode nullGuarded = graph().unique(new PiNode(object, object().stamp().join(StampFactory.objectNonNull()), nullCheck));
+                InstanceOfNode typeTest = graph().addWithoutUnique(new InstanceOfNode(type, nullGuarded, profile));
                 graph().addBeforeFixed(this, nullCheck);
                 condition = typeTest;
                 /*
@@ -134,11 +124,11 @@ public class CheckCastNode extends FixedWithNextNode implements Canonicalizable,
             } else {
                 // TODO (ds) replace with probability of null-seen when available
                 double shortCircuitProbability = NOT_FREQUENT_PROBABILITY;
-                InstanceOfNode typeTest = graph().addWithoutUnique(InstanceOfNode.create(type, object, profile));
-                condition = LogicNode.or(graph().unique(IsNullNode.create(object)), typeTest, shortCircuitProbability);
+                InstanceOfNode typeTest = graph().addWithoutUnique(new InstanceOfNode(type, object, profile));
+                condition = LogicNode.or(graph().unique(new IsNullNode(object)), typeTest, shortCircuitProbability);
             }
         }
-        GuardingPiNode checkedObject = graph().add(GuardingPiNode.create(theValue, condition, false, forStoreCheck ? ArrayStoreException : ClassCastException, InvalidateReprofile, newStamp));
+        GuardingPiNode checkedObject = graph().add(new GuardingPiNode(theValue, condition, false, forStoreCheck ? ArrayStoreException : ClassCastException, InvalidateReprofile, newStamp));
         graph().replaceFixedWithFixed(this, checkedObject);
         checkedObject.lower(tool);
     }
@@ -170,7 +160,7 @@ public class CheckCastNode extends FixedWithNextNode implements Canonicalizable,
             if (exactType != null && !exactType.equals(type)) {
                 // Propagate more precise type information to usages of the checkcast.
                 tool.assumptions().recordConcreteSubtype(type, exactType);
-                return CheckCastNode.create(exactType, object, profile, forStoreCheck);
+                return new CheckCastNode(exactType, object, profile, forStoreCheck);
             }
         }
 
@@ -185,7 +175,7 @@ public class CheckCastNode extends FixedWithNextNode implements Canonicalizable,
             CheckCastNode ccn = (CheckCastNode) predecessor();
             if (ccn != null && ccn.type != null && ccn == object && ccn.forStoreCheck == forStoreCheck && ccn.type.isAssignableFrom(type)) {
                 StructuredGraph graph = ccn.graph();
-                CheckCastNode newccn = graph.add(CheckCastNode.create(type, ccn.object, ccn.profile, ccn.forStoreCheck));
+                CheckCastNode newccn = graph.add(new CheckCastNode(type, ccn.object, ccn.profile, ccn.forStoreCheck));
                 graph.replaceFixedWithFixed(ccn, newccn);
                 replaceAtUsages(newccn);
                 graph.removeFixed(this);

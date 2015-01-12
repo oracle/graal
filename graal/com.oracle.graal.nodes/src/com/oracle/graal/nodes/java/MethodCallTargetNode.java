@@ -35,14 +35,7 @@ import com.oracle.graal.nodes.type.*;
 public class MethodCallTargetNode extends CallTargetNode implements IterableNodeType, Simplifiable {
     protected final JavaType returnType;
 
-    /**
-     * @param arguments
-     */
-    public static MethodCallTargetNode create(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, JavaType returnType) {
-        return new MethodCallTargetNode(invokeKind, targetMethod, arguments, returnType);
-    }
-
-    protected MethodCallTargetNode(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, JavaType returnType) {
+    public MethodCallTargetNode(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, JavaType returnType) {
         super(arguments, targetMethod, invokeKind);
         this.returnType = returnType;
     }
@@ -190,11 +183,11 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
                  * an assumption but as we need an instanceof check anyway we can verify both
                  * properties by checking of the receiver is an instance of the single implementor.
                  */
-                LogicNode condition = graph().unique(InstanceOfNode.create(singleImplementor, receiver, getProfile()));
+                LogicNode condition = graph().unique(new InstanceOfNode(singleImplementor, receiver, getProfile()));
                 GuardNode guard = graph().unique(
-                                GuardNode.create(condition, BeginNode.prevBegin(invoke().asNode()), DeoptimizationReason.OptimizedTypeCheckViolated, DeoptimizationAction.InvalidateRecompile, false,
+                                new GuardNode(condition, BeginNode.prevBegin(invoke().asNode()), DeoptimizationReason.OptimizedTypeCheckViolated, DeoptimizationAction.InvalidateRecompile, false,
                                                 JavaConstant.NULL_POINTER));
-                PiNode piNode = graph().unique(PiNode.create(receiver, StampFactory.declaredNonNull(singleImplementor), guard));
+                PiNode piNode = graph().unique(new PiNode(receiver, StampFactory.declaredNonNull(singleImplementor), guard));
                 arguments().set(0, piNode);
                 setInvokeKind(InvokeKind.Virtual);
                 setTargetMethod(singleImplementorMethod);

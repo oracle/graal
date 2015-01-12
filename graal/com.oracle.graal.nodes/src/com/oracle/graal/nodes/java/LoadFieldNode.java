@@ -39,17 +39,7 @@ import com.oracle.graal.nodes.virtual.*;
 @NodeInfo(nameTemplate = "LoadField#{p#field/s}")
 public class LoadFieldNode extends AccessFieldNode implements Canonicalizable.Unary<ValueNode>, VirtualizableRoot, UncheckedInterfaceProvider {
 
-    /**
-     * Creates a new LoadFieldNode instance.
-     *
-     * @param object the receiver object
-     * @param field the compiler interface field
-     */
-    public static LoadFieldNode create(ValueNode object, ResolvedJavaField field) {
-        return new LoadFieldNode(object, field);
-    }
-
-    protected LoadFieldNode(ValueNode object, ResolvedJavaField field) {
+    public LoadFieldNode(ValueNode object, ResolvedJavaField field) {
         super(createStamp(field), object, field);
     }
 
@@ -83,7 +73,7 @@ public class LoadFieldNode extends AccessFieldNode implements Canonicalizable.Un
             }
         }
         if (!isStatic() && forObject.isNullConstant()) {
-            return DeoptimizeNode.create(DeoptimizationAction.None, DeoptimizationReason.NullCheckException);
+            return new DeoptimizeNode(DeoptimizationAction.None, DeoptimizationReason.NullCheckException);
         }
         return this;
     }
@@ -119,7 +109,7 @@ public class LoadFieldNode extends AccessFieldNode implements Canonicalizable.Un
             for (int i = 0; i < phi.valueCount(); i++) {
                 constantNodes[i] = ConstantNode.forConstant(constants[i], metaAccess);
             }
-            return ValuePhiNode.create(stamp(), phi.merge(), constantNodes);
+            return new ValuePhiNode(stamp(), phi.merge(), constantNodes);
         }
         return null;
     }

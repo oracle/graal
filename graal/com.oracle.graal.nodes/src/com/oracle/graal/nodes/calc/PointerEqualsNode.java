@@ -32,17 +32,7 @@ import com.oracle.graal.nodes.util.*;
 @NodeInfo(shortName = "==")
 public class PointerEqualsNode extends CompareNode {
 
-    /**
-     * Constructs a new pointer equality comparison node.
-     *
-     * @param x the instruction producing the first input to the instruction
-     * @param y the instruction that produces the second input to this instruction
-     */
-    public static PointerEqualsNode create(ValueNode x, ValueNode y) {
-        return new PointerEqualsNode(x, y);
-    }
-
-    protected PointerEqualsNode(ValueNode x, ValueNode y) {
+    public PointerEqualsNode(ValueNode x, ValueNode y) {
         super(x, y);
         assert x.stamp() instanceof AbstractPointerStamp;
         assert y.stamp() instanceof AbstractPointerStamp;
@@ -65,15 +55,15 @@ public class PointerEqualsNode extends CompareNode {
         } else if (forX.stamp().alwaysDistinct(forY.stamp())) {
             return LogicConstantNode.contradiction();
         } else if (((AbstractPointerStamp) forX.stamp()).alwaysNull()) {
-            return IsNullNode.create(forY);
+            return new IsNullNode(forY);
         } else if (((AbstractPointerStamp) forY.stamp()).alwaysNull()) {
-            return IsNullNode.create(forX);
+            return new IsNullNode(forX);
         }
         return super.canonical(tool, forX, forY);
     }
 
     @Override
     protected CompareNode duplicateModified(ValueNode newX, ValueNode newY) {
-        return PointerEqualsNode.create(newX, newY);
+        return new PointerEqualsNode(newX, newY);
     }
 }

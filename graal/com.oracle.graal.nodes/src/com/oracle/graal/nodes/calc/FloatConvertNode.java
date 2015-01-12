@@ -41,11 +41,7 @@ public class FloatConvertNode extends UnaryArithmeticNode<FloatConvertOp> implem
 
     protected final FloatConvert op;
 
-    public static FloatConvertNode create(FloatConvert op, ValueNode input) {
-        return new FloatConvertNode(op, input);
-    }
-
-    protected FloatConvertNode(FloatConvert op, ValueNode input) {
+    public FloatConvertNode(FloatConvert op, ValueNode input) {
         super(table -> table.getFloatConvert(op), input);
         this.op = op;
     }

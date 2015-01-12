@@ -50,18 +50,12 @@ public class ArrayEqualsNode extends FixedWithNextNode implements LIRLowerable, 
     /** Length of both arrays. */
     @Input ValueNode length;
 
-    public static ArrayEqualsNode create(ValueNode array1, ValueNode array2, ValueNode length) {
-        return new ArrayEqualsNode(array1, array2, length);
-    }
-
-    protected ArrayEqualsNode(ValueNode array1, ValueNode array2, ValueNode length) {
+    public ArrayEqualsNode(ValueNode array1, ValueNode array2, ValueNode length) {
         super(StampFactory.forKind(Kind.Boolean));
-
         assert array1.stamp().equals(array2.stamp());
         ObjectStamp array1Stamp = (ObjectStamp) array1.stamp();
         ResolvedJavaType componentType = array1Stamp.type().getComponentType();
         this.kind = componentType.getKind();
-
         this.array1 = array1;
         this.array2 = array2;
         this.length = length;

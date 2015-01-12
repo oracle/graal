@@ -36,16 +36,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public class NegateNode extends UnaryArithmeticNode<Neg> implements NarrowableArithmeticNode {
 
-    /**
-     * Creates new NegateNode instance.
-     *
-     * @param value the instruction producing the value that is input to this instruction
-     */
-    public static NegateNode create(ValueNode value) {
-        return new NegateNode(value);
-    }
-
-    protected NegateNode(ValueNode value) {
+    public NegateNode(ValueNode value) {
         super(ArithmeticOpTable::getNeg, value);
     }
 
@@ -60,7 +51,7 @@ public class NegateNode extends UnaryArithmeticNode<Neg> implements NarrowableAr
         }
         if (forValue instanceof SubNode) {
             SubNode sub = (SubNode) forValue;
-            return SubNode.create(sub.getY(), sub.getX());
+            return new SubNode(sub.getY(), sub.getX());
         }
         return this;
     }

@@ -65,30 +65,11 @@ public class GuardingPiNode extends FixedWithNextNode implements Lowerable, Virt
         return action;
     }
 
-    /**
-     * Constructor for {@link #guardingNonNull(Object)} node intrinsic.
-     */
-    public static GuardingPiNode create(ValueNode object) {
-        return new GuardingPiNode(object);
+    public GuardingPiNode(ValueNode object) {
+        this(object, object.graph().unique(new IsNullNode(object)), true, DeoptimizationReason.NullCheckException, DeoptimizationAction.None, object.stamp().join(StampFactory.objectNonNull()));
     }
 
-    protected GuardingPiNode(ValueNode object) {
-        this(object, object.graph().unique(IsNullNode.create(object)), true, DeoptimizationReason.NullCheckException, DeoptimizationAction.None, object.stamp().join(StampFactory.objectNonNull()));
-    }
-
-    /**
-     * Creates a guarding pi node.
-     *
-     * @param object the object whose type is refined if this guard succeeds
-     * @param condition the condition to test
-     * @param negateCondition the guard succeeds if {@code condition != negateCondition}
-     * @param stamp the refined type of the object if the guard succeeds
-     */
-    public static GuardingPiNode create(ValueNode object, ValueNode condition, boolean negateCondition, DeoptimizationReason reason, DeoptimizationAction action, Stamp stamp) {
-        return new GuardingPiNode(object, condition, negateCondition, reason, action, stamp);
-    }
-
-    protected GuardingPiNode(ValueNode object, ValueNode condition, boolean negateCondition, DeoptimizationReason reason, DeoptimizationAction action, Stamp stamp) {
+    public GuardingPiNode(ValueNode object, ValueNode condition, boolean negateCondition, DeoptimizationReason reason, DeoptimizationAction action, Stamp stamp) {
         super(stamp);
         assert stamp != null;
         this.piStamp = stamp;
@@ -102,9 +83,9 @@ public class GuardingPiNode extends FixedWithNextNode implements Lowerable, Virt
     @Override
     public void lower(LoweringTool tool) {
         GuardingNode guard = tool.createGuard(next(), condition, reason, action, negated);
-        ValueAnchorNode anchor = graph().add(ValueAnchorNode.create((ValueNode) guard));
+        ValueAnchorNode anchor = graph().add(new ValueAnchorNode((ValueNode) guard));
         if (usages().isNotEmpty()) {
-            PiNode pi = graph().unique(PiNode.create(object, stamp(), (ValueNode) guard));
+            PiNode pi = graph().unique(new PiNode(object, stamp(), (ValueNode) guard));
             replaceAtUsages(pi);
         }
         graph().replaceFixedWithFixed(this, anchor);
@@ -127,19 +108,19 @@ public class GuardingPiNode extends FixedWithNextNode implements Lowerable, Virt
     public Node canonical(CanonicalizerTool tool) {
         if (stamp() == StampFactory.illegal(object.getKind())) {
             // The guard always fails
-            return DeoptimizeNode.create(action, reason);
+            return new DeoptimizeNode(action, reason);
         }
         if (condition instanceof LogicConstantNode) {
             LogicConstantNode c = (LogicConstantNode) condition;
             if (c.getValue() == negated) {
                 // The guard always fails
-                return DeoptimizeNode.create(action, reason);
+                return new DeoptimizeNode(action, reason);
             } else if (stamp().equals(object().stamp())) {
                 // The guard always succeeds, and does not provide new type information
                 return object;
             } else {
                 // The guard always succeeds, and provides new type information
-                return PiNode.create(object, stamp());
+                return new PiNode(object, stamp());
             }
         }
         return this;

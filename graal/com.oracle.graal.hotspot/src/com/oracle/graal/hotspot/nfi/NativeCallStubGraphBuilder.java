@@ -53,10 +53,10 @@ public class NativeCallStubGraphBuilder {
         try {
             ResolvedJavaMethod method = providers.getMetaAccess().lookupJavaMethod(NativeCallStubGraphBuilder.class.getMethod("libCall", Object.class, Object.class, Object.class));
             StructuredGraph g = new StructuredGraph(method);
-            ParameterNode arg0 = g.unique(ParameterNode.create(0, StampFactory.forKind(Kind.Object)));
-            ParameterNode arg1 = g.unique(ParameterNode.create(1, StampFactory.forKind(Kind.Object)));
-            ParameterNode arg2 = g.unique(ParameterNode.create(2, StampFactory.forKind(Kind.Object)));
-            FrameState frameState = g.add(FrameState.create(null, method, 0, Arrays.asList(new ValueNode[]{arg0, arg1, arg2}), 3, 0, false, false, new ArrayList<MonitorIdNode>(),
+            ParameterNode arg0 = g.unique(new ParameterNode(0, StampFactory.forKind(Kind.Object)));
+            ParameterNode arg1 = g.unique(new ParameterNode(1, StampFactory.forKind(Kind.Object)));
+            ParameterNode arg2 = g.unique(new ParameterNode(2, StampFactory.forKind(Kind.Object)));
+            FrameState frameState = g.add(new FrameState(null, method, 0, Arrays.asList(new ValueNode[]{arg0, arg1, arg2}), 3, 0, false, false, new ArrayList<MonitorIdNode>(),
                             new ArrayList<EscapeObjectState>()));
             g.start().setStateAfter(frameState);
             List<ValueNode> parameters = new ArrayList<>();
@@ -84,12 +84,12 @@ public class NativeCallStubGraphBuilder {
                     throw new IllegalArgumentException("Return type not supported: " + returnType.getName());
                 }
                 ResolvedJavaType type = providers.getMetaAccess().lookupJavaType(callNode.getKind().toBoxedJavaClass());
-                boxedResult = g.unique(BoxNode.create(callNode, type, callNode.getKind()));
+                boxedResult = g.unique(new BoxNode(callNode, type, callNode.getKind()));
             } else {
-                boxedResult = g.unique(BoxNode.create(ConstantNode.forLong(0, g), providers.getMetaAccess().lookupJavaType(Long.class), Kind.Long));
+                boxedResult = g.unique(new BoxNode(ConstantNode.forLong(0, g), providers.getMetaAccess().lookupJavaType(Long.class), Kind.Long));
             }
 
-            ReturnNode returnNode = g.add(ReturnNode.create(boxedResult));
+            ReturnNode returnNode = g.add(new ReturnNode(boxedResult));
             callNode.setNext(returnNode);
             (new HotSpotWordTypeRewriterPhase(providers.getMetaAccess(), providers.getSnippetReflection(), providers.getConstantReflection(), Kind.Long)).apply(g);
             return g;
@@ -103,7 +103,7 @@ public class NativeCallStubGraphBuilder {
         FixedWithNextNode last = null;
         for (int i = 0; i < numArgs; i++) {
             // load boxed array element:
-            LoadIndexedNode boxedElement = g.add(LoadIndexedNode.create(argumentsArray, ConstantNode.forInt(i, g), Kind.Object));
+            LoadIndexedNode boxedElement = g.add(new LoadIndexedNode(argumentsArray, ConstantNode.forInt(i, g), Kind.Object));
             if (i == 0) {
                 g.start().setNext(boxedElement);
                 last = boxedElement;
@@ -120,15 +120,15 @@ public class NativeCallStubGraphBuilder {
                 int displacement = runtime().getArrayBaseOffset(arrayElementKind);
                 ConstantNode index = ConstantNode.forInt(0, g);
                 int indexScaling = runtime().getArrayIndexScale(arrayElementKind);
-                IndexedLocationNode locationNode = IndexedLocationNode.create(locationIdentity, displacement, index, g, indexScaling);
+                IndexedLocationNode locationNode = g.unique(new IndexedLocationNode(locationIdentity, displacement, index, indexScaling));
                 Stamp wordStamp = StampFactory.forKind(providers.getCodeCache().getTarget().wordKind);
-                ComputeAddressNode arrayAddress = g.unique(ComputeAddressNode.create(boxedElement, locationNode, wordStamp));
+                ComputeAddressNode arrayAddress = g.unique(new ComputeAddressNode(boxedElement, locationNode, wordStamp));
                 args.add(arrayAddress);
             } else {
                 // boxed primitive value
                 try {
                     ResolvedJavaField field = providers.getMetaAccess().lookupJavaField(kind.toBoxedJavaClass().getDeclaredField("value"));
-                    LoadFieldNode loadFieldNode = g.add(LoadFieldNode.create(boxedElement, field));
+                    LoadFieldNode loadFieldNode = g.add(new LoadFieldNode(boxedElement, field));
                     last.setNext(loadFieldNode);
                     last = loadFieldNode;
                     args.add(loadFieldNode);

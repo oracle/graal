@@ -79,7 +79,7 @@ public class LoopFragmentWhole extends LoopFragment {
             public Node replacement(Node o) {
                 if (o == entry) {
                     if (endNode == null) {
-                        endNode = graph.add(EndNode.create());
+                        endNode = graph.add(new EndNode());
                     }
                     return endNode;
                 }

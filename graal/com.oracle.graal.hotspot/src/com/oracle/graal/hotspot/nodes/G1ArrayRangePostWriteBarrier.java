@@ -28,11 +28,8 @@ import com.oracle.graal.nodes.*;
 @NodeInfo
 public class G1ArrayRangePostWriteBarrier extends ArrayRangeWriteBarrier {
 
-    public static G1ArrayRangePostWriteBarrier create(ValueNode object, ValueNode startIndex, ValueNode length) {
-        return new G1ArrayRangePostWriteBarrier(object, startIndex, length);
-    }
-
-    protected G1ArrayRangePostWriteBarrier(ValueNode object, ValueNode startIndex, ValueNode length) {
+    public G1ArrayRangePostWriteBarrier(ValueNode object, ValueNode startIndex, ValueNode length) {
         super(object, startIndex, length);
     }
+
 }

@@ -65,7 +65,7 @@ public class WriteBarrierAdditionPhase extends Phase {
     private void addReadNodeBarriers(ReadNode node, StructuredGraph graph) {
         if (node.getBarrierType() == BarrierType.PRECISE) {
             assert config.useG1GC;
-            G1ReferentFieldReadBarrier barrier = graph.add(G1ReferentFieldReadBarrier.create(node.object(), node, node.location(), false));
+            G1ReferentFieldReadBarrier barrier = graph.add(new G1ReferentFieldReadBarrier(node.object(), node, node.location(), false));
             graph.addAfterFixed(node, barrier);
         } else {
             assert node.getBarrierType() == BarrierType.NONE : "Non precise read barrier has been attached to read node.";
@@ -73,7 +73,7 @@ public class WriteBarrierAdditionPhase extends Phase {
     }
 
     protected static void addG1PreWriteBarrier(FixedAccessNode node, ValueNode object, ValueNode value, LocationNode location, boolean doLoad, boolean nullCheck, StructuredGraph graph) {
-        G1PreWriteBarrier preBarrier = graph.add(G1PreWriteBarrier.create(object, value, location, doLoad, nullCheck));
+        G1PreWriteBarrier preBarrier = graph.add(new G1PreWriteBarrier(object, value, location, doLoad, nullCheck));
         preBarrier.setStateBefore(node.stateBefore());
         node.setNullCheck(false);
         node.setStateBefore(null);
@@ -82,13 +82,13 @@ public class WriteBarrierAdditionPhase extends Phase {
 
     protected void addG1PostWriteBarrier(FixedAccessNode node, ValueNode object, ValueNode value, LocationNode location, boolean precise, StructuredGraph graph) {
         final boolean alwaysNull = StampTool.isPointerAlwaysNull(value);
-        graph.addAfterFixed(node, graph.add(G1PostWriteBarrier.create(object, value, location, precise, alwaysNull)));
+        graph.addAfterFixed(node, graph.add(new G1PostWriteBarrier(object, value, location, precise, alwaysNull)));
     }
 
     protected void addSerialPostWriteBarrier(FixedAccessNode node, ValueNode object, ValueNode value, LocationNode location, boolean precise, StructuredGraph graph) {
         final boolean alwaysNull = StampTool.isPointerAlwaysNull(value);
         final LocationNode loc = (precise ? location : null);
-        graph.addAfterFixed(node, graph.add(SerialWriteBarrier.create(object, loc, precise, alwaysNull)));
+        graph.addAfterFixed(node, graph.add(new SerialWriteBarrier(object, loc, precise, alwaysNull)));
     }
 
     private void addWriteNodeBarriers(WriteNode node, StructuredGraph graph) {
@@ -159,13 +159,13 @@ public class WriteBarrierAdditionPhase extends Phase {
     private void addArrayRangeBarriers(ArrayRangeWriteNode node, StructuredGraph graph) {
         if (config.useG1GC) {
             if (!node.isInitialization()) {
-                G1ArrayRangePreWriteBarrier g1ArrayRangePreWriteBarrier = graph.add(G1ArrayRangePreWriteBarrier.create(node.getArray(), node.getIndex(), node.getLength()));
+                G1ArrayRangePreWriteBarrier g1ArrayRangePreWriteBarrier = graph.add(new G1ArrayRangePreWriteBarrier(node.getArray(), node.getIndex(), node.getLength()));
                 graph.addBeforeFixed(node, g1ArrayRangePreWriteBarrier);
             }
-            G1ArrayRangePostWriteBarrier g1ArrayRangePostWriteBarrier = graph.add(G1ArrayRangePostWriteBarrier.create(node.getArray(), node.getIndex(), node.getLength()));
+            G1ArrayRangePostWriteBarrier g1ArrayRangePostWriteBarrier = graph.add(new G1ArrayRangePostWriteBarrier(node.getArray(), node.getIndex(), node.getLength()));
             graph.addAfterFixed(node, g1ArrayRangePostWriteBarrier);
         } else {
-            SerialArrayRangeWriteBarrier serialArrayRangeWriteBarrier = graph.add(SerialArrayRangeWriteBarrier.create(node.getArray(), node.getIndex(), node.getLength()));
+            SerialArrayRangeWriteBarrier serialArrayRangeWriteBarrier = graph.add(new SerialArrayRangeWriteBarrier(node.getArray(), node.getIndex(), node.getLength()));
             graph.addAfterFixed(node, serialArrayRangeWriteBarrier);
         }
     }

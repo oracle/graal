@@ -40,19 +40,7 @@ import com.oracle.graal.nodes.virtual.*;
 @NodeInfo
 public class NewArrayNode extends AbstractNewArrayNode implements VirtualizableAllocation {
 
-    /**
-     * Constructs a new NewArrayNode.
-     *
-     * @param elementType the the type of the elements of the newly created array (not the type of
-     *            the array itself).
-     * @param length the node that produces the length for this allocation.
-     * @param fillContents determines whether the array elements should be initialized to zero/null.
-     */
-    public static NewArrayNode create(ResolvedJavaType elementType, ValueNode length, boolean fillContents) {
-        return new NewArrayNode(elementType, length, fillContents);
-    }
-
-    protected NewArrayNode(ResolvedJavaType elementType, ValueNode length, boolean fillContents) {
+    public NewArrayNode(ResolvedJavaType elementType, ValueNode length, boolean fillContents) {
         super(StampFactory.exactNonNull(elementType.getArrayClass()), length, fillContents);
     }
 
@@ -90,7 +78,7 @@ public class NewArrayNode extends AbstractNewArrayNode implements VirtualizableA
     }
 
     protected VirtualArrayNode createVirtualArrayNode(int constantLength) {
-        return VirtualArrayNode.create(elementType(), constantLength);
+        return new VirtualArrayNode(elementType(), constantLength);
     }
 
     /* Factored out in a separate method so that subclasses can override it. */

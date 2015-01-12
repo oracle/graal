@@ -39,17 +39,7 @@ public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable, Virtu
     protected final ResolvedJavaType type;
     protected JavaTypeProfile profile;
 
-    /**
-     * Constructs a new InstanceOfNode.
-     *
-     * @param type the target type of the instanceof check
-     * @param object the object being tested by the instanceof
-     */
-    public static InstanceOfNode create(ResolvedJavaType type, ValueNode object, JavaTypeProfile profile) {
-        return new InstanceOfNode(type, object, profile);
-    }
-
-    protected InstanceOfNode(ResolvedJavaType type, ValueNode object, JavaTypeProfile profile) {
+    public InstanceOfNode(ResolvedJavaType type, ValueNode object, JavaTypeProfile profile) {
         super(object);
         this.type = type;
         this.profile = profile;
@@ -117,7 +107,7 @@ public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable, Virtu
             if (!nonNull) {
                 // the instanceof matches if the object is non-null, so return true
                 // depending on the null-ness.
-                return LogicNegationNode.create(IsNullNode.create(forValue));
+                return new LogicNegationNode(new IsNullNode(forValue));
             }
         }
         return null;

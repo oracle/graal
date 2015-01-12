@@ -55,11 +55,7 @@ public class TypeProfileProxyNode extends UnaryNode implements IterableNodeType,
             // Only null profiling is not beneficial enough to keep the node around.
             return object;
         }
-        return object.graph().addWithoutUnique(create(object, profile));
-    }
-
-    public static ValueNode create(ValueNode object, JavaTypeProfile profile) {
-        return new TypeProfileProxyNode(object, profile);
+        return object.graph().addWithoutUnique(new TypeProfileProxyNode(object, profile));
     }
 
     protected TypeProfileProxyNode(ValueNode value, JavaTypeProfile profile) {
@@ -97,7 +93,7 @@ public class TypeProfileProxyNode extends UnaryNode implements IterableNodeType,
             }
             if (newProfile != this.profile) {
                 Debug.log("Improved profile via other profile.");
-                return TypeProfileProxyNode.create(forValue, newProfile);
+                return new TypeProfileProxyNode(forValue, newProfile);
             }
         } else if (StampTool.typeOrNull(forValue) != null) {
             ResolvedJavaType type = StampTool.typeOrNull(forValue);
@@ -119,7 +115,7 @@ public class TypeProfileProxyNode extends UnaryNode implements IterableNodeType,
                     // Only null profiling is not beneficial enough to keep the node around.
                     return forValue;
                 }
-                return TypeProfileProxyNode.create(forValue, newProfile);
+                return new TypeProfileProxyNode(forValue, newProfile);
             }
         }
         return this;

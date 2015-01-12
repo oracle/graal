@@ -46,11 +46,7 @@ public class ArrayLengthNode extends FixedWithNextNode implements Canonicalizabl
         return array;
     }
 
-    public static ArrayLengthNode create(ValueNode array) {
-        return new ArrayLengthNode(array);
-    }
-
-    protected ArrayLengthNode(ValueNode array) {
+    public ArrayLengthNode(ValueNode array) {
         super(StampFactory.positiveInt());
         this.array = array;
     }
@@ -77,7 +73,7 @@ public class ArrayLengthNode extends FixedWithNextNode implements Canonicalizabl
         }
         if (originalValue instanceof ValueProxyNode) {
             ValueProxyNode proxy = (ValueProxyNode) originalValue;
-            return ValueProxyNode.create(reproxyValue(proxy.getOriginalNode(), value), proxy.proxyPoint());
+            return new ValueProxyNode(reproxyValue(proxy.getOriginalNode(), value), proxy.proxyPoint());
         } else if (originalValue instanceof ValueProxy) {
             ValueProxy proxy = (ValueProxy) originalValue;
             return reproxyValue(proxy.getOriginalNode(), value);

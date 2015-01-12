@@ -35,11 +35,7 @@ public class SnippetLocationProxyNode extends FloatingNode implements Canonicali
 
     @Input(InputType.Unchecked) ValueNode location;
 
-    public static SnippetLocationProxyNode create(ValueNode location) {
-        return new SnippetLocationProxyNode(location);
-    }
-
-    protected SnippetLocationProxyNode(ValueNode location) {
+    public SnippetLocationProxyNode(ValueNode location) {
         super(StampFactory.object());
         this.location = location;
     }

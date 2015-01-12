@@ -39,11 +39,7 @@ public class UnwindNode extends ControlSinkNode implements Lowerable, LIRLowerab
         return exception;
     }
 
-    public static UnwindNode create(ValueNode exception) {
-        return new UnwindNode(exception);
-    }
-
-    protected UnwindNode(ValueNode exception) {
+    public UnwindNode(ValueNode exception) {
         super(StampFactory.forVoid());
         assert exception == null || exception.getKind() == Kind.Object;
         this.exception = exception;

@@ -40,11 +40,7 @@ public class JavaReadNode extends FixedAccessNode implements Lowerable, Guarding
     protected final Kind readKind;
     protected final boolean compressible;
 
-    public static JavaReadNode create(Kind readKind, ValueNode object, LocationNode location, BarrierType barrierType, boolean compressible) {
-        return new JavaReadNode(readKind, object, location, barrierType, compressible);
-    }
-
-    protected JavaReadNode(Kind readKind, ValueNode object, LocationNode location, BarrierType barrierType, boolean compressible) {
+    public JavaReadNode(Kind readKind, ValueNode object, LocationNode location, BarrierType barrierType, boolean compressible) {
         super(object, location, StampFactory.forKind(readKind), barrierType);
         this.readKind = readKind;
         this.compressible = compressible;

@@ -194,10 +194,8 @@ public class GraphNodeVerifier {
         for (ExecutableElement constructor : ElementFilter.constructorsIn(node.getEnclosedElements())) {
             if (constructor.getModifiers().contains(PRIVATE)) {
                 continue;
-            } else if (constructor.getModifiers().contains(PUBLIC)) {
-                throw new ElementException(constructor, "Node class constructor must not be public");
-            } else if (!constructor.getModifiers().contains(PROTECTED)) {
-                throw new ElementException(constructor, "Node class constructor must be protected");
+            } else if (!constructor.getModifiers().contains(PUBLIC) && !constructor.getModifiers().contains(PROTECTED)) {
+                throw new ElementException(constructor, "Node class constructor must be public or protected");
             }
 
             foundValidConstructor = true;

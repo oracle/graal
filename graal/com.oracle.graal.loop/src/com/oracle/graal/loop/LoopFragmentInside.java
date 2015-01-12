@@ -152,7 +152,7 @@ public class LoopFragmentInside extends LoopFragment {
                     if (value != null) {
                         return value;
                     }
-                    BeginNode newValue = graph.add(BeginNode.create());
+                    BeginNode newValue = graph.add(new BeginNode());
                     seenNode.put(original, newValue);
                     return newValue;
                 }
@@ -161,7 +161,7 @@ public class LoopFragmentInside extends LoopFragment {
                     if (value != null) {
                         return value;
                     }
-                    BeginNode newValue = graph.add(BeginNode.create());
+                    BeginNode newValue = graph.add(new BeginNode());
                     seenNode.put(original, newValue);
                     return newValue;
                 }
@@ -170,7 +170,7 @@ public class LoopFragmentInside extends LoopFragment {
                     if (value != null) {
                         return value;
                     }
-                    EndNode newValue = graph.add(EndNode.create());
+                    EndNode newValue = graph.add(new EndNode());
                     seenNode.put(original, newValue);
                     return newValue;
                 }
@@ -187,11 +187,11 @@ public class LoopFragmentInside extends LoopFragment {
     private static PhiNode patchPhi(StructuredGraph graph, PhiNode phi, MergeNode merge) {
         PhiNode ret;
         if (phi instanceof ValuePhiNode) {
-            ret = ValuePhiNode.create(phi.stamp(), merge);
+            ret = new ValuePhiNode(phi.stamp(), merge);
         } else if (phi instanceof GuardPhiNode) {
-            ret = GuardPhiNode.create(merge);
+            ret = new GuardPhiNode(merge);
         } else if (phi instanceof MemoryPhiNode) {
-            ret = MemoryPhiNode.create(merge, ((MemoryPhiNode) phi).getLocationIdentity());
+            ret = new MemoryPhiNode(merge, ((MemoryPhiNode) phi).getLocationIdentity());
         } else {
             throw GraalInternalError.shouldNotReachHere();
         }
@@ -310,12 +310,12 @@ public class LoopFragmentInside extends LoopFragment {
         if (endsToMerge.size() == 1) {
             AbstractEndNode end = endsToMerge.get(0);
             assert end.usages().isEmpty();
-            newExit = graph.add(BeginNode.create());
+            newExit = graph.add(new BeginNode());
             end.replaceAtPredecessor(newExit);
             end.safeDelete();
         } else {
             assert endsToMerge.size() > 1;
-            MergeNode newExitMerge = graph.add(MergeNode.create());
+            MergeNode newExitMerge = graph.add(new MergeNode());
             newExit = newExitMerge;
             FrameState state = loopBegin.stateAfter();
             FrameState duplicateState = null;

@@ -35,12 +35,7 @@ public class HotSpotIndirectCallTargetNode extends IndirectCallTargetNode {
 
     @Input ValueNode metaspaceMethod;
 
-    public static HotSpotIndirectCallTargetNode create(ValueNode metaspaceMethod, ValueNode computedAddress, List<ValueNode> arguments, Stamp returnStamp, JavaType[] signature,
-                    ResolvedJavaMethod target, Type callType, InvokeKind invokeKind) {
-        return new HotSpotIndirectCallTargetNode(metaspaceMethod, computedAddress, arguments, returnStamp, signature, target, callType, invokeKind);
-    }
-
-    protected HotSpotIndirectCallTargetNode(ValueNode metaspaceMethod, ValueNode computedAddress, List<ValueNode> arguments, Stamp returnStamp, JavaType[] signature, ResolvedJavaMethod target,
+    public HotSpotIndirectCallTargetNode(ValueNode metaspaceMethod, ValueNode computedAddress, List<ValueNode> arguments, Stamp returnStamp, JavaType[] signature, ResolvedJavaMethod target,
                     Type callType, InvokeKind invokeKind) {
         super(computedAddress, arguments, returnStamp, signature, target, callType, invokeKind);
         this.metaspaceMethod = metaspaceMethod;

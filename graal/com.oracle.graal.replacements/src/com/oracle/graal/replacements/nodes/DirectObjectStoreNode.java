@@ -44,11 +44,7 @@ public class DirectObjectStoreNode extends FixedWithNextNode implements Lowerabl
     protected final LocationIdentity locationIdentity;
     protected final Kind storeKind;
 
-    public static DirectObjectStoreNode create(ValueNode object, int displacement, ValueNode offset, ValueNode value, LocationIdentity locationIdentity, Kind storeKind) {
-        return new DirectObjectStoreNode(object, displacement, offset, value, locationIdentity, storeKind);
-    }
-
-    protected DirectObjectStoreNode(ValueNode object, int displacement, ValueNode offset, ValueNode value, LocationIdentity locationIdentity, Kind storeKind) {
+    public DirectObjectStoreNode(ValueNode object, int displacement, ValueNode offset, ValueNode value, LocationIdentity locationIdentity, Kind storeKind) {
         super(StampFactory.forVoid());
         this.object = object;
         this.value = value;
@@ -68,8 +64,8 @@ public class DirectObjectStoreNode extends FixedWithNextNode implements Lowerabl
 
     @Override
     public void lower(LoweringTool tool) {
-        IndexedLocationNode location = IndexedLocationNode.create(locationIdentity, displacement, offset, graph(), 1);
-        JavaWriteNode write = graph().add(JavaWriteNode.create(storeKind, object, value, location, BarrierType.NONE, storeKind == Kind.Object, false));
+        IndexedLocationNode location = graph().unique(new IndexedLocationNode(locationIdentity, displacement, offset, 1));
+        JavaWriteNode write = graph().add(new JavaWriteNode(storeKind, object, value, location, BarrierType.NONE, storeKind == Kind.Object, false));
         graph().replaceFixedWithFixed(this, write);
 
         tool.getLowerer().lower(write, tool);

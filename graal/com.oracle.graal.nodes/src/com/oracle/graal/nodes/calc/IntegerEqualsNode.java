@@ -34,17 +34,7 @@ import com.oracle.graal.nodes.util.*;
 @NodeInfo(shortName = "==")
 public class IntegerEqualsNode extends CompareNode {
 
-    /**
-     * Constructs a new integer equality comparison node.
-     *
-     * @param x the instruction producing the first input to the instruction
-     * @param y the instruction that produces the second input to this instruction
-     */
-    public static IntegerEqualsNode create(ValueNode x, ValueNode y) {
-        return new IntegerEqualsNode(x, y);
-    }
-
-    protected IntegerEqualsNode(ValueNode x, ValueNode y) {
+    public IntegerEqualsNode(ValueNode x, ValueNode y) {
         super(x, y);
         assert !x.getKind().isNumericFloat() && x.getKind() != Kind.Object;
         assert !y.getKind().isNumericFloat() && y.getKind() != Kind.Object;
@@ -68,9 +58,9 @@ public class IntegerEqualsNode extends CompareNode {
             ValueNode b = mirrored ? normalizeNode.getX() : normalizeNode.getY();
 
             if (normalizeNode.getX().getKind() == Kind.Double || normalizeNode.getX().getKind() == Kind.Float) {
-                return FloatEqualsNode.create(a, b);
+                return new FloatEqualsNode(a, b);
             } else {
-                return IntegerEqualsNode.create(a, b);
+                return new IntegerEqualsNode(a, b);
             }
         }
         return this;
@@ -79,9 +69,9 @@ public class IntegerEqualsNode extends CompareNode {
     @Override
     protected CompareNode duplicateModified(ValueNode newX, ValueNode newY) {
         if (newX.stamp() instanceof FloatStamp && newY.stamp() instanceof FloatStamp) {
-            return FloatEqualsNode.create(newX, newY);
+            return new FloatEqualsNode(newX, newY);
         } else if (newX.stamp() instanceof IntegerStamp && newY.stamp() instanceof IntegerStamp) {
-            return IntegerEqualsNode.create(newX, newY);
+            return new IntegerEqualsNode(newX, newY);
         }
         throw GraalInternalError.shouldNotReachHere();
     }
@@ -101,7 +91,7 @@ public class IntegerEqualsNode extends CompareNode {
         if (constant instanceof PrimitiveConstant && ((PrimitiveConstant) constant).asLong() == 0) {
             if (nonConstant instanceof AndNode) {
                 AndNode andNode = (AndNode) nonConstant;
-                return IntegerTestNode.create(andNode.getX(), andNode.getY());
+                return new IntegerTestNode(andNode.getX(), andNode.getY());
             } else if (nonConstant instanceof ShiftNode && nonConstant.stamp() instanceof IntegerStamp) {
                 if (nonConstant instanceof LeftShiftNode) {
                     LeftShiftNode shift = (LeftShiftNode) nonConstant;
@@ -109,10 +99,10 @@ public class IntegerEqualsNode extends CompareNode {
                         int mask = shift.getShiftAmountMask();
                         int amount = shift.getY().asJavaConstant().asInt() & mask;
                         if (shift.getX().getKind() == Kind.Int) {
-                            return IntegerTestNode.create(shift.getX(), ConstantNode.forInt(-1 >>> amount));
+                            return new IntegerTestNode(shift.getX(), ConstantNode.forInt(-1 >>> amount));
                         } else {
                             assert shift.getX().getKind() == Kind.Long;
-                            return IntegerTestNode.create(shift.getX(), ConstantNode.forLong(-1L >>> amount));
+                            return new IntegerTestNode(shift.getX(), ConstantNode.forLong(-1L >>> amount));
                         }
                     }
                 } else if (nonConstant instanceof RightShiftNode) {
@@ -121,10 +111,10 @@ public class IntegerEqualsNode extends CompareNode {
                         int mask = shift.getShiftAmountMask();
                         int amount = shift.getY().asJavaConstant().asInt() & mask;
                         if (shift.getX().getKind() == Kind.Int) {
-                            return IntegerTestNode.create(shift.getX(), ConstantNode.forInt(-1 << amount));
+                            return new IntegerTestNode(shift.getX(), ConstantNode.forInt(-1 << amount));
                         } else {
                             assert shift.getX().getKind() == Kind.Long;
-                            return IntegerTestNode.create(shift.getX(), ConstantNode.forLong(-1L << amount));
+                            return new IntegerTestNode(shift.getX(), ConstantNode.forLong(-1L << amount));
                         }
                     }
                 } else if (nonConstant instanceof UnsignedRightShiftNode) {
@@ -133,10 +123,10 @@ public class IntegerEqualsNode extends CompareNode {
                         int mask = shift.getShiftAmountMask();
                         int amount = shift.getY().asJavaConstant().asInt() & mask;
                         if (shift.getX().getKind() == Kind.Int) {
-                            return IntegerTestNode.create(shift.getX(), ConstantNode.forInt(-1 << amount));
+                            return new IntegerTestNode(shift.getX(), ConstantNode.forInt(-1 << amount));
                         } else {
                             assert shift.getX().getKind() == Kind.Long;
-                            return IntegerTestNode.create(shift.getX(), ConstantNode.forLong(-1L << amount));
+                            return new IntegerTestNode(shift.getX(), ConstantNode.forLong(-1L << amount));
                         }
                     }
                 }

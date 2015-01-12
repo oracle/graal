@@ -39,11 +39,7 @@ import com.oracle.graal.replacements.nodes.*;
 @NodeInfo
 public class ObjectCloneNode extends BasicObjectCloneNode implements VirtualizableAllocation, ArrayLengthProvider {
 
-    public static ObjectCloneNode create(Invoke invoke) {
-        return new ObjectCloneNode(invoke);
-    }
-
-    protected ObjectCloneNode(Invoke invoke) {
+    public ObjectCloneNode(Invoke invoke) {
         super(invoke);
     }
 
@@ -75,16 +71,16 @@ public class ObjectCloneNode extends BasicObjectCloneNode implements Virtualizab
                 type = getConcreteType(getObject().stamp(), tool.assumptions(), tool.getMetaAccess());
                 if (type != null) {
                     StructuredGraph newGraph = new StructuredGraph();
-                    ParameterNode param = newGraph.unique(ParameterNode.create(0, getObject().stamp()));
-                    NewInstanceNode newInstance = newGraph.add(NewInstanceNode.create(type, true));
+                    ParameterNode param = newGraph.unique(new ParameterNode(0, getObject().stamp()));
+                    NewInstanceNode newInstance = newGraph.add(new NewInstanceNode(type, true));
                     newGraph.addAfterFixed(newGraph.start(), newInstance);
-                    ReturnNode returnNode = newGraph.add(ReturnNode.create(newInstance));
+                    ReturnNode returnNode = newGraph.add(new ReturnNode(newInstance));
                     newGraph.addAfterFixed(newInstance, returnNode);
 
                     for (ResolvedJavaField field : type.getInstanceFields(true)) {
-                        LoadFieldNode load = newGraph.add(LoadFieldNode.create(param, field));
+                        LoadFieldNode load = newGraph.add(new LoadFieldNode(param, field));
                         newGraph.addBeforeFixed(returnNode, load);
-                        newGraph.addBeforeFixed(returnNode, newGraph.add(StoreFieldNode.create(newInstance, field, load)));
+                        newGraph.addBeforeFixed(returnNode, newGraph.add(new StoreFieldNode(newInstance, field, load)));
                     }
                     return lowerReplacement(newGraph, tool);
                 }

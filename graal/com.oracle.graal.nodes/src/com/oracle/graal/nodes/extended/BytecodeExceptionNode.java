@@ -39,11 +39,7 @@ public class BytecodeExceptionNode extends AbstractMemoryCheckpoint implements L
     protected final Class<? extends Throwable> exceptionClass;
     @Input NodeInputList<ValueNode> arguments;
 
-    public static BytecodeExceptionNode create(MetaAccessProvider metaAccess, Class<? extends Throwable> exceptionClass, ValueNode... arguments) {
-        return new BytecodeExceptionNode(metaAccess, exceptionClass, arguments);
-    }
-
-    protected BytecodeExceptionNode(MetaAccessProvider metaAccess, Class<? extends Throwable> exceptionClass, ValueNode... arguments) {
+    public BytecodeExceptionNode(MetaAccessProvider metaAccess, Class<? extends Throwable> exceptionClass, ValueNode... arguments) {
         super(StampFactory.exactNonNull(metaAccess.lookupJavaType(exceptionClass)));
         this.exceptionClass = exceptionClass;
         this.arguments = new NodeInputList<>(this, arguments);

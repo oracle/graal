@@ -46,17 +46,7 @@ public class TailcallNode extends FixedWithNextNode implements LIRLowerable {
     @Input(InputType.State) FrameState frameState;
     @Input ValueNode target;
 
-    /**
-     * Creates a TailcallNode.
-     *
-     * @param target points to the start of an nmethod
-     * @param frameState the parameters will be taken from this FrameState
-     */
-    public static TailcallNode create(ValueNode target, FrameState frameState) {
-        return new TailcallNode(target, frameState);
-    }
-
-    protected TailcallNode(ValueNode target, FrameState frameState) {
+    public TailcallNode(ValueNode target, FrameState frameState) {
         super(StampFactory.forVoid());
         this.target = target;
         this.frameState = frameState;

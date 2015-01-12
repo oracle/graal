@@ -74,27 +74,27 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
     }
 
     public static AddNode add(StructuredGraph graph, ValueNode v1, ValueNode v2) {
-        return graph.unique(AddNode.create(v1, v2));
+        return graph.unique(new AddNode(v1, v2));
     }
 
     public static AddNode add(ValueNode v1, ValueNode v2) {
-        return AddNode.create(v1, v2);
+        return new AddNode(v1, v2);
     }
 
     public static MulNode mul(StructuredGraph graph, ValueNode v1, ValueNode v2) {
-        return graph.unique(MulNode.create(v1, v2));
+        return graph.unique(new MulNode(v1, v2));
     }
 
     public static MulNode mul(ValueNode v1, ValueNode v2) {
-        return MulNode.create(v1, v2);
+        return new MulNode(v1, v2);
     }
 
     public static SubNode sub(StructuredGraph graph, ValueNode v1, ValueNode v2) {
-        return graph.unique(SubNode.create(v1, v2));
+        return graph.unique(new SubNode(v1, v2));
     }
 
     public static SubNode sub(ValueNode v1, ValueNode v2) {
-        return SubNode.create(v1, v2);
+        return new SubNode(v1, v2);
     }
 
     private enum ReassociateMatch {
@@ -224,11 +224,11 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
         } else if (node instanceof MulNode) {
             return BinaryArithmeticNode.mul(a, AddNode.mul(m1, m2));
         } else if (node instanceof AndNode) {
-            return AndNode.create(a, AndNode.create(m1, m2));
+            return new AndNode(a, new AndNode(m1, m2));
         } else if (node instanceof OrNode) {
-            return OrNode.create(a, OrNode.create(m1, m2));
+            return new OrNode(a, new OrNode(m1, m2));
         } else if (node instanceof XorNode) {
-            return XorNode.create(a, XorNode.create(m1, m2));
+            return new XorNode(a, new XorNode(m1, m2));
         } else {
             throw GraalInternalError.shouldNotReachHere();
         }

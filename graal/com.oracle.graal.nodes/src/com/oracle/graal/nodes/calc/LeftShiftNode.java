@@ -34,11 +34,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(shortName = "<<")
 public class LeftShiftNode extends ShiftNode<Shl> {
 
-    public static LeftShiftNode create(ValueNode x, ValueNode y) {
-        return new LeftShiftNode(x, y);
-    }
-
-    protected LeftShiftNode(ValueNode x, ValueNode y) {
+    public LeftShiftNode(ValueNode x, ValueNode y) {
         super(ArithmeticOpTable::getShl, x, y);
     }
 
@@ -66,19 +62,19 @@ public class LeftShiftNode extends ShiftNode<Shl> {
                         if (total != (total & mask)) {
                             return ConstantNode.forIntegerKind(getKind(), 0);
                         }
-                        return LeftShiftNode.create(other.getX(), ConstantNode.forInt(total));
+                        return new LeftShiftNode(other.getX(), ConstantNode.forInt(total));
                     } else if ((other instanceof RightShiftNode || other instanceof UnsignedRightShiftNode) && otherAmount == amount) {
                         if (getKind() == Kind.Long) {
-                            return AndNode.create(other.getX(), ConstantNode.forLong(-1L << amount));
+                            return new AndNode(other.getX(), ConstantNode.forLong(-1L << amount));
                         } else {
                             assert getKind() == Kind.Int;
-                            return AndNode.create(other.getX(), ConstantNode.forInt(-1 << amount));
+                            return new AndNode(other.getX(), ConstantNode.forInt(-1 << amount));
                         }
                     }
                 }
             }
             if (originalAmout != amount) {
-                return LeftShiftNode.create(forX, ConstantNode.forInt(amount));
+                return new LeftShiftNode(forX, ConstantNode.forInt(amount));
             }
         }
         return this;

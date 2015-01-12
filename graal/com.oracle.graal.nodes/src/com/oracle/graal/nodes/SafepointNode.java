@@ -32,11 +32,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public class SafepointNode extends DeoptimizingFixedWithNextNode implements LIRLowerable {
 
-    public static SafepointNode create() {
-        return new SafepointNode();
-    }
-
-    protected SafepointNode() {
+    public SafepointNode() {
         super(StampFactory.forVoid());
     }
 

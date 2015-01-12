@@ -37,11 +37,7 @@ import com.oracle.graal.replacements.nodes.*;
 @NodeInfo
 public class ReflectionGetCallerClassNode extends MacroStateSplitNode implements Canonicalizable, Lowerable {
 
-    public static ReflectionGetCallerClassNode create(Invoke invoke) {
-        return new ReflectionGetCallerClassNode(invoke);
-    }
-
-    protected ReflectionGetCallerClassNode(Invoke invoke) {
+    public ReflectionGetCallerClassNode(Invoke invoke) {
         super(invoke);
     }
 

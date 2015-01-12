@@ -33,7 +33,7 @@ public interface NativeFunctionPointer {
 
     /**
      * Returns the name of the function.
-     *
+     * 
      * @return name of the function
      */
     String getName();

@@ -31,11 +31,7 @@ import com.oracle.graal.nodes.java.*;
 @NodeInfo
 public class LoadIndexedPointerNode extends LoadIndexedNode {
 
-    public static LoadIndexedPointerNode create(Stamp stamp, ValueNode array, ValueNode index) {
-        return new LoadIndexedPointerNode(stamp, array, index);
-    }
-
-    protected LoadIndexedPointerNode(Stamp stamp, ValueNode array, ValueNode index) {
+    public LoadIndexedPointerNode(Stamp stamp, ValueNode array, ValueNode index) {
         super(stamp, array, index, Kind.Illegal);
     }
 

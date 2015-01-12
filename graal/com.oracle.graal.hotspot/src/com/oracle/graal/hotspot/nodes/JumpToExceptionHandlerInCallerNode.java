@@ -40,11 +40,7 @@ public class JumpToExceptionHandlerInCallerNode extends ControlSinkNode implemen
     @Input ValueNode exception;
     @Input ValueNode exceptionPc;
 
-    public static JumpToExceptionHandlerInCallerNode create(ValueNode handlerInCallerPc, ValueNode exception, ValueNode exceptionPc) {
-        return new JumpToExceptionHandlerInCallerNode(handlerInCallerPc, exception, exceptionPc);
-    }
-
-    protected JumpToExceptionHandlerInCallerNode(ValueNode handlerInCallerPc, ValueNode exception, ValueNode exceptionPc) {
+    public JumpToExceptionHandlerInCallerNode(ValueNode handlerInCallerPc, ValueNode exception, ValueNode exceptionPc) {
         super(StampFactory.forVoid());
         this.handlerInCallerPc = handlerInCallerPc;
         this.exception = exception;

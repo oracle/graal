@@ -699,9 +699,9 @@ public class ConditionalEliminationPhase extends Phase {
                     PiNode piNode;
                     if (isNull) {
                         ConstantNode nullObject = ConstantNode.defaultForKind(Kind.Object, graph);
-                        piNode = graph.unique(PiNode.create(nullObject, nullObject.stamp(), replacementAnchor.asNode()));
+                        piNode = graph.unique(new PiNode(nullObject, nullObject.stamp(), replacementAnchor.asNode()));
                     } else {
-                        piNode = graph.unique(PiNode.create(object, StampFactory.declaredTrusted(type, nonNull), replacementAnchor.asNode()));
+                        piNode = graph.unique(new PiNode(object, StampFactory.declaredTrusted(type, nonNull), replacementAnchor.asNode()));
                     }
                     checkCast.replaceAtUsages(piNode);
                     graph.removeFixed(checkCast);
@@ -753,7 +753,7 @@ public class ConditionalEliminationPhase extends Phase {
 
                 if (replacement != null) {
                     if (replacementAnchor != null && !(replacementAnchor instanceof BeginNode)) {
-                        ValueAnchorNode anchor = graph.add(ValueAnchorNode.create(replacementAnchor.asNode()));
+                        ValueAnchorNode anchor = graph.add(new ValueAnchorNode(replacementAnchor.asNode()));
                         graph.addBeforeFixed(ifNode, anchor);
                     }
                     for (Node n : survivingSuccessor.usages().snapshot()) {

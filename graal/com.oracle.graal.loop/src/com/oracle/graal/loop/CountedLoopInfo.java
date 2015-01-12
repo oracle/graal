@@ -63,13 +63,13 @@ public class CountedLoopInfo {
                 range = BinaryArithmeticNode.sub(graph, range, ConstantNode.forIntegerStamp(stamp, 1, graph));
             }
         }
-        IntegerDivNode div = graph.add(IntegerDivNode.create(range, iv.strideNode()));
+        IntegerDivNode div = graph.add(new IntegerDivNode(range, iv.strideNode()));
         graph.addBeforeFixed(loop.entryPoint(), div);
         ConstantNode zero = ConstantNode.forIntegerStamp(stamp, 0, graph);
         if (assumePositive) {
             return div;
         }
-        return graph.unique(ConditionalNode.create(graph.unique(IntegerLessThanNode.create(zero, div)), div, zero));
+        return graph.unique(new ConditionalNode(graph.unique(new IntegerLessThanNode(zero, div)), div, zero));
     }
 
     public boolean isConstantMaxTripCount() {
@@ -148,16 +148,16 @@ public class CountedLoopInfo {
             if (oneOff) {
                 v1 = sub(graph, v1, one);
             }
-            cond = graph.unique(IntegerLessThanNode.create(v1, end));
+            cond = graph.unique(new IntegerLessThanNode(v1, end));
         } else {
             assert iv.direction() == Direction.Down;
             BinaryArithmeticNode<?> v1 = add(graph, ConstantNode.forIntegerStamp(stamp, CodeUtil.minValue(stamp.getBits()), graph), sub(graph, one, iv.strideNode()));
             if (oneOff) {
                 v1 = add(graph, v1, one);
             }
-            cond = graph.unique(IntegerLessThanNode.create(end, v1));
+            cond = graph.unique(new IntegerLessThanNode(end, v1));
         }
-        overflowGuard = graph.unique(GuardNode.create(cond, BeginNode.prevBegin(loop.entryPoint()), DeoptimizationReason.LoopLimitCheck, DeoptimizationAction.InvalidateRecompile, true,
+        overflowGuard = graph.unique(new GuardNode(cond, BeginNode.prevBegin(loop.entryPoint()), DeoptimizationReason.LoopLimitCheck, DeoptimizationAction.InvalidateRecompile, true,
                         JavaConstant.NULL_POINTER)); // TODO gd: use speculation
         loop.loopBegin().setOverflowGuard(overflowGuard);
         return overflowGuard;

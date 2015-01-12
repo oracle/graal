@@ -53,11 +53,7 @@ public class ReadRegisterNode extends FixedWithNextNode implements LIRLowerable 
      */
     protected final boolean incoming;
 
-    public static ReadRegisterNode create(Register register, Kind kind, boolean directUse, boolean incoming) {
-        return new ReadRegisterNode(register, kind, directUse, incoming);
-    }
-
-    protected ReadRegisterNode(Register register, Kind kind, boolean directUse, boolean incoming) {
+    public ReadRegisterNode(Register register, Kind kind, boolean directUse, boolean incoming) {
         super(StampFactory.forKind(kind));
         assert register != null;
         this.register = register;
@@ -65,15 +61,7 @@ public class ReadRegisterNode extends FixedWithNextNode implements LIRLowerable 
         this.incoming = incoming;
     }
 
-    /**
-     * Constructor to be used by node intrinsics where the stamp is inferred from the intrinsic
-     * definition.
-     */
-    public static ReadRegisterNode create(Register register, boolean directUse, boolean incoming) {
-        return new ReadRegisterNode(register, directUse, incoming);
-    }
-
-    protected ReadRegisterNode(Register register, boolean directUse, boolean incoming) {
+    public ReadRegisterNode(Register register, boolean directUse, boolean incoming) {
         super(StampFactory.forNodeIntrinsic());
         assert register != null;
         this.register = register;

@@ -50,11 +50,7 @@ public class MemoryMapNode extends FloatingNode implements MemoryMap, LIRLowerab
         return true;
     }
 
-    public static MemoryMapNode create(Map<LocationIdentity, MemoryNode> mmap) {
-        return new MemoryMapNode(mmap);
-    }
-
-    protected MemoryMapNode(Map<LocationIdentity, MemoryNode> mmap) {
+    public MemoryMapNode(Map<LocationIdentity, MemoryNode> mmap) {
         super(StampFactory.forVoid());
         locationIdentities = new ArrayList<>(mmap.keySet());
         nodes = new NodeInputList<>(this, mmap.values());

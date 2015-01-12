@@ -37,11 +37,7 @@ public class G1ReferentFieldReadBarrier extends WriteBarrier {
 
     protected final boolean doLoad;
 
-    public static G1ReferentFieldReadBarrier create(ValueNode object, ValueNode expectedObject, LocationNode location, boolean doLoad) {
-        return new G1ReferentFieldReadBarrier(object, expectedObject, location, doLoad);
-    }
-
-    protected G1ReferentFieldReadBarrier(ValueNode object, ValueNode expectedObject, LocationNode location, boolean doLoad) {
+    public G1ReferentFieldReadBarrier(ValueNode object, ValueNode expectedObject, LocationNode location, boolean doLoad) {
         super(object, expectedObject, location, true);
         this.doLoad = doLoad;
     }

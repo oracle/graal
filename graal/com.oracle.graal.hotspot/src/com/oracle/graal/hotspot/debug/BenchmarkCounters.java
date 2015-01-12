@@ -379,18 +379,18 @@ public class BenchmarkCounters {
     public static void lower(DynamicCounterNode counter, HotSpotRegistersProvider registers, HotSpotVMConfig config, Kind wordKind) {
         StructuredGraph graph = counter.graph();
 
-        ReadRegisterNode thread = graph.add(ReadRegisterNode.create(registers.getThreadRegister(), wordKind, true, false));
+        ReadRegisterNode thread = graph.add(new ReadRegisterNode(registers.getThreadRegister(), wordKind, true, false));
 
         int index = BenchmarkCounters.getIndex(counter);
         if (index >= config.graalCountersSize) {
             throw new GraalInternalError("too many counters, reduce number of counters or increase -XX:GraalCounterSize=... (current value: " + config.graalCountersSize + ")");
         }
-        ConstantLocationNode arrayLocation = ConstantLocationNode.create(COUNTER_LOCATION, config.graalCountersThreadOffset, graph);
-        ReadNode readArray = graph.add(ReadNode.create(thread, arrayLocation, StampFactory.forKind(wordKind), BarrierType.NONE));
-        ConstantLocationNode location = ConstantLocationNode.create(COUNTER_LOCATION, Unsafe.ARRAY_LONG_INDEX_SCALE * index, graph);
-        ReadNode read = graph.add(ReadNode.create(readArray, location, StampFactory.forKind(Kind.Long), BarrierType.NONE));
-        AddNode add = graph.unique(AddNode.create(read, counter.getIncrement()));
-        WriteNode write = graph.add(WriteNode.create(readArray, add, location, BarrierType.NONE));
+        ConstantLocationNode arrayLocation = graph.unique(new ConstantLocationNode(COUNTER_LOCATION, config.graalCountersThreadOffset));
+        ReadNode readArray = graph.add(new ReadNode(thread, arrayLocation, StampFactory.forKind(wordKind), BarrierType.NONE));
+        ConstantLocationNode location = graph.unique(new ConstantLocationNode(COUNTER_LOCATION, Unsafe.ARRAY_LONG_INDEX_SCALE * index));
+        ReadNode read = graph.add(new ReadNode(readArray, location, StampFactory.forKind(Kind.Long), BarrierType.NONE));
+        AddNode add = graph.unique(new AddNode(read, counter.getIncrement()));
+        WriteNode write = graph.add(new WriteNode(readArray, add, location, BarrierType.NONE));
 
         graph.addBeforeFixed(counter, thread);
         graph.addBeforeFixed(counter, readArray);

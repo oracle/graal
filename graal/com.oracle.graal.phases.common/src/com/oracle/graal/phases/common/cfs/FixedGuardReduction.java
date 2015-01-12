@@ -31,7 +31,7 @@ import com.oracle.graal.phases.tiers.PhaseContext;
  * This class implements control-flow sensitive reductions for
  * {@link com.oracle.graal.nodes.FixedGuardNode}.
  * </p>
- *
+ * 
  * <p>
  * The laundry-list of all flow-sensitive reductions is summarized in
  * {@link com.oracle.graal.phases.common.cfs.FlowSensitiveReduction}
@@ -151,5 +151,4 @@ public abstract class FixedGuardReduction extends CheckCastReduction {
         graph.removeFixed(old);
         // `old.condition()` if unused will be removed in finished()
     }
-
 }

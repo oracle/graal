@@ -40,19 +40,11 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public class ReinterpretNode extends UnaryNode implements ArithmeticLIRLowerable {
 
-    public static ReinterpretNode create(Kind to, ValueNode value) {
-        return new ReinterpretNode(to, value);
-    }
-
-    protected ReinterpretNode(Kind to, ValueNode value) {
+    public ReinterpretNode(Kind to, ValueNode value) {
         this(StampFactory.forKind(to), value);
     }
 
-    public static ReinterpretNode create(Stamp to, ValueNode value) {
-        return new ReinterpretNode(to, value);
-    }
-
-    protected ReinterpretNode(Stamp to, ValueNode value) {
+    public ReinterpretNode(Stamp to, ValueNode value) {
         super(to, value);
         assert to instanceof ArithmeticStamp;
     }
@@ -81,7 +73,7 @@ public class ReinterpretNode extends UnaryNode implements ArithmeticLIRLowerable
         }
         if (forValue instanceof ReinterpretNode) {
             ReinterpretNode reinterpret = (ReinterpretNode) forValue;
-            return ReinterpretNode.create(stamp(), reinterpret.getValue());
+            return new ReinterpretNode(stamp(), reinterpret.getValue());
         }
         return this;
     }
@@ -93,7 +85,7 @@ public class ReinterpretNode extends UnaryNode implements ArithmeticLIRLowerable
     }
 
     public static ValueNode reinterpret(Kind toKind, ValueNode value) {
-        return value.graph().unique(ReinterpretNode.create(toKind, value));
+        return value.graph().unique(new ReinterpretNode(toKind, value));
     }
 
     @NodeIntrinsic

@@ -39,11 +39,7 @@ public class MacroStateSplitNode extends MacroNode implements StateSplit, Memory
 
     @OptionalInput(InputType.State) protected FrameState stateAfter;
 
-    public static MacroStateSplitNode create(Invoke invoke) {
-        return new MacroStateSplitNode(invoke);
-    }
-
-    protected MacroStateSplitNode(Invoke invoke) {
+    public MacroStateSplitNode(Invoke invoke) {
         super(invoke);
         this.stateAfter = invoke.stateAfter();
     }
@@ -75,7 +71,7 @@ public class MacroStateSplitNode extends MacroNode implements StateSplit, Memory
             }
             assert invoke.stateAfter().bci == BytecodeFrame.AFTER_BCI;
             // Here we need to fix the bci of the invoke
-            InvokeNode newInvoke = snippetGraph.add(InvokeNode.create(invoke.callTarget(), getBci()));
+            InvokeNode newInvoke = snippetGraph.add(new InvokeNode(invoke.callTarget(), getBci()));
             newInvoke.setStateAfter(invoke.stateAfter());
             snippetGraph.replaceFixedWithFixed((InvokeNode) invoke.asNode(), newInvoke);
         }

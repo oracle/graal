@@ -44,11 +44,7 @@ public class AtomicReadAndAddNode extends AbstractMemoryCheckpoint implements LI
 
     protected final LocationIdentity locationIdentity;
 
-    public static AtomicReadAndAddNode create(ValueNode object, ValueNode offset, ValueNode delta, LocationIdentity locationIdentity) {
-        return new AtomicReadAndAddNode(object, offset, delta, locationIdentity);
-    }
-
-    protected AtomicReadAndAddNode(ValueNode object, ValueNode offset, ValueNode delta, LocationIdentity locationIdentity) {
+    public AtomicReadAndAddNode(ValueNode object, ValueNode offset, ValueNode delta, LocationIdentity locationIdentity) {
         super(StampFactory.forKind(delta.getKind()));
         this.object = object;
         this.offset = offset;
@@ -73,7 +69,7 @@ public class AtomicReadAndAddNode extends AbstractMemoryCheckpoint implements LI
     }
 
     public void generate(NodeLIRBuilderTool gen) {
-        LocationNode location = IndexedLocationNode.create(getLocationIdentity(), 0, offset, graph(), 1);
+        LocationNode location = graph().unique(new IndexedLocationNode(getLocationIdentity(), 0, offset, 1));
         Value address = location.generateAddress(gen, gen.getLIRGeneratorTool(), gen.operand(object()));
         Value result = gen.getLIRGeneratorTool().emitAtomicReadAndAdd(address, gen.operand(delta));
         gen.setResult(this, result);

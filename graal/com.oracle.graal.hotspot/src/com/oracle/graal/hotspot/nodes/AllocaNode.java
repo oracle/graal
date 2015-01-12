@@ -50,11 +50,7 @@ public class AllocaNode extends FixedWithNextNode implements LIRLowerable {
      */
     protected final BitSet objects;
 
-    public static AllocaNode create(int slots, Kind wordKind, BitSet objects) {
-        return new AllocaNode(slots, wordKind, objects);
-    }
-
-    protected AllocaNode(int slots, Kind wordKind, BitSet objects) {
+    public AllocaNode(int slots, Kind wordKind, BitSet objects) {
         super(StampFactory.forKind(wordKind));
         this.slots = slots;
         this.objects = objects;

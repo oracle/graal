@@ -41,18 +41,7 @@ public class AbstractNewArrayNode extends AbstractNewObjectNode implements Array
         return length;
     }
 
-    /**
-     * Constructs a new AbstractNewArrayNode.
-     *
-     * @param stamp the stamp of the newly created array
-     * @param length the node that produces the length for this allocation.
-     * @param fillContents determines whether the array elements should be initialized to zero/null.
-     */
-    public static AbstractNewArrayNode create(Stamp stamp, ValueNode length, boolean fillContents) {
-        return new AbstractNewArrayNode(stamp, length, fillContents);
-    }
-
-    protected AbstractNewArrayNode(Stamp stamp, ValueNode length, boolean fillContents) {
+    public AbstractNewArrayNode(Stamp stamp, ValueNode length, boolean fillContents) {
         super(stamp, fillContents);
         this.length = length;
     }
