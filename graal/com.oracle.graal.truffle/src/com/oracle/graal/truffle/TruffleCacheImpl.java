@@ -330,7 +330,7 @@ public class TruffleCacheImpl implements TruffleCache {
     }
 
     protected boolean shouldInline(MethodCallTargetNode methodCallTargetNode) {
-        boolean result = methodCallTargetNode.invokeKind().isDirect() && methodCallTargetNode.targetMethod().hasBytecodes() &&
+        boolean result = methodCallTargetNode.invokeKind().isDirect() && methodCallTargetNode.targetMethod().hasBytecodes() && methodCallTargetNode.targetMethod().canBeInlined() &&
                         methodCallTargetNode.targetMethod().getAnnotation(ExplodeLoop.class) == null &&
                         methodCallTargetNode.targetMethod().getAnnotation(CompilerDirectives.TruffleBoundary.class) == null &&
                         !methodCallTargetNode.targetMethod().getDeclaringClass().equals(stringBuilderClass);
