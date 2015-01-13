@@ -418,7 +418,7 @@ public class SnippetTemplate {
             this.guardsStage = guardsStage;
             this.loweringStage = loweringStage;
             this.values = new Object[info.getParameterCount()];
-            this.hash = info.method.hashCode() + 31 * guardsStage.hashCode();
+            this.hash = info.method.hashCode() + 31 * guardsStage.ordinal();
         }
 
         protected void setParam(int paramIdx, Object value) {
