@@ -46,6 +46,7 @@ import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.constopt.*;
 import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.lir.gen.*;
+import com.oracle.graal.lir.stackslotalloc.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.spi.*;

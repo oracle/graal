@@ -20,12 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.framemap;
+package com.oracle.graal.lir.stackslotalloc;
 
 import java.util.*;
 
 import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.lir.framemap.StackInterval.*;
+import com.oracle.graal.lir.stackslotalloc.StackInterval.*;
 
 public class StackUsePosList {
 

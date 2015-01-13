@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.framemap;
+package com.oracle.graal.lir.stackslotalloc;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
 
@@ -30,6 +30,7 @@ import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.*;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.lir.gen.*;
 
 public class SimpleStackSlotAllocator implements StackSlotAllocator {

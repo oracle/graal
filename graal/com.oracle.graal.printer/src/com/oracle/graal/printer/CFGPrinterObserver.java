@@ -35,7 +35,7 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.framemap.*;
+import com.oracle.graal.lir.stackslotalloc.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.phases.schedule.*;

@@ -27,6 +27,7 @@ import java.util.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.lir.gen.*;
+import com.oracle.graal.lir.stackslotalloc.*;
 
 /**
  * A {@link FrameMapBuilder} is used to collect all information necessary to
