@@ -36,18 +36,24 @@ public class SimpleStackSlotAllocator implements StackSlotAllocator {
 
     public void allocateStackSlots(FrameMapBuilderTool builder, LIRGenerationResult res) {
         StackSlot[] mapping = new StackSlot[builder.getNumberOfStackSlots()];
+        long currentFrameSize = Debug.isMeterEnabled() ? builder.getFrameMap().currentFrameSize() : 0;
         for (VirtualStackSlot virtualSlot : builder.getStackSlots()) {
             final StackSlot slot;
             if (virtualSlot instanceof SimpleVirtualStackSlot) {
                 slot = mapSimpleVirtualStackSlot(builder, (SimpleVirtualStackSlot) virtualSlot);
+                virtualFramesize.add(builder.getFrameMap().spillSlotSize(virtualSlot.getLIRKind()));
             } else if (virtualSlot instanceof VirtualStackSlotRange) {
-                slot = mapVirtualStackSlotRange(builder, (VirtualStackSlotRange) virtualSlot);
+                VirtualStackSlotRange slotRange = (VirtualStackSlotRange) virtualSlot;
+                slot = mapVirtualStackSlotRange(builder, slotRange);
+                virtualFramesize.add(builder.getFrameMap().spillSlotRangeSize(slotRange.getSlots()));
             } else {
                 throw GraalInternalError.shouldNotReachHere("Unknown VirtualStackSlot: " + virtualSlot);
             }
+            allocatedSlots.increment();
             mapping[virtualSlot.getId()] = slot;
         }
         updateLIR(res, mapping);
+        allocatedFramesize.add(builder.getFrameMap().currentFrameSize() - currentFrameSize);
     }
 
     protected void updateLIR(LIRGenerationResult res, StackSlot[] mapping) {

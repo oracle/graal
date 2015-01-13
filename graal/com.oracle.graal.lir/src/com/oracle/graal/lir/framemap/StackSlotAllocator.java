@@ -23,6 +23,7 @@
 package com.oracle.graal.lir.framemap;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.debug.*;
 import com.oracle.graal.lir.gen.*;
 
 /**
@@ -31,5 +32,21 @@ import com.oracle.graal.lir.gen.*;
  * {@link VirtualStackSlot} in the {@link LIRGenerationResult#getLIR() LIR} to {@link StackSlot}.
  */
 public interface StackSlotAllocator {
+    /**
+     * The number of allocated stack slots.
+     */
+    static final DebugMetric allocatedSlots = Debug.metric("StackSlotAllocator[allocatedSlots]");
+    /**
+     * The number of reused stack slots.
+     */
+    static final DebugMetric reusedSlots = Debug.metric("StackSlotAllocator[reusedSlots]");
+    /**
+     * The size (in bytes) required for all allocated stack slots. Note that this number
+     * corresponds to the actual frame size and might include alignment.
+     */
+    static final DebugMetric allocatedFramesize = Debug.metric("StackSlotAllocator[AllocatedFramesize]");
+    /** The size (in bytes) required for all virtual stack slots. */
+    static final DebugMetric virtualFramesize = Debug.metric("StackSlotAllocator[VirtualFramesize]");
+
     void allocateStackSlots(FrameMapBuilderTool builder, LIRGenerationResult res);
 }

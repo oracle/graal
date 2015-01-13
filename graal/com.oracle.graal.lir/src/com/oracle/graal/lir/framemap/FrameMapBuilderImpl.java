@@ -27,6 +27,8 @@ import java.util.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.lir.gen.*;
 
 /**
@@ -90,7 +92,9 @@ public class FrameMapBuilderImpl implements FrameMapBuilderTool {
     }
 
     public FrameMap buildFrameMap(LIRGenerationResult res, StackSlotAllocator allocator) {
-        allocator.allocateStackSlots(this, res);
+        try (Scope s = Debug.scope("StackSlotAllocation")) {
+            allocator.allocateStackSlots(this, res);
+        }
         for (CallingConvention cc : calls) {
             frameMap.callsMethod(cc);
         }
