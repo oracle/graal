@@ -28,7 +28,7 @@ import com.oracle.graal.api.meta.*;
 /**
  * Represents a {@link VirtualStackSlot virtual stack slot} for a specific {@link LIRKind kind}.
  */
-class SimpleVirtualStackSlot extends VirtualStackSlot {
+public class SimpleVirtualStackSlot extends VirtualStackSlot {
 
     private static final long serialVersionUID = 7654295701165421750L;
 

@@ -31,7 +31,7 @@ import com.oracle.graal.api.meta.*;
  * Represents a {@link #getSlots() numbered} range of {@link VirtualStackSlot virtual stack slot} of
  * size {@link TargetDescription#wordSize}.
  */
-class VirtualStackSlotRange extends VirtualStackSlot {
+public class VirtualStackSlotRange extends VirtualStackSlot {
 
     private static final long serialVersionUID = 5152592950118317121L;
     private final BitSet objects;

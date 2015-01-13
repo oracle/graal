@@ -256,7 +256,7 @@ public abstract class FrameMap {
      * @param kind The kind of the spill slot to be reserved.
      * @return A spill slot denoting the reserved memory area.
      */
-    protected StackSlot allocateSpillSlot(LIRKind kind) {
+    public StackSlot allocateSpillSlot(LIRKind kind) {
         assert frameSize == -1 : "frame size must not yet be fixed";
         int size = spillSlotSize(kind);
         spillSize = NumUtil.roundUp(spillSize + size, size);
@@ -284,7 +284,7 @@ public abstract class FrameMap {
      *            collector could see garbage object values.
      * @return the first reserved stack slot (i.e., at the lowest address)
      */
-    protected StackSlot allocateStackSlots(int slots, BitSet objects) {
+    public StackSlot allocateStackSlots(int slots, BitSet objects) {
         assert frameSize == -1 : "frame size must not yet be fixed";
         if (slots == 0) {
             return null;
