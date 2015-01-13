@@ -37,6 +37,7 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.java.BciBlockMapping.BciBlock;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
@@ -557,6 +558,46 @@ class CFGPrinter extends CompilationPrinter {
         }
 
         out.printf(" \"%s\"", interval.spillState());
+        out.println();
+    }
+
+    public void printStackIntervals(String label, StackInterval[] intervals) {
+        begin("intervals");
+        out.println(String.format("name \"%s\"", label));
+
+        for (StackInterval interval : intervals) {
+            if (interval != null) {
+                printStackInterval(interval);
+            }
+        }
+
+        end("intervals");
+    }
+
+    private void printStackInterval(StackInterval interval) {
+        out.printf("%s %s ", interval.getOperand(), interval.isFixed() ? "fixed" : interval.kind().getPlatformKind());
+        if (interval.location() != null) {
+            out.printf("\"[%s|%c]\"", interval.location(), interval.location().getKind().getTypeChar());
+        } else {
+            out.printf("\"[%s|%c]\"", interval.getOperand(), interval.getOperand().getKind().getTypeChar());
+        }
+
+        StackInterval hint = interval.locationHint();
+        out.printf("%s %s ", interval.getOperand(), hint != null ? hint.getOperand() : -1);
+
+        out.printf("[%d, %d[", interval.from(), interval.to());
+
+        // print use positions
+        int prev = -1;
+        StackUsePosList usePosList = interval.usePosList();
+        for (int i = usePosList.size() - 1; i >= 0; --i) {
+            assert prev <= usePosList.usePos(i) : "use positions not sorted";
+            out.printf("%d %s ", usePosList.usePos(i), usePosList.getType(i));
+            prev = usePosList.usePos(i);
+        }
+
+        // print spill state
+        out.printf(" \"%s\"", "NOT_SUPPORTED");
         out.println();
     }
 
