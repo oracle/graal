@@ -97,13 +97,21 @@ public final class BciBlockMapping {
         public long loops;
         public JSRData jsrData;
 
-        public static class JSRData {
+        public static class JSRData implements Cloneable {
             public HashMap<JsrScope, BciBlock> jsrAlternatives;
             public JsrScope jsrScope = JsrScope.EMPTY_SCOPE;
             public BciBlock jsrSuccessor;
             public int jsrReturnBci;
             public BciBlock retSuccessor;
             public boolean endsWithRet = false;
+
+            public JSRData copy() {
+                try {
+                    return (JSRData) this.clone();
+                } catch (CloneNotSupportedException e) {
+                    return null;
+                }
+            }
         }
 
         public BciBlock() {
@@ -127,6 +135,9 @@ public final class BciBlockMapping {
         public BciBlock copy() {
             try {
                 BciBlock block = (BciBlock) super.clone();
+                if (block.jsrData != null) {
+                    block.jsrData = block.jsrData.copy();
+                }
                 block.successors = new ArrayList<>(successors);
                 return block;
             } catch (CloneNotSupportedException e) {
