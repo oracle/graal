@@ -103,12 +103,6 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, Baseli
             loopHeaders = blockMap.getLoopHeaders();
             liveness = blockMap.liveness;
             blockVisited = new BciBlockBitMap(blockMap);
-            // add predecessors
-            for (BciBlock block : blockMap.getBlocks()) {
-                for (BciBlock successor : block.getSuccessors()) {
-                    successor.getPredecessors().add(block);
-                }
-            }
 
             if (method.isSynchronized()) {
                 throw GraalInternalError.unimplemented("Handle synchronized methods");

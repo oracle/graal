@@ -38,6 +38,7 @@ public final class BaselineControlFlowGraph implements AbstractControlFlowGraph<
     public static BaselineControlFlowGraph compute(BciBlockMapping blockMap) {
         try (Scope ds = Debug.scope("BaselineCFG", blockMap)) {
             BaselineControlFlowGraph cfg = new BaselineControlFlowGraph(blockMap);
+            cfg.computePredecessors();
             cfg.computeLoopInformation(blockMap);
             AbstractControlFlowGraph.computeDominators(cfg);
 
@@ -67,6 +68,22 @@ public final class BaselineControlFlowGraph implements AbstractControlFlowGraph<
             return blocks[0];
         }
         return null;
+    }
+
+    /**
+     * Create and populate the predecessor list.
+     */
+    private void computePredecessors() {
+        // set predecessors
+        for (BciBlock block : blocks) {
+            block.setPredecessors(new ArrayList<>(4));
+        }
+        // calculate predecessors
+        for (BciBlock block : blocks) {
+            for (BciBlock succ : block.getSuccessors()) {
+                succ.getPredecessors().add(block);
+            }
+        }
     }
 
     private void computeLoopInformation(BciBlockMapping blockMap) {
