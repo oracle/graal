@@ -25,9 +25,14 @@
 package com.oracle.truffle.api.interop;
 
 /**
- * Interface for Truffle guest language implementations that can be shared across other language
- * implementations.
+ * Interface for any entity of a Truffle guest language implementations that can be shared across
+ * other language implementations.
  */
 public interface TruffleObject {
+    /**
+     * Provides the {@code ForeignAccessFactory} instance for this {@code TruffleObject} instance.
+     *
+     * @return the {@code ForeignAccessFactory} instance for this {@code TruffleObject} instance.
+     */
     ForeignAccessFactory getForeignAccessFactory();
 }

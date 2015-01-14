@@ -24,8 +24,17 @@
  */
 package com.oracle.truffle.api.interop;
 
-//TODO(mg): remove this interface and use java.util.function.Predicate once api.interop can use Java 8
-
+/**
+ * Represents a predicate of a {@code TruffleObject} argument.
+ */
 public interface InteropPredicate {
-    boolean test(Object object);
+
+    /**
+     * Evaluates the predicate on the given {@code TruffleObject}.
+     *
+     * @param object the input argument
+     * @return {@code true} if the {@code TruffleObject} argument matches the predicate, otherwise
+     *         {@code false}
+     */
+    boolean test(TruffleObject object);
 }

@@ -76,11 +76,11 @@ public class ObjectType {
         return new ForeignAccessFactory() {
 
             public InteropPredicate getLanguageCheck() {
-                throw new AccessException(this.toString() + " cannot be shared");
+                throw new UnsupportedMessageException(this.toString() + " cannot be shared");
             }
 
             public CallTarget getAccess(Message tree) {
-                throw new AccessException(this.toString() + " cannot be shared; Message not possible: " + tree.toString());
+                throw new UnsupportedMessageException(this.toString() + " cannot be shared; Message not possible: " + tree.toString());
             }
         };
     }

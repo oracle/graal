@@ -25,14 +25,13 @@
 package com.oracle.truffle.api.interop.exception;
 
 /**
- * An exception thrown if the receiver of a guest language implementation cannot resolve an access.
+ * An exception thrown if a foreign type cannot be converted to a language-dependent regular type.
  */
-public final class AccessException extends RuntimeException {
+public class UnsupportedTypeException extends RuntimeException {
 
-    private static final long serialVersionUID = -2014660135608964970L;
+    private static final long serialVersionUID = 5786411886196161509L;
 
-    public AccessException(String reason) {
+    public UnsupportedTypeException(String reason) {
         super(reason);
     }
-
 }

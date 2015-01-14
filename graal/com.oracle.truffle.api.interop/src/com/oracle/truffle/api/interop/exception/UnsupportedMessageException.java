@@ -24,11 +24,15 @@
  */
 package com.oracle.truffle.api.interop.exception;
 
-public class TypeException extends RuntimeException {
+/**
+ * An exception thrown if the receiver of a guest language implementation cannot resolve a message.
+ */
+public final class UnsupportedMessageException extends RuntimeException {
 
-    private static final long serialVersionUID = 5786411886196161509L;
+    private static final long serialVersionUID = -2014660135608964970L;
 
-    public TypeException(String reason) {
+    public UnsupportedMessageException(String reason) {
         super(reason);
     }
+
 }

@@ -27,10 +27,30 @@ package com.oracle.truffle.api.interop;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.interop.messages.*;
 
+/**
+ * Interface of a factory that produces AST snippets that can access a foreign {@code TruffleObject}
+ * . A Truffle language implementation accesses a {@code TruffleObject} via a {@code Message}. The
+ * {@code TruffleObject} instance provides a {@code ForeignAccessFactory} instance that provides an
+ * AST snippet for a given {@code Message}.
+ */
 public interface ForeignAccessFactory {
 
+    /**
+     * Provides a {@code InteropPredicate} that tests whether a {@code TruffleObject} can be
+     * accessed using AST snippets, produced by this {@code ForeignAccessFactory}.
+     *
+     * @return the {@code InteropPredicate} that tests if a {@code TruffleObject} can be accessed by
+     *         AST snipptes, produces by this {@code ForeignAccessFactory}.
+     */
     InteropPredicate getLanguageCheck();
 
+    /**
+     * Provides an AST snippet to access a {@code TruffleObject}.
+     *
+     * @param tree the {@code Message} that represents the access to a {@code TruffleObject}.
+     * @return the AST snippet for accessing the {@code TruffleObject}, wrapped as a
+     *         {@code CallTarget}.
+     */
     CallTarget getAccess(Message tree);
 
 }
