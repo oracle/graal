@@ -20,11 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.api.meta;
+package com.oracle.graal.hotspot;
 
 /**
- * Marker interface for classes whose values are proxied during replay compilation capture or remote
- * compilation.
+ * Marker interface for classes whose values are proxied during replay compilation capture.
  */
-public interface Remote {
+public interface HotSpotProxified {
 }

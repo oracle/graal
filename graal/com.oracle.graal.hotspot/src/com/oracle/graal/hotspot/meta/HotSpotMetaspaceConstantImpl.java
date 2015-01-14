@@ -25,9 +25,10 @@ package com.oracle.graal.hotspot.meta;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.HotSpotVMConfig.CompressEncoding;
 
-public final class HotSpotMetaspaceConstantImpl extends PrimitiveConstant implements HotSpotMetaspaceConstant, VMConstant, Remote {
+public final class HotSpotMetaspaceConstantImpl extends PrimitiveConstant implements HotSpotMetaspaceConstant, VMConstant, HotSpotProxified {
 
     private static final long serialVersionUID = 1003463314013122983L;
 

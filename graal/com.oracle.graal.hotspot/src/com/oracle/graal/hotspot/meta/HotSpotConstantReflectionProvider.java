@@ -41,7 +41,7 @@ import com.oracle.graal.replacements.SnippetTemplate.Arguments;
 /**
  * HotSpot implementation of {@link ConstantReflectionProvider}.
  */
-public class HotSpotConstantReflectionProvider implements ConstantReflectionProvider, Remote {
+public class HotSpotConstantReflectionProvider implements ConstantReflectionProvider, HotSpotProxified {
     private static final String SystemClassName = "Ljava/lang/System;";
 
     protected final HotSpotGraalRuntimeProvider runtime;

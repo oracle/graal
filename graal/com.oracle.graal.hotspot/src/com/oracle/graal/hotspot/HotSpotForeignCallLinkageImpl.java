@@ -38,7 +38,7 @@ import com.oracle.graal.word.*;
 /**
  * The details required to link a HotSpot runtime or stub call.
  */
-public class HotSpotForeignCallLinkageImpl implements HotSpotForeignCallLinkage, Remote {
+public class HotSpotForeignCallLinkageImpl implements HotSpotForeignCallLinkage, HotSpotProxified {
 
     /**
      * The descriptor of the call.
