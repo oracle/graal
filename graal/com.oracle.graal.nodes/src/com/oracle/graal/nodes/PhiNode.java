@@ -157,10 +157,10 @@ public abstract class PhiNode extends FloatingNode implements Simplifiable {
      * {@code null} inputs.
      */
     public ValueNode singleValue() {
-        Iterator<ValueNode> iterator = values().iterator();
-        ValueNode singleValue = iterator.next();
-        while (iterator.hasNext()) {
-            ValueNode value = iterator.next();
+        ValueNode singleValue = valueAt(0);
+        int count = valueCount();
+        for (int i = 1; i < count; ++i) {
+            ValueNode value = valueAt(i);
             if (value != this) {
                 if (value != singleValue) {
                     return MULTIPLE_VALUES;
