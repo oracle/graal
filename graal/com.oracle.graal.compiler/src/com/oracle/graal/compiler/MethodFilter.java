@@ -166,6 +166,13 @@ public class MethodFilter {
         }
     }
 
+    /**
+     * Determines if the class part of this filter matches a given class name.
+     */
+    public boolean matchesClassName(String className) {
+        return clazz == null || clazz.matcher(className).matches();
+    }
+
     public boolean matches(JavaMethod o) {
         // check method name first, since MetaUtil.toJavaName is expensive
         if (methodName != null && !methodName.matcher(o.getName()).matches()) {
