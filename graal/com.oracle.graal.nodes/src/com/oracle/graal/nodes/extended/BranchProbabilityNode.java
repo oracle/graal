@@ -75,6 +75,12 @@ public class BranchProbabilityNode extends FloatingNode implements Simplifiable,
                 throw new GraalInternalError("A negative probability of " + probabilityValue + " is not allowed!");
             } else if (probabilityValue > 1.0) {
                 throw new GraalInternalError("A probability of more than 1.0 (" + probabilityValue + ") is not allowed!");
+            } else if (Double.isNaN(probabilityValue)) {
+                /*
+                 * We allow NaN if the node is in unreachable code that will eventually fall away,
+                 * or else an error will be thrown during lowering since we keep the node around.
+                 */
+                return;
             }
             boolean couldSet = false;
             for (IntegerEqualsNode node : this.usages().filter(IntegerEqualsNode.class)) {
