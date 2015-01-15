@@ -118,7 +118,7 @@ public class GraphPrintVisitor {
 
         // save old nodes
         prevNodeMap = nodeMap;
-        nodeMap = new HashMap<>();
+        nodeMap = new IdentityHashMap<>();
         edgeList = new ArrayList<>();
 
         return this;
