@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.nodes.java;
 
+import java.nio.*;
+
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.nodeinfo.*;
@@ -69,8 +71,11 @@ public class StoreIndexedNode extends AccessIndexedNode implements StateSplit, L
             int idx = indexValue.isConstant() ? indexValue.asJavaConstant().asInt() : -1;
             if (idx >= 0 && idx < arrayState.getVirtualObject().entryCount()) {
                 ResolvedJavaType componentType = arrayState.getVirtualObject().type().getComponentType();
-                if (componentType.isPrimitive() || StampTool.isPointerAlwaysNull(value) || componentType.getSuperclass() == null ||
-                                (StampTool.typeOrNull(value) != null && componentType.isAssignableFrom(StampTool.typeOrNull(value)))) {
+                // isStoreSafe prevents on Little Endian machines to not do an implicit cast of
+                // primitives (Causes troubles with deoptimization)
+                boolean isStoreSafe = !componentType.isPrimitive() || ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN || componentType.equals(StampTool.typeOrNull(value));
+                if (isStoreSafe &&
+                                (componentType.isPrimitive() || StampTool.isPointerAlwaysNull(value) || componentType.getSuperclass() == null || (StampTool.typeOrNull(value) != null && componentType.isAssignableFrom(StampTool.typeOrNull(value))))) {
                     tool.setVirtualEntry(arrayState, idx, value(), false);
                     tool.delete();
                 }

@@ -88,7 +88,7 @@ public class UnsafeStoreNode extends UnsafeAccessNode implements StateSplit, Low
                 if (entryIndex != -1) {
                     Kind entryKind = state.getVirtualObject().entryKind(entryIndex);
                     ValueNode entry = state.getEntry(entryIndex);
-                    boolean isLoadSafe = ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN || accessKind() == entry.getKind();
+                    boolean isLoadSafe = ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN || accessKind() == entryKind;
                     if (isLoadSafe) {
                         if (entry.getKind() == value.getKind() || entryKind == accessKind()) {
                             tool.setVirtualEntry(state, entryIndex, value(), true);

@@ -70,8 +70,9 @@ public class UnsafeLoadNode extends UnsafeAccessNode implements Lowerable, Virtu
 
                 if (entryIndex != -1) {
                     ValueNode entry = state.getEntry(entryIndex);
-                    boolean isLoadSafe = ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN || accessKind() == entry.getKind();
-                    if (isLoadSafe && (entry.getKind() == getKind() || state.getVirtualObject().entryKind(entryIndex) == accessKind())) {
+                    Kind entryKind = state.getVirtualObject().entryKind(entryIndex);
+                    boolean isLoadSafe = ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN || accessKind() == entryKind;
+                    if (isLoadSafe && (entry.getKind() == getKind() || entryKind == accessKind())) {
                         tool.replaceWith(entry);
                     }
                 }
