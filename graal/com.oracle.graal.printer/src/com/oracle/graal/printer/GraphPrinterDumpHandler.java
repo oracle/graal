@@ -152,7 +152,7 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
 
     @Override
     public void dump(Object object, final String message) {
-        if (object instanceof Graph) {
+        if (object instanceof Graph && PrintIdealGraph.getValue()) {
             ensureInitialized();
             if (printer == null) {
                 return;

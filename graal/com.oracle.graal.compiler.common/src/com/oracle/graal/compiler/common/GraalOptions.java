@@ -172,6 +172,9 @@ public final class GraalOptions {
     @Option(help = "Enable dumping LIR, register allocation and code generation info to the C1Visualizer.", type = OptionType.Debug)
     public static final OptionValue<Boolean> PrintBackendCFG = new OptionValue<>(true);
 
+    @Option(help = "Enable dumping to the IdealGraphVisualizer.", type = OptionType.Debug)
+    public static final OptionValue<Boolean> PrintIdealGraph = new OptionValue<>(true);
+
     @Option(help = "", type = OptionType.Debug)
     public static final OptionValue<Boolean> PrintIdealGraphFile = new OptionValue<>(false);
 
