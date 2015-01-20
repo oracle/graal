@@ -196,7 +196,6 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     frameState.clearNonLiveLocals(blockMap.startBlock, liveness, true);
                     assert bci() == 0;
                     ((StateSplit) lastInstr).setStateAfter(frameState.create(bci()));
-                    finishPrepare(lastInstr);
 
                     if (graphBuilderConfig.insertNonSafepointDebugInfo()) {
                         InfopointNode ipn = currentGraph.add(createInfoPointNode(InfopointReason.METHOD_START));
@@ -235,15 +234,6 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                         }
                     }
                 }
-            }
-
-            /**
-             * A hook for derived classes to modify the graph start instruction or append new
-             * instructions to it.
-             *
-             * @param startInstr The start instruction of the graph.
-             */
-            protected void finishPrepare(FixedWithNextNode startInstr) {
             }
 
             private BciBlock unwindBlock() {
