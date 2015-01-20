@@ -738,6 +738,12 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     }
                 }
 
+                if (GraalOptions.InlineDuringParsing.getValue() && invokeKind.isDirect() && targetMethod.canBeInlined() && targetMethod.hasBytecodes()) {
+                    if (targetMethod.getCode().length <= GraalOptions.TrivialInliningSize.getValue()) {
+                        System.out.println("could inline trivial: " + targetMethod);
+                    }
+                }
+
                 MethodCallTargetNode callTarget = currentGraph.add(createMethodCallTarget(invokeKind, targetMethod, args, returnType));
 
                 // be conservative if information was not recorded (could result in endless
@@ -1210,8 +1216,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             protected void iterateBytecodesForBlock(BciBlock block) {
                 if (block.isLoopHeader) {
                     // Create the loop header block, which later will merge the backward branches of
-                    // the
-                    // loop.
+                    // the loop.
                     AbstractEndNode preLoopEnd = currentGraph.add(new EndNode());
                     LoopBeginNode loopBegin = currentGraph.add(new LoopBeginNode());
                     lastInstr.setNext(preLoopEnd);
