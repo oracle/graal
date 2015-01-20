@@ -172,7 +172,7 @@ public final class ArithmeticOpTable {
         this.floatConvert = new FloatConvertOp[FloatConvert.values().length];
         floatConvert.forEach(op -> this.floatConvert[op.getFloatConvert().ordinal()] = op);
 
-        this.hash = Objects.hash(neg, add, sub, mul, div, rem, not, and, or, xor, shl, shr, ushr, abs, sqrt, zeroExtend, signExtend, narrow, floatConvert);
+        this.hash = Objects.hash(neg, add, sub, mul, div, rem, not, and, or, xor, shl, shr, ushr, abs, sqrt, zeroExtend, signExtend, narrow);
     }
 
     @Override
