@@ -79,6 +79,7 @@ public final class ArithmeticOpTable {
     private final IntegerConvertOp<Narrow> narrow;
 
     private final FloatConvertOp[] floatConvert;
+    private final int hash;
 
     public static ArithmeticOpTable forStamp(Stamp s) {
         if (s instanceof ArithmeticStamp) {
@@ -170,6 +171,13 @@ public final class ArithmeticOpTable {
         this.narrow = narrow;
         this.floatConvert = new FloatConvertOp[FloatConvert.values().length];
         floatConvert.forEach(op -> this.floatConvert[op.getFloatConvert().ordinal()] = op);
+
+        this.hash = Objects.hash(neg, add, sub, mul, div, rem, not, and, or, xor, shl, shr, ushr, abs, sqrt, zeroExtend, signExtend, narrow, floatConvert);
+    }
+
+    @Override
+    public int hashCode() {
+        return hash;
     }
 
     /**
