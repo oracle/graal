@@ -78,7 +78,7 @@ public class HIRFrameStateBuilder extends AbstractFrameStateBuilder<ValueNode, H
             }
             ParameterNode param = graph.unique(new ParameterNode(index, stamp));
             storeLocal(javaIndex, param);
-            javaIndex += stackSlots(kind);
+            javaIndex += kind.getSlotCount();
             index++;
         }
     }

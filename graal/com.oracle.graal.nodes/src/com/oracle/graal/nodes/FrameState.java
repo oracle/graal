@@ -238,7 +238,7 @@ public class FrameState extends VirtualState implements IterableNodeType {
         }
         for (ValueNode node : pushedValues) {
             copy.add(node);
-            if (node.getKind() == Kind.Long || node.getKind() == Kind.Double) {
+            if (node.getKind().needsTwoSlots()) {
                 copy.add(null);
             }
         }

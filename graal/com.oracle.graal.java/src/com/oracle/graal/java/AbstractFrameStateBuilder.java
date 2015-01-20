@@ -171,8 +171,8 @@ public abstract class AbstractFrameStateBuilder<T extends KindProvider, S extend
      */
     public T loadLocal(int i) {
         T x = locals[i];
-        assert !isTwoSlot(x.getKind()) || locals[i + 1] == null;
-        assert i == 0 || locals[i - 1] == null || !isTwoSlot(locals[i - 1].getKind());
+        assert x.getKind().getSlotCount() == 1 || locals[i + 1] == null;
+        assert i == 0 || locals[i - 1] == null || locals[i - 1].getKind().getSlotCount() == 1;
         return x;
     }
 
@@ -186,13 +186,13 @@ public abstract class AbstractFrameStateBuilder<T extends KindProvider, S extend
     public void storeLocal(int i, T x) {
         assert x == null || x.getKind() != Kind.Void && x.getKind() != Kind.Illegal : "unexpected value: " + x;
         locals[i] = x;
-        if (x != null && isTwoSlot(x.getKind())) {
+        if (x != null && x.getKind().needsTwoSlots()) {
             // if this is a double word, then kill i+1
             locals[i + 1] = null;
         }
         if (x != null && i > 0) {
             T p = locals[i - 1];
-            if (p != null && isTwoSlot(p.getKind())) {
+            if (p != null && p.getKind().needsTwoSlots()) {
                 // if there was a double word at i - 1, then kill it
                 locals[i - 1] = null;
             }
@@ -213,7 +213,7 @@ public abstract class AbstractFrameStateBuilder<T extends KindProvider, S extend
     public void push(Kind kind, T x) {
         assert x.getKind() != Kind.Void && x.getKind() != Kind.Illegal;
         xpush(assertKind(kind, x));
-        if (isTwoSlot(kind)) {
+        if (kind.needsTwoSlots()) {
             xpush(null);
         }
     }
@@ -289,7 +289,7 @@ public abstract class AbstractFrameStateBuilder<T extends KindProvider, S extend
      */
     public T pop(Kind kind) {
         assert kind != Kind.Void;
-        if (isTwoSlot(kind)) {
+        if (kind.needsTwoSlots()) {
             xpop();
         }
         return assertKind(kind, xpop());
@@ -366,9 +366,9 @@ public abstract class AbstractFrameStateBuilder<T extends KindProvider, S extend
             if (stack[newStackSize] == null) {
                 /* Two-slot value. */
                 newStackSize--;
-                assert stackSlots(stack[newStackSize].getKind()) == 2;
+                assert stack[newStackSize].getKind().needsTwoSlots();
             } else {
-                assert stackSlots(stack[newStackSize].getKind()) == 1;
+                assert stack[newStackSize].getKind().getSlotCount() == 1;
             }
             result[i] = stack[newStackSize];
         }
@@ -389,15 +389,11 @@ public abstract class AbstractFrameStateBuilder<T extends KindProvider, S extend
         for (int i = 0; i < argumentNumber; i++) {
             if (stackAt(idx) == null) {
                 idx--;
-                assert isTwoSlot(stackAt(idx).getKind());
+                assert stackAt(idx).getKind().needsTwoSlots();
             }
             idx--;
         }
         return stackAt(idx);
-    }
-
-    public static int stackSlots(Kind kind) {
-        return isTwoSlot(kind) ? 2 : 1;
     }
 
     /**
@@ -405,11 +401,6 @@ public abstract class AbstractFrameStateBuilder<T extends KindProvider, S extend
      */
     public void clearStack() {
         stackSize = 0;
-    }
-
-    protected static boolean isTwoSlot(Kind kind) {
-        assert kind != Kind.Void && kind != Kind.Illegal;
-        return kind == Kind.Long || kind == Kind.Double;
     }
 
     private T assertKind(Kind kind, T x) {

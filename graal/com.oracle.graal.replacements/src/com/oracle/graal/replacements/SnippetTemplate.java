@@ -123,7 +123,7 @@ public class SnippetTemplate {
                     names[i] = method.getLocalVariableTable().getLocal(slotIdx, 0).getName();
 
                     Kind kind = method.getSignature().getParameterKind(i);
-                    slotIdx += kind == Kind.Long || kind == Kind.Double ? 2 : 1;
+                    slotIdx += kind.getSlotCount();
                 }
                 return true;
             }

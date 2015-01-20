@@ -407,7 +407,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                 while (valueIndex < values.length) {
                     Kind otherKind = entries[valueIndex].getKind();
                     Kind entryKind = object.entryKind(valueIndex);
-                    if (entryKind == Kind.Int && (otherKind == Kind.Long || otherKind == Kind.Double)) {
+                    if (entryKind == Kind.Int && otherKind.needsTwoSlots()) {
                         if (twoSlotKinds == null) {
                             twoSlotKinds = new Kind[values.length];
                         }

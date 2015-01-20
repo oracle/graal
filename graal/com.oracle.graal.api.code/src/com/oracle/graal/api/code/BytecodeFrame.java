@@ -168,7 +168,7 @@ public class BytecodeFrame extends BytecodePosition implements Serializable {
         for (int i = 0; i < numLocals + numStack; i++) {
             if (values[i] != null) {
                 Kind kind = values[i].getKind();
-                if (kind == Kind.Long || kind == Kind.Double) {
+                if (kind.needsTwoSlots()) {
                     assert values.length > i + 1 : String.format("missing second word %s", this);
                     assert values[i + 1] == null || values[i + 1].getKind() == Kind.Illegal;
                 }
