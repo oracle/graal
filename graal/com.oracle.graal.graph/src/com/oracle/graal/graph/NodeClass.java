@@ -166,7 +166,7 @@ public final class NodeClass extends FieldIntrospection {
         isLeafNode = inputs.getCount() + successors.getCount() == 0;
 
         canGVN = Node.ValueNumberable.class.isAssignableFrom(clazz);
-        startGVNNumber = clazz.hashCode();
+        startGVNNumber = clazz.getName().hashCode();
 
         NodeInfo info = getAnnotationTimed(clazz, NodeInfo.class);
         assert info != null : "Missing NodeInfo annotation on " + clazz;
@@ -721,9 +721,15 @@ public final class NodeClass extends FieldIntrospection {
                     replacement = replacements.replacement(node);
                 }
                 if (replacement != node) {
+                    if (Fingerprint.ENABLED) {
+                        Fingerprint.submit("replacing %s with %s", node, replacement);
+                    }
                     assert replacement != null;
                     newNodes.put(node, replacement);
                 } else {
+                    if (Fingerprint.ENABLED) {
+                        Fingerprint.submit("duplicating %s", node);
+                    }
                     Node newNode = node.clone(graph, WithAllEdges);
                     assert newNode.inputs().isEmpty() || newNode.usages().isEmpty();
                     assert newNode.getClass() == node.getClass();

@@ -123,6 +123,11 @@ public class Graph {
             }
             return false;
         }
+
+        @Override
+        public String toString() {
+            return node.toString();
+        }
     }
 
     /**
@@ -744,6 +749,9 @@ public class Graph {
         node.id = id;
         if (nodeEventListener != null) {
             nodeEventListener.nodeAdded(node);
+        }
+        if (Fingerprint.ENABLED) {
+            Fingerprint.submit("%s: %s", NodeEvent.NODE_ADDED, node);
         }
     }
 

@@ -228,6 +228,9 @@ public class InliningUtil {
      *            canonicalized after inlining
      */
     public static Map<Node, Node> inline(Invoke invoke, StructuredGraph inlineGraph, boolean receiverNullCheck, List<Node> canonicalizedNodes) {
+        if (Fingerprint.ENABLED) {
+            Fingerprint.submit("inlining %s into %s: %s", formatGraph(inlineGraph), formatGraph(invoke.asNode().graph()), inlineGraph.getNodes().snapshot());
+        }
         final NodeInputList<ValueNode> parameters = invoke.callTarget().arguments();
         FixedNode invokeNode = invoke.asNode();
         StructuredGraph graph = invokeNode.graph();
@@ -353,6 +356,13 @@ public class InliningUtil {
         GraphUtil.killCFG(invokeNode);
 
         return duplicates;
+    }
+
+    private static String formatGraph(StructuredGraph graph) {
+        if (graph.method() == null) {
+            return graph.name;
+        }
+        return graph.method().format("%H.%n(%p)");
     }
 
     private static void processSimpleInfopoints(Invoke invoke, StructuredGraph inlineGraph, Map<Node, Node> duplicates) {

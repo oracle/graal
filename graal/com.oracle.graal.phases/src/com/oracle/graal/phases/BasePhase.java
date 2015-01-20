@@ -106,6 +106,10 @@ public abstract class BasePhase<C> {
             if (dumpGraph && Debug.isDumpEnabled(PHASE_DUMP_LEVEL)) {
                 Debug.dump(PHASE_DUMP_LEVEL, graph, "After phase %s", getName());
             }
+            if (Fingerprint.ENABLED) {
+                String graphDesc = graph.method() == null ? graph.name : graph.method().format("%H.%n(%p)");
+                Fingerprint.submit("After phase %s nodes in %s are %s", getName(), graphDesc, graph.getNodes().snapshot());
+            }
             if (Debug.isVerifyEnabled()) {
                 Debug.verify(graph, "After phase %s", getName());
             }
