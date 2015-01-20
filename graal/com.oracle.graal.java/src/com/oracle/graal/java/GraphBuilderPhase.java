@@ -191,16 +191,14 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                         // add a monitor enter to the start block
                         currentGraph.start().setStateAfter(frameState.create(BytecodeFrame.BEFORE_BCI));
                         methodSynchronizedObject = synchronizedObject(frameState, method);
-                        lastInstr = genMonitorEnter(methodSynchronizedObject);
+                        genMonitorEnter(methodSynchronizedObject);
                     }
                     frameState.clearNonLiveLocals(blockMap.startBlock, liveness, true);
                     assert bci() == 0;
                     ((StateSplit) lastInstr).setStateAfter(frameState.create(bci()));
 
                     if (graphBuilderConfig.insertNonSafepointDebugInfo()) {
-                        InfopointNode ipn = currentGraph.add(createInfoPointNode(InfopointReason.METHOD_START));
-                        lastInstr.setNext(ipn);
-                        lastInstr = ipn;
+                        append(createInfoPointNode(InfopointReason.METHOD_START));
                     }
 
                     currentBlock = blockMap.startBlock;
@@ -1103,19 +1101,22 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 }
             }
 
+            /**
+             * Remove loop header without loop ends. This can happen with degenerated loops like
+             * this one:
+             *
+             * <pre>
+             * for (;;) {
+             *     try {
+             *         break;
+             *     } catch (UnresolvedException iioe) {
+             *     }
+             * }
+             * </pre>
+             */
             private void connectLoopEndToBegin() {
                 for (LoopBeginNode begin : currentGraph.getNodes(LoopBeginNode.class)) {
                     if (begin.loopEnds().isEmpty()) {
-                        // @formatter:off
-                // Remove loop header without loop ends.
-                // This can happen with degenerated loops like this one:
-                // for (;;) {
-                //     try {
-                //         break;
-                //     } catch (UnresolvedException iioe) {
-                //     }
-                // }
-                // @formatter:on
                         assert begin.forwardEndCount() == 1;
                         currentGraph.reduceDegenerateLoopBegin(begin);
                     } else {
