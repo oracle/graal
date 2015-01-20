@@ -73,9 +73,9 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, Baseli
     }
 
     public BaselineBytecodeParser(MetaAccessProvider metaAccess, ResolvedJavaMethod method, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts,
-                    BaselineFrameStateBuilder frameState, BytecodeStream stream, ProfilingInfo profilingInfo, ConstantPool constantPool, int entryBCI, Backend backend) {
+                    BaselineFrameStateBuilder frameState, BytecodeStream stream, int entryBCI, Backend backend) {
 
-        super(metaAccess, method, graphBuilderConfig, optimisticOpts, frameState, stream, profilingInfo, constantPool, entryBCI);
+        super(metaAccess, method, graphBuilderConfig, optimisticOpts, frameState, stream, entryBCI);
         this.backend = backend;
     }
 

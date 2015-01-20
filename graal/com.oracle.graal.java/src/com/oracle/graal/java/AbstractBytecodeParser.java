@@ -78,14 +78,14 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
     public static final DebugMetric BytecodesParsed = Debug.metric("BytecodesParsed");
 
     public AbstractBytecodeParser(MetaAccessProvider metaAccess, ResolvedJavaMethod method, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, F frameState,
-                    BytecodeStream stream, ProfilingInfo profilingInfo, ConstantPool constantPool, int entryBCI) {
+                    BytecodeStream stream, int entryBCI) {
         this.frameState = frameState;
         this.graphBuilderConfig = graphBuilderConfig;
         this.optimisticOpts = optimisticOpts;
         this.metaAccess = metaAccess;
         this.stream = stream;
-        this.profilingInfo = profilingInfo;
-        this.constantPool = constantPool;
+        this.profilingInfo = method.getProfilingInfo();
+        this.constantPool = method.getConstantPool();
         this.entryBCI = entryBCI;
         this.method = method;
         assert metaAccess != null;

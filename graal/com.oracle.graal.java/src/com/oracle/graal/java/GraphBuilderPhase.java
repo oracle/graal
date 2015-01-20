@@ -121,14 +121,12 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 previousLineNumber = -1;
             }
             int entryBCI = graph.getEntryBCI();
-            ProfilingInfo profilingInfo = method.getProfilingInfo();
             assert method.getCode() != null : "method must contain bytecodes: " + method;
             unwindBlock = null;
             methodSynchronizedObject = null;
             this.currentGraph = graph;
             HIRFrameStateBuilder frameState = new HIRFrameStateBuilder(method, graph, graphBuilderConfig.eagerResolving());
-            this.parser = createBytecodeParser(metaAccess, method, graphBuilderConfig, optimisticOpts, frameState, new BytecodeStream(method.getCode()), profilingInfo, method.getConstantPool(),
-                            entryBCI);
+            this.parser = createBytecodeParser(metaAccess, method, graphBuilderConfig, optimisticOpts, frameState, new BytecodeStream(method.getCode()), entryBCI);
             TTY.Filter filter = new TTY.Filter(PrintFilter.getValue(), method);
             try {
                 parser.build();
@@ -142,8 +140,8 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
         @SuppressWarnings("hiding")
         protected BytecodeParser createBytecodeParser(MetaAccessProvider metaAccess, ResolvedJavaMethod method, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts,
-                        HIRFrameStateBuilder frameState, BytecodeStream stream, ProfilingInfo profilingInfo, ConstantPool constantPool, int entryBCI) {
-            return new BytecodeParser(metaAccess, method, graphBuilderConfig, optimisticOpts, frameState, stream, profilingInfo, constantPool, entryBCI);
+                        HIRFrameStateBuilder frameState, BytecodeStream stream, int entryBCI) {
+            return new BytecodeParser(metaAccess, method, graphBuilderConfig, optimisticOpts, frameState, stream, entryBCI);
         }
 
         @Override
@@ -168,8 +166,8 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             private LocalLiveness liveness;
 
             public BytecodeParser(MetaAccessProvider metaAccess, ResolvedJavaMethod method, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts,
-                            HIRFrameStateBuilder frameState, BytecodeStream stream, ProfilingInfo profilingInfo, ConstantPool constantPool, int entryBCI) {
-                super(metaAccess, method, graphBuilderConfig, optimisticOpts, frameState, stream, profilingInfo, constantPool, entryBCI);
+                            HIRFrameStateBuilder frameState, BytecodeStream stream, int entryBCI) {
+                super(metaAccess, method, graphBuilderConfig, optimisticOpts, frameState, stream, entryBCI);
             }
 
             @Override
