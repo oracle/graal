@@ -758,12 +758,6 @@ public class Graph {
     @SuppressWarnings("unused")
     private void postDeserialization() {
         recomputeIterableNodeLists();
-
-        // CacheEntry.hashCode() is not stable across VM executions so
-        // the cachedLeafNodes map needs to be re-created.
-        HashMap<CacheEntry, Node> entries = new LinkedHashMap<>(cachedLeafNodes);
-        cachedLeafNodes.clear();
-        cachedLeafNodes.putAll(entries);
     }
 
     /**
