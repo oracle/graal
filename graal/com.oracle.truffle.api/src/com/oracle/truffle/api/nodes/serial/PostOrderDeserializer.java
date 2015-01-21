@@ -259,8 +259,7 @@ public final class PostOrderDeserializer {
 
     private static Node updateParent(Node parent, Node child) {
         if (child != null) {
-            long parentOffset = NodeClass.get(child.getClass()).getParentOffset();
-            unsafe.putObject(child, parentOffset, parent);
+            NodeClass.get(child.getClass()).getParentField().putObject(child, parent);
         }
         return child;
     }

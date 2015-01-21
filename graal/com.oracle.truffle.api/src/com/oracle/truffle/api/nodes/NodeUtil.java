@@ -95,11 +95,15 @@ public final class NodeUtil {
         private final String name;
         private long offset;
 
-        protected NodeField(NodeFieldKind kind, Class<?> type, String name, long offset) {
+        private NodeField(NodeFieldKind kind, Field field) {
             this.kind = kind;
-            this.type = type;
-            this.name = name;
-            this.offset = offset;
+            this.type = field.getType();
+            this.name = field.getName();
+            this.offset = unsafeFieldOffsetProvider.objectFieldOffset(field);
+        }
+
+        protected static NodeField create(NodeFieldKind kind, Field field) {
+            return new NodeField(kind, field);
         }
 
         public NodeFieldKind getKind() {
@@ -119,8 +123,13 @@ public final class NodeUtil {
         }
 
         public void putObject(Object receiver, Object value) {
-            assert value == null || type.isInstance(value);
+            assert !type.isPrimitive() && value == null || type.isInstance(value);
             unsafe.putObject(receiver, offset, value);
+        }
+
+        public Object getObject(Object receiver) {
+            assert !type.isPrimitive();
+            return unsafe.getObject(receiver, offset);
         }
 
         public Object loadValue(Node node) {
@@ -172,7 +181,7 @@ public final class NodeUtil {
                 assert Node.class.isAssignableFrom(clazz);
                 return AccessController.doPrivileged(new PrivilegedAction<NodeClass>() {
                     public NodeClass run() {
-                        return new NodeClass((Class<? extends Node>) clazz, unsafeFieldOffsetProvider);
+                        return new NodeClass((Class<? extends Node>) clazz);
                     }
                 });
             }
@@ -180,60 +189,61 @@ public final class NodeUtil {
 
         // The comprehensive list of all fields.
         private final NodeField[] fields;
-        // Separate arrays for the frequently accessed field offsets.
-        private final long parentOffset;
-        private final long[] childOffsets;
-        private final long[] childrenOffsets;
-        private final long[] cloneableOffsets;
+        // Separate arrays for the frequently accessed fields.
+        private final NodeField parentField;
+        private final NodeField[] childFields;
+        private final NodeField[] childrenFields;
+        private final NodeField[] cloneableFields;
+
         private final Class<? extends Node> clazz;
 
         public static NodeClass get(Class<? extends Node> clazz) {
             return nodeClasses.get(clazz);
         }
 
-        public NodeClass(Class<? extends Node> clazz, FieldOffsetProvider fieldOffsetProvider) {
+        public NodeClass(Class<? extends Node> clazz) {
             List<NodeField> fieldsList = new ArrayList<>();
-            long parentFieldOffset = -1;
-            List<Long> childOffsetsList = new ArrayList<>();
-            List<Long> childrenOffsetsList = new ArrayList<>();
-            List<Long> cloneableOffsetsList = new ArrayList<>();
+            NodeField parentFieldTmp = null;
+            List<NodeField> childFieldList = new ArrayList<>();
+            List<NodeField> childrenFieldList = new ArrayList<>();
+            List<NodeField> cloneableFieldList = new ArrayList<>();
 
             for (Field field : getAllFields(clazz)) {
                 if (Modifier.isStatic(field.getModifiers()) || field.isSynthetic()) {
                     continue;
                 }
 
-                NodeFieldKind kind;
+                NodeField nodeField;
                 if (field.getDeclaringClass() == Node.class && field.getName().equals("parent")) {
                     assert Node.class.isAssignableFrom(field.getType());
-                    kind = NodeFieldKind.PARENT;
-                    parentFieldOffset = fieldOffsetProvider.objectFieldOffset(field);
+                    nodeField = NodeField.create(NodeFieldKind.PARENT, field);
+                    parentFieldTmp = nodeField;
                 } else if (field.getAnnotation(Child.class) != null) {
                     checkChildField(field);
-                    kind = NodeFieldKind.CHILD;
-                    childOffsetsList.add(fieldOffsetProvider.objectFieldOffset(field));
+                    nodeField = NodeField.create(NodeFieldKind.CHILD, field);
+                    childFieldList.add(nodeField);
                 } else if (field.getAnnotation(Children.class) != null) {
                     checkChildrenField(field);
-                    kind = NodeFieldKind.CHILDREN;
-                    childrenOffsetsList.add(fieldOffsetProvider.objectFieldOffset(field));
-                } else if (NodeCloneable.class.isAssignableFrom(field.getType())) {
-                    kind = NodeFieldKind.DATA;
-                    cloneableOffsetsList.add(fieldOffsetProvider.objectFieldOffset(field));
+                    nodeField = NodeField.create(NodeFieldKind.CHILDREN, field);
+                    childrenFieldList.add(nodeField);
                 } else {
-                    kind = NodeFieldKind.DATA;
+                    nodeField = NodeField.create(NodeFieldKind.DATA, field);
+                    if (NodeCloneable.class.isAssignableFrom(field.getType())) {
+                        cloneableFieldList.add(nodeField);
+                    }
                 }
-                fieldsList.add(new NodeField(kind, field.getType(), field.getName(), fieldOffsetProvider.objectFieldOffset(field)));
+                fieldsList.add(nodeField);
             }
 
-            if (parentFieldOffset < 0) {
+            if (parentFieldTmp == null) {
                 throw new AssertionError("parent field not found");
             }
 
             this.fields = fieldsList.toArray(new NodeField[fieldsList.size()]);
-            this.parentOffset = parentFieldOffset;
-            this.childOffsets = toLongArray(childOffsetsList);
-            this.childrenOffsets = toLongArray(childrenOffsetsList);
-            this.cloneableOffsets = toLongArray(cloneableOffsetsList);
+            this.parentField = parentFieldTmp;
+            this.childFields = childFieldList.toArray(new NodeField[childFieldList.size()]);
+            this.childrenFields = childrenFieldList.toArray(new NodeField[childrenFieldList.size()]);
+            this.cloneableFields = cloneableFieldList.toArray(new NodeField[cloneableFieldList.size()]);
             this.clazz = clazz;
         }
 
@@ -263,29 +273,28 @@ public final class NodeUtil {
             return fields;
         }
 
-        public long getParentOffset() {
-            return parentOffset;
+        public NodeField getParentField() {
+            return parentField;
         }
 
-        public long[] getChildOffsets() {
-            return childOffsets;
+        public NodeField[] getChildFields() {
+            return childFields;
         }
 
-        public long[] getChildrenOffsets() {
-            return childrenOffsets;
+        public NodeField[] getChildrenFields() {
+            return childrenFields;
         }
 
         @Override
         public int hashCode() {
-            return Arrays.hashCode(fields) ^ Arrays.hashCode(childOffsets) ^ Arrays.hashCode(childrenOffsets) ^ ((Long) parentOffset).hashCode();
+            return clazz.hashCode();
         }
 
         @Override
         public boolean equals(Object obj) {
             if (obj instanceof NodeClass) {
                 NodeClass other = (NodeClass) obj;
-                return Arrays.equals(fields, other.fields) && Arrays.equals(childOffsets, other.childOffsets) && Arrays.equals(childrenOffsets, other.childrenOffsets) &&
-                                parentOffset == other.parentOffset;
+                return clazz.equals(other.clazz);
             }
             return false;
         }
@@ -307,9 +316,9 @@ public final class NodeUtil {
             }
 
             private int childrenCount() {
-                int nodeCount = childOffsets.length;
-                for (long fieldOffset : childrenOffsets) {
-                    Object[] children = ((Object[]) unsafe.getObject(node, fieldOffset));
+                int nodeCount = childFields.length;
+                for (NodeField childrenField : childrenFields) {
+                    Object[] children = ((Object[]) childrenField.getObject(node));
                     if (children != null) {
                         nodeCount += children.length;
                     }
@@ -318,12 +327,12 @@ public final class NodeUtil {
             }
 
             private Node nodeAt(int idx) {
-                int nodeCount = childOffsets.length;
+                int nodeCount = childFields.length;
                 if (idx < nodeCount) {
-                    return (Node) unsafe.getObject(node, childOffsets[idx]);
+                    return (Node) childFields[idx].getObject(node);
                 } else {
-                    for (long fieldOffset : childrenOffsets) {
-                        Object[] nodeArray = (Object[]) unsafe.getObject(node, fieldOffset);
+                    for (NodeField childrenField : childrenFields) {
+                        Object[] nodeArray = (Object[]) childrenField.getObject(node);
                         if (idx < nodeCount + nodeArray.length) {
                             return (Node) nodeArray[idx - nodeCount];
                         }
@@ -429,14 +438,6 @@ public final class NodeUtil {
         }
     }
 
-    private static long[] toLongArray(List<Long> list) {
-        long[] array = new long[list.size()];
-        for (int i = 0; i < list.size(); i++) {
-            array[i] = list.get(i);
-        }
-        return array;
-    }
-
     private static final Unsafe unsafe = getUnsafe();
 
     private static Unsafe getUnsafe() {
@@ -462,34 +463,34 @@ public final class NodeUtil {
         final Node clone = orig.copy();
         NodeClass nodeClass = NodeClass.get(clone.getClass());
 
-        unsafe.putObject(clone, nodeClass.parentOffset, null);
+        nodeClass.parentField.putObject(clone, null);
 
-        for (long fieldOffset : nodeClass.childOffsets) {
-            Node child = (Node) unsafe.getObject(orig, fieldOffset);
+        for (NodeField childField : nodeClass.childFields) {
+            Node child = (Node) childField.getObject(orig);
             if (child != null) {
                 Node clonedChild = child.deepCopy();
-                unsafe.putObject(clonedChild, nodeClass.parentOffset, clone);
-                unsafe.putObject(clone, fieldOffset, clonedChild);
+                nodeClass.parentField.putObject(clonedChild, clone);
+                childField.putObject(clone, clonedChild);
             }
         }
-        for (long fieldOffset : nodeClass.childrenOffsets) {
-            Object[] children = (Object[]) unsafe.getObject(orig, fieldOffset);
+        for (NodeField childrenField : nodeClass.childrenFields) {
+            Object[] children = (Object[]) childrenField.getObject(orig);
             if (children != null) {
                 Object[] clonedChildren = (Object[]) Array.newInstance(children.getClass().getComponentType(), children.length);
                 for (int i = 0; i < children.length; i++) {
                     if (children[i] != null) {
                         Node clonedChild = ((Node) children[i]).deepCopy();
                         clonedChildren[i] = clonedChild;
-                        unsafe.putObject(clonedChild, nodeClass.parentOffset, clone);
+                        nodeClass.parentField.putObject(clonedChild, clone);
                     }
                 }
-                unsafe.putObject(clone, fieldOffset, clonedChildren);
+                childrenField.putObject(clone, clonedChildren);
             }
         }
-        for (long fieldOffset : nodeClass.cloneableOffsets) {
-            Object cloneable = unsafe.getObject(clone, fieldOffset);
-            if (cloneable != null && cloneable == unsafe.getObject(orig, fieldOffset)) {
-                unsafe.putObject(clone, fieldOffset, ((NodeCloneable) cloneable).clone());
+        for (NodeField cloneableField : nodeClass.cloneableFields) {
+            Object cloneable = cloneableField.getObject(clone);
+            if (cloneable != null && cloneable == cloneableField.getObject(orig)) {
+                cloneableField.putObject(clone, ((NodeCloneable) cloneable).clone());
             }
         }
         return clone;
@@ -499,14 +500,14 @@ public final class NodeUtil {
         List<Node> nodes = new ArrayList<>();
         NodeClass nodeClass = NodeClass.get(node.getClass());
 
-        for (long fieldOffset : nodeClass.childOffsets) {
-            Object child = unsafe.getObject(node, fieldOffset);
+        for (NodeField nodeField : nodeClass.childFields) {
+            Object child = nodeField.getObject(node);
             if (child != null) {
                 nodes.add((Node) child);
             }
         }
-        for (long fieldOffset : nodeClass.childrenOffsets) {
-            Object[] children = (Object[]) unsafe.getObject(node, fieldOffset);
+        for (NodeField nodeField : nodeClass.childrenFields) {
+            Object[] children = (Object[]) nodeField.getObject(node);
             if (children != null) {
                 for (Object child : children) {
                     if (child != null) {
@@ -522,21 +523,21 @@ public final class NodeUtil {
     public static boolean replaceChild(Node parent, Node oldChild, Node newChild) {
         NodeClass nodeClass = NodeClass.get(parent.getClass());
 
-        for (long fieldOffset : nodeClass.getChildOffsets()) {
-            if (unsafe.getObject(parent, fieldOffset) == oldChild) {
-                assert assertAssignable(nodeClass, fieldOffset, newChild);
-                unsafe.putObject(parent, fieldOffset, newChild);
+        for (NodeField nodeField : nodeClass.getChildFields()) {
+            if (nodeField.getObject(parent) == oldChild) {
+                assert assertAssignable(nodeField, newChild);
+                nodeField.putObject(parent, newChild);
                 return true;
             }
         }
 
-        for (long fieldOffset : nodeClass.getChildrenOffsets()) {
-            Object arrayObject = unsafe.getObject(parent, fieldOffset);
+        for (NodeField nodeField : nodeClass.getChildrenFields()) {
+            Object arrayObject = nodeField.getObject(parent);
             if (arrayObject != null) {
                 Object[] array = (Object[]) arrayObject;
                 for (int i = 0; i < array.length; i++) {
                     if (array[i] == oldChild) {
-                        assert assertAssignable(nodeClass, fieldOffset, newChild);
+                        assert assertAssignable(nodeField, newChild);
                         array[i] = newChild;
                         return true;
                     }
@@ -546,27 +547,23 @@ public final class NodeUtil {
         return false;
     }
 
-    private static boolean assertAssignable(NodeClass clazz, long fieldOffset, Object newValue) {
+    private static boolean assertAssignable(NodeField field, Object newValue) {
         if (newValue == null) {
             return true;
         }
-        for (NodeField field : clazz.getFields()) {
-            if (field.getOffset() == fieldOffset) {
-                if (field.getKind() == NodeFieldKind.CHILD) {
-                    if (field.getType().isAssignableFrom(newValue.getClass())) {
-                        return true;
-                    } else {
-                        assert false : "Child class " + newValue.getClass().getName() + " is not assignable to field \"" + field.getName() + "\" of type " + field.getType().getName();
-                        return false;
-                    }
-                } else if (field.getKind() == NodeFieldKind.CHILDREN) {
-                    if (field.getType().getComponentType().isAssignableFrom(newValue.getClass())) {
-                        return true;
-                    } else {
-                        assert false : "Child class " + newValue.getClass().getName() + " is not assignable to field \"" + field.getName() + "\" of type " + field.getType().getName();
-                        return false;
-                    }
-                }
+        if (field.getKind() == NodeFieldKind.CHILD) {
+            if (field.getType().isAssignableFrom(newValue.getClass())) {
+                return true;
+            } else {
+                assert false : "Child class " + newValue.getClass().getName() + " is not assignable to field \"" + field.getName() + "\" of type " + field.getType().getName();
+                return false;
+            }
+        } else if (field.getKind() == NodeFieldKind.CHILDREN) {
+            if (field.getType().getComponentType().isAssignableFrom(newValue.getClass())) {
+                return true;
+            } else {
+                assert false : "Child class " + newValue.getClass().getName() + " is not assignable to field \"" + field.getName() + "\" of type " + field.getType().getName();
+                return false;
             }
         }
         throw new IllegalArgumentException();
