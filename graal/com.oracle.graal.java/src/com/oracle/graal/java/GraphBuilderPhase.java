@@ -74,20 +74,11 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
     public static class Instance extends Phase {
 
-        private LineNumberTable lnt;
-        private int previousLineNumber;
-        private int currentLineNumber;
-
         protected StructuredGraph currentGraph;
 
         private final MetaAccessProvider metaAccess;
 
         private ResolvedJavaMethod rootMethod;
-
-        private ValueNode methodSynchronizedObject;
-        private ExceptionDispatchBlock unwindBlock;
-
-        private FixedWithNextNode lastInstr;                 // the last instruction added
 
         private final GraphBuilderConfiguration graphBuilderConfig;
         private final OptimisticOptimizations optimisticOpts;
@@ -110,21 +101,15 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
         protected void run(StructuredGraph graph) {
             ResolvedJavaMethod method = graph.method();
             this.rootMethod = method;
-            if (graphBuilderConfig.insertNonSafepointDebugInfo()) {
-                lnt = method.getLineNumberTable();
-                previousLineNumber = -1;
-            }
             int entryBCI = graph.getEntryBCI();
             assert method.getCode() != null : "method must contain bytecodes: " + method;
-            unwindBlock = null;
-            methodSynchronizedObject = null;
             this.currentGraph = graph;
             HIRFrameStateBuilder frameState = new HIRFrameStateBuilder(method, graph);
             frameState.initializeForMethodStart(graphBuilderConfig.eagerResolving());
             TTY.Filter filter = new TTY.Filter(PrintFilter.getValue(), method);
             try {
-                BytecodeParser parser = new BytecodeParser(metaAccess, method, graphBuilderConfig, optimisticOpts, frameState, entryBCI);
-                parser.build(graph.start());
+                BytecodeParser parser = new BytecodeParser(metaAccess, method, graphBuilderConfig, optimisticOpts, entryBCI);
+                parser.build(0, graph.start(), frameState);
             } finally {
                 filter.remove();
             }
@@ -152,13 +137,30 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             private BciBlock[] loopHeaders;
             private LocalLiveness liveness;
+            protected final int entryBCI;
+            private int currentDepth;
 
-            public BytecodeParser(MetaAccessProvider metaAccess, ResolvedJavaMethod method, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts,
-                            HIRFrameStateBuilder frameState, int entryBCI) {
-                super(metaAccess, method, graphBuilderConfig, optimisticOpts, frameState, entryBCI);
+            private LineNumberTable lnt;
+            private int previousLineNumber;
+            private int currentLineNumber;
+
+            private ValueNode methodSynchronizedObject;
+            private ExceptionDispatchBlock unwindBlock;
+
+            private FixedWithNextNode lastInstr;                 // the last instruction added
+
+            public BytecodeParser(MetaAccessProvider metaAccess, ResolvedJavaMethod method, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, int entryBCI) {
+                super(metaAccess, method, graphBuilderConfig, optimisticOpts);
+                this.entryBCI = entryBCI;
+
+                if (graphBuilderConfig.insertNonSafepointDebugInfo()) {
+                    lnt = method.getLineNumberTable();
+                    previousLineNumber = -1;
+                }
             }
 
-            protected void build(FixedWithNextNode startInstruction) {
+            protected void build(int depth, FixedWithNextNode startInstruction, HIRFrameStateBuilder startFrameState) {
+                this.currentDepth = depth;
                 if (PrintProfilingInformation.getValue()) {
                     TTY.println("Profiling info for " + method.format("%H.%n(%p)"));
                     TTY.println(MetaUtil.indent(profilingInfo.toString(method, CodeUtil.NEW_LINE), "  "));
@@ -172,6 +174,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     liveness = blockMap.liveness;
 
                     lastInstr = startInstruction;
+                    this.setCurrentFrameState(startFrameState);
 
                     if (startInstruction == currentGraph.start()) {
                         StartNode startNode = currentGraph.start();
@@ -1243,7 +1246,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     int opcode = stream.currentBC();
                     traceState();
                     traceInstruction(bci, opcode, bci == block.startBci);
-                    if (bci == entryBCI) {
+                    if (currentDepth == 0 && bci == entryBCI) {
                         if (block.getJsrScope() != JsrScope.EMPTY_SCOPE) {
                             throw new BailoutException("OSR into a JSR scope is not supported");
                         }

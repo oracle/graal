@@ -58,6 +58,7 @@ import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
+import com.oracle.graal.phases.OptimisticOptimizations.Optimization;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.printer.*;
 
@@ -224,6 +225,11 @@ public class CompilationTask {
                     Suites suites = getSuites(providers);
                     ProfilingInfo profilingInfo = getProfilingInfo();
                     OptimisticOptimizations optimisticOpts = getOptimisticOpts(profilingInfo);
+                    if (isOSR) {
+                        // In OSR compiles, we cannot rely on never executed code profiles, because
+                        // all code after the OSR loop is never executed.
+                        optimisticOpts.remove(Optimization.RemoveNeverExecutedCode);
+                    }
                     result = compileGraph(graph, null, cc, method, providers, backend, backend.getTarget(), graphCache, getGraphBuilderSuite(providers), optimisticOpts, profilingInfo,
                                     method.getSpeculationLog(), suites, new CompilationResult(), CompilationResultBuilderFactory.Default);
                 }

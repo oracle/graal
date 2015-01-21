@@ -56,7 +56,7 @@ public class BaselineCompiler {
 
         BaselineFrameStateBuilder frameState = new BaselineFrameStateBuilder(method);
 
-        BaselineBytecodeParser parser = new BaselineBytecodeParser(metaAccess, method, graphBuilderConfig, optimisticOpts, frameState, entryBCI, backend);
+        BaselineBytecodeParser parser = new BaselineBytecodeParser(metaAccess, method, graphBuilderConfig, optimisticOpts, frameState, backend);
 
         // build blocks and LIR instructions
         try {

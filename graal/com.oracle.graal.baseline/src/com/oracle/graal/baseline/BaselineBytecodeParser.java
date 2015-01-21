@@ -72,10 +72,11 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, Baseli
     }
 
     public BaselineBytecodeParser(MetaAccessProvider metaAccess, ResolvedJavaMethod method, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts,
-                    BaselineFrameStateBuilder frameState, int entryBCI, Backend backend) {
+                    BaselineFrameStateBuilder frameState, Backend backend) {
 
-        super(metaAccess, method, graphBuilderConfig, optimisticOpts, frameState, entryBCI);
+        super(metaAccess, method, graphBuilderConfig, optimisticOpts);
         this.backend = backend;
+        this.setCurrentFrameState(frameState);
     }
 
     public LIRGenerationResult getLIRGenerationResult() {

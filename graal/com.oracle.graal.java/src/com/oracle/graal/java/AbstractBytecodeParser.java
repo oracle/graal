@@ -36,7 +36,6 @@ import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.java.BciBlockMapping.BciBlock;
-import com.oracle.graal.nodes.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.phases.*;
 
@@ -71,23 +70,19 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
     protected final OptimisticOptimizations optimisticOpts;
     protected final ConstantPool constantPool;
     private final MetaAccessProvider metaAccess;
-    protected final int entryBCI;
 
     /**
      * Meters the number of actual bytecodes parsed.
      */
     public static final DebugMetric BytecodesParsed = Debug.metric("BytecodesParsed");
 
-    public AbstractBytecodeParser(MetaAccessProvider metaAccess, ResolvedJavaMethod method, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, F frameState,
-                    int entryBCI) {
-        this.frameState = frameState;
+    public AbstractBytecodeParser(MetaAccessProvider metaAccess, ResolvedJavaMethod method, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts) {
         this.graphBuilderConfig = graphBuilderConfig;
         this.optimisticOpts = optimisticOpts;
         this.metaAccess = metaAccess;
         this.stream = new BytecodeStream(method.getCode());
         this.profilingInfo = method.getProfilingInfo();
         this.constantPool = method.getConstantPool();
-        this.entryBCI = entryBCI;
         this.method = method;
         assert metaAccess != null;
     }
@@ -884,7 +879,7 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
     protected abstract T append(T v);
 
     protected boolean isNeverExecutedCode(double probability) {
-        return probability == 0 && optimisticOpts.removeNeverExecutedCode() && entryBCI == StructuredGraph.INVOCATION_ENTRY_BCI;
+        return probability == 0 && optimisticOpts.removeNeverExecutedCode();
     }
 
     protected double branchProbability() {
@@ -895,7 +890,7 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
             probability = 0.5;
         }
 
-        if (!removeNeverExecutedCode()) {
+        if (!optimisticOpts.removeNeverExecutedCode()) {
             if (probability == 0) {
                 probability = 0.0000001;
             } else if (probability == 1) {
@@ -903,10 +898,6 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
             }
         }
         return probability;
-    }
-
-    protected boolean removeNeverExecutedCode() {
-        return optimisticOpts.removeNeverExecutedCode() && entryBCI == StructuredGraph.INVOCATION_ENTRY_BCI;
     }
 
     protected abstract void iterateBytecodesForBlock(BciBlock block);
