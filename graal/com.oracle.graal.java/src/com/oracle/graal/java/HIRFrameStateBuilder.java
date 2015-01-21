@@ -46,7 +46,7 @@ public class HIRFrameStateBuilder extends AbstractFrameStateBuilder<ValueNode, H
 
     /**
      * Creates a new frame state builder for the given method and the given target graph.
-     * 
+     *
      * @param method the method whose frame is simulated
      * @param graph the target graph of Graal nodes created by the builder
      */
@@ -57,6 +57,25 @@ public class HIRFrameStateBuilder extends AbstractFrameStateBuilder<ValueNode, H
 
         this.monitorIds = EMPTY_MONITOR_ARRAY;
         this.graph = graph;
+    }
+
+    public final void initializeFromArgumentsArray(ValueNode[] arguments) {
+
+        int javaIndex = 0;
+        int index = 0;
+        if (!method.isStatic()) {
+            // set the receiver
+            storeLocal(javaIndex, arguments[index]);
+            javaIndex = 1;
+            index = 1;
+        }
+        Signature sig = method.getSignature();
+        int max = sig.getParameterCount(false);
+        for (int i = 0; i < max; i++) {
+            storeLocal(javaIndex, arguments[index]);
+            javaIndex += arguments[index].getKind().getSlotCount();
+            index++;
+        }
     }
 
     public final void initializeForMethodStart(boolean eagerResolve) {

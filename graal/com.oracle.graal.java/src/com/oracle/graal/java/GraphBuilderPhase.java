@@ -717,8 +717,14 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 }
 
                 if (GraalOptions.InlineDuringParsing.getValue() && invokeKind.isDirect() && targetMethod.canBeInlined() && targetMethod.hasBytecodes()) {
-                    if (targetMethod.getCode().length <= GraalOptions.TrivialInliningSize.getValue()) {
-                        System.out.println("could inline trivial: " + targetMethod);
+                    if (targetMethod.getCode().length <= GraalOptions.TrivialInliningSize.getValue() && currentDepth < GraalOptions.InlineDuringParsingMaxDepth.getValue() &&
+                                    graphBuilderConfig.shouldInlineTrivial()) {
+                        BytecodeParser parser = new BytecodeParser(metaAccess, targetMethod, graphBuilderConfig, optimisticOpts, StructuredGraph.INVOCATION_ENTRY_BCI);
+                        HIRFrameStateBuilder startFrameState = new HIRFrameStateBuilder(targetMethod, currentGraph);
+                        System.out.println(args + ", " + args.length + ", " + targetMethod);
+                        startFrameState.initializeFromArgumentsArray(args);
+                        System.out.println("try inline trivial: " + targetMethod);
+                        parser.build(currentDepth + 1, this.lastInstr, startFrameState);
                     }
                 }
 

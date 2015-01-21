@@ -36,6 +36,7 @@ public class GraphBuilderConfiguration {
     private final ResolvedJavaType[] skippedExceptionTypes;
     private final DebugInfoMode debugInfoMode;
     private final boolean doLivenessAnalysis;
+    private boolean inlineTrivial;
 
     public static enum DebugInfoMode {
         SafePointsOnly,
@@ -129,5 +130,13 @@ public class GraphBuilderConfiguration {
      */
     public boolean unresolvedIsError() {
         return eagerResolving;
+    }
+
+    public boolean shouldInlineTrivial() {
+        return inlineTrivial;
+    }
+
+    public void setInlineTrivial(boolean inlineTrivial) {
+        this.inlineTrivial = inlineTrivial;
     }
 }
