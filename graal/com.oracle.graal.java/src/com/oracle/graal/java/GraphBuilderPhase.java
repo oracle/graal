@@ -124,7 +124,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             TTY.Filter filter = new TTY.Filter(PrintFilter.getValue(), method);
             try {
                 BytecodeParser parser = new BytecodeParser(metaAccess, method, graphBuilderConfig, optimisticOpts, frameState, entryBCI);
-                parser.build();
+                parser.build(graph.start());
             } finally {
                 filter.remove();
             }
@@ -158,7 +158,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 super(metaAccess, method, graphBuilderConfig, optimisticOpts, frameState, entryBCI);
             }
 
-            protected void build() {
+            protected void build(FixedWithNextNode startInstruction) {
                 if (PrintProfilingInformation.getValue()) {
                     TTY.println("Profiling info for " + method.format("%H.%n(%p)"));
                     TTY.println(MetaUtil.indent(profilingInfo.toString(method, CodeUtil.NEW_LINE), "  "));
@@ -171,14 +171,21 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     loopHeaders = blockMap.getLoopHeaders();
                     liveness = blockMap.liveness;
 
-                    lastInstr = currentGraph.start();
-                    frameState.clearNonLiveLocals(blockMap.startBlock, liveness, true);
-                    assert bci() == 0;
-                    ((StateSplit) lastInstr).setStateAfter(frameState.create(bci()));
+                    lastInstr = startInstruction;
+
+                    if (startInstruction == currentGraph.start()) {
+                        StartNode startNode = currentGraph.start();
+                        if (method.isSynchronized()) {
+                            startNode.setStateAfter(frameState.create(BytecodeFrame.BEFORE_BCI));
+                        } else {
+                            frameState.clearNonLiveLocals(blockMap.startBlock, liveness, true);
+                            assert bci() == 0;
+                            startNode.setStateAfter(frameState.create(bci()));
+                        }
+                    }
 
                     if (method.isSynchronized()) {
                         // add a monitor enter to the start block
-                        currentGraph.start().stateAfter().replaceAndDelete(frameState.create(BytecodeFrame.BEFORE_BCI));
                         methodSynchronizedObject = synchronizedObject(frameState, method);
                         genMonitorEnter(methodSynchronizedObject);
                     }
