@@ -69,7 +69,14 @@ public class FixedGuardNode extends AbstractFixedGuardNode implements Lowerable,
 
     @Override
     public void lower(LoweringTool tool) {
-        if (graph().getGuardsStage() == StructuredGraph.GuardsStage.FLOATING_GUARDS) {
+        /*
+         * Don't allow guards with action None to float. In cases where 2 guards are testing
+         * equivalent conditions they might be lowered at the same location. If the guard with the
+         * None action is lowered before the the other guard then the code will be stuck repeatedly
+         * deoptimizing without invalidating the code. Conditional elimination will eliminate the
+         * guard if it's truly redundant in this case.
+         */
+        if (graph().getGuardsStage() == StructuredGraph.GuardsStage.FLOATING_GUARDS && getAction() != DeoptimizationAction.None) {
             ValueNode guard = tool.createGuard(this, condition(), getReason(), getAction(), isNegated()).asNode();
             this.replaceAtUsages(guard);
             ValueAnchorNode newAnchor = graph().add(new ValueAnchorNode(guard.asNode()));
