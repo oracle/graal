@@ -44,13 +44,22 @@ public class HIRFrameStateBuilder extends AbstractFrameStateBuilder<ValueNode, H
     private MonitorIdNode[] monitorIds;
     private final StructuredGraph graph;
 
-    public HIRFrameStateBuilder(ResolvedJavaMethod method, StructuredGraph graph, boolean eagerResolve) {
+    /**
+     * Creates a new frame state builder for the given method and the given target graph.
+     * 
+     * @param method the method whose frame is simulated
+     * @param graph the target graph of Graal nodes created by the builder
+     */
+    public HIRFrameStateBuilder(ResolvedJavaMethod method, StructuredGraph graph) {
         super(method);
 
         assert graph != null;
 
         this.monitorIds = EMPTY_MONITOR_ARRAY;
         this.graph = graph;
+    }
+
+    public final void initializeForMethodStart(boolean eagerResolve) {
 
         int javaIndex = 0;
         int index = 0;

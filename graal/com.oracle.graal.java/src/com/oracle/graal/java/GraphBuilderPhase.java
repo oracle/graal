@@ -82,7 +82,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
         private final MetaAccessProvider metaAccess;
 
-        private BytecodeParser parser;
+        private ResolvedJavaMethod rootMethod;
 
         private ValueNode methodSynchronizedObject;
         private ExceptionDispatchBlock unwindBlock;
@@ -91,13 +91,6 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
         private final GraphBuilderConfiguration graphBuilderConfig;
         private final OptimisticOptimizations optimisticOpts;
-
-        /**
-         * Gets the current frame state being processed by this builder.
-         */
-        protected HIRFrameStateBuilder getCurrentFrameState() {
-            return parser.getFrameState();
-        }
 
         /**
          * Gets the graph being processed by this builder.
@@ -116,6 +109,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
         @Override
         protected void run(StructuredGraph graph) {
             ResolvedJavaMethod method = graph.method();
+            this.rootMethod = method;
             if (graphBuilderConfig.insertNonSafepointDebugInfo()) {
                 lnt = method.getLineNumberTable();
                 previousLineNumber = -1;
@@ -125,28 +119,22 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             unwindBlock = null;
             methodSynchronizedObject = null;
             this.currentGraph = graph;
-            HIRFrameStateBuilder frameState = new HIRFrameStateBuilder(method, graph, graphBuilderConfig.eagerResolving());
-            this.parser = createBytecodeParser(metaAccess, method, graphBuilderConfig, optimisticOpts, frameState, new BytecodeStream(method.getCode()), entryBCI);
+            HIRFrameStateBuilder frameState = new HIRFrameStateBuilder(method, graph);
+            frameState.initializeForMethodStart(graphBuilderConfig.eagerResolving());
             TTY.Filter filter = new TTY.Filter(PrintFilter.getValue(), method);
             try {
+                BytecodeParser parser = new BytecodeParser(metaAccess, method, graphBuilderConfig, optimisticOpts, frameState, entryBCI);
                 parser.build();
             } finally {
                 filter.remove();
             }
-            parser = null;
 
             ComputeLoopFrequenciesClosure.compute(graph);
         }
 
-        @SuppressWarnings("hiding")
-        protected BytecodeParser createBytecodeParser(MetaAccessProvider metaAccess, ResolvedJavaMethod method, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts,
-                        HIRFrameStateBuilder frameState, BytecodeStream stream, int entryBCI) {
-            return new BytecodeParser(metaAccess, method, graphBuilderConfig, optimisticOpts, frameState, stream, entryBCI);
-        }
-
         @Override
         protected String getDetailedName() {
-            return getName() + " " + parser.getMethod().format("%H.%n(%p):%r");
+            return getName() + " " + rootMethod.format("%H.%n(%p):%r");
         }
 
         private static class Target {
@@ -166,11 +154,10 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             private LocalLiveness liveness;
 
             public BytecodeParser(MetaAccessProvider metaAccess, ResolvedJavaMethod method, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts,
-                            HIRFrameStateBuilder frameState, BytecodeStream stream, int entryBCI) {
-                super(metaAccess, method, graphBuilderConfig, optimisticOpts, frameState, stream, entryBCI);
+                            HIRFrameStateBuilder frameState, int entryBCI) {
+                super(metaAccess, method, graphBuilderConfig, optimisticOpts, frameState, entryBCI);
             }
 
-            @Override
             protected void build() {
                 if (PrintProfilingInformation.getValue()) {
                     TTY.println("Profiling info for " + method.format("%H.%n(%p)"));
@@ -185,15 +172,16 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     liveness = blockMap.liveness;
 
                     lastInstr = currentGraph.start();
-                    if (method.isSynchronized()) {
-                        // add a monitor enter to the start block
-                        currentGraph.start().setStateAfter(frameState.create(BytecodeFrame.BEFORE_BCI));
-                        methodSynchronizedObject = synchronizedObject(frameState, method);
-                        genMonitorEnter(methodSynchronizedObject);
-                    }
                     frameState.clearNonLiveLocals(blockMap.startBlock, liveness, true);
                     assert bci() == 0;
                     ((StateSplit) lastInstr).setStateAfter(frameState.create(bci()));
+
+                    if (method.isSynchronized()) {
+                        // add a monitor enter to the start block
+                        currentGraph.start().stateAfter().replaceAndDelete(frameState.create(BytecodeFrame.BEFORE_BCI));
+                        methodSynchronizedObject = synchronizedObject(frameState, method);
+                        genMonitorEnter(methodSynchronizedObject);
+                    }
 
                     if (graphBuilderConfig.insertNonSafepointDebugInfo()) {
                         append(createInfoPointNode(InfopointReason.METHOD_START));
@@ -208,9 +196,9 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     }
 
                     for (BciBlock block : blockMap.getBlocks()) {
-                        processBlock(block);
+                        processBlock(this, block);
                     }
-                    processBlock(unwindBlock);
+                    processBlock(this, unwindBlock);
 
                     Debug.dump(currentGraph, "After bytecode parsing");
 
@@ -1064,8 +1052,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 }
             }
 
-            @Override
-            protected void processBlock(BciBlock block) {
+            protected void processBlock(BytecodeParser parser, BciBlock block) {
                 // Ignore blocks that have no predecessors by the time their bytecodes are parsed
                 if (block == null || block.firstInstruction == null) {
                     Debug.log("Ignoring block %s", block);
