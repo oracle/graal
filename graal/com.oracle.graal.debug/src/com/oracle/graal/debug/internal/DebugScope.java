@@ -209,11 +209,10 @@ public final class DebugScope implements Debug.Scope {
         if (config instanceof TopLevelDebugConfig) {
             return (TopLevelDebugConfig) config;
         } else {
-            PrintStream out = System.out;
             if (config == null) {
-                out.printf("DebugScope.%s ignored because debugging is disabled%n", msg);
+                TTY.println("DebugScope.%s ignored because debugging is disabled", msg);
             } else {
-                out.printf("DebugScope.%s ignored because top level delegate config missing%n", msg);
+                TTY.println("DebugScope.%s ignored because top level delegate config missing", msg);
             }
             return null;
         }
@@ -266,8 +265,7 @@ public final class DebugScope implements Debug.Scope {
                 dumpHandler.dump(object, message);
             }
         } else {
-            PrintStream out = System.out;
-            out.println("Forced dump ignored because debugging is disabled - use -G:Dump=xxx option");
+            TTY.println("Forced dump ignored because debugging is disabled - use -G:Dump=xxx option");
         }
     }
 
