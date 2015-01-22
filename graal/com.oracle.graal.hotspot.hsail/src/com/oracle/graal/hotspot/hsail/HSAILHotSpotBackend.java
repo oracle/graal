@@ -1153,7 +1153,8 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
             locks[i] = lirValueToHirNode.apply(lockValue);
             monitorIds[i] = getMonitorIdForHotSpotMonitorValueFromFrame(lockValue, hsailFrame, hostGraph);
         }
-        FrameState frameState = hostGraph.add(new FrameState(null, lowLevelFrame.getMethod(), lowLevelFrame.getBCI(), locals, stack, locks, monitorIds, lowLevelFrame.rethrowException, false));
+        FrameState frameState = hostGraph.add(new FrameState(null, lowLevelFrame.getMethod(), lowLevelFrame.getBCI(), locals, stack.toArray(new ValueNode[0]), stack.size(), locks, monitorIds,
+                        lowLevelFrame.rethrowException, false));
         if (outterFrameState != null) {
             frameState.setOuterFrameState(outterFrameState);
         }
