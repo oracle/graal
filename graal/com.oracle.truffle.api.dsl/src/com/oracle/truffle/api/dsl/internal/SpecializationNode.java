@@ -64,6 +64,14 @@ public abstract class SpecializationNode extends Node {
         return NodeCost.NONE;
     }
 
+    public void reset() {
+        SpecializationNode start = findStart();
+        SpecializationNode end = findEnd();
+        if (start != end) {
+            start.replace(end, "reset specialization");
+        }
+    }
+
     public static Node updateRoot(Node node) {
         updateRootImpl(((SpecializedNode) node).getSpecializationNode(), node);
         return node;
@@ -131,6 +139,14 @@ public abstract class SpecializationNode extends Node {
 
     private int count() {
         return next != null ? next.count() + 1 : 1;
+    }
+
+    private SpecializationNode findEnd() {
+        SpecializationNode node = this;
+        while (node.next != null) {
+            node = node.next;
+        }
+        return node;
     }
 
     protected final SpecializationNode removeSame(final CharSequence reason) {
