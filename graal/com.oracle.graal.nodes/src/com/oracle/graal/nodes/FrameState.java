@@ -65,7 +65,7 @@ public class FrameState extends VirtualState implements IterableNodeType {
 
     @OptionalInput(InputType.Association) NodeInputList<MonitorIdNode> monitorIds;
 
-    @Input(InputType.State) NodeInputList<EscapeObjectState> virtualObjectMappings;
+    @OptionalInput(InputType.State) NodeInputList<EscapeObjectState> virtualObjectMappings;
 
     /**
      * The bytecode index to which this frame state applies.
@@ -86,7 +86,9 @@ public class FrameState extends VirtualState implements IterableNodeType {
         if (monitorIds != null && monitorIds.length > 0) {
             this.monitorIds = new NodeInputList<>(this, monitorIds);
         }
-        this.virtualObjectMappings = new NodeInputList<>(this, virtualObjectMappings);
+        if (virtualObjectMappings != null && virtualObjectMappings.size() > 0) {
+            this.virtualObjectMappings = new NodeInputList<>(this, virtualObjectMappings);
+        }
         this.rethrowException = rethrowException;
         this.duringCall = duringCall;
         assert !this.rethrowException || this.stackSize == 1 : "must have exception on top of the stack";
@@ -151,10 +153,16 @@ public class FrameState extends VirtualState implements IterableNodeType {
     }
 
     public void addVirtualObjectMapping(EscapeObjectState virtualObject) {
+        if (virtualObjectMappings == null) {
+            virtualObjectMappings = new NodeInputList<>(this);
+        }
         virtualObjectMappings.add(virtualObject);
     }
 
     public int virtualObjectMappingCount() {
+        if (virtualObjectMappings == null) {
+            return 0;
+        }
         return virtualObjectMappings.size();
     }
 
@@ -190,9 +198,12 @@ public class FrameState extends VirtualState implements IterableNodeType {
         if (newOuterFrameState != null) {
             newOuterFrameState = newOuterFrameState.duplicateWithVirtualState();
         }
-        ArrayList<EscapeObjectState> newVirtualMappings = new ArrayList<>(virtualObjectMappings.size());
-        for (EscapeObjectState state : virtualObjectMappings) {
-            newVirtualMappings.add(state.duplicateWithVirtualState());
+        ArrayList<EscapeObjectState> newVirtualMappings = null;
+        if (virtualObjectMappings != null) {
+            newVirtualMappings = new ArrayList<>(virtualObjectMappings.size());
+            for (EscapeObjectState state : virtualObjectMappings) {
+                newVirtualMappings.add(state.duplicateWithVirtualState());
+            }
         }
         return graph().add(new FrameState(newOuterFrameState, method, bci, values, localsSize, stackSize, rethrowException, duringCall, duplicateMonitorIds(), newVirtualMappings));
     }
@@ -434,6 +445,7 @@ public class FrameState extends VirtualState implements IterableNodeType {
         for (ValueNode value : values.nonNull()) {
             closure.apply(this, value);
         }
+
         if (monitorIds != null) {
             for (MonitorIdNode monitorId : monitorIds) {
                 if (monitorId != null) {
@@ -441,9 +453,13 @@ public class FrameState extends VirtualState implements IterableNodeType {
                 }
             }
         }
-        for (EscapeObjectState state : virtualObjectMappings) {
-            state.applyToNonVirtual(closure);
+
+        if (virtualObjectMappings != null) {
+            for (EscapeObjectState state : virtualObjectMappings) {
+                state.applyToNonVirtual(closure);
+            }
         }
+
         if (outerFrameState() != null) {
             outerFrameState().applyToNonVirtual(closure);
         }
@@ -452,8 +468,10 @@ public class FrameState extends VirtualState implements IterableNodeType {
     @Override
     public void applyToVirtual(VirtualClosure closure) {
         closure.apply(this);
-        for (EscapeObjectState state : virtualObjectMappings) {
-            state.applyToVirtual(closure);
+        if (virtualObjectMappings != null) {
+            for (EscapeObjectState state : virtualObjectMappings) {
+                state.applyToVirtual(closure);
+            }
         }
         if (outerFrameState() != null) {
             outerFrameState().applyToVirtual(closure);
@@ -468,9 +486,11 @@ public class FrameState extends VirtualState implements IterableNodeType {
         if (outerFrameState() != null && outerFrameState().isPartOfThisState(state)) {
             return true;
         }
-        for (EscapeObjectState objectState : virtualObjectMappings) {
-            if (objectState.isPartOfThisState(state)) {
-                return true;
+        if (virtualObjectMappings != null) {
+            for (EscapeObjectState objectState : virtualObjectMappings) {
+                if (objectState.isPartOfThisState(state)) {
+                    return true;
+                }
             }
         }
         return false;
