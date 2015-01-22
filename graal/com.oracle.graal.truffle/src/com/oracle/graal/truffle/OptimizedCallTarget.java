@@ -160,7 +160,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         Object result = doInvoke(args);
         Class<?> klass = profiledReturnType;
         if (klass != null && CompilerDirectives.inCompiledCode() && profiledReturnTypeAssumption.isValid()) {
-            result = CompilerDirectives.unsafeCast(result, klass, true, true);
+            result = FrameWithoutBoxing.unsafeCast(result, klass, true, true);
         }
         return result;
     }
@@ -250,7 +250,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     public final Object callRoot(Object[] originalArguments) {
         Object[] args = originalArguments;
         if (this.profiledArgumentTypesAssumption != null && CompilerDirectives.inCompiledCode() && profiledArgumentTypesAssumption.isValid()) {
-            args = CompilerDirectives.unsafeCast(castArrayFixedLength(args, profiledArgumentTypes.length), Object[].class, true, true);
+            args = FrameWithoutBoxing.unsafeCast(castArrayFixedLength(args, profiledArgumentTypes.length), Object[].class, true, true);
             if (TruffleArgumentTypeSpeculation.getValue()) {
                 args = castArguments(args);
             }
@@ -397,7 +397,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     private Object[] castArguments(Object[] originalArguments) {
         Object[] castArguments = new Object[profiledArgumentTypes.length];
         for (int i = 0; i < profiledArgumentTypes.length; i++) {
-            castArguments[i] = profiledArgumentTypes[i] != null ? CompilerDirectives.unsafeCast(originalArguments[i], profiledArgumentTypes[i], true, true) : originalArguments[i];
+            castArguments[i] = profiledArgumentTypes[i] != null ? FrameWithoutBoxing.unsafeCast(originalArguments[i], profiledArgumentTypes[i], true, true) : originalArguments[i];
         }
         return castArguments;
     }

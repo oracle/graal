@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.truffle;
 
+import java.lang.reflect.*;
 import java.util.*;
 
 import sun.misc.*;
@@ -58,7 +59,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
 
     @Override
     public Object[] getArguments() {
-        return CompilerDirectives.unsafeCast(arguments, Object[].class, true, true);
+        return unsafeCast(arguments, Object[].class, true, true);
     }
 
     @Override
@@ -73,20 +74,20 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     }
 
     private Object[] getLocals() {
-        return CompilerDirectives.unsafeCast(locals, Object[].class, true, true);
+        return unsafeCast(locals, Object[].class, true, true);
     }
 
     private long[] getPrimitiveLocals() {
-        return CompilerDirectives.unsafeCast(this.primitiveLocals, long[].class, true, true);
+        return unsafeCast(this.primitiveLocals, long[].class, true, true);
     }
 
     private byte[] getTags() {
-        return CompilerDirectives.unsafeCast(tags, byte[].class, true, true);
+        return unsafeCast(tags, byte[].class, true, true);
     }
 
     private Object getObjectUnsafe(FrameSlot slot) {
         int slotIndex = slot.getIndex();
-        return CompilerDirectives.unsafeGetObject(getLocals(), OBJECT_BASE_OFFSET + slotIndex * OBJECT_INDEX_SCALE, this.getTags()[slotIndex] == FrameSlotKind.Object.ordinal(), slot);
+        return unsafeGetObject(getLocals(), OBJECT_BASE_OFFSET + slotIndex * OBJECT_INDEX_SCALE, this.getTags()[slotIndex] == FrameSlotKind.Object.ordinal(), slot);
     }
 
     @Override
@@ -96,7 +97,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     }
 
     private void setObjectUnsafe(FrameSlot slot, Object value) {
-        CompilerDirectives.unsafePutObject(getLocals(), OBJECT_BASE_OFFSET + slot.getIndex() * OBJECT_INDEX_SCALE, value, slot);
+        unsafePutObject(getLocals(), OBJECT_BASE_OFFSET + slot.getIndex() * OBJECT_INDEX_SCALE, value, slot);
     }
 
     @Override
@@ -107,7 +108,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
 
     private byte getByteUnsafe(FrameSlot slot) {
         int slotIndex = slot.getIndex();
-        return CompilerDirectives.unsafeGetByte(getPrimitiveLocals(), PRIMITIVE_BASE_OFFSET + slotIndex * PRIMITIVE_INDEX_SCALE, this.getTags()[slotIndex] == FrameSlotKind.Byte.ordinal(), slot);
+        return unsafeGetByte(getPrimitiveLocals(), PRIMITIVE_BASE_OFFSET + slotIndex * PRIMITIVE_INDEX_SCALE, this.getTags()[slotIndex] == FrameSlotKind.Byte.ordinal(), slot);
     }
 
     @Override
@@ -117,7 +118,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     }
 
     private void setByteUnsafe(FrameSlot slot, byte value) {
-        CompilerDirectives.unsafePutByte(getPrimitiveLocals(), PRIMITIVE_BASE_OFFSET + slot.getIndex() * PRIMITIVE_INDEX_SCALE, value, slot);
+        unsafePutByte(getPrimitiveLocals(), PRIMITIVE_BASE_OFFSET + slot.getIndex() * PRIMITIVE_INDEX_SCALE, value, slot);
     }
 
     @Override
@@ -128,7 +129,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
 
     private boolean getBooleanUnsafe(FrameSlot slot) {
         int slotIndex = slot.getIndex();
-        return CompilerDirectives.unsafeGetBoolean(getPrimitiveLocals(), PRIMITIVE_BASE_OFFSET + slotIndex * PRIMITIVE_INDEX_SCALE, this.getTags()[slotIndex] == FrameSlotKind.Boolean.ordinal(), slot);
+        return unsafeGetBoolean(getPrimitiveLocals(), PRIMITIVE_BASE_OFFSET + slotIndex * PRIMITIVE_INDEX_SCALE, this.getTags()[slotIndex] == FrameSlotKind.Boolean.ordinal(), slot);
     }
 
     @Override
@@ -138,7 +139,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     }
 
     private void setBooleanUnsafe(FrameSlot slot, boolean value) {
-        CompilerDirectives.unsafePutBoolean(getPrimitiveLocals(), PRIMITIVE_BASE_OFFSET + slot.getIndex() * PRIMITIVE_INDEX_SCALE, value, slot);
+        unsafePutBoolean(getPrimitiveLocals(), PRIMITIVE_BASE_OFFSET + slot.getIndex() * PRIMITIVE_INDEX_SCALE, value, slot);
     }
 
     @Override
@@ -149,7 +150,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
 
     private float getFloatUnsafe(FrameSlot slot) {
         int slotIndex = slot.getIndex();
-        return CompilerDirectives.unsafeGetFloat(getPrimitiveLocals(), PRIMITIVE_BASE_OFFSET + slotIndex * PRIMITIVE_INDEX_SCALE, this.getTags()[slotIndex] == FrameSlotKind.Float.ordinal(), slot);
+        return unsafeGetFloat(getPrimitiveLocals(), PRIMITIVE_BASE_OFFSET + slotIndex * PRIMITIVE_INDEX_SCALE, this.getTags()[slotIndex] == FrameSlotKind.Float.ordinal(), slot);
     }
 
     @Override
@@ -159,7 +160,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     }
 
     private void setFloatUnsafe(FrameSlot slot, float value) {
-        CompilerDirectives.unsafePutFloat(getPrimitiveLocals(), PRIMITIVE_BASE_OFFSET + slot.getIndex() * PRIMITIVE_INDEX_SCALE, value, slot);
+        unsafePutFloat(getPrimitiveLocals(), PRIMITIVE_BASE_OFFSET + slot.getIndex() * PRIMITIVE_INDEX_SCALE, value, slot);
     }
 
     @Override
@@ -170,7 +171,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
 
     private long getLongUnsafe(FrameSlot slot) {
         int slotIndex = slot.getIndex();
-        return CompilerDirectives.unsafeGetLong(getPrimitiveLocals(), PRIMITIVE_BASE_OFFSET + slotIndex * PRIMITIVE_INDEX_SCALE, this.getTags()[slotIndex] == FrameSlotKind.Long.ordinal(), slot);
+        return unsafeGetLong(getPrimitiveLocals(), PRIMITIVE_BASE_OFFSET + slotIndex * PRIMITIVE_INDEX_SCALE, this.getTags()[slotIndex] == FrameSlotKind.Long.ordinal(), slot);
     }
 
     @Override
@@ -180,7 +181,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     }
 
     private void setLongUnsafe(FrameSlot slot, long value) {
-        CompilerDirectives.unsafePutLong(getPrimitiveLocals(), PRIMITIVE_BASE_OFFSET + slot.getIndex() * PRIMITIVE_INDEX_SCALE, value, slot);
+        unsafePutLong(getPrimitiveLocals(), PRIMITIVE_BASE_OFFSET + slot.getIndex() * PRIMITIVE_INDEX_SCALE, value, slot);
     }
 
     @Override
@@ -191,7 +192,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
 
     private int getIntUnsafe(FrameSlot slot) {
         int slotIndex = slot.getIndex();
-        return CompilerDirectives.unsafeGetInt(getPrimitiveLocals(), PRIMITIVE_BASE_OFFSET + slotIndex * PRIMITIVE_INDEX_SCALE, this.getTags()[slotIndex] == FrameSlotKind.Int.ordinal(), slot);
+        return unsafeGetInt(getPrimitiveLocals(), PRIMITIVE_BASE_OFFSET + slotIndex * PRIMITIVE_INDEX_SCALE, this.getTags()[slotIndex] == FrameSlotKind.Int.ordinal(), slot);
     }
 
     @Override
@@ -201,7 +202,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     }
 
     private void setIntUnsafe(FrameSlot slot, int value) {
-        CompilerDirectives.unsafePutInt(getPrimitiveLocals(), PRIMITIVE_BASE_OFFSET + slot.getIndex() * PRIMITIVE_INDEX_SCALE, value, slot);
+        unsafePutInt(getPrimitiveLocals(), PRIMITIVE_BASE_OFFSET + slot.getIndex() * PRIMITIVE_INDEX_SCALE, value, slot);
     }
 
     @Override
@@ -212,7 +213,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
 
     private double getDoubleUnsafe(FrameSlot slot) {
         int slotIndex = slot.getIndex();
-        return CompilerDirectives.unsafeGetDouble(getPrimitiveLocals(), PRIMITIVE_BASE_OFFSET + slotIndex * PRIMITIVE_INDEX_SCALE, this.getTags()[slotIndex] == FrameSlotKind.Double.ordinal(), slot);
+        return unsafeGetDouble(getPrimitiveLocals(), PRIMITIVE_BASE_OFFSET + slotIndex * PRIMITIVE_INDEX_SCALE, this.getTags()[slotIndex] == FrameSlotKind.Double.ordinal(), slot);
     }
 
     @Override
@@ -222,7 +223,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     }
 
     private void setDoubleUnsafe(FrameSlot slot, double value) {
-        CompilerDirectives.unsafePutDouble(getPrimitiveLocals(), PRIMITIVE_BASE_OFFSET + slot.getIndex() * PRIMITIVE_INDEX_SCALE, value, slot);
+        unsafePutDouble(getPrimitiveLocals(), PRIMITIVE_BASE_OFFSET + slot.getIndex() * PRIMITIVE_INDEX_SCALE, value, slot);
     }
 
     @Override
@@ -337,5 +338,96 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     @Override
     public boolean isDouble(FrameSlot slot) {
         return getTag(slot) == FrameSlotKind.Double.ordinal();
+    }
+
+    @SuppressWarnings({"unchecked", "unused"})
+    static <T> T unsafeCast(Object value, Class<T> type, boolean condition, boolean nonNull) {
+        return (T) value;
+    }
+
+    @SuppressWarnings("unused")
+    static boolean unsafeGetBoolean(Object receiver, long offset, boolean condition, Object locationIdentity) {
+        return UNSAFE.getBoolean(receiver, offset);
+    }
+
+    @SuppressWarnings("unused")
+    static byte unsafeGetByte(Object receiver, long offset, boolean condition, Object locationIdentity) {
+        return UNSAFE.getByte(receiver, offset);
+    }
+
+    @SuppressWarnings("unused")
+    static int unsafeGetInt(Object receiver, long offset, boolean condition, Object locationIdentity) {
+        return UNSAFE.getInt(receiver, offset);
+    }
+
+    @SuppressWarnings("unused")
+    static long unsafeGetLong(Object receiver, long offset, boolean condition, Object locationIdentity) {
+        return UNSAFE.getLong(receiver, offset);
+    }
+
+    @SuppressWarnings("unused")
+    static float unsafeGetFloat(Object receiver, long offset, boolean condition, Object locationIdentity) {
+        return UNSAFE.getFloat(receiver, offset);
+    }
+
+    @SuppressWarnings("unused")
+    static double unsafeGetDouble(Object receiver, long offset, boolean condition, Object locationIdentity) {
+        return UNSAFE.getDouble(receiver, offset);
+    }
+
+    @SuppressWarnings("unused")
+    static Object unsafeGetObject(Object receiver, long offset, boolean condition, Object locationIdentity) {
+        return UNSAFE.getObject(receiver, offset);
+    }
+
+    @SuppressWarnings("unused")
+    static void unsafePutBoolean(Object receiver, long offset, boolean value, Object locationIdentity) {
+        UNSAFE.putBoolean(receiver, offset, value);
+    }
+
+    @SuppressWarnings("unused")
+    static void unsafePutByte(Object receiver, long offset, byte value, Object locationIdentity) {
+        UNSAFE.putByte(receiver, offset, value);
+    }
+
+    @SuppressWarnings("unused")
+    static void unsafePutInt(Object receiver, long offset, int value, Object locationIdentity) {
+        UNSAFE.putInt(receiver, offset, value);
+    }
+
+    @SuppressWarnings("unused")
+    static void unsafePutLong(Object receiver, long offset, long value, Object locationIdentity) {
+        UNSAFE.putLong(receiver, offset, value);
+    }
+
+    @SuppressWarnings("unused")
+    static void unsafePutFloat(Object receiver, long offset, float value, Object locationIdentity) {
+        UNSAFE.putFloat(receiver, offset, value);
+    }
+
+    @SuppressWarnings("unused")
+    static void unsafePutDouble(Object receiver, long offset, double value, Object locationIdentity) {
+        UNSAFE.putDouble(receiver, offset, value);
+    }
+
+    @SuppressWarnings("unused")
+    static void unsafePutObject(Object receiver, long offset, Object value, Object locationIdentity) {
+        UNSAFE.putObject(receiver, offset, value);
+    }
+
+    private static final Unsafe UNSAFE = getUnsafe();
+
+    private static Unsafe getUnsafe() {
+        try {
+            return Unsafe.getUnsafe();
+        } catch (SecurityException e) {
+        }
+        try {
+            Field theUnsafeInstance = Unsafe.class.getDeclaredField("theUnsafe");
+            theUnsafeInstance.setAccessible(true);
+            return (Unsafe) theUnsafeInstance.get(Unsafe.class);
+        } catch (Exception e) {
+            throw new RuntimeException("exception while trying to get Unsafe.theUnsafe via reflection:", e);
+        }
     }
 }

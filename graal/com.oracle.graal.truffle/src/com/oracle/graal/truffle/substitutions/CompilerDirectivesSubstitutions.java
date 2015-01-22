@@ -74,11 +74,11 @@ public class CompilerDirectivesSubstitutions {
     @MacroSubstitution(macro = BailoutNode.class, isStatic = true)
     public static native void bailout(String reason);
 
-    @MacroSubstitution(macro = UnsafeTypeCastMacroNode.class, isStatic = true)
-    public static native Object unsafeCast(Object value, Class<?> clazz, boolean condition, boolean nonNull);
-
     @MacroSubstitution(macro = IsCompilationConstantNode.class, isStatic = true)
     public static native boolean isCompilationConstant(Object value);
+
+    @MacroSubstitution(macro = UnsafeTypeCastMacroNode.class, isStatic = true)
+    public static native Object unsafeCast(Object value, Class<?> clazz, boolean condition, boolean nonNull);
 
     @MacroSubstitution(macro = CustomizedUnsafeLoadMacroNode.class, isStatic = true)
     public static native boolean unsafeGetBoolean(Object receiver, long offset, boolean condition, Object locationIdentity);
