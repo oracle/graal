@@ -33,12 +33,11 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.truffle.nodes.*;
-import com.oracle.truffle.api.*;
 
 /**
  * Load of a final value from a location specified as an offset relative to an object.
  *
- * Substitution for method {@link CompilerDirectives#unsafeGetFinalObject} and friends.
+ * Substitution for method CompilerDirectives#unsafeGet*.
  */
 @NodeInfo
 public class CustomizedUnsafeLoadFinalNode extends FixedWithNextNode implements Canonicalizable, Virtualizable, Lowerable {
