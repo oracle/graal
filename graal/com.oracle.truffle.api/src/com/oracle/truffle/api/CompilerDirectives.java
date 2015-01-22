@@ -213,6 +213,7 @@ public final class CompilerDirectives {
      *            program
      * @return the value to be casted to the new type
      */
+    @Deprecated
     public static <T> T unsafeCast(Object value, Class<T> type, boolean condition) {
         return unsafeCast(value, type, condition, false);
     }
@@ -229,6 +230,7 @@ public final class CompilerDirectives {
      * @param nonNull whether value is known to never be null
      * @return the value to be casted to the new type
      */
+    @Deprecated
     @SuppressWarnings("unchecked")
     public static <T> T unsafeCast(Object value, Class<T> type, boolean condition, boolean nonNull) {
         return (T) value;
@@ -248,6 +250,7 @@ public final class CompilerDirectives {
      *            value numbering or null
      * @return the accessed value
      */
+    @Deprecated
     public static boolean unsafeGetBoolean(Object receiver, long offset, boolean condition, Object locationIdentity) {
         return UNSAFE.getBoolean(receiver, offset);
     }
@@ -266,6 +269,7 @@ public final class CompilerDirectives {
      *            value numbering or null
      * @return the accessed value
      */
+    @Deprecated
     public static byte unsafeGetByte(Object receiver, long offset, boolean condition, Object locationIdentity) {
         return UNSAFE.getByte(receiver, offset);
     }
@@ -284,6 +288,7 @@ public final class CompilerDirectives {
      *            value numbering or null
      * @return the accessed value
      */
+    @Deprecated
     public static short unsafeGetShort(Object receiver, long offset, boolean condition, Object locationIdentity) {
         return UNSAFE.getShort(receiver, offset);
     }
@@ -302,6 +307,7 @@ public final class CompilerDirectives {
      *            value numbering or null
      * @return the accessed value
      */
+    @Deprecated
     public static int unsafeGetInt(Object receiver, long offset, boolean condition, Object locationIdentity) {
         return UNSAFE.getInt(receiver, offset);
     }
@@ -320,6 +326,7 @@ public final class CompilerDirectives {
      *            value numbering or null
      * @return the accessed value
      */
+    @Deprecated
     public static long unsafeGetLong(Object receiver, long offset, boolean condition, Object locationIdentity) {
         return UNSAFE.getLong(receiver, offset);
     }
@@ -338,6 +345,7 @@ public final class CompilerDirectives {
      *            value numbering or null
      * @return the accessed value
      */
+    @Deprecated
     public static float unsafeGetFloat(Object receiver, long offset, boolean condition, Object locationIdentity) {
         return UNSAFE.getFloat(receiver, offset);
     }
@@ -356,6 +364,7 @@ public final class CompilerDirectives {
      *            value numbering or null
      * @return the accessed value
      */
+    @Deprecated
     public static double unsafeGetDouble(Object receiver, long offset, boolean condition, Object locationIdentity) {
         return UNSAFE.getDouble(receiver, offset);
     }
@@ -374,6 +383,7 @@ public final class CompilerDirectives {
      *            value numbering or null
      * @return the accessed value
      */
+    @Deprecated
     public static Object unsafeGetObject(Object receiver, long offset, boolean condition, Object locationIdentity) {
         return UNSAFE.getObject(receiver, offset);
     }
@@ -388,6 +398,7 @@ public final class CompilerDirectives {
      * @param locationIdentity the location identity token that can be used for improved global
      *            value numbering or null
      */
+    @Deprecated
     public static void unsafePutBoolean(Object receiver, long offset, boolean value, Object locationIdentity) {
         UNSAFE.putBoolean(receiver, offset, value);
     }
@@ -402,6 +413,7 @@ public final class CompilerDirectives {
      * @param locationIdentity the location identity token that can be used for improved global
      *            value numbering or null
      */
+    @Deprecated
     public static void unsafePutByte(Object receiver, long offset, byte value, Object locationIdentity) {
         UNSAFE.putByte(receiver, offset, value);
     }
@@ -416,6 +428,7 @@ public final class CompilerDirectives {
      * @param locationIdentity the location identity token that can be used for improved global
      *            value numbering or null
      */
+    @Deprecated
     public static void unsafePutShort(Object receiver, long offset, short value, Object locationIdentity) {
         UNSAFE.putShort(receiver, offset, value);
     }
@@ -430,6 +443,7 @@ public final class CompilerDirectives {
      * @param locationIdentity the location identity token that can be used for improved global
      *            value numbering or null
      */
+    @Deprecated
     public static void unsafePutInt(Object receiver, long offset, int value, Object locationIdentity) {
         UNSAFE.putInt(receiver, offset, value);
     }
@@ -444,6 +458,7 @@ public final class CompilerDirectives {
      * @param locationIdentity the location identity token that can be used for improved global
      *            value numbering or null
      */
+    @Deprecated
     public static void unsafePutLong(Object receiver, long offset, long value, Object locationIdentity) {
         UNSAFE.putLong(receiver, offset, value);
     }
@@ -458,6 +473,7 @@ public final class CompilerDirectives {
      * @param locationIdentity the location identity token that can be used for improved global
      *            value numbering or null
      */
+    @Deprecated
     public static void unsafePutFloat(Object receiver, long offset, float value, Object locationIdentity) {
         UNSAFE.putFloat(receiver, offset, value);
     }
@@ -472,6 +488,7 @@ public final class CompilerDirectives {
      * @param locationIdentity the location identity token that can be used for improved global
      *            value numbering or null
      */
+    @Deprecated
     public static void unsafePutDouble(Object receiver, long offset, double value, Object locationIdentity) {
         UNSAFE.putDouble(receiver, offset, value);
     }
@@ -486,6 +503,7 @@ public final class CompilerDirectives {
      * @param locationIdentity the location identity token that can be used for improved global
      *            value numbering or null
      */
+    @Deprecated
     public static void unsafePutObject(Object receiver, long offset, Object value, Object locationIdentity) {
         UNSAFE.putObject(receiver, offset, value);
     }
@@ -504,6 +522,7 @@ public final class CompilerDirectives {
      *            value numbering or null
      * @return the accessed value
      */
+    @Deprecated
     public static boolean unsafeGetFinalBoolean(Object receiver, long offset, boolean condition, Object locationIdentity) {
         return UNSAFE.getBoolean(receiver, offset);
     }
@@ -522,6 +541,7 @@ public final class CompilerDirectives {
      *            value numbering or null
      * @return the accessed value
      */
+    @Deprecated
     public static byte unsafeGetFinalByte(Object receiver, long offset, boolean condition, Object locationIdentity) {
         return UNSAFE.getByte(receiver, offset);
     }
@@ -540,6 +560,7 @@ public final class CompilerDirectives {
      *            value numbering or null
      * @return the accessed value
      */
+    @Deprecated
     public static short unsafeGetFinalShort(Object receiver, long offset, boolean condition, Object locationIdentity) {
         return UNSAFE.getShort(receiver, offset);
     }
@@ -558,6 +579,7 @@ public final class CompilerDirectives {
      *            value numbering or null
      * @return the accessed value
      */
+    @Deprecated
     public static int unsafeGetFinalInt(Object receiver, long offset, boolean condition, Object locationIdentity) {
         return UNSAFE.getInt(receiver, offset);
     }
@@ -576,6 +598,7 @@ public final class CompilerDirectives {
      *            value numbering or null
      * @return the accessed value
      */
+    @Deprecated
     public static long unsafeGetFinalLong(Object receiver, long offset, boolean condition, Object locationIdentity) {
         return UNSAFE.getLong(receiver, offset);
     }
@@ -594,6 +617,7 @@ public final class CompilerDirectives {
      *            value numbering or null
      * @return the accessed value
      */
+    @Deprecated
     public static float unsafeGetFinalFloat(Object receiver, long offset, boolean condition, Object locationIdentity) {
         return UNSAFE.getFloat(receiver, offset);
     }
@@ -612,6 +636,7 @@ public final class CompilerDirectives {
      *            value numbering or null
      * @return the accessed value
      */
+    @Deprecated
     public static double unsafeGetFinalDouble(Object receiver, long offset, boolean condition, Object locationIdentity) {
         return UNSAFE.getDouble(receiver, offset);
     }
@@ -630,6 +655,7 @@ public final class CompilerDirectives {
      *            value numbering or null
      * @return the accessed value
      */
+    @Deprecated
     public static Object unsafeGetFinalObject(Object receiver, long offset, boolean condition, Object locationIdentity) {
         return UNSAFE.getObject(receiver, offset);
     }
