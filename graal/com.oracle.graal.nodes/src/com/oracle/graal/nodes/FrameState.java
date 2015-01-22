@@ -98,8 +98,10 @@ public class FrameState extends VirtualState implements IterableNodeType {
                         bci == BytecodeFrame.INVALID_FRAMESTATE_BCI;
     }
 
-    public FrameState(ResolvedJavaMethod method, int bci, ValueNode[] locals, List<ValueNode> stack, ValueNode[] locks, MonitorIdNode[] monitorIds, boolean rethrowException, boolean duringCall) {
-        this(null, method, bci, createValues(locals, stack, locks), locals.length, stack.size(), rethrowException, duringCall, Arrays.asList(monitorIds), Collections.<EscapeObjectState> emptyList());
+    public FrameState(FrameState outerFrameState, ResolvedJavaMethod method, int bci, ValueNode[] locals, List<ValueNode> stack, ValueNode[] locks, MonitorIdNode[] monitorIds,
+                    boolean rethrowException, boolean duringCall) {
+        this(outerFrameState, method, bci, createValues(locals, stack, locks), locals.length, stack.size(), rethrowException, duringCall, Arrays.asList(monitorIds),
+                        Collections.<EscapeObjectState> emptyList());
     }
 
     private static List<ValueNode> createValues(ValueNode[] locals, List<ValueNode> stack, ValueNode[] locks) {

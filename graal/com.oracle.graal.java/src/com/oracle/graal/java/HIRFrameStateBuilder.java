@@ -25,6 +25,7 @@ package com.oracle.graal.java;
 import static com.oracle.graal.graph.iterators.NodePredicates.*;
 
 import java.util.*;
+import java.util.function.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
@@ -43,6 +44,7 @@ public class HIRFrameStateBuilder extends AbstractFrameStateBuilder<ValueNode, H
 
     private MonitorIdNode[] monitorIds;
     private final StructuredGraph graph;
+    private final Supplier<FrameState> outerFrameStateSupplier;
 
     /**
      * Creates a new frame state builder for the given method and the given target graph.
@@ -50,13 +52,14 @@ public class HIRFrameStateBuilder extends AbstractFrameStateBuilder<ValueNode, H
      * @param method the method whose frame is simulated
      * @param graph the target graph of Graal nodes created by the builder
      */
-    public HIRFrameStateBuilder(ResolvedJavaMethod method, StructuredGraph graph) {
+    public HIRFrameStateBuilder(ResolvedJavaMethod method, StructuredGraph graph, Supplier<FrameState> outerFrameStateSupplier) {
         super(method);
 
         assert graph != null;
 
         this.monitorIds = EMPTY_MONITOR_ARRAY;
         this.graph = graph;
+        this.outerFrameStateSupplier = outerFrameStateSupplier;
     }
 
     public final void initializeFromArgumentsArray(ValueNode[] arguments) {
@@ -116,6 +119,7 @@ public class HIRFrameStateBuilder extends AbstractFrameStateBuilder<ValueNode, H
         assert other.graph != null;
         graph = other.graph;
         monitorIds = other.monitorIds.length == 0 ? other.monitorIds : other.monitorIds.clone();
+        this.outerFrameStateSupplier = other.outerFrameStateSupplier;
 
         assert locals.length == method.getMaxLocals();
         assert stack.length == Math.max(1, method.getMaxStackSize());
@@ -151,7 +155,8 @@ public class HIRFrameStateBuilder extends AbstractFrameStateBuilder<ValueNode, H
     }
 
     public FrameState create(int bci) {
-        return graph.add(new FrameState(method, bci, locals, Arrays.asList(stack).subList(0, stackSize), lockedObjects, monitorIds, rethrowException, false));
+        return graph.add(new FrameState(this.outerFrameStateSupplier == null ? null : outerFrameStateSupplier.get(), method, bci, locals, Arrays.asList(stack).subList(0, stackSize), lockedObjects,
+                        monitorIds, rethrowException, false));
     }
 
     @Override

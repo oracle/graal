@@ -171,6 +171,7 @@ public abstract class AbstractFrameStateBuilder<T extends KindProvider, S extend
      */
     public T loadLocal(int i) {
         T x = locals[i];
+        assert x != null : i;
         assert x.getKind().getSlotCount() == 1 || locals[i + 1] == null;
         assert i == 0 || locals[i - 1] == null || locals[i - 1].getKind().getSlotCount() == 1;
         return x;
