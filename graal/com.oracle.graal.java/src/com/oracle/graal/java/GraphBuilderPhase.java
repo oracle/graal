@@ -1150,7 +1150,6 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     parser.setCurrentFrameState(frameState);
                     currentBlock = block;
 
-                    frameState.cleanupDeletedPhis();
                     if (lastInstr instanceof MergeNode) {
                         int bci = block.startBci;
                         if (block instanceof ExceptionDispatchBlock) {

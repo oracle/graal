@@ -326,15 +326,6 @@ public class HIRFrameStateBuilder extends AbstractFrameStateBuilder<ValueNode, H
         return phi;
     }
 
-    public void cleanupDeletedPhis() {
-        for (int i = 0; i < localsSize(); i++) {
-            if (localAt(i) != null && localAt(i).isDeleted()) {
-                assert localAt(i) instanceof ValuePhiNode || localAt(i) instanceof ProxyNode : "Only phi and value proxies can be deleted during parsing: " + localAt(i);
-                storeLocal(i, null);
-            }
-        }
-    }
-
     /**
      * Adds a locked monitor to this frame state.
      *
