@@ -198,6 +198,11 @@
     <property name="checkFormat" value=".*Header"/>
     <metadata name="com.atlassw.tools.eclipse.checkstyle.comment" value="Disable header checks"/>
   </module>
+  <module name="SuppressionCommentFilter">
+    <property name="offCommentFormat" value="CheckStyle: start generated"/>
+    <property name="onCommentFormat" value="CheckStyle: stop generated"/>
+    <property name="checkFormat" value=".*Name|.*LineLength"/>
+  </module>
   <module name="RegexpSingleline">
     <property name="format" value="System\.(out|err)\.print"/>
     <property name="fileExtensions" value="java"/>
