@@ -157,6 +157,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             private ValueNode methodSynchronizedObject;
             private ExceptionDispatchBlock unwindBlock;
             private BciBlock returnBlock;
+
             private ValueNode returnValue;
             private FixedWithNextNode beforeReturnNode;
             private ValueNode unwindValue;

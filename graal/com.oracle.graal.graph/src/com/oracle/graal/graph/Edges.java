@@ -124,11 +124,13 @@ public abstract class Edges extends Fields {
         }
         while (index < getCount()) {
             NodeList<Node> list = getNodeList(node, index);
-            int size = list.initialSize;
-            NodeList<Node> newList = type == Edges.Type.Inputs ? new NodeInputList<>(node, size) : new NodeSuccessorList<>(node, size);
+            if (list != null) {
+                int size = list.initialSize;
+                NodeList<Node> newList = type == Edges.Type.Inputs ? new NodeInputList<>(node, size) : new NodeSuccessorList<>(node, size);
 
-            // replacing with a new list object is the expected behavior!
-            initializeList(node, index, newList);
+                // replacing with a new list object is the expected behavior!
+                initializeList(node, index, newList);
+            }
             index++;
         }
     }
@@ -144,9 +146,11 @@ public abstract class Edges extends Fields {
         int index = getDirectCount();
         while (index < getCount()) {
             NodeList<Node> list = getNodeList(prototype, index);
-            int size = list.initialSize;
-            NodeList<Node> newList = type == Edges.Type.Inputs ? new NodeInputList<>(node, size) : new NodeSuccessorList<>(node, size);
-            initializeList(node, index, newList);
+            if (list != null) {
+                int size = list.initialSize;
+                NodeList<Node> newList = type == Edges.Type.Inputs ? new NodeInputList<>(node, size) : new NodeSuccessorList<>(node, size);
+                initializeList(node, index, newList);
+            }
             index++;
         }
     }
@@ -201,9 +205,10 @@ public abstract class Edges extends Fields {
         }
         while (index < getCount()) {
             NodeList<Node> list = getNodeList(node, index);
-            assert list != null : this;
-            if (list.replaceFirst(key, replacement)) {
-                return true;
+            if (list != null) {
+                if (list.replaceFirst(key, replacement)) {
+                    return true;
+                }
             }
             index++;
         }
@@ -256,7 +261,8 @@ public abstract class Edges extends Fields {
             }
         }
         for (int i = directCount; i < getCount(); i++) {
-            if (getNodeList(node, i).contains(value)) {
+            NodeList<?> curList = getNodeList(node, i);
+            if (curList != null && curList.contains(value)) {
                 return true;
             }
         }
@@ -277,7 +283,7 @@ public abstract class Edges extends Fields {
         }
         while (index < getCount()) {
             NodeList<Node> list = getNodeList(other, index);
-            if (!list.equals(getNodeList(node, index))) {
+            if (!Objects.equals(list, getNodeList(node, index))) {
                 return false;
             }
             index++;
@@ -329,12 +335,14 @@ public abstract class Edges extends Fields {
                 if (subIndex == 0) {
                     list = edges.getNodeList(node, index);
                 }
-                while (subIndex < list.size()) {
-                    nextElement = list.get(subIndex);
-                    if (nextElement != null) {
-                        return;
+                if (list != null) {
+                    while (subIndex < list.size()) {
+                        nextElement = list.get(subIndex);
+                        if (nextElement != null) {
+                            return;
+                        }
+                        subIndex++;
                     }
-                    subIndex++;
                 }
                 subIndex = 0;
                 index++;
@@ -404,9 +412,11 @@ public abstract class Edges extends Fields {
                 if (subIndex == 0) {
                     list = edges.getNodeList(node, index);
                 }
-                if (subIndex < list.size()) {
-                    nextElement = list.get(subIndex);
-                    return;
+                if (list != null) {
+                    if (subIndex < list.size()) {
+                        nextElement = list.get(subIndex);
+                        return;
+                    }
                 }
                 subIndex = 0;
                 index++;

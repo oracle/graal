@@ -597,8 +597,9 @@ public final class NodeClass extends FieldIntrospection {
 
         while (index < edges.getCount()) {
             NodeList<Node> list = edges.getNodeList(node, index);
-            assert list != null : edges;
-            edges.initializeList(node, index, updateEdgeListCopy(node, list, duplicationReplacement, edges.type()));
+            if (list != null) {
+                edges.initializeList(node, index, updateEdgeListCopy(node, list, duplicationReplacement, edges.type()));
+            }
             index++;
         }
     }
