@@ -155,10 +155,6 @@ public class NodeData extends Template implements Comparable<NodeData> {
         return false;
     }
 
-    public boolean isPolymorphic(ProcessorContext context) {
-        return needsRewrites(context);
-    }
-
     public List<CreateCastData> getCasts() {
         return casts;
     }

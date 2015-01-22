@@ -35,6 +35,7 @@ import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.dsl.internal.DSLOptions.*;
 import com.oracle.truffle.dsl.processor.*;
+import com.oracle.truffle.dsl.processor.java.*;
 import com.oracle.truffle.dsl.processor.java.model.*;
 import com.oracle.truffle.dsl.processor.model.*;
 
@@ -146,6 +147,48 @@ public class GeneratorUtils {
 
         clazz.addAnnotationMirror(generatedByAnnotation);
         return clazz;
+    }
+
+    public static List<ExecutableElement> findUserConstructors(TypeMirror nodeType) {
+        List<ExecutableElement> constructors = new ArrayList<>();
+        for (ExecutableElement constructor : ElementFilter.constructorsIn(ElementUtils.fromTypeMirror(nodeType).getEnclosedElements())) {
+            if (constructor.getModifiers().contains(PRIVATE)) {
+                continue;
+            }
+            if (isCopyConstructor(constructor)) {
+                continue;
+            }
+            constructors.add(constructor);
+        }
+
+        if (constructors.isEmpty()) {
+            constructors.add(new CodeExecutableElement(null, ElementUtils.getSimpleName(nodeType)));
+        }
+
+        return constructors;
+    }
+
+    public static boolean isCopyConstructor(ExecutableElement element) {
+        if (element.getParameters().size() != 1) {
+            return false;
+        }
+        VariableElement var = element.getParameters().get(0);
+        TypeElement enclosingType = ElementUtils.findNearestEnclosingType(var);
+        if (ElementUtils.typeEquals(var.asType(), enclosingType.asType())) {
+            return true;
+        }
+        List<TypeElement> types = ElementUtils.getDirectSuperTypes(enclosingType);
+        for (TypeElement type : types) {
+            if (!(type instanceof CodeTypeElement)) {
+                // no copy constructors which are not generated types
+                return false;
+            }
+
+            if (ElementUtils.typeEquals(var.asType(), type.asType())) {
+                return true;
+            }
+        }
+        return false;
     }
 
 }

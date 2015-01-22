@@ -31,7 +31,6 @@ import javax.lang.model.element.*;
 import javax.lang.model.type.*;
 
 import com.oracle.truffle.api.dsl.*;
-import com.oracle.truffle.api.dsl.internal.*;
 import com.oracle.truffle.dsl.processor.*;
 import com.oracle.truffle.dsl.processor.java.*;
 import com.oracle.truffle.dsl.processor.java.model.*;
@@ -40,20 +39,16 @@ import com.oracle.truffle.dsl.processor.model.*;
 
 class NodeFactoryFactory {
 
-    static final String FACTORY_METHOD_NAME = "create0";
+    static final String EMPTY_CLASS_ARRAY = "EMPTY_CLASS_ARRAY";
 
     private final ProcessorContext context;
     private final NodeData node;
-    private final TypeSystemData typeSystem;
-    private final DSLOptions options;
     private final CodeTypeElement createdFactoryElement;
 
     public NodeFactoryFactory(ProcessorContext context, NodeData node, CodeTypeElement createdClass) {
         this.context = context;
         this.node = node;
         this.createdFactoryElement = createdClass;
-        this.typeSystem = node.getTypeSystem();
-        this.options = typeSystem.getOptions();
     }
 
     public static String factoryClassName(NodeData node) {
@@ -94,7 +89,7 @@ class NodeFactoryFactory {
         // execution signature
         builder.startGroup();
         if (node.getChildExecutions().isEmpty()) {
-            builder.staticReference(context.getTruffleTypes().getDslMetadata(), NodeBaseFactory.EMPTY_CLASS_ARRAY);
+            builder.staticReference(context.getTruffleTypes().getDslMetadata(), EMPTY_CLASS_ARRAY);
         } else {
             builder.startNewArray(new ArrayCodeTypeMirror(context.getType(Class.class)), null);
             for (NodeExecutionData execution : node.getChildExecutions()) {
@@ -107,11 +102,11 @@ class NodeFactoryFactory {
         // node signatures
         builder.startGroup();
         builder.startNewArray(new ArrayCodeTypeMirror(new ArrayCodeTypeMirror(context.getType(Class.class))), null);
-        List<ExecutableElement> constructors = NodeBaseFactory.findUserConstructors(createdFactoryElement.asType());
+        List<ExecutableElement> constructors = GeneratorUtils.findUserConstructors(createdFactoryElement.asType());
         for (ExecutableElement constructor : constructors) {
             builder.startGroup();
             if (constructor.getParameters().isEmpty()) {
-                builder.staticReference(context.getTruffleTypes().getDslMetadata(), NodeBaseFactory.EMPTY_CLASS_ARRAY);
+                builder.staticReference(context.getTruffleTypes().getDslMetadata(), EMPTY_CLASS_ARRAY);
             } else {
                 builder.startNewArray(new ArrayCodeTypeMirror(context.getType(Class.class)), null);
                 for (VariableElement var : constructor.getParameters()) {
@@ -135,7 +130,7 @@ class NodeFactoryFactory {
         method.addParameter(arguments);
 
         CodeTreeBuilder builder = method.createBuilder();
-        List<ExecutableElement> signatures = NodeBaseFactory.findUserConstructors(createdFactoryElement.asType());
+        List<ExecutableElement> signatures = GeneratorUtils.findUserConstructors(createdFactoryElement.asType());
         boolean ifStarted = false;
 
         for (ExecutableElement element : signatures) {
@@ -230,7 +225,7 @@ class NodeFactoryFactory {
     }
 
     public void createFactoryMethods(CodeTypeElement clazz) {
-        List<ExecutableElement> constructors = NodeBaseFactory.findUserConstructors(createdFactoryElement.asType());
+        List<ExecutableElement> constructors = GeneratorUtils.findUserConstructors(createdFactoryElement.asType());
         for (ExecutableElement constructor : constructors) {
             clazz.add(createCreateMethod(constructor));
             if (constructor instanceof CodeExecutableElement) {
@@ -252,11 +247,7 @@ class NodeFactoryFactory {
         if (node.getSpecializations().isEmpty()) {
             body.nullLiteral();
         } else {
-            if (options.useNewLayout()) {
-                body.startNew(NodeGenFactory.nodeType(node));
-            } else {
-                body.startCall(NodeBaseFactory.nodeSpecializationClassName(node.getSpecializations().get(0)), FACTORY_METHOD_NAME);
-            }
+            body.startNew(NodeGenFactory.nodeType(node));
             for (VariableElement var : method.getParameters()) {
                 body.string(var.getSimpleName().toString());
             }

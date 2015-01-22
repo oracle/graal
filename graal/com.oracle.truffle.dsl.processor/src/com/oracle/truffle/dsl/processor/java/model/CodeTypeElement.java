@@ -173,15 +173,6 @@ public class CodeTypeElement extends CodeElement<Element> implements TypeElement
         return ElementFilter.fieldsIn(getEnclosedElements());
     }
 
-    public ExecutableElement getMethod(String name) {
-        for (Element element : getEnclosedElements()) {
-            if (element.getKind() == ElementKind.METHOD && element.getSimpleName().toString().equals(name)) {
-                return (ExecutableElement) element;
-            }
-        }
-        return null;
-    }
-
     public List<ExecutableElement> getMethods() {
         return ElementFilter.methodsIn(getEnclosedElements());
     }

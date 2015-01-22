@@ -122,38 +122,14 @@ public class NodeCodeGenerator extends CodeTypeElementFactory<NodeData> {
     }
 
     private static String getAccessorClassName(NodeData node) {
-        return node.isGenerateFactory() ? NodeFactoryFactory.factoryClassName(node) : NodeBaseFactory.baseClassName(node);
+        return node.isGenerateFactory() ? NodeFactoryFactory.factoryClassName(node) : NodeGenFactory.nodeTypeName(node);
     }
 
     private static List<CodeTypeElement> generateNodes(ProcessorContext context, NodeData node) {
         if (!node.needsFactory()) {
             return Collections.emptyList();
         }
-        if (node.getTypeSystem().getOptions().useNewLayout()) {
-            return Arrays.asList(new NodeGenFactory(context, node).create());
-        } else {
-            return generateNodesOld(context, node);
-        }
-    }
-
-    private static List<CodeTypeElement> generateNodesOld(ProcessorContext context, NodeData node) {
-        List<CodeTypeElement> nodeTypes = new ArrayList<>();
-        SpecializationData generic = node.getGenericSpecialization() == null ? node.getSpecializations().get(0) : node.getGenericSpecialization();
-        CodeTypeElement baseNode = new NodeBaseFactory(context, node, generic).create();
-        nodeTypes.add(baseNode);
-
-        for (SpecializationData specialization : node.getSpecializations()) {
-            if (!specialization.isReachable() || specialization.isFallback()) {
-                continue;
-            }
-            if (specialization.isPolymorphic() && node.isPolymorphic(context)) {
-                nodeTypes.add(new PolymorphicNodeFactory(context, node, specialization, baseNode).create());
-                continue;
-            }
-
-            nodeTypes.add(new SpecializedNodeFactory(context, node, specialization, baseNode).create());
-        }
-        return nodeTypes;
+        return Arrays.asList(new NodeGenFactory(context, node).create());
     }
 
     private static ExecutableElement createGetFactories(ProcessorContext context, NodeData node) {

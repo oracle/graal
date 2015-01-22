@@ -26,7 +26,6 @@ import java.util.*;
 
 import javax.lang.model.type.*;
 
-import com.oracle.truffle.dsl.processor.*;
 import com.oracle.truffle.dsl.processor.java.*;
 import com.oracle.truffle.dsl.processor.model.*;
 import com.oracle.truffle.dsl.processor.model.TemplateMethod.TypeSignature;
@@ -79,15 +78,6 @@ public final class SpecializationGroup {
             collectedGuards.addAll(parent.getAllGuards());
         }
         return collectedGuards;
-    }
-
-    public TypeGuard findTypeGuard(int signatureIndex) {
-        for (TypeGuard guard : typeGuards) {
-            if (guard.getSignatureIndex() == signatureIndex) {
-                return guard;
-            }
-        }
-        return null;
     }
 
     public List<GuardExpression> findElseConnectableGuards() {
@@ -421,28 +411,6 @@ public final class SpecializationGroup {
         public TypeData getType() {
             return type;
         }
-    }
-
-    public boolean isTypeGuardUsedInAnyGuardBelow(ProcessorContext context, SpecializationData source, TypeGuard typeGuard) {
-        NodeExecutionData execution = source.getNode().getChildExecutions().get(typeGuard.getSignatureIndex());
-
-        for (GuardExpression guard : guards) {
-            List<Parameter> guardParameters = guard.getResolvedGuard().findByExecutionData(execution);
-            Parameter sourceParameter = source.getSignatureParameter(typeGuard.getSignatureIndex());
-            for (Parameter guardParameter : guardParameters) {
-                if (sourceParameter.getTypeSystemType().needsCastTo(guardParameter.getType())) {
-                    return true;
-                }
-            }
-        }
-
-        for (SpecializationGroup group : getChildren()) {
-            if (group.isTypeGuardUsedInAnyGuardBelow(context, source, typeGuard)) {
-                return true;
-            }
-        }
-
-        return false;
     }
 
 }

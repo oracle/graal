@@ -118,14 +118,6 @@ public class TypeSystemCodeGenerator extends CodeTypeElementFactory<TypeSystemDa
         return builder.build();
     }
 
-    public static CodeTree cast(TypeData sourceType, TypeData targetType, CodeTree content) {
-        if (sourceType != null && !sourceType.needsCastTo(targetType)) {
-            return content;
-        } else {
-            return cast(targetType, content);
-        }
-    }
-
     public static CodeTree expect(TypeData type, CodeTree content) {
         if (type.isGeneric() || type.isVoid()) {
             return content;
@@ -208,15 +200,13 @@ public class TypeSystemCodeGenerator extends CodeTypeElementFactory<TypeSystemDa
     public CodeTypeElement create(ProcessorContext context, TypeSystemData typeSystem) {
         CodeTypeElement clazz = new TypeClassFactory(context, typeSystem).create();
 
-        if (typeSystem.getOptions().useNewLayout()) {
-            clazz.add(new TypeSystemNodeFactory(context, typeSystem).create());
+        clazz.add(new TypeSystemNodeFactory(context, typeSystem).create());
 
-            if (typeSystem.getOptions().implicitCastOptimization().isMergeCasts()) {
-                for (TypeData type : typeSystem.getTypes()) {
-                    List<TypeData> sourceTypes = typeSystem.lookupSourceTypes(type);
-                    if (sourceTypes.size() > 1) {
-                        clazz.add(new ImplicitCastNodeFactory(context, type).create());
-                    }
+        if (typeSystem.getOptions().implicitCastOptimization().isMergeCasts()) {
+            for (TypeData type : typeSystem.getTypes()) {
+                List<TypeData> sourceTypes = typeSystem.lookupSourceTypes(type);
+                if (sourceTypes.size() > 1) {
+                    clazz.add(new ImplicitCastNodeFactory(context, type).create());
                 }
             }
         }

@@ -183,7 +183,7 @@ public class NodeGenFactory {
             }
         }
 
-        for (ExecutableElement superConstructor : NodeBaseFactory.findUserConstructors(node.getTemplateType().asType())) {
+        for (ExecutableElement superConstructor : GeneratorUtils.findUserConstructors(node.getTemplateType().asType())) {
             clazz.add(createNodeConstructor(clazz, superConstructor));
         }
 

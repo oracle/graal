@@ -146,15 +146,6 @@ public class TypeSystemData extends Template {
         return result;
     }
 
-    public TypeData findType(String simpleName) {
-        for (TypeData type : types) {
-            if (ElementUtils.getTypeId(type.getBoxedType()).equals(simpleName)) {
-                return type;
-            }
-        }
-        return null;
-    }
-
     public TypeData findTypeData(TypeMirror type) {
         if (ElementUtils.typeEquals(voidType.getPrimitiveType(), type)) {
             return voidType;

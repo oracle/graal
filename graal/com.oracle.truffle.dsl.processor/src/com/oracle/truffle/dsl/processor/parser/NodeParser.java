@@ -695,18 +695,13 @@ public class NodeParser extends AbstractParser<NodeData> {
         initializeReachability(node);
         initializeContains(node);
 
-        if (!node.hasErrors() && !node.getTypeSystem().getOptions().useNewLayout()) {
-            initializeExceptions(node);
-        }
         resolveContains(node);
 
-        if (node.getTypeSystem().getOptions().useNewLayout()) {
-            List<SpecializationData> specializations = node.getSpecializations();
-            for (SpecializationData cur : specializations) {
-                for (SpecializationData child : specializations) {
-                    if (child != null && child != cur && child.getContains().contains(cur)) {
-                        cur.getExcludedBy().add(child);
-                    }
+        List<SpecializationData> specializations = node.getSpecializations();
+        for (SpecializationData cur : specializations) {
+            for (SpecializationData child : specializations) {
+                if (child != null && child != cur && child.getContains().contains(cur)) {
+                    cur.getExcludedBy().add(child);
                 }
             }
         }
@@ -761,40 +756,6 @@ public class NodeParser extends AbstractParser<NodeData> {
         for (int i = 0; i < specializations.size(); i++) {
             specializations.get(i).setIndex(i);
         }
-    }
-
-    private static void initializeExceptions(NodeData node) {
-        List<SpecializationData> specializations = node.getSpecializations();
-
-        for (int i = 0; i < specializations.size(); i++) {
-            SpecializationData cur = specializations.get(i);
-            if (cur.getExceptions().isEmpty()) {
-                continue;
-            }
-            SpecializationData next = i + 1 < specializations.size() ? specializations.get(i + 1) : null;
-
-            if (!cur.isContainedBy(next)) {
-                next.addError("This specialiation is not a valid exceptional rewrite target for %s. To fix this make %s compatible to %s or remove the exceptional rewrite.",
-                                cur.createReferenceName(), next != null ? next.createReferenceName() : "-", cur.createReferenceName());
-                continue;
-            }
-            Set<SpecializationData> nextContains = next != null ? next.getContains() : Collections.<SpecializationData> emptySet();
-            if (!nextContains.contains(cur)) {
-                nextContains.add(cur);
-            }
-        }
-
-        for (SpecializationData cur : specializations) {
-            if (cur.getExceptions().isEmpty()) {
-                continue;
-            }
-            for (SpecializationData child : specializations) {
-                if (child != null && child != cur && child.getContains().contains(cur)) {
-                    cur.getExcludedBy().add(child);
-                }
-            }
-        }
-
     }
 
     private static void initializeContains(NodeData node) {
@@ -1392,62 +1353,22 @@ public class NodeParser extends AbstractParser<NodeData> {
         }
     }
 
-    private void verifyConstructors(NodeData nodeData) {
-        if (nodeData.getTypeSystem().getOptions().useNewLayout()) {
-            List<ExecutableElement> constructors = ElementFilter.constructorsIn(nodeData.getTemplateType().getEnclosedElements());
-            if (constructors.isEmpty()) {
-                return;
-            }
-
-            boolean oneNonPrivate = false;
-            for (ExecutableElement constructor : constructors) {
-                if (ElementUtils.getVisibility(constructor.getModifiers()) != Modifier.PRIVATE) {
-                    oneNonPrivate = true;
-                    break;
-                }
-            }
-            if (!oneNonPrivate && !nodeData.getTemplateType().getModifiers().contains(Modifier.PRIVATE)) {
-                nodeData.addError("At least one constructor must be non-private.");
-            }
-            return;
-        }
-        if (!nodeData.needsRewrites(context)) {
-            // no specialization constructor is needed if the node never rewrites.
+    private static void verifyConstructors(NodeData nodeData) {
+        List<ExecutableElement> constructors = ElementFilter.constructorsIn(nodeData.getTemplateType().getEnclosedElements());
+        if (constructors.isEmpty()) {
             return;
         }
 
-        TypeElement type = ElementUtils.fromTypeMirror(nodeData.getNodeType());
-        List<ExecutableElement> constructors = ElementFilter.constructorsIn(type.getEnclosedElements());
-
-        boolean parametersFound = false;
+        boolean oneNonPrivate = false;
         for (ExecutableElement constructor : constructors) {
-            if (!constructor.getParameters().isEmpty() && !isSourceSectionConstructor(context, constructor)) {
-                parametersFound = true;
+            if (ElementUtils.getVisibility(constructor.getModifiers()) != Modifier.PRIVATE) {
+                oneNonPrivate = true;
+                break;
             }
         }
-        if (!parametersFound) {
-            return;
+        if (!oneNonPrivate && !nodeData.getTemplateType().getModifiers().contains(Modifier.PRIVATE)) {
+            nodeData.addError("At least one constructor must be non-private.");
         }
-        for (ExecutableElement e : constructors) {
-            if (e.getParameters().size() == 1) {
-                TypeMirror firstArg = e.getParameters().get(0).asType();
-                if (ElementUtils.typeEquals(firstArg, nodeData.getNodeType())) {
-                    if (e.getModifiers().contains(Modifier.PRIVATE)) {
-                        nodeData.addError("The specialization constructor must not be private.");
-                    } else if (constructors.size() <= 1) {
-                        nodeData.addError("The specialization constructor must not be the only constructor. The definition of an alternative constructor is required.");
-                    }
-                    return;
-                }
-            }
-        }
-
-        // not found
-        nodeData.addError("Specialization constructor '%s(%s previousNode) { this(...); }' is required.", ElementUtils.getSimpleName(type), ElementUtils.getSimpleName(type));
-    }
-
-    public static boolean isSourceSectionConstructor(ProcessorContext context, ExecutableElement constructor) {
-        return constructor.getParameters().size() == 1 && ElementUtils.typeEquals(constructor.getParameters().get(0).asType(), context.getTruffleTypes().getSourceSection());
     }
 
     private AnnotationMirror findFirstAnnotation(List<? extends Element> elements, Class<? extends Annotation> annotation) {

@@ -119,16 +119,6 @@ public class ElementUtils {
         return b.toString();
     }
 
-    public static VariableElement findVariableElement(DeclaredType type, String name) {
-        List<? extends VariableElement> elements = ElementFilter.fieldsIn(type.asElement().getEnclosedElements());
-        for (VariableElement variableElement : elements) {
-            if (variableElement.getSimpleName().toString().equals(name)) {
-                return variableElement;
-            }
-        }
-        return null;
-    }
-
     public static TypeMirror boxType(ProcessorContext context, TypeMirror primitiveType) {
         TypeMirror boxedType = primitiveType;
         if (boxedType.getKind().isPrimitive()) {

@@ -44,8 +44,6 @@ import com.oracle.truffle.api.source.*;
  */
 public final class TruffleTypes {
 
-    public static final String OPTION_DETAILED_REWRITE_REASONS = "DetailedRewriteReasons";
-
     private final DeclaredType node;
     private final ArrayType nodeArray;
     private final TypeMirror unexpectedValueException;

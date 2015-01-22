@@ -89,15 +89,6 @@ public class MethodSpec {
         return specs;
     }
 
-    public ParameterSpec findParameterSpec(String name) {
-        for (ParameterSpec spec : getAll()) {
-            if (spec.getName().equals(name)) {
-                return spec;
-            }
-        }
-        return null;
-    }
-
     public void applyTypeDefinitions(String prefix) {
         this.typeDefinitions = createTypeDefinitions(prefix);
     }
