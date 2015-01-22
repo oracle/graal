@@ -43,6 +43,7 @@ import com.oracle.truffle.api.source.*;
  * Utility class that manages the special access methods for node instances.
  */
 public final class NodeUtil {
+    private static final boolean USE_UNSAFE = Boolean.getBoolean("truffle.unsafe");
 
     /**
      * Interface that allows the customization of field offsets used for {@link Unsafe} field
@@ -88,14 +89,14 @@ public final class NodeUtil {
     /**
      * Information about a field in a {@link Node} class.
      */
-    public static final class NodeField {
+    public abstract static class NodeField {
 
         private final NodeFieldKind kind;
-        private final Class<?> type;
         private final String name;
-        private long offset;
+        protected final Class<?> type;
+        protected final long offset;
 
-        private NodeField(NodeFieldKind kind, Field field) {
+        protected NodeField(NodeFieldKind kind, Field field) {
             this.kind = kind;
             this.type = field.getType();
             this.name = field.getName();
@@ -103,7 +104,11 @@ public final class NodeUtil {
         }
 
         protected static NodeField create(NodeFieldKind kind, Field field) {
-            return new NodeField(kind, field);
+            if (USE_UNSAFE) {
+                return new UnsafeNodeField(kind, field);
+            } else {
+                return new ReflectionNodeField(kind, field);
+            }
         }
 
         public NodeFieldKind getKind() {
@@ -122,16 +127,45 @@ public final class NodeUtil {
             return offset;
         }
 
-        public void putObject(Object receiver, Object value) {
+        public abstract void putObject(Node receiver, Object value);
+
+        public abstract Object getObject(Node receiver);
+
+        public abstract Object loadValue(Node node);
+
+        @Override
+        public int hashCode() {
+            return kind.hashCode() | type.hashCode() | name.hashCode() | ((Long) offset).hashCode();
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj instanceof NodeField) {
+                NodeField other = (NodeField) obj;
+                return offset == other.offset && name.equals(other.name) && type.equals(other.type) && kind.equals(other.kind);
+            }
+            return false;
+        }
+    }
+
+    private static final class UnsafeNodeField extends NodeField {
+        protected UnsafeNodeField(NodeFieldKind kind, Field field) {
+            super(kind, field);
+        }
+
+        @Override
+        public void putObject(Node receiver, Object value) {
             assert !type.isPrimitive() && value == null || type.isInstance(value);
             unsafe.putObject(receiver, offset, value);
         }
 
-        public Object getObject(Object receiver) {
+        @Override
+        public Object getObject(Node receiver) {
             assert !type.isPrimitive();
             return unsafe.getObject(receiver, offset);
         }
 
+        @Override
         public Object loadValue(Node node) {
             if (type == boolean.class) {
                 return unsafe.getBoolean(node, offset);
@@ -153,19 +187,62 @@ public final class NodeUtil {
                 return unsafe.getObject(node, offset);
             }
         }
+    }
 
-        @Override
-        public int hashCode() {
-            return kind.hashCode() | type.hashCode() | name.hashCode() | ((Long) offset).hashCode();
+    private static final class ReflectionNodeField extends NodeField {
+        private final Field field;
+
+        protected ReflectionNodeField(NodeFieldKind kind, Field field) {
+            super(kind, field);
+            this.field = field;
+            field.setAccessible(true);
         }
 
         @Override
-        public boolean equals(Object obj) {
-            if (obj instanceof NodeField) {
-                NodeField other = (NodeField) obj;
-                return offset == other.offset && name.equals(other.name) && type.equals(other.type) && kind.equals(other.kind);
+        public void putObject(Node receiver, Object value) {
+            assert !type.isPrimitive() && value == null || type.isInstance(value);
+            try {
+                field.set(receiver, value);
+            } catch (IllegalAccessException e) {
+                throw new AssertionError(e);
             }
-            return false;
+        }
+
+        @Override
+        public Object getObject(Node receiver) {
+            assert !type.isPrimitive();
+            try {
+                return field.get(receiver);
+            } catch (IllegalAccessException e) {
+                throw new AssertionError(e);
+            }
+        }
+
+        @Override
+        public Object loadValue(Node node) {
+            try {
+                if (type == boolean.class) {
+                    return field.getBoolean(node);
+                } else if (type == byte.class) {
+                    return field.getByte(node);
+                } else if (type == short.class) {
+                    return field.getShort(node);
+                } else if (type == char.class) {
+                    return field.getChar(node);
+                } else if (type == int.class) {
+                    return field.getInt(node);
+                } else if (type == long.class) {
+                    return field.getLong(node);
+                } else if (type == float.class) {
+                    return field.getFloat(node);
+                } else if (type == double.class) {
+                    return field.getDouble(node);
+                } else {
+                    return field.get(node);
+                }
+            } catch (IllegalAccessException e) {
+                throw new AssertionError(e);
+            }
         }
     }
 
