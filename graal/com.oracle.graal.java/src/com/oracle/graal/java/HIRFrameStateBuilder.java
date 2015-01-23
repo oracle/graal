@@ -159,7 +159,7 @@ public class HIRFrameStateBuilder extends AbstractFrameStateBuilder<ValueNode, H
         if (outerFrameStateSupplier != null) {
             outerFrameState = outerFrameStateSupplier.get();
         }
-        return graph.add(new FrameState(outerFrameState, method, bci, locals, stack, stackSize, lockedObjects, monitorIds, rethrowException, false));
+        return graph.add(new FrameState(outerFrameState, method, bci, locals, stack, stackSize, lockedObjects, Arrays.asList(monitorIds), rethrowException, false));
     }
 
     @Override
