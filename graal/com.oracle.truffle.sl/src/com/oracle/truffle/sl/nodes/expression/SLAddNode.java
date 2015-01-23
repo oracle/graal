@@ -94,7 +94,7 @@ public abstract class SLAddNode extends SLBinaryNode {
      * To implement these semantics, we tell the Truffle DSL to use a custom guard. The guard
      * function is defined in {@link #isString this class}, but could also be in any superclass.
      */
-    @Specialization(guards = "isString")
+    @Specialization(guards = "isString(left, right)")
     @TruffleBoundary
     protected String add(Object left, Object right) {
         return left.toString() + right.toString();

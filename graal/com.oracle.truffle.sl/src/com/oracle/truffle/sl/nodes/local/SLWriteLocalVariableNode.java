@@ -51,13 +51,13 @@ public abstract class SLWriteLocalVariableNode extends SLExpressionNode {
      * local variable also has currently the type {@code long}, therefore a Truffle DSL
      * {@link #isLongKind() custom guard} is specified.
      */
-    @Specialization(guards = "isLongKind")
+    @Specialization(guards = "isLongKind()")
     protected long writeLong(VirtualFrame frame, long value) {
         frame.setLong(getSlot(), value);
         return value;
     }
 
-    @Specialization(guards = "isBooleanKind")
+    @Specialization(guards = "isBooleanKind()")
     protected boolean writeBoolean(VirtualFrame frame, boolean value) {
         frame.setBoolean(getSlot(), value);
         return value;
