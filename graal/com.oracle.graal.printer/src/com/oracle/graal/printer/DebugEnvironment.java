@@ -59,9 +59,6 @@ public class DebugEnvironment {
             }
             dumpHandlers.add(new CFGPrinterObserver(PrintCFG.getValue()));
         }
-        if (DecompileAfterPhase.getValue() != null) {
-            dumpHandlers.add(new DecompilerDebugDumpHandler());
-        }
         List<DebugVerifyHandler> verifyHandlers = new ArrayList<>();
         String verifyFilter = Verify.getValue();
         if (verifyFilter == null && assertionsEnabled()) {

@@ -224,9 +224,6 @@ public final class GraalOptions {
     @Option(help = "", type = OptionType.Debug)
     public static final OptionValue<Boolean> PrintStackTraceOnException = new OptionValue<>(false);
 
-    @Option(help = "Set a phase after which the decompiler dumps the graph, -G:Dump= required", type = OptionType.Debug)
-    public static final OptionValue<String> DecompileAfterPhase = new OptionValue<>(null);
-
     // HotSpot command line options
     @Option(help = "Print inlining optimizations", type = OptionType.Debug)
     public static final OptionValue<Boolean> HotSpotPrintInlining = new OptionValue<>(false);
