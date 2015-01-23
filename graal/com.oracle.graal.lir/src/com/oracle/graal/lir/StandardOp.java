@@ -206,4 +206,19 @@ public class StandardOp {
             }
         }
     }
+
+    @Opcode("BLACKHOLE")
+    public static class BlackholeOp extends LIRInstructionBase {
+
+        @Use({REG, STACK}) private Value value;
+
+        public BlackholeOp(Value value) {
+            this.value = value;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb) {
+            // do nothing, just keep value alive until at least here
+        }
+    }
 }

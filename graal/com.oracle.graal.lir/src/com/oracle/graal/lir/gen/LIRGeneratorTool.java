@@ -189,6 +189,8 @@ public interface LIRGeneratorTool extends ArithmeticLIRGenerator {
 
     Value emitArrayEquals(Kind kind, Value array1, Value array2, Value length);
 
+    void emitBlackhole(Value operand);
+
     @SuppressWarnings("unused")
     default Value emitCountLeadingZeros(Value value) {
         throw GraalInternalError.unimplemented();

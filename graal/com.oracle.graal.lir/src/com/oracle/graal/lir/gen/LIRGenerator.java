@@ -393,4 +393,8 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     public LIRGenerationResult getResult() {
         return res;
     }
+
+    public void emitBlackhole(Value operand) {
+        append(new StandardOp.BlackholeOp(operand));
+    }
 }
