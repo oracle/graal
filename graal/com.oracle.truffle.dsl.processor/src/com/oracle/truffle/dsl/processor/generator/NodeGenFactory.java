@@ -43,6 +43,8 @@ import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.nodes.Node.Child;
 import com.oracle.truffle.dsl.processor.*;
+import com.oracle.truffle.dsl.processor.expression.*;
+import com.oracle.truffle.dsl.processor.expression.DSLExpression.Variable;
 import com.oracle.truffle.dsl.processor.java.*;
 import com.oracle.truffle.dsl.processor.java.model.*;
 import com.oracle.truffle.dsl.processor.model.*;
@@ -51,7 +53,7 @@ import com.oracle.truffle.dsl.processor.parser.SpecializationGroup.TypeGuard;
 
 public class NodeGenFactory {
 
-    private static final String FRAME_VALUE = "frameValue";
+    private static final String FRAME_VALUE = TemplateMethod.FRAME_NAME;
 
     private static final String NAME_SUFFIX = "_";
 
@@ -318,7 +320,7 @@ public class NodeGenFactory {
         return constructor;
     }
 
-    private static boolean mayBeExcluded(SpecializationData specialization) {
+    public static boolean mayBeExcluded(SpecializationData specialization) {
         return !specialization.getExceptions().isEmpty() || !specialization.getExcludedBy().isEmpty();
     }
 
@@ -1061,7 +1063,7 @@ public class NodeGenFactory {
             return true;
         }
 
-        if (!fastPath && group.getSpecialization() != null && !group.getSpecialization().getExceptions().isEmpty()) {
+        if (!fastPath && group.getSpecialization() != null && mayBeExcluded(group.getSpecialization())) {
             return true;
         }
 
@@ -1438,7 +1440,7 @@ public class NodeGenFactory {
         List<GuardExpression> elseGuardExpressions = group.findElseConnectableGuards();
         List<GuardExpression> guardExpressions = new ArrayList<>(group.getGuards());
         guardExpressions.removeAll(elseGuardExpressions);
-        CodeTree methodGuards = createMethodGuardCheck(guardExpressions, currentValues);
+        CodeTree methodGuards = createMethodGuardCheck(guardExpressions, group.getSpecialization(), currentValues);
 
         if (!group.getAssumptions().isEmpty()) {
             if (execution.isFastPath() && !forType.isGeneric()) {
@@ -1533,14 +1535,13 @@ public class NodeGenFactory {
     }
 
     private boolean isTypeGuardUsedInAnyGuardBelow(SpecializationGroup group, LocalContext currentValues, TypeGuard typeGuard) {
-        NodeExecutionData execution = node.getChildExecutions().get(typeGuard.getSignatureIndex());
+        LocalVariable localVariable = currentValues.getValue(typeGuard.getSignatureIndex());
 
         for (GuardExpression guard : group.getGuards()) {
-            List<Parameter> guardParameters = guard.getResolvedGuard().findByExecutionData(execution);
-            TypeData sourceType = currentValues.getValue(typeGuard.getSignatureIndex()).getType();
-
-            for (Parameter guardParameter : guardParameters) {
-                if (sourceType.needsCastTo(guardParameter.getType())) {
+            Map<Variable, LocalVariable> boundValues = bindLocalValues(guard.getExpression(), group.getSpecialization(), currentValues);
+            for (Variable var : guard.getExpression().findBoundVariables()) {
+                LocalVariable target = boundValues.get(var);
+                if (localVariable.getName().equals(target.getName())) {
                     return true;
                 }
             }
@@ -1946,18 +1947,55 @@ public class NodeGenFactory {
         return builder.build();
     }
 
-    private CodeTree createMethodGuardCheck(List<GuardExpression> guardExpressions, LocalContext currentValues) {
+    private CodeTree createMethodGuardCheck(List<GuardExpression> guardExpressions, SpecializationData specialization, LocalContext currentValues) {
         CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
         String and = "";
         for (GuardExpression guard : guardExpressions) {
-            builder.string(and);
-            if (guard.isNegated()) {
-                builder.string("!");
+            DSLExpression expression = guard.getExpression();
+            Map<Variable, LocalVariable> bindings = bindLocalValues(expression, specialization, currentValues);
+            Map<Variable, CodeTree> resolvedBindings = new HashMap<>();
+            for (Variable variable : bindings.keySet()) {
+                LocalVariable localVariable = bindings.get(variable);
+                CodeTree resolved = CodeTreeBuilder.singleString(localVariable.getName());
+                if (!ElementUtils.typeEquals(variable.getResolvedType(), localVariable.getTypeMirror())) {
+                    resolved = CodeTreeBuilder.createBuilder().cast(variable.getResolvedType(), resolved).build();
+                }
+                resolvedBindings.put(variable, resolved);
             }
-            builder.tree(callTemplateMethod(accessParent(null), guard.getResolvedGuard(), currentValues));
+
+            builder.string(and);
+            builder.tree(DSLExpressionGenerator.write(expression, accessParent(null), resolvedBindings));
             and = " && ";
         }
         return builder.build();
+    }
+
+    private static Map<Variable, LocalVariable> bindLocalValues(DSLExpression expression, SpecializationData specialization, LocalContext currentValues) throws AssertionError {
+        Map<Variable, LocalVariable> bindings = new HashMap<>();
+
+        List<Variable> boundVariables = expression.findBoundVariables();
+        if (specialization == null && !boundVariables.isEmpty()) {
+            throw new AssertionError("Cannot bind guard variable in non-specialization group. yet.");
+        }
+
+        // resolve bindings for local context
+        for (Variable variable : boundVariables) {
+            Parameter resolvedParameter = specialization.findByVariable(variable.getResolvedVariable());
+            if (resolvedParameter != null) {
+                LocalVariable localVariable;
+                if (resolvedParameter.getSpecification().isSignature()) {
+                    NodeExecutionData execution = resolvedParameter.getSpecification().getExecution();
+                    localVariable = currentValues.getValue(execution);
+                } else {
+                    localVariable = currentValues.get(resolvedParameter.getLocalName());
+                }
+                if (localVariable == null) {
+                    throw new AssertionError("Could not resolve local for execution.");
+                }
+                bindings.put(variable, localVariable);
+            }
+        }
+        return bindings;
     }
 
     private CodeTree[] createTypeCheckAndCast(List<TypeGuard> typeGuards, Set<TypeGuard> castGuards, LocalContext currentValues, SpecializationExecution specializationExecution) {

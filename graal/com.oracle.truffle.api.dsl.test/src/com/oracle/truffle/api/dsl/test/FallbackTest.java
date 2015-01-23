@@ -104,7 +104,7 @@ public class FallbackTest {
             return "(int)";
         }
 
-        @Specialization(guards = "notInt")
+        @Specialization(guards = "notInt(a)")
         String f2(Object a) {
             return "(object)";
         }

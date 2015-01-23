@@ -148,7 +148,7 @@ public class NodeData extends Template implements Comparable<NodeData> {
             if (!specialization.isReachable()) {
                 continue;
             }
-            if (specialization.isFrameUsedByGuard()) {
+            if (specialization.isFrameUsed()) {
                 return true;
             }
         }
@@ -239,7 +239,7 @@ public class NodeData extends Template implements Comparable<NodeData> {
     public boolean supportsFrame() {
         if (executableTypes != null) {
             for (ExecutableTypeData execType : getExecutableTypes(-1)) {
-                if (execType.findParameter("frameValue") == null) {
+                if (execType.findParameter(TemplateMethod.FRAME_NAME) == null) {
                     return false;
                 }
             }

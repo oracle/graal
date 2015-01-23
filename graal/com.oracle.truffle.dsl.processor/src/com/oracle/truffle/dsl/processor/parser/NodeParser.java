@@ -33,6 +33,7 @@ import javax.tools.Diagnostic.Kind;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.dsl.processor.*;
+import com.oracle.truffle.dsl.processor.expression.*;
 import com.oracle.truffle.dsl.processor.java.*;
 import com.oracle.truffle.dsl.processor.java.compiler.*;
 import com.oracle.truffle.dsl.processor.model.*;
@@ -174,8 +175,10 @@ public class NodeParser extends AbstractParser<NodeData> {
         return node;
     }
 
-    private ArrayList<Element> loadMembers(TypeElement templateType) {
-        return new ArrayList<>(CompilerFactory.getCompiler(templateType).getAllMembersInDeclarationOrder(context.getEnvironment(), templateType));
+    private List<Element> loadMembers(TypeElement templateType) {
+        List<Element> members = new ArrayList<>(CompilerFactory.getCompiler(templateType).getAllMembersInDeclarationOrder(context.getEnvironment(), templateType));
+
+        return members;
     }
 
     private boolean containsSpecializations(List<Element> elements) {
@@ -687,7 +690,11 @@ public class NodeParser extends AbstractParser<NodeData> {
             return;
         }
 
-        initializeGuards(elements, node);
+        initializeExpressions(elements, node);
+        if (node.hasErrors()) {
+            return;
+        }
+
         initializeGeneric(node);
         initializeUninitialized(node);
         initializeOrder(node);
@@ -775,11 +782,11 @@ public class NodeParser extends AbstractParser<NodeData> {
                         AnnotationValue value = ElementUtils.getAnnotationValue(specialization.getMarkerAnnotation(), "contains");
                         if (foundSpecialization.compareTo(specialization) > 0) {
                             specialization.addError(value, "The contained specialization '%s' must be declared before the containing specialization.", includeName);
-                        } else {
-                            specialization.addError(value,
-                                            "The contained specialization '%s' is not fully compatible. The contained specialization must be strictly more generic than the containing one.",
-                                            includeName);
-                        }
+                        }/*
+                          * else { specialization.addError(value,
+                          * "The contained specialization '%s' is not fully compatible. The contained specialization must be strictly more generic than the containing one."
+                          * , includeName); }
+                          */
 
                     }
                     resolvedSpecializations.add(foundSpecialization);
@@ -925,74 +932,68 @@ public class NodeParser extends AbstractParser<NodeData> {
         return changed;
     }
 
-    private void initializeGuards(List<? extends Element> elements, NodeData node) {
-        Map<String, List<ExecutableElement>> potentialGuards = new HashMap<>();
-        for (SpecializationData specialization : node.getSpecializations()) {
-            for (GuardExpression exp : specialization.getGuards()) {
-                potentialGuards.put(exp.getGuardName(), null);
-            }
-        }
+    private void initializeExpressions(List<? extends Element> elements, NodeData node) {
+        List<Element> members = filterNotAccessibleElements(node.getTemplateType(), elements);
 
-        TypeMirror booleanType = context.getType(boolean.class);
-        for (ExecutableElement potentialGuard : ElementFilter.methodsIn(elements)) {
-            if (potentialGuard.getModifiers().contains(Modifier.PRIVATE)) {
-                continue;
-            }
-            String methodName = potentialGuard.getSimpleName().toString();
-            if (!potentialGuards.containsKey(methodName)) {
-                continue;
-            }
-
-            if (!ElementUtils.typeEquals(potentialGuard.getReturnType(), booleanType)) {
-                continue;
-            }
-
-            List<ExecutableElement> potentialMethods = potentialGuards.get(methodName);
-            if (potentialMethods == null) {
-                potentialMethods = new ArrayList<>();
-                potentialGuards.put(methodName, potentialMethods);
-            }
-            potentialMethods.add(potentialGuard);
-        }
+        final TypeMirror booleanType = context.getType(boolean.class);
 
         for (SpecializationData specialization : node.getSpecializations()) {
-            for (GuardExpression exp : specialization.getGuards()) {
-                resolveGuardExpression(node, specialization, potentialGuards, exp);
+            if (specialization.getMethod() == null) {
+                continue;
             }
+
+            List<Element> specializationMembers = new ArrayList<>();
+            for (Parameter p : specialization.getParameters()) {
+                VariableElement variableElement = p.getVariableElement();
+                if (variableElement == null) {
+                    throw new AssertionError("All parameters must be resolved for " + specialization);
+                }
+
+                specializationMembers.add(variableElement);
+            }
+            specializationMembers.addAll(members);
+
+            DSLExpressionResolver resolver = new DSLExpressionResolver(context, specializationMembers);
+            List<String> guardDefinitions = ElementUtils.getAnnotationValueList(String.class, specialization.getMarkerAnnotation(), "guards");
+            List<GuardExpression> guardExpressions = new ArrayList<>();
+            for (String guard : guardDefinitions) {
+                GuardExpression guardExpression;
+                DSLExpression expression = null;
+                try {
+                    expression = DSLExpression.parse(guard);
+                    expression.accept(resolver);
+                    guardExpression = new GuardExpression(specialization, expression);
+                    if (!ElementUtils.typeEquals(expression.getResolvedType(), booleanType)) {
+                        guardExpression.addError("Incompatible return type %s. Guard expressions must return boolean.", ElementUtils.getSimpleName(expression.getResolvedType()));
+                    }
+// guardExpression.addWarning("Expression:%s", expression.toString());
+                } catch (InvalidExpressionException e) {
+                    guardExpression = new GuardExpression(specialization, null);
+                    guardExpression.addError("Error parsing expression '%s': %s", guard, e.getMessage());
+                }
+                guardExpressions.add(guardExpression);
+            }
+            specialization.setGuards(guardExpressions);
         }
     }
 
-    private void resolveGuardExpression(NodeData node, TemplateMethod source, Map<String, List<ExecutableElement>> guards, GuardExpression expression) {
-        List<ExecutableElement> availableGuards = guards.get(expression.getGuardName());
-        if (availableGuards == null) {
-            source.addError("No compatible guard with method name '%s' found.", expression.getGuardName());
-            return;
-        }
-
-        String[] childNames = expression.getChildNames();
-        if (childNames != null) {
-            NodeExecutionData[] resolvedExecutions = new NodeExecutionData[childNames.length];
-            for (int i = 0; i < childNames.length; i++) {
-                String childName = childNames[i];
-                NodeExecutionData execution = node.findExecutionByExpression(childName);
-                if (execution == null) {
-                    source.addError("Guard parameter '%s' for guard '%s' could not be mapped to a declared child node.", childName, expression.getGuardName());
-                    return;
+    private static List<Element> filterNotAccessibleElements(TypeElement templateType, List<? extends Element> elements) {
+        String packageName = ElementUtils.getPackageName(templateType);
+        List<Element> filteredElements = new ArrayList<>(elements);
+        for (Element element : elements) {
+            Modifier visibility = ElementUtils.getVisibility(element.getModifiers());
+            if (visibility == Modifier.PRIVATE) {
+                continue;
+            } else if (visibility == null) {
+                String elementPackageName = ElementUtils.getPackageName(element.getEnclosingElement().asType());
+                if (!Objects.equals(packageName, elementPackageName) && !elementPackageName.equals("java.lang")) {
+                    continue;
                 }
-                resolvedExecutions[i] = execution;
             }
-            expression.setResolvedChildren(resolvedExecutions);
-        }
 
-        GuardParser parser = new GuardParser(context, node, source, expression);
-        List<GuardData> matchingGuards = parser.parse(availableGuards);
-        if (!matchingGuards.isEmpty() && matchingGuards.get(0) != null) {
-            expression.setResolvedGuard(matchingGuards.get(0));
-        } else {
-            MethodSpec spec = parser.createSpecification(source.getMethod(), source.getMarkerAnnotation());
-            spec.applyTypeDefinitions("types");
-            source.addError("No guard with name '%s' matched the required signature. Expected signature: %n%s", expression.getGuardName(), spec.toSignatureString("guard"));
+            filteredElements.add(element);
         }
+        return filteredElements;
     }
 
     private void initializeGeneric(final NodeData node) {

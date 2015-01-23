@@ -74,29 +74,17 @@ public class SourceSectionTest {
     @NodeChild("a")
     static class SourceSection0 extends ValueNode {
 
-        boolean isOne(int a) {
-            return a == 1;
-        }
-
-        boolean isTwo(int a) {
-            return a == 2;
-        }
-
-        boolean isThree(int a) {
-            return a == 3;
-        }
-
-        @Specialization(guards = "isOne")
+        @Specialization(guards = "a == 1")
         int do1(int a) {
             return a;
         }
 
-        @Specialization(guards = "isTwo")
+        @Specialization(guards = "a == 2")
         int do2(int a) {
             return a;
         }
 
-        @Specialization(guards = "isThree")
+        @Specialization(guards = "a == 3")
         int do3(int a) {
             return a;
         }

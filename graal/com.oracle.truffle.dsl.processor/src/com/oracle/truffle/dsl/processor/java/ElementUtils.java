@@ -181,8 +181,17 @@ public class ElementUtils {
     }
 
     public static String getReadableSignature(ExecutableElement method) {
-        // TODO toString does not guarantee a good signature
-        return method.toString();
+        StringBuilder builder = new StringBuilder();
+        builder.append(method.getSimpleName().toString());
+        builder.append("(");
+        String sep = "";
+        for (VariableElement var : method.getParameters()) {
+            builder.append(sep);
+            builder.append(getSimpleName(var.asType()));
+            sep = ", ";
+        }
+        builder.append(")");
+        return builder.toString();
     }
 
     public static boolean hasError(TypeMirror mirror) {
@@ -680,6 +689,8 @@ public class ElementUtils {
                 return pack.getQualifiedName().toString();
             case ARRAY:
                 return getSimpleName(((ArrayType) mirror).getComponentType());
+            case EXECUTABLE:
+                return null;
             default:
                 throw new RuntimeException("Unknown type specified " + mirror.getKind());
         }

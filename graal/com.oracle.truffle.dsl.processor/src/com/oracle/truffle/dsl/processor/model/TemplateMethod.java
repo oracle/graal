@@ -35,6 +35,7 @@ import com.oracle.truffle.dsl.processor.util.*;
  */
 public class TemplateMethod extends MessageContainer implements Comparable<TemplateMethod> {
 
+    public static final String FRAME_NAME = "frameValue";
     public static final int NO_NATURAL_ORDER = -1;
 
     private String id;
@@ -66,6 +67,10 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
             parameterCache.put(returnType.getLocalName(), returnType);
         }
         this.id = id;
+    }
+
+    public final Parameter getFrame() {
+        return findParameter(FRAME_NAME);
     }
 
     public String createReferenceName() {

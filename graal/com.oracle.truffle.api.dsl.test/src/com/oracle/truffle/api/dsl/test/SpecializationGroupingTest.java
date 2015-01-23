@@ -58,9 +58,9 @@ public class SpecializationGroupingTest {
         TestGrouping.true3 = 0;
 
         Assert.assertEquals(42, TestHelper.executeWith(root, 21, 21));
-        Assert.assertEquals(4, TestGrouping.true1);
+        Assert.assertEquals(5, TestGrouping.true1);
         Assert.assertEquals(0, TestGrouping.false1);
-        Assert.assertEquals(4, TestGrouping.true2);
+        Assert.assertEquals(5, TestGrouping.true2);
         Assert.assertEquals(5, TestGrouping.false2);
         Assert.assertEquals(5, TestGrouping.true3);
         Assert.assertEquals(10, SimpleTypes.intCheck);
@@ -69,9 +69,9 @@ public class SpecializationGroupingTest {
         Assert.assertEquals(4, a3.checked);
 
         Assert.assertEquals(42, TestHelper.executeWith(root, 21, 21));
-        Assert.assertEquals(5, TestGrouping.true1);
+        Assert.assertEquals(6, TestGrouping.true1);
         Assert.assertEquals(0, TestGrouping.false1);
-        Assert.assertEquals(5, TestGrouping.true2);
+        Assert.assertEquals(6, TestGrouping.true2);
         Assert.assertEquals(6, TestGrouping.false2);
         Assert.assertEquals(6, TestGrouping.true3);
 
@@ -123,32 +123,32 @@ public class SpecializationGroupingTest {
             throw new AssertionError();
         }
 
-        @Specialization(guards = {"true1", "true2", "!false2", "true3"}, assumptions = {"a1", "a3"}, rewriteOn = RuntimeException.class)
+        @Specialization(guards = {"true1(value1)", "true2(value1)", "!false2(value1)", "true3(value1)"}, assumptions = {"a1", "a3"}, rewriteOn = RuntimeException.class)
         public int throwRewrite(int value1, int value2) {
             throw new RuntimeException();
         }
 
-        @Specialization(guards = {"true1", "true2", "!false2", "true3"}, contains = "throwRewrite", assumptions = {"a1", "a3"})
+        @Specialization(guards = {"true1(value1)", "true2(value1)", "!false2(value1)", "true3(value1)"}, contains = "throwRewrite", assumptions = {"a1", "a3"})
         public int success(int value1, int value2) {
             return value1 + value2;
         }
 
-        @Specialization(guards = {"true1", "true2", "!false2", "!true3"}, assumptions = {"a1", "a3"})
+        @Specialization(guards = {"true1(value1)", "true2(value1)", "!false2(value1)", "!true3(value1)"}, assumptions = {"a1", "a3"})
         public int fail5(int value1, int value2) {
             throw new AssertionError();
         }
 
-        @Specialization(guards = {"true1", "true2", "false2"}, assumptions = {"a1", "a3"})
+        @Specialization(guards = {"true1(value1)", "true2(value1)", "false2(value1)"}, assumptions = {"a1", "a3"})
         public int fail4(int value1, int value2) {
             throw new AssertionError();
         }
 
-        @Specialization(guards = {"true1", "true2"}, assumptions = {"a1", "a3"})
+        @Specialization(guards = {"true1(value1)", "true2(value1)"}, assumptions = {"a1", "a3"})
         public int fail2break(int value1, int value2) {
             throw new AssertionError();
         }
 
-        @Specialization(guards = {"true1", "false1"})
+        @Specialization(guards = {"true1(value1)", "false1(value1, value2)"})
         public int fail1(int value1, int value2) {
             throw new AssertionError();
         }
@@ -165,17 +165,17 @@ public class SpecializationGroupingTest {
     @NodeChild(value = "genericChild", type = GenericInt.class)
     public abstract static class TestElseConnectionBug1 extends ValueNode {
 
-        @Specialization(rewriteOn = {SlowPathException.class}, guards = "isInitialized")
+        @Specialization(rewriteOn = {SlowPathException.class}, guards = "isInitialized(value)")
         public int do1(int value) throws SlowPathException {
             throw new SlowPathException();
         }
 
-        @Specialization(contains = "do1", guards = "isInitialized")
+        @Specialization(contains = "do1", guards = "isInitialized(value)")
         public int do2(int value) {
             return value == 42 ? value : 0;
         }
 
-        @Specialization(guards = "!isInitialized")
+        @Specialization(guards = "!isInitialized(value)")
         public Object do3(int value) {
             throw new AssertionError();
         }
@@ -208,17 +208,17 @@ public class SpecializationGroupingTest {
     @NodeChild
     public abstract static class TestElseConnectionBug2 extends ValueNode {
 
-        @Specialization(guards = "guard0")
+        @Specialization(guards = "guard0(value)")
         public int do1(int value) {
             throw new AssertionError();
         }
 
-        @Specialization(guards = "guard1")
+        @Specialization(guards = "guard1(value)")
         public int do2(int value) {
             throw new AssertionError();
         }
 
-        @Specialization(guards = "!guard0")
+        @Specialization(guards = "!guard0(value)")
         public int do3(int value) {
             return value;
         }

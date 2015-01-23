@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.dsl.processor.model;
 
+import javax.lang.model.element.*;
 import javax.lang.model.type.*;
 
 import com.oracle.truffle.dsl.processor.java.*;
@@ -35,6 +36,8 @@ public final class Parameter {
     private final int specificationVarArgsIndex;
     private final int typeVarArgsIndex;
     private final TypeMirror actualType;
+
+    private VariableElement variableElement;
 
     public Parameter(ParameterSpec specification, TypeMirror actualType, int specificationVarArgsIndex, int typeVarArgsIndex) {
         this.specification = specification;
@@ -67,6 +70,15 @@ public final class Parameter {
         this.specificationVarArgsIndex = parameter.specificationVarArgsIndex;
         this.localName = parameter.localName;
         this.typeVarArgsIndex = parameter.typeVarArgsIndex;
+        this.variableElement = parameter.variableElement;
+    }
+
+    public void setVariableElement(VariableElement variableElement) {
+        this.variableElement = variableElement;
+    }
+
+    public VariableElement getVariableElement() {
+        return variableElement;
     }
 
     public int getTypeVarArgsIndex() {

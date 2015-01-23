@@ -119,7 +119,7 @@ public class ShortCircuitTest {
             return false;
         }
 
-        @Specialization(guards = "guard")
+        @Specialization(guards = "guard(a, hasB, b)")
         int doIt(int a, boolean hasB, int b) {
             return a + b;
         }

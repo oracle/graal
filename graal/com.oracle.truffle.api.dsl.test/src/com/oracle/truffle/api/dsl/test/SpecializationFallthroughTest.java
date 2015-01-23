@@ -212,7 +212,7 @@ public class SpecializationFallthroughTest {
             return a == 1;
         }
 
-        @Specialization(guards = "guard0")
+        @Specialization(guards = "guard0(a)")
         int do2(int a) {
             return a;
         }
@@ -309,7 +309,7 @@ public class SpecializationFallthroughTest {
 
         static int fallthrough1;
 
-        @Specialization(guards = "isDo1", rewriteOn = ArithmeticException.class)
+        @Specialization(guards = "isDo1(a)", rewriteOn = ArithmeticException.class)
         int do1(int a) throws ArithmeticException {
             if (a == 0) {
                 fallthrough1++;
@@ -322,7 +322,7 @@ public class SpecializationFallthroughTest {
             return a == 0 || a == 1;
         }
 
-        @Specialization(guards = "isDo1")
+        @Specialization(guards = "isDo1(a)")
         int do2(int a) {
             return a;
         }

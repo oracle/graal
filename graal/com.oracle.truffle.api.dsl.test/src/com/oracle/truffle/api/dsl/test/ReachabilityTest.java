@@ -182,7 +182,7 @@ public class ReachabilityTest {
             return false;
         }
 
-        @Specialization(guards = "foo")
+        @Specialization(guards = "foo()")
         int do2() {
             return 1;
         }
@@ -206,7 +206,7 @@ public class ReachabilityTest {
         }
 
         @ExpectError("Specialization is not reachable. It is shadowed by do2().")
-        @Specialization(guards = "foo")
+        @Specialization(guards = "foo()")
         int do1() {
             return 1;
         }
@@ -219,7 +219,7 @@ public class ReachabilityTest {
             return false;
         }
 
-        @Specialization(guards = "foo")
+        @Specialization(guards = "foo()")
         int do2() {
             return 1;
         }
@@ -237,13 +237,13 @@ public class ReachabilityTest {
             return false;
         }
 
-        @Specialization(guards = "foo")
+        @Specialization(guards = "foo()")
         int do2() {
             return 1;
         }
 
         @ExpectError("Specialization is not reachable. It is shadowed by do2().")
-        @Specialization(guards = "foo")
+        @Specialization(guards = "foo()")
         int do1() {
             return 2;
         }

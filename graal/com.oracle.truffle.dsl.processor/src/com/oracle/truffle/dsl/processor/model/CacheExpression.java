@@ -22,33 +22,40 @@
  */
 package com.oracle.truffle.dsl.processor.model;
 
-import java.util.*;
+import javax.lang.model.element.*;
 
-public class GuardData extends TemplateMethod {
+import com.oracle.truffle.dsl.processor.expression.*;
+import com.oracle.truffle.dsl.processor.java.*;
 
-    private List<GuardExpression> impliesExpressions;
+public final class CacheExpression extends MessageContainer {
 
-    public GuardData(TemplateMethod method, List<GuardExpression> impliesExpressions) {
-        super(method);
-        this.impliesExpressions = impliesExpressions;
-    }
+    private final DSLExpression expression;
+    private final Parameter sourceParameter;
+    private final AnnotationMirror sourceAnnotationMirror;
 
-    public List<GuardExpression> getImpliesExpressions() {
-        return impliesExpressions;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (obj instanceof GuardData) {
-            GuardData other = (GuardData) obj;
-            return getMethod().equals(other.getMethod());
-        }
-        return false;
+    public CacheExpression(Parameter sourceParameter, AnnotationMirror sourceAnnotationMirror, DSLExpression expression) {
+        this.sourceParameter = sourceParameter;
+        this.expression = expression;
+        this.sourceAnnotationMirror = sourceAnnotationMirror;
     }
 
     @Override
-    public int hashCode() {
-        return getMethod().hashCode();
+    public Element getMessageElement() {
+        return sourceParameter.getVariableElement();
+    }
+
+    @Override
+    public AnnotationMirror getMessageAnnotation() {
+        return sourceAnnotationMirror;
+    }
+
+    @Override
+    public AnnotationValue getMessageAnnotationValue() {
+        return ElementUtils.getAnnotationValue(getMessageAnnotation(), "value");
+    }
+
+    public DSLExpression getExpression() {
+        return expression;
     }
 
 }

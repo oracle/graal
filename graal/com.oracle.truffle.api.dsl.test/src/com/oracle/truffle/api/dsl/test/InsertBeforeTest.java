@@ -30,20 +30,12 @@ public class InsertBeforeTest {
     @NodeChild("a")
     static class InsertBefore1Base extends ValueNode {
 
-        boolean g1(int a) {
-            return a == 1;
-        }
-
-        boolean g2(int a) {
-            return a == 2;
-        }
-
-        @Specialization(guards = "g1")
+        @Specialization(guards = "a == 1")
         int f1(int a) {
             return a;
         }
 
-        @Specialization(guards = "g2")
+        @Specialization(guards = "a == 2")
         int f3(int a) {
             return a;
         }
@@ -63,11 +55,7 @@ public class InsertBeforeTest {
     @NodeChild("a")
     static class InsertBefore1T2 extends InsertBefore1Base {
 
-        boolean g0(int a) {
-            return a == 0;
-        }
-
-        @Specialization(guards = "g0", insertBefore = "f1")
+        @Specialization(guards = "a == 0", insertBefore = "f1")
         int f0(int a) {
             return a;
         }
@@ -77,11 +65,7 @@ public class InsertBeforeTest {
     @NodeChild("a")
     static class InsertBefore1T3 extends InsertBefore1Base {
 
-        boolean g0(int a) {
-            return a == 0;
-        }
-
-        @Specialization(guards = "g0", insertBefore = "f3")
+        @Specialization(guards = "a == 0", insertBefore = "f3")
         int f0(int a) {
             return a;
         }
@@ -92,10 +76,6 @@ public class InsertBeforeTest {
     @ExpectError({"Method f3(int) at annotation @Specialization is erroneous: Specialization is not reachable. It is shadowed by f0(int).",
                     "Method f1(int) at annotation @Specialization is erroneous: Specialization is not reachable. It is shadowed by f0(int)."})
     static class InsertBefore1T4 extends InsertBefore1Base {
-
-        boolean g0(int a) {
-            return a == 0;
-        }
 
         @Specialization(insertBefore = "f1")
         int f0(int a) {
@@ -126,7 +106,7 @@ public class InsertBeforeTest {
             return a == 0;
         }
 
-        @Specialization(insertBefore = "f1", guards = "g0")
+        @Specialization(insertBefore = "f1", guards = "a == 0")
         int f0(int a) {
             return a;
         }
@@ -136,11 +116,7 @@ public class InsertBeforeTest {
     @NodeChild("a")
     static class InsertBefore1T6part2 extends InsertBefore1T6part1 {
 
-        boolean g(int a) {
-            return a == 0;
-        }
-
-        @Specialization(insertBefore = "f0", guards = "g")
+        @Specialization(insertBefore = "f0", guards = "a == 3")
         int f(int a) {
             return a;
         }

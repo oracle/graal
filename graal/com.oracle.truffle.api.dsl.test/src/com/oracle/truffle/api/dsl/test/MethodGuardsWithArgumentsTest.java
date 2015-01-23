@@ -69,7 +69,7 @@ public class MethodGuardsWithArgumentsTest {
             return true;
         }
 
-        @Specialization(guards = "guard ()")
+        @Specialization(guards = "guard()")
         int do1() {
             return 42;
         }
@@ -214,7 +214,7 @@ public class MethodGuardsWithArgumentsTest {
             return true;
         }
 
-        @ExpectError("No compatible guard with method name 'guard(' found.%")
+        @ExpectError("Error parsing expression 'guard(': -- line 1 col 7: \")\" expected%")
         @Specialization(guards = "guard(")
         int do1() {
             return 42;
@@ -227,7 +227,7 @@ public class MethodGuardsWithArgumentsTest {
             return true;
         }
 
-        @ExpectError("No compatible guard with method name 'guard)' found.%")
+        @ExpectError("Error parsing expression 'guard)': -- line 1 col 6: EOF expected%")
         @Specialization(guards = "guard)")
         int do1() {
             return 42;
@@ -241,7 +241,7 @@ public class MethodGuardsWithArgumentsTest {
             return true;
         }
 
-        @ExpectError("Guard parameter 'a' for guard 'guard' could not be mapped to a declared child node.")
+        @ExpectError("Error parsing expression 'guard(a)': a cannot be resolved.")
         @Specialization(guards = "guard(a)")
         int do1() {
             return 42;
@@ -255,7 +255,7 @@ public class MethodGuardsWithArgumentsTest {
             return true;
         }
 
-        @ExpectError("Guard parameter 'a' for guard 'guard' could not be mapped to a declared child node.")
+        @ExpectError("Error parsing expression 'guard(a)': a cannot be resolved.")
         @Specialization(guards = "guard(a)")
         int do1(int b) {
             return b;

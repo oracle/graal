@@ -72,7 +72,7 @@ public class MethodGuardsTest {
             return value0 != Integer.MAX_VALUE;
         }
 
-        @Specialization(guards = "g")
+        @Specialization(guards = "g(value0)")
         int f1(int value0) {
             specializedInvocations++;
             return value0 + 1;
@@ -107,7 +107,7 @@ public class MethodGuardsTest {
             return globalFlag;
         }
 
-        @Specialization(guards = "globalFlagGuard")
+        @Specialization(guards = "globalFlagGuard()")
         int f1(Object value0) {
             return 41;
         }
@@ -132,7 +132,7 @@ public class MethodGuardsTest {
             return true;
         }
 
-        @Specialization(guards = "baseGuard")
+        @Specialization(guards = "baseGuard(value0)")
         int doSpecialized(BExtendsAbstract value0) {
             return 42;
         }
@@ -145,8 +145,7 @@ public class MethodGuardsTest {
             return true;
         }
 
-        @Specialization(guards = "baseGuard")
-        @ExpectError("No guard with name 'baseGuard' matched the required signature.%")
+        @Specialization(guards = "baseGuard(value0)")
         int doSpecialized(String value0) {
             return 42;
         }
@@ -166,7 +165,7 @@ public class MethodGuardsTest {
             return true;
         }
 
-        @Specialization(guards = "baseGuard")
+        @Specialization(guards = "baseGuard(value0)")
         int doSpecialized(int value0) {
             return value0;
         }
@@ -186,7 +185,7 @@ public class MethodGuardsTest {
             return true;
         }
 
-        @Specialization(guards = "baseGuard")
+        @Specialization(guards = "baseGuard(value0)")
         int doSpecialized(int value0) {
             return value0;
         }
@@ -210,7 +209,7 @@ public class MethodGuardsTest {
             return true;
         }
 
-        @Specialization(guards = "guard")
+        @Specialization(guards = "guard(value0)")
         int doSpecialized(int value0) {
             return value0;
         }
@@ -233,7 +232,7 @@ public class MethodGuardsTest {
             return true;
         }
 
-        @Specialization(guards = "guard")
+        @Specialization(guards = "guard(value0)")
         int doSpecialized(BExtendsAbstract value0) {
             return 42;
         }
@@ -261,7 +260,7 @@ public class MethodGuardsTest {
             return true;
         }
 
-        @Specialization(guards = "guard")
+        @Specialization(guards = "guard(value0)")
         int doSpecialized(BExtendsAbstract value0) {
             return 42;
         }
@@ -274,7 +273,7 @@ public class MethodGuardsTest {
             return false;
         }
 
-        @Specialization(guards = "guard")
+        @Specialization(guards = "guard(value0)")
         int doSpecialized(BExtendsAbstract value0) {
             return 42;
         }
@@ -283,7 +282,7 @@ public class MethodGuardsTest {
     @NodeChildren({@NodeChild("a"), @NodeChild("b")})
     abstract static class TestGuardResolve5 extends ValueNode {
 
-        @Specialization(guards = "guard")
+        @Specialization(guards = "guard(left, right)")
         int add(Interface left, Interface right) {
             return 42;
         }
@@ -308,12 +307,12 @@ public class MethodGuardsTest {
             return true;
         }
 
-        @Specialization(guards = "guard")
+        @Specialization(guards = "guard(value0)")
         BExtendsAbstract do1(BExtendsAbstract value0) {
             return value0;
         }
 
-        @Specialization(guards = "guard")
+        @Specialization(guards = "guard(value0)")
         CExtendsAbstract do2(CExtendsAbstract value0) {
             return value0;
         }

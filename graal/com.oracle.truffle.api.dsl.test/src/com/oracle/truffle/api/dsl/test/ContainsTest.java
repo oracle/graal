@@ -100,7 +100,7 @@ public class ContainsTest {
             return a == 0;
         }
 
-        @Specialization(guards = "isZero")
+        @Specialization(guards = "isZero(a)")
         int f1(int a) {
             return a + 1;
         }
@@ -142,17 +142,17 @@ public class ContainsTest {
             return a > 0;
         }
 
-        @Implies("isGreaterZero")
+        @Implies("isGreaterZero(a)")
         static boolean isOne(int a) {
             return a == 1;
         }
 
-        @Specialization(guards = {"isOne"})
+        @Specialization(guards = {"isOne(a)"})
         int f1(int a) {
             return a + 1;
         }
 
-        @Specialization(contains = "f1", guards = {"isGreaterZero"})
+        @Specialization(contains = "f1", guards = {"isGreaterZero(a)"})
         int f2(int a) {
             if (a == 1) {
                 return 2;
@@ -190,21 +190,17 @@ public class ContainsTest {
     @NodeChild("a")
     abstract static class Contains4 extends ValueNode {
 
-        static boolean isGreaterEqualZero(int a) {
-            return a >= 0;
-        }
-
         @Implies("isGreaterEqualZero")
         static boolean isOne(int a) {
             return a == 1;
         }
 
-        @Specialization(guards = {"isOne"})
+        @Specialization(guards = "isOne(a)")
         int f0(int a) {
             return 1;
         }
 
-        @Specialization(contains = "f0", guards = {"isGreaterEqualZero"})
+        @Specialization(contains = "f0", guards = "a >= 0")
         int f1(int a) {
             return a;
         }
@@ -329,7 +325,7 @@ public class ContainsTest {
             return a;
         }
 
-        @ExpectError({"Specialization is not reachable. It is shadowed by f0(double).", "The contained specialization 'f0' is not fully compatible.%"})
+        @ExpectError({"Specialization is not reachable. It is shadowed by f0(double)."})
         @Specialization(contains = "f0")
         int f1(int a) { // implicit type
             return a;
@@ -343,7 +339,6 @@ public class ContainsTest {
             return a;
         }
 
-        @ExpectError("The contained specialization 'f0' is not fully compatible.%")
         @Specialization(contains = "f0")
         Object f1(int a, Object b) {
             return a;
@@ -357,7 +352,6 @@ public class ContainsTest {
             return a;
         }
 
-        @ExpectError("The contained specialization 'f0' is not fully compatible.%")
         @Specialization(contains = "f0")
         Object f1(int a, double b) { // implicit type
             return a;
@@ -370,7 +364,7 @@ public class ContainsTest {
             return true;
         }
 
-        @Specialization(guards = "g1")
+        @Specialization(guards = "g1()")
         Object f0() {
             return null;
         }
@@ -392,8 +386,8 @@ public class ContainsTest {
             return null;
         }
 
-        @ExpectError({"Specialization is not reachable. It is shadowed by f0().", "The contained specialization 'f0' is not fully compatible.%"})
-        @Specialization(guards = "g1", contains = "f0")
+        @ExpectError({"Specialization is not reachable. It is shadowed by f0()."})
+        @Specialization(guards = "g1()", contains = "f0")
         Object f1() {
             return null;
         }
@@ -405,13 +399,12 @@ public class ContainsTest {
             return true;
         }
 
-        @Specialization(guards = "g1")
+        @Specialization(guards = "g1()")
         Object f0() {
             return null;
         }
 
-        @ExpectError({"The contained specialization 'f0' is not fully compatible.%"})
-        @Specialization(guards = "!g1", contains = "f0")
+        @Specialization(guards = "!g1()", contains = "f0")
         Object f1() {
             return null;
         }
@@ -427,13 +420,12 @@ public class ContainsTest {
             return true;
         }
 
-        @Specialization(guards = "g1")
+        @Specialization(guards = "g1()")
         Object f0() {
             return null;
         }
 
-        @ExpectError({"The contained specialization 'f0' is not fully compatible.%"})
-        @Specialization(guards = "g2", contains = "f0")
+        @Specialization(guards = "g2()", contains = "f0")
         Object f1() {
             return null;
         }
@@ -450,12 +442,12 @@ public class ContainsTest {
             return true;
         }
 
-        @Specialization(guards = "g1")
+        @Specialization(guards = "g1()")
         Object f0() {
             return null;
         }
 
-        @Specialization(guards = "g2", contains = "f0")
+        @Specialization(guards = "g2()", contains = "f0")
         Object f1() {
             return null;
         }
@@ -472,12 +464,12 @@ public class ContainsTest {
             return true;
         }
 
-        @Specialization(guards = "g1")
+        @Specialization(guards = "g1()")
         Object f0() {
             return null;
         }
 
-        @Specialization(guards = "!g2", contains = "f0")
+        @Specialization(guards = "!g2()", contains = "f0")
         Object f1() {
             return null;
         }
@@ -493,12 +485,12 @@ public class ContainsTest {
             return true;
         }
 
-        @Specialization(guards = {"g1", "g2"})
+        @Specialization(guards = {"g1()", "g2()"})
         Object f0() {
             return null;
         }
 
-        @Specialization(guards = "g2", contains = "f0")
+        @Specialization(guards = "g2()", contains = "f0")
         Object f1() {
             return null;
         }
@@ -513,36 +505,6 @@ public class ContainsTest {
         }
 
         @Specialization(contains = "f0")
-        Object f1() {
-            return null;
-        }
-    }
-
-    @NodeAssumptions("a1")
-    abstract static class ContainsAssumption2 extends ValueNode {
-
-        @Specialization
-        Object f0() {
-            return null;
-        }
-
-        @ExpectError({"Specialization is not reachable. It is shadowed by f0().", "The contained specialization 'f0' is not fully compatible.%"})
-        @Specialization(contains = "f0", assumptions = "a1")
-        Object f1() {
-            return null;
-        }
-    }
-
-    @NodeAssumptions({"a1", "a2"})
-    abstract static class ContainsAssumption3 extends ValueNode {
-
-        @Specialization(assumptions = "a1")
-        Object f0() {
-            return null;
-        }
-
-        @ExpectError({"The contained specialization 'f0' is not fully compatible.%"})
-        @Specialization(contains = "f0", assumptions = "a2")
         Object f1() {
             return null;
         }
@@ -619,20 +581,12 @@ public class ContainsTest {
     @NodeChild("a")
     static class PolymorphicToMonomorphic0 extends ValueNode {
 
-        boolean isOne(int a) {
-            return a == 1;
-        }
-
-        boolean isTwo(int a) {
-            return a == 2;
-        }
-
-        @Specialization(guards = "isOne")
+        @Specialization(guards = "a == 1")
         int do1(int a) {
             return a;
         }
 
-        @Specialization(guards = "isTwo")
+        @Specialization(guards = "a == 2")
         int do2(int a) {
             return a;
         }

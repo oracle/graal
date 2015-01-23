@@ -22,20 +22,17 @@
  */
 package com.oracle.truffle.dsl.processor.model;
 
-import java.util.*;
-
 import javax.lang.model.element.*;
 
 import com.oracle.truffle.dsl.processor.expression.*;
-import com.oracle.truffle.dsl.processor.expression.DSLExpression.Negate;
 import com.oracle.truffle.dsl.processor.java.*;
 
-public final class GuardExpression extends MessageContainer {
+public final class AssumptionExpression extends MessageContainer {
 
     private final TemplateMethod source;
     private final DSLExpression expression;
 
-    public GuardExpression(TemplateMethod source, DSLExpression expression) {
+    public AssumptionExpression(TemplateMethod source, DSLExpression expression) {
         this.source = source;
         this.expression = expression;
     }
@@ -52,35 +49,11 @@ public final class GuardExpression extends MessageContainer {
 
     @Override
     public AnnotationValue getMessageAnnotationValue() {
-        return ElementUtils.getAnnotationValue(getMessageAnnotation(), "guards");
+        return ElementUtils.getAnnotationValue(getMessageAnnotation(), "assumptions");
     }
 
     public DSLExpression getExpression() {
         return expression;
-    }
-
-    public boolean equalsNegated(GuardExpression other) {
-        boolean negated = false;
-        DSLExpression thisExpression = expression;
-        if (thisExpression instanceof Negate) {
-            negated = true;
-            thisExpression = ((Negate) thisExpression).getReceiver();
-        }
-
-        boolean otherNegated = false;
-        DSLExpression otherExpression = other.expression;
-        if (otherExpression instanceof Negate) {
-            otherNegated = true;
-            otherExpression = ((Negate) otherExpression).getReceiver();
-        }
-        return Objects.equals(thisExpression, otherExpression) && negated != otherNegated;
-    }
-
-    public boolean implies(GuardExpression other) {
-        if (Objects.equals(expression, other.expression)) {
-            return true;
-        }
-        return false;
     }
 
 }

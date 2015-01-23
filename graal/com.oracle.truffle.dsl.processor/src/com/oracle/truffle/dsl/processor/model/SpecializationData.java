@@ -24,8 +24,9 @@ package com.oracle.truffle.dsl.processor.model;
 
 import java.util.*;
 
+import javax.lang.model.element.*;
+
 import com.oracle.truffle.dsl.processor.*;
-import com.oracle.truffle.dsl.processor.java.*;
 
 public final class SpecializationData extends TemplateMethod {
 
@@ -40,6 +41,8 @@ public final class SpecializationData extends TemplateMethod {
     private final SpecializationKind kind;
     private final List<SpecializationThrowsData> exceptions;
     private List<GuardExpression> guards = Collections.emptyList();
+    private List<CacheExpression> caches = Collections.emptyList();
+    private List<AssumptionExpression> assumptionExpressions = Collections.emptyList();
     private List<ShortCircuitData> shortCircuits;
     private List<String> assumptions = Collections.emptyList();
     private final Set<SpecializationData> contains = new TreeSet<>();
@@ -60,6 +63,15 @@ public final class SpecializationData extends TemplateMethod {
         for (SpecializationThrowsData exception : exceptions) {
             exception.setSpecialization(this);
         }
+    }
+
+    public Parameter findByVariable(VariableElement variable) {
+        for (Parameter parameter : getParameters()) {
+            if (parameter.getVariableElement() == variable) {
+                return parameter;
+            }
+        }
+        return null;
     }
 
     public void setInsertBefore(SpecializationData insertBefore) {
@@ -113,11 +125,7 @@ public final class SpecializationData extends TemplateMethod {
             sinks.addAll(exceptions);
         }
         if (guards != null) {
-            for (GuardExpression guard : guards) {
-                if (guard.isResolved()) {
-                    sinks.add(guard.getResolvedGuard());
-                }
-            }
+            sinks.addAll(guards);
         }
         return sinks;
     }
@@ -284,20 +292,24 @@ public final class SpecializationData extends TemplateMethod {
         return String.format("%s [id = %s, method = %s, guards = %s, signature = %s]", getClass().getSimpleName(), getId(), getMethod(), getGuards(), getTypeSignature());
     }
 
-    public boolean isFrameUsedByGuard() {
-        for (GuardExpression guard : getGuards()) {
-            if (guard.getResolvedGuard() == null) {
-                continue;
-            }
+    public boolean isFrameUsed() {
+        return getFrame() != null;
+    }
 
-            for (Parameter param : guard.getResolvedGuard().getParameters()) {
-                if (ElementUtils.typeEquals(param.getType(), getNode().getFrameType())) {
-                    return true;
-                }
-            }
-        }
+    public List<CacheExpression> getCaches() {
+        return caches;
+    }
 
-        return false;
+    public void setCaches(List<CacheExpression> caches) {
+        this.caches = caches;
+    }
+
+    public void setAssumptionExpressions(List<AssumptionExpression> assumptionExpressions) {
+        this.assumptionExpressions = assumptionExpressions;
+    }
+
+    public List<AssumptionExpression> getAssumptionExpressions() {
+        return assumptionExpressions;
     }
 
     public boolean isReachableAfter(SpecializationData prev) {

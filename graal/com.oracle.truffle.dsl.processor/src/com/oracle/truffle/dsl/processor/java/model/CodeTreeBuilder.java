@@ -77,11 +77,11 @@ public class CodeTreeBuilder {
     }
 
     public static CodeTree singleString(String s) {
-        return new CodeTreeBuilder(null).string(s).getTree();
+        return createBuilder().string(s).build();
     }
 
     public static CodeTree singleType(TypeMirror s) {
-        return new CodeTreeBuilder(null).type(s).getTree();
+        return createBuilder().type(s).build();
     }
 
     private CodeTreeBuilder push(CodeTreeKind kind) {

@@ -92,13 +92,6 @@ public class SpecializationMethodParser extends NodeMethodParser<SpecializationD
             specialization.setInsertBeforeName(insertBeforeName);
         }
 
-        List<String> guardDefs = ElementUtils.getAnnotationValueList(String.class, specialization.getMarkerAnnotation(), "guards");
-        List<GuardExpression> guardExpressions = new ArrayList<>();
-        for (String guardDef : guardDefs) {
-            guardExpressions.add(new GuardExpression(guardDef, true));
-        }
-        specialization.setGuards(guardExpressions);
-
         List<String> containsDefs = ElementUtils.getAnnotationValueList(String.class, specialization.getMarkerAnnotation(), "contains");
         Set<String> containsNames = specialization.getContainsNames();
         containsNames.clear();

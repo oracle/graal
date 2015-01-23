@@ -24,9 +24,7 @@ package com.oracle.truffle.dsl.processor.parser;
 
 import java.util.*;
 
-import javax.lang.model.type.*;
-
-import com.oracle.truffle.dsl.processor.java.*;
+import com.oracle.truffle.dsl.processor.generator.*;
 import com.oracle.truffle.dsl.processor.model.*;
 import com.oracle.truffle.dsl.processor.model.TemplateMethod.TypeSignature;
 
@@ -110,16 +108,33 @@ public final class SpecializationGroup {
             return null;
         }
 
+        if (previous.mayBeExcluded()) {
+            return null;
+        }
+
         /* Guard is else branch can be connected in previous specialization. */
         if (elseConnectedGuards.contains(guard)) {
             return guard;
         }
 
         GuardExpression previousGuard = previous.getGuards().get(elseConnectedGuards.size());
-        if (guard.getResolvedGuard().getMethod().equals(previousGuard.getResolvedGuard().getMethod()) && guard.isNegated() != previousGuard.isNegated()) {
+        if (guard.equalsNegated(previousGuard)) {
             return guard;
         }
         return null;
+    }
+
+    private boolean mayBeExcluded() {
+        if (specialization != null) {
+            return NodeGenFactory.mayBeExcluded(specialization);
+        } else {
+            for (SpecializationGroup group : getChildren()) {
+                if (group.mayBeExcluded()) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     private void updateChildren(List<SpecializationGroup> childs) {
@@ -204,38 +219,10 @@ public final class SpecializationGroup {
         // check for guards for required type casts
         for (Iterator<GuardExpression> iterator = guardMatches.iterator(); iterator.hasNext();) {
             GuardExpression guardMatch = iterator.next();
-
-            int signatureIndex = 0;
-            for (Parameter parameter : guardMatch.getResolvedGuard().getParameters()) {
-                signatureIndex++;
-                if (!parameter.getSpecification().isSignature()) {
-                    continue;
-                }
-
-                TypeMirror guardType = parameter.getType();
-
-                // object guards can be safely moved up
-                if (ElementUtils.isObject(guardType)) {
-                    continue;
-                }
-
-                // generic guards can be safely moved up
-                SpecializationData generic = first.node.getGenericSpecialization();
-                if (generic != null) {
-                    Parameter genericParameter = generic.findParameter(parameter.getLocalName());
-                    if (genericParameter != null && ElementUtils.typeEquals(genericParameter.getType(), guardType)) {
-                        continue;
-                    }
-                }
-
-                // signature index required for moving up guards
-                if (containsIndex(typeGuardsMatches, signatureIndex) || (first.getParent() != null && first.getParent().containsTypeGuardIndex(signatureIndex))) {
-                    continue;
-                }
-
+            if (!guardMatch.getExpression().findBoundVariables().isEmpty()) {
                 iterator.remove();
-                break;
             }
+            // TODO we need to be smarter here with bound parameters.
         }
 
         if (assumptionMatches.isEmpty() && typeGuardsMatches.isEmpty() && guardMatches.isEmpty()) {
@@ -250,25 +237,6 @@ public final class SpecializationGroup {
 
         List<SpecializationGroup> newChildren = new ArrayList<>(groups);
         return new SpecializationGroup(newChildren, assumptionMatches, typeGuardsMatches, guardMatches);
-    }
-
-    private boolean containsTypeGuardIndex(int index) {
-        if (containsIndex(typeGuards, index)) {
-            return true;
-        }
-        if (parent != null) {
-            return parent.containsTypeGuardIndex(index);
-        }
-        return false;
-    }
-
-    private static boolean containsIndex(List<TypeGuard> typeGuards, int signatureIndex) {
-        for (TypeGuard guard : typeGuards) {
-            if (guard.signatureIndex == signatureIndex) {
-                return true;
-            }
-        }
-        return false;
     }
 
     public static SpecializationGroup create(SpecializationData specialization) {

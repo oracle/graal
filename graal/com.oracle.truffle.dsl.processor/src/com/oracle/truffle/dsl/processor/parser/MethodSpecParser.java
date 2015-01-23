@@ -81,7 +81,15 @@ public final class MethodSpecParser {
             parameterTypes.add(var.asType());
         }
 
-        return parseImpl(methodSpecification, naturalOrder, id, method, annotation, returnType, parameterTypes);
+        TemplateMethod templateMethod = parseImpl(methodSpecification, naturalOrder, id, method, annotation, returnType, parameterTypes);
+        if (templateMethod != null) {
+            for (int i = 0; i < templateMethod.getParameters().size(); i++) {
+                if (i < method.getParameters().size()) {
+                    templateMethod.getParameters().get(i).setVariableElement(method.getParameters().get(i));
+                }
+            }
+        }
+        return templateMethod;
     }
 
     public TemplateMethod parseImpl(MethodSpec methodSpecification, int naturalOrder, String id, ExecutableElement method, AnnotationMirror annotation, TypeMirror returnType,

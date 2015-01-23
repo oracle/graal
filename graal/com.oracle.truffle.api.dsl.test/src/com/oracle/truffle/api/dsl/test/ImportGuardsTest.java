@@ -36,7 +36,7 @@ public class ImportGuardsTest {
     @NodeChild("a")
     static class ImportGuards0 extends ValueNode {
 
-        @Specialization(guards = "staticGuard")
+        @Specialization(guards = "staticGuard(a)")
         int f0(int a) {
             return a;
         }
@@ -46,26 +46,26 @@ public class ImportGuardsTest {
     @ImportGuards(Imports0.class)
     static class ImportGuards1 extends ValueNode {
 
-        @ExpectError("No compatible guard with method name 'nonStaticGuard' found.")
-        @Specialization(guards = "nonStaticGuard")
+        @ExpectError("Error parsing expression 'nonStaticGuard(a)': The method nonStaticGuard is undefined for the enclosing scope.")
+        @Specialization(guards = "nonStaticGuard(a)")
         int f1(int a) {
             return a;
         }
 
-        @ExpectError("No compatible guard with method name 'protectedGuard' found.")
-        @Specialization(guards = "protectedGuard")
+        @ExpectError("Error parsing expression 'protectedGuard(a)': The method protectedGuard is undefined for the enclosing scope.")
+        @Specialization(guards = "protectedGuard(a)")
         int f2(int a) {
             return a;
         }
 
-        @ExpectError("No compatible guard with method name 'packageGuard' found.")
-        @Specialization(guards = "packageGuard")
+        @ExpectError("Error parsing expression 'packageGuard(a)': The method packageGuard is undefined for the enclosing scope.")
+        @Specialization(guards = "packageGuard(a)")
         int f3(int a) {
             return a;
         }
 
-        @ExpectError("No compatible guard with method name 'privateGuard' found.")
-        @Specialization(guards = "privateGuard")
+        @ExpectError("Error parsing expression 'privateGuard(a)': The method privateGuard is undefined for the enclosing scope.")
+        @Specialization(guards = "privateGuard(a)")
         int f4(int a) {
             return a;
         }
@@ -159,7 +159,7 @@ public class ImportGuardsTest {
             return a == 1;
         }
 
-        @Specialization(guards = "staticGuard")
+        @Specialization(guards = "staticGuard(a)")
         int f0(int a) {
             return a;
         }

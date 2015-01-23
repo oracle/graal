@@ -45,7 +45,7 @@ public class NegatedGuardsTest {
             return true;
         }
 
-        @Specialization(guards = "!guard")
+        @Specialization(guards = "!guard()")
         int do1() {
             throw new AssertionError();
         }
