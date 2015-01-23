@@ -505,7 +505,7 @@ public class Graph {
             Node minCountNode = null;
             for (Node input : node.inputs()) {
                 if (input != null) {
-                    int estimate = input.getUsageCountUpperBound();
+                    int estimate = input.getUsageCount();
                     if (estimate == 0) {
                         return null;
                     } else if (estimate < minCount) {

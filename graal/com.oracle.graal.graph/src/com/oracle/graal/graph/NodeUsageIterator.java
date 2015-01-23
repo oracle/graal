@@ -38,8 +38,9 @@ class NodeUsageIterator implements Iterator<Node> {
         } else if (index == 1) {
             current = node.usage1;
         } else {
-            if (index - Node.INLINE_USAGE_COUNT < node.extraUsages.length) {
-                current = node.extraUsages[index - Node.INLINE_USAGE_COUNT];
+            int relativeIndex = index - Node.INLINE_USAGE_COUNT;
+            if (relativeIndex < node.extraUsagesCount) {
+                current = node.extraUsages[relativeIndex];
             }
         }
     }
