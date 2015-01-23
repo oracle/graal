@@ -732,7 +732,7 @@ public final class NodeClass extends FieldIntrospection {
                         Fingerprint.submit("duplicating %s", node);
                     }
                     Node newNode = node.clone(graph, WithAllEdges);
-                    assert newNode.inputs().isEmpty() || newNode.usages().isEmpty();
+                    assert newNode.inputs().isEmpty() || newNode.hasNoUsages();
                     assert newNode.getClass() == node.getClass();
                     newNodes.put(node, newNode);
                 }

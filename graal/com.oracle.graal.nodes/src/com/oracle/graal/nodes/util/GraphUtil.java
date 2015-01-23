@@ -139,7 +139,7 @@ public class GraphUtil {
         node.safeDelete();
 
         for (Node in : floatingInputs) {
-            if (in.isAlive() && in.usages().isEmpty()) {
+            if (in.isAlive() && in.hasNoUsages()) {
                 killWithUnusedFloatingInputs(in);
             }
         }
@@ -149,7 +149,7 @@ public class GraphUtil {
         if (fixed instanceof StateSplit) {
             FrameState stateAfter = ((StateSplit) fixed).stateAfter();
             ((StateSplit) fixed).setStateAfter(null);
-            if (stateAfter.usages().isEmpty()) {
+            if (stateAfter.hasNoUsages()) {
                 killWithUnusedFloatingInputs(stateAfter);
             }
         }
@@ -379,7 +379,7 @@ public class GraphUtil {
     }
 
     public static boolean tryKillUnused(Node node) {
-        if (node.isAlive() && isFloatingNode().apply(node) && node.usages().isEmpty()) {
+        if (node.isAlive() && isFloatingNode().apply(node) && node.hasNoUsages()) {
             killWithUnusedFloatingInputs(node);
             return true;
         }

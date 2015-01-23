@@ -96,7 +96,7 @@ public class MergeNode extends BeginStateSplitNode implements IterableNodeType, 
             }
             ValueNode removedValue = phi.valueAt(predIndex);
             phi.removeInput(predIndex);
-            if (removedValue != null && removedValue.isAlive() && removedValue.usages().isEmpty() && GraphUtil.isFloatingNode().apply(removedValue)) {
+            if (removedValue != null && removedValue.isAlive() && removedValue.hasNoUsages() && GraphUtil.isFloatingNode().apply(removedValue)) {
                 GraphUtil.killWithUnusedFloatingInputs(removedValue);
             }
         }
@@ -223,7 +223,7 @@ public class MergeNode extends BeginStateSplitNode implements IterableNodeType, 
                 end.safeDelete();
             }
             for (PhiNode phi : phis) {
-                if (phi.isAlive() && phi.usages().isEmpty()) {
+                if (phi.isAlive() && phi.hasNoUsages()) {
                     GraphUtil.killWithUnusedFloatingInputs(phi);
                 }
             }

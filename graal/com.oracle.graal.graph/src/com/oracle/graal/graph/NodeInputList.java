@@ -40,17 +40,17 @@ public final class NodeInputList<T extends Node> extends NodeList<T> {
 
     public NodeInputList(Node self, T[] elements) {
         super(self, elements);
-        assert self.usages().isEmpty();
+        assert self.hasNoUsages();
     }
 
     public NodeInputList(Node self, List<? extends T> elements) {
         super(self, elements);
-        assert self.usages().isEmpty();
+        assert self.hasNoUsages();
     }
 
     public NodeInputList(Node self, Collection<? extends NodeInterface> elements) {
         super(self, elements);
-        assert self.usages().isEmpty();
+        assert self.hasNoUsages();
     }
 
     @Override

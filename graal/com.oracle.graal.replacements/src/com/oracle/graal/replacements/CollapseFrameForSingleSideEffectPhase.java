@@ -137,7 +137,7 @@ public class CollapseFrameForSingleSideEffectPhase extends Phase {
                         setStateAfter(node.graph(), stateSplit, INVALID_FRAMESTATE_BCI, false);
                     } else {
                         stateSplit.setStateAfter(null);
-                        if (frameState.usages().isEmpty()) {
+                        if (frameState.hasNoUsages()) {
                             GraphUtil.killWithUnusedFloatingInputs(frameState);
                         }
                     }
@@ -229,7 +229,7 @@ public class CollapseFrameForSingleSideEffectPhase extends Phase {
             FrameState currentStateAfter = node.stateAfter();
             if (currentStateAfter != null || !replaceOnly) {
                 node.setStateAfter(graph.add(new FrameState(bci)));
-                if (currentStateAfter != null && currentStateAfter.usages().isEmpty()) {
+                if (currentStateAfter != null && currentStateAfter.hasNoUsages()) {
                     GraphUtil.killWithUnusedFloatingInputs(currentStateAfter);
                 }
             }

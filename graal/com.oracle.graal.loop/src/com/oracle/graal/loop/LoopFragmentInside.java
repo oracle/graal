@@ -213,7 +213,7 @@ public class LoopFragmentInside extends LoopFragment {
         markStateNodes(loopBegin, usagesToPatch);
 
         for (PhiNode phi : loopBegin.phis().snapshot()) {
-            if (phi.usages().isEmpty()) {
+            if (phi.hasNoUsages()) {
                 continue;
             }
             ValueNode first;
@@ -253,7 +253,7 @@ public class LoopFragmentInside extends LoopFragment {
             }
         }
 
-        for (PhiNode deadPhi : loopBegin.phis().filter(n -> n.usages().isEmpty()).snapshot()) {
+        for (PhiNode deadPhi : loopBegin.phis().filter(n -> n.hasNoUsages()).snapshot()) {
             if (deadPhi.isAlive()) {
                 GraphUtil.killWithUnusedFloatingInputs(deadPhi);
             }
@@ -309,7 +309,7 @@ public class LoopFragmentInside extends LoopFragment {
         StructuredGraph graph = graph();
         if (endsToMerge.size() == 1) {
             AbstractEndNode end = endsToMerge.get(0);
-            assert end.usages().isEmpty();
+            assert end.hasNoUsages();
             newExit = graph.add(new BeginNode());
             end.replaceAtPredecessor(newExit);
             end.safeDelete();
@@ -328,7 +328,7 @@ public class LoopFragmentInside extends LoopFragment {
             }
 
             for (final PhiNode phi : loopBegin.phis().snapshot()) {
-                if (phi.usages().isEmpty()) {
+                if (phi.hasNoUsages()) {
                     continue;
                 }
                 final PhiNode firstPhi = patchPhi(graph, phi, newExitMerge);

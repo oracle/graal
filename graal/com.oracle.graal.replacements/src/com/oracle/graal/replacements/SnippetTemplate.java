@@ -726,7 +726,7 @@ public class SnippetTemplate {
         Debug.dump(snippet, "SnippetTemplate after fixing memory anchoring");
 
         StartNode entryPointNode = snippet.start();
-        if (memoryAnchor.usages().isEmpty()) {
+        if (memoryAnchor.hasNoUsages()) {
             memoryAnchor.safeDelete();
         } else {
             snippetCopy.addAfterFixed(snippetCopy.start(), memoryAnchor);
@@ -746,7 +746,7 @@ public class SnippetTemplate {
             this.returnNode.setMemoryMap(memoryMap);
             for (MemoryMapNode mm : memMaps) {
                 if (mm != memoryMap && mm.isAlive()) {
-                    assert mm.usages().isEmpty();
+                    assert mm.hasNoUsages();
                     GraphUtil.killWithUnusedFloatingInputs(mm);
                 }
             }
@@ -986,7 +986,7 @@ public class SnippetTemplate {
                 }
             }
             if (newNode == null) {
-                assert oldNode.usages().isEmpty();
+                assert oldNode.hasNoUsages();
             } else {
                 oldNode.replaceAtUsages(newNode);
             }
@@ -1176,7 +1176,7 @@ public class SnippetTemplate {
                 if (returnValue == null && replacee.usages().isNotEmpty() && replacee instanceof MemoryCheckpoint) {
                     replacer.replace(replacee, null, mmap);
                 } else {
-                    assert returnValue != null || replacee.usages().isEmpty();
+                    assert returnValue != null || replacee.hasNoUsages();
                     replacer.replace(replacee, returnValue, mmap);
                 }
                 if (returnDuplicate.isAlive()) {
@@ -1273,7 +1273,7 @@ public class SnippetTemplate {
             // Replace all usages of the replacee with the value returned by the snippet
             ReturnNode returnDuplicate = (ReturnNode) duplicates.get(returnNode);
             ValueNode returnValue = returnDuplicate.result();
-            assert returnValue != null || replacee.usages().isEmpty();
+            assert returnValue != null || replacee.hasNoUsages();
             replacer.replace(replacee, returnValue, new DuplicateMapper(duplicates, replaceeGraph.start()));
 
             if (returnDuplicate.isAlive()) {

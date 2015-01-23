@@ -115,7 +115,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
                 // remove dead parameters
                 for (ParameterNode param : currentGraph.getNodes(ParameterNode.class)) {
-                    if (param.usages().isEmpty()) {
+                    if (param.hasNoUsages()) {
                         assert param.inputs().isEmpty();
                         param.safeDelete();
                     }

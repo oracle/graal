@@ -340,10 +340,10 @@ public class ConditionalEliminationPhase extends Phase {
 
         @Override
         public void finished() {
-            if (trueConstant.usages().isEmpty()) {
+            if (trueConstant.hasNoUsages()) {
                 graph.removeFloating(trueConstant);
             }
-            if (falseConstant.usages().isEmpty()) {
+            if (falseConstant.hasNoUsages()) {
                 graph.removeFloating(falseConstant);
             }
             super.finished();
@@ -770,7 +770,7 @@ public class ConditionalEliminationPhase extends Phase {
                     }
 
                     ifNode.setCondition(replacement);
-                    if (compare.usages().isEmpty()) {
+                    if (compare.hasNoUsages()) {
                         GraphUtil.killWithUnusedFloatingInputs(compare);
                     }
                 }
@@ -786,7 +786,7 @@ public class ConditionalEliminationPhase extends Phase {
 
                         if (replacement != null) {
                             phi.setValueAt(index, replacement);
-                            if (materialize.usages().isEmpty()) {
+                            if (materialize.hasNoUsages()) {
                                 GraphUtil.killWithUnusedFloatingInputs(materialize);
                             }
                         }

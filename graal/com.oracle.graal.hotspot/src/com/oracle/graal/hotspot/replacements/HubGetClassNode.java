@@ -52,7 +52,7 @@ public class HubGetClassNode extends FloatingGuardedNode implements Lowerable, C
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (usages().isEmpty()) {
+        if (hasNoUsages()) {
             return null;
         } else {
             MetaAccessProvider metaAccess = tool.getMetaAccess();

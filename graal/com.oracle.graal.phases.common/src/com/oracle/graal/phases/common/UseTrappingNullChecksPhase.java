@@ -182,7 +182,7 @@ public class UseTrappingNullChecksPhase extends BasePhase<LowTierContext> {
         }
 
         GraphUtil.killCFG(trappingContinuation);
-        if (isNullNode.usages().isEmpty()) {
+        if (isNullNode.hasNoUsages()) {
             GraphUtil.killWithUnusedFloatingInputs(isNullNode);
         }
     }

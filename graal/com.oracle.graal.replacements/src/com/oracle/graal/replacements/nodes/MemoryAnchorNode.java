@@ -43,6 +43,6 @@ public class MemoryAnchorNode extends FixedWithNextNode implements LIRLowerable,
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        return usages().isEmpty() ? null : this;
+        return hasNoUsages() ? null : this;
     }
 }

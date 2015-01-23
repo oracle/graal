@@ -78,7 +78,7 @@ public class BeginNode extends FixedWithNextNode implements LIRLowerable, Simpli
     }
 
     private void evacuateGuards(FixedNode evacuateFrom) {
-        if (!usages().isEmpty()) {
+        if (!hasNoUsages()) {
             BeginNode prevBegin = prevBegin(evacuateFrom);
             assert prevBegin != null;
             for (Node anchored : anchored().snapshot()) {

@@ -176,7 +176,7 @@ public class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerab
             }
             return;
         }
-        if (trueSuccessor().usages().isEmpty() && falseSuccessor().usages().isEmpty()) {
+        if (trueSuccessor().hasNoUsages() && falseSuccessor().hasNoUsages()) {
 
             pushNodesThroughIf(tool);
 
@@ -189,7 +189,7 @@ public class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerab
             return;
         }
 
-        if (falseSuccessor().usages().isEmpty() && (!(falseSuccessor() instanceof LoopExitNode)) && falseSuccessor().next() instanceof IfNode) {
+        if (falseSuccessor().hasNoUsages() && (!(falseSuccessor() instanceof LoopExitNode)) && falseSuccessor().next() instanceof IfNode) {
             BeginNode intermediateBegin = falseSuccessor();
             IfNode nextIf = (IfNode) intermediateBegin.next();
             double probabilityB = (1.0 - this.trueSuccessorProbability) * nextIf.trueSuccessorProbability;
@@ -222,7 +222,7 @@ public class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerab
     }
 
     private void pushNodesThroughIf(SimplifierTool tool) {
-        assert trueSuccessor().usages().isEmpty() && falseSuccessor().usages().isEmpty();
+        assert trueSuccessor().hasNoUsages() && falseSuccessor().hasNoUsages();
         // push similar nodes upwards through the if, thereby deduplicating them
         do {
             BeginNode trueSucc = trueSuccessor();
@@ -267,7 +267,7 @@ public class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerab
      * @return true if a replacement was done.
      */
     private boolean checkForUnsignedCompare(SimplifierTool tool) {
-        assert trueSuccessor().usages().isEmpty() && falseSuccessor().usages().isEmpty();
+        assert trueSuccessor().hasNoUsages() && falseSuccessor().hasNoUsages();
         if (condition() instanceof IntegerLessThanNode) {
             IntegerLessThanNode lessThan = (IntegerLessThanNode) condition();
             Constant y = lessThan.getY().stamp().asConstant();
@@ -491,7 +491,7 @@ public class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerab
      * @return true if a transformation was made, false otherwise
      */
     private boolean removeOrMaterializeIf(SimplifierTool tool) {
-        assert trueSuccessor().usages().isEmpty() && falseSuccessor().usages().isEmpty();
+        assert trueSuccessor().hasNoUsages() && falseSuccessor().hasNoUsages();
         if (trueSuccessor().next() instanceof AbstractEndNode && falseSuccessor().next() instanceof AbstractEndNode) {
             AbstractEndNode trueEnd = (AbstractEndNode) trueSuccessor().next();
             AbstractEndNode falseEnd = (AbstractEndNode) falseSuccessor().next();

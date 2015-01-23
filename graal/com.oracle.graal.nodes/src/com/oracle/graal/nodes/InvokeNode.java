@@ -158,7 +158,7 @@ public class InvokeNode extends AbstractMemoryCheckpoint implements Invoke, LIRL
             graph().replaceFixed(this, node);
         }
         GraphUtil.killWithUnusedFloatingInputs(call);
-        if (currentStateAfter.usages().isEmpty()) {
+        if (currentStateAfter.hasNoUsages()) {
             GraphUtil.killWithUnusedFloatingInputs(currentStateAfter);
         }
     }

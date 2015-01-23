@@ -60,7 +60,7 @@ public class FixedGuardNode extends AbstractFixedGuardNode implements Lowerable,
             graph().removeFixed(this);
         } else if (condition() instanceof ShortCircuitOrNode) {
             ShortCircuitOrNode shortCircuitOr = (ShortCircuitOrNode) condition();
-            if (isNegated() && usages().isEmpty()) {
+            if (isNegated() && hasNoUsages()) {
                 graph().addAfterFixed(this, graph().add(new FixedGuardNode(shortCircuitOr.getY(), getReason(), getAction(), !shortCircuitOr.isYNegated())));
                 graph().replaceFixedWithFixed(this, graph().add(new FixedGuardNode(shortCircuitOr.getX(), getReason(), getAction(), !shortCircuitOr.isXNegated())));
             }

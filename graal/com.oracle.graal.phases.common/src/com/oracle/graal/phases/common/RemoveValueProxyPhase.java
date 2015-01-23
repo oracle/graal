@@ -39,7 +39,7 @@ public class RemoveValueProxyPhase extends Phase {
             FrameState stateAfter = exit.stateAfter();
             if (stateAfter != null) {
                 exit.setStateAfter(null);
-                if (stateAfter.usages().isEmpty()) {
+                if (stateAfter.hasNoUsages()) {
                     GraphUtil.killWithUnusedFloatingInputs(stateAfter);
                 }
             }

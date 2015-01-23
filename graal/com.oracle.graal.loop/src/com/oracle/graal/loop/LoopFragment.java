@@ -346,7 +346,7 @@ public abstract class LoopFragment {
 
             boolean newEarlyExitIsLoopExit = newEarlyExit instanceof LoopExitNode;
             for (ProxyNode vpn : loopEarlyExit.proxies().snapshot()) {
-                if (vpn.usages().isEmpty()) {
+                if (vpn.hasNoUsages()) {
                     continue;
                 }
                 final ValueNode replaceWith;

@@ -37,7 +37,7 @@ public final class FlowUtil {
     }
 
     public static boolean lacksUsages(Node n) {
-        return n.usages().isEmpty();
+        return n.hasNoUsages();
     }
 
     public static ResolvedJavaType widen(ResolvedJavaType a, ResolvedJavaType b) {

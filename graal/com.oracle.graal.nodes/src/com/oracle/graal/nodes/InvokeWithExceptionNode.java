@@ -184,7 +184,7 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Invoke,
             foreign.setBci(bci());
         }
         if (node == null) {
-            assert getKind() == Kind.Void && usages().isEmpty();
+            assert getKind() == Kind.Void && hasNoUsages();
             graph().removeSplit(this, next());
         } else if (node instanceof ControlSinkNode) {
             this.replaceAtPredecessor(node);
@@ -195,7 +195,7 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Invoke,
             graph().replaceSplit(this, node, next());
         }
         GraphUtil.killWithUnusedFloatingInputs(call);
-        if (state.usages().isEmpty()) {
+        if (state.hasNoUsages()) {
             GraphUtil.killWithUnusedFloatingInputs(state);
         }
     }

@@ -47,7 +47,7 @@ public abstract class PureFunctionMacroNode extends MacroStateSplitNode implemen
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (usages().isEmpty()) {
+        if (hasNoUsages()) {
             return null;
         } else {
             ValueNode param = arguments.get(0);

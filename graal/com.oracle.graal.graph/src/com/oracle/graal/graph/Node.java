@@ -309,6 +309,13 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     /**
+     * Checks whether this node has no usages.
+     */
+    public final boolean hasNoUsages() {
+        return this.usage0 == null;
+    }
+
+    /**
      * Finds the index of the last non-null entry in a node array. The search assumes that all
      * non-null entries precede the first null entry in the array.
      *
@@ -564,7 +571,7 @@ public abstract class Node implements Cloneable, Formattable {
             if (newInput != null) {
                 newInput.addUsage(this);
             }
-            if (oldInput != null && oldInput.usages().isEmpty()) {
+            if (oldInput != null && oldInput.hasNoUsages()) {
                 maybeNotifyZeroUsages(oldInput);
             }
         }
@@ -740,7 +747,7 @@ public abstract class Node implements Cloneable, Formattable {
     private void unregisterInputs() {
         for (Node input : inputs()) {
             removeThisFromUsages(input);
-            if (input.usages().isEmpty()) {
+            if (input.hasNoUsages()) {
                 maybeNotifyZeroUsages(input);
             }
         }
@@ -772,7 +779,7 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     private boolean checkDeletion() {
-        assertTrue(usages().isEmpty(), "cannot delete node %s because of usages: %s", this, usages());
+        assertTrue(hasNoUsages(), "cannot delete node %s because of usages: %s", this, usages());
         assertTrue(predecessor == null, "cannot delete node %s because of predecessor: %s", this, predecessor);
         return true;
     }
@@ -1082,7 +1089,7 @@ public abstract class Node implements Cloneable, Formattable {
         }
 
         if (precision > 0) {
-            if (!usages().isEmpty()) {
+            if (!hasNoUsages()) {
                 formatter.format(" usages={");
                 int z = 0;
                 for (Node usage : usages()) {

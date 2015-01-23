@@ -226,7 +226,7 @@ public class NewFrameNode extends FixedWithNextNode implements IterableNodeType,
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (usages().isEmpty()) {
+        if (hasNoUsages()) {
             return null;
         } else {
             return this;

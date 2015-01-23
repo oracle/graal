@@ -276,7 +276,7 @@ public class StructuredGraph extends Graph {
         if (node instanceof BeginNode) {
             ((BeginNode) node).prepareDelete();
         }
-        assert node.usages().isEmpty() : node + " " + node.usages();
+        assert node.hasNoUsages() : node + " " + node.usages();
         GraphUtil.unlinkFixedNode(node);
         node.safeDelete();
     }
@@ -311,7 +311,7 @@ public class StructuredGraph extends Graph {
 
     public void removeSplit(ControlSplitNode node, BeginNode survivingSuccessor) {
         assert node != null;
-        assert node.usages().isEmpty();
+        assert node.hasNoUsages();
         assert survivingSuccessor != null;
         node.clearSuccessors();
         node.replaceAtPredecessor(survivingSuccessor);
@@ -324,7 +324,7 @@ public class StructuredGraph extends Graph {
 
     public void removeSplitPropagate(ControlSplitNode node, BeginNode survivingSuccessor, SimplifierTool tool) {
         assert node != null;
-        assert node.usages().isEmpty();
+        assert node.hasNoUsages();
         assert survivingSuccessor != null;
         List<Node> snapshot = node.successors().snapshot();
         node.clearSuccessors();
@@ -416,7 +416,7 @@ public class StructuredGraph extends Graph {
         // evacuateGuards
         merge.prepareDelete((FixedNode) singleEnd.predecessor());
         merge.safeDelete();
-        if (stateAfter != null && stateAfter.isAlive() && stateAfter.usages().isEmpty()) {
+        if (stateAfter != null && stateAfter.isAlive() && stateAfter.hasNoUsages()) {
             GraphUtil.killWithUnusedFloatingInputs(stateAfter);
         }
         if (sux == null) {
