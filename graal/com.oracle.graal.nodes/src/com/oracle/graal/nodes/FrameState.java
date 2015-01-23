@@ -282,6 +282,10 @@ public class FrameState extends VirtualState implements IterableNodeType {
          * mistakes.
          */
         byte[] codes = method.getCode();
+        if (codes == null) {
+            /* Graph was constructed manually. */
+            return true;
+        }
         byte newCode = codes[newBci];
         if (oldBci == newBci) {
             assert oldStackSize == newStackSize || oldDuringCall != newDuringCall : "bci is unchanged, stack depth shouldn't change";

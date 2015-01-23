@@ -179,6 +179,10 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Invoke,
             StateSplit stateSplit = (StateSplit) node;
             stateSplit.setStateAfter(state);
         }
+        if (node instanceof ForeignCallNode) {
+            ForeignCallNode foreign = (ForeignCallNode) node;
+            foreign.setBci(bci());
+        }
         if (node == null) {
             assert getKind() == Kind.Void && usages().isEmpty();
             graph().removeSplit(this, next());

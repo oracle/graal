@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -176,6 +176,22 @@ public class BoxingSnippets implements Snippets {
         ValueNode value = box.getValue();
         if (value.isConstant()) {
             JavaConstant sourceConstant = value.asJavaConstant();
+            if (sourceConstant.getKind() != box.getBoxingKind() && sourceConstant.getKind().isNumericInteger()) {
+                switch (box.getBoxingKind()) {
+                    case Boolean:
+                        sourceConstant = JavaConstant.forBoolean(sourceConstant.asLong() != 0L);
+                        break;
+                    case Byte:
+                        sourceConstant = JavaConstant.forByte((byte) sourceConstant.asLong());
+                        break;
+                    case Char:
+                        sourceConstant = JavaConstant.forChar((char) sourceConstant.asLong());
+                        break;
+                    case Short:
+                        sourceConstant = JavaConstant.forShort((short) sourceConstant.asLong());
+                        break;
+                }
+            }
             JavaConstant boxedConstant = constantReflection.boxPrimitive(sourceConstant);
             if (boxedConstant != null && sourceConstant.getKind() == box.getBoxingKind()) {
                 return ConstantNode.forConstant(boxedConstant, metaAccess, box.graph());

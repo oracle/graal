@@ -105,6 +105,28 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         }
     }
 
+    /**
+     * Checks whether the supplied constant can be used without loading it into a register for store
+     * operations, i.e., on the right hand side of a memory access.
+     *
+     * @param c The constant to check.
+     * @return True if the constant can be used directly, false if the constant needs to be in a
+     *         register.
+     */
+    protected boolean canStoreConstant(JavaConstant c) {
+        // there is no immediate move of 64-bit constants on Intel
+        switch (c.getKind()) {
+            case Long:
+                return Util.isInt(c.asLong()) && !getCodeCache().needsDataPatch(c);
+            case Double:
+                return false;
+            case Object:
+                return c.isNull();
+            default:
+                return true;
+        }
+    }
+
     protected AMD64LIRInstruction createMove(AllocatableValue dst, Value src) {
         if (src instanceof AMD64AddressValue) {
             return new LeaOp(dst, (AMD64AddressValue) src);

@@ -119,7 +119,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         ValueNode object = loadField.isStatic() ? staticFieldBase(graph, field) : loadField.object();
         Stamp loadStamp = loadStamp(loadField.stamp(), field.getKind());
         ConstantLocationNode location = createFieldLocation(graph, field, false);
-        assert location != null : "Field that is loaded must not be eliminated";
+        assert location != null : "Field that is loaded must not be eliminated: " + field.getDeclaringClass().toJavaName(true) + "." + field.getName();
 
         ReadNode memoryRead = graph.add(new ReadNode(object, location, loadStamp, fieldLoadBarrierType(field)));
         ValueNode readValue = implicitLoadConvert(graph, field.getKind(), memoryRead);

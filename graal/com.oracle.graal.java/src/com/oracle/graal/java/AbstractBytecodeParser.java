@@ -69,7 +69,7 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
     protected final ProfilingInfo profilingInfo;
     protected final OptimisticOptimizations optimisticOpts;
     protected final ConstantPool constantPool;
-    private final MetaAccessProvider metaAccess;
+    protected final MetaAccessProvider metaAccess;
 
     /**
      * Meters the number of actual bytecodes parsed.

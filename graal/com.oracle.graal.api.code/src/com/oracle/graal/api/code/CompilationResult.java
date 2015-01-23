@@ -234,6 +234,7 @@ public class CompilationResult implements Serializable {
 
         private static final long serialVersionUID = 9011681879878139182L;
 
+        private boolean initialized;
         private int offset;
 
         public DataSectionReference() {
@@ -242,10 +243,15 @@ public class CompilationResult implements Serializable {
         }
 
         public int getOffset() {
+            assert initialized;
+
             return offset;
         }
 
         public void setOffset(int offset) {
+            assert !initialized;
+            initialized = true;
+
             this.offset = offset;
         }
 
