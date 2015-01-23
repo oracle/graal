@@ -747,7 +747,6 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMFlag(name = "PrintInlining") @Stable public boolean printInlining;
     @HotSpotVMFlag(name = "GraalUseFastLocking") @Stable public boolean useFastLocking;
     @HotSpotVMFlag(name = "ForceUnreachable") @Stable public boolean forceUnreachable;
-    @HotSpotVMFlag(name = "GPUOffload") @Stable public boolean gpuOffload;
 
     @HotSpotVMFlag(name = "UseTLAB") @Stable public boolean useTLAB;
     @HotSpotVMFlag(name = "UseBiasedLocking") @Stable public boolean useBiasedLocking;
@@ -1055,44 +1054,6 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMField(name = "ThreadShadow::_pending_deoptimization", type = "int", get = HotSpotVMField.Type.OFFSET) @Stable public int pendingDeoptimizationOffset;
     @HotSpotVMField(name = "ThreadShadow::_pending_failed_speculation", type = "oop", get = HotSpotVMField.Type.OFFSET) @Stable public int pendingFailedSpeculationOffset;
     @HotSpotVMField(name = "ThreadShadow::_pending_transfer_to_interpreter", type = "bool", get = HotSpotVMField.Type.OFFSET) @Stable public int pendingTransferToInterpreterOffset;
-
-    @HotSpotVMFlag(name = "UseHSAILDeoptimization") @Stable public boolean useHSAILDeoptimization;
-    @HotSpotVMFlag(name = "UseHSAILSafepoints") @Stable public boolean useHSAILSafepoints;
-
-    /**
-     * Offsets of Hsail deoptimization fields (defined in gpu_hsail.hpp). Used to propagate
-     * exceptions from Hsail back to C++ runtime.
-     */
-    @HotSpotVMField(name = "Hsail::HSAILDeoptimizationInfo::_notice_safepoints", type = "jint*", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailNoticeSafepointsOffset;
-    @HotSpotVMField(name = "Hsail::HSAILDeoptimizationInfo::_deopt_occurred", type = "jint", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailDeoptOccurredOffset;
-    @HotSpotVMField(name = "Hsail::HSAILDeoptimizationInfo::_never_ran_array", type = "jboolean*", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailNeverRanArrayOffset;
-    @HotSpotVMField(name = "Hsail::HSAILDeoptimizationInfo::_deopt_next_index", type = "jint", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailDeoptNextIndexOffset;
-    @HotSpotVMField(name = "Hsail::HSAILDeoptimizationInfo::_alloc_info", type = "HSAILAllocationInfo*", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailAllocInfoOffset;
-    @HotSpotVMField(name = "Hsail::HSAILDeoptimizationInfo::_cur_tlab_info", type = "HSAILTlabInfo**", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailCurTlabInfoOffset;
-
-    @HotSpotVMField(name = "Hsail::HSAILKernelDeoptimization::_workitemid", type = "jint", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailDeoptimizationWorkItem;
-    @HotSpotVMField(name = "Hsail::HSAILKernelDeoptimization::_actionAndReason", type = "jint", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailDeoptimizationReason;
-
-    @HotSpotVMField(name = "HSAILFrame::_pc_offset", type = "jint", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailFramePcOffset;
-    @HotSpotVMField(name = "HSAILFrame::_num_s_regs", type = "jbyte", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailFrameNumSRegOffset;
-    @HotSpotVMField(name = "HSAILFrame::_num_d_regs", type = "jbyte", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailFrameNumDRegOffset;
-    @HotSpotVMType(name = "HSAILFrame", get = HotSpotVMType.Type.SIZE) @Stable public int hsailFrameHeaderSize;
-    @HotSpotVMType(name = "Hsail::HSAILKernelDeoptimization", get = HotSpotVMType.Type.SIZE) @Stable public int hsailKernelDeoptimizationHeaderSize;
-    @HotSpotVMType(name = "Hsail::HSAILDeoptimizationInfo", get = HotSpotVMType.Type.SIZE) @Stable public int hsailDeoptimizationInfoHeaderSize;
-
-    @HotSpotVMField(name = "HSAILAllocationInfo::_tlab_infos_pool_start", type = "HSAILTlabInfo*", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailAllocInfoTlabInfosPoolStartOffset;
-    @HotSpotVMField(name = "HSAILAllocationInfo::_tlab_infos_pool_next", type = "HSAILTlabInfo*", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailAllocInfoTlabInfosPoolNextOffset;
-    @HotSpotVMField(name = "HSAILAllocationInfo::_tlab_infos_pool_end", type = "HSAILTlabInfo*", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailAllocInfoTlabInfosPoolEndOffset;
-    @HotSpotVMField(name = "HSAILAllocationInfo::_tlab_align_reserve_bytes", type = "size_t", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailAllocInfoTlabAlignReserveBytesOffset;
-
-    @HotSpotVMField(name = "HSAILTlabInfo::_start", type = "HeapWord*", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailTlabInfoStartOffset;
-    @HotSpotVMField(name = "HSAILTlabInfo::_top", type = "HeapWord*", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailTlabInfoTopOffset;
-    @HotSpotVMField(name = "HSAILTlabInfo::_end", type = "HeapWord*", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailTlabInfoEndOffset;
-    @HotSpotVMField(name = "HSAILTlabInfo::_last_good_top", type = "HeapWord*", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailTlabInfoLastGoodTopOffset;
-    @HotSpotVMField(name = "HSAILTlabInfo::_original_top", type = "HeapWord*", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailTlabInfoOriginalTopOffset;
-    @HotSpotVMField(name = "HSAILTlabInfo::_alloc_info", type = "HSAILAllocationInfo*", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailTlabInfoAllocInfoOffset;
-    @HotSpotVMField(name = "HSAILTlabInfo::_tlab", type = "ThreadLocalAllocBuffer*", get = HotSpotVMField.Type.OFFSET) @Stable public int hsailTlabInfoTlabOffset;
-    @HotSpotVMType(name = "HSAILTlabInfo", get = HotSpotVMType.Type.SIZE) @Stable public int hsailTlabInfoSize;
 
     /**
      * Mark word right shift to get identity hash code.

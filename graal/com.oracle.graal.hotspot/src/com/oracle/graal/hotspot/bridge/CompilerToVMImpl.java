@@ -181,7 +181,9 @@ public class CompilerToVMImpl implements CompilerToVM {
 
     public native int allocateCompileId(long metaspaceMethod, int entryBCI);
 
-    public native String getGPUs();
+    public String getGPUs() {
+        return "";
+    }
 
     public native boolean canInlineMethod(long metaspaceMethod);
 
