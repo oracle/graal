@@ -31,7 +31,6 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
-import com.oracle.graal.phases.common.cfs.*;
 import com.oracle.graal.phases.common.inlining.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.virtual.phases.ea.*;
@@ -60,14 +59,9 @@ public class HighTier extends PhaseSuite<HighTierContext> {
                 appendPhase(new InliningPhase(canonicalizer));
                 appendPhase(new DeadCodeEliminationPhase(Optional));
 
-                boolean reduceOrEliminate = FlowSensitiveReduction.getValue() || ConditionalElimination.getValue();
-                if (reduceOrEliminate && OptCanonicalizer.getValue()) {
+                if (ConditionalElimination.getValue() && OptCanonicalizer.getValue()) {
                     appendPhase(canonicalizer);
-                    if (FlowSensitiveReduction.getValue()) {
-                        appendPhase(new IterativeFlowSensitiveReductionPhase(canonicalizer));
-                    } else {
-                        appendPhase(new IterativeConditionalEliminationPhase(canonicalizer));
-                    }
+                    appendPhase(new IterativeConditionalEliminationPhase(canonicalizer));
                 }
             }
         }

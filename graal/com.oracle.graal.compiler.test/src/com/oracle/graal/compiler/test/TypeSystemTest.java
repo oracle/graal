@@ -34,7 +34,6 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.phases.common.*;
-import com.oracle.graal.phases.common.cfs.*;
 import com.oracle.graal.phases.schedule.*;
 import com.oracle.graal.phases.tiers.*;
 
@@ -43,30 +42,6 @@ import com.oracle.graal.phases.tiers.*;
  * the relation between the different conditions.
  */
 public class TypeSystemTest extends GraalCompilerTest {
-
-    @Test
-    public void test1() {
-        testHelper("test1Snippet", CheckCastNode.class);
-    }
-
-    public static int test1Snippet(Object a) {
-        if (a instanceof Boolean) {
-            return ((Boolean) a).booleanValue() ? 0 : 1;
-        }
-        return 1;
-    }
-
-    @Test
-    public void test2() {
-        testHelper("test2Snippet", CheckCastNode.class);
-    }
-
-    public static int test2Snippet(Object a) {
-        if (a instanceof Integer) {
-            return ((Number) a).intValue();
-        }
-        return 1;
-    }
 
     @Test
     public void test3() {
@@ -258,7 +233,6 @@ public class TypeSystemTest extends GraalCompilerTest {
         StructuredGraph graph = parseEager(snippet);
         Assumptions assumptions = new Assumptions(false);
         new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders(), assumptions));
-        new FlowSensitiveReductionPhase(getMetaAccess()).apply(graph, new PhaseContext(getProviders(), assumptions));
         new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders(), assumptions));
         Debug.dump(graph, "Graph " + snippet);
         Assert.assertFalse("shouldn't have nodes of type " + clazz, graph.getNodes().filter(clazz).iterator().hasNext());

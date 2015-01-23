@@ -232,10 +232,6 @@ public final class GraalOptions {
     @Option(help = "Comma separated list of register that the allocation is limited to.", type = OptionType.Debug)
     public static final OptionValue<String> RegisterPressure = new OptionValue<>(null);
 
-    // Code generator settings
-    @Option(help = "", type = OptionType.Debug)
-    public static final OptionValue<Boolean> FlowSensitiveReduction = new OptionValue<>(false);
-
     @Option(help = "", type = OptionType.Debug)
     public static final OptionValue<Boolean> ConditionalElimination = new OptionValue<>(true);
 

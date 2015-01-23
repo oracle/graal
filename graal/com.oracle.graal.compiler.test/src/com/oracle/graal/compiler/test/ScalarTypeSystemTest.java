@@ -28,7 +28,6 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.common.*;
-import com.oracle.graal.phases.common.cfs.*;
 import com.oracle.graal.phases.tiers.*;
 
 /**
@@ -104,43 +103,9 @@ public class ScalarTypeSystemTest extends GraalCompilerTest {
         }
     }
 
-    @Test
-    public void test4() {
-        test("test4Snippet", "referenceSnippet2");
-    }
-
-    public static int test4Snippet(int a, int b) {
-        if (a > b) {
-            if (a <= b) {
-                return 3;
-            } else {
-                return 1;
-            }
-        } else {
-            return 2;
-        }
-    }
-
-    @Test
-    public void test5() {
-        test("test5Snippet", "referenceSnippet3");
-    }
-
     public static int referenceSnippet3(int a, int b) {
         if (a == b) {
             return 1;
-        } else {
-            return 2;
-        }
-    }
-
-    public static int test5Snippet(int a, int b) {
-        if (a == b) {
-            if (a != b) {
-                return 3;
-            } else {
-                return 1;
-            }
         } else {
             return 2;
         }
@@ -169,7 +134,6 @@ public class ScalarTypeSystemTest extends GraalCompilerTest {
         Debug.dump(graph, "Graph");
         Assumptions assumptions = new Assumptions(false);
         PhaseContext context = new PhaseContext(getProviders(), assumptions);
-        new FlowSensitiveReductionPhase(getMetaAccess()).apply(graph, context);
         new CanonicalizerPhase(true).apply(graph, context);
         StructuredGraph referenceGraph = parseEager(referenceSnippet);
         assertEquals(referenceGraph, graph);
