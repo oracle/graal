@@ -50,11 +50,11 @@ public class MatchPattern {
     static class Result {
         final MatchResultCode code;
 
-        final ScheduledNode node;
+        final ValueNode node;
 
         final MatchPattern matcher;
 
-        Result(MatchResultCode result, ScheduledNode node, MatchPattern matcher) {
+        Result(MatchResultCode result, ValueNode node, MatchPattern matcher) {
             this.code = result;
             this.node = node;
             this.matcher = matcher;
@@ -90,12 +90,12 @@ public class MatchPattern {
             return Debug.isEnabled() ? new Result(MatchResultCode.TOO_MANY_USERS, node, matcher) : CACHED_TOO_MANY_USERS;
         }
 
-        static Result notInBlock(ScheduledNode node, MatchPattern matcher) {
+        static Result notInBlock(ValueNode node, MatchPattern matcher) {
             MatchResult_NOT_IN_BLOCK.increment();
             return Debug.isEnabled() ? new Result(MatchResultCode.NOT_IN_BLOCK, node, matcher) : CACHED_NOT_IN_BLOCK;
         }
 
-        static Result notSafe(ScheduledNode node, MatchPattern matcher) {
+        static Result notSafe(ValueNode node, MatchPattern matcher) {
             MatchResult_NOT_SAFE.increment();
             return Debug.isEnabled() ? new Result(MatchResultCode.NOT_SAFE, node, matcher) : CACHED_NOT_SAFE;
         }

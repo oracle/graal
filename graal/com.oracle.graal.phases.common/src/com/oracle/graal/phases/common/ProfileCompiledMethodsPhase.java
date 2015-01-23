@@ -46,8 +46,8 @@ import com.oracle.graal.phases.schedule.*;
  * a method and at each loop header.
  *
  * A schedule is created so that floating nodes can also be taken into account. The weight of a node
- * is determined heuristically in the
- * {@link ProfileCompiledMethodsPhase#getNodeWeight(ScheduledNode)} method.
+ * is determined heuristically in the {@link ProfileCompiledMethodsPhase#getNodeWeight(ValueNode)}
+ * method.
  *
  * Additionally, there's a second counter that's only increased for code sections without invokes.
  */
@@ -117,14 +117,14 @@ public class ProfileCompiledMethodsPhase extends Phase {
         double count = 0;
         for (Block block : blocks) {
             double blockProbability = probabilities.applyAsDouble(block.getBeginNode());
-            for (ScheduledNode node : schedule.getBlockToNodesMap().get(block)) {
+            for (ValueNode node : schedule.getBlockToNodesMap().get(block)) {
                 count += blockProbability * getNodeWeight(node);
             }
         }
         return count;
     }
 
-    private static double getNodeWeight(ScheduledNode node) {
+    private static double getNodeWeight(ValueNode node) {
         if (node instanceof MergeNode) {
             return ((MergeNode) node).phiPredecessorCount();
         } else if (node instanceof BeginNode || node instanceof AbstractEndNode || node instanceof MonitorIdNode || node instanceof ConstantNode || node instanceof ParameterNode ||

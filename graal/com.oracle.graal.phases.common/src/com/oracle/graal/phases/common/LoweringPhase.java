@@ -301,7 +301,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
             final LoweringToolImpl loweringTool = new LoweringToolImpl(context, startAnchor, activeGuards, b.getBeginNode(), schedule.getCFG());
 
             // Lower the instructions of this block.
-            List<ScheduledNode> nodes = schedule.nodesFor(b);
+            List<ValueNode> nodes = schedule.nodesFor(b);
             for (Node node : nodes) {
 
                 if (node.isDeleted()) {
@@ -368,7 +368,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
             List<Node> unscheduledUsages = new ArrayList<>();
             if (node instanceof FloatingNode) {
                 for (Node usage : node.usages()) {
-                    if (usage instanceof ScheduledNode) {
+                    if (usage instanceof ValueNode) {
                         Block usageBlock = schedule.getCFG().blockFor(usage);
                         if (usageBlock == null) {
                             unscheduledUsages.add(usage);

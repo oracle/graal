@@ -45,7 +45,7 @@ public class GraphScheduleTest extends GraalCompilerTest {
         Block aBlock = nodeToBlock.get(a);
 
         if (bBlock == aBlock) {
-            List<ScheduledNode> instructions = ibp.nodesFor(bBlock);
+            List<ValueNode> instructions = ibp.nodesFor(bBlock);
             Assert.assertTrue(instructions.indexOf(b) > instructions.indexOf(a));
         } else {
             Block block = bBlock;

@@ -269,7 +269,7 @@ public final class SchedulePhase extends Phase {
     /**
      * Map from blocks to the nodes in each block.
      */
-    private BlockMap<List<ScheduledNode>> blockToNodesMap;
+    private BlockMap<List<ValueNode>> blockToNodesMap;
     private BlockMap<KillSet> blockToKillSet;
     private final SchedulingStrategy selectedStrategy;
     private final MemoryScheduling memsched;
@@ -383,20 +383,20 @@ public final class SchedulePhase extends Phase {
     /**
      * Gets the map from each block to the nodes in the block.
      */
-    public BlockMap<List<ScheduledNode>> getBlockToNodesMap() {
+    public BlockMap<List<ValueNode>> getBlockToNodesMap() {
         return blockToNodesMap;
     }
 
     /**
      * Gets the nodes in a given block.
      */
-    public List<ScheduledNode> nodesFor(Block block) {
+    public List<ValueNode> nodesFor(Block block) {
         return blockToNodesMap.get(block);
     }
 
     private void assignBlockToNodes(StructuredGraph graph, SchedulingStrategy strategy) {
         for (Block block : cfg.getBlocks()) {
-            List<ScheduledNode> nodes = new ArrayList<>();
+            List<ValueNode> nodes = new ArrayList<>();
             if (blockToNodesMap.get(block) != null) {
                 throw new SchedulingError();
             }
@@ -407,8 +407,8 @@ public final class SchedulePhase extends Phase {
         }
 
         for (Node n : graph.getNodes()) {
-            if (n instanceof ScheduledNode) {
-                assignBlockToNode((ScheduledNode) n, strategy);
+            if (n instanceof ValueNode) {
+                assignBlockToNode((ValueNode) n, strategy);
             }
         }
     }
@@ -417,7 +417,7 @@ public final class SchedulePhase extends Phase {
      * Assigns a block to the given node. This method expects that PhiNodes and FixedNodes are
      * already assigned to a block.
      */
-    private void assignBlockToNode(ScheduledNode node, SchedulingStrategy strategy) {
+    private void assignBlockToNode(ValueNode node, SchedulingStrategy strategy) {
         assert !node.isDeleted();
 
         if (cfg.getNodeToBlock().containsKey(node)) {
@@ -617,7 +617,7 @@ public final class SchedulePhase extends Phase {
      *
      * @param strategy
      */
-    private Block latestBlock(ScheduledNode node, SchedulingStrategy strategy) {
+    private Block latestBlock(ValueNode node, SchedulingStrategy strategy) {
         CommonDominatorBlockClosure cdbc = new CommonDominatorBlockClosure(null);
         for (Node succ : node.successors().nonNull()) {
             if (cfg.getNodeToBlock().get(succ) == null) {
@@ -747,7 +747,7 @@ public final class SchedulePhase extends Phase {
      * @param usage the usage whose blocks need to be considered
      * @param closure the closure that will be called for each block
      */
-    private void blocksForUsage(ScheduledNode node, Node usage, BlockClosure closure, SchedulingStrategy strategy) {
+    private void blocksForUsage(ValueNode node, Node usage, BlockClosure closure, SchedulingStrategy strategy) {
         if (node instanceof PhiNode) {
             throw new SchedulingError(node.toString());
         }
@@ -807,20 +807,20 @@ public final class SchedulePhase extends Phase {
                         throw new SchedulingError(unscheduledUsage.toString());
                     }
                     // Otherwise: Put the input into the same block as the usage.
-                    assignBlockToNode((ScheduledNode) unscheduledUsage, strategy);
+                    assignBlockToNode((ValueNode) unscheduledUsage, strategy);
                     closure.apply(cfg.getNodeToBlock().get(unscheduledUsage));
                 }
             }
         } else {
             // All other types of usages: Put the input into the same block as the usage.
-            assignBlockToNode((ScheduledNode) usage, strategy);
+            assignBlockToNode((ValueNode) usage, strategy);
             closure.apply(cfg.getNodeToBlock().get(usage));
         }
     }
 
     private void ensureScheduledUsages(Node node, SchedulingStrategy strategy) {
-        for (Node usage : node.usages().filter(ScheduledNode.class)) {
-            assignBlockToNode((ScheduledNode) usage, strategy);
+        for (Node usage : node.usages().filter(ValueNode.class)) {
+            assignBlockToNode((ValueNode) usage, strategy);
         }
         // now true usages are ready
     }
@@ -835,8 +835,8 @@ public final class SchedulePhase extends Phase {
     }
 
     private boolean noDuplicatedNodesInBlock(Block b) {
-        List<ScheduledNode> list = blockToNodesMap.get(b);
-        Set<ScheduledNode> hashset = Node.newSet(list);
+        List<ValueNode> list = blockToNodesMap.get(b);
+        Set<ValueNode> hashset = Node.newSet(list);
         return list.size() == hashset.size();
     }
 
@@ -848,7 +848,7 @@ public final class SchedulePhase extends Phase {
             throw new SchedulingError();
         }
 
-        List<ScheduledNode> sortedInstructions;
+        List<ValueNode> sortedInstructions;
         switch (strategy) {
             case EARLIEST:
                 sortedInstructions = sortNodesWithinBlockEarliest(b, visited);
@@ -866,9 +866,9 @@ public final class SchedulePhase extends Phase {
         blockToNodesMap.put(b, sortedInstructions);
     }
 
-    private static List<ScheduledNode> removeProxies(List<ScheduledNode> list) {
-        List<ScheduledNode> result = new ArrayList<>();
-        for (ScheduledNode n : list) {
+    private static List<ValueNode> removeProxies(List<ValueNode> list) {
+        List<ValueNode> result = new ArrayList<>();
+        for (ValueNode n : list) {
             if (!(n instanceof ProxyNode)) {
                 result.add(n);
             }
@@ -876,9 +876,9 @@ public final class SchedulePhase extends Phase {
         return result;
     }
 
-    private static List<ScheduledNode> filterSchedulableNodes(List<ScheduledNode> list) {
-        List<ScheduledNode> result = new ArrayList<>();
-        for (ScheduledNode n : list) {
+    private static List<ValueNode> filterSchedulableNodes(List<ValueNode> list) {
+        List<ValueNode> result = new ArrayList<>();
+        for (ValueNode n : list) {
             if (!(n instanceof PhiNode)) {
                 result.add(n);
             }
@@ -886,12 +886,12 @@ public final class SchedulePhase extends Phase {
         return result;
     }
 
-    private static boolean sameOrderForFixedNodes(List<ScheduledNode> fixed, List<ScheduledNode> sorted) {
-        Iterator<ScheduledNode> fixedIterator = fixed.iterator();
-        Iterator<ScheduledNode> sortedIterator = sorted.iterator();
+    private static boolean sameOrderForFixedNodes(List<ValueNode> fixed, List<ValueNode> sorted) {
+        Iterator<ValueNode> fixedIterator = fixed.iterator();
+        Iterator<ValueNode> sortedIterator = sorted.iterator();
 
         while (sortedIterator.hasNext()) {
-            ScheduledNode sortedCurrent = sortedIterator.next();
+            ValueNode sortedCurrent = sortedIterator.next();
             if (sortedCurrent instanceof FixedNode) {
                 if (!(fixedIterator.hasNext() && fixedIterator.next() == sortedCurrent)) {
                     return false;
@@ -912,10 +912,10 @@ public final class SchedulePhase extends Phase {
         private Block block;
         private NodeBitMap visited;
         private NodeBitMap beforeLastLocation;
-        private List<ScheduledNode> sortedInstructions;
+        private List<ValueNode> sortedInstructions;
         private List<FloatingReadNode> reads;
 
-        SortState(Block block, NodeBitMap visited, NodeBitMap beforeLastLocation, List<ScheduledNode> sortedInstructions) {
+        SortState(Block block, NodeBitMap visited, NodeBitMap beforeLastLocation, List<ValueNode> sortedInstructions) {
             this.block = block;
             this.visited = visited;
             this.beforeLastLocation = beforeLastLocation;
@@ -961,7 +961,7 @@ public final class SchedulePhase extends Phase {
             return reads.size();
         }
 
-        void removeRead(ScheduledNode i) {
+        void removeRead(ValueNode i) {
             assert reads != null;
             reads.remove(i);
         }
@@ -971,15 +971,15 @@ public final class SchedulePhase extends Phase {
             return new ArrayList<>(reads);
         }
 
-        List<ScheduledNode> getSortedInstructions() {
+        List<ValueNode> getSortedInstructions() {
             return sortedInstructions;
         }
 
-        boolean containsInstruction(ScheduledNode i) {
+        boolean containsInstruction(ValueNode i) {
             return sortedInstructions.contains(i);
         }
 
-        void addInstruction(ScheduledNode i) {
+        void addInstruction(ValueNode i) {
             sortedInstructions.add(i);
         }
     }
@@ -989,12 +989,12 @@ public final class SchedulePhase extends Phase {
      * all inputs. This means that a node is added to the list after all its inputs have been
      * processed.
      */
-    private List<ScheduledNode> sortNodesWithinBlockLatest(Block b, NodeBitMap visited, NodeBitMap beforeLastLocation) {
+    private List<ValueNode> sortNodesWithinBlockLatest(Block b, NodeBitMap visited, NodeBitMap beforeLastLocation) {
         SortState state = new SortState(b, visited, beforeLastLocation, new ArrayList<>(blockToNodesMap.get(b).size() + 2));
-        List<ScheduledNode> instructions = blockToNodesMap.get(b);
+        List<ValueNode> instructions = blockToNodesMap.get(b);
 
         if (memsched == MemoryScheduling.OPTIMAL) {
-            for (ScheduledNode i : instructions) {
+            for (ValueNode i : instructions) {
                 if (i instanceof FloatingReadNode) {
                     FloatingReadNode frn = (FloatingReadNode) i;
                     if (!frn.location().getLocationIdentity().isImmutable()) {
@@ -1008,14 +1008,14 @@ public final class SchedulePhase extends Phase {
             }
         }
 
-        for (ScheduledNode i : instructions) {
+        for (ValueNode i : instructions) {
             addToLatestSorting(i, state);
         }
         assert state.readsSize() == 0 : "not all reads are scheduled";
 
         // Make sure that last node gets really last (i.e. when a frame state successor hangs off
         // it).
-        List<ScheduledNode> sortedInstructions = state.getSortedInstructions();
+        List<ValueNode> sortedInstructions = state.getSortedInstructions();
         Node lastSorted = sortedInstructions.get(sortedInstructions.size() - 1);
         if (lastSorted != b.getEndNode()) {
             int idx = sortedInstructions.indexOf(b.getEndNode());
@@ -1066,13 +1066,13 @@ public final class SchedulePhase extends Phase {
                 if (input instanceof VirtualState) {
                     addUnscheduledToLatestSorting((VirtualState) input, sortState);
                 } else {
-                    addToLatestSorting((ScheduledNode) input, sortState);
+                    addToLatestSorting((ValueNode) input, sortState);
                 }
             }
         }
     }
 
-    private void addToLatestSorting(ScheduledNode i, SortState state) {
+    private void addToLatestSorting(ValueNode i, SortState state) {
         if (i == null || state.isVisited(i) || cfg.getNodeToBlock().get(i) != state.currentBlock() || i instanceof PhiNode) {
             return;
         }
@@ -1095,7 +1095,7 @@ public final class SchedulePhase extends Phase {
                 }
             } else {
                 if (!(i instanceof ProxyNode && input instanceof LoopExitNode)) {
-                    addToLatestSorting((ScheduledNode) input, state);
+                    addToLatestSorting((ValueNode) input, state);
                 }
             }
         }
@@ -1112,7 +1112,7 @@ public final class SchedulePhase extends Phase {
             assert MemoryCheckpoint.TypeAssertion.correctType(i);
         }
 
-        addToLatestSorting((ScheduledNode) i.predecessor(), state);
+        addToLatestSorting((ValueNode) i.predecessor(), state);
         state.markVisited(i);
         addUnscheduledToLatestSorting(stateAfter, state);
 
@@ -1131,15 +1131,15 @@ public final class SchedulePhase extends Phase {
      * all usages. The resulting list is reversed to create an earliest-possible scheduling of
      * nodes.
      */
-    private List<ScheduledNode> sortNodesWithinBlockEarliest(Block b, NodeBitMap visited) {
-        List<ScheduledNode> sortedInstructions = new ArrayList<>(blockToNodesMap.get(b).size() + 2);
+    private List<ValueNode> sortNodesWithinBlockEarliest(Block b, NodeBitMap visited) {
+        List<ValueNode> sortedInstructions = new ArrayList<>(blockToNodesMap.get(b).size() + 2);
         addToEarliestSorting(b, b.getEndNode(), sortedInstructions, visited);
         Collections.reverse(sortedInstructions);
         return sortedInstructions;
     }
 
-    private void addToEarliestSorting(Block b, ScheduledNode i, List<ScheduledNode> sortedInstructions, NodeBitMap visited) {
-        ScheduledNode instruction = i;
+    private void addToEarliestSorting(Block b, ValueNode i, List<ValueNode> sortedInstructions, NodeBitMap visited) {
+        ValueNode instruction = i;
         while (true) {
             if (instruction == null || visited.isMarked(instruction) || cfg.getNodeToBlock().get(instruction) != b || instruction instanceof PhiNode) {
                 return;
@@ -1153,14 +1153,14 @@ public final class SchedulePhase extends Phase {
                     if (instruction instanceof LoopExitNode && usage instanceof ProxyNode) {
                         // value proxies should be scheduled before the loopexit, not after
                     } else {
-                        addToEarliestSorting(b, (ScheduledNode) usage, sortedInstructions, visited);
+                        addToEarliestSorting(b, (ValueNode) usage, sortedInstructions, visited);
                     }
                 }
             }
 
             if (instruction instanceof BeginNode) {
                 ArrayList<ProxyNode> proxies = (instruction instanceof LoopExitNode) ? new ArrayList<>() : null;
-                for (ScheduledNode inBlock : blockToNodesMap.get(b)) {
+                for (ValueNode inBlock : blockToNodesMap.get(b)) {
                     if (!visited.isMarked(inBlock)) {
                         if (inBlock instanceof ProxyNode) {
                             proxies.add((ProxyNode) inBlock);
@@ -1176,7 +1176,7 @@ public final class SchedulePhase extends Phase {
                 break;
             } else {
                 sortedInstructions.add(instruction);
-                instruction = (ScheduledNode) instruction.predecessor();
+                instruction = (ValueNode) instruction.predecessor();
             }
         }
     }

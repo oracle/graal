@@ -71,5 +71,5 @@ public interface NodeLIRBuilderTool extends NodeMappableLIRBuilder {
 
     Value[] visitInvokeArguments(CallingConvention cc, Collection<ValueNode> arguments);
 
-    void doBlock(Block block, StructuredGraph graph, BlockMap<List<ScheduledNode>> blockMap);
+    void doBlock(Block block, StructuredGraph graph, BlockMap<List<ValueNode>> blockMap);
 }

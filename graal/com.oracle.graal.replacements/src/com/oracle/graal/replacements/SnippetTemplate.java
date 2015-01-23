@@ -993,7 +993,7 @@ public class SnippetTemplate {
         }
     };
 
-    private boolean assertSnippetKills(ScheduledNode replacee) {
+    private boolean assertSnippetKills(ValueNode replacee) {
         if (!replacee.graph().isAfterFloatingReadPhase()) {
             // no floating reads yet, ignore locations created while lowering
             return true;

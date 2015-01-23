@@ -80,7 +80,7 @@ public class MatchStatement {
      * @return true if the statement matched something and set a {@link ComplexMatchResult} to be
      *         evaluated by the NodeLIRBuilder.
      */
-    public boolean generate(NodeLIRBuilder builder, int index, ValueNode node, List<ScheduledNode> nodes) {
+    public boolean generate(NodeLIRBuilder builder, int index, ValueNode node, List<ValueNode> nodes) {
         assert index == nodes.indexOf(node);
         // Check that the basic shape matches
         Result result = pattern.matchShape(node, this);
