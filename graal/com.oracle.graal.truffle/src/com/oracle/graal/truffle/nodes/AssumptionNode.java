@@ -35,7 +35,7 @@ import com.oracle.graal.replacements.nodes.*;
 import com.oracle.graal.truffle.*;
 
 @NodeInfo
-public class AssumptionNode extends MacroNode implements com.oracle.graal.graph.IterableNodeType, Simplifiable {
+public class AssumptionNode extends MacroNode implements Simplifiable {
 
     public AssumptionNode(Invoke invoke) {
         super(invoke);
