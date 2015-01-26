@@ -1082,12 +1082,6 @@ public final class SchedulePhase extends Phase {
             stateAfter = ((StateSplit) i).stateAfter();
         }
 
-        if (i instanceof LoopExitNode) {
-            for (ProxyNode proxy : ((LoopExitNode) i).proxies()) {
-                addToLatestSorting(proxy, state);
-            }
-        }
-
         for (Node input : i.inputs()) {
             if (input instanceof FrameState) {
                 if (input != stateAfter) {
@@ -1159,20 +1153,12 @@ public final class SchedulePhase extends Phase {
             }
 
             if (instruction instanceof BeginNode) {
-                ArrayList<ProxyNode> proxies = (instruction instanceof LoopExitNode) ? new ArrayList<>() : null;
                 for (ValueNode inBlock : blockToNodesMap.get(b)) {
                     if (!visited.isMarked(inBlock)) {
-                        if (inBlock instanceof ProxyNode) {
-                            proxies.add((ProxyNode) inBlock);
-                        } else {
-                            addToEarliestSorting(b, inBlock, sortedInstructions, visited);
-                        }
+                        addToEarliestSorting(b, inBlock, sortedInstructions, visited);
                     }
                 }
                 sortedInstructions.add(instruction);
-                if (proxies != null) {
-                    sortedInstructions.addAll(proxies);
-                }
                 break;
             } else {
                 sortedInstructions.add(instruction);
