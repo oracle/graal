@@ -71,7 +71,7 @@ public abstract class UnsafeAccessNode extends FixedWithNextNode implements Cano
             // Try to canonicalize to a field access.
             ResolvedJavaType receiverType = StampTool.typeOrNull(object());
             if (receiverType != null) {
-                ResolvedJavaField field = receiverType.findInstanceFieldWithOffset(constantOffset);
+                ResolvedJavaField field = receiverType.findInstanceFieldWithOffset(constantOffset, accessKind());
                 // No need for checking that the receiver is non-null. The field access includes
                 // the null check and if a field is found, the offset is so small that this is
                 // never a valid access of an arbitrary address.

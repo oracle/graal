@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.nodes.java;
 
-import java.nio.*;
-
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.nodeinfo.*;
@@ -75,13 +73,8 @@ public class StoreFieldNode extends AccessFieldNode implements StateSplit, Virtu
         if (state != null && state.getState() == EscapeState.Virtual) {
             int fieldIndex = ((VirtualInstanceNode) state.getVirtualObject()).fieldIndex(field());
             if (fieldIndex != -1) {
-                Kind entryKind = state.getVirtualObject().entryKind(fieldIndex);
-                Kind valueKind = value().getKind();
-                boolean isStoreSafe = !entryKind.isPrimitive() || ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN || entryKind.getBitCount() == valueKind.getBitCount();
-                if (isStoreSafe) {
-                    tool.setVirtualEntry(state, fieldIndex, value(), false);
-                    tool.delete();
-                }
+                tool.setVirtualEntry(state, fieldIndex, value(), false);
+                tool.delete();
             }
         }
     }

@@ -27,6 +27,7 @@ import static com.oracle.graal.truffle.TruffleCompilerOptions.*;
 import java.io.*;
 import java.lang.reflect.*;
 import java.util.*;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
 import java.util.stream.*;
 
@@ -314,8 +315,18 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     }
 
     public void compile() {
+        compile(TruffleBackgroundCompilation.getValue() && !TruffleCompilationExceptionsAreThrown.getValue());
+    }
+
+    public void compile(boolean mayBeAsynchronous) {
         if (!runtime.isCompiling(this)) {
-            runtime.compile(this, TruffleBackgroundCompilation.getValue() && !TruffleCompilationExceptionsAreThrown.getValue());
+            runtime.compile(this, mayBeAsynchronous);
+        } else if (!mayBeAsynchronous && runtime.isCompiling(this)) {
+            try {
+                runtime.waitForCompilation(this, 20000);
+            } catch (ExecutionException | TimeoutException e) {
+                Debug.log(3, e.getMessage());
+            }
         }
     }
 

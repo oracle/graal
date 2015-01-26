@@ -134,8 +134,8 @@ public class ReadNode extends FloatableAccessNode implements LIRLowerable, Canon
         if (receiverType == null) {
             return false;
         }
-
-        ResolvedJavaField field = receiverType.findInstanceFieldWithOffset(((ConstantLocationNode) location()).getDisplacement());
+        ConstantLocationNode constantLocationNode = (ConstantLocationNode) location();
+        ResolvedJavaField field = receiverType.findInstanceFieldWithOffset(constantLocationNode.getDisplacement(), constantLocationNode.getKind());
         if (field == null) {
             // field was not declared by receiverType
             return false;

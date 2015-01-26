@@ -75,7 +75,7 @@ public class CustomizedUnsafeLoadFinalNode extends FixedWithNextNode implements 
             ValueNode offsetValue = tool.getReplacedValue(offset);
             if (offsetValue.isConstant()) {
                 long constantOffset = offsetValue.asJavaConstant().asLong();
-                int entryIndex = state.getVirtualObject().entryIndexForOffset(constantOffset);
+                int entryIndex = state.getVirtualObject().entryIndexForOffset(constantOffset, accessKind);
                 if (entryIndex != -1) {
                     ValueNode entry = state.getEntry(entryIndex);
                     if (entry.getKind() == getKind() || state.getVirtualObject().entryKind(entryIndex) == accessKind) {

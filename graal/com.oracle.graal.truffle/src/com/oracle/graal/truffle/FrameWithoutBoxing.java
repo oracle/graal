@@ -257,6 +257,16 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         }
     }
 
+    private static long alignPrimitive(FrameSlot slot, Kind forKind) {
+        long offset = PRIMITIVE_BASE_OFFSET + slot.getIndex() * PRIMITIVE_INDEX_SCALE;
+        if (ByteOrder.nativeOrder() == ByteOrder.BIG_ENDIAN) {
+            // On big endian, we use int in long type, which means, when byteCount() <=4, the value
+            // is right aligned in the 4 byte half, which has the lower address.
+            offset += Kind.Long.getByteCount() - Math.min(PRIMITIVE_INDEX_SCALE, 4 + forKind.getByteCount());
+        }
+        return offset;
+    }
+
     @Override
     public Object getValue(FrameSlot slot) {
         int slotIndex = slot.getIndex();

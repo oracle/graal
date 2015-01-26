@@ -24,8 +24,6 @@ package com.oracle.graal.nodes.extended;
 
 import static com.oracle.graal.compiler.common.UnsafeAccess.*;
 
-import java.nio.*;
-
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.nodeinfo.*;
