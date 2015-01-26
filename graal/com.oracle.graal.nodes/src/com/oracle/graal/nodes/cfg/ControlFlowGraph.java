@@ -222,6 +222,7 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
                 probability *= loopBegin.loopFrequency();
                 for (LoopEndNode predNode : loopBegin.orderedLoopEnds()) {
                     Block predBlock = nodeToBlock.get(predNode);
+                    assert predBlock != null : predNode;
                     if (predBlock.getId() >= 0) {
                         predecessors.add(predBlock);
                     }
