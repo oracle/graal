@@ -32,6 +32,7 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.graph.ReentrantBlockIterator.BlockIteratorClosure;
@@ -124,6 +125,9 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
             aliases.set(node, null);
             if (node instanceof LoopExitNode) {
                 LoopExitNode loopExit = (LoopExitNode) node;
+                for (ProxyNode proxy : loopExit.proxies()) {
+                    changed |= processNode(proxy, state, effects, lastFixedNode);
+                }
                 processLoopExit(loopExit, loopEntryStates.get(loopExit.loopBegin()), state, blockEffects.get(block));
             }
             changed |= processNode(node, state, effects, lastFixedNode);
