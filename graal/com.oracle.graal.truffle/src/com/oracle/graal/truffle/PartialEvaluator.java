@@ -30,12 +30,11 @@ import java.util.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.internal.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Graph.Mark;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.loop.*;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
@@ -73,10 +72,10 @@ public class PartialEvaluator {
     private final ResolvedJavaMethod callDirectMethod;
     private final ResolvedJavaMethod callSiteProxyMethod;
 
-    public PartialEvaluator(Providers providers, TruffleCache truffleCache) {
+    public PartialEvaluator(Providers providers, TruffleCache truffleCache, SnippetReflectionProvider snippetReflection) {
         this.providers = providers;
         this.canonicalizer = new CanonicalizerPhase(!ImmutableCode.getValue());
-        this.snippetReflection = Graal.getRequiredCapability(SnippetReflectionProvider.class);
+        this.snippetReflection = snippetReflection;
         this.truffleCache = truffleCache;
         this.callDirectMethod = providers.getMetaAccess().lookupJavaMethod(OptimizedCallTarget.getCallDirectMethod());
         this.callSiteProxyMethod = providers.getMetaAccess().lookupJavaMethod(GraalFrameInstance.CallNodeFrame.METHOD);
