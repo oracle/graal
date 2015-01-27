@@ -25,12 +25,7 @@ package com.oracle.graal.replacements.nodes;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.extended.*;
 
-/**
- * This is an extension of {@link MacroNode} that is a {@link StateSplit} and a
- * {@link MemoryCheckpoint}.
- */
 @NodeInfo
 public class MathPowNode extends MacroStateSplitNode implements Canonicalizable.Binary<ValueNode> {
 
