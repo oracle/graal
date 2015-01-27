@@ -34,7 +34,6 @@ import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.graph.ReentrantBlockIterator.BlockIteratorClosure;
 import com.oracle.graal.phases.schedule.*;
-import com.oracle.graal.phases.schedule.SchedulePhase.MemoryScheduling;
 import com.oracle.graal.phases.schedule.SchedulePhase.SchedulingStrategy;
 
 public final class GraphOrder {
@@ -135,7 +134,7 @@ public final class GraphOrder {
      */
     public static boolean assertSchedulableGraph(final StructuredGraph graph) {
         try {
-            final SchedulePhase schedule = new SchedulePhase(SchedulingStrategy.LATEST_OUT_OF_LOOPS, MemoryScheduling.NONE);
+            final SchedulePhase schedule = new SchedulePhase(SchedulingStrategy.LATEST_OUT_OF_LOOPS);
             final Map<LoopBeginNode, NodeBitMap> loopEntryStates = Node.newIdentityMap();
             schedule.apply(graph, false);
 
