@@ -29,7 +29,6 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.StructuredGraph.GuardsStage;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.util.*;
@@ -47,7 +46,7 @@ public class UseTrappingNullChecksPhase extends BasePhase<LowTierContext> {
         if (context.getTarget().implicitNullCheckLimit <= 0) {
             return;
         }
-        assert graph.getGuardsStage().ordinal() >= GuardsStage.AFTER_FSA.ordinal();
+        assert graph.getGuardsStage().areFrameStatesAtDeopts();
 
         for (DeoptimizeNode deopt : graph.getNodes(DeoptimizeNode.class)) {
             tryUseTrappingNullCheck(deopt, deopt.predecessor(), deopt.reason(), deopt.getSpeculation());

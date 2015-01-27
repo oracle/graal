@@ -120,31 +120,31 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
                 instanceofSnippets.lower((InstanceOfDynamicNode) n, tool);
             }
         } else if (n instanceof NewInstanceNode) {
-            if (graph.getGuardsStage() == StructuredGraph.GuardsStage.AFTER_FSA) {
+            if (graph.getGuardsStage().areFrameStatesAtDeopts()) {
                 newObjectSnippets.lower((NewInstanceNode) n, registers, tool);
             }
         } else if (n instanceof DynamicNewInstanceNode) {
-            if (graph.getGuardsStage() == StructuredGraph.GuardsStage.AFTER_FSA) {
+            if (graph.getGuardsStage().areFrameStatesAtDeopts()) {
                 newObjectSnippets.lower((DynamicNewInstanceNode) n, registers, tool);
             }
         } else if (n instanceof NewArrayNode) {
-            if (graph.getGuardsStage() == StructuredGraph.GuardsStage.AFTER_FSA) {
+            if (graph.getGuardsStage().areFrameStatesAtDeopts()) {
                 newObjectSnippets.lower((NewArrayNode) n, registers, runtime, tool);
             }
         } else if (n instanceof DynamicNewArrayNode) {
-            if (graph.getGuardsStage() == StructuredGraph.GuardsStage.AFTER_FSA) {
+            if (graph.getGuardsStage().areFrameStatesAtDeopts()) {
                 newObjectSnippets.lower((DynamicNewArrayNode) n, registers, tool);
             }
         } else if (n instanceof VerifyHeapNode) {
-            if (graph.getGuardsStage() == StructuredGraph.GuardsStage.AFTER_FSA) {
+            if (graph.getGuardsStage().areFrameStatesAtDeopts()) {
                 newObjectSnippets.lower((VerifyHeapNode) n, registers, runtime, tool);
             }
         } else if (n instanceof MonitorEnterNode) {
-            if (graph.getGuardsStage() == StructuredGraph.GuardsStage.AFTER_FSA) {
+            if (graph.getGuardsStage().areFrameStatesAtDeopts()) {
                 monitorSnippets.lower((MonitorEnterNode) n, registers, tool);
             }
         } else if (n instanceof MonitorExitNode) {
-            if (graph.getGuardsStage() == StructuredGraph.GuardsStage.AFTER_FSA) {
+            if (graph.getGuardsStage().areFrameStatesAtDeopts()) {
                 monitorSnippets.lower((MonitorExitNode) n, tool);
             }
         } else if (n instanceof G1PreWriteBarrier) {
@@ -162,7 +162,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
         } else if (n instanceof G1ArrayRangePostWriteBarrier) {
             writeBarrierSnippets.lower((G1ArrayRangePostWriteBarrier) n, registers, tool);
         } else if (n instanceof NewMultiArrayNode) {
-            if (graph.getGuardsStage() == StructuredGraph.GuardsStage.AFTER_FSA) {
+            if (graph.getGuardsStage().areFrameStatesAtDeopts()) {
                 newObjectSnippets.lower((NewMultiArrayNode) n, tool);
             }
         } else if (n instanceof LoadExceptionObjectNode) {
@@ -307,7 +307,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
     @Override
     protected void lowerUnsafeLoadNode(UnsafeLoadNode load, LoweringTool tool) {
         StructuredGraph graph = load.graph();
-        if (load.getGuardingCondition() == null && graph.getGuardsStage().ordinal() > StructuredGraph.GuardsStage.FLOATING_GUARDS.ordinal() && addReadBarrier(load)) {
+        if (load.getGuardingCondition() == null && !graph.getGuardsStage().allowsFloatingGuards() && addReadBarrier(load)) {
             unsafeLoadSnippets.lower(load, tool);
         } else {
             super.lowerUnsafeLoadNode(load, tool);
@@ -367,7 +367,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
 
     private void lowerDynamicCounterNode(DynamicCounterNode n) {
         StructuredGraph graph = n.graph();
-        if (graph.getGuardsStage() == StructuredGraph.GuardsStage.AFTER_FSA) {
+        if (graph.getGuardsStage().areFrameStatesAtDeopts()) {
             BenchmarkCounters.lower(n, registers, runtime.getConfig(), runtime.getTarget().wordKind);
         }
     }
@@ -391,7 +391,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
 
     private void lowerBytecodeExceptionNode(BytecodeExceptionNode node) {
         StructuredGraph graph = node.graph();
-        if (graph.getGuardsStage() == StructuredGraph.GuardsStage.FLOATING_GUARDS) {
+        if (graph.getGuardsStage().allowsFloatingGuards()) {
             if (OmitHotExceptionStacktrace.getValue()) {
                 Throwable exception;
                 if (node.getExceptionClass() == NullPointerException.class) {

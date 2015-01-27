@@ -139,7 +139,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
                 }
             }
             StructuredGraph graph = before.graph();
-            if (condition.graph().getGuardsStage().ordinal() >= StructuredGraph.GuardsStage.FIXED_DEOPTS.ordinal()) {
+            if (!condition.graph().getGuardsStage().allowsFloatingGuards()) {
                 FixedGuardNode fixedGuard = graph.add(new FixedGuardNode(condition, deoptReason, action, negated));
                 graph.addBeforeFixed(before, fixedGuard);
                 DummyGuardHandle handle = graph.add(new DummyGuardHandle(fixedGuard));

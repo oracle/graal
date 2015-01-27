@@ -228,7 +228,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
 
     protected void lowerLoadHubNode(LoadHubNode loadHub) {
         StructuredGraph graph = loadHub.graph();
-        if (graph.getGuardsStage().ordinal() < StructuredGraph.GuardsStage.FIXED_DEOPTS.ordinal()) {
+        if (graph.getGuardsStage().allowsFloatingGuards()) {
             return;
         }
         ValueNode hub = createReadHub(graph, loadHub.getValue(), loadHub.getGuard());
@@ -270,7 +270,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             ReadNode memoryRead = createUnsafeRead(graph, load, valueAnchorNode);
             graph.replaceFixedWithFixed(load, valueAnchorNode);
             graph.addAfterFixed(valueAnchorNode, memoryRead);
-        } else if (graph.getGuardsStage().ordinal() > StructuredGraph.GuardsStage.FLOATING_GUARDS.ordinal()) {
+        } else if (!graph.getGuardsStage().allowsFloatingGuards()) {
             assert load.getKind() != Kind.Illegal;
             ReadNode memoryRead = createUnsafeRead(graph, load, null);
             // An unsafe read must not float outside its block otherwise

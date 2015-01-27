@@ -54,4 +54,9 @@ public abstract class VirtualState extends Node {
 
     public abstract boolean isPartOfThisState(VirtualState state);
 
+    @Override
+    public final StructuredGraph graph() {
+        return (StructuredGraph) super.graph();
+    }
+
 }

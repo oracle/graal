@@ -171,7 +171,7 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
         if (singleImplementor != null && !singleImplementor.equals(declaredReceiverType)) {
             ResolvedJavaMethod singleImplementorMethod = singleImplementor.resolveMethod(targetMethod(), invoke().getContextType(), true);
             if (singleImplementorMethod != null) {
-                assert graph().getGuardsStage().ordinal() < StructuredGraph.GuardsStage.FIXED_DEOPTS.ordinal() : "Graph already fixed!";
+                assert graph().getGuardsStage().allowsFloatingGuards() : "Graph already fixed!";
                 /**
                  * We have an invoke on an interface with a single implementor. We can replace this
                  * with an invoke virtual.

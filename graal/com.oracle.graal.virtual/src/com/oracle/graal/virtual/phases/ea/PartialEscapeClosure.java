@@ -126,6 +126,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
         for (FrameState fs : nodeWithState.states()) {
             FrameState frameState = fs;
             if (frameState.getUsageCount() > 1) {
+                // Can happen for example from inlined snippets with multiple state split nodes.
                 FrameState copy = (FrameState) frameState.copyWithInputs();
                 nodeWithState.asNode().replaceFirstInput(frameState, copy);
                 frameState = copy;

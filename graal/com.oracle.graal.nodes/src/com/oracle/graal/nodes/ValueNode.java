@@ -48,12 +48,12 @@ public abstract class ValueNode extends com.oracle.graal.graph.Node implements K
         return stamp;
     }
 
-    public void setStamp(Stamp stamp) {
+    public final void setStamp(Stamp stamp) {
         this.stamp = stamp;
     }
 
     @Override
-    public StructuredGraph graph() {
+    public final StructuredGraph graph() {
         return (StructuredGraph) super.graph();
     }
 

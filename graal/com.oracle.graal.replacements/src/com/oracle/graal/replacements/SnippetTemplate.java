@@ -675,7 +675,7 @@ public class SnippetTemplate {
 
         GuardsStage guardsStage = args.cacheKey.guardsStage;
         // Perform lowering on the snippet
-        if (guardsStage.ordinal() >= GuardsStage.FIXED_DEOPTS.ordinal()) {
+        if (!guardsStage.allowsFloatingGuards()) {
             new GuardLoweringPhase().apply(snippetCopy, null);
         }
         snippetCopy.setGuardsStage(guardsStage);

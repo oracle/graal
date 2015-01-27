@@ -76,7 +76,7 @@ public class FixedGuardNode extends AbstractFixedGuardNode implements Lowerable,
          * deoptimizing without invalidating the code. Conditional elimination will eliminate the
          * guard if it's truly redundant in this case.
          */
-        if (graph().getGuardsStage() == StructuredGraph.GuardsStage.FLOATING_GUARDS && getAction() != DeoptimizationAction.None) {
+        if (graph().getGuardsStage().allowsFloatingGuards() && getAction() != DeoptimizationAction.None) {
             ValueNode guard = tool.createGuard(this, condition(), getReason(), getAction(), isNegated()).asNode();
             this.replaceAtUsages(guard);
             ValueAnchorNode newAnchor = graph().add(new ValueAnchorNode(guard.asNode()));

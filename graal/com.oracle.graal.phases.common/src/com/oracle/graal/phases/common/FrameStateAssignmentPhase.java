@@ -106,8 +106,8 @@ public class FrameStateAssignmentPhase extends Phase {
 
     @Override
     protected void run(StructuredGraph graph) {
-        assert graph.getGuardsStage().ordinal() >= GuardsStage.FIXED_DEOPTS.ordinal() && checkFixedDeopts(graph);
-        if (graph.getGuardsStage().ordinal() < GuardsStage.AFTER_FSA.ordinal()) {
+        assert !graph.getGuardsStage().allowsFloatingGuards() && checkFixedDeopts(graph);
+        if (graph.getGuardsStage().areFrameStatesAtSideEffects()) {
             ReentrantNodeIterator.apply(new FrameStateAssignmentClosure(), graph.start(), null);
             graph.setGuardsStage(GuardsStage.AFTER_FSA);
             graph.getNodes(FrameState.class).filter(state -> state.hasNoUsages()).forEach(GraphUtil::killWithUnusedFloatingInputs);
