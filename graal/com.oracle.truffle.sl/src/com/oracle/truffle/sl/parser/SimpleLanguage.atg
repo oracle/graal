@@ -202,10 +202,12 @@ Factor<out result>
 Factor<out SLExpressionNode result>
 =                                               (. result = null; .)
 (
-    identifier                                  (. result = factory.createRead(t); .)
-    [
-        MemberExpression<out result, result, null, t>
-    ]
+    identifier
+    (
+        MemberExpression<out result, null, null, t>
+    |
+                                                (. result = factory.createRead(t); .)
+    )
 |
     stringLiteral                               (. result = factory.createStringLiteral(t); .)
 |
@@ -219,12 +221,16 @@ Factor<out SLExpressionNode result>
 .
 
 
-MemberExpression<out SLExpressionNode result, SLExpressionNode receiver, SLExpressionNode assignmentReceiver, Token assignmentName>
+MemberExpression<out SLExpressionNode result, SLExpressionNode r, SLExpressionNode assignmentReceiver, Token assignmentName>
 =                                               (. result = null;
+                                                   SLExpressionNode receiver = r;
                                                    Token nestedAssignmentName = null; .)
 (
     "("                                         (. List<SLExpressionNode> parameters = new ArrayList<>();
-                                                   SLExpressionNode parameter; .)
+                                                   SLExpressionNode parameter;
+                                                   if (receiver == null) {
+                                                       receiver = factory.createRead(assignmentName); 
+                                                   } .)
     [
         Expression<out parameter>               (. parameters.add(parameter); .)
         {
@@ -244,7 +250,9 @@ MemberExpression<out SLExpressionNode result, SLExpressionNode receiver, SLExpre
                                                        result = factory.createWriteProperty(assignmentReceiver, assignmentName, value);
                                                    } .)
 |
-    "."
+    "."                                         (. if (receiver == null) {
+                                                       receiver = factory.createRead(assignmentName); 
+                                                   } .)
     identifier
                                                 (. result = factory.createReadProperty(receiver, t); .)
                                                 (. nestedAssignmentName = t; .)

@@ -140,7 +140,7 @@ public class SLMain {
      * Parse and run the specified SL source. Factored out in a separate method so that it can also
      * be used by the unit test harness.
      */
-    public static void run(SLContext context, Source source, PrintStream logOutput, int repeats) {
+    public static long run(SLContext context, Source source, PrintStream logOutput, int repeats) {
         if (logOutput != null) {
             logOutput.println("== running on " + Truffle.getRuntime().getName());
             // logOutput.println("Source = " + source.getCode());
@@ -163,6 +163,7 @@ public class SLMain {
         boolean dumpASTToIGV = false;
 
         printScript("before execution", context, logOutput, printASTToLog, printSourceAttributionToLog, dumpASTToIGV);
+        long totalRuntime = 0;
         try {
             for (int i = 0; i < repeats; i++) {
                 long start = System.nanoTime();
@@ -176,6 +177,7 @@ public class SLMain {
                     context.getOutput().println(formatTypeError(ex));
                 }
                 long end = System.nanoTime();
+                totalRuntime += end - start;
 
                 if (logOutput != null && repeats > 1) {
                     logOutput.println("== iteration " + (i + 1) + ": " + ((end - start) / 1000000) + " ms");
@@ -185,7 +187,7 @@ public class SLMain {
         } finally {
             printScript("after execution", context, logOutput, printASTToLog, printSourceAttributionToLog, dumpASTToIGV);
         }
-        return;
+        return totalRuntime;
     }
 
     /**

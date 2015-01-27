@@ -41,8 +41,8 @@ public class Parser {
 	public static final int _numericLiteral = 3;
 	public static final int maxT = 31;
 
-    static final boolean T = true;
-    static final boolean x = false;
+    static final boolean _T = true;
+    static final boolean _x = false;
     static final int minErrDist = 2;
 
     public Token t; // last recognized token
@@ -345,10 +345,11 @@ public class Parser {
 		result = null;
 		if (la.kind == 1) {
 			Get();
-			result = factory.createRead(t);
 			if (la.kind == 5 || la.kind == 29 || la.kind == 30) {
-				result = MemberExpression(result, null, t);
-			}
+				result = MemberExpression(null, null, t);
+			} else if (StartOf(4)) {
+				result = factory.createRead(t);
+			} else SynErr(33);
 		} else if (la.kind == 2) {
 			Get();
 			result = factory.createStringLiteral(t);
@@ -363,18 +364,22 @@ public class Parser {
 			Expect(7);
 			int length = (t.charPos + t.val.length()) - start;
 			result = factory.createParenExpression(expr, start, length);
-		} else SynErr(33);
+		} else SynErr(34);
 		return result;
 	}
 
-	SLExpressionNode  MemberExpression(SLExpressionNode receiver, SLExpressionNode assignmentReceiver, Token assignmentName) {
+	SLExpressionNode  MemberExpression(SLExpressionNode r, SLExpressionNode assignmentReceiver, Token assignmentName) {
 		SLExpressionNode  result;
 		result = null;
+		SLExpressionNode receiver = r;
 		Token nestedAssignmentName = null;
 		if (la.kind == 5) {
 			Get();
 			List<SLExpressionNode> parameters = new ArrayList<>();
 			SLExpressionNode parameter;
+			if (receiver == null) {
+			   receiver = factory.createRead(assignmentName);
+			}
 			if (StartOf(2)) {
 				parameter = Expression();
 				parameters.add(parameter);
@@ -399,10 +404,13 @@ public class Parser {
 			}
 		} else if (la.kind == 30) {
 			Get();
+			if (receiver == null) {
+			   receiver = factory.createRead(assignmentName);
+			}
 			Expect(1);
 			result = factory.createReadProperty(receiver, t);
 			nestedAssignmentName = t;
-		} else SynErr(34);
+		} else SynErr(35);
 		if (la.kind == 5 || la.kind == 29 || la.kind == 30) {
 			result = MemberExpression(result, receiver, nestedAssignmentName);
 		}
@@ -421,10 +429,11 @@ public class Parser {
     }
 
     private static final boolean[][] set = {
-		{T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x},
-		{x,T,T,T, x,T,x,x, x,x,T,x, T,T,T,x, T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x},
-		{x,T,T,T, x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x},
-		{x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,T, T,T,T,T, T,x,x,x, x,x,x,x, x}
+		{_T,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x},
+		{_x,_T,_T,_T, _x,_T,_x,_x, _x,_x,_T,_x, _T,_T,_T,_x, _T,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x},
+		{_x,_T,_T,_T, _x,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x},
+		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_T, _T,_T,_T,_T, _T,_x,_x,_x, _x,_x,_x,_x, _x},
+		{_x,_x,_x,_x, _x,_T,_T,_T, _x,_x,_x,_T, _x,_x,_x,_x, _x,_T,_T,_T, _T,_T,_T,_T, _T,_T,_T,_T, _T,_T,_T,_x, _x}
 
     };
 
@@ -501,7 +510,8 @@ class Errors {
 			case 31: s = "??? expected"; break;
 			case 32: s = "invalid Statement"; break;
 			case 33: s = "invalid Factor"; break;
-			case 34: s = "invalid MemberExpression"; break;
+			case 34: s = "invalid Factor"; break;
+			case 35: s = "invalid MemberExpression"; break;
             default:
                 s = "error " + n;
                 break;

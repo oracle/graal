@@ -39,8 +39,8 @@ import com.oracle.truffle.sl.runtime.*;
 // @formatter:off
 public class Parser {
 -->constants
-    static final boolean T = true;
-    static final boolean x = false;
+    static final boolean _T = true;
+    static final boolean _x = false;
     static final int minErrDist = 2;
 
     public Token t; // last recognized token
