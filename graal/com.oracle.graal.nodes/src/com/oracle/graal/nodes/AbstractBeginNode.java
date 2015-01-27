@@ -36,21 +36,21 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.util.*;
 
 @NodeInfo(allowedUsageTypes = {InputType.Guard, InputType.Anchor})
-public class BeginNode extends FixedWithNextNode implements LIRLowerable, Simplifiable, GuardingNode, AnchoringNode, IterableNodeType {
+public class AbstractBeginNode extends FixedWithNextNode implements LIRLowerable, Simplifiable, GuardingNode, AnchoringNode, IterableNodeType {
 
-    public BeginNode() {
+    public AbstractBeginNode() {
         super(StampFactory.forVoid());
     }
 
-    public BeginNode(Stamp stamp) {
+    public AbstractBeginNode(Stamp stamp) {
         super(stamp);
     }
 
-    public static BeginNode begin(FixedNode with) {
-        if (with instanceof BeginNode) {
-            return (BeginNode) with;
+    public static AbstractBeginNode begin(FixedNode with) {
+        if (with instanceof AbstractBeginNode) {
+            return (AbstractBeginNode) with;
         }
-        BeginNode begin = with.graph().add(new BeginNode());
+        AbstractBeginNode begin = with.graph().add(new AbstractBeginNode());
         begin.setNext(with);
         return begin;
     }
@@ -70,8 +70,8 @@ public class BeginNode extends FixedWithNextNode implements LIRLowerable, Simpli
         }
     }
 
-    public static BeginNode prevBegin(FixedNode from) {
-        for (BeginNode begin : GraphUtil.predecessorIterable(from).filter(BeginNode.class)) {
+    public static AbstractBeginNode prevBegin(FixedNode from) {
+        for (AbstractBeginNode begin : GraphUtil.predecessorIterable(from).filter(AbstractBeginNode.class)) {
             return begin;
         }
         return null;
@@ -79,7 +79,7 @@ public class BeginNode extends FixedWithNextNode implements LIRLowerable, Simpli
 
     private void evacuateGuards(FixedNode evacuateFrom) {
         if (!hasNoUsages()) {
-            BeginNode prevBegin = prevBegin(evacuateFrom);
+            AbstractBeginNode prevBegin = prevBegin(evacuateFrom);
             assert prevBegin != null;
             for (Node anchored : anchored().snapshot()) {
                 anchored.replaceFirstInput(this, prevBegin);
@@ -132,7 +132,7 @@ public class BeginNode extends FixedWithNextNode implements LIRLowerable, Simpli
 
             @Override
             public Iterator<FixedNode> iterator() {
-                return new BlockNodeIterator(BeginNode.this);
+                return new BlockNodeIterator(AbstractBeginNode.this);
             }
         };
     }
@@ -156,7 +156,7 @@ public class BeginNode extends FixedWithNextNode implements LIRLowerable, Simpli
             if (ret == null) {
                 throw new NoSuchElementException();
             }
-            if (!(current instanceof FixedWithNextNode) || (current instanceof BeginNode && current != BeginNode.this)) {
+            if (!(current instanceof FixedWithNextNode) || (current instanceof AbstractBeginNode && current != AbstractBeginNode.this)) {
                 current = null;
             } else {
                 current = ((FixedWithNextNode) current).next();

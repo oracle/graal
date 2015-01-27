@@ -183,7 +183,7 @@ public class LoopBeginNode extends MergeNode implements IterableNodeType, LIRLow
         canonicalizePhis(tool);
     }
 
-    public boolean isLoopExit(BeginNode begin) {
+    public boolean isLoopExit(AbstractBeginNode begin) {
         return begin instanceof LoopExitNode && ((LoopExitNode) begin).loopBegin() == this;
     }
 
@@ -191,7 +191,7 @@ public class LoopBeginNode extends MergeNode implements IterableNodeType, LIRLow
         for (LoopExitNode loopexit : loopExits().snapshot()) {
             loopexit.removeProxies();
             FrameState loopStateAfter = loopexit.stateAfter();
-            graph().replaceFixedWithFixed(loopexit, graph().add(new BeginNode()));
+            graph().replaceFixedWithFixed(loopexit, graph().add(new AbstractBeginNode()));
             if (loopStateAfter != null && loopStateAfter.isAlive() && loopStateAfter.hasNoUsages()) {
                 GraphUtil.killWithUnusedFloatingInputs(loopStateAfter);
             }

@@ -230,8 +230,8 @@ public class LoopEx {
         return data;
     }
 
-    public NodeBitMap nodesInLoopFrom(BeginNode point, BeginNode until) {
-        Collection<BeginNode> blocks = new LinkedList<>();
+    public NodeBitMap nodesInLoopFrom(AbstractBeginNode point, AbstractBeginNode until) {
+        Collection<AbstractBeginNode> blocks = new LinkedList<>();
         Collection<LoopExitNode> exits = new LinkedList<>();
         Queue<Block> work = new LinkedList<>();
         ControlFlowGraph cfg = loopsData().controlFlowGraph();

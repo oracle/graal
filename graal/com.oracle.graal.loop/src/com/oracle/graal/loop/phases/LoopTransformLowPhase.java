@@ -86,7 +86,7 @@ public class LoopTransformLowPhase extends Phase {
             sb.append(controlSplit).append(" [");
             NodePosIterator it = controlSplit.successors().iterator();
             while (it.hasNext()) {
-                sb.append(controlSplit.probability((BeginNode) it.next()));
+                sb.append(controlSplit.probability((AbstractBeginNode) it.next()));
                 if (it.hasNext()) {
                     sb.append(", ");
                 }

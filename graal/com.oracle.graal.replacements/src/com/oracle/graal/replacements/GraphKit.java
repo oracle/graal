@@ -246,8 +246,8 @@ public class GraphKit {
      * @param trueProbability The estimated probability the the condition is true
      */
     public void startIf(LogicNode condition, double trueProbability) {
-        BeginNode thenSuccessor = graph.add(new BeginNode());
-        BeginNode elseSuccessor = graph.add(new BeginNode());
+        AbstractBeginNode thenSuccessor = graph.add(new AbstractBeginNode());
+        AbstractBeginNode elseSuccessor = graph.add(new AbstractBeginNode());
         append(new IfNode(condition, thenSuccessor, elseSuccessor, trueProbability));
         lastFixedNode = null;
 

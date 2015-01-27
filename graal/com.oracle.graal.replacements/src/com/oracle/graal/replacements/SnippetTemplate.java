@@ -1100,7 +1100,7 @@ public class SnippetTemplate {
             FixedNode firstCFGNode = entryPointNode.next();
             StructuredGraph replaceeGraph = replacee.graph();
             Map<Node, Node> replacements = bind(replaceeGraph, metaAccess, args);
-            replacements.put(entryPointNode, BeginNode.prevBegin(replacee));
+            replacements.put(entryPointNode, AbstractBeginNode.prevBegin(replacee));
             Map<Node, Node> duplicates = replaceeGraph.addDuplicates(nodes, snippet, snippet.getNodeCount(), replacements);
             Debug.dump(replaceeGraph, "After inlining snippet %s", snippet.method());
 

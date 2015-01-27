@@ -109,10 +109,10 @@ public abstract class SinglePassNodeIterator<T extends MergeableState<T>> {
      * </p>
      */
     private static final class PathStart<U> {
-        private final BeginNode node;
+        private final AbstractBeginNode node;
         private final U stateOnEntry;
 
-        private PathStart(BeginNode node, U stateOnEntry) {
+        private PathStart(AbstractBeginNode node, U stateOnEntry) {
             this.node = node;
             this.stateOnEntry = stateOnEntry;
             assert repOK();
@@ -210,13 +210,13 @@ public abstract class SinglePassNodeIterator<T extends MergeableState<T>> {
     private void queueSuccessors(FixedNode x) {
         Iterator<Node> iter = x.successors().nonNull().iterator();
         if (iter.hasNext()) {
-            BeginNode begin = (BeginNode) iter.next();
+            AbstractBeginNode begin = (AbstractBeginNode) iter.next();
             // the current state isn't cloned for the first successor
             // conceptually, the state is handed over to it
             nodeQueue.addFirst(new PathStart<>(begin, state));
         }
         while (iter.hasNext()) {
-            BeginNode begin = (BeginNode) iter.next();
+            AbstractBeginNode begin = (AbstractBeginNode) iter.next();
             // for all other successors it is cloned
             nodeQueue.addFirst(new PathStart<>(begin, state.clone()));
         }
@@ -249,7 +249,7 @@ public abstract class SinglePassNodeIterator<T extends MergeableState<T>> {
             assert ready : "Not a single-pass iterator after all";
             return merge;
         } else {
-            BeginNode begin = elem.node;
+            AbstractBeginNode begin = elem.node;
             assert begin.predecessor() != null;
             state = elem.stateOnEntry;
             state.afterSplit(begin);

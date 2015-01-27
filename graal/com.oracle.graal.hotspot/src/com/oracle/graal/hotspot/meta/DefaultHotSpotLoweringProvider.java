@@ -301,7 +301,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
          * Anchor the read of the element klass to the cfg, because it is only valid when arrayClass
          * is an object class, which might not be the case in other parts of the compiled method.
          */
-        return graph.unique(new FloatingReadNode(arrayHub, location, null, KlassPointerStamp.klassNonNull(), BeginNode.prevBegin(anchor)));
+        return graph.unique(new FloatingReadNode(arrayHub, location, null, KlassPointerStamp.klassNonNull(), AbstractBeginNode.prevBegin(anchor)));
     }
 
     @Override

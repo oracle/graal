@@ -67,7 +67,7 @@ public interface NodeLIRBuilderTool extends NodeMappableLIRBuilder {
 
     LIRGeneratorTool getLIRGeneratorTool();
 
-    void emitOverflowCheckBranch(BeginNode overflowSuccessor, BeginNode next, Stamp compareStamp, double probability);
+    void emitOverflowCheckBranch(AbstractBeginNode overflowSuccessor, AbstractBeginNode next, Stamp compareStamp, double probability);
 
     Value[] visitInvokeArguments(CallingConvention cc, Collection<ValueNode> arguments);
 

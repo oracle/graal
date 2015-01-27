@@ -299,7 +299,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             @Override
             protected void handleUnresolvedInstanceOf(JavaType type, ValueNode object) {
                 assert !graphBuilderConfig.eagerResolving();
-                BeginNode successor = currentGraph.add(new BeginNode());
+                AbstractBeginNode successor = currentGraph.add(new AbstractBeginNode());
                 DeoptimizeNode deopt = currentGraph.add(new DeoptimizeNode(InvalidateRecompile, Unresolved));
                 append(new IfNode(currentGraph.unique(new IsNullNode(object)), successor, deopt, 1));
                 lastInstr = successor;
@@ -609,7 +609,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     return;
                 }
                 BytecodeExceptionNode exception = currentGraph.add(new BytecodeExceptionNode(metaAccess, NullPointerException.class));
-                BeginNode falseSucc = currentGraph.add(new BeginNode());
+                AbstractBeginNode falseSucc = currentGraph.add(new AbstractBeginNode());
                 append(new IfNode(currentGraph.unique(new IsNullNode(receiver)), exception, falseSucc, 0.01));
                 lastInstr = falseSucc;
 
@@ -619,7 +619,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             @Override
             protected void emitBoundsCheck(ValueNode index, ValueNode length) {
-                BeginNode trueSucc = currentGraph.add(new BeginNode());
+                AbstractBeginNode trueSucc = currentGraph.add(new AbstractBeginNode());
                 BytecodeExceptionNode exception = currentGraph.add(new BytecodeExceptionNode(metaAccess, ArrayIndexOutOfBoundsException.class, index));
                 append(new IfNode(currentGraph.unique(new IntegerBelowNode(index, length)), trueSucc, exception, 0.99));
                 lastInstr = trueSucc;
@@ -795,7 +795,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     createInvoke(callTarget, resultType);
                 } else {
                     InvokeWithExceptionNode invoke = createInvokeWithException(callTarget, resultType);
-                    BeginNode beginNode = currentGraph.add(new KillingBeginNode(LocationIdentity.ANY_LOCATION));
+                    AbstractBeginNode beginNode = currentGraph.add(new KillingBeginNode(LocationIdentity.ANY_LOCATION));
                     invoke.setNext(beginNode);
                     lastInstr = beginNode;
                 }
@@ -1044,7 +1044,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                      * this block again.
                      */
                     FixedNode targetNode;
-                    block.firstInstruction = currentGraph.add(new BeginNode());
+                    block.firstInstruction = currentGraph.add(new AbstractBeginNode());
                     targetNode = block.firstInstruction;
                     Target target = checkLoopExit(targetNode, block, state);
                     FixedNode result = target.fixed;
@@ -1077,13 +1077,13 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 assert currentBlock == null || currentBlock.getId() < block.getId() : "must not be backward branch";
                 assert block.firstInstruction.next() == null : "bytecodes already parsed for block";
 
-                if (block.firstInstruction instanceof BeginNode && !(block.firstInstruction instanceof MergeNode)) {
+                if (block.firstInstruction instanceof AbstractBeginNode && !(block.firstInstruction instanceof MergeNode)) {
                     /*
                      * This is the second time we see this block. Create the actual MergeNode and
                      * the End Node for the already existing edge. For simplicity, we leave the
                      * placeholder in the graph and just append the new nodes after the placeholder.
                      */
-                    BeginNode placeholder = (BeginNode) block.firstInstruction;
+                    AbstractBeginNode placeholder = (AbstractBeginNode) block.firstInstruction;
 
                     // The EndNode for the already existing edge.
                     AbstractEndNode end = currentGraph.add(new EndNode());
@@ -1121,9 +1121,9 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
              * Returns a block begin node with the specified state. If the specified probability is
              * 0, the block deoptimizes immediately.
              */
-            private BeginNode createBlockTarget(double probability, BciBlock block, HIRFrameStateBuilder stateAfter) {
+            private AbstractBeginNode createBlockTarget(double probability, BciBlock block, HIRFrameStateBuilder stateAfter) {
                 FixedNode target = createTarget(probability, block, stateAfter);
-                BeginNode begin = BeginNode.begin(target);
+                AbstractBeginNode begin = AbstractBeginNode.begin(target);
 
                 assert !(target instanceof DeoptimizeNode && begin instanceof BeginStateSplitNode && ((BeginStateSplitNode) begin).stateAfter() != null) : "We are not allowed to set the stateAfter of the begin node, because we have to deoptimize "
                                 + "to a bci _before_ the actual if, so that the interpreter can update the profiling information.";
@@ -1355,7 +1355,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                         frameState.clearNonLiveLocals(currentBlock, liveness, false);
                     }
                     if (lastInstr instanceof StateSplit) {
-                        if (lastInstr.getClass() == BeginNode.class) {
+                        if (lastInstr.getClass() == AbstractBeginNode.class) {
                             // BeginNodes do not need a frame state
                         } else {
                             StateSplit stateSplit = (StateSplit) lastInstr;

@@ -130,7 +130,7 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
         Node last;
 
         // assign proxies of a loop exit to this block
-        if (cur instanceof BeginNode) {
+        if (cur instanceof AbstractBeginNode) {
             for (Node usage : cur.usages()) {
                 if (usage instanceof ProxyNode) {
                     nodeToBlock.set(usage, block);
@@ -151,7 +151,7 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
 
             last = cur;
             cur = cur.successors().first();
-        } while (cur != null && !(cur instanceof BeginNode));
+        } while (cur != null && !(cur instanceof AbstractBeginNode));
 
         block.endNode = (FixedNode) last;
     }
@@ -159,7 +159,7 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
     private void identifyBlocks() {
         // Find all block headers
         int numBlocks = 0;
-        for (BeginNode begin : graph.getNodes(BeginNode.class)) {
+        for (AbstractBeginNode begin : graph.getNodes(AbstractBeginNode.class)) {
             Block block = new Block(begin);
             numBlocks++;
             identifyBlock(block);
@@ -273,7 +273,7 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
                 for (Block b : loop.getBlocks()) {
                     for (Block sux : b.getSuccessors()) {
                         if (sux.loop != loop) {
-                            BeginNode begin = sux.getBeginNode();
+                            AbstractBeginNode begin = sux.getBeginNode();
                             if (!(begin instanceof LoopExitNode && ((LoopExitNode) begin).loopBegin() == loopBegin)) {
                                 Debug.log("Unexpected loop exit with %s, including whole branch in the loop", sux);
                                 unexpected.add(sux);

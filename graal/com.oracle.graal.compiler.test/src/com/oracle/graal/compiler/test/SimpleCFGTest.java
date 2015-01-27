@@ -45,9 +45,9 @@ public class SimpleCFGTest extends GraalCompilerTest {
         AbstractEndNode trueEnd = graph.add(new EndNode());
         AbstractEndNode falseEnd = graph.add(new EndNode());
 
-        BeginNode trueBegin = graph.add(new BeginNode());
+        AbstractBeginNode trueBegin = graph.add(new AbstractBeginNode());
         trueBegin.setNext(trueEnd);
-        BeginNode falseBegin = graph.add(new BeginNode());
+        AbstractBeginNode falseBegin = graph.add(new AbstractBeginNode());
         falseBegin.setNext(falseEnd);
 
         IfNode ifNode = graph.add(new IfNode(null, trueBegin, falseBegin, 0.5));

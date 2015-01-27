@@ -122,16 +122,16 @@ public class UseTrappingNullChecksPhase extends BasePhase<LowTierContext> {
                     checkPredecessor(deopt, end.predecessor(), deoptimizationReason);
                 }
             }
-        } else if (predecessor instanceof BeginNode) {
+        } else if (predecessor instanceof AbstractBeginNode) {
             checkPredecessor(deopt, predecessor, deoptimizationReason);
         }
     }
 
     private static void checkPredecessor(AbstractDeoptimizeNode deopt, Node predecessor, DeoptimizationReason deoptimizationReason) {
         Node current = predecessor;
-        BeginNode branch = null;
-        while (current instanceof BeginNode) {
-            branch = (BeginNode) current;
+        AbstractBeginNode branch = null;
+        while (current instanceof AbstractBeginNode) {
+            branch = (AbstractBeginNode) current;
             if (branch.anchored().isNotEmpty()) {
                 // some input of the deopt framestate is anchored to this branch
                 return;
@@ -159,8 +159,8 @@ public class UseTrappingNullChecksPhase extends BasePhase<LowTierContext> {
             metricTrappingNullCheckUnreached.increment();
         }
         IsNullNode isNullNode = (IsNullNode) condition;
-        BeginNode nonTrappingContinuation = ifNode.falseSuccessor();
-        BeginNode trappingContinuation = ifNode.trueSuccessor();
+        AbstractBeginNode nonTrappingContinuation = ifNode.falseSuccessor();
+        AbstractBeginNode trappingContinuation = ifNode.trueSuccessor();
         NullCheckNode trappingNullCheck = deopt.graph().add(new NullCheckNode(isNullNode.getValue()));
         trappingNullCheck.setStateBefore(deopt.stateBefore());
         deopt.graph().replaceSplit(ifNode, trappingNullCheck, nonTrappingContinuation);
@@ -171,7 +171,7 @@ public class UseTrappingNullChecksPhase extends BasePhase<LowTierContext> {
          * then remove the Begin from the graph.
          */
         nonTrappingContinuation.replaceAtUsages(InputType.Guard, trappingNullCheck);
-        if (nonTrappingContinuation.getClass() == BeginNode.class) {
+        if (nonTrappingContinuation.getClass() == AbstractBeginNode.class) {
             FixedNode next = nonTrappingContinuation.next();
             nonTrappingContinuation.clearSuccessors();
             trappingNullCheck.setNext(next);

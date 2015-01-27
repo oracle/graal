@@ -251,7 +251,7 @@ public final class SchedulePhase extends Phase {
             }
         }
 
-        BeginNode startNode = cfg.getStartBlock().getBeginNode();
+        AbstractBeginNode startNode = cfg.getStartBlock().getBeginNode();
         assert startNode instanceof StartNode;
 
         LocationSet accm = foundExcludeNode ? set : excludedLocations;
@@ -771,7 +771,7 @@ public final class SchedulePhase extends Phase {
                     // If a FrameState is an outer FrameState this method behaves as if the inner
                     // FrameState was the actual usage, by recursing.
                     blocksForUsage(node, unscheduledUsage, closure, strategy);
-                } else if (unscheduledUsage instanceof BeginNode) {
+                } else if (unscheduledUsage instanceof AbstractBeginNode) {
                     // Only FrameStates can be connected to BeginNodes.
                     if (!(usage instanceof FrameState)) {
                         throw new SchedulingError(usage.toString());
@@ -1137,7 +1137,7 @@ public final class SchedulePhase extends Phase {
                 }
             }
 
-            if (instruction instanceof BeginNode) {
+            if (instruction instanceof AbstractBeginNode) {
                 for (ValueNode inBlock : blockToNodesMap.get(b)) {
                     if (!visited.isMarked(inBlock)) {
                         addToEarliestSorting(b, inBlock, sortedInstructions, visited);

@@ -265,7 +265,7 @@ public class InliningUtil {
             }
         }
 
-        final BeginNode prevBegin = BeginNode.prevBegin(invokeNode);
+        final AbstractBeginNode prevBegin = AbstractBeginNode.prevBegin(invokeNode);
         DuplicationReplacement localReplacement = new DuplicationReplacement() {
 
             public Node replacement(Node node) {
@@ -303,9 +303,9 @@ public class InliningUtil {
             }
 
             // get rid of memory kill
-            BeginNode begin = invokeWithException.next();
+            AbstractBeginNode begin = invokeWithException.next();
             if (begin instanceof KillingBeginNode) {
-                BeginNode newBegin = new BeginNode();
+                AbstractBeginNode newBegin = new AbstractBeginNode();
                 graph.addAfterFixed(begin, graph.add(newBegin));
                 begin.replaceAtUsages(newBegin);
                 graph.removeFixed(begin);
@@ -458,8 +458,8 @@ public class InliningUtil {
                         }
                     } else {
                         FixedNode deoptimizeNode = graph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.NotCompiledExceptionHandler));
-                        if (fixedStateSplit instanceof BeginNode) {
-                            deoptimizeNode = BeginNode.begin(deoptimizeNode);
+                        if (fixedStateSplit instanceof AbstractBeginNode) {
+                            deoptimizeNode = AbstractBeginNode.begin(deoptimizeNode);
                         }
                         fixedStateSplit.replaceAtPredecessor(deoptimizeNode);
                         GraphUtil.killCFG(fixedStateSplit);

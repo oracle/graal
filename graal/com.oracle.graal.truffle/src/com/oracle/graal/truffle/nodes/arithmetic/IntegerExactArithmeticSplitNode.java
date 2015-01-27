@@ -32,12 +32,12 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public abstract class IntegerExactArithmeticSplitNode extends ControlSplitNode implements LIRLowerable {
 
-    @Successor BeginNode overflowSuccessor;
-    @Successor BeginNode next;
+    @Successor AbstractBeginNode overflowSuccessor;
+    @Successor AbstractBeginNode next;
     @Input ValueNode x;
     @Input ValueNode y;
 
-    public IntegerExactArithmeticSplitNode(Stamp stamp, ValueNode x, ValueNode y, BeginNode next, BeginNode overflowSuccessor) {
+    public IntegerExactArithmeticSplitNode(Stamp stamp, ValueNode x, ValueNode y, AbstractBeginNode next, AbstractBeginNode overflowSuccessor) {
         super(stamp);
         this.x = x;
         this.y = y;
@@ -46,15 +46,15 @@ public abstract class IntegerExactArithmeticSplitNode extends ControlSplitNode i
     }
 
     @Override
-    public double probability(BeginNode successor) {
+    public double probability(AbstractBeginNode successor) {
         return successor == next ? 1 : 0;
     }
 
-    public BeginNode getNext() {
+    public AbstractBeginNode getNext() {
         return next;
     }
 
-    public BeginNode getOverflowSuccessor() {
+    public AbstractBeginNode getOverflowSuccessor() {
         return overflowSuccessor;
     }
 
@@ -81,9 +81,9 @@ public abstract class IntegerExactArithmeticSplitNode extends ControlSplitNode i
             FixedNode next = previous.next();
             previous.setNext(null);
             DeoptimizeNode deopt = floatingNode.graph().add(new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.ArithmeticException));
-            BeginNode normalBegin = floatingNode.graph().add(new BeginNode());
+            AbstractBeginNode normalBegin = floatingNode.graph().add(new AbstractBeginNode());
             normalBegin.setNext(next);
-            IntegerExactArithmeticSplitNode split = node.createSplit(normalBegin, BeginNode.begin(deopt));
+            IntegerExactArithmeticSplitNode split = node.createSplit(normalBegin, AbstractBeginNode.begin(deopt));
             previous.setNext(split);
             floatingNode.replaceAndDelete(split);
         }

@@ -37,5 +37,5 @@ public abstract class ControlSplitNode extends FixedNode implements IterableNode
         super(stamp);
     }
 
-    public abstract double probability(BeginNode successor);
+    public abstract double probability(AbstractBeginNode successor);
 }

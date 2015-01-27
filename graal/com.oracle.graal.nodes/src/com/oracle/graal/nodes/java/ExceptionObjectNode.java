@@ -53,7 +53,7 @@ public class ExceptionObjectNode extends DispatchBeginNode implements Lowerable,
              * deopts can float in between the begin node and the load exception node.
              */
             LocationIdentity locationsKilledByInvoke = ((InvokeWithExceptionNode) predecessor()).getLocationIdentity();
-            BeginNode entry = graph().add(new KillingBeginNode(locationsKilledByInvoke));
+            AbstractBeginNode entry = graph().add(new KillingBeginNode(locationsKilledByInvoke));
             LoadExceptionObjectNode loadException = graph().add(new LoadExceptionObjectNode(stamp()));
 
             loadException.setStateAfter(stateAfter());

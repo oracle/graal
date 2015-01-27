@@ -38,9 +38,9 @@ public class CountedLoopInfo {
     private InductionVariable iv;
     private ValueNode end;
     private boolean oneOff;
-    private BeginNode body;
+    private AbstractBeginNode body;
 
-    CountedLoopInfo(LoopEx loop, InductionVariable iv, ValueNode end, boolean oneOff, BeginNode body) {
+    CountedLoopInfo(LoopEx loop, InductionVariable iv, ValueNode end, boolean oneOff, AbstractBeginNode body) {
         this.loop = loop;
         this.iv = iv;
         this.end = end;
@@ -118,7 +118,7 @@ public class CountedLoopInfo {
         return oneOff;
     }
 
-    public BeginNode getBody() {
+    public AbstractBeginNode getBody() {
         return body;
     }
 
@@ -157,7 +157,7 @@ public class CountedLoopInfo {
             }
             cond = graph.unique(new IntegerLessThanNode(end, v1));
         }
-        overflowGuard = graph.unique(new GuardNode(cond, BeginNode.prevBegin(loop.entryPoint()), DeoptimizationReason.LoopLimitCheck, DeoptimizationAction.InvalidateRecompile, true,
+        overflowGuard = graph.unique(new GuardNode(cond, AbstractBeginNode.prevBegin(loop.entryPoint()), DeoptimizationReason.LoopLimitCheck, DeoptimizationAction.InvalidateRecompile, true,
                         JavaConstant.NULL_POINTER)); // TODO gd: use speculation
         loop.loopBegin().setOverflowGuard(overflowGuard);
         return overflowGuard;

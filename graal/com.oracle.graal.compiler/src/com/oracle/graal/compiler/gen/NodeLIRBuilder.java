@@ -592,7 +592,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
     }
 
     @Override
-    public void emitOverflowCheckBranch(BeginNode overflowSuccessor, BeginNode next, Stamp stamp, double probability) {
+    public void emitOverflowCheckBranch(AbstractBeginNode overflowSuccessor, AbstractBeginNode next, Stamp stamp, double probability) {
         LIRKind cmpKind = getLIRGeneratorTool().getLIRKind(stamp);
         gen.emitOverflowCheckBranch(getLIRBlock(overflowSuccessor), getLIRBlock(next), cmpKind, probability);
     }

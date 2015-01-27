@@ -51,8 +51,8 @@ import com.oracle.graal.phases.*;
 public class ConvertDeoptimizeToGuardPhase extends Phase {
     private SimplifierTool simplifierTool = GraphUtil.getDefaultSimplifier(null, null, null, false);
 
-    private static BeginNode findBeginNode(FixedNode startNode) {
-        return GraphUtil.predecessorIterable(startNode).filter(BeginNode.class).first();
+    private static AbstractBeginNode findBeginNode(FixedNode startNode) {
+        return GraphUtil.predecessorIterable(startNode).filter(AbstractBeginNode.class).first();
     }
 
     @Override
@@ -63,12 +63,12 @@ public class ConvertDeoptimizeToGuardPhase extends Phase {
         }
         for (DeoptimizeNode d : graph.getNodes(DeoptimizeNode.class)) {
             assert d.isAlive();
-            visitDeoptBegin(BeginNode.prevBegin(d), d.action(), d.reason(), graph);
+            visitDeoptBegin(AbstractBeginNode.prevBegin(d), d.action(), d.reason(), graph);
         }
 
         for (FixedGuardNode fixedGuard : graph.getNodes(FixedGuardNode.class)) {
 
-            BeginNode pred = BeginNode.prevBegin(fixedGuard);
+            AbstractBeginNode pred = AbstractBeginNode.prevBegin(fixedGuard);
             if (pred instanceof MergeNode) {
                 MergeNode merge = (MergeNode) pred;
                 if (fixedGuard.condition() instanceof CompareNode) {
@@ -96,7 +96,7 @@ public class ConvertDeoptimizeToGuardPhase extends Phase {
                         }
                         if (xs[i] instanceof PrimitiveConstant && ys[i] instanceof PrimitiveConstant &&
                                         compare.condition().foldCondition(xs[i], ys[i], null, compare.unorderedIsTrue()) == fixedGuard.isNegated()) {
-                            visitDeoptBegin(BeginNode.prevBegin(mergePredecessor), fixedGuard.getAction(), fixedGuard.getReason(), graph);
+                            visitDeoptBegin(AbstractBeginNode.prevBegin(mergePredecessor), fixedGuard.getAction(), fixedGuard.getReason(), graph);
                         }
                     }
                 }
@@ -106,27 +106,27 @@ public class ConvertDeoptimizeToGuardPhase extends Phase {
         new DeadCodeEliminationPhase(Optional).apply(graph);
     }
 
-    private void visitDeoptBegin(BeginNode deoptBegin, DeoptimizationAction deoptAction, DeoptimizationReason deoptReason, StructuredGraph graph) {
+    private void visitDeoptBegin(AbstractBeginNode deoptBegin, DeoptimizationAction deoptAction, DeoptimizationReason deoptReason, StructuredGraph graph) {
         if (deoptBegin instanceof MergeNode) {
             MergeNode mergeNode = (MergeNode) deoptBegin;
             Debug.log("Visiting %s", mergeNode);
             FixedNode next = mergeNode.next();
             while (mergeNode.isAlive()) {
                 AbstractEndNode end = mergeNode.forwardEnds().first();
-                BeginNode newBeginNode = findBeginNode(end);
+                AbstractBeginNode newBeginNode = findBeginNode(end);
                 visitDeoptBegin(newBeginNode, deoptAction, deoptReason, graph);
             }
             assert next.isAlive();
-            BeginNode newBeginNode = findBeginNode(next);
+            AbstractBeginNode newBeginNode = findBeginNode(next);
             visitDeoptBegin(newBeginNode, deoptAction, deoptReason, graph);
             return;
         } else if (deoptBegin.predecessor() instanceof IfNode) {
             IfNode ifNode = (IfNode) deoptBegin.predecessor();
-            BeginNode otherBegin = ifNode.trueSuccessor();
+            AbstractBeginNode otherBegin = ifNode.trueSuccessor();
             LogicNode conditionNode = ifNode.condition();
             FixedGuardNode guard = graph.add(new FixedGuardNode(conditionNode, deoptReason, deoptAction, deoptBegin == ifNode.trueSuccessor()));
             FixedWithNextNode pred = (FixedWithNextNode) ifNode.predecessor();
-            BeginNode survivingSuccessor;
+            AbstractBeginNode survivingSuccessor;
             if (deoptBegin == ifNode.trueSuccessor()) {
                 survivingSuccessor = ifNode.falseSuccessor();
             } else {

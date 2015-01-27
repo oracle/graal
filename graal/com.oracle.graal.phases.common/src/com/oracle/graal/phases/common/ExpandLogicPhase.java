@@ -55,8 +55,8 @@ public class ExpandLogicPhase extends Phase {
     }
 
     private static void processIf(LogicNode x, boolean xNegated, LogicNode y, boolean yNegated, IfNode ifNode, double shortCircuitProbability) {
-        BeginNode trueTarget = ifNode.trueSuccessor();
-        BeginNode falseTarget = ifNode.falseSuccessor();
+        AbstractBeginNode trueTarget = ifNode.trueSuccessor();
+        AbstractBeginNode falseTarget = ifNode.falseSuccessor();
         double firstIfProbability = shortCircuitProbability;
         /*
          * P(Y | not(X)) = P(Y inter not(X)) / P(not(X)) = (P(X union Y) - P(X)) / (1 - P(X))
@@ -78,9 +78,9 @@ public class ExpandLogicPhase extends Phase {
         EndNode secondTrueEnd = graph.add(new EndNode());
         trueTargetMerge.addForwardEnd(firstTrueEnd);
         trueTargetMerge.addForwardEnd(secondTrueEnd);
-        BeginNode firstTrueTarget = BeginNode.begin(firstTrueEnd);
-        BeginNode secondTrueTarget = BeginNode.begin(secondTrueEnd);
-        BeginNode secondIf = BeginNode.begin(graph.add(new IfNode(y, yNegated ? falseTarget : secondTrueTarget, yNegated ? secondTrueTarget : falseTarget, secondIfProbability)));
+        AbstractBeginNode firstTrueTarget = AbstractBeginNode.begin(firstTrueEnd);
+        AbstractBeginNode secondTrueTarget = AbstractBeginNode.begin(secondTrueEnd);
+        AbstractBeginNode secondIf = AbstractBeginNode.begin(graph.add(new IfNode(y, yNegated ? falseTarget : secondTrueTarget, yNegated ? secondTrueTarget : falseTarget, secondIfProbability)));
         IfNode firstIf = graph.add(new IfNode(x, xNegated ? secondIf : firstTrueTarget, xNegated ? firstTrueTarget : secondIf, firstIfProbability));
         ifNode.replaceAtPredecessor(firstIf);
         ifNode.safeDelete();

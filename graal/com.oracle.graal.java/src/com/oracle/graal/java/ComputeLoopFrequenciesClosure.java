@@ -51,7 +51,7 @@ public final class ComputeLoopFrequenciesClosure extends ReentrantNodeIterator.N
     }
 
     @Override
-    protected Double afterSplit(BeginNode node, Double oldState) {
+    protected Double afterSplit(AbstractBeginNode node, Double oldState) {
         // a control split splits up the probability
         ControlSplitNode split = (ControlSplitNode) node.predecessor();
         return oldState * split.probability(node);

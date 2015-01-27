@@ -150,13 +150,13 @@ public abstract class LoopFragment {
         }
     }
 
-    protected static NodeBitMap computeNodes(Graph graph, Iterable<BeginNode> blocks) {
+    protected static NodeBitMap computeNodes(Graph graph, Iterable<AbstractBeginNode> blocks) {
         return computeNodes(graph, blocks, Collections.emptyList());
     }
 
-    protected static NodeBitMap computeNodes(Graph graph, Iterable<BeginNode> blocks, Iterable<LoopExitNode> earlyExits) {
+    protected static NodeBitMap computeNodes(Graph graph, Iterable<AbstractBeginNode> blocks, Iterable<LoopExitNode> earlyExits) {
         final NodeBitMap nodes = graph.createNodeBitMap();
-        for (BeginNode b : blocks) {
+        for (AbstractBeginNode b : blocks) {
             if (b.isDeleted()) {
                 continue;
             }
@@ -188,7 +188,7 @@ public abstract class LoopFragment {
         }
 
         final NodeBitMap notloopNodes = graph.createNodeBitMap();
-        for (BeginNode b : blocks) {
+        for (AbstractBeginNode b : blocks) {
             if (b.isDeleted()) {
                 continue;
             }
@@ -245,19 +245,19 @@ public abstract class LoopFragment {
         return false;
     }
 
-    public static NodeIterable<BeginNode> toHirBlocks(final Iterable<Block> blocks) {
-        return new NodeIterable<BeginNode>() {
+    public static NodeIterable<AbstractBeginNode> toHirBlocks(final Iterable<Block> blocks) {
+        return new NodeIterable<AbstractBeginNode>() {
 
-            public Iterator<BeginNode> iterator() {
+            public Iterator<AbstractBeginNode> iterator() {
                 final Iterator<Block> it = blocks.iterator();
-                return new Iterator<BeginNode>() {
+                return new Iterator<AbstractBeginNode>() {
 
                     @Override
                     public void remove() {
                         throw new UnsupportedOperationException();
                     }
 
-                    public BeginNode next() {
+                    public AbstractBeginNode next() {
                         return it.next().getBeginNode();
                     }
 
@@ -302,13 +302,13 @@ public abstract class LoopFragment {
     protected void mergeEarlyExits() {
         assert isDuplicate();
         StructuredGraph graph = graph();
-        for (BeginNode earlyExit : LoopFragment.toHirBlocks(original().loop().loop().getExits())) {
+        for (AbstractBeginNode earlyExit : LoopFragment.toHirBlocks(original().loop().loop().getExits())) {
             LoopExitNode loopEarlyExit = (LoopExitNode) earlyExit;
             FixedNode next = loopEarlyExit.next();
             if (loopEarlyExit.isDeleted() || !this.original().contains(loopEarlyExit)) {
                 continue;
             }
-            BeginNode newEarlyExit = getDuplicatedNode(loopEarlyExit);
+            AbstractBeginNode newEarlyExit = getDuplicatedNode(loopEarlyExit);
             if (newEarlyExit == null) {
                 continue;
             }

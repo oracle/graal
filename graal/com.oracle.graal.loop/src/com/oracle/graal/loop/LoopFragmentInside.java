@@ -89,13 +89,13 @@ public class LoopFragmentInside extends LoopFragment {
 
         patchNodes(dataFixBefore);
 
-        BeginNode end = mergeEnds();
+        AbstractBeginNode end = mergeEnds();
 
         mergeEarlyExits();
 
         original().patchPeeling(this);
 
-        BeginNode entry = getDuplicatedNode(loop.loopBegin());
+        AbstractBeginNode entry = getDuplicatedNode(loop.loopBegin());
         loop.entryPoint().replaceAtPredecessor(entry);
         end.setNext(loop.entryPoint());
     }
@@ -152,7 +152,7 @@ public class LoopFragmentInside extends LoopFragment {
                     if (value != null) {
                         return value;
                     }
-                    BeginNode newValue = graph.add(new BeginNode());
+                    AbstractBeginNode newValue = graph.add(new AbstractBeginNode());
                     seenNode.put(original, newValue);
                     return newValue;
                 }
@@ -161,7 +161,7 @@ public class LoopFragmentInside extends LoopFragment {
                     if (value != null) {
                         return value;
                     }
-                    BeginNode newValue = graph.add(new BeginNode());
+                    AbstractBeginNode newValue = graph.add(new AbstractBeginNode());
                     seenNode.put(original, newValue);
                     return newValue;
                 }
@@ -291,7 +291,7 @@ public class LoopFragmentInside extends LoopFragment {
         }
     }
 
-    private BeginNode mergeEnds() {
+    private AbstractBeginNode mergeEnds() {
         assert isDuplicate();
         List<AbstractEndNode> endsToMerge = new LinkedList<>();
         // map peel exits to the corresponding loop exits
@@ -305,12 +305,12 @@ public class LoopFragmentInside extends LoopFragment {
             }
         }
         mergedInitializers = Node.newIdentityMap();
-        BeginNode newExit;
+        AbstractBeginNode newExit;
         StructuredGraph graph = graph();
         if (endsToMerge.size() == 1) {
             AbstractEndNode end = endsToMerge.get(0);
             assert end.hasNoUsages();
-            newExit = graph.add(new BeginNode());
+            newExit = graph.add(new AbstractBeginNode());
             end.replaceAtPredecessor(newExit);
             end.safeDelete();
         } else {
