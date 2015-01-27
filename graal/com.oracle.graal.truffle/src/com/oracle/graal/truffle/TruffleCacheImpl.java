@@ -215,6 +215,10 @@ public class TruffleCacheImpl implements TruffleCache {
                     map.put("nodeCount", graph.getNodeCount());
                     map.put("method", method.toString());
                     TracePerformanceWarningsListener.logPerformanceWarning(String.format("Method on fast path contains more than %d graal nodes.", warnNodeCount), map);
+
+                    try (Scope s2 = Debug.scope("TrufflePerformanceWarnings")) {
+                        Debug.dump(graph, "performance warning");
+                    }
                 }
             }
 
