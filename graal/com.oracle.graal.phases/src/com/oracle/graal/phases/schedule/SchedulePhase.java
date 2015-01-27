@@ -77,60 +77,89 @@ public final class SchedulePhase extends Phase {
         LATEST_OUT_OF_LOOPS
     }
 
-    private class KillSet implements Iterable<LocationIdentity> {
+    static int created;
+
+    private class LocationSet {
+        private LocationIdentity firstLocation;
         private List<LocationIdentity> list;
 
-        public KillSet() {
+        public LocationSet() {
             list = null;
         }
 
-        public KillSet(KillSet other) {
+        public LocationSet(LocationSet other) {
+            this.firstLocation = other.firstLocation;
             if (other.list != null && other.list.size() > 0) {
                 list = new ArrayList<>(other.list);
             }
         }
 
-        private void initSet() {
+        private void initList() {
             if (list == null) {
                 list = new ArrayList<>(4);
             }
         }
 
-        public void add(LocationIdentity locationIdentity) {
-            if (list == null || !list.contains(locationIdentity)) {
-                initSet();
-                list.add(locationIdentity);
-            }
-        }
-
-        public void addAll(KillSet other) {
-            if (other.list == null) {
-                return;
-            }
-            initSet();
-            for (LocationIdentity locationIdentity : other) {
-                if (!list.contains(locationIdentity)) {
-                    list.add(locationIdentity);
+        public void add(LocationIdentity location) {
+            if (location == LocationIdentity.ANY_LOCATION) {
+                firstLocation = location;
+                list = null;
+            } else {
+                if (firstLocation == null) {
+                    firstLocation = location;
+                } else {
+                    initList();
+                    list.add(location);
                 }
             }
         }
 
-        public Iterator<LocationIdentity> iterator() {
-            if (list == null) {
-                return Collections.emptyIterator();
+        public void addAll(LocationSet other) {
+            if (other.firstLocation != null) {
+                add(other.firstLocation);
             }
-            return list.iterator();
+            List<LocationIdentity> otherList = other.list;
+            if (otherList != null) {
+                for (LocationIdentity l : otherList) {
+                    add(l);
+                }
+            }
         }
 
-        public boolean isKilled(LocationIdentity locationIdentity) {
-            if (list == null) {
-                return false;
+        public boolean contains(LocationIdentity locationIdentity) {
+            assert locationIdentity != null;
+            assert locationIdentity != LocationIdentity.ANY_LOCATION;
+            assert locationIdentity != LocationIdentity.FINAL_LOCATION;
+            if (firstLocation == LocationIdentity.ANY_LOCATION) {
+                return true;
             }
-            return list.contains(locationIdentity);
+            if (firstLocation == locationIdentity) {
+                return true;
+            }
+            if (list != null) {
+                for (int i = 0; i < list.size(); ++i) {
+                    LocationIdentity value = list.get(i);
+                    if (value == locationIdentity) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        public List<LocationIdentity> getCopyAsList() {
+            ArrayList<LocationIdentity> result = new ArrayList<>();
+            if (firstLocation != null) {
+                result.add(firstLocation);
+            }
+            if (list != null) {
+                result.addAll(list);
+            }
+            return result;
         }
     }
 
-    private class NewMemoryScheduleClosure extends BlockIteratorClosure<KillSet> {
+    private class NewMemoryScheduleClosure extends BlockIteratorClosure<LocationSet> {
         private Node excludeNode;
         private Block upperBoundBlock;
 
@@ -144,23 +173,23 @@ public final class SchedulePhase extends Phase {
         }
 
         @Override
-        protected KillSet getInitialState() {
+        protected LocationSet getInitialState() {
             return cloneState(blockToKillSet.get(getCFG().getStartBlock()));
         }
 
         @Override
-        protected KillSet processBlock(Block block, KillSet currentState) {
+        protected LocationSet processBlock(Block block, LocationSet currentState) {
             assert block != null;
             currentState.addAll(computeKillSet(block, block == upperBoundBlock ? excludeNode : null));
             return currentState;
         }
 
         @Override
-        protected KillSet merge(Block merge, List<KillSet> states) {
+        protected LocationSet merge(Block merge, List<LocationSet> states) {
             assert merge.getBeginNode() instanceof MergeNode;
 
-            KillSet initKillSet = new KillSet();
-            for (KillSet state : states) {
+            LocationSet initKillSet = new LocationSet();
+            for (LocationSet state : states) {
                 initKillSet.addAll(state);
             }
 
@@ -168,16 +197,16 @@ public final class SchedulePhase extends Phase {
         }
 
         @Override
-        protected KillSet cloneState(KillSet state) {
-            return new KillSet(state);
+        protected LocationSet cloneState(LocationSet state) {
+            return new LocationSet(state);
         }
 
         @Override
-        protected List<KillSet> processLoop(Loop<Block> loop, KillSet state) {
-            LoopInfo<KillSet> info = ReentrantBlockIterator.processLoop(this, loop, cloneState(state));
+        protected List<LocationSet> processLoop(Loop<Block> loop, LocationSet state) {
+            LoopInfo<LocationSet> info = ReentrantBlockIterator.processLoop(this, loop, cloneState(state));
 
             assert loop.getHeader().getBeginNode() instanceof LoopBeginNode;
-            KillSet headerState = merge(loop.getHeader(), info.endStates);
+            LocationSet headerState = merge(loop.getHeader(), info.endStates);
 
             // second iteration, for propagating information to loop exits
             info = ReentrantBlockIterator.processLoop(this, loop, cloneState(headerState));
@@ -196,10 +225,10 @@ public final class SchedulePhase extends Phase {
      *            until we reach excludeNode.
      * @return all killed locations
      */
-    private KillSet computeKillSet(Block block, Node excludeNode) {
+    private LocationSet computeKillSet(Block block, Node excludeNode) {
         // cache is only valid if we don't potentially exclude kills from the set
         if (excludeNode == null) {
-            KillSet cachedSet = blockToKillSet.get(block);
+            LocationSet cachedSet = blockToKillSet.get(block);
             if (cachedSet != null) {
                 return cachedSet;
             }
@@ -208,8 +237,8 @@ public final class SchedulePhase extends Phase {
         // add locations to excludedLocations until we reach the excluded node
         boolean foundExcludeNode = excludeNode == null;
 
-        KillSet set = new KillSet();
-        KillSet excludedLocations = new KillSet();
+        LocationSet set = new LocationSet();
+        LocationSet excludedLocations = new LocationSet();
         if (block.getBeginNode() instanceof MergeNode) {
             MergeNode mergeNode = (MergeNode) block.getBeginNode();
             for (MemoryPhiNode phi : mergeNode.usages().filter(MemoryPhiNode.class)) {
@@ -225,7 +254,7 @@ public final class SchedulePhase extends Phase {
         BeginNode startNode = cfg.getStartBlock().getBeginNode();
         assert startNode instanceof StartNode;
 
-        KillSet accm = foundExcludeNode ? set : excludedLocations;
+        LocationSet accm = foundExcludeNode ? set : excludedLocations;
         for (Node node : block.getNodes()) {
             if (!foundExcludeNode && node == excludeNode) {
                 foundExcludeNode = true;
@@ -254,7 +283,7 @@ public final class SchedulePhase extends Phase {
         return set;
     }
 
-    private KillSet computeKillSet(Block block) {
+    private LocationSet computeKillSet(Block block) {
         return computeKillSet(block, null);
     }
 
@@ -265,7 +294,7 @@ public final class SchedulePhase extends Phase {
      * Map from blocks to the nodes in each block.
      */
     private BlockMap<List<ValueNode>> blockToNodesMap;
-    private BlockMap<KillSet> blockToKillSet;
+    private BlockMap<LocationSet> blockToKillSet;
     private final SchedulingStrategy selectedStrategy;
 
     public SchedulePhase() {
@@ -319,11 +348,11 @@ public final class SchedulePhase extends Phase {
             buf.format("post-dom: %s. ", b.getPostdominator());
             buf.format("preds: %s. ", b.getPredecessors());
             buf.format("succs: %s ====%n", b.getSuccessors());
-            BlockMap<KillSet> killSets = blockToKillSet;
+            BlockMap<LocationSet> killSets = blockToKillSet;
             if (killSets != null) {
                 buf.format("X block kills: %n");
                 if (killSets.get(b) != null) {
-                    for (LocationIdentity locId : killSets.get(b)) {
+                    for (LocationIdentity locId : killSets.get(b).getCopyAsList()) {
                         buf.format("X %s killed by %s%n", locId, "dunno anymore");
                     }
                 }
@@ -529,11 +558,11 @@ public final class SchedulePhase extends Phase {
                 } else {
                     closure = new NewMemoryScheduleClosure();
                 }
-                Map<FixedNode, KillSet> states;
-                states = ReentrantBlockIterator.apply(closure, currentBlock, new KillSet(), block -> block == dominatedBlock);
+                Map<FixedNode, LocationSet> states;
+                states = ReentrantBlockIterator.apply(closure, currentBlock, new LocationSet(), block -> block == dominatedBlock);
 
-                KillSet mergeState = states.get(dominatedBlock.getBeginNode());
-                if (mergeState.isKilled(locid)) {
+                LocationSet mergeState = states.get(dominatedBlock.getBeginNode());
+                if (mergeState.contains(locid)) {
                     // location got killed somewhere in the branches,
                     // thus we've to move the read above it
                     return currentBlock;
@@ -541,11 +570,11 @@ public final class SchedulePhase extends Phase {
             } else {
                 if (currentBlock == upperBoundBlock) {
                     assert earliestBlock == upperBoundBlock;
-                    KillSet ks = computeKillSet(upperBoundBlock, ValueNodeUtil.asNode(n.getLastLocationAccess()));
-                    if (ks.isKilled(locid)) {
+                    LocationSet ks = computeKillSet(upperBoundBlock, ValueNodeUtil.asNode(n.getLastLocationAccess()));
+                    if (ks.contains(locid)) {
                         return upperBoundBlock;
                     }
-                } else if (dominatedBlock == null || computeKillSet(currentBlock).isKilled(locid)) {
+                } else if (dominatedBlock == null || computeKillSet(currentBlock).contains(locid)) {
                     return currentBlock;
                 }
             }
