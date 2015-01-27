@@ -47,7 +47,7 @@ public abstract class AbstractEndNode extends FixedNode implements IterableNodeT
 
     @Override
     public boolean verify() {
-        assertTrue(usages().count() <= 1, "at most one usage");
+        assertTrue(getUsageCount() <= 1, "at most one usage");
         return super.verify();
     }
 

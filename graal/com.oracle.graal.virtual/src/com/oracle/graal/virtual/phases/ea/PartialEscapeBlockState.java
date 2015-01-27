@@ -102,7 +102,7 @@ public abstract class PartialEscapeBlockState<T extends PartialEscapeBlockState<
                     commit.addLocks(monitorIds);
                 }
 
-                assert commit.usages().filter(AllocatedObjectNode.class).count() == commit.usages().count();
+                assert commit.usages().filter(AllocatedObjectNode.class).count() == commit.getUsageCount();
                 List<AllocatedObjectNode> materializedValues = commit.usages().filter(AllocatedObjectNode.class).snapshot();
                 for (int i = 0; i < commit.getValues().size(); i++) {
                     if (materializedValues.contains(commit.getValues().get(i))) {

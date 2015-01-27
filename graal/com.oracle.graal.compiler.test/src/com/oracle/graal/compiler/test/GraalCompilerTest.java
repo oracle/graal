@@ -319,7 +319,7 @@ public abstract class GraalCompilerTest extends GraalTest {
                             canonicalId.set(node, id);
                         }
                         String name = node instanceof ConstantNode && checkConstants ? node.toString(Verbosity.Name) : node.getClass().getSimpleName();
-                        result.append("  " + id + "|" + name + (excludeVirtual ? "\n" : "    (" + node.usages().count() + ")\n"));
+                        result.append("  " + id + "|" + name + (excludeVirtual ? "\n" : "    (" + node.getUsageCount() + ")\n"));
                     }
                 }
             }

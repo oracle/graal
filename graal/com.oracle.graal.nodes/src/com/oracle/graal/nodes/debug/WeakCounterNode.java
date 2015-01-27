@@ -45,7 +45,7 @@ public class WeakCounterNode extends DynamicCounterNode implements Simplifiable,
 
     @Override
     public void simplify(SimplifierTool tool) {
-        if (checkedValue instanceof FloatingNode && checkedValue.usages().count() == 1) {
+        if (checkedValue instanceof FloatingNode && checkedValue.getUsageCount() == 1) {
             tool.addToWorkList(checkedValue);
             graph().removeFixed(this);
         }

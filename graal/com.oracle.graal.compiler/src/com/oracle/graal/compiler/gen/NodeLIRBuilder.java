@@ -158,7 +158,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
      */
     public void setMatchResult(ValueNode x, Value operand) {
         assert operand.equals(ComplexMatchValue.INTERIOR_MATCH) || operand instanceof ComplexMatchValue;
-        assert operand instanceof ComplexMatchValue || x.usages().count() == 1 : "interior matches must be single user";
+        assert operand instanceof ComplexMatchValue || x.getUsageCount() == 1 : "interior matches must be single user";
         assert nodeOperands != null && nodeOperands.get(x) == null : "operand cannot be set twice";
         assert !(x instanceof VirtualObjectNode);
         nodeOperands.set(x, operand);
@@ -256,7 +256,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
                 if (LogVerbose.getValue()) {
                     int i = 0;
                     for (ValueNode node : nodes) {
-                        Debug.log("%d: (%s) %1S", i++, node.usages().count(), node);
+                        Debug.log("%d: (%s) %1S", i++, node.getUsageCount(), node);
                     }
                 }
 

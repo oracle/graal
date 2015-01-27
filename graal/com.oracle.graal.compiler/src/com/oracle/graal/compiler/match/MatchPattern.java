@@ -251,7 +251,7 @@ public class MatchPattern {
         }
 
         if (singleUser && !atRoot) {
-            if (node.usages().count() > 1) {
+            if (node.getUsageCount() > 1) {
                 return Result.tooManyUsers(node, statement.getPattern());
             }
         }

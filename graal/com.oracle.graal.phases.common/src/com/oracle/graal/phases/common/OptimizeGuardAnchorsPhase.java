@@ -96,7 +96,7 @@ public class OptimizeGuardAnchorsPhase extends Phase {
         int successorCount = controlSplit.successors().count();
         List<GuardNode> otherGuards = new ArrayList<>(successorCount - 1);
         for (GuardNode guard : successor.guards().snapshot()) {
-            if (guard.isDeleted() || guard.condition().usages().count() < successorCount) {
+            if (guard.isDeleted() || guard.condition().getUsageCount() < successorCount) {
                 continue;
             }
             for (GuardNode conditonGuard : guard.condition().usages().filter(GuardNode.class)) {
@@ -129,10 +129,10 @@ public class OptimizeGuardAnchorsPhase extends Phase {
     private static BeginNode findMinimumUsagesSuccessor(ControlSplitNode controlSplit) {
         NodePosIterator successors = controlSplit.successors().iterator();
         BeginNode min = (BeginNode) successors.next();
-        int minUsages = min.usages().count();
+        int minUsages = min.getUsageCount();
         while (successors.hasNext()) {
             BeginNode successor = (BeginNode) successors.next();
-            int count = successor.usages().count();
+            int count = successor.getUsageCount();
             if (count < minUsages) {
                 minUsages = count;
                 min = successor;

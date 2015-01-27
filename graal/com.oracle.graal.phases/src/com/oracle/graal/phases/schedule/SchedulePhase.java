@@ -460,7 +460,7 @@ public final class SchedulePhase extends Phase {
                 throw new GraalInternalError("unknown scheduling strategy");
         }
         if (!dominates(earliestBlock, block)) {
-            throw new SchedulingError("%s: Graph cannot be scheduled : inconsistent for %s, %d usages, (%s needs to dominate %s)", node.graph(), node, node.usages().count(), earliestBlock, block);
+            throw new SchedulingError("%s: Graph cannot be scheduled : inconsistent for %s, %d usages, (%s needs to dominate %s)", node.graph(), node, node.getUsageCount(), earliestBlock, block);
         }
         cfg.getNodeToBlock().set(node, block);
         blockToNodesMap.get(block).add(node);

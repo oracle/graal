@@ -217,7 +217,7 @@ public class TypeSystemTest extends GraalCompilerTest {
     }
 
     private static void outputNode(Node node) {
-        TTY.print("  " + node + "    (usage count: " + node.usages().count() + ") (inputs:");
+        TTY.print("  " + node + "    (usage count: " + node.getUsageCount() + ") (inputs:");
         for (Node input : node.inputs()) {
             TTY.print(" " + input.toString(Verbosity.Id));
         }

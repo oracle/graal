@@ -109,7 +109,7 @@ public class MatchContext {
                     Debug.log("unexpected node %s", node);
                     for (int j = startIndex; j <= endIndex; j++) {
                         ValueNode theNode = nodes.get(j);
-                        Debug.log("%s(%s) %1s", (consumed != null && consumed.contains(theNode) || theNode == root) ? "*" : " ", theNode.usages().count(), theNode);
+                        Debug.log("%s(%s) %1s", (consumed != null && consumed.contains(theNode) || theNode == root) ? "*" : " ", theNode.getUsageCount(), theNode);
                     }
                 }
                 return Result.notSafe(node, rule.getPattern());
@@ -147,7 +147,7 @@ public class MatchContext {
      * @return Result.OK if the node can be safely consumed.
      */
     public Result consume(ValueNode node) {
-        assert node.usages().count() <= 1 : "should have already been checked";
+        assert node.getUsageCount() <= 1 : "should have already been checked";
 
         // Check NOT_IN_BLOCK first since that usually implies ALREADY_USED
         int index = nodes.indexOf(node);
