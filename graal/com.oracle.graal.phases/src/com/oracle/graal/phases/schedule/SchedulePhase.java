@@ -521,9 +521,6 @@ public final class SchedulePhase extends Phase {
                 // the dominated block is not a successor -> we have a split
                 assert dominatedBlock.getBeginNode() instanceof MergeNode;
 
-                HashSet<Block> region = computeRegion(currentBlock, dominatedBlock);
-                Debug.log("> merge.  %s: region for %s -> %s: %s", n, currentBlock, dominatedBlock, region);
-
                 NewMemoryScheduleClosure closure = null;
                 if (currentBlock == upperBoundBlock) {
                     assert earliestBlock == upperBoundBlock;
@@ -533,7 +530,7 @@ public final class SchedulePhase extends Phase {
                     closure = new NewMemoryScheduleClosure();
                 }
                 Map<FixedNode, KillSet> states;
-                states = ReentrantBlockIterator.apply(closure, currentBlock, new KillSet(), (block) -> !region.contains(block));
+                states = ReentrantBlockIterator.apply(closure, currentBlock, new KillSet(), block -> block == dominatedBlock);
 
                 KillSet mergeState = states.get(dominatedBlock.getBeginNode());
                 if (mergeState.isKilled(locid)) {
@@ -570,31 +567,6 @@ public final class SchedulePhase extends Phase {
         }
         assert path.peek() == earliestBlock;
         return path;
-    }
-
-    /**
-     * compute a set that contains all blocks in a region spanned by dominatorBlock and
-     * dominatedBlock (exclusive the dominatedBlock).
-     */
-    private static HashSet<Block> computeRegion(Block dominatorBlock, Block dominatedBlock) {
-        HashSet<Block> region = new HashSet<>();
-        Queue<Block> workList = new LinkedList<>();
-
-        region.add(dominatorBlock);
-        workList.addAll(dominatorBlock.getSuccessors());
-        while (workList.size() > 0) {
-            Block current = workList.poll();
-            if (current != dominatedBlock) {
-                region.add(current);
-                for (Block b : current.getSuccessors()) {
-                    if (!region.contains(b) && !workList.contains(b)) {
-                        workList.offer(b);
-                    }
-                }
-            }
-        }
-        assert !region.contains(dominatedBlock) && region.containsAll(dominatedBlock.getPredecessors());
-        return region;
     }
 
     /**
