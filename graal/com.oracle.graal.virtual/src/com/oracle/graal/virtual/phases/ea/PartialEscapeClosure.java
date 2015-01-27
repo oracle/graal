@@ -108,7 +108,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
             return !(node instanceof CommitAllocationNode || node instanceof AllocatedObjectNode || node instanceof BoxNode);
         }
         if (isMarked) {
-            for (ValueNode input : node.inputs().filter(ValueNode.class)) {
+            for (Node input : node.inputs()) {
                 ObjectState obj = getObjectState(state, input);
                 if (obj != null) {
                     VirtualUtil.trace("replacing input %s at %s: %s", input, node, obj);
@@ -213,7 +213,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
         }
     }
 
-    private boolean replaceWithMaterialized(ValueNode value, Node usage, FixedNode materializeBefore, BlockT state, ObjectState obj, GraphEffectList effects, DebugMetric metric) {
+    private boolean replaceWithMaterialized(Node value, Node usage, FixedNode materializeBefore, BlockT state, ObjectState obj, GraphEffectList effects, DebugMetric metric) {
         boolean materialized = ensureMaterialized(state, obj, materializeBefore, effects, metric);
         effects.replaceFirstInput(usage, value, obj.getMaterializedValue());
         return materialized;
@@ -627,8 +627,8 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
         }
     }
 
-    public ObjectState getObjectState(PartialEscapeBlockState<?> state, ValueNode value) {
-        if (value == null) {
+    public ObjectState getObjectState(PartialEscapeBlockState<?> state, Node value) {
+        if (value == null || value instanceof VirtualState) {
             return null;
         }
         if (value.isAlive() && !aliases.isNew(value)) {
