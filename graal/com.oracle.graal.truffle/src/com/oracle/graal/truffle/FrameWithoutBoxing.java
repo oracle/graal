@@ -38,11 +38,6 @@ import com.oracle.truffle.api.frame.*;
  * frame object would show up very late and would be hard to identify.
  */
 public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame {
-    private static final long OBJECT_BASE_OFFSET = Unsafe.ARRAY_OBJECT_BASE_OFFSET;
-    private static final long OBJECT_INDEX_SCALE = Unsafe.ARRAY_OBJECT_INDEX_SCALE;
-    private static final long PRIMITIVE_BASE_OFFSET = Unsafe.ARRAY_LONG_BASE_OFFSET;
-    private static final long PRIMITIVE_INDEX_SCALE = Unsafe.ARRAY_LONG_INDEX_SCALE;
-
     private final FrameDescriptor descriptor;
     private final Object[] arguments;
     private Object[] locals;
@@ -89,7 +84,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
 
     private Object getObjectUnsafe(FrameSlot slot) {
         int slotIndex = slot.getIndex();
-        return unsafeGetObject(getLocals(), OBJECT_BASE_OFFSET + slotIndex * OBJECT_INDEX_SCALE, this.getTags()[slotIndex] == FrameSlotKind.Object.ordinal(), slot);
+        return unsafeGetObject(getLocals(), Unsafe.ARRAY_OBJECT_BASE_OFFSET + slotIndex * (long) Unsafe.ARRAY_OBJECT_INDEX_SCALE, this.getTags()[slotIndex] == FrameSlotKind.Object.ordinal(), slot);
     }
 
     @Override
@@ -99,7 +94,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     }
 
     private void setObjectUnsafe(FrameSlot slot, Object value) {
-        unsafePutObject(getLocals(), OBJECT_BASE_OFFSET + slot.getIndex() * OBJECT_INDEX_SCALE, value, slot);
+        unsafePutObject(getLocals(), Unsafe.ARRAY_OBJECT_BASE_OFFSET + slot.getIndex() * (long) Unsafe.ARRAY_OBJECT_INDEX_SCALE, value, slot);
     }
 
     @Override
@@ -272,11 +267,11 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     }
 
     private static long alignPrimitive(FrameSlot slot, Kind forKind) {
-        long offset = PRIMITIVE_BASE_OFFSET + slot.getIndex() * PRIMITIVE_INDEX_SCALE;
+        long offset = Unsafe.ARRAY_LONG_BASE_OFFSET + slot.getIndex() * (long) Unsafe.ARRAY_LONG_INDEX_SCALE;
         if (ByteOrder.nativeOrder() == ByteOrder.BIG_ENDIAN) {
             // On big endian, we use int in long type, which means, when byteCount() <=4, the value
             // is right aligned in the 4 byte half, which has the lower address.
-            offset += Kind.Long.getByteCount() - Math.min(PRIMITIVE_INDEX_SCALE, 4 + forKind.getByteCount());
+            offset += Kind.Long.getByteCount() - Math.min((long) Unsafe.ARRAY_LONG_INDEX_SCALE, 4 + forKind.getByteCount());
         }
         return offset;
     }
