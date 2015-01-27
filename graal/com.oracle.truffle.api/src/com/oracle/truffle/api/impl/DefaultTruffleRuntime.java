@@ -44,9 +44,6 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
     private final Map<RootCallTarget, Void> callTargets = Collections.synchronizedMap(new WeakHashMap<RootCallTarget, Void>());
 
     public DefaultTruffleRuntime() {
-        if (Truffle.getRuntime() != null) {
-            throw new IllegalArgumentException("Cannot instantiate DefaultTruffleRuntime. Use Truffle.getRuntime() instead.");
-        }
     }
 
     @Override

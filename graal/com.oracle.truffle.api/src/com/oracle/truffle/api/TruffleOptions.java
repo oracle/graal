@@ -34,6 +34,13 @@ import com.oracle.truffle.api.nodes.*;
 public class TruffleOptions {
 
     /**
+     * Force truffle to run in interpreter mode.
+     * <p>
+     * Can be set with {@code -Dtruffle.ForceInterpreter=true}.
+     */
+    public static boolean ForceInterpreter = Boolean.getBoolean("truffle.ForceInterpreter");
+
+    /**
      * Enables/disables the rewriting of traces in the Truffle runtime to stdout.
      * <p>
      * Can be set with {@code -Dtruffle.TraceRewrites=true}.
