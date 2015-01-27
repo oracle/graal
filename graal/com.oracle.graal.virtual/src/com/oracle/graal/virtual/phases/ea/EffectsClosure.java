@@ -177,9 +177,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
 
                 assert info.exitStates.size() == loop.getExits().size();
                 loopEntryStates.put((LoopBeginNode) loop.getHeader().getBeginNode(), loopEntryState);
-                for (int i = 0; i < loop.getExits().size(); i++) {
-                    assert info.exitStates.get(i) != null : "no loop exit state at " + loop.getExits().get(i) + " / " + loop.getHeader();
-                }
+                assert assertExitStatesNonEmpty(loop, info);
 
                 return info.exitStates;
             } else {
@@ -190,6 +188,13 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
             }
         }
         throw new GraalInternalError("too many iterations at %s", loop);
+    }
+
+    private boolean assertExitStatesNonEmpty(Loop<Block> loop, LoopInfo<BlockT> info) {
+        for (int i = 0; i < loop.getExits().size(); i++) {
+            assert info.exitStates.get(i) != null : "no loop exit state at " + loop.getExits().get(i) + " / " + loop.getHeader();
+        }
+        return true;
     }
 
     protected abstract void processLoopExit(LoopExitNode exitNode, BlockT initialState, BlockT exitState, GraphEffectList effects);

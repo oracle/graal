@@ -23,8 +23,8 @@
 package com.oracle.graal.phases.graph;
 
 import java.util.*;
+import java.util.function.*;
 
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
@@ -61,7 +61,7 @@ public final class ReentrantBlockIterator {
     }
 
     public static <StateT> LoopInfo<StateT> processLoop(BlockIteratorClosure<StateT> closure, Loop<Block> loop, StateT initialState) {
-        Map<FixedNode, StateT> blockEndStates = apply(closure, loop.getHeader(), initialState, CollectionsFactory.newSet(loop.getBlocks()));
+        Map<FixedNode, StateT> blockEndStates = apply(closure, loop.getHeader(), initialState, block -> !(block.getLoop() == loop || block.isLoopHeader()));
 
         List<Block> predecessors = loop.getHeader().getPredecessors();
         LoopInfo<StateT> info = new LoopInfo<>(predecessors.size() - 1, loop.getExits().size());
@@ -84,7 +84,7 @@ public final class ReentrantBlockIterator {
         apply(closure, start, closure.getInitialState(), null);
     }
 
-    public static <StateT> Map<FixedNode, StateT> apply(BlockIteratorClosure<StateT> closure, Block start, StateT initialState, Set<Block> boundary) {
+    public static <StateT> Map<FixedNode, StateT> apply(BlockIteratorClosure<StateT> closure, Block start, StateT initialState, Predicate<Block> stopAtBlock) {
         Deque<Block> blockQueue = new ArrayDeque<>();
         /*
          * States are stored on EndNodes before merges, and on BeginNodes after ControlSplitNodes.
@@ -96,7 +96,7 @@ public final class ReentrantBlockIterator {
 
         while (true) {
             Block next = null;
-            if (boundary != null && !boundary.contains(current)) {
+            if (stopAtBlock != null && stopAtBlock.test(current)) {
                 states.put(current.getBeginNode(), state);
             } else {
                 state = closure.processBlock(current, state);
