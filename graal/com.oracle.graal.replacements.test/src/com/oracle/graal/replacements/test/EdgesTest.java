@@ -38,6 +38,7 @@ import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.common.inlining.*;
+import com.oracle.graal.phases.common.inlining.policy.*;
 import com.oracle.graal.phases.tiers.*;
 
 public class EdgesTest extends GraalCompilerTest {
@@ -115,7 +116,7 @@ public class EdgesTest extends GraalCompilerTest {
         StructuredGraph g = parseProfiled(javaMethod);
         Assumptions assumptions = new Assumptions(false);
         HighTierContext context = new HighTierContext(getProviders(), assumptions, null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
-        new InliningPhase(new CanonicalizerPhase(true)).apply(g, context);
+        new InliningPhase(new InlineMethodSubstitutionsPolicy(), new CanonicalizerPhase(true)).apply(g, context);
         new CanonicalizerPhase(false).apply(g, context);
         Assert.assertTrue(g.getNodes().filter(CheckCastNode.class).isEmpty());
     }

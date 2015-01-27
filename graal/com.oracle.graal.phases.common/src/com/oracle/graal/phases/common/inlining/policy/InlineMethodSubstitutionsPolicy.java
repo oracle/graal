@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,23 +22,26 @@
  */
 package com.oracle.graal.phases.common.inlining.policy;
 
-import com.oracle.graal.api.code.BailoutException;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.spi.Replacements;
-import com.oracle.graal.phases.common.inlining.walker.MethodInvocation;
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.phases.common.inlining.walker.*;
 
-import static com.oracle.graal.compiler.common.GraalOptions.MaximumDesiredSize;
+/**
+ * Inline every method which would be replaced by a substitution. Useful for testing purposes.
+ */
+public final class InlineMethodSubstitutionsPolicy extends InlineEverythingPolicy {
 
-public class InlineEverythingPolicy implements InliningPolicy {
-
-    public boolean continueInlining(StructuredGraph graph) {
-        if (graph.getNodeCount() >= MaximumDesiredSize.getValue()) {
-            throw new BailoutException("Inline all calls failed. The resulting graph is too large.");
-        }
-        return true;
-    }
-
+    @Override
     public boolean isWorthInlining(Replacements replacements, MethodInvocation invocation, int inliningDepth, boolean fullyProcessed) {
-        return true;
+        CallTargetNode callTarget = invocation.callee().invoke().callTarget();
+        if (callTarget instanceof MethodCallTargetNode) {
+            ResolvedJavaMethod calleeMethod = ((MethodCallTargetNode) callTarget).targetMethod();
+            if (replacements.getMethodSubstitution(calleeMethod) != null) {
+                return true;
+            }
+        }
+        return false;
     }
 }
