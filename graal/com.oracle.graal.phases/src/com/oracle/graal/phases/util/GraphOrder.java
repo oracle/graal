@@ -163,6 +163,7 @@ public final class GraphOrder {
 
                         if (pendingStateAfter != null && node instanceof FixedNode) {
                             pendingStateAfter.applyToNonVirtual(new NodeClosure<Node>() {
+                                @Override
                                 public void apply(Node usage, Node nonVirtualNode) {
                                     assert currentState.isMarked(nonVirtualNode) || nonVirtualNode instanceof VirtualObjectNode : nonVirtualNode + " not available at virtualstate " + usage +
                                                     " before " + node + " in block " + block + " \n" + list;
@@ -196,8 +197,11 @@ public final class GraphOrder {
                             for (Node input : node.inputs()) {
                                 if (input != stateAfter) {
                                     if (input instanceof FrameState) {
-                                        ((FrameState) input).applyToNonVirtual((usage, nonVirtual) -> {
-                                            assert currentState.isMarked(nonVirtual) : nonVirtual + " not available at " + node + " in block " + block + "\n" + list;
+                                        ((FrameState) input).applyToNonVirtual(new VirtualState.NodeClosure<Node>() {
+                                            @Override
+                                            public void apply(Node usage, Node nonVirtual) {
+                                                assert currentState.isMarked(nonVirtual) : nonVirtual + " not available at " + node + " in block " + block + "\n" + list;
+                                            }
                                         });
                                     } else {
                                         assert currentState.isMarked(input) || input instanceof VirtualObjectNode : input + " not available at " + node + " in block " + block + "\n" + list;
@@ -220,6 +224,7 @@ public final class GraphOrder {
                     }
                     if (pendingStateAfter != null) {
                         pendingStateAfter.applyToNonVirtual(new NodeClosure<Node>() {
+                            @Override
                             public void apply(Node usage, Node nonVirtualNode) {
                                 assert currentState.isMarked(nonVirtualNode) || nonVirtualNode instanceof VirtualObjectNode : nonVirtualNode + " not available at virtualstate " + usage +
                                                 " at end of block " + block + " \n" + list;

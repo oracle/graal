@@ -458,8 +458,10 @@ public class FrameState extends VirtualState implements IterableNodeType {
 
     @Override
     public void applyToNonVirtual(NodeClosure<? super ValueNode> closure) {
-        for (ValueNode value : values.nonNull()) {
-            closure.apply(this, value);
+        for (ValueNode value : values) {
+            if (value != null) {
+                closure.apply(this, value);
+            }
         }
 
         if (monitorIds != null) {
