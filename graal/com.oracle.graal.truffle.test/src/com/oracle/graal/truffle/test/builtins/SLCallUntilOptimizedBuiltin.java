@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,8 +25,8 @@ package com.oracle.graal.truffle.test.builtins;
 import java.util.concurrent.*;
 
 import com.oracle.graal.truffle.*;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.CompilerDirectives.*;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
@@ -49,29 +49,43 @@ public abstract class SLCallUntilOptimizedBuiltin extends SLGraalRuntimeBuiltin 
     @Child private IndirectCallNode indirectCall = Truffle.getRuntime().createIndirectCallNode();
 
     @Specialization
-    @TruffleBoundary
     public SLFunction callUntilCompiled(VirtualFrame frame, SLFunction function) {
         OptimizedCallTarget target = ((OptimizedCallTarget) function.getCallTarget());
         for (int i = 0; i < MAX_CALLS; i++) {
-            if (((GraalTruffleRuntime) Truffle.getRuntime()).isCompiling(target) || target.isValid()) {
+            if (isCompiling(target)) {
                 break;
             } else {
                 indirectCall.call(frame, target, EMPTY_ARGS);
             }
         }
+        waitForCompilation(target);
+
+        // call one more in compiled
+        indirectCall.call(frame, target, EMPTY_ARGS);
+
+        checkTarget(target);
+
+        return function;
+    }
+
+    @TruffleBoundary
+    private static void checkTarget(OptimizedCallTarget target) throws SLAssertionError {
+        if (!target.isValid()) {
+            throw new SLAssertionError("Function " + target + " invalidated.");
+        }
+    }
+
+    @TruffleBoundary
+    private static void waitForCompilation(OptimizedCallTarget target) {
         try {
             ((GraalTruffleRuntime) Truffle.getRuntime()).waitForCompilation(target, 640000);
         } catch (ExecutionException | TimeoutException e) {
             throw new RuntimeException(e);
         }
+    }
 
-        // call one more in compiled
-        indirectCall.call(frame, target, EMPTY_ARGS);
-
-        if (!target.isValid()) {
-            throw new SLAssertionError("Function " + target + " invalidated.");
-        }
-
-        return function;
+    @TruffleBoundary
+    private static boolean isCompiling(OptimizedCallTarget target) {
+        return ((GraalTruffleRuntime) Truffle.getRuntime()).isCompiling(target) || target.isValid();
     }
 }
