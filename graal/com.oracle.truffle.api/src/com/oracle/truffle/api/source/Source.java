@@ -594,7 +594,8 @@ public abstract class Source {
             try {
                 return new FileReader(file);
             } catch (FileNotFoundException e) {
-                throw new RuntimeException("Can't find file " + path);
+
+                throw new RuntimeException("Can't find file " + path, e);
             }
         }
 
