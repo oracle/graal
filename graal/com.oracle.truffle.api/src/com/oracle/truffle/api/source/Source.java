@@ -542,7 +542,7 @@ public abstract class Source {
         private long timeStamp;      // timestamp of the cache in the file system
 
         public FileSource(File file, String name, String path) {
-            this.file = file;
+            this.file = file.getAbsoluteFile();
             this.name = name;
             this.path = path;
         }
