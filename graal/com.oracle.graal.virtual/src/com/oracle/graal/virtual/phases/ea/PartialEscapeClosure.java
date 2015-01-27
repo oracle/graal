@@ -313,15 +313,28 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
 
     protected class MergeProcessor extends EffectsClosure<BlockT>.MergeProcessor {
 
-        private final HashMap<Object, ValuePhiNode> materializedPhis = CollectionsFactory.newMap();
-        private final Map<ValueNode, ValuePhiNode[]> valuePhis = Node.newIdentityMap();
-        private final Map<ValuePhiNode, VirtualObjectNode> valueObjectVirtuals = Node.newIdentityMap();
+        private HashMap<Object, ValuePhiNode> materializedPhis;
+        private Map<ValueNode, ValuePhiNode[]> valuePhis;
+        private Map<ValuePhiNode, VirtualObjectNode> valueObjectVirtuals;
+        private final boolean needsCaching;
 
         public MergeProcessor(Block mergeBlock) {
             super(mergeBlock);
+            needsCaching = mergeBlock.isLoopHeader();
         }
 
-        protected <T> PhiNode getCachedPhi(T virtual, Stamp stamp) {
+        protected <T> PhiNode getPhi(T virtual, Stamp stamp) {
+            if (needsCaching) {
+                return getPhiCached(virtual, stamp);
+            } else {
+                return new ValuePhiNode(stamp, merge);
+            }
+        }
+
+        private <T> PhiNode getPhiCached(T virtual, Stamp stamp) {
+            if (materializedPhis == null) {
+                materializedPhis = CollectionsFactory.newMap();
+            }
             ValuePhiNode result = materializedPhis.get(virtual);
             if (result == null) {
                 result = new ValuePhiNode(stamp, merge);
@@ -331,6 +344,17 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
         }
 
         private PhiNode[] getValuePhis(ValueNode key, int entryCount) {
+            if (needsCaching) {
+                return getValuePhisCached(key, entryCount);
+            } else {
+                return new ValuePhiNode[entryCount];
+            }
+        }
+
+        private PhiNode[] getValuePhisCached(ValueNode key, int entryCount) {
+            if (valuePhis == null) {
+                valuePhis = Node.newIdentityMap();
+            }
             ValuePhiNode[] result = valuePhis.get(key);
             if (result == null) {
                 result = new ValuePhiNode[entryCount];
@@ -341,6 +365,17 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
         }
 
         private VirtualObjectNode getValueObjectVirtual(ValuePhiNode phi, VirtualObjectNode virtual) {
+            if (needsCaching) {
+                return getValueObjectVirtualCached(phi, virtual);
+            } else {
+                return virtual.duplicate();
+            }
+        }
+
+        private VirtualObjectNode getValueObjectVirtualCached(ValuePhiNode phi, VirtualObjectNode virtual) {
+            if (valueObjectVirtuals == null) {
+                valueObjectVirtuals = Node.newIdentityMap();
+            }
             VirtualObjectNode result = valueObjectVirtuals.get(phi);
             if (result == null) {
                 result = virtual.duplicate();
@@ -395,7 +430,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                         if (uniqueMaterializedValue != null) {
                             newState.addObject(object, new ObjectState(object, uniqueMaterializedValue, EscapeState.Materialized, null));
                         } else {
-                            PhiNode materializedValuePhi = getCachedPhi(object, StampFactory.forKind(Kind.Object));
+                            PhiNode materializedValuePhi = getPhi(object, StampFactory.forKind(Kind.Object));
                             mergeEffects.addFloatingNode(materializedValuePhi, "materializedPhi");
                             for (int i = 0; i < objStates.length; i++) {
                                 ObjectState obj = objStates[i];
@@ -538,7 +573,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                 return materialized;
             } else {
                 // not compatible: materialize in all predecessors
-                PhiNode materializedValuePhi = getCachedPhi(object, StampFactory.forKind(Kind.Object));
+                PhiNode materializedValuePhi = getPhi(object, StampFactory.forKind(Kind.Object));
                 for (int i = 0; i < blockStates.size(); i++) {
                     ObjectState obj = objStates[i];
                     Block predecessor = mergeBlock.getPredecessors().get(i);
