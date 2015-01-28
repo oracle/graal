@@ -252,7 +252,7 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
     private void computeLoopInformation() {
         loops = new ArrayList<>();
         for (Block block : reversePostOrder) {
-            Node beginNode = block.getBeginNode();
+            AbstractBeginNode beginNode = block.getBeginNode();
             if (beginNode instanceof LoopBeginNode) {
                 Loop<Block> loop = new HIRLoop(block.getLoop(), loops.size(), block);
                 loops.add(loop);

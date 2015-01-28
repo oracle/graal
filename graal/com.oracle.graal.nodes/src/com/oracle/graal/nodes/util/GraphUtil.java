@@ -158,7 +158,7 @@ public class GraphUtil {
     }
 
     public static void unlinkFixedNode(FixedWithNextNode fixed) {
-        assert fixed.next() != null && fixed.predecessor() != null && fixed.isAlive();
+        assert fixed.next() != null && fixed.predecessor() != null && fixed.isAlive() : fixed;
         FixedNode next = fixed.next();
         fixed.setNext(null);
         fixed.replaceAtPredecessor(next);
