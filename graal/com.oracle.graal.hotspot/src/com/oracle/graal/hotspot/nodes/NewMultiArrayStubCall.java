@@ -38,7 +38,7 @@ import com.oracle.graal.word.*;
  * Node implementing a call to {@code GraalRuntime::new_multi_array}.
  */
 @NodeInfo
-public class NewMultiArrayStubCall extends ForeignCallNode {
+public final class NewMultiArrayStubCall extends ForeignCallNode {
 
     private static final Stamp defaultStamp = StampFactory.objectNonNull();
 

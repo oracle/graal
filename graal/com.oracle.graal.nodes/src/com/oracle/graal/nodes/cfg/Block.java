@@ -30,7 +30,7 @@ import com.oracle.graal.nodes.*;
 
 public final class Block extends AbstractBlockBase<Block> {
 
-    protected final BeginNode beginNode;
+    protected final AbstractBeginNode beginNode;
 
     protected FixedNode endNode;
 
@@ -39,11 +39,11 @@ public final class Block extends AbstractBlockBase<Block> {
 
     protected Block postdominator;
 
-    protected Block(BeginNode node) {
+    protected Block(AbstractBeginNode node) {
         this.beginNode = node;
     }
 
-    public BeginNode getBeginNode() {
+    public AbstractBeginNode getBeginNode() {
         return beginNode;
     }
 
@@ -122,7 +122,7 @@ public final class Block extends AbstractBlockBase<Block> {
             } else {
                 cur = ((FixedWithNextNode) cur).next();
             }
-            assert !(cur instanceof BeginNode);
+            assert !(cur instanceof AbstractBeginNode);
             return result;
         }
 

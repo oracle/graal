@@ -34,7 +34,7 @@ import com.oracle.graal.word.*;
  * Intrinsic for getting the lock in the current {@linkplain BeginLockScopeNode lock scope}.
  */
 @NodeInfo
-public class CurrentLockNode extends FixedWithNextNode implements LIRLowerable {
+public final class CurrentLockNode extends FixedWithNextNode implements LIRLowerable {
 
     protected int lockDepth;
 

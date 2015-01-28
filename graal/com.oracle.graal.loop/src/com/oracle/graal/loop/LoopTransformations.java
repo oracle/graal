@@ -89,21 +89,21 @@ public abstract class LoopTransformations {
         assert successors.hasNext();
         // original loop is used as first successor
         Position firstPosition = successors.nextPosition();
-        BeginNode originalLoopBegin = BeginNode.begin(originalLoop.entryPoint());
+        AbstractBeginNode originalLoopBegin = BeginNode.begin(originalLoop.entryPoint());
         firstPosition.set(newControlSplit, originalLoopBegin);
 
         while (successors.hasNext()) {
             Position position = successors.nextPosition();
             // create a new loop duplicate and connect it.
             LoopFragmentWhole duplicateLoop = originalLoop.duplicate();
-            BeginNode newBegin = BeginNode.begin(duplicateLoop.entryPoint());
+            AbstractBeginNode newBegin = BeginNode.begin(duplicateLoop.entryPoint());
             position.set(newControlSplit, newBegin);
 
             // For each cloned ControlSplitNode, simplify the proper path
             for (ControlSplitNode controlSplitNode : controlSplitNodeSet) {
                 ControlSplitNode duplicatedControlSplit = duplicateLoop.getDuplicatedNode(controlSplitNode);
                 if (duplicatedControlSplit.isAlive()) {
-                    BeginNode survivingSuccessor = (BeginNode) position.get(duplicatedControlSplit);
+                    AbstractBeginNode survivingSuccessor = (AbstractBeginNode) position.get(duplicatedControlSplit);
                     survivingSuccessor.replaceAtUsages(InputType.Guard, newBegin);
                     graph.removeSplitPropagate(duplicatedControlSplit, survivingSuccessor);
                 }
@@ -112,7 +112,7 @@ public abstract class LoopTransformations {
         // original loop is simplified last to avoid deleting controlSplitNode too early
         for (ControlSplitNode controlSplitNode : controlSplitNodeSet) {
             if (controlSplitNode.isAlive()) {
-                BeginNode survivingSuccessor = (BeginNode) firstPosition.get(controlSplitNode);
+                AbstractBeginNode survivingSuccessor = (AbstractBeginNode) firstPosition.get(controlSplitNode);
                 survivingSuccessor.replaceAtUsages(InputType.Guard, originalLoopBegin);
                 graph.removeSplitPropagate(controlSplitNode, survivingSuccessor);
             }

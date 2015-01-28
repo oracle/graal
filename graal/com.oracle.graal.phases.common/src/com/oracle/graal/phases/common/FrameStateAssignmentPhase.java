@@ -88,13 +88,13 @@ public class FrameStateAssignmentPhase extends Phase {
         }
 
         @Override
-        protected FrameState merge(MergeNode merge, List<FrameState> states) {
+        protected FrameState merge(AbstractMergeNode merge, List<FrameState> states) {
             FrameState singleFrameState = singleFrameState(states);
             return singleFrameState == null ? merge.stateAfter() : singleFrameState;
         }
 
         @Override
-        protected FrameState afterSplit(BeginNode node, FrameState oldState) {
+        protected FrameState afterSplit(AbstractBeginNode node, FrameState oldState) {
             return oldState;
         }
 

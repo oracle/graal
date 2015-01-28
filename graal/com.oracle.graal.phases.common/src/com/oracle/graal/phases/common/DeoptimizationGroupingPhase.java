@@ -52,7 +52,7 @@ public class DeoptimizationGroupingPhase extends BasePhase<MidTierContext> {
                     if (cfg == null) {
                         cfg = ControlFlowGraph.compute(graph, true, true, false, false);
                     }
-                    MergeNode merge;
+                    AbstractMergeNode merge;
                     if (target instanceof AbstractDeoptimizeNode) {
                         merge = graph.add(new MergeNode());
                         EndNode firstEnd = graph.add(new EndNode());
@@ -72,7 +72,7 @@ public class DeoptimizationGroupingPhase extends BasePhase<MidTierContext> {
                         obsoletes.add((AbstractDeoptimizeNode) target);
                         target = merge;
                     } else {
-                        merge = (MergeNode) target;
+                        merge = (AbstractMergeNode) target;
                     }
                     EndNode newEnd = graph.add(new EndNode());
                     merge.addForwardEnd(newEnd);
@@ -84,7 +84,7 @@ public class DeoptimizationGroupingPhase extends BasePhase<MidTierContext> {
                 }
             }
             if (obsoletes != null) {
-                ((DynamicDeoptimizeNode) ((MergeNode) target).next()).setStateBefore(fs);
+                ((DynamicDeoptimizeNode) ((AbstractMergeNode) target).next()).setStateBefore(fs);
                 for (AbstractDeoptimizeNode obsolete : obsoletes) {
                     obsolete.safeDelete();
                 }

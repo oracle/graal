@@ -30,7 +30,7 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo
-public class CardTableAddressNode extends FloatingNode implements LIRLowerable {
+public final class CardTableAddressNode extends FloatingNode implements LIRLowerable {
 
     public CardTableAddressNode() {
         super(StampFactory.forKind(Kind.Long));

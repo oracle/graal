@@ -44,7 +44,7 @@ public class LoopEndNode extends AbstractEndNode {
     }
 
     @Override
-    public MergeNode merge() {
+    public AbstractMergeNode merge() {
         return loopBegin();
     }
 
@@ -80,7 +80,7 @@ public class LoopEndNode extends AbstractEndNode {
 
     /**
      * Returns the 0-based index of this loop end. This is <b>not</b> the index into {@link PhiNode}
-     * values at the loop begin. Use {@link MergeNode#phiPredecessorIndex(AbstractEndNode)} for this
+     * values at the loop begin. Use {@link AbstractMergeNode#phiPredecessorIndex(AbstractEndNode)} for this
      * purpose.
      *
      * @return The 0-based index of this loop end.

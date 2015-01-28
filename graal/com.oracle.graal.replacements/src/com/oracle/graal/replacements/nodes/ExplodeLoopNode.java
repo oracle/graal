@@ -37,7 +37,7 @@ import com.oracle.graal.replacements.Snippet.VarargsParameter;
  * @see VarargsParameter
  */
 @NodeInfo
-public class ExplodeLoopNode extends FixedWithNextNode {
+public final class ExplodeLoopNode extends FixedWithNextNode {
 
     public ExplodeLoopNode() {
         super(StampFactory.forVoid());

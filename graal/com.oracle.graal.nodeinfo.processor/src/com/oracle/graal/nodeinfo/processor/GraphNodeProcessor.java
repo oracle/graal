@@ -126,12 +126,15 @@ public class GraphNodeProcessor extends AbstractProcessor {
 
                 TypeElement typeElement = (TypeElement) element;
 
-                if (typeElement.getModifiers().contains(Modifier.FINAL)) {
-                    errorMessage(element, "%s annotated class must not be final", NodeInfo.class.getSimpleName());
-                    continue;
+                Set<Modifier> modifiers = typeElement.getModifiers();
+                if (!modifiers.contains(Modifier.FINAL) && !modifiers.contains(Modifier.ABSTRACT)) {
+                    // TODO(thomaswue): Reenable this check.
+                    // errorMessage(element, "%s annotated class must be either final or abstract",
+                    // NodeInfo.class.getSimpleName());
+                    // continue;
                 }
 
-                if (!typeElement.equals(verifier.Node) && !typeElement.getModifiers().contains(Modifier.ABSTRACT)) {
+                if (!typeElement.equals(verifier.Node) && !modifiers.contains(Modifier.ABSTRACT)) {
                     verifier.verify(typeElement);
                 }
             } catch (ElementException ee) {

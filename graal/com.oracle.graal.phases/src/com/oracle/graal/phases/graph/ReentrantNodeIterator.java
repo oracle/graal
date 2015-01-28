@@ -44,9 +44,9 @@ public final class ReentrantNodeIterator {
 
         protected abstract StateT processNode(FixedNode node, StateT currentState);
 
-        protected abstract StateT merge(MergeNode merge, List<StateT> states);
+        protected abstract StateT merge(AbstractMergeNode merge, List<StateT> states);
 
-        protected abstract StateT afterSplit(BeginNode node, StateT oldState);
+        protected abstract StateT afterSplit(AbstractBeginNode node, StateT oldState);
 
         protected abstract Map<LoopExitNode, StateT> processLoop(LoopBeginNode loop, StateT initialState);
 
@@ -87,7 +87,7 @@ public final class ReentrantNodeIterator {
 
     private static <StateT> Map<FixedNode, StateT> apply(NodeIteratorClosure<StateT> closure, FixedNode start, StateT initialState, LoopBeginNode boundary) {
         assert start != null;
-        Deque<BeginNode> nodeQueue = new ArrayDeque<>();
+        Deque<AbstractBeginNode> nodeQueue = new ArrayDeque<>();
         Map<FixedNode, StateT> blockEndStates = Node.newIdentityMap();
 
         StateT state = initialState;
@@ -114,7 +114,7 @@ public final class ReentrantNodeIterator {
                             blockEndStates.put(current, state);
                         } else if (current instanceof EndNode) {
                             // add the end node and see if the merge is ready for processing
-                            MergeNode merge = ((EndNode) current).merge();
+                            AbstractMergeNode merge = ((EndNode) current).merge();
                             if (merge instanceof LoopBeginNode) {
                                 Map<LoopExitNode, StateT> loopExitState = closure.processLoop((LoopBeginNode) merge, state);
                                 for (Map.Entry<LoopExitNode, StateT> entry : loopExitState.entrySet()) {
@@ -153,7 +153,7 @@ public final class ReentrantNodeIterator {
                             continue;
                         } else {
                             do {
-                                BeginNode successor = (BeginNode) successors.next();
+                                AbstractBeginNode successor = (AbstractBeginNode) successors.next();
                                 StateT successorState = closure.afterSplit(successor, state);
                                 if (closure.continueIteration(successorState)) {
                                     blockEndStates.put(successor, successorState);
@@ -161,7 +161,7 @@ public final class ReentrantNodeIterator {
                                 }
                             } while (successors.hasNext());
 
-                            state = closure.afterSplit((BeginNode) firstSuccessor, state);
+                            state = closure.afterSplit((AbstractBeginNode) firstSuccessor, state);
                             current = closure.continueIteration(state) ? firstSuccessor : null;
                             continue;
                         }
@@ -176,7 +176,7 @@ public final class ReentrantNodeIterator {
                 current = nodeQueue.removeFirst();
                 assert blockEndStates.containsKey(current);
                 state = blockEndStates.remove(current);
-                assert !(current instanceof MergeNode) && current instanceof BeginNode;
+                assert !(current instanceof AbstractMergeNode) && current instanceof AbstractBeginNode;
             }
         } while (true);
     }

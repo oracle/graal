@@ -41,7 +41,7 @@ public class IntegerSwitchNode extends SwitchNode implements LIRLowerable, Simpl
 
     protected final int[] keys;
 
-    public IntegerSwitchNode(ValueNode value, BeginNode[] successors, int[] keys, double[] keyProbabilities, int[] keySuccessors) {
+    public IntegerSwitchNode(ValueNode value, AbstractBeginNode[] successors, int[] keys, double[] keyProbabilities, int[] keySuccessors) {
         super(value, successors, keySuccessors, keyProbabilities);
         assert keySuccessors.length == keys.length + 1;
         assert keySuccessors.length == keyProbabilities.length;
@@ -58,7 +58,7 @@ public class IntegerSwitchNode extends SwitchNode implements LIRLowerable, Simpl
     }
 
     public IntegerSwitchNode(ValueNode value, int successorCount, int[] keys, double[] keyProbabilities, int[] keySuccessors) {
-        this(value, new BeginNode[successorCount], keys, keyProbabilities, keySuccessors);
+        this(value, new AbstractBeginNode[successorCount], keys, keyProbabilities, keySuccessors);
     }
 
     @Override
@@ -130,7 +130,7 @@ public class IntegerSwitchNode extends SwitchNode implements LIRLowerable, Simpl
                     tool.addToWorkList(defaultSuccessor());
                     graph().removeSplitPropagate(this, defaultSuccessor());
                 } else if (validKeys != keys.length) {
-                    ArrayList<BeginNode> newSuccessors = new ArrayList<>(blockSuccessorCount());
+                    ArrayList<AbstractBeginNode> newSuccessors = new ArrayList<>(blockSuccessorCount());
                     int[] newKeys = new int[validKeys];
                     int[] newKeySuccessors = new int[validKeys + 1];
                     double[] newKeyProbabilities = new double[validKeys + 1];
@@ -163,14 +163,14 @@ public class IntegerSwitchNode extends SwitchNode implements LIRLowerable, Simpl
                     }
 
                     for (int i = 0; i < blockSuccessorCount(); i++) {
-                        BeginNode successor = blockSuccessor(i);
+                        AbstractBeginNode successor = blockSuccessor(i);
                         if (!newSuccessors.contains(successor)) {
                             tool.deleteBranch(successor);
                         }
                         setBlockSuccessor(i, null);
                     }
 
-                    BeginNode[] successorsArray = newSuccessors.toArray(new BeginNode[newSuccessors.size()]);
+                    AbstractBeginNode[] successorsArray = newSuccessors.toArray(new AbstractBeginNode[newSuccessors.size()]);
                     IntegerSwitchNode newSwitch = graph().add(new IntegerSwitchNode(value(), successorsArray, newKeys, newKeyProbabilities, newKeySuccessors));
                     ((FixedWithNextNode) predecessor()).setNext(newSwitch);
                     GraphUtil.killWithUnusedFloatingInputs(this);

@@ -188,9 +188,6 @@ public class CheckGraalInvariants extends GraalTest {
      */
     private static void checkClass(Class<?> c, MetaAccessProvider metaAccess) {
         if (Node.class.isAssignableFrom(c)) {
-            if (Modifier.isFinal(c.getModifiers())) {
-                throw new AssertionError(String.format("Node subclass %s must not be final", c.getName()));
-            }
             if (c.getAnnotation(NodeInfo.class) == null) {
                 throw new AssertionError(String.format("Node subclass %s requires %s annotation", c.getName(), NodeClass.class.getSimpleName()));
             }

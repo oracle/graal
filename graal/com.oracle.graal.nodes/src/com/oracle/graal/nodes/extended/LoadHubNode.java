@@ -33,7 +33,7 @@ import com.oracle.graal.nodes.spi.*;
  * Loads an object's hub. The object is not null-checked by this operation.
  */
 @NodeInfo
-public class LoadHubNode extends FloatingGuardedNode implements Lowerable, Canonicalizable, Virtualizable {
+public final class LoadHubNode extends FloatingGuardedNode implements Lowerable, Canonicalizable, Virtualizable {
 
     @Input ValueNode value;
 

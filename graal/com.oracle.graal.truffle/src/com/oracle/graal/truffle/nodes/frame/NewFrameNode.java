@@ -46,7 +46,7 @@ import com.oracle.truffle.api.frame.*;
  * class.
  */
 @NodeInfo
-public class NewFrameNode extends FixedWithNextNode implements IterableNodeType, VirtualizableAllocation, Canonicalizable {
+public final class NewFrameNode extends FixedWithNextNode implements IterableNodeType, VirtualizableAllocation, Canonicalizable {
 
     @Input ValueNode descriptor;
     @Input ValueNode arguments;
@@ -96,7 +96,7 @@ public class NewFrameNode extends FixedWithNextNode implements IterableNodeType,
     }
 
     @NodeInfo
-    public static class VirtualOnlyInstanceNode extends VirtualInstanceNode {
+    public static final class VirtualOnlyInstanceNode extends VirtualInstanceNode {
 
         protected boolean allowMaterialization;
 

@@ -319,7 +319,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
                     if (loweringTool.guardAnchor.asNode().isDeleted()) {
                         // TODO nextNode could be deleted but this is not currently supported
                         assert nextNode.isAlive();
-                        loweringTool.guardAnchor = BeginNode.prevBegin(nextNode);
+                        loweringTool.guardAnchor = AbstractBeginNode.prevBegin(nextNode);
                     }
                     assert checkPostNodeLowering(node, loweringTool, preLoweringMark, unscheduledUsages);
                 }
@@ -336,7 +336,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
                         // FixedWithNextNode is followed by some kind of BeginNode.
                         // For example the when a FixedGuard followed by a loop exit is lowered to a
                         // control-split + deopt.
-                        BeginNode begin = node.graph().add(new BeginNode());
+                        AbstractBeginNode begin = node.graph().add(new BeginNode());
                         nextLastFixed.replaceFirstSuccessor(nextNode, begin);
                         begin.setNext(nextNode);
                         nextLastFixed = begin;

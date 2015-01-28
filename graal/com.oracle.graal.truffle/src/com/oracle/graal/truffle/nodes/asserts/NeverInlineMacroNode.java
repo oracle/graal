@@ -28,7 +28,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.replacements.nodes.*;
 
 @NodeInfo
-public class NeverInlineMacroNode extends MacroStateSplitNode implements com.oracle.graal.graph.IterableNodeType {
+public final class NeverInlineMacroNode extends MacroStateSplitNode implements com.oracle.graal.graph.IterableNodeType {
 
     public NeverInlineMacroNode(Invoke invoke) {
         super(invoke);

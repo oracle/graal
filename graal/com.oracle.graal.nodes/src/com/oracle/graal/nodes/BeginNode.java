@@ -22,21 +22,11 @@
  */
 package com.oracle.graal.nodes;
 
-import static com.oracle.graal.graph.iterators.NodePredicates.*;
-
-import java.util.*;
-
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
-import com.oracle.graal.graph.iterators.*;
-import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
-import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.util.*;
 
-@NodeInfo(allowedUsageTypes = {InputType.Guard, InputType.Anchor})
-public class BeginNode extends FixedWithNextNode implements LIRLowerable, Simplifiable, GuardingNode, AnchoringNode, IterableNodeType {
+@NodeInfo
+public final class BeginNode extends AbstractBeginNode {
 
     public BeginNode() {
         super(StampFactory.forVoid());
@@ -46,127 +36,12 @@ public class BeginNode extends FixedWithNextNode implements LIRLowerable, Simpli
         super(stamp);
     }
 
-    public static BeginNode begin(FixedNode with) {
-        if (with instanceof BeginNode) {
-            return (BeginNode) with;
+    public static AbstractBeginNode begin(FixedNode with) {
+        if (with instanceof AbstractBeginNode) {
+            return (AbstractBeginNode) with;
         }
         BeginNode begin = with.graph().add(new BeginNode());
         begin.setNext(with);
         return begin;
-    }
-
-    @Override
-    public void simplify(SimplifierTool tool) {
-        FixedNode prev = (FixedNode) this.predecessor();
-        if (prev == null) {
-            // This is the start node.
-        } else if (prev instanceof ControlSplitNode) {
-            // This begin node is necessary.
-        } else {
-            // This begin node can be removed and all guards moved up to the preceding begin node.
-            prepareDelete();
-            tool.addToWorkList(next());
-            graph().removeFixed(this);
-        }
-    }
-
-    public static BeginNode prevBegin(FixedNode from) {
-        for (BeginNode begin : GraphUtil.predecessorIterable(from).filter(BeginNode.class)) {
-            return begin;
-        }
-        return null;
-    }
-
-    private void evacuateGuards(FixedNode evacuateFrom) {
-        if (!hasNoUsages()) {
-            BeginNode prevBegin = prevBegin(evacuateFrom);
-            assert prevBegin != null;
-            for (Node anchored : anchored().snapshot()) {
-                anchored.replaceFirstInput(this, prevBegin);
-            }
-        }
-    }
-
-    public void prepareDelete() {
-        prepareDelete((FixedNode) predecessor());
-    }
-
-    public void prepareDelete(FixedNode evacuateFrom) {
-        removeProxies();
-        evacuateGuards(evacuateFrom);
-    }
-
-    public void removeProxies() {
-        for (ProxyNode vpn : proxies().snapshot()) {
-            // can not use graph.replaceFloating because vpn.value may be null during killCFG
-            vpn.replaceAtUsages(vpn.value());
-            vpn.safeDelete();
-        }
-    }
-
-    @Override
-    public boolean verify() {
-        assertTrue(predecessor() != null || this == graph().start() || this instanceof MergeNode, "begin nodes must be connected");
-        return super.verify();
-    }
-
-    @Override
-    public void generate(NodeLIRBuilderTool gen) {
-        // nop
-    }
-
-    public NodeIterable<GuardNode> guards() {
-        return usages().filter(GuardNode.class);
-    }
-
-    public NodeIterable<Node> anchored() {
-        return usages().filter(isNotA(ProxyNode.class));
-    }
-
-    public NodeIterable<ProxyNode> proxies() {
-        return usages().filter(ProxyNode.class);
-    }
-
-    public NodeIterable<FixedNode> getBlockNodes() {
-        return new NodeIterable<FixedNode>() {
-
-            @Override
-            public Iterator<FixedNode> iterator() {
-                return new BlockNodeIterator(BeginNode.this);
-            }
-        };
-    }
-
-    private class BlockNodeIterator implements Iterator<FixedNode> {
-
-        private FixedNode current;
-
-        public BlockNodeIterator(FixedNode next) {
-            this.current = next;
-        }
-
-        @Override
-        public boolean hasNext() {
-            return current != null;
-        }
-
-        @Override
-        public FixedNode next() {
-            FixedNode ret = current;
-            if (ret == null) {
-                throw new NoSuchElementException();
-            }
-            if (!(current instanceof FixedWithNextNode) || (current instanceof BeginNode && current != BeginNode.this)) {
-                current = null;
-            } else {
-                current = ((FixedWithNextNode) current).next();
-            }
-            return ret;
-        }
-
-        @Override
-        public void remove() {
-            throw new UnsupportedOperationException();
-        }
     }
 }

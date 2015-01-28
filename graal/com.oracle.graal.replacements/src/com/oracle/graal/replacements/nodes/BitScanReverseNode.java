@@ -36,7 +36,7 @@ import com.oracle.graal.nodes.spi.*;
  * input is zero.
  */
 @NodeInfo
-public class BitScanReverseNode extends UnaryNode implements LIRLowerable {
+public final class BitScanReverseNode extends UnaryNode implements LIRLowerable {
 
     public BitScanReverseNode(ValueNode value) {
         super(StampFactory.forInteger(Kind.Int, 0, ((PrimitiveStamp) value.stamp()).getBits()), value);

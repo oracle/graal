@@ -36,7 +36,7 @@ import com.oracle.graal.replacements.nodes.*;
  * @see ClassSubstitutions#cast(Class, Object)
  */
 @NodeInfo
-public class ClassCastNode extends MacroStateSplitNode implements Canonicalizable.Binary<ValueNode> {
+public final class ClassCastNode extends MacroStateSplitNode implements Canonicalizable.Binary<ValueNode> {
 
     public ClassCastNode(Invoke invoke) {
         super(invoke);

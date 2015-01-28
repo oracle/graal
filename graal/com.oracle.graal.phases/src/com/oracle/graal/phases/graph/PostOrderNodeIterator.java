@@ -32,7 +32,7 @@ import com.oracle.graal.nodes.*;
  * specified fixed node.
  * <p>
  * For this iterator the CFG is defined by the classical CFG nodes ({@link ControlSplitNode},
- * {@link MergeNode}...) and the {@link FixedWithNextNode#next() next} pointers of
+ * {@link AbstractMergeNode}...) and the {@link FixedWithNextNode#next() next} pointers of
  * {@link FixedWithNextNode}.
  * <p>
  * While iterating it maintains a user-defined state by calling the methods available in
@@ -43,7 +43,7 @@ import com.oracle.graal.nodes.*;
 public abstract class PostOrderNodeIterator<T extends MergeableState<T>> {
 
     private final NodeBitMap visitedEnds;
-    private final Deque<BeginNode> nodeQueue;
+    private final Deque<AbstractBeginNode> nodeQueue;
     private final Map<FixedNode, T> nodeStates;
     private final FixedNode start;
 
@@ -77,9 +77,9 @@ public abstract class PostOrderNodeIterator<T extends MergeableState<T>> {
                 loopEnd((LoopEndNode) current);
                 finishLoopEnds((LoopEndNode) current);
                 current = nextQueuedNode();
-            } else if (current instanceof MergeNode) {
-                merge((MergeNode) current);
-                current = ((MergeNode) current).next();
+            } else if (current instanceof AbstractMergeNode) {
+                merge((AbstractMergeNode) current);
+                current = ((AbstractMergeNode) current).next();
                 assert current != null;
             } else if (current instanceof FixedWithNextNode) {
                 FixedNode next = ((FixedWithNextNode) current).next();
@@ -110,13 +110,13 @@ public abstract class PostOrderNodeIterator<T extends MergeableState<T>> {
             for (Node node : successors) {
                 if (node != null) {
                     nodeStates.put((FixedNode) node.predecessor(), state);
-                    nodeQueue.addFirst((BeginNode) node);
+                    nodeQueue.addFirst((AbstractBeginNode) node);
                 }
             }
         } else {
             for (Node node : x.successors()) {
                 if (node != null) {
-                    nodeQueue.addFirst((BeginNode) node);
+                    nodeQueue.addFirst((AbstractBeginNode) node);
                 }
             }
         }
@@ -125,9 +125,9 @@ public abstract class PostOrderNodeIterator<T extends MergeableState<T>> {
     private FixedNode nextQueuedNode() {
         int maxIterations = nodeQueue.size();
         while (maxIterations-- > 0) {
-            BeginNode node = nodeQueue.removeFirst();
-            if (node instanceof MergeNode) {
-                MergeNode merge = (MergeNode) node;
+            AbstractBeginNode node = nodeQueue.removeFirst();
+            if (node instanceof AbstractMergeNode) {
+                AbstractMergeNode merge = (AbstractMergeNode) node;
                 state = nodeStates.get(merge.forwardEndAt(0)).clone();
                 ArrayList<T> states = new ArrayList<>(merge.forwardEndCount() - 1);
                 for (int i = 1; i < merge.forwardEndCount(); i++) {
@@ -181,7 +181,7 @@ public abstract class PostOrderNodeIterator<T extends MergeableState<T>> {
         assert !nodeStates.containsKey(end);
         nodeStates.put(end, state);
         visitedEnds.mark(end);
-        MergeNode merge = end.merge();
+        AbstractMergeNode merge = end.merge();
         boolean endsVisited = true;
         for (int i = 0; i < merge.forwardEndCount(); i++) {
             if (!visitedEnds.isMarked(merge.forwardEndAt(i))) {
@@ -200,7 +200,7 @@ public abstract class PostOrderNodeIterator<T extends MergeableState<T>> {
         node(endNode);
     }
 
-    protected void merge(MergeNode merge) {
+    protected void merge(AbstractMergeNode merge) {
         node(merge);
     }
 

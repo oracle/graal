@@ -70,9 +70,9 @@ public abstract class LoopPolicies {
         double maxProbability = 0;
         for (ControlSplitNode controlSplit : controlSplits) {
             Block postDomBlock = loop.loopsData().controlFlowGraph().blockFor(controlSplit).getPostdominator();
-            BeginNode postDom = postDomBlock != null ? postDomBlock.getBeginNode() : null;
+            AbstractBeginNode postDom = postDomBlock != null ? postDomBlock.getBeginNode() : null;
             for (Node successor : controlSplit.successors()) {
-                BeginNode branch = (BeginNode) successor;
+                AbstractBeginNode branch = (AbstractBeginNode) successor;
                 // this may count twice because of fall-through in switches
                 inBranchTotal += loop.nodesInLoopFrom(branch, postDom).count();
                 double probability = controlSplit.probability(branch);

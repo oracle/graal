@@ -30,7 +30,7 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 
 /**
- * Compute probabilities for fixed nodes on the fly and cache them at {@link BeginNode}s.
+ * Compute probabilities for fixed nodes on the fly and cache them at {@link AbstractBeginNode}s.
  */
 public class FixedNodeProbabilityCache implements ToDoubleFunction<FixedNode> {
 
@@ -40,7 +40,7 @@ public class FixedNodeProbabilityCache implements ToDoubleFunction<FixedNode> {
 
     /**
      * <p>
-     * Given a {@link FixedNode} this method finds the most immediate {@link BeginNode} preceding it
+     * Given a {@link FixedNode} this method finds the most immediate {@link AbstractBeginNode} preceding it
      * that either:
      * <ul>
      * <li>has no predecessor (ie, the begin-node is a merge, in particular a loop-begin, or the
@@ -50,7 +50,7 @@ public class FixedNodeProbabilityCache implements ToDoubleFunction<FixedNode> {
      * </p>
      *
      * <p>
-     * The thus found {@link BeginNode} is equi-probable with the {@link FixedNode} it was obtained
+     * The thus found {@link AbstractBeginNode} is equi-probable with the {@link FixedNode} it was obtained
      * from. When computed for the first time (afterwards a cache lookup returns it) that
      * probability is computed as follows, again depending on the begin-node's predecessor:
      * <ul>
@@ -77,7 +77,7 @@ public class FixedNodeProbabilityCache implements ToDoubleFunction<FixedNode> {
         while (true) {
             assert current != null;
             Node predecessor = current.predecessor();
-            if (current instanceof BeginNode) {
+            if (current instanceof AbstractBeginNode) {
                 if (predecessor == null) {
                     break;
                 } else if (predecessor.successors().count() != 1) {
@@ -91,7 +91,7 @@ public class FixedNodeProbabilityCache implements ToDoubleFunction<FixedNode> {
             current = (FixedNode) predecessor;
         }
 
-        assert current instanceof BeginNode;
+        assert current instanceof AbstractBeginNode;
         Double cachedValue = cache.get(current);
         if (cachedValue != null) {
             return cachedValue;
@@ -99,8 +99,8 @@ public class FixedNodeProbabilityCache implements ToDoubleFunction<FixedNode> {
 
         double probability = 0.0;
         if (current.predecessor() == null) {
-            if (current instanceof MergeNode) {
-                MergeNode currentMerge = (MergeNode) current;
+            if (current instanceof AbstractMergeNode) {
+                AbstractMergeNode currentMerge = (AbstractMergeNode) current;
                 NodeInputList<AbstractEndNode> currentForwardEnds = currentMerge.forwardEnds();
                 /*
                  * Use simple iteration instead of streams, since the stream infrastructure adds
@@ -119,7 +119,7 @@ public class FixedNodeProbabilityCache implements ToDoubleFunction<FixedNode> {
             }
         } else {
             ControlSplitNode split = (ControlSplitNode) current.predecessor();
-            probability = split.probability((BeginNode) current) * applyAsDouble(split);
+            probability = split.probability((AbstractBeginNode) current) * applyAsDouble(split);
         }
         assert !Double.isNaN(probability) && !Double.isInfinite(probability) : current + " " + probability;
         cache.put(current, probability);

@@ -124,7 +124,7 @@ public class ConditionalEliminationPhase extends Phase {
         }
 
         @Override
-        public boolean merge(MergeNode merge, List<State> withStates) {
+        public boolean merge(AbstractMergeNode merge, List<State> withStates) {
             Map<ValueNode, ResolvedJavaType> newKnownTypes = Node.newIdentityMap();
             Map<LogicNode, GuardingNode> newTrueConditions = Node.newIdentityMap();
             Map<LogicNode, GuardingNode> newFalseConditions = Node.newIdentityMap();
@@ -405,7 +405,7 @@ public class ConditionalEliminationPhase extends Phase {
             }
         }
 
-        private void registerControlSplitInfo(Node pred, BeginNode begin) {
+        private void registerControlSplitInfo(Node pred, AbstractBeginNode begin) {
             assert pred != null && begin != null;
             /*
              * We does not create value proxies for values it may connect accross loop exit node so
@@ -640,8 +640,8 @@ public class ConditionalEliminationPhase extends Phase {
 
         @Override
         protected void node(FixedNode node) {
-            if (node instanceof BeginNode) {
-                BeginNode begin = (BeginNode) node;
+            if (node instanceof AbstractBeginNode) {
+                AbstractBeginNode begin = (AbstractBeginNode) node;
                 Node pred = node.predecessor();
 
                 if (pred != null) {
@@ -694,7 +694,7 @@ public class ConditionalEliminationPhase extends Phase {
                         replacementAnchor = searchAnchor(GraphUtil.unproxify(object), type);
                     }
                     if (replacementAnchor == null) {
-                        replacementAnchor = BeginNode.prevBegin(checkCast);
+                        replacementAnchor = AbstractBeginNode.prevBegin(checkCast);
                     }
                     PiNode piNode;
                     if (isNull) {
@@ -730,7 +730,7 @@ public class ConditionalEliminationPhase extends Phase {
 
                 LogicNode replacement = null;
                 GuardingNode replacementAnchor = null;
-                BeginNode survivingSuccessor = null;
+                AbstractBeginNode survivingSuccessor = null;
                 if (state.trueConditions.containsKey(compare)) {
                     replacement = trueConstant;
                     replacementAnchor = state.trueConditions.get(compare);
@@ -752,7 +752,7 @@ public class ConditionalEliminationPhase extends Phase {
                 }
 
                 if (replacement != null) {
-                    if (replacementAnchor != null && !(replacementAnchor instanceof BeginNode)) {
+                    if (replacementAnchor != null && !(replacementAnchor instanceof AbstractBeginNode)) {
                         ValueAnchorNode anchor = graph.add(new ValueAnchorNode(replacementAnchor.asNode()));
                         graph.addBeforeFixed(ifNode, anchor);
                     }

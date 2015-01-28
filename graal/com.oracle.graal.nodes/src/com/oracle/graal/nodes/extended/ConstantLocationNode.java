@@ -33,7 +33,7 @@ import com.oracle.graal.nodes.spi.*;
  * where base is a node and disp is a constant.
  */
 @NodeInfo(nameTemplate = "Loc {p#locationIdentity/s}")
-public class ConstantLocationNode extends LocationNode {
+public final class ConstantLocationNode extends LocationNode {
 
     protected final LocationIdentity locationIdentity;
     protected final long displacement;

@@ -34,7 +34,7 @@ import com.oracle.graal.nodes.type.*;
  * instance, to implement an object array store check.
  */
 @NodeInfo
-public class CheckCastDynamicNode extends FixedWithNextNode implements Canonicalizable.Binary<ValueNode>, Lowerable {
+public final class CheckCastDynamicNode extends FixedWithNextNode implements Canonicalizable.Binary<ValueNode>, Lowerable {
 
     @Input ValueNode object;
     @Input ValueNode hub;

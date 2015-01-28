@@ -34,7 +34,7 @@ import com.oracle.graal.nodes.spi.*;
  * either a {@linkplain ForeignCallDescriptor foreign} call or a pre-allocated exception object.
  */
 @NodeInfo
-public class BytecodeExceptionNode extends AbstractMemoryCheckpoint implements Lowerable, MemoryCheckpoint.Single {
+public final class BytecodeExceptionNode extends AbstractMemoryCheckpoint implements Lowerable, MemoryCheckpoint.Single {
 
     protected final Class<? extends Throwable> exceptionClass;
     @Input NodeInputList<ValueNode> arguments;

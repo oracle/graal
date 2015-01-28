@@ -37,7 +37,7 @@ public class SnippetAnchorNode extends FixedWithNextNode implements Simplifiable
 
     @Override
     public void simplify(SimplifierTool tool) {
-        BeginNode prevBegin = BeginNode.prevBegin(this);
+        AbstractBeginNode prevBegin = AbstractBeginNode.prevBegin(this);
         replaceAtUsages(InputType.Anchor, prevBegin);
         replaceAtUsages(InputType.Guard, prevBegin);
         if (hasNoUsages()) {

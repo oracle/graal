@@ -38,7 +38,7 @@ import com.oracle.graal.replacements.nodes.*;
  */
 @SuppressWarnings("javadoc")
 @NodeInfo
-public class ClassGetClassLoader0Node extends MacroStateSplitNode implements Canonicalizable {
+public final class ClassGetClassLoader0Node extends MacroStateSplitNode implements Canonicalizable {
 
     public ClassGetClassLoader0Node(Invoke invoke) {
         super(invoke);

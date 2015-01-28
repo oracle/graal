@@ -36,7 +36,7 @@ import com.oracle.graal.nodes.spi.*;
  * value matched the expected value.
  */
 @NodeInfo(allowedUsageTypes = {InputType.Memory})
-public class CompareAndSwapNode extends AbstractMemoryCheckpoint implements Lowerable, MemoryCheckpoint.Single {
+public final class CompareAndSwapNode extends AbstractMemoryCheckpoint implements Lowerable, MemoryCheckpoint.Single {
 
     @Input ValueNode object;
     @Input ValueNode offset;

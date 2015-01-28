@@ -150,7 +150,7 @@ public class FloatingReadPhase extends Phase {
         }
     }
 
-    public static MemoryMapImpl mergeMemoryMaps(MergeNode merge, List<? extends MemoryMap> states, boolean updateExistingPhis) {
+    public static MemoryMapImpl mergeMemoryMaps(AbstractMergeNode merge, List<? extends MemoryMap> states, boolean updateExistingPhis) {
         MemoryMapImpl newState = new MemoryMapImpl();
 
         Set<LocationIdentity> keys = CollectionsFactory.newSet();
@@ -237,7 +237,7 @@ public class FloatingReadPhase extends Phase {
         }
 
         @Override
-        protected Set<LocationIdentity> merge(MergeNode merge, List<Set<LocationIdentity>> states) {
+        protected Set<LocationIdentity> merge(AbstractMergeNode merge, List<Set<LocationIdentity>> states) {
             Set<LocationIdentity> result = CollectionsFactory.newSet();
             for (Set<LocationIdentity> other : states) {
                 result.addAll(other);
@@ -246,7 +246,7 @@ public class FloatingReadPhase extends Phase {
         }
 
         @Override
-        protected Set<LocationIdentity> afterSplit(BeginNode node, Set<LocationIdentity> oldState) {
+        protected Set<LocationIdentity> afterSplit(AbstractBeginNode node, Set<LocationIdentity> oldState) {
             return CollectionsFactory.newSet(oldState);
         }
 
@@ -346,12 +346,12 @@ public class FloatingReadPhase extends Phase {
         }
 
         @Override
-        protected MemoryMapImpl merge(MergeNode merge, List<MemoryMapImpl> states) {
+        protected MemoryMapImpl merge(AbstractMergeNode merge, List<MemoryMapImpl> states) {
             return mergeMemoryMaps(merge, states, updateExistingPhis);
         }
 
         @Override
-        protected MemoryMapImpl afterSplit(BeginNode node, MemoryMapImpl oldState) {
+        protected MemoryMapImpl afterSplit(AbstractBeginNode node, MemoryMapImpl oldState) {
             MemoryMapImpl result = new MemoryMapImpl(oldState);
             if (node.predecessor() instanceof InvokeWithExceptionNode) {
                 /*

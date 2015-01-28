@@ -33,7 +33,7 @@ import com.oracle.graal.nodes.spi.*;
  * Removes the current frame and tail calls the uncommon trap routine.
  */
 @NodeInfo(shortName = "DeoptCaller", nameTemplate = "DeoptCaller {p#reason/s}")
-public class DeoptimizeCallerNode extends ControlSinkNode implements LIRLowerable {
+public final class DeoptimizeCallerNode extends ControlSinkNode implements LIRLowerable {
 
     protected final DeoptimizationAction action;
     protected final DeoptimizationReason reason;

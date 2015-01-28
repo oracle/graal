@@ -68,11 +68,11 @@ public class CollapseFrameForSingleSideEffectPhase extends Phase {
             return new IterationState(this, sideEffect.asNode(), null, true);
         }
 
-        public IterationState addBranch(BeginNode begin) {
+        public IterationState addBranch(AbstractBeginNode begin) {
             return new IterationState(this, begin, null, this.invalid);
         }
 
-        public static IterationState merge(MergeNode merge, Collection<IterationState> before, boolean invalid) {
+        public static IterationState merge(AbstractMergeNode merge, Collection<IterationState> before, boolean invalid) {
             return new IterationState(null, merge, before, invalid);
         }
 
@@ -152,7 +152,7 @@ public class CollapseFrameForSingleSideEffectPhase extends Phase {
         }
 
         @Override
-        protected IterationState merge(MergeNode merge, List<IterationState> states) {
+        protected IterationState merge(AbstractMergeNode merge, List<IterationState> states) {
             boolean invalid = false;
             for (IterationState state : states) {
                 if (state.invalid) {
@@ -191,7 +191,7 @@ public class CollapseFrameForSingleSideEffectPhase extends Phase {
         }
 
         @Override
-        protected IterationState afterSplit(BeginNode node, IterationState oldState) {
+        protected IterationState afterSplit(AbstractBeginNode node, IterationState oldState) {
             return oldState.addBranch(node);
         }
 

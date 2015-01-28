@@ -37,7 +37,7 @@ import com.oracle.graal.nodes.spi.*;
  * .
  */
 @NodeInfo
-public class AtomicReadAndWriteNode extends AbstractMemoryCheckpoint implements Lowerable, MemoryCheckpoint.Single {
+public final class AtomicReadAndWriteNode extends AbstractMemoryCheckpoint implements Lowerable, MemoryCheckpoint.Single {
 
     @Input ValueNode object;
     @Input ValueNode offset;

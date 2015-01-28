@@ -204,7 +204,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
     protected class MergeProcessor {
 
         protected final Block mergeBlock;
-        protected final MergeNode merge;
+        protected final AbstractMergeNode merge;
 
         protected final GraphEffectList mergeEffects;
         protected final GraphEffectList afterMergeEffects;
@@ -212,7 +212,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
 
         public MergeProcessor(Block mergeBlock) {
             this.mergeBlock = mergeBlock;
-            this.merge = (MergeNode) mergeBlock.getBeginNode();
+            this.merge = (AbstractMergeNode) mergeBlock.getBeginNode();
             this.mergeEffects = new GraphEffectList();
             this.afterMergeEffects = new GraphEffectList();
         }

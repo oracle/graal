@@ -35,7 +35,7 @@ import com.oracle.graal.nodes.spi.*;
  * {@link StateSplit} and does not include a write barrier.
  */
 @NodeInfo
-public class DirectObjectStoreNode extends FixedWithNextNode implements Lowerable {
+public final class DirectObjectStoreNode extends FixedWithNextNode implements Lowerable {
 
     @Input ValueNode object;
     @Input ValueNode value;

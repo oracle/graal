@@ -275,7 +275,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             ReadNode memoryRead = createUnsafeRead(graph, load, null);
             // An unsafe read must not float outside its block otherwise
             // it may float above an explicit null check on its object.
-            memoryRead.setGuard(BeginNode.prevBegin(load));
+            memoryRead.setGuard(AbstractBeginNode.prevBegin(load));
             graph.replaceFixedWithFixed(load, memoryRead);
         }
     }

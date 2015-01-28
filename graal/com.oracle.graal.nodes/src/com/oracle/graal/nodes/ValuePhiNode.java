@@ -35,13 +35,13 @@ public class ValuePhiNode extends PhiNode {
 
     @Input protected NodeInputList<ValueNode> values;
 
-    public ValuePhiNode(Stamp stamp, MergeNode merge) {
+    public ValuePhiNode(Stamp stamp, AbstractMergeNode merge) {
         super(stamp, merge);
         assert stamp != StampFactory.forVoid();
         values = new NodeInputList<>(this);
     }
 
-    public ValuePhiNode(Stamp stamp, MergeNode merge, ValueNode[] values) {
+    public ValuePhiNode(Stamp stamp, AbstractMergeNode merge, ValueNode[] values) {
         super(stamp, merge);
         assert stamp != StampFactory.forVoid();
         this.values = new NodeInputList<>(this, values);

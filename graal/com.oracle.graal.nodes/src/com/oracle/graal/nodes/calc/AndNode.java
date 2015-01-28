@@ -34,7 +34,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.util.*;
 
 @NodeInfo(shortName = "&")
-public class AndNode extends BinaryArithmeticNode<And> implements NarrowableArithmeticNode {
+public final class AndNode extends BinaryArithmeticNode<And> implements NarrowableArithmeticNode {
 
     public AndNode(ValueNode x, ValueNode y) {
         super(ArithmeticOpTable::getAnd, x, y);

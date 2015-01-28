@@ -67,7 +67,7 @@ public class InliningIterator {
                 queueSuccessors(current);
             } else if (current instanceof LoopEndNode) {
                 // nothing to do
-            } else if (current instanceof MergeNode) {
+            } else if (current instanceof AbstractMergeNode) {
                 queueSuccessors(current);
             } else if (current instanceof FixedWithNextNode) {
                 queueSuccessors(current);
@@ -114,14 +114,14 @@ public class InliningIterator {
     }
 
     private void queueMerge(AbstractEndNode end) {
-        MergeNode merge = end.merge();
+        AbstractMergeNode merge = end.merge();
         if (!queuedNodes.isMarked(merge) && visitedAllEnds(merge)) {
             queuedNodes.mark(merge);
             nodeQueue.add(merge);
         }
     }
 
-    private boolean visitedAllEnds(MergeNode merge) {
+    private boolean visitedAllEnds(AbstractMergeNode merge) {
         for (int i = 0; i < merge.forwardEndCount(); i++) {
             if (!queuedNodes.isMarked(merge.forwardEndAt(i))) {
                 return false;

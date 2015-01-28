@@ -118,7 +118,7 @@ public final class ReentrantBlockIterator {
                         AbstractEndNode end = (AbstractEndNode) current.getEndNode();
 
                         // add the end node and see if the merge is ready for processing
-                        MergeNode merge = end.merge();
+                        AbstractMergeNode merge = end.merge();
                         if (allEndsVisited(states, current, merge)) {
                             ArrayList<StateT> mergedStates = mergeStates(states, state, current, successor, merge);
                             state = closure.merge(successor, mergedStates);
@@ -149,7 +149,7 @@ public final class ReentrantBlockIterator {
         }
     }
 
-    private static <StateT> boolean allEndsVisited(Map<FixedNode, StateT> states, Block current, MergeNode merge) {
+    private static <StateT> boolean allEndsVisited(Map<FixedNode, StateT> states, Block current, AbstractMergeNode merge) {
         for (AbstractEndNode forwardEnd : merge.forwardEnds()) {
             if (forwardEnd != current.getEndNode() && !states.containsKey(forwardEnd)) {
                 return false;
@@ -168,7 +168,7 @@ public final class ReentrantBlockIterator {
         return successors.get(0);
     }
 
-    private static <StateT> ArrayList<StateT> mergeStates(Map<FixedNode, StateT> states, StateT state, Block current, Block successor, MergeNode merge) {
+    private static <StateT> ArrayList<StateT> mergeStates(Map<FixedNode, StateT> states, StateT state, Block current, Block successor, AbstractMergeNode merge) {
         ArrayList<StateT> mergedStates = new ArrayList<>(merge.forwardEndCount());
         for (Block predecessor : successor.getPredecessors()) {
             assert predecessor == current || states.containsKey(predecessor.getEndNode());

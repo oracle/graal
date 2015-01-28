@@ -737,7 +737,7 @@ public class SnippetTemplate {
         } else if (returnNodes.size() == 1) {
             this.returnNode = returnNodes.get(0);
         } else {
-            MergeNode merge = snippet.add(new MergeNode());
+            AbstractMergeNode merge = snippet.add(new MergeNode());
             List<MemoryMapNode> memMaps = returnNodes.stream().map(n -> n.getMemoryMap()).collect(Collectors.toList());
             ValueNode returnValue = InliningUtil.mergeReturns(merge, returnNodes, null);
             this.returnNode = snippet.add(new ReturnNode(returnValue));
@@ -1100,7 +1100,7 @@ public class SnippetTemplate {
             FixedNode firstCFGNode = entryPointNode.next();
             StructuredGraph replaceeGraph = replacee.graph();
             Map<Node, Node> replacements = bind(replaceeGraph, metaAccess, args);
-            replacements.put(entryPointNode, BeginNode.prevBegin(replacee));
+            replacements.put(entryPointNode, AbstractBeginNode.prevBegin(replacee));
             Map<Node, Node> duplicates = replaceeGraph.addDuplicates(nodes, snippet, snippet.getNodeCount(), replacements);
             Debug.dump(replaceeGraph, "After inlining snippet %s", snippet.method());
 

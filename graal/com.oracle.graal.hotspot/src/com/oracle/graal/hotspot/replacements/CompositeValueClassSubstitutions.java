@@ -45,7 +45,7 @@ public class CompositeValueClassSubstitutions {
      * {@link Class} parameter.
      */
     @NodeInfo
-    public static class CompositeValueClassGetNode extends PureFunctionMacroNode {
+    public static final class CompositeValueClassGetNode extends PureFunctionMacroNode {
 
         public CompositeValueClassGetNode(Invoke invoke) {
             super(invoke);

@@ -173,7 +173,7 @@ public class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPr
                     printProperty(bit, "true");
                 }
             }
-            if (node.getClass() == BeginNode.class) {
+            if (node instanceof BeginNode) {
                 printProperty("shortName", "B");
             } else if (node.getClass() == EndNode.class) {
                 printProperty("shortName", "E");
@@ -276,8 +276,8 @@ public class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPr
                 if (node instanceof StateSplit && ((StateSplit) node).stateAfter() != null) {
                     nodes.add(((StateSplit) node).stateAfter());
                 }
-                if (node instanceof MergeNode) {
-                    for (PhiNode phi : ((MergeNode) node).phis()) {
+                if (node instanceof AbstractMergeNode) {
+                    for (PhiNode phi : ((AbstractMergeNode) node).phis()) {
                         nodes.add(phi);
                     }
                 }

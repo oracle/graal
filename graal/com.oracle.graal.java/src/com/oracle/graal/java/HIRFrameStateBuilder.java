@@ -193,7 +193,7 @@ public class HIRFrameStateBuilder extends AbstractFrameStateBuilder<ValueNode, H
         return true;
     }
 
-    public void merge(MergeNode block, HIRFrameStateBuilder other) {
+    public void merge(AbstractMergeNode block, HIRFrameStateBuilder other) {
         assert isCompatibleWith(other);
 
         for (int i = 0; i < localsSize(); i++) {
@@ -208,7 +208,7 @@ public class HIRFrameStateBuilder extends AbstractFrameStateBuilder<ValueNode, H
         }
     }
 
-    private ValueNode merge(ValueNode currentValue, ValueNode otherValue, MergeNode block) {
+    private ValueNode merge(ValueNode currentValue, ValueNode otherValue, AbstractMergeNode block) {
         if (currentValue == null || currentValue.isDeleted()) {
             return null;
 
@@ -294,7 +294,7 @@ public class HIRFrameStateBuilder extends AbstractFrameStateBuilder<ValueNode, H
         }
     }
 
-    public void insertProxies(BeginNode begin) {
+    public void insertProxies(AbstractBeginNode begin) {
         for (int i = 0; i < localsSize(); i++) {
             ValueNode value = localAt(i);
             if (value != null) {
@@ -318,7 +318,7 @@ public class HIRFrameStateBuilder extends AbstractFrameStateBuilder<ValueNode, H
         }
     }
 
-    private ValuePhiNode createLoopPhi(MergeNode block, ValueNode value) {
+    private ValuePhiNode createLoopPhi(AbstractMergeNode block, ValueNode value) {
         if (value == null) {
             return null;
         }
