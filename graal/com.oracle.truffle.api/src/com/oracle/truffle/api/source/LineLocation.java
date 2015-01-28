@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,8 @@
  */
 package com.oracle.truffle.api.source;
 
+import java.util.*;
+
 /**
  * A specification for a location in guest language source, expressed as a line number in a specific
  * instance of {@link Source}, suitable for hash table keys with equality defined in terms of
@@ -39,5 +41,20 @@ public interface LineLocation {
     int getLineNumber();
 
     String getShortDescription();
+
+    /**
+     * Default comparator by (1) textual path name, (2) line number.
+     */
+    Comparator<LineLocation> COMPARATOR = new Comparator<LineLocation>() {
+
+        public int compare(LineLocation l1, LineLocation l2) {
+            final int sourceResult = l1.getSource().getPath().compareTo(l2.getSource().getPath());
+            if (sourceResult != 0) {
+                return sourceResult;
+            }
+            return Integer.compare(l1.getLineNumber(), l2.getLineNumber());
+        }
+
+    };
 
 }
