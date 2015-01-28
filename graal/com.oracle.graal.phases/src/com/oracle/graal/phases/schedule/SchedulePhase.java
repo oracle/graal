@@ -1068,7 +1068,7 @@ public final class SchedulePhase extends Phase {
     }
 
     private void addToLatestSorting(ValueNode i, SortState state) {
-        if (i == null || state.isVisited(i) || cfg.getNodeToBlock().get(i) != state.currentBlock() || i instanceof PhiNode) {
+        if (i == null || state.isVisited(i) || cfg.getNodeToBlock().get(i) != state.currentBlock() || i instanceof PhiNode || i instanceof ProxyNode) {
             return;
         }
 
@@ -1083,9 +1083,7 @@ public final class SchedulePhase extends Phase {
                     addUnscheduledToLatestSorting((FrameState) input, state);
                 }
             } else {
-                if (!(i instanceof ProxyNode && input instanceof LoopExitNode)) {
-                    addToLatestSorting((ValueNode) input, state);
-                }
+                addToLatestSorting((ValueNode) input, state);
             }
         }
 
@@ -1130,7 +1128,7 @@ public final class SchedulePhase extends Phase {
     private void addToEarliestSorting(Block b, ValueNode i, List<ValueNode> sortedInstructions, NodeBitMap visited) {
         ValueNode instruction = i;
         while (true) {
-            if (instruction == null || visited.isMarked(instruction) || cfg.getNodeToBlock().get(instruction) != b || instruction instanceof PhiNode) {
+            if (instruction == null || visited.isMarked(instruction) || cfg.getNodeToBlock().get(instruction) != b || instruction instanceof PhiNode || instruction instanceof ProxyNode) {
                 return;
             }
 
@@ -1139,11 +1137,7 @@ public final class SchedulePhase extends Phase {
                 if (usage instanceof VirtualState) {
                     // only fixed nodes can have VirtualState -> no need to schedule them
                 } else {
-                    if (instruction instanceof LoopExitNode && usage instanceof ProxyNode) {
-                        // value proxies should be scheduled before the loopexit, not after
-                    } else {
-                        addToEarliestSorting(b, (ValueNode) usage, sortedInstructions, visited);
-                    }
+                    addToEarliestSorting(b, (ValueNode) usage, sortedInstructions, visited);
                 }
             }
 
