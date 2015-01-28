@@ -46,7 +46,7 @@ import com.oracle.graal.nodes.spi.*;
  * inspect in the native debugger when the breakpoint is hit.
  */
 @NodeInfo
-public class BreakpointNode extends FixedWithNextNode implements LIRLowerable {
+public final class BreakpointNode extends FixedWithNextNode implements LIRLowerable {
 
     @Input NodeInputList<ValueNode> arguments;
 

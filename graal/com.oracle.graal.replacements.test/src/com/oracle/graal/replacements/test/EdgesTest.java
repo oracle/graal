@@ -43,7 +43,7 @@ import com.oracle.graal.phases.tiers.*;
 public class EdgesTest extends GraalCompilerTest {
 
     @NodeInfo
-    static class TestNode extends Node {
+    static final class TestNode extends Node {
         @Input NodeInputList<ValueNode> itail;
         @Input ConstantNode i1;
         @Input FloatingNode i2;

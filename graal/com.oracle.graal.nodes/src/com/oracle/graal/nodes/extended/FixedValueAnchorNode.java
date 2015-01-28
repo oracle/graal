@@ -28,7 +28,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo
-public class FixedValueAnchorNode extends FixedWithNextNode implements LIRLowerable, ValueProxy {
+public final class FixedValueAnchorNode extends FixedWithNextNode implements LIRLowerable, ValueProxy {
 
     @Input ValueNode object;
 

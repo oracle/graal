@@ -43,7 +43,7 @@ import com.oracle.graal.replacements.nodes.*;
  * Node for invocation methods defined on the class {@link MethodHandle}.
  */
 @NodeInfo
-public class MethodHandleNode extends MacroStateSplitNode implements Simplifiable {
+public final class MethodHandleNode extends MacroStateSplitNode implements Simplifiable {
 
     // Replacement method data
     protected ResolvedJavaMethod replacementTargetMethod;

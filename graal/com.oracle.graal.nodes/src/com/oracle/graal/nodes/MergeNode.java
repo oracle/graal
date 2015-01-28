@@ -28,7 +28,7 @@ import com.oracle.graal.nodeinfo.*;
  * Denotes the merging of multiple control-flow paths.
  */
 @NodeInfo
-public class MergeNode extends AbstractMergeNode {
+public final class MergeNode extends AbstractMergeNode {
     public MergeNode() {
     }
 }

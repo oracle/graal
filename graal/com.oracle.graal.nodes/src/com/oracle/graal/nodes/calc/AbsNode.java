@@ -34,7 +34,7 @@ import com.oracle.graal.nodes.spi.*;
  * Absolute value.
  */
 @NodeInfo
-public class AbsNode extends UnaryArithmeticNode<Abs> implements ArithmeticLIRLowerable, NarrowableArithmeticNode {
+public final class AbsNode extends UnaryArithmeticNode<Abs> implements ArithmeticLIRLowerable, NarrowableArithmeticNode {
 
     public AbsNode(ValueNode x) {
         super(ArithmeticOpTable::getAbs, x);

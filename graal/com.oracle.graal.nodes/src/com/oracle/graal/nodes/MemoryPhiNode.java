@@ -32,7 +32,7 @@ import com.oracle.graal.nodes.extended.*;
  * Memory {@code PhiNode}s merge memory dependencies at control flow merges.
  */
 @NodeInfo(nameTemplate = "MemoryPhi({i#values}) {p#locationIdentity/s}", allowedUsageTypes = {InputType.Memory})
-public class MemoryPhiNode extends PhiNode implements MemoryNode {
+public final class MemoryPhiNode extends PhiNode implements MemoryNode {
 
     @Input(InputType.Memory) NodeInputList<ValueNode> values;
     protected final LocationIdentity locationIdentity;

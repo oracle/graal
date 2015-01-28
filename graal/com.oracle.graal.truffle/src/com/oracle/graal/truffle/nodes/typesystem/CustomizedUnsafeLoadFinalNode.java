@@ -40,7 +40,7 @@ import com.oracle.graal.truffle.nodes.*;
  * Substitution for method CompilerDirectives#unsafeGet*.
  */
 @NodeInfo
-public class CustomizedUnsafeLoadFinalNode extends FixedWithNextNode implements Canonicalizable, Virtualizable, Lowerable {
+public final class CustomizedUnsafeLoadFinalNode extends FixedWithNextNode implements Canonicalizable, Virtualizable, Lowerable {
     @Input ValueNode object;
     @Input ValueNode offset;
     @Input ValueNode condition;

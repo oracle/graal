@@ -34,7 +34,7 @@ import com.oracle.graal.nodes.spi.*;
  * The {@code NegateNode} node negates its operand.
  */
 @NodeInfo
-public class NegateNode extends UnaryArithmeticNode<Neg> implements NarrowableArithmeticNode {
+public final class NegateNode extends UnaryArithmeticNode<Neg> implements NarrowableArithmeticNode {
 
     public NegateNode(ValueNode value) {
         super(ArithmeticOpTable::getNeg, value);

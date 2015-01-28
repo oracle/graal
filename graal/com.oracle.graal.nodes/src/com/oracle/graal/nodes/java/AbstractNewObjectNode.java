@@ -36,7 +36,7 @@ import com.oracle.graal.nodes.spi.*;
  * The {@code AbstractNewObjectNode} is the base class for the new instance and new array nodes.
  */
 @NodeInfo
-public class AbstractNewObjectNode extends DeoptimizingFixedWithNextNode implements Simplifiable, Lowerable {
+public abstract class AbstractNewObjectNode extends DeoptimizingFixedWithNextNode implements Simplifiable, Lowerable {
 
     protected final boolean fillContents;
 

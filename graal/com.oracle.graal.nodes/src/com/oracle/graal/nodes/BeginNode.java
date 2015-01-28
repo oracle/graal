@@ -26,7 +26,7 @@ import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.nodeinfo.*;
 
 @NodeInfo
-public class BeginNode extends AbstractBeginNode {
+public final class BeginNode extends AbstractBeginNode {
 
     public BeginNode() {
         super(StampFactory.forVoid());

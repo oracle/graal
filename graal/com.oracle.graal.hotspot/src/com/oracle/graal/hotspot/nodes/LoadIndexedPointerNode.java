@@ -29,7 +29,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 
 @NodeInfo
-public class LoadIndexedPointerNode extends LoadIndexedNode {
+public final class LoadIndexedPointerNode extends LoadIndexedNode {
 
     public LoadIndexedPointerNode(Stamp stamp, ValueNode array, ValueNode index) {
         super(stamp, array, index, Kind.Illegal);

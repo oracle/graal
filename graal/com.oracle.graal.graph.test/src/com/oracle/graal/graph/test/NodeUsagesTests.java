@@ -34,13 +34,13 @@ import com.oracle.graal.nodeinfo.*;
 public class NodeUsagesTests {
 
     @NodeInfo
-    static class Def extends Node {
+    static final class Def extends Node {
         protected Def() {
         }
     }
 
     @NodeInfo
-    static class Use extends Node {
+    static final class Use extends Node {
         @Input Def in0;
         @Input Def in1;
         @Input Def in2;

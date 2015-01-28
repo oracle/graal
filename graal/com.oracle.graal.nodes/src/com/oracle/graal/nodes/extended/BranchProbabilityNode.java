@@ -36,7 +36,7 @@ import com.oracle.graal.nodes.spi.*;
  * intended primarily for snippets, so that they can define their fast and slow paths.
  */
 @NodeInfo
-public class BranchProbabilityNode extends FloatingNode implements Simplifiable, Lowerable {
+public final class BranchProbabilityNode extends FloatingNode implements Simplifiable, Lowerable {
 
     public static final double LIKELY_PROBABILITY = 0.6;
     public static final double NOT_LIKELY_PROBABILITY = 1 - LIKELY_PROBABILITY;

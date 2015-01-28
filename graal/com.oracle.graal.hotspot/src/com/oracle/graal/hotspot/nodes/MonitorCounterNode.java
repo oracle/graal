@@ -35,7 +35,7 @@ import com.oracle.graal.word.*;
  * Node that is used to maintain a stack based counter of how many locks are currently held.
  */
 @NodeInfo
-public class MonitorCounterNode extends FloatingNode implements LIRLowerable {
+public final class MonitorCounterNode extends FloatingNode implements LIRLowerable {
 
     public MonitorCounterNode() {
         super(null);

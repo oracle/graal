@@ -37,7 +37,7 @@ import com.oracle.graal.truffle.nodes.asserts.*;
  * Macro node for CompilerDirectives#unsafeGetInt*.
  */
 @NodeInfo
-public class CustomizedUnsafeLoadMacroNode extends NeverPartOfCompilationNode implements Canonicalizable {
+public final class CustomizedUnsafeLoadMacroNode extends NeverPartOfCompilationNode implements Canonicalizable {
 
     private static final int ARGUMENT_COUNT = 4;
     private static final int OBJECT_ARGUMENT_INDEX = 0;

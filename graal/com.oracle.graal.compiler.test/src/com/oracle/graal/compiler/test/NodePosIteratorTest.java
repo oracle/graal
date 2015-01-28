@@ -32,7 +32,7 @@ import com.oracle.graal.nodes.calc.*;
 public class NodePosIteratorTest extends GraalCompilerTest {
 
     @NodeInfo
-    static class TestNode extends Node {
+    static final class TestNode extends Node {
         @Successor Node s1;
         @Successor Node s2;
         @Successor NodeSuccessorList<Node> stail;

@@ -35,7 +35,7 @@ import com.oracle.graal.truffle.nodes.asserts.*;
  * Macro node for method CompilerDirectives#unsafePut*.
  */
 @NodeInfo
-public class CustomizedUnsafeStoreMacroNode extends NeverPartOfCompilationNode implements Canonicalizable, StateSplit {
+public final class CustomizedUnsafeStoreMacroNode extends NeverPartOfCompilationNode implements Canonicalizable, StateSplit {
     private static final int ARGUMENT_COUNT = 4;
     private static final int OBJECT_ARGUMENT_INDEX = 0;
     private static final int OFFSET_ARGUMENT_INDEX = 1;

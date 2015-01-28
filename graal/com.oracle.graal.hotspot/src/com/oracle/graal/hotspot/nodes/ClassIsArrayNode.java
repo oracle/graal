@@ -36,7 +36,7 @@ import com.oracle.graal.replacements.nodes.*;
  * @see ClassSubstitutions#isArray(Class)
  */
 @NodeInfo
-public class ClassIsArrayNode extends MacroNode implements Canonicalizable {
+public final class ClassIsArrayNode extends MacroNode implements Canonicalizable {
 
     public ClassIsArrayNode(Invoke invoke) {
         super(invoke);

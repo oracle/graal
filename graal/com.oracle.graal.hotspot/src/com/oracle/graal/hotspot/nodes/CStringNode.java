@@ -32,7 +32,7 @@ import com.oracle.graal.word.*;
  * Converts a compile-time constant Java string into a C string installed with the generated code.
  */
 @NodeInfo
-public class CStringNode extends FloatingNode implements LIRLowerable {
+public final class CStringNode extends FloatingNode implements LIRLowerable {
 
     protected final String string;
 

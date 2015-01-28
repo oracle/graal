@@ -36,7 +36,7 @@ import com.oracle.graal.nodes.spi.*;
  * the entire execution of the associated method.
  */
 @NodeInfo
-public class AllocaNode extends FixedWithNextNode implements LIRLowerable {
+public final class AllocaNode extends FixedWithNextNode implements LIRLowerable {
 
     /**
      * The number of slots in block.

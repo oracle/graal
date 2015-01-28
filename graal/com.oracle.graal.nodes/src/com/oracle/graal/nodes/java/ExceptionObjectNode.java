@@ -34,7 +34,7 @@ import com.oracle.graal.nodes.spi.*;
  * throw instruction or implicit exception).
  */
 @NodeInfo(allowedUsageTypes = {InputType.Memory})
-public class ExceptionObjectNode extends DispatchBeginNode implements Lowerable, MemoryCheckpoint.Single {
+public final class ExceptionObjectNode extends DispatchBeginNode implements Lowerable, MemoryCheckpoint.Single {
 
     public ExceptionObjectNode(MetaAccessProvider metaAccess) {
         super(StampFactory.declaredNonNull(metaAccess.lookupJavaType(Throwable.class)));
