@@ -247,7 +247,7 @@ public class LSStackSlotAllocator implements StackSlotAllocator {
                 private void useConsumer(LIRInstruction inst, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
                     if (isVirtualStackSlot(operand)) {
                         VirtualStackSlot vslot = asVirtualStackSlot(operand);
-                        addUse(vslot, inst);
+                        addUse(vslot, inst, flags);
                         Debug.log("set operand: %s", operand);
                         currentSet.set(vslot.getId());
                     }
@@ -272,9 +272,16 @@ public class LSStackSlotAllocator implements StackSlotAllocator {
 
                 }
 
-                private void addUse(VirtualStackSlot stackSlot, LIRInstruction inst) {
+                private void addUse(VirtualStackSlot stackSlot, LIRInstruction inst, EnumSet<OperandFlag> flags) {
                     StackInterval interval = getOrCreateInterval(stackSlot);
-                    interval.addUse(inst.id());
+                    if (flags.contains(OperandFlag.UNINITIALIZED)) {
+                        // Stack slot is marked uninitialized so we have to assume it is live all
+                        // the time.
+                        interval.addDef(0);
+                        interval.addUse(maxOpId());
+                    } else {
+                        interval.addUse(inst.id());
+                    }
                 }
 
                 private void addDef(VirtualStackSlot stackSlot, LIRInstruction inst) {
