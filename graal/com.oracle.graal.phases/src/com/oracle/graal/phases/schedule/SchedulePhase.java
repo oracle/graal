@@ -1068,7 +1068,13 @@ public final class SchedulePhase extends Phase {
     }
 
     private void addToLatestSorting(ValueNode i, SortState state) {
-        if (i == null || state.isVisited(i) || cfg.getNodeToBlock().get(i) != state.currentBlock() || i instanceof PhiNode || i instanceof ProxyNode) {
+        if (i == null || state.isVisited(i) || cfg.getNodeToBlock().get(i) != state.currentBlock() || i instanceof PhiNode) {
+            return;
+        }
+
+        if (i instanceof ProxyNode) {
+            ProxyNode proxyNode = (ProxyNode) i;
+            addToLatestSorting(proxyNode.value(), state);
             return;
         }
 
