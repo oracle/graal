@@ -81,9 +81,9 @@ public abstract class IntegerExactArithmeticSplitNode extends ControlSplitNode i
             FixedNode next = previous.next();
             previous.setNext(null);
             DeoptimizeNode deopt = floatingNode.graph().add(new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.ArithmeticException));
-            AbstractBeginNode normalBegin = floatingNode.graph().add(new AbstractBeginNode());
+            AbstractBeginNode normalBegin = floatingNode.graph().add(new BeginNode());
             normalBegin.setNext(next);
-            IntegerExactArithmeticSplitNode split = node.createSplit(normalBegin, AbstractBeginNode.begin(deopt));
+            IntegerExactArithmeticSplitNode split = node.createSplit(normalBegin, BeginNode.begin(deopt));
             previous.setNext(split);
             floatingNode.replaceAndDelete(split);
         }

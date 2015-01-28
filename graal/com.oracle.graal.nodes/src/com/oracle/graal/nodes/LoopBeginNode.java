@@ -191,7 +191,7 @@ public class LoopBeginNode extends MergeNode implements IterableNodeType, LIRLow
         for (LoopExitNode loopexit : loopExits().snapshot()) {
             loopexit.removeProxies();
             FrameState loopStateAfter = loopexit.stateAfter();
-            graph().replaceFixedWithFixed(loopexit, graph().add(new AbstractBeginNode()));
+            graph().replaceFixedWithFixed(loopexit, graph().add(new BeginNode()));
             if (loopStateAfter != null && loopStateAfter.isAlive() && loopStateAfter.hasNoUsages()) {
                 GraphUtil.killWithUnusedFloatingInputs(loopStateAfter);
             }

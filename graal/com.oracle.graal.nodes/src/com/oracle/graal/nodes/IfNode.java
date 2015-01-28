@@ -66,7 +66,7 @@ public class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerab
     }
 
     public IfNode(LogicNode condition, FixedNode trueSuccessor, FixedNode falseSuccessor, double trueSuccessorProbability) {
-        this(condition, AbstractBeginNode.begin(trueSuccessor), AbstractBeginNode.begin(falseSuccessor), trueSuccessorProbability);
+        this(condition, BeginNode.begin(trueSuccessor), BeginNode.begin(falseSuccessor), trueSuccessorProbability);
     }
 
     public IfNode(LogicNode condition, AbstractBeginNode trueSuccessor, AbstractBeginNode falseSuccessor, double trueSuccessorProbability) {
@@ -227,7 +227,8 @@ public class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerab
         do {
             AbstractBeginNode trueSucc = trueSuccessor();
             AbstractBeginNode falseSucc = falseSuccessor();
-            if (trueSucc.getClass() == AbstractBeginNode.class && falseSucc.getClass() == AbstractBeginNode.class && trueSucc.next() instanceof FixedWithNextNode && falseSucc.next() instanceof FixedWithNextNode) {
+            if (trueSucc.getClass() == AbstractBeginNode.class && falseSucc.getClass() == AbstractBeginNode.class && trueSucc.next() instanceof FixedWithNextNode &&
+                            falseSucc.next() instanceof FixedWithNextNode) {
                 FixedWithNextNode trueNext = (FixedWithNextNode) trueSucc.next();
                 FixedWithNextNode falseNext = (FixedWithNextNode) falseSucc.next();
                 NodeClass nodeClass = trueNext.getNodeClass();

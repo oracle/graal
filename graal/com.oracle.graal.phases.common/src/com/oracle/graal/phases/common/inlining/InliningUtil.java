@@ -305,7 +305,7 @@ public class InliningUtil {
             // get rid of memory kill
             AbstractBeginNode begin = invokeWithException.next();
             if (begin instanceof KillingBeginNode) {
-                AbstractBeginNode newBegin = new AbstractBeginNode();
+                AbstractBeginNode newBegin = new BeginNode();
                 graph.addAfterFixed(begin, graph.add(newBegin));
                 begin.replaceAtUsages(newBegin);
                 graph.removeFixed(begin);
@@ -459,7 +459,7 @@ public class InliningUtil {
                     } else {
                         FixedNode deoptimizeNode = graph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.NotCompiledExceptionHandler));
                         if (fixedStateSplit instanceof AbstractBeginNode) {
-                            deoptimizeNode = AbstractBeginNode.begin(deoptimizeNode);
+                            deoptimizeNode = BeginNode.begin(deoptimizeNode);
                         }
                         fixedStateSplit.replaceAtPredecessor(deoptimizeNode);
                         GraphUtil.killCFG(fixedStateSplit);

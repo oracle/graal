@@ -89,14 +89,14 @@ public abstract class LoopTransformations {
         assert successors.hasNext();
         // original loop is used as first successor
         Position firstPosition = successors.nextPosition();
-        AbstractBeginNode originalLoopBegin = AbstractBeginNode.begin(originalLoop.entryPoint());
+        AbstractBeginNode originalLoopBegin = BeginNode.begin(originalLoop.entryPoint());
         firstPosition.set(newControlSplit, originalLoopBegin);
 
         while (successors.hasNext()) {
             Position position = successors.nextPosition();
             // create a new loop duplicate and connect it.
             LoopFragmentWhole duplicateLoop = originalLoop.duplicate();
-            AbstractBeginNode newBegin = AbstractBeginNode.begin(duplicateLoop.entryPoint());
+            AbstractBeginNode newBegin = BeginNode.begin(duplicateLoop.entryPoint());
             position.set(newControlSplit, newBegin);
 
             // For each cloned ControlSplitNode, simplify the proper path

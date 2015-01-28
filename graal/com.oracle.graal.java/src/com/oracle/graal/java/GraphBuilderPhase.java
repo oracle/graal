@@ -299,7 +299,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             @Override
             protected void handleUnresolvedInstanceOf(JavaType type, ValueNode object) {
                 assert !graphBuilderConfig.eagerResolving();
-                AbstractBeginNode successor = currentGraph.add(new AbstractBeginNode());
+                AbstractBeginNode successor = currentGraph.add(new BeginNode());
                 DeoptimizeNode deopt = currentGraph.add(new DeoptimizeNode(InvalidateRecompile, Unresolved));
                 append(new IfNode(currentGraph.unique(new IsNullNode(object)), successor, deopt, 1));
                 lastInstr = successor;
@@ -609,7 +609,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     return;
                 }
                 BytecodeExceptionNode exception = currentGraph.add(new BytecodeExceptionNode(metaAccess, NullPointerException.class));
-                AbstractBeginNode falseSucc = currentGraph.add(new AbstractBeginNode());
+                AbstractBeginNode falseSucc = currentGraph.add(new BeginNode());
                 append(new IfNode(currentGraph.unique(new IsNullNode(receiver)), exception, falseSucc, 0.01));
                 lastInstr = falseSucc;
 
@@ -619,7 +619,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             @Override
             protected void emitBoundsCheck(ValueNode index, ValueNode length) {
-                AbstractBeginNode trueSucc = currentGraph.add(new AbstractBeginNode());
+                AbstractBeginNode trueSucc = currentGraph.add(new BeginNode());
                 BytecodeExceptionNode exception = currentGraph.add(new BytecodeExceptionNode(metaAccess, ArrayIndexOutOfBoundsException.class, index));
                 append(new IfNode(currentGraph.unique(new IntegerBelowNode(index, length)), trueSucc, exception, 0.99));
                 lastInstr = trueSucc;
@@ -1044,7 +1044,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                      * this block again.
                      */
                     FixedNode targetNode;
-                    block.firstInstruction = currentGraph.add(new AbstractBeginNode());
+                    block.firstInstruction = currentGraph.add(new BeginNode());
                     targetNode = block.firstInstruction;
                     Target target = checkLoopExit(targetNode, block, state);
                     FixedNode result = target.fixed;
@@ -1123,7 +1123,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
              */
             private AbstractBeginNode createBlockTarget(double probability, BciBlock block, HIRFrameStateBuilder stateAfter) {
                 FixedNode target = createTarget(probability, block, stateAfter);
-                AbstractBeginNode begin = AbstractBeginNode.begin(target);
+                AbstractBeginNode begin = BeginNode.begin(target);
 
                 assert !(target instanceof DeoptimizeNode && begin instanceof BeginStateSplitNode && ((BeginStateSplitNode) begin).stateAfter() != null) : "We are not allowed to set the stateAfter of the begin node, because we have to deoptimize "
                                 + "to a bci _before_ the actual if, so that the interpreter can update the profiling information.";

@@ -208,7 +208,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
         } else {
             unknownTypeSux = graph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.TypeCheckedInliningViolated));
         }
-        successors[successors.length - 1] = AbstractBeginNode.begin(unknownTypeSux);
+        successors[successors.length - 1] = BeginNode.begin(unknownTypeSux);
 
         // replace the invoke exception edge
         if (invoke instanceof InvokeWithExceptionNode) {
@@ -330,7 +330,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
     private Collection<Node> inlineSingleMethod(StructuredGraph graph, MetaAccessProvider metaAccess, Assumptions assumptions, StampProvider stampProvider) {
         assert concretes.size() == 1 && inlineableElements.length == 1 && ptypes.size() > 1 && !shouldFallbackToInvoke() && notRecordedTypeProbability == 0;
 
-        AbstractBeginNode calleeEntryNode = graph.add(new AbstractBeginNode());
+        AbstractBeginNode calleeEntryNode = graph.add(new BeginNode());
 
         AbstractBeginNode unknownTypeSux = createUnknownTypeSuccessor(graph);
         AbstractBeginNode[] successors = new AbstractBeginNode[]{calleeEntryNode, unknownTypeSux};
@@ -462,7 +462,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
     private static AbstractBeginNode createInvocationBlock(StructuredGraph graph, Invoke invoke, MergeNode returnMerge, PhiNode returnValuePhi, MergeNode exceptionMerge, PhiNode exceptionObjectPhi,
                     boolean useForInlining) {
         Invoke duplicatedInvoke = duplicateInvokeForInlining(graph, invoke, exceptionMerge, exceptionObjectPhi, useForInlining);
-        AbstractBeginNode calleeEntryNode = graph.add(new AbstractBeginNode());
+        AbstractBeginNode calleeEntryNode = graph.add(new BeginNode());
         calleeEntryNode.setNext(duplicatedInvoke.asNode());
 
         AbstractEndNode endNode = graph.add(new EndNode());
@@ -538,7 +538,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
     }
 
     private void devirtualizeWithTypeSwitch(StructuredGraph graph, InvokeKind kind, ResolvedJavaMethod target, MetaAccessProvider metaAccess, StampProvider stampProvider) {
-        AbstractBeginNode invocationEntry = graph.add(new AbstractBeginNode());
+        AbstractBeginNode invocationEntry = graph.add(new BeginNode());
         AbstractBeginNode unknownTypeSux = createUnknownTypeSuccessor(graph);
         AbstractBeginNode[] successors = new AbstractBeginNode[]{invocationEntry, unknownTypeSux};
         createDispatchOnTypeBeforeInvoke(graph, successors, true, metaAccess, stampProvider);
@@ -551,7 +551,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
     }
 
     private static AbstractBeginNode createUnknownTypeSuccessor(StructuredGraph graph) {
-        return AbstractBeginNode.begin(graph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.TypeCheckedInliningViolated)));
+        return BeginNode.begin(graph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.TypeCheckedInliningViolated)));
     }
 
     @Override

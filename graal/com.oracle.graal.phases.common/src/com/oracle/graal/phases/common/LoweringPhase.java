@@ -336,7 +336,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
                         // FixedWithNextNode is followed by some kind of BeginNode.
                         // For example the when a FixedGuard followed by a loop exit is lowered to a
                         // control-split + deopt.
-                        AbstractBeginNode begin = node.graph().add(new AbstractBeginNode());
+                        AbstractBeginNode begin = node.graph().add(new BeginNode());
                         nextLastFixed.replaceFirstSuccessor(nextNode, begin);
                         begin.setNext(nextNode);
                         nextLastFixed = begin;

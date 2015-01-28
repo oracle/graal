@@ -152,7 +152,7 @@ public class LoopFragmentInside extends LoopFragment {
                     if (value != null) {
                         return value;
                     }
-                    AbstractBeginNode newValue = graph.add(new AbstractBeginNode());
+                    AbstractBeginNode newValue = graph.add(new BeginNode());
                     seenNode.put(original, newValue);
                     return newValue;
                 }
@@ -161,7 +161,7 @@ public class LoopFragmentInside extends LoopFragment {
                     if (value != null) {
                         return value;
                     }
-                    AbstractBeginNode newValue = graph.add(new AbstractBeginNode());
+                    AbstractBeginNode newValue = graph.add(new BeginNode());
                     seenNode.put(original, newValue);
                     return newValue;
                 }
@@ -310,7 +310,7 @@ public class LoopFragmentInside extends LoopFragment {
         if (endsToMerge.size() == 1) {
             AbstractEndNode end = endsToMerge.get(0);
             assert end.hasNoUsages();
-            newExit = graph.add(new AbstractBeginNode());
+            newExit = graph.add(new BeginNode());
             end.replaceAtPredecessor(newExit);
             end.safeDelete();
         } else {
