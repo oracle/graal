@@ -180,13 +180,17 @@ public final class GraphOrder {
                                 loopEntryStates.put((LoopBeginNode) node, currentState.copy());
                             }
                         } else if (node instanceof ProxyNode) {
-                            for (Node input : node.inputs()) {
-                                if (input != ((ProxyNode) node).proxyPoint()) {
-                                    assert currentState.isMarked(input) : input + " not available at " + node + " in block " + block + "\n" + list;
-                                }
-                            }
+                            assert false : "proxy nodes should not be in the schedule";
                         } else if (node instanceof LoopExitNode) {
                             if (graph.hasValueProxies()) {
+                                for (ProxyNode proxy : ((LoopExitNode) node).proxies()) {
+                                    for (Node input : proxy.inputs()) {
+                                        if (input != proxy.proxyPoint()) {
+                                            assert currentState.isMarked(input) : input + " not available at " + proxy + " in block " + block + "\n" + list;
+                                        }
+                                    }
+                                }
+
                                 // loop contents are only accessible via proxies at the exit
                                 currentState.clearAll();
                                 currentState.markAll(loopEntryStates.get(((LoopExitNode) node).loopBegin()));
