@@ -71,7 +71,7 @@ public class GraphUtil {
     }
 
     private static void killEnd(AbstractEndNode end, SimplifierTool tool) {
-        MergeNode merge = end.merge();
+        AbstractMergeNode merge = end.merge();
         if (merge != null) {
             merge.removeEnd(end);
             StructuredGraph graph = end.graph();

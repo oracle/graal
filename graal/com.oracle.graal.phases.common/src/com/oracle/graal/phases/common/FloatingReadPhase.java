@@ -150,7 +150,7 @@ public class FloatingReadPhase extends Phase {
         }
     }
 
-    public static MemoryMapImpl mergeMemoryMaps(MergeNode merge, List<? extends MemoryMap> states, boolean updateExistingPhis) {
+    public static MemoryMapImpl mergeMemoryMaps(AbstractMergeNode merge, List<? extends MemoryMap> states, boolean updateExistingPhis) {
         MemoryMapImpl newState = new MemoryMapImpl();
 
         Set<LocationIdentity> keys = CollectionsFactory.newSet();
@@ -237,7 +237,7 @@ public class FloatingReadPhase extends Phase {
         }
 
         @Override
-        protected Set<LocationIdentity> merge(MergeNode merge, List<Set<LocationIdentity>> states) {
+        protected Set<LocationIdentity> merge(AbstractMergeNode merge, List<Set<LocationIdentity>> states) {
             Set<LocationIdentity> result = CollectionsFactory.newSet();
             for (Set<LocationIdentity> other : states) {
                 result.addAll(other);
@@ -346,7 +346,7 @@ public class FloatingReadPhase extends Phase {
         }
 
         @Override
-        protected MemoryMapImpl merge(MergeNode merge, List<MemoryMapImpl> states) {
+        protected MemoryMapImpl merge(AbstractMergeNode merge, List<MemoryMapImpl> states) {
             return mergeMemoryMaps(merge, states, updateExistingPhis);
         }
 

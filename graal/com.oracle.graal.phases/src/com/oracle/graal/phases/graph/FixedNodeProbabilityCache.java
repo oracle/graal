@@ -99,8 +99,8 @@ public class FixedNodeProbabilityCache implements ToDoubleFunction<FixedNode> {
 
         double probability = 0.0;
         if (current.predecessor() == null) {
-            if (current instanceof MergeNode) {
-                MergeNode currentMerge = (MergeNode) current;
+            if (current instanceof AbstractMergeNode) {
+                AbstractMergeNode currentMerge = (AbstractMergeNode) current;
                 NodeInputList<AbstractEndNode> currentForwardEnds = currentMerge.forwardEnds();
                 /*
                  * Use simple iteration instead of streams, since the stream infrastructure adds

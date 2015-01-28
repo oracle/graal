@@ -114,9 +114,9 @@ public class ComputeInliningRelevance {
                         parent = loops.get(null);
                         break;
                     } else {
-                        assert current.getClass() == MergeNode.class : current;
+                        assert current.getClass() == AbstractMergeNode.class : current;
                         // follow any path upwards - it doesn't matter which one
-                        current = ((MergeNode) current).forwardEndAt(0);
+                        current = ((AbstractMergeNode) current).forwardEndAt(0);
                     }
                 } else if (current instanceof LoopExitNode) {
                     // if we reach a loop exit then we follow this loop and have the same parent

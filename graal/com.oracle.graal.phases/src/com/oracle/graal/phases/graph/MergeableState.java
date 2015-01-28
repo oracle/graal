@@ -38,7 +38,7 @@ public abstract class MergeableState<T> {
      * @param merge the merge node
      * @param withStates the state at the the merge's end node except the first one.
      */
-    public abstract boolean merge(MergeNode merge, List<T> withStates);
+    public abstract boolean merge(AbstractMergeNode merge, List<T> withStates);
 
     /**
      * This method is called before a loop is entered (before the {@link LoopBeginNode} is visited).

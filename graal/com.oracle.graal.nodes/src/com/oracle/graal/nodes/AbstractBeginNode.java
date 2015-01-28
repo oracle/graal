@@ -97,7 +97,7 @@ public abstract class AbstractBeginNode extends FixedWithNextNode implements LIR
 
     @Override
     public boolean verify() {
-        assertTrue(predecessor() != null || this == graph().start() || this instanceof MergeNode, "begin nodes must be connected");
+        assertTrue(predecessor() != null || this == graph().start() || this instanceof AbstractMergeNode, "begin nodes must be connected");
         return super.verify();
     }
 

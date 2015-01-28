@@ -693,7 +693,7 @@ public class WriteBarrierVerificationTest extends GraalCompilerTest {
                 }
 
                 @Override
-                protected Boolean merge(MergeNode merge, List<Boolean> states) {
+                protected Boolean merge(AbstractMergeNode merge, List<Boolean> states) {
                     return false;
                 }
 

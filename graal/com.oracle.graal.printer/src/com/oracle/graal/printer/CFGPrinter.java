@@ -265,9 +265,9 @@ class CFGPrinter extends CompilationPrinter {
         out.println("HIR");
         out.disableIndentation();
 
-        if (block.getBeginNode() instanceof MergeNode) {
+        if (block.getBeginNode() instanceof AbstractMergeNode) {
             // Currently phi functions are not in the schedule, so print them separately here.
-            for (ValueNode phi : ((MergeNode) block.getBeginNode()).phis()) {
+            for (ValueNode phi : ((AbstractMergeNode) block.getBeginNode()).phis()) {
                 printNode(phi, false);
             }
         }
@@ -585,9 +585,9 @@ class CFGPrinter extends CompilationPrinter {
         out.println("HIR");
         out.disableIndentation();
 
-        if (block.getBeginNode() instanceof MergeNode) {
+        if (block.getBeginNode() instanceof AbstractMergeNode) {
             // Currently phi functions are not in the schedule, so print them separately here.
-            for (ValueNode phi : ((MergeNode) block.getBeginNode()).phis()) {
+            for (ValueNode phi : ((AbstractMergeNode) block.getBeginNode()).phis()) {
                 printNode(phi, false);
             }
         }

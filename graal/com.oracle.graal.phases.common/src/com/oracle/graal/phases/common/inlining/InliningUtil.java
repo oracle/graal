@@ -344,7 +344,7 @@ public class InliningUtil {
                 for (ReturnNode returnNode : returnNodes) {
                     returnDuplicates.add((ReturnNode) duplicates.get(returnNode));
                 }
-                MergeNode merge = graph.add(new MergeNode());
+                AbstractMergeNode merge = graph.add(new AbstractMergeNode());
                 merge.setStateAfter(stateAfter);
                 ValueNode returnValue = mergeReturns(merge, returnDuplicates, canonicalizedNodes);
                 invokeNode.replaceAtUsages(returnValue);
@@ -448,8 +448,8 @@ public class InliningUtil {
                 } else {
                     StateSplit stateSplit = (StateSplit) usage;
                     FixedNode fixedStateSplit = stateSplit.asNode();
-                    if (fixedStateSplit instanceof MergeNode) {
-                        MergeNode merge = (MergeNode) fixedStateSplit;
+                    if (fixedStateSplit instanceof AbstractMergeNode) {
+                        AbstractMergeNode merge = (AbstractMergeNode) fixedStateSplit;
                         while (merge.isAlive()) {
                             AbstractEndNode end = merge.forwardEnds().first();
                             DeoptimizeNode deoptimizeNode = graph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.NotCompiledExceptionHandler));
@@ -469,7 +469,7 @@ public class InliningUtil {
         }
     }
 
-    public static ValueNode mergeReturns(MergeNode merge, List<? extends ReturnNode> returnNodes, List<Node> canonicalizedNodes) {
+    public static ValueNode mergeReturns(AbstractMergeNode merge, List<? extends ReturnNode> returnNodes, List<Node> canonicalizedNodes) {
         PhiNode returnValuePhi = null;
 
         for (ReturnNode returnNode : returnNodes) {

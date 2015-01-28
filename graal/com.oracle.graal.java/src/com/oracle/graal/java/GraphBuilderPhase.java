@@ -1077,7 +1077,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 assert currentBlock == null || currentBlock.getId() < block.getId() : "must not be backward branch";
                 assert block.firstInstruction.next() == null : "bytecodes already parsed for block";
 
-                if (block.firstInstruction instanceof AbstractBeginNode && !(block.firstInstruction instanceof MergeNode)) {
+                if (block.firstInstruction instanceof AbstractBeginNode && !(block.firstInstruction instanceof AbstractMergeNode)) {
                     /*
                      * This is the second time we see this block. Create the actual MergeNode and
                      * the End Node for the already existing edge. For simplicity, we leave the
@@ -1088,7 +1088,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     // The EndNode for the already existing edge.
                     AbstractEndNode end = currentGraph.add(new EndNode());
                     // The MergeNode that replaces the placeholder.
-                    MergeNode mergeNode = currentGraph.add(new MergeNode());
+                    AbstractMergeNode mergeNode = currentGraph.add(new AbstractMergeNode());
                     FixedNode next = placeholder.next();
 
                     if (placeholder.predecessor() instanceof ControlSplitNode) {
@@ -1104,7 +1104,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     block.firstInstruction = mergeNode;
                 }
 
-                MergeNode mergeNode = (MergeNode) block.firstInstruction;
+                AbstractMergeNode mergeNode = (AbstractMergeNode) block.firstInstruction;
 
                 // The EndNode for the newly merged edge.
                 AbstractEndNode newEnd = currentGraph.add(new EndNode());
@@ -1151,12 +1151,12 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     parser.setCurrentFrameState(frameState);
                     currentBlock = block;
 
-                    if (lastInstr instanceof MergeNode) {
+                    if (lastInstr instanceof AbstractMergeNode) {
                         int bci = block.startBci;
                         if (block instanceof ExceptionDispatchBlock) {
                             bci = ((ExceptionDispatchBlock) block).deoptBci;
                         }
-                        ((MergeNode) lastInstr).setStateAfter(frameState.create(bci));
+                        ((AbstractMergeNode) lastInstr).setStateAfter(frameState.create(bci));
                     }
 
                     if (block == returnBlock) {

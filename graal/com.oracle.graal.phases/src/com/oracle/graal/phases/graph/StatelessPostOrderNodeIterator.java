@@ -58,9 +58,9 @@ public abstract class StatelessPostOrderNodeIterator {
                 assert !visitedEnds.isMarked(current);
                 visitedEnds.mark(current);
                 current = nodeQueue.pollFirst();
-            } else if (current instanceof MergeNode) {
-                merge((MergeNode) current);
-                current = ((MergeNode) current).next();
+            } else if (current instanceof AbstractMergeNode) {
+                merge((AbstractMergeNode) current);
+                current = ((AbstractMergeNode) current).next();
                 assert current != null;
             } else if (current instanceof FixedWithNextNode) {
                 node(current);
@@ -90,7 +90,7 @@ public abstract class StatelessPostOrderNodeIterator {
     private void queueMerge(EndNode end) {
         assert !visitedEnds.isMarked(end);
         visitedEnds.mark(end);
-        MergeNode merge = end.merge();
+        AbstractMergeNode merge = end.merge();
         boolean endsVisited = true;
         for (int i = 0; i < merge.forwardEndCount(); i++) {
             if (!visitedEnds.isMarked(merge.forwardEndAt(i))) {
@@ -111,7 +111,7 @@ public abstract class StatelessPostOrderNodeIterator {
         node(endNode);
     }
 
-    protected void merge(MergeNode merge) {
+    protected void merge(AbstractMergeNode merge) {
         node(merge);
     }
 

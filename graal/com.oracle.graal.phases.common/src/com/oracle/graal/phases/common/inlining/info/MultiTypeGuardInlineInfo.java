@@ -173,7 +173,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
 
         ValueNode originalReceiver = ((MethodCallTargetNode) invoke.callTarget()).receiver();
         // setup merge and phi nodes for results and exceptions
-        MergeNode returnMerge = graph.add(new MergeNode());
+        AbstractMergeNode returnMerge = graph.add(new AbstractMergeNode());
         returnMerge.setStateAfter(invoke.stateAfter());
 
         PhiNode returnValuePhi = null;
@@ -181,13 +181,13 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
             returnValuePhi = graph.addWithoutUnique(new ValuePhiNode(invoke.asNode().stamp().unrestricted(), returnMerge));
         }
 
-        MergeNode exceptionMerge = null;
+        AbstractMergeNode exceptionMerge = null;
         PhiNode exceptionObjectPhi = null;
         if (invoke instanceof InvokeWithExceptionNode) {
             InvokeWithExceptionNode invokeWithException = (InvokeWithExceptionNode) invoke;
             ExceptionObjectNode exceptionEdge = (ExceptionObjectNode) invokeWithException.exceptionEdge();
 
-            exceptionMerge = graph.add(new MergeNode());
+            exceptionMerge = graph.add(new AbstractMergeNode());
 
             FixedNode exceptionSux = exceptionEdge.next();
             graph.addBeforeFixed(exceptionSux, exceptionMerge);
@@ -459,7 +459,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
         return costEstimateMethodDispatch < costEstimateTypeDispatch;
     }
 
-    private static AbstractBeginNode createInvocationBlock(StructuredGraph graph, Invoke invoke, MergeNode returnMerge, PhiNode returnValuePhi, MergeNode exceptionMerge, PhiNode exceptionObjectPhi,
+    private static AbstractBeginNode createInvocationBlock(StructuredGraph graph, Invoke invoke, AbstractMergeNode returnMerge, PhiNode returnValuePhi, AbstractMergeNode exceptionMerge, PhiNode exceptionObjectPhi,
                     boolean useForInlining) {
         Invoke duplicatedInvoke = duplicateInvokeForInlining(graph, invoke, exceptionMerge, exceptionObjectPhi, useForInlining);
         AbstractBeginNode calleeEntryNode = graph.add(new BeginNode());
@@ -475,7 +475,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
         return calleeEntryNode;
     }
 
-    private static Invoke duplicateInvokeForInlining(StructuredGraph graph, Invoke invoke, MergeNode exceptionMerge, PhiNode exceptionObjectPhi, boolean useForInlining) {
+    private static Invoke duplicateInvokeForInlining(StructuredGraph graph, Invoke invoke, AbstractMergeNode exceptionMerge, PhiNode exceptionObjectPhi, boolean useForInlining) {
         Invoke result = (Invoke) invoke.asNode().copyWithInputs();
         Node callTarget = result.callTarget().copyWithInputs();
         result.asNode().replaceFirstInput(result.callTarget(), callTarget);

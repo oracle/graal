@@ -72,7 +72,7 @@ public class ExpandLogicPhase extends Phase {
         }
         ifNode.clearSuccessors();
         Graph graph = ifNode.graph();
-        MergeNode trueTargetMerge = graph.add(new MergeNode());
+        AbstractMergeNode trueTargetMerge = graph.add(new AbstractMergeNode());
         trueTargetMerge.setNext(trueTarget);
         EndNode firstTrueEnd = graph.add(new EndNode());
         EndNode secondTrueEnd = graph.add(new EndNode());

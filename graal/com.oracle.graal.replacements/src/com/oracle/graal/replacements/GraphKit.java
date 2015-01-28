@@ -303,7 +303,7 @@ public class GraphKit {
             EndNode elseEnd = graph.add(new EndNode());
             graph.addAfterFixed(elsePart, elseEnd);
 
-            MergeNode merge = graph.add(new MergeNode());
+            AbstractMergeNode merge = graph.add(new AbstractMergeNode());
             merge.addForwardEnd(thenEnd);
             merge.addForwardEnd(elseEnd);
 

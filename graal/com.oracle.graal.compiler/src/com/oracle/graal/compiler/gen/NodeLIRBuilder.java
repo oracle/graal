@@ -331,7 +331,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
     }
 
     @Override
-    public void visitMerge(MergeNode x) {
+    public void visitMerge(AbstractMergeNode x) {
     }
 
     @Override
@@ -346,7 +346,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
     public void visitLoopEnd(LoopEndNode x) {
     }
 
-    private void moveToPhi(MergeNode merge, AbstractEndNode pred) {
+    private void moveToPhi(AbstractMergeNode merge, AbstractEndNode pred) {
         if (Options.TraceLIRGeneratorLevel.getValue() >= 1) {
             TTY.println("MOVE TO PHI from " + pred + " to " + merge);
         }

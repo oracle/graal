@@ -58,8 +58,8 @@ public class UseTrappingNullChecksPhase extends BasePhase<LowTierContext> {
 
     private static void tryUseTrappingNullCheck(MetaAccessProvider metaAccessProvider, DynamicDeoptimizeNode deopt) {
         Node predecessor = deopt.predecessor();
-        if (predecessor instanceof MergeNode) {
-            MergeNode merge = (MergeNode) predecessor;
+        if (predecessor instanceof AbstractMergeNode) {
+            AbstractMergeNode merge = (AbstractMergeNode) predecessor;
 
             // Process each predecessor at the merge, unpacking the reasons and speculations as
             // needed.
@@ -115,8 +115,8 @@ public class UseTrappingNullChecksPhase extends BasePhase<LowTierContext> {
         if (speculation != null && !speculation.equals(JavaConstant.NULL_POINTER)) {
             return;
         }
-        if (predecessor instanceof MergeNode) {
-            MergeNode merge = (MergeNode) predecessor;
+        if (predecessor instanceof AbstractMergeNode) {
+            AbstractMergeNode merge = (AbstractMergeNode) predecessor;
             if (merge.phis().isEmpty()) {
                 for (AbstractEndNode end : merge.cfgPredecessors().snapshot()) {
                     checkPredecessor(deopt, end.predecessor(), deoptimizationReason);

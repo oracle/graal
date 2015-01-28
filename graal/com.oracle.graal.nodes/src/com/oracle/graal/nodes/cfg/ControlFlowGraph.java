@@ -143,8 +143,8 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
 
             assert nodeToBlock.get(cur) == null;
             nodeToBlock.set(cur, block);
-            if (cur instanceof MergeNode) {
-                for (PhiNode phi : ((MergeNode) cur).phis()) {
+            if (cur instanceof AbstractMergeNode) {
+                for (PhiNode phi : ((AbstractMergeNode) cur).phis()) {
                     nodeToBlock.set(phi, block);
                 }
             }

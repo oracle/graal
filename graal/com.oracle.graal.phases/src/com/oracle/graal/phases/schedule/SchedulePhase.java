@@ -186,7 +186,7 @@ public final class SchedulePhase extends Phase {
 
         @Override
         protected LocationSet merge(Block merge, List<LocationSet> states) {
-            assert merge.getBeginNode() instanceof MergeNode;
+            assert merge.getBeginNode() instanceof AbstractMergeNode;
 
             LocationSet initKillSet = new LocationSet();
             for (LocationSet state : states) {
@@ -239,8 +239,8 @@ public final class SchedulePhase extends Phase {
 
         LocationSet set = new LocationSet();
         LocationSet excludedLocations = new LocationSet();
-        if (block.getBeginNode() instanceof MergeNode) {
-            MergeNode mergeNode = (MergeNode) block.getBeginNode();
+        if (block.getBeginNode() instanceof AbstractMergeNode) {
+            AbstractMergeNode mergeNode = (AbstractMergeNode) block.getBeginNode();
             for (MemoryPhiNode phi : mergeNode.usages().filter(MemoryPhiNode.class)) {
                 if (foundExcludeNode) {
                     set.add(phi.getLocationIdentity());
@@ -548,7 +548,7 @@ public final class SchedulePhase extends Phase {
             Block dominatedBlock = path.size() == 0 ? null : path.peek();
             if (dominatedBlock != null && !currentBlock.getSuccessors().contains(dominatedBlock)) {
                 // the dominated block is not a successor -> we have a split
-                assert dominatedBlock.getBeginNode() instanceof MergeNode;
+                assert dominatedBlock.getBeginNode() instanceof AbstractMergeNode;
 
                 NewMemoryScheduleClosure closure = null;
                 if (currentBlock == upperBoundBlock) {
@@ -745,7 +745,7 @@ public final class SchedulePhase extends Phase {
             // One PhiNode can use an input multiple times, the closure will be called for each
             // usage.
             PhiNode phi = (PhiNode) usage;
-            MergeNode merge = phi.merge();
+            AbstractMergeNode merge = phi.merge();
             Block mergeBlock = cfg.getNodeToBlock().get(merge);
             if (mergeBlock == null) {
                 throw new SchedulingError("no block for merge %s", merge.toString(Verbosity.Id));

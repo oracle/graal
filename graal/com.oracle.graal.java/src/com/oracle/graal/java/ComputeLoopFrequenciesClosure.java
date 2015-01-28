@@ -45,7 +45,7 @@ public final class ComputeLoopFrequenciesClosure extends ReentrantNodeIterator.N
     }
 
     @Override
-    protected Double merge(MergeNode merge, List<Double> states) {
+    protected Double merge(AbstractMergeNode merge, List<Double> states) {
         // a merge has the sum of all predecessor probabilities
         return states.stream().collect(Collectors.summingDouble(d -> d));
     }

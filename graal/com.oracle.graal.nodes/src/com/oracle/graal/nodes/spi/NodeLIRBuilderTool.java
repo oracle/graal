@@ -49,7 +49,7 @@ public interface NodeLIRBuilderTool extends NodeMappableLIRBuilder {
     void emitInvoke(Invoke i);
 
     // Handling of block-end nodes still needs to be unified in the LIRGenerator.
-    void visitMerge(MergeNode i);
+    void visitMerge(AbstractMergeNode i);
 
     void visitEndNode(AbstractEndNode i);
 

@@ -124,7 +124,7 @@ public class ConditionalEliminationPhase extends Phase {
         }
 
         @Override
-        public boolean merge(MergeNode merge, List<State> withStates) {
+        public boolean merge(AbstractMergeNode merge, List<State> withStates) {
             Map<ValueNode, ResolvedJavaType> newKnownTypes = Node.newIdentityMap();
             Map<LogicNode, GuardingNode> newTrueConditions = Node.newIdentityMap();
             Map<LogicNode, GuardingNode> newFalseConditions = Node.newIdentityMap();

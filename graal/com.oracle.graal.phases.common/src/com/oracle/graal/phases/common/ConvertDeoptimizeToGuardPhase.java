@@ -69,8 +69,8 @@ public class ConvertDeoptimizeToGuardPhase extends Phase {
         for (FixedGuardNode fixedGuard : graph.getNodes(FixedGuardNode.class)) {
 
             AbstractBeginNode pred = AbstractBeginNode.prevBegin(fixedGuard);
-            if (pred instanceof MergeNode) {
-                MergeNode merge = (MergeNode) pred;
+            if (pred instanceof AbstractMergeNode) {
+                AbstractMergeNode merge = (AbstractMergeNode) pred;
                 if (fixedGuard.condition() instanceof CompareNode) {
                     CompareNode compare = (CompareNode) fixedGuard.condition();
                     List<AbstractEndNode> mergePredecessors = merge.cfgPredecessors().snapshot();
@@ -107,8 +107,8 @@ public class ConvertDeoptimizeToGuardPhase extends Phase {
     }
 
     private void visitDeoptBegin(AbstractBeginNode deoptBegin, DeoptimizationAction deoptAction, DeoptimizationReason deoptReason, StructuredGraph graph) {
-        if (deoptBegin instanceof MergeNode) {
-            MergeNode mergeNode = (MergeNode) deoptBegin;
+        if (deoptBegin instanceof AbstractMergeNode) {
+            AbstractMergeNode mergeNode = (AbstractMergeNode) deoptBegin;
             Debug.log("Visiting %s", mergeNode);
             FixedNode next = mergeNode.next();
             while (mergeNode.isAlive()) {

@@ -184,7 +184,7 @@ public class LoopFragmentInside extends LoopFragment {
         // TODO (gd) ?
     }
 
-    private static PhiNode patchPhi(StructuredGraph graph, PhiNode phi, MergeNode merge) {
+    private static PhiNode patchPhi(StructuredGraph graph, PhiNode phi, AbstractMergeNode merge) {
         PhiNode ret;
         if (phi instanceof ValuePhiNode) {
             ret = new ValuePhiNode(phi.stamp(), merge);
@@ -315,7 +315,7 @@ public class LoopFragmentInside extends LoopFragment {
             end.safeDelete();
         } else {
             assert endsToMerge.size() > 1;
-            MergeNode newExitMerge = graph.add(new MergeNode());
+            AbstractMergeNode newExitMerge = graph.add(new AbstractMergeNode());
             newExit = newExitMerge;
             FrameState state = loopBegin.stateAfter();
             FrameState duplicateState = null;

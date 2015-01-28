@@ -496,7 +496,7 @@ public class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerab
         if (trueSuccessor().next() instanceof AbstractEndNode && falseSuccessor().next() instanceof AbstractEndNode) {
             AbstractEndNode trueEnd = (AbstractEndNode) trueSuccessor().next();
             AbstractEndNode falseEnd = (AbstractEndNode) falseSuccessor().next();
-            MergeNode merge = trueEnd.merge();
+            AbstractMergeNode merge = trueEnd.merge();
             if (merge == falseEnd.merge() && trueSuccessor().anchored().isEmpty() && falseSuccessor().anchored().isEmpty()) {
                 PhiNode singlePhi = null;
                 int distinct = 0;
@@ -648,10 +648,10 @@ public class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerab
      * @return true if a transformation was made, false otherwise
      */
     private boolean removeIntermediateMaterialization(SimplifierTool tool) {
-        if (!(predecessor() instanceof MergeNode) || predecessor() instanceof LoopBeginNode) {
+        if (!(predecessor() instanceof AbstractMergeNode) || predecessor() instanceof LoopBeginNode) {
             return false;
         }
-        MergeNode merge = (MergeNode) predecessor();
+        AbstractMergeNode merge = (AbstractMergeNode) predecessor();
 
         if (!(condition() instanceof CompareNode)) {
             return false;
@@ -784,8 +784,8 @@ public class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerab
                 } else {
                     throw new GraalInternalError("Illegal state");
                 }
-            } else if (node instanceof MergeNode && !(node instanceof LoopBeginNode)) {
-                for (AbstractEndNode endNode : ((MergeNode) node).cfgPredecessors()) {
+            } else if (node instanceof AbstractMergeNode && !(node instanceof LoopBeginNode)) {
+                for (AbstractEndNode endNode : ((AbstractMergeNode) node).cfgPredecessors()) {
                     propagateZeroProbability(endNode);
                 }
                 return;
@@ -797,8 +797,8 @@ public class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerab
     private static boolean checkFrameState(FixedNode start) {
         FixedNode node = start;
         while (true) {
-            if (node instanceof MergeNode) {
-                MergeNode mergeNode = (MergeNode) node;
+            if (node instanceof AbstractMergeNode) {
+                AbstractMergeNode mergeNode = (AbstractMergeNode) node;
                 if (mergeNode.stateAfter() == null) {
                     return false;
                 } else {
@@ -841,7 +841,7 @@ public class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerab
      * @param oldMerge the merge being removed
      * @param phiValues the values of the phi at the merge, keyed by the merge ends
      */
-    private void connectEnds(List<AbstractEndNode> ends, Map<AbstractEndNode, ValueNode> phiValues, AbstractBeginNode successor, MergeNode oldMerge, SimplifierTool tool) {
+    private void connectEnds(List<AbstractEndNode> ends, Map<AbstractEndNode, ValueNode> phiValues, AbstractBeginNode successor, AbstractMergeNode oldMerge, SimplifierTool tool) {
         if (!ends.isEmpty()) {
             if (ends.size() == 1) {
                 AbstractEndNode end = ends.get(0);
@@ -851,7 +851,7 @@ public class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerab
             } else {
                 // Need a new phi in case the frame state is used by more than the merge being
                 // removed
-                MergeNode newMerge = graph().add(new MergeNode());
+                AbstractMergeNode newMerge = graph().add(new AbstractMergeNode());
                 PhiNode oldPhi = (PhiNode) oldMerge.usages().first();
                 PhiNode newPhi = graph().addWithoutUnique(new ValuePhiNode(oldPhi.stamp(), newMerge));
 
@@ -881,7 +881,7 @@ public class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerab
      * @return null if {@code node} is neither a {@link ConstantNode} nor a {@link PhiNode} whose
      *         input values are all constants
      */
-    public static Constant[] constantValues(ValueNode node, MergeNode merge, boolean allowNull) {
+    public static Constant[] constantValues(ValueNode node, AbstractMergeNode merge, boolean allowNull) {
         if (node.isConstant()) {
             JavaConstant[] result = new JavaConstant[merge.forwardEndCount()];
             Arrays.fill(result, node.asConstant());

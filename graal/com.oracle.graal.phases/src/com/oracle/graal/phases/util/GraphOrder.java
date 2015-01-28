@@ -110,8 +110,8 @@ public final class GraphOrder {
                     }
                 }
                 nodes.add(node);
-                if (node instanceof MergeNode) {
-                    for (PhiNode phi : ((MergeNode) node).phis()) {
+                if (node instanceof AbstractMergeNode) {
+                    for (PhiNode phi : ((AbstractMergeNode) node).phis()) {
                         visited.mark(phi);
                         nodes.add(phi);
                     }
@@ -172,9 +172,9 @@ public final class GraphOrder {
                             pendingStateAfter = null;
                         }
 
-                        if (node instanceof MergeNode) {
+                        if (node instanceof AbstractMergeNode) {
                             // phis aren't scheduled, so they need to be added explicitly
-                            currentState.markAll(((MergeNode) node).phis());
+                            currentState.markAll(((AbstractMergeNode) node).phis());
                             if (node instanceof LoopBeginNode) {
                                 // remember the state at the loop entry, it's restored at exits
                                 loopEntryStates.put((LoopBeginNode) node, currentState.copy());
@@ -210,7 +210,7 @@ public final class GraphOrder {
                             }
                         }
                         if (node instanceof AbstractEndNode) {
-                            MergeNode merge = ((AbstractEndNode) node).merge();
+                            AbstractMergeNode merge = ((AbstractEndNode) node).merge();
                             for (PhiNode phi : merge.phis()) {
                                 ValueNode phiValue = phi.valueAt((AbstractEndNode) node);
                                 assert phiValue == null || currentState.isMarked(phiValue) : phiValue + " not available at phi " + phi + " / end " + node + " in block " + block;

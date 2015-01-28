@@ -44,7 +44,7 @@ public final class ReentrantNodeIterator {
 
         protected abstract StateT processNode(FixedNode node, StateT currentState);
 
-        protected abstract StateT merge(MergeNode merge, List<StateT> states);
+        protected abstract StateT merge(AbstractMergeNode merge, List<StateT> states);
 
         protected abstract StateT afterSplit(AbstractBeginNode node, StateT oldState);
 
@@ -114,7 +114,7 @@ public final class ReentrantNodeIterator {
                             blockEndStates.put(current, state);
                         } else if (current instanceof EndNode) {
                             // add the end node and see if the merge is ready for processing
-                            MergeNode merge = ((EndNode) current).merge();
+                            AbstractMergeNode merge = ((EndNode) current).merge();
                             if (merge instanceof LoopBeginNode) {
                                 Map<LoopExitNode, StateT> loopExitState = closure.processLoop((LoopBeginNode) merge, state);
                                 for (Map.Entry<LoopExitNode, StateT> entry : loopExitState.entrySet()) {
@@ -176,7 +176,7 @@ public final class ReentrantNodeIterator {
                 current = nodeQueue.removeFirst();
                 assert blockEndStates.containsKey(current);
                 state = blockEndStates.remove(current);
-                assert !(current instanceof MergeNode) && current instanceof AbstractBeginNode;
+                assert !(current instanceof AbstractMergeNode) && current instanceof AbstractBeginNode;
             }
         } while (true);
     }

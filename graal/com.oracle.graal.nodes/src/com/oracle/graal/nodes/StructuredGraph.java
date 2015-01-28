@@ -404,12 +404,12 @@ public class StructuredGraph extends Graph {
         if (begin.forwardEndCount() == 1) { // bypass merge and remove
             reduceTrivialMerge(begin);
         } else { // convert to merge
-            MergeNode merge = this.add(new MergeNode());
+            AbstractMergeNode merge = this.add(new AbstractMergeNode());
             this.replaceFixedWithFixed(begin, merge);
         }
     }
 
-    public void reduceTrivialMerge(MergeNode merge) {
+    public void reduceTrivialMerge(AbstractMergeNode merge) {
         assert merge.forwardEndCount() == 1;
         assert !(merge instanceof LoopBeginNode) || ((LoopBeginNode) merge).loopEnds().isEmpty();
         for (PhiNode phi : merge.phis().snapshot()) {
