@@ -44,7 +44,7 @@
  * <li>How to use frames and frame slots to store values local to an activation? {@link com.oracle.truffle.api.test.FrameTest}</li>
  * <li>How to use type specialization and speculation for frame slots? {@link com.oracle.truffle.api.test.FrameSlotTypeSpecializationTest}</li>
  * <li>How to use type specialization and speculation for node return values? {@link com.oracle.truffle.api.test.ReturnTypeSpecializationTest}</li>
- * <li>How to "instrument" an AST with nodes that can provide access to runtime state from external tools {@link com.oracle.truffle.api.test.InstrumentationTest}</li>
+ * <li>How to "instrument" an AST with nodes that can provide access to runtime state from external tools {@link com.oracle.truffle.api.test.instrument.InstrumentationTest}</li>
  * </ul>
  *
  *
