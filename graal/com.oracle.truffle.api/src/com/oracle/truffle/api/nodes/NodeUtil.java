@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -362,6 +362,15 @@ public final class NodeUtil {
             return childrenFields;
         }
 
+        public NodeField findField(long fieldOffset) {
+            for (NodeField field : getFields()) {
+                if (field.getOffset() == fieldOffset) {
+                    return field;
+                }
+            }
+            return null;
+        }
+
         @Override
         public int hashCode() {
             return clazz.hashCode();
@@ -644,6 +653,60 @@ public final class NodeUtil {
             }
         }
         throw new IllegalArgumentException();
+    }
+
+    /**
+     * Finds the field in a parent node, if any, that holds a specified child node.
+     *
+     * @return the field (possibly an array) holding the child, {@code null} if not found.
+     */
+    public static NodeField findChildField(Node parent, Node child) {
+        assert child != null;
+        NodeClass parentNodeClass = NodeClass.get(parent.getClass());
+
+        for (NodeField field : parentNodeClass.getChildFields()) {
+            final long fieldOffset = field.getOffset();
+            if (unsafe.getObject(parent, fieldOffset) == child) {
+                return parentNodeClass.findField(fieldOffset);
+            }
+        }
+
+        for (NodeField field : parentNodeClass.getChildrenFields()) {
+            final long fieldOffset = field.getOffset();
+            Object arrayObject = unsafe.getObject(parent, fieldOffset);
+            if (arrayObject != null) {
+                Object[] array = (Object[]) arrayObject;
+                for (int i = 0; i < array.length; i++) {
+                    if (array[i] == child) {
+                        return parentNodeClass.findField(fieldOffset);
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Determines whether a proposed child replacement would be type safe.
+     *
+     * @param parent non-null node
+     * @param oldChild non-null existing child of parent
+     * @param newChild non-null proposed replacement for existing child
+     */
+    public static boolean isReplacementSafe(Node parent, Node oldChild, Node newChild) {
+        assert newChild != null;
+        final NodeField field = findChildField(parent, oldChild);
+        if (field == null) {
+            throw new IllegalArgumentException();
+        }
+        switch (field.getKind()) {
+            case CHILD:
+                return field.getType().isAssignableFrom(newChild.getClass());
+            case CHILDREN:
+                return field.getType().getComponentType().isAssignableFrom(newChild.getClass());
+            default:
+                throw new IllegalArgumentException();
+        }
     }
 
     /** Returns all declared fields in the class hierarchy. */
