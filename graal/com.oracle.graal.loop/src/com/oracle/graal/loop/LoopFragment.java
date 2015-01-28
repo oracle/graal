@@ -312,7 +312,7 @@ public abstract class LoopFragment {
             if (newEarlyExit == null) {
                 continue;
             }
-            AbstractMergeNode merge = graph.add(new AbstractMergeNode());
+            AbstractMergeNode merge = graph.add(new MergeNode());
             AbstractEndNode originalEnd = graph.add(new EndNode());
             AbstractEndNode newEnd = graph.add(new EndNode());
             merge.addForwardEnd(originalEnd);

@@ -448,7 +448,7 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
          * @return The newly created end node.
          */
         private AbstractEndNode createNewMerge(FixedNode successor, FrameState stateAfterMerge) {
-            AbstractMergeNode newBottomMerge = graph.add(new AbstractMergeNode());
+            AbstractMergeNode newBottomMerge = graph.add(new MergeNode());
             AbstractEndNode newBottomEnd = graph.add(new EndNode());
             newBottomMerge.addForwardEnd(newBottomEnd);
             newBottomMerge.setStateAfter(stateAfterMerge);

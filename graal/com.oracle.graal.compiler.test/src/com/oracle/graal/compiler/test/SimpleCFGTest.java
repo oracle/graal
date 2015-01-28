@@ -53,7 +53,7 @@ public class SimpleCFGTest extends GraalCompilerTest {
         IfNode ifNode = graph.add(new IfNode(null, trueBegin, falseBegin, 0.5));
         graph.start().setNext(ifNode);
 
-        AbstractMergeNode merge = graph.add(new AbstractMergeNode());
+        AbstractMergeNode merge = graph.add(new MergeNode());
         merge.addForwardEnd(trueEnd);
         merge.addForwardEnd(falseEnd);
         ReturnNode returnNode = graph.add(new ReturnNode(null));

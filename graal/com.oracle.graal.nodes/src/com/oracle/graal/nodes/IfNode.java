@@ -851,7 +851,7 @@ public class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerab
             } else {
                 // Need a new phi in case the frame state is used by more than the merge being
                 // removed
-                AbstractMergeNode newMerge = graph().add(new AbstractMergeNode());
+                AbstractMergeNode newMerge = graph().add(new MergeNode());
                 PhiNode oldPhi = (PhiNode) oldMerge.usages().first();
                 PhiNode newPhi = graph().addWithoutUnique(new ValuePhiNode(oldPhi.stamp(), newMerge));
 

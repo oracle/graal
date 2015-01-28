@@ -404,7 +404,7 @@ public class StructuredGraph extends Graph {
         if (begin.forwardEndCount() == 1) { // bypass merge and remove
             reduceTrivialMerge(begin);
         } else { // convert to merge
-            AbstractMergeNode merge = this.add(new AbstractMergeNode());
+            AbstractMergeNode merge = this.add(new MergeNode());
             this.replaceFixedWithFixed(begin, merge);
         }
     }

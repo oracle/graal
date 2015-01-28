@@ -173,7 +173,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
 
         ValueNode originalReceiver = ((MethodCallTargetNode) invoke.callTarget()).receiver();
         // setup merge and phi nodes for results and exceptions
-        AbstractMergeNode returnMerge = graph.add(new AbstractMergeNode());
+        AbstractMergeNode returnMerge = graph.add(new MergeNode());
         returnMerge.setStateAfter(invoke.stateAfter());
 
         PhiNode returnValuePhi = null;
@@ -187,7 +187,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
             InvokeWithExceptionNode invokeWithException = (InvokeWithExceptionNode) invoke;
             ExceptionObjectNode exceptionEdge = (ExceptionObjectNode) invokeWithException.exceptionEdge();
 
-            exceptionMerge = graph.add(new AbstractMergeNode());
+            exceptionMerge = graph.add(new MergeNode());
 
             FixedNode exceptionSux = exceptionEdge.next();
             graph.addBeforeFixed(exceptionSux, exceptionMerge);

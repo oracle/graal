@@ -344,7 +344,7 @@ public class InliningUtil {
                 for (ReturnNode returnNode : returnNodes) {
                     returnDuplicates.add((ReturnNode) duplicates.get(returnNode));
                 }
-                AbstractMergeNode merge = graph.add(new AbstractMergeNode());
+                AbstractMergeNode merge = graph.add(new MergeNode());
                 merge.setStateAfter(stateAfter);
                 ValueNode returnValue = mergeReturns(merge, returnDuplicates, canonicalizedNodes);
                 invokeNode.replaceAtUsages(returnValue);

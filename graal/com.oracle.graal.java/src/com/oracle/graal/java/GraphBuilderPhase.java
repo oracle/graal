@@ -1088,7 +1088,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     // The EndNode for the already existing edge.
                     AbstractEndNode end = currentGraph.add(new EndNode());
                     // The MergeNode that replaces the placeholder.
-                    AbstractMergeNode mergeNode = currentGraph.add(new AbstractMergeNode());
+                    AbstractMergeNode mergeNode = currentGraph.add(new MergeNode());
                     FixedNode next = placeholder.next();
 
                     if (placeholder.predecessor() instanceof ControlSplitNode) {

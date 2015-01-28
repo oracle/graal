@@ -737,7 +737,7 @@ public class SnippetTemplate {
         } else if (returnNodes.size() == 1) {
             this.returnNode = returnNodes.get(0);
         } else {
-            AbstractMergeNode merge = snippet.add(new AbstractMergeNode());
+            AbstractMergeNode merge = snippet.add(new MergeNode());
             List<MemoryMapNode> memMaps = returnNodes.stream().map(n -> n.getMemoryMap()).collect(Collectors.toList());
             ValueNode returnValue = InliningUtil.mergeReturns(merge, returnNodes, null);
             this.returnNode = snippet.add(new ReturnNode(returnValue));

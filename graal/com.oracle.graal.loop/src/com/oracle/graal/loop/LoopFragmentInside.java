@@ -315,7 +315,7 @@ public class LoopFragmentInside extends LoopFragment {
             end.safeDelete();
         } else {
             assert endsToMerge.size() > 1;
-            AbstractMergeNode newExitMerge = graph.add(new AbstractMergeNode());
+            AbstractMergeNode newExitMerge = graph.add(new MergeNode());
             newExit = newExitMerge;
             FrameState state = loopBegin.stateAfter();
             FrameState duplicateState = null;

@@ -54,7 +54,7 @@ public class DeoptimizationGroupingPhase extends BasePhase<MidTierContext> {
                     }
                     AbstractMergeNode merge;
                     if (target instanceof AbstractDeoptimizeNode) {
-                        merge = graph.add(new AbstractMergeNode());
+                        merge = graph.add(new MergeNode());
                         EndNode firstEnd = graph.add(new EndNode());
                         ValueNode actionAndReason = ((AbstractDeoptimizeNode) target).getActionAndReason(context.getMetaAccess());
                         ValueNode speculation = ((AbstractDeoptimizeNode) target).getSpeculation(context.getMetaAccess());

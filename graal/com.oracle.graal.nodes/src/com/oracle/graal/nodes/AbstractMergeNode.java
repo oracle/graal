@@ -38,8 +38,8 @@ import com.oracle.graal.nodes.util.*;
  * Denotes the merging of multiple control-flow paths.
  */
 @NodeInfo(allowedUsageTypes = {InputType.Association})
-public class AbstractMergeNode extends BeginStateSplitNode implements IterableNodeType, LIRLowerable {
-    public AbstractMergeNode() {
+public abstract class AbstractMergeNode extends BeginStateSplitNode implements IterableNodeType, LIRLowerable {
+    protected AbstractMergeNode() {
     }
 
     @Input(InputType.Association) protected NodeInputList<AbstractEndNode> ends = new NodeInputList<>(this);
