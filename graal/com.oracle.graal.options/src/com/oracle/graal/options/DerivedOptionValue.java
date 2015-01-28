@@ -36,12 +36,12 @@ public class DerivedOptionValue<T> {
 
     public DerivedOptionValue(Supplier<T> supplier) {
         this.supplier = supplier;
-        assert OptionValue.overrideScopes.get() == null : "derived option value should be initialized outside any override scope";
+        assert OptionValue.getOverrideScope() == null : "derived option value should be initialized outside any override scope";
         this.initialValue = createValue();
     }
 
     public T getValue() {
-        OverrideScope overrideScope = OptionValue.overrideScopes.get();
+        OverrideScope overrideScope = OptionValue.getOverrideScope();
         if (overrideScope != null) {
             return overrideScope.getDerived(this);
         } else {

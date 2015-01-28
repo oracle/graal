@@ -38,7 +38,7 @@ import com.oracle.graal.runtime.*;
 import com.oracle.graal.word.*;
 
 @NodeInfo(allowedUsageTypes = {InputType.Memory, InputType.Value})
-public class CheckcastArrayCopyCallNode extends AbstractMemoryCheckpoint implements Lowerable, MemoryCheckpoint.Single {
+public final class CheckcastArrayCopyCallNode extends AbstractMemoryCheckpoint implements Lowerable, MemoryCheckpoint.Single {
 
     @Input ValueNode src;
     @Input ValueNode srcPos;
@@ -99,7 +99,7 @@ public class CheckcastArrayCopyCallNode extends AbstractMemoryCheckpoint impleme
 
     @Override
     public void lower(LoweringTool tool) {
-        if (graph().getGuardsStage() == StructuredGraph.GuardsStage.AFTER_FSA) {
+        if (graph().getGuardsStage().areFrameStatesAtDeopts()) {
             ForeignCallDescriptor desc = HotSpotHostForeignCallsProvider.lookupCheckcastArraycopyDescriptor(isUninit());
             StructuredGraph graph = graph();
             ValueNode srcAddr = computeBase(getSource(), getSourcePosition());

@@ -84,7 +84,7 @@ public class IntegerSubExactNode extends SubNode implements IntegerExactArithmet
     }
 
     @Override
-    public IntegerExactArithmeticSplitNode createSplit(BeginNode next, BeginNode deopt) {
+    public IntegerExactArithmeticSplitNode createSplit(AbstractBeginNode next, AbstractBeginNode deopt) {
         return graph().add(new IntegerSubExactSplitNode(stamp(), getX(), getY(), next, deopt));
     }
 

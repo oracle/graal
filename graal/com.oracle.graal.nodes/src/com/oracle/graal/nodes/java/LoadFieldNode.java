@@ -37,7 +37,7 @@ import com.oracle.graal.nodes.virtual.*;
  * The {@code LoadFieldNode} represents a read of a static or instance field.
  */
 @NodeInfo(nameTemplate = "LoadField#{p#field/s}")
-public class LoadFieldNode extends AccessFieldNode implements Canonicalizable.Unary<ValueNode>, VirtualizableRoot, UncheckedInterfaceProvider {
+public final class LoadFieldNode extends AccessFieldNode implements Canonicalizable.Unary<ValueNode>, VirtualizableRoot, UncheckedInterfaceProvider {
 
     public LoadFieldNode(ValueNode object, ResolvedJavaField field) {
         super(createStamp(field), object, field);
@@ -57,7 +57,7 @@ public class LoadFieldNode extends AccessFieldNode implements Canonicalizable.Un
     }
 
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forObject) {
-        if (usages().isEmpty() && !isVolatile() && (isStatic() || StampTool.isPointerNonNull(forObject.stamp()))) {
+        if (hasNoUsages() && !isVolatile() && (isStatic() || StampTool.isPointerNonNull(forObject.stamp()))) {
             return null;
         }
         MetaAccessProvider metaAccess = tool.getMetaAccess();

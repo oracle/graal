@@ -38,7 +38,7 @@ import com.oracle.graal.nodes.spi.*;
  * A call to the {@link NewInstanceStub}.
  */
 @NodeInfo
-public class NewInstanceStubCall extends DeoptimizingStubCall implements LIRLowerable {
+public final class NewInstanceStubCall extends DeoptimizingStubCall implements LIRLowerable {
 
     private static final Stamp defaultStamp = StampFactory.objectNonNull();
 

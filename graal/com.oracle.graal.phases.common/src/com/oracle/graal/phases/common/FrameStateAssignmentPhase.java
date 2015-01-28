@@ -88,13 +88,13 @@ public class FrameStateAssignmentPhase extends Phase {
         }
 
         @Override
-        protected FrameState merge(MergeNode merge, List<FrameState> states) {
+        protected FrameState merge(AbstractMergeNode merge, List<FrameState> states) {
             FrameState singleFrameState = singleFrameState(states);
             return singleFrameState == null ? merge.stateAfter() : singleFrameState;
         }
 
         @Override
-        protected FrameState afterSplit(BeginNode node, FrameState oldState) {
+        protected FrameState afterSplit(AbstractBeginNode node, FrameState oldState) {
             return oldState;
         }
 
@@ -106,11 +106,11 @@ public class FrameStateAssignmentPhase extends Phase {
 
     @Override
     protected void run(StructuredGraph graph) {
-        assert graph.getGuardsStage().ordinal() >= GuardsStage.FIXED_DEOPTS.ordinal() && checkFixedDeopts(graph);
-        if (graph.getGuardsStage().ordinal() < GuardsStage.AFTER_FSA.ordinal()) {
+        assert !graph.getGuardsStage().allowsFloatingGuards() && checkFixedDeopts(graph);
+        if (graph.getGuardsStage().areFrameStatesAtSideEffects()) {
             ReentrantNodeIterator.apply(new FrameStateAssignmentClosure(), graph.start(), null);
             graph.setGuardsStage(GuardsStage.AFTER_FSA);
-            graph.getNodes(FrameState.class).filter(state -> state.usages().isEmpty()).forEach(GraphUtil::killWithUnusedFloatingInputs);
+            graph.getNodes(FrameState.class).filter(state -> state.hasNoUsages()).forEach(GraphUtil::killWithUnusedFloatingInputs);
         }
     }
 

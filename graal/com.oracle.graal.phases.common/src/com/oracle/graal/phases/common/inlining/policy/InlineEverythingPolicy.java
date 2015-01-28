@@ -29,7 +29,7 @@ import com.oracle.graal.phases.common.inlining.walker.MethodInvocation;
 
 import static com.oracle.graal.compiler.common.GraalOptions.MaximumDesiredSize;
 
-public final class InlineEverythingPolicy implements InliningPolicy {
+public class InlineEverythingPolicy implements InliningPolicy {
 
     public boolean continueInlining(StructuredGraph graph) {
         if (graph.getNodeCount() >= MaximumDesiredSize.getValue()) {

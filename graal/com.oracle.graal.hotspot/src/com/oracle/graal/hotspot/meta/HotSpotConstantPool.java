@@ -35,7 +35,7 @@ import com.oracle.graal.hotspot.*;
 /**
  * Implementation of {@link ConstantPool} for HotSpot.
  */
-public class HotSpotConstantPool extends CompilerObject implements ConstantPool, Remote {
+public class HotSpotConstantPool extends CompilerObject implements ConstantPool, HotSpotProxified {
 
     private static final long serialVersionUID = -5443206401485234850L;
 

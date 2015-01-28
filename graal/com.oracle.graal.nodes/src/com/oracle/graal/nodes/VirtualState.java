@@ -32,9 +32,9 @@ import com.oracle.graal.nodeinfo.*;
 @NodeInfo(allowedUsageTypes = {InputType.State})
 public abstract class VirtualState extends Node {
 
-    public interface NodeClosure<T extends Node> {
+    public abstract static class NodeClosure<T extends Node> {
 
-        void apply(Node usage, T node);
+        public abstract void apply(Node usage, T node);
     }
 
     public interface VirtualClosure {
@@ -53,5 +53,10 @@ public abstract class VirtualState extends Node {
     public abstract void applyToVirtual(VirtualClosure closure);
 
     public abstract boolean isPartOfThisState(VirtualState state);
+
+    @Override
+    public final StructuredGraph graph() {
+        return (StructuredGraph) super.graph();
+    }
 
 }

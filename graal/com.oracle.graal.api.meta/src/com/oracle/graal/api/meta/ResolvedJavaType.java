@@ -298,7 +298,7 @@ public interface ResolvedJavaType extends JavaType, ModifiersProvider {
      * @param offset the offset of the field to look for
      * @return the field with the given offset, or {@code null} if there is no such field.
      */
-    ResolvedJavaField findInstanceFieldWithOffset(long offset);
+    ResolvedJavaField findInstanceFieldWithOffset(long offset, Kind expectedKind);
 
     /**
      * Returns name of source file of this type.

@@ -54,6 +54,6 @@ class NodeUsageIterable implements NodeIterable<Node> {
 
     @Override
     public int count() {
-        return node.usageCount();
+        return node.getUsageCount();
     }
 }

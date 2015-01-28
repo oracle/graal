@@ -83,7 +83,7 @@ public abstract class InstanceOfSnippetsTemplates extends AbstractTemplates {
             }
         }
 
-        assert instanceOf.usages().isEmpty();
+        assert instanceOf.hasNoUsages();
         if (!instanceOf.isDeleted()) {
             GraphUtil.killWithUnusedFloatingInputs(instanceOf);
         }
@@ -234,7 +234,7 @@ public abstract class InstanceOfSnippetsTemplates extends AbstractTemplates {
         public void replaceUsingInstantiation() {
             ValueNode newValue = instantiation.asMaterialization(usage.graph(), trueValue, falseValue);
             usage.replaceAtUsages(newValue);
-            assert usage.usages().isEmpty();
+            assert usage.hasNoUsages();
             GraphUtil.killWithUnusedFloatingInputs(usage);
         }
 
@@ -245,7 +245,7 @@ public abstract class InstanceOfSnippetsTemplates extends AbstractTemplates {
             newNode.inferStamp();
             instantiation.initialize(newNode, trueValue, falseValue);
             usage.replaceAtUsages(newNode);
-            assert usage.usages().isEmpty();
+            assert usage.hasNoUsages();
             GraphUtil.killWithUnusedFloatingInputs(usage);
         }
     }

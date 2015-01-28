@@ -34,7 +34,6 @@ import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.graph.ReentrantBlockIterator.BlockIteratorClosure;
 import com.oracle.graal.phases.schedule.*;
-import com.oracle.graal.phases.schedule.SchedulePhase.MemoryScheduling;
 import com.oracle.graal.phases.schedule.SchedulePhase.SchedulingStrategy;
 
 public final class GraphOrder {
@@ -111,8 +110,8 @@ public final class GraphOrder {
                     }
                 }
                 nodes.add(node);
-                if (node instanceof MergeNode) {
-                    for (PhiNode phi : ((MergeNode) node).phis()) {
+                if (node instanceof AbstractMergeNode) {
+                    for (PhiNode phi : ((AbstractMergeNode) node).phis()) {
                         visited.mark(phi);
                         nodes.add(phi);
                     }
@@ -135,7 +134,7 @@ public final class GraphOrder {
      */
     public static boolean assertSchedulableGraph(final StructuredGraph graph) {
         try {
-            final SchedulePhase schedule = new SchedulePhase(SchedulingStrategy.LATEST_OUT_OF_LOOPS, MemoryScheduling.NONE);
+            final SchedulePhase schedule = new SchedulePhase(SchedulingStrategy.LATEST_OUT_OF_LOOPS);
             final Map<LoopBeginNode, NodeBitMap> loopEntryStates = Node.newIdentityMap();
             schedule.apply(graph, false);
 
@@ -148,7 +147,7 @@ public final class GraphOrder {
 
                 @Override
                 protected NodeBitMap processBlock(final Block block, final NodeBitMap currentState) {
-                    final List<ScheduledNode> list = schedule.getBlockToNodesMap().get(block);
+                    final List<ValueNode> list = schedule.getBlockToNodesMap().get(block);
 
                     /*
                      * A stateAfter is not valid directly after its associated state split, but
@@ -156,7 +155,7 @@ public final class GraphOrder {
                      * will be checked at the correct position.
                      */
                     FrameState pendingStateAfter = null;
-                    for (final ScheduledNode node : list) {
+                    for (final ValueNode node : list) {
                         FrameState stateAfter = node instanceof StateSplit ? ((StateSplit) node).stateAfter() : null;
                         if (node instanceof FullInfopointNode) {
                             stateAfter = ((FullInfopointNode) node).getState();
@@ -164,6 +163,7 @@ public final class GraphOrder {
 
                         if (pendingStateAfter != null && node instanceof FixedNode) {
                             pendingStateAfter.applyToNonVirtual(new NodeClosure<Node>() {
+                                @Override
                                 public void apply(Node usage, Node nonVirtualNode) {
                                     assert currentState.isMarked(nonVirtualNode) || nonVirtualNode instanceof VirtualObjectNode : nonVirtualNode + " not available at virtualstate " + usage +
                                                     " before " + node + " in block " + block + " \n" + list;
@@ -172,21 +172,25 @@ public final class GraphOrder {
                             pendingStateAfter = null;
                         }
 
-                        if (node instanceof MergeNode) {
+                        if (node instanceof AbstractMergeNode) {
                             // phis aren't scheduled, so they need to be added explicitly
-                            currentState.markAll(((MergeNode) node).phis());
+                            currentState.markAll(((AbstractMergeNode) node).phis());
                             if (node instanceof LoopBeginNode) {
                                 // remember the state at the loop entry, it's restored at exits
                                 loopEntryStates.put((LoopBeginNode) node, currentState.copy());
                             }
                         } else if (node instanceof ProxyNode) {
-                            for (Node input : node.inputs()) {
-                                if (input != ((ProxyNode) node).proxyPoint()) {
-                                    assert currentState.isMarked(input) : input + " not available at " + node + " in block " + block + "\n" + list;
-                                }
-                            }
+                            assert false : "proxy nodes should not be in the schedule";
                         } else if (node instanceof LoopExitNode) {
                             if (graph.hasValueProxies()) {
+                                for (ProxyNode proxy : ((LoopExitNode) node).proxies()) {
+                                    for (Node input : proxy.inputs()) {
+                                        if (input != proxy.proxyPoint()) {
+                                            assert currentState.isMarked(input) : input + " not available at " + proxy + " in block " + block + "\n" + list;
+                                        }
+                                    }
+                                }
+
                                 // loop contents are only accessible via proxies at the exit
                                 currentState.clearAll();
                                 currentState.markAll(loopEntryStates.get(((LoopExitNode) node).loopBegin()));
@@ -197,8 +201,11 @@ public final class GraphOrder {
                             for (Node input : node.inputs()) {
                                 if (input != stateAfter) {
                                     if (input instanceof FrameState) {
-                                        ((FrameState) input).applyToNonVirtual((usage, nonVirtual) -> {
-                                            assert currentState.isMarked(nonVirtual) : nonVirtual + " not available at " + node + " in block " + block + "\n" + list;
+                                        ((FrameState) input).applyToNonVirtual(new VirtualState.NodeClosure<Node>() {
+                                            @Override
+                                            public void apply(Node usage, Node nonVirtual) {
+                                                assert currentState.isMarked(nonVirtual) : nonVirtual + " not available at " + node + " in block " + block + "\n" + list;
+                                            }
                                         });
                                     } else {
                                         assert currentState.isMarked(input) || input instanceof VirtualObjectNode : input + " not available at " + node + " in block " + block + "\n" + list;
@@ -207,7 +214,7 @@ public final class GraphOrder {
                             }
                         }
                         if (node instanceof AbstractEndNode) {
-                            MergeNode merge = ((AbstractEndNode) node).merge();
+                            AbstractMergeNode merge = ((AbstractEndNode) node).merge();
                             for (PhiNode phi : merge.phis()) {
                                 ValueNode phiValue = phi.valueAt((AbstractEndNode) node);
                                 assert phiValue == null || currentState.isMarked(phiValue) : phiValue + " not available at phi " + phi + " / end " + node + " in block " + block;
@@ -221,6 +228,7 @@ public final class GraphOrder {
                     }
                     if (pendingStateAfter != null) {
                         pendingStateAfter.applyToNonVirtual(new NodeClosure<Node>() {
+                            @Override
                             public void apply(Node usage, Node nonVirtualNode) {
                                 assert currentState.isMarked(nonVirtualNode) || nonVirtualNode instanceof VirtualObjectNode : nonVirtualNode + " not available at virtualstate " + usage +
                                                 " at end of block " + block + " \n" + list;

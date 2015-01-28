@@ -30,7 +30,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.hotspot.*;
 
-public class HotSpotMethodHandleAccessProvider implements MethodHandleAccessProvider, Remote {
+public class HotSpotMethodHandleAccessProvider implements MethodHandleAccessProvider, HotSpotProxified {
 
     private final ConstantReflectionProvider constantReflection;
 

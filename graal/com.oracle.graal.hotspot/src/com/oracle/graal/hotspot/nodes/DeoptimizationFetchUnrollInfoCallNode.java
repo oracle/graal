@@ -39,7 +39,7 @@ import com.oracle.graal.word.*;
  * A call to the runtime code {@code Deoptimization::fetch_unroll_info}.
  */
 @NodeInfo(allowedUsageTypes = {InputType.Memory})
-public class DeoptimizationFetchUnrollInfoCallNode extends FixedWithNextNode implements LIRLowerable, MemoryCheckpoint.Multi {
+public final class DeoptimizationFetchUnrollInfoCallNode extends FixedWithNextNode implements LIRLowerable, MemoryCheckpoint.Multi {
 
     @Input SaveAllRegistersNode registerSaver;
     protected final ForeignCallsProvider foreignCalls;

@@ -55,11 +55,11 @@ public class OptimizeGuardAnchorsPhase extends Phase {
     @Override
     protected void run(StructuredGraph graph) {
         LazyCFG cfg = new LazyCFG(graph);
-        for (BeginNode begin : graph.getNodes(BeginNode.class)) {
+        for (AbstractBeginNode begin : graph.getNodes(AbstractBeginNode.class)) {
             if (!(begin instanceof StartNode || begin.predecessor() instanceof ControlSplitNode)) {
                 NodeIterable<GuardNode> guards = begin.guards();
                 if (guards.isNotEmpty()) {
-                    BeginNode newAnchor = computeOptimalAnchor(cfg.get(), begin);
+                    AbstractBeginNode newAnchor = computeOptimalAnchor(cfg.get(), begin);
                     // newAnchor == begin is possible because postdominator computation assumes that
                     // loops never end
                     if (newAnchor != begin) {
@@ -76,14 +76,14 @@ public class OptimizeGuardAnchorsPhase extends Phase {
         }
     }
 
-    public static BeginNode getOptimalAnchor(LazyCFG cfg, BeginNode begin) {
+    public static AbstractBeginNode getOptimalAnchor(LazyCFG cfg, AbstractBeginNode begin) {
         if (begin instanceof StartNode || begin.predecessor() instanceof ControlSplitNode) {
             return begin;
         }
         return computeOptimalAnchor(cfg.get(), begin);
     }
 
-    private static BeginNode computeOptimalAnchor(ControlFlowGraph cfg, BeginNode begin) {
+    private static AbstractBeginNode computeOptimalAnchor(ControlFlowGraph cfg, AbstractBeginNode begin) {
         Block anchor = cfg.blockFor(begin);
         while (anchor.getDominator() != null && anchor.getDominator().getPostdominator() == anchor) {
             anchor = anchor.getDominator();
@@ -92,11 +92,11 @@ public class OptimizeGuardAnchorsPhase extends Phase {
     }
 
     private static void optimizeAtControlSplit(ControlSplitNode controlSplit, LazyCFG cfg) {
-        BeginNode successor = findMinimumUsagesSuccessor(controlSplit);
+        AbstractBeginNode successor = findMinimumUsagesSuccessor(controlSplit);
         int successorCount = controlSplit.successors().count();
         List<GuardNode> otherGuards = new ArrayList<>(successorCount - 1);
         for (GuardNode guard : successor.guards().snapshot()) {
-            if (guard.isDeleted() || guard.condition().usages().count() < successorCount) {
+            if (guard.isDeleted() || guard.condition().getUsageCount() < successorCount) {
                 continue;
             }
             for (GuardNode conditonGuard : guard.condition().usages().filter(GuardNode.class)) {
@@ -109,7 +109,7 @@ public class OptimizeGuardAnchorsPhase extends Phase {
             }
 
             if (otherGuards.size() == successorCount - 1) {
-                BeginNode anchor = computeOptimalAnchor(cfg.get(), BeginNode.prevBegin(controlSplit));
+                AbstractBeginNode anchor = computeOptimalAnchor(cfg.get(), AbstractBeginNode.prevBegin(controlSplit));
                 GuardNode newGuard = controlSplit.graph().unique(new GuardNode(guard.condition(), anchor, guard.reason(), guard.action(), guard.isNegated(), guard.getSpeculation()));
                 for (GuardNode otherGuard : otherGuards) {
                     otherGuard.replaceAndDelete(newGuard);
@@ -126,13 +126,13 @@ public class OptimizeGuardAnchorsPhase extends Phase {
                         conditonGuard.getSpeculation().equals(guard.getSpeculation());
     }
 
-    private static BeginNode findMinimumUsagesSuccessor(ControlSplitNode controlSplit) {
+    private static AbstractBeginNode findMinimumUsagesSuccessor(ControlSplitNode controlSplit) {
         NodePosIterator successors = controlSplit.successors().iterator();
-        BeginNode min = (BeginNode) successors.next();
-        int minUsages = min.usages().count();
+        AbstractBeginNode min = (AbstractBeginNode) successors.next();
+        int minUsages = min.getUsageCount();
         while (successors.hasNext()) {
-            BeginNode successor = (BeginNode) successors.next();
-            int count = successor.usages().count();
+            AbstractBeginNode successor = (AbstractBeginNode) successors.next();
+            int count = successor.getUsageCount();
             if (count < minUsages) {
                 minUsages = count;
                 min = successor;

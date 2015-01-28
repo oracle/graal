@@ -37,8 +37,8 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Invoke,
 
     private static final double EXCEPTION_PROBA = 1e-5;
 
-    @Successor BeginNode next;
-    @Successor BeginNode exceptionEdge;
+    @Successor AbstractBeginNode next;
+    @Successor AbstractBeginNode exceptionEdge;
     @Input(InputType.Extension) CallTargetNode callTarget;
     @OptionalInput(InputType.State) FrameState stateDuring;
     @OptionalInput(InputType.State) FrameState stateAfter;
@@ -48,7 +48,7 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Invoke,
     protected boolean useForInlining;
     protected double exceptionProbability;
 
-    public InvokeWithExceptionNode(CallTargetNode callTarget, BeginNode exceptionEdge, int bci) {
+    public InvokeWithExceptionNode(CallTargetNode callTarget, AbstractBeginNode exceptionEdge, int bci) {
         super(callTarget.returnStamp());
         this.exceptionEdge = exceptionEdge;
         this.bci = bci;
@@ -58,20 +58,20 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Invoke,
         this.exceptionProbability = EXCEPTION_PROBA;
     }
 
-    public BeginNode exceptionEdge() {
+    public AbstractBeginNode exceptionEdge() {
         return exceptionEdge;
     }
 
-    public void setExceptionEdge(BeginNode x) {
+    public void setExceptionEdge(AbstractBeginNode x) {
         updatePredecessor(exceptionEdge, x);
         exceptionEdge = x;
     }
 
-    public BeginNode next() {
+    public AbstractBeginNode next() {
         return next;
     }
 
-    public void setNext(BeginNode x) {
+    public void setNext(AbstractBeginNode x) {
         updatePredecessor(next, x);
         next = x;
     }
@@ -164,7 +164,7 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Invoke,
     }
 
     public void killExceptionEdge() {
-        BeginNode edge = exceptionEdge();
+        AbstractBeginNode edge = exceptionEdge();
         setExceptionEdge(null);
         GraphUtil.killCFG(edge);
     }
@@ -179,8 +179,12 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Invoke,
             StateSplit stateSplit = (StateSplit) node;
             stateSplit.setStateAfter(state);
         }
+        if (node instanceof ForeignCallNode) {
+            ForeignCallNode foreign = (ForeignCallNode) node;
+            foreign.setBci(bci());
+        }
         if (node == null) {
-            assert getKind() == Kind.Void && usages().isEmpty();
+            assert getKind() == Kind.Void && hasNoUsages();
             graph().removeSplit(this, next());
         } else if (node instanceof ControlSinkNode) {
             this.replaceAtPredecessor(node);
@@ -191,13 +195,13 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Invoke,
             graph().replaceSplit(this, node, next());
         }
         GraphUtil.killWithUnusedFloatingInputs(call);
-        if (state.usages().isEmpty()) {
+        if (state.hasNoUsages()) {
             GraphUtil.killWithUnusedFloatingInputs(state);
         }
     }
 
     @Override
-    public double probability(BeginNode successor) {
+    public double probability(AbstractBeginNode successor) {
         return successor == next ? 1 - exceptionProbability : exceptionProbability;
     }
 

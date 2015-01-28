@@ -177,7 +177,7 @@ public class PartialEscapeAnalysisTest extends EATestBase {
     @SafeVarargs
     protected final void testPartialEscapeAnalysis(final String snippet, double expectedProbability, int expectedCount, Class<? extends Node>... invalidNodeClasses) {
         prepareGraph(snippet, false);
-        for (MergeNode merge : graph.getNodes(MergeNode.class)) {
+        for (AbstractMergeNode merge : graph.getNodes(AbstractMergeNode.class)) {
             merge.setStateAfter(null);
         }
         new DeadCodeEliminationPhase().apply(graph);

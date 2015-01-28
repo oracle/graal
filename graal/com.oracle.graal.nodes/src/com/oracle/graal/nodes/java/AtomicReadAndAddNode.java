@@ -36,7 +36,7 @@ import com.oracle.graal.nodes.spi.*;
  * Represents an atomic read-and-add operation like {@link Unsafe#getAndAddInt(Object, long, int)}.
  */
 @NodeInfo(allowedUsageTypes = {InputType.Memory})
-public class AtomicReadAndAddNode extends AbstractMemoryCheckpoint implements LIRLowerable, MemoryCheckpoint.Single {
+public final class AtomicReadAndAddNode extends AbstractMemoryCheckpoint implements LIRLowerable, MemoryCheckpoint.Single {
 
     @Input ValueNode object;
     @Input ValueNode offset;

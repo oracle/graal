@@ -36,7 +36,7 @@ import com.oracle.graal.replacements.nodes.*;
  * @see ClassSubstitutions#isPrimitive(Class)
  */
 @NodeInfo
-public class ClassIsPrimitiveNode extends MacroNode implements Canonicalizable {
+public final class ClassIsPrimitiveNode extends MacroNode implements Canonicalizable {
 
     public ClassIsPrimitiveNode(Invoke invoke) {
         super(invoke);

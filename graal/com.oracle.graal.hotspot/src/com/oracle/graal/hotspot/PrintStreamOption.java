@@ -81,6 +81,13 @@ public class PrintStreamOption extends OptionValue<String> {
                         try {
                             final boolean enableAutoflush = true;
                             ps = new PrintStream(new FileOutputStream(getFilename()), enableAutoflush);
+                            /* Add the JVM and Java arguments to the log file to help identity it. */
+                            String inputArguments = String.join(" ", ManagementFactory.getRuntimeMXBean().getInputArguments());
+                            ps.println("VM Arguments: " + inputArguments);
+                            String cmd = System.getProperty("sun.java.command");
+                            if (cmd != null) {
+                                ps.println("sun.java.command=" + cmd);
+                            }
                         } catch (FileNotFoundException e) {
                             throw new RuntimeException("couldn't open file: " + getValue(), e);
                         }

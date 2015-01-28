@@ -65,7 +65,7 @@ public class FrameState extends VirtualState implements IterableNodeType {
 
     @OptionalInput(InputType.Association) NodeInputList<MonitorIdNode> monitorIds;
 
-    @Input(InputType.State) NodeInputList<EscapeObjectState> virtualObjectMappings;
+    @OptionalInput(InputType.State) NodeInputList<EscapeObjectState> virtualObjectMappings;
 
     /**
      * The bytecode index to which this frame state applies.
@@ -74,7 +74,7 @@ public class FrameState extends VirtualState implements IterableNodeType {
 
     protected final ResolvedJavaMethod method;
 
-    public FrameState(FrameState outerFrameState, ResolvedJavaMethod method, int bci, List<ValueNode> values, int localsSize, int stackSize, boolean rethrowException, boolean duringCall,
+    public FrameState(FrameState outerFrameState, ResolvedJavaMethod method, int bci, int localsSize, int stackSize, int lockSize, boolean rethrowException, boolean duringCall,
                     List<MonitorIdNode> monitorIds, List<EscapeObjectState> virtualObjectMappings) {
         assert stackSize >= 0;
         this.outerFrameState = outerFrameState;
@@ -82,41 +82,54 @@ public class FrameState extends VirtualState implements IterableNodeType {
         this.bci = bci;
         this.localsSize = localsSize;
         this.stackSize = stackSize;
-        this.values = new NodeInputList<>(this, values);
-        this.monitorIds = new NodeInputList<>(this, monitorIds);
-        this.virtualObjectMappings = new NodeInputList<>(this, virtualObjectMappings);
+        this.values = new NodeInputList<>(this, localsSize + stackSize + lockSize);
+
+        if (monitorIds != null && monitorIds.size() > 0) {
+            this.monitorIds = new NodeInputList<>(this, monitorIds);
+        }
+
+        if (virtualObjectMappings != null && virtualObjectMappings.size() > 0) {
+            this.virtualObjectMappings = new NodeInputList<>(this, virtualObjectMappings);
+        }
+
         this.rethrowException = rethrowException;
         this.duringCall = duringCall;
         assert !this.rethrowException || this.stackSize == 1 : "must have exception on top of the stack";
-        assert this.locksSize() == this.monitorIds.size();
+        assert this.locksSize() == this.monitorIdCount();
         METRIC_FRAMESTATE_COUNT.increment();
     }
 
+    public FrameState(FrameState outerFrameState, ResolvedJavaMethod method, int bci, List<ValueNode> values, int localsSize, int stackSize, boolean rethrowException, boolean duringCall,
+                    List<MonitorIdNode> monitorIds, List<EscapeObjectState> virtualObjectMappings) {
+        this(outerFrameState, method, bci, localsSize, stackSize, values.size() - localsSize - stackSize, rethrowException, duringCall, monitorIds, virtualObjectMappings);
+        for (int i = 0; i < values.size(); ++i) {
+            this.values.initialize(i, values.get(i));
+        }
+    }
+
     public FrameState(int bci) {
-        this(null, null, bci, Collections.<ValueNode> emptyList(), 0, 0, false, false, Collections.<MonitorIdNode> emptyList(), Collections.<EscapeObjectState> emptyList());
+        this(null, null, bci, 0, 0, 0, false, false, null, Collections.<EscapeObjectState> emptyList());
         assert bci == BytecodeFrame.BEFORE_BCI || bci == BytecodeFrame.AFTER_BCI || bci == BytecodeFrame.AFTER_EXCEPTION_BCI || bci == BytecodeFrame.UNKNOWN_BCI ||
                         bci == BytecodeFrame.INVALID_FRAMESTATE_BCI;
     }
 
-    public FrameState(ResolvedJavaMethod method, int bci, ValueNode[] locals, List<ValueNode> stack, ValueNode[] locks, MonitorIdNode[] monitorIds, boolean rethrowException, boolean duringCall) {
-        this(null, method, bci, createValues(locals, stack, locks), locals.length, stack.size(), rethrowException, duringCall, Arrays.asList(monitorIds), Collections.<EscapeObjectState> emptyList());
+    public FrameState(FrameState outerFrameState, ResolvedJavaMethod method, int bci, ValueNode[] locals, ValueNode[] stack, int stackSize, ValueNode[] locks, List<MonitorIdNode> monitorIds,
+                    boolean rethrowException, boolean duringCall) {
+        this(outerFrameState, method, bci, locals.length, stackSize, locks.length, rethrowException, duringCall, monitorIds, Collections.<EscapeObjectState> emptyList());
+        createValues(locals, stack, locks);
     }
 
-    private static List<ValueNode> createValues(ValueNode[] locals, List<ValueNode> stack, ValueNode[] locks) {
-        List<ValueNode> newValues = new ArrayList<>(locals.length + stack.size() + locks.length);
-        for (ValueNode value : locals) {
-            newValues.add(value);
-            assert value == null || value.isAlive();
+    private void createValues(ValueNode[] locals, ValueNode[] stack, ValueNode[] locks) {
+        int index = 0;
+        for (int i = 0; i < locals.length; ++i) {
+            this.values.initialize(index++, locals[i]);
         }
-        for (ValueNode value : stack) {
-            newValues.add(value);
-            assert value == null || value.isAlive();
+        for (int i = 0; i < stackSize; ++i) {
+            this.values.initialize(index++, stack[i]);
         }
-        for (ValueNode value : locks) {
-            newValues.add(value);
-            assert value == null || value.isAlive();
+        for (int i = 0; i < locks.length; ++i) {
+            this.values.initialize(index++, locks[i]);
         }
-        return newValues;
     }
 
     public NodeInputList<ValueNode> values() {
@@ -152,10 +165,16 @@ public class FrameState extends VirtualState implements IterableNodeType {
     }
 
     public void addVirtualObjectMapping(EscapeObjectState virtualObject) {
+        if (virtualObjectMappings == null) {
+            virtualObjectMappings = new NodeInputList<>(this);
+        }
         virtualObjectMappings.add(virtualObject);
     }
 
     public int virtualObjectMappingCount() {
+        if (virtualObjectMappings == null) {
+            return 0;
+        }
         return virtualObjectMappings.size();
     }
 
@@ -191,9 +210,12 @@ public class FrameState extends VirtualState implements IterableNodeType {
         if (newOuterFrameState != null) {
             newOuterFrameState = newOuterFrameState.duplicateWithVirtualState();
         }
-        ArrayList<EscapeObjectState> newVirtualMappings = new ArrayList<>(virtualObjectMappings.size());
-        for (EscapeObjectState state : virtualObjectMappings) {
-            newVirtualMappings.add(state.duplicateWithVirtualState());
+        ArrayList<EscapeObjectState> newVirtualMappings = null;
+        if (virtualObjectMappings != null) {
+            newVirtualMappings = new ArrayList<>(virtualObjectMappings.size());
+            for (EscapeObjectState state : virtualObjectMappings) {
+                newVirtualMappings.add(state.duplicateWithVirtualState());
+            }
         }
         return graph().add(new FrameState(newOuterFrameState, method, bci, values, localsSize, stackSize, rethrowException, duringCall, monitorIds, newVirtualMappings));
     }
@@ -203,8 +225,8 @@ public class FrameState extends VirtualState implements IterableNodeType {
      * stack and the values in pushedValues pushed on the stack. The pushedValues will be formatted
      * correctly in slot encoding: a long or double will be followed by a null slot.
      */
-    public FrameState duplicateModifiedDuringCall(int newBci, Kind popKind, ValueNode... pushedValues) {
-        return duplicateModified(newBci, rethrowException, true, popKind, pushedValues);
+    public FrameState duplicateModifiedDuringCall(int newBci, Kind popKind) {
+        return duplicateModified(newBci, rethrowException, true, popKind);
     }
 
     public FrameState duplicateModified(int newBci, boolean newRethrowException, Kind popKind, ValueNode... pushedValues) {
@@ -238,7 +260,7 @@ public class FrameState extends VirtualState implements IterableNodeType {
         }
         for (ValueNode node : pushedValues) {
             copy.add(node);
-            if (node.getKind() == Kind.Long || node.getKind() == Kind.Double) {
+            if (node.getKind().needsTwoSlots()) {
                 copy.add(null);
             }
         }
@@ -260,6 +282,10 @@ public class FrameState extends VirtualState implements IterableNodeType {
          * mistakes.
          */
         byte[] codes = method.getCode();
+        if (codes == null) {
+            /* Graph was constructed manually. */
+            return true;
+        }
         byte newCode = codes[newBci];
         if (oldBci == newBci) {
             assert oldStackSize == newStackSize || oldDuringCall != newDuringCall : "bci is unchanged, stack depth shouldn't change";
@@ -341,8 +367,16 @@ public class FrameState extends VirtualState implements IterableNodeType {
      * Get the MonitorIdNode that corresponds to the locked object at the specified index.
      */
     public MonitorIdNode monitorIdAt(int i) {
-        assert i >= 0 && i < locksSize();
+        assert monitorIds != null && i >= 0 && i < locksSize();
         return monitorIds.get(i);
+    }
+
+    public int monitorIdCount() {
+        if (monitorIds == null) {
+            return 0;
+        } else {
+            return monitorIds.size();
+        }
     }
 
     public NodeIterable<FrameState> innerFrameStates() {
@@ -414,7 +448,7 @@ public class FrameState extends VirtualState implements IterableNodeType {
 
     @Override
     public boolean verify() {
-        assertTrue(locksSize() == monitorIds.size(), "mismatch in number of locks");
+        assertTrue(locksSize() == monitorIdCount(), "mismatch in number of locks");
         for (ValueNode value : values) {
             assertTrue(value == null || !value.isDeleted(), "frame state must not contain deleted nodes");
             assertTrue(value == null || value instanceof VirtualObjectNode || (value.getKind() != Kind.Void), "unexpected value: %s", value);
@@ -424,17 +458,26 @@ public class FrameState extends VirtualState implements IterableNodeType {
 
     @Override
     public void applyToNonVirtual(NodeClosure<? super ValueNode> closure) {
-        for (ValueNode value : values.nonNull()) {
-            closure.apply(this, value);
-        }
-        for (MonitorIdNode monitorId : monitorIds) {
-            if (monitorId != null) {
-                closure.apply(this, monitorId);
+        for (ValueNode value : values) {
+            if (value != null) {
+                closure.apply(this, value);
             }
         }
-        for (EscapeObjectState state : virtualObjectMappings) {
-            state.applyToNonVirtual(closure);
+
+        if (monitorIds != null) {
+            for (MonitorIdNode monitorId : monitorIds) {
+                if (monitorId != null) {
+                    closure.apply(this, monitorId);
+                }
+            }
         }
+
+        if (virtualObjectMappings != null) {
+            for (EscapeObjectState state : virtualObjectMappings) {
+                state.applyToNonVirtual(closure);
+            }
+        }
+
         if (outerFrameState() != null) {
             outerFrameState().applyToNonVirtual(closure);
         }
@@ -443,8 +486,10 @@ public class FrameState extends VirtualState implements IterableNodeType {
     @Override
     public void applyToVirtual(VirtualClosure closure) {
         closure.apply(this);
-        for (EscapeObjectState state : virtualObjectMappings) {
-            state.applyToVirtual(closure);
+        if (virtualObjectMappings != null) {
+            for (EscapeObjectState state : virtualObjectMappings) {
+                state.applyToVirtual(closure);
+            }
         }
         if (outerFrameState() != null) {
             outerFrameState().applyToVirtual(closure);
@@ -459,9 +504,11 @@ public class FrameState extends VirtualState implements IterableNodeType {
         if (outerFrameState() != null && outerFrameState().isPartOfThisState(state)) {
             return true;
         }
-        for (EscapeObjectState objectState : virtualObjectMappings) {
-            if (objectState.isPartOfThisState(state)) {
-                return true;
+        if (virtualObjectMappings != null) {
+            for (EscapeObjectState objectState : virtualObjectMappings) {
+                if (objectState.isPartOfThisState(state)) {
+                    return true;
+                }
             }
         }
         return false;

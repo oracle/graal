@@ -228,6 +228,9 @@ public class InliningUtil {
      *            canonicalized after inlining
      */
     public static Map<Node, Node> inline(Invoke invoke, StructuredGraph inlineGraph, boolean receiverNullCheck, List<Node> canonicalizedNodes) {
+        if (Fingerprint.ENABLED) {
+            Fingerprint.submit("inlining %s into %s: %s", formatGraph(inlineGraph), formatGraph(invoke.asNode().graph()), inlineGraph.getNodes().snapshot());
+        }
         final NodeInputList<ValueNode> parameters = invoke.callTarget().arguments();
         FixedNode invokeNode = invoke.asNode();
         StructuredGraph graph = invokeNode.graph();
@@ -262,7 +265,7 @@ public class InliningUtil {
             }
         }
 
-        final BeginNode prevBegin = BeginNode.prevBegin(invokeNode);
+        final AbstractBeginNode prevBegin = AbstractBeginNode.prevBegin(invokeNode);
         DuplicationReplacement localReplacement = new DuplicationReplacement() {
 
             public Node replacement(Node node) {
@@ -300,9 +303,9 @@ public class InliningUtil {
             }
 
             // get rid of memory kill
-            BeginNode begin = invokeWithException.next();
+            AbstractBeginNode begin = invokeWithException.next();
             if (begin instanceof KillingBeginNode) {
-                BeginNode newBegin = new BeginNode();
+                AbstractBeginNode newBegin = new BeginNode();
                 graph.addAfterFixed(begin, graph.add(newBegin));
                 begin.replaceAtUsages(newBegin);
                 graph.removeFixed(begin);
@@ -341,7 +344,7 @@ public class InliningUtil {
                 for (ReturnNode returnNode : returnNodes) {
                     returnDuplicates.add((ReturnNode) duplicates.get(returnNode));
                 }
-                MergeNode merge = graph.add(new MergeNode());
+                AbstractMergeNode merge = graph.add(new MergeNode());
                 merge.setStateAfter(stateAfter);
                 ValueNode returnValue = mergeReturns(merge, returnDuplicates, canonicalizedNodes);
                 invokeNode.replaceAtUsages(returnValue);
@@ -353,6 +356,13 @@ public class InliningUtil {
         GraphUtil.killCFG(invokeNode);
 
         return duplicates;
+    }
+
+    private static String formatGraph(StructuredGraph graph) {
+        if (graph.method() == null) {
+            return graph.name;
+        }
+        return graph.method().format("%H.%n(%p)");
     }
 
     private static void processSimpleInfopoints(Invoke invoke, StructuredGraph inlineGraph, Map<Node, Node> duplicates) {
@@ -438,8 +448,8 @@ public class InliningUtil {
                 } else {
                     StateSplit stateSplit = (StateSplit) usage;
                     FixedNode fixedStateSplit = stateSplit.asNode();
-                    if (fixedStateSplit instanceof MergeNode) {
-                        MergeNode merge = (MergeNode) fixedStateSplit;
+                    if (fixedStateSplit instanceof AbstractMergeNode) {
+                        AbstractMergeNode merge = (AbstractMergeNode) fixedStateSplit;
                         while (merge.isAlive()) {
                             AbstractEndNode end = merge.forwardEnds().first();
                             DeoptimizeNode deoptimizeNode = graph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.NotCompiledExceptionHandler));
@@ -448,7 +458,7 @@ public class InliningUtil {
                         }
                     } else {
                         FixedNode deoptimizeNode = graph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.NotCompiledExceptionHandler));
-                        if (fixedStateSplit instanceof BeginNode) {
+                        if (fixedStateSplit instanceof AbstractBeginNode) {
                             deoptimizeNode = BeginNode.begin(deoptimizeNode);
                         }
                         fixedStateSplit.replaceAtPredecessor(deoptimizeNode);
@@ -459,7 +469,7 @@ public class InliningUtil {
         }
     }
 
-    public static ValueNode mergeReturns(MergeNode merge, List<? extends ReturnNode> returnNodes, List<Node> canonicalizedNodes) {
+    public static ValueNode mergeReturns(AbstractMergeNode merge, List<? extends ReturnNode> returnNodes, List<Node> canonicalizedNodes) {
         PhiNode returnValuePhi = null;
 
         for (ReturnNode returnNode : returnNodes) {

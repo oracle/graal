@@ -30,7 +30,7 @@ import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 
 @NodeInfo
-public class DynamicNewInstanceNode extends AbstractNewObjectNode implements Canonicalizable {
+public final class DynamicNewInstanceNode extends AbstractNewObjectNode implements Canonicalizable {
 
     @Input ValueNode clazz;
 

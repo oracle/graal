@@ -38,7 +38,7 @@ import com.oracle.graal.nodes.spi.*;
  * that these nodes are not built directly from the bytecode but are introduced by canonicalization.
  */
 @NodeInfo
-public class ConditionalNode extends FloatingNode implements Canonicalizable, LIRLowerable {
+public final class ConditionalNode extends FloatingNode implements Canonicalizable, LIRLowerable {
 
     @Input(InputType.Condition) LogicNode condition;
     @Input ValueNode trueValue;

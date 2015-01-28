@@ -118,7 +118,7 @@ public class InliningData {
             return "it is an abstract method";
         } else if (!method.getDeclaringClass().isInitialized()) {
             return "the method's class is not initialized";
-        } else if (!method.canBeInlined()) {
+        } else if (!method.canBeInlined() && !context.getReplacements().isForcedSubstitution(method)) {
             return "it is marked non-inlinable";
         } else if (countRecursiveInlining(method) > MaximumRecursiveInlining.getValue()) {
             return "it exceeds the maximum recursive inlining depth";

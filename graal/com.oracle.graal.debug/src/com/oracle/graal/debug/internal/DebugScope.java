@@ -57,12 +57,10 @@ public final class DebugScope implements Debug.Scope {
                 StringBuilder str = new StringBuilder();
                 printScopeName(str);
                 str.append(indent);
-                if (args.length == 0) {
-                    str.append(msg);
-                } else {
-                    str.append(String.format(msg, args));
-                }
-                str.append(System.lineSeparator());
+                String result = args.length == 0 ? msg : String.format(msg, args);
+                String lineSep = System.lineSeparator();
+                str.append(result.replace(lineSep, lineSep.concat(indent)));
+                str.append(lineSep);
                 output.append(str);
                 lastUsedIndent = this;
             }
@@ -211,11 +209,10 @@ public final class DebugScope implements Debug.Scope {
         if (config instanceof TopLevelDebugConfig) {
             return (TopLevelDebugConfig) config;
         } else {
-            PrintStream out = System.out;
             if (config == null) {
-                out.printf("DebugScope.%s ignored because debugging is disabled%n", msg);
+                TTY.println("DebugScope.%s ignored because debugging is disabled", msg);
             } else {
-                out.printf("DebugScope.%s ignored because top level delegate config missing%n", msg);
+                TTY.println("DebugScope.%s ignored because top level delegate config missing", msg);
             }
             return null;
         }
@@ -268,8 +265,7 @@ public final class DebugScope implements Debug.Scope {
                 dumpHandler.dump(object, message);
             }
         } else {
-            PrintStream out = System.out;
-            out.println("Forced dump ignored because debugging is disabled - use -G:Dump=xxx option");
+            TTY.println("Forced dump ignored because debugging is disabled - use -G:Dump=xxx option");
         }
     }
 

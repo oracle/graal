@@ -463,6 +463,19 @@ public class Debug {
         }
     }
 
+    public static void log(String format, Object arg1, Object arg2, Object arg3, Object arg4, Object arg5, Object arg6, Object arg7) {
+        log(DEFAULT_LOG_LEVEL, format, arg1, arg2, arg3, arg4, arg5, arg6, arg7);
+    }
+
+    /**
+     * @see #log(int, String, Object)
+     */
+    public static void log(int logLevel, String format, Object arg1, Object arg2, Object arg3, Object arg4, Object arg5, Object arg6, Object arg7) {
+        if (ENABLED) {
+            DebugScope.getInstance().log(logLevel, format, arg1, arg2, arg3, arg4, arg5, arg6, arg7);
+        }
+    }
+
     public static void logv(String format, Object... args) {
         logv(DEFAULT_LOG_LEVEL, format, args);
     }
@@ -696,6 +709,48 @@ public class Debug {
     public static Indent logAndIndent(int logLevel, String format, Object arg1, Object arg2, Object arg3) {
         if (ENABLED) {
             return logvAndIndent(logLevel, format, arg1, arg2, arg3);
+        }
+        return null;
+    }
+
+    public static Indent logAndIndent(String format, Object arg1, Object arg2, Object arg3, Object arg4) {
+        return logAndIndent(DEFAULT_LOG_LEVEL, format, arg1, arg2, arg3, arg4);
+    }
+
+    /**
+     * @see #logAndIndent(int, String, Object)
+     */
+    public static Indent logAndIndent(int logLevel, String format, Object arg1, Object arg2, Object arg3, Object arg4) {
+        if (ENABLED) {
+            return logvAndIndent(logLevel, format, arg1, arg2, arg3, arg4);
+        }
+        return null;
+    }
+
+    public static Indent logAndIndent(String format, Object arg1, Object arg2, Object arg3, Object arg4, Object arg5) {
+        return logAndIndent(DEFAULT_LOG_LEVEL, format, arg1, arg2, arg3, arg4, arg5);
+    }
+
+    /**
+     * @see #logAndIndent(int, String, Object)
+     */
+    public static Indent logAndIndent(int logLevel, String format, Object arg1, Object arg2, Object arg3, Object arg4, Object arg5) {
+        if (ENABLED) {
+            return logvAndIndent(logLevel, format, arg1, arg2, arg3, arg4, arg5);
+        }
+        return null;
+    }
+
+    public static Indent logAndIndent(String format, Object arg1, Object arg2, Object arg3, Object arg4, Object arg5, Object arg6) {
+        return logAndIndent(DEFAULT_LOG_LEVEL, format, arg1, arg2, arg3, arg4, arg5, arg6);
+    }
+
+    /**
+     * @see #logAndIndent(int, String, Object)
+     */
+    public static Indent logAndIndent(int logLevel, String format, Object arg1, Object arg2, Object arg3, Object arg4, Object arg5, Object arg6) {
+        if (ENABLED) {
+            return logvAndIndent(logLevel, format, arg1, arg2, arg3, arg4, arg5, arg6);
         }
         return null;
     }

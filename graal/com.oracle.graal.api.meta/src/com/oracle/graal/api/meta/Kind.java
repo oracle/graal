@@ -33,51 +33,69 @@ import java.lang.reflect.*;
  */
 public enum Kind implements PlatformKind {
     /** The primitive boolean kind, represented as an int on the stack. */
-    Boolean('z', "boolean", true, java.lang.Boolean.TYPE, java.lang.Boolean.class),
+    Boolean('z', "boolean", 1, true, java.lang.Boolean.TYPE, java.lang.Boolean.class),
 
     /** The primitive byte kind, represented as an int on the stack. */
-    Byte('b', "byte", true, java.lang.Byte.TYPE, java.lang.Byte.class),
+    Byte('b', "byte", 1, true, java.lang.Byte.TYPE, java.lang.Byte.class),
 
     /** The primitive short kind, represented as an int on the stack. */
-    Short('s', "short", true, java.lang.Short.TYPE, java.lang.Short.class),
+    Short('s', "short", 1, true, java.lang.Short.TYPE, java.lang.Short.class),
 
     /** The primitive char kind, represented as an int on the stack. */
-    Char('c', "char", true, java.lang.Character.TYPE, java.lang.Character.class),
+    Char('c', "char", 1, true, java.lang.Character.TYPE, java.lang.Character.class),
 
     /** The primitive int kind, represented as an int on the stack. */
-    Int('i', "int", true, java.lang.Integer.TYPE, java.lang.Integer.class),
+    Int('i', "int", 1, true, java.lang.Integer.TYPE, java.lang.Integer.class),
 
     /** The primitive float kind. */
-    Float('f', "float", false, java.lang.Float.TYPE, java.lang.Float.class),
+    Float('f', "float", 1, false, java.lang.Float.TYPE, java.lang.Float.class),
 
     /** The primitive long kind. */
-    Long('j', "long", false, java.lang.Long.TYPE, java.lang.Long.class),
+    Long('j', "long", 2, false, java.lang.Long.TYPE, java.lang.Long.class),
 
     /** The primitive double kind. */
-    Double('d', "double", false, java.lang.Double.TYPE, java.lang.Double.class),
+    Double('d', "double", 2, false, java.lang.Double.TYPE, java.lang.Double.class),
 
     /** The Object kind, also used for arrays. */
-    Object('a', "Object", false, null, null),
+    Object('a', "Object", 1, false, null, null),
 
     /** The void float kind. */
-    Void('v', "void", false, java.lang.Void.TYPE, java.lang.Void.class),
+    Void('v', "void", 0, false, java.lang.Void.TYPE, java.lang.Void.class),
 
     /** The non-type. */
-    Illegal('-', "illegal", false, null, null);
+    Illegal('-', "illegal", 0, false, null, null);
 
     private final char typeChar;
     private final String javaName;
     private final boolean isStackInt;
     private final Class<?> primitiveJavaClass;
     private final Class<?> boxedJavaClass;
+    private final EnumKey key = new EnumKey(this);
+    private final int slotCount;
 
-    private Kind(char typeChar, String javaName, boolean isStackInt, Class<?> primitiveJavaClass, Class<?> boxedJavaClass) {
+    private Kind(char typeChar, String javaName, int slotCount, boolean isStackInt, Class<?> primitiveJavaClass, Class<?> boxedJavaClass) {
         this.typeChar = typeChar;
         this.javaName = javaName;
+        this.slotCount = slotCount;
         this.isStackInt = isStackInt;
         this.primitiveJavaClass = primitiveJavaClass;
         this.boxedJavaClass = boxedJavaClass;
         assert primitiveJavaClass == null || javaName.equals(primitiveJavaClass.getName());
+    }
+
+    /**
+     * Returns the number of stack slots occupied by this kind according to the Java bytecodes
+     * specification.
+     */
+    public int getSlotCount() {
+        return this.slotCount;
+    }
+
+    /**
+     * Returns whether this kind occupied two stack slots.
+     */
+    public boolean needsTwoSlots() {
+        return this.slotCount == 2;
     }
 
     /**
@@ -93,6 +111,10 @@ public enum Kind implements PlatformKind {
      */
     public String getJavaName() {
         return javaName;
+    }
+
+    public Key getKey() {
+        return key;
     }
 
     /**

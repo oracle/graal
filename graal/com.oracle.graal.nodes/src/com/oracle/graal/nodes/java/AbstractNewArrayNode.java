@@ -32,7 +32,7 @@ import com.oracle.graal.nodes.spi.*;
  * The {@code AbstractNewArrayNode} is used for all 1-dimensional array allocations.
  */
 @NodeInfo
-public class AbstractNewArrayNode extends AbstractNewObjectNode implements ArrayLengthProvider {
+public abstract class AbstractNewArrayNode extends AbstractNewObjectNode implements ArrayLengthProvider {
 
     @Input protected ValueNode length;
 

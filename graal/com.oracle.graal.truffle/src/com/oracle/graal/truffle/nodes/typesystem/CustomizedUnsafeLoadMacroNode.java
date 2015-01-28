@@ -32,14 +32,12 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.truffle.nodes.*;
 import com.oracle.graal.truffle.nodes.asserts.*;
-import com.oracle.truffle.api.*;
 
 /**
- * Macro node for {@link CompilerDirectives#unsafeGetInt(Object, long, boolean, Object)} and
- * friends.
+ * Macro node for CompilerDirectives#unsafeGetInt*.
  */
 @NodeInfo
-public class CustomizedUnsafeLoadMacroNode extends NeverPartOfCompilationNode implements Canonicalizable {
+public final class CustomizedUnsafeLoadMacroNode extends NeverPartOfCompilationNode implements Canonicalizable {
 
     private static final int ARGUMENT_COUNT = 4;
     private static final int OBJECT_ARGUMENT_INDEX = 0;

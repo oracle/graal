@@ -123,8 +123,13 @@ public class DerivedScaledInductionVariable extends InductionVariable {
 
     @Override
     public void deleteUnusedNodes() {
-        if (scale.isAlive() && scale.usages().isEmpty()) {
+        if (scale.isAlive() && scale.hasNoUsages()) {
             GraphUtil.killWithUnusedFloatingInputs(scale);
         }
+    }
+
+    @Override
+    public String toString() {
+        return String.format("DerivedScaleInductionVariable base (%s) %s %s", base, value.getNodeClass().shortName(), scale);
     }
 }

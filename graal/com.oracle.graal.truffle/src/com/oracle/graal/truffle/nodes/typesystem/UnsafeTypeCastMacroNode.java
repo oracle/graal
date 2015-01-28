@@ -31,10 +31,9 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.truffle.nodes.asserts.*;
-import com.oracle.truffle.api.*;
 
 /**
- * Macro node for method {@link CompilerDirectives#unsafeCast(Object, Class, boolean, boolean)}.
+ * Macro node for method CompilerDirectives#unsafeCast.
  */
 @NodeInfo
 public class UnsafeTypeCastMacroNode extends NeverPartOfCompilationNode implements Simplifiable {

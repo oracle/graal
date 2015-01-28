@@ -54,7 +54,7 @@ public class TestResolvedJavaType extends TypeUniverse {
                 ResolvedJavaField rf = lookupField(type.getInstanceFields(true), f);
                 assertNotNull(rf);
                 long offset = isStatic(f.getModifiers()) ? unsafe.staticFieldOffset(f) : unsafe.objectFieldOffset(f);
-                ResolvedJavaField result = type.findInstanceFieldWithOffset(offset);
+                ResolvedJavaField result = type.findInstanceFieldWithOffset(offset, rf.getKind());
                 assertNotNull(result);
                 assertTrue(fieldsEqual(f, result));
             }

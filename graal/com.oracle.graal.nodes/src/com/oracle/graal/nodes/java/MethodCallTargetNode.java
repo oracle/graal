@@ -69,7 +69,7 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
 
     @Override
     public boolean verify() {
-        assert usages().count() <= 1 : "call target may only be used by a single invoke";
+        assert getUsageCount() <= 1 : "call target may only be used by a single invoke";
         for (Node n : usages()) {
             assertTrue(n instanceof Invoke, "call target can only be used from an invoke (%s)", n);
         }
@@ -171,7 +171,7 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
         if (singleImplementor != null && !singleImplementor.equals(declaredReceiverType)) {
             ResolvedJavaMethod singleImplementorMethod = singleImplementor.resolveMethod(targetMethod(), invoke().getContextType(), true);
             if (singleImplementorMethod != null) {
-                assert graph().getGuardsStage().ordinal() < StructuredGraph.GuardsStage.FIXED_DEOPTS.ordinal() : "Graph already fixed!";
+                assert graph().getGuardsStage().allowsFloatingGuards() : "Graph already fixed!";
                 /**
                  * We have an invoke on an interface with a single implementor. We can replace this
                  * with an invoke virtual.
@@ -185,8 +185,8 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
                  */
                 LogicNode condition = graph().unique(new InstanceOfNode(singleImplementor, receiver, getProfile()));
                 GuardNode guard = graph().unique(
-                                new GuardNode(condition, BeginNode.prevBegin(invoke().asNode()), DeoptimizationReason.OptimizedTypeCheckViolated, DeoptimizationAction.InvalidateRecompile, false,
-                                                JavaConstant.NULL_POINTER));
+                                new GuardNode(condition, AbstractBeginNode.prevBegin(invoke().asNode()), DeoptimizationReason.OptimizedTypeCheckViolated, DeoptimizationAction.InvalidateRecompile,
+                                                false, JavaConstant.NULL_POINTER));
                 PiNode piNode = graph().unique(new PiNode(receiver, StampFactory.declaredNonNull(singleImplementor), guard));
                 arguments().set(0, piNode);
                 setInvokeKind(InvokeKind.Virtual);

@@ -27,7 +27,7 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.nodes.*;
 
-public final class HotSpotProfilingInfo extends CompilerObject implements ProfilingInfo, Remote {
+public final class HotSpotProfilingInfo extends CompilerObject implements ProfilingInfo, HotSpotProxified {
 
     private static final long serialVersionUID = -8307682725047864875L;
     private static final DebugMetric metricInsufficentSpace = Debug.metric("InsufficientSpaceForProfilingData");

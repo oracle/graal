@@ -29,6 +29,7 @@ import java.lang.invoke.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.hotspot.*;
 import com.oracle.graal.lir.*;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
@@ -37,7 +38,7 @@ import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
  * Represents a constant non-{@code null} object reference, within the compiler and across the
  * compiler/runtime interface.
  */
-public final class HotSpotObjectConstantImpl extends AbstractValue implements HotSpotObjectConstant, Remote {
+public final class HotSpotObjectConstantImpl extends AbstractValue implements HotSpotObjectConstant, HotSpotProxified {
 
     private static final long serialVersionUID = 3592151693708093496L;
 

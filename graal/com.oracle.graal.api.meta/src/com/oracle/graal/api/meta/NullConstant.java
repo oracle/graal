@@ -85,7 +85,7 @@ final class NullConstant extends AbstractValue implements JavaConstant {
 
     @Override
     public int hashCode() {
-        return System.identityHashCode(this);
+        return 13;
     }
 
     @Override

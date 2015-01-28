@@ -35,12 +35,12 @@ public class GuardPhiNode extends PhiNode implements GuardingNode {
 
     @OptionalInput(InputType.Guard) NodeInputList<ValueNode> values;
 
-    public GuardPhiNode(MergeNode merge) {
+    public GuardPhiNode(AbstractMergeNode merge) {
         super(StampFactory.forVoid(), merge);
         this.values = new NodeInputList<>(this);
     }
 
-    public GuardPhiNode(MergeNode merge, ValueNode[] values) {
+    public GuardPhiNode(AbstractMergeNode merge, ValueNode[] values) {
         super(StampFactory.forVoid(), merge);
         this.values = new NodeInputList<>(this, values);
     }

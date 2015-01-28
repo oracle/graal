@@ -29,6 +29,7 @@ import static java.util.Objects.*;
 import java.lang.annotation.*;
 import java.lang.reflect.*;
 import java.net.*;
+import java.nio.*;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
@@ -38,7 +39,7 @@ import com.oracle.graal.hotspot.*;
 /**
  * Implementation of {@link JavaType} for resolved non-primitive HotSpot classes.
  */
-public final class HotSpotResolvedObjectTypeImpl extends HotSpotResolvedJavaType implements HotSpotResolvedObjectType, Remote {
+public final class HotSpotResolvedObjectTypeImpl extends HotSpotResolvedJavaType implements HotSpotResolvedObjectType, HotSpotProxified {
 
     private static final long serialVersionUID = 3481514353553840471L;
 
@@ -788,12 +789,24 @@ public final class HotSpotResolvedObjectTypeImpl extends HotSpotResolvedJavaType
     }
 
     @Override
-    public ResolvedJavaField findInstanceFieldWithOffset(long offset) {
+    public ResolvedJavaField findInstanceFieldWithOffset(long offset, Kind expectedEntryKind) {
         ResolvedJavaField[] declaredFields = getInstanceFields(true);
         for (ResolvedJavaField field : declaredFields) {
-            if (((HotSpotResolvedJavaField) field).offset() == offset) {
+            HotSpotResolvedJavaField resolvedField = (HotSpotResolvedJavaField) field;
+            long resolvedFieldOffset = resolvedField.offset();
+            // @formatter:off
+            if (ByteOrder.nativeOrder() == ByteOrder.BIG_ENDIAN  &&
+                            expectedEntryKind.isPrimitive() &&
+                            !expectedEntryKind.equals(Kind.Void) &&
+                            resolvedField.getKind().isPrimitive()) {
+                resolvedFieldOffset +=
+                                resolvedField.getKind().getByteCount() -
+                                Math.min(resolvedField.getKind().getByteCount(), 4 + expectedEntryKind.getByteCount());
+            }
+            if (resolvedFieldOffset == offset) {
                 return field;
             }
+            // @formatter:on
         }
         return null;
     }

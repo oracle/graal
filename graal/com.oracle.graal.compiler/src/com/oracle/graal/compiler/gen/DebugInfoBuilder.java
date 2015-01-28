@@ -57,10 +57,12 @@ public class DebugInfoBuilder {
         // collect all VirtualObjectField instances:
         FrameState current = topState;
         do {
-            for (EscapeObjectState state : current.virtualObjectMappings()) {
-                if (!objectStates.containsKey(state.object())) {
-                    if (!(state instanceof MaterializedObjectState) || ((MaterializedObjectState) state).materializedValue() != state.object()) {
-                        objectStates.put(state.object(), state);
+            if (current.virtualObjectMappingCount() > 0) {
+                for (EscapeObjectState state : current.virtualObjectMappings()) {
+                    if (!objectStates.containsKey(state.object())) {
+                        if (!(state instanceof MaterializedObjectState) || ((MaterializedObjectState) state).materializedValue() != state.object()) {
+                            objectStates.put(state.object(), state);
+                        }
                     }
                 }
             }

@@ -134,9 +134,9 @@ public class MacroNode extends FixedWithNextNode implements Lowerable {
             new RemoveValueProxyPhase().apply(replacementGraph);
         }
         GuardsStage guardsStage = graph().getGuardsStage();
-        if (guardsStage.ordinal() >= GuardsStage.FIXED_DEOPTS.ordinal()) {
+        if (!guardsStage.allowsFloatingGuards()) {
             new GuardLoweringPhase().apply(replacementGraph, null);
-            if (guardsStage.ordinal() >= GuardsStage.AFTER_FSA.ordinal()) {
+            if (guardsStage.areFrameStatesAtDeopts()) {
                 new FrameStateAssignmentPhase().apply(replacementGraph);
             }
         }

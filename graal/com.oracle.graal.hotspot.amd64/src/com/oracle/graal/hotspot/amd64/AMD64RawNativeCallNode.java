@@ -33,7 +33,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo
-public class AMD64RawNativeCallNode extends FixedWithNextNode implements LIRLowerable {
+public final class AMD64RawNativeCallNode extends FixedWithNextNode implements LIRLowerable {
 
     protected final JavaConstant functionPointer;
     @Input NodeInputList<ValueNode> args;

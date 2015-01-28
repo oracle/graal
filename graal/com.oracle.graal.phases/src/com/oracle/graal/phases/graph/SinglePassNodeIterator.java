@@ -32,17 +32,17 @@ import com.oracle.graal.nodes.*;
  * start node. Unlike in iterative dataflow analysis, a single pass is performed, which allows
  * keeping a smaller working set of pending {@link MergeableState}. This iteration scheme requires:
  * <ul>
- * <li>{@link MergeableState#merge(MergeNode, List)} to always return <code>true</code> (an
+ * <li>{@link MergeableState#merge(AbstractMergeNode, List)} to always return <code>true</code> (an
  * assertion checks this)</li>
  * <li>{@link #controlSplit(ControlSplitNode)} to always return all successors (otherwise, not all
  * associated {@link EndNode} will be visited. In turn, visiting all the end nodes for a given
- * {@link MergeNode} is a precondition before that merge node can be visited)</li>
+ * {@link AbstractMergeNode} is a precondition before that merge node can be visited)</li>
  * </ul>
  *
  * <p>
  * For this iterator the CFG is defined by the classical CFG nodes (
- * {@link com.oracle.graal.nodes.ControlSplitNode}, {@link com.oracle.graal.nodes.MergeNode}...) and
- * the {@link com.oracle.graal.nodes.FixedWithNextNode#next() next} pointers of
+ * {@link com.oracle.graal.nodes.ControlSplitNode}, {@link com.oracle.graal.nodes.AbstractMergeNode}
+ * ...) and the {@link com.oracle.graal.nodes.FixedWithNextNode#next() next} pointers of
  * {@link com.oracle.graal.nodes.FixedWithNextNode}.
  * </p>
  *
@@ -101,18 +101,18 @@ public abstract class SinglePassNodeIterator<T extends MergeableState<T>> {
      * <p>
      * Correspondingly each item may stand for:
      * <ul>
-     * <li>a {@link MergeNode} whose pre-state results from merging those of its forward-ends, see
-     * {@link #nextQueuedNode()}</li>
+     * <li>a {@link AbstractMergeNode} whose pre-state results from merging those of its
+     * forward-ends, see {@link #nextQueuedNode()}</li>
      * <li>a successor of a control-split node, in which case the state on entry to it (the
      * successor) is also stored in the item, see {@link #nextQueuedNode()}</li>
      * </ul>
      * </p>
      */
     private static final class PathStart<U> {
-        private final BeginNode node;
+        private final AbstractBeginNode node;
         private final U stateOnEntry;
 
-        private PathStart(BeginNode node, U stateOnEntry) {
+        private PathStart(AbstractBeginNode node, U stateOnEntry) {
             this.node = node;
             this.stateOnEntry = stateOnEntry;
             assert repOK();
@@ -125,7 +125,7 @@ public abstract class SinglePassNodeIterator<T extends MergeableState<T>> {
             if (node == null) {
                 return false;
             }
-            if (node instanceof MergeNode) {
+            if (node instanceof AbstractMergeNode) {
                 return stateOnEntry == null;
             }
             return (stateOnEntry != null);
@@ -169,9 +169,9 @@ public abstract class SinglePassNodeIterator<T extends MergeableState<T>> {
                 loopEnd((LoopEndNode) current);
                 finishLoopEnds((LoopEndNode) current);
                 current = nextQueuedNode();
-            } else if (current instanceof MergeNode) {
-                merge((MergeNode) current);
-                current = ((MergeNode) current).next();
+            } else if (current instanceof AbstractMergeNode) {
+                merge((AbstractMergeNode) current);
+                current = ((AbstractMergeNode) current).next();
                 assert current != null;
             } else if (current instanceof FixedWithNextNode) {
                 FixedNode next = ((FixedWithNextNode) current).next();
@@ -210,13 +210,13 @@ public abstract class SinglePassNodeIterator<T extends MergeableState<T>> {
     private void queueSuccessors(FixedNode x) {
         Iterator<Node> iter = x.successors().nonNull().iterator();
         if (iter.hasNext()) {
-            BeginNode begin = (BeginNode) iter.next();
+            AbstractBeginNode begin = (AbstractBeginNode) iter.next();
             // the current state isn't cloned for the first successor
             // conceptually, the state is handed over to it
             nodeQueue.addFirst(new PathStart<>(begin, state));
         }
         while (iter.hasNext()) {
-            BeginNode begin = (BeginNode) iter.next();
+            AbstractBeginNode begin = (AbstractBeginNode) iter.next();
             // for all other successors it is cloned
             nodeQueue.addFirst(new PathStart<>(begin, state.clone()));
         }
@@ -228,8 +228,8 @@ public abstract class SinglePassNodeIterator<T extends MergeableState<T>> {
      * the pre-state for that node.
      *
      * <p>
-     * Upon reaching a {@link MergeNode}, some entries are pruned from {@link #nodeStates} (ie, the
-     * entries associated to forward-ends for that merge-node).
+     * Upon reaching a {@link AbstractMergeNode}, some entries are pruned from {@link #nodeStates}
+     * (ie, the entries associated to forward-ends for that merge-node).
      * </p>
      */
     private FixedNode nextQueuedNode() {
@@ -237,8 +237,8 @@ public abstract class SinglePassNodeIterator<T extends MergeableState<T>> {
             return null;
         }
         PathStart<T> elem = nodeQueue.removeFirst();
-        if (elem.node instanceof MergeNode) {
-            MergeNode merge = (MergeNode) elem.node;
+        if (elem.node instanceof AbstractMergeNode) {
+            AbstractMergeNode merge = (AbstractMergeNode) elem.node;
             state = pruneEntry(merge.forwardEndAt(0));
             ArrayList<T> states = new ArrayList<>(merge.forwardEndCount() - 1);
             for (int i = 1; i < merge.forwardEndCount(); i++) {
@@ -249,7 +249,7 @@ public abstract class SinglePassNodeIterator<T extends MergeableState<T>> {
             assert ready : "Not a single-pass iterator after all";
             return merge;
         } else {
-            BeginNode begin = elem.node;
+            AbstractBeginNode begin = elem.node;
             assert begin.predecessor() != null;
             state = elem.stateOnEntry;
             state.afterSplit(begin);
@@ -309,7 +309,7 @@ public abstract class SinglePassNodeIterator<T extends MergeableState<T>> {
         assert !visitedEnds.isMarked(end);
         visitedEnds.mark(end);
         keepForLater(end, state);
-        MergeNode merge = end.merge();
+        AbstractMergeNode merge = end.merge();
         boolean endsVisited = true;
         for (int i = 0; i < merge.forwardEndCount(); i++) {
             if (!visitedEnds.isMarked(merge.forwardEndAt(i))) {
@@ -328,7 +328,7 @@ public abstract class SinglePassNodeIterator<T extends MergeableState<T>> {
         node(endNode);
     }
 
-    protected void merge(MergeNode merge) {
+    protected void merge(AbstractMergeNode merge) {
         node(merge);
     }
 

@@ -119,7 +119,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         ValueNode object = loadField.isStatic() ? staticFieldBase(graph, field) : loadField.object();
         Stamp loadStamp = loadStamp(loadField.stamp(), field.getKind());
         ConstantLocationNode location = createFieldLocation(graph, field, false);
-        assert location != null : "Field that is loaded must not be eliminated";
+        assert location != null : "Field that is loaded must not be eliminated: " + field.getDeclaringClass().toJavaName(true) + "." + field.getName();
 
         ReadNode memoryRead = graph.add(new ReadNode(object, location, loadStamp, fieldLoadBarrierType(field)));
         ValueNode readValue = implicitLoadConvert(graph, field.getKind(), memoryRead);
@@ -228,7 +228,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
 
     protected void lowerLoadHubNode(LoadHubNode loadHub) {
         StructuredGraph graph = loadHub.graph();
-        if (graph.getGuardsStage().ordinal() < StructuredGraph.GuardsStage.FIXED_DEOPTS.ordinal()) {
+        if (graph.getGuardsStage().allowsFloatingGuards()) {
             return;
         }
         ValueNode hub = createReadHub(graph, loadHub.getValue(), loadHub.getGuard());
@@ -270,12 +270,12 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             ReadNode memoryRead = createUnsafeRead(graph, load, valueAnchorNode);
             graph.replaceFixedWithFixed(load, valueAnchorNode);
             graph.addAfterFixed(valueAnchorNode, memoryRead);
-        } else if (graph.getGuardsStage().ordinal() > StructuredGraph.GuardsStage.FLOATING_GUARDS.ordinal()) {
+        } else if (!graph.getGuardsStage().allowsFloatingGuards()) {
             assert load.getKind() != Kind.Illegal;
             ReadNode memoryRead = createUnsafeRead(graph, load, null);
             // An unsafe read must not float outside its block otherwise
             // it may float above an explicit null check on its object.
-            memoryRead.setGuard(BeginNode.prevBegin(load));
+            memoryRead.setGuard(AbstractBeginNode.prevBegin(load));
             graph.replaceFixedWithFixed(load, memoryRead);
         }
     }

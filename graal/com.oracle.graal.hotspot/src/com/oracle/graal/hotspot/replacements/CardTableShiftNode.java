@@ -30,7 +30,7 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo
-public class CardTableShiftNode extends FloatingNode implements LIRLowerable {
+public final class CardTableShiftNode extends FloatingNode implements LIRLowerable {
 
     public CardTableShiftNode() {
         super(StampFactory.intValue());

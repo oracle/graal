@@ -33,7 +33,7 @@ import com.oracle.graal.nodes.spi.*;
  * {@link VirtualObjectNode}.
  */
 @NodeInfo
-public class AllocatedObjectNode extends FloatingNode implements Virtualizable, ArrayLengthProvider {
+public final class AllocatedObjectNode extends FloatingNode implements Virtualizable, ArrayLengthProvider {
 
     @Input VirtualObjectNode virtualObject;
     @Input(InputType.Extension) CommitAllocationNode commit;

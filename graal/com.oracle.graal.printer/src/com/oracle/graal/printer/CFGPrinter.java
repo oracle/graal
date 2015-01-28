@@ -266,9 +266,9 @@ class CFGPrinter extends CompilationPrinter {
         out.println("HIR");
         out.disableIndentation();
 
-        if (block.getBeginNode() instanceof MergeNode) {
+        if (block.getBeginNode() instanceof AbstractMergeNode) {
             // Currently phi functions are not in the schedule, so print them separately here.
-            for (ValueNode phi : ((MergeNode) block.getBeginNode()).phis()) {
+            for (ValueNode phi : ((AbstractMergeNode) block.getBeginNode()).phis()) {
                 printNode(phi, false);
             }
         }
@@ -344,7 +344,7 @@ class CFGPrinter extends CompilationPrinter {
         out.println("=== Succesors ===");
         printNamedNodes(node, node.successors().iterator(), "", "\n", null);
         out.println("=== Usages ===");
-        if (!node.usages().isEmpty()) {
+        if (!node.hasNoUsages()) {
             for (Node usage : node.usages()) {
                 out.print(nodeToString(usage)).print(" ");
             }
@@ -485,7 +485,7 @@ class CFGPrinter extends CompilationPrinter {
             return "-";
         }
         String prefix;
-        if (node instanceof BeginNode && (lir == null && schedule == null)) {
+        if (node instanceof AbstractBeginNode && (lir == null && schedule == null)) {
             prefix = "B";
         } else if (node instanceof ValueNode) {
             ValueNode value = (ValueNode) node;
@@ -620,15 +620,15 @@ class CFGPrinter extends CompilationPrinter {
         printedNodes = null;
     }
 
-    private void printScheduledBlock(Block block, List<ScheduledNode> nodesFor) {
+    private void printScheduledBlock(Block block, List<ValueNode> nodesFor) {
         printBlockProlog(block);
         begin("IR");
         out.println("HIR");
         out.disableIndentation();
 
-        if (block.getBeginNode() instanceof MergeNode) {
+        if (block.getBeginNode() instanceof AbstractMergeNode) {
             // Currently phi functions are not in the schedule, so print them separately here.
-            for (ValueNode phi : ((MergeNode) block.getBeginNode()).phis()) {
+            for (ValueNode phi : ((AbstractMergeNode) block.getBeginNode()).phis()) {
                 printNode(phi, false);
             }
         }

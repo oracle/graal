@@ -95,7 +95,7 @@ public class UnsafeArrayCopyNode extends ArrayRangeWriteNode implements Lowerabl
 
     @Override
     public void lower(LoweringTool tool) {
-        if (graph().getGuardsStage() == StructuredGraph.GuardsStage.AFTER_FSA) {
+        if (graph().getGuardsStage().areFrameStatesAtDeopts()) {
             UnsafeArrayCopySnippets.Templates templates = tool.getReplacements().getSnippetTemplateCache(UnsafeArrayCopySnippets.Templates.class);
             templates.lower(this, tool);
         }

@@ -35,7 +35,7 @@ import com.oracle.graal.nodes.spi.*;
  * The {@code NarrowNode} converts an integer to a narrower integer.
  */
 @NodeInfo
-public class NarrowNode extends IntegerConvertNode<Narrow, SignExtend> {
+public final class NarrowNode extends IntegerConvertNode<Narrow, SignExtend> {
 
     public NarrowNode(ValueNode input, int resultBits) {
         this(input, PrimitiveStamp.getBits(input.stamp()), resultBits);

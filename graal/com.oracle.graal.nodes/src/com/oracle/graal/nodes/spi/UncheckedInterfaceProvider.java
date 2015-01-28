@@ -34,7 +34,7 @@ public interface UncheckedInterfaceProvider {
     Stamp uncheckedStamp();
 
     static Stamp uncheckedOrNull(JavaType type, Stamp originalStamp) {
-        if (type instanceof ResolvedJavaType) {
+        if (type instanceof ResolvedJavaType && type.getKind() == Kind.Object) {
             Stamp unchecked = StampFactory.declaredTrusted((ResolvedJavaType) type);
             if (!unchecked.equals(originalStamp)) {
                 return unchecked;

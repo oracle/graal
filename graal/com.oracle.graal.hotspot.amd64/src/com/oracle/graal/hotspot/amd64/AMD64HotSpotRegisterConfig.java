@@ -52,7 +52,7 @@ public class AMD64HotSpotRegisterConfig implements RegisterConfig {
 
     private final boolean allAllocatableAreCallerSaved;
 
-    private final Map<PlatformKind, Register[]> categorized = new ConcurrentHashMap<>();
+    private final Map<PlatformKind.Key, Register[]> categorized = new ConcurrentHashMap<>();
 
     private final RegisterAttributes[] attributesMap;
 
@@ -66,8 +66,10 @@ public class AMD64HotSpotRegisterConfig implements RegisterConfig {
     }
 
     public Register[] getAllocatableRegisters(PlatformKind kind) {
-        if (categorized.containsKey(kind)) {
-            return categorized.get(kind);
+        PlatformKind.Key key = kind.getKey();
+        if (categorized.containsKey(key)) {
+            Register[] val = categorized.get(key);
+            return val;
         }
 
         ArrayList<Register> list = new ArrayList<>();
@@ -78,7 +80,7 @@ public class AMD64HotSpotRegisterConfig implements RegisterConfig {
         }
 
         Register[] ret = list.toArray(new Register[list.size()]);
-        categorized.put(kind, ret);
+        categorized.put(key, ret);
         return ret;
     }
 

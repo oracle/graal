@@ -98,7 +98,7 @@ public class InstanceOfSnippets implements Snippets {
         for (int i = 0; i < hints.length; i++) {
             KlassPointer hintHub = hints[i];
             boolean positive = hintIsPositive[i];
-            if (probability(NOT_FREQUENT_PROBABILITY, hintHub.equal(objectHub))) {
+            if (probability(LIKELY_PROBABILITY, hintHub.equal(objectHub))) {
                 hintsHit.inc();
                 return positive ? trueValue : falseValue;
             }

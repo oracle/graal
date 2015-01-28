@@ -36,7 +36,7 @@ import com.oracle.graal.nodes.spi.*;
  * intended primarily for snippets, so that they can define their fast and slow paths.
  */
 @NodeInfo
-public class BranchProbabilityNode extends FloatingNode implements Simplifiable, Lowerable {
+public final class BranchProbabilityNode extends FloatingNode implements Simplifiable, Lowerable {
 
     public static final double LIKELY_PROBABILITY = 0.6;
     public static final double NOT_LIKELY_PROBABILITY = 1 - LIKELY_PROBABILITY;
@@ -75,6 +75,12 @@ public class BranchProbabilityNode extends FloatingNode implements Simplifiable,
                 throw new GraalInternalError("A negative probability of " + probabilityValue + " is not allowed!");
             } else if (probabilityValue > 1.0) {
                 throw new GraalInternalError("A probability of more than 1.0 (" + probabilityValue + ") is not allowed!");
+            } else if (Double.isNaN(probabilityValue)) {
+                /*
+                 * We allow NaN if the node is in unreachable code that will eventually fall away,
+                 * or else an error will be thrown during lowering since we keep the node around.
+                 */
+                return;
             }
             boolean couldSet = false;
             for (IntegerEqualsNode node : this.usages().filter(IntegerEqualsNode.class)) {
@@ -107,7 +113,7 @@ public class BranchProbabilityNode extends FloatingNode implements Simplifiable,
     }
 
     private boolean isSubstitutionGraph() {
-        return usages().count() == 1 && usages().first() instanceof ReturnNode;
+        return getUsageCount() == 1 && usages().first() instanceof ReturnNode;
     }
 
     /**

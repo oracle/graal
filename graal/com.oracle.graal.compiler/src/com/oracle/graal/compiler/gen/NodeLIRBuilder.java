@@ -158,7 +158,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
      */
     public void setMatchResult(ValueNode x, Value operand) {
         assert operand.equals(ComplexMatchValue.INTERIOR_MATCH) || operand instanceof ComplexMatchValue;
-        assert operand instanceof ComplexMatchValue || x.usages().count() == 1 : "interior matches must be single user";
+        assert operand instanceof ComplexMatchValue || x.getUsageCount() == 1 : "interior matches must be single user";
         assert nodeOperands != null && nodeOperands.get(x) == null : "operand cannot be set twice";
         assert !(x instanceof VirtualObjectNode);
         nodeOperands.set(x, operand);
@@ -185,7 +185,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
         gen.append(op);
     }
 
-    public void doBlock(Block block, StructuredGraph graph, BlockMap<List<ScheduledNode>> blockMap) {
+    public void doBlock(Block block, StructuredGraph graph, BlockMap<List<ValueNode>> blockMap) {
         gen.doBlockStart(block);
 
         if (block == gen.getResult().getLIR().getControlFlowGraph().getStartBlock()) {
@@ -195,44 +195,41 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
             assert block.getPredecessorCount() > 0;
         }
 
-        List<ScheduledNode> nodes = blockMap.get(block);
+        List<ValueNode> nodes = blockMap.get(block);
 
         // Allow NodeLIRBuilder subclass to specialize code generation of any interesting groups
         // of instructions
         matchComplexExpressions(nodes);
 
         for (int i = 0; i < nodes.size(); i++) {
-            Node instr = nodes.get(i);
+            ValueNode valueNode = nodes.get(i);
             if (Options.TraceLIRGeneratorLevel.getValue() >= 3) {
-                TTY.println("LIRGen for " + instr);
+                TTY.println("LIRGen for " + valueNode);
             }
-            if (instr instanceof ValueNode) {
-                ValueNode valueNode = (ValueNode) instr;
-                Value operand = getOperand(valueNode);
-                if (operand == null) {
-                    if (!peephole(valueNode)) {
-                        try {
-                            doRoot((ValueNode) instr);
-                        } catch (GraalInternalError e) {
-                            throw GraalGraphInternalError.transformAndAddContext(e, instr);
-                        } catch (Throwable e) {
-                            throw new GraalGraphInternalError(e).addContext(instr);
-                        }
+            Value operand = getOperand(valueNode);
+            if (operand == null) {
+                if (!peephole(valueNode)) {
+                    try {
+                        doRoot(valueNode);
+                    } catch (GraalInternalError e) {
+                        throw GraalGraphInternalError.transformAndAddContext(e, valueNode);
+                    } catch (Throwable e) {
+                        throw new GraalGraphInternalError(e).addContext(valueNode);
                     }
-                } else if (ComplexMatchValue.INTERIOR_MATCH.equals(operand)) {
-                    // Doesn't need to be evaluated
-                    Debug.log("interior match for %s", valueNode);
-                } else if (operand instanceof ComplexMatchValue) {
-                    Debug.log("complex match for %s", valueNode);
-                    ComplexMatchValue match = (ComplexMatchValue) operand;
-                    operand = match.evaluate(this);
-                    if (operand != null) {
-                        setResult(valueNode, operand);
-                    }
-                } else {
-                    // There can be cases in which the result of an instruction is already set
-                    // before by other instructions.
                 }
+            } else if (ComplexMatchValue.INTERIOR_MATCH.equals(operand)) {
+                // Doesn't need to be evaluated
+                Debug.log("interior match for %s", valueNode);
+            } else if (operand instanceof ComplexMatchValue) {
+                Debug.log("complex match for %s", valueNode);
+                ComplexMatchValue match = (ComplexMatchValue) operand;
+                operand = match.evaluate(this);
+                if (operand != null) {
+                    setResult(valueNode, operand);
+                }
+            } else {
+                // There can be cases in which the result of an instruction is already set
+                // before by other instructions.
             }
         }
 
@@ -253,23 +250,19 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
         gen.doBlockEnd(block);
     }
 
-    protected void matchComplexExpressions(List<ScheduledNode> nodes) {
+    protected void matchComplexExpressions(List<ValueNode> nodes) {
         if (matchRules != null) {
             try (Scope s = Debug.scope("MatchComplexExpressions")) {
                 if (LogVerbose.getValue()) {
                     int i = 0;
-                    for (ScheduledNode node : nodes) {
-                        Debug.log("%d: (%s) %1S", i++, node.usages().count(), node);
+                    for (ValueNode node : nodes) {
+                        Debug.log("%d: (%s) %1S", i++, node.getUsageCount(), node);
                     }
                 }
 
                 // Match the nodes in backwards order to encourage longer matches.
                 for (int index = nodes.size() - 1; index >= 0; index--) {
-                    ScheduledNode snode = nodes.get(index);
-                    if (!(snode instanceof ValueNode)) {
-                        continue;
-                    }
-                    ValueNode node = (ValueNode) snode;
+                    ValueNode node = nodes.get(index);
                     if (getOperand(node) != null) {
                         continue;
                     }
@@ -338,7 +331,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
     }
 
     @Override
-    public void visitMerge(MergeNode x) {
+    public void visitMerge(AbstractMergeNode x) {
     }
 
     @Override
@@ -353,7 +346,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
     public void visitLoopEnd(LoopEndNode x) {
     }
 
-    private void moveToPhi(MergeNode merge, AbstractEndNode pred) {
+    private void moveToPhi(AbstractMergeNode merge, AbstractEndNode pred) {
         if (Options.TraceLIRGeneratorLevel.getValue() >= 1) {
             TTY.println("MOVE TO PHI from " + pred + " to " + merge);
         }
@@ -599,7 +592,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
     }
 
     @Override
-    public void emitOverflowCheckBranch(BeginNode overflowSuccessor, BeginNode next, Stamp stamp, double probability) {
+    public void emitOverflowCheckBranch(AbstractBeginNode overflowSuccessor, AbstractBeginNode next, Stamp stamp, double probability) {
         LIRKind cmpKind = getLIRGeneratorTool().getLIRKind(stamp);
         gen.emitOverflowCheckBranch(getLIRBlock(overflowSuccessor), getLIRBlock(next), cmpKind, probability);
     }

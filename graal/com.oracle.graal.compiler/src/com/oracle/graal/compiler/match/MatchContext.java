@@ -41,7 +41,7 @@ public class MatchContext {
 
     private final ValueNode root;
 
-    private final List<ScheduledNode> nodes;
+    private final List<ValueNode> nodes;
 
     private final MatchStatement rule;
 
@@ -65,7 +65,7 @@ public class MatchContext {
         }
     }
 
-    public MatchContext(NodeLIRBuilder builder, MatchStatement rule, int index, ValueNode node, List<ScheduledNode> nodes) {
+    public MatchContext(NodeLIRBuilder builder, MatchStatement rule, int index, ValueNode node, List<ValueNode> nodes) {
         this.builder = builder;
         this.rule = rule;
         this.root = node;
@@ -99,7 +99,7 @@ public class MatchContext {
     public Result validate() {
         // Ensure that there's no unsafe work in between these operations.
         for (int i = startIndex; i <= endIndex; i++) {
-            ScheduledNode node = nodes.get(i);
+            ValueNode node = nodes.get(i);
             if (node instanceof VirtualObjectNode || node instanceof FloatingNode) {
                 // The order of evaluation of these nodes controlled by data dependence so they
                 // don't interfere with this match.
@@ -108,8 +108,8 @@ public class MatchContext {
                 if (LogVerbose.getValue()) {
                     Debug.log("unexpected node %s", node);
                     for (int j = startIndex; j <= endIndex; j++) {
-                        ScheduledNode theNode = nodes.get(j);
-                        Debug.log("%s(%s) %1s", (consumed != null && consumed.contains(theNode) || theNode == root) ? "*" : " ", theNode.usages().count(), theNode);
+                        ValueNode theNode = nodes.get(j);
+                        Debug.log("%s(%s) %1s", (consumed != null && consumed.contains(theNode) || theNode == root) ? "*" : " ", theNode.getUsageCount(), theNode);
                     }
                 }
                 return Result.notSafe(node, rule.getPattern());
@@ -147,7 +147,7 @@ public class MatchContext {
      * @return Result.OK if the node can be safely consumed.
      */
     public Result consume(ValueNode node) {
-        assert node.usages().count() <= 1 : "should have already been checked";
+        assert node.getUsageCount() <= 1 : "should have already been checked";
 
         // Check NOT_IN_BLOCK first since that usually implies ALREADY_USED
         int index = nodes.indexOf(node);

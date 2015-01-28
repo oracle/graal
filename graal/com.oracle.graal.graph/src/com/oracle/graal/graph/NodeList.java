@@ -139,7 +139,10 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
         assert node == null || !node.isDeleted();
         self.incModCount();
         incModCount();
-        if (size == nodes.length) {
+        int length = nodes.length;
+        if (length == 0) {
+            nodes = new Node[2];
+        } else if (size == length) {
             nodes = Arrays.copyOf(nodes, nodes.length * 2 + 1);
         }
         nodes[size++] = node;
@@ -150,8 +153,13 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
     @Override
     @SuppressWarnings("unchecked")
     public T get(int index) {
-        assert index < size() : index + " < " + size();
+        assert assertInRange(index);
         return (T) nodes[index];
+    }
+
+    private boolean assertInRange(int index) {
+        assert index < size() : index + " < " + size();
+        return true;
     }
 
     public T last() {
@@ -163,7 +171,7 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
     public T set(int index, Node node) {
         incModCount();
         T oldValue = (T) nodes[index];
-        assert index < size();
+        assert assertInRange(index);
         update((T) nodes[index], (T) node);
         nodes[index] = node;
         return oldValue;

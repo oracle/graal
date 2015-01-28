@@ -32,7 +32,7 @@ import com.oracle.graal.nodeinfo.*;
  * instructions.
  */
 @NodeInfo
-public abstract class ValueNode extends ScheduledNode implements KindProvider {
+public abstract class ValueNode extends com.oracle.graal.graph.Node implements KindProvider {
 
     /**
      * The kind of this value. This is {@link Kind#Void} for instructions that produce no value.
@@ -48,8 +48,13 @@ public abstract class ValueNode extends ScheduledNode implements KindProvider {
         return stamp;
     }
 
-    public void setStamp(Stamp stamp) {
+    public final void setStamp(Stamp stamp) {
         this.stamp = stamp;
+    }
+
+    @Override
+    public final StructuredGraph graph() {
+        return (StructuredGraph) super.graph();
     }
 
     /**

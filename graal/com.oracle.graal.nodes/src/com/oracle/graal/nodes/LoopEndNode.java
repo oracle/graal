@@ -44,7 +44,7 @@ public class LoopEndNode extends AbstractEndNode {
     }
 
     @Override
-    public MergeNode merge() {
+    public AbstractMergeNode merge() {
         return loopBegin();
     }
 
@@ -74,14 +74,14 @@ public class LoopEndNode extends AbstractEndNode {
     @Override
     public boolean verify() {
         assertTrue(loopBegin != null, "must have a loop begin");
-        assertTrue(usages().isEmpty(), "LoopEnds can not be used");
+        assertTrue(hasNoUsages(), "LoopEnds can not be used");
         return super.verify();
     }
 
     /**
      * Returns the 0-based index of this loop end. This is <b>not</b> the index into {@link PhiNode}
-     * values at the loop begin. Use {@link MergeNode#phiPredecessorIndex(AbstractEndNode)} for this
-     * purpose.
+     * values at the loop begin. Use {@link AbstractMergeNode#phiPredecessorIndex(AbstractEndNode)}
+     * for this purpose.
      *
      * @return The 0-based index of this loop end.
      */

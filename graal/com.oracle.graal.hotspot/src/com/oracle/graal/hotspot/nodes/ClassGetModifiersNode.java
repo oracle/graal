@@ -36,7 +36,7 @@ import com.oracle.graal.replacements.nodes.*;
  * @see ClassSubstitutions#getModifiers(Class)
  */
 @NodeInfo
-public class ClassGetModifiersNode extends MacroNode implements Canonicalizable {
+public final class ClassGetModifiersNode extends MacroNode implements Canonicalizable {
 
     public ClassGetModifiersNode(Invoke invoke) {
         super(invoke);

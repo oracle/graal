@@ -124,6 +124,9 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
             aliases.set(node, null);
             if (node instanceof LoopExitNode) {
                 LoopExitNode loopExit = (LoopExitNode) node;
+                for (ProxyNode proxy : loopExit.proxies()) {
+                    changed |= processNode(proxy, state, effects, lastFixedNode);
+                }
                 processLoopExit(loopExit, loopEntryStates.get(loopExit.loopBegin()), state, blockEffects.get(block));
             }
             changed |= processNode(node, state, effects, lastFixedNode);
@@ -174,9 +177,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
 
                 assert info.exitStates.size() == loop.getExits().size();
                 loopEntryStates.put((LoopBeginNode) loop.getHeader().getBeginNode(), loopEntryState);
-                for (int i = 0; i < loop.getExits().size(); i++) {
-                    assert info.exitStates.get(i) != null : "no loop exit state at " + loop.getExits().get(i) + " / " + loop.getHeader();
-                }
+                assert assertExitStatesNonEmpty(loop, info);
 
                 return info.exitStates;
             } else {
@@ -189,6 +190,13 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
         throw new GraalInternalError("too many iterations at %s", loop);
     }
 
+    private boolean assertExitStatesNonEmpty(Loop<Block> loop, LoopInfo<BlockT> info) {
+        for (int i = 0; i < loop.getExits().size(); i++) {
+            assert info.exitStates.get(i) != null : "no loop exit state at " + loop.getExits().get(i) + " / " + loop.getHeader();
+        }
+        return true;
+    }
+
     protected abstract void processLoopExit(LoopExitNode exitNode, BlockT initialState, BlockT exitState, GraphEffectList effects);
 
     protected abstract MergeProcessor createMergeProcessor(Block merge);
@@ -196,7 +204,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
     protected class MergeProcessor {
 
         protected final Block mergeBlock;
-        protected final MergeNode merge;
+        protected final AbstractMergeNode merge;
 
         protected final GraphEffectList mergeEffects;
         protected final GraphEffectList afterMergeEffects;
@@ -204,7 +212,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
 
         public MergeProcessor(Block mergeBlock) {
             this.mergeBlock = mergeBlock;
-            this.merge = (MergeNode) mergeBlock.getBeginNode();
+            this.merge = (AbstractMergeNode) mergeBlock.getBeginNode();
             this.mergeEffects = new GraphEffectList();
             this.afterMergeEffects = new GraphEffectList();
         }

@@ -29,7 +29,6 @@ import java.util.*;
 import com.oracle.graal.alloc.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.bytecode.*;
 import com.oracle.graal.compiler.alloc.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
@@ -74,17 +73,17 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, Baseli
     }
 
     public BaselineBytecodeParser(MetaAccessProvider metaAccess, ResolvedJavaMethod method, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts,
-                    BaselineFrameStateBuilder frameState, BytecodeStream stream, ProfilingInfo profilingInfo, ConstantPool constantPool, int entryBCI, Backend backend) {
+                    BaselineFrameStateBuilder frameState, Backend backend) {
 
-        super(metaAccess, method, graphBuilderConfig, optimisticOpts, frameState, stream, profilingInfo, constantPool, entryBCI);
+        super(metaAccess, method, graphBuilderConfig, optimisticOpts);
         this.backend = backend;
+        this.setCurrentFrameState(frameState);
     }
 
     public LIRGenerationResult getLIRGenerationResult() {
         return lirGenRes;
     }
 
-    @Override
     protected void build() {
         if (PrintProfilingInformation.getValue()) {
             TTY.println("Profiling info for " + method.format("%H.%n(%p)"));
@@ -715,7 +714,6 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, Baseli
         resolver.dispose();
     }
 
-    @Override
     protected void processBlock(BciBlock block) {
         frameState = (BaselineFrameStateBuilder) block.entryState;
         setCurrentFrameState(frameState);

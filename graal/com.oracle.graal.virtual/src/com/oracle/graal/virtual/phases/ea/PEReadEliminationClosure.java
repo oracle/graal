@@ -50,62 +50,78 @@ public class PEReadEliminationClosure extends PartialEscapeClosure<PEReadElimina
 
     @Override
     protected boolean processNode(Node node, PEReadEliminationBlockState state, GraphEffectList effects, FixedWithNextNode lastFixedNode) {
-        boolean deleted = super.processNode(node, state, effects, lastFixedNode);
-        if (!deleted) {
-            if (node instanceof LoadFieldNode) {
-                LoadFieldNode load = (LoadFieldNode) node;
-                if (!load.isVolatile()) {
-                    ValueNode object = GraphUtil.unproxify(load.object());
-                    ValueNode cachedValue = state.getReadCache(object, load.field(), this);
-                    if (cachedValue != null) {
-                        effects.replaceAtUsages(load, cachedValue);
-                        addScalarAlias(load, cachedValue);
-                        deleted = true;
-                    } else {
-                        state.addReadCache(object, load.field(), load, this);
-                    }
-                } else {
-                    processIdentity(state, ANY_LOCATION);
-                }
-            } else if (node instanceof StoreFieldNode) {
-                StoreFieldNode store = (StoreFieldNode) node;
-                if (!store.isVolatile()) {
-                    ValueNode object = GraphUtil.unproxify(store.object());
-                    ValueNode cachedValue = state.getReadCache(object, store.field(), this);
+        if (super.processNode(node, state, effects, lastFixedNode)) {
+            return true;
+        }
 
-                    ValueNode value = getScalarAlias(store.value());
-                    if (GraphUtil.unproxify(value) == GraphUtil.unproxify(cachedValue)) {
-                        effects.deleteFixedNode(store);
-                        deleted = true;
-                    }
-                    state.killReadCache(store.field());
-                    state.addReadCache(object, store.field(), value, this);
-                } else {
-                    processIdentity(state, ANY_LOCATION);
-                }
-            } else if (node instanceof ArrayLengthNode) {
-                ArrayLengthNode length = (ArrayLengthNode) node;
-                ValueNode array = GraphUtil.unproxify(length.array());
-                ValueNode cachedValue = state.getReadCache(array, ARRAY_LENGTH_LOCATION, this);
-                if (cachedValue != null) {
-                    effects.replaceAtUsages(length, cachedValue);
-                    addScalarAlias(length, cachedValue);
-                    deleted = true;
-                } else {
-                    state.addReadCache(array, ARRAY_LENGTH_LOCATION, length, this);
-                }
-            } else if (node instanceof MemoryCheckpoint.Single) {
-                METRIC_MEMORYCHECKPOINT.increment();
-                LocationIdentity identity = ((MemoryCheckpoint.Single) node).getLocationIdentity();
+        if (node instanceof LoadFieldNode) {
+            return processLoadField((LoadFieldNode) node, state, effects);
+        } else if (node instanceof StoreFieldNode) {
+            return processStoreField((StoreFieldNode) node, state, effects);
+        } else if (node instanceof ArrayLengthNode) {
+            return processArrayLength((ArrayLengthNode) node, state, effects);
+        } else if (node instanceof MemoryCheckpoint.Single) {
+            METRIC_MEMORYCHECKPOINT.increment();
+            LocationIdentity identity = ((MemoryCheckpoint.Single) node).getLocationIdentity();
+            processIdentity(state, identity);
+        } else if (node instanceof MemoryCheckpoint.Multi) {
+            METRIC_MEMORYCHECKPOINT.increment();
+            for (LocationIdentity identity : ((MemoryCheckpoint.Multi) node).getLocationIdentities()) {
                 processIdentity(state, identity);
-            } else if (node instanceof MemoryCheckpoint.Multi) {
-                METRIC_MEMORYCHECKPOINT.increment();
-                for (LocationIdentity identity : ((MemoryCheckpoint.Multi) node).getLocationIdentities()) {
-                    processIdentity(state, identity);
-                }
             }
         }
-        return deleted;
+
+        return false;
+    }
+
+    private boolean processArrayLength(ArrayLengthNode length, PEReadEliminationBlockState state, GraphEffectList effects) {
+        ValueNode array = GraphUtil.unproxify(length.array());
+        ValueNode cachedValue = state.getReadCache(array, ARRAY_LENGTH_LOCATION, this);
+        if (cachedValue != null) {
+            effects.replaceAtUsages(length, cachedValue);
+            addScalarAlias(length, cachedValue);
+            return true;
+        } else {
+            state.addReadCache(array, ARRAY_LENGTH_LOCATION, length, this);
+        }
+        return false;
+    }
+
+    private boolean processStoreField(StoreFieldNode store, PEReadEliminationBlockState state, GraphEffectList effects) {
+        if (!store.isVolatile()) {
+            ValueNode object = GraphUtil.unproxify(store.object());
+            ValueNode cachedValue = state.getReadCache(object, store.field(), this);
+
+            ValueNode value = getScalarAlias(store.value());
+            boolean result = false;
+            if (GraphUtil.unproxify(value) == GraphUtil.unproxify(cachedValue)) {
+                effects.deleteFixedNode(store);
+                result = true;
+            }
+            state.killReadCache(store.field());
+            state.addReadCache(object, store.field(), value, this);
+            return result;
+        } else {
+            processIdentity(state, ANY_LOCATION);
+        }
+        return false;
+    }
+
+    private boolean processLoadField(LoadFieldNode load, PEReadEliminationBlockState state, GraphEffectList effects) {
+        if (!load.isVolatile()) {
+            ValueNode object = GraphUtil.unproxify(load.object());
+            ValueNode cachedValue = state.getReadCache(object, load.field(), this);
+            if (cachedValue != null) {
+                effects.replaceAtUsages(load, cachedValue);
+                addScalarAlias(load, cachedValue);
+                return true;
+            } else {
+                state.addReadCache(object, load.field(), load, this);
+            }
+        } else {
+            processIdentity(state, ANY_LOCATION);
+        }
+        return false;
     }
 
     private static void processIdentity(PEReadEliminationBlockState state, LocationIdentity identity) {
@@ -174,7 +190,7 @@ public class PEReadEliminationClosure extends PartialEscapeClosure<PEReadElimina
                     }
                 }
                 if (phi) {
-                    PhiNode phiNode = getCachedPhi(entry, value.stamp().unrestricted());
+                    PhiNode phiNode = getPhi(entry, value.stamp().unrestricted());
                     mergeEffects.addFloatingNode(phiNode, "mergeReadCache");
                     for (int i = 0; i < states.size(); i++) {
                         afterMergeEffects.addPhiInput(phiNode, states.get(i).getReadCache(key.object, key.identity, PEReadEliminationClosure.this));
@@ -206,7 +222,7 @@ public class PEReadEliminationClosure extends PartialEscapeClosure<PEReadElimina
                 values[i] = value;
             }
 
-            PhiNode phiNode = getCachedPhi(new ReadCacheEntry(identity, phi), values[0].stamp().unrestricted());
+            PhiNode phiNode = getPhi(new ReadCacheEntry(identity, phi), values[0].stamp().unrestricted());
             mergeEffects.addFloatingNode(phiNode, "mergeReadCachePhi");
             for (int i = 0; i < values.length; i++) {
                 afterMergeEffects.addPhiInput(phiNode, values[i]);

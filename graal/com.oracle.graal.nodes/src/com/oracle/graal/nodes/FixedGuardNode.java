@@ -30,7 +30,7 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo(nameTemplate = "FixedGuard(!={p#negated}) {p#reason/s}", allowedUsageTypes = {InputType.Guard})
-public class FixedGuardNode extends AbstractFixedGuardNode implements Lowerable, IterableNodeType {
+public final class FixedGuardNode extends AbstractFixedGuardNode implements Lowerable, IterableNodeType {
 
     public FixedGuardNode(LogicNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action) {
         this(condition, deoptReason, action, false);
@@ -60,7 +60,7 @@ public class FixedGuardNode extends AbstractFixedGuardNode implements Lowerable,
             graph().removeFixed(this);
         } else if (condition() instanceof ShortCircuitOrNode) {
             ShortCircuitOrNode shortCircuitOr = (ShortCircuitOrNode) condition();
-            if (isNegated() && usages().isEmpty()) {
+            if (isNegated() && hasNoUsages()) {
                 graph().addAfterFixed(this, graph().add(new FixedGuardNode(shortCircuitOr.getY(), getReason(), getAction(), !shortCircuitOr.isYNegated())));
                 graph().replaceFixedWithFixed(this, graph().add(new FixedGuardNode(shortCircuitOr.getX(), getReason(), getAction(), !shortCircuitOr.isXNegated())));
             }
@@ -69,7 +69,14 @@ public class FixedGuardNode extends AbstractFixedGuardNode implements Lowerable,
 
     @Override
     public void lower(LoweringTool tool) {
-        if (graph().getGuardsStage() == StructuredGraph.GuardsStage.FLOATING_GUARDS) {
+        /*
+         * Don't allow guards with action None to float. In cases where 2 guards are testing
+         * equivalent conditions they might be lowered at the same location. If the guard with the
+         * None action is lowered before the the other guard then the code will be stuck repeatedly
+         * deoptimizing without invalidating the code. Conditional elimination will eliminate the
+         * guard if it's truly redundant in this case.
+         */
+        if (graph().getGuardsStage().allowsFloatingGuards() && getAction() != DeoptimizationAction.None) {
             ValueNode guard = tool.createGuard(this, condition(), getReason(), getAction(), isNegated()).asNode();
             this.replaceAtUsages(guard);
             ValueAnchorNode newAnchor = graph().add(new ValueAnchorNode(guard.asNode()));

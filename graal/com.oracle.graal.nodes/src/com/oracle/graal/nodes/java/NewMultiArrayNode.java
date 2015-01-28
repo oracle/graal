@@ -33,7 +33,7 @@ import com.oracle.graal.nodes.spi.*;
  * The {@code NewMultiArrayNode} represents an allocation of a multi-dimensional object array.
  */
 @NodeInfo
-public class NewMultiArrayNode extends DeoptimizingFixedWithNextNode implements Lowerable, ArrayLengthProvider {
+public final class NewMultiArrayNode extends DeoptimizingFixedWithNextNode implements Lowerable, ArrayLengthProvider {
 
     @Input protected NodeInputList<ValueNode> dimensions;
     protected final ResolvedJavaType type;

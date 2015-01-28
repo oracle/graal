@@ -142,21 +142,21 @@ public abstract class GraalCompilerTest extends GraalTest {
 
             @Override
             protected void run(StructuredGraph graph) {
-                assert checkHighTierGraph(graph);
+                assert checkHighTierGraph(graph) : "failed HighTier graph check";
             }
         });
         ret.getMidTier().appendPhase(new Phase("CheckGraphPhase") {
 
             @Override
             protected void run(StructuredGraph graph) {
-                assert checkMidTierGraph(graph);
+                assert checkMidTierGraph(graph) : "failed MidTier graph check";
             }
         });
         ret.getLowTier().appendPhase(new Phase("CheckGraphPhase") {
 
             @Override
             protected void run(StructuredGraph graph) {
-                assert checkLowTierGraph(graph);
+                assert checkLowTierGraph(graph) : "failed LowTier graph check";
             }
         });
         return ret;
@@ -217,7 +217,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     protected int countUnusedConstants(StructuredGraph graph) {
         int total = 0;
         for (ConstantNode node : getConstantNodes(graph)) {
-            if (node.usages().isEmpty()) {
+            if (node.hasNoUsages()) {
                 total++;
             }
         }
@@ -319,7 +319,7 @@ public abstract class GraalCompilerTest extends GraalTest {
                             canonicalId.set(node, id);
                         }
                         String name = node instanceof ConstantNode && checkConstants ? node.toString(Verbosity.Name) : node.getClass().getSimpleName();
-                        result.append("  " + id + "|" + name + (excludeVirtual ? "\n" : "    (" + node.usages().count() + ")\n"));
+                        result.append("  " + id + "|" + name + (excludeVirtual ? "\n" : "    (" + node.getUsageCount() + ")\n"));
                     }
                 }
             }

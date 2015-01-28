@@ -41,13 +41,13 @@ public abstract class AbstractEndNode extends FixedNode implements IterableNodeT
         gen.visitEndNode(this);
     }
 
-    public MergeNode merge() {
-        return (MergeNode) usages().first();
+    public AbstractMergeNode merge() {
+        return (AbstractMergeNode) usages().first();
     }
 
     @Override
     public boolean verify() {
-        assertTrue(usages().count() <= 1, "at most one usage");
+        assertTrue(getUsageCount() <= 1, "at most one usage");
         return super.verify();
     }
 

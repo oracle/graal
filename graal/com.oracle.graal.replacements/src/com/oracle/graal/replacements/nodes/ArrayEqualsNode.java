@@ -36,7 +36,7 @@ import com.oracle.graal.nodes.util.*;
  * Compares two arrays with the same length.
  */
 @NodeInfo
-public class ArrayEqualsNode extends FixedWithNextNode implements LIRLowerable, Canonicalizable, Virtualizable, MemoryAccess {
+public final class ArrayEqualsNode extends FixedWithNextNode implements LIRLowerable, Canonicalizable, Virtualizable, MemoryAccess {
 
     /** {@link Kind} of the arrays to compare. */
     protected final Kind kind;
@@ -63,7 +63,7 @@ public class ArrayEqualsNode extends FixedWithNextNode implements LIRLowerable, 
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (usages().isEmpty()) {
+        if (hasNoUsages()) {
             return null;
         }
         if (GraphUtil.unproxify(array1) == GraphUtil.unproxify(array2)) {

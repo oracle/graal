@@ -50,7 +50,7 @@ public class ValueAnchorCleanupPhase extends Phase {
         }
 
         @Override
-        public boolean merge(MergeNode merge, List<State> withStates) {
+        public boolean merge(AbstractMergeNode merge, List<State> withStates) {
             for (State other : withStates) {
                 anchoredValues.retainAll(other.anchoredValues);
             }
@@ -81,7 +81,7 @@ public class ValueAnchorCleanupPhase extends Phase {
                         state.anchoredValues.add(anchored);
                     }
                 }
-                if (anchor.getAnchoredNode() == null && anchor.usages().isEmpty()) {
+                if (anchor.getAnchoredNode() == null && anchor.hasNoUsages()) {
                     node.graph().removeFixed(anchor);
                 }
             }

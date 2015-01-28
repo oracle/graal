@@ -36,7 +36,7 @@ import com.oracle.graal.replacements.nodes.*;
  * @see ClassSubstitutions#isAssignableFrom(Class, Class)
  */
 @NodeInfo
-public class ClassIsAssignableFromNode extends MacroStateSplitNode implements Canonicalizable {
+public final class ClassIsAssignableFromNode extends MacroStateSplitNode implements Canonicalizable {
     public ClassIsAssignableFromNode(Invoke invoke) {
         super(invoke);
     }

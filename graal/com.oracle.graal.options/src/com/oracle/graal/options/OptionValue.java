@@ -46,7 +46,7 @@ public class OptionValue<T> {
      * </pre>
      */
     public static OverrideScope override(OptionValue<?> option, Object value) {
-        OverrideScope current = overrideScopes.get();
+        OverrideScope current = getOverrideScope();
         if (current == null) {
             if (!value.equals(option.getValue())) {
                 return new SingleOverrideScope(option, value);
@@ -76,7 +76,7 @@ public class OptionValue<T> {
      * </pre>
      */
     public static OverrideScope override(Map<OptionValue<?>, Object> overrides) {
-        OverrideScope current = overrideScopes.get();
+        OverrideScope current = getOverrideScope();
         if (current == null && overrides.size() == 1) {
             Entry<OptionValue<?>, Object> single = overrides.entrySet().iterator().next();
             OptionValue<?> option = single.getKey();
@@ -106,7 +106,7 @@ public class OptionValue<T> {
      * @param overrides overrides in the form {@code [option1, override1, option2, override2, ...]}
      */
     public static OverrideScope override(Object... overrides) {
-        OverrideScope current = overrideScopes.get();
+        OverrideScope current = getOverrideScope();
         if (current == null && overrides.length == 2) {
             OptionValue<?> option = (OptionValue<?>) overrides[0];
             Object overrideValue = overrides[1];
@@ -128,7 +128,15 @@ public class OptionValue<T> {
         return new MultipleOverridesScope(current, map);
     }
 
-    static final ThreadLocal<OverrideScope> overrideScopes = new ThreadLocal<>();
+    private static final ThreadLocal<OverrideScope> overrideScopeTL = new ThreadLocal<>();
+
+    protected static OverrideScope getOverrideScope() {
+        return overrideScopeTL.get();
+    }
+
+    protected static void setOverrideScope(OverrideScope overrideScope) {
+        overrideScopeTL.set(overrideScope);
+    }
 
     private T initialValue;
 
@@ -227,7 +235,7 @@ public class OptionValue<T> {
      */
     public boolean hasInitialValue() {
         if (!(this instanceof StableOptionValue)) {
-            OverrideScope overrideScope = overrideScopes.get();
+            OverrideScope overrideScope = getOverrideScope();
             if (overrideScope != null) {
                 T override = overrideScope.getOverride(this);
                 if (override != null) {
@@ -246,7 +254,7 @@ public class OptionValue<T> {
             reads++;
         }
         if (!(this instanceof StableOptionValue)) {
-            OverrideScope overrideScope = overrideScopes.get();
+            OverrideScope overrideScope = getOverrideScope();
             if (overrideScope != null) {
                 T override = overrideScope.getOverride(this);
                 if (override != null) {
@@ -272,7 +280,7 @@ public class OptionValue<T> {
     public Collection<T> getValues(Collection<T> c) {
         Collection<T> values = c == null ? new ArrayList<>() : c;
         if (!(this instanceof StableOptionValue)) {
-            OverrideScope overrideScope = overrideScopes.get();
+            OverrideScope overrideScope = getOverrideScope();
             if (overrideScope != null) {
                 overrideScope.getOverrides(this, (Collection<Object>) values);
             }
@@ -334,7 +342,7 @@ public class OptionValue<T> {
             }
             this.option = option;
             this.value = value;
-            overrideScopes.set(this);
+            setOverrideScope(this);
         }
 
         @Override
@@ -360,7 +368,7 @@ public class OptionValue<T> {
 
         @Override
         public void close() {
-            overrideScopes.set(null);
+            setOverrideScope(null);
         }
     }
 
@@ -381,7 +389,7 @@ public class OptionValue<T> {
                 this.overrides.put(option, value);
             }
             if (!overrides.isEmpty()) {
-                overrideScopes.set(this);
+                setOverrideScope(this);
             }
         }
 
@@ -405,7 +413,7 @@ public class OptionValue<T> {
                 }
             }
             if (!this.overrides.isEmpty()) {
-                overrideScopes.set(this);
+                setOverrideScope(this);
             }
         }
 
@@ -437,7 +445,7 @@ public class OptionValue<T> {
         @Override
         public void close() {
             if (!overrides.isEmpty()) {
-                overrideScopes.set(parent);
+                setOverrideScope(parent);
             }
         }
     }

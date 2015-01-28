@@ -59,8 +59,12 @@ public abstract class VirtualObjectNode extends ValueNode implements LIRLowerabl
     /**
      * If the given index denotes an entry in this virtual object, the index of this entry is
      * returned. If no such entry can be found, this method returns -1.
+     *
+     * @param constantOffset offset, where the value is placed.
+     * @param expectedEntryKind Specifies which type is expected at this offset (Is important when
+     *            doing implicit casts, especially on big endian systems.
      */
-    public abstract int entryIndexForOffset(long constantOffset);
+    public abstract int entryIndexForOffset(long constantOffset, Kind expectedEntryKind);
 
     /**
      * Returns the {@link Kind} of the entry at the given index.

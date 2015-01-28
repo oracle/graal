@@ -28,7 +28,7 @@ import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 
 @NodeInfo
-public class CompilationConstantNode extends NeverPartOfCompilationNode implements Canonicalizable {
+public final class CompilationConstantNode extends NeverPartOfCompilationNode implements Canonicalizable {
 
     public CompilationConstantNode(Invoke invoke) {
         super(invoke, "The value could not be reduced to a compile time constant.");

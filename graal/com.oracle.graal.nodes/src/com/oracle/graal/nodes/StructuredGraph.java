@@ -65,7 +65,19 @@ public class StructuredGraph extends Graph {
          * introduced any more. {@link FrameState} nodes are now associated with
          * {@link DeoptimizingNode} nodes.
          */
-        AFTER_FSA
+        AFTER_FSA;
+
+        public boolean allowsFloatingGuards() {
+            return this == FLOATING_GUARDS;
+        }
+
+        public boolean areFrameStatesAtDeopts() {
+            return this == AFTER_FSA;
+        }
+
+        public boolean areFrameStatesAtSideEffects() {
+            return !this.areFrameStatesAtDeopts();
+        }
     }
 
     public static final int INVOCATION_ENTRY_BCI = -1;
@@ -82,14 +94,16 @@ public class StructuredGraph extends Graph {
     private boolean hasValueProxies = true;
 
     /**
-     * Creates a new Graph containing a single {@link BeginNode} as the {@link #start() start} node.
+     * Creates a new Graph containing a single {@link AbstractBeginNode} as the {@link #start()
+     * start} node.
      */
     public StructuredGraph() {
         this(null, null);
     }
 
     /**
-     * Creates a new Graph containing a single {@link BeginNode} as the {@link #start() start} node.
+     * Creates a new Graph containing a single {@link AbstractBeginNode} as the {@link #start()
+     * start} node.
      */
     public StructuredGraph(String name, ResolvedJavaMethod method) {
         this(name, method, uniqueGraphIds.incrementAndGet(), INVOCATION_ENTRY_BCI);
@@ -273,10 +287,10 @@ public class StructuredGraph extends Graph {
      */
     public void removeFixed(FixedWithNextNode node) {
         assert node != null;
-        if (node instanceof BeginNode) {
-            ((BeginNode) node).prepareDelete();
+        if (node instanceof AbstractBeginNode) {
+            ((AbstractBeginNode) node).prepareDelete();
         }
-        assert node.usages().isEmpty() : node + " " + node.usages();
+        assert node.hasNoUsages() : node + " " + node.usages();
         GraphUtil.unlinkFixedNode(node);
         node.safeDelete();
     }
@@ -309,22 +323,22 @@ public class StructuredGraph extends Graph {
         node.safeDelete();
     }
 
-    public void removeSplit(ControlSplitNode node, BeginNode survivingSuccessor) {
+    public void removeSplit(ControlSplitNode node, AbstractBeginNode survivingSuccessor) {
         assert node != null;
-        assert node.usages().isEmpty();
+        assert node.hasNoUsages();
         assert survivingSuccessor != null;
         node.clearSuccessors();
         node.replaceAtPredecessor(survivingSuccessor);
         node.safeDelete();
     }
 
-    public void removeSplitPropagate(ControlSplitNode node, BeginNode survivingSuccessor) {
+    public void removeSplitPropagate(ControlSplitNode node, AbstractBeginNode survivingSuccessor) {
         removeSplitPropagate(node, survivingSuccessor, null);
     }
 
-    public void removeSplitPropagate(ControlSplitNode node, BeginNode survivingSuccessor, SimplifierTool tool) {
+    public void removeSplitPropagate(ControlSplitNode node, AbstractBeginNode survivingSuccessor, SimplifierTool tool) {
         assert node != null;
-        assert node.usages().isEmpty();
+        assert node.hasNoUsages();
         assert survivingSuccessor != null;
         List<Node> snapshot = node.successors().snapshot();
         node.clearSuccessors();
@@ -339,7 +353,7 @@ public class StructuredGraph extends Graph {
         }
     }
 
-    public void replaceSplit(ControlSplitNode node, Node replacement, BeginNode survivingSuccessor) {
+    public void replaceSplit(ControlSplitNode node, Node replacement, AbstractBeginNode survivingSuccessor) {
         if (replacement instanceof FixedWithNextNode) {
             replaceSplitWithFixed(node, (FixedWithNextNode) replacement, survivingSuccessor);
         } else {
@@ -349,7 +363,7 @@ public class StructuredGraph extends Graph {
         }
     }
 
-    public void replaceSplitWithFixed(ControlSplitNode node, FixedWithNextNode replacement, BeginNode survivingSuccessor) {
+    public void replaceSplitWithFixed(ControlSplitNode node, FixedWithNextNode replacement, AbstractBeginNode survivingSuccessor) {
         assert node != null && replacement != null && node.isAlive() && replacement.isAlive() : "cannot replace " + node + " with " + replacement;
         assert survivingSuccessor != null;
         node.clearSuccessors();
@@ -357,7 +371,7 @@ public class StructuredGraph extends Graph {
         node.replaceAndDelete(replacement);
     }
 
-    public void replaceSplitWithFloating(ControlSplitNode node, FloatingNode replacement, BeginNode survivingSuccessor) {
+    public void replaceSplitWithFloating(ControlSplitNode node, FloatingNode replacement, AbstractBeginNode survivingSuccessor) {
         assert node != null && replacement != null && node.isAlive() && replacement.isAlive() : "cannot replace " + node + " with " + replacement;
         assert survivingSuccessor != null;
         node.clearSuccessors();
@@ -392,12 +406,12 @@ public class StructuredGraph extends Graph {
         if (begin.forwardEndCount() == 1) { // bypass merge and remove
             reduceTrivialMerge(begin);
         } else { // convert to merge
-            MergeNode merge = this.add(new MergeNode());
+            AbstractMergeNode merge = this.add(new MergeNode());
             this.replaceFixedWithFixed(begin, merge);
         }
     }
 
-    public void reduceTrivialMerge(MergeNode merge) {
+    public void reduceTrivialMerge(AbstractMergeNode merge) {
         assert merge.forwardEndCount() == 1;
         assert !(merge instanceof LoopBeginNode) || ((LoopBeginNode) merge).loopEnds().isEmpty();
         for (PhiNode phi : merge.phis().snapshot()) {
@@ -416,7 +430,7 @@ public class StructuredGraph extends Graph {
         // evacuateGuards
         merge.prepareDelete((FixedNode) singleEnd.predecessor());
         merge.safeDelete();
-        if (stateAfter != null && stateAfter.isAlive() && stateAfter.usages().isEmpty()) {
+        if (stateAfter != null && stateAfter.isAlive() && stateAfter.hasNoUsages()) {
             GraphUtil.killWithUnusedFloatingInputs(stateAfter);
         }
         if (sux == null) {

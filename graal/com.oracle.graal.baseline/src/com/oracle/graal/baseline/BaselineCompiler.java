@@ -51,15 +51,12 @@ public class BaselineCompiler {
 
     public CompilationResult generate(ResolvedJavaMethod method, int entryBCI, Backend backend, CompilationResult compilationResult, ResolvedJavaMethod installedCodeOwner,
                     CompilationResultBuilderFactory factory, OptimisticOptimizations optimisticOpts) {
-        ProfilingInfo profilingInfo = method.getProfilingInfo();
         assert method.getCode() != null : "method must contain bytecodes: " + method;
-        BytecodeStream stream = new BytecodeStream(method.getCode());
-        ConstantPool constantPool = method.getConstantPool();
         TTY.Filter filter = new TTY.Filter(PrintFilter.getValue(), method);
 
         BaselineFrameStateBuilder frameState = new BaselineFrameStateBuilder(method);
 
-        BaselineBytecodeParser parser = new BaselineBytecodeParser(metaAccess, method, graphBuilderConfig, optimisticOpts, frameState, stream, profilingInfo, constantPool, entryBCI, backend);
+        BaselineBytecodeParser parser = new BaselineBytecodeParser(metaAccess, method, graphBuilderConfig, optimisticOpts, frameState, backend);
 
         // build blocks and LIR instructions
         try {

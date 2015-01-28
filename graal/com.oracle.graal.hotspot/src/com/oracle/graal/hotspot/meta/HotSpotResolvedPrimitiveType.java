@@ -30,11 +30,12 @@ import java.net.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.hotspot.*;
 
 /**
  * Implementation of {@link JavaType} for primitive HotSpot types.
  */
-public final class HotSpotResolvedPrimitiveType extends HotSpotResolvedJavaType implements Remote {
+public final class HotSpotResolvedPrimitiveType extends HotSpotResolvedJavaType implements HotSpotProxified {
 
     private static final long serialVersionUID = -6208552348908071473L;
     private final Kind kind;
@@ -224,7 +225,7 @@ public final class HotSpotResolvedPrimitiveType extends HotSpotResolvedJavaType 
     }
 
     @Override
-    public ResolvedJavaField findInstanceFieldWithOffset(long offset) {
+    public ResolvedJavaField findInstanceFieldWithOffset(long offset, Kind expectedType) {
         return null;
     }
 

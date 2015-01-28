@@ -39,7 +39,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.runtime.*;
 
 @NodeInfo(allowedUsageTypes = {InputType.Memory})
-public class ArrayCopyCallNode extends AbstractMemoryCheckpoint implements Lowerable, MemoryCheckpoint.Single {
+public final class ArrayCopyCallNode extends AbstractMemoryCheckpoint implements Lowerable, MemoryCheckpoint.Single {
 
     @Input ValueNode src;
     @Input ValueNode srcPos;
@@ -117,7 +117,7 @@ public class ArrayCopyCallNode extends AbstractMemoryCheckpoint implements Lower
 
     @Override
     public void lower(LoweringTool tool) {
-        if (graph().getGuardsStage() == StructuredGraph.GuardsStage.AFTER_FSA) {
+        if (graph().getGuardsStage().areFrameStatesAtDeopts()) {
             updateAlignedDisjoint();
             ForeignCallDescriptor desc = HotSpotHostForeignCallsProvider.lookupArraycopyDescriptor(elementKind, isAligned(), isDisjoint(), isUninitialized());
             StructuredGraph graph = graph();

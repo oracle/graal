@@ -39,7 +39,7 @@ import com.oracle.graal.replacements.*;
  * is replaced by a {@link PiNode} once the type becomes constant (which <b>must</b> happen).
  */
 @NodeInfo
-public class DeferredPiNode extends FloatingNode implements Canonicalizable {
+public final class DeferredPiNode extends FloatingNode implements Canonicalizable {
 
     @Input ValueNode object;
     @Input ValueNode type;

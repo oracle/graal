@@ -79,7 +79,7 @@ public class DeadCodeEliminationPhase extends Phase {
         deleteNodes(flood, graph);
 
         // remove chained Merges
-        for (MergeNode merge : graph.getNodes(MergeNode.class)) {
+        for (AbstractMergeNode merge : graph.getNodes(AbstractMergeNode.class)) {
             if (merge.forwardEndCount() == 1 && !(merge instanceof LoopBeginNode)) {
                 graph.reduceTrivialMerge(merge);
             }
@@ -102,7 +102,7 @@ public class DeadCodeEliminationPhase extends Phase {
     private static void disconnectCFGNodes(NodeFlood flood, StructuredGraph graph) {
         for (AbstractEndNode node : graph.getNodes(AbstractEndNode.class)) {
             if (!flood.isMarked(node)) {
-                MergeNode merge = node.merge();
+                AbstractMergeNode merge = node.merge();
                 if (merge != null && flood.isMarked(merge)) {
                     // We are a dead end node leading to a live merge.
                     merge.removeEnd(node);

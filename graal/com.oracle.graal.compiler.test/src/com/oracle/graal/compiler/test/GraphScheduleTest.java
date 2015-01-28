@@ -34,7 +34,7 @@ import com.oracle.graal.phases.schedule.*;
 public class GraphScheduleTest extends GraalCompilerTest {
 
     protected void assertOrderedAfterSchedule(StructuredGraph graph, Node a, Node b) {
-        SchedulePhase ibp = new SchedulePhase();
+        SchedulePhase ibp = new SchedulePhase(SchedulePhase.SchedulingStrategy.LATEST);
         ibp.apply(graph);
         assertOrderedAfterSchedule(ibp, a, b);
     }
@@ -45,7 +45,7 @@ public class GraphScheduleTest extends GraalCompilerTest {
         Block aBlock = nodeToBlock.get(a);
 
         if (bBlock == aBlock) {
-            List<ScheduledNode> instructions = ibp.nodesFor(bBlock);
+            List<ValueNode> instructions = ibp.nodesFor(bBlock);
             Assert.assertTrue(instructions.indexOf(b) > instructions.indexOf(a));
         } else {
             Block block = bBlock;

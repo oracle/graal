@@ -23,6 +23,7 @@
 package com.oracle.graal.test;
 
 import java.io.*;
+import java.nio.file.*;
 import java.util.*;
 
 import junit.runner.*;
@@ -164,6 +165,23 @@ public class GraalJUnitCore {
             result.getFailures().add(each);
         }
         System.exit(result.wasSuccessful() ? 0 : 1);
+    }
+
+    /**
+     * Gets the command line for the current process.
+     *
+     * @return the command line arguments for the current process or {@code null} if they are not
+     *         available
+     */
+    public static List<String> getProcessCommandLine() {
+        String processArgsFile = System.getenv().get("MX_SUBPROCESS_COMMAND_FILE");
+        if (processArgsFile != null) {
+            try {
+                return Files.readAllLines(new File(processArgsFile).toPath());
+            } catch (IOException e) {
+            }
+        }
+        return null;
     }
 
     /**

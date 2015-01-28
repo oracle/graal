@@ -34,7 +34,7 @@ import com.oracle.graal.nodes.util.*;
  * The {@code ArrayLength} instruction gets the length of an array.
  */
 @NodeInfo
-public class ArrayLengthNode extends FixedWithNextNode implements Canonicalizable.Unary<ValueNode>, Lowerable, Virtualizable {
+public final class ArrayLengthNode extends FixedWithNextNode implements Canonicalizable.Unary<ValueNode>, Lowerable, Virtualizable {
 
     @Input ValueNode array;
 
