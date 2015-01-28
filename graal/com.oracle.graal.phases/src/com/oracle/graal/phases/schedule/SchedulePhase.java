@@ -101,14 +101,24 @@ public final class SchedulePhase extends Phase {
         }
 
         public void add(LocationIdentity location) {
-            if (location == LocationIdentity.ANY_LOCATION) {
+            if (LocationIdentity.ANY_LOCATION.equals(location)) {
                 firstLocation = location;
                 list = null;
             } else {
                 if (firstLocation == null) {
                     firstLocation = location;
+                } else if (LocationIdentity.ANY_LOCATION.equals(firstLocation)) {
+                    return;
+                } else if (location.equals(firstLocation)) {
+                    return;
                 } else {
                     initList();
+                    for (int i = 0; i < list.size(); ++i) {
+                        LocationIdentity value = list.get(i);
+                        if (location.equals(value)) {
+                            return;
+                        }
+                    }
                     list.add(location);
                 }
             }
@@ -128,18 +138,18 @@ public final class SchedulePhase extends Phase {
 
         public boolean contains(LocationIdentity locationIdentity) {
             assert locationIdentity != null;
-            assert locationIdentity != LocationIdentity.ANY_LOCATION;
-            assert locationIdentity != LocationIdentity.FINAL_LOCATION;
-            if (firstLocation == LocationIdentity.ANY_LOCATION) {
+            assert !locationIdentity.equals(LocationIdentity.ANY_LOCATION);
+            assert !locationIdentity.equals(LocationIdentity.FINAL_LOCATION);
+            if (LocationIdentity.ANY_LOCATION.equals(firstLocation)) {
                 return true;
             }
-            if (firstLocation == locationIdentity) {
+            if (locationIdentity.equals(firstLocation)) {
                 return true;
             }
             if (list != null) {
                 for (int i = 0; i < list.size(); ++i) {
                     LocationIdentity value = list.get(i);
-                    if (value == locationIdentity) {
+                    if (locationIdentity.equals(value)) {
                         return true;
                     }
                 }
