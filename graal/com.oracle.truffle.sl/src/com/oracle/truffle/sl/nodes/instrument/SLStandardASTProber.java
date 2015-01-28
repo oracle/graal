@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,31 +44,35 @@ public class SLStandardASTProber implements NodeVisitor, ASTProber {
      */
     public boolean visit(Node node) {
 
-        if (node instanceof SLStatementNode) {
+        if (node.isInstrumentable()) {
 
-            // We have to distinguish between SLExpressionNode and SLStatementNode since some of the
-            // generated factories have methods that require SLExpressionNodes as parameters. Since
-            // SLExpressionNodes are a subclass of SLStatementNode, we check if something is an
-            // SLExpressionNode first.
-            if (node instanceof SLExpressionNode && node.getParent() != null) {
-                SLExpressionNode expressionNode = (SLExpressionNode) node;
-                if (expressionNode.getSourceSection() != null) {
-                    Probe probe = expressionNode.probe();
+            if (node instanceof SLStatementNode) {
 
-                    if (node instanceof SLWriteLocalVariableNode) {
-                        probe.tagAs(STATEMENT, null);
-                        probe.tagAs(ASSIGNMENT, null);
+                // Distinguish between SLExpressionNode and SLStatementNode since some of the
+                // generated factory methods that require SLExpressionNodes as parameters.
+                // Since
+                // SLExpressionNodes are a subclass of SLStatementNode, check if something is an
+                // SLExpressionNode first.
+                if (node instanceof SLExpressionNode && node.getParent() != null) {
+                    SLExpressionNode expressionNode = (SLExpressionNode) node;
+                    if (expressionNode.getSourceSection() != null) {
+                        Probe probe = expressionNode.probe();
+
+                        if (node instanceof SLWriteLocalVariableNode) {
+                            probe.tagAs(STATEMENT, null);
+                            probe.tagAs(ASSIGNMENT, null);
+                        }
                     }
-                }
-            } else if (node instanceof SLStatementNode && node.getParent() != null) {
+                } else if (node instanceof SLStatementNode && node.getParent() != null) {
 
-                SLStatementNode statementNode = (SLStatementNode) node;
-                if (statementNode.getSourceSection() != null) {
-                    Probe probe = statementNode.probe();
-                    probe.tagAs(STATEMENT, null);
+                    SLStatementNode statementNode = (SLStatementNode) node;
+                    if (statementNode.getSourceSection() != null) {
+                        Probe probe = statementNode.probe();
+                        probe.tagAs(STATEMENT, null);
 
-                    if (node instanceof SLWhileNode) {
-                        probe.tagAs(START_LOOP, null);
+                        if (node instanceof SLWhileNode) {
+                            probe.tagAs(START_LOOP, null);
+                        }
                     }
                 }
             }

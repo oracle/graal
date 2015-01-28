@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -51,6 +51,11 @@ public final class SLStatementWrapperNode extends SLStatementNode implements Wra
     }
 
     @Override
+    public boolean isInstrumentable() {
+        return false;
+    }
+
+    @Override
     public SLStatementNode getNonWrapperNode() {
         return child;
     }
@@ -87,13 +92,4 @@ public final class SLStatementWrapperNode extends SLStatementNode implements Wra
         }
     }
 
-    @Override
-    public Probe probe() {
-        throw new IllegalStateException("Cannot call probe() on a wrapper.");
-    }
-
-    @Override
-    public void probeLite(TruffleEventReceiver eventReceiver) {
-        throw new IllegalStateException("Cannot call probeLite() on a wrapper.");
-    }
 }

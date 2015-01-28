@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,7 +26,7 @@ import java.math.*;
 
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.instrument.*;
+import com.oracle.truffle.api.instrument.ProbeNode.WrapperNode;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.sl.nodes.instrument.*;
@@ -91,43 +91,13 @@ public abstract class SLExpressionNode extends SLStatementNode {
     }
 
     @Override
-    public Probe probe() {
-        Node parent = getParent();
-
-        if (parent == null) {
-            throw new IllegalStateException("Cannot call probe() a node without a parent.");
-        }
-
-        if (parent instanceof SLExpressionWrapperNode) {
-            return ((SLExpressionWrapperNode) parent).getProbe();
-        }
-
-        // Create a new wrapper/probe with this node as its child.
-        final SLExpressionWrapperNode wrapper = new SLExpressionWrapperNode(this);
-
-        // Connect it to a Probe
-        final Probe probe = ProbeNode.insertProbe(wrapper);
-
-        // Replace this node in the AST with the wrapper
-        this.replace(wrapper);
-
-        return probe;
+    public boolean isInstrumentable() {
+        return true;
     }
 
     @Override
-    public void probeLite(TruffleEventReceiver eventReceiver) {
-        Node parent = getParent();
-
-        if (parent == null) {
-            throw new IllegalStateException("Cannot call probeLite() on a node without a parent.");
-        }
-
-        if (parent instanceof SLExpressionWrapperNode) {
-            throw new IllegalStateException("Cannot call probeLite() on a node that already has a wrapper.");
-        }
-        final SLExpressionWrapperNode wrapper = new SLExpressionWrapperNode(this);
-        ProbeNode.insertProbeLite(wrapper, eventReceiver);
-
-        this.replace(wrapper);
+    public WrapperNode createWrapperNode() {
+        return new SLExpressionWrapperNode(this);
     }
+
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,17 +24,21 @@ package com.oracle.truffle.sl;
 
 import java.io.*;
 import java.math.*;
+import java.util.Scanner;
 
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.api.instrument.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.source.*;
+import com.oracle.truffle.api.tools.*;
 import com.oracle.truffle.sl.builtins.*;
 import com.oracle.truffle.sl.factory.*;
 import com.oracle.truffle.sl.nodes.*;
 import com.oracle.truffle.sl.nodes.call.*;
 import com.oracle.truffle.sl.nodes.controlflow.*;
 import com.oracle.truffle.sl.nodes.expression.*;
+import com.oracle.truffle.sl.nodes.instrument.*;
 import com.oracle.truffle.sl.nodes.local.*;
 import com.oracle.truffle.sl.parser.*;
 import com.oracle.truffle.sl.runtime.*;
@@ -111,8 +115,28 @@ import com.oracle.truffle.sl.runtime.*;
  * argument and adds them to the function registry. Functions that are already defined are replaced
  * with the new version.
  * </ul>
+ *
+ * <p>
+ * <b>Tools:</b><br>
+ * The use of some of Truffle's support for developer tools (based on the Truffle Instrumentation
+ * Framework) are demonstrated in this file, for example:
+ * <ul>
+ * <li>a {@linkplain NodeExecCounter counter for node executions}, tabulated by node type; and</li>
+ * <li>a simple {@linkplain CoverageTracker code coverage engine}.</li>
+ * </ul>
+ * In each case, the tool is enabled if a corresponding local boolean variable in this file is set
+ * to {@code true}. Results are printed at the end of the execution using each tool's
+ * <em>default printer</em>.
+ *
  */
 public class SLMain {
+
+    /* Demonstrate per-type tabulation of node execution counts */
+    private static boolean nodeExecCounts = false;
+    /* Demonstrate per-line tabulation of STATEMENT node execution counts */
+    private static boolean statementCounts = false;
+    /* Demonstrate per-line tabulation of STATEMENT coverage */
+    private static boolean coverage = false;
 
     /**
      * The main entry point. Use the mx command "mx sl" to run it with the correct class path setup.
@@ -144,6 +168,28 @@ public class SLMain {
         if (logOutput != null) {
             logOutput.println("== running on " + Truffle.getRuntime().getName());
             // logOutput.println("Source = " + source.getCode());
+        }
+
+        if (statementCounts || coverage) {
+            Probe.registerASTProber(new SLStandardASTProber());
+        }
+
+        NodeExecCounter nodeExecCounter = null;
+        if (nodeExecCounts) {
+            nodeExecCounter = new NodeExecCounter();
+            nodeExecCounter.install();
+        }
+
+        NodeExecCounter statementExecCounter = null;
+        if (statementCounts) {
+            statementExecCounter = new NodeExecCounter(StandardSyntaxTag.STATEMENT);
+            statementExecCounter.install();
+        }
+
+        CoverageTracker coverageTracker = null;
+        if (coverage) {
+            coverageTracker = new CoverageTracker();
+            coverageTracker.install();
         }
 
         /* Parse the SL source file. */
@@ -186,6 +232,18 @@ public class SLMain {
 
         } finally {
             printScript("after execution", context, logOutput, printASTToLog, printSourceAttributionToLog, dumpASTToIGV);
+        }
+        if (nodeExecCounter != null) {
+            nodeExecCounter.print(System.out);
+            nodeExecCounter.dispose();
+        }
+        if (statementExecCounter != null) {
+            statementExecCounter.print(System.out);
+            statementExecCounter.dispose();
+        }
+        if (coverageTracker != null) {
+            coverageTracker.print(System.out);
+            coverageTracker.dispose();
         }
         return totalRuntime;
     }
@@ -282,4 +340,5 @@ public class SLMain {
         }
         return result.toString();
     }
+
 }

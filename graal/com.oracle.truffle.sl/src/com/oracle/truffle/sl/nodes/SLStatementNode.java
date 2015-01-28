@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,8 +25,7 @@ package com.oracle.truffle.sl.nodes;
 import java.io.*;
 
 import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.instrument.*;
-import com.oracle.truffle.api.instrument.ProbeNode.*;
+import com.oracle.truffle.api.instrument.ProbeNode.WrapperNode;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.sl.nodes.instrument.*;
@@ -37,7 +36,7 @@ import com.oracle.truffle.sl.nodes.instrument.*;
  * local variables.
  */
 @NodeInfo(language = "Simple Language", description = "The abstract base node for all statements")
-public abstract class SLStatementNode extends Node implements Instrumentable {
+public abstract class SLStatementNode extends Node {
 
     public SLStatementNode(SourceSection src) {
         super(src);
@@ -86,44 +85,13 @@ public abstract class SLStatementNode extends Node implements Instrumentable {
     }
 
     @Override
-    public Probe probe() {
-        Node parent = getParent();
-
-        if (parent == null) {
-            throw new IllegalStateException("Cannot call probe() on a node without a parent.");
-        }
-
-        if (parent instanceof SLStatementWrapperNode) {
-            return ((SLStatementWrapperNode) parent).getProbe();
-        }
-
-        // Create a new wrapper/probe with this node as its child.
-        final SLStatementWrapperNode wrapper = new SLStatementWrapperNode(this);
-
-        // Connect it to a Probe
-        final Probe probe = ProbeNode.insertProbe(wrapper);
-
-        // Replace this node in the AST with the wrapper
-        this.replace(wrapper);
-
-        return probe;
+    public boolean isInstrumentable() {
+        return true;
     }
 
     @Override
-    public void probeLite(TruffleEventReceiver eventReceiver) {
-        Node parent = getParent();
-
-        if (parent == null) {
-            throw new IllegalStateException("Cannot call probeLite() on a node without a parent");
-        }
-
-        if (parent instanceof SLStatementWrapperNode) {
-            throw new IllegalStateException("Cannot call probeLite() on a node that already has a wrapper.");
-        }
-
-        final SLStatementWrapperNode wrapper = new SLStatementWrapperNode(this);
-        ProbeNode.insertProbeLite(wrapper, eventReceiver);
-
-        this.replace(wrapper);
+    public WrapperNode createWrapperNode() {
+        return new SLStatementWrapperNode(this);
     }
+
 }

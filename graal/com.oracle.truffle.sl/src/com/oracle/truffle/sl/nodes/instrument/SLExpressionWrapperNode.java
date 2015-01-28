@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -55,6 +55,11 @@ public final class SLExpressionWrapperNode extends SLExpressionNode implements W
 
     public String instrumentationInfo() {
         return "Wrapper node for SL Expressions";
+    }
+
+    @Override
+    public boolean isInstrumentable() {
+        return false;
     }
 
     @Override
@@ -132,15 +137,5 @@ public final class SLExpressionWrapperNode extends SLExpressionNode implements W
     @Override
     public SLNull executeNull(VirtualFrame frame) throws UnexpectedResultException {
         return SLTypesGen.expectSLNull(executeGeneric(frame));
-    }
-
-    @Override
-    public Probe probe() {
-        throw new IllegalStateException("Cannot call probe() on a wrapper.");
-    }
-
-    @Override
-    public void probeLite(TruffleEventReceiver eventReceiver) {
-        throw new IllegalStateException("Cannot call probeLite() on a wrapper.");
     }
 }
