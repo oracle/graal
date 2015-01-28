@@ -66,7 +66,12 @@ public class HotSpotResolvedJavaFieldImpl extends CompilerObject implements HotS
         }
         if (obj instanceof HotSpotResolvedJavaField) {
             HotSpotResolvedJavaFieldImpl that = (HotSpotResolvedJavaFieldImpl) obj;
-            return this.holder.equals(that.holder) && this.name.equals(that.name) && this.type.equals(that.type);
+            if (that.offset != this.offset) {
+                return false;
+            } else if (this.holder.equals(that.holder)) {
+                assert this.name.equals(that.name) && this.type.equals(that.type);
+                return true;
+            }
         }
         return false;
     }
