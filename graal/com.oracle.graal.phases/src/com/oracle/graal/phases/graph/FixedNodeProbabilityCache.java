@@ -40,8 +40,8 @@ public class FixedNodeProbabilityCache implements ToDoubleFunction<FixedNode> {
 
     /**
      * <p>
-     * Given a {@link FixedNode} this method finds the most immediate {@link AbstractBeginNode} preceding it
-     * that either:
+     * Given a {@link FixedNode} this method finds the most immediate {@link AbstractBeginNode}
+     * preceding it that either:
      * <ul>
      * <li>has no predecessor (ie, the begin-node is a merge, in particular a loop-begin, or the
      * start-node)</li>
@@ -50,8 +50,8 @@ public class FixedNodeProbabilityCache implements ToDoubleFunction<FixedNode> {
      * </p>
      *
      * <p>
-     * The thus found {@link AbstractBeginNode} is equi-probable with the {@link FixedNode} it was obtained
-     * from. When computed for the first time (afterwards a cache lookup returns it) that
+     * The thus found {@link AbstractBeginNode} is equi-probable with the {@link FixedNode} it was
+     * obtained from. When computed for the first time (afterwards a cache lookup returns it) that
      * probability is computed as follows, again depending on the begin-node's predecessor:
      * <ul>
      * <li>No predecessor. In this case the begin-node is either:</li>

@@ -172,9 +172,9 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
      * This method attempts to duplicate the tail of the given merge. The merge must not be a
      * {@link LoopBeginNode}. If the merge is eligible for duplication (at least one fixed node in
      * its tail, no {@link MonitorEnterNode}/ {@link MonitorExitNode}, non-null
-     * {@link AbstractMergeNode#stateAfter()}) then the decision callback is used to determine whether the
-     * tail duplication should actually be performed. If replacements is non-null, then this list of
-     * {@link PiNode}s is used to replace one value per merge end.
+     * {@link AbstractMergeNode#stateAfter()}) then the decision callback is used to determine
+     * whether the tail duplication should actually be performed. If replacements is non-null, then
+     * this list of {@link PiNode}s is used to replace one value per merge end.
      *
      * @param merge The merge whose tail should be duplicated.
      * @param decision A callback that can make the final decision if tail duplication should occur
@@ -209,7 +209,8 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
     }
 
     /**
-     * This class encapsulates one tail duplication operation on a specific {@link AbstractMergeNode}.
+     * This class encapsulates one tail duplication operation on a specific
+     * {@link AbstractMergeNode}.
      */
     private static class DuplicationOperation {
 

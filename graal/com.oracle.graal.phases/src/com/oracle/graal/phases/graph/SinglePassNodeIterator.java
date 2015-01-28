@@ -41,8 +41,8 @@ import com.oracle.graal.nodes.*;
  *
  * <p>
  * For this iterator the CFG is defined by the classical CFG nodes (
- * {@link com.oracle.graal.nodes.ControlSplitNode}, {@link com.oracle.graal.nodes.AbstractMergeNode}...) and
- * the {@link com.oracle.graal.nodes.FixedWithNextNode#next() next} pointers of
+ * {@link com.oracle.graal.nodes.ControlSplitNode}, {@link com.oracle.graal.nodes.AbstractMergeNode}
+ * ...) and the {@link com.oracle.graal.nodes.FixedWithNextNode#next() next} pointers of
  * {@link com.oracle.graal.nodes.FixedWithNextNode}.
  * </p>
  *
@@ -101,8 +101,8 @@ public abstract class SinglePassNodeIterator<T extends MergeableState<T>> {
      * <p>
      * Correspondingly each item may stand for:
      * <ul>
-     * <li>a {@link AbstractMergeNode} whose pre-state results from merging those of its forward-ends, see
-     * {@link #nextQueuedNode()}</li>
+     * <li>a {@link AbstractMergeNode} whose pre-state results from merging those of its
+     * forward-ends, see {@link #nextQueuedNode()}</li>
      * <li>a successor of a control-split node, in which case the state on entry to it (the
      * successor) is also stored in the item, see {@link #nextQueuedNode()}</li>
      * </ul>
@@ -228,8 +228,8 @@ public abstract class SinglePassNodeIterator<T extends MergeableState<T>> {
      * the pre-state for that node.
      *
      * <p>
-     * Upon reaching a {@link AbstractMergeNode}, some entries are pruned from {@link #nodeStates} (ie, the
-     * entries associated to forward-ends for that merge-node).
+     * Upon reaching a {@link AbstractMergeNode}, some entries are pruned from {@link #nodeStates}
+     * (ie, the entries associated to forward-ends for that merge-node).
      * </p>
      */
     private FixedNode nextQueuedNode() {
