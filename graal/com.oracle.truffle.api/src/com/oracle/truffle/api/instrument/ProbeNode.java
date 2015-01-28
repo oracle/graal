@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,46 +38,9 @@ import com.oracle.truffle.api.source.*;
 public abstract class ProbeNode extends Node implements TruffleEventReceiver, InstrumentationNode {
 
     /**
-     * Any Truffle node implementing this interface can be "instrumented" by installing a
-     * {@link Probe} that intercepts execution events at the node and routes them to any
-     * {@link Instrument}s that have been attached to the {@link Probe}. Only one {@link Probe} may
-     * be installed at each node; subsequent calls return the one already installed.
-     *
-     * @see Instrument
-     */
-    public interface Instrumentable {
-
-        /**
-         * Enables "instrumentation" of a Guest Language Truffle node, where the node is presumed to
-         * be part of a well-formed Truffle AST that is not being executed. The AST may be modified
-         * as a side effect.
-         * <p>
-         * This interface is not intended to be visible as part of the API for tools
-         * (instrumentation clients).
-         *
-         * @return a (possibly newly created) {@link Probe} associated with this node.
-         */
-        Probe probe();
-
-        /**
-         * Enables a one-time, unchangeable "instrumentation" of a Guest Language Truffle node,
-         * where the node is presumed to be part of a well-formed Truffle AST that is not being
-         * executed. The AST may be modified as a side-effect. Unlike {@link #probe()}, once
-         * {@link #probeLite(TruffleEventReceiver)} is called at a node, no additional probing can
-         * be added and no additional instrumentation can be attached.
-         * <p>
-         * This interface is not intended to be visible as part of the API for tools
-         * (instrumentation clients).
-         *
-         * @param eventReceiver The {@link TruffleEventReceiver} for the single "instrument" being
-         *            attached to this node.
-         */
-        void probeLite(TruffleEventReceiver eventReceiver);
-    }
-
-    /**
-     * A node that can be inserted into a Truffle AST, and which enables <em>instrumentation</em> at
-     * a particular Guest Language (GL) node.
+     * A node that can be inserted into a Truffle AST, and which enables {@linkplain Instrument
+     * instrumentation} at a particular Guest Language (GL) node. Implementations must extend
+     * {@link Node} and should override {@link Node#isInstrumentable()} to return {@code false}.
      * <p>
      * The implementation must be GL-specific. A wrapper <em>decorates</em> a GL AST node (the
      * wrapper's <em>child</em>) by acting as a transparent <em>proxy</em> with respect to the GL's
@@ -115,7 +78,6 @@ public abstract class ProbeNode extends Node implements TruffleEventReceiver, In
      * their runtime overhead to zero when there are no attached {@link Instrument}s.</li>
      * </ol>
      * <p>
-     * <strong>Disclaimer:</strong> experimental interface under development.
      *
      * @see Instrument
      */
@@ -130,7 +92,7 @@ public abstract class ProbeNode extends Node implements TruffleEventReceiver, In
 
         /**
          * Gets the {@link Probe} responsible for installing this wrapper; none if the wrapper
-         * installed via {@linkplain Instrumentable#probeLite(TruffleEventReceiver) "lite-Probing"}.
+         * installed via {@linkplain Node#probeLite(TruffleEventReceiver) "lite-Probing"}.
          */
         Probe getProbe();
 
@@ -161,6 +123,11 @@ public abstract class ProbeNode extends Node implements TruffleEventReceiver, In
     public static void insertProbeLite(WrapperNode wrapper, TruffleEventReceiver eventReceiver) {
         final ProbeLiteNode probeLiteNode = new ProbeLiteNode(eventReceiver);
         wrapper.insertProbe(probeLiteNode);
+    }
+
+    @Override
+    public boolean isInstrumentable() {
+        return false;
     }
 
     /**

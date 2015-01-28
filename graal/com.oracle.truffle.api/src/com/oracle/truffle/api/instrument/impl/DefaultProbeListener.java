@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,24 +22,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.instrument;
+package com.oracle.truffle.api.instrument.impl;
 
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.instrument.*;
+import com.oracle.truffle.api.source.*;
 
-/**
- * Enables instrumentation by attaching {@linkplain Probe Probes} to some nodes in a (newly created,
- * not yet executed) AST.
- *
- * @see Probe
- * @see Probe#addProbeListener(ProbeListener)
- */
-public interface ASTProber {
+public abstract class DefaultProbeListener implements ProbeListener {
 
-    /**
-     * Walk the AST starting at a node and enable instrumentation at selected nodes by attaching
-     * {@linkplain Probe Probes} to them. Ignore {@linkplain Node#isInstrumentable()
-     * non-instrumentable} nodes.
-     */
-    void probeAST(Node node);
+    public void startASTProbing(Source source) {
+    }
+
+    public void newProbeInserted(Probe probe) {
+    }
+
+    public void probeTaggedAs(Probe probe, SyntaxTag tag, Object tagValue) {
+    }
+
+    public void endASTProbing(Source source) {
+    }
 
 }

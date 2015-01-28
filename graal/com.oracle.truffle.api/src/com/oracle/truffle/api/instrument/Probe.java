@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,31 +28,32 @@ import java.lang.ref.*;
 import java.util.*;
 
 import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.instrument.ProbeNode.Instrumentable;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.api.utilities.*;
 
 //TODO (mlvdv) migrate some of this to external documentation.
 /**
- * A binding between a particular location in the Truffle AST representation of a running Guest
- * Language (GL) program (i.e. a {@link Node}) and a dynamically managed collection of "attached"
- * {@linkplain Instrument instrumentation} for use by external tools.
+ * A binding between a particular <em>location</em> in the Truffle AST representation of a running
+ * Guest Language (GL) program (i.e. a {@link Node}) and a dynamically managed collection of
+ * "attached" {@linkplain Instrument instrumentation} for use by external tools. The instrumentation
+ * is intended to persist at the location, even if the specific node instance is
+ * {@linkplain Node#replace(Node) replaced}.
  * <p>
- * The effect of a binding is to intercept {@linkplain TruffleEventReceiver execution events} at the
- * node and notify each attached {@link Instrument} before execution is allowed to resume.
+ * The effect of a binding is to intercept {@linkplain TruffleEventReceiver execution events}
+ * arriving at the node and notify each attached {@link Instrument} before execution is allowed to
+ * proceed to the child.
  * <p>
- * A Probe is "inserted" into a GL node via a call to {@link Instrumentable#probe()}; a GL node must
- * implement {@link Instrumentable} in order to support instrumentation. No more than one Probe can
- * be inserted at a node.
+ * A Probe is "inserted" into a GL node via a call to {@link Node#probe()}. No more than one Probe
+ * can be inserted at a node.
  * <p>
  * The "probing" of a Truffle AST must be done after it is complete (i.e. with parent pointers
  * correctly assigned), but before any executions. This is done by creating an instance of
  * {@link ASTProber} and registering it via {@link #registerASTProber(ASTProber)}, after which it
  * will be automatically applied to newly created ASTs.
  * <p>
- * Each Probe may also have assigned to it one or more {@link SyntaxTag}s, for example identifying a
- * node as a {@linkplain StandardSyntaxTag#STATEMENT STATEMENT}. Tags can be queried by tools to
+ * Each Probe may also have assigned to it any number of {@link SyntaxTag}s, for example identifying
+ * a node as a {@linkplain StandardSyntaxTag#STATEMENT STATEMENT}. Tags can be queried by tools to
  * configure behavior relevant to each probed node.
  * <p>
  * Instrumentation is implemented by modifying ASTs, both by inserting nodes into each AST at probed
@@ -60,68 +61,15 @@ import com.oracle.truffle.api.utilities.*;
  * Attached instrumentation code become, in effect, part of the GL program, and is subject to the
  * same levels of optimization as other GL code. This implementation accounts properly for the fact
  * that Truffle frequently <em>clones</em> ASTs, along with any attached instrumentation nodes. A
- * Probe, along with attached Instruments, represents a <em>logical</em> binding with a source code
- * location, producing event notifications that are (mostly) independent of which AST clone is
- * executing.
+ * {@link Probe}, along with attached {@link Instrument}s, represents a <em>logical</em> binding
+ * with a source code location, producing event notifications that are (mostly) independent of which
+ * AST clone is executing.
  *
  * @see Instrument
- * @see Instrumentable
  * @see ASTProber
+ * @see ProbeListener
  */
 public final class Probe implements SyntaxTagged {
-
-    /**
-     * An observer of events related to {@link Probe}s: creating and tagging.
-     */
-    public interface ProbeListener {
-
-        /**
-         * Notifies that all registered {@link ASTProber}s are about to be applied to a newly
-         * constructed AST.
-         *
-         * @param source source code from which the AST was constructed
-         */
-        void startASTProbing(Source source);
-
-        /**
-         * Notifies that a {@link Probe} has been newly attached to an AST via
-         * {@link Instrumentable#probe()}.
-         * <p>
-         * There can be no more than one {@link Probe} at a node; this notification will only be
-         * delivered the first time {@linkplain Instrumentable#probe() probe()} is called at a
-         * particular AST node. There will also be no notification when the AST to which the Probe
-         * is attached is cloned.
-         */
-        void newProbeInserted(Probe probe);
-
-        /**
-         * Notifies that a {@link SyntaxTag} has been newly added to the set of tags associated with
-         * a {@link Probe} via {@link Probe#tagAs(SyntaxTag, Object)}.
-         * <p>
-         * The {@linkplain SyntaxTag tags} at a {@link Probe} are a <em>set</em>; this notification
-         * will only be delivered the first time a particular {@linkplain SyntaxTag tag} is added at
-         * a {@link Probe}.
-         * <p>
-         * An optional value supplied with {@linkplain Probe#tagAs(SyntaxTag, Object)
-         * tagAs(SyntaxTag, Object)} is reported to all listeners, but not stored. As a consequence,
-         * the optional value will have no effect at all if the tag had already been added.
-         *
-         * @param probe where a tag has been added
-         * @param tag the tag that has been newly added (subsequent additions of the tag are
-         *            unreported).
-         * @param tagValue an optional value associated with the tag for the purposes of reporting.
-         */
-        void probeTaggedAs(Probe probe, SyntaxTag tag, Object tagValue);
-
-        /**
-         * Notifies that the application of all registered {@link ASTProber}s to a newly constructed
-         * AST has completed.
-         *
-         * @param source source code from which the AST was constructed
-         */
-        void endASTProbing(Source source);
-
-    }
 
     private static final List<ASTProber> astProbers = new ArrayList<>();
 
@@ -282,7 +230,7 @@ public final class Probe implements SyntaxTagged {
     private boolean trapActive = false;
 
     /**
-     * @see Instrumentable#probe()
+     * Intended for use only by {@link ProbeNode}.
      */
     Probe(ProbeNode probeNode, SourceSection sourceSection) {
         this.sourceSection = sourceSection;

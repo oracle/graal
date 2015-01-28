@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,6 +30,8 @@ import java.util.concurrent.*;
 
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.instrument.*;
+import com.oracle.truffle.api.instrument.ProbeNode.WrapperNode;
 import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.api.utilities.*;
 
@@ -288,9 +290,9 @@ public abstract class Node implements NodeInterface, Cloneable {
     }
 
     /**
-     * Checks if this node is properly adopted by a parent and can be replaced.
+     * Checks if this node is properly adopted by its parent.
      *
-     * @return {@code true} if it is safe to replace this node.
+     * @return {@code true} if it is structurally safe to replace this node.
      */
     public final boolean isReplaceable() {
         if (getParent() != null) {
@@ -301,6 +303,13 @@ public abstract class Node implements NodeInterface, Cloneable {
             }
         }
         return false;
+    }
+
+    /**
+     * Checks if this node can be replaced by another node, both structurally and with type safety.
+     */
+    public final boolean isSafelyReplaceableBy(Node newNode) {
+        return isReplaceable() && NodeUtil.isReplacementSafe(getParent(), this, newNode);
     }
 
     private void reportReplace(Node oldNode, Node newNode, CharSequence reason) {
@@ -421,6 +430,138 @@ public abstract class Node implements NodeInterface, Cloneable {
             return (RootNode) rootNode;
         }
         return null;
+    }
+
+    /**
+     * Any node for which this is {@code true} can be "instrumented" by installing a {@link Probe}
+     * that intercepts execution events at the node and routes them to any {@link Instrument}s that
+     * have been attached to the {@link Probe}. Only one {@link Probe} may be installed at each
+     * node; subsequent calls return the one already installed.
+     *
+     * @see Instrument
+     */
+    public boolean isInstrumentable() {
+        return false;
+    }
+
+    /**
+     * For any node that {@link #isInstrumentable()}, this method must return a {@link Node} that:
+     * <ol>
+     * <li>implements {@link WrapperNode}</li>
+     * <li>has {@code this} as it's child, and</li>
+     * <li>whose type is suitable for (unsafe) replacement of {@code this} in the parent.</li>
+     * </ol>
+     *
+     * @return an appropriately typed {@link WrapperNode} if {@link #isInstrumentable()}.
+     */
+    public WrapperNode createWrapperNode() {
+        return null;
+    }
+
+    /**
+     * Enables {@linkplain Instrument instrumentation} of a node, where the node is presumed to be
+     * part of a well-formed Truffle AST that is not being executed. If this node has not already
+     * been probed, modifies the AST by inserting a {@linkplain WrapperNode wrapper node} between
+     * the node and its parent; the wrapper node must be provided by implementations of
+     * {@link #createWrapperNode()}. No more than one {@link Probe} may be associated with a node,
+     * so a {@linkplain WrapperNode wrapper} may not wrap another {@linkplain WrapperNode wrapper}.
+     *
+     * @return a (possibly newly created) {@link Probe} associated with this node.
+     * @throws ProbeException (unchecked) when a probe cannot be created, leaving the AST unchanged
+     */
+    public final Probe probe() {
+
+        if (this instanceof WrapperNode) {
+            throw new ProbeException(ProbeFailure.Reason.WRAPPER_NODE, null, this, null);
+        }
+
+        if (parent == null) {
+            throw new ProbeException(ProbeFailure.Reason.NO_PARENT, null, this, null);
+        }
+
+        if (parent instanceof WrapperNode) {
+            return ((WrapperNode) parent).getProbe();
+        }
+
+        if (!isInstrumentable()) {
+            throw new ProbeException(ProbeFailure.Reason.NOT_INSTRUMENTABLE, parent, this, null);
+        }
+
+        // Create a new wrapper/probe with this node as its child.
+        final WrapperNode wrapper = createWrapperNode();
+
+        if (wrapper == null || !(wrapper instanceof Node)) {
+            throw new ProbeException(ProbeFailure.Reason.NO_WRAPPER, parent, this, wrapper);
+        }
+
+        final Node wrapperNode = (Node) wrapper;
+
+        if (!this.isSafelyReplaceableBy(wrapperNode)) {
+            throw new ProbeException(ProbeFailure.Reason.WRAPPER_TYPE, parent, this, wrapper);
+        }
+
+        // Connect it to a Probe
+        final Probe probe = ProbeNode.insertProbe(wrapper);
+
+        // Replace this node in the AST with the wrapper
+        this.replace(wrapperNode);
+
+        return probe;
+    }
+
+    /**
+     * Enables "one-shot", unmodifiable {@linkplain Instrument instrumentation} of a node, where the
+     * node is presumed to be part of a well-formed Truffle AST that is not being executed.
+     * <p>
+     * Modifies the AST by inserting a {@linkplain WrapperNode wrapper node} between the node and
+     * its parent; the wrapper node must be provided by implementations of
+     * {@link #createWrapperNode()}.
+     * <p>
+     * Unlike {@link #probe()}, once {@link #probeLite(TruffleEventReceiver)} is called at a node,
+     * no additional probing can be added and no additional instrumentation can be attached.
+     * <p>
+     * This restricted form of instrumentation is intended for special cases where only one kind of
+     * instrumentation is desired, and for which performance is a concern
+     *
+     * @param eventReceiver
+     * @throws ProbeException (unchecked) when a probe cannot be created, leaving the AST unchanged
+     */
+    public final void probeLite(TruffleEventReceiver eventReceiver) {
+
+        if (this instanceof WrapperNode) {
+            throw new ProbeException(ProbeFailure.Reason.WRAPPER_NODE, null, this, null);
+        }
+
+        if (parent == null) {
+            throw new ProbeException(ProbeFailure.Reason.NO_PARENT, null, this, null);
+        }
+
+        if (parent instanceof WrapperNode) {
+            throw new ProbeException(ProbeFailure.Reason.LITE_VIOLATION, null, this, null);
+        }
+
+        if (!isInstrumentable()) {
+            throw new ProbeException(ProbeFailure.Reason.NOT_INSTRUMENTABLE, parent, this, null);
+        }
+
+        // Create a new wrapper/probe with this node as its child.
+        final WrapperNode wrapper = createWrapperNode();
+
+        if (wrapper == null || !(wrapper instanceof Node)) {
+            throw new ProbeException(ProbeFailure.Reason.NO_WRAPPER, parent, this, wrapper);
+        }
+
+        final Node wrapperNode = (Node) wrapper;
+
+        if (!this.isSafelyReplaceableBy(wrapperNode)) {
+            throw new ProbeException(ProbeFailure.Reason.WRAPPER_TYPE, parent, this, wrapper);
+        }
+
+        // Connect it to a Probe
+        ProbeNode.insertProbeLite(wrapper, eventReceiver);
+
+        // Replace this node in the AST with the wrapper
+        this.replace(wrapperNode);
     }
 
     /**

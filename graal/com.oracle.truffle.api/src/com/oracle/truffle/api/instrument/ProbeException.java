@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,22 +24,29 @@
  */
 package com.oracle.truffle.api.instrument;
 
+import com.oracle.truffle.api.instrument.ProbeFailure.Reason;
 import com.oracle.truffle.api.nodes.*;
 
 /**
- * Enables instrumentation by attaching {@linkplain Probe Probes} to some nodes in a (newly created,
- * not yet executed) AST.
- *
- * @see Probe
- * @see Probe#addProbeListener(ProbeListener)
+ * An exception thrown when {@link Node#probe()} fails because of an implementation failure.
+ * <p>
+ * Language and tool implementations should ensure that clients of tools never see this exception.
  */
-public interface ASTProber {
+public class ProbeException extends RuntimeException {
+    static final long serialVersionUID = 1L;
+    private final ProbeFailure failure;
 
-    /**
-     * Walk the AST starting at a node and enable instrumentation at selected nodes by attaching
-     * {@linkplain Probe Probes} to them. Ignore {@linkplain Node#isInstrumentable()
-     * non-instrumentable} nodes.
-     */
-    void probeAST(Node node);
+    public ProbeException(Reason reason, Node parent, Node child, Object wrapper) {
+        this.failure = new ProbeFailure(reason, parent, child, wrapper);
+    }
+
+    public ProbeFailure getFailure() {
+        return failure;
+    }
+
+    @Override
+    public String toString() {
+        return failure.getMessage();
+    }
 
 }
