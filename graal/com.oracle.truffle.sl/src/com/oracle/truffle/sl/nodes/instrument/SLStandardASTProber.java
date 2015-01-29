@@ -44,36 +44,22 @@ public class SLStandardASTProber implements NodeVisitor, ASTProber {
      */
     public boolean visit(Node node) {
 
-        if (node.isInstrumentable()) {
+        if (node instanceof SLStatementNode && node.getParent() != null && node.getSourceSection() != null) {
+            // All SL nodes are instrumentable, but treat expressions specially
 
-            if (node instanceof SLStatementNode) {
-
-                // Distinguish between SLExpressionNode and SLStatementNode since some of the
-                // generated factory methods that require SLExpressionNodes as parameters.
-                // Since
-                // SLExpressionNodes are a subclass of SLStatementNode, check if something is an
-                // SLExpressionNode first.
-                if (node instanceof SLExpressionNode && node.getParent() != null) {
-                    SLExpressionNode expressionNode = (SLExpressionNode) node;
-                    if (expressionNode.getSourceSection() != null) {
-                        Probe probe = expressionNode.probe();
-
-                        if (node instanceof SLWriteLocalVariableNode) {
-                            probe.tagAs(STATEMENT, null);
-                            probe.tagAs(ASSIGNMENT, null);
-                        }
-                    }
-                } else if (node instanceof SLStatementNode && node.getParent() != null) {
-
-                    SLStatementNode statementNode = (SLStatementNode) node;
-                    if (statementNode.getSourceSection() != null) {
-                        Probe probe = statementNode.probe();
-                        probe.tagAs(STATEMENT, null);
-
-                        if (node instanceof SLWhileNode) {
-                            probe.tagAs(START_LOOP, null);
-                        }
-                    }
+            if (node instanceof SLExpressionNode) {
+                SLExpressionNode expressionNode = (SLExpressionNode) node;
+                Probe probe = expressionNode.probe();
+                if (node instanceof SLWriteLocalVariableNode) {
+                    probe.tagAs(STATEMENT, null);
+                    probe.tagAs(ASSIGNMENT, null);
+                }
+            } else {
+                SLStatementNode statementNode = (SLStatementNode) node;
+                Probe probe = statementNode.probe();
+                probe.tagAs(STATEMENT, null);
+                if (node instanceof SLWhileNode) {
+                    probe.tagAs(START_LOOP, null);
                 }
             }
         }
