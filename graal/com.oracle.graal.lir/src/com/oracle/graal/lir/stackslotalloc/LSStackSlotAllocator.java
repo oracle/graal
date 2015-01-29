@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -53,7 +53,7 @@ public final class LSStackSlotAllocator implements StackSlotAllocator {
 
     public static class Options {
         // @formatter:off
-        @Option(help = "Enable linear scan stack slot allocation.")
+        @Option(help = "Enable linear scan stack slot allocation.", type = OptionType.Debug)
         public static final OptionValue<Boolean> EnableLSStackSlotAllocation = new OptionValue<>(true);
         // @formatter:on
     }
