@@ -96,8 +96,12 @@ public final class NodeExecCounter extends TruffleTool {
      */
     private final TruffleEventReceiver eventReceiver = new DefaultEventReceiver() {
         @Override
-        @TruffleBoundary
         public void enter(Node node, VirtualFrame frame) {
+            internalReceive(node);
+        }
+
+        @TruffleBoundary
+        private void internalReceive(Node node) {
             if (isEnabled()) {
                 final Class<?> nodeClass = node.getClass();
                 AtomicLong nodeCounter = counters.get(nodeClass);

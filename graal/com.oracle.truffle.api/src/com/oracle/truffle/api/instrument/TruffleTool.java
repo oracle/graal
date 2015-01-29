@@ -66,16 +66,23 @@ package com.oracle.truffle.api.instrument;
 public abstract class TruffleTool {
 
     private enum ToolState {
+
+        /** Not yet installed, inert. */
         UNINSTALLED,
-        ENABLED_INSTALLED,
-        DISABLED_INSTALLED,
+
+        /** Installed, collecting data. */
+        ENABLED,
+
+        /** Installed, not collecting data. */
+        DISABLED,
+
+        /** Was installed, but now removed, inactive, and no longer usable. */
         DISPOSED;
     }
 
     private ToolState toolState = ToolState.UNINSTALLED;
 
     protected TruffleTool() {
-
     }
 
     /**
@@ -85,11 +92,9 @@ public abstract class TruffleTool {
      * @throws IllegalStateException if the tool has previously been installed.
      */
     public final void install() {
-        if (toolState != ToolState.UNINSTALLED) {
-            throw new IllegalStateException("Tool " + getClass().getSimpleName() + " has already been installed");
-        }
+        checkUninstalled();
         if (internalInstall()) {
-            toolState = ToolState.ENABLED_INSTALLED;
+            toolState = ToolState.ENABLED;
         }
     }
 
@@ -97,7 +102,7 @@ public abstract class TruffleTool {
      * @return whether the tool is currently collecting data.
      */
     public final boolean isEnabled() {
-        return toolState == ToolState.ENABLED_INSTALLED;
+        return toolState == ToolState.ENABLED;
     }
 
     /**
@@ -107,14 +112,9 @@ public abstract class TruffleTool {
      * @throws IllegalStateException if not yet installed or disposed.
      */
     public final void setEnabled(boolean isEnabled) {
-        if (toolState == ToolState.UNINSTALLED) {
-            throw new IllegalStateException("Tool " + getClass().getSimpleName() + " not yet installed");
-        }
-        if (toolState == ToolState.DISPOSED) {
-            throw new IllegalStateException("Tool " + getClass().getSimpleName() + " has been disposed");
-        }
+        checkInstalled();
         internalSetEnabled(isEnabled);
-        toolState = isEnabled ? ToolState.ENABLED_INSTALLED : ToolState.DISABLED_INSTALLED;
+        toolState = isEnabled ? ToolState.ENABLED : ToolState.DISABLED;
     }
 
     /**
@@ -123,12 +123,7 @@ public abstract class TruffleTool {
      * @throws IllegalStateException if not yet installed or disposed.
      */
     public final void reset() {
-        if (toolState == ToolState.UNINSTALLED) {
-            throw new IllegalStateException("Tool " + getClass().getSimpleName() + " not yet installed");
-        }
-        if (toolState == ToolState.DISPOSED) {
-            throw new IllegalStateException("Tool " + getClass().getSimpleName() + " has been disposed");
-        }
+        checkInstalled();
         internalReset();
     }
 
@@ -139,12 +134,7 @@ public abstract class TruffleTool {
      * @throws IllegalStateException if not yet installed or disposed.
      */
     public final void dispose() {
-        if (toolState == ToolState.UNINSTALLED) {
-            throw new IllegalStateException("Tool " + getClass().getSimpleName() + " not yet installed");
-        }
-        if (toolState == ToolState.DISPOSED) {
-            throw new IllegalStateException("Tool " + getClass().getSimpleName() + " has been disposed");
-        }
+        checkInstalled();
         internalDispose();
         toolState = ToolState.DISPOSED;
     }
@@ -156,7 +146,7 @@ public abstract class TruffleTool {
 
     /**
      * No subclass action required.
-     * 
+     *
      * @param isEnabled
      */
     protected void internalSetEnabled(boolean isEnabled) {
@@ -165,5 +155,30 @@ public abstract class TruffleTool {
     protected abstract void internalReset();
 
     protected abstract void internalDispose();
+
+    /**
+     * Ensure that the tool is currently installed.
+     *
+     * @throws IllegalStateException
+     */
+    private void checkInstalled() throws IllegalStateException {
+        if (toolState == ToolState.UNINSTALLED) {
+            throw new IllegalStateException("Tool " + getClass().getSimpleName() + " not yet installed");
+        }
+        if (toolState == ToolState.DISPOSED) {
+            throw new IllegalStateException("Tool " + getClass().getSimpleName() + " has been disposed");
+        }
+    }
+
+    /**
+     * Ensure that the tool has not yet been installed.
+     *
+     * @throws IllegalStateException
+     */
+    private void checkUninstalled() {
+        if (toolState != ToolState.UNINSTALLED) {
+            throw new IllegalStateException("Tool " + getClass().getSimpleName() + " has already been installed");
+        }
+    }
 
 }
