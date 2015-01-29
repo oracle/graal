@@ -41,8 +41,15 @@ import com.oracle.graal.options.*;
 
 /**
  * Linear Scan {@link StackSlotAllocator}.
+ * <p>
+ * <b>Remark:</b> The analysis works under the assumption that a stack slot is no longer live after
+ * its last usage. If an {@link LIRInstruction instruction} transfers the raw address of the stack
+ * slot to another location, e.g. a registers, and this location is referenced later on, the
+ * {@link com.oracle.graal.lir.LIRInstruction.Use usage} of the stack slot must be marked with the
+ * {@link OperandFlag#UNINITIALIZED}. Otherwise the stack slot might be reused and its content
+ * destroyed.
  */
-public class LSStackSlotAllocator implements StackSlotAllocator {
+public final class LSStackSlotAllocator implements StackSlotAllocator {
 
     public static class Options {
         // @formatter:off
@@ -107,7 +114,10 @@ public class LSStackSlotAllocator implements StackSlotAllocator {
             new SlowIntervalBuilder().build();
         }
 
-        private class SlowIntervalBuilder {
+        /**
+         * Calculates the stack intervals using a worklist-based backwards data-flow analysis.
+         */
+        private final class SlowIntervalBuilder {
             final BlockMap<BitSet> liveInMap;
             final BlockMap<BitSet> liveOutMap;
 
