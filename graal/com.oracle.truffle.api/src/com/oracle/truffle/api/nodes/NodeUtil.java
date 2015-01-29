@@ -1091,6 +1091,7 @@ public final class NodeUtil {
             final StringBuilder sb = new StringBuilder();
             sb.append("source:");
             sb.append(" (" + section.getCharIndex() + "," + (section.getCharEndIndex() - 1) + ")");
+            sb.append(" line=" + section.getLineLocation().getLineNumber());
             sb.append(" len=" + srcText.length());
             sb.append(" text=\"" + srcText + "\"");
             return sb.toString();
