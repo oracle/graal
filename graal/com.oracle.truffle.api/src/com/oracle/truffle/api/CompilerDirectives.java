@@ -664,7 +664,7 @@ public final class CompilerDirectives {
      * Marks a method that it is considered as a boundary for Truffle partial evaluation.
      */
     @Retention(RetentionPolicy.RUNTIME)
-    @Target({ElementType.METHOD})
+    @Target({ElementType.METHOD, ElementType.CONSTRUCTOR})
     public @interface TruffleBoundary {
     }
 
