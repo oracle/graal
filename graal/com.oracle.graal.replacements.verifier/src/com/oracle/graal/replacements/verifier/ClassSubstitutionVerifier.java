@@ -36,7 +36,6 @@ public final class ClassSubstitutionVerifier extends AbstractVerifier {
     private static final String TYPE_VALUE = "value";
     private static final String STRING_VALUE = "className";
     private static final String OPTIONAL = "optional";
-    private static final String STRING_VALUE_DEFAULT = "";
 
     public ClassSubstitutionVerifier(ProcessingEnvironment env) {
         super(env);
@@ -69,7 +68,7 @@ public final class ClassSubstitutionVerifier extends AbstractVerifier {
         assert typeValue != null && stringValue != null && optionalValue != null;
 
         TypeMirror type = resolveAnnotationValue(TypeMirror.class, typeValue);
-        String className = resolveAnnotationValue(String.class, stringValue);
+        String[] classNames = resolveAnnotationValue(String[].class, stringValue);
         boolean optional = resolveAnnotationValue(Boolean.class, optionalValue);
 
         if (type.getKind() != TypeKind.DECLARED) {
@@ -78,7 +77,7 @@ public final class ClassSubstitutionVerifier extends AbstractVerifier {
         }
 
         if (!classSubstition.getAnnotationType().asElement().equals(((DeclaredType) type).asElement())) {
-            if (!className.equals(STRING_VALUE_DEFAULT)) {
+            if (classNames.length != 0) {
                 String msg = "The usage of value and className is exclusive.";
                 env.getMessager().printMessage(Kind.ERROR, msg, sourceElement, classSubstition, stringValue);
                 env.getMessager().printMessage(Kind.ERROR, msg, sourceElement, classSubstition, typeValue);
@@ -87,11 +86,15 @@ public final class ClassSubstitutionVerifier extends AbstractVerifier {
             return (TypeElement) ((DeclaredType) type).asElement();
         }
 
-        if (!className.equals(STRING_VALUE_DEFAULT)) {
-            TypeElement typeElement = env.getElementUtils().getTypeElement(className);
-            if (typeElement == null && !optional) {
-                env.getMessager().printMessage(Kind.ERROR, String.format("The class '%s' was not found on the classpath.", stringValue), sourceElement, classSubstition, stringValue);
+        if (classNames.length != 0) {
+            TypeElement typeElement = null;
+            for (String className : classNames) {
+                typeElement = env.getElementUtils().getTypeElement(className);
+                if (typeElement == null && !optional) {
+                    env.getMessager().printMessage(Kind.ERROR, String.format("The class '%s' was not found on the classpath.", stringValue), sourceElement, classSubstition, stringValue);
+                }
             }
+
             return typeElement;
         }
 

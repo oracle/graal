@@ -23,6 +23,8 @@
 package com.oracle.graal.replacements.verifier;
 
 import java.lang.annotation.*;
+import java.lang.reflect.*;
+import java.util.*;
 
 import javax.annotation.processing.*;
 import javax.lang.model.element.*;
@@ -45,6 +47,14 @@ public abstract class AbstractVerifier {
     protected static <T> T resolveAnnotationValue(Class<T> expectedType, AnnotationValue value) {
         if (value == null) {
             return null;
+        }
+        if (expectedType.isArray()) {
+            ArrayList<Object> result = new ArrayList<>();
+            List<AnnotationValue> l = (List<AnnotationValue>) value.getValue();
+            for (AnnotationValue el : l) {
+                result.add(resolveAnnotationValue(expectedType.getComponentType(), el));
+            }
+            return (T) result.toArray((Object[]) Array.newInstance(expectedType.getComponentType(), result.size()));
         }
         Object unboxedValue = value.getValue();
         if (unboxedValue != null) {
