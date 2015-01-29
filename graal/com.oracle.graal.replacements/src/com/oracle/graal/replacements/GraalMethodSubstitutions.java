@@ -66,6 +66,11 @@ public class GraalMethodSubstitutions implements ReplacementsProvider {
                         return "org.openjdk.jmh.infra.Blackhole";
                     }
                 }, BlackholeSubstitutions.class);
+                replacements.registerSubstitutions(new Type() {
+                    public String getTypeName() {
+                        return "org.openjdk.jmh.logic.BlackHole";
+                    }
+                }, BlackholeSubstitutions.class);
             }
         }
     }

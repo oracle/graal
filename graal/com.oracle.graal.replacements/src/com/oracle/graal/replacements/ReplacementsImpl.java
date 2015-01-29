@@ -162,7 +162,12 @@ public class ReplacementsImpl implements Replacements {
         private Executable originalMethod(ClassSubstitution classSubstitution, boolean optional, String name, JavaSignature signature) {
             Class<?> originalClass = classSubstitution.value();
             if (originalClass == ClassSubstitution.class) {
-                originalClass = resolveClass(classSubstitution.className(), classSubstitution.optional());
+                for (String className : classSubstitution.className()) {
+                    originalClass = resolveClass(className, classSubstitution.optional());
+                    if (originalClass != null) {
+                        break;
+                    }
+                }
                 if (originalClass == null) {
                     // optional class was not found
                     return null;
@@ -334,18 +339,26 @@ public class ReplacementsImpl implements Replacements {
         return null;
     }
 
-    private static String getOriginalInternalName(Class<?> substitutions) {
+    private static boolean checkSubstitutionInternalName(Class<?> substitutions, String internalName) {
         ClassSubstitution cs = substitutions.getAnnotation(ClassSubstitution.class);
         assert cs != null : substitutions + " must be annotated by " + ClassSubstitution.class.getSimpleName();
         if (cs.value() == ClassSubstitution.class) {
-            return toInternalName(cs.className());
+            for (String className : cs.className()) {
+                if (toInternalName(className).equals(internalName)) {
+                    return true;
+                }
+            }
+            assert false : internalName + " not found in " + Arrays.toString(cs.className());
+        } else {
+            String originalInternalName = toInternalName(cs.value().getName());
+            assert originalInternalName.equals(internalName) : originalInternalName + " != " + internalName;
         }
-        return toInternalName(cs.value().getName());
+        return true;
     }
 
     public void registerSubstitutions(Type original, Class<?> substitutionClass) {
         String internalName = toInternalName(original.getTypeName());
-        assert getOriginalInternalName(substitutionClass).equals(internalName) : getOriginalInternalName(substitutionClass) + " != " + (internalName);
+        assert checkSubstitutionInternalName(substitutionClass, internalName);
         Class<?>[] classes = internalNameToSubstitutionClasses.get(internalName);
         if (classes == null) {
             classes = new Class<?>[]{substitutionClass};
