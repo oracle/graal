@@ -855,14 +855,16 @@ public class ElementUtils {
 
     public static AnnotationMirror findAnnotationMirror(ProcessingEnvironment processingEnv, List<? extends AnnotationMirror> mirrors, Class<?> annotationClass) {
         TypeElement expectedAnnotationType = processingEnv.getElementUtils().getTypeElement(annotationClass.getCanonicalName());
-        return findAnnotationMirror(mirrors, expectedAnnotationType);
+        return findAnnotationMirror(mirrors, expectedAnnotationType.asType());
     }
 
     public static AnnotationMirror findAnnotationMirror(List<? extends AnnotationMirror> mirrors, TypeElement expectedAnnotationType) {
+        return findAnnotationMirror(mirrors, expectedAnnotationType.asType());
+    }
+
+    public static AnnotationMirror findAnnotationMirror(List<? extends AnnotationMirror> mirrors, TypeMirror expectedAnnotationType) {
         for (AnnotationMirror mirror : mirrors) {
-            DeclaredType annotationType = mirror.getAnnotationType();
-            TypeElement actualAnnotationType = (TypeElement) annotationType.asElement();
-            if (actualAnnotationType.equals(expectedAnnotationType)) {
+            if (typeEquals(mirror.getAnnotationType(), expectedAnnotationType)) {
                 return mirror;
             }
         }
