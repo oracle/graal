@@ -117,7 +117,7 @@ public class GraphNodeVerifier {
 
                 List<? extends AnnotationMirror> annotations = field.getAnnotationMirrors();
 
-                boolean isNonOptionalInput = findAnnotationMirror(annotations, Input) != null;
+                boolean isNonOptionalInput = findAnnotationMirror(annotations, Input.asType()) != null;
                 boolean isOptionalInput = findAnnotationMirror(annotations, OptionalInput) != null;
                 boolean isSuccessor = findAnnotationMirror(annotations, Successor) != null;
 
