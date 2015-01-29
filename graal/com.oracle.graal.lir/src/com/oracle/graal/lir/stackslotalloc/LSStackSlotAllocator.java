@@ -58,6 +58,11 @@ public final class LSStackSlotAllocator implements StackSlotAllocator {
         // @formatter:on
     }
 
+    /**
+     * The number of allocated stack slots.
+     */
+    static final DebugMetric uninitializedSlots = Debug.metric("StackSlotAllocator[uninitializedSlots]");
+
     public void allocateStackSlots(FrameMapBuilderTool builder, LIRGenerationResult res) {
         new Allocator(res.getLIR(), builder).allocate();
     }
@@ -287,6 +292,9 @@ public final class LSStackSlotAllocator implements StackSlotAllocator {
                     if (flags.contains(OperandFlag.UNINITIALIZED)) {
                         // Stack slot is marked uninitialized so we have to assume it is live all
                         // the time.
+                        if (Debug.isMeterEnabled() && !(interval.from() == 0 && interval.to() == maxOpId())) {
+                            uninitializedSlots.increment();
+                        }
                         interval.addDef(0);
                         interval.addUse(maxOpId());
                     } else {
