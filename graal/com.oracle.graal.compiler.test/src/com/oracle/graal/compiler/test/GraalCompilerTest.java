@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,6 +36,7 @@ import org.junit.internal.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CallingConvention.Type;
+import com.oracle.graal.api.directives.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.api.runtime.*;
@@ -855,7 +856,7 @@ public abstract class GraalCompilerTest extends GraalTest {
      * @return cond
      */
     protected static boolean branchProbability(double p, boolean cond) {
-        return cond;
+        return GraalDirectives.injectBranchProbability(p, cond);
     }
 
     /**
@@ -867,7 +868,7 @@ public abstract class GraalCompilerTest extends GraalTest {
      * @return cond
      */
     protected static boolean iterationCount(double i, boolean cond) {
-        return cond;
+        return GraalDirectives.injectIterationCount(i, cond);
     }
 
     /**

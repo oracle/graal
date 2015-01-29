@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@ import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.directives.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.api.runtime.*;
@@ -47,6 +48,7 @@ public class GraalMethodSubstitutions implements ReplacementsProvider {
 
     public void registerReplacements(MetaAccessProvider metaAccess, LoweringProvider loweringProvider, SnippetReflectionProvider snippetReflection, Replacements replacements, TargetDescription target) {
         BoxingSubstitutions.registerReplacements(replacements);
+        replacements.registerSubstitutions(GraalDirectives.class, GraalDirectivesSubstitutions.class);
         if (Intrinsify.getValue()) {
             replacements.registerSubstitutions(Arrays.class, ArraysSubstitutions.class);
             replacements.registerSubstitutions(Array.class, ArraySubstitutions.class);
@@ -60,18 +62,18 @@ public class GraalMethodSubstitutions implements ReplacementsProvider {
             replacements.registerSubstitutions(Short.class, ShortSubstitutions.class);
             replacements.registerSubstitutions(UnsignedMath.class, UnsignedMathSubstitutions.class);
             replacements.registerSubstitutions(Edges.class, EdgesSubstitutions.class);
-            if (Options.UseBlackholeSubstitution.getValue()) {
-                replacements.registerSubstitutions(new Type() {
-                    public String getTypeName() {
-                        return "org.openjdk.jmh.infra.Blackhole";
-                    }
-                }, BlackholeSubstitutions.class);
-                replacements.registerSubstitutions(new Type() {
-                    public String getTypeName() {
-                        return "org.openjdk.jmh.logic.BlackHole";
-                    }
-                }, BlackholeSubstitutions.class);
-            }
+        }
+        if (Options.UseBlackholeSubstitution.getValue()) {
+            replacements.registerSubstitutions(new Type() {
+                public String getTypeName() {
+                    return "org.openjdk.jmh.infra.Blackhole";
+                }
+            }, BlackholeSubstitutions.class);
+            replacements.registerSubstitutions(new Type() {
+                public String getTypeName() {
+                    return "org.openjdk.jmh.logic.BlackHole";
+                }
+            }, BlackholeSubstitutions.class);
         }
     }
 }

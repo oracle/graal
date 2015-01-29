@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,20 +24,9 @@ package com.oracle.graal.compiler.test;
 
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.extended.*;
 
 @ClassSubstitution(GraalCompilerTest.class)
 class GraalCompilerTestSubstitutions {
-
-    @MethodSubstitution
-    public static boolean branchProbability(double p, boolean cond) {
-        return BranchProbabilityNode.probability(p, cond);
-    }
-
-    @MethodSubstitution
-    public static boolean iterationCount(double i, boolean cond) {
-        return BranchProbabilityNode.probability(1. - 1. / i, cond);
-    }
 
     @MethodSubstitution
     public static void breakpoint() {

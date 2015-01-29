@@ -20,52 +20,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.replacements.nodes;
+package com.oracle.graal.nodes.debug;
 
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
+/**
+ * This node prevents control flow optimizations. It is never duplicated or merged with other
+ * control flow anchors.
+ */
 @NodeInfo
-public final class BlackholeNode extends FixedWithNextNode implements LIRLowerable {
+public class ControlFlowAnchorNode extends FixedWithNextNode implements LIRLowerable {
 
-    @Input ValueNode value;
+    private static class Unique {
+    }
 
-    public BlackholeNode(ValueNode value) {
+    protected Unique unique;
+
+    public ControlFlowAnchorNode(@SuppressWarnings("unused") Invoke invoke) {
         super(StampFactory.forVoid());
-        this.value = value;
+        this.unique = new Unique();
     }
 
-    @Override
-    public void generate(NodeLIRBuilderTool gen) {
-        gen.getLIRGeneratorTool().emitBlackhole(gen.operand(value));
+    public void generate(NodeLIRBuilderTool generator) {
+        // do nothing
     }
-
-    @NodeIntrinsic
-    public static native void consume(boolean v);
-
-    @NodeIntrinsic
-    public static native void consume(byte v);
-
-    @NodeIntrinsic
-    public static native void consume(short v);
-
-    @NodeIntrinsic
-    public static native void consume(char v);
-
-    @NodeIntrinsic
-    public static native void consume(int v);
-
-    @NodeIntrinsic
-    public static native void consume(long v);
-
-    @NodeIntrinsic
-    public static native void consume(float v);
-
-    @NodeIntrinsic
-    public static native void consume(double v);
-
-    @NodeIntrinsic
-    public static native void consume(Object v);
 }
