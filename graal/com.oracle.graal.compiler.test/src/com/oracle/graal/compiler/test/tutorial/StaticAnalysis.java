@@ -24,6 +24,7 @@ package com.oracle.graal.compiler.test.tutorial;
 
 import java.util.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.debug.*;
@@ -33,6 +34,7 @@ import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.graph.*;
@@ -57,13 +59,16 @@ import com.oracle.graal.phases.graph.*;
 public class StaticAnalysis {
     /** Access to type, method, and fields using the Graal API. */
     private final MetaAccessProvider metaAccess;
+    /** Access to platform dependent stamps. */
+    private final StampProvider stampProvider;
     /** The results of the static analysis. */
     private final Results results;
     /** Worklist for fixpoint iteration. */
     private final Deque<WorklistEntry> worklist;
 
-    public StaticAnalysis(MetaAccessProvider metaAccess) {
+    public StaticAnalysis(MetaAccessProvider metaAccess, StampProvider stampProvider) {
         this.metaAccess = metaAccess;
+        this.stampProvider = stampProvider;
         this.results = new Results();
         this.worklist = new ArrayDeque<>();
     }
@@ -231,8 +236,9 @@ public class StaticAnalysis {
                      * wrong.
                      */
                     OptimisticOptimizations optimisticOpts = OptimisticOptimizations.NONE;
+                    Assumptions assumptions = new Assumptions(false);
 
-                    GraphBuilderPhase.Instance graphBuilder = new GraphBuilderPhase.Instance(metaAccess, graphBuilderConfig, optimisticOpts);
+                    GraphBuilderPhase.Instance graphBuilder = new GraphBuilderPhase.Instance(metaAccess, stampProvider, assumptions, graphBuilderConfig, optimisticOpts);
                     graphBuilder.apply(graph);
                 } catch (Throwable ex) {
                     Debug.handle(ex);

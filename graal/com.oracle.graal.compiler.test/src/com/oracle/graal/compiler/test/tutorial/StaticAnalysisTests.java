@@ -32,6 +32,7 @@ import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.compiler.test.tutorial.StaticAnalysis.MethodState;
 import com.oracle.graal.compiler.test.tutorial.StaticAnalysis.TypeFlow;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.runtime.*;
 
@@ -58,12 +59,14 @@ public class StaticAnalysisTests {
         Object f;
     }
 
-    private MetaAccessProvider metaAccess;
+    private final MetaAccessProvider metaAccess;
+    private final StampProvider stampProvider;
 
     public StaticAnalysisTests() {
         Backend backend = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend();
         Providers providers = backend.getProviders();
         this.metaAccess = providers.getMetaAccess();
+        this.stampProvider = providers.getStampProvider();
     }
 
     static void test01Entry() {
@@ -73,7 +76,7 @@ public class StaticAnalysisTests {
 
     @Test
     public void test01() {
-        StaticAnalysis sa = new StaticAnalysis(metaAccess);
+        StaticAnalysis sa = new StaticAnalysis(metaAccess, stampProvider);
         sa.addMethod(findMethod(StaticAnalysisTests.class, "test01Entry"));
         sa.finish();
 
@@ -94,7 +97,7 @@ public class StaticAnalysisTests {
 
     @Test
     public void test02() {
-        StaticAnalysis sa = new StaticAnalysis(metaAccess);
+        StaticAnalysis sa = new StaticAnalysis(metaAccess, stampProvider);
         sa.addMethod(findMethod(StaticAnalysisTests.class, "test02Entry"));
         sa.finish();
 
@@ -121,7 +124,7 @@ public class StaticAnalysisTests {
 
     @Test
     public void test03() {
-        StaticAnalysis sa = new StaticAnalysis(metaAccess);
+        StaticAnalysis sa = new StaticAnalysis(metaAccess, stampProvider);
         sa.addMethod(findMethod(StaticAnalysisTests.class, "test03Entry"));
         sa.finish();
 
@@ -151,7 +154,7 @@ public class StaticAnalysisTests {
 
     @Test
     public void test04() {
-        StaticAnalysis sa = new StaticAnalysis(metaAccess);
+        StaticAnalysis sa = new StaticAnalysis(metaAccess, stampProvider);
         sa.addMethod(findMethod(StaticAnalysisTests.class, "test04Entry"));
         sa.finish();
 

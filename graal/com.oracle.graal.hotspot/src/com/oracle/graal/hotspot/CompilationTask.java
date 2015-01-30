@@ -197,7 +197,7 @@ public class CompilationTask {
                     HotSpotProviders providers = backend.getProviders();
                     BaselineCompiler baselineCompiler = new BaselineCompiler(GraphBuilderConfiguration.getDefault(), providers.getMetaAccess());
                     OptimisticOptimizations optimisticOpts = OptimisticOptimizations.ALL;
-                    result = baselineCompiler.generate(method, -1, backend, new CompilationResult(), method, CompilationResultBuilderFactory.Default, optimisticOpts);
+                    result = baselineCompiler.generate(method, -1, backend, new CompilationResult(), method, CompilationResultBuilderFactory.Default, optimisticOpts, providers.getReplacements());
                 } else {
                     Map<ResolvedJavaMethod, StructuredGraph> graphCache = null;
                     if (GraalOptions.CacheGraphs.getValue()) {
