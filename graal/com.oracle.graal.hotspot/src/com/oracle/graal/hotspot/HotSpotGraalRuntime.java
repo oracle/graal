@@ -91,6 +91,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, H
      * Do deferred initialization.
      */
     public void completeInitialization() {
+        TTY.initialize(Options.LogFile.getStream(compilerToVm));
 
         // Proxies for the VM/Compiler interfaces cannot be initialized
         // in the constructor as proxy creation causes static
@@ -108,8 +109,6 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, H
         }
 
         this.compilerToVm = toVM;
-
-        TTY.initialize(Options.LogFile.getStream(compilerToVm));
 
         if (Log.getValue() == null && Meter.getValue() == null && Time.getValue() == null && Dump.getValue() == null && Verify.getValue() == null) {
             if (MethodFilter.getValue() != null) {
