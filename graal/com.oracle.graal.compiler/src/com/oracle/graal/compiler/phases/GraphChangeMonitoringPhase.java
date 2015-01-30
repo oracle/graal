@@ -22,12 +22,11 @@
  */
 package com.oracle.graal.compiler.phases;
 
-import static com.oracle.graal.graph.Graph.NodeEvent.*;
-
 import java.util.stream.*;
 
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
+import com.oracle.graal.graph.Graph.NodeEvent;
 import com.oracle.graal.graph.Graph.NodeEventScope;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
@@ -60,9 +59,13 @@ public class GraphChangeMonitoringPhase<C extends PhaseContext> extends PhaseSui
 
     @Override
     protected void run(StructuredGraph graph, C context) {
-        HashSetNodeEventListener listener = new HashSetNodeEventListener().exclude(INPUT_CHANGED);
-        try (NodeEventScope s = graph.trackNodeEvents(listener)) {
-            StructuredGraph graphCopy = graph.copy();
+        /*
+         * Phase may add nodes but not end up using them so ignore additions. Nodes going dead and
+         * having their inputs change are the main interesting differences.
+         */
+        HashSetNodeEventListener listener = new HashSetNodeEventListener().exclude(NodeEvent.NODE_ADDED);
+        StructuredGraph graphCopy = graph.copy();
+        try (NodeEventScope s = graphCopy.trackNodeEvents(listener)) {
             try (Scope s2 = Debug.sandbox("WithoutMonitoring", null)) {
                 super.run(graphCopy, context);
             } catch (Throwable t) {
@@ -70,10 +73,10 @@ public class GraphChangeMonitoringPhase<C extends PhaseContext> extends PhaseSui
             }
         }
         if (!listener.getNodes().isEmpty()) {
-            // rerun it on the real graph in a new Debug scope so Dump and Log can find it.
-            listener = new HashSetNodeEventListener().exclude(INPUT_CHANGED);
+            /* rerun it on the real graph in a new Debug scope so Dump and Log can find it. */
+            listener = new HashSetNodeEventListener();
             try (NodeEventScope s = graph.trackNodeEvents(listener)) {
-                try (Scope s2 = Debug.scope("GraphChangeMonitoring." + getName() + "-" + message)) {
+                try (Scope s2 = Debug.scope("WithGraphChangeMonitoring." + getName() + "-" + message)) {
                     if (Debug.isDumpEnabled(BasePhase.PHASE_DUMP_LEVEL)) {
                         Debug.dump(BasePhase.PHASE_DUMP_LEVEL, graph, "*** Before phase %s", getName());
                     }
@@ -81,8 +84,8 @@ public class GraphChangeMonitoringPhase<C extends PhaseContext> extends PhaseSui
                     if (Debug.isDumpEnabled(BasePhase.PHASE_DUMP_LEVEL)) {
                         Debug.dump(BasePhase.PHASE_DUMP_LEVEL, graph, "*** After phase %s", getName());
                     }
+                    Debug.log("*** %s %s %s\n", message, graph, listener.getNodes().stream().filter(e -> !e.isAlive()).collect(Collectors.toSet()));
                 }
-                Debug.log("*** %s %s %s\n", message, graph, listener.getNodes().stream().filter(e -> !e.isAlive()).collect(Collectors.toSet()));
             }
         } else {
             // Go ahead and run it normally even though it should have no effect
