@@ -93,7 +93,6 @@ public final class LSStackSlotAllocator implements StackSlotAllocator {
 
             long currentFrameSize = Debug.isMeterEnabled() ? frameMapBuilder.getFrameMap().currentFrameSize() : 0;
             // build intervals
-            // buildIntervals();
             try (Scope s = Debug.scope("StackSlotAllocationBuildIntervals"); Indent indent = Debug.logAndIndent("BuildIntervals")) {
                 buildIntervalsSlow();
             }
@@ -240,7 +239,6 @@ public final class LSStackSlotAllocator implements StackSlotAllocator {
                         // kills
                         op.visitEachTemp(this::defConsumer);
                         op.visitEachOutput(this::defConsumer);
-                        // forEachDestroyedCallerSavedRegister(op, this::defConsumer);
 
                         // gen - values that are considered alive for this state
                         op.visitEachAlive(this::useConsumer);
@@ -395,7 +393,7 @@ public final class LSStackSlotAllocator implements StackSlotAllocator {
                 StackSlotAllocator.virtualFramesize.add(frameMapBuilder.getFrameMap().spillSlotRangeSize(slotRange.getSlots()));
                 StackSlotAllocator.allocatedSlots.increment();
             } else {
-                assert virtualSlot instanceof SimpleVirtualStackSlot : "Unexpexted VirtualStackSlot type: " + virtualSlot;
+                assert virtualSlot instanceof SimpleVirtualStackSlot : "Unexpected VirtualStackSlot type: " + virtualSlot;
                 StackSlot slot = findFreeSlot((SimpleVirtualStackSlot) virtualSlot);
                 if (slot != null) {
                     /*
@@ -473,7 +471,7 @@ public final class LSStackSlotAllocator implements StackSlotAllocator {
             for (int id = next.from(); activePeekId() < id;) {
                 finished(active.pollFirst());
             }
-            Debug.log("activte %s", next);
+            Debug.log("active %s", next);
             insertSortedByTo(next);
             return next;
         }
