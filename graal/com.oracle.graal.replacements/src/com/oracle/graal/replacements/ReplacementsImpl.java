@@ -113,11 +113,13 @@ public class ReplacementsImpl implements Replacements {
                         }
                         String originalName = originalName(substituteMethod, methodSubstitution.value());
                         JavaSignature originalSignature = originalSignature(substituteMethod, methodSubstitution.signature(), methodSubstitution.isStatic());
-                        Executable originalMethod = originalMethod(classSubstitution, methodSubstitution.optional(), originalName, originalSignature);
-                        if (originalMethod != null && (guard == null || guard.execute())) {
-                            ResolvedJavaMethod original = registerMethodSubstitution(this, originalMethod, substituteMethod);
-                            if (original != null && methodSubstitution.forced() && shouldIntrinsify(original)) {
-                                forcedSubstitutions.add(original);
+                        Executable[] originalMethods = originalMethods(classSubstitution, methodSubstitution.optional(), originalName, originalSignature);
+                        for (Executable originalMethod : originalMethods) {
+                            if (originalMethod != null && (guard == null || guard.execute())) {
+                                ResolvedJavaMethod original = registerMethodSubstitution(this, originalMethod, substituteMethod);
+                                if (original != null && methodSubstitution.forced() && shouldIntrinsify(original)) {
+                                    forcedSubstitutions.add(original);
+                                }
                             }
                         }
                     }
@@ -126,11 +128,13 @@ public class ReplacementsImpl implements Replacements {
                     if (macroSubstitution != null && (defaultGuard == null || defaultGuard.execute())) {
                         String originalName = originalName(substituteMethod, macroSubstitution.value());
                         JavaSignature originalSignature = originalSignature(substituteMethod, macroSubstitution.signature(), macroSubstitution.isStatic());
-                        Executable originalMethod = originalMethod(classSubstitution, macroSubstitution.optional(), originalName, originalSignature);
-                        if (originalMethod != null) {
-                            ResolvedJavaMethod original = registerMacroSubstitution(this, originalMethod, macroSubstitution.macro());
-                            if (original != null && macroSubstitution.forced() && shouldIntrinsify(original)) {
-                                forcedSubstitutions.add(original);
+                        Executable[] originalMethods = originalMethods(classSubstitution, macroSubstitution.optional(), originalName, originalSignature);
+                        for (Executable originalMethod : originalMethods) {
+                            if (originalMethod != null) {
+                                ResolvedJavaMethod original = registerMacroSubstitution(this, originalMethod, macroSubstitution.macro());
+                                if (original != null && macroSubstitution.forced() && shouldIntrinsify(original)) {
+                                    forcedSubstitutions.add(original);
+                                }
                             }
                         }
                     }
@@ -159,20 +163,30 @@ public class ReplacementsImpl implements Replacements {
             return new JavaSignature(returnType, parameters);
         }
 
-        private Executable originalMethod(ClassSubstitution classSubstitution, boolean optional, String name, JavaSignature signature) {
+        private Executable[] originalMethods(ClassSubstitution classSubstitution, boolean optional, String name, JavaSignature signature) {
             Class<?> originalClass = classSubstitution.value();
             if (originalClass == ClassSubstitution.class) {
+                ArrayList<Executable> result = new ArrayList<>();
                 for (String className : classSubstitution.className()) {
                     originalClass = resolveClass(className, classSubstitution.optional());
                     if (originalClass != null) {
-                        break;
+                        result.add(lookupOriginalMethod(originalClass, name, signature, optional));
                     }
                 }
-                if (originalClass == null) {
+                if (result.size() == 0) {
                     // optional class was not found
                     return null;
                 }
+                return result.toArray(new Executable[result.size()]);
             }
+            Executable original = lookupOriginalMethod(originalClass, name, signature, optional);
+            if (original != null) {
+                return new Executable[]{original};
+            }
+            return null;
+        }
+
+        private Executable lookupOriginalMethod(Class<?> originalClass, String name, JavaSignature signature, boolean optional) throws GraalInternalError {
             try {
                 if (name.equals("<init>")) {
                     assert signature.returnType.equals(void.class) : signature;
