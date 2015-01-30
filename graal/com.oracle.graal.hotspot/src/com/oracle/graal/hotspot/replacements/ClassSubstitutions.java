@@ -105,12 +105,16 @@ public class ClassSubstitutions {
                     if (superKlass.equal(0)) {
                         return null;
                     } else {
-                        return piCastExactNonNull(superKlass.readObject(classMirrorOffset(), CLASS_MIRROR_LOCATION), Class.class);
+                        return readJavaMirror(superKlass);
                     }
                 }
             }
         }
         return null;
+    }
+
+    public static Class<?> readJavaMirror(Word klass) {
+        return piCastExactNonNull(klass.readObject(classMirrorOffset(), CLASS_MIRROR_LOCATION), Class.class);
     }
 
     @MacroSubstitution(macro = ClassGetComponentTypeNode.class, isStatic = false)
