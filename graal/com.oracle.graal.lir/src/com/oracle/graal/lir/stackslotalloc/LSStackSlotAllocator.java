@@ -53,8 +53,8 @@ public final class LSStackSlotAllocator implements StackSlotAllocator {
 
     public static class Options {
         // @formatter:off
-        @Option(help = "Enable linear scan stack slot allocation.", type = OptionType.Debug)
-        public static final OptionValue<Boolean> EnableLSStackSlotAllocation = new OptionValue<>(true);
+        @Option(help = "Use linear scan stack slot allocation.", type = OptionType.Debug)
+        public static final OptionValue<Boolean> LSStackSlotAllocation = new OptionValue<>(true);
         // @formatter:on
     }
 
