@@ -114,11 +114,10 @@ public class InvokeGraal {
 
             /* Advanced configuration objects that are not mandatory. */
             Map<ResolvedJavaMethod, StructuredGraph> cache = null;
-            Object stub = null;
             SpeculationLog speculationLog = null;
 
             /* Invoke the whole Graal compilation pipeline. */
-            GraalCompiler.compileGraph(graph, stub, callingConvention, method, providers, backend, target, cache, graphBuilderSuite, optimisticOpts, profilingInfo, speculationLog, suites,
+            GraalCompiler.compileGraph(graph, callingConvention, method, providers, backend, target, cache, graphBuilderSuite, optimisticOpts, profilingInfo, speculationLog, suites,
                             compilationResult, factory);
 
             /*

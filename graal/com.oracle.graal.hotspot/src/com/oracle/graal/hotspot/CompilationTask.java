@@ -230,7 +230,7 @@ public class CompilationTask {
                         // all code after the OSR loop is never executed.
                         optimisticOpts.remove(Optimization.RemoveNeverExecutedCode);
                     }
-                    result = compileGraph(graph, null, cc, method, providers, backend, backend.getTarget(), graphCache, getGraphBuilderSuite(providers), optimisticOpts, profilingInfo,
+                    result = compileGraph(graph, cc, method, providers, backend, backend.getTarget(), graphCache, getGraphBuilderSuite(providers), optimisticOpts, profilingInfo,
                                     method.getSpeculationLog(), suites, new CompilationResult(), CompilationResultBuilderFactory.Default);
                 }
                 result.setId(getId());
