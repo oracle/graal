@@ -56,10 +56,21 @@ public final class NodeNodeMap extends NodeMap<Node> implements Map<Node, Node> 
 
     public Set<Node> keySet() {
         HashSet<Node> entries = new HashSet<>();
-        for (Map.Entry<Node, Node> entry : entries()) {
-            entries.add(entry.getKey());
+        for (int i = 0; i < values.length; ++i) {
+            Object v = values[i];
+            if (v != null) {
+                Node key = getKey(i);
+                if (key != null) {
+                    entries.add(key);
+                }
+            }
         }
-        return entries;
+        /*
+         * The normal contract for entrySet is that modifications of the set are reflected in the
+         * underlying data structure. For simplicity don't allow that but complain if someone tries
+         * to use it that way.
+         */
+        return Collections.unmodifiableSet(entries);
     }
 
     public Collection<Node> values() {
@@ -78,6 +89,11 @@ public final class NodeNodeMap extends NodeMap<Node> implements Map<Node, Node> 
         for (Map.Entry<Node, Node> entry : entries()) {
             entries.add(entry);
         }
-        return entries;
+        /*
+         * The normal contract for entrySet is that modifications of the set are reflected in the
+         * underlying data structure. For simplicity don't allow that but complain if someone tries
+         * to use it that way.
+         */
+        return Collections.unmodifiableSet(entries);
     }
 }

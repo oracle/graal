@@ -98,6 +98,14 @@ public class NodeMap<T> extends NodeIdAccessor {
         values[getNodeId(node)] = value;
     }
 
+    /**
+     * @param i
+     * @return Return the key for the entry at index {@code i}
+     */
+    protected Node getKey(int i) {
+        return graph.getNode(i);
+    }
+
     public int size() {
         return values.length;
     }
@@ -135,7 +143,7 @@ public class NodeMap<T> extends NodeIdAccessor {
                     @Override
                     public Entry<Node, T> next() {
                         final int pos = i;
-                        Node key = NodeMap.this.graph.getNode(pos);
+                        Node key = NodeMap.this.getKey(pos);
                         T value = (T) NodeMap.this.values[pos];
                         i++;
                         forward();
@@ -158,7 +166,7 @@ public class NodeMap<T> extends NodeIdAccessor {
                     }
 
                     private void forward() {
-                        while (i < NodeMap.this.values.length && (NodeMap.this.graph.getNode(i) == null || NodeMap.this.values[i] == null)) {
+                        while (i < NodeMap.this.values.length && (NodeMap.this.getKey(i) == null || NodeMap.this.values[i] == null)) {
                             i++;
                         }
                     }
