@@ -27,10 +27,10 @@ import java.util.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.lir.stackslotalloc.StackInterval.*;
 
-public class StackUsePosList {
+public final class StackUsePosList {
 
-    LinkedList<Integer> usePosList;
-    LinkedList<UseType> typeList;
+    private final LinkedList<Integer> usePosList;
+    private final LinkedList<UseType> typeList;
 
     StackUsePosList() {
         this.usePosList = new LinkedList<>();

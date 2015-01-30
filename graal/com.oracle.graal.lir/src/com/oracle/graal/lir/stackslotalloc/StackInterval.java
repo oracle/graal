@@ -26,7 +26,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 
-public class StackInterval {
+public final class StackInterval {
 
     private static final int INVALID_START = Integer.MAX_VALUE;
     private static final int INVALID_END = Integer.MIN_VALUE;
@@ -98,10 +98,6 @@ public class StackInterval {
 
     public void setLocation(StackSlot location) {
         this.location = location;
-    }
-
-    public StackInterval locationHint() {
-        return null;
     }
 
     public int from() {
