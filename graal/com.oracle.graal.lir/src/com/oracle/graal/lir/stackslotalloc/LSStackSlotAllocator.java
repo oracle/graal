@@ -233,36 +233,75 @@ public final class LSStackSlotAllocator implements StackSlotAllocator {
             }
         }
 
-        private EnumMap<SlotSize, LinkedList<StackSlot>> freeSlots = new EnumMap<>(SlotSize.class);
+        private EnumMap<SlotSize, Deque<StackSlot>> freeSlots;
 
+        /**
+         * @return The list of free stack slots for {@code size} or {@code null} if there is none.
+         */
+        private Deque<StackSlot> getOrNullFreeSlots(SlotSize size) {
+            if (freeSlots == null) {
+                return null;
+            }
+            return freeSlots.get(size);
+        }
+
+        /**
+         * @return the list of free stack slots for {@code size}. If there is none a list is
+         *         created.
+         */
+        private Deque<StackSlot> getOrInitFreeSlots(SlotSize size) {
+            assert size != SlotSize.Illegal;
+            Deque<StackSlot> freeList;
+            if (freeSlots != null) {
+                freeList = freeSlots.get(size);
+            } else {
+                freeSlots = new EnumMap<>(SlotSize.class);
+                freeList = null;
+            }
+            if (freeList == null) {
+                freeList = new ArrayDeque<>();
+                freeSlots.put(size, freeList);
+            }
+            assert freeList != null;
+            return freeList;
+        }
+
+        /**
+         * Gets a free stack slot for {@code slot} or {@code null} if there is none.
+         */
         private StackSlot findFreeSlot(SimpleVirtualStackSlot slot) {
             assert slot != null;
             SlotSize size = forKind(slot.getLIRKind());
-            LinkedList<StackSlot> freeList = size == SlotSize.Illegal ? null : freeSlots.get(size);
+            if (size == SlotSize.Illegal) {
+                return null;
+            }
+            Deque<StackSlot> freeList = getOrNullFreeSlots(size);
             if (freeList == null) {
                 return null;
             }
-            return freeList.pollFirst();
+            return freeList.pollLast();
         }
 
+        /**
+         * Adds a stack slot to the list of free slots.
+         */
         private void freeSlot(StackSlot slot) {
             SlotSize size = forKind(slot.getLIRKind());
             if (size == SlotSize.Illegal) {
                 return;
             }
-            LinkedList<StackSlot> freeList = freeSlots.get(size);
-            if (freeList == null) {
-                freeList = new LinkedList<>();
-                freeSlots.put(size, freeList);
-            }
-            freeList.add(slot);
+            getOrInitFreeSlots(size).addLast(slot);
         }
 
+        /**
+         * Gets the next unhandled interval and finishes handled intervals.
+         */
         private StackInterval activateNext() {
             if (unhandled.isEmpty()) {
                 return null;
             }
             StackInterval next = unhandled.poll();
+            // finish handled intervals
             for (int id = next.from(); activePeekId() < id;) {
                 finished(active.poll());
             }
@@ -271,6 +310,10 @@ public final class LSStackSlotAllocator implements StackSlotAllocator {
             return next;
         }
 
+        /**
+         * Gets the lowest {@link StackInterval#to() end position} of all active intervals. If there
+         * is none {@link Integer#MAX_VALUE} is returned.
+         */
         private int activePeekId() {
             StackInterval first = active.peek();
             if (first == null) {
@@ -279,6 +322,9 @@ public final class LSStackSlotAllocator implements StackSlotAllocator {
             return first.to();
         }
 
+        /**
+         * Finishes {@code interval} by adding its location to the list of free stack slots.
+         */
         private void finished(StackInterval interval) {
             StackSlot location = interval.location();
             Debug.log("finished %s (freeing %s)", interval, location);
@@ -323,7 +369,7 @@ public final class LSStackSlotAllocator implements StackSlotAllocator {
         // ====================
 
         /**
-         * Gets the highest instruction id allocated by this object.
+         * Gets the highest instruction id.
          */
         private int maxOpId() {
             return maxOpId;
