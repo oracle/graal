@@ -95,7 +95,7 @@ public final class LSStackSlotAllocator implements StackSlotAllocator {
             long currentFrameSize = Debug.isMeterEnabled() ? frameMapBuilder.getFrameMap().currentFrameSize() : 0;
             // build intervals
             try (Scope s = Debug.scope("StackSlotAllocationBuildIntervals"); Indent indent = Debug.logAndIndent("BuildIntervals")) {
-                buildIntervalsSlow();
+                buildIntervals();
             }
             if (Debug.isEnabled()) {
                 verifyIntervals();
@@ -115,21 +115,21 @@ public final class LSStackSlotAllocator implements StackSlotAllocator {
             StackSlotAllocator.allocatedFramesize.add(frameMapBuilder.getFrameMap().currentFrameSize() - currentFrameSize);
         }
 
-        private void buildIntervalsSlow() {
-            new SlowIntervalBuilder(lir, stackSlotMap, maxOpId()).build();
+        private void buildIntervals() {
+            new FixPointIntervalBuilder(lir, stackSlotMap, maxOpId()).build();
         }
 
         /**
          * Calculates the stack intervals using a worklist-based backwards data-flow analysis.
          */
-        private static final class SlowIntervalBuilder {
+        private static final class FixPointIntervalBuilder {
             private final BlockMap<BitSet> liveInMap;
             private final BlockMap<BitSet> liveOutMap;
             private final LIR lir;
             private final int maxOpId;
             private final StackInterval[] stackSlotMap;
 
-            private SlowIntervalBuilder(LIR lir, StackInterval[] stackSlotMap, int maxOpId) {
+            private FixPointIntervalBuilder(LIR lir, StackInterval[] stackSlotMap, int maxOpId) {
                 this.lir = lir;
                 this.stackSlotMap = stackSlotMap;
                 this.maxOpId = maxOpId;
