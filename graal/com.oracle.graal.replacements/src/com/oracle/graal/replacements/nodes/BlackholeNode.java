@@ -43,47 +43,29 @@ public final class BlackholeNode extends FixedWithNextNode implements LIRLowerab
     }
 
     @NodeIntrinsic
-    @SuppressWarnings("unused")
-    public static void consume(boolean v) {
-    }
+    public static native void consume(boolean v);
 
     @NodeIntrinsic
-    @SuppressWarnings("unused")
-    public static void consume(byte v) {
-    }
+    public static native void consume(byte v);
 
     @NodeIntrinsic
-    @SuppressWarnings("unused")
-    public static void consume(short v) {
-    }
+    public static native void consume(short v);
 
     @NodeIntrinsic
-    @SuppressWarnings("unused")
-    public static void consume(char v) {
-    }
+    public static native void consume(char v);
 
     @NodeIntrinsic
-    @SuppressWarnings("unused")
-    public static void consume(int v) {
-    }
+    public static native void consume(int v);
 
     @NodeIntrinsic
-    @SuppressWarnings("unused")
-    public static void consume(long v) {
-    }
+    public static native void consume(long v);
 
     @NodeIntrinsic
-    @SuppressWarnings("unused")
-    public static void consume(float v) {
-    }
+    public static native void consume(float v);
 
     @NodeIntrinsic
-    @SuppressWarnings("unused")
-    public static void consume(double v) {
-    }
+    public static native void consume(double v);
 
     @NodeIntrinsic
-    @SuppressWarnings("unused")
-    public static void consume(Object v) {
-    }
+    public static native void consume(Object v);
 }

@@ -1640,67 +1640,6 @@ public final class LinearScan {
         return new IntervalWalker(this, oopIntervals, nonOopIntervals);
     }
 
-    /**
-     * Visits all intervals for a frame state. The frame state use this information to build the OOP
-     * maps.
-     */
-    private void markFrameLocations(IntervalWalker iw, LIRInstruction op, LIRFrameState info, FrameMap frameMap) {
-        Debug.log("creating oop map at opId %d", op.id());
-
-        // walk before the current operation . intervals that start at
-        // the operation (i.e. output operands of the operation) are not
-        // included in the oop map
-        iw.walkBefore(op.id());
-
-        // TODO(je) we could pass this as parameter
-        AbstractBlock<?> block = blockForId(op.id());
-
-        // Iterate through active intervals
-        for (Interval interval = iw.activeLists.get(RegisterBinding.Fixed); interval != Interval.EndMarker; interval = interval.next) {
-            Value operand = interval.operand;
-
-            assert interval.currentFrom() <= op.id() && op.id() <= interval.currentTo() : "interval should not be active otherwise";
-            assert isVariable(interval.operand) : "fixed interval found";
-
-            // Check if this range covers the instruction. Intervals that
-            // start or end at the current operation are not included in the
-            // oop map, except in the case of patching moves. For patching
-            // moves, any intervals which end at this instruction are included
-            // in the oop map since we may safepoint while doing the patch
-            // before we've consumed the inputs.
-            if (op.id() < interval.currentTo() && !isIllegal(interval.location())) {
-                // caller-save registers must not be included into oop-maps at calls
-                assert !op.destroysCallerSavedRegisters() || !isRegister(operand) || !isCallerSave(operand) : "interval is in a caller-save register at a call . register will be overwritten";
-
-                info.markLocation(interval.location(), frameMap);
-
-                // Spill optimization: when the stack value is guaranteed to be always correct,
-                // then it must be added to the oop map even if the interval is currently in a
-                // register
-                int spillPos = interval.spillDefinitionPos();
-                if (interval.spillState() != SpillState.SpillInDominator) {
-                    if (interval.alwaysInMemory() && op.id() > interval.spillDefinitionPos() && !interval.location().equals(interval.spillSlot())) {
-                        assert interval.spillDefinitionPos() > 0 : "position not set correctly";
-                        assert spillPos > 0 : "position not set correctly";
-                        assert interval.spillSlot() != null : "no spill slot assigned";
-                        assert !isRegister(interval.operand) : "interval is on stack :  so stack slot is registered twice";
-                        info.markLocation(interval.spillSlot(), frameMap);
-                    }
-                } else {
-                    AbstractBlock<?> spillBlock = blockForId(spillPos);
-                    if (interval.alwaysInMemory() && !interval.location().equals(interval.spillSlot())) {
-                        if ((spillBlock.equals(block) && op.id() > spillPos) || dominates(spillBlock, block)) {
-                            assert spillPos > 0 : "position not set correctly";
-                            assert interval.spillSlot() != null : "no spill slot assigned";
-                            assert !isRegister(interval.operand) : "interval is on stack :  so stack slot is registered twice";
-                            info.markLocation(interval.spillSlot(), frameMap);
-                        }
-                    }
-                }
-            }
-        }
-    }
-
     private boolean isCallerSave(Value operand) {
         return attributes(asRegister(operand)).isCallerSave();
     }
@@ -1744,20 +1683,11 @@ public final class LinearScan {
         return result;
     }
 
-    private void computeDebugInfo(IntervalWalker iw, final LIRInstruction op, LIRFrameState info) {
-        if (!LocationMarker.Options.UseLocationMarker.getValue()) {
-            FrameMap frameMap = res.getFrameMap();
-            info.initDebugInfo(frameMap, !op.destroysCallerSavedRegisters() || !callKillsRegisters);
-            markFrameLocations(iw, op, info, frameMap);
-        }
-
+    private void computeDebugInfo(final LIRInstruction op, LIRFrameState info) {
         info.forEachState(op, this::debugInfoProcedure);
-        if (!LocationMarker.Options.UseLocationMarker.getValue()) {
-            info.finish(op, res.getFrameMap());
-        }
     }
 
-    private void assignLocations(List<LIRInstruction> instructions, final IntervalWalker iw) {
+    private void assignLocations(List<LIRInstruction> instructions) {
         int numInst = instructions.size();
         boolean hasDead = false;
 
@@ -1792,7 +1722,7 @@ public final class LinearScan {
             op.forEachOutput(assignProc);
 
             // compute reference map and debug information
-            op.forEachState((inst, state) -> computeDebugInfo(iw, inst, state));
+            op.forEachState((inst, state) -> computeDebugInfo(inst, state));
 
             // remove useless moves
             if (move != null) {
@@ -1810,39 +1740,13 @@ public final class LinearScan {
     }
 
     private void assignLocations() {
-        IntervalWalker iw = initIntervalWalker(IS_STACK_INTERVAL);
         try (Indent indent = Debug.logAndIndent("assign locations")) {
             for (AbstractBlock<?> block : sortedBlocks) {
                 try (Indent indent2 = Debug.logAndIndent("assign locations in block B%d", block.getId())) {
-                    assignLocations(ir.getLIRforBlock(block), iw);
+                    assignLocations(ir.getLIRforBlock(block));
                 }
             }
         }
-    }
-
-    private class Mapper implements FrameMappable {
-
-        public void map(FrameMappingTool tool) {
-            try (Scope scope = Debug.scope("StackSlotMappingLSRA")) {
-                for (Interval current : intervals) {
-                    if (current != null) {
-                        if (isVirtualStackSlot(current.location())) {
-                            VirtualStackSlot value = asVirtualStackSlot(current.location());
-                            StackSlot stackSlot = tool.getStackSlot(value);
-                            Debug.log("map %s -> %s", value, stackSlot);
-                            current.assignLocation(stackSlot);
-                        }
-                        if (current.isSplitParent() && current.spillSlot() != null && isVirtualStackSlot(current.spillSlot())) {
-                            VirtualStackSlot value = asVirtualStackSlot(current.spillSlot());
-                            StackSlot stackSlot = tool.getStackSlot(value);
-                            Debug.log("map %s -> %s", value, stackSlot);
-                            current.setSpillSlot(stackSlot);
-                        }
-                    }
-                }
-            }
-        }
-
     }
 
     public static void allocate(TargetDescription target, LIRGenerationResult res) {
@@ -1891,16 +1795,6 @@ public final class LinearScan {
             try (Scope s = Debug.scope("DebugInfo")) {
                 printIntervals("After register allocation");
                 printLir("After register allocation", true);
-
-                // register interval mapper
-                frameMapBuilder.requireMapping(new Mapper());
-
-                if (!LocationMarker.Options.UseLocationMarker.getValue()) {
-                    // build frame map
-                    res.buildFrameMap();
-                }
-
-                printLir("After FrameMap building", true);
 
                 sortIntervalsAfterAllocation();
 

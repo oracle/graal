@@ -27,6 +27,7 @@ import java.util.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.lir.gen.*;
+import com.oracle.graal.lir.stackslotalloc.*;
 
 /**
  * A {@link FrameMapBuilder} is used to collect all information necessary to
@@ -72,14 +73,8 @@ public interface FrameMapBuilder {
     void callsMethod(CallingConvention cc);
 
     /**
-     * Registers a FrameMappable class so that virtual stack slots can be changed to real stack
-     * slots.
-     */
-    void requireMapping(FrameMappable mappable);
-
-    /**
      * Creates a {@linkplain FrameMap} based on the information collected by this
      * {@linkplain FrameMapBuilder}.
      */
-    FrameMap buildFrameMap(LIRGenerationResult result);
+    FrameMap buildFrameMap(LIRGenerationResult result, StackSlotAllocator allocator);
 }

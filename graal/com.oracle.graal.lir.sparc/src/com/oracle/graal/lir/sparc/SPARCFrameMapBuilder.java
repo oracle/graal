@@ -32,6 +32,6 @@ public class SPARCFrameMapBuilder extends FrameMapBuilderImpl {
     }
 
     public StackSlot allocateDeoptimizationRescueSlot() {
-        return ((SPARCFrameMap) frameMap).allocateDeoptimizationRescueSlot();
+        return ((SPARCFrameMap) getFrameMap()).allocateDeoptimizationRescueSlot();
     }
 }

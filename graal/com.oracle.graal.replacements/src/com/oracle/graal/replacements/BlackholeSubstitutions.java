@@ -25,7 +25,10 @@ package com.oracle.graal.replacements;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.replacements.nodes.*;
 
-@ClassSubstitution(className = "org.openjdk.jmh.infra.Blackhole", optional = true)
+/**
+ * Substitutions for both the old and new versions of JMH Blackhole helper classes.
+ */
+@ClassSubstitution(className = {"org.openjdk.jmh.infra.Blackhole", "org.openjdk.jmh.logic.BlackHole"}, optional = true)
 public class BlackholeSubstitutions {
 
     @SuppressWarnings("unused")

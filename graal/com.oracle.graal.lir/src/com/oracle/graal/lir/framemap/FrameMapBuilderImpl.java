@@ -27,16 +27,19 @@ import java.util.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.lir.gen.*;
+import com.oracle.graal.lir.stackslotalloc.*;
 
 /**
  * A FrameMapBuilder that records allocation.
  */
-public class FrameMapBuilderImpl implements FrameMapBuilder {
+public class FrameMapBuilderImpl implements FrameMapBuilderTool {
 
     private final RegisterConfig registerConfig;
     private final CodeCacheProvider codeCache;
-    protected final FrameMap frameMap;
+    private final FrameMap frameMap;
     private final List<VirtualStackSlot> stackSlots;
     private final List<CallingConvention> calls;
     private int numStackSlots;
@@ -48,11 +51,8 @@ public class FrameMapBuilderImpl implements FrameMapBuilder {
         this.frameMap = frameMap;
         this.stackSlots = new ArrayList<>();
         this.calls = new ArrayList<>();
-        this.mappables = new ArrayList<>();
         this.numStackSlots = 0;
     }
-
-    private final List<FrameMappable> mappables;
 
     public VirtualStackSlot allocateSpillSlot(LIRKind kind) {
         SimpleVirtualStackSlot slot = new SimpleVirtualStackSlot(numStackSlots++, kind);
@@ -80,10 +80,10 @@ public class FrameMapBuilderImpl implements FrameMapBuilder {
         return codeCache;
     }
 
-    /**
-     * Returns the number of {@link VirtualStackSlot}s created by this {@link FrameMapBuilder}. Can
-     * be used as an upper bound for an array indexed by {@link VirtualStackSlot#getId()}.
-     */
+    public FrameMap getFrameMap() {
+        return frameMap;
+    }
+
     public int getNumberOfStackSlots() {
         return numStackSlots;
     }
@@ -92,23 +92,18 @@ public class FrameMapBuilderImpl implements FrameMapBuilder {
         calls.add(cc);
     }
 
-    public FrameMap buildFrameMap(LIRGenerationResult res) {
-        FrameMappingTool mapper = new SimpleStackSlotAllocator().allocateStackSlots(this);
+    public FrameMap buildFrameMap(LIRGenerationResult res, StackSlotAllocator allocator) {
+        try (Scope s = Debug.scope("StackSlotAllocation")) {
+            allocator.allocateStackSlots(this, res);
+        }
         for (CallingConvention cc : calls) {
             frameMap.callsMethod(cc);
         }
-        // rewrite
-        mappables.forEach(m -> m.map(mapper));
-
         frameMap.finish();
         return frameMap;
     }
 
-    public void requireMapping(FrameMappable mappable) {
-        this.mappables.add(mappable);
-    }
-
-    List<VirtualStackSlot> getStackSlots() {
+    public List<VirtualStackSlot> getStackSlots() {
         return stackSlots;
     }
 

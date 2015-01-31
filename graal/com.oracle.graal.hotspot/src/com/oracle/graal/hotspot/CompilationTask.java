@@ -197,7 +197,7 @@ public class CompilationTask {
                     HotSpotProviders providers = backend.getProviders();
                     BaselineCompiler baselineCompiler = new BaselineCompiler(GraphBuilderConfiguration.getDefault(), providers.getMetaAccess());
                     OptimisticOptimizations optimisticOpts = OptimisticOptimizations.ALL;
-                    result = baselineCompiler.generate(method, -1, backend, new CompilationResult(), method, CompilationResultBuilderFactory.Default, optimisticOpts);
+                    result = baselineCompiler.generate(method, -1, backend, new CompilationResult(), method, CompilationResultBuilderFactory.Default, optimisticOpts, providers.getReplacements());
                 } else {
                     Map<ResolvedJavaMethod, StructuredGraph> graphCache = null;
                     if (GraalOptions.CacheGraphs.getValue()) {
@@ -230,7 +230,7 @@ public class CompilationTask {
                         // all code after the OSR loop is never executed.
                         optimisticOpts.remove(Optimization.RemoveNeverExecutedCode);
                     }
-                    result = compileGraph(graph, null, cc, method, providers, backend, backend.getTarget(), graphCache, getGraphBuilderSuite(providers), optimisticOpts, profilingInfo,
+                    result = compileGraph(graph, cc, method, providers, backend, backend.getTarget(), graphCache, getGraphBuilderSuite(providers), optimisticOpts, profilingInfo,
                                     method.getSpeculationLog(), suites, new CompilationResult(), CompilationResultBuilderFactory.Default);
                 }
                 result.setId(getId());

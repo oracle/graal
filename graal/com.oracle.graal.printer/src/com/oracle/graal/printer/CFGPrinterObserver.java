@@ -35,6 +35,7 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.stackslotalloc.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.phases.schedule.*;
@@ -181,7 +182,8 @@ public class CFGPrinterObserver implements DebugDumpHandler {
             cfgPrinter.printMachineCode(codeCache.disassemble((CompilationResult) tuple[0], (InstalledCode) tuple[1]), message);
         } else if (object instanceof Interval[]) {
             cfgPrinter.printIntervals(message, (Interval[]) object);
-
+        } else if (object instanceof StackInterval[]) {
+            cfgPrinter.printStackIntervals(message, (StackInterval[]) object);
         }
 
         cfgPrinter.target = null;

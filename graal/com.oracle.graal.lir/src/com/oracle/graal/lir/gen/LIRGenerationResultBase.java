@@ -24,6 +24,7 @@ package com.oracle.graal.lir.gen;
 
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.framemap.*;
+import com.oracle.graal.lir.stackslotalloc.*;
 
 public class LIRGenerationResultBase implements LIRGenerationResult {
     private final LIR lir;
@@ -59,9 +60,9 @@ public class LIRGenerationResultBase implements LIRGenerationResult {
         return frameMapBuilder;
     }
 
-    public void buildFrameMap() {
+    public void buildFrameMap(StackSlotAllocator allocator) {
         assert frameMap == null : "buildFrameMap() can only be called once!";
-        frameMap = frameMapBuilder.buildFrameMap(this);
+        frameMap = frameMapBuilder.buildFrameMap(this, allocator);
     }
 
     public FrameMap getFrameMap() {

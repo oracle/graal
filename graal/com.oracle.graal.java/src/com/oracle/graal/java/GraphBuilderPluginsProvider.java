@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,14 +20,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.framemap;
+package com.oracle.graal.java;
 
-import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.runtime.*;
 
 /**
- * A tool to get the real stack slot from a virtual stack slot.
+ * Interface for providers of {@link GraphBuilderPlugin}s.
  */
-@FunctionalInterface
-public interface FrameMappingTool {
-    StackSlot getStackSlot(VirtualStackSlot slot);
+public interface GraphBuilderPluginsProvider extends Service {
+    /**
+     * Registers the plugins provided by this object with a plugins registry.
+     *
+     * @param plugins registry of plugins
+     */
+    void registerPlugins(MetaAccessProvider metaAccess, GraphBuilderPlugins plugins);
 }

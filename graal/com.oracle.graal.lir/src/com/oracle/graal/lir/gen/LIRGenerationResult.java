@@ -24,6 +24,7 @@ package com.oracle.graal.lir.gen;
 
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.framemap.*;
+import com.oracle.graal.lir.stackslotalloc.*;
 
 public interface LIRGenerationResult {
 
@@ -31,7 +32,7 @@ public interface LIRGenerationResult {
      * Returns the {@link FrameMapBuilder} for collecting the information to build a
      * {@link FrameMap}.
      *
-     * This method can only be used prior calling {@link #buildFrameMap()}.
+     * This method can only be used prior calling {@link #buildFrameMap}.
      */
     FrameMapBuilder getFrameMapBuilder();
 
@@ -41,12 +42,12 @@ public interface LIRGenerationResult {
      *
      * @see FrameMapBuilder#buildFrameMap
      */
-    void buildFrameMap();
+    void buildFrameMap(StackSlotAllocator allocator);
 
     /**
      * Returns the {@link FrameMap} associated with this {@link LIRGenerationResult}.
      *
-     * This method can only be called after {@link #buildFrameMap()}.
+     * This method can only be called after {@link #buildFrameMap}.
      */
     FrameMap getFrameMap();
 
