@@ -294,16 +294,16 @@ public final class LSStackSlotAllocator implements StackSlotAllocator {
                         if (Debug.isMeterEnabled() && !(interval.from() == 0 && interval.to() == maxOpId())) {
                             uninitializedSlots.increment();
                         }
-                        interval.addDef(0);
-                        interval.addUse(maxOpId());
+                        interval.addFrom(0);
+                        interval.addTo(maxOpId());
                     } else {
-                        interval.addUse(inst.id());
+                        interval.addTo(inst.id());
                     }
                 }
 
                 private void addDef(VirtualStackSlot stackSlot, LIRInstruction inst) {
                     StackInterval interval = getOrCreateInterval(stackSlot);
-                    interval.addDef(inst.id());
+                    interval.addFrom(inst.id());
                 }
 
             }

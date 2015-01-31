@@ -26,7 +26,6 @@ import static com.oracle.graal.api.code.ValueUtil.*;
 
 import java.io.*;
 import java.util.*;
-import java.util.Map.Entry;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
@@ -39,7 +38,6 @@ import com.oracle.graal.java.*;
 import com.oracle.graal.java.BciBlockMapping.BciBlock;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.stackslotalloc.*;
-import com.oracle.graal.lir.stackslotalloc.StackInterval.UseType;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
@@ -588,18 +586,8 @@ class CFGPrinter extends CompilationPrinter {
 
         out.printf("[%d, %d[", interval.from(), interval.to());
 
-        // print use positions
-        int prev = -1;
-        for (Entry<Integer, UseType> e : interval.usePosList().entrySet()) {
-            int usePos = e.getKey();
-            UseType useType = e.getValue();
-            assert prev <= usePos : "use positions not sorted";
-            out.printf("%d %s ", usePos, useType);
-            prev = usePos;
-        }
-
         // print spill state
-        out.printf(" \"%s\"", "NOT_SUPPORTED");
+        out.printf(" \"NOT_SUPPORTED\"");
         out.println();
     }
 

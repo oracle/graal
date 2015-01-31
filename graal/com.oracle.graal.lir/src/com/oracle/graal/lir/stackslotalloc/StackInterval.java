@@ -22,11 +22,8 @@
  */
 package com.oracle.graal.lir.stackslotalloc;
 
-import java.util.*;
-
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.debug.*;
 
 public final class StackInterval {
 
@@ -36,19 +33,11 @@ public final class StackInterval {
     private final LIRKind kind;
     private int from = INVALID_START;
     private int to = INVALID_END;
-    private final SortedMap<Integer, UseType> usePos;
     private StackSlot location;
-
-    public enum UseType {
-        // Prefixes for c1viz
-        M_USE,
-        S_DEF
-    }
 
     public StackInterval(VirtualStackSlot operand, LIRKind kind) {
         this.operand = operand;
         this.kind = kind;
-        this.usePos = new TreeMap<>();
     }
 
     public boolean verify(LSStackSlotAllocator.Allocator allocator) {
@@ -59,20 +48,6 @@ public final class StackInterval {
 
     public VirtualStackSlot getOperand() {
         return operand;
-    }
-
-    public void addUse(int opId) {
-        addTo(opId);
-        Debug.log("Adding use pos: %d", opId);
-        // we might overwrite the previous entry
-        usePos.put(opId, UseType.M_USE);
-    }
-
-    public void addDef(int opId) {
-        addFrom(opId);
-        Debug.log("Adding def pos: %d", opId);
-        // we might overwrite the previous entry
-        usePos.put(opId, UseType.S_DEF);
     }
 
     public void addTo(int opId) {
@@ -109,10 +84,6 @@ public final class StackInterval {
 
     public int to() {
         return to;
-    }
-
-    public SortedMap<Integer, UseType> usePosList() {
-        return usePos;
     }
 
     public void fixFrom() {
