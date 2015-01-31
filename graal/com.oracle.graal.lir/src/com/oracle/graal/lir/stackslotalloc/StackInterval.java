@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.lir.stackslotalloc;
 
+import java.util.*;
+
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
@@ -34,7 +36,7 @@ public final class StackInterval {
     private final LIRKind kind;
     private int from = INVALID_START;
     private int to = INVALID_END;
-    private final StackUsePosList usePos;
+    private final SortedMap<Integer, UseType> usePos;
     private StackSlot location;
 
     public enum UseType {
@@ -46,11 +48,10 @@ public final class StackInterval {
     public StackInterval(VirtualStackSlot operand, LIRKind kind) {
         this.operand = operand;
         this.kind = kind;
-        this.usePos = new StackUsePosList();
+        this.usePos = new TreeMap<>();
     }
 
     public boolean verify(LSStackSlotAllocator.Allocator allocator) {
-        assert usePosList().verify();
         // maxOpId + 1 it the last position in the last block (i.e. the "write position")
         assert from >= 0 && to <= allocator.maxOpId() + 1 : String.format("from %d, to %d, maxOpId %d", from, to, allocator.maxOpId());
         return true;
@@ -63,13 +64,15 @@ public final class StackInterval {
     public void addUse(int opId) {
         addTo(opId);
         Debug.log("Adding use pos: %d", opId);
-        usePos.add(opId, UseType.M_USE);
+        // we might overwrite the previous entry
+        usePos.put(opId, UseType.M_USE);
     }
 
     public void addDef(int opId) {
         addFrom(opId);
         Debug.log("Adding def pos: %d", opId);
-        usePos.add(opId, UseType.S_DEF);
+        // we might overwrite the previous entry
+        usePos.put(opId, UseType.S_DEF);
     }
 
     public void addTo(int opId) {
@@ -108,7 +111,7 @@ public final class StackInterval {
         return to;
     }
 
-    public StackUsePosList usePosList() {
+    public SortedMap<Integer, UseType> usePosList() {
         return usePos;
     }
 
