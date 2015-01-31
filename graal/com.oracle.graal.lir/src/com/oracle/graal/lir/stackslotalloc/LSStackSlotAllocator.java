@@ -67,7 +67,7 @@ public final class LSStackSlotAllocator implements StackSlotAllocator {
         new Allocator(res.getLIR(), builder).allocate();
     }
 
-    static final class Allocator extends InstructionNumberer {
+    private static final class Allocator extends InstructionNumberer {
         private final LIR lir;
         private final FrameMapBuilderTool frameMapBuilder;
         private final StackInterval[] stackSlotMap;
@@ -340,7 +340,7 @@ public final class LSStackSlotAllocator implements StackSlotAllocator {
 
         private void verifyIntervals() {
             forEachInterval(interval -> {
-                assert interval.verify(this);
+                assert interval.verify(maxOpId());
             });
         }
 
