@@ -66,15 +66,21 @@ public final class LSStackSlotAllocator implements StackSlotAllocator {
         private final LIR lir;
         private final FrameMapBuilderTool frameMapBuilder;
         private final StackInterval[] stackSlotMap;
-        private PriorityQueue<StackInterval> unhandled;
-        private PriorityQueue<StackInterval> active;
+        private final PriorityQueue<StackInterval> unhandled;
+        private final PriorityQueue<StackInterval> active;
 
-        private List<? extends AbstractBlock<?>> sortedBlocks;
+        private final List<? extends AbstractBlock<?>> sortedBlocks;
 
         private Allocator(LIR lir, FrameMapBuilderTool frameMapBuilder) {
             this.lir = lir;
             this.frameMapBuilder = frameMapBuilder;
             this.stackSlotMap = new StackInterval[frameMapBuilder.getNumberOfStackSlots()];
+            this.sortedBlocks = lir.getControlFlowGraph().getBlocks();
+
+            // insert by from
+            this.unhandled = new PriorityQueue<>((a, b) -> a.from() - b.from());
+            // insert by to
+            this.active = new PriorityQueue<>((a, b) -> a.to() - b.to());
         }
 
         private void allocate() {
@@ -82,7 +88,6 @@ public final class LSStackSlotAllocator implements StackSlotAllocator {
             List<? extends AbstractBlock<?>> blocks = lir.getControlFlowGraph().getBlocks();
             assert blocks.size() > 0;
 
-            sortedBlocks = lir.getControlFlowGraph().getBlocks();
             numberInstructions(lir, sortedBlocks);
             Debug.dump(lir, "After StackSlot numbering");
 
@@ -136,11 +141,6 @@ public final class LSStackSlotAllocator implements StackSlotAllocator {
         }
 
         private void createUnhandled() {
-            Comparator<? super StackInterval> insertByFrom = (a, b) -> a.from() - b.from();
-            Comparator<? super StackInterval> insertByTo = (a, b) -> a.to() - b.to();
-
-            unhandled = new PriorityQueue<>(insertByFrom);
-            active = new PriorityQueue<>(insertByTo);
 
             // add all intervals to unhandled list
             forEachInterval(unhandled::add);
