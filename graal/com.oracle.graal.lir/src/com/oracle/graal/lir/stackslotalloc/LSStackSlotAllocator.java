@@ -72,7 +72,6 @@ public final class LSStackSlotAllocator implements StackSlotAllocator {
         private List<? extends AbstractBlock<?>> sortedBlocks;
 
         private Allocator(LIR lir, FrameMapBuilderTool frameMapBuilder) {
-            super(lir);
             this.lir = lir;
             this.frameMapBuilder = frameMapBuilder;
             this.stackSlotMap = new StackInterval[frameMapBuilder.getNumberOfStackSlots()];

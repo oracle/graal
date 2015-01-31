@@ -22,51 +22,13 @@
  */
 package com.oracle.graal.lir.stackslotalloc;
 
-import static com.oracle.graal.api.code.CodeUtil.*;
-
 import java.util.*;
 
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.lir.*;
 
 public class InstructionNumberer {
-
-    private final LIRInstruction[] opIdToInstructionMap;
-    private final AbstractBlock<?>[] opIdToBlockMap;
-
-    protected InstructionNumberer(LIR lir) {
-        // Assign IDs to LIR nodes and build a mapping, lirOps, from ID to LIRInstruction node.
-        int numInstructions = 0;
-        for (AbstractBlock<?> block : lir.getControlFlowGraph().getBlocks()) {
-            numInstructions += lir.getLIRforBlock(block).size();
-        }
-
-        // initialize with correct length
-        opIdToInstructionMap = new LIRInstruction[numInstructions];
-        opIdToBlockMap = new AbstractBlock<?>[numInstructions];
-    }
-
-    /**
-     * Converts an {@linkplain LIRInstruction#id instruction id} to an instruction index. All LIR
-     * instructions in a method have an index one greater than their linear-scan order predecessor
-     * with the first instruction having an index of 0.
-     */
-    private static int opIdToIndex(int opId) {
-        return opId >> 1;
-    }
-
-    /**
-     * Retrieves the {@link LIRInstruction} based on its {@linkplain LIRInstruction#id id}.
-     *
-     * @param opId an instruction {@linkplain LIRInstruction#id id}
-     * @return the instruction whose {@linkplain LIRInstruction#id} {@code == id}
-     */
-    protected LIRInstruction instructionForId(int opId) {
-        assert isEven(opId) : "opId not even";
-        LIRInstruction instr = opIdToInstructionMap[opIdToIndex(opId)];
-        assert instr.id() == opId;
-        return instr;
-    }
+    private int maxOpId;
 
     /**
      * Numbers all instructions in all blocks.
@@ -84,24 +46,19 @@ public class InstructionNumberer {
                 LIRInstruction op = instructions.get(j);
                 op.setId(opId);
 
-                opIdToInstructionMap[index] = op;
-                opIdToBlockMap[index] = block;
-                assert instructionForId(opId) == op : "must match";
-
                 index++;
                 opId += 2; // numbering of lirOps by two
             }
         }
-        assert index == opIdToBlockMap.length : "must match";
         assert (index << 1) == opId : "must match: " + (index << 1);
-        assert opId - 2 == maxOpId() : "must match";
+        maxOpId = opId - 2;
+        assert maxOpId == maxOpId() : "must match";
     }
 
     /**
      * Gets the highest instruction id allocated by this object.
      */
     public int maxOpId() {
-        assert opIdToInstructionMap.length > 0 : "no operations";
-        return (opIdToInstructionMap.length - 1) << 1;
+        return maxOpId;
     }
 }
