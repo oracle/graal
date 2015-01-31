@@ -116,17 +116,23 @@ public final class LSStackSlotAllocator implements StackSlotAllocator {
         }
 
         private void buildIntervalsSlow() {
-            new SlowIntervalBuilder().build();
+            new SlowIntervalBuilder(lir, stackSlotMap, maxOpId()).build();
         }
 
         /**
          * Calculates the stack intervals using a worklist-based backwards data-flow analysis.
          */
-        private final class SlowIntervalBuilder {
-            final BlockMap<BitSet> liveInMap;
-            final BlockMap<BitSet> liveOutMap;
+        private static final class SlowIntervalBuilder {
+            private final BlockMap<BitSet> liveInMap;
+            private final BlockMap<BitSet> liveOutMap;
+            private final LIR lir;
+            private final int maxOpId;
+            private final StackInterval[] stackSlotMap;
 
-            private SlowIntervalBuilder() {
+            private SlowIntervalBuilder(LIR lir, StackInterval[] stackSlotMap, int maxOpId) {
+                this.lir = lir;
+                this.stackSlotMap = stackSlotMap;
+                this.maxOpId = maxOpId;
                 liveInMap = new BlockMap<>(lir.getControlFlowGraph());
                 liveOutMap = new BlockMap<>(lir.getControlFlowGraph());
             }
@@ -137,7 +143,7 @@ public final class LSStackSlotAllocator implements StackSlotAllocator {
                     worklist.add(lir.getControlFlowGraph().getBlocks().get(i));
                 }
                 for (AbstractBlock<?> block : lir.getControlFlowGraph().getBlocks()) {
-                    liveInMap.put(block, new BitSet(frameMapBuilder.getNumberOfStackSlots()));
+                    liveInMap.put(block, new BitSet(stackSlotMap.length));
                 }
                 while (!worklist.isEmpty()) {
                     AbstractBlock<?> block = worklist.poll();
@@ -149,7 +155,7 @@ public final class LSStackSlotAllocator implements StackSlotAllocator {
              * Merge outSet with in-set of successors.
              */
             private boolean updateOutBlock(AbstractBlock<?> block) {
-                BitSet union = new BitSet(frameMapBuilder.getNumberOfStackSlots());
+                BitSet union = new BitSet(stackSlotMap.length);
                 block.getSuccessors().forEach(succ -> union.or(liveInMap.get(succ)));
                 BitSet outSet = liveOutMap.get(block);
                 // check if changed
@@ -291,11 +297,11 @@ public final class LSStackSlotAllocator implements StackSlotAllocator {
                     if (flags.contains(OperandFlag.UNINITIALIZED)) {
                         // Stack slot is marked uninitialized so we have to assume it is live all
                         // the time.
-                        if (Debug.isMeterEnabled() && !(interval.from() == 0 && interval.to() == maxOpId())) {
+                        if (Debug.isMeterEnabled() && !(interval.from() == 0 && interval.to() == maxOpId)) {
                             uninitializedSlots.increment();
                         }
                         interval.addFrom(0);
-                        interval.addTo(maxOpId());
+                        interval.addTo(maxOpId);
                     } else {
                         interval.addTo(inst.id());
                     }
@@ -307,6 +313,32 @@ public final class LSStackSlotAllocator implements StackSlotAllocator {
                 }
 
             }
+
+            private StackInterval get(VirtualStackSlot stackSlot) {
+                return stackSlotMap[stackSlot.getId()];
+            }
+
+            private void put(VirtualStackSlot stackSlot, StackInterval interval) {
+                stackSlotMap[stackSlot.getId()] = interval;
+            }
+
+            private StackInterval getOrCreateInterval(VirtualStackSlot stackSlot) {
+                StackInterval interval = get(stackSlot);
+                if (interval == null) {
+                    interval = new StackInterval(stackSlot, stackSlot.getLIRKind());
+                    put(stackSlot, interval);
+                }
+                return interval;
+            }
+
+            private StackInterval getIntervalFromStackId(int id) {
+                return stackSlotMap[id];
+            }
+
+        }
+
+        private StackInterval get(VirtualStackSlot stackSlot) {
+            return stackSlotMap[stackSlot.getId()];
         }
 
         private static int getBlockBegin(List<LIRInstruction> instructions) {
@@ -315,27 +347,6 @@ public final class LSStackSlotAllocator implements StackSlotAllocator {
 
         private static int getBlockEnd(List<LIRInstruction> instructions) {
             return instructions.get(instructions.size() - 1).id() + 1;
-        }
-
-        private StackInterval getOrCreateInterval(VirtualStackSlot stackSlot) {
-            StackInterval interval = get(stackSlot);
-            if (interval == null) {
-                interval = new StackInterval(stackSlot, stackSlot.getLIRKind());
-                put(stackSlot, interval);
-            }
-            return interval;
-        }
-
-        private StackInterval get(VirtualStackSlot stackSlot) {
-            return stackSlotMap[stackSlot.getId()];
-        }
-
-        private StackInterval getIntervalFromStackId(int id) {
-            return stackSlotMap[id];
-        }
-
-        private void put(VirtualStackSlot stackSlot, StackInterval interval) {
-            stackSlotMap[stackSlot.getId()] = interval;
         }
 
         private void verifyIntervals() {
