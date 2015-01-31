@@ -62,14 +62,14 @@ public final class LSStackSlotAllocator implements StackSlotAllocator {
         new Allocator(res.getLIR(), builder).allocate();
     }
 
-    private static final class Allocator extends InstructionNumberer {
+    private static final class Allocator {
         private final LIR lir;
         private final FrameMapBuilderTool frameMapBuilder;
         private final StackInterval[] stackSlotMap;
         private final PriorityQueue<StackInterval> unhandled;
         private final PriorityQueue<StackInterval> active;
-
         private final List<? extends AbstractBlock<?>> sortedBlocks;
+        private final int maxOpId;
 
         private Allocator(LIR lir, FrameMapBuilderTool frameMapBuilder) {
             this.lir = lir;
@@ -81,14 +81,12 @@ public final class LSStackSlotAllocator implements StackSlotAllocator {
             this.unhandled = new PriorityQueue<>((a, b) -> a.from() - b.from());
             // insert by to
             this.active = new PriorityQueue<>((a, b) -> a.to() - b.to());
+
+            // number instructions
+            this.maxOpId = numberInstructions(lir, sortedBlocks);
         }
 
         private void allocate() {
-            // create block ordering
-            List<? extends AbstractBlock<?>> blocks = lir.getControlFlowGraph().getBlocks();
-            assert blocks.size() > 0;
-
-            numberInstructions(lir, sortedBlocks);
             Debug.dump(lir, "After StackSlot numbering");
 
             long currentFrameSize = Debug.isMeterEnabled() ? frameMapBuilder.getFrameMap().currentFrameSize() : 0;
@@ -96,6 +94,7 @@ public final class LSStackSlotAllocator implements StackSlotAllocator {
             try (Scope s = Debug.scope("StackSlotAllocationBuildIntervals"); Indent indent = Debug.logAndIndent("BuildIntervals")) {
                 buildIntervals();
             }
+            // verify intervals
             if (Debug.isEnabled()) {
                 verifyIntervals();
             }
@@ -111,7 +110,41 @@ public final class LSStackSlotAllocator implements StackSlotAllocator {
             // assign stack slots
             assignStackSlots();
             Debug.dump(lir, "After StackSlot assignment");
-            StackSlotAllocator.allocatedFramesize.add(frameMapBuilder.getFrameMap().currentFrameSize() - currentFrameSize);
+            if (Debug.isMeterEnabled()) {
+                StackSlotAllocator.allocatedFramesize.add(frameMapBuilder.getFrameMap().currentFrameSize() - currentFrameSize);
+            }
+        }
+
+        /**
+         * Numbers all instructions in all blocks.
+         *
+         * @return The id of the last operation.
+         */
+        private static int numberInstructions(LIR lir, List<? extends AbstractBlock<?>> sortedBlocks) {
+            int opId = 0;
+            int index = 0;
+            for (AbstractBlock<?> block : sortedBlocks) {
+
+                List<LIRInstruction> instructions = lir.getLIRforBlock(block);
+
+                int numInst = instructions.size();
+                for (int j = 0; j < numInst; j++) {
+                    LIRInstruction op = instructions.get(j);
+                    op.setId(opId);
+
+                    index++;
+                    opId += 2; // numbering of lirOps by two
+                }
+            }
+            assert (index << 1) == opId : "must match: " + (index << 1);
+            return opId - 2;
+        }
+
+        /**
+         * Gets the highest instruction id allocated by this object.
+         */
+        private int maxOpId() {
+            return maxOpId;
         }
 
         private void buildIntervals() {
@@ -136,7 +169,7 @@ public final class LSStackSlotAllocator implements StackSlotAllocator {
             }
         }
 
-        public void dumpIntervals(String label) {
+        private void dumpIntervals(String label) {
             Debug.dump(stackSlotMap, label);
         }
 
