@@ -641,177 +641,210 @@ public class ConditionalEliminationPhase extends Phase {
         @Override
         protected void node(FixedNode node) {
             if (node instanceof AbstractBeginNode) {
-                AbstractBeginNode begin = (AbstractBeginNode) node;
-                Node pred = node.predecessor();
+                processAbstractBegin((AbstractBeginNode) node);
+            } else if (node instanceof FixedGuardNode) {
+                processFixedGuard((FixedGuardNode) node);
+            } else if (node instanceof CheckCastNode) {
+                processCheckCast((CheckCastNode) node);
+            } else if (node instanceof ConditionAnchorNode) {
+                processConditionAnchor((ConditionAnchorNode) node);
+            } else if (node instanceof IfNode) {
+                processIf((IfNode) node);
+            } else if (node instanceof AbstractEndNode) {
+                processAbstractEnd((AbstractEndNode) node);
+            } else if (node instanceof Invoke) {
+                processInvoke((Invoke) node);
+            }
+        }
 
-                if (pred != null) {
-                    registerControlSplitInfo(pred, begin);
-                }
+        private void processIf(IfNode ifNode) {
+            LogicNode compare = ifNode.condition();
 
-                // First eliminate any guards which can be trivially removed and register any
-                // type constraints the guards produce.
-                for (GuardNode guard : begin.guards().snapshot()) {
-                    eliminateTrivialGuardOrRegisterStamp(guard);
-                }
-
-                // Collect the guards which have produced conditional stamps.
-                // XXX (gd) IdentityHashMap.values().contains performs a linear search
-                // so we prefer to build a set
-                Set<GuardNode> provers = Node.newSet();
-                for (GuardedStamp e : state.valueConstraints.values()) {
-                    provers.add(e.getGuard());
-                }
-
-                // Process the remaining guards. Guards which produced some type constraint should
-                // just be registered since they aren't trivially deleteable. Test the other guards
-                // to see if they can be deleted using type constraints.
-                for (GuardNode guard : begin.guards().snapshot()) {
-                    if (provers.contains(guard) || !(tryReplaceWithExistingGuard(guard) || testImpliedGuard(guard))) {
-                        registerCondition(!guard.isNegated(), guard.condition(), guard);
+            LogicNode replacement = null;
+            GuardingNode replacementAnchor = null;
+            AbstractBeginNode survivingSuccessor = null;
+            if (state.trueConditions.containsKey(compare)) {
+                replacement = trueConstant;
+                replacementAnchor = state.trueConditions.get(compare);
+                survivingSuccessor = ifNode.trueSuccessor();
+            } else if (state.falseConditions.containsKey(compare)) {
+                replacement = falseConstant;
+                replacementAnchor = state.falseConditions.get(compare);
+                survivingSuccessor = ifNode.falseSuccessor();
+            } else {
+                replacement = evaluateCondition(compare, trueConstant, falseConstant);
+                if (replacement != null) {
+                    if (replacement == trueConstant) {
+                        survivingSuccessor = ifNode.trueSuccessor();
+                    } else {
+                        assert replacement == falseConstant;
+                        survivingSuccessor = ifNode.falseSuccessor();
                     }
                 }
-                for (GuardNode guard : provers) {
-                    assert !testImpliedGuard(guard) : "provers shouldn't be trivially eliminatable";
-                }
-            } else if (node instanceof FixedGuardNode) {
-                FixedGuardNode guard = (FixedGuardNode) node;
-                GuardingNode existingGuard = guard.isNegated() ? state.falseConditions.get(guard.condition()) : state.trueConditions.get(guard.condition());
-                if (existingGuard != null && existingGuard instanceof FixedGuardNode) {
-                    guard.replaceAtUsages(existingGuard.asNode());
-                    guard.graph().removeFixed(guard);
+            }
+
+            if (replacement != null) {
+                trySimplify(ifNode, compare, replacement, replacementAnchor, survivingSuccessor);
+            }
+        }
+
+        private void trySimplify(IfNode ifNode, LogicNode compare, LogicNode replacement, GuardingNode replacementAnchor, AbstractBeginNode survivingSuccessor) {
+            if (replacementAnchor != null && !(replacementAnchor instanceof AbstractBeginNode)) {
+                ValueAnchorNode anchor = graph.add(new ValueAnchorNode(replacementAnchor.asNode()));
+                graph.addBeforeFixed(ifNode, anchor);
+            }
+            boolean canSimplify = true;
+            for (Node n : survivingSuccessor.usages().snapshot()) {
+                if (n instanceof GuardNode || n instanceof ProxyNode) {
+                    // Keep wired to the begin node.
                 } else {
+                    if (replacementAnchor == null) {
+                        // Cannot simplify this IfNode as there is no anchor.
+                        canSimplify = false;
+                        break;
+                    }
+                    // Rewire to the replacement anchor.
+                    n.replaceFirstInput(survivingSuccessor, replacementAnchor.asNode());
+                }
+            }
+
+            if (canSimplify) {
+                ifNode.setCondition(replacement);
+                if (compare.hasNoUsages()) {
+                    GraphUtil.killWithUnusedFloatingInputs(compare);
+                }
+            }
+        }
+
+        private void processInvoke(Invoke invoke) {
+            if (invoke.callTarget() instanceof MethodCallTargetNode) {
+                MethodCallTargetNode callTarget = (MethodCallTargetNode) invoke.callTarget();
+                ValueNode receiver = callTarget.receiver();
+                if (receiver != null && callTarget.invokeKind().isIndirect()) {
+                    ResolvedJavaType type = state.getNodeType(receiver);
+                    if (!Objects.equals(type, StampTool.typeOrNull(receiver))) {
+                        ResolvedJavaMethod method = type.resolveConcreteMethod(callTarget.targetMethod(), invoke.getContextType());
+                        if (method != null) {
+                            if (method.canBeStaticallyBound() || type.isFinal()) {
+                                callTarget.setInvokeKind(InvokeKind.Special);
+                                callTarget.setTargetMethod(method);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        private void processAbstractEnd(AbstractEndNode endNode) {
+            for (PhiNode phi : endNode.merge().phis()) {
+                int index = endNode.merge().phiPredecessorIndex(endNode);
+                ValueNode value = phi.valueAt(index);
+                if (value instanceof ConditionalNode) {
+                    ConditionalNode materialize = (ConditionalNode) value;
+                    LogicNode compare = materialize.condition();
+                    ValueNode replacement = evaluateCondition(compare, materialize.trueValue(), materialize.falseValue());
+
+                    if (replacement != null) {
+                        phi.setValueAt(index, replacement);
+                        if (materialize.hasNoUsages()) {
+                            GraphUtil.killWithUnusedFloatingInputs(materialize);
+                        }
+                    }
+                }
+            }
+        }
+
+        private void processConditionAnchor(ConditionAnchorNode conditionAnchorNode) {
+            LogicNode condition = conditionAnchorNode.condition();
+            GuardingNode replacementAnchor = null;
+            if (conditionAnchorNode.isNegated()) {
+                if (state.falseConditions.containsKey(condition)) {
+                    replacementAnchor = state.falseConditions.get(condition);
+                }
+            } else {
+                if (state.trueConditions.containsKey(condition)) {
+                    replacementAnchor = state.trueConditions.get(condition);
+                }
+            }
+            if (replacementAnchor != null) {
+                conditionAnchorNode.replaceAtUsages(replacementAnchor.asNode());
+                conditionAnchorNode.graph().removeFixed(conditionAnchorNode);
+            }
+        }
+
+        private void processCheckCast(CheckCastNode checkCast) {
+            ValueNode object = checkCast.object();
+            boolean isNull = state.isNull(object);
+            ResolvedJavaType type = state.getNodeType(object);
+            if (isNull || (type != null && checkCast.type().isAssignableFrom(type))) {
+                boolean nonNull = state.isNonNull(object);
+                GuardingNode replacementAnchor = null;
+                if (nonNull) {
+                    replacementAnchor = searchAnchor(GraphUtil.unproxify(object), type);
+                }
+                if (replacementAnchor == null) {
+                    replacementAnchor = AbstractBeginNode.prevBegin(checkCast);
+                }
+                PiNode piNode;
+                if (isNull) {
+                    ConstantNode nullObject = ConstantNode.defaultForKind(Kind.Object, graph);
+                    piNode = graph.unique(new PiNode(nullObject, nullObject.stamp(), replacementAnchor.asNode()));
+                } else {
+                    piNode = graph.unique(new PiNode(object, StampFactory.declaredTrusted(type, nonNull), replacementAnchor.asNode()));
+                }
+                checkCast.replaceAtUsages(piNode);
+                graph.removeFixed(checkCast);
+                metricCheckCastRemoved.increment();
+            }
+        }
+
+        private void processFixedGuard(FixedGuardNode guard) {
+            GuardingNode existingGuard = guard.isNegated() ? state.falseConditions.get(guard.condition()) : state.trueConditions.get(guard.condition());
+            if (existingGuard != null && existingGuard instanceof FixedGuardNode) {
+                guard.replaceAtUsages(existingGuard.asNode());
+                guard.graph().removeFixed(guard);
+            } else {
+                registerCondition(!guard.isNegated(), guard.condition(), guard);
+            }
+        }
+
+        private void processAbstractBegin(AbstractBeginNode begin) {
+            Node pred = begin.predecessor();
+
+            if (pred != null) {
+                registerControlSplitInfo(pred, begin);
+            }
+
+            // First eliminate any guards which can be trivially removed and register any
+            // type constraints the guards produce.
+            for (GuardNode guard : begin.guards().snapshot()) {
+                eliminateTrivialGuardOrRegisterStamp(guard);
+            }
+
+            // Collect the guards which have produced conditional stamps.
+            // XXX (gd) IdentityHashMap.values().contains performs a linear search
+            // so we prefer to build a set
+            Set<GuardNode> provers = Node.newSet();
+            for (GuardedStamp e : state.valueConstraints.values()) {
+                provers.add(e.getGuard());
+            }
+
+            // Process the remaining guards. Guards which produced some type constraint should
+            // just be registered since they aren't trivially deleteable. Test the other guards
+            // to see if they can be deleted using type constraints.
+            for (GuardNode guard : begin.guards().snapshot()) {
+                if (provers.contains(guard) || !(tryReplaceWithExistingGuard(guard) || testImpliedGuard(guard))) {
                     registerCondition(!guard.isNegated(), guard.condition(), guard);
                 }
-            } else if (node instanceof CheckCastNode) {
-                CheckCastNode checkCast = (CheckCastNode) node;
-                ValueNode object = checkCast.object();
-                boolean isNull = state.isNull(object);
-                ResolvedJavaType type = state.getNodeType(object);
-                if (isNull || (type != null && checkCast.type().isAssignableFrom(type))) {
-                    boolean nonNull = state.isNonNull(object);
-                    GuardingNode replacementAnchor = null;
-                    if (nonNull) {
-                        replacementAnchor = searchAnchor(GraphUtil.unproxify(object), type);
-                    }
-                    if (replacementAnchor == null) {
-                        replacementAnchor = AbstractBeginNode.prevBegin(checkCast);
-                    }
-                    PiNode piNode;
-                    if (isNull) {
-                        ConstantNode nullObject = ConstantNode.defaultForKind(Kind.Object, graph);
-                        piNode = graph.unique(new PiNode(nullObject, nullObject.stamp(), replacementAnchor.asNode()));
-                    } else {
-                        piNode = graph.unique(new PiNode(object, StampFactory.declaredTrusted(type, nonNull), replacementAnchor.asNode()));
-                    }
-                    checkCast.replaceAtUsages(piNode);
-                    graph.removeFixed(checkCast);
-                    metricCheckCastRemoved.increment();
-                }
-            } else if (node instanceof ConditionAnchorNode) {
-                ConditionAnchorNode conditionAnchorNode = (ConditionAnchorNode) node;
-                LogicNode condition = conditionAnchorNode.condition();
-                GuardingNode replacementAnchor = null;
-                if (conditionAnchorNode.isNegated()) {
-                    if (state.falseConditions.containsKey(condition)) {
-                        replacementAnchor = state.falseConditions.get(condition);
-                    }
-                } else {
-                    if (state.trueConditions.containsKey(condition)) {
-                        replacementAnchor = state.trueConditions.get(condition);
-                    }
-                }
-                if (replacementAnchor != null) {
-                    conditionAnchorNode.replaceAtUsages(replacementAnchor.asNode());
-                    conditionAnchorNode.graph().removeFixed(conditionAnchorNode);
-                }
-            } else if (node instanceof IfNode) {
-                IfNode ifNode = (IfNode) node;
-                LogicNode compare = ifNode.condition();
-
-                LogicNode replacement = null;
-                GuardingNode replacementAnchor = null;
-                AbstractBeginNode survivingSuccessor = null;
-                if (state.trueConditions.containsKey(compare)) {
-                    replacement = trueConstant;
-                    replacementAnchor = state.trueConditions.get(compare);
-                    survivingSuccessor = ifNode.trueSuccessor();
-                } else if (state.falseConditions.containsKey(compare)) {
-                    replacement = falseConstant;
-                    replacementAnchor = state.falseConditions.get(compare);
-                    survivingSuccessor = ifNode.falseSuccessor();
-                } else {
-                    replacement = evaluateCondition(compare, trueConstant, falseConstant);
-                    if (replacement != null) {
-                        if (replacement == trueConstant) {
-                            survivingSuccessor = ifNode.trueSuccessor();
-                        } else {
-                            assert replacement == falseConstant;
-                            survivingSuccessor = ifNode.falseSuccessor();
-                        }
-                    }
-                }
-
-                if (replacement != null) {
-                    if (replacementAnchor != null && !(replacementAnchor instanceof AbstractBeginNode)) {
-                        ValueAnchorNode anchor = graph.add(new ValueAnchorNode(replacementAnchor.asNode()));
-                        graph.addBeforeFixed(ifNode, anchor);
-                    }
-                    for (Node n : survivingSuccessor.usages().snapshot()) {
-                        if (n instanceof GuardNode || n instanceof ProxyNode) {
-                            // Keep wired to the begin node.
-                        } else {
-                            if (replacementAnchor == null) {
-                                // Cannot simplify this IfNode as there is no anchor.
-                                return;
-                            }
-                            // Rewire to the replacement anchor.
-                            n.replaceFirstInput(survivingSuccessor, replacementAnchor.asNode());
-                        }
-                    }
-
-                    ifNode.setCondition(replacement);
-                    if (compare.hasNoUsages()) {
-                        GraphUtil.killWithUnusedFloatingInputs(compare);
-                    }
-                }
-            } else if (node instanceof AbstractEndNode) {
-                AbstractEndNode endNode = (AbstractEndNode) node;
-                for (PhiNode phi : endNode.merge().phis()) {
-                    int index = endNode.merge().phiPredecessorIndex(endNode);
-                    ValueNode value = phi.valueAt(index);
-                    if (value instanceof ConditionalNode) {
-                        ConditionalNode materialize = (ConditionalNode) value;
-                        LogicNode compare = materialize.condition();
-                        ValueNode replacement = evaluateCondition(compare, materialize.trueValue(), materialize.falseValue());
-
-                        if (replacement != null) {
-                            phi.setValueAt(index, replacement);
-                            if (materialize.hasNoUsages()) {
-                                GraphUtil.killWithUnusedFloatingInputs(materialize);
-                            }
-                        }
-                    }
-                }
-            } else if (node instanceof Invoke) {
-                Invoke invoke = (Invoke) node;
-                if (invoke.callTarget() instanceof MethodCallTargetNode) {
-                    MethodCallTargetNode callTarget = (MethodCallTargetNode) invoke.callTarget();
-                    ValueNode receiver = callTarget.receiver();
-                    if (receiver != null && callTarget.invokeKind().isIndirect()) {
-                        ResolvedJavaType type = state.getNodeType(receiver);
-                        if (!Objects.equals(type, StampTool.typeOrNull(receiver))) {
-                            ResolvedJavaMethod method = type.resolveConcreteMethod(callTarget.targetMethod(), invoke.getContextType());
-                            if (method != null) {
-                                if (method.canBeStaticallyBound() || type.isFinal()) {
-                                    callTarget.setInvokeKind(InvokeKind.Special);
-                                    callTarget.setTargetMethod(method);
-                                }
-                            }
-                        }
-                    }
-                }
-
             }
+            assert assertImpliedGuard(provers);
+        }
+
+        private boolean assertImpliedGuard(Set<GuardNode> provers) {
+            for (GuardNode guard : provers) {
+                assert !testImpliedGuard(guard) : "provers shouldn't be trivially eliminatable";
+            }
+            return true;
         }
 
         private GuardingNode searchAnchor(ValueNode value, ResolvedJavaType type) {
