@@ -71,8 +71,8 @@ public final class LSStackSlotAllocator implements StackSlotAllocator {
         private final LIR lir;
         private final FrameMapBuilderTool frameMapBuilder;
         private final StackInterval[] stackSlotMap;
-        private LinkedList<StackInterval> unhandled;
-        private LinkedList<StackInterval> active;
+        private PriorityQueue<StackInterval> unhandled;
+        private PriorityQueue<StackInterval> active;
 
         private List<? extends AbstractBlock<?>> sortedBlocks;
 
@@ -357,19 +357,14 @@ public final class LSStackSlotAllocator implements StackSlotAllocator {
         }
 
         private void createUnhandled() {
-            unhandled = new LinkedList<>();
-            active = new LinkedList<>();
-            forEachInterval(this::insertSortedByFrom);
-        }
+            Comparator<? super StackInterval> insertByFrom = (a, b) -> a.from() - b.from();
+            Comparator<? super StackInterval> insertByTo = (a, b) -> a.to() - b.to();
 
-        private void insertSortedByFrom(StackInterval interval) {
-            unhandled.add(interval);
-            unhandled.sort((a, b) -> a.from() - b.from());
-        }
+            unhandled = new PriorityQueue<>(insertByFrom);
+            active = new PriorityQueue<>(insertByTo);
 
-        private void insertSortedByTo(StackInterval interval) {
-            active.add(interval);
-            active.sort((a, b) -> a.to() - b.to());
+            // add all intervals to unhandled list
+            forEachInterval(unhandled::add);
         }
 
         private void allocateStackSlots() {
@@ -468,17 +463,17 @@ public final class LSStackSlotAllocator implements StackSlotAllocator {
             if (unhandled.isEmpty()) {
                 return null;
             }
-            StackInterval next = unhandled.pollFirst();
+            StackInterval next = unhandled.poll();
             for (int id = next.from(); activePeekId() < id;) {
-                finished(active.pollFirst());
+                finished(active.poll());
             }
             Debug.log("active %s", next);
-            insertSortedByTo(next);
+            active.add(next);
             return next;
         }
 
         private int activePeekId() {
-            StackInterval first = active.peekFirst();
+            StackInterval first = active.peek();
             if (first == null) {
                 return Integer.MAX_VALUE;
             }
