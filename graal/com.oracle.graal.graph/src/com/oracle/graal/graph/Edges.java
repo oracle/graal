@@ -331,7 +331,13 @@ public abstract class Edges extends Fields {
             } else {
                 subIndex++;
             }
-            while (index < edges.getCount()) {
+            if (index < edges.getCount()) {
+                forwardNodeList();
+            }
+        }
+
+        private void forwardNodeList() {
+            do {
                 if (subIndex == 0) {
                     list = edges.getNodeList(node, index);
                 }
@@ -346,7 +352,7 @@ public abstract class Edges extends Fields {
                 }
                 subIndex = 0;
                 index++;
-            }
+            } while (index < edges.getCount());
         }
 
         private Node nextElement() {
