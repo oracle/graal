@@ -82,7 +82,7 @@ public final class LSStackSlotAllocator implements StackSlotAllocator {
             // insert by to
             this.active = new PriorityQueue<>((a, b) -> a.to() - b.to());
 
-            // number instructions
+            // step 1: number instructions
             this.maxOpId = numberInstructions(lir, sortedBlocks);
         }
 
@@ -90,30 +90,34 @@ public final class LSStackSlotAllocator implements StackSlotAllocator {
             Debug.dump(lir, "After StackSlot numbering");
 
             long currentFrameSize = Debug.isMeterEnabled() ? frameMapBuilder.getFrameMap().currentFrameSize() : 0;
-            // build intervals
+            // step 2: build intervals
             try (Scope s = Debug.scope("StackSlotAllocationBuildIntervals"); Indent indent = Debug.logAndIndent("BuildIntervals")) {
                 buildIntervals();
             }
-            // verify intervals
+            // step 3: verify intervals
             if (Debug.isEnabled()) {
                 verifyIntervals();
             }
             if (Debug.isDumpEnabled()) {
                 dumpIntervals("Before stack slot allocation");
             }
-            // allocate stack slots
+            // step 4: allocate stack slots
             allocateStackSlots();
             if (Debug.isDumpEnabled()) {
                 dumpIntervals("After stack slot allocation");
             }
 
-            // assign stack slots
+            // step 5: assign stack slots
             assignStackSlots();
             Debug.dump(lir, "After StackSlot assignment");
             if (Debug.isMeterEnabled()) {
                 StackSlotAllocator.allocatedFramesize.add(frameMapBuilder.getFrameMap().currentFrameSize() - currentFrameSize);
             }
         }
+
+        // ====================
+        // step 1: number instructions
+        // ====================
 
         /**
          * Numbers all instructions in all blocks.
@@ -140,20 +144,17 @@ public final class LSStackSlotAllocator implements StackSlotAllocator {
             return opId - 2;
         }
 
-        /**
-         * Gets the highest instruction id allocated by this object.
-         */
-        private int maxOpId() {
-            return maxOpId;
-        }
+        // ====================
+        // step 2: build intervals
+        // ====================
 
         private void buildIntervals() {
             new FixPointIntervalBuilder(lir, stackSlotMap, maxOpId()).build();
         }
 
-        private StackInterval get(VirtualStackSlot stackSlot) {
-            return stackSlotMap[stackSlot.getId()];
-        }
+        // ====================
+        // step 3: verify intervals
+        // ====================
 
         private void verifyIntervals() {
             forEachInterval(interval -> {
@@ -161,27 +162,13 @@ public final class LSStackSlotAllocator implements StackSlotAllocator {
             });
         }
 
-        private void forEachInterval(Consumer<StackInterval> proc) {
-            for (StackInterval interval : stackSlotMap) {
-                if (interval != null) {
-                    proc.accept(interval);
-                }
-            }
-        }
-
-        private void dumpIntervals(String label) {
-            Debug.dump(stackSlotMap, label);
-        }
-
-        private void createUnhandled() {
-
-            // add all intervals to unhandled list
-            forEachInterval(unhandled::add);
-        }
+        // ====================
+        // step 4: allocate stack slots
+        // ====================
 
         private void allocateStackSlots() {
-            // create interval lists
-            createUnhandled();
+            // create unhandled lists
+            forEachInterval(unhandled::add);
 
             for (StackInterval current = activateNext(); current != null; current = activateNext()) {
                 try (Indent indent = Debug.logAndIndent("allocate %s", current)) {
@@ -298,6 +285,10 @@ public final class LSStackSlotAllocator implements StackSlotAllocator {
             freeSlot(location);
         }
 
+        // ====================
+        // step 5: assign stack slots
+        // ====================
+
         private void assignStackSlots() {
             for (AbstractBlock<?> block : sortedBlocks) {
                 lir.getLIRforBlock(block).forEach(op -> {
@@ -326,5 +317,33 @@ public final class LSStackSlotAllocator implements StackSlotAllocator {
             }
             return value;
         }
+
+        // ====================
+        //
+        // ====================
+
+        /**
+         * Gets the highest instruction id allocated by this object.
+         */
+        private int maxOpId() {
+            return maxOpId;
+        }
+
+        private StackInterval get(VirtualStackSlot stackSlot) {
+            return stackSlotMap[stackSlot.getId()];
+        }
+
+        private void forEachInterval(Consumer<StackInterval> proc) {
+            for (StackInterval interval : stackSlotMap) {
+                if (interval != null) {
+                    proc.accept(interval);
+                }
+            }
+        }
+
+        private void dumpIntervals(String label) {
+            Debug.dump(stackSlotMap, label);
+        }
+
     }
 }
