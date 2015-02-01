@@ -23,6 +23,7 @@
 package com.oracle.graal.compiler.common.type;
 
 import java.nio.*;
+import java.util.*;
 
 import com.oracle.graal.api.meta.*;
 
@@ -59,7 +60,7 @@ public abstract class ArithmeticStamp extends Stamp {
         if (!(obj instanceof ArithmeticStamp)) {
             return false;
         }
-        assert this.ops.toString().equals(((ArithmeticStamp) obj).ops.toString());
+        assert Objects.equals(ops, ((ArithmeticStamp) obj).ops);
         return true;
     }
 }
