@@ -124,7 +124,7 @@ public class LoopUnswitchTest extends GraalCompilerTest {
         final StructuredGraph graph = parseEager(snippet);
         final StructuredGraph referenceGraph = parseEager(referenceSnippet);
 
-        new LoopTransformLowPhase().apply(graph);
+        new LoopUnswitchingPhase().apply(graph);
 
         // Framestates create comparison problems
         for (Node stateSplit : graph.getNodes().filterInterface(StateSplit.class)) {

@@ -85,8 +85,15 @@ public class HighTier extends PhaseSuite<HighTierContext> {
         }
 
         if (OptLoopTransform.getValue()) {
-            appendPhase(new LoopTransformHighPhase());
-            appendPhase(new LoopTransformLowPhase());
+            if (LoopPeeling.getValue()) {
+                appendPhase(new LoopPeelingPhase());
+            }
+            if (LoopUnswitch.getValue()) {
+                appendPhase(new LoopUnswitchingPhase());
+            }
+            if (ReassociateInvariants.getValue()) {
+                appendPhase(new ReassociateInvariantPhase());
+            }
         }
         appendPhase(new RemoveValueProxyPhase());
 

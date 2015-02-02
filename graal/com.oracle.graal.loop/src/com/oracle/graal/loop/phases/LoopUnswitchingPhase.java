@@ -22,18 +22,15 @@
  */
 package com.oracle.graal.loop.phases;
 
-import static com.oracle.graal.compiler.common.GraalOptions.*;
-
 import java.util.*;
 
 import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.loop.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
 
-public class LoopTransformLowPhase extends Phase {
+public class LoopUnswitchingPhase extends Phase {
 
     private static final DebugMetric UNSWITCHED = Debug.metric("Unswitched");
     private static final DebugMetric UNSWITCH_CANDIDATES = Debug.metric("UnswitchCandidates");
@@ -41,41 +38,28 @@ public class LoopTransformLowPhase extends Phase {
     @Override
     protected void run(StructuredGraph graph) {
         if (graph.hasLoops()) {
-            if (ReassociateInvariants.getValue()) {
-                final LoopsData dataReassociate = new LoopsData(graph);
-                try (Scope s = Debug.scope("ReassociateInvariants")) {
-                    for (LoopEx loop : dataReassociate.loops()) {
-                        loop.reassociateInvariants();
-                    }
-                } catch (Throwable e) {
-                    throw Debug.handle(e);
-                }
-                dataReassociate.deleteUnusedNodes();
-            }
-            if (LoopUnswitch.getValue()) {
-                boolean unswitched;
-                do {
-                    unswitched = false;
-                    final LoopsData dataUnswitch = new LoopsData(graph);
-                    for (LoopEx loop : dataUnswitch.loops()) {
-                        if (LoopPolicies.shouldTryUnswitch(loop)) {
-                            List<ControlSplitNode> controlSplits = LoopTransformations.findUnswitchable(loop);
-                            if (controlSplits != null) {
-                                UNSWITCH_CANDIDATES.increment();
-                                if (LoopPolicies.shouldUnswitch(loop, controlSplits)) {
-                                    if (Debug.isLogEnabled()) {
-                                        logUnswitch(loop, controlSplits);
-                                    }
-                                    LoopTransformations.unswitch(loop, controlSplits);
-                                    UNSWITCHED.increment();
-                                    unswitched = true;
-                                    break;
+            boolean unswitched;
+            do {
+                unswitched = false;
+                final LoopsData dataUnswitch = new LoopsData(graph);
+                for (LoopEx loop : dataUnswitch.loops()) {
+                    if (LoopPolicies.shouldTryUnswitch(loop)) {
+                        List<ControlSplitNode> controlSplits = LoopTransformations.findUnswitchable(loop);
+                        if (controlSplits != null) {
+                            UNSWITCH_CANDIDATES.increment();
+                            if (LoopPolicies.shouldUnswitch(loop, controlSplits)) {
+                                if (Debug.isLogEnabled()) {
+                                    logUnswitch(loop, controlSplits);
                                 }
+                                LoopTransformations.unswitch(loop, controlSplits);
+                                UNSWITCHED.increment();
+                                unswitched = true;
+                                break;
                             }
                         }
                     }
-                } while (unswitched);
-            }
+                }
+            } while (unswitched);
         }
     }
 
