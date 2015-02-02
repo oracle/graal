@@ -42,14 +42,21 @@ public interface GraphBuilderPlugin {
     boolean handleInvocation(GraphBuilderContext builder, ValueNode[] args);
 
     /**
-     * Gets the target method handled by {@link #handleInvocation(GraphBuilderContext, ValueNode[])}
-     * .
+     * Gets the method handled by {@link #handleInvocation(GraphBuilderContext, ValueNode[])} .
      */
     ResolvedJavaMethod getInvocationTarget(MetaAccessProvider metaAccess);
 
-    static ResolvedJavaMethod resolveTarget(MetaAccessProvider metaAccess, Class<?> clazz, String methodName, Class<?>... parameterTypes) {
+    /**
+     * Looks up a {@link ResolvedJavaMethod}.
+     *
+     * @param methodNameBase the name of the method is the prefix of this value up to the first '$'
+     *            character
+     */
+    static ResolvedJavaMethod resolveTarget(MetaAccessProvider metaAccess, Class<?> declaringClass, String methodNameBase, Class<?>... parameterTypes) {
+        int index = methodNameBase.indexOf('$');
+        String methodName = index == -1 ? methodNameBase : methodNameBase.substring(0, index);
         try {
-            return metaAccess.lookupJavaMethod(methodName.equals("<init>") ? clazz.getDeclaredConstructor(parameterTypes) : clazz.getDeclaredMethod(methodName, parameterTypes));
+            return metaAccess.lookupJavaMethod(methodName.equals("<init>") ? declaringClass.getDeclaredConstructor(parameterTypes) : declaringClass.getDeclaredMethod(methodName, parameterTypes));
         } catch (NoSuchMethodException | SecurityException e) {
             throw new GraalInternalError(e);
         }

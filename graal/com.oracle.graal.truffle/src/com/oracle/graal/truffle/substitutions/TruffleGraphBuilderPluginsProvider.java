@@ -22,9 +22,7 @@
  */
 package com.oracle.graal.truffle.substitutions;
 
-import java.util.*;
 import java.util.concurrent.*;
-import java.util.stream.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
@@ -130,14 +128,7 @@ public class TruffleGraphBuilderPluginsProvider implements GraphBuilderPluginsPr
         private final Class<?>[] parameterTypes;
 
         public ResolvedJavaMethod getInvocationTarget(MetaAccessProvider metaAccess) {
-            int index = name().indexOf('$');
-            String methodName = index == -1 ? name() : name().substring(0, index);
-            return GraphBuilderPlugin.resolveTarget(metaAccess, CompilerDirectives.class, methodName, parameterTypes);
-        }
-
-        @Override
-        public String toString() {
-            return Object.class.getName() + "." + name() + Arrays.asList(parameterTypes).stream().map(t -> t.getSimpleName()).collect(Collectors.joining(", ", "(", ")"));
+            return GraphBuilderPlugin.resolveTarget(metaAccess, CompilerDirectives.class, name(), parameterTypes);
         }
     }
 }

@@ -778,7 +778,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                             int beforeStackSize = frameState.stackSize;
                             if (plugin.handleInvocation(this, args)) {
                                 // System.out.println("used plugin: " + plugin);
-                                assert beforeStackSize - resultType.getSlotCount() == frameState.stackSize;
+                                assert beforeStackSize + resultType.getSlotCount() == frameState.stackSize;
                                 return;
                             }
                             assert beforeStackSize == frameState.stackSize;
