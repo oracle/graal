@@ -56,27 +56,31 @@ public class RegisterFinalizerNode extends AbstractStateSplit implements Canonic
         gen.getLIRGeneratorTool().emitForeignCall(linkage, gen.state(this), gen.operand(getValue()));
     }
 
+    /**
+     * Determines if the compiler should emit code to test whether a given object has a finalizer
+     * that must be registered with the runtime upon object initialization.
+     */
+    public static boolean mayHaveFinalizer(ValueNode object, Assumptions assumptions) {
+        ObjectStamp objectStamp = (ObjectStamp) object.stamp();
+        if (objectStamp.isExactType()) {
+            return objectStamp.type().hasFinalizer();
+        } else if (objectStamp.type() != null && !objectStamp.type().hasFinalizableSubclass()) {
+            // if either the declared type of receiver or the holder
+            // can be assumed to have no finalizers
+            if (assumptions.useOptimisticAssumptions()) {
+                assumptions.recordNoFinalizableSubclassAssumption(objectStamp.type());
+                return false;
+            }
+        }
+        return true;
+    }
+
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
         if (!(forValue.stamp() instanceof ObjectStamp)) {
             return this;
         }
-
-        ObjectStamp objectStamp = (ObjectStamp) forValue.stamp();
-
-        boolean needsCheck = true;
-        if (objectStamp.isExactType()) {
-            needsCheck = objectStamp.type().hasFinalizer();
-        } else if (objectStamp.type() != null && !objectStamp.type().hasFinalizableSubclass()) {
-            // if either the declared type of receiver or the holder
-            // can be assumed to have no finalizers
-            if (tool.assumptions().useOptimisticAssumptions()) {
-                tool.assumptions().recordNoFinalizableSubclassAssumption(objectStamp.type());
-                needsCheck = false;
-            }
-        }
-
-        if (!needsCheck) {
+        if (!mayHaveFinalizer(forValue, tool.assumptions())) {
             return null;
         }
 

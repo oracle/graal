@@ -22,10 +22,8 @@
  */
 package com.oracle.graal.java;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.runtime.*;
-import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 
@@ -44,25 +42,9 @@ public class DefaultGraphBuilderPluginsProvider implements GraphBuilderPluginsPr
     enum ObjectPlugin implements GraphBuilderPlugin {
         init() {
             public boolean handleInvocation(GraphBuilderContext builder, ValueNode[] args) {
-                assert args.length == 1;
-                ValueNode rcvr = args[0];
-                ObjectStamp objectStamp = (ObjectStamp) rcvr.stamp();
-
-                boolean needsCheck = true;
-                if (objectStamp.isExactType()) {
-                    needsCheck = objectStamp.type().hasFinalizer();
-                } else if (objectStamp.type() != null && !objectStamp.type().hasFinalizableSubclass()) {
-                    // if either the declared type of receiver or the holder
-                    // can be assumed to have no finalizers
-                    Assumptions assumptions = builder.getAssumptions();
-                    if (assumptions.useOptimisticAssumptions()) {
-                        assumptions.recordNoFinalizableSubclassAssumption(objectStamp.type());
-                        needsCheck = false;
-                    }
-                }
-
-                if (needsCheck) {
-                    builder.append(new RegisterFinalizerNode(rcvr));
+                ValueNode object = args[0];
+                if (RegisterFinalizerNode.mayHaveFinalizer(object, builder.getAssumptions())) {
+                    builder.append(new RegisterFinalizerNode(object));
                 }
                 return true;
             }
