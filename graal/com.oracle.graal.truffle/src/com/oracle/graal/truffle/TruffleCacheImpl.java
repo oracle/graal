@@ -94,13 +94,13 @@ public class TruffleCacheImpl implements TruffleCache {
 
     public StructuredGraph createInlineGraph(String name) {
         StructuredGraph graph = new StructuredGraph(name, callInlinedMethod);
-        new GraphBuilderPhase.Instance(providers.getMetaAccess(), config, TruffleCompilerImpl.Optimizations).apply(graph);
+        new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), new Assumptions(false), config, TruffleCompilerImpl.Optimizations).apply(graph);
         return graph;
     }
 
     public StructuredGraph createRootGraph(String name) {
         StructuredGraph graph = new StructuredGraph(name, callRootMethod);
-        new GraphBuilderPhase.Instance(providers.getMetaAccess(), configForRoot, TruffleCompilerImpl.Optimizations).apply(graph);
+        new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), new Assumptions(false), configForRoot, TruffleCompilerImpl.Optimizations).apply(graph);
         return graph;
     }
 
@@ -294,7 +294,7 @@ public class TruffleCacheImpl implements TruffleCache {
 
     protected StructuredGraph parseGraph(final ResolvedJavaMethod method, final PhaseContext phaseContext) {
         final StructuredGraph graph = new StructuredGraph(method);
-        new GraphBuilderPhase.Instance(phaseContext.getMetaAccess(), config, optimisticOptimizations).apply(graph);
+        new GraphBuilderPhase.Instance(phaseContext.getMetaAccess(), phaseContext.getStampProvider(), phaseContext.getAssumptions(), config, optimisticOptimizations).apply(graph);
         return graph;
     }
 

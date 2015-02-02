@@ -1153,5 +1153,4 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
         }
         Debug.log("%s", sb);
     }
-
 }

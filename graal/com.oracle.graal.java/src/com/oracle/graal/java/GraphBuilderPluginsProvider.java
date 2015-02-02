@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,47 +20,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.common.type;
-
-import java.nio.*;
-import java.util.*;
+package com.oracle.graal.java;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.runtime.*;
 
 /**
- * Type describing values that support arithmetic operations.
+ * Interface for providers of {@link GraphBuilderPlugin}s.
  */
-public abstract class ArithmeticStamp extends Stamp {
-
-    private final ArithmeticOpTable ops;
-
-    protected ArithmeticStamp(ArithmeticOpTable ops) {
-        this.ops = ops;
-    }
-
-    public ArithmeticOpTable getOps() {
-        return ops;
-    }
-
-    public abstract SerializableConstant deserialize(ByteBuffer buffer);
-
-    @Override
-    public int hashCode() {
-        final int prime = 31;
-        int result = 1;
-        result = prime * result + ops.hashCode();
-        return result;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        }
-        if (!(obj instanceof ArithmeticStamp)) {
-            return false;
-        }
-        assert Objects.equals(ops, ((ArithmeticStamp) obj).ops);
-        return true;
-    }
+public interface GraphBuilderPluginsProvider extends Service {
+    /**
+     * Registers the plugins provided by this object with a plugins registry.
+     *
+     * @param plugins registry of plugins
+     */
+    void registerPlugins(MetaAccessProvider metaAccess, GraphBuilderPlugins plugins);
 }

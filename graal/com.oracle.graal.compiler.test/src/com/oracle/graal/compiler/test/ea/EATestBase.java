@@ -151,8 +151,8 @@ public class EATestBase extends GraalCompilerTest {
         ResolvedJavaMethod method = getResolvedJavaMethod(snippet);
         graph = new StructuredGraph(method);
         try (Scope s = Debug.scope(getClass(), graph, method, getCodeCache())) {
-            new GraphBuilderPhase.Instance(getMetaAccess(), GraphBuilderConfiguration.getEagerDefault(), OptimisticOptimizations.ALL).apply(graph);
             Assumptions assumptions = new Assumptions(false);
+            new GraphBuilderPhase.Instance(getMetaAccess(), getProviders().getStampProvider(), assumptions, GraphBuilderConfiguration.getEagerDefault(), OptimisticOptimizations.ALL).apply(graph);
             context = new HighTierContext(getProviders(), assumptions, null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
             new InliningPhase(new CanonicalizerPhase(true)).apply(graph, context);
             new DeadCodeEliminationPhase().apply(graph);

@@ -48,7 +48,8 @@ public final class LIRInsertionBuffer {
      * index into lir list where "count" ops should be inserted indexAndCount[i * 2 + 1]: the number
      * of ops to be inserted at index
      */
-    private final List<Integer> indexAndCount;
+    private int[] indexAndCount;
+    private int indexAndCountSize;
 
     /**
      * The LIROps to be inserted.
@@ -56,8 +57,8 @@ public final class LIRInsertionBuffer {
     private final List<LIRInstruction> ops;
 
     public LIRInsertionBuffer() {
-        indexAndCount = new ArrayList<>(8);
-        ops = new ArrayList<>(8);
+        indexAndCount = new int[8];
+        ops = new ArrayList<>(4);
     }
 
     /**
@@ -65,7 +66,7 @@ public final class LIRInsertionBuffer {
      */
     public void init(List<LIRInstruction> newLir) {
         assert !initialized() : "already initialized";
-        assert indexAndCount.size() == 0 && ops.size() == 0;
+        assert indexAndCountSize == 0 && ops.size() == 0;
         this.lir = newLir;
     }
 
@@ -126,32 +127,38 @@ public final class LIRInsertionBuffer {
                 }
                 ipIndex--;
             }
-            indexAndCount.clear();
+            indexAndCountSize = 0;
             ops.clear();
         }
         lir = null;
     }
 
     private void appendNew(int index, int count) {
-        indexAndCount.add(index);
-        indexAndCount.add(count);
+        int oldSize = indexAndCountSize;
+        int newSize = oldSize + 2;
+        if (newSize > this.indexAndCount.length) {
+            indexAndCount = Arrays.copyOf(indexAndCount, newSize * 2);
+        }
+        indexAndCount[oldSize] = index;
+        indexAndCount[oldSize + 1] = count;
+        this.indexAndCountSize = newSize;
     }
 
     private void setCountAt(int i, int value) {
-        indexAndCount.set((i << 1) + 1, value);
+        indexAndCount[(i << 1) + 1] = value;
     }
 
     private int numberOfInsertionPoints() {
-        assert indexAndCount.size() % 2 == 0 : "must have a count for each index";
-        return indexAndCount.size() >> 1;
+        assert indexAndCount.length % 2 == 0 : "must have a count for each index";
+        return indexAndCountSize >> 1;
     }
 
     private int indexAt(int i) {
-        return indexAndCount.get((i << 1));
+        return indexAndCount[(i << 1)];
     }
 
     private int countAt(int i) {
-        return indexAndCount.get((i << 1) + 1);
+        return indexAndCount[(i << 1) + 1];
     }
 
     private boolean verify() {

@@ -525,7 +525,7 @@ public abstract class GraalCompilerTest extends GraalTest {
         try (Scope bds = Debug.scope("CompileBaseline", javaMethod, providers.getCodeCache())) {
             BaselineCompiler baselineCompiler = new BaselineCompiler(GraphBuilderConfiguration.getDefault(), providers.getMetaAccess());
             OptimisticOptimizations optimisticOpts = OptimisticOptimizations.ALL;
-            return baselineCompiler.generate(javaMethod, -1, getBackend(), new CompilationResult(), javaMethod, CompilationResultBuilderFactory.Default, optimisticOpts);
+            return baselineCompiler.generate(javaMethod, -1, getBackend(), new CompilationResult(), javaMethod, CompilationResultBuilderFactory.Default, optimisticOpts, getReplacements());
         } catch (Throwable e) {
             throw Debug.handle(e);
         }

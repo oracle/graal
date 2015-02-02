@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,47 +20,32 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.common.type;
+package com.oracle.graal.java;
 
-import java.nio.*;
-import java.util.*;
-
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.spi.*;
 
 /**
- * Type describing values that support arithmetic operations.
+ * Used by a {@link GraphBuilderPlugin} to interface with a graph builder object.
  */
-public abstract class ArithmeticStamp extends Stamp {
+public interface GraphBuilderContext {
 
-    private final ArithmeticOpTable ops;
+    <T extends ControlSinkNode> T append(T fixed);
 
-    protected ArithmeticStamp(ArithmeticOpTable ops) {
-        this.ops = ops;
-    }
+    <T extends ControlSplitNode> T append(T fixed);
 
-    public ArithmeticOpTable getOps() {
-        return ops;
-    }
+    <T extends FixedWithNextNode> T append(T fixed);
 
-    public abstract SerializableConstant deserialize(ByteBuffer buffer);
+    <T extends FloatingNode> T append(T v);
 
-    @Override
-    public int hashCode() {
-        final int prime = 31;
-        int result = 1;
-        result = prime * result + ops.hashCode();
-        return result;
-    }
+    StampProvider getStampProvider();
 
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        }
-        if (!(obj instanceof ArithmeticStamp)) {
-            return false;
-        }
-        assert Objects.equals(ops, ((ArithmeticStamp) obj).ops);
-        return true;
-    }
+    MetaAccessProvider getMetaAccess();
+
+    Assumptions getAssumptions();
+
+    void push(Kind kind, ValueNode value);
 }
