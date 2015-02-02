@@ -44,6 +44,7 @@ public class GraphBuilderPlugins {
             GraphBuilderPlugin gbp = (GraphBuilderPlugin) o;
             ResolvedJavaMethod target = gbp.getInvocationTarget(metaAccess);
             GraphBuilderPlugin oldValue = map.put(target, gbp);
+            // System.out.println("registered: " + gbp);
             assert oldValue == null;
         }
     }

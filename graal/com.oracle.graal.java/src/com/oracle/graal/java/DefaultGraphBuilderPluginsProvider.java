@@ -29,12 +29,18 @@ import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 
+/**
+ * Provider of non-runtime specific {@link GraphBuilderPlugin}s.
+ */
 @ServiceProvider(GraphBuilderPluginsProvider.class)
 public class DefaultGraphBuilderPluginsProvider implements GraphBuilderPluginsProvider {
     public void registerPlugins(MetaAccessProvider metaAccess, GraphBuilderPlugins plugins) {
         plugins.register(metaAccess, ObjectPlugin.class);
     }
 
+    /**
+     * Plugins for {@link Object}.
+     */
     enum ObjectPlugin implements GraphBuilderPlugin {
         init() {
             public boolean handleInvocation(GraphBuilderContext builder, ValueNode[] args) {
