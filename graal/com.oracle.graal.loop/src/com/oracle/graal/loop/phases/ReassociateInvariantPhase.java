@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,33 +22,26 @@
  */
 package com.oracle.graal.loop.phases;
 
-import static com.oracle.graal.compiler.common.GraalOptions.*;
-
-import java.util.function.*;
-
 import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.loop.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.graph.*;
 
-public class LoopTransformHighPhase extends Phase {
+public class ReassociateInvariantPhase extends Phase {
 
     @Override
     protected void run(StructuredGraph graph) {
         if (graph.hasLoops()) {
-            if (LoopPeeling.getValue()) {
-                ToDoubleFunction<FixedNode> probabilities = new FixedNodeProbabilityCache();
-                LoopsData data = new LoopsData(graph);
-                for (LoopEx loop : data.outerFirst()) {
-                    if (LoopPolicies.shouldPeel(loop, probabilities)) {
-                        Debug.log("Peeling %s", loop);
-                        LoopTransformations.peel(loop);
-                        Debug.dump(graph, "After peeling %s", loop);
-                    }
+            final LoopsData dataReassociate = new LoopsData(graph);
+            try (Scope s = Debug.scope("ReassociateInvariants")) {
+                for (LoopEx loop : dataReassociate.loops()) {
+                    loop.reassociateInvariants();
                 }
-                data.deleteUnusedNodes();
+            } catch (Throwable e) {
+                throw Debug.handle(e);
             }
+            dataReassociate.deleteUnusedNodes();
         }
     }
 }
