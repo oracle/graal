@@ -317,6 +317,49 @@ public final class ArithmeticOpTable {
         return Arrays.asList(ops).stream().map(o -> o == null ? "null" : o.operator + "{" + getSimpleName(o.getClass(), false) + "}").collect(Collectors.joining(","));
     }
 
+    private boolean opsEquals(ArithmeticOpTable that) {
+        // @formatter:off
+        return Objects.equals(neg, that.neg) &&
+               Objects.equals(add, that.add) &&
+               Objects.equals(sub, that.sub) &&
+               Objects.equals(mul, that.mul) &&
+               Objects.equals(div, that.div) &&
+               Objects.equals(rem, that.rem) &&
+               Objects.equals(not, that.not) &&
+               Objects.equals(and, that.and) &&
+               Objects.equals(or, that.or) &&
+               Objects.equals(xor, that.xor) &&
+               Objects.equals(shl, that.shl) &&
+               Objects.equals(shr, that.shr) &&
+               Objects.equals(ushr, that.ushr) &&
+               Objects.equals(abs, that.abs) &&
+               Objects.equals(sqrt, that.sqrt) &&
+               Objects.equals(zeroExtend, that.zeroExtend) &&
+               Objects.equals(signExtend, that.signExtend) &&
+               Objects.equals(narrow, that.narrow);
+        // @formatter:on
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        ArithmeticOpTable that = (ArithmeticOpTable) obj;
+        if (opsEquals(that)) {
+            if (Arrays.equals(this.floatConvert, that.floatConvert)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     @Override
     public String toString() {
         return getClass().getSimpleName() + "[" + toString(neg, add, sub, mul, div, rem, not, and, or, xor, shl, shr, ushr, abs, sqrt, zeroExtend, signExtend, narrow) + ",floatConvert[" +
@@ -337,19 +380,26 @@ public final class ArithmeticOpTable {
         }
 
         @Override
-        public boolean equals(Object obj) {
-            if (obj == this) {
-                return true;
-            }
-            if (obj != null && getClass() == obj.getClass()) {
-                return obj.toString().equals(toString());
-            }
-            return false;
+        public int hashCode() {
+            return operator.hashCode();
         }
 
         @Override
-        public int hashCode() {
-            return toString().hashCode();
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj == null) {
+                return false;
+            }
+            if (getClass() != obj.getClass()) {
+                return false;
+            }
+            Op that = (Op) obj;
+            if (operator.equals(that.operator)) {
+                return true;
+            }
+            return true;
         }
     }
 
@@ -533,6 +583,36 @@ public final class ArithmeticOpTable {
         }
 
         @Override
+        public int hashCode() {
+            final int prime = 31;
+            int result = super.hashCode();
+            result = prime * result + (associative ? 1231 : 1237);
+            result = prime * result + (commutative ? 1231 : 1237);
+            return result;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (!super.equals(obj)) {
+                return false;
+            }
+            if (getClass() != obj.getClass()) {
+                return false;
+            }
+            BinaryOp<?> that = (BinaryOp<?>) obj;
+            if (associative != that.associative) {
+                return false;
+            }
+            if (commutative != that.commutative) {
+                return false;
+            }
+            return true;
+        }
+
+        @Override
         public String toString() {
             if (associative) {
                 if (commutative) {
@@ -610,6 +690,30 @@ public final class ArithmeticOpTable {
         @Override
         public FloatConvertOp unwrap() {
             return this;
+        }
+
+        @Override
+        public int hashCode() {
+            final int prime = 31;
+            return prime * super.hashCode() + op.hashCode();
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (!super.equals(obj)) {
+                return false;
+            }
+            if (getClass() != obj.getClass()) {
+                return false;
+            }
+            FloatConvertOp that = (FloatConvertOp) obj;
+            if (op != that.op) {
+                return false;
+            }
+            return true;
         }
     }
 
