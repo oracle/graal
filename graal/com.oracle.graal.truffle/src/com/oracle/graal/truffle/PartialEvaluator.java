@@ -137,55 +137,46 @@ public class PartialEvaluator {
             HighTierContext tierContext = new HighTierContext(providers, assumptions, graphCache, new PhaseSuite<HighTierContext>(), OptimisticOptimizations.NONE);
 
             // EA frame and clean up.
-            try (Scope pe = Debug.scope("TrufflePartialEscape", graph)) {
-                new PartialEscapePhase(true, canonicalizer).apply(graph, tierContext);
-                new IncrementalCanonicalizerPhase<>(canonicalizer, new ConditionalEliminationPhase()).apply(graph, tierContext);
-            } catch (Throwable t) {
-                Debug.handle(t);
-            }
-
-            // to make frame propagations visible retry expandTree
-            while (expandTree(graph, assumptions, expansionLogger)) {
+            do {
                 try (Scope pe = Debug.scope("TrufflePartialEscape", graph)) {
                     new PartialEscapePhase(true, canonicalizer).apply(graph, tierContext);
                     new IncrementalCanonicalizerPhase<>(canonicalizer, new ConditionalEliminationPhase()).apply(graph, tierContext);
                 } catch (Throwable t) {
                     Debug.handle(t);
                 }
-            }
+            } while (expandTree(graph, assumptions, expansionLogger));
 
             if (expansionLogger != null) {
                 expansionLogger.print(callTarget);
             }
 
-            for (NeverPartOfCompilationNode neverPartOfCompilationNode : graph.getNodes(NeverPartOfCompilationNode.class)) {
-                Throwable exception = new VerificationError(neverPartOfCompilationNode.getMessage());
-                throw GraphUtil.approxSourceException(neverPartOfCompilationNode, exception);
-            }
-
-            new VerifyNoIntrinsicsLeftPhase().apply(graph, false);
-            for (MaterializeFrameNode materializeNode : graph.getNodes(MaterializeFrameNode.class).snapshot()) {
-                materializeNode.replaceAtUsages(materializeNode.getFrame());
-                graph.removeFixed(materializeNode);
-            }
-            for (VirtualObjectNode virtualObjectNode : graph.getNodes(VirtualObjectNode.class)) {
-                if (virtualObjectNode instanceof VirtualOnlyInstanceNode) {
-                    VirtualOnlyInstanceNode virtualOnlyInstanceNode = (VirtualOnlyInstanceNode) virtualObjectNode;
-                    virtualOnlyInstanceNode.setAllowMaterialization(true);
-                } else if (virtualObjectNode instanceof VirtualInstanceNode) {
-                    VirtualInstanceNode virtualInstanceNode = (VirtualInstanceNode) virtualObjectNode;
-                    ResolvedJavaType type = virtualInstanceNode.type();
-                    if (type.getAnnotation(CompilerDirectives.ValueType.class) != null) {
-                        virtualInstanceNode.setIdentity(false);
-                    }
-                }
-            }
+            postPartialEvaluation(graph);
 
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
 
         return graph;
+    }
+
+    private static void postPartialEvaluation(final StructuredGraph graph) {
+        NeverPartOfCompilationNode.verifyNotFoundIn(graph);
+        for (MaterializeFrameNode materializeNode : graph.getNodes(MaterializeFrameNode.class).snapshot()) {
+            materializeNode.replaceAtUsages(materializeNode.getFrame());
+            graph.removeFixed(materializeNode);
+        }
+        for (VirtualObjectNode virtualObjectNode : graph.getNodes(VirtualObjectNode.class)) {
+            if (virtualObjectNode instanceof VirtualOnlyInstanceNode) {
+                VirtualOnlyInstanceNode virtualOnlyInstanceNode = (VirtualOnlyInstanceNode) virtualObjectNode;
+                virtualOnlyInstanceNode.setAllowMaterialization(true);
+            } else if (virtualObjectNode instanceof VirtualInstanceNode) {
+                VirtualInstanceNode virtualInstanceNode = (VirtualInstanceNode) virtualObjectNode;
+                ResolvedJavaType type = virtualInstanceNode.type();
+                if (type.getAnnotation(CompilerDirectives.ValueType.class) != null) {
+                    virtualInstanceNode.setIdentity(false);
+                }
+            }
+        }
     }
 
     private void injectConstantCallTarget(final StructuredGraph graph, final OptimizedCallTarget constantCallTarget, PhaseContext baseContext) {
