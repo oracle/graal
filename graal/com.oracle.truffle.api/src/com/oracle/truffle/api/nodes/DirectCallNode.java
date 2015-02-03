@@ -181,4 +181,8 @@ public abstract class DirectCallNode extends Node {
         return String.format("%s(target=%s)", getClass().getSimpleName(), getCurrentCallTarget());
     }
 
+    public static DirectCallNode create(CallTarget target) {
+        return Truffle.getRuntime().createDirectCallNode(target);
+    }
+
 }

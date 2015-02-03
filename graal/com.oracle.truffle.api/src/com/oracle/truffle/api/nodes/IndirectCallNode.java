@@ -48,4 +48,8 @@ public abstract class IndirectCallNode extends Node {
      */
     public abstract Object call(VirtualFrame frame, CallTarget target, Object[] arguments);
 
+    public static IndirectCallNode create() {
+        return Truffle.getRuntime().createIndirectCallNode();
+    }
+
 }
