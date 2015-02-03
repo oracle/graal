@@ -676,26 +676,24 @@ public final class NodeUtil {
     }
 
     /**
-     * Determines whether a proposed child replacement would be type safe.
-     *
-     * @param parent non-null node
-     * @param oldChild non-null existing child of parent
-     * @param newChild non-null proposed replacement for existing child
+     * Determines whether a proposed child replacement would be safe: structurally and type.
      */
     public static boolean isReplacementSafe(Node parent, Node oldChild, Node newChild) {
         assert newChild != null;
-        final NodeField field = findChildField(parent, oldChild);
-        if (field == null) {
-            throw new IllegalArgumentException();
+        if (parent != null) {
+            final NodeField field = findChildField(parent, oldChild);
+            if (field != null) {
+                switch (field.getKind()) {
+                    case CHILD:
+                        return field.getType().isAssignableFrom(newChild.getClass());
+                    case CHILDREN:
+                        return field.getType().getComponentType().isAssignableFrom(newChild.getClass());
+                    default:
+                        throw new IllegalStateException();
+                }
+            }
         }
-        switch (field.getKind()) {
-            case CHILD:
-                return field.getType().isAssignableFrom(newChild.getClass());
-            case CHILDREN:
-                return field.getType().getComponentType().isAssignableFrom(newChild.getClass());
-            default:
-                throw new IllegalArgumentException();
-        }
+        return false;
     }
 
     /** Returns all declared fields in the class hierarchy. */

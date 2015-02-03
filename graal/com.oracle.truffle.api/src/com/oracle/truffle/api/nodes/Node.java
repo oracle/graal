@@ -290,26 +290,10 @@ public abstract class Node implements NodeInterface, Cloneable {
     }
 
     /**
-     * Checks if this node is properly adopted by its parent.
-     *
-     * @return {@code true} if it is structurally safe to replace this node.
-     */
-    public final boolean isReplaceable() {
-        if (getParent() != null) {
-            for (Node sibling : getParent().getChildren()) {
-                if (sibling == this) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    /**
-     * Checks if this node can be replaced by another node, both structurally and with type safety.
+     * Checks if this node can be replaced by another node: tree structure & type.
      */
     public final boolean isSafelyReplaceableBy(Node newNode) {
-        return isReplaceable() && NodeUtil.isReplacementSafe(getParent(), this, newNode);
+        return NodeUtil.isReplacementSafe(getParent(), this, newNode);
     }
 
     private void reportReplace(Node oldNode, Node newNode, CharSequence reason) {

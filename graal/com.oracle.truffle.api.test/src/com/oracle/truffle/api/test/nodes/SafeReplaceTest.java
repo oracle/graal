@@ -39,12 +39,11 @@ public class SafeReplaceTest {
     public void testCorrectReplacement() {
         TestRootNode root = new TestRootNode();
         final TestNode oldChild = new TestNode();
-        root.child = oldChild;
-        assertFalse(oldChild.isReplaceable());  // No parent node
-        root.adoptChildren();
-        assertTrue(oldChild.isReplaceable());   // Now adopted by parent
         final TestNode newChild = new TestNode();
-        assertTrue(oldChild.isSafelyReplaceableBy(newChild));  // Parent field type is assignable by
+        root.child = oldChild;
+        assertFalse(oldChild.isSafelyReplaceableBy(newChild));  // No parent node
+        root.adoptChildren();
+        assertTrue(oldChild.isSafelyReplaceableBy(newChild));   // Now adopted by parent
         // new node
         oldChild.replace(newChild);
         root.execute(null);
@@ -59,10 +58,11 @@ public class SafeReplaceTest {
         final TestNode oldChild = new TestNode();
         root.child = oldChild;
         root.adoptChildren();
-        final WrongTestNode newChild = new WrongTestNode();
-        assertFalse(oldChild.isSafelyReplaceableBy(newChild));
-        // Can't test: oldChild.replace(newChild);
-        // Fails if assertions checked; else unsafe assignment will eventually crash the VM
+        final TestNode newChild = new TestNode();
+        final TestNode strayChild = new TestNode();
+        assertFalse(strayChild.isSafelyReplaceableBy(newChild)); // Stray not a child of parent
+        final WrongTestNode wrongTypeNewChild = new WrongTestNode();
+        assertFalse(oldChild.isSafelyReplaceableBy(wrongTypeNewChild));
     }
 
     private static class TestNode extends Node {
