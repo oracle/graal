@@ -36,8 +36,23 @@ public abstract class DSLExpression {
         return Parser.parse(input);
     }
 
-    public final List<Variable> findBoundVariables() {
-        final List<Variable> variables = new ArrayList<>();
+    public final Set<VariableElement> findBoundVariableElements() {
+        final Set<VariableElement> variables = new HashSet<>();
+        this.accept(new AbstractDSLExpressionVisitor() {
+
+            @Override
+            public void visitVariable(Variable variable) {
+                if (variable.getReceiver() == null) {
+                    variables.add(variable.getResolvedVariable());
+                }
+            }
+
+        });
+        return variables;
+    }
+
+    public final Set<Variable> findBoundVariables() {
+        final Set<Variable> variables = new HashSet<>();
         this.accept(new AbstractDSLExpressionVisitor() {
 
             @Override
@@ -52,12 +67,7 @@ public abstract class DSLExpression {
     }
 
     public final boolean isVariableBound(VariableElement variableElement) {
-        for (Variable variable : findBoundVariables()) {
-            if (variable.getResolvedVariable() == variableElement) {
-                return true;
-            }
-        }
-        return false;
+        return findBoundVariableElements().contains(variableElement);
     }
 
     public abstract TypeMirror getResolvedType();
@@ -217,7 +227,11 @@ public abstract class DSLExpression {
 
         @Override
         public TypeMirror getResolvedType() {
-            return resolvedMethod != null ? resolvedMethod.getReturnType() : null;
+            if (resolvedMethod.getKind() == ElementKind.CONSTRUCTOR) {
+                return resolvedMethod.getEnclosingElement().asType();
+            } else {
+                return resolvedMethod != null ? resolvedMethod.getReturnType() : null;
+            }
         }
 
         public ExecutableElement getResolvedMethod() {

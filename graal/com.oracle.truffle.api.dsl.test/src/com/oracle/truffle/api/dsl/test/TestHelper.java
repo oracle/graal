@@ -84,6 +84,22 @@ class TestHelper {
         return Truffle.getRuntime().createCallTarget(node);
     }
 
+    static RootCallTarget createCallTarget(NodeFactory<? extends ValueNode> factory, Object... constants) {
+        return Truffle.getRuntime().createCallTarget(createRoot(factory, constants));
+    }
+
+    static boolean assertionsEnabled() {
+        boolean assertOn = false;
+        // *assigns* true if assertions are on.
+        assert (assertOn = true) == true;
+        return assertOn;
+    }
+
+    @SuppressWarnings("unchecked")
+    static <T extends ValueNode> T getNode(CallTarget target) {
+        return ((TestRootNode<T>) ((RootCallTarget) target).getRootNode()).getNode();
+    }
+
     static <E> Object executeWith(TestRootNode<? extends ValueNode> node, Object... values) {
         return createCallTarget(node).call(values);
     }

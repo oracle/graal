@@ -33,6 +33,7 @@ public class MethodSpec {
     private final ParameterSpec returnType;
     private final List<ParameterSpec> optional = new ArrayList<>();
     private final List<ParameterSpec> required = new ArrayList<>();
+    private final List<ParameterSpec> annotations = new ArrayList<>();
 
     private boolean ignoreAdditionalParameters;
     private boolean ignoreAdditionalSpecifications;
@@ -67,6 +68,10 @@ public class MethodSpec {
     public ParameterSpec addRequired(ParameterSpec spec) {
         required.add(spec);
         return spec;
+    }
+
+    public List<ParameterSpec> getAnnotations() {
+        return annotations;
     }
 
     public ParameterSpec getReturnType() {

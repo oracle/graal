@@ -27,6 +27,8 @@ import java.util.*;
 import javax.lang.model.element.*;
 
 import com.oracle.truffle.dsl.processor.*;
+import com.oracle.truffle.dsl.processor.expression.*;
+import com.oracle.truffle.dsl.processor.java.*;
 
 public final class SpecializationData extends TemplateMethod {
 
@@ -52,6 +54,7 @@ public final class SpecializationData extends TemplateMethod {
     private SpecializationData insertBefore;
     private boolean reachable;
     private int index;
+    private DSLExpression limitExpression;
 
     public SpecializationData(NodeData node, TemplateMethod template, SpecializationKind kind, List<SpecializationThrowsData> exceptions) {
         super(template);
@@ -65,13 +68,31 @@ public final class SpecializationData extends TemplateMethod {
         }
     }
 
+    public boolean isDynamicParameterBound(DSLExpression expression) {
+        Set<VariableElement> boundVariables = expression.findBoundVariableElements();
+        for (Parameter parameter : getDynamicParameters()) {
+            if (boundVariables.contains(parameter.getVariableElement())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public Parameter findByVariable(VariableElement variable) {
         for (Parameter parameter : getParameters()) {
-            if (parameter.getVariableElement() == variable) {
+            if (ElementUtils.variableEquals(parameter.getVariableElement(), variable)) {
                 return parameter;
             }
         }
         return null;
+    }
+
+    public DSLExpression getLimitExpression() {
+        return limitExpression;
+    }
+
+    public void setLimitExpression(DSLExpression limitExpression) {
+        this.limitExpression = limitExpression;
     }
 
     public void setInsertBefore(SpecializationData insertBefore) {
@@ -118,6 +139,14 @@ public final class SpecializationData extends TemplateMethod {
         return kind == SpecializationKind.POLYMORPHIC;
     }
 
+    public List<Parameter> getDynamicParameters() {
+        List<Parameter> uncachedParameters = new ArrayList<>(getParameters());
+        for (CacheExpression cacheExpression : getCaches()) {
+            uncachedParameters.remove(cacheExpression.getParameter());
+        }
+        return uncachedParameters;
+    }
+
     @Override
     protected List<MessageContainer> findChildContainers() {
         List<MessageContainer> sinks = new ArrayList<>();
@@ -126,6 +155,9 @@ public final class SpecializationData extends TemplateMethod {
         }
         if (guards != null) {
             sinks.addAll(guards);
+        }
+        if (caches != null) {
+            sinks.addAll(caches);
         }
         return sinks;
     }
@@ -140,6 +172,7 @@ public final class SpecializationData extends TemplateMethod {
         if (!getAssumptions().isEmpty()) {
             return true;
         }
+
         for (Parameter parameter : getSignatureParameters()) {
             NodeChildData child = parameter.getSpecification().getExecution().getChild();
             ExecutableTypeData type = child.findExecutableType(parameter.getTypeSystemType());
@@ -189,48 +222,6 @@ public final class SpecializationData extends TemplateMethod {
 
     public int getIndex() {
         return index;
-    }
-
-    public boolean isContainedBy(SpecializationData next) {
-        if (compareTo(next) > 0) {
-            // must be declared after the current specialization
-            return false;
-        }
-
-        Iterator<Parameter> currentSignature = getSignatureParameters().iterator();
-        Iterator<Parameter> nextSignature = next.getSignatureParameters().iterator();
-
-        while (currentSignature.hasNext() && nextSignature.hasNext()) {
-            TypeData currentType = currentSignature.next().getTypeSystemType();
-            TypeData prevType = nextSignature.next().getTypeSystemType();
-
-            if (!currentType.isImplicitSubtypeOf(prevType)) {
-                return false;
-            }
-        }
-
-        for (String nextAssumption : next.getAssumptions()) {
-            if (!getAssumptions().contains(nextAssumption)) {
-                return false;
-            }
-        }
-
-        Iterator<GuardExpression> nextGuards = next.getGuards().iterator();
-        while (nextGuards.hasNext()) {
-            GuardExpression nextGuard = nextGuards.next();
-            boolean implied = false;
-            for (GuardExpression currentGuard : getGuards()) {
-                if (currentGuard.implies(nextGuard)) {
-                    implied = true;
-                    break;
-                }
-            }
-            if (!implied) {
-                return false;
-            }
-        }
-
-        return true;
     }
 
     public NodeData getNode() {
@@ -312,12 +303,37 @@ public final class SpecializationData extends TemplateMethod {
         return assumptionExpressions;
     }
 
+    public boolean hasMultipleInstances() {
+        if (!getCaches().isEmpty()) {
+            for (GuardExpression guard : getGuards()) {
+                DSLExpression guardExpression = guard.getExpression();
+                Set<VariableElement> boundVariables = guardExpression.findBoundVariableElements();
+                if (isDynamicParameterBound(guardExpression)) {
+                    for (CacheExpression cache : getCaches()) {
+                        if (boundVariables.contains(cache.getParameter().getVariableElement())) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+
+        return false;
+
+    }
+
     public boolean isReachableAfter(SpecializationData prev) {
         if (!prev.isSpecialized()) {
             return true;
         }
 
         if (!prev.getExceptions().isEmpty()) {
+            // may get excluded by exception
+            return true;
+        }
+
+        if (hasMultipleInstances()) {
+            // may fallthrough due to limit
             return true;
         }
 
@@ -351,4 +367,14 @@ public final class SpecializationData extends TemplateMethod {
 
         return false;
     }
+
+    public CacheExpression findCache(Parameter resolvedParameter) {
+        for (CacheExpression cache : getCaches()) {
+            if (cache.getParameter() == resolvedParameter) {
+                return cache;
+            }
+        }
+        return null;
+    }
+
 }

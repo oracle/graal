@@ -30,6 +30,7 @@ import javax.lang.model.element.*;
 import javax.lang.model.type.*;
 
 import com.oracle.truffle.dsl.processor.java.*;
+import com.oracle.truffle.dsl.processor.java.model.*;
 import com.oracle.truffle.dsl.processor.model.*;
 
 public final class MethodSpecParser {
@@ -76,26 +77,13 @@ public final class MethodSpecParser {
 
         String id = method.getSimpleName().toString();
         TypeMirror returnType = method.getReturnType();
-        List<TypeMirror> parameterTypes = new ArrayList<>();
-        for (VariableElement var : method.getParameters()) {
-            parameterTypes.add(var.asType());
-        }
-
-        TemplateMethod templateMethod = parseImpl(methodSpecification, naturalOrder, id, method, annotation, returnType, parameterTypes);
-        if (templateMethod != null) {
-            for (int i = 0; i < templateMethod.getParameters().size(); i++) {
-                if (i < method.getParameters().size()) {
-                    templateMethod.getParameters().get(i).setVariableElement(method.getParameters().get(i));
-                }
-            }
-        }
-        return templateMethod;
+        return parseImpl(methodSpecification, naturalOrder, id, method, annotation, returnType, method.getParameters());
     }
 
     public TemplateMethod parseImpl(MethodSpec methodSpecification, int naturalOrder, String id, ExecutableElement method, AnnotationMirror annotation, TypeMirror returnType,
-                    List<TypeMirror> parameterTypes) {
+                    List<? extends VariableElement> parameterTypes) {
         ParameterSpec returnTypeSpec = methodSpecification.getReturnType();
-        Parameter returnTypeMirror = matchParameter(returnTypeSpec, returnType, -1, -1);
+        Parameter returnTypeMirror = matchParameter(returnTypeSpec, new CodeVariableElement(returnType, "returnType"), -1, -1);
         if (returnTypeMirror == null) {
             if (emitErrors) {
                 TemplateMethod invalidMethod = new TemplateMethod(id, naturalOrder, template, methodSpecification, method, annotation, returnTypeMirror, Collections.<Parameter> emptyList());
@@ -147,11 +135,11 @@ public final class MethodSpecParser {
      * end matching the required arguments, parsing fails. Parameters prior to the parsed required
      * ones are cut and used to parse the optional parameters.
      */
-    private List<Parameter> parseParameters(MethodSpec spec, List<TypeMirror> parameterTypes, boolean varArgs) {
+    private List<Parameter> parseParameters(MethodSpec spec, List<? extends VariableElement> parameterTypes, boolean varArgs) {
         List<Parameter> parsedRequired = null;
         int offset = 0;
         for (; offset <= parameterTypes.size(); offset++) {
-            List<TypeMirror> parameters = new ArrayList<>();
+            List<VariableElement> parameters = new ArrayList<>();
             parameters.addAll(parameterTypes.subList(offset, parameterTypes.size()));
             parsedRequired = parseParametersRequired(spec, parameters, varArgs);
             if (parsedRequired != null) {
@@ -166,7 +154,7 @@ public final class MethodSpecParser {
         if (parsedRequired.isEmpty() && offset == 0) {
             offset = parameterTypes.size();
         }
-        List<TypeMirror> potentialOptionals = parameterTypes.subList(0, offset);
+        List<? extends VariableElement> potentialOptionals = parameterTypes.subList(0, offset);
         List<Parameter> parsedOptionals = parseParametersOptional(spec, potentialOptionals);
         if (parsedOptionals == null) {
             return null;
@@ -178,7 +166,7 @@ public final class MethodSpecParser {
         return finalParameters;
     }
 
-    private List<Parameter> parseParametersOptional(MethodSpec spec, List<TypeMirror> types) {
+    private List<Parameter> parseParametersOptional(MethodSpec spec, List<? extends VariableElement> types) {
         List<Parameter> parsedParams = new ArrayList<>();
 
         int typeStartIndex = 0;
@@ -186,8 +174,8 @@ public final class MethodSpecParser {
         outer: for (int specIndex = 0; specIndex < specifications.size(); specIndex++) {
             ParameterSpec specification = specifications.get(specIndex);
             for (int typeIndex = typeStartIndex; typeIndex < types.size(); typeIndex++) {
-                TypeMirror actualType = types.get(typeIndex);
-                Parameter optionalParam = matchParameter(specification, actualType, -1, -1);
+                VariableElement variable = types.get(typeIndex);
+                Parameter optionalParam = matchParameter(specification, variable, -1, -1);
                 if (optionalParam != null) {
                     parsedParams.add(optionalParam);
                     typeStartIndex = typeIndex + 1;
@@ -203,7 +191,7 @@ public final class MethodSpecParser {
         return parsedParams;
     }
 
-    private List<Parameter> parseParametersRequired(MethodSpec spec, List<TypeMirror> types, boolean typeVarArgs) {
+    private List<Parameter> parseParametersRequired(MethodSpec spec, List<VariableElement> types, boolean typeVarArgs) {
         List<Parameter> parsedParams = new ArrayList<>();
         List<ParameterSpec> specifications = spec.getRequired();
         boolean specVarArgs = spec.isVariableRequiredParameters();
@@ -212,7 +200,7 @@ public final class MethodSpecParser {
 
         ParameterSpec specification;
         while ((specification = nextSpecification(specifications, specificationIndex, specVarArgs)) != null) {
-            TypeMirror actualType = nextActualType(types, typeIndex, typeVarArgs);
+            VariableElement actualType = nextActualType(types, typeIndex, typeVarArgs);
             if (actualType == null) {
                 if (spec.isIgnoreAdditionalSpecifications()) {
                     break;
@@ -238,8 +226,18 @@ public final class MethodSpecParser {
             specificationIndex++;
         }
 
+        // consume randomly ordered annotated parameters
+        VariableElement variable;
+        while ((variable = nextActualType(types, typeIndex, typeVarArgs)) != null) {
+            Parameter matchedParamter = matchAnnotatedParameter(spec, variable);
+            if (matchedParamter == null) {
+                break;
+            }
+            parsedParams.add(matchedParamter);
+            typeIndex++;
+        }
+
         if (typeIndex < types.size()) {
-            // additional types available
             if (spec.isIgnoreAdditionalParameters()) {
                 return parsedParams;
             } else {
@@ -248,6 +246,19 @@ public final class MethodSpecParser {
         }
 
         return parsedParams;
+    }
+
+    private Parameter matchAnnotatedParameter(MethodSpec spec, VariableElement variable) {
+        for (ParameterSpec parameterSpec : spec.getAnnotations()) {
+            if (parameterSpec.matches(variable)) {
+                Parameter matchedParameter = matchParameter(parameterSpec, variable, -1, -1);
+                if (matchedParameter != null) {
+                    matchedParameter.setLocalName(variable.getSimpleName().toString());
+                    return matchedParameter;
+                }
+            }
+        }
+        return null;
     }
 
     private static ParameterSpec nextSpecification(List<ParameterSpec> specifications, int specIndex, boolean varArgs) {
@@ -260,12 +271,12 @@ public final class MethodSpecParser {
         }
     }
 
-    private static TypeMirror nextActualType(List<TypeMirror> types, int typeIndex, boolean varArgs) {
+    private static VariableElement nextActualType(List<VariableElement> types, int typeIndex, boolean varArgs) {
         if (varArgs && typeIndex >= types.size() - 1 && !types.isEmpty()) {
             // unpack varargs array argument
-            TypeMirror actualType = types.get(types.size() - 1);
-            if (actualType.getKind() == TypeKind.ARRAY) {
-                actualType = ((ArrayType) actualType).getComponentType();
+            VariableElement actualType = types.get(types.size() - 1);
+            if (actualType.asType().getKind() == TypeKind.ARRAY) {
+                actualType = new CodeVariableElement(((ArrayType) actualType.asType()).getComponentType(), actualType.getSimpleName().toString());
             }
             return actualType;
         } else if (typeIndex < types.size()) {
@@ -275,21 +286,21 @@ public final class MethodSpecParser {
         }
     }
 
-    private Parameter matchParameter(ParameterSpec specification, TypeMirror mirror, int specificationIndex, int varArgsIndex) {
-        TypeMirror resolvedType = mirror;
+    private Parameter matchParameter(ParameterSpec specification, VariableElement variable, int specificationIndex, int varArgsIndex) {
+        TypeMirror resolvedType = variable.asType();
         if (hasError(resolvedType)) {
             return null;
         }
 
-        if (!specification.matches(resolvedType)) {
+        if (!specification.matches(variable)) {
             return null;
         }
 
         TypeData resolvedTypeData = getTypeSystem().findTypeData(resolvedType);
         if (resolvedTypeData != null) {
-            return new Parameter(specification, resolvedTypeData, specificationIndex, varArgsIndex);
+            return new Parameter(specification, resolvedTypeData, variable, specificationIndex, varArgsIndex);
         } else {
-            return new Parameter(specification, resolvedType, specificationIndex, varArgsIndex);
+            return new Parameter(specification, variable, specificationIndex, varArgsIndex);
         }
     }
 

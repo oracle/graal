@@ -24,7 +24,6 @@ package com.oracle.truffle.dsl.processor.parser;
 
 import java.util.*;
 
-import com.oracle.truffle.dsl.processor.generator.*;
 import com.oracle.truffle.dsl.processor.model.*;
 import com.oracle.truffle.dsl.processor.model.TemplateMethod.TypeSignature;
 
@@ -108,10 +107,6 @@ public final class SpecializationGroup {
             return null;
         }
 
-        if (previous.mayBeExcluded()) {
-            return null;
-        }
-
         /* Guard is else branch can be connected in previous specialization. */
         if (elseConnectedGuards.contains(guard)) {
             return guard;
@@ -122,19 +117,6 @@ public final class SpecializationGroup {
             return guard;
         }
         return null;
-    }
-
-    private boolean mayBeExcluded() {
-        if (specialization != null) {
-            return NodeGenFactory.mayBeExcluded(specialization);
-        } else {
-            for (SpecializationGroup group : getChildren()) {
-                if (group.mayBeExcluded()) {
-                    return true;
-                }
-            }
-        }
-        return false;
     }
 
     private void updateChildren(List<SpecializationGroup> childs) {
@@ -381,4 +363,16 @@ public final class SpecializationGroup {
         }
     }
 
+    public SpecializationGroup getPrevious() {
+        if (getParent() == null) {
+            return null;
+        }
+
+        List<SpecializationGroup> parentChildren = getParent().getChildren();
+        int index = parentChildren.indexOf(this);
+        if (index <= 0) {
+            return null;
+        }
+        return parentChildren.get(index - 1);
+    }
 }

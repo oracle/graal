@@ -132,7 +132,7 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
         return null;
     }
 
-    public final E create(String id, int naturalOrder, ExecutableElement methodMetadata, AnnotationMirror mirror, TypeMirror returnType, List<TypeMirror> parameterTypes) {
+    public final E create(String id, int naturalOrder, ExecutableElement methodMetadata, AnnotationMirror mirror, TypeMirror returnType, List<VariableElement> parameterTypes) {
         TemplateMethod method = parser.parseImpl(createSpecification(methodMetadata, mirror), naturalOrder, id, methodMetadata, mirror, returnType, parameterTypes);
         if (method != null) {
             return create(method, method.hasErrors());

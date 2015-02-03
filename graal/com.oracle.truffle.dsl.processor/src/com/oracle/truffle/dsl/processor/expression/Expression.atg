@@ -31,9 +31,9 @@ COMPILER Expression
 
 CHARACTERS
 
-letter = 'A'..'Z' + 'a'..'z'.
+letter = 'A' .. 'Z' + 'a' .. 'z' + '_' + '$'.
 nonZeroDigit = "123456789".
-digit = "0123456789".
+digit = '0' + nonZeroDigit .
 
 TOKENS
 
@@ -47,25 +47,35 @@ PRODUCTIONS
 
 Expression<out DSLExpression result>
 =
-NegateFactor<out result>
+LogicFactor<out result>
 .
+
+
+LogicFactor<out DSLExpression  result>
+=
+ComparisonFactor<out result>
+[
+    ("||")                                      (. Token op = t; .)
+    ComparisonFactor<out DSLExpression  right>  (.  result = new Binary(op.val, result, right); .)
+]
+.
+
+ComparisonFactor<out DSLExpression  result>
+=
+NegateFactor<out result>
+[
+    ("<" | "<=" | ">" | ">=" | "==" | "!=" )    (. Token op = t; .)
+    NegateFactor<out DSLExpression  right>      (.  result = new Binary(op.val, result, right); .)
+]
+.
+
 
 NegateFactor<out DSLExpression  result>
 =                                               (. boolean negated = false; .)
 [
     "!"                                         (. negated = true; .)
 ]                                        
-    LogicFactor<out result>                     (. result = negated ? new Negate(result) : result;.)
-.
-
-
-LogicFactor<out DSLExpression  result>
-=
-Factor<out result>
-[
-    ("<" | "<=" | ">" | ">=" | "==" | "!=" )    (. Token op = t; .)
-    Factor<out DSLExpression  right>            (.  result = new Binary(op.val, result, right); .)
-]
+    Factor<out result>                          (. result = negated ? new Negate(result) : result;.)
 .
 
 

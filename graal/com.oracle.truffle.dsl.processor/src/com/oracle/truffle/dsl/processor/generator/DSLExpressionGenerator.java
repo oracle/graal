@@ -61,7 +61,9 @@ public class DSLExpressionGenerator implements DSLExpressionVisitor {
 
         CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
 
-        if (call.getReceiver() == null) {
+        if (call.getResolvedMethod().getKind() == ElementKind.CONSTRUCTOR) {
+            builder.startNew(call.getResolvedType());
+        } else if (call.getReceiver() == null) {
             if (isStatic(method)) {
                 builder.startStaticCall(method);
             } else {
@@ -89,7 +91,7 @@ public class DSLExpressionGenerator implements DSLExpressionVisitor {
     }
 
     public void visitNegate(Negate negate) {
-        push(combine(string("!"), pop()));
+        push(combine(string("!"), combine(string("("), pop(), string(")"))));
     }
 
     public void visitVariable(Variable variable) {
@@ -136,7 +138,7 @@ public class DSLExpressionGenerator implements DSLExpressionVisitor {
     }
 
     private static CodeTree staticReference(VariableElement var) {
-        return CodeTreeBuilder.createBuilder().staticReference(var.asType(), var.getSimpleName().toString()).build();
+        return CodeTreeBuilder.createBuilder().staticReference(var.getEnclosingElement().asType(), var.getSimpleName().toString()).build();
     }
 
     private void push(CodeTree tree) {
@@ -150,7 +152,7 @@ public class DSLExpressionGenerator implements DSLExpressionVisitor {
     public static CodeTree write(DSLExpression expression, CodeTree root, Map<Variable, CodeTree> bindings) {
         DSLExpressionGenerator writer = new DSLExpressionGenerator(root, bindings);
         expression.accept(writer);
-        return writer.pop();
+        return combine(string("("), writer.pop(), string(")"));
     }
 
 }

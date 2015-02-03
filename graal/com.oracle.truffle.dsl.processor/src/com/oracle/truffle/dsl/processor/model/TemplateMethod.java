@@ -140,16 +140,6 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
         }
     }
 
-    public List<Parameter> getRequiredParameters() {
-        List<Parameter> requiredParameters = new ArrayList<>();
-        for (Parameter parameter : getParameters()) {
-            if (getSpecification().getRequired().contains(parameter.getSpecification())) {
-                requiredParameters.add(parameter);
-            }
-        }
-        return requiredParameters;
-    }
-
     public Iterable<Parameter> getSignatureParameters() {
         return new FilteredIterable<>(getParameters(), new Predicate<Parameter>() {
             public boolean evaluate(Parameter value) {

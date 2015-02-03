@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,44 +22,32 @@
  */
 package com.oracle.truffle.dsl.processor.model;
 
-import javax.lang.model.element.*;
+import java.util.*;
 
-import com.oracle.truffle.dsl.processor.expression.*;
+import javax.lang.model.element.*;
+import javax.lang.model.type.*;
+
 import com.oracle.truffle.dsl.processor.java.*;
 
-public final class CacheExpression extends MessageContainer {
+public final class AnnotatedParameterSpec extends ParameterSpec {
 
-    private final DSLExpression expression;
-    private final Parameter sourceParameter;
-    private final AnnotationMirror sourceAnnotationMirror;
+    private final DeclaredType annotationType;
 
-    public CacheExpression(Parameter sourceParameter, AnnotationMirror sourceAnnotationMirror, DSLExpression expression) {
-        this.sourceParameter = sourceParameter;
-        this.expression = expression;
-        this.sourceAnnotationMirror = sourceAnnotationMirror;
+    public AnnotatedParameterSpec(DeclaredType type) {
+        super("annotated", Collections.<TypeMirror> emptyList());
+        this.annotationType = type;
     }
 
-    public Parameter getParameter() {
-        return sourceParameter;
+    public DeclaredType getAnnotationType() {
+        return annotationType;
     }
 
     @Override
-    public Element getMessageElement() {
-        return sourceParameter.getVariableElement();
-    }
-
-    @Override
-    public AnnotationMirror getMessageAnnotation() {
-        return sourceAnnotationMirror;
-    }
-
-    @Override
-    public AnnotationValue getMessageAnnotationValue() {
-        return ElementUtils.getAnnotationValue(getMessageAnnotation(), "value");
-    }
-
-    public DSLExpression getExpression() {
-        return expression;
+    public boolean matches(VariableElement variable) {
+        if (ElementUtils.findAnnotationMirror(variable.getAnnotationMirrors(), annotationType) != null) {
+            return true;
+        }
+        return false;
     }
 
 }

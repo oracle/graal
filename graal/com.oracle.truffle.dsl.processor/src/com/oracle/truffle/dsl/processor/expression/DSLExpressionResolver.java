@@ -45,29 +45,42 @@ public class DSLExpressionResolver implements DSLExpressionVisitor {
     private static final List<String> IDENTITY_OPERATORS = Arrays.asList("==", "!=");
     private static final String CONSTRUCTOR_KEYWORD = "new";
 
-    private List<VariableElement> variables;
-    private List<ExecutableElement> methods;
+    private final List<VariableElement> variables = new ArrayList<>();
+    private final List<ExecutableElement> methods = new ArrayList<>();
     private final ProcessorContext context;
 
-    public DSLExpressionResolver(ProcessorContext context, List<? extends Element> lookupElements) {
+    private DSLExpressionResolver(ProcessorContext context) {
         this.context = context;
-        this.variables = variablesIn(lookupElements, false);
-        this.methods = methodsIn(lookupElements);
     }
 
-    private static List<ExecutableElement> methodsIn(List<? extends Element> lookupElements) {
-        List<ExecutableElement> methods = new ArrayList<>();
+    public DSLExpressionResolver(ProcessorContext context, List<? extends Element> lookupElements) {
+        this(context);
+        lookup(lookupElements);
+    }
+
+    public DSLExpressionResolver copy(List<? extends Element> prefixElements) {
+        DSLExpressionResolver resolver = new DSLExpressionResolver(context);
+        lookup(prefixElements);
+        resolver.variables.addAll(variables);
+        resolver.methods.addAll(methods);
+        return resolver;
+    }
+
+    private void lookup(List<? extends Element> lookupElements) {
+        variablesIn(variables, lookupElements, false);
+        methodsIn(lookupElements);
+    }
+
+    private void methodsIn(List<? extends Element> lookupElements) {
         for (Element variable : lookupElements) {
             ElementKind kind = variable.getKind();
             if (kind == ElementKind.METHOD || kind == ElementKind.CONSTRUCTOR) {
                 methods.add((ExecutableElement) variable);
             }
         }
-        return methods;
     }
 
-    private static List<VariableElement> variablesIn(List<? extends Element> lookupElements, boolean publicOnly) {
-        List<VariableElement> variables = new ArrayList<>();
+    private static void variablesIn(List<VariableElement> variables, List<? extends Element> lookupElements, boolean publicOnly) {
         for (Element variable : lookupElements) {
             ElementKind kind = variable.getKind();
             if (kind == ElementKind.LOCAL_VARIABLE || kind == ElementKind.PARAMETER || kind == ElementKind.FIELD || kind == ElementKind.ENUM_CONSTANT) {
@@ -77,7 +90,6 @@ public class DSLExpressionResolver implements DSLExpressionVisitor {
                 }
             }
         }
-        return variables;
     }
 
     private static String getMethodName(ExecutableElement method) {
@@ -189,7 +201,8 @@ public class DSLExpressionResolver implements DSLExpressionVisitor {
             TypeMirror type = receiver.getResolvedType();
             if (type.getKind() == TypeKind.DECLARED) {
                 type = context.reloadType(type); // ensure ECJ has the type loaded
-                lookupVariables = variablesIn(context.getEnvironment().getElementUtils().getAllMembers((TypeElement) ((DeclaredType) type).asElement()), true);
+                lookupVariables = new ArrayList<>();
+                variablesIn(lookupVariables, context.getEnvironment().getElementUtils().getAllMembers((TypeElement) ((DeclaredType) type).asElement()), true);
             } else if (type.getKind() == TypeKind.ARRAY) {
                 lookupVariables = Arrays.<VariableElement> asList(new CodeVariableElement(context.getType(int.class), "length"));
             } else {

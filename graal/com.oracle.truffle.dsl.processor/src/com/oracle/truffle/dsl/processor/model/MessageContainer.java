@@ -119,7 +119,7 @@ public abstract class MessageContainer implements Iterable<MessageContainer> {
         TypeElement expectError = context.getTruffleTypes().getExpectError();
         if (expectError != null) {
             Element element = getMessageElement();
-            AnnotationMirror mirror = ElementUtils.findAnnotationMirror(element.getAnnotationMirrors(), expectError);
+            AnnotationMirror mirror = ElementUtils.findAnnotationMirror(element.getAnnotationMirrors(), expectError.asType());
             if (mirror != null) {
                 List<String> values = ElementUtils.getAnnotationValueList(String.class, mirror, "value");
                 if (values == null) {
@@ -149,7 +149,7 @@ public abstract class MessageContainer implements Iterable<MessageContainer> {
 
         TypeElement expectError = context.getTruffleTypes().getExpectError();
         if (expectError != null) {
-            AnnotationMirror mirror = ElementUtils.findAnnotationMirror(messageElement.getAnnotationMirrors(), expectError);
+            AnnotationMirror mirror = ElementUtils.findAnnotationMirror(messageElement.getAnnotationMirrors(), expectError.asType());
             if (mirror != null) {
                 List<String> expectedTexts = ElementUtils.getAnnotationValueList(String.class, mirror, "value");
                 boolean found = false;

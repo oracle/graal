@@ -94,7 +94,7 @@ public abstract class SpecializationNode extends Node {
     protected final SpecializationNode polymorphicMerge(SpecializationNode newNode) {
         SpecializationNode merged = next.merge(newNode);
         if (merged == newNode && !isSame(newNode) && count() <= 2) {
-            return removeSame(new RewriteEvent0(findParentNode(), "merged polymorphic to monomorphic"));
+            return removeSame(new RewriteEvent0(findRoot(), "merged polymorphic to monomorphic"));
         }
         return merged;
     }
@@ -118,6 +118,22 @@ public abstract class SpecializationNode extends Node {
             return this;
         }
         return next != null ? next.merge(newNode) : newNode;
+    }
+
+    protected SpecializationNode mergeNoSame(SpecializationNode newNode) {
+        return next != null ? next.merge(newNode) : newNode;
+    }
+
+    protected final int countSame(SpecializationNode node) {
+        return findStart().countSameImpl(node);
+    }
+
+    private int countSameImpl(SpecializationNode node) {
+        if (next != null) {
+            return next.countSameImpl(node) + (isSame(node) ? 1 : 0);
+        } else {
+            return 0;
+        }
     }
 
     @Override
@@ -172,7 +188,7 @@ public abstract class SpecializationNode extends Node {
         return node;
     }
 
-    private Node findParentNode() {
+    private Node findRoot() {
         return findStart().getParent();
     }
 
@@ -188,7 +204,7 @@ public abstract class SpecializationNode extends Node {
             }
             current = current.next;
         }
-        return start;
+        return findEnd().findStart();
     }
 
     public Object acceptAndExecute(Frame frame) {
@@ -264,7 +280,7 @@ public abstract class SpecializationNode extends Node {
         if (nextSpecialization == null) {
             return unsupported(frame);
         }
-        return insertSpecialization(nextSpecialization, new RewriteEvent0(findParentNode(), "inserted new specialization")).acceptAndExecute(frame);
+        return insertSpecialization(nextSpecialization, new RewriteEvent0(findRoot(), "inserted new specialization")).acceptAndExecute(frame);
     }
 
     protected final Object uninitialized(Frame frame, Object o1) {
@@ -276,7 +292,7 @@ public abstract class SpecializationNode extends Node {
         if (nextSpecialization == null) {
             return unsupported(frame, o1);
         }
-        return insertSpecialization(nextSpecialization, new RewriteEvent1(findParentNode(), "inserted new specialization", o1)).acceptAndExecute(frame, o1);
+        return insertSpecialization(nextSpecialization, new RewriteEvent1(findRoot(), "inserted new specialization", o1)).acceptAndExecute(frame, o1);
     }
 
     protected final Object uninitialized(Frame frame, Object o1, Object o2) {
@@ -288,7 +304,7 @@ public abstract class SpecializationNode extends Node {
         if (nextSpecialization == null) {
             return unsupported(frame, o1, o2);
         }
-        return insertSpecialization(nextSpecialization, new RewriteEvent2(findParentNode(), "inserted new specialization", o1, o2)).acceptAndExecute(frame, o1, o2);
+        return insertSpecialization(nextSpecialization, new RewriteEvent2(findRoot(), "inserted new specialization", o1, o2)).acceptAndExecute(frame, o1, o2);
     }
 
     protected final Object uninitialized(Frame frame, Object o1, Object o2, Object o3) {
@@ -300,7 +316,7 @@ public abstract class SpecializationNode extends Node {
         if (nextSpecialization == null) {
             return unsupported(frame, o1, o2, o3);
         }
-        return insertSpecialization(nextSpecialization, new RewriteEvent3(findParentNode(), "inserted new specialization", o1, o2, o3)).acceptAndExecute(frame, o1, o2, o3);
+        return insertSpecialization(nextSpecialization, new RewriteEvent3(findRoot(), "inserted new specialization", o1, o2, o3)).acceptAndExecute(frame, o1, o2, o3);
     }
 
     protected final Object uninitialized(Frame frame, Object o1, Object o2, Object o3, Object o4) {
@@ -312,7 +328,7 @@ public abstract class SpecializationNode extends Node {
         if (nextSpecialization == null) {
             return unsupported(frame, o1, o2, o3, o4);
         }
-        return insertSpecialization(nextSpecialization, new RewriteEvent4(findParentNode(), "inserts new specialization", o1, o2, o3, o4)).acceptAndExecute(frame, o1, o2, o3, o4);
+        return insertSpecialization(nextSpecialization, new RewriteEvent4(findRoot(), "inserts new specialization", o1, o2, o3, o4)).acceptAndExecute(frame, o1, o2, o3, o4);
     }
 
     protected final Object uninitialized(Frame frame, Object o1, Object o2, Object o3, Object o4, Object o5) {
@@ -324,7 +340,7 @@ public abstract class SpecializationNode extends Node {
         if (nextSpecialization == null) {
             unsupported(frame, o1, o2, o3, o4, o5);
         }
-        return insertSpecialization(nextSpecialization, new RewriteEventN(findParentNode(), "inserts new specialization", o1, o2, o3, o4, o5)).acceptAndExecute(frame, o1, o2, o3, o4, o5);
+        return insertSpecialization(nextSpecialization, new RewriteEventN(findRoot(), "inserts new specialization", o1, o2, o3, o4, o5)).acceptAndExecute(frame, o1, o2, o3, o4, o5);
     }
 
     protected final Object uninitialized(Frame frame, Object... args) {
@@ -336,7 +352,7 @@ public abstract class SpecializationNode extends Node {
         if (nextSpecialization == null) {
             unsupported(frame, args);
         }
-        return insertSpecialization(nextSpecialization, new RewriteEventN(findParentNode(), "inserts new specialization", args)).acceptAndExecute(frame, args);
+        return insertSpecialization(nextSpecialization, new RewriteEventN(findRoot(), "inserts new specialization", args)).acceptAndExecute(frame, args);
     }
 
     private boolean needsPolymorphic() {
@@ -344,59 +360,59 @@ public abstract class SpecializationNode extends Node {
     }
 
     protected final Object remove(String reason, Frame frame) {
-        return removeSame(new RewriteEvent0(findParentNode(), reason)).acceptAndExecute(frame);
+        return removeSame(new RewriteEvent0(findRoot(), reason)).acceptAndExecute(frame);
     }
 
     protected final Object remove(String reason, Frame frame, Object o1) {
-        return removeSame(new RewriteEvent1(findParentNode(), reason, o1)).acceptAndExecute(frame, o1);
+        return removeSame(new RewriteEvent1(findRoot(), reason, o1)).acceptAndExecute(frame, o1);
     }
 
     protected final Object remove(String reason, Frame frame, Object o1, Object o2) {
-        return removeSame(new RewriteEvent2(findParentNode(), reason, o1, o2)).acceptAndExecute(frame, o1, o2);
+        return removeSame(new RewriteEvent2(findRoot(), reason, o1, o2)).acceptAndExecute(frame, o1, o2);
     }
 
     protected final Object remove(String reason, Frame frame, Object o1, Object o2, Object o3) {
-        return removeSame(new RewriteEvent3(findParentNode(), reason, o1, o2, o3)).acceptAndExecute(frame, o1, o2, o3);
+        return removeSame(new RewriteEvent3(findRoot(), reason, o1, o2, o3)).acceptAndExecute(frame, o1, o2, o3);
     }
 
     protected final Object remove(String reason, Frame frame, Object o1, Object o2, Object o3, Object o4) {
-        return removeSame(new RewriteEvent4(findParentNode(), reason, o1, o2, o3, o4)).acceptAndExecute(frame, o1, o2, o3, o4);
+        return removeSame(new RewriteEvent4(findRoot(), reason, o1, o2, o3, o4)).acceptAndExecute(frame, o1, o2, o3, o4);
     }
 
     protected final Object remove(String reason, Frame frame, Object o1, Object o2, Object o3, Object o4, Object o5) {
-        return removeSame(new RewriteEventN(findParentNode(), reason, o1, o2, o3, o4, o5)).acceptAndExecute(frame, o1, o2, o3, o4, o5);
+        return removeSame(new RewriteEventN(findRoot(), reason, o1, o2, o3, o4, o5)).acceptAndExecute(frame, o1, o2, o3, o4, o5);
     }
 
     protected final Object remove(String reason, Frame frame, Object... args) {
-        return removeSame(new RewriteEventN(findParentNode(), reason, args)).acceptAndExecute(frame, args);
+        return removeSame(new RewriteEventN(findRoot(), reason, args)).acceptAndExecute(frame, args);
     }
 
     protected Object unsupported(Frame frame) {
-        throw new UnsupportedSpecializationException(findParentNode(), getSuppliedChildren());
+        throw new UnsupportedSpecializationException(findRoot(), getSuppliedChildren());
     }
 
     protected Object unsupported(Frame frame, Object o1) {
-        throw new UnsupportedSpecializationException(findParentNode(), getSuppliedChildren(), o1);
+        throw new UnsupportedSpecializationException(findRoot(), getSuppliedChildren(), o1);
     }
 
     protected Object unsupported(Frame frame, Object o1, Object o2) {
-        throw new UnsupportedSpecializationException(findParentNode(), getSuppliedChildren(), o1, o2);
+        throw new UnsupportedSpecializationException(findRoot(), getSuppliedChildren(), o1, o2);
     }
 
     protected Object unsupported(Frame frame, Object o1, Object o2, Object o3) {
-        throw new UnsupportedSpecializationException(findParentNode(), getSuppliedChildren(), o1, o2, o3);
+        throw new UnsupportedSpecializationException(findRoot(), getSuppliedChildren(), o1, o2, o3);
     }
 
     protected Object unsupported(Frame frame, Object o1, Object o2, Object o3, Object o4) {
-        throw new UnsupportedSpecializationException(findParentNode(), getSuppliedChildren(), o1, o2, o3, o4);
+        throw new UnsupportedSpecializationException(findRoot(), getSuppliedChildren(), o1, o2, o3, o4);
     }
 
     protected Object unsupported(Frame frame, Object o1, Object o2, Object o3, Object o4, Object o5) {
-        throw new UnsupportedSpecializationException(findParentNode(), getSuppliedChildren(), o1, o2, o3, o4, o5);
+        throw new UnsupportedSpecializationException(findRoot(), getSuppliedChildren(), o1, o2, o3, o4, o5);
     }
 
     protected Object unsupported(Frame frame, Object... args) {
-        throw new UnsupportedSpecializationException(findParentNode(), getSuppliedChildren(), args);
+        throw new UnsupportedSpecializationException(findRoot(), getSuppliedChildren(), args);
     }
 
     private SpecializationNode insertSpecialization(final SpecializationNode generated, final CharSequence message) {
@@ -428,8 +444,8 @@ public abstract class SpecializationNode extends Node {
             return insertBefore(insertBefore, generated, message);
         } else {
             // existing node
-            merged.replace(merged, new RewriteEvent0(merged.findParentNode(), "merged specialization"));
-            return merged;
+            merged.replace(merged, new RewriteEvent0(merged.findRoot(), "merged specialization"));
+            return start;
         }
     }
 

@@ -1120,4 +1120,53 @@ public class ElementUtils {
         return types;
     }
 
+    public static boolean variableEquals(VariableElement var1, VariableElement var2) {
+        if (!var1.getSimpleName().equals(var2.getSimpleName())) {
+            return false;
+        }
+        if (!ElementUtils.typeEquals(var1.asType(), var2.asType())) {
+            return false;
+        }
+        if (!ElementUtils.elementEquals(var1.getEnclosingElement(), var2.getEnclosingElement())) {
+            return false;
+        }
+        return true;
+    }
+
+    public static boolean executableEquals(ExecutableElement var1, ExecutableElement var2) {
+        if (!var1.getSimpleName().equals(var2.getSimpleName())) {
+            return false;
+        }
+        if (var1.getParameters().size() != var2.getParameters().size()) {
+            return false;
+        }
+        if (!ElementUtils.typeEquals(var1.asType(), var2.asType())) {
+            return false;
+        }
+        if (!ElementUtils.elementEquals(var1.getEnclosingElement(), var2.getEnclosingElement())) {
+            return false;
+        }
+        for (int i = 0; i < var1.getParameters().size(); i++) {
+            if (!typeEquals(var1.getParameters().get(i).asType(), var2.getParameters().get(i).asType())) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public static boolean elementEquals(Element element1, Element element2) {
+        if (element1.getKind() != element2.getKind()) {
+            return false;
+        } else if (element1 instanceof VariableElement) {
+            return variableEquals((VariableElement) element1, (VariableElement) element2);
+        } else if (element1 instanceof ExecutableElement) {
+            return executableEquals((ExecutableElement) element1, (ExecutableElement) element2);
+        } else if (element1 instanceof TypeElement) {
+            return typeEquals(element1.asType(), element2.asType());
+        } else if (element1 instanceof PackageElement) {
+            return element1.getSimpleName().equals(element2.getSimpleName());
+        } else {
+            throw new AssertionError("unsupported element type");
+        }
+    }
 }

@@ -37,7 +37,7 @@ class Parser {
 	public static final int _EOF = 0;
 	public static final int _identifier = 1;
 	public static final int _numericLiteral = 2;
-	public static final int maxT = 14;
+	public static final int maxT = 15;
 
     static final boolean _T = true;
     static final boolean _x = false;
@@ -122,25 +122,25 @@ class Parser {
 
 	DSLExpression  Expression() {
 		DSLExpression  result;
-		result = NegateFactor();
-		return result;
-	}
-
-	DSLExpression   NegateFactor() {
-		DSLExpression   result;
-		boolean negated = false; 
-		if (la.kind == 3) {
-			Get();
-			negated = true; 
-		}
 		result = LogicFactor();
-		result = negated ? new Negate(result) : result;
 		return result;
 	}
 
 	DSLExpression   LogicFactor() {
 		DSLExpression   result;
-		result = Factor();
+		result = ComparisonFactor();
+		if (la.kind == 3) {
+			Get();
+			Token op = t; 
+			DSLExpression  right = ComparisonFactor();
+			result = new Binary(op.val, result, right); 
+		}
+		return result;
+	}
+
+	DSLExpression   ComparisonFactor() {
+		DSLExpression   result;
+		result = NegateFactor();
 		if (StartOf(1)) {
 			switch (la.kind) {
 			case 4: {
@@ -169,9 +169,21 @@ class Parser {
 			}
 			}
 			Token op = t; 
-			DSLExpression  right = Factor();
+			DSLExpression  right = NegateFactor();
 			result = new Binary(op.val, result, right); 
 		}
+		return result;
+	}
+
+	DSLExpression   NegateFactor() {
+		DSLExpression   result;
+		boolean negated = false; 
+		if (la.kind == 10) {
+			Get();
+			negated = true; 
+		}
+		result = Factor();
+		result = negated ? new Negate(result) : result;
 		return result;
 	}
 
@@ -183,11 +195,11 @@ class Parser {
 		} else if (la.kind == 2) {
 			Get();
 			result = new IntLiteral(t.val); 
-		} else if (la.kind == 10) {
+		} else if (la.kind == 11) {
 			Get();
 			result = Expression();
-			Expect(11);
-		} else SynErr(15);
+			Expect(12);
+		} else SynErr(16);
 		return result;
 	}
 
@@ -197,23 +209,23 @@ class Parser {
 		Expect(1);
 		Variable variable = new Variable(receiver, t.val); 
 		result = variable; 
-		if (la.kind == 10) {
+		if (la.kind == 11) {
 			Get();
 			List<DSLExpression> parameters = new ArrayList<>();
 			DSLExpression parameter; 
 			if (StartOf(2)) {
 				parameter = Expression();
 				parameters.add(parameter); 
-				while (la.kind == 12) {
+				while (la.kind == 13) {
 					Get();
 					parameter = Expression();
 					parameters.add(parameter); 
 				}
 			}
-			Expect(11);
+			Expect(12);
 			result = new Call(variable.getReceiver(), variable.getName(), parameters); 
 		}
-		if (la.kind == 13) {
+		if (la.kind == 14) {
 			Get();
 			result = MemberExpression(result);
 		}
@@ -233,9 +245,9 @@ class Parser {
     }
 
     private static final boolean[][] set = {
-		{_T,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x},
-		{_x,_x,_x,_x, _T,_T,_T,_T, _T,_T,_x,_x, _x,_x,_x,_x},
-		{_x,_T,_T,_T, _x,_x,_x,_x, _x,_x,_T,_x, _x,_x,_x,_x}
+		{_T,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x},
+		{_x,_x,_x,_x, _T,_T,_T,_T, _T,_T,_x,_x, _x,_x,_x,_x, _x},
+		{_x,_T,_T,_x, _x,_x,_x,_x, _x,_x,_T,_T, _x,_x,_x,_x, _x}
 
     };
 
@@ -286,19 +298,20 @@ class Errors {
 			case 0: s = "EOF expected"; break;
 			case 1: s = "identifier expected"; break;
 			case 2: s = "numericLiteral expected"; break;
-			case 3: s = "\"!\" expected"; break;
+			case 3: s = "\"||\" expected"; break;
 			case 4: s = "\"<\" expected"; break;
 			case 5: s = "\"<=\" expected"; break;
 			case 6: s = "\">\" expected"; break;
 			case 7: s = "\">=\" expected"; break;
 			case 8: s = "\"==\" expected"; break;
 			case 9: s = "\"!=\" expected"; break;
-			case 10: s = "\"(\" expected"; break;
-			case 11: s = "\")\" expected"; break;
-			case 12: s = "\",\" expected"; break;
-			case 13: s = "\".\" expected"; break;
-			case 14: s = "??? expected"; break;
-			case 15: s = "invalid Factor"; break;
+			case 10: s = "\"!\" expected"; break;
+			case 11: s = "\"(\" expected"; break;
+			case 12: s = "\")\" expected"; break;
+			case 13: s = "\",\" expected"; break;
+			case 14: s = "\".\" expected"; break;
+			case 15: s = "??? expected"; break;
+			case 16: s = "invalid Factor"; break;
             default:
                 s = "error " + n;
                 break;

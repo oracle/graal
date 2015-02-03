@@ -103,10 +103,10 @@ public class CreateCastParser extends NodeMethodParser<CreateCastData> {
         }
 
         @Override
-        public boolean matches(TypeMirror actualType) {
+        public boolean matches(VariableElement variable) {
             boolean found = false;
             for (TypeMirror specType : getAllowedTypes()) {
-                if (ElementUtils.isAssignable(actualType, specType)) {
+                if (ElementUtils.isAssignable(variable.asType(), specType)) {
                     found = true;
                     break;
                 }

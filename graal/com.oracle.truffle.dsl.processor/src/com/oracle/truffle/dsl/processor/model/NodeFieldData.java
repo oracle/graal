@@ -29,17 +29,19 @@ public class NodeFieldData extends MessageContainer {
 
     private final Element messageElement;
     private final AnnotationMirror messageAnnotation;
-    private final String name;
-    private final TypeMirror type;
     private final boolean generated;
     private ExecutableElement getter;
+    private final VariableElement variable;
 
-    public NodeFieldData(Element messageElement, AnnotationMirror messageAnnotation, TypeMirror type, String name, boolean generated) {
+    public NodeFieldData(Element messageElement, AnnotationMirror messageAnnotation, VariableElement variableElement, boolean generated) {
         this.messageElement = messageElement;
         this.messageAnnotation = messageAnnotation;
-        this.name = name;
-        this.type = type;
         this.generated = generated;
+        this.variable = variableElement;
+    }
+
+    public VariableElement getVariable() {
+        return variable;
     }
 
     public void setGetter(ExecutableElement getter) {
@@ -57,11 +59,11 @@ public class NodeFieldData extends MessageContainer {
     }
 
     public String getName() {
-        return name;
+        return variable.getSimpleName().toString();
     }
 
     public TypeMirror getType() {
-        return type;
+        return variable.asType();
     }
 
     public boolean isGenerated() {
