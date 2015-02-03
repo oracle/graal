@@ -44,7 +44,7 @@ public class IntegerTestNode extends BinaryOpLogicNode {
         if (forX.isConstant() && forY.isConstant()) {
             return LogicConstantNode.forBoolean((forX.asJavaConstant().asLong() & forY.asJavaConstant().asLong()) == 0);
         }
-        if (getX().stamp() instanceof IntegerStamp && getY().stamp() instanceof IntegerStamp) {
+        if (forX.stamp() instanceof IntegerStamp && forY.stamp() instanceof IntegerStamp) {
             IntegerStamp xStamp = (IntegerStamp) forX.stamp();
             IntegerStamp yStamp = (IntegerStamp) forY.stamp();
             if ((xStamp.upMask() & yStamp.upMask()) == 0) {
