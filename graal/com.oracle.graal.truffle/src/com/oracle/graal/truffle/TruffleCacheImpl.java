@@ -56,7 +56,6 @@ public class TruffleCacheImpl implements TruffleCache {
 
     private final Providers providers;
     private final GraphBuilderConfiguration config;
-    private final GraphBuilderConfiguration configForRoot;
     private final OptimisticOptimizations optimisticOptimizations;
 
     private final HashMap<List<Object>, StructuredGraph> cache = new HashMap<>();
@@ -68,15 +67,13 @@ public class TruffleCacheImpl implements TruffleCache {
     private final ResolvedJavaType errorClass;
     private final ResolvedJavaType controlFlowExceptionClass;
 
-    protected final ResolvedJavaMethod callRootMethod;
     protected final ResolvedJavaMethod callInlinedMethod;
 
     private long counter;
 
-    public TruffleCacheImpl(Providers providers, GraphBuilderConfiguration config, GraphBuilderConfiguration configForRoot, OptimisticOptimizations optimisticOptimizations) {
+    public TruffleCacheImpl(Providers providers, GraphBuilderConfiguration config, OptimisticOptimizations optimisticOptimizations) {
         this.providers = providers;
         this.config = config;
-        this.configForRoot = configForRoot;
         this.optimisticOptimizations = optimisticOptimizations;
 
         this.stringBuilderClass = providers.getMetaAccess().lookupJavaType(StringBuilder.class);
@@ -84,23 +81,12 @@ public class TruffleCacheImpl implements TruffleCache {
         this.errorClass = providers.getMetaAccess().lookupJavaType(Error.class);
         this.controlFlowExceptionClass = providers.getMetaAccess().lookupJavaType(ControlFlowException.class);
 
-        try {
-            callRootMethod = providers.getMetaAccess().lookupJavaMethod(OptimizedCallTarget.class.getDeclaredMethod("callRoot", Object[].class));
-        } catch (NoSuchMethodException ex) {
-            throw new RuntimeException(ex);
-        }
         this.callInlinedMethod = providers.getMetaAccess().lookupJavaMethod(OptimizedCallTarget.getCallInlinedMethod());
     }
 
     public StructuredGraph createInlineGraph(String name) {
         StructuredGraph graph = new StructuredGraph(name, callInlinedMethod);
         new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), new Assumptions(false), config, TruffleCompilerImpl.Optimizations).apply(graph);
-        return graph;
-    }
-
-    public StructuredGraph createRootGraph(String name) {
-        StructuredGraph graph = new StructuredGraph(name, callRootMethod);
-        new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), new Assumptions(false), configForRoot, TruffleCompilerImpl.Optimizations).apply(graph);
         return graph;
     }
 
