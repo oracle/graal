@@ -29,12 +29,18 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 
+/**
+ * Provider of HotSpot specific {@link GraphBuilderPlugin}s.
+ */
 @ServiceProvider(GraphBuilderPluginsProvider.class)
 public class HotSpotGraphBuilderPluginsProvider implements GraphBuilderPluginsProvider {
     public void registerPlugins(MetaAccessProvider metaAccess, GraphBuilderPlugins plugins) {
         plugins.register(metaAccess, ObjectPlugin.class);
     }
 
+    /**
+     * HotSpot specific plugins for {@link Object}.
+     */
     enum ObjectPlugin implements GraphBuilderPlugin {
         getClass() {
             public boolean handleInvocation(GraphBuilderContext builder, ValueNode[] args) {
@@ -51,11 +57,6 @@ public class HotSpotGraphBuilderPluginsProvider implements GraphBuilderPluginsPr
 
         public ResolvedJavaMethod getInvocationTarget(MetaAccessProvider metaAccess) {
             return GraphBuilderPlugin.resolveTarget(metaAccess, Object.class, name());
-        }
-
-        @Override
-        public String toString() {
-            return Object.class.getName() + "." + name() + "()";
         }
     }
 }

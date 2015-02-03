@@ -23,6 +23,7 @@
 package com.oracle.graal.nodes.debug;
 
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -46,5 +47,10 @@ public class ControlFlowAnchorNode extends FixedWithNextNode implements LIRLower
 
     public void generate(NodeLIRBuilderTool generator) {
         // do nothing
+    }
+
+    @Override
+    protected void afterClone(Node other) {
+        assert false : this + " should never be cloned";
     }
 }

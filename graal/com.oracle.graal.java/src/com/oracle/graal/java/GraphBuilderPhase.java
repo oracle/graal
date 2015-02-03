@@ -775,9 +775,13 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     if (graphBuilderPlugins != null) {
                         GraphBuilderPlugin plugin = graphBuilderPlugins.getPlugin(targetMethod);
                         if (plugin != null) {
+                            int beforeStackSize = frameState.stackSize;
                             if (plugin.handleInvocation(this, args)) {
+                                // System.out.println("used plugin: " + plugin);
+                                assert beforeStackSize + resultType.getSlotCount() == frameState.stackSize;
                                 return;
                             }
+                            assert beforeStackSize == frameState.stackSize;
                         }
                     }
 

@@ -75,7 +75,7 @@ public class StaticAnalysis {
 
     /**
      * Adds a root method to the static analysis. The method must be static and must not have any
-     * parameters, because the possible types of the parametes would not be known.
+     * parameters, because the possible types of the parameters would not be known.
      */
     public void addMethod(ResolvedJavaMethod method) {
         if (!method.isStatic() || method.getSignature().getParameterCount(false) > 0) {
@@ -222,7 +222,7 @@ public class StaticAnalysis {
                      * the code before static analysis, the classes would otherwise be not loaded
                      * yet and the bytecode parser would only create a graph.
                      */
-                    GraphBuilderConfiguration graphBuilderConfig = GraphBuilderConfiguration.getEagerDefault().withOmitAllExceptionEdges(true);
+                    GraphBuilderConfiguration graphBuilderConfig = GraphBuilderConfiguration.getEagerDefault();
                     /*
                      * For simplicity, we ignore all exception handling during the static analysis.
                      * This is a constraint of this example code, a real static analysis needs to
@@ -311,7 +311,7 @@ public class StaticAnalysis {
      * The active element for method invocations. For {@link InvokeKind#Virtual virtual} and
      * {@link InvokeKind#Interface interface} calls, the {@link TypeFlow#getTypes() types} of this
      * node are the receiver types. When a new receiver type is added, a new callee might be added.
-     * Adding a new callee means liking the type flow of the actual parameters with the formal
+     * Adding a new callee means linking the type flow of the actual parameters with the formal
      * parameters of the callee, and linking the return value of the callee with the return value
      * state of the invocation.
      *
@@ -319,7 +319,6 @@ public class StaticAnalysis {
      * {@link InvokeKind#Special special} calls) have only one callee, but use the same code for
      * simplicity.
      */
-
     class InvokeTypeFlow extends TypeFlow {
         private final MethodCallTargetNode callTarget;
         private final TypeFlow[] actualParameters;

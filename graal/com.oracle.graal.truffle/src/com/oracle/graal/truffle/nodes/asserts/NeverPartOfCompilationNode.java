@@ -25,6 +25,7 @@ package com.oracle.graal.truffle.nodes.asserts;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.replacements.nodes.*;
 
 @NodeInfo
@@ -43,5 +44,12 @@ public class NeverPartOfCompilationNode extends MacroStateSplitNode implements I
 
     public final String getMessage() {
         return message + " " + arguments.toString();
+    }
+
+    public static void verifyNotFoundIn(final StructuredGraph graph) {
+        for (NeverPartOfCompilationNode neverPartOfCompilationNode : graph.getNodes(NeverPartOfCompilationNode.class)) {
+            Throwable exception = new VerificationError(neverPartOfCompilationNode.getMessage());
+            throw GraphUtil.approxSourceException(neverPartOfCompilationNode, exception);
+        }
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,28 +20,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.phases;
+package com.oracle.graal.loop.phases;
 
-import com.oracle.graal.graph.*;
+import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug.Scope;
+import com.oracle.graal.loop.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
-import com.oracle.graal.truffle.*;
-import com.oracle.graal.truffle.nodes.frame.*;
 
-/**
- * Verification phase for checking that no frame intrinsic nodes introduced by the
- * {@link PartialEvaluator} are still in the graph.
- */
-public class VerifyNoIntrinsicsLeftPhase extends Phase {
+public class ReassociateInvariantPhase extends Phase {
 
     @Override
     protected void run(StructuredGraph graph) {
-        verifyNoInstanceLeft(graph, NewFrameNode.class);
-    }
-
-    public static <T extends Node & IterableNodeType> void verifyNoInstanceLeft(StructuredGraph graph, Class<T> clazz) {
-        if (graph.getNodes(clazz).count() != 0) {
-            throw new VerificationError("Found unexpected node(s): %s", graph.getNodes(clazz));
+        if (graph.hasLoops()) {
+            final LoopsData dataReassociate = new LoopsData(graph);
+            try (Scope s = Debug.scope("ReassociateInvariants")) {
+                for (LoopEx loop : dataReassociate.loops()) {
+                    loop.reassociateInvariants();
+                }
+            } catch (Throwable e) {
+                throw Debug.handle(e);
+            }
+            dataReassociate.deleteUnusedNodes();
         }
     }
 }

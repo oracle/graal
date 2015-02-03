@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.loop.phases;
 
-import static com.oracle.graal.compiler.common.GraalOptions.*;
-
 import java.util.function.*;
 
 import com.oracle.graal.debug.*;
@@ -32,23 +30,21 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.graph.*;
 
-public class LoopTransformHighPhase extends Phase {
+public class LoopPeelingPhase extends Phase {
 
     @Override
     protected void run(StructuredGraph graph) {
         if (graph.hasLoops()) {
-            if (LoopPeeling.getValue()) {
-                ToDoubleFunction<FixedNode> probabilities = new FixedNodeProbabilityCache();
-                LoopsData data = new LoopsData(graph);
-                for (LoopEx loop : data.outerFirst()) {
-                    if (LoopPolicies.shouldPeel(loop, probabilities)) {
-                        Debug.log("Peeling %s", loop);
-                        LoopTransformations.peel(loop);
-                        Debug.dump(graph, "After peeling %s", loop);
-                    }
+            ToDoubleFunction<FixedNode> probabilities = new FixedNodeProbabilityCache();
+            LoopsData data = new LoopsData(graph);
+            for (LoopEx loop : data.outerFirst()) {
+                if (LoopPolicies.shouldPeel(loop, probabilities)) {
+                    Debug.log("Peeling %s", loop);
+                    LoopTransformations.peel(loop);
+                    Debug.dump(graph, "After peeling %s", loop);
                 }
-                data.deleteUnusedNodes();
             }
+            data.deleteUnusedNodes();
         }
     }
 }

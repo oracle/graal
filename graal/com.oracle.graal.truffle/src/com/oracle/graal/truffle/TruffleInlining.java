@@ -144,7 +144,12 @@ public class TruffleInlining implements Iterable<TruffleInliningDecision> {
     }
 
     public TruffleInliningDecision findByCall(OptimizedDirectCallNode callNode) {
-        return getCallSites().stream().filter(c -> c.getProfile().getCallNode() == callNode).findFirst().orElse(null);
+        for (TruffleInliningDecision d : getCallSites()) {
+            if (d.getProfile().getCallNode() == callNode) {
+                return d;
+            }
+        }
+        return null;
     }
 
     /**

@@ -582,22 +582,12 @@ class CFGPrinter extends CompilationPrinter {
             out.printf("\"[%s|%c]\"", interval.getOperand(), interval.getOperand().getKind().getTypeChar());
         }
 
-        StackInterval hint = interval.locationHint();
-        out.printf("%s %s ", interval.getOperand(), hint != null ? hint.getOperand() : -1);
+        out.printf("%s -1 ", interval.getOperand());
 
         out.printf("[%d, %d[", interval.from(), interval.to());
 
-        // print use positions
-        int prev = -1;
-        StackUsePosList usePosList = interval.usePosList();
-        for (int i = usePosList.size() - 1; i >= 0; --i) {
-            assert prev <= usePosList.usePos(i) : "use positions not sorted";
-            out.printf("%d %s ", usePosList.usePos(i), usePosList.getType(i));
-            prev = usePosList.usePos(i);
-        }
-
         // print spill state
-        out.printf(" \"%s\"", "NOT_SUPPORTED");
+        out.printf(" \"NOT_SUPPORTED\"");
         out.println();
     }
 

@@ -176,5 +176,8 @@ public class TruffleCompilerOptions {
 
     @Option(help = "Print additional more verbose Truffle compilation statistics at the end of a run.", type = OptionType.Debug)
     public static final OptionValue<Boolean> TruffleCompilationStatisticDetails = new OptionValue<>(false);
+
+    @Option(help = "Experimental new version of the partial evaluator.", type = OptionType.Debug)
+    public static final OptionValue<Boolean> FastPE = new OptionValue<>(false);
     // @formatter:on
 }

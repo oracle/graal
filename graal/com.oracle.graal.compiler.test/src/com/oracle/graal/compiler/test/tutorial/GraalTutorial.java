@@ -25,6 +25,8 @@ package com.oracle.graal.compiler.test.tutorial;
 import org.junit.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.java.*;
 
 /**
  * Examples for the Graal tutorial. Run them using the unittest harness of the mx script. To look at
@@ -38,15 +40,31 @@ import com.oracle.graal.api.code.*;
 public class GraalTutorial extends InvokeGraal {
 
     /*
+     * Example for the Graal API: access the Graal API metadata object for a method.
+     */
+
+    @Test
+    public void testPrintBytecodes() {
+        ResolvedJavaMethod method = findMethod(String.class, "hashCode");
+
+        byte[] bytecodes = method.getCode();
+        Assert.assertNotNull(bytecodes);
+
+        System.out.println(new BytecodeDisassembler().disassemble(method));
+    }
+
+    /*
      * A simple Graal compilation example: Compile the method String.hashCode()
      */
 
     @Test
     public void testStringHashCode() throws InvalidInstalledCodeException {
+        int expectedResult = "Hello World".hashCode();
+
         InstalledCode installedCode = compileAndInstallMethod(findMethod(String.class, "hashCode"));
 
         int result = (int) installedCode.executeVarargs("Hello World");
-        Assert.assertEquals(-862545276, result);
+        Assert.assertEquals(expectedResult, result);
     }
 
     /*
@@ -70,7 +88,9 @@ public class GraalTutorial extends InvokeGraal {
         /*
          * Collect profiling information by running the method in the interpreter.
          */
+
         for (int i = 0; i < 10000; i++) {
+            /* Execute several times so that enough profiling information gets collected. */
             speculativeOptimization(false);
         }
 
@@ -121,13 +141,17 @@ public class GraalTutorial extends InvokeGraal {
 
     @Test
     public void testInstanceOfUsage() throws InvalidInstalledCodeException {
-        A a = new A();
+        /*
+         * Collect profiling information by running the method in the interpreter.
+         */
 
-        /* Allocate an (unsued) instance of B so that the class B gets loaded. */
+        A a = new A();
+        /* Allocate an (unused) instance of B so that the class B gets loaded. */
         @SuppressWarnings("unused")
         B b = new B();
-
+        int expectedResult = instanceOfUsage(a);
         for (int i = 0; i < 10000; i++) {
+            /* Execute several times so that enough profiling information gets collected. */
             instanceOfUsage(a);
         }
 
@@ -136,7 +160,7 @@ public class GraalTutorial extends InvokeGraal {
         InstalledCode compiledMethod = compileAndInstallMethod(findMethod(GraalTutorial.class, "instanceOfUsage"));
 
         int result = (int) compiledMethod.executeVarargs(a);
-        Assert.assertEquals(42, result);
+        Assert.assertEquals(expectedResult, result);
     }
 
     /*
@@ -149,9 +173,11 @@ public class GraalTutorial extends InvokeGraal {
 
     @Test
     public void testIntrinsicUsage() throws InvalidInstalledCodeException {
+        double expectedResult = intrinsicUsage(42d);
+
         InstalledCode compiledMethod = compileAndInstallMethod(findMethod(GraalTutorial.class, "intrinsicUsage"));
 
         double result = (double) compiledMethod.executeVarargs(42d);
-        Assert.assertEquals(Math.sin(42), result, 0);
+        Assert.assertEquals(expectedResult, result, 0);
     }
 }

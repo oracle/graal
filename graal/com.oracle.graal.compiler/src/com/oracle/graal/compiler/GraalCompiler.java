@@ -356,7 +356,7 @@ public class GraalCompiler {
             try (Scope s1 = Debug.scope("BuildFrameMap")) {
                 // build frame map
                 final StackSlotAllocator allocator;
-                if (LSStackSlotAllocator.Options.EnableLSStackSlotAllocation.getValue()) {
+                if (LSStackSlotAllocator.Options.LSStackSlotAllocation.getValue()) {
                     allocator = new LSStackSlotAllocator();
                 } else {
                     allocator = new SimpleStackSlotAllocator();

@@ -166,7 +166,7 @@ public final class NodeClass extends FieldIntrospection {
         isLeafNode = inputs.getCount() + successors.getCount() == 0;
 
         canGVN = Node.ValueNumberable.class.isAssignableFrom(clazz);
-        startGVNNumber = clazz.getName().hashCode();
+        startGVNNumber = clazz.hashCode();
 
         NodeInfo info = getAnnotationTimed(clazz, NodeInfo.class);
         assert info != null : "Missing NodeInfo annotation on " + clazz;

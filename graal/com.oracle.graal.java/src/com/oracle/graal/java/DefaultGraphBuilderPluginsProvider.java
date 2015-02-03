@@ -22,41 +22,31 @@
  */
 package com.oracle.graal.java;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.runtime.*;
-import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 
+/**
+ * Provider of non-runtime specific {@link GraphBuilderPlugin}s.
+ */
 @ServiceProvider(GraphBuilderPluginsProvider.class)
 public class DefaultGraphBuilderPluginsProvider implements GraphBuilderPluginsProvider {
     public void registerPlugins(MetaAccessProvider metaAccess, GraphBuilderPlugins plugins) {
         plugins.register(metaAccess, ObjectPlugin.class);
+        plugins.register(metaAccess, BoxingPlugin.class);
     }
 
+    /**
+     * Plugins for {@link Object}.
+     */
     enum ObjectPlugin implements GraphBuilderPlugin {
         init() {
             public boolean handleInvocation(GraphBuilderContext builder, ValueNode[] args) {
-                assert args.length == 1;
-                ValueNode rcvr = args[0];
-                ObjectStamp objectStamp = (ObjectStamp) rcvr.stamp();
-
-                boolean needsCheck = true;
-                if (objectStamp.isExactType()) {
-                    needsCheck = objectStamp.type().hasFinalizer();
-                } else if (objectStamp.type() != null && !objectStamp.type().hasFinalizableSubclass()) {
-                    // if either the declared type of receiver or the holder
-                    // can be assumed to have no finalizers
-                    Assumptions assumptions = builder.getAssumptions();
-                    if (assumptions.useOptimisticAssumptions()) {
-                        assumptions.recordNoFinalizableSubclassAssumption(objectStamp.type());
-                        needsCheck = false;
-                    }
-                }
-
-                if (needsCheck) {
-                    builder.append(new RegisterFinalizerNode(rcvr));
+                ValueNode object = args[0];
+                if (RegisterFinalizerNode.mayHaveFinalizer(object, builder.getAssumptions())) {
+                    builder.append(new RegisterFinalizerNode(object));
                 }
                 return true;
             }
@@ -69,6 +59,52 @@ public class DefaultGraphBuilderPluginsProvider implements GraphBuilderPluginsPr
         @Override
         public String toString() {
             return Object.class.getName() + "." + name() + "()";
+        }
+    }
+
+    /**
+     * Plugins for the standard primitive box classes (e.g., {@link Integer} and friends).
+     */
+    enum BoxingPlugin implements GraphBuilderPlugin {
+        valueOf$Boolean(Kind.Boolean),
+        booleanValue$Boolean(Kind.Boolean),
+        valueOf$Byte(Kind.Byte),
+        byteValue$Byte(Kind.Byte),
+        valueOf$Short(Kind.Short),
+        shortValue$Short(Kind.Short),
+        valueOf$Char(Kind.Char),
+        charValue$Char(Kind.Char),
+        valueOf$Int(Kind.Int),
+        intValue$Int(Kind.Int),
+        valueOf$Long(Kind.Long),
+        longValue$Long(Kind.Long),
+        valueOf$Float(Kind.Float),
+        floatValue$Float(Kind.Float),
+        valueOf$Double(Kind.Double),
+        doubleValue$Double(Kind.Double);
+
+        BoxingPlugin(Kind kind) {
+            assert name().startsWith("valueOf$") || name().startsWith(kind.getJavaName() + "Value$");
+            this.kind = kind;
+            this.box = name().charAt(0) == 'v';
+        }
+
+        private final Kind kind;
+        private final boolean box;
+
+        public final boolean handleInvocation(GraphBuilderContext builder, ValueNode[] args) {
+            if (box) {
+                ResolvedJavaType resultType = builder.getMetaAccess().lookupJavaType(kind.toBoxedJavaClass());
+                builder.push(Kind.Object, builder.append(new BoxNode(args[0], resultType, kind)));
+            } else {
+                builder.push(kind, builder.append(new UnboxNode(args[0], kind)));
+            }
+            return true;
+        }
+
+        public ResolvedJavaMethod getInvocationTarget(MetaAccessProvider metaAccess) {
+            Class<?>[] parameterTypes = box ? new Class<?>[]{kind.toJavaClass()} : new Class<?>[0];
+            return GraphBuilderPlugin.resolveTarget(metaAccess, kind.toBoxedJavaClass(), name(), parameterTypes);
         }
     }
 }
