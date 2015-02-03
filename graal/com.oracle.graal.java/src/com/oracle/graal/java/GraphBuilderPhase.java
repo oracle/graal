@@ -42,6 +42,7 @@ import com.oracle.graal.graph.Node.ValueNumberable;
 import com.oracle.graal.java.BciBlockMapping.BciBlock;
 import com.oracle.graal.java.BciBlockMapping.ExceptionDispatchBlock;
 import com.oracle.graal.java.BciBlockMapping.LocalLiveness;
+import com.oracle.graal.java.GraphBuilderPlugins.InvocationPlugin;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.calc.*;
@@ -63,7 +64,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
     public GraphBuilderPhase(GraphBuilderConfiguration config) {
         this.graphBuilderConfig = config;
-        this.graphBuilderPlugins = new GraphBuilderPlugins();
+        this.graphBuilderPlugins = new DefaultGraphBuilderPlugins();
     }
 
     @Override
@@ -773,11 +774,22 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 if (GraalOptions.InlineDuringParsing.getValue() && invokeKind.isDirect()) {
 
                     if (graphBuilderPlugins != null) {
-                        GraphBuilderPlugin plugin = graphBuilderPlugins.getPlugin(targetMethod);
+                        InvocationPlugin plugin = graphBuilderPlugins.lookupInvocation(targetMethod);
                         if (plugin != null) {
                             int beforeStackSize = frameState.stackSize;
-                            if (plugin.handleInvocation(this, args)) {
-                                // System.out.println("used plugin: " + plugin);
+                            boolean handled;
+                            if (args.length == 0) {
+                                handled = plugin.apply(this);
+                            } else if (args.length == 1) {
+                                handled = plugin.apply(this, args[0]);
+                            } else if (args.length == 2) {
+                                handled = plugin.apply(this, args[0], args[1]);
+                            } else if (args.length == 3) {
+                                handled = plugin.apply(this, args[0], args[1], args[2]);
+                            } else {
+                                throw GraalInternalError.shouldNotReachHere();
+                            }
+                            if (handled) {
                                 assert beforeStackSize + resultType.getSlotCount() == frameState.stackSize;
                                 return;
                             }

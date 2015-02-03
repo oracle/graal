@@ -28,6 +28,8 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.java.*;
+import com.oracle.graal.java.GraphBuilderPlugins.InvocationPlugin;
+import com.oracle.graal.java.GraphBuilderPlugins.Registration;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.truffle.nodes.frame.*;
@@ -39,96 +41,69 @@ import com.oracle.truffle.api.*;
 @ServiceProvider(GraphBuilderPluginsProvider.class)
 public class TruffleGraphBuilderPluginsProvider implements GraphBuilderPluginsProvider {
     public void registerPlugins(MetaAccessProvider metaAccess, GraphBuilderPlugins plugins) {
-        plugins.register(metaAccess, CompilerDirectivesPlugin.class);
-    }
-
-    /**
-     * Plugins for {@link CompilerDirectives}.
-     */
-    enum CompilerDirectivesPlugin implements GraphBuilderPlugin {
-        inInterpreter() {
-            public boolean handleInvocation(GraphBuilderContext builder, ValueNode[] args) {
-                builder.append(ConstantNode.forBoolean(false));
+        Registration r = new Registration(plugins, metaAccess, CompilerDirectives.class);
+        r.register0("inInterpreter", new InvocationPlugin() {
+            public boolean apply(GraphBuilderContext builder) {
+                builder.push(Kind.Boolean, builder.append(ConstantNode.forBoolean(false)));
                 return true;
             }
-        },
-        inCompiledCode() {
-            public boolean handleInvocation(GraphBuilderContext builder, ValueNode[] args) {
-                builder.append(ConstantNode.forBoolean(true));
+        });
+        r.register0("inCompiledCode", new InvocationPlugin() {
+            public boolean apply(GraphBuilderContext builder) {
+                builder.push(Kind.Boolean, builder.append(ConstantNode.forBoolean(true)));
                 return true;
             }
-        },
-        transferToInterpreter() {
-            public boolean handleInvocation(GraphBuilderContext builder, ValueNode[] args) {
+        });
+        r.register0("transferToInterpreter", new InvocationPlugin() {
+            public boolean apply(GraphBuilderContext builder) {
                 builder.append(new DeoptimizeNode(DeoptimizationAction.None, DeoptimizationReason.TransferToInterpreter));
                 return true;
             }
-        },
-        transferToInterpreterAndInvalidate() {
-            public boolean handleInvocation(GraphBuilderContext builder, ValueNode[] args) {
+        });
+        r.register0("transferToInterpreterAndInvalidate", new InvocationPlugin() {
+            public boolean apply(GraphBuilderContext builder) {
                 builder.append(new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.TransferToInterpreter));
                 return true;
             }
-        },
-        interpreterOnly(Runnable.class) {
-            public boolean handleInvocation(GraphBuilderContext builder, ValueNode[] args) {
+        });
+        r.register1("interpreterOnly", Runnable.class, new InvocationPlugin() {
+            public boolean apply(GraphBuilderContext builder, ValueNode arg) {
                 return true;
             }
-        },
-        interpreterOnly$(Callable.class) {
-            public boolean handleInvocation(GraphBuilderContext builder, ValueNode[] args) {
+        });
+        r.register1("interpreterOnly", Callable.class, new InvocationPlugin() {
+            public boolean apply(GraphBuilderContext builder, ValueNode arg) {
                 return true;
             }
-        },
-        injectBranchProbability(double.class, boolean.class) {
-            public boolean handleInvocation(GraphBuilderContext builder, ValueNode[] args) {
-                ValueNode probability = args[0];
-                ValueNode condition = args[1];
+        });
+        r.register2("injectBranchProbability", double.class, boolean.class, new InvocationPlugin() {
+            public boolean apply(GraphBuilderContext builder, ValueNode probability, ValueNode condition) {
                 builder.append(new BranchProbabilityNode(probability, condition));
                 return true;
             }
-        },
-        bailout(String.class) {
-            public boolean handleInvocation(GraphBuilderContext builder, ValueNode[] args) {
-                // TODO: is this too eager? Should a BailoutNode be created instead?
-                ValueNode message = args[0];
+        });
+        r.register1("bailout", String.class, new InvocationPlugin() {
+            public boolean apply(GraphBuilderContext builder, ValueNode message) {
                 if (message.isConstant()) {
                     throw new BailoutException(message.asConstant().toValueString());
                 }
                 throw new BailoutException("bailout (message is not compile-time constant, so no additional information is available)");
             }
-        },
-
-        isCompilationConstant(Object.class) {
-            public boolean handleInvocation(GraphBuilderContext builder, ValueNode[] args) {
-                ValueNode arg0 = args[0];
-                if (arg0 instanceof BoxNode) {
-                    arg0 = ((BoxNode) arg0).getValue();
-                }
-                if (arg0.isConstant()) {
+        });
+        r.register1("isCompilationConstant", Object.class, new InvocationPlugin() {
+            public boolean apply(GraphBuilderContext builder, ValueNode value) {
+                if ((value instanceof BoxNode ? ((BoxNode) value).getValue() : value).isConstant()) {
                     builder.push(Kind.Boolean, builder.append(ConstantNode.forBoolean(true)));
                     return true;
                 }
-
-                // Cannot create MacroNodes in a plugin (yet)
                 return false;
             }
-        },
-        materialize(Object.class) {
-            public boolean handleInvocation(GraphBuilderContext builder, ValueNode[] args) {
-                builder.append(new ForceMaterializeNode(args[0]));
+        });
+        r.register1("materialize", Object.class, new InvocationPlugin() {
+            public boolean apply(GraphBuilderContext builder, ValueNode value) {
+                builder.append(new ForceMaterializeNode(value));
                 return true;
             }
-        };
-
-        CompilerDirectivesPlugin(Class<?>... parameterTypes) {
-            this.parameterTypes = parameterTypes;
-        }
-
-        private final Class<?>[] parameterTypes;
-
-        public ResolvedJavaMethod getInvocationTarget(MetaAccessProvider metaAccess) {
-            return GraphBuilderPlugin.resolveTarget(metaAccess, CompilerDirectives.class, name(), parameterTypes);
-        }
+        });
     }
 }
