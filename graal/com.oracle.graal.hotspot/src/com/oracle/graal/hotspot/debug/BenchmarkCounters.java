@@ -37,11 +37,13 @@ import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.replacements.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.HeapAccess.BarrierType;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.debug.*;
 import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.replacements.nodes.*;
 
@@ -108,17 +110,24 @@ public class BenchmarkCounters {
     public static final ArrayList<AtomicLong> staticCounters = new ArrayList<>();
 
     @SuppressFBWarnings(value = "AT_OPERATION_SEQUENCE_ON_CONCURRENT_ABSTRACTION", justification = "concurrent abstraction calls are in synchronized block")
-    private static int getIndex(DynamicCounterNode counter) {
+    private static int getIndex(DynamicCounterNode counter, StructuredGraph currentGraph) {
         if (!enabled) {
             throw new GraalInternalError("counter nodes shouldn't exist when counters are not enabled: " + counter.getGroup() + ", " + counter.getName());
         }
         String name;
         String group = counter.getGroup();
         if (counter.isWithContext()) {
-            StructuredGraph graph = counter.graph();
-            name = counter.getName() + " @ " + graph.graphId() + ":" + (graph.method() == null ? "" : graph.method().format("%h.%n"));
-            if (graph.name != null) {
-                name += " (" + graph.name + ")";
+            name = counter.getName() + " @ ";
+            if (currentGraph.method() != null) {
+                StackTraceElement stackTraceElement = currentGraph.method().asStackTraceElement(0);
+                if (stackTraceElement != null) {
+                    name += " " + stackTraceElement.toString();
+                } else {
+                    name += currentGraph.method().format("%h.%n");
+                }
+            }
+            if (currentGraph.name != null) {
+                name += " (" + currentGraph.name + ")";
             }
             name += "#" + group;
 
@@ -374,20 +383,41 @@ public class BenchmarkCounters {
         }
     }
 
+    private static final LocationIdentity COUNTER_ARRAY_LOCATION = NamedLocationIdentity.mutable("COUNTER_ARRAY_LOCATION");
     private static final LocationIdentity COUNTER_LOCATION = NamedLocationIdentity.mutable("COUNTER_LOCATION");
+
+    @NodeInfo(nameTemplate = "CounterIndex")
+    private static class CounterIndexNode extends FloatingNode implements LIRLowerable {
+
+        protected final Object counter;
+        protected final int countersSize;
+
+        protected CounterIndexNode(Stamp stamp, DynamicCounterNode counter, int countersSize) {
+            super(stamp);
+            this.countersSize = countersSize;
+            this.counter = counter;
+        }
+
+        @Override
+        public void generate(NodeLIRBuilderTool generator) {
+            int index = BenchmarkCounters.getIndex((DynamicCounterNode) counter, graph());
+            if (index >= countersSize) {
+                throw new GraalInternalError("too many counters, reduce number of counters or increase -XX:GraalCounterSize=... (current value: " + countersSize + ")");
+            }
+
+            generator.setResult(this, JavaConstant.forIntegerKind(getKind(), index));
+        }
+    }
 
     public static void lower(DynamicCounterNode counter, HotSpotRegistersProvider registers, HotSpotVMConfig config, Kind wordKind) {
         StructuredGraph graph = counter.graph();
 
         ReadRegisterNode thread = graph.add(new ReadRegisterNode(registers.getThreadRegister(), wordKind, true, false));
 
-        int index = BenchmarkCounters.getIndex(counter);
-        if (index >= config.graalCountersSize) {
-            throw new GraalInternalError("too many counters, reduce number of counters or increase -XX:GraalCounterSize=... (current value: " + config.graalCountersSize + ")");
-        }
-        ConstantLocationNode arrayLocation = graph.unique(new ConstantLocationNode(COUNTER_LOCATION, config.graalCountersThreadOffset));
+        CounterIndexNode index = graph.unique(new CounterIndexNode(StampFactory.forKind(wordKind), counter, config.graalCountersSize));
+        ConstantLocationNode arrayLocation = graph.unique(new ConstantLocationNode(COUNTER_ARRAY_LOCATION, config.graalCountersThreadOffset));
         ReadNode readArray = graph.add(new ReadNode(thread, arrayLocation, StampFactory.forKind(wordKind), BarrierType.NONE));
-        ConstantLocationNode location = graph.unique(new ConstantLocationNode(COUNTER_LOCATION, Unsafe.ARRAY_LONG_INDEX_SCALE * index));
+        IndexedLocationNode location = graph.unique(new IndexedLocationNode(COUNTER_LOCATION, 0, index, Unsafe.ARRAY_LONG_INDEX_SCALE));
         ReadNode read = graph.add(new ReadNode(readArray, location, StampFactory.forKind(Kind.Long), BarrierType.NONE));
         AddNode add = graph.unique(new AddNode(read, counter.getIncrement()));
         WriteNode write = graph.add(new WriteNode(readArray, add, location, BarrierType.NONE));
