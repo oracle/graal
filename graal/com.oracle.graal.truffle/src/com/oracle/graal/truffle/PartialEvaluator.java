@@ -103,65 +103,35 @@ public class PartialEvaluator {
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
-        final StructuredGraph graph = createRootGraph(callTarget.toString());
+
+        final StructuredGraph graph = new StructuredGraph(callTarget.toString(), callRootMethod);
         assert graph != null : "no graph for root method";
 
         try (Scope s = Debug.scope("CreateGraph", graph); Indent indent = Debug.logAndIndent("createGraph %s", graph)) {
-            // Canonicalize / constant propagate.
+
+            createRootGraph(graph);
+
+            Map<ResolvedJavaMethod, StructuredGraph> graphCache = null;
+            if (CacheGraphs.getValue()) {
+                graphCache = new HashMap<>();
+            }
             PhaseContext baseContext = new PhaseContext(providers, assumptions);
+            HighTierContext tierContext = new HighTierContext(providers, assumptions, graphCache, new PhaseSuite<HighTierContext>(), OptimisticOptimizations.NONE);
 
-            injectConstantCallTarget(graph, callTarget, baseContext);
-
-            Debug.dump(graph, "Before expansion");
-
-            TruffleExpansionLogger expansionLogger = null;
-            if (TraceTruffleExpansion.getValue()) {
-                expansionLogger = new TruffleExpansionLogger(providers, graph);
+            if (TruffleCompilerOptions.FastPE.getValue()) {
+                fastPartialEvaluation(callTarget, assumptions, graph, baseContext, tierContext);
+            } else {
+                partialEvaluation(callTarget, assumptions, graph, baseContext, tierContext);
             }
-
-            expandTree(graph, assumptions, expansionLogger);
-
-            TruffleInliningCache inliningCache = null;
-            if (TruffleFunctionInlining.getValue()) {
-                callTarget.setInlining(new TruffleInlining(callTarget, new DefaultInliningPolicy()));
-                if (TruffleFunctionInliningCache.getValue()) {
-                    inliningCache = new TruffleInliningCache();
-                }
-            }
-
-            expandDirectCalls(graph, assumptions, expansionLogger, callTarget.getInlining(), inliningCache);
 
             if (Thread.currentThread().isInterrupted()) {
                 return null;
             }
 
             new VerifyFrameDoesNotEscapePhase().apply(graph, false);
-
             if (TraceTruffleCompilationHistogram.getValue() && constantReceivers != null) {
                 createHistogram();
             }
-
-            canonicalizer.apply(graph, baseContext);
-            Map<ResolvedJavaMethod, StructuredGraph> graphCache = null;
-            if (CacheGraphs.getValue()) {
-                graphCache = new HashMap<>();
-            }
-            HighTierContext tierContext = new HighTierContext(providers, assumptions, graphCache, new PhaseSuite<HighTierContext>(), OptimisticOptimizations.NONE);
-
-            // EA frame and clean up.
-            do {
-                try (Scope pe = Debug.scope("TrufflePartialEscape", graph)) {
-                    new PartialEscapePhase(true, canonicalizer).apply(graph, tierContext);
-                    new IncrementalCanonicalizerPhase<>(canonicalizer, new ConditionalEliminationPhase()).apply(graph, tierContext);
-                } catch (Throwable t) {
-                    Debug.handle(t);
-                }
-            } while (expandTree(graph, assumptions, expansionLogger));
-
-            if (expansionLogger != null) {
-                expansionLogger.print(callTarget);
-            }
-
             postPartialEvaluation(graph);
 
         } catch (Throwable e) {
@@ -171,8 +141,53 @@ public class PartialEvaluator {
         return graph;
     }
 
-    public StructuredGraph createRootGraph(String name) {
-        StructuredGraph graph = new StructuredGraph(name, callRootMethod);
+    @SuppressWarnings("unused")
+    private void fastPartialEvaluation(OptimizedCallTarget callTarget, Assumptions assumptions, StructuredGraph graph, PhaseContext baseContext, HighTierContext tierContext) {
+    }
+
+    private void partialEvaluation(final OptimizedCallTarget callTarget, final Assumptions assumptions, final StructuredGraph graph, PhaseContext baseContext, HighTierContext tierContext) {
+        injectConstantCallTarget(graph, callTarget, baseContext);
+
+        Debug.dump(graph, "Before expansion");
+
+        TruffleExpansionLogger expansionLogger = null;
+        if (TraceTruffleExpansion.getValue()) {
+            expansionLogger = new TruffleExpansionLogger(providers, graph);
+        }
+
+        expandTree(graph, assumptions, expansionLogger);
+
+        TruffleInliningCache inliningCache = null;
+        if (TruffleFunctionInlining.getValue()) {
+            callTarget.setInlining(new TruffleInlining(callTarget, new DefaultInliningPolicy()));
+            if (TruffleFunctionInliningCache.getValue()) {
+                inliningCache = new TruffleInliningCache();
+            }
+        }
+
+        expandDirectCalls(graph, assumptions, expansionLogger, callTarget.getInlining(), inliningCache);
+
+        if (Thread.currentThread().isInterrupted()) {
+            return;
+        }
+
+        canonicalizer.apply(graph, baseContext);
+        // EA frame and clean up.
+        do {
+            try (Scope pe = Debug.scope("TrufflePartialEscape", graph)) {
+                new PartialEscapePhase(true, canonicalizer).apply(graph, tierContext);
+                new IncrementalCanonicalizerPhase<>(canonicalizer, new ConditionalEliminationPhase()).apply(graph, tierContext);
+            } catch (Throwable t) {
+                Debug.handle(t);
+            }
+        } while (expandTree(graph, assumptions, expansionLogger));
+
+        if (expansionLogger != null) {
+            expansionLogger.print(callTarget);
+        }
+    }
+
+    public StructuredGraph createRootGraph(StructuredGraph graph) {
         new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), new Assumptions(false), configForRoot, TruffleCompilerImpl.Optimizations).apply(graph);
         return graph;
     }
