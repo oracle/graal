@@ -32,7 +32,7 @@ import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 
 public class ImportGuardsTest {
 
-    @ImportGuards(Imports0.class)
+    @ImportStatic(Imports0.class)
     @NodeChild("a")
     static class ImportGuards0 extends ValueNode {
 
@@ -43,7 +43,7 @@ public class ImportGuardsTest {
     }
 
     @NodeChild("a")
-    @ImportGuards(Imports0.class)
+    @ImportStatic(Imports0.class)
     static class ImportGuards1 extends ValueNode {
 
         @ExpectError("Error parsing expression 'nonStaticGuard(a)': The method nonStaticGuard is undefined for the enclosing scope.")
@@ -97,7 +97,7 @@ public class ImportGuardsTest {
 
     @ExpectError("The specified import guard class 'com.oracle.truffle.api.dsl.test.ImportGuardsTest.Imports1' must be public.")
     @NodeChild("a")
-    @ImportGuards(Imports1.class)
+    @ImportStatic(Imports1.class)
     static class ImportGuards2 extends ValueNode {
 
         int do1(int a) {
@@ -111,7 +111,7 @@ public class ImportGuardsTest {
 
     @ExpectError("The specified import guard class 'com.oracle.truffle.api.dsl.test.ImportGuardsTest.Imports2' must be public.")
     @NodeChild("a")
-    @ImportGuards(Imports2.class)
+    @ImportStatic(Imports2.class)
     static class ImportGuards3 extends ValueNode {
 
         int do1(int a) {
@@ -121,7 +121,7 @@ public class ImportGuardsTest {
 
     @ExpectError("The specified import guard class 'boolean' is not a declared type.")
     @NodeChild("a")
-    @ImportGuards(boolean.class)
+    @ImportStatic(boolean.class)
     static class ImportGuards4 extends ValueNode {
 
         int do1(int a) {
@@ -135,7 +135,7 @@ public class ImportGuardsTest {
 
     @ExpectError("At least import guard classes must be specified.")
     @NodeChild("a")
-    @ImportGuards({})
+    @ImportStatic({})
     static class ImportGuards5 extends ValueNode {
 
         int do1(int a) {
@@ -151,7 +151,7 @@ public class ImportGuardsTest {
                         array(1, 1));
     }
 
-    @ImportGuards(Imports0.class)
+    @ImportStatic(Imports0.class)
     @NodeChild("a")
     static class ImportGuards6 extends ValueNode {
 

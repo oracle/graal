@@ -27,15 +27,17 @@ package com.oracle.truffle.api.dsl;
 import java.lang.annotation.*;
 
 /**
- * Imports all public static methods usable as guards for {@link Specialization} annotations to the
- * current class. Using this annotation common guards can be shared across nodes. Imported guards
- * are derived from super classes. Guards declared in the node type hierarchy are always preferred
- * to imported guards. Imported guards for a more concrete type are preferred to guards imported in
- * the base class.
+ * Imports all <code>public</code> and <code>static</code> methods and fields of the provided
+ * classes for the use in DSL expressions of the annotated class or its subclasses.
+ *
+ * @see Specialization#guards()
+ * @see Specialization#assumptions()
+ * @see Specialization#limit()
+ * @see Cached
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE})
-public @interface ImportGuards {
+public @interface ImportStatic {
 
     Class<?>[] value();
 
