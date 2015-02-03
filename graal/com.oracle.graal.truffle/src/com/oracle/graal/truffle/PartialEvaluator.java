@@ -109,8 +109,6 @@ public class PartialEvaluator {
 
         try (Scope s = Debug.scope("CreateGraph", graph); Indent indent = Debug.logAndIndent("createGraph %s", graph)) {
 
-            createRootGraph(graph);
-
             Map<ResolvedJavaMethod, StructuredGraph> graphCache = null;
             if (CacheGraphs.getValue()) {
                 graphCache = new HashMap<>();
@@ -121,6 +119,7 @@ public class PartialEvaluator {
             if (TruffleCompilerOptions.FastPE.getValue()) {
                 fastPartialEvaluation(callTarget, assumptions, graph, baseContext, tierContext);
             } else {
+                createRootGraph(graph);
                 partialEvaluation(callTarget, assumptions, graph, baseContext, tierContext);
             }
 
@@ -143,6 +142,8 @@ public class PartialEvaluator {
 
     @SuppressWarnings("unused")
     private void fastPartialEvaluation(OptimizedCallTarget callTarget, Assumptions assumptions, StructuredGraph graph, PhaseContext baseContext, HighTierContext tierContext) {
+        new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), new Assumptions(false), configForRoot, TruffleCompilerImpl.Optimizations).apply(graph);
+        Debug.dump(graph, "After FastPE");
     }
 
     private void partialEvaluation(final OptimizedCallTarget callTarget, final Assumptions assumptions, final StructuredGraph graph, PhaseContext baseContext, HighTierContext tierContext) {
