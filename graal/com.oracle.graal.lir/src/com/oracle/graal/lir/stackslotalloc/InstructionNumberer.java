@@ -32,7 +32,6 @@ import com.oracle.graal.lir.*;
 public class InstructionNumberer {
 
     private final LIRInstruction[] opIdToInstructionMap;
-    private final AbstractBlock<?>[] opIdToBlockMap;
 
     protected InstructionNumberer(LIR lir) {
         // Assign IDs to LIR nodes and build a mapping, lirOps, from ID to LIRInstruction node.
@@ -43,7 +42,6 @@ public class InstructionNumberer {
 
         // initialize with correct length
         opIdToInstructionMap = new LIRInstruction[numInstructions];
-        opIdToBlockMap = new AbstractBlock<?>[numInstructions];
     }
 
     /**
@@ -85,14 +83,13 @@ public class InstructionNumberer {
                 op.setId(opId);
 
                 opIdToInstructionMap[index] = op;
-                opIdToBlockMap[index] = block;
                 assert instructionForId(opId) == op : "must match";
 
                 index++;
                 opId += 2; // numbering of lirOps by two
             }
         }
-        assert index == opIdToBlockMap.length : "must match";
+        assert index == opIdToInstructionMap.length : "must match";
         assert (index << 1) == opId : "must match: " + (index << 1);
         assert opId - 2 == maxOpId() : "must match";
     }
