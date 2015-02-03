@@ -32,6 +32,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
+import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
@@ -58,8 +59,17 @@ public final class LSStackSlotAllocator implements StackSlotAllocator {
         // @formatter:on
     }
 
+    private static final DebugTimer MainTimer = Debug.timer("LSStackSlotAllocator");
+    private static final DebugTimer NumInstTimer = Debug.timer("LSStackSlotAllocator[NumberInstruction]");
+    private static final DebugTimer BuildIntervalsTimer = Debug.timer("LSStackSlotAllocator[BuildIntervals]");
+    private static final DebugTimer VerifyIntervalsTimer = Debug.timer("LSStackSlotAllocator[VerifyIntervals]");
+    private static final DebugTimer AllocateSlotsTimer = Debug.timer("LSStackSlotAllocator[AllocateSlots]");
+    private static final DebugTimer AssignSlotsTimer = Debug.timer("LSStackSlotAllocator[AssignSlots]");
+
     public void allocateStackSlots(FrameMapBuilderTool builder, LIRGenerationResult res) {
-        new Allocator(res.getLIR(), builder).allocate();
+        try (TimerCloseable t = MainTimer.start()) {
+            new Allocator(res.getLIR(), builder).allocate();
+        }
     }
 
     private static final class Allocator {
@@ -82,8 +92,10 @@ public final class LSStackSlotAllocator implements StackSlotAllocator {
             // insert by to
             this.active = new PriorityQueue<>((a, b) -> a.to() - b.to());
 
-            // step 1: number instructions
-            this.maxOpId = numberInstructions(lir, sortedBlocks);
+            try (TimerCloseable t = NumInstTimer.start()) {
+                // step 1: number instructions
+                this.maxOpId = numberInstructions(lir, sortedBlocks);
+            }
         }
 
         private void allocate() {
@@ -91,24 +103,30 @@ public final class LSStackSlotAllocator implements StackSlotAllocator {
 
             long currentFrameSize = Debug.isMeterEnabled() ? frameMapBuilder.getFrameMap().currentFrameSize() : 0;
             // step 2: build intervals
-            try (Scope s = Debug.scope("StackSlotAllocationBuildIntervals"); Indent indent = Debug.logAndIndent("BuildIntervals")) {
+            try (Scope s = Debug.scope("StackSlotAllocationBuildIntervals"); Indent indent = Debug.logAndIndent("BuildIntervals"); TimerCloseable t = BuildIntervalsTimer.start()) {
                 buildIntervals();
             }
             // step 3: verify intervals
             if (Debug.isEnabled()) {
-                verifyIntervals();
+                try (TimerCloseable t = VerifyIntervalsTimer.start()) {
+                    verifyIntervals();
+                }
             }
             if (Debug.isDumpEnabled()) {
                 dumpIntervals("Before stack slot allocation");
             }
             // step 4: allocate stack slots
-            allocateStackSlots();
+            try (TimerCloseable t = AllocateSlotsTimer.start()) {
+                allocateStackSlots();
+            }
             if (Debug.isDumpEnabled()) {
                 dumpIntervals("After stack slot allocation");
             }
 
             // step 5: assign stack slots
-            assignStackSlots();
+            try (TimerCloseable t = AssignSlotsTimer.start()) {
+                assignStackSlots();
+            }
             Debug.dump(lir, "After StackSlot assignment");
             if (Debug.isMeterEnabled()) {
                 StackSlotAllocator.allocatedFramesize.add(frameMapBuilder.getFrameMap().currentFrameSize() - currentFrameSize);
