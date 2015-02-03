@@ -67,8 +67,6 @@ public class TruffleCacheImpl implements TruffleCache {
     private final ResolvedJavaType errorClass;
     private final ResolvedJavaType controlFlowExceptionClass;
 
-    protected final ResolvedJavaMethod callInlinedMethod;
-
     private long counter;
 
     public TruffleCacheImpl(Providers providers, GraphBuilderConfiguration config, OptimisticOptimizations optimisticOptimizations) {
@@ -80,14 +78,6 @@ public class TruffleCacheImpl implements TruffleCache {
         this.runtimeExceptionClass = providers.getMetaAccess().lookupJavaType(RuntimeException.class);
         this.errorClass = providers.getMetaAccess().lookupJavaType(Error.class);
         this.controlFlowExceptionClass = providers.getMetaAccess().lookupJavaType(ControlFlowException.class);
-
-        this.callInlinedMethod = providers.getMetaAccess().lookupJavaMethod(OptimizedCallTarget.getCallInlinedMethod());
-    }
-
-    public StructuredGraph createInlineGraph(String name) {
-        StructuredGraph graph = new StructuredGraph(name, callInlinedMethod);
-        new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), new Assumptions(false), config, TruffleCompilerImpl.Optimizations).apply(graph);
-        return graph;
     }
 
     private static List<Object> computeCacheKey(ResolvedJavaMethod method, NodeInputList<ValueNode> arguments) {

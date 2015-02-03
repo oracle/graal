@@ -29,8 +29,6 @@ import com.oracle.graal.phases.common.*;
 
 public interface TruffleCache {
 
-    StructuredGraph createInlineGraph(String name);
-
     /**
      * Returns a cached graph for a method with given arguments.
      */
