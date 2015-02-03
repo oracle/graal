@@ -26,13 +26,14 @@ package com.oracle.truffle.api.dsl;
 
 import java.lang.annotation.*;
 
+import com.oracle.truffle.api.*;
+
 /**
- * Declares one or multiple assumptions for use inside a source code generation enabled node.
- * Declared assumptions must be passed to the {@link NodeFactory#createNode(Object...)} method as
- * parameters.
+ * @deprecated use {@link NodeField} with type {@link Assumption} instead.
  */
 @Retention(RetentionPolicy.CLASS)
 @Target({ElementType.TYPE})
+@Deprecated
 public @interface NodeAssumptions {
 
     String[] value();
