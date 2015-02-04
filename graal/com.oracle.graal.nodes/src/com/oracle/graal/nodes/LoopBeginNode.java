@@ -78,9 +78,19 @@ public class LoopBeginNode extends AbstractMergeNode implements IterableNodeType
     }
 
     /**
-     * Returns the set of {@link LoopEndNode} that correspond to back-edges for this loop, ordered
-     * in increasing {@link #phiPredecessorIndex}. This method is suited to create new loop
-     * {@link PhiNode}.
+     * Returns the set of {@link LoopEndNode} that correspond to back-edges for this loop, in
+     * increasing {@link #phiPredecessorIndex} order. This method is suited to create new loop
+     * {@link PhiNode}.<br>
+     *
+     * For example a new PhiNode may be added as follow:
+     *
+     * <pre>
+     * PhiNode phi = new ValuePhiNode(stamp, loop);
+     * phi.addInput(forwardEdgeValue);
+     * for (LoopEndNode loopEnd : loop.orderedLoopEnds()) {
+     *     phi.addInput(backEdgeValue(loopEnd));
+     * }
+     * </pre>
      *
      * @return the set of {@code LoopEndNode} that correspond to back-edges for this loop
      */
@@ -165,7 +175,7 @@ public class LoopBeginNode extends AbstractMergeNode implements IterableNodeType
         return super.verify();
     }
 
-    public int nextEndIndex() {
+    int nextEndIndex() {
         return nextEndIndex++;
     }
 

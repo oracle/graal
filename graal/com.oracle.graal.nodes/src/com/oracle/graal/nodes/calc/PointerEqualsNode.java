@@ -33,19 +33,9 @@ import com.oracle.graal.nodes.util.*;
 public class PointerEqualsNode extends CompareNode {
 
     public PointerEqualsNode(ValueNode x, ValueNode y) {
-        super(x, y);
+        super(Condition.EQ, false, x, y);
         assert x.stamp() instanceof AbstractPointerStamp;
         assert y.stamp() instanceof AbstractPointerStamp;
-    }
-
-    @Override
-    public Condition condition() {
-        return Condition.EQ;
-    }
-
-    @Override
-    public boolean unorderedIsTrue() {
-        return false;
     }
 
     @Override

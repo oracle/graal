@@ -42,6 +42,7 @@ import com.oracle.graal.graph.Node.ValueNumberable;
 import com.oracle.graal.java.BciBlockMapping.BciBlock;
 import com.oracle.graal.java.BciBlockMapping.ExceptionDispatchBlock;
 import com.oracle.graal.java.BciBlockMapping.LocalLiveness;
+import com.oracle.graal.java.GraphBuilderPlugins.InvocationPlugin;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.calc.*;
@@ -63,12 +64,13 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
     public GraphBuilderPhase(GraphBuilderConfiguration config) {
         this.graphBuilderConfig = config;
-        this.graphBuilderPlugins = new GraphBuilderPlugins();
+        this.graphBuilderPlugins = new DefaultGraphBuilderPlugins();
     }
 
     @Override
     protected void run(StructuredGraph graph, HighTierContext context) {
-        new Instance(context.getMetaAccess(), context.getStampProvider(), context.getAssumptions(), graphBuilderConfig, graphBuilderPlugins, context.getOptimisticOptimizations()).run(graph);
+        new Instance(context.getMetaAccess(), context.getStampProvider(), context.getAssumptions(), context.getConstantReflection(), graphBuilderConfig, graphBuilderPlugins,
+                        context.getOptimisticOptimizations()).run(graph);
     }
 
     public GraphBuilderConfiguration getGraphBuilderConfig() {
@@ -92,6 +94,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
         private final OptimisticOptimizations optimisticOpts;
         private final StampProvider stampProvider;
         private final Assumptions assumptions;
+        private final ConstantReflectionProvider constantReflectionProvider;
 
         /**
          * Gets the graph being processed by this builder.
@@ -100,19 +103,21 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             return currentGraph;
         }
 
-        public Instance(MetaAccessProvider metaAccess, StampProvider stampProvider, Assumptions assumptions, GraphBuilderConfiguration graphBuilderConfig, GraphBuilderPlugins graphBuilderPlugins,
-                        OptimisticOptimizations optimisticOpts) {
+        public Instance(MetaAccessProvider metaAccess, StampProvider stampProvider, Assumptions assumptions, ConstantReflectionProvider constantReflectionProvider,
+                        GraphBuilderConfiguration graphBuilderConfig, GraphBuilderPlugins graphBuilderPlugins, OptimisticOptimizations optimisticOpts) {
             this.graphBuilderConfig = graphBuilderConfig;
             this.optimisticOpts = optimisticOpts;
             this.metaAccess = metaAccess;
             this.stampProvider = stampProvider;
             this.assumptions = assumptions;
             this.graphBuilderPlugins = graphBuilderPlugins;
+            this.constantReflectionProvider = constantReflectionProvider;
             assert metaAccess != null;
         }
 
-        public Instance(MetaAccessProvider metaAccess, StampProvider stampProvider, Assumptions assumptions, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts) {
-            this(metaAccess, stampProvider, assumptions, graphBuilderConfig, null, optimisticOpts);
+        public Instance(MetaAccessProvider metaAccess, StampProvider stampProvider, Assumptions assumptions, ConstantReflectionProvider constantReflectionProvider,
+                        GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts) {
+            this(metaAccess, stampProvider, assumptions, constantReflectionProvider, graphBuilderConfig, null, optimisticOpts);
         }
 
         @Override
@@ -123,7 +128,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             assert method.getCode() != null : "method must contain bytecodes: " + method;
             this.currentGraph = graph;
             HIRFrameStateBuilder frameState = new HIRFrameStateBuilder(method, graph, null);
-            frameState.initializeForMethodStart(graphBuilderConfig.eagerResolving());
+            frameState.initializeForMethodStart(graphBuilderConfig.eagerResolving(), this.graphBuilderConfig.getParameterPlugin());
             TTY.Filter filter = new TTY.Filter(PrintFilter.getValue(), method);
             try {
                 BytecodeParser parser = new BytecodeParser(metaAccess, method, graphBuilderConfig, optimisticOpts, entryBCI);
@@ -557,7 +562,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             @Override
             protected ValueNode genObjectEquals(ValueNode x, ValueNode y) {
-                return new ObjectEqualsNode(x, y);
+                return ObjectEqualsNode.create(x, y, constantReflectionProvider);
             }
 
             @Override
@@ -773,11 +778,10 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 if (GraalOptions.InlineDuringParsing.getValue() && invokeKind.isDirect()) {
 
                     if (graphBuilderPlugins != null) {
-                        GraphBuilderPlugin plugin = graphBuilderPlugins.getPlugin(targetMethod);
+                        InvocationPlugin plugin = graphBuilderPlugins.lookupInvocation(targetMethod);
                         if (plugin != null) {
                             int beforeStackSize = frameState.stackSize;
-                            if (plugin.handleInvocation(this, args)) {
-                                // System.out.println("used plugin: " + plugin);
+                            if (plugin.apply(this, args)) {
                                 assert beforeStackSize + resultType.getSlotCount() == frameState.stackSize;
                                 return;
                             }
@@ -998,7 +1002,6 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             }
 
             public <T extends FloatingNode> T append(T v) {
-                assert !(v instanceof ConstantNode);
                 T added = currentGraph.unique(v);
                 return added;
             }
@@ -1482,11 +1485,24 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 }
                 condition = genUnique(condition);
 
-                ValueNode trueSuccessor = createBlockTarget(probability, trueBlock, frameState);
-                ValueNode falseSuccessor = createBlockTarget(1 - probability, falseBlock, frameState);
+                if (condition instanceof LogicConstantNode) {
+                    LogicConstantNode constantLogicNode = (LogicConstantNode) condition;
+                    boolean value = constantLogicNode.getValue();
+                    if (negate) {
+                        value = !value;
+                    }
+                    BciBlock nextBlock = falseBlock;
+                    if (value) {
+                        nextBlock = trueBlock;
+                    }
+                    appendGoto(createTarget(nextBlock, frameState));
+                } else {
+                    ValueNode trueSuccessor = createBlockTarget(probability, trueBlock, frameState);
+                    ValueNode falseSuccessor = createBlockTarget(1 - probability, falseBlock, frameState);
 
-                ValueNode ifNode = negate ? genIfNode(condition, falseSuccessor, trueSuccessor, 1 - probability) : genIfNode(condition, trueSuccessor, falseSuccessor, probability);
-                append(ifNode);
+                    ValueNode ifNode = negate ? genIfNode(condition, falseSuccessor, trueSuccessor, 1 - probability) : genIfNode(condition, trueSuccessor, falseSuccessor, probability);
+                    append(ifNode);
+                }
             }
 
             public StampProvider getStampProvider() {

@@ -31,6 +31,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.java.GraphBuilderPlugins.ParameterPlugin;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
@@ -81,14 +82,20 @@ public class HIRFrameStateBuilder extends AbstractFrameStateBuilder<ValueNode, H
         }
     }
 
-    public final void initializeForMethodStart(boolean eagerResolve) {
+    public final void initializeForMethodStart(boolean eagerResolve, ParameterPlugin parameterPlugin) {
 
         int javaIndex = 0;
         int index = 0;
         if (!method.isStatic()) {
             // add the receiver
-            ParameterNode receiver = graph.unique(new ParameterNode(javaIndex, StampFactory.declaredNonNull(method.getDeclaringClass())));
-            storeLocal(javaIndex, receiver);
+            FloatingNode receiver = null;
+            if (parameterPlugin != null) {
+                receiver = parameterPlugin.interceptParameter(index);
+            }
+            if (receiver == null) {
+                receiver = new ParameterNode(javaIndex, StampFactory.declaredNonNull(method.getDeclaringClass()));
+            }
+            storeLocal(javaIndex, graph.unique(receiver));
             javaIndex = 1;
             index = 1;
         }
@@ -107,8 +114,14 @@ public class HIRFrameStateBuilder extends AbstractFrameStateBuilder<ValueNode, H
             } else {
                 stamp = StampFactory.forKind(kind);
             }
-            ParameterNode param = graph.unique(new ParameterNode(index, stamp));
-            storeLocal(javaIndex, param);
+            FloatingNode param = null;
+            if (parameterPlugin != null) {
+                param = parameterPlugin.interceptParameter(index);
+            }
+            if (param == null) {
+                param = new ParameterNode(index, stamp);
+            }
+            storeLocal(javaIndex, graph.unique(param));
             javaIndex += kind.getSlotCount();
             index++;
         }

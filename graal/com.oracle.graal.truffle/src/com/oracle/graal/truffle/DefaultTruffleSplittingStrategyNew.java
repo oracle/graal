@@ -38,14 +38,14 @@ public class DefaultTruffleSplittingStrategyNew implements TruffleSplittingStrat
     public DefaultTruffleSplittingStrategyNew(OptimizedDirectCallNode call) {
         this.call = call;
         this.splitStart = TruffleCompilerOptions.TruffleSplittingStartCallCount.getValue();
-        this.splittingEnabled = isSplittingEnabled();
+        this.splittingEnabled = isSplittingEnabled(call);
         this.argumentStamp = DefaultTruffleStamp.getInstance();
         if (TruffleCompilerOptions.TruffleSplittingAggressive.getValue()) {
             splittingForced = true;
         }
     }
 
-    private boolean isSplittingEnabled() {
+    private static boolean isSplittingEnabled(OptimizedDirectCallNode call) {
         if (!TruffleCompilerOptions.TruffleSplitting.getValue()) {
             return false;
         }

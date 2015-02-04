@@ -24,6 +24,7 @@ package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
@@ -36,6 +37,15 @@ public class ObjectEqualsNode extends PointerEqualsNode implements Virtualizable
         super(x, y);
         assert x.stamp() instanceof AbstractObjectStamp;
         assert y.stamp() instanceof AbstractObjectStamp;
+    }
+
+    public static LogicNode create(ValueNode x, ValueNode y, ConstantReflectionProvider constantReflection) {
+        LogicNode result = CompareNode.tryConstantFold(Condition.EQ, x, y, constantReflection, false);
+        if (result != null) {
+            return result;
+        } else {
+            return new ObjectEqualsNode(x, y);
+        }
     }
 
     private void virtualizeNonVirtualComparison(State state, ValueNode other, VirtualizerTool tool) {
@@ -75,7 +85,7 @@ public class ObjectEqualsNode extends PointerEqualsNode implements Virtualizable
                 /*
                  * One of the two objects has identity, the other doesn't. In code, this looks like
                  * "Integer.valueOf(a) == new Integer(b)", which is always false.
-                 * 
+                 *
                  * In other words: an object created via valueOf can never be equal to one created
                  * by new in the same compilation unit.
                  */

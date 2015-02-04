@@ -22,43 +22,14 @@
  */
 package com.oracle.graal.java;
 
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.nodes.*;
-
 /**
- * Extensions for handling certain bytecode instructions while building a
- * {@linkplain StructuredGraph graph} from a bytecode stream.
+ * Marker interface for graph builder plugins.
+ *
+ * Concrete plugins implement one of the sub-interfaces of this interface.
+ *
+ * @see GraphBuilderPluginsProvider
+ * @see GraphBuilderPlugins
+ * @see GraphBuilderPlugins.Registration
  */
 public interface GraphBuilderPlugin {
-
-    /**
-     * Processes an invocation parsed in a bytecode stream and add nodes to a graph being
-     * constructed that implement the semantics of the invocation.
-     *
-     * @param builder object being used to build a graph
-     * @param args the arguments to the invocation
-     */
-    boolean handleInvocation(GraphBuilderContext builder, ValueNode[] args);
-
-    /**
-     * Gets the method handled by {@link #handleInvocation(GraphBuilderContext, ValueNode[])} .
-     */
-    ResolvedJavaMethod getInvocationTarget(MetaAccessProvider metaAccess);
-
-    /**
-     * Looks up a {@link ResolvedJavaMethod}.
-     *
-     * @param methodNameBase the name of the method is the prefix of this value up to the first '$'
-     *            character
-     */
-    static ResolvedJavaMethod resolveTarget(MetaAccessProvider metaAccess, Class<?> declaringClass, String methodNameBase, Class<?>... parameterTypes) {
-        int index = methodNameBase.indexOf('$');
-        String methodName = index == -1 ? methodNameBase : methodNameBase.substring(0, index);
-        try {
-            return metaAccess.lookupJavaMethod(methodName.equals("<init>") ? declaringClass.getDeclaredConstructor(parameterTypes) : declaringClass.getDeclaredMethod(methodName, parameterTypes));
-        } catch (NoSuchMethodException | SecurityException e) {
-            throw new GraalInternalError(e);
-        }
-    }
 }
