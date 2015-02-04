@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes.java;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
@@ -93,67 +94,79 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
         }
     }
 
+    public static ResolvedJavaMethod findSpecialCallTarget(InvokeKind invokeKind, ValueNode receiver, ResolvedJavaMethod targetMethod, Assumptions assumptions, ResolvedJavaType contextType) {
+        if (invokeKind.isDirect()) {
+            return null;
+        }
+
+        // check for trivial cases (e.g. final methods, nonvirtual methods)
+        if (targetMethod.canBeStaticallyBound()) {
+            return targetMethod;
+        }
+
+        ResolvedJavaType type = StampTool.typeOrNull(receiver);
+        if (type == null && invokeKind == InvokeKind.Virtual) {
+            // For virtual calls, we are guaranteed to receive a correct receiver type.
+            type = targetMethod.getDeclaringClass();
+        }
+
+        if (type != null) {
+            /*
+             * either the holder class is exact, or the receiver object has an exact type, or it's
+             * an array type
+             */
+            ResolvedJavaMethod resolvedMethod = type.resolveConcreteMethod(targetMethod, contextType);
+            if (resolvedMethod != null && (resolvedMethod.canBeStaticallyBound() || StampTool.isExactType(receiver) || type.isArray())) {
+                return resolvedMethod;
+            }
+            if (assumptions != null && assumptions.useOptimisticAssumptions()) {
+                ResolvedJavaType uniqueConcreteType = type.findUniqueConcreteSubtype();
+                if (uniqueConcreteType != null) {
+                    ResolvedJavaMethod methodFromUniqueType = uniqueConcreteType.resolveConcreteMethod(targetMethod, contextType);
+                    if (methodFromUniqueType != null) {
+                        assumptions.recordConcreteSubtype(type, uniqueConcreteType);
+                        return methodFromUniqueType;
+                    }
+                }
+
+                ResolvedJavaMethod uniqueConcreteMethod = type.findUniqueConcreteMethod(targetMethod);
+                if (uniqueConcreteMethod != null) {
+                    assumptions.recordConcreteMethod(targetMethod, type, uniqueConcreteMethod);
+                    return uniqueConcreteMethod;
+                }
+            }
+        }
+
+        return null;
+    }
+
     @Override
     public void simplify(SimplifierTool tool) {
-        if (invokeKind().isIndirect()) {
-            // attempt to devirtualize the call
+        // attempt to devirtualize the call
+        ResolvedJavaType contextType = (invoke().stateAfter() == null && invoke().stateDuring() == null) ? null : invoke().getContextType();
+        ResolvedJavaMethod specialCallTarget = findSpecialCallTarget(invokeKind, receiver(), targetMethod, tool.assumptions(), contextType);
+        if (specialCallTarget != null) {
+            this.setTargetMethod(specialCallTarget);
+            setInvokeKind(InvokeKind.Special);
+            return;
+        }
 
-            // check for trivial cases (e.g. final methods, nonvirtual methods)
-            if (targetMethod().canBeStaticallyBound()) {
-                setInvokeKind(InvokeKind.Special);
-                return;
-            }
+        if (invokeKind().isIndirect() && invokeKind().isInterface()) {
 
             // check if the type of the receiver can narrow the result
             ValueNode receiver = receiver();
-            ResolvedJavaType type = StampTool.typeOrNull(receiver);
-            if (type == null && invokeKind == InvokeKind.Virtual) {
-                // For virtual calls, we are guaranteed to receive a correct receiver type.
-                type = targetMethod.getDeclaringClass();
-            }
-            if (type != null && (invoke().stateAfter() != null || invoke().stateDuring() != null)) {
-                /*
-                 * either the holder class is exact, or the receiver object has an exact type, or
-                 * it's an array type
-                 */
-                ResolvedJavaMethod resolvedMethod = type.resolveConcreteMethod(targetMethod(), invoke().getContextType());
-                if (resolvedMethod != null && (resolvedMethod.canBeStaticallyBound() || StampTool.isExactType(receiver) || type.isArray())) {
-                    setInvokeKind(InvokeKind.Special);
-                    setTargetMethod(resolvedMethod);
-                    return;
-                }
-                if (tool.assumptions() != null && tool.assumptions().useOptimisticAssumptions()) {
-                    ResolvedJavaType uniqueConcreteType = type.findUniqueConcreteSubtype();
-                    if (uniqueConcreteType != null) {
-                        ResolvedJavaMethod methodFromUniqueType = uniqueConcreteType.resolveConcreteMethod(targetMethod(), invoke().getContextType());
-                        if (methodFromUniqueType != null) {
-                            tool.assumptions().recordConcreteSubtype(type, uniqueConcreteType);
-                            setInvokeKind(InvokeKind.Special);
-                            setTargetMethod(methodFromUniqueType);
-                            return;
-                        }
-                    }
 
-                    ResolvedJavaMethod uniqueConcreteMethod = type.findUniqueConcreteMethod(targetMethod());
-                    if (uniqueConcreteMethod != null) {
-                        tool.assumptions().recordConcreteMethod(targetMethod(), type, uniqueConcreteMethod);
-                        setInvokeKind(InvokeKind.Special);
-                        setTargetMethod(uniqueConcreteMethod);
-                        return;
-                    }
-                }
-            }
             // try to turn a interface call into a virtual call
             ResolvedJavaType declaredReceiverType = targetMethod().getDeclaringClass();
             /*
              * We need to check the invoke kind to avoid recursive simplification for virtual
              * interface methods calls.
              */
-            if (declaredReceiverType.isInterface() && !invokeKind().equals(InvokeKind.Virtual)) {
+            if (declaredReceiverType.isInterface()) {
                 tryCheckCastSingleImplementor(receiver, declaredReceiverType);
             }
 
-            if (invokeKind().equals(InvokeKind.Interface) && receiver instanceof UncheckedInterfaceProvider) {
+            if (receiver instanceof UncheckedInterfaceProvider) {
                 UncheckedInterfaceProvider uncheckedInterfaceProvider = (UncheckedInterfaceProvider) receiver;
                 Stamp uncheckedStamp = uncheckedInterfaceProvider.uncheckedStamp();
                 if (uncheckedStamp != null) {
