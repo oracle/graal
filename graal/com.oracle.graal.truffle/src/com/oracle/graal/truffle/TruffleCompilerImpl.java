@@ -197,8 +197,9 @@ public class TruffleCompilerImpl {
     private PhaseSuite<HighTierContext> createGraphBuilderSuite() {
         PhaseSuite<HighTierContext> suite = backend.getSuites().getDefaultGraphBuilderSuite().copy();
         ListIterator<BasePhase<? super HighTierContext>> iterator = suite.findPhase(GraphBuilderPhase.class);
+        GraphBuilderPhase graphBuilderPhase = (GraphBuilderPhase) iterator.previous();
         iterator.remove();
-        iterator.add(new GraphBuilderPhase(config));
+        iterator.add(new GraphBuilderPhase(config, graphBuilderPhase.getGraphBuilderPlugins()));
         return suite;
     }
 

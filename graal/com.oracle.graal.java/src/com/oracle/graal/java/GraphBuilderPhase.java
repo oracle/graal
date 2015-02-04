@@ -63,8 +63,12 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
     private final GraphBuilderPlugins graphBuilderPlugins;
 
     public GraphBuilderPhase(GraphBuilderConfiguration config) {
+        this(config, new DefaultGraphBuilderPlugins());
+    }
+
+    public GraphBuilderPhase(GraphBuilderConfiguration config, GraphBuilderPlugins graphBuilderPlugins) {
         this.graphBuilderConfig = config;
-        this.graphBuilderPlugins = new DefaultGraphBuilderPlugins();
+        this.graphBuilderPlugins = graphBuilderPlugins;
     }
 
     @Override
