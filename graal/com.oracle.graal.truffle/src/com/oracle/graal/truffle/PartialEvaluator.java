@@ -141,14 +141,23 @@ public class PartialEvaluator {
         return graph;
     }
 
-    private static final GraphBuilderPlugins.LoadFieldPlugin loadFieldPlugin = new GraphBuilderPlugins.LoadFieldPlugin() {
+    private class InterceptLoadFieldPlugin implements GraphBuilderPlugins.LoadFieldPlugin {
 
         public boolean apply(GraphBuilderContext builder, ValueNode receiver, ResolvedJavaField field) {
             System.out.println("Load field plugin called for receiver: " + receiver + " and field " + field);
+
+            if (receiver.isConstant()) {
+                JavaConstant asJavaConstant = receiver.asJavaConstant();
+                JavaConstant result = providers.getConstantReflection().readConstantFieldValue(field, asJavaConstant);
+                if (result != null) {
+                    ConstantNode constantNode = builder.append(ConstantNode.forConstant(result, providers.getMetaAccess()));
+                    builder.push(constantNode.getKind(), constantNode);
+                    return true;
+                }
+            }
             return false;
         }
-
-    };
+    }
 
     private class InterceptReceiverPlugin implements GraphBuilderPlugins.ParameterPlugin {
 
@@ -169,7 +178,7 @@ public class PartialEvaluator {
     @SuppressWarnings("unused")
     private void fastPartialEvaluation(OptimizedCallTarget callTarget, Assumptions assumptions, StructuredGraph graph, PhaseContext baseContext, HighTierContext tierContext) {
         GraphBuilderConfiguration newConfig = configForRoot.copy();
-        newConfig.setLoadFieldPlugin(loadFieldPlugin);
+        newConfig.setLoadFieldPlugin(new InterceptLoadFieldPlugin());
         newConfig.setParameterPlugin(new InterceptReceiverPlugin(callTarget));
         new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), new Assumptions(false), newConfig, TruffleCompilerImpl.Optimizations).apply(graph);
         Debug.dump(graph, "After FastPE");
