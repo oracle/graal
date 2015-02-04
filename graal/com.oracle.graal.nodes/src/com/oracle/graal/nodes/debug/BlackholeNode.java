@@ -20,52 +20,52 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.replacements.nodes;
+package com.oracle.graal.nodes.debug;
 
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo
-public class OpaqueNode extends FloatingNode implements LIRLowerable {
+public final class BlackholeNode extends FixedWithNextNode implements LIRLowerable {
 
     @Input ValueNode value;
 
-    public OpaqueNode(ValueNode value) {
-        super(value.stamp().unrestricted());
+    public BlackholeNode(ValueNode value) {
+        super(StampFactory.forVoid());
         this.value = value;
     }
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        gen.setResult(this, gen.operand(value));
+        gen.getLIRGeneratorTool().emitBlackhole(gen.operand(value));
     }
 
     @NodeIntrinsic
-    public static native boolean opaque(boolean v);
+    public static native void consume(boolean v);
 
     @NodeIntrinsic
-    public static native byte opaque(byte v);
+    public static native void consume(byte v);
 
     @NodeIntrinsic
-    public static native short opaque(short v);
+    public static native void consume(short v);
 
     @NodeIntrinsic
-    public static native char opaque(char v);
+    public static native void consume(char v);
 
     @NodeIntrinsic
-    public static native int opaque(int v);
+    public static native void consume(int v);
 
     @NodeIntrinsic
-    public static native long opaque(long v);
+    public static native void consume(long v);
 
     @NodeIntrinsic
-    public static native float opaque(float v);
+    public static native void consume(float v);
 
     @NodeIntrinsic
-    public static native double opaque(double v);
+    public static native void consume(double v);
 
     @NodeIntrinsic
-    public static native <T> T opaque(T v);
+    public static native void consume(Object v);
 }

@@ -29,7 +29,6 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.debug.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.replacements.nodes.*;
 
 @ClassSubstitution(GraalDirectives.class)
 public class GraalDirectivesSubstitutions {
