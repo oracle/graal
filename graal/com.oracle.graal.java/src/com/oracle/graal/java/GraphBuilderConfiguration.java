@@ -37,6 +37,7 @@ public class GraphBuilderConfiguration {
     private final DebugInfoMode debugInfoMode;
     private final boolean doLivenessAnalysis;
     private final boolean inlineTrivial;
+    private GraphBuilderPlugins.LoadFieldPlugin loadFieldPlugin;
 
     public static enum DebugInfoMode {
         SafePointsOnly,
@@ -72,6 +73,12 @@ public class GraphBuilderConfiguration {
         this.inlineTrivial = inlineTrivial;
     }
 
+    public GraphBuilderConfiguration copy() {
+        GraphBuilderConfiguration result = new GraphBuilderConfiguration(eagerResolving, omitAllExceptionEdges, debugInfoMode, skippedExceptionTypes, doLivenessAnalysis, inlineTrivial);
+        result.loadFieldPlugin = loadFieldPlugin;
+        return result;
+    }
+
     public GraphBuilderConfiguration withSkippedExceptionTypes(ResolvedJavaType[] newSkippedExceptionTypes) {
         return new GraphBuilderConfiguration(eagerResolving, omitAllExceptionEdges, debugInfoMode, newSkippedExceptionTypes, doLivenessAnalysis, inlineTrivial);
     }
@@ -91,6 +98,14 @@ public class GraphBuilderConfiguration {
 
     public GraphBuilderConfiguration withInlineTrivial(boolean newInlineTrivial) {
         return new GraphBuilderConfiguration(eagerResolving, omitAllExceptionEdges, debugInfoMode, skippedExceptionTypes, doLivenessAnalysis, newInlineTrivial);
+    }
+
+    public GraphBuilderPlugins.LoadFieldPlugin getLoadFieldPlugin() {
+        return loadFieldPlugin;
+    }
+
+    public void setLoadFieldPlugin(GraphBuilderPlugins.LoadFieldPlugin loadFieldPlugin) {
+        this.loadFieldPlugin = loadFieldPlugin;
     }
 
     public ResolvedJavaType[] getSkippedExceptionTypes() {

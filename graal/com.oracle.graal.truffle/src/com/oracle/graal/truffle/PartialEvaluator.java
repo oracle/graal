@@ -140,9 +140,20 @@ public class PartialEvaluator {
         return graph;
     }
 
+    private static final GraphBuilderPlugins.LoadFieldPlugin loadFieldPlugin = new GraphBuilderPlugins.LoadFieldPlugin() {
+
+        public boolean apply(GraphBuilderContext builder, ValueNode receiver, ResolvedJavaField field) {
+            System.out.println("Load field plugin called for receiver: " + receiver + " and field " + field);
+            return false;
+        }
+
+    };
+
     @SuppressWarnings("unused")
     private void fastPartialEvaluation(OptimizedCallTarget callTarget, Assumptions assumptions, StructuredGraph graph, PhaseContext baseContext, HighTierContext tierContext) {
-        new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), new Assumptions(false), configForRoot, TruffleCompilerImpl.Optimizations).apply(graph);
+        GraphBuilderConfiguration newConfig = configForRoot.copy();
+        newConfig.setLoadFieldPlugin(loadFieldPlugin);
+        new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), new Assumptions(false), newConfig, TruffleCompilerImpl.Optimizations).apply(graph);
         Debug.dump(graph, "After FastPE");
     }
 

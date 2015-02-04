@@ -36,6 +36,10 @@ import com.oracle.graal.nodes.*;
  */
 public interface GraphBuilderPlugins {
 
+    public interface LoadFieldPlugin extends GraphBuilderPlugin {
+        boolean apply(GraphBuilderContext builder, ValueNode receiver, ResolvedJavaField field);
+    }
+
     /**
      * Plugin for handling a method invocation.
      */
