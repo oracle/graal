@@ -39,14 +39,17 @@ import com.oracle.graal.nodes.*;
 @NodeInfo
 public abstract class CompareNode extends BinaryOpLogicNode {
 
+    protected final Condition condition;
+
     /**
      * Constructs a new Compare instruction.
      *
      * @param x the instruction producing the first input to the instruction
      * @param y the instruction that produces the second input to this instruction
      */
-    public CompareNode(ValueNode x, ValueNode y) {
+    public CompareNode(Condition condition, ValueNode x, ValueNode y) {
         super(x, y);
+        this.condition = condition;
     }
 
     /**
@@ -54,7 +57,9 @@ public abstract class CompareNode extends BinaryOpLogicNode {
      *
      * @return the condition
      */
-    public abstract Condition condition();
+    public final Condition condition() {
+        return condition;
+    }
 
     /**
      * Checks whether unordered inputs mean true or false (only applies to float operations).
@@ -93,8 +98,10 @@ public abstract class CompareNode extends BinaryOpLogicNode {
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
-        if (forX.isConstant() && forY.isConstant()) {
-            return LogicConstantNode.forBoolean(condition().foldCondition(forX.asConstant(), forY.asConstant(), tool.getConstantReflection(), unorderedIsTrue()));
+        ConstantReflectionProvider constantReflection = tool.getConstantReflection();
+        LogicNode constantCondition = tryConstantFold(condition(), forX, forY, constantReflection, unorderedIsTrue());
+        if (constantCondition != null) {
+            return constantCondition;
         }
         ValueNode result;
         if (forX.isConstant()) {
@@ -113,6 +120,13 @@ public abstract class CompareNode extends BinaryOpLogicNode {
             }
         }
         return this;
+    }
+
+    public static LogicNode tryConstantFold(Condition condition, ValueNode forX, ValueNode forY, ConstantReflectionProvider constantReflection, boolean unorderedIsTrue) {
+        if (forX.isConstant() && forY.isConstant()) {
+            return LogicConstantNode.forBoolean(condition.foldCondition(forX.asConstant(), forY.asConstant(), constantReflection, unorderedIsTrue));
+        }
+        return null;
     }
 
     protected abstract CompareNode duplicateModified(ValueNode newX, ValueNode newY);
