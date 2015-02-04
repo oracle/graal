@@ -43,7 +43,7 @@ final class FixPointIntervalBuilder {
     private final LIR lir;
     private final int maxOpId;
     private final StackInterval[] stackSlotMap;
-    private final HashSet<Integer> usePos;
+    private final HashSet<LIRInstruction> usePos;
 
     /**
      * The number of allocated stack slots.
@@ -61,10 +61,10 @@ final class FixPointIntervalBuilder {
 
     /**
      * Builds the lifetime intervals for {@link VirtualStackSlot virtual stack slots}, sets up
-     * {@link #stackSlotMap} and returns a set of use positions, i.e. ids for instructions that
-     * contain virtual stack slots.
+     * {@link #stackSlotMap} and returns a set of use positions, i.e. instructions that contain
+     * virtual stack slots.
      */
-    Set<Integer> build() {
+    Set<LIRInstruction> build() {
         Deque<AbstractBlock<?>> worklist = new ArrayDeque<>();
         for (int i = lir.getControlFlowGraph().getBlocks().size() - 1; i >= 0; i--) {
             worklist.add(lir.getControlFlowGraph().getBlocks().get(i));
@@ -196,7 +196,7 @@ final class FixPointIntervalBuilder {
             if (isVirtualStackSlot(operand)) {
                 VirtualStackSlot vslot = asVirtualStackSlot(operand);
                 addUse(vslot, inst, flags);
-                usePos.add(inst.id());
+                usePos.add(inst);
                 Debug.log("set operand: %s", operand);
                 currentSet.set(vslot.getId());
             }
@@ -215,7 +215,7 @@ final class FixPointIntervalBuilder {
             if (isVirtualStackSlot(operand)) {
                 VirtualStackSlot vslot = asVirtualStackSlot(operand);
                 addDef(vslot, inst);
-                usePos.add(inst.id());
+                usePos.add(inst);
                 Debug.log("clear operand: %s", operand);
                 currentSet.clear(vslot.getId());
             }

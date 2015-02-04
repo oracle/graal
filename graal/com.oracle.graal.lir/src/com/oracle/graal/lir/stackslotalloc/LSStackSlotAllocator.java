@@ -102,7 +102,7 @@ public final class LSStackSlotAllocator implements StackSlotAllocator {
             Debug.dump(lir, "After StackSlot numbering");
 
             long currentFrameSize = Debug.isMeterEnabled() ? frameMapBuilder.getFrameMap().currentFrameSize() : 0;
-            Set<Integer> usePos;
+            Set<LIRInstruction> usePos;
             // step 2: build intervals
             try (Scope s = Debug.scope("StackSlotAllocationBuildIntervals"); Indent indent = Debug.logAndIndent("BuildIntervals"); TimerCloseable t = BuildIntervalsTimer.start()) {
                 usePos = buildIntervals();
@@ -167,7 +167,7 @@ public final class LSStackSlotAllocator implements StackSlotAllocator {
         // step 2: build intervals
         // ====================
 
-        private Set<Integer> buildIntervals() {
+        private Set<LIRInstruction> buildIntervals() {
             return new FixPointIntervalBuilder(lir, stackSlotMap, maxOpId()).build();
         }
 
@@ -354,9 +354,8 @@ public final class LSStackSlotAllocator implements StackSlotAllocator {
         // step 5: assign stack slots
         // ====================
 
-        private void assignStackSlots(Set<Integer> usePos) {
-            for (int opId : usePos) {
-                LIRInstruction op = instructionForId(opId);
+        private void assignStackSlots(Set<LIRInstruction> usePos) {
+            for (LIRInstruction op : usePos) {
                 op.forEachInput(this::assignSlot);
                 op.forEachAlive(this::assignSlot);
                 op.forEachState(this::assignSlot);
