@@ -527,7 +527,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         }
     }
 
-    public Value emitCompareAndSwap(Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue) {
+    public Variable emitCompareAndSwap(Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue) {
         LIRKind kind = newValue.getLIRKind();
         assert kind.equals(expectedValue.getLIRKind());
         Kind memKind = (Kind) kind.getPlatformKind();
