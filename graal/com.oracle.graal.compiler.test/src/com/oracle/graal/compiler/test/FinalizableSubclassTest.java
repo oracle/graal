@@ -67,7 +67,7 @@ public class FinalizableSubclassTest extends GraalCompilerTest {
         StructuredGraph graph = new StructuredGraph(javaMethod);
 
         GraphBuilderConfiguration conf = GraphBuilderConfiguration.getSnippetDefault();
-        new GraphBuilderPhase.Instance(getMetaAccess(), getProviders().getStampProvider(), assumptions, conf, OptimisticOptimizations.ALL).apply(graph);
+        new GraphBuilderPhase.Instance(getMetaAccess(), getProviders().getStampProvider(), assumptions, getProviders().getConstantReflection(), conf, OptimisticOptimizations.ALL).apply(graph);
         HighTierContext context = new HighTierContext(getProviders(), assumptions, null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
         new InliningPhase(new CanonicalizerPhase(true)).apply(graph, context);
         new CanonicalizerPhase(true).apply(graph, context);

@@ -69,7 +69,8 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
     @Override
     protected void run(StructuredGraph graph, HighTierContext context) {
-        new Instance(context.getMetaAccess(), context.getStampProvider(), context.getAssumptions(), graphBuilderConfig, graphBuilderPlugins, context.getOptimisticOptimizations()).run(graph);
+        new Instance(context.getMetaAccess(), context.getStampProvider(), context.getAssumptions(), context.getConstantReflection(), graphBuilderConfig, graphBuilderPlugins,
+                        context.getOptimisticOptimizations()).run(graph);
     }
 
     public GraphBuilderConfiguration getGraphBuilderConfig() {
@@ -93,6 +94,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
         private final OptimisticOptimizations optimisticOpts;
         private final StampProvider stampProvider;
         private final Assumptions assumptions;
+        private final ConstantReflectionProvider constantReflectionProvider;
 
         /**
          * Gets the graph being processed by this builder.
@@ -101,19 +103,21 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             return currentGraph;
         }
 
-        public Instance(MetaAccessProvider metaAccess, StampProvider stampProvider, Assumptions assumptions, GraphBuilderConfiguration graphBuilderConfig, GraphBuilderPlugins graphBuilderPlugins,
-                        OptimisticOptimizations optimisticOpts) {
+        public Instance(MetaAccessProvider metaAccess, StampProvider stampProvider, Assumptions assumptions, ConstantReflectionProvider constantReflectionProvider,
+                        GraphBuilderConfiguration graphBuilderConfig, GraphBuilderPlugins graphBuilderPlugins, OptimisticOptimizations optimisticOpts) {
             this.graphBuilderConfig = graphBuilderConfig;
             this.optimisticOpts = optimisticOpts;
             this.metaAccess = metaAccess;
             this.stampProvider = stampProvider;
             this.assumptions = assumptions;
             this.graphBuilderPlugins = graphBuilderPlugins;
+            this.constantReflectionProvider = constantReflectionProvider;
             assert metaAccess != null;
         }
 
-        public Instance(MetaAccessProvider metaAccess, StampProvider stampProvider, Assumptions assumptions, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts) {
-            this(metaAccess, stampProvider, assumptions, graphBuilderConfig, null, optimisticOpts);
+        public Instance(MetaAccessProvider metaAccess, StampProvider stampProvider, Assumptions assumptions, ConstantReflectionProvider constantReflectionProvider,
+                        GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts) {
+            this(metaAccess, stampProvider, assumptions, constantReflectionProvider, graphBuilderConfig, null, optimisticOpts);
         }
 
         @Override
@@ -558,7 +562,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             @Override
             protected ValueNode genObjectEquals(ValueNode x, ValueNode y) {
-                return new ObjectEqualsNode(x, y);
+                return ObjectEqualsNode.create(x, y, constantReflectionProvider);
             }
 
             @Override

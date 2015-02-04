@@ -127,13 +127,13 @@ public abstract class CompareNode extends BinaryOpLogicNode {
     }
 
     public static LogicNode tryConstantFold(Condition condition, ValueNode forX, ValueNode forY, ConstantReflectionProvider constantReflection, boolean unorderedIsTrue) {
-        if (forX.isConstant() && forY.isConstant()) {
+        if (forX.isConstant() && forY.isConstant() && constantReflection != null) {
             return LogicConstantNode.forBoolean(condition.foldCondition(forX.asConstant(), forY.asConstant(), constantReflection, unorderedIsTrue));
         }
         return null;
     }
 
-    protected abstract CompareNode duplicateModified(ValueNode newX, ValueNode newY);
+    protected abstract LogicNode duplicateModified(ValueNode newX, ValueNode newY);
 
     protected ValueNode canonicalizeSymmetricConstant(CanonicalizerTool tool, Constant constant, ValueNode nonConstant, boolean mirrored) {
         if (nonConstant instanceof ConditionalNode) {
