@@ -40,6 +40,7 @@ import com.oracle.graal.java.*;
 import com.oracle.graal.loop.*;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.util.*;
@@ -149,10 +150,27 @@ public class PartialEvaluator {
 
     };
 
+    private class InterceptReceiverPlugin implements GraphBuilderPlugins.ParameterPlugin {
+
+        private final Object receiver;
+
+        public InterceptReceiverPlugin(Object receiver) {
+            this.receiver = receiver;
+        }
+
+        public FloatingNode interceptParameter(int index) {
+            if (index == 0) {
+                return ConstantNode.forConstant(snippetReflection.forObject(receiver), providers.getMetaAccess());
+            }
+            return null;
+        }
+    }
+
     @SuppressWarnings("unused")
     private void fastPartialEvaluation(OptimizedCallTarget callTarget, Assumptions assumptions, StructuredGraph graph, PhaseContext baseContext, HighTierContext tierContext) {
         GraphBuilderConfiguration newConfig = configForRoot.copy();
         newConfig.setLoadFieldPlugin(loadFieldPlugin);
+        newConfig.setParameterPlugin(new InterceptReceiverPlugin(callTarget));
         new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), new Assumptions(false), newConfig, TruffleCompilerImpl.Optimizations).apply(graph);
         Debug.dump(graph, "After FastPE");
     }

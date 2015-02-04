@@ -30,6 +30,7 @@ import java.util.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.calc.*;
 
 /**
  * Interface for managing a set of graph builder {@link GraphBuilderPlugin}s.
@@ -38,6 +39,10 @@ public interface GraphBuilderPlugins {
 
     public interface LoadFieldPlugin extends GraphBuilderPlugin {
         boolean apply(GraphBuilderContext builder, ValueNode receiver, ResolvedJavaField field);
+    }
+
+    public interface ParameterPlugin extends GraphBuilderPlugin {
+        FloatingNode interceptParameter(int index);
     }
 
     /**

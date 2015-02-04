@@ -38,6 +38,7 @@ public class GraphBuilderConfiguration {
     private final boolean doLivenessAnalysis;
     private final boolean inlineTrivial;
     private GraphBuilderPlugins.LoadFieldPlugin loadFieldPlugin;
+    private GraphBuilderPlugins.ParameterPlugin parameterPlugin;
 
     public static enum DebugInfoMode {
         SafePointsOnly,
@@ -159,5 +160,13 @@ public class GraphBuilderConfiguration {
 
     public boolean shouldInlineTrivial() {
         return inlineTrivial;
+    }
+
+    public GraphBuilderPlugins.ParameterPlugin getParameterPlugin() {
+        return parameterPlugin;
+    }
+
+    public void setParameterPlugin(GraphBuilderPlugins.ParameterPlugin parameterPlugin) {
+        this.parameterPlugin = parameterPlugin;
     }
 }

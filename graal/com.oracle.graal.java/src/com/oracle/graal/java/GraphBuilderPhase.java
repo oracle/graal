@@ -124,7 +124,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             assert method.getCode() != null : "method must contain bytecodes: " + method;
             this.currentGraph = graph;
             HIRFrameStateBuilder frameState = new HIRFrameStateBuilder(method, graph, null);
-            frameState.initializeForMethodStart(graphBuilderConfig.eagerResolving());
+            frameState.initializeForMethodStart(graphBuilderConfig.eagerResolving(), this.graphBuilderConfig.getParameterPlugin());
             TTY.Filter filter = new TTY.Filter(PrintFilter.getValue(), method);
             try {
                 BytecodeParser parser = new BytecodeParser(metaAccess, method, graphBuilderConfig, optimisticOpts, entryBCI);
