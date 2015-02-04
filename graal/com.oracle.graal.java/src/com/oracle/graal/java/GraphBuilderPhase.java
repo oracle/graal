@@ -777,19 +777,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                         InvocationPlugin plugin = graphBuilderPlugins.lookupInvocation(targetMethod);
                         if (plugin != null) {
                             int beforeStackSize = frameState.stackSize;
-                            boolean handled;
-                            if (args.length == 0) {
-                                handled = plugin.apply(this);
-                            } else if (args.length == 1) {
-                                handled = plugin.apply(this, args[0]);
-                            } else if (args.length == 2) {
-                                handled = plugin.apply(this, args[0], args[1]);
-                            } else if (args.length == 3) {
-                                handled = plugin.apply(this, args[0], args[1], args[2]);
-                            } else {
-                                throw GraalInternalError.shouldNotReachHere();
-                            }
-                            if (handled) {
+                            if (plugin.apply(this, args)) {
                                 assert beforeStackSize + resultType.getSlotCount() == frameState.stackSize;
                                 return;
                             }
