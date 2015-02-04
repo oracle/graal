@@ -220,7 +220,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
         append(new StoreOp((Kind) kind.getPlatformKind(), storeAddress, input, state));
     }
 
-    public Value emitCompareAndSwap(Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue) {
+    public Variable emitCompareAndSwap(Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue) {
         Variable newValueTemp = newVariable(newValue.getLIRKind());
         emitMove(newValueTemp, newValue);
 
