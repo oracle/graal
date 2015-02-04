@@ -40,6 +40,7 @@ import com.oracle.graal.nodes.*;
 public abstract class CompareNode extends BinaryOpLogicNode {
 
     protected final Condition condition;
+    protected final boolean unorderedIsTrue;
 
     /**
      * Constructs a new Compare instruction.
@@ -47,9 +48,10 @@ public abstract class CompareNode extends BinaryOpLogicNode {
      * @param x the instruction producing the first input to the instruction
      * @param y the instruction that produces the second input to this instruction
      */
-    public CompareNode(Condition condition, ValueNode x, ValueNode y) {
+    public CompareNode(Condition condition, boolean unorderedIsTrue, ValueNode x, ValueNode y) {
         super(x, y);
         this.condition = condition;
+        this.unorderedIsTrue = unorderedIsTrue;
     }
 
     /**
@@ -66,7 +68,9 @@ public abstract class CompareNode extends BinaryOpLogicNode {
      *
      * @return {@code true} if unordered inputs produce true
      */
-    public abstract boolean unorderedIsTrue();
+    public final boolean unorderedIsTrue() {
+        return this.unorderedIsTrue;
+    }
 
     private ValueNode optimizeConditional(Constant constant, ConditionalNode conditionalNode, ConstantReflectionProvider constantReflection, Condition cond) {
         Constant trueConstant = conditionalNode.trueValue().asConstant();

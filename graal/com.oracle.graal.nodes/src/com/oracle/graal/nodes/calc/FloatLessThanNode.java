@@ -33,18 +33,10 @@ import com.oracle.graal.nodes.util.*;
 @NodeInfo(shortName = "<")
 public class FloatLessThanNode extends CompareNode {
 
-    protected final boolean unorderedIsTrue;
-
     public FloatLessThanNode(ValueNode x, ValueNode y, boolean unorderedIsTrue) {
-        super(Condition.LT, x, y);
+        super(Condition.LT, unorderedIsTrue, x, y);
         assert x.stamp() instanceof FloatStamp && y.stamp() instanceof FloatStamp;
         assert x.stamp().isCompatible(y.stamp());
-        this.unorderedIsTrue = unorderedIsTrue;
-    }
-
-    @Override
-    public boolean unorderedIsTrue() {
-        return unorderedIsTrue;
     }
 
     @Override

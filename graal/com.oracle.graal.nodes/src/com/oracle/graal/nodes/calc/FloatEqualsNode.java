@@ -34,14 +34,9 @@ import com.oracle.graal.nodes.util.*;
 public class FloatEqualsNode extends CompareNode {
 
     public FloatEqualsNode(ValueNode x, ValueNode y) {
-        super(Condition.EQ, x, y);
+        super(Condition.EQ, false, x, y);
         assert x.stamp() instanceof FloatStamp && y.stamp() instanceof FloatStamp : x.stamp() + " " + y.stamp();
         assert x.stamp().isCompatible(y.stamp());
-    }
-
-    @Override
-    public boolean unorderedIsTrue() {
-        return false;
     }
 
     @Override
