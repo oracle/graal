@@ -1497,11 +1497,24 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 }
                 condition = genUnique(condition);
 
-                ValueNode trueSuccessor = createBlockTarget(probability, trueBlock, frameState);
-                ValueNode falseSuccessor = createBlockTarget(1 - probability, falseBlock, frameState);
+                if (condition instanceof LogicConstantNode) {
+                    LogicConstantNode constantLogicNode = (LogicConstantNode) condition;
+                    boolean value = constantLogicNode.getValue();
+                    if (negate) {
+                        value = !value;
+                    }
+                    BciBlock nextBlock = falseBlock;
+                    if (value) {
+                        nextBlock = trueBlock;
+                    }
+                    appendGoto(createTarget(nextBlock, frameState));
+                } else {
+                    ValueNode trueSuccessor = createBlockTarget(probability, trueBlock, frameState);
+                    ValueNode falseSuccessor = createBlockTarget(1 - probability, falseBlock, frameState);
 
-                ValueNode ifNode = negate ? genIfNode(condition, falseSuccessor, trueSuccessor, 1 - probability) : genIfNode(condition, trueSuccessor, falseSuccessor, probability);
-                append(ifNode);
+                    ValueNode ifNode = negate ? genIfNode(condition, falseSuccessor, trueSuccessor, 1 - probability) : genIfNode(condition, trueSuccessor, falseSuccessor, probability);
+                    append(ifNode);
+                }
             }
 
             public StampProvider getStampProvider() {
