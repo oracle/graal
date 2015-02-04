@@ -180,7 +180,7 @@ public class PartialEvaluator {
     private class InlineInvokePlugin implements GraphBuilderPlugins.InlineInvokePlugin {
 
         public boolean shouldInlineInvoke(ResolvedJavaMethod method, int depth) {
-            return method.getAnnotation(TruffleBoundary.class) != null;
+            return method.getAnnotation(TruffleBoundary.class) == null;
         }
 
     }
