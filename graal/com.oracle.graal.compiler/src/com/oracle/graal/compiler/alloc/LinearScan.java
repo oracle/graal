@@ -38,6 +38,7 @@ import com.oracle.graal.compiler.alloc.Interval.RegisterPriority;
 import com.oracle.graal.compiler.alloc.Interval.SpillState;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.cfg.*;
+import com.oracle.graal.compiler.common.util.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
@@ -49,7 +50,6 @@ import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.options.*;
-import com.oracle.graal.phases.util.*;
 
 /**
  * An implementation of the linear scan register allocator algorithm described in <a

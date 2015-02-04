@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.util;
+package com.oracle.graal.compiler.common.util;
 
 /**
  * The {@code ArrayMap} class implements an efficient one-level map which is implemented as an
