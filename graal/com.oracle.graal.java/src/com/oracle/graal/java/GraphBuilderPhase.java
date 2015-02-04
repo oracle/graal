@@ -760,7 +760,18 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 }
             }
 
-            private void appendInvoke(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args) {
+            private void appendInvoke(InvokeKind initialInvokeKind, ResolvedJavaMethod initialTargetMethod, ValueNode[] args) {
+                ResolvedJavaMethod targetMethod = initialTargetMethod;
+                InvokeKind invokeKind = initialInvokeKind;
+                if (initialInvokeKind.isIndirect()) {
+                    ResolvedJavaType contextType = this.frameState.method.getDeclaringClass();
+                    ResolvedJavaMethod specialCallTarget = MethodCallTargetNode.findSpecialCallTarget(initialInvokeKind, args[0], initialTargetMethod, assumptions, contextType);
+                    if (specialCallTarget != null) {
+                        invokeKind = InvokeKind.Special;
+                        targetMethod = specialCallTarget;
+                    }
+                }
+
                 Kind resultType = targetMethod.getSignature().getReturnKind();
                 if (DeoptALot.getValue()) {
                     append(new DeoptimizeNode(DeoptimizationAction.None, RuntimeConstraint));
