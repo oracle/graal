@@ -27,6 +27,7 @@ import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.compiler.common.cfg.AbstractControlFlowGraph.*;
 import static com.oracle.graal.lir.LIRValueUtil.*;
+import static com.oracle.graal.lir.debug.LIRGenerationDebugContext.*;
 
 import java.util.*;
 
@@ -39,7 +40,6 @@ import com.oracle.graal.compiler.alloc.Interval.SpillState;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.compiler.common.util.*;
-import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.lir.*;
@@ -48,7 +48,6 @@ import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.StandardOp.MoveOp;
 import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.lir.gen.*;
-import com.oracle.graal.nodes.*;
 import com.oracle.graal.options.*;
 
 /**
@@ -864,23 +863,6 @@ public final class LinearScan {
         }
     }
 
-    private static NodeLIRBuilder getNodeLIRGeneratorFromDebugContext() {
-        if (Debug.isEnabled()) {
-            NodeLIRBuilder lirGen = Debug.contextLookup(NodeLIRBuilder.class);
-            assert lirGen != null;
-            return lirGen;
-        }
-        return null;
-    }
-
-    private static ValueNode getValueForOperandFromDebugContext(Value value) {
-        NodeLIRBuilder gen = getNodeLIRGeneratorFromDebugContext();
-        if (gen != null) {
-            return gen.valueForOperand(value);
-        }
-        return null;
-    }
-
     private void reportFailure(int numBlocks) {
         try (Scope s = Debug.forceLog()) {
             try (Indent indent = Debug.logAndIndent("report failure")) {
@@ -891,7 +873,7 @@ public final class LinearScan {
                         Interval interval = intervalFor(operandNum);
                         if (interval != null) {
                             Value operand = interval.operand;
-                            Debug.log("var %d; operand=%s; node=%s", operandNum, operand, getValueForOperandFromDebugContext(operand));
+                            Debug.log("var %d; operand=%s; node=%s", operandNum, operand, getSourceForOperandFromDebugContext(operand));
                         } else {
                             Debug.log("var %d; missing operand", operandNum);
                         }
@@ -902,10 +884,10 @@ public final class LinearScan {
                 for (int operandNum = startBlockLiveIn.nextSetBit(0); operandNum >= 0; operandNum = startBlockLiveIn.nextSetBit(operandNum + 1)) {
                     Interval interval = intervalFor(operandNum);
                     Value operand = null;
-                    ValueNode valueForOperandFromDebugContext = null;
+                    Object valueForOperandFromDebugContext = null;
                     if (interval != null) {
                         operand = interval.operand;
-                        valueForOperandFromDebugContext = getValueForOperandFromDebugContext(operand);
+                        valueForOperandFromDebugContext = getSourceForOperandFromDebugContext(operand);
                     }
                     try (Indent indent2 = Debug.logAndIndent("---- Detailed information for var %d; operand=%s; node=%s ----", operandNum, operand, valueForOperandFromDebugContext)) {
 
