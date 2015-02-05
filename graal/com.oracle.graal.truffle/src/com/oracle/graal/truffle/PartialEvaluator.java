@@ -185,12 +185,21 @@ public class PartialEvaluator {
 
     }
 
+    private class LoopExplosionPlugin implements GraphBuilderPlugins.LoopExplosionPlugin {
+
+        public boolean shouldExplodeLoops(ResolvedJavaMethod method) {
+            return method.getAnnotation(ExplodeLoop.class) == null;
+        }
+
+    }
+
     @SuppressWarnings("unused")
     private void fastPartialEvaluation(OptimizedCallTarget callTarget, Assumptions assumptions, StructuredGraph graph, PhaseContext baseContext, HighTierContext tierContext) {
         GraphBuilderConfiguration newConfig = configForRoot.copy();
         newConfig.setLoadFieldPlugin(new InterceptLoadFieldPlugin());
         newConfig.setParameterPlugin(new InterceptReceiverPlugin(callTarget));
         newConfig.setInlineInvokePlugin(new InlineInvokePlugin());
+        newConfig.setLoopExplosionPlugin(new LoopExplosionPlugin());
         DefaultGraphBuilderPlugins plugins = new DefaultGraphBuilderPlugins();
         Iterable<GraphBuilderPluginsProvider> sl = Services.load(GraphBuilderPluginsProvider.class);
         for (GraphBuilderPluginsProvider p : sl) {

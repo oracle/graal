@@ -49,6 +49,10 @@ public interface GraphBuilderPlugins {
         boolean shouldInlineInvoke(ResolvedJavaMethod method, int depth);
     }
 
+    public interface LoopExplosionPlugin extends GraphBuilderPlugin {
+        boolean shouldExplodeLoops(ResolvedJavaMethod method);
+    }
+
     /**
      * Plugin for handling a method invocation.
      */
