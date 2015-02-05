@@ -24,6 +24,7 @@ package com.oracle.graal.hotspot.replacements;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.runtime.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.java.GraphBuilderPlugins.InvocationPlugin;
 import com.oracle.graal.java.GraphBuilderPlugins.Registration;
@@ -41,10 +42,16 @@ public class HotSpotGraphBuilderPluginsProvider implements GraphBuilderPluginsPr
         Registration r = new Registration(plugins, metaAccess, Object.class);
         r.register1("getClass", Receiver.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext builder, ValueNode rcvr) {
-                GuardingPiNode pi = builder.append(new GuardingPiNode(rcvr));
-                StampProvider stampProvider = builder.getStampProvider();
-                LoadHubNode hub = builder.append(new LoadHubNode(stampProvider, pi));
-                HubGetClassNode mirror = builder.append(new HubGetClassNode(builder.getMetaAccess(), hub));
+                ObjectStamp objectStamp = (ObjectStamp) rcvr.stamp();
+                ValueNode mirror;
+                if (objectStamp.isExactType() && objectStamp.nonNull()) {
+                    mirror = builder.append(ConstantNode.forConstant(objectStamp.type().getJavaClass(), metaAccess));
+                } else {
+                    GuardingPiNode pi = builder.append(new GuardingPiNode(rcvr));
+                    StampProvider stampProvider = builder.getStampProvider();
+                    LoadHubNode hub = builder.append(new LoadHubNode(stampProvider, pi));
+                    mirror = builder.append(new HubGetClassNode(builder.getMetaAccess(), hub));
+                }
                 builder.push(Kind.Object, mirror);
                 return true;
             }
