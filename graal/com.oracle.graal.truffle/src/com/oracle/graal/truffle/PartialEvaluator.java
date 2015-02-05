@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -215,6 +215,14 @@ public class PartialEvaluator {
         new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), new Assumptions(false), providers.getConstantReflection(), newConfig, plugins,
                         TruffleCompilerImpl.Optimizations).apply(graph);
         Debug.dump(graph, "After FastPE");
+
+        // Do single partial escape and canonicalization pass.
+        try (Scope pe = Debug.scope("TrufflePartialEscape", graph)) {
+            new PartialEscapePhase(true, canonicalizer).apply(graph, tierContext);
+            new IncrementalCanonicalizerPhase<>(canonicalizer, new ConditionalEliminationPhase()).apply(graph, tierContext);
+        } catch (Throwable t) {
+            Debug.handle(t);
+        }
     }
 
     private void partialEvaluation(final OptimizedCallTarget callTarget, final Assumptions assumptions, final StructuredGraph graph, PhaseContext baseContext, HighTierContext tierContext) {

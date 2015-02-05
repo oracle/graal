@@ -27,13 +27,16 @@ import java.util.concurrent.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.runtime.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.java.GraphBuilderPlugins.InvocationPlugin;
 import com.oracle.graal.java.GraphBuilderPlugins.Registration;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.truffle.*;
 import com.oracle.graal.truffle.nodes.frame.*;
 import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.frame.*;
 
 /**
  * Provider of {@link GraphBuilderPlugin}s for Truffle classes.
@@ -41,6 +44,15 @@ import com.oracle.truffle.api.*;
 @ServiceProvider(GraphBuilderPluginsProvider.class)
 public class TruffleGraphBuilderPluginsProvider implements GraphBuilderPluginsProvider {
     public void registerPlugins(MetaAccessProvider metaAccess, GraphBuilderPlugins plugins) {
+
+        Registration r2 = new Registration(plugins, metaAccess, OptimizedCallTarget.class);
+        r2.register2("createFrame", FrameDescriptor.class, Object[].class, new InvocationPlugin() {
+            public boolean apply(GraphBuilderContext builder, ValueNode arg1, ValueNode arg2) {
+                builder.push(Kind.Object, builder.append(new NewFrameNode(StampFactory.exactNonNull(metaAccess.lookupJavaType(FrameWithoutBoxing.class)), arg1, arg2)));
+                return true;
+            }
+        });
+
         Registration r = new Registration(plugins, metaAccess, CompilerDirectives.class);
         r.register0("inInterpreter", new InvocationPlugin() {
             public boolean apply(GraphBuilderContext builder) {
