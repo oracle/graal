@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.alloc;
+package com.oracle.graal.lir.alloc.lsra;
 
 import static com.oracle.graal.api.code.CodeUtil.*;
 import static com.oracle.graal.api.code.ValueUtil.*;
@@ -33,9 +33,6 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.alloc.Interval.RegisterBinding;
-import com.oracle.graal.compiler.alloc.Interval.RegisterPriority;
-import com.oracle.graal.compiler.alloc.Interval.SpillState;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.alloc.*;
 import com.oracle.graal.compiler.common.cfg.*;
@@ -46,6 +43,9 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.StandardOp.MoveOp;
+import com.oracle.graal.lir.alloc.lsra.Interval.RegisterBinding;
+import com.oracle.graal.lir.alloc.lsra.Interval.RegisterPriority;
+import com.oracle.graal.lir.alloc.lsra.Interval.SpillState;
 import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.options.*;

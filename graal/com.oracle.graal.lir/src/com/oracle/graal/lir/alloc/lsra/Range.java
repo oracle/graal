@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.alloc;
+package com.oracle.graal.lir.alloc.lsra;
 
 /**
  * Represents a range of integers from a start (inclusive) to an end (exclusive.
