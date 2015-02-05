@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,6 +40,14 @@ public class PointerEqualsNode extends CompareNode {
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
+        LogicNode result = findSynonym(forX, forY);
+        if (result != null) {
+            return result;
+        }
+        return super.canonical(tool, forX, forY);
+    }
+
+    public static LogicNode findSynonym(ValueNode forX, ValueNode forY) {
         if (GraphUtil.unproxify(forX) == GraphUtil.unproxify(forY)) {
             return LogicConstantNode.tautology();
         } else if (forX.stamp().alwaysDistinct(forY.stamp())) {
@@ -48,8 +56,9 @@ public class PointerEqualsNode extends CompareNode {
             return new IsNullNode(forY);
         } else if (((AbstractPointerStamp) forY.stamp()).alwaysNull()) {
             return new IsNullNode(forX);
+        } else {
+            return null;
         }
-        return super.canonical(tool, forX, forY);
     }
 
     @Override
