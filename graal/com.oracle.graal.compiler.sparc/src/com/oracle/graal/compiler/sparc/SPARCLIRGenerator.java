@@ -278,11 +278,9 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
             JavaConstant c = asConstant(value);
             if (c.isNull() || SPARCAssembler.isSimm11(c)) {
                 return value;
-            } else {
-                return load(c);
             }
         }
-        return emitMove(value);
+        return load(value);
     }
 
     @Override
