@@ -36,9 +36,9 @@ public class GraphBuilderConfiguration {
     private final ResolvedJavaType[] skippedExceptionTypes;
     private final DebugInfoMode debugInfoMode;
     private final boolean doLivenessAnalysis;
-    private final boolean inlineTrivial;
     private GraphBuilderPlugins.LoadFieldPlugin loadFieldPlugin;
     private GraphBuilderPlugins.ParameterPlugin parameterPlugin;
+    private GraphBuilderPlugins.InlineInvokePlugin inlineInvokePlugin;
 
     public static enum DebugInfoMode {
         SafePointsOnly,
@@ -64,41 +64,35 @@ public class GraphBuilderConfiguration {
         Full,
     }
 
-    protected GraphBuilderConfiguration(boolean eagerResolving, boolean omitAllExceptionEdges, DebugInfoMode debugInfoMode, ResolvedJavaType[] skippedExceptionTypes, boolean doLivenessAnalysis,
-                    boolean inlineTrivial) {
+    protected GraphBuilderConfiguration(boolean eagerResolving, boolean omitAllExceptionEdges, DebugInfoMode debugInfoMode, ResolvedJavaType[] skippedExceptionTypes, boolean doLivenessAnalysis) {
         this.eagerResolving = eagerResolving;
         this.omitAllExceptionEdges = omitAllExceptionEdges;
         this.debugInfoMode = debugInfoMode;
         this.skippedExceptionTypes = skippedExceptionTypes;
         this.doLivenessAnalysis = doLivenessAnalysis;
-        this.inlineTrivial = inlineTrivial;
     }
 
     public GraphBuilderConfiguration copy() {
-        GraphBuilderConfiguration result = new GraphBuilderConfiguration(eagerResolving, omitAllExceptionEdges, debugInfoMode, skippedExceptionTypes, doLivenessAnalysis, inlineTrivial);
+        GraphBuilderConfiguration result = new GraphBuilderConfiguration(eagerResolving, omitAllExceptionEdges, debugInfoMode, skippedExceptionTypes, doLivenessAnalysis);
         result.loadFieldPlugin = loadFieldPlugin;
         return result;
     }
 
     public GraphBuilderConfiguration withSkippedExceptionTypes(ResolvedJavaType[] newSkippedExceptionTypes) {
-        return new GraphBuilderConfiguration(eagerResolving, omitAllExceptionEdges, debugInfoMode, newSkippedExceptionTypes, doLivenessAnalysis, inlineTrivial);
+        return new GraphBuilderConfiguration(eagerResolving, omitAllExceptionEdges, debugInfoMode, newSkippedExceptionTypes, doLivenessAnalysis);
     }
 
     public GraphBuilderConfiguration withOmitAllExceptionEdges(boolean newOmitAllExceptionEdges) {
-        return new GraphBuilderConfiguration(eagerResolving, newOmitAllExceptionEdges, debugInfoMode, skippedExceptionTypes, doLivenessAnalysis, inlineTrivial);
+        return new GraphBuilderConfiguration(eagerResolving, newOmitAllExceptionEdges, debugInfoMode, skippedExceptionTypes, doLivenessAnalysis);
     }
 
     public GraphBuilderConfiguration withDebugInfoMode(DebugInfoMode newDebugInfoMode) {
         ResolvedJavaType[] newSkippedExceptionTypes = skippedExceptionTypes == EMPTY ? EMPTY : Arrays.copyOf(skippedExceptionTypes, skippedExceptionTypes.length);
-        return new GraphBuilderConfiguration(eagerResolving, omitAllExceptionEdges, newDebugInfoMode, newSkippedExceptionTypes, doLivenessAnalysis, inlineTrivial);
+        return new GraphBuilderConfiguration(eagerResolving, omitAllExceptionEdges, newDebugInfoMode, newSkippedExceptionTypes, doLivenessAnalysis);
     }
 
     public GraphBuilderConfiguration withDoLivenessAnalysis(boolean newLivenessAnalysis) {
-        return new GraphBuilderConfiguration(eagerResolving, omitAllExceptionEdges, debugInfoMode, skippedExceptionTypes, newLivenessAnalysis, inlineTrivial);
-    }
-
-    public GraphBuilderConfiguration withInlineTrivial(boolean newInlineTrivial) {
-        return new GraphBuilderConfiguration(eagerResolving, omitAllExceptionEdges, debugInfoMode, skippedExceptionTypes, doLivenessAnalysis, newInlineTrivial);
+        return new GraphBuilderConfiguration(eagerResolving, omitAllExceptionEdges, debugInfoMode, skippedExceptionTypes, newLivenessAnalysis);
     }
 
     public GraphBuilderPlugins.LoadFieldPlugin getLoadFieldPlugin() {
@@ -134,19 +128,19 @@ public class GraphBuilderConfiguration {
     }
 
     public static GraphBuilderConfiguration getDefault() {
-        return new GraphBuilderConfiguration(false, false, DebugInfoMode.SafePointsOnly, EMPTY, GraalOptions.OptLivenessAnalysis.getValue(), false);
+        return new GraphBuilderConfiguration(false, false, DebugInfoMode.SafePointsOnly, EMPTY, GraalOptions.OptLivenessAnalysis.getValue());
     }
 
     public static GraphBuilderConfiguration getEagerDefault() {
-        return new GraphBuilderConfiguration(true, false, DebugInfoMode.SafePointsOnly, EMPTY, GraalOptions.OptLivenessAnalysis.getValue(), false);
+        return new GraphBuilderConfiguration(true, false, DebugInfoMode.SafePointsOnly, EMPTY, GraalOptions.OptLivenessAnalysis.getValue());
     }
 
     public static GraphBuilderConfiguration getSnippetDefault() {
-        return new GraphBuilderConfiguration(true, true, DebugInfoMode.SafePointsOnly, EMPTY, GraalOptions.OptLivenessAnalysis.getValue(), false);
+        return new GraphBuilderConfiguration(true, true, DebugInfoMode.SafePointsOnly, EMPTY, GraalOptions.OptLivenessAnalysis.getValue());
     }
 
     public static GraphBuilderConfiguration getFullDebugDefault() {
-        return new GraphBuilderConfiguration(true, false, DebugInfoMode.Full, EMPTY, GraalOptions.OptLivenessAnalysis.getValue(), false);
+        return new GraphBuilderConfiguration(true, false, DebugInfoMode.Full, EMPTY, GraalOptions.OptLivenessAnalysis.getValue());
     }
 
     /**
@@ -158,15 +152,19 @@ public class GraphBuilderConfiguration {
         return eagerResolving;
     }
 
-    public boolean shouldInlineTrivial() {
-        return inlineTrivial;
-    }
-
     public GraphBuilderPlugins.ParameterPlugin getParameterPlugin() {
         return parameterPlugin;
     }
 
     public void setParameterPlugin(GraphBuilderPlugins.ParameterPlugin parameterPlugin) {
         this.parameterPlugin = parameterPlugin;
+    }
+
+    public GraphBuilderPlugins.InlineInvokePlugin getInlineInvokePlugin() {
+        return inlineInvokePlugin;
+    }
+
+    public void setInlineInvokePlugin(GraphBuilderPlugins.InlineInvokePlugin inlineInvokePlugin) {
+        this.inlineInvokePlugin = inlineInvokePlugin;
     }
 }

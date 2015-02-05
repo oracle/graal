@@ -45,6 +45,10 @@ public interface GraphBuilderPlugins {
         FloatingNode interceptParameter(int index);
     }
 
+    public interface InlineInvokePlugin extends GraphBuilderPlugin {
+        boolean shouldInlineInvoke(ResolvedJavaMethod method, int depth);
+    }
+
     /**
      * Plugin for handling a method invocation.
      */
