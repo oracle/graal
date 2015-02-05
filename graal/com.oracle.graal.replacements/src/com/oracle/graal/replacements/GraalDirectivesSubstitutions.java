@@ -48,6 +48,11 @@ public class GraalDirectivesSubstitutions {
         return true;
     }
 
+    /*
+     * This needs to be a @MacroSubstitution, not a @MethodSubstitution, because we want to get a
+     * unique ControlFlowAnchorNode for each occurrence of this call. With @MethodSubstitution, we
+     * would get a clone of a single cached node.
+     */
     @MacroSubstitution(forced = true, macro = ControlFlowAnchorNode.class)
     public static native void controlFlowAnchor();
 
