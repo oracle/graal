@@ -119,7 +119,6 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
 
     @Override
     public Variable emitMove(Value input) {
-        assert !(input instanceof Variable) : "Creating a copy of a variable via this method is not supported (and potentially a bug): " + input;
         Variable result = newVariable(input.getLIRKind());
         emitMove(result, input);
         return result;
