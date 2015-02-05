@@ -95,7 +95,7 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, Baseli
             BciBlockMapping blockMap;
             try (Scope ds = Debug.scope("BciBlockMapping")) {
                 // compute the block map, setup exception handlers and get the entrypoint(s)
-                blockMap = BciBlockMapping.create(method, graphBuilderConfig.doLivenessAnalysis());
+                blockMap = BciBlockMapping.create(method, graphBuilderConfig.doLivenessAnalysis(), false);
             } catch (Throwable e) {
                 throw Debug.handle(e);
             }

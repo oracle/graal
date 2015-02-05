@@ -737,7 +737,10 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
     private void genGetStatic(JavaField field) {
         Kind kind = field.getKind();
         if (field instanceof ResolvedJavaField && ((ResolvedJavaType) field.getDeclaringClass()).isInitialized()) {
-            appendOptimizedLoadField(kind, genLoadField(null, (ResolvedJavaField) field));
+            GraphBuilderPlugins.LoadFieldPlugin loadFieldPlugin = this.graphBuilderConfig.getLoadFieldPlugin();
+            if (loadFieldPlugin == null || !loadFieldPlugin.apply((GraphBuilderContext) this, (ResolvedJavaField) field)) {
+                appendOptimizedLoadField(kind, genLoadField(null, (ResolvedJavaField) field));
+            }
         } else {
             handleUnresolvedLoadField(field, null);
         }

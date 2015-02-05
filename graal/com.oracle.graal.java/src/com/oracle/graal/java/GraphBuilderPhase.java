@@ -191,6 +191,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             private FixedWithNextNode beforeUnwindNode;
 
             private FixedWithNextNode lastInstr;                 // the last instruction added
+            private final boolean explodeLoops;
 
             public BytecodeParser(MetaAccessProvider metaAccess, ResolvedJavaMethod method, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, int entryBCI) {
                 super(metaAccess, method, graphBuilderConfig, optimisticOpts);
@@ -199,6 +200,13 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 if (graphBuilderConfig.insertNonSafepointDebugInfo()) {
                     lnt = method.getLineNumberTable();
                     previousLineNumber = -1;
+                }
+
+                LoopExplosionPlugin loopExplosionPlugin = graphBuilderConfig.getLoopExplosionPlugin();
+                if (loopExplosionPlugin != null) {
+                    explodeLoops = loopExplosionPlugin.shouldExplodeLoops(method);
+                } else {
+                    explodeLoops = false;
                 }
             }
 
@@ -228,7 +236,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 try (Indent indent = Debug.logAndIndent("build graph for %s", method)) {
 
                     // compute the block map, setup exception handlers and get the entrypoint(s)
-                    BciBlockMapping blockMap = BciBlockMapping.create(method, graphBuilderConfig.doLivenessAnalysis());
+                    BciBlockMapping blockMap = BciBlockMapping.create(method, graphBuilderConfig.doLivenessAnalysis(), explodeLoops);
                     loopHeaders = blockMap.getLoopHeaders();
                     liveness = blockMap.liveness;
 
@@ -571,7 +579,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             @Override
             protected ValueNode genIntegerEquals(ValueNode x, ValueNode y) {
-                return new IntegerEqualsNode(x, y);
+                return IntegerEqualsNode.create(x, y, constantReflectionProvider);
             }
 
             @Override
@@ -941,7 +949,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 JsrScope scope = currentBlock.getJsrScope();
                 int retAddress = scope.nextReturnAddress();
                 ConstantNode returnBciNode = getJsrConstant(retAddress);
-                LogicNode guard = new IntegerEqualsNode(local, returnBciNode);
+                LogicNode guard = IntegerEqualsNode.create(local, returnBciNode, constantReflectionProvider);
                 guard = currentGraph.unique(guard);
                 append(new FixedGuardNode(guard, JavaSubroutineMismatch, InvalidateReprofile));
                 if (!successor.getJsrScope().equals(scope.pop())) {

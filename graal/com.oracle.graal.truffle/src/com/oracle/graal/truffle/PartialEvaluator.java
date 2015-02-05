@@ -146,16 +146,23 @@ public class PartialEvaluator {
     private class InterceptLoadFieldPlugin implements GraphBuilderPlugins.LoadFieldPlugin {
 
         public boolean apply(GraphBuilderContext builder, ValueNode receiver, ResolvedJavaField field) {
-            System.out.println("Load field plugin called for receiver: " + receiver + " and field " + field);
-
             if (receiver.isConstant()) {
                 JavaConstant asJavaConstant = receiver.asJavaConstant();
                 JavaConstant result = providers.getConstantReflection().readConstantFieldValue(field, asJavaConstant);
                 if (result != null) {
                     ConstantNode constantNode = builder.append(ConstantNode.forConstant(result, providers.getMetaAccess()));
-                    builder.push(constantNode.getKind(), constantNode);
+                    builder.push(constantNode.getKind().getStackKind(), constantNode);
                     return true;
                 }
+            }
+            return false;
+        }
+
+        public boolean apply(GraphBuilderContext builder, ResolvedJavaField staticField) {
+            if (TruffleCompilerOptions.TruffleExcludeAssertions.getValue() && staticField.getName().equals("$assertionsDisabled")) {
+                ConstantNode trueNode = builder.append(ConstantNode.forBoolean(true));
+                builder.push(trueNode.getKind().getStackKind(), trueNode);
+                return true;
             }
             return false;
         }
@@ -188,7 +195,7 @@ public class PartialEvaluator {
     private class LoopExplosionPlugin implements GraphBuilderPlugins.LoopExplosionPlugin {
 
         public boolean shouldExplodeLoops(ResolvedJavaMethod method) {
-            return method.getAnnotation(ExplodeLoop.class) == null;
+            return method.getAnnotation(ExplodeLoop.class) != null;
         }
 
     }
