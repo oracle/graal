@@ -58,6 +58,7 @@ import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.schedule.*;
+import com.oracle.graal.phases.schedule.SchedulePhase.SchedulingStrategy;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.printer.*;
@@ -298,6 +299,8 @@ public abstract class GraalCompilerTest extends GraalTest {
         NodeMap<Integer> canonicalId = graph.createNodeMap();
         int nextId = 0;
 
+        List<String> constantsLines = new ArrayList<>();
+
         StringBuilder result = new StringBuilder();
         for (Block block : schedule.getCFG().getBlocks()) {
             result.append("Block " + block + " ");
@@ -312,20 +315,36 @@ public abstract class GraalCompilerTest extends GraalTest {
             for (Node node : schedule.getBlockToNodesMap().get(block)) {
                 if (node.isAlive()) {
                     if (!excludeVirtual || !(node instanceof VirtualObjectNode || node instanceof ProxyNode)) {
-                        int id;
-                        if (canonicalId.get(node) != null) {
-                            id = canonicalId.get(node);
+                        if (node instanceof ConstantNode) {
+                            String name = checkConstants ? node.toString(Verbosity.Name) : node.getClass().getSimpleName();
+                            String str = name + (excludeVirtual ? "\n" : "    (" + node.getUsageCount() + ")\n");
+                            constantsLines.add(str);
                         } else {
-                            id = nextId++;
-                            canonicalId.set(node, id);
+                            int id;
+                            if (canonicalId.get(node) != null) {
+                                id = canonicalId.get(node);
+                            } else {
+                                id = nextId++;
+                                canonicalId.set(node, id);
+                            }
+                            String name = node.getClass().getSimpleName();
+                            String str = "  " + id + "|" + name + (excludeVirtual ? "\n" : "    (" + node.getUsageCount() + ")\n");
+                            result.append(str);
                         }
-                        String name = node instanceof ConstantNode && checkConstants ? node.toString(Verbosity.Name) : node.getClass().getSimpleName();
-                        result.append("  " + id + "|" + name + (excludeVirtual ? "\n" : "    (" + node.getUsageCount() + ")\n"));
                     }
                 }
             }
         }
-        return result.toString();
+
+        StringBuilder constantsLinesResult = new StringBuilder();
+        constantsLinesResult.append(constantsLines.size() + " constants:\n");
+        Collections.sort(constantsLines);
+        for (String s : constantsLines) {
+            constantsLinesResult.append(s);
+            constantsLinesResult.append("\n");
+        }
+
+        return constantsLines.toString() + result.toString();
     }
 
     protected Backend getBackend() {
