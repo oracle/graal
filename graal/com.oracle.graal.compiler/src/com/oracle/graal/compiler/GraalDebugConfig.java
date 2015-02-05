@@ -65,16 +65,6 @@ public class GraalDebugConfig implements DebugConfig {
     public static final OptionValue<Boolean> SuppressZeroDebugValues = new OptionValue<>(false);
     @Option(help = "Send Graal IR to dump handlers on error", type = OptionType.Debug)
     public static final OptionValue<Boolean> DumpOnError = new OptionValue<>(false);
-    @Option(help = "Enable expensive assertions", type = OptionType.Debug)
-    public static final OptionValue<Boolean> DetailedAsserts = new StableOptionValue<Boolean>() {
-        @Override
-        protected Boolean initialValue() {
-            boolean enabled = false;
-            // turn detailed assertions on when the general assertions are on (misusing the assert keyword for this)
-            assert (enabled = true) == true;
-            return enabled;
-        }
-    };
     @Option(help = "Enable more verbose log output when available", type = OptionType.Debug)
     public static final OptionValue<Boolean> LogVerbose = new OptionValue<>(false);
     // @formatter:on
