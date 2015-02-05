@@ -33,19 +33,9 @@ import com.oracle.graal.nodes.util.*;
 public class IntegerBelowNode extends CompareNode {
 
     public IntegerBelowNode(ValueNode x, ValueNode y) {
-        super(x, y);
+        super(Condition.BT, false, x, y);
         assert x.stamp() instanceof IntegerStamp;
         assert y.stamp() instanceof IntegerStamp;
-    }
-
-    @Override
-    public Condition condition() {
-        return Condition.BT;
-    }
-
-    @Override
-    public boolean unorderedIsTrue() {
-        return false;
     }
 
     @Override

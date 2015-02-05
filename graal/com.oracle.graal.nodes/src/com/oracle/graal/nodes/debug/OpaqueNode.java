@@ -20,52 +20,52 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.replacements.nodes;
+package com.oracle.graal.nodes.debug;
 
-import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo
-public final class BlackholeNode extends FixedWithNextNode implements LIRLowerable {
+public class OpaqueNode extends FloatingNode implements LIRLowerable {
 
     @Input ValueNode value;
 
-    public BlackholeNode(ValueNode value) {
-        super(StampFactory.forVoid());
+    public OpaqueNode(ValueNode value) {
+        super(value.stamp().unrestricted());
         this.value = value;
     }
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        gen.getLIRGeneratorTool().emitBlackhole(gen.operand(value));
+        gen.setResult(this, gen.operand(value));
     }
 
     @NodeIntrinsic
-    public static native void consume(boolean v);
+    public static native boolean opaque(boolean v);
 
     @NodeIntrinsic
-    public static native void consume(byte v);
+    public static native byte opaque(byte v);
 
     @NodeIntrinsic
-    public static native void consume(short v);
+    public static native short opaque(short v);
 
     @NodeIntrinsic
-    public static native void consume(char v);
+    public static native char opaque(char v);
 
     @NodeIntrinsic
-    public static native void consume(int v);
+    public static native int opaque(int v);
 
     @NodeIntrinsic
-    public static native void consume(long v);
+    public static native long opaque(long v);
 
     @NodeIntrinsic
-    public static native void consume(float v);
+    public static native float opaque(float v);
 
     @NodeIntrinsic
-    public static native void consume(double v);
+    public static native double opaque(double v);
 
     @NodeIntrinsic
-    public static native void consume(Object v);
+    public static native <T> T opaque(T v);
 }

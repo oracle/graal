@@ -30,13 +30,6 @@ import com.oracle.graal.phases.common.*;
 public interface TruffleCache {
 
     /**
-     * Creates the graph for the root method, i.e. {@link OptimizedCallTarget#callBoundary}.
-     */
-    StructuredGraph createRootGraph(String name);
-
-    StructuredGraph createInlineGraph(String name);
-
-    /**
      * Returns a cached graph for a method with given arguments.
      */
     StructuredGraph lookup(final ResolvedJavaMethod method, final NodeInputList<ValueNode> arguments, final CanonicalizerPhase finalCanonicalizer);

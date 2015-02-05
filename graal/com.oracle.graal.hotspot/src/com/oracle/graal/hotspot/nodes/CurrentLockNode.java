@@ -49,7 +49,7 @@ public final class CurrentLockNode extends FixedWithNextNode implements LIRLower
         HotSpotLIRGenerator hsGen = (HotSpotLIRGenerator) gen.getLIRGeneratorTool();
         StackSlotValue slot = hsGen.getLockSlot(lockDepth);
         // The register allocator cannot handle stack -> register moves so we use an LEA here
-        Value result = gen.getLIRGeneratorTool().emitMove(gen.getLIRGeneratorTool().emitAddress(slot));
+        Value result = gen.getLIRGeneratorTool().emitAddress(slot);
         gen.setResult(this, result);
     }
 

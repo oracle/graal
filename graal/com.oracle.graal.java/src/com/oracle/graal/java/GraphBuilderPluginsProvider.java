@@ -30,9 +30,7 @@ import com.oracle.graal.api.runtime.*;
  */
 public interface GraphBuilderPluginsProvider extends Service {
     /**
-     * Registers the plugins provided by this object with a plugins registry.
-     *
-     * @param plugins registry of plugins
+     * Registers the plugins provided by this object.
      */
     void registerPlugins(MetaAccessProvider metaAccess, GraphBuilderPlugins plugins);
 }

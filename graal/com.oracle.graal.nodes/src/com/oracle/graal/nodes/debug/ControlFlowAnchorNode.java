@@ -40,9 +40,16 @@ public class ControlFlowAnchorNode extends FixedWithNextNode implements LIRLower
 
     protected Unique unique;
 
-    public ControlFlowAnchorNode(@SuppressWarnings("unused") Invoke invoke) {
+    public ControlFlowAnchorNode() {
         super(StampFactory.forVoid());
         this.unique = new Unique();
+    }
+
+    /**
+     * Used by MacroSubstitution.
+     */
+    public ControlFlowAnchorNode(@SuppressWarnings("unused") Invoke invoke) {
+        this();
     }
 
     public void generate(NodeLIRBuilderTool generator) {

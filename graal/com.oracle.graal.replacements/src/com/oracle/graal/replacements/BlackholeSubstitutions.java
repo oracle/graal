@@ -23,7 +23,7 @@
 package com.oracle.graal.replacements;
 
 import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.replacements.nodes.*;
+import com.oracle.graal.nodes.debug.*;
 
 /**
  * Substitutions for both the old and new versions of JMH Blackhole helper classes.
