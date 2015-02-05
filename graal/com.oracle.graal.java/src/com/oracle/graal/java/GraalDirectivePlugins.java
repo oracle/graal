@@ -32,40 +32,37 @@ import com.oracle.graal.nodes.extended.*;
 
 public class GraalDirectivePlugins {
 
-    private static ResolvedJavaMethod lookup(MetaAccessProvider metaAccess, String name, Class<?>... parameterTypes) {
-        return Registration.resolve(metaAccess, GraalDirectives.class, name, parameterTypes);
-    }
-
     public static void registerPlugins(MetaAccessProvider metaAccess, GraphBuilderPlugins plugins) {
-        plugins.register(lookup(metaAccess, "deoptimize"), new InvocationPlugin() {
+        Registration r = new Registration(plugins, metaAccess, GraalDirectives.class);
+        r.register0("deoptimize", new InvocationPlugin() {
             public boolean apply(GraphBuilderContext builder) {
                 builder.append(new DeoptimizeNode(DeoptimizationAction.None, DeoptimizationReason.TransferToInterpreter));
                 return true;
             }
         });
 
-        plugins.register(lookup(metaAccess, "deoptimizeAndInvalidate"), new InvocationPlugin() {
+        r.register0("deoptimizeAndInvalidate", new InvocationPlugin() {
             public boolean apply(GraphBuilderContext builder) {
                 builder.append(new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.TransferToInterpreter));
                 return true;
             }
         });
 
-        plugins.register(lookup(metaAccess, "inCompiledCode"), new InvocationPlugin() {
+        r.register0("inCompiledCode", new InvocationPlugin() {
             public boolean apply(GraphBuilderContext builder) {
                 builder.push(Kind.Int, builder.append(ConstantNode.forInt(1)));
                 return true;
             }
         });
 
-        plugins.register(lookup(metaAccess, "controlFlowAnchor"), new InvocationPlugin() {
+        r.register0("controlFlowAnchor", new InvocationPlugin() {
             public boolean apply(GraphBuilderContext builder) {
                 builder.append(new ControlFlowAnchorNode());
                 return true;
             }
         });
 
-        plugins.register(lookup(metaAccess, "injectBranchProbability", double.class, boolean.class), new InvocationPlugin() {
+        r.register2("injectBranchProbability", double.class, boolean.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext builder, ValueNode probability, ValueNode condition) {
                 builder.push(Kind.Int, builder.append(new BranchProbabilityNode(probability, condition)));
                 return true;
@@ -92,10 +89,10 @@ public class GraalDirectivePlugins {
                     cls = kind.toJavaClass();
             }
 
-            plugins.register(lookup(metaAccess, "blackhole", cls), blackholePlugin);
+            r.register1("blackhole", cls, blackholePlugin);
 
             final Kind stackKind = kind.getStackKind();
-            plugins.register(lookup(metaAccess, "opaque", cls), new InvocationPlugin() {
+            r.register1("opaque", cls, new InvocationPlugin() {
                 public boolean apply(GraphBuilderContext builder, ValueNode value) {
                     builder.push(stackKind, builder.append(new OpaqueNode(value)));
                     return true;
