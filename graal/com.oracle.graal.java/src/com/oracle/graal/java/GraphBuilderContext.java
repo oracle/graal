@@ -39,7 +39,7 @@ public interface GraphBuilderContext {
 
     <T extends FixedWithNextNode> T append(T fixed);
 
-    <T extends FloatingNode> T append(T v);
+    <T extends FloatingNode> T append(T value);
 
     StampProvider getStampProvider();
 
@@ -48,4 +48,15 @@ public interface GraphBuilderContext {
     Assumptions getAssumptions();
 
     void push(Kind kind, ValueNode value);
+
+    /**
+     * @see GuardingPiNode#makeNonNull(ValueNode)
+     */
+    static ValueNode makeNonNull(GraphBuilderContext builder, ValueNode value) {
+        ValueNode nonNullValue = GuardingPiNode.makeNonNull(value);
+        if (nonNullValue != value) {
+            builder.append((FixedWithNextNode) nonNullValue);
+        }
+        return nonNullValue;
+    }
 }

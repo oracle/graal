@@ -38,11 +38,15 @@ import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.Graph.Mark;
 import com.oracle.graal.graph.Node.ValueNumberable;
+import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.java.BciBlockMapping.BciBlock;
 import com.oracle.graal.java.BciBlockMapping.ExceptionDispatchBlock;
 import com.oracle.graal.java.BciBlockMapping.LocalLiveness;
-import com.oracle.graal.java.GraphBuilderPlugins.*;
+import com.oracle.graal.java.GraphBuilderPlugins.InlineInvokePlugin;
+import com.oracle.graal.java.GraphBuilderPlugins.InvocationPlugin;
+import com.oracle.graal.java.GraphBuilderPlugins.LoopExplosionPlugin;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.calc.*;
@@ -800,14 +804,8 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 }
 
                 if (graphBuilderPlugins != null) {
-                    InvocationPlugin plugin = graphBuilderPlugins.lookupInvocation(targetMethod);
-                    if (plugin != null) {
-                        int beforeStackSize = frameState.stackSize;
-                        if (plugin.apply(this, args)) {
-                            assert beforeStackSize + resultType.getSlotCount() == frameState.stackSize;
-                            return;
-                        }
-                        assert beforeStackSize == frameState.stackSize;
+                    if (tryUsingInvocationPlugin(args, targetMethod, resultType)) {
+                        return;
                     }
                 }
 
@@ -830,6 +828,36 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     invoke.setNext(beginNode);
                     lastInstr = beginNode;
                 }
+            }
+
+            private boolean tryUsingInvocationPlugin(ValueNode[] args, ResolvedJavaMethod targetMethod, Kind resultType) {
+                InvocationPlugin plugin = graphBuilderPlugins.lookupInvocation(targetMethod);
+                if (plugin != null) {
+                    int beforeStackSize = frameState.stackSize;
+                    boolean needsNullCheck = !targetMethod.isStatic() && !StampTool.isPointerNonNull(args[0].stamp());
+                    int nodeCount = currentGraph.getNodeCount();
+                    Mark mark = needsNullCheck ? currentGraph.getMark() : null;
+                    if (InvocationPlugin.execute(this, plugin, args)) {
+                        assert beforeStackSize + resultType.getSlotCount() == frameState.stackSize : "plugin manipulated the stack incorrectly";
+                        assert !needsNullCheck || containsNullCheckOf(currentGraph.getNewNodes(mark), args[0]) : "plugin needs to null check the receiver of " + targetMethod + ": " + args[0];
+                        return true;
+                    }
+                    assert nodeCount == currentGraph.getNodeCount() : "plugin that returns false must not create new nodes";
+                    assert beforeStackSize == frameState.stackSize : "plugin that returns false must modify the stack";
+                }
+                return false;
+            }
+
+            private boolean containsNullCheckOf(NodeIterable<Node> nodes, Node value) {
+                for (Node n : nodes) {
+                    if (n instanceof GuardingPiNode) {
+                        GuardingPiNode pi = (GuardingPiNode) n;
+                        if (pi.condition() instanceof IsNullNode) {
+                            return ((IsNullNode) pi.condition()).getValue() == value;
+                        }
+                    }
+                }
+                return false;
             }
 
             private void parseAndInlineCallee(ResolvedJavaMethod targetMethod, ValueNode[] args) {
