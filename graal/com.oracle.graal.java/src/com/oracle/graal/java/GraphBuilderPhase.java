@@ -37,8 +37,8 @@ import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.debug.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Graph.Mark;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node.ValueNumberable;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.java.BciBlockMapping.BciBlock;
@@ -1659,6 +1659,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             }
 
             public void push(Kind kind, ValueNode value) {
+                assert kind == kind.getStackKind();
                 frameState.push(kind, value);
             }
 
@@ -1669,6 +1670,11 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     return this.explodeLoopsContext.peek().peelIteration;
                 }
             }
+
+            public ConstantReflectionProvider getConstantReflection() {
+                return constantReflectionProvider;
+            }
+
         }
     }
 }

@@ -22,17 +22,23 @@
  */
 package com.oracle.graal.truffle.substitutions;
 
+import static java.lang.Character.*;
+
 import java.util.concurrent.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.java.GraphBuilderPlugins.InvocationPlugin;
 import com.oracle.graal.java.GraphBuilderPlugins.Registration;
+import com.oracle.graal.java.GraphBuilderPlugins.Registration.Receiver;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.truffle.*;
+import com.oracle.graal.truffle.nodes.*;
 import com.oracle.graal.truffle.nodes.frame.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
@@ -43,14 +49,7 @@ import com.oracle.truffle.api.frame.*;
 public class TruffleGraphBuilderPluginsProvider implements GraphBuilderPluginsProvider {
     public void registerPlugins(MetaAccessProvider metaAccess, GraphBuilderPlugins plugins) {
 
-        Registration r2 = new Registration(plugins, metaAccess, OptimizedCallTarget.class);
-        r2.register2("createFrame", FrameDescriptor.class, Object[].class, new InvocationPlugin() {
-            public boolean apply(GraphBuilderContext builder, ValueNode arg1, ValueNode arg2) {
-                builder.push(Kind.Object, builder.append(new NewFrameNode(StampFactory.exactNonNull(metaAccess.lookupJavaType(FrameWithoutBoxing.class)), arg1, arg2)));
-                return true;
-            }
-        });
-
+        // CompilerDirectives.class
         Registration r = new Registration(plugins, metaAccess, CompilerDirectives.class);
         r.register0("inInterpreter", new InvocationPlugin() {
             public boolean apply(GraphBuilderContext builder) {
@@ -115,5 +114,102 @@ public class TruffleGraphBuilderPluginsProvider implements GraphBuilderPluginsPr
                 return true;
             }
         });
+
+        // OptimizedCallTarget.class
+        r = new Registration(plugins, metaAccess, OptimizedCallTarget.class);
+        r.register2("createFrame", FrameDescriptor.class, Object[].class, new InvocationPlugin() {
+            public boolean apply(GraphBuilderContext builder, ValueNode arg1, ValueNode arg2) {
+                builder.push(Kind.Object, builder.append(new NewFrameNode(StampFactory.exactNonNull(metaAccess.lookupJavaType(FrameWithoutBoxing.class)), arg1, arg2)));
+                return true;
+            }
+        });
+
+        // FrameWithoutBoxing.class
+        r = new Registration(plugins, metaAccess, FrameWithoutBoxing.class);
+        r.register1("materialize", Receiver.class, new InvocationPlugin() {
+            public boolean apply(GraphBuilderContext builder, ValueNode frame) {
+                builder.append(new MaterializeFrameNode(frame));
+                return true;
+            }
+        });
+        r.register4("unsafeCast", Object.class, Class.class, boolean.class, boolean.class, new InvocationPlugin() {
+            public boolean apply(GraphBuilderContext builder, ValueNode object, ValueNode clazz, ValueNode condition, ValueNode nonNull) {
+                if (clazz.isConstant() && nonNull.isConstant()) {
+                    ConstantReflectionProvider constantReflection = builder.getConstantReflection();
+                    ResolvedJavaType javaType = constantReflection.asJavaType(clazz.asConstant());
+                    if (javaType == null) {
+                        builder.push(Kind.Object, object);
+                    } else {
+                        Stamp piStamp = StampFactory.declaredTrusted(javaType, nonNull.asJavaConstant().asInt() != 0);
+                        ConditionAnchorNode valueAnchorNode = builder.append(new ConditionAnchorNode(CompareNode.createCompareNode(object.graph(), Condition.EQ, condition,
+                                        ConstantNode.forBoolean(true, object.graph()))));
+                        PiNode piCast = builder.append(new PiNode(object, piStamp, valueAnchorNode));
+                        builder.push(Kind.Object, piCast);
+                    }
+                    return true;
+                }
+                // TODO: should we throw GraalInternalError.shouldNotReachHere() here?
+                return false;
+            }
+        });
+        for (Kind kind : new Kind[]{Kind.Boolean, Kind.Byte, Kind.Int, Kind.Long, Kind.Float, Kind.Double, Kind.Object}) {
+            String kindName = kind.getJavaName();
+            kindName = toUpperCase(kindName.charAt(0)) + kindName.substring(1);
+            String getName = "unsafeGet" + kindName;
+            String putName = "unsafePut" + kindName;
+            r.register4(getName, Object.class, long.class, boolean.class, Object.class, new CustomizedUnsafeLoadPlugin(kind));
+            r.register4(putName, Object.class, long.class, kind == Kind.Object ? Object.class : kind.toJavaClass(), Object.class, new CustomizedUnsafeStorePlugin(kind));
+        }
+    }
+
+    static class CustomizedUnsafeLoadPlugin implements InvocationPlugin {
+
+        private final Kind returnKind;
+
+        public CustomizedUnsafeLoadPlugin(Kind returnKind) {
+            this.returnKind = returnKind;
+        }
+
+        public boolean apply(GraphBuilderContext builder, ValueNode object, ValueNode offset, ValueNode condition, ValueNode location) {
+            if (location.isConstant()) {
+                LocationIdentity locationIdentity;
+                if (location.isNullConstant()) {
+                    locationIdentity = LocationIdentity.ANY_LOCATION;
+                } else {
+                    locationIdentity = ObjectLocationIdentity.create(location.asJavaConstant());
+                }
+                CompareNode compare = builder.append(CompareNode.createCompareNode(Condition.EQ, condition, ConstantNode.forBoolean(true, object.graph())));
+                builder.push(returnKind.getStackKind(), builder.append(new UnsafeLoadNode(object, offset, returnKind, locationIdentity, compare)));
+                return true;
+            }
+            // TODO: should we throw GraalInternalError.shouldNotReachHere() here?
+            return false;
+        }
+    }
+
+    static class CustomizedUnsafeStorePlugin implements InvocationPlugin {
+
+        private final Kind kind;
+
+        public CustomizedUnsafeStorePlugin(Kind kind) {
+            this.kind = kind;
+        }
+
+        public boolean apply(GraphBuilderContext builder, ValueNode object, ValueNode offset, ValueNode value, ValueNode location) {
+            ValueNode locationArgument = location;
+            if (locationArgument.isConstant()) {
+                LocationIdentity locationIdentity;
+                if (locationArgument.isNullConstant()) {
+                    locationIdentity = LocationIdentity.ANY_LOCATION;
+                } else {
+                    locationIdentity = ObjectLocationIdentity.create(locationArgument.asJavaConstant());
+                }
+
+                builder.append(new UnsafeStoreNode(object, offset, value, kind, locationIdentity, null));
+                return true;
+            }
+            // TODO: should we throw GraalInternalError.shouldNotReachHere() here?
+            return false;
+        }
     }
 }

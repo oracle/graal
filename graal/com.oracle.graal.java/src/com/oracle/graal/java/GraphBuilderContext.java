@@ -47,6 +47,8 @@ public interface GraphBuilderContext {
 
     Assumptions getAssumptions();
 
+    ConstantReflectionProvider getConstantReflection();
+
     void push(Kind kind, ValueNode value);
 
     /**

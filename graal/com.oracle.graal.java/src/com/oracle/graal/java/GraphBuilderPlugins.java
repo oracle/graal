@@ -94,6 +94,13 @@ public interface GraphBuilderPlugins {
         }
 
         /**
+         * @see #execute(GraphBuilderContext, InvocationPlugin, ValueNode[])
+         */
+        default boolean apply(GraphBuilderContext builder, ValueNode arg1, ValueNode arg2, ValueNode arg3, ValueNode arg4) {
+            throw invalidHandler(builder, arg1, arg2, arg3, arg4);
+        }
+
+        /**
          * Executes a given plugin against a set of invocation arguments by dispatching to the
          * plugin's {@code apply(...)} method that matches the number of arguments.
          *
@@ -111,6 +118,8 @@ public interface GraphBuilderPlugins {
                 return plugin.apply(builder, args[0], args[1]);
             } else if (args.length == 3) {
                 return plugin.apply(builder, args[0], args[1], args[2]);
+            } else if (args.length == 4) {
+                return plugin.apply(builder, args[0], args[1], args[2], args[3]);
             } else {
                 throw plugin.invalidHandler(builder, args);
             }
@@ -200,6 +209,17 @@ public interface GraphBuilderPlugins {
         }
 
         /**
+         * Registers a plugin for a method with 4 arguments.
+         *
+         * @param name the name of the method
+         * @param plugin the plugin to be registered
+         */
+        public void register4(String name, Class<?> arg1, Class<?> arg2, Class<?> arg3, Class<?> arg4, InvocationPlugin plugin) {
+            ResolvedJavaMethod method = arg1 == Receiver.class ? resolve(metaAccess, declaringClass, name, arg2, arg3, arg4) : resolve(metaAccess, declaringClass, name, arg1, arg2, arg3, arg4);
+            plugins.register(method, plugin);
+        }
+
+        /**
          * Resolves a method given a declaring class, name and parameter types.
          */
         public static ResolvedJavaMethod resolve(MetaAccessProvider metaAccess, Class<?> declaringClass, String name, Class<?>... parameterTypes) {
@@ -212,11 +232,27 @@ public interface GraphBuilderPlugins {
     }
 
     public static class InvocationPluginChecker {
-        static final Class<?>[] APPLY0 = {GraphBuilderContext.class};
-        static final Class<?>[] APPLY1 = {GraphBuilderContext.class, ValueNode.class};
-        static final Class<?>[] APPLY2 = {GraphBuilderContext.class, ValueNode.class, ValueNode.class};
-        static final Class<?>[] APPLY3 = {GraphBuilderContext.class, ValueNode.class, ValueNode.class, ValueNode.class};
-        static final Class<?>[][] SIGS = {APPLY0, APPLY1, APPLY2, APPLY3};
+        /**
+         * The set of all {@link InvocationPlugin#apply} method signatures.
+         */
+        static final Class<?>[][] SIGS;
+        static {
+            ArrayList<Class<?>[]> sigs = new ArrayList<>(5);
+            for (Method method : InvocationPlugin.class.getDeclaredMethods()) {
+                if (!Modifier.isStatic(method.getModifiers()) && method.getName().equals("apply")) {
+                    Class<?>[] sig = method.getParameterTypes();
+                    assert sig[0] == GraphBuilderContext.class;
+                    assert Arrays.asList(Arrays.copyOfRange(sig, 1, sig.length)).stream().allMatch(c -> c == ValueNode.class);
+                    while (sigs.size() < sig.length) {
+                        sigs.add(null);
+                    }
+                    sigs.set(sig.length - 1, sig);
+                }
+            }
+            assert sigs.indexOf(null) == -1 : format("need to add an apply() method to %s that takes %d %s arguments ", InvocationPlugin.class.getName(), sigs.indexOf(null),
+                            ValueNode.class.getSimpleName());
+            SIGS = sigs.toArray(new Class<?>[sigs.size()][]);
+        }
 
         public static boolean check(ResolvedJavaMethod method, InvocationPlugin plugin) {
             int arguments = method.getSignature().getParameterCount(!method.isStatic());
