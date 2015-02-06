@@ -46,6 +46,7 @@ import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.constopt.*;
 import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.lir.gen.*;
+import com.oracle.graal.lir.phases.*;
 import com.oracle.graal.lir.stackslotalloc.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
@@ -386,7 +387,8 @@ public class GraalCompiler {
         }
 
         try (Scope s = Debug.scope("LowTier")) {
-            EdgeMoveOptimizer.optimize(lirGenRes);
+            LowLevelLowTierPhase.Context c = new LowLevelLowTierPhase.Context();
+            new EdgeMoveOptimizer().apply(target, lirGenRes, c);
             ControlFlowOptimizer.optimize(lir, codeEmittingOrder);
             if (lirGen.canEliminateRedundantMoves()) {
                 RedundantMoveElimination.optimize(lirGenRes);
