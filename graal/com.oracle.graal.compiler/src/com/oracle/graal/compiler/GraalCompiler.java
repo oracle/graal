@@ -336,42 +336,46 @@ public class GraalCompiler {
                 throw Debug.handle(e);
             }
 
-            if (ConstantLoadOptimization.Options.ConstantLoadOptimization.getValue()) {
-                try (Scope s = Debug.scope("ConstantLoadOptimization", lir)) {
-                    ConstantLoadOptimization.optimize(lirGenRes.getLIR(), lirGen);
-                    Debug.dump(lir, "After constant load optimization");
+            try (Scope s0 = Debug.scope("HighTier")) {
+                if (ConstantLoadOptimization.Options.ConstantLoadOptimization.getValue()) {
+                    try (Scope s = Debug.scope("ConstantLoadOptimization", lir)) {
+                        ConstantLoadOptimization.optimize(lirGenRes.getLIR(), lirGen);
+                        Debug.dump(lir, "After constant load optimization");
+                    } catch (Throwable e) {
+                        throw Debug.handle(e);
+                    }
+                }
+            }
+
+            try (Scope s0 = Debug.scope("MidTier")) {
+                try (Scope s = Debug.scope("Allocator", nodeLirGen)) {
+                    if (backend.shouldAllocateRegisters()) {
+                        LinearScan.allocate(target, lirGenRes);
+                    }
                 } catch (Throwable e) {
                     throw Debug.handle(e);
                 }
-            }
 
-            try (Scope s = Debug.scope("Allocator", nodeLirGen)) {
-                if (backend.shouldAllocateRegisters()) {
-                    LinearScan.allocate(target, lirGenRes);
+                try (Scope s1 = Debug.scope("BuildFrameMap")) {
+                    // build frame map
+                    final StackSlotAllocator allocator;
+                    if (LSStackSlotAllocator.Options.LSStackSlotAllocation.getValue()) {
+                        allocator = new LSStackSlotAllocator();
+                    } else {
+                        allocator = new SimpleStackSlotAllocator();
+                    }
+                    lirGenRes.buildFrameMap(allocator);
+                    Debug.dump(lir, "After FrameMap building");
                 }
-            } catch (Throwable e) {
-                throw Debug.handle(e);
-            }
-
-            try (Scope s1 = Debug.scope("BuildFrameMap")) {
-                // build frame map
-                final StackSlotAllocator allocator;
-                if (LSStackSlotAllocator.Options.LSStackSlotAllocation.getValue()) {
-                    allocator = new LSStackSlotAllocator();
-                } else {
-                    allocator = new SimpleStackSlotAllocator();
-                }
-                lirGenRes.buildFrameMap(allocator);
-                Debug.dump(lir, "After FrameMap building");
-            }
-            try (Scope s1 = Debug.scope("MarkLocations")) {
-                if (backend.shouldAllocateRegisters()) {
-                    // currently we mark locations only if we do register allocation
-                    LocationMarker.markLocations(lirGenRes);
+                try (Scope s1 = Debug.scope("MarkLocations")) {
+                    if (backend.shouldAllocateRegisters()) {
+                        // currently we mark locations only if we do register allocation
+                        LocationMarker.markLocations(lirGenRes);
+                    }
                 }
             }
 
-            try (Scope s = Debug.scope("ControlFlowOptimizations")) {
+            try (Scope s = Debug.scope("LowTier")) {
                 EdgeMoveOptimizer.optimize(lirGenRes);
                 ControlFlowOptimizer.optimize(lir, codeEmittingOrder);
                 if (lirGen.canEliminateRedundantMoves()) {
@@ -380,9 +384,8 @@ public class GraalCompiler {
                 NullCheckOptimizer.optimize(target, lirGenRes);
 
                 Debug.dump(lir, "After control flow optimization");
-            } catch (Throwable e) {
-                throw Debug.handle(e);
             }
+
             return lirGenRes;
         } catch (Throwable e) {
             throw Debug.handle(e);
