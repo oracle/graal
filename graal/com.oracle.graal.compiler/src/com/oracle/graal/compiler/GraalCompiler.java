@@ -391,7 +391,7 @@ public class GraalCompiler {
             new EdgeMoveOptimizer().apply(target, lirGenRes, c);
             ControlFlowOptimizer.optimize(lir, codeEmittingOrder);
             if (lirGen.canEliminateRedundantMoves()) {
-                RedundantMoveElimination.optimize(lirGenRes);
+                new RedundantMoveElimination().apply(target, lirGenRes, c);
             }
             NullCheckOptimizer.optimize(target, lirGenRes);
 
