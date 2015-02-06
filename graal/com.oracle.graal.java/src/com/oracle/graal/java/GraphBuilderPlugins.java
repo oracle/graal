@@ -66,52 +66,53 @@ public interface GraphBuilderPlugins {
      */
     public interface InvocationPlugin extends GraphBuilderPlugin {
         /**
-         * Tries to handle an invocation to a method with no arguments.
-         *
-         * @return {@code true} this plugin handled the invocation
+         * @see #execute(GraphBuilderContext, InvocationPlugin, ValueNode[])
          */
         default boolean apply(GraphBuilderContext builder) {
             throw invalidHandler(builder);
         }
 
         /**
-         * Tries to handle an invocation to a method with one argument.
-         *
-         * @return {@code true} this plugin handled the invocation
+         * @see #execute(GraphBuilderContext, InvocationPlugin, ValueNode[])
          */
         default boolean apply(GraphBuilderContext builder, ValueNode arg) {
             throw invalidHandler(builder, arg);
         }
 
         /**
-         * Tries to handle an invocation to a method with two arguments.
-         *
-         * @return {@code true} this plugin handled the invocation
+         * @see #execute(GraphBuilderContext, InvocationPlugin, ValueNode[])
          */
         default boolean apply(GraphBuilderContext builder, ValueNode arg1, ValueNode arg2) {
             throw invalidHandler(builder, arg1, arg2);
         }
 
         /**
-         * Tries to handle an invocation to a method with three arguments.
-         *
-         * @return {@code true} this plugin handled the invocation
+         * @see #execute(GraphBuilderContext, InvocationPlugin, ValueNode[])
          */
         default boolean apply(GraphBuilderContext builder, ValueNode arg1, ValueNode arg2, ValueNode arg3) {
             throw invalidHandler(builder, arg1, arg2, arg3);
         }
 
-        default boolean apply(GraphBuilderContext builder, ValueNode[] args) {
+        /**
+         * Executes a given plugin against a set of invocation arguments by dispatching to the
+         * plugin's {@code apply(...)} method that matches the number of arguments.
+         *
+         * @return {@code true} if the plugin handled the invocation, {@code false} if the graph
+         *         builder should process the invoke further (e.g., by inlining it or creating an
+         *         {@link Invoke} node). A plugin that does not handle an invocation must not modify
+         *         the graph being constructed.
+         */
+        static boolean execute(GraphBuilderContext builder, InvocationPlugin plugin, ValueNode[] args) {
             if (args.length == 0) {
-                return apply(builder);
+                return plugin.apply(builder);
             } else if (args.length == 1) {
-                return apply(builder, args[0]);
+                return plugin.apply(builder, args[0]);
             } else if (args.length == 2) {
-                return apply(builder, args[0], args[1]);
+                return plugin.apply(builder, args[0], args[1]);
             } else if (args.length == 3) {
-                return apply(builder, args[0], args[1], args[2]);
+                return plugin.apply(builder, args[0], args[1], args[2]);
             } else {
-                throw invalidHandler(builder, args);
+                throw plugin.invalidHandler(builder, args);
             }
         }
 

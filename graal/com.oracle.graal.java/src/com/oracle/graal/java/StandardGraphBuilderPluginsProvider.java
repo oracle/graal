@@ -22,21 +22,16 @@
  */
 package com.oracle.graal.java;
 
-import static com.oracle.graal.api.meta.DeoptimizationAction.*;
-import static com.oracle.graal.api.meta.DeoptimizationReason.*;
-import static com.oracle.graal.compiler.common.type.StampFactory.*;
+import static com.oracle.graal.java.GraphBuilderContext.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.runtime.*;
-import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.java.GraphBuilderPlugins.InvocationPlugin;
 import com.oracle.graal.java.GraphBuilderPlugins.Registration;
 import com.oracle.graal.java.GraphBuilderPlugins.Registration.Receiver;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.nodes.type.*;
 
 /**
  * Provider of non-runtime specific {@link GraphBuilderPlugin}s.
@@ -93,14 +88,7 @@ public class StandardGraphBuilderPluginsProvider implements GraphBuilderPluginsP
         }
 
         public boolean apply(GraphBuilderContext builder, ValueNode value) {
-            ValueNode nonNullValue = value;
-            ObjectStamp receiverStamp = (ObjectStamp) value.stamp();
-            if (!StampTool.isPointerNonNull(receiverStamp)) {
-                IsNullNode condition = builder.append(new IsNullNode(value));
-                Stamp stamp = receiverStamp.join(objectNonNull());
-                nonNullValue = builder.append(new GuardingPiNode(value, condition, true, NullCheckException, InvalidateReprofile, stamp));
-            }
-            builder.push(kind.getStackKind(), builder.append(new UnboxNode(nonNullValue, kind)));
+            builder.push(kind.getStackKind(), builder.append(new UnboxNode(makeNonNull(builder, value), kind)));
             return true;
         }
 

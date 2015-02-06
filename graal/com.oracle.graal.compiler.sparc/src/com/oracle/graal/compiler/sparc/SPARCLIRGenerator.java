@@ -278,11 +278,9 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
             JavaConstant c = asConstant(value);
             if (c.isNull() || SPARCAssembler.isSimm11(c)) {
                 return value;
-            } else {
-                return load(c);
             }
         }
-        return emitMove(value);
+        return load(value);
     }
 
     @Override
@@ -417,7 +415,8 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     protected void emitTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, Value key) {
         // Making a copy of the switch value is necessary because jump table destroys the input
         // value
-        Variable tmp = emitMove(key);
+        Variable tmp = newVariable(key.getLIRKind());
+        emitMove(tmp, key);
         append(new TableSwitchOp(lowKey, defaultTarget, targets, tmp, newVariable(LIRKind.value(target().wordKind))));
     }
 

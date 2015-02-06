@@ -76,8 +76,6 @@ public class SPARCHotSpotNodeLIRBuilder extends SPARCNodeLIRBuilder implements H
         Value offset = operand(x.offset());
         Variable cmpValue = (Variable) gen.loadNonConst(operand(x.expectedValue()));
         Variable newValue = gen.load(operand(x.newValue()));
-        Variable newValueTemp = gen.newVariable(newValue.getLIRKind());
-        getGen().emitMove(newValueTemp, newValue);
         LIRKind kind = cmpValue.getLIRKind();
         assert kind.equals(newValue.getLIRKind());
 
@@ -92,8 +90,9 @@ public class SPARCHotSpotNodeLIRBuilder extends SPARCNodeLIRBuilder implements H
             }
         }
 
-        append(new CompareAndSwapOp(address, cmpValue, newValueTemp));
-        setResult(x, gen.emitMove(newValueTemp));
+        Variable result = gen.newVariable(newValue.getLIRKind());
+        append(new CompareAndSwapOp(result, address, cmpValue, newValue));
+        setResult(x, result);
     }
 
     @Override
