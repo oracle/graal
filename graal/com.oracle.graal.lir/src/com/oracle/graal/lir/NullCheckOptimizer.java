@@ -29,16 +29,15 @@ import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.lir.StandardOp.ImplicitNullCheck;
 import com.oracle.graal.lir.StandardOp.NullCheck;
 import com.oracle.graal.lir.gen.*;
+import com.oracle.graal.lir.phases.*;
 
-public final class NullCheckOptimizer {
+public final class NullCheckOptimizer extends LowLevelLowTierPhase {
 
-    public static void optimize(TargetDescription target, LIRGenerationResult lirGenRes) {
+    @Override
+    protected void run(TargetDescription target, LIRGenerationResult lirGenRes) {
         LIR ir = lirGenRes.getLIR();
         List<? extends AbstractBlock<?>> blocks = ir.codeEmittingOrder();
         NullCheckOptimizer.foldNullChecks(ir, blocks, target.implicitNullCheckLimit);
-    }
-
-    private NullCheckOptimizer() {
     }
 
     private static void foldNullChecks(LIR ir, List<? extends AbstractBlock<?>> blocks, int implicitNullCheckLimit) {
@@ -66,4 +65,5 @@ public final class NullCheckOptimizer {
             }
         }
     }
+
 }

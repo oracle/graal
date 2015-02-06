@@ -393,7 +393,7 @@ public class GraalCompiler {
             if (lirGen.canEliminateRedundantMoves()) {
                 new RedundantMoveElimination().apply(target, lirGenRes, c);
             }
-            NullCheckOptimizer.optimize(target, lirGenRes);
+            new NullCheckOptimizer().apply(target, lirGenRes, c);
 
             Debug.dump(lir, "After control flow optimization");
         }
