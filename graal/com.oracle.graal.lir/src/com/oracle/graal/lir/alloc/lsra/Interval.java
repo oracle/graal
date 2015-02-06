@@ -20,10 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.alloc;
+package com.oracle.graal.lir.alloc.lsra;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
-import static com.oracle.graal.compiler.GraalDebugConfig.*;
+import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.lir.LIRValueUtil.*;
 
 import java.util.*;
@@ -31,9 +31,9 @@ import java.util.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.compiler.common.util.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.phases.util.*;
 
 /**
  * Represents an interval in the {@linkplain LinearScan linear scan register allocator}.
