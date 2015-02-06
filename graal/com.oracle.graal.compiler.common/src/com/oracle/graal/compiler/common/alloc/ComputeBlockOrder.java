@@ -21,7 +21,7 @@
  * questions.
  */
 
-package com.oracle.graal.alloc;
+package com.oracle.graal.compiler.common.alloc;
 
 import java.util.*;
 

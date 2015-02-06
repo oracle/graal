@@ -20,18 +20,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.alloc;
+package com.oracle.graal.lir.alloc.lsra;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.alloc.Interval.RegisterBinding;
-import com.oracle.graal.compiler.alloc.Interval.RegisterBindingLists;
-import com.oracle.graal.compiler.alloc.Interval.State;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
+import com.oracle.graal.lir.alloc.lsra.Interval.*;
 import com.oracle.graal.options.*;
 
 public class OptimizingLinearScanWalker extends LinearScanWalker {
