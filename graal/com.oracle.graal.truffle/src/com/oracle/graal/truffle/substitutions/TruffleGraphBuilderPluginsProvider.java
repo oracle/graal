@@ -26,7 +26,6 @@ import java.util.concurrent.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.java.GraphBuilderPlugins.InvocationPlugin;
@@ -41,7 +40,6 @@ import com.oracle.truffle.api.frame.*;
 /**
  * Provider of {@link GraphBuilderPlugin}s for Truffle classes.
  */
-@ServiceProvider(GraphBuilderPluginsProvider.class)
 public class TruffleGraphBuilderPluginsProvider implements GraphBuilderPluginsProvider {
     public void registerPlugins(MetaAccessProvider metaAccess, GraphBuilderPlugins plugins) {
 
@@ -56,13 +54,13 @@ public class TruffleGraphBuilderPluginsProvider implements GraphBuilderPluginsPr
         Registration r = new Registration(plugins, metaAccess, CompilerDirectives.class);
         r.register0("inInterpreter", new InvocationPlugin() {
             public boolean apply(GraphBuilderContext builder) {
-                builder.push(Kind.Boolean, builder.append(ConstantNode.forBoolean(false)));
+                builder.push(Kind.Boolean.getStackKind(), builder.append(ConstantNode.forBoolean(false)));
                 return true;
             }
         });
         r.register0("inCompiledCode", new InvocationPlugin() {
             public boolean apply(GraphBuilderContext builder) {
-                builder.push(Kind.Boolean, builder.append(ConstantNode.forBoolean(true)));
+                builder.push(Kind.Boolean.getStackKind(), builder.append(ConstantNode.forBoolean(true)));
                 return true;
             }
         });
@@ -105,7 +103,7 @@ public class TruffleGraphBuilderPluginsProvider implements GraphBuilderPluginsPr
         r.register1("isCompilationConstant", Object.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext builder, ValueNode value) {
                 if ((value instanceof BoxNode ? ((BoxNode) value).getValue() : value).isConstant()) {
-                    builder.push(Kind.Boolean, builder.append(ConstantNode.forBoolean(true)));
+                    builder.push(Kind.Boolean.getStackKind(), builder.append(ConstantNode.forBoolean(true)));
                     return true;
                 }
                 return false;
