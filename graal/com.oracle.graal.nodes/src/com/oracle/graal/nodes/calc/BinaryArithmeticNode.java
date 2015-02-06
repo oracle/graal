@@ -61,11 +61,19 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
-        if (forX.isConstant() && forY.isConstant()) {
-            Constant ret = getOp(forX, forY).foldConstant(forX.asConstant(), forY.asConstant());
-            return ConstantNode.forPrimitive(stamp(), ret);
+        ValueNode result = tryConstantFold(getOp(forX, forY), forX, forY, stamp());
+        if (result != null) {
+            return result;
         }
         return this;
+    }
+
+    public static <OP> ConstantNode tryConstantFold(BinaryOp<OP> op, ValueNode forX, ValueNode forY, Stamp stamp) {
+        if (forX.isConstant() && forY.isConstant()) {
+            Constant ret = op.foldConstant(forX.asConstant(), forY.asConstant());
+            return ConstantNode.forPrimitive(stamp, ret);
+        }
+        return null;
     }
 
     @Override

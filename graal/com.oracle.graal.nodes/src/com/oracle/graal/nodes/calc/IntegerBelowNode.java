@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes.calc;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.spi.*;
@@ -38,12 +39,33 @@ public class IntegerBelowNode extends CompareNode {
         assert y.stamp() instanceof IntegerStamp;
     }
 
+    public static LogicNode create(ValueNode x, ValueNode y, ConstantReflectionProvider constantReflection) {
+        LogicNode result = CompareNode.tryConstantFold(Condition.BT, x, y, constantReflection, false);
+        if (result != null) {
+            return result;
+        } else {
+            result = findSynonym(x, y);
+            if (result != null) {
+                return result;
+            }
+            return new IntegerBelowNode(x, y);
+        }
+    }
+
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
         ValueNode result = super.canonical(tool, forX, forY);
         if (result != this) {
             return result;
         }
+        LogicNode synonym = findSynonym(forX, forY);
+        if (synonym != null) {
+            return synonym;
+        }
+        return this;
+    }
+
+    private static LogicNode findSynonym(ValueNode forX, ValueNode forY) {
         if (GraphUtil.unproxify(forX) == GraphUtil.unproxify(forY)) {
             return LogicConstantNode.contradiction();
         } else if (forX.stamp() instanceof IntegerStamp && forY.stamp() instanceof IntegerStamp) {
@@ -61,7 +83,7 @@ public class IntegerBelowNode extends CompareNode {
             // 0 |<| y is the same as 0 != y
             return new LogicNegationNode(CompareNode.createCompareNode(Condition.EQ, forX, forY));
         }
-        return this;
+        return null;
     }
 
     @Override

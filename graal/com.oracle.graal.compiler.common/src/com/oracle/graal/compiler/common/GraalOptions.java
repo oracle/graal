@@ -343,6 +343,9 @@ public final class GraalOptions {
     public static final OptionValue<Boolean> ImplicitStableValues = new OptionValue<>(true);
 
 
+    @Option(help = "Max number of loop explosions per method.", type = OptionType.Debug)
+    public static final OptionValue<Integer> MaximumLoopExplosionCount = new OptionValue<>(10000);
+
     /**
      * Counts the various paths taken through snippets.
      */

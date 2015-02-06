@@ -48,6 +48,14 @@ public class LoadIndexedNode extends AccessIndexedNode implements Virtualizable,
         this(createStamp(array, elementKind), array, index, elementKind);
     }
 
+    public static ValueNode create(ValueNode array, ValueNode index, Kind elementKind, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection) {
+        ValueNode constant = tryConstantFold(array, index, metaAccess, constantReflection);
+        if (constant != null) {
+            return constant;
+        }
+        return new LoadIndexedNode(array, index, elementKind);
+    }
+
     protected LoadIndexedNode(Stamp stamp, ValueNode array, ValueNode index, Kind elementKind) {
         super(stamp, array, index, elementKind);
     }
@@ -79,15 +87,23 @@ public class LoadIndexedNode extends AccessIndexedNode implements Virtualizable,
     }
 
     public Node canonical(CanonicalizerTool tool) {
-        if (array().isConstant() && !array().isNullConstant() && index().isConstant()) {
-            JavaConstant arrayConstant = array().asJavaConstant();
+        ValueNode constant = tryConstantFold(array(), index(), tool.getMetaAccess(), tool.getConstantReflection());
+        if (constant != null) {
+            return constant;
+        }
+        return this;
+    }
+
+    private static ValueNode tryConstantFold(ValueNode array, ValueNode index, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection) {
+        if (array.isConstant() && !array.isNullConstant() && index.isConstant()) {
+            JavaConstant arrayConstant = array.asJavaConstant();
             if (arrayConstant != null) {
-                JavaConstant constant = tool.getConstantReflection().readConstantArrayElement(arrayConstant, index().asJavaConstant().asInt());
+                JavaConstant constant = constantReflection.readConstantArrayElement(arrayConstant, index.asJavaConstant().asInt());
                 if (constant != null) {
-                    return ConstantNode.forConstant(constant, tool.getMetaAccess());
+                    return ConstantNode.forConstant(constant, metaAccess);
                 }
             }
         }
-        return this;
+        return null;
     }
 }
