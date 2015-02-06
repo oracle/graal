@@ -23,15 +23,16 @@
 package com.oracle.graal.lir.phases;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.lir.gen.*;
 
-public abstract class LowLevelLowTierPhase extends LowLevelPhase<LowLevelLowTierPhase.Context> {
+public abstract class LowLevelLowTierPhase<B extends AbstractBlock<B>> extends LowLevelPhase<LowLevelLowTierPhase.Context<B>> {
 
-    public static final class Context {
+    public static final class Context<B extends AbstractBlock<B>> {
     }
 
     @Override
-    protected void run(TargetDescription target, LIRGenerationResult lirGenRes, Context context) {
+    protected void run(TargetDescription target, LIRGenerationResult lirGenRes, Context<B> context) {
         run(target, lirGenRes);
     }
 

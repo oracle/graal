@@ -387,13 +387,13 @@ public class GraalCompiler {
         }
 
         try (Scope s = Debug.scope("LowTier")) {
-            LowLevelLowTierPhase.Context c = new LowLevelLowTierPhase.Context();
-            new EdgeMoveOptimizer().apply(target, lirGenRes, c);
+            LowLevelLowTierPhase.Context<T> c = new LowLevelLowTierPhase.Context<>();
+            new EdgeMoveOptimizer<T>().apply(target, lirGenRes, c);
             ControlFlowOptimizer.optimize(lir, codeEmittingOrder);
             if (lirGen.canEliminateRedundantMoves()) {
-                new RedundantMoveElimination().apply(target, lirGenRes, c);
+                new RedundantMoveElimination<T>().apply(target, lirGenRes, c);
             }
-            new NullCheckOptimizer().apply(target, lirGenRes, c);
+            new NullCheckOptimizer<T>().apply(target, lirGenRes, c);
 
             Debug.dump(lir, "After control flow optimization");
         }
