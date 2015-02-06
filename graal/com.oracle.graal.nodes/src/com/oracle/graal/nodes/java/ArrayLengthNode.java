@@ -52,7 +52,7 @@ public final class ArrayLengthNode extends FixedWithNextNode implements Canonica
     }
 
     public static ValueNode create(ValueNode forValue, ConstantReflectionProvider constantReflection) {
-        ValueNode length = readArrayLength(forValue, constantReflection);
+        ValueNode length = readArrayLengthConstant(forValue, constantReflection);
         if (length != null) {
             return length;
         }
@@ -101,6 +101,10 @@ public final class ArrayLengthNode extends FixedWithNextNode implements Canonica
             // Ensure that any proxies on the original value end up on the length value
             return reproxyValue(originalArray, length);
         }
+        return readArrayLengthConstant(originalArray, constantReflection);
+    }
+
+    private static ValueNode readArrayLengthConstant(ValueNode originalArray, ConstantReflectionProvider constantReflection) {
         ValueNode array = GraphUtil.unproxify(originalArray);
         if (constantReflection != null && array.isConstant() && !array.isNullConstant()) {
             JavaConstant constantValue = array.asJavaConstant();
