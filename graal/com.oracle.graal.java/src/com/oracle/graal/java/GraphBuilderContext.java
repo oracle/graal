@@ -50,10 +50,10 @@ public interface GraphBuilderContext {
     void push(Kind kind, ValueNode value);
 
     /**
-     * @see GuardingPiNode#makeNonNull(ValueNode)
+     * @see GuardingPiNode#nullCheckedValue(ValueNode)
      */
-    static ValueNode makeNonNull(GraphBuilderContext builder, ValueNode value) {
-        ValueNode nonNullValue = GuardingPiNode.makeNonNull(value);
+    static ValueNode nullCheckedValue(GraphBuilderContext builder, ValueNode value) {
+        ValueNode nonNullValue = GuardingPiNode.nullCheckedValue(value);
         if (nonNullValue != value) {
             builder.append((FixedWithNextNode) nonNullValue);
         }

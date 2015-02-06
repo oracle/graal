@@ -50,7 +50,7 @@ public class HotSpotGraphBuilderPluginsProvider implements GraphBuilderPluginsPr
                     mirror = builder.append(ConstantNode.forConstant(objectStamp.type().getJavaClass(), metaAccess));
                 } else {
                     StampProvider stampProvider = builder.getStampProvider();
-                    LoadHubNode hub = builder.append(new LoadHubNode(stampProvider, makeNonNull(builder, rcvr)));
+                    LoadHubNode hub = builder.append(new LoadHubNode(stampProvider, nullCheckedValue(builder, rcvr)));
                     mirror = builder.append(new HubGetClassNode(builder.getMetaAccess(), hub));
                 }
                 builder.push(Kind.Object, mirror);

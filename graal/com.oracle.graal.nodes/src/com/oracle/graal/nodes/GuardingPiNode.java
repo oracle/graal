@@ -74,7 +74,7 @@ public final class GuardingPiNode extends FixedWithNextNode implements Lowerable
      * non-null}. If {@code value} already has such a stamp, then it is returned. Otherwise a fixed
      * node guarding {@code value} is returned where the guard performs a null check.
      */
-    public static ValueNode makeNonNull(ValueNode value) {
+    public static ValueNode nullCheckedValue(ValueNode value) {
         ObjectStamp receiverStamp = (ObjectStamp) value.stamp();
         if (!StampTool.isPointerNonNull(receiverStamp)) {
             IsNullNode condition = value.graph().unique(new IsNullNode(value));
