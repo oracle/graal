@@ -1470,7 +1470,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     lastInstr = loopBegin;
 
                     // Create phi functions for all local variables and operand stack slots.
-                    frameState.insertLoopPhis(loopBegin);
+                    frameState.insertLoopPhis(liveness, block.loopId, loopBegin);
                     loopBegin.setStateAfter(frameState.create(block.startBci));
 
                     /*
