@@ -364,7 +364,7 @@ public class GraalCompiler {
             LowLevelMidTierPhase.Context<T> c = new LowLevelMidTierPhase.Context<>(codeEmittingOrder, linearScanOrder);
             try (Scope s = Debug.scope("Allocator")) {
                 if (backend.shouldAllocateRegisters()) {
-                    LinearScan.allocate(target, lirGenRes);
+                    new LinearScanPhase<T>().apply(target, lirGenRes, c);
                 }
             }
 
