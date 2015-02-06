@@ -46,8 +46,8 @@ import com.oracle.truffle.api.frame.*;
 /**
  * Provider of {@link GraphBuilderPlugin}s for Truffle classes.
  */
-public class TruffleGraphBuilderPluginsProvider implements GraphBuilderPluginsProvider {
-    public void registerPlugins(MetaAccessProvider metaAccess, GraphBuilderPlugins plugins) {
+public class TruffleGraphBuilderPlugins {
+    public static void registerPlugins(MetaAccessProvider metaAccess, GraphBuilderPlugins plugins) {
 
         // CompilerDirectives.class
         Registration r = new Registration(plugins, metaAccess, CompilerDirectives.class);

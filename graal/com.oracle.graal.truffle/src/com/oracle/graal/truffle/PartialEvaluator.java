@@ -218,7 +218,7 @@ public class PartialEvaluator {
         for (GraphBuilderPluginsProvider p : sl) {
             p.registerPlugins(providers.getMetaAccess(), plugins);
         }
-        new TruffleGraphBuilderPluginsProvider().registerPlugins(providers.getMetaAccess(), plugins);
+        TruffleGraphBuilderPlugins.registerPlugins(providers.getMetaAccess(), plugins);
         new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), new Assumptions(false), providers.getConstantReflection(), newConfig, plugins,
                         TruffleCompilerImpl.Optimizations).apply(graph);
         Debug.dump(graph, "After FastPE");
