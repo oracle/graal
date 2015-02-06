@@ -26,6 +26,7 @@ import java.util.*;
 
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.lir.StandardOp.MoveOp;
+import com.oracle.graal.lir.gen.*;
 
 /**
  * This class optimizes moves, particularly those that result from eliminating SSA form.
@@ -50,7 +51,8 @@ public final class EdgeMoveOptimizer {
     /**
      * Optimizes moves on block edges.
      */
-    public static void optimize(LIR ir) {
+    public static void optimize(LIRGenerationResult lirGenRes) {
+        LIR ir = lirGenRes.getLIR();
         EdgeMoveOptimizer optimizer = new EdgeMoveOptimizer(ir);
 
         List<? extends AbstractBlock<?>> blockList = ir.linearScanOrder();

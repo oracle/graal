@@ -163,7 +163,7 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, Baseli
                 try (Scope s1 = Debug.scope("MarkLocations")) {
                     if (backend.shouldAllocateRegisters()) {
                         // currently we mark locations only if we do register allocation
-                        LocationMarker.markLocations(lir, lirGenRes.getFrameMap());
+                        LocationMarker.markLocations(lirGenRes);
                     }
                 }
 

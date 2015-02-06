@@ -34,6 +34,7 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.framemap.*;
+import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.options.*;
 
 public final class LocationMarker {
@@ -49,8 +50,8 @@ public final class LocationMarker {
      * Mark all live references for a frame state. The frame state use this information to build the
      * OOP maps.
      */
-    public static void markLocations(LIR lir, FrameMap frameMap) {
-        new LocationMarker(lir, frameMap).build();
+    public static void markLocations(LIRGenerationResult lirGenRes) {
+        new LocationMarker(lirGenRes.getLIR(), lirGenRes.getFrameMap()).build();
     }
 
     private final LIR lir;
@@ -218,4 +219,5 @@ public final class LocationMarker {
     private RegisterAttributes attributes(Register reg) {
         return registerAttributes[reg.number];
     }
+
 }
