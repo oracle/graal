@@ -26,11 +26,11 @@ import static com.oracle.graal.compiler.common.GraalOptions.*;
 
 import java.util.*;
 
-import com.oracle.graal.alloc.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.alloc.*;
 import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.compiler.common.alloc.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.compiler.gen.*;

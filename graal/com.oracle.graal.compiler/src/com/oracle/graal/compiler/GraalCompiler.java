@@ -29,13 +29,13 @@ import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionalit
 
 import java.util.*;
 
-import com.oracle.graal.alloc.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CompilationResult.ConstantReference;
 import com.oracle.graal.api.code.CompilationResult.DataPatch;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.ProfilingInfo.TriState;
 import com.oracle.graal.compiler.alloc.*;
+import com.oracle.graal.compiler.common.alloc.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
