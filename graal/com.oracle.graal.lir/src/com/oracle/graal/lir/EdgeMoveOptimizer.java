@@ -51,7 +51,7 @@ import com.oracle.graal.lir.phases.*;
 public final class EdgeMoveOptimizer<B extends AbstractBlock<B>> extends LowLevelLowTierPhase<B> {
 
     @Override
-    protected void run(TargetDescription target, LIRGenerationResult lirGenRes) {
+    protected void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder) {
         LIR ir = lirGenRes.getLIR();
         Optimizer optimizer = new Optimizer(ir);
 

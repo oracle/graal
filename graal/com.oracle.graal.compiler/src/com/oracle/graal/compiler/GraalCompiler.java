@@ -347,8 +347,8 @@ public class GraalCompiler {
         }
     }
 
-    public static <T extends AbstractBlock<T>> LIRGenerationResult emitLowLevel(Backend backend, TargetDescription target, LIR lir, List<T> codeEmittingOrder,
-                    @SuppressWarnings("unused") List<T> linearScanOrder, LIRGenerationResult lirGenRes, LIRGeneratorTool lirGen) {
+    public static <T extends AbstractBlock<T>> LIRGenerationResult emitLowLevel(Backend backend, TargetDescription target, LIR lir, List<T> codeEmittingOrder, List<T> linearScanOrder,
+                    LIRGenerationResult lirGenRes, LIRGeneratorTool lirGen) {
         try (Scope s0 = Debug.scope("HighTier")) {
             if (ConstantLoadOptimization.Options.ConstantLoadOptimization.getValue()) {
                 try (Scope s = Debug.scope("ConstantLoadOptimization", lir)) {
@@ -387,9 +387,10 @@ public class GraalCompiler {
         }
 
         try (Scope s = Debug.scope("LowTier")) {
-            LowLevelLowTierPhase.Context<T> c = new LowLevelLowTierPhase.Context<>();
+            LowLevelLowTierPhase.Context<T> c = new LowLevelLowTierPhase.Context<>(codeEmittingOrder, linearScanOrder);
             new EdgeMoveOptimizer<T>().apply(target, lirGenRes, c);
-            ControlFlowOptimizer.optimize(lir, codeEmittingOrder);
+            new ControlFlowOptimizer<T>().apply(target, lirGenRes, c);
+
             if (lirGen.canEliminateRedundantMoves()) {
                 new RedundantMoveElimination<T>().apply(target, lirGenRes, c);
             }

@@ -44,7 +44,7 @@ import com.oracle.graal.lir.phases.*;
 public final class RedundantMoveElimination<B extends AbstractBlock<B>> extends LowLevelLowTierPhase<B> {
 
     @Override
-    protected void run(TargetDescription target, LIRGenerationResult lirGenRes) {
+    protected void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder) {
         Optimization redundantMoveElimination = new Optimization();
         redundantMoveElimination.doOptimize(lirGenRes.getLIR(), lirGenRes.getFrameMap());
     }
