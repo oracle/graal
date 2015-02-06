@@ -274,7 +274,7 @@ public class HIRFrameStateBuilder extends AbstractFrameStateBuilder<ValueNode, H
 
     public void insertLoopPhis(LocalLiveness liveness, int loopId, LoopBeginNode loopBegin) {
         for (int i = 0; i < localsSize(); i++) {
-            if (liveness.localIsChangedInLoop(loopId, i)) {
+            if (loopBegin.graph().isOSR() || liveness.localIsChangedInLoop(loopId, i)) {
                 storeLocal(i, createLoopPhi(loopBegin, localAt(i)));
             }
         }
