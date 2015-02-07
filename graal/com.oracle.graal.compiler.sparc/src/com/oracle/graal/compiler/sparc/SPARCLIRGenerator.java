@@ -123,7 +123,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
         long finalDisp = displacement;
         if (isConstant(base)) {
             if (asConstant(base).isNull()) {
-                baseRegister = SPARC.g0.asValue();
+                baseRegister = SPARC.g0.asValue(base.getLIRKind());
             } else if (asConstant(base).getKind() != Kind.Object) {
                 finalDisp += asConstant(base).asLong();
                 baseRegister = Value.ILLEGAL;
