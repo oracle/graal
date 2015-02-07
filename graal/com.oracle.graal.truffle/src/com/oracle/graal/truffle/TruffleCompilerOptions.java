@@ -44,6 +44,9 @@ public class TruffleCompilerOptions {
     @Option(help = "Restrict compilation to comma-separated list of includes (or excludes prefixed with tilde)", type = OptionType.Debug)
     public static final OptionValue<String> TruffleCompileOnly = new OptionValue<>(null);
 
+    @Option(help = "Exclude assertion code from Truffle compilations", type = OptionType.Debug)
+    public static final StableOptionValue<Boolean> TruffleExcludeAssertions = new StableOptionValue<>(true);
+
     @Option(help = "Compile call target when call count exceeds this threshold", type = OptionType.User)
     public static final OptionValue<Integer> TruffleCompilationThreshold = new OptionValue<>(1000);
 

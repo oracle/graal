@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,17 +20,38 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.java;
+package com.oracle.graal.lir.debug;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.runtime.*;
+import com.oracle.graal.debug.*;
+import com.oracle.graal.lir.*;
 
 /**
- * Interface for providers of {@link GraphBuilderPlugin}s.
+ * Provides information about {@link LIR} generation for debugging purposes.
  */
-public interface GraphBuilderPluginsProvider extends Service {
+public interface LIRGenerationDebugContext {
+
     /**
-     * Registers the plugins provided by this object.
+     * Gets an object that represents the source of an {@link LIR} {@link Value operand} in a higher
+     * representation.
      */
-    void registerPlugins(MetaAccessProvider metaAccess, GraphBuilderPlugins plugins);
+    Object getSourceForOperand(Value value);
+
+    static LIRGenerationDebugContext getFromDebugContext() {
+        if (Debug.isEnabled()) {
+            LIRGenerationDebugContext lirGen = Debug.contextLookup(LIRGenerationDebugContext.class);
+            assert lirGen != null;
+            return lirGen;
+        }
+        return null;
+    }
+
+    static Object getSourceForOperandFromDebugContext(Value value) {
+        LIRGenerationDebugContext gen = getFromDebugContext();
+        if (gen != null) {
+            return gen.getSourceForOperand(value);
+        }
+        return null;
+    }
+
 }

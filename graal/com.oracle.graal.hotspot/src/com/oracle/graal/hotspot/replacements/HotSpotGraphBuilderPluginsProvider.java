@@ -22,9 +22,15 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
+import static com.oracle.graal.java.GraphBuilderContext.*;
+
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.runtime.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.java.*;
+import com.oracle.graal.java.GraphBuilderPlugins.InvocationPlugin;
+import com.oracle.graal.java.GraphBuilderPlugins.Registration;
+import com.oracle.graal.java.GraphBuilderPlugins.Registration.Receiver;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
@@ -35,28 +41,21 @@ import com.oracle.graal.nodes.spi.*;
 @ServiceProvider(GraphBuilderPluginsProvider.class)
 public class HotSpotGraphBuilderPluginsProvider implements GraphBuilderPluginsProvider {
     public void registerPlugins(MetaAccessProvider metaAccess, GraphBuilderPlugins plugins) {
-        plugins.register(metaAccess, ObjectPlugin.class);
-    }
-
-    /**
-     * HotSpot specific plugins for {@link Object}.
-     */
-    enum ObjectPlugin implements GraphBuilderPlugin {
-        getClass() {
-            public boolean handleInvocation(GraphBuilderContext builder, ValueNode[] args) {
-                assert args.length == 1;
-                ValueNode rcvr = args[0];
-                GuardingPiNode pi = builder.append(new GuardingPiNode(rcvr));
-                StampProvider stampProvider = builder.getStampProvider();
-                LoadHubNode hub = builder.append(new LoadHubNode(stampProvider, pi));
-                HubGetClassNode mirror = builder.append(new HubGetClassNode(builder.getMetaAccess(), hub));
+        Registration r = new Registration(plugins, metaAccess, Object.class);
+        r.register1("getClass", Receiver.class, new InvocationPlugin() {
+            public boolean apply(GraphBuilderContext builder, ValueNode rcvr) {
+                ObjectStamp objectStamp = (ObjectStamp) rcvr.stamp();
+                ValueNode mirror;
+                if (objectStamp.isExactType() && objectStamp.nonNull()) {
+                    mirror = builder.append(ConstantNode.forConstant(objectStamp.type().getJavaClass(), metaAccess));
+                } else {
+                    StampProvider stampProvider = builder.getStampProvider();
+                    LoadHubNode hub = builder.append(new LoadHubNode(stampProvider, nullCheckedValue(builder, rcvr)));
+                    mirror = builder.append(new HubGetClassNode(builder.getMetaAccess(), hub));
+                }
                 builder.push(Kind.Object, mirror);
                 return true;
             }
-        };
-
-        public ResolvedJavaMethod getInvocationTarget(MetaAccessProvider metaAccess) {
-            return GraphBuilderPlugin.resolveTarget(metaAccess, Object.class, name());
-        }
+        });
     }
 }

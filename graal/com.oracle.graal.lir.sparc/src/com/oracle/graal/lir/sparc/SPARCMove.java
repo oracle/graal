@@ -436,12 +436,13 @@ public class SPARCMove {
     @Opcode("CAS")
     public static class CompareAndSwapOp extends SPARCLIRInstruction {
 
-        // @Def protected AllocatableValue result;
-        @Use protected AllocatableValue address;
-        @Use protected AllocatableValue cmpValue;
-        @Use protected AllocatableValue newValue;
+        @Def({REG, HINT}) protected AllocatableValue result;
+        @Alive({REG}) protected AllocatableValue address;
+        @Alive({REG}) protected AllocatableValue cmpValue;
+        @Use({REG}) protected AllocatableValue newValue;
 
-        public CompareAndSwapOp(AllocatableValue address, AllocatableValue cmpValue, AllocatableValue newValue) {
+        public CompareAndSwapOp(AllocatableValue result, AllocatableValue address, AllocatableValue cmpValue, AllocatableValue newValue) {
+            this.result = result;
             this.address = address;
             this.cmpValue = cmpValue;
             this.newValue = newValue;
@@ -449,7 +450,8 @@ public class SPARCMove {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-            compareAndSwap(masm, address, cmpValue, newValue);
+            move(crb, masm, result, newValue, delayedControlTransfer);
+            compareAndSwap(masm, address, cmpValue, result);
         }
     }
 

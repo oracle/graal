@@ -20,12 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.alloc;
+package com.oracle.graal.lir.alloc.lsra;
 
-import com.oracle.graal.compiler.alloc.Interval.RegisterBinding;
-import com.oracle.graal.compiler.alloc.Interval.RegisterBindingLists;
-import com.oracle.graal.compiler.alloc.Interval.State;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.lir.alloc.lsra.Interval.*;
 
 /**
  */

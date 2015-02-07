@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,18 +24,32 @@ package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo(shortName = "==")
-public class ObjectEqualsNode extends PointerEqualsNode implements Virtualizable {
+public final class ObjectEqualsNode extends PointerEqualsNode implements Virtualizable {
 
     public ObjectEqualsNode(ValueNode x, ValueNode y) {
         super(x, y);
         assert x.stamp() instanceof AbstractObjectStamp;
         assert y.stamp() instanceof AbstractObjectStamp;
+    }
+
+    public static LogicNode create(ValueNode x, ValueNode y, ConstantReflectionProvider constantReflection) {
+        LogicNode result = CompareNode.tryConstantFold(Condition.EQ, x, y, constantReflection, false);
+        if (result != null) {
+            return result;
+        } else {
+            result = findSynonym(x, y);
+            if (result != null) {
+                return result;
+            }
+            return new ObjectEqualsNode(x, y);
+        }
     }
 
     private void virtualizeNonVirtualComparison(State state, ValueNode other, VirtualizerTool tool) {

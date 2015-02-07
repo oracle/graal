@@ -55,6 +55,10 @@ public abstract class CallTargetNode extends ValueNode implements LIRLowerable {
         public boolean isIndirect() {
             return !direct;
         }
+
+        public boolean isInterface() {
+            return this == InvokeKind.Interface;
+        }
     }
 
     @Input protected NodeInputList<ValueNode> arguments;

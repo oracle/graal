@@ -343,9 +343,23 @@ public final class GraalOptions {
     public static final OptionValue<Boolean> ImplicitStableValues = new OptionValue<>(true);
 
 
+    @Option(help = "Max number of loop explosions per method.", type = OptionType.Debug)
+    public static final OptionValue<Integer> MaximumLoopExplosionCount = new OptionValue<>(10000);
+
     /**
      * Counts the various paths taken through snippets.
      */
     @Option(help = "", type = OptionType.Debug)
     public static final OptionValue<Boolean> SnippetCounters = new OptionValue<>(false);
+
+    @Option(help = "Enable expensive assertions", type = OptionType.Debug)
+    public static final OptionValue<Boolean> DetailedAsserts = new StableOptionValue<Boolean>() {
+        @Override
+        protected Boolean initialValue() {
+            boolean enabled = false;
+            // turn detailed assertions on when the general assertions are on (misusing the assert keyword for this)
+            assert (enabled = true) == true;
+            return enabled;
+        }
+    };
 }

@@ -177,7 +177,8 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
         Suites suites = suitesProvider.createSuites();
         removeInliningPhase(suites);
         StructuredGraph graph = new StructuredGraph(javaMethod);
-        new GraphBuilderPhase.Instance(metaAccess, providers.getStampProvider(), new Assumptions(false), GraphBuilderConfiguration.getEagerDefault(), OptimisticOptimizations.ALL).apply(graph);
+        new GraphBuilderPhase.Instance(metaAccess, providers.getStampProvider(), new Assumptions(false), providers.getConstantReflection(), GraphBuilderConfiguration.getEagerDefault(),
+                        OptimisticOptimizations.ALL).apply(graph);
         PhaseSuite<HighTierContext> graphBuilderSuite = getGraphBuilderSuite(suitesProvider);
         CallingConvention cc = getCallingConvention(providers.getCodeCache(), Type.JavaCallee, graph.method(), false);
         Backend backend = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend();

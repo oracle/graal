@@ -39,6 +39,17 @@ public class AddNode extends BinaryArithmeticNode<Add> implements NarrowableArit
         super(ArithmeticOpTable::getAdd, x, y);
     }
 
+    public static ValueNode create(ValueNode x, ValueNode y) {
+        BinaryOp<Add> op = ArithmeticOpTable.forStamp(x.stamp()).getAdd();
+        Stamp stamp = op.foldStamp(x.stamp(), y.stamp());
+        ConstantNode tryConstantFold = tryConstantFold(op, x, y, stamp);
+        if (tryConstantFold != null) {
+            return tryConstantFold;
+        } else {
+            return new AddNode(x, y);
+        }
+    }
+
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
         ValueNode ret = super.canonical(tool, forX, forY);

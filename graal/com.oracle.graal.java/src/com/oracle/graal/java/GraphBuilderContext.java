@@ -39,7 +39,7 @@ public interface GraphBuilderContext {
 
     <T extends FixedWithNextNode> T append(T fixed);
 
-    <T extends FloatingNode> T append(T v);
+    <T extends FloatingNode> T append(T value);
 
     StampProvider getStampProvider();
 
@@ -47,5 +47,18 @@ public interface GraphBuilderContext {
 
     Assumptions getAssumptions();
 
+    ConstantReflectionProvider getConstantReflection();
+
     void push(Kind kind, ValueNode value);
+
+    /**
+     * @see GuardingPiNode#nullCheckedValue(ValueNode)
+     */
+    static ValueNode nullCheckedValue(GraphBuilderContext builder, ValueNode value) {
+        ValueNode nonNullValue = GuardingPiNode.nullCheckedValue(value);
+        if (nonNullValue != value) {
+            builder.append((FixedWithNextNode) nonNullValue);
+        }
+        return nonNullValue;
+    }
 }

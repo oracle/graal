@@ -37,11 +37,16 @@ import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.graph.Graph.Mark;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node.ValueNumberable;
+import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.java.BciBlockMapping.BciBlock;
 import com.oracle.graal.java.BciBlockMapping.ExceptionDispatchBlock;
 import com.oracle.graal.java.BciBlockMapping.LocalLiveness;
+import com.oracle.graal.java.GraphBuilderPlugins.InlineInvokePlugin;
+import com.oracle.graal.java.GraphBuilderPlugins.InvocationPlugin;
+import com.oracle.graal.java.GraphBuilderPlugins.LoopExplosionPlugin;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.calc.*;
@@ -62,13 +67,18 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
     private final GraphBuilderPlugins graphBuilderPlugins;
 
     public GraphBuilderPhase(GraphBuilderConfiguration config) {
+        this(config, new DefaultGraphBuilderPlugins());
+    }
+
+    public GraphBuilderPhase(GraphBuilderConfiguration config, GraphBuilderPlugins graphBuilderPlugins) {
         this.graphBuilderConfig = config;
-        this.graphBuilderPlugins = new GraphBuilderPlugins();
+        this.graphBuilderPlugins = graphBuilderPlugins;
     }
 
     @Override
     protected void run(StructuredGraph graph, HighTierContext context) {
-        new Instance(context.getMetaAccess(), context.getStampProvider(), context.getAssumptions(), graphBuilderConfig, graphBuilderPlugins, context.getOptimisticOptimizations()).run(graph);
+        new Instance(context.getMetaAccess(), context.getStampProvider(), context.getAssumptions(), context.getConstantReflection(), graphBuilderConfig, graphBuilderPlugins,
+                        context.getOptimisticOptimizations()).run(graph);
     }
 
     public GraphBuilderConfiguration getGraphBuilderConfig() {
@@ -92,6 +102,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
         private final OptimisticOptimizations optimisticOpts;
         private final StampProvider stampProvider;
         private final Assumptions assumptions;
+        private final ConstantReflectionProvider constantReflection;
 
         /**
          * Gets the graph being processed by this builder.
@@ -100,19 +111,21 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             return currentGraph;
         }
 
-        public Instance(MetaAccessProvider metaAccess, StampProvider stampProvider, Assumptions assumptions, GraphBuilderConfiguration graphBuilderConfig, GraphBuilderPlugins graphBuilderPlugins,
-                        OptimisticOptimizations optimisticOpts) {
+        public Instance(MetaAccessProvider metaAccess, StampProvider stampProvider, Assumptions assumptions, ConstantReflectionProvider constantReflection,
+                        GraphBuilderConfiguration graphBuilderConfig, GraphBuilderPlugins graphBuilderPlugins, OptimisticOptimizations optimisticOpts) {
             this.graphBuilderConfig = graphBuilderConfig;
             this.optimisticOpts = optimisticOpts;
             this.metaAccess = metaAccess;
             this.stampProvider = stampProvider;
             this.assumptions = assumptions;
             this.graphBuilderPlugins = graphBuilderPlugins;
+            this.constantReflection = constantReflection;
             assert metaAccess != null;
         }
 
-        public Instance(MetaAccessProvider metaAccess, StampProvider stampProvider, Assumptions assumptions, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts) {
-            this(metaAccess, stampProvider, assumptions, graphBuilderConfig, null, optimisticOpts);
+        public Instance(MetaAccessProvider metaAccess, StampProvider stampProvider, Assumptions assumptions, ConstantReflectionProvider constantReflection,
+                        GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts) {
+            this(metaAccess, stampProvider, assumptions, constantReflection, graphBuilderConfig, null, optimisticOpts);
         }
 
         @Override
@@ -123,7 +136,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             assert method.getCode() != null : "method must contain bytecodes: " + method;
             this.currentGraph = graph;
             HIRFrameStateBuilder frameState = new HIRFrameStateBuilder(method, graph, null);
-            frameState.initializeForMethodStart(graphBuilderConfig.eagerResolving());
+            frameState.initializeForMethodStart(graphBuilderConfig.eagerResolving(), this.graphBuilderConfig.getParameterPlugin());
             TTY.Filter filter = new TTY.Filter(PrintFilter.getValue(), method);
             try {
                 BytecodeParser parser = new BytecodeParser(metaAccess, method, graphBuilderConfig, optimisticOpts, entryBCI);
@@ -161,6 +174,12 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             }
         }
 
+        private static class ExplodedLoopContext {
+            private BciBlock header;
+            private int targetPeelIteration;
+            private int peelIteration;
+        }
+
         public class BytecodeParser extends AbstractBytecodeParser<ValueNode, HIRFrameStateBuilder> implements GraphBuilderContext {
 
             private BciBlock[] loopHeaders;
@@ -182,6 +201,9 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             private FixedWithNextNode beforeUnwindNode;
 
             private FixedWithNextNode lastInstr;                 // the last instruction added
+            private final boolean explodeLoops;
+            private Stack<ExplodedLoopContext> explodeLoopsContext;
+            private int nextPeelIteration = 1;
 
             public BytecodeParser(MetaAccessProvider metaAccess, ResolvedJavaMethod method, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, int entryBCI) {
                 super(metaAccess, method, graphBuilderConfig, optimisticOpts);
@@ -190,6 +212,13 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 if (graphBuilderConfig.insertNonSafepointDebugInfo()) {
                     lnt = method.getLineNumberTable();
                     previousLineNumber = -1;
+                }
+
+                LoopExplosionPlugin loopExplosionPlugin = graphBuilderConfig.getLoopExplosionPlugin();
+                if (loopExplosionPlugin != null) {
+                    explodeLoops = loopExplosionPlugin.shouldExplodeLoops(method);
+                } else {
+                    explodeLoops = false;
                 }
             }
 
@@ -219,7 +248,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 try (Indent indent = Debug.logAndIndent("build graph for %s", method)) {
 
                     // compute the block map, setup exception handlers and get the entrypoint(s)
-                    BciBlockMapping blockMap = BciBlockMapping.create(method, graphBuilderConfig.doLivenessAnalysis());
+                    BciBlockMapping blockMap = BciBlockMapping.create(method, graphBuilderConfig.doLivenessAnalysis(), explodeLoops);
                     loopHeaders = blockMap.getLoopHeaders();
                     liveness = blockMap.liveness;
 
@@ -251,15 +280,18 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     }
 
                     currentBlock = blockMap.startBlock;
-                    blockMap.startBlock.entryState = frameState;
-                    if (blockMap.startBlock.isLoopHeader) {
+                    blockMap.startBlock.setEntryState(0, frameState);
+                    if (blockMap.startBlock.isLoopHeader && !explodeLoops) {
                         appendGoto(createTarget(blockMap.startBlock, frameState));
                     } else {
-                        blockMap.startBlock.firstInstruction = lastInstr;
+                        blockMap.startBlock.setFirstInstruction(0, lastInstr);
                     }
 
-                    for (BciBlock block : blockMap.getBlocks()) {
-                        processBlock(this, block);
+                    int index = 0;
+                    BciBlock[] blocks = blockMap.getBlocks();
+                    while (index < blocks.length) {
+                        BciBlock block = blocks[index];
+                        index = iterateBlock(blocks, block);
                     }
                     processBlock(this, returnBlock);
                     processBlock(this, unwindBlock);
@@ -267,6 +299,50 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     Debug.dump(currentGraph, "After bytecode parsing");
 
                 }
+            }
+
+            private int iterateBlock(BciBlock[] blocks, BciBlock block) {
+                if (block.isLoopHeader && this.explodeLoops) {
+                    return iterateExplodedLoopHeader(blocks, block);
+                } else {
+                    processBlock(this, block);
+                    return block.getId() + 1;
+                }
+            }
+
+            private int iterateExplodedLoopHeader(BciBlock[] blocks, BciBlock header) {
+                if (explodeLoopsContext == null) {
+                    explodeLoopsContext = new Stack<>();
+                }
+
+                ExplodedLoopContext context = new ExplodedLoopContext();
+                context.header = header;
+                context.peelIteration = this.getCurrentDimension();
+                context.targetPeelIteration = -1;
+                explodeLoopsContext.push(context);
+                Debug.dump(currentGraph, "before loop explosion " + context.peelIteration);
+
+                while (true) {
+
+                    processBlock(this, header);
+                    for (int j = header.getId() + 1; j <= header.loopEnd; ++j) {
+                        BciBlock block = blocks[j];
+                        iterateBlock(blocks, block);
+                    }
+
+                    if (context.targetPeelIteration != -1) {
+                        // We were reaching the backedge during explosion. Explode further.
+                        Debug.dump(currentGraph, "Before loop explosion " + context.targetPeelIteration);
+                        context.peelIteration = context.targetPeelIteration;
+                        context.targetPeelIteration = -1;
+                    } else {
+                        // We did not reach the backedge. Exit.
+                        Debug.dump(currentGraph, "after loop explosion " + context.peelIteration);
+                        break;
+                    }
+                }
+                explodeLoopsContext.pop();
+                return header.loopEnd + 1;
             }
 
             private BciBlock returnBlock(int bci) {
@@ -431,7 +507,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             @Override
             protected ValueNode genLoadIndexed(ValueNode array, ValueNode index, Kind kind) {
-                return new LoadIndexedNode(array, index, kind);
+                return LoadIndexedNode.create(array, index, kind, metaAccess, constantReflection);
             }
 
             @Override
@@ -441,7 +517,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             @Override
             protected ValueNode genIntegerAdd(Kind kind, ValueNode x, ValueNode y) {
-                return new AddNode(x, y);
+                return AddNode.create(x, y);
             }
 
             @Override
@@ -557,17 +633,17 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             @Override
             protected ValueNode genObjectEquals(ValueNode x, ValueNode y) {
-                return new ObjectEqualsNode(x, y);
+                return ObjectEqualsNode.create(x, y, constantReflection);
             }
 
             @Override
             protected ValueNode genIntegerEquals(ValueNode x, ValueNode y) {
-                return new IntegerEqualsNode(x, y);
+                return IntegerEqualsNode.create(x, y, constantReflection);
             }
 
             @Override
             protected ValueNode genIntegerLessThan(ValueNode x, ValueNode y) {
-                return new IntegerLessThanNode(x, y);
+                return IntegerLessThanNode.create(x, y, constantReflection);
             }
 
             @Override
@@ -639,7 +715,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             protected void emitBoundsCheck(ValueNode index, ValueNode length) {
                 AbstractBeginNode trueSucc = currentGraph.add(new BeginNode());
                 BytecodeExceptionNode exception = currentGraph.add(new BytecodeExceptionNode(metaAccess, ArrayIndexOutOfBoundsException.class, index));
-                append(new IfNode(currentGraph.unique(new IntegerBelowNode(index, length)), trueSucc, exception, 0.99));
+                append(new IfNode(currentGraph.unique(IntegerBelowNode.create(index, length, constantReflection)), trueSucc, exception, 0.99));
                 lastInstr = trueSucc;
 
                 exception.setStateAfter(frameState.create(bci()));
@@ -648,7 +724,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             @Override
             protected ValueNode genArrayLength(ValueNode x) {
-                return new ArrayLengthNode(x);
+                return ArrayLengthNode.create(x, constantReflection);
             }
 
             @Override
@@ -751,7 +827,18 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 }
             }
 
-            private void appendInvoke(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args) {
+            private void appendInvoke(InvokeKind initialInvokeKind, ResolvedJavaMethod initialTargetMethod, ValueNode[] args) {
+                ResolvedJavaMethod targetMethod = initialTargetMethod;
+                InvokeKind invokeKind = initialInvokeKind;
+                if (initialInvokeKind.isIndirect()) {
+                    ResolvedJavaType contextType = this.frameState.method.getDeclaringClass();
+                    ResolvedJavaMethod specialCallTarget = MethodCallTargetNode.findSpecialCallTarget(initialInvokeKind, args[0], initialTargetMethod, assumptions, contextType);
+                    if (specialCallTarget != null) {
+                        invokeKind = InvokeKind.Special;
+                        targetMethod = specialCallTarget;
+                    }
+                }
+
                 Kind resultType = targetMethod.getSignature().getReturnKind();
                 if (DeoptALot.getValue()) {
                     append(new DeoptimizeNode(DeoptimizationAction.None, RuntimeConstraint));
@@ -770,54 +857,18 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                         args[0] = TypeProfileProxyNode.proxify(args[0], profile);
                     }
                 }
-                if (GraalOptions.InlineDuringParsing.getValue() && invokeKind.isDirect()) {
 
-                    if (graphBuilderPlugins != null) {
-                        GraphBuilderPlugin plugin = graphBuilderPlugins.getPlugin(targetMethod);
-                        if (plugin != null) {
-                            int beforeStackSize = frameState.stackSize;
-                            if (plugin.handleInvocation(this, args)) {
-                                // System.out.println("used plugin: " + plugin);
-                                assert beforeStackSize + resultType.getSlotCount() == frameState.stackSize;
-                                return;
-                            }
-                            assert beforeStackSize == frameState.stackSize;
-                        }
+                if (graphBuilderPlugins != null) {
+                    if (tryUsingInvocationPlugin(args, targetMethod, resultType)) {
+                        return;
                     }
+                }
 
-                    if (targetMethod.canBeInlined() && targetMethod.hasBytecodes()) {
-                        if (targetMethod.getCode().length <= GraalOptions.TrivialInliningSize.getValue() && currentDepth < GraalOptions.InlineDuringParsingMaxDepth.getValue() &&
-                                        graphBuilderConfig.shouldInlineTrivial()) {
-                            BytecodeParser parser = new BytecodeParser(metaAccess, targetMethod, graphBuilderConfig, optimisticOpts, StructuredGraph.INVOCATION_ENTRY_BCI);
-                            final FrameState[] lazyFrameState = new FrameState[1];
-                            HIRFrameStateBuilder startFrameState = new HIRFrameStateBuilder(targetMethod, currentGraph, () -> {
-                                if (lazyFrameState[0] == null) {
-                                    lazyFrameState[0] = frameState.create(bci());
-                                }
-                                return lazyFrameState[0];
-                            });
-                            startFrameState.initializeFromArgumentsArray(args);
-                            parser.build(currentDepth + 1, this.lastInstr, startFrameState);
-
-                            FixedWithNextNode calleeBeforeReturnNode = parser.getBeforeReturnNode();
-                            this.lastInstr = calleeBeforeReturnNode;
-                            if (calleeBeforeReturnNode != null) {
-                                ValueNode calleeReturnValue = parser.getReturnValue();
-                                if (calleeReturnValue != null) {
-                                    frameState.push(calleeReturnValue.getKind().getStackKind(), calleeReturnValue);
-                                }
-                            }
-
-                            FixedWithNextNode calleeBeforeUnwindNode = parser.getBeforeUnwindNode();
-                            if (calleeBeforeUnwindNode != null) {
-                                ValueNode calleeUnwindValue = parser.getUnwindValue();
-                                assert calleeUnwindValue != null;
-                                calleeBeforeUnwindNode.setNext(handleException(calleeUnwindValue, bci()));
-                            }
-
-                            return;
-                        }
-                    }
+                InlineInvokePlugin inlineInvokePlugin = graphBuilderConfig.getInlineInvokePlugin();
+                if (inlineInvokePlugin != null && invokeKind.isDirect() && targetMethod.canBeInlined() && targetMethod.hasBytecodes() &&
+                                inlineInvokePlugin.shouldInlineInvoke(targetMethod, currentDepth)) {
+                    parseAndInlineCallee(targetMethod, args);
+                    return;
                 }
 
                 MethodCallTargetNode callTarget = currentGraph.add(createMethodCallTarget(invokeKind, targetMethod, args, returnType));
@@ -831,6 +882,65 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     AbstractBeginNode beginNode = currentGraph.add(new KillingBeginNode(LocationIdentity.ANY_LOCATION));
                     invoke.setNext(beginNode);
                     lastInstr = beginNode;
+                }
+            }
+
+            private boolean tryUsingInvocationPlugin(ValueNode[] args, ResolvedJavaMethod targetMethod, Kind resultType) {
+                InvocationPlugin plugin = graphBuilderPlugins.lookupInvocation(targetMethod);
+                if (plugin != null) {
+                    int beforeStackSize = frameState.stackSize;
+                    boolean needsNullCheck = !targetMethod.isStatic() && !StampTool.isPointerNonNull(args[0].stamp());
+                    int nodeCount = currentGraph.getNodeCount();
+                    Mark mark = needsNullCheck ? currentGraph.getMark() : null;
+                    if (InvocationPlugin.execute(this, plugin, args)) {
+                        assert beforeStackSize + resultType.getSlotCount() == frameState.stackSize : "plugin manipulated the stack incorrectly";
+                        assert !needsNullCheck || containsNullCheckOf(currentGraph.getNewNodes(mark), args[0]) : "plugin needs to null check the receiver of " + targetMethod + ": " + args[0];
+                        return true;
+                    }
+                    assert nodeCount == currentGraph.getNodeCount() : "plugin that returns false must not create new nodes";
+                    assert beforeStackSize == frameState.stackSize : "plugin that returns false must modify the stack";
+                }
+                return false;
+            }
+
+            private boolean containsNullCheckOf(NodeIterable<Node> nodes, Node value) {
+                for (Node n : nodes) {
+                    if (n instanceof GuardingPiNode) {
+                        GuardingPiNode pi = (GuardingPiNode) n;
+                        if (pi.condition() instanceof IsNullNode) {
+                            return ((IsNullNode) pi.condition()).getValue() == value;
+                        }
+                    }
+                }
+                return false;
+            }
+
+            private void parseAndInlineCallee(ResolvedJavaMethod targetMethod, ValueNode[] args) {
+                BytecodeParser parser = new BytecodeParser(metaAccess, targetMethod, graphBuilderConfig, optimisticOpts, StructuredGraph.INVOCATION_ENTRY_BCI);
+                final FrameState[] lazyFrameState = new FrameState[1];
+                HIRFrameStateBuilder startFrameState = new HIRFrameStateBuilder(targetMethod, currentGraph, () -> {
+                    if (lazyFrameState[0] == null) {
+                        lazyFrameState[0] = frameState.create(bci());
+                    }
+                    return lazyFrameState[0];
+                });
+                startFrameState.initializeFromArgumentsArray(args);
+                parser.build(currentDepth + 1, this.lastInstr, startFrameState);
+
+                FixedWithNextNode calleeBeforeReturnNode = parser.getBeforeReturnNode();
+                this.lastInstr = calleeBeforeReturnNode;
+                if (calleeBeforeReturnNode != null) {
+                    ValueNode calleeReturnValue = parser.getReturnValue();
+                    if (calleeReturnValue != null) {
+                        frameState.push(calleeReturnValue.getKind().getStackKind(), calleeReturnValue);
+                    }
+                }
+
+                FixedWithNextNode calleeBeforeUnwindNode = parser.getBeforeUnwindNode();
+                if (calleeBeforeUnwindNode != null) {
+                    ValueNode calleeUnwindValue = parser.getUnwindValue();
+                    assert calleeUnwindValue != null;
+                    calleeBeforeUnwindNode.setNext(handleException(calleeUnwindValue, bci()));
                 }
             }
 
@@ -922,7 +1032,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 JsrScope scope = currentBlock.getJsrScope();
                 int retAddress = scope.nextReturnAddress();
                 ConstantNode returnBciNode = getJsrConstant(retAddress);
-                LogicNode guard = new IntegerEqualsNode(local, returnBciNode);
+                LogicNode guard = IntegerEqualsNode.create(local, returnBciNode, constantReflection);
                 guard = currentGraph.unique(guard);
                 append(new FixedGuardNode(guard, JavaSubroutineMismatch, InvalidateReprofile));
                 if (!successor.getJsrScope().equals(scope.pop())) {
@@ -998,13 +1108,12 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             }
 
             public <T extends FloatingNode> T append(T v) {
-                assert !(v instanceof ConstantNode);
                 T added = currentGraph.unique(v);
                 return added;
             }
 
             private Target checkLoopExit(FixedNode target, BciBlock targetBlock, HIRFrameStateBuilder state) {
-                if (currentBlock != null) {
+                if (currentBlock != null && !explodeLoops) {
                     long exits = currentBlock.loops & ~targetBlock.loops;
                     if (exits != 0) {
                         LoopExitNode firstLoopExit = null;
@@ -1035,7 +1144,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                         }
                         HIRFrameStateBuilder newState = state.copy();
                         for (BciBlock loop : exitLoops) {
-                            LoopBeginNode loopBegin = (LoopBeginNode) loop.firstInstruction;
+                            LoopBeginNode loopBegin = (LoopBeginNode) loop.getFirstInstruction(this.getCurrentDimension());
                             LoopExitNode loopExit = currentGraph.add(new LoopExitNode(loopBegin));
                             if (lastLoopExit != null) {
                                 lastLoopExit.setNext(loopExit);
@@ -1045,7 +1154,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                             }
                             lastLoopExit = loopExit;
                             Debug.log("Target %s (%s) Exits %s, scanning framestates...", targetBlock, target, loop);
-                            newState.insertLoopProxies(loopExit, (HIRFrameStateBuilder) loop.entryState);
+                            newState.insertLoopProxies(loopExit, (HIRFrameStateBuilder) loop.getEntryState(this.getCurrentDimension()));
                             loopExit.setStateAfter(newState.create(bci));
                         }
 
@@ -1070,53 +1179,88 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 assert block != null && state != null;
                 assert !block.isExceptionEntry || state.stackSize() == 1;
 
-                if (block.firstInstruction == null) {
+                int operatingDimension = this.getCurrentDimension();
+                if (this.explodeLoops && this.explodeLoopsContext != null && !this.explodeLoopsContext.isEmpty()) {
+                    int i;
+                    for (i = explodeLoopsContext.size() - 1; i >= 0; --i) {
+                        ExplodedLoopContext context = explodeLoopsContext.elementAt(i);
+                        if (context.header == block) {
+
+                            // We have a hit on our current explosion context loop begin.
+                            if (context.targetPeelIteration == -1) {
+                                // This is the first hit => allocate a new dimension and at the same
+                                // time mark the context loop begin as hit during the current
+                                // iteration.
+                                context.targetPeelIteration = nextPeelIteration++;
+                                if (nextPeelIteration > GraalOptions.MaximumLoopExplosionCount.getValue()) {
+                                    throw new BailoutException("too many loop explosion interations - does the explosion not terminate?");
+                                }
+                            }
+
+                            // Operate on the target dimension.
+                            operatingDimension = context.targetPeelIteration;
+                            break;
+                        } else if (block.getId() > context.header.getId() && block.getId() <= context.header.loopEnd) {
+                            // We hit the range of this context.
+                            operatingDimension = context.peelIteration;
+                            break;
+                        }
+                    }
+
+                    if (i == -1) {
+                        // I did not find a dimension.
+                        operatingDimension = 0;
+                    }
+                }
+
+                if (block.getFirstInstruction(operatingDimension) == null) {
                     /*
                      * This is the first time we see this block as a branch target. Create and
                      * return a placeholder that later can be replaced with a MergeNode when we see
                      * this block again.
                      */
                     FixedNode targetNode;
-                    block.firstInstruction = currentGraph.add(new BeginNode());
-                    targetNode = block.firstInstruction;
+                    block.setFirstInstruction(operatingDimension, currentGraph.add(new BeginNode()));
+                    targetNode = block.getFirstInstruction(operatingDimension);
                     Target target = checkLoopExit(targetNode, block, state);
                     FixedNode result = target.fixed;
-                    block.entryState = target.state == state ? state.copy() : target.state;
-                    block.entryState.clearNonLiveLocals(block, liveness, true);
+                    AbstractFrameStateBuilder<?, ?> entryState = target.state == state ? state.copy() : target.state;
+                    block.setEntryState(operatingDimension, entryState);
+                    entryState.clearNonLiveLocals(block, liveness, true);
 
                     Debug.log("createTarget %s: first visit, result: %s", block, targetNode);
                     return result;
                 }
 
                 // We already saw this block before, so we have to merge states.
-                if (!((HIRFrameStateBuilder) block.entryState).isCompatibleWith(state)) {
+                if (!((HIRFrameStateBuilder) block.getEntryState(operatingDimension)).isCompatibleWith(state)) {
                     throw new BailoutException("stacks do not match; bytecodes would not verify");
                 }
 
-                if (block.firstInstruction instanceof LoopBeginNode) {
-                    assert block.isLoopHeader && currentBlock.getId() >= block.getId() : "must be backward branch";
+                if (block.getFirstInstruction(operatingDimension) instanceof LoopBeginNode) {
+                    assert this.explodeLoops || (block.isLoopHeader && currentBlock.getId() >= block.getId()) : "must be backward branch";
                     /*
                      * Backward loop edge. We need to create a special LoopEndNode and merge with
                      * the loop begin node created before.
                      */
-                    LoopBeginNode loopBegin = (LoopBeginNode) block.firstInstruction;
+                    LoopBeginNode loopBegin = (LoopBeginNode) block.getFirstInstruction(operatingDimension);
                     Target target = checkLoopExit(currentGraph.add(new LoopEndNode(loopBegin)), block, state);
                     FixedNode result = target.fixed;
-                    ((HIRFrameStateBuilder) block.entryState).merge(loopBegin, target.state);
+                    ((HIRFrameStateBuilder) block.getEntryState(operatingDimension)).merge(loopBegin, target.state);
 
                     Debug.log("createTarget %s: merging backward branch to loop header %s, result: %s", block, loopBegin, result);
                     return result;
                 }
                 assert currentBlock == null || currentBlock.getId() < block.getId() : "must not be backward branch";
-                assert block.firstInstruction.next() == null : "bytecodes already parsed for block";
+                assert block.getFirstInstruction(operatingDimension).next() == null : "bytecodes already parsed for block";
 
-                if (block.firstInstruction instanceof AbstractBeginNode && !(block.firstInstruction instanceof AbstractMergeNode)) {
+                if (block.getFirstInstruction(operatingDimension) instanceof AbstractBeginNode && !(block.getFirstInstruction(operatingDimension) instanceof AbstractMergeNode)) {
                     /*
                      * This is the second time we see this block. Create the actual MergeNode and
                      * the End Node for the already existing edge. For simplicity, we leave the
                      * placeholder in the graph and just append the new nodes after the placeholder.
                      */
-                    AbstractBeginNode placeholder = (AbstractBeginNode) block.firstInstruction;
+                    AbstractBeginNode placeholder = (AbstractBeginNode) block.getFirstInstruction(operatingDimension);
 
                     // The EndNode for the already existing edge.
                     AbstractEndNode end = currentGraph.add(new EndNode());
@@ -1134,16 +1278,16 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     mergeNode.addForwardEnd(end);
                     mergeNode.setNext(next);
 
-                    block.firstInstruction = mergeNode;
+                    block.setFirstInstruction(operatingDimension, mergeNode);
                 }
 
-                AbstractMergeNode mergeNode = (AbstractMergeNode) block.firstInstruction;
+                AbstractMergeNode mergeNode = (AbstractMergeNode) block.getFirstInstruction(operatingDimension);
 
                 // The EndNode for the newly merged edge.
                 AbstractEndNode newEnd = currentGraph.add(new EndNode());
                 Target target = checkLoopExit(newEnd, block, state);
                 FixedNode result = target.fixed;
-                ((HIRFrameStateBuilder) block.entryState).merge(mergeNode, target.state);
+                ((HIRFrameStateBuilder) block.getEntryState(operatingDimension)).merge(mergeNode, target.state);
                 mergeNode.addForwardEnd(newEnd);
 
                 Debug.log("createTarget %s: merging state, result: %s", block, result);
@@ -1173,14 +1317,14 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             protected void processBlock(BytecodeParser parser, BciBlock block) {
                 // Ignore blocks that have no predecessors by the time their bytecodes are parsed
-                if (block == null || block.firstInstruction == null) {
+                if (block == null || block.getFirstInstruction(this.getCurrentDimension()) == null) {
                     Debug.log("Ignoring block %s", block);
                     return;
                 }
-                try (Indent indent = Debug.logAndIndent("Parsing block %s  firstInstruction: %s  loopHeader: %b", block, block.firstInstruction, block.isLoopHeader)) {
+                try (Indent indent = Debug.logAndIndent("Parsing block %s  firstInstruction: %s  loopHeader: %b", block, block.getFirstInstruction(this.getCurrentDimension()), block.isLoopHeader)) {
 
-                    lastInstr = block.firstInstruction;
-                    frameState = (HIRFrameStateBuilder) block.entryState;
+                    lastInstr = block.getFirstInstruction(this.getCurrentDimension());
+                    frameState = (HIRFrameStateBuilder) block.getEntryState(this.getCurrentDimension());
                     parser.setCurrentFrameState(frameState);
                     currentBlock = block;
 
@@ -1315,7 +1459,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             @Override
             protected void iterateBytecodesForBlock(BciBlock block) {
-                if (block.isLoopHeader) {
+                if (block.isLoopHeader && !explodeLoops) {
                     // Create the loop header block, which later will merge the backward branches of
                     // the loop.
                     AbstractEndNode preLoopEnd = currentGraph.add(new EndNode());
@@ -1326,7 +1470,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     lastInstr = loopBegin;
 
                     // Create phi functions for all local variables and operand stack slots.
-                    frameState.insertLoopPhis(loopBegin);
+                    frameState.insertLoopPhis(liveness, block.loopId, loopBegin);
                     loopBegin.setStateAfter(frameState.create(block.startBci));
 
                     /*
@@ -1334,12 +1478,12 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                      * merge to the loop header. This ensures that the loop header has exactly one
                      * non-loop predecessor.
                      */
-                    block.firstInstruction = loopBegin;
+                    block.setFirstInstruction(this.getCurrentDimension(), loopBegin);
                     /*
                      * We need to preserve the frame state builder of the loop header so that we can
                      * merge values for phi functions, so make a copy of it.
                      */
-                    block.entryState = frameState.copy();
+                    block.setEntryState(this.getCurrentDimension(), frameState.copy());
 
                     Debug.log("  created loop header %s", loopBegin);
                 }
@@ -1482,11 +1626,24 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 }
                 condition = genUnique(condition);
 
-                ValueNode trueSuccessor = createBlockTarget(probability, trueBlock, frameState);
-                ValueNode falseSuccessor = createBlockTarget(1 - probability, falseBlock, frameState);
+                if (condition instanceof LogicConstantNode) {
+                    LogicConstantNode constantLogicNode = (LogicConstantNode) condition;
+                    boolean value = constantLogicNode.getValue();
+                    if (negate) {
+                        value = !value;
+                    }
+                    BciBlock nextBlock = falseBlock;
+                    if (value) {
+                        nextBlock = trueBlock;
+                    }
+                    appendGoto(createTarget(nextBlock, frameState));
+                } else {
+                    ValueNode trueSuccessor = createBlockTarget(probability, trueBlock, frameState);
+                    ValueNode falseSuccessor = createBlockTarget(1 - probability, falseBlock, frameState);
 
-                ValueNode ifNode = negate ? genIfNode(condition, falseSuccessor, trueSuccessor, 1 - probability) : genIfNode(condition, trueSuccessor, falseSuccessor, probability);
-                append(ifNode);
+                    ValueNode ifNode = negate ? genIfNode(condition, falseSuccessor, trueSuccessor, 1 - probability) : genIfNode(condition, trueSuccessor, falseSuccessor, probability);
+                    append(ifNode);
+                }
             }
 
             public StampProvider getStampProvider() {
@@ -1502,7 +1659,20 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             }
 
             public void push(Kind kind, ValueNode value) {
+                assert kind == kind.getStackKind();
                 frameState.push(kind, value);
+            }
+
+            private int getCurrentDimension() {
+                if (this.explodeLoopsContext == null || this.explodeLoopsContext.isEmpty()) {
+                    return 0;
+                } else {
+                    return this.explodeLoopsContext.peek().peelIteration;
+                }
+            }
+
+            public ConstantReflectionProvider getConstantReflection() {
+                return constantReflection;
             }
 
         }

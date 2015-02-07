@@ -619,8 +619,8 @@ public class ReplacementsImpl implements Replacements {
                 if (MethodsElidedInSnippets != null && methodToParse.getSignature().getReturnKind() == Kind.Void && MethodFilter.matches(MethodsElidedInSnippets, methodToParse)) {
                     graph.addAfterFixed(graph.start(), graph.add(new ReturnNode(null)));
                 } else {
-                    createGraphBuilder(metaAccess, replacements.providers.getStampProvider(), replacements.assumptions, GraphBuilderConfiguration.getSnippetDefault(), OptimisticOptimizations.NONE).apply(
-                                    graph);
+                    createGraphBuilder(metaAccess, replacements.providers.getStampProvider(), replacements.assumptions, replacements.providers.getConstantReflection(),
+                                    GraphBuilderConfiguration.getSnippetDefault(), OptimisticOptimizations.NONE).apply(graph);
                 }
                 afterParsing(graph);
 
@@ -633,9 +633,9 @@ public class ReplacementsImpl implements Replacements {
             return graph;
         }
 
-        protected Instance createGraphBuilder(MetaAccessProvider metaAccess, StampProvider stampProvider, Assumptions assumptions, GraphBuilderConfiguration graphBuilderConfig,
-                        OptimisticOptimizations optimisticOpts) {
-            return new GraphBuilderPhase.Instance(metaAccess, stampProvider, assumptions, graphBuilderConfig, optimisticOpts);
+        protected Instance createGraphBuilder(MetaAccessProvider metaAccess, StampProvider stampProvider, Assumptions assumptions, ConstantReflectionProvider constantReflection,
+                        GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts) {
+            return new GraphBuilderPhase.Instance(metaAccess, stampProvider, assumptions, constantReflection, graphBuilderConfig, optimisticOpts);
         }
 
         protected void afterParsing(StructuredGraph graph) {

@@ -42,6 +42,7 @@ import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.JumpOp;
+import com.oracle.graal.lir.debug.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.gen.LIRGenerator.Options;
 import com.oracle.graal.nodes.*;
@@ -81,7 +82,7 @@ import com.oracle.graal.nodes.virtual.*;
 @MatchableNode(nodeClass = XorNode.class, inputs = {"x", "y"}, commutative = true)
 @MatchableNode(nodeClass = PiNode.class, inputs = {"object"})
 @MatchableNode(nodeClass = ConstantLocationNode.class, shareable = true)
-public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
+public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGenerationDebugContext {
 
     private final NodeMap<Value> nodeOperands;
     private final DebugInfoBuilder debugInfoBuilder;
@@ -140,6 +141,11 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool {
             }
         }
         return null;
+    }
+
+    @Override
+    public Object getSourceForOperand(Value value) {
+        return valueForOperand(value);
     }
 
     @Override

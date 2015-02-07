@@ -32,22 +32,21 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.util.*;
 
 @NodeInfo(shortName = "==")
-public class IntegerEqualsNode extends CompareNode {
+public final class IntegerEqualsNode extends CompareNode {
 
     public IntegerEqualsNode(ValueNode x, ValueNode y) {
-        super(x, y);
+        super(Condition.EQ, false, x, y);
         assert !x.getKind().isNumericFloat() && x.getKind() != Kind.Object;
         assert !y.getKind().isNumericFloat() && y.getKind() != Kind.Object;
     }
 
-    @Override
-    public Condition condition() {
-        return Condition.EQ;
-    }
-
-    @Override
-    public boolean unorderedIsTrue() {
-        return false;
+    public static LogicNode create(ValueNode x, ValueNode y, ConstantReflectionProvider constantReflection) {
+        LogicNode result = CompareNode.tryConstantFold(Condition.EQ, x, y, constantReflection, false);
+        if (result != null) {
+            return result;
+        } else {
+            return new IntegerEqualsNode(x, y);
+        }
     }
 
     @Override

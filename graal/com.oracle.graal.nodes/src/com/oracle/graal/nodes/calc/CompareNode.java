@@ -39,14 +39,19 @@ import com.oracle.graal.nodes.*;
 @NodeInfo
 public abstract class CompareNode extends BinaryOpLogicNode {
 
+    protected final Condition condition;
+    protected final boolean unorderedIsTrue;
+
     /**
      * Constructs a new Compare instruction.
      *
      * @param x the instruction producing the first input to the instruction
      * @param y the instruction that produces the second input to this instruction
      */
-    public CompareNode(ValueNode x, ValueNode y) {
+    public CompareNode(Condition condition, boolean unorderedIsTrue, ValueNode x, ValueNode y) {
         super(x, y);
+        this.condition = condition;
+        this.unorderedIsTrue = unorderedIsTrue;
     }
 
     /**
@@ -54,14 +59,18 @@ public abstract class CompareNode extends BinaryOpLogicNode {
      *
      * @return the condition
      */
-    public abstract Condition condition();
+    public final Condition condition() {
+        return condition;
+    }
 
     /**
      * Checks whether unordered inputs mean true or false (only applies to float operations).
      *
      * @return {@code true} if unordered inputs produce true
      */
-    public abstract boolean unorderedIsTrue();
+    public final boolean unorderedIsTrue() {
+        return this.unorderedIsTrue;
+    }
 
     private ValueNode optimizeConditional(Constant constant, ConditionalNode conditionalNode, ConstantReflectionProvider constantReflection, Condition cond) {
         Constant trueConstant = conditionalNode.trueValue().asConstant();
@@ -93,8 +102,10 @@ public abstract class CompareNode extends BinaryOpLogicNode {
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
-        if (forX.isConstant() && forY.isConstant()) {
-            return LogicConstantNode.forBoolean(condition().foldCondition(forX.asConstant(), forY.asConstant(), tool.getConstantReflection(), unorderedIsTrue()));
+        ConstantReflectionProvider constantReflection = tool.getConstantReflection();
+        LogicNode constantCondition = tryConstantFold(condition(), forX, forY, constantReflection, unorderedIsTrue());
+        if (constantCondition != null) {
+            return constantCondition;
         }
         ValueNode result;
         if (forX.isConstant()) {
@@ -115,7 +126,14 @@ public abstract class CompareNode extends BinaryOpLogicNode {
         return this;
     }
 
-    protected abstract CompareNode duplicateModified(ValueNode newX, ValueNode newY);
+    public static LogicNode tryConstantFold(Condition condition, ValueNode forX, ValueNode forY, ConstantReflectionProvider constantReflection, boolean unorderedIsTrue) {
+        if (forX.isConstant() && forY.isConstant() && constantReflection != null) {
+            return LogicConstantNode.forBoolean(condition.foldCondition(forX.asConstant(), forY.asConstant(), constantReflection, unorderedIsTrue));
+        }
+        return null;
+    }
+
+    protected abstract LogicNode duplicateModified(ValueNode newX, ValueNode newY);
 
     protected ValueNode canonicalizeSymmetricConstant(CanonicalizerTool tool, Constant constant, ValueNode nonConstant, boolean mirrored) {
         if (nonConstant instanceof ConditionalNode) {

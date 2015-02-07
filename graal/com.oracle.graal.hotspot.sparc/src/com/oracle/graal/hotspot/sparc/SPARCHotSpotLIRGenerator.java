@@ -172,7 +172,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
         LIRKind wordKind = LIRKind.value(getProviders().getCodeCache().getTarget().wordKind);
         RegisterValue thread = getProviders().getRegisters().getThreadRegister().asValue(wordKind);
         SPARCAddressValue pendingDeoptAddress = new SPARCAddressValue(wordKind, thread, offset);
-        append(new StoreOp(v.getKind(), pendingDeoptAddress, emitMove(v), null));
+        append(new StoreOp(v.getKind(), pendingDeoptAddress, load(v), null));
     }
 
     @Override
@@ -220,16 +220,15 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
         append(new StoreOp((Kind) kind.getPlatformKind(), storeAddress, input, state));
     }
 
-    public Value emitCompareAndSwap(Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue) {
-        Variable newValueTemp = newVariable(newValue.getLIRKind());
-        emitMove(newValueTemp, newValue);
+    public Variable emitCompareAndSwap(Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue) {
 
         LIRKind kind = newValue.getLIRKind();
         assert kind.equals(expectedValue.getLIRKind());
         Kind memKind = (Kind) kind.getPlatformKind();
         SPARCAddressValue addressValue = asAddressValue(address);
-        append(new CompareAndSwapOp(asAllocatable(addressValue), asAllocatable(expectedValue), asAllocatable(newValueTemp)));
-        return emitConditionalMove(memKind, expectedValue, newValueTemp, Condition.EQ, true, trueValue, falseValue);
+        Variable result = newVariable(newValue.getLIRKind());
+        append(new CompareAndSwapOp(result, asAllocatable(addressValue), asAllocatable(expectedValue), asAllocatable(newValue)));
+        return emitConditionalMove(memKind, expectedValue, result, Condition.EQ, true, trueValue, falseValue);
     }
 
     public StackSlot getDeoptimizationRescueSlot() {

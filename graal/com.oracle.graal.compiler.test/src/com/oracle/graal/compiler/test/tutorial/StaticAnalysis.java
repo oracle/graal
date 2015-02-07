@@ -238,7 +238,7 @@ public class StaticAnalysis {
                     OptimisticOptimizations optimisticOpts = OptimisticOptimizations.NONE;
                     Assumptions assumptions = new Assumptions(false);
 
-                    GraphBuilderPhase.Instance graphBuilder = new GraphBuilderPhase.Instance(metaAccess, stampProvider, assumptions, graphBuilderConfig, optimisticOpts);
+                    GraphBuilderPhase.Instance graphBuilder = new GraphBuilderPhase.Instance(metaAccess, stampProvider, assumptions, null, graphBuilderConfig, optimisticOpts);
                     graphBuilder.apply(graph);
                 } catch (Throwable ex) {
                     Debug.handle(ex);
