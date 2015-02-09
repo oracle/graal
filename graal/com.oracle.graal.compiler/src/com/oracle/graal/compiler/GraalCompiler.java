@@ -350,9 +350,10 @@ public class GraalCompiler {
     public static <T extends AbstractBlock<T>> LIRGenerationResult emitLowLevel(Backend backend, TargetDescription target, LIR lir, List<T> codeEmittingOrder, List<T> linearScanOrder,
                     LIRGenerationResult lirGenRes, LIRGeneratorTool lirGen) {
         try (Scope s0 = Debug.scope("HighTier")) {
+            LowLevelHighTierPhase.Context c = new LowLevelHighTierPhase.Context(lirGen);
             if (ConstantLoadOptimization.Options.ConstantLoadOptimization.getValue()) {
                 try (Scope s = Debug.scope("ConstantLoadOptimization", lir)) {
-                    ConstantLoadOptimization.optimize(lirGenRes.getLIR(), lirGen);
+                    new ConstantLoadOptimization().apply(target, lirGenRes, c);
                     Debug.dump(lir, "After constant load optimization");
                 } catch (Throwable e) {
                     throw Debug.handle(e);
