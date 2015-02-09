@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.loop;
 
+import static com.oracle.graal.loop.MathUtil.*;
+
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.nodes.*;
@@ -135,7 +137,7 @@ public class BasicInductionVariable extends InductionVariable {
         if (!maxTripCount.stamp().isCompatible(stamp)) {
             maxTripCount = IntegerConvertNode.convert(maxTripCount, stamp, graph());
         }
-        return BinaryArithmeticNode.add(graph, BinaryArithmeticNode.mul(graph, stride, BinaryArithmeticNode.sub(graph, maxTripCount, ConstantNode.forIntegerStamp(stamp, 1, graph))), initNode);
+        return add(graph, mul(graph, stride, sub(graph, maxTripCount, ConstantNode.forIntegerStamp(stamp, 1, graph))), initNode);
     }
 
     @Override
@@ -145,7 +147,7 @@ public class BasicInductionVariable extends InductionVariable {
         if (!maxTripCount.stamp().isCompatible(stamp)) {
             maxTripCount = IntegerConvertNode.convert(maxTripCount, stamp, graph());
         }
-        return BinaryArithmeticNode.add(graph(), BinaryArithmeticNode.mul(graph(), strideNode(), maxTripCount), initNode());
+        return add(graph(), mul(graph(), strideNode(), maxTripCount), initNode());
     }
 
     @Override

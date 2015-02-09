@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.loop;
 
+import static com.oracle.graal.loop.MathUtil.*;
+
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.nodes.*;
@@ -125,14 +127,14 @@ public class DerivedOffsetInductionVariable extends DerivedInductionVariable {
 
     private ValueNode op(ValueNode b, ValueNode o) {
         if (value instanceof AddNode) {
-            return BinaryArithmeticNode.add(graph(), b, o);
+            return add(graph(), b, o);
         }
         if (value instanceof SubNode) {
             if (base.valueNode() == value.getX()) {
-                return BinaryArithmeticNode.sub(graph(), b, o);
+                return sub(graph(), b, o);
             } else {
                 assert base.valueNode() == value.getY();
-                return BinaryArithmeticNode.sub(graph(), o, b);
+                return sub(graph(), o, b);
             }
         }
         throw GraalInternalError.shouldNotReachHere();

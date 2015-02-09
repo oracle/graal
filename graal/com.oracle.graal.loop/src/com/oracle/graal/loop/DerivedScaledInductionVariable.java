@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.loop;
 
+import static com.oracle.graal.loop.MathUtil.*;
+
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
@@ -69,12 +71,12 @@ public class DerivedScaledInductionVariable extends DerivedInductionVariable {
 
     @Override
     public ValueNode initNode() {
-        return BinaryArithmeticNode.mul(graph(), base.initNode(), scale);
+        return mul(graph(), base.initNode(), scale);
     }
 
     @Override
     public ValueNode strideNode() {
-        return BinaryArithmeticNode.mul(graph(), base.strideNode(), scale);
+        return mul(graph(), base.strideNode(), scale);
     }
 
     @Override
@@ -99,12 +101,12 @@ public class DerivedScaledInductionVariable extends DerivedInductionVariable {
 
     @Override
     public ValueNode extremumNode(boolean assumePositiveTripCount, Stamp stamp) {
-        return BinaryArithmeticNode.mul(graph(), base.extremumNode(assumePositiveTripCount, stamp), IntegerConvertNode.convert(scale, stamp, graph()));
+        return mul(graph(), base.extremumNode(assumePositiveTripCount, stamp), IntegerConvertNode.convert(scale, stamp, graph()));
     }
 
     @Override
     public ValueNode exitValueNode() {
-        return BinaryArithmeticNode.mul(graph(), base.exitValueNode(), scale);
+        return mul(graph(), base.exitValueNode(), scale);
     }
 
     @Override

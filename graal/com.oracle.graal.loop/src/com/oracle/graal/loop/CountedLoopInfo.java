@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.loop;
 
-import static com.oracle.graal.nodes.calc.BinaryArithmeticNode.*;
+import static com.oracle.graal.loop.MathUtil.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
@@ -55,20 +55,19 @@ public class CountedLoopInfo {
     public ValueNode maxTripCountNode(boolean assumePositive) {
         StructuredGraph graph = iv.valueNode().graph();
         Stamp stamp = iv.valueNode().stamp();
-        BinaryArithmeticNode<?> range = BinaryArithmeticNode.sub(graph, end, iv.initNode());
+        ValueNode range = sub(graph, end, iv.initNode());
         if (oneOff) {
             if (iv.direction() == Direction.Up) {
-                range = BinaryArithmeticNode.add(graph, range, ConstantNode.forIntegerStamp(stamp, 1, graph));
+                range = add(graph, range, ConstantNode.forIntegerStamp(stamp, 1, graph));
             } else {
-                range = BinaryArithmeticNode.sub(graph, range, ConstantNode.forIntegerStamp(stamp, 1, graph));
+                range = sub(graph, range, ConstantNode.forIntegerStamp(stamp, 1, graph));
             }
         }
-        IntegerDivNode div = graph.add(new IntegerDivNode(range, iv.strideNode()));
-        graph.addBeforeFixed(loop.entryPoint(), div);
-        ConstantNode zero = ConstantNode.forIntegerStamp(stamp, 0, graph);
+        ValueNode div = divBefore(graph, loop.entryPoint(), range, iv.strideNode());
         if (assumePositive) {
             return div;
         }
+        ConstantNode zero = ConstantNode.forIntegerStamp(stamp, 0, graph);
         return graph.unique(new ConditionalNode(graph.unique(new IntegerLessThanNode(zero, div)), div, zero));
     }
 
@@ -144,14 +143,14 @@ public class CountedLoopInfo {
         CompareNode cond; // we use a negated guard with a < condition to achieve a >=
         ConstantNode one = ConstantNode.forIntegerStamp(stamp, 1, graph);
         if (iv.direction() == Direction.Up) {
-            BinaryArithmeticNode<?> v1 = sub(graph, ConstantNode.forIntegerStamp(stamp, CodeUtil.maxValue(stamp.getBits()), graph), sub(graph, iv.strideNode(), one));
+            ValueNode v1 = sub(graph, ConstantNode.forIntegerStamp(stamp, CodeUtil.maxValue(stamp.getBits()), graph), sub(graph, iv.strideNode(), one));
             if (oneOff) {
                 v1 = sub(graph, v1, one);
             }
             cond = graph.unique(new IntegerLessThanNode(v1, end));
         } else {
             assert iv.direction() == Direction.Down;
-            BinaryArithmeticNode<?> v1 = add(graph, ConstantNode.forIntegerStamp(stamp, CodeUtil.minValue(stamp.getBits()), graph), sub(graph, one, iv.strideNode()));
+            ValueNode v1 = add(graph, ConstantNode.forIntegerStamp(stamp, CodeUtil.minValue(stamp.getBits()), graph), sub(graph, one, iv.strideNode()));
             if (oneOff) {
                 v1 = add(graph, v1, one);
             }
