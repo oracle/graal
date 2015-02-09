@@ -43,14 +43,6 @@ public abstract class LoopTransformations {
         // does not need to be instantiated
     }
 
-    public static void invert(LoopEx loop, FixedNode point) {
-        LoopFragmentInsideBefore head = loop.insideBefore(point);
-        LoopFragmentInsideBefore duplicate = head.duplicate();
-        head.disconnect();
-        head.insertBefore(loop);
-        duplicate.appendInside(loop);
-    }
-
     public static void peel(LoopEx loop) {
         loop.inside().duplicate().insertBefore(loop);
         loop.loopBegin().setLoopFrequency(Math.max(0.0, loop.loopBegin().loopFrequency() - 1));
@@ -120,27 +112,6 @@ public abstract class LoopTransformations {
         }
 
         // TODO (gd) probabilities need some amount of fixup.. (probably also in other transforms)
-    }
-
-    public static void unroll(LoopEx loop, int factor) {
-        assert loop.isCounted();
-        if (factor > 0) {
-            throw new UnsupportedOperationException();
-        }
-        // TODO (gd) implement counted loop
-        LoopFragmentWhole main = loop.whole();
-        LoopFragmentWhole prologue = main.duplicate();
-        prologue.insertBefore(loop);
-        // CountedLoopBeginNode counted = prologue.countedLoop();
-        // StructuredGraph graph = (StructuredGraph) counted.graph();
-        // ValueNode tripCountPrologue = counted.tripCount();
-        // ValueNode tripCountMain = counted.tripCount();
-        // graph.replaceFloating(tripCountPrologue, "tripCountPrologue % factor");
-        // graph.replaceFloating(tripCountMain, "tripCountMain - (tripCountPrologue % factor)");
-        LoopFragmentInside inside = loop.inside();
-        for (int i = 0; i < factor; i++) {
-            inside.duplicate().appendInside(loop);
-        }
     }
 
     public static List<ControlSplitNode> findUnswitchable(LoopEx loop) {
