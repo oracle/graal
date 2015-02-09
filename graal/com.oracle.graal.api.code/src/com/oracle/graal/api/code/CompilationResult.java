@@ -684,7 +684,35 @@ public class CompilationResult implements Serializable {
      * @param handlerPos the position of the handler
      */
     public void recordExceptionHandler(int codePos, int handlerPos) {
+        assert validateExceptionHandlerAdd(codePos, handlerPos) : String.format("Duplicate exception handler for pc 0x%x handlerPos 0x%x", codePos, handlerPos);
         exceptionHandlers.add(new ExceptionHandler(codePos, handlerPos));
+    }
+
+    /**
+     * Validate if the exception handler for codePos already exists and handlerPos is different.
+     *
+     * @param codePos
+     * @param handlerPos
+     * @return true if the validation is successful
+     */
+    private boolean validateExceptionHandlerAdd(int codePos, int handlerPos) {
+        ExceptionHandler exHandler = getExceptionHandlerForCodePos(codePos);
+        return exHandler == null || exHandler.handlerPos == handlerPos;
+    }
+
+    /**
+     * Returns the first ExceptionHandler which matches codePos.
+     *
+     * @param codePos position to search for
+     * @return first matching ExceptionHandler
+     */
+    private ExceptionHandler getExceptionHandlerForCodePos(int codePos) {
+        for (ExceptionHandler h : exceptionHandlers) {
+            if (h.pcOffset == codePos) {
+                return h;
+            }
+        }
+        return null;
     }
 
     /**
