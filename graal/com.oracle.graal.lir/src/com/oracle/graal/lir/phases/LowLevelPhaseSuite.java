@@ -28,22 +28,11 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.lir.gen.*;
 
-public class LowLevelPhaseSuite<C> extends LowLevelPhase<C> {
+public abstract class LowLevelPhaseSuite<C> extends LowLevelPhase<C> {
     private final List<LowLevelPhase<C>> phases;
 
-    public LowLevelPhaseSuite(Class<C> contextClass) {
-        super(getNameFromContext(contextClass));
+    public LowLevelPhaseSuite() {
         phases = new ArrayList<>();
-    }
-
-    private static <C> String getNameFromContext(Class<C> contextClass) {
-        String className = contextClass.getName();
-        String s0 = className.substring(className.lastIndexOf(".") + 1); // strip the package name
-        String s = s0.substring(s0.lastIndexOf("$") + 1); // strip the enclosing class name
-        if (s.endsWith("Context")) {
-            s = s.substring(0, s.length() - "Context".length());
-        }
-        return s;
     }
 
     /**

@@ -22,22 +22,21 @@
  */
 package com.oracle.graal.lir.phases;
 
-import com.oracle.graal.lir.phases.LowLevelHighTierPhase.LowLevelHighTierContext;
-import com.oracle.graal.lir.phases.LowLevelLowTierPhase.LowLevelLowTierContext;
-import com.oracle.graal.lir.phases.LowLevelMidTierPhase.LowLevelMidTierContext;
+import com.oracle.graal.lir.alloc.lsra.*;
+import com.oracle.graal.lir.phases.LowLevelMidTierPhase.*;
+import com.oracle.graal.lir.stackslotalloc.*;
 
-public class DefaultLowLevelCompilerConfiguration implements LowLevelCompilerConfiguration {
+public class LowLevelMidTier extends LowLevelPhaseSuite<LowLevelMidTierContext> {
+    public LowLevelMidTier() {
+        appendPhase(new LinearScanPhase());
 
-    public LowLevelPhaseSuite<LowLevelHighTierContext> createHighTier() {
-        return new LowLevelHighTier();
+        // build frame map
+        if (LSStackSlotAllocator.Options.LSStackSlotAllocation.getValue()) {
+            appendPhase(new LSStackSlotAllocator());
+        } else {
+            appendPhase(new SimpleStackSlotAllocator());
+        }
+        // currently we mark locations only if we do register allocation
+        appendPhase(new LocationMarker());
     }
-
-    public LowLevelPhaseSuite<LowLevelMidTierContext> createMidTier() {
-        return new LowLevelMidTier();
-    }
-
-    public LowLevelPhaseSuite<LowLevelLowTierContext> createLowTier() {
-        return new LowLevelLowTier();
-    }
-
 }

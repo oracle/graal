@@ -22,22 +22,14 @@
  */
 package com.oracle.graal.lir.phases;
 
-import com.oracle.graal.lir.phases.LowLevelHighTierPhase.LowLevelHighTierContext;
-import com.oracle.graal.lir.phases.LowLevelLowTierPhase.LowLevelLowTierContext;
-import com.oracle.graal.lir.phases.LowLevelMidTierPhase.LowLevelMidTierContext;
+import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.phases.LowLevelLowTierPhase.*;
 
-public class DefaultLowLevelCompilerConfiguration implements LowLevelCompilerConfiguration {
-
-    public LowLevelPhaseSuite<LowLevelHighTierContext> createHighTier() {
-        return new LowLevelHighTier();
+public class LowLevelLowTier extends LowLevelPhaseSuite<LowLevelLowTierContext> {
+    public LowLevelLowTier() {
+        appendPhase(new EdgeMoveOptimizer());
+        appendPhase(new ControlFlowOptimizer());
+        appendPhase(new RedundantMoveElimination());
+        appendPhase(new NullCheckOptimizer());
     }
-
-    public LowLevelPhaseSuite<LowLevelMidTierContext> createMidTier() {
-        return new LowLevelMidTier();
-    }
-
-    public LowLevelPhaseSuite<LowLevelLowTierContext> createLowTier() {
-        return new LowLevelLowTier();
-    }
-
 }
