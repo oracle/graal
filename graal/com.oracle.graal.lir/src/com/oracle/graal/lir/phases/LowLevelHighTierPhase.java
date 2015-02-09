@@ -22,10 +22,13 @@
  */
 package com.oracle.graal.lir.phases;
 
+import java.util.*;
+
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.lir.gen.*;
 
-public abstract class LowLevelHighTierPhase extends LowLevelPhase<LowLevelHighTierPhase.Context> {
+public abstract class LowLevelHighTierPhase<B extends AbstractBlock<B>> extends LowLevelPhase<LowLevelHighTierPhase.Context, B> {
 
     public static final class Context {
         private final LIRGeneratorTool lirGen;
@@ -37,10 +40,10 @@ public abstract class LowLevelHighTierPhase extends LowLevelPhase<LowLevelHighTi
     }
 
     @Override
-    protected void run(TargetDescription target, LIRGenerationResult lirGenRes, Context context) {
-        run(target, lirGenRes, context.lirGen);
+    protected final void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, Context context) {
+        run(target, lirGenRes, codeEmittingOrder, linearScanOrder, context.lirGen);
     }
 
-    protected abstract void run(TargetDescription target, LIRGenerationResult lirGenRes, LIRGeneratorTool lirGen);
+    protected abstract void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, LIRGeneratorTool lirGen);
 
 }

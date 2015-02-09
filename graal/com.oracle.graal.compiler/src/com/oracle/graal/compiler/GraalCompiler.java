@@ -352,37 +352,37 @@ public class GraalCompiler {
         try (Scope s0 = Debug.scope("LowLevelHighTier")) {
             LowLevelHighTierPhase.Context c = new LowLevelHighTierPhase.Context(lirGen);
             if (ConstantLoadOptimization.Options.ConstantLoadOptimization.getValue()) {
-                new ConstantLoadOptimization().apply(target, lirGenRes, c);
+                new ConstantLoadOptimization<T>().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, c);
             }
         }
 
         try (Scope s0 = Debug.scope("LowLevelMidTier")) {
-            LowLevelMidTierPhase.Context<T> c = new LowLevelMidTierPhase.Context<>(codeEmittingOrder, linearScanOrder);
+            LowLevelMidTierPhase.Context c = new LowLevelMidTierPhase.Context();
             if (backend.shouldAllocateRegisters()) {
-                new LinearScanPhase<T>().apply(target, lirGenRes, c);
+                new LinearScanPhase<T>().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, c);
             }
 
             // build frame map
             if (LSStackSlotAllocator.Options.LSStackSlotAllocation.getValue()) {
-                new LSStackSlotAllocator<T>().apply(target, lirGenRes, c);
+                new LSStackSlotAllocator<T>().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, c);
             } else {
-                new SimpleStackSlotAllocator<T>().apply(target, lirGenRes, c);
+                new SimpleStackSlotAllocator<T>().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, c);
             }
             if (backend.shouldAllocateRegisters()) {
                 // currently we mark locations only if we do register allocation
-                new LocationMarker<T>().apply(target, lirGenRes, c);
+                new LocationMarker<T>().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, c);
             }
         }
 
         try (Scope s = Debug.scope("LowLevelLowTier")) {
-            LowLevelLowTierPhase.Context<T> c = new LowLevelLowTierPhase.Context<>(codeEmittingOrder, linearScanOrder);
-            new EdgeMoveOptimizer<T>().apply(target, lirGenRes, c);
-            new ControlFlowOptimizer<T>().apply(target, lirGenRes, c);
+            LowLevelLowTierPhase.Context c = new LowLevelLowTierPhase.Context();
+            new EdgeMoveOptimizer<T>().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, c);
+            new ControlFlowOptimizer<T>().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, c);
 
             if (lirGen.canEliminateRedundantMoves()) {
-                new RedundantMoveElimination<T>().apply(target, lirGenRes, c);
+                new RedundantMoveElimination<T>().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, c);
             }
-            new NullCheckOptimizer<T>().apply(target, lirGenRes, c);
+            new NullCheckOptimizer<T>().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, c);
         }
 
         return lirGenRes;

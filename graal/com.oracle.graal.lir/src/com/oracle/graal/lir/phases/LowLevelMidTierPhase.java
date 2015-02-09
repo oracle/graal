@@ -28,21 +28,14 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.lir.gen.*;
 
-public abstract class LowLevelMidTierPhase<B extends AbstractBlock<B>> extends LowLevelPhase<LowLevelMidTierPhase.Context<B>> {
+public abstract class LowLevelMidTierPhase<B extends AbstractBlock<B>> extends LowLevelPhase<LowLevelMidTierPhase.Context, B> {
 
-    public static final class Context<B extends AbstractBlock<B>> {
-        final List<B> codeEmittingOrder;
-        final List<B> linearScanOrder;
-
-        public Context(List<B> codeEmittingOrder, List<B> linearScanOrder) {
-            this.codeEmittingOrder = codeEmittingOrder;
-            this.linearScanOrder = linearScanOrder;
-        }
+    public static final class Context {
     }
 
     @Override
-    protected void run(TargetDescription target, LIRGenerationResult lirGenRes, Context<B> context) {
-        run(target, lirGenRes, context.codeEmittingOrder, context.linearScanOrder);
+    protected void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, Context context) {
+        run(target, lirGenRes, codeEmittingOrder, linearScanOrder);
     }
 
     protected abstract void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder);

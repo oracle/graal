@@ -22,7 +22,10 @@
  */
 package com.oracle.graal.lir.phases;
 
+import java.util.*;
+
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.DebugMemUseTracker.Closeable;
@@ -34,7 +37,7 @@ import com.oracle.graal.lir.gen.*;
  * Base class for all {@link LIR low-level} phases. Subclasses should be stateless. There will be
  * one global instance for each phase that is shared for all compilations.
  */
-public abstract class LowLevelPhase<C> {
+public abstract class LowLevelPhase<C, B extends AbstractBlock<B>> {
 
     private static final int PHASE_DUMP_LEVEL = 2;
 
@@ -55,13 +58,13 @@ public abstract class LowLevelPhase<C> {
         memUseTracker = Debug.memUseTracker("LowLevelPhaseMemUse_%s", getName());
     }
 
-    public final void apply(TargetDescription target, LIRGenerationResult lirGenRes, C context) {
-        apply(target, lirGenRes, context, true);
+    public final void apply(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, C context) {
+        apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, true);
     }
 
-    public final void apply(TargetDescription target, LIRGenerationResult lirGenRes, C context, boolean dumpLIR) {
+    public final void apply(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, C context, boolean dumpLIR) {
         try (TimerCloseable a = timer.start(); Scope s = Debug.scope(getName(), this); Closeable c = memUseTracker.start()) {
-            run(target, lirGenRes, context);
+            run(target, lirGenRes, codeEmittingOrder, linearScanOrder, context);
             if (dumpLIR && Debug.isDumpEnabled(PHASE_DUMP_LEVEL)) {
                 Debug.dump(PHASE_DUMP_LEVEL, lirGenRes.getLIR(), "After phase %s", getName());
             }
@@ -70,7 +73,7 @@ public abstract class LowLevelPhase<C> {
         }
     }
 
-    protected abstract void run(TargetDescription target, LIRGenerationResult lirGenRes, C context);
+    protected abstract void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, C context);
 
     protected CharSequence createName() {
         String className = LowLevelPhase.this.getClass().getName();
