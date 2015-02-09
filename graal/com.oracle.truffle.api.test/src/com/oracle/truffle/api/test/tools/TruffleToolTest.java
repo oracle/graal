@@ -29,7 +29,7 @@ import org.junit.*;
 import com.oracle.truffle.api.instrument.*;
 
 /**
- * Test the basic life cycle properties shared by all instances of {@link TruffleTool}.
+ * Test the basic life cycle properties shared by all instances of {@link InstrumentationTool}.
  */
 public class TruffleToolTest {
 
@@ -110,7 +110,7 @@ public class TruffleToolTest {
         tool.dispose();
     }
 
-    private static final class DummyTruffleTool extends TruffleTool {
+    private static final class DummyTruffleTool extends InstrumentationTool {
 
         @Override
         protected boolean internalInstall() {

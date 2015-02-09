@@ -32,10 +32,10 @@ import com.oracle.truffle.api.instrument.impl.*;
 import com.oracle.truffle.api.source.*;
 
 /**
- * A {@link TruffleTool} that builds a map of every {@Probe} attached to some AST, indexed
+ * A {@link InstrumentationTool} that builds a map of every {@Probe} attached to some AST, indexed
  * by {@link Source} and line number.
  */
-public final class LineToProbesMap extends TruffleTool {
+public final class LineToProbesMap extends InstrumentationTool {
 
     private static final boolean TRACE = false;
     private static final PrintStream OUT = System.out;

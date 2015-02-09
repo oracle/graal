@@ -38,7 +38,7 @@ import com.oracle.truffle.api.nodes.Node.Child;
 import com.oracle.truffle.api.source.*;
 
 /**
- * A {@link TruffleTool} that counts interpreter <em>execution calls</em> to AST nodes that hold a
+ * A {@link InstrumentationTool} that counts interpreter <em>execution calls</em> to AST nodes that hold a
  * specified {@linkplain SyntaxTag tag}, tabulated by source and line number associated with each
  * node. Tags are presumed to be applied external to the tool. If no tag is specified,
  * {@linkplain StandardSyntaxTag#STATEMENT STATEMENT} is used, corresponding to conventional
@@ -46,7 +46,7 @@ import com.oracle.truffle.api.source.*;
  * <p>
  * <b>Tool Life Cycle</b>
  * <p>
- * See {@link TruffleTool} for the life cycle common to all such tools.
+ * See {@link InstrumentationTool} for the life cycle common to all such tools.
  * <p>
  * <b>Execution Counts</b>
  * <p>
@@ -72,7 +72,7 @@ import com.oracle.truffle.api.source.*;
  * @see Instrument
  * @see SyntaxTag
  */
-public final class CoverageTracker extends TruffleTool {
+public final class CoverageTracker extends InstrumentationTool {
 
     /** Counting data. */
     private final Map<LineLocation, CoverageCounter> counters = new HashMap<>();

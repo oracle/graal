@@ -63,7 +63,8 @@ package com.oracle.truffle.api.instrument;
  * language-agnostic management of individual execution environments is added to the platform,
  * installation will be (optionally) specific to a single execution environment.
  */
-public abstract class TruffleTool {
+public abstract class InstrumentationTool {
+    // TODO (mlvdv) still thinking about the most appropriate name for this class of tools
 
     private enum ToolState {
 
@@ -82,7 +83,7 @@ public abstract class TruffleTool {
 
     private ToolState toolState = ToolState.UNINSTALLED;
 
-    protected TruffleTool() {
+    protected InstrumentationTool() {
     }
 
     /**
