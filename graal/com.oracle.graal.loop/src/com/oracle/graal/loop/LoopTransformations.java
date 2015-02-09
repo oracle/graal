@@ -53,6 +53,7 @@ public abstract class LoopTransformations {
 
     public static void peel(LoopEx loop) {
         loop.inside().duplicate().insertBefore(loop);
+        loop.loopBegin().setLoopFrequency(Math.max(0.0, loop.loopBegin().loopFrequency() - 1));
     }
 
     public static void fullUnroll(LoopEx loop, PhaseContext context, CanonicalizerPhase canonicalizer) {
