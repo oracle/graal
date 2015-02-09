@@ -350,20 +350,14 @@ public class GraalCompiler {
 
     public static <T extends AbstractBlock<T>> LIRGenerationResult emitLowLevel(TargetDescription target, List<T> codeEmittingOrder, List<T> linearScanOrder, LIRGenerationResult lirGenRes,
                     LIRGeneratorTool lirGen, LowLevelCompilerConfiguration config) {
-        try (Scope s0 = Debug.scope("LowLevelHighTier")) {
-            LowLevelHighTierContext c = new LowLevelHighTierContext(lirGen);
-            config.<T> createHighTier().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, c);
-        }
+        LowLevelHighTierContext highTierContext = new LowLevelHighTierContext(lirGen);
+        config.<T> createHighTier().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, highTierContext);
 
-        try (Scope s0 = Debug.scope("LowLevelMidTier")) {
-            LowLevelMidTierContext c = new LowLevelMidTierContext();
-            config.<T> createMidTier().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, c);
-        }
+        LowLevelMidTierContext midTierContext = new LowLevelMidTierContext();
+        config.<T> createMidTier().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, midTierContext);
 
-        try (Scope s = Debug.scope("LowLevelLowTier")) {
-            LowLevelLowTierContext c = new LowLevelLowTierContext();
-            config.<T> createLowTier().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, c);
-        }
+        LowLevelLowTierContext lowTierContext = new LowLevelLowTierContext();
+        config.<T> createLowTier().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, lowTierContext);
 
         return lirGenRes;
     }
