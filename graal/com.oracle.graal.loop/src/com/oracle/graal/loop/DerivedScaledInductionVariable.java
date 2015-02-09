@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,29 +27,30 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.util.*;
 
-public class DerivedScaledInductionVariable extends InductionVariable {
+public class DerivedScaledInductionVariable extends DerivedInductionVariable {
 
-    private InductionVariable base;
-    private ValueNode scale;
-    private ValueNode value;
+    private final ValueNode scale;
+    private final ValueNode value;
 
     public DerivedScaledInductionVariable(LoopEx loop, InductionVariable base, ValueNode scale, ValueNode value) {
-        super(loop);
-        this.base = base;
+        super(loop, base);
         this.scale = scale;
         this.value = value;
     }
 
     public DerivedScaledInductionVariable(LoopEx loop, InductionVariable base, NegateNode value) {
-        super(loop);
-        this.base = base;
+        super(loop, base);
         this.scale = ConstantNode.forInt(-1, value.graph());
         this.value = value;
     }
 
+    public ValueNode getScale() {
+        return scale;
+    }
+
     @Override
-    public StructuredGraph graph() {
-        return base.graph();
+    public ValueNode valueNode() {
+        return value;
     }
 
     @Override
@@ -64,11 +65,6 @@ public class DerivedScaledInductionVariable extends InductionVariable {
             }
         }
         return null;
-    }
-
-    @Override
-    public ValueNode valueNode() {
-        return value;
     }
 
     @Override

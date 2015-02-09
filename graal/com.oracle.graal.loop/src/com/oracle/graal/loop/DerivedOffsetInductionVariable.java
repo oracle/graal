@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,30 +27,19 @@ import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 
-public class DerivedOffsetInductionVariable extends InductionVariable {
+public class DerivedOffsetInductionVariable extends DerivedInductionVariable {
 
-    private InductionVariable base;
-    private ValueNode offset;
-    private BinaryArithmeticNode<?> value;
+    private final ValueNode offset;
+    private final BinaryArithmeticNode<?> value;
 
     public DerivedOffsetInductionVariable(LoopEx loop, InductionVariable base, ValueNode offset, BinaryArithmeticNode<?> value) {
-        super(loop);
-        this.base = base;
+        super(loop, base);
         this.offset = offset;
         this.value = value;
     }
 
-    public InductionVariable getBase() {
-        return base;
-    }
-
     public ValueNode getOffset() {
         return offset;
-    }
-
-    @Override
-    public StructuredGraph graph() {
-        return base.graph();
     }
 
     @Override

@@ -87,7 +87,9 @@ public abstract class InductionVariable {
 
     /**
      * Returns the extremum value of the induction variable. The extremum value is the value of the
-     * induction variable in the loop body of the last iteration.
+     * induction variable in the loop body of the last iteration, only taking into account the main
+     * loop limit test. It's possible for the loop to exit before this value if
+     * {@link CountedLoopInfo#isExactTripCount()} returns false for the containing loop.
      */
     public ValueNode extremumNode() {
         return extremumNode(false, valueNode().stamp());
