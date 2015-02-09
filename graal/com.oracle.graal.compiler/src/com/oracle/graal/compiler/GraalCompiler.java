@@ -349,7 +349,7 @@ public class GraalCompiler {
 
     public static <T extends AbstractBlock<T>> LIRGenerationResult emitLowLevel(Backend backend, TargetDescription target, LIR lir, List<T> codeEmittingOrder, List<T> linearScanOrder,
                     LIRGenerationResult lirGenRes, LIRGeneratorTool lirGen) {
-        try (Scope s0 = Debug.scope("HighTier")) {
+        try (Scope s0 = Debug.scope("LowLevelHighTier")) {
             LowLevelHighTierPhase.Context c = new LowLevelHighTierPhase.Context(lirGen);
             if (ConstantLoadOptimization.Options.ConstantLoadOptimization.getValue()) {
                 try (Scope s = Debug.scope("ConstantLoadOptimization", lir)) {
@@ -361,7 +361,7 @@ public class GraalCompiler {
             }
         }
 
-        try (Scope s0 = Debug.scope("MidTier")) {
+        try (Scope s0 = Debug.scope("LowLevelMidTier")) {
             LowLevelMidTierPhase.Context<T> c = new LowLevelMidTierPhase.Context<>(codeEmittingOrder, linearScanOrder);
             try (Scope s = Debug.scope("Allocator")) {
                 if (backend.shouldAllocateRegisters()) {
@@ -388,7 +388,7 @@ public class GraalCompiler {
             }
         }
 
-        try (Scope s = Debug.scope("LowTier")) {
+        try (Scope s = Debug.scope("LowLevelLowTier")) {
             LowLevelLowTierPhase.Context<T> c = new LowLevelLowTierPhase.Context<>(codeEmittingOrder, linearScanOrder);
             new EdgeMoveOptimizer<T>().apply(target, lirGenRes, c);
             new ControlFlowOptimizer<T>().apply(target, lirGenRes, c);
