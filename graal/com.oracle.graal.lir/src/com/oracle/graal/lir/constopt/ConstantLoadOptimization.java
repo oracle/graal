@@ -47,7 +47,7 @@ import com.oracle.graal.options.*;
  * a constant, which is potentially scheduled into a block with high probability, with one or more
  * definitions in blocks with a lower probability.
  */
-public final class ConstantLoadOptimization<B extends AbstractBlock<B>> extends LowLevelHighTierPhase<B> {
+public final class ConstantLoadOptimization extends LowLevelHighTierPhase {
 
     public static class Options {
         // @formatter:off
@@ -57,7 +57,7 @@ public final class ConstantLoadOptimization<B extends AbstractBlock<B>> extends 
     }
 
     @Override
-    protected void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, LIRGeneratorTool lirGen) {
+    protected <B extends AbstractBlock<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, LIRGeneratorTool lirGen) {
         new Optimization(lirGenRes.getLIR(), lirGen).apply();
     }
 

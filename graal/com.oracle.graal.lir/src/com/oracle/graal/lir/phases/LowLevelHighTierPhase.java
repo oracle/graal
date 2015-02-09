@@ -28,7 +28,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.lir.gen.*;
 
-public abstract class LowLevelHighTierPhase<B extends AbstractBlock<B>> extends LowLevelPhase<LowLevelHighTierPhase.LowLevelHighTierContext, B> {
+public abstract class LowLevelHighTierPhase extends LowLevelPhase<LowLevelHighTierPhase.LowLevelHighTierContext> {
 
     public static final class LowLevelHighTierContext {
         private final LIRGeneratorTool lirGen;
@@ -40,10 +40,10 @@ public abstract class LowLevelHighTierPhase<B extends AbstractBlock<B>> extends 
     }
 
     @Override
-    protected final void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, LowLevelHighTierContext context) {
+    protected final <B extends AbstractBlock<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, LowLevelHighTierContext context) {
         run(target, lirGenRes, codeEmittingOrder, linearScanOrder, context.lirGen);
     }
 
-    protected abstract void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, LIRGeneratorTool lirGen);
+    protected abstract <B extends AbstractBlock<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, LIRGeneratorTool lirGen);
 
 }

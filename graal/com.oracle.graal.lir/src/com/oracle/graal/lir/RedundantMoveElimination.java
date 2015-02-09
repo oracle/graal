@@ -41,10 +41,10 @@ import com.oracle.graal.lir.phases.*;
 /**
  * Removes move instructions, where the destination value is already in place.
  */
-public final class RedundantMoveElimination<B extends AbstractBlock<B>> extends LowLevelLowTierPhase<B> {
+public final class RedundantMoveElimination extends LowLevelLowTierPhase {
 
     @Override
-    protected void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder) {
+    protected <B extends AbstractBlock<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder) {
         Optimization redundantMoveElimination = new Optimization();
         redundantMoveElimination.doOptimize(lirGenRes.getLIR(), lirGenRes.getFrameMap());
     }

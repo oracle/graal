@@ -38,7 +38,7 @@ import com.oracle.graal.lir.gen.*;
  * Base class for all {@link LIR low-level} phases. Subclasses should be stateless. There will be
  * one global instance for each phase that is shared for all compilations.
  */
-public abstract class LowLevelPhase<C, B extends AbstractBlock<B>> {
+public abstract class LowLevelPhase<C> {
 
     private static final int PHASE_DUMP_LEVEL = 2;
 
@@ -73,11 +73,11 @@ public abstract class LowLevelPhase<C, B extends AbstractBlock<B>> {
         memUseTracker = Debug.memUseTracker("LowLevelPhaseMemUse_%s", getClass());
     }
 
-    public final void apply(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, C context) {
+    public final <B extends AbstractBlock<B>> void apply(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, C context) {
         apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, true);
     }
 
-    public final void apply(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, C context, boolean dumpLIR) {
+    public final <B extends AbstractBlock<B>> void apply(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, C context, boolean dumpLIR) {
         try (TimerCloseable a = timer.start(); Scope s = Debug.scope(getName(), this); Closeable c = memUseTracker.start()) {
             run(target, lirGenRes, codeEmittingOrder, linearScanOrder, context);
             if (dumpLIR && Debug.isDumpEnabled(PHASE_DUMP_LEVEL)) {
@@ -88,7 +88,7 @@ public abstract class LowLevelPhase<C, B extends AbstractBlock<B>> {
         }
     }
 
-    protected abstract void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, C context);
+    protected abstract <B extends AbstractBlock<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, C context);
 
     protected CharSequence createName() {
         String className = LowLevelPhase.this.getClass().getName();

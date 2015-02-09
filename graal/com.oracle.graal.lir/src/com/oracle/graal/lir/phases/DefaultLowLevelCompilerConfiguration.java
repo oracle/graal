@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.lir.phases;
 
-import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.alloc.lsra.*;
 import com.oracle.graal.lir.constopt.*;
@@ -33,35 +32,35 @@ import com.oracle.graal.lir.stackslotalloc.*;
 
 public class DefaultLowLevelCompilerConfiguration implements LowLevelCompilerConfiguration {
 
-    public <B extends AbstractBlock<B>> LowLevelPhaseSuite<LowLevelHighTierContext, B> createHighTier() {
-        LowLevelPhaseSuite<LowLevelHighTierContext, B> suite = new LowLevelPhaseSuite<>(LowLevelHighTierContext.class);
+    public LowLevelPhaseSuite<LowLevelHighTierContext> createHighTier() {
+        LowLevelPhaseSuite<LowLevelHighTierContext> suite = new LowLevelPhaseSuite<>(LowLevelHighTierContext.class);
         if (ConstantLoadOptimization.Options.ConstantLoadOptimization.getValue()) {
-            suite.appendPhase(new ConstantLoadOptimization<B>());
+            suite.appendPhase(new ConstantLoadOptimization());
         }
         return suite;
     }
 
-    public <B extends AbstractBlock<B>> LowLevelPhaseSuite<LowLevelMidTierContext, B> createMidTier() {
-        LowLevelPhaseSuite<LowLevelMidTierContext, B> suite = new LowLevelPhaseSuite<>(LowLevelMidTierContext.class);
-        suite.appendPhase(new LinearScanPhase<B>());
+    public LowLevelPhaseSuite<LowLevelMidTierContext> createMidTier() {
+        LowLevelPhaseSuite<LowLevelMidTierContext> suite = new LowLevelPhaseSuite<>(LowLevelMidTierContext.class);
+        suite.appendPhase(new LinearScanPhase());
 
         // build frame map
         if (LSStackSlotAllocator.Options.LSStackSlotAllocation.getValue()) {
-            suite.appendPhase(new LSStackSlotAllocator<B>());
+            suite.appendPhase(new LSStackSlotAllocator());
         } else {
-            suite.appendPhase(new SimpleStackSlotAllocator<B>());
+            suite.appendPhase(new SimpleStackSlotAllocator());
         }
         // currently we mark locations only if we do register allocation
-        suite.appendPhase(new LocationMarker<B>());
+        suite.appendPhase(new LocationMarker());
         return suite;
     }
 
-    public <B extends AbstractBlock<B>> LowLevelPhaseSuite<LowLevelLowTierContext, B> createLowTier() {
-        LowLevelPhaseSuite<LowLevelLowTierContext, B> suite = new LowLevelPhaseSuite<>(LowLevelLowTierContext.class);
-        suite.appendPhase(new EdgeMoveOptimizer<B>());
-        suite.appendPhase(new ControlFlowOptimizer<B>());
-        suite.appendPhase(new RedundantMoveElimination<B>());
-        suite.appendPhase(new NullCheckOptimizer<B>());
+    public LowLevelPhaseSuite<LowLevelLowTierContext> createLowTier() {
+        LowLevelPhaseSuite<LowLevelLowTierContext> suite = new LowLevelPhaseSuite<>(LowLevelLowTierContext.class);
+        suite.appendPhase(new EdgeMoveOptimizer());
+        suite.appendPhase(new ControlFlowOptimizer());
+        suite.appendPhase(new RedundantMoveElimination());
+        suite.appendPhase(new NullCheckOptimizer());
         return suite;
     }
 

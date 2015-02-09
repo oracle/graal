@@ -31,10 +31,10 @@ import com.oracle.graal.lir.StandardOp.NullCheck;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.phases.*;
 
-public final class NullCheckOptimizer<B extends AbstractBlock<B>> extends LowLevelLowTierPhase<B> {
+public final class NullCheckOptimizer extends LowLevelLowTierPhase {
 
     @Override
-    protected void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder) {
+    protected <B extends AbstractBlock<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder) {
         LIR ir = lirGenRes.getLIR();
         List<? extends AbstractBlock<?>> blocks = ir.codeEmittingOrder();
         NullCheckOptimizer.foldNullChecks(ir, blocks, target.implicitNullCheckLimit);

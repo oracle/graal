@@ -51,7 +51,7 @@ import com.oracle.graal.options.*;
  * {@link OperandFlag#UNINITIALIZED}. Otherwise the stack slot might be reused and its content
  * destroyed.
  */
-public final class LSStackSlotAllocator<B extends AbstractBlock<B>> extends LowLevelMidTierPhase<B> implements StackSlotAllocator {
+public final class LSStackSlotAllocator extends LowLevelMidTierPhase implements StackSlotAllocator {
 
     public static class Options {
         // @formatter:off
@@ -68,7 +68,7 @@ public final class LSStackSlotAllocator<B extends AbstractBlock<B>> extends LowL
     private static final DebugTimer AssignSlotsTimer = Debug.timer("LSStackSlotAllocator[AssignSlots]");
 
     @Override
-    protected void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder) {
+    protected <B extends AbstractBlock<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder) {
         lirGenRes.buildFrameMap(this);
     }
 

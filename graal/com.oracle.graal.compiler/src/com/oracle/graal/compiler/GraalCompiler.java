@@ -351,13 +351,13 @@ public class GraalCompiler {
     public static <T extends AbstractBlock<T>> LIRGenerationResult emitLowLevel(TargetDescription target, List<T> codeEmittingOrder, List<T> linearScanOrder, LIRGenerationResult lirGenRes,
                     LIRGeneratorTool lirGen, LowLevelCompilerConfiguration config) {
         LowLevelHighTierContext highTierContext = new LowLevelHighTierContext(lirGen);
-        config.<T> createHighTier().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, highTierContext);
+        config.createHighTier().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, highTierContext);
 
         LowLevelMidTierContext midTierContext = new LowLevelMidTierContext();
-        config.<T> createMidTier().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, midTierContext);
+        config.createMidTier().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, midTierContext);
 
         LowLevelLowTierContext lowTierContext = new LowLevelLowTierContext();
-        config.<T> createLowTier().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, lowTierContext);
+        config.createLowTier().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, lowTierContext);
 
         return lirGenRes;
     }

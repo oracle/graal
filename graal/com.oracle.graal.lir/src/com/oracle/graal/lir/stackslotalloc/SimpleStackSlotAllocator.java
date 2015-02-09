@@ -36,10 +36,10 @@ import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.phases.*;
 
-public class SimpleStackSlotAllocator<B extends AbstractBlock<B>> extends LowLevelMidTierPhase<B> implements StackSlotAllocator {
+public class SimpleStackSlotAllocator extends LowLevelMidTierPhase implements StackSlotAllocator {
 
     @Override
-    protected void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder) {
+    protected <B extends AbstractBlock<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder) {
         lirGenRes.buildFrameMap(this);
     }
 
