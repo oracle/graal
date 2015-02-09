@@ -26,21 +26,23 @@ import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.alloc.lsra.*;
 import com.oracle.graal.lir.constopt.*;
-import com.oracle.graal.lir.phases.LowLevelMidTierPhase.Context;
+import com.oracle.graal.lir.phases.LowLevelHighTierPhase.LowLevelHighTierContext;
+import com.oracle.graal.lir.phases.LowLevelLowTierPhase.LowLevelLowTierContext;
+import com.oracle.graal.lir.phases.LowLevelMidTierPhase.LowLevelMidTierContext;
 import com.oracle.graal.lir.stackslotalloc.*;
 
 public class DefaultLowLevelCompilerConfiguration implements LowLevelCompilerConfiguration {
 
-    public <B extends AbstractBlock<B>> LowLevelPhaseSuite<LowLevelHighTierPhase.Context, B> createHighTier() {
-        LowLevelPhaseSuite<LowLevelHighTierPhase.Context, B> suite = new LowLevelPhaseSuite<>();
+    public <B extends AbstractBlock<B>> LowLevelPhaseSuite<LowLevelHighTierContext, B> createHighTier() {
+        LowLevelPhaseSuite<LowLevelHighTierContext, B> suite = new LowLevelPhaseSuite<>(LowLevelHighTierContext.class);
         if (ConstantLoadOptimization.Options.ConstantLoadOptimization.getValue()) {
             suite.appendPhase(new ConstantLoadOptimization<B>());
         }
         return suite;
     }
 
-    public <B extends AbstractBlock<B>> LowLevelPhaseSuite<Context, B> createMidTier() {
-        LowLevelPhaseSuite<LowLevelMidTierPhase.Context, B> suite = new LowLevelPhaseSuite<>();
+    public <B extends AbstractBlock<B>> LowLevelPhaseSuite<LowLevelMidTierContext, B> createMidTier() {
+        LowLevelPhaseSuite<LowLevelMidTierContext, B> suite = new LowLevelPhaseSuite<>(LowLevelMidTierContext.class);
         suite.appendPhase(new LinearScanPhase<B>());
 
         // build frame map
@@ -54,8 +56,8 @@ public class DefaultLowLevelCompilerConfiguration implements LowLevelCompilerCon
         return suite;
     }
 
-    public <B extends AbstractBlock<B>> LowLevelPhaseSuite<com.oracle.graal.lir.phases.LowLevelLowTierPhase.Context, B> createLowTier() {
-        LowLevelPhaseSuite<LowLevelLowTierPhase.Context, B> suite = new LowLevelPhaseSuite<>();
+    public <B extends AbstractBlock<B>> LowLevelPhaseSuite<LowLevelLowTierContext, B> createLowTier() {
+        LowLevelPhaseSuite<LowLevelLowTierContext, B> suite = new LowLevelPhaseSuite<>(LowLevelLowTierContext.class);
         suite.appendPhase(new EdgeMoveOptimizer<B>());
         suite.appendPhase(new ControlFlowOptimizer<B>());
         suite.appendPhase(new RedundantMoveElimination<B>());

@@ -31,8 +31,19 @@ import com.oracle.graal.lir.gen.*;
 public class LowLevelPhaseSuite<C, B extends AbstractBlock<B>> extends LowLevelPhase<C, B> {
     private final List<LowLevelPhase<C, B>> phases;
 
-    public LowLevelPhaseSuite() {
+    public LowLevelPhaseSuite(Class<C> contextClass) {
+        super(getNameFromContext(contextClass));
         phases = new ArrayList<>();
+    }
+
+    private static <C> String getNameFromContext(Class<C> contextClass) {
+        String className = contextClass.getName();
+        String s0 = className.substring(className.lastIndexOf(".") + 1); // strip the package name
+        String s = s0.substring(s0.lastIndexOf("$") + 1); // strip the enclosing class name
+        if (s.endsWith("Context")) {
+            s = s.substring(0, s.length() - "Context".length());
+        }
+        return s;
     }
 
     /**

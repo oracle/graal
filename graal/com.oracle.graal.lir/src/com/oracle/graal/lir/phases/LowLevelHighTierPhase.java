@@ -28,19 +28,19 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.lir.gen.*;
 
-public abstract class LowLevelHighTierPhase<B extends AbstractBlock<B>> extends LowLevelPhase<LowLevelHighTierPhase.Context, B> {
+public abstract class LowLevelHighTierPhase<B extends AbstractBlock<B>> extends LowLevelPhase<LowLevelHighTierPhase.LowLevelHighTierContext, B> {
 
-    public static final class Context {
+    public static final class LowLevelHighTierContext {
         private final LIRGeneratorTool lirGen;
 
-        public Context(LIRGeneratorTool lirGen) {
+        public LowLevelHighTierContext(LIRGeneratorTool lirGen) {
             this.lirGen = lirGen;
         }
 
     }
 
     @Override
-    protected final void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, Context context) {
+    protected final void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, LowLevelHighTierContext context) {
         run(target, lirGenRes, codeEmittingOrder, linearScanOrder, context.lirGen);
     }
 

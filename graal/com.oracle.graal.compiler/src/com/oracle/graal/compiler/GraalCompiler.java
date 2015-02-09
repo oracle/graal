@@ -45,6 +45,9 @@ import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.phases.*;
+import com.oracle.graal.lir.phases.LowLevelHighTierPhase.LowLevelHighTierContext;
+import com.oracle.graal.lir.phases.LowLevelLowTierPhase.LowLevelLowTierContext;
+import com.oracle.graal.lir.phases.LowLevelMidTierPhase.LowLevelMidTierContext;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.spi.*;
@@ -348,17 +351,17 @@ public class GraalCompiler {
     public static <T extends AbstractBlock<T>> LIRGenerationResult emitLowLevel(TargetDescription target, List<T> codeEmittingOrder, List<T> linearScanOrder, LIRGenerationResult lirGenRes,
                     LIRGeneratorTool lirGen, LowLevelCompilerConfiguration config) {
         try (Scope s0 = Debug.scope("LowLevelHighTier")) {
-            LowLevelHighTierPhase.Context c = new LowLevelHighTierPhase.Context(lirGen);
+            LowLevelHighTierContext c = new LowLevelHighTierContext(lirGen);
             config.<T> createHighTier().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, c);
         }
 
         try (Scope s0 = Debug.scope("LowLevelMidTier")) {
-            LowLevelMidTierPhase.Context c = new LowLevelMidTierPhase.Context();
+            LowLevelMidTierContext c = new LowLevelMidTierContext();
             config.<T> createMidTier().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, c);
         }
 
         try (Scope s = Debug.scope("LowLevelLowTier")) {
-            LowLevelLowTierPhase.Context c = new LowLevelLowTierPhase.Context();
+            LowLevelLowTierContext c = new LowLevelLowTierContext();
             config.<T> createLowTier().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, c);
         }
 

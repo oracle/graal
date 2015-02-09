@@ -23,12 +23,15 @@
 package com.oracle.graal.lir.phases;
 
 import com.oracle.graal.compiler.common.cfg.*;
+import com.oracle.graal.lir.phases.LowLevelHighTierPhase.LowLevelHighTierContext;
+import com.oracle.graal.lir.phases.LowLevelLowTierPhase.LowLevelLowTierContext;
+import com.oracle.graal.lir.phases.LowLevelMidTierPhase.LowLevelMidTierContext;
 
 public interface LowLevelCompilerConfiguration {
 
-    <B extends AbstractBlock<B>> LowLevelPhaseSuite<LowLevelHighTierPhase.Context, B> createHighTier();
+    <B extends AbstractBlock<B>> LowLevelPhaseSuite<LowLevelHighTierContext, B> createHighTier();
 
-    <B extends AbstractBlock<B>> LowLevelPhaseSuite<LowLevelMidTierPhase.Context, B> createMidTier();
+    <B extends AbstractBlock<B>> LowLevelPhaseSuite<LowLevelMidTierContext, B> createMidTier();
 
-    <B extends AbstractBlock<B>> LowLevelPhaseSuite<LowLevelLowTierPhase.Context, B> createLowTier();
+    <B extends AbstractBlock<B>> LowLevelPhaseSuite<LowLevelLowTierContext, B> createLowTier();
 }

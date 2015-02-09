@@ -23,6 +23,7 @@
 package com.oracle.graal.lir.phases;
 
 import java.util.*;
+import java.util.regex.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.compiler.common.cfg.*;
@@ -53,9 +54,23 @@ public abstract class LowLevelPhase<C, B extends AbstractBlock<B>> {
      */
     private final DebugMemUseTracker memUseTracker;
 
+    private static final Pattern NAME_PATTERN = Pattern.compile("[A-Z][A-Za-z0-9]+");
+
+    private static boolean checkName(String name) {
+        assert name == null || NAME_PATTERN.matcher(name).matches() : "illegal phase name: " + name;
+        return true;
+    }
+
     public LowLevelPhase() {
-        timer = Debug.timer("LowLevelPhaseTime_%s", getName());
-        memUseTracker = Debug.memUseTracker("LowLevelPhaseMemUse_%s", getName());
+        timer = Debug.timer("LowLevelPhaseTime_%s", getClass());
+        memUseTracker = Debug.memUseTracker("LowLevelPhaseMemUse_%s", getClass());
+    }
+
+    protected LowLevelPhase(String name) {
+        assert checkName(name);
+        this.name = name;
+        timer = Debug.timer("LowLevelPhaseTime_%s", getClass());
+        memUseTracker = Debug.memUseTracker("LowLevelPhaseMemUse_%s", getClass());
     }
 
     public final void apply(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, C context) {
