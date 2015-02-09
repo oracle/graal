@@ -53,6 +53,7 @@ import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.lir.gen.*;
+import com.oracle.graal.lir.phases.*;
 import com.oracle.graal.lir.sparc.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -96,6 +97,11 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
     @Override
     public NodeLIRBuilderTool newNodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool lirGen) {
         return new SPARCHotSpotNodeLIRBuilder(getRuntime(), graph, lirGen);
+    }
+
+    @Override
+    public LowLevelCompilerConfiguration getLowLevelCompilerConfiguration() {
+        return new DefaultLowLevelCompilerConfiguration();
     }
 
     /**

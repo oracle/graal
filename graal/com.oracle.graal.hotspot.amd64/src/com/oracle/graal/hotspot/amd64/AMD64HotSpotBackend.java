@@ -48,6 +48,7 @@ import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.lir.gen.*;
+import com.oracle.graal.lir.phases.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.nfi.api.*;
@@ -96,6 +97,11 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
     public BytecodeLIRBuilder newBytecodeLIRBuilder(LIRGeneratorTool gen, BytecodeParserTool parser) {
         return new AMD64HotSpotBytecodeLIRBuilder(gen, parser);
 
+    }
+
+    @Override
+    public LowLevelCompilerConfiguration getLowLevelCompilerConfiguration() {
+        return new DefaultLowLevelCompilerConfiguration();
     }
 
     /**
