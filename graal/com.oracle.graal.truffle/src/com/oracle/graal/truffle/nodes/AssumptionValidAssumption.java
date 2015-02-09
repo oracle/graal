@@ -25,7 +25,7 @@ package com.oracle.graal.truffle.nodes;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.truffle.*;
 
-public final class AssumptionValidAssumption extends Assumptions.Assumption {
+public final class AssumptionValidAssumption extends Assumptions.OptimisticAssumption {
 
     private static final long serialVersionUID = 2010244979610891262L;
 

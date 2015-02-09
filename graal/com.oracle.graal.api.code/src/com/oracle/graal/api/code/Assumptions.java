@@ -31,7 +31,9 @@ import java.util.*;
 import com.oracle.graal.api.meta.*;
 
 /**
- * Class for recording optimistic assumptions made during compilation.
+ * Class for recording assumptions made during compilation. {@link OptimisticAssumption}s can only
+ * be recorded in an {@link Assumptions} object if it {@linkplain #useOptimisticAssumptions()
+ * allows} them.
  */
 public final class Assumptions implements Serializable, Iterable<Assumptions.Assumption> {
 
@@ -45,7 +47,24 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
         private static final long serialVersionUID = -1936652569665112915L;
     }
 
-    public static final class NoFinalizableSubclass extends Assumption {
+    /**
+     * Abstract base class for optimistic assumptions. An optimistic assumption assumes a property
+     * of the runtime that may be invalidated by subsequent execution (e.g., that a class has no
+     * subclasses implementing {@link NoFinalizableSubclass Object.finalize()}). A non-optimistic
+     * assumption assumes a property that will most likely only be invalidated by an external
+     * interface to the runtime (e.g., a {@linkplain MethodContents breakpoint is set or a class is
+     * redefined}).
+     */
+    public abstract static class OptimisticAssumption extends Assumption {
+
+        private static final long serialVersionUID = -1936652569665112932L;
+    }
+
+    /**
+     * An optimistic assumption that a given class has no subclasses implementing
+     * {@link Object#finalize()}).
+     */
+    public static final class NoFinalizableSubclass extends OptimisticAssumption {
 
         private static final long serialVersionUID = 6451169735564055081L;
 
@@ -77,9 +96,9 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
     }
 
     /**
-     * An assumption about a unique subtype of a given type.
+     * An optimistic assumption that a given type has a given unique subtype.
      */
-    public static final class ConcreteSubtype extends Assumption {
+    public static final class ConcreteSubtype extends OptimisticAssumption {
 
         private static final long serialVersionUID = -1457173265437676252L;
 
@@ -125,9 +144,9 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
     }
 
     /**
-     * An assumption about a unique implementation of a virtual method.
+     * An optimistic assumption that a given virtual method has a given unique implementation.
      */
-    public static final class ConcreteMethod extends Assumption {
+    public static final class ConcreteMethod extends OptimisticAssumption {
 
         private static final long serialVersionUID = -7636746737947390059L;
 
@@ -179,7 +198,14 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
     }
 
     /**
-     * An assumption that specified that a method was used during the compilation.
+     * An non-optimistic assumption that the bytecodes of a given method used during compilation
+     * will not change. This kind of dependency may be used to invalidate and deoptimize compiled
+     * code when:
+     * <ul>
+     * <li>one of its constituent methods is redefined or</li>
+     * <li>a breakpoint is set in one of its constituent methods and the runtime only implements
+     * breakpoint support in non-compiled code.
+     * </ul>
      */
     public static final class MethodContents extends Assumption {
 
@@ -212,9 +238,9 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
     }
 
     /**
-     * Assumption that a call site's method handle did not change.
+     * An optimistic assumption that a given call site's method handle did not change.
      */
-    public static final class CallSiteTargetValue extends Assumption {
+    public static final class CallSiteTargetValue extends OptimisticAssumption {
 
         private static final long serialVersionUID = 1732459941784550371L;
 
@@ -255,11 +281,19 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
      * Graal/HotSpot implementation.
      */
     private Assumption[] list;
-    private boolean useOptimisticAssumptions;
     private int count;
 
-    public Assumptions(boolean useOptimisticAssumptions) {
-        this.useOptimisticAssumptions = useOptimisticAssumptions;
+    /**
+     * Specifies whether {@link OptimisticAssumption}s can be made.
+     */
+    private boolean allowOptimisticAssumptions;
+
+    /**
+     *
+     * @param allowOptimisticAssumptions
+     */
+    public Assumptions(boolean allowOptimisticAssumptions) {
+        this.allowOptimisticAssumptions = allowOptimisticAssumptions;
         list = new Assumption[4];
     }
 
@@ -272,8 +306,11 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
         return count == 0;
     }
 
+    /**
+     * Determines whether {@link OptimisticAssumption}s can be made.
+     */
     public boolean useOptimisticAssumptions() {
-        return useOptimisticAssumptions;
+        return allowOptimisticAssumptions;
     }
 
     @Override
@@ -293,7 +330,7 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
         }
         if (obj instanceof Assumptions) {
             Assumptions that = (Assumptions) obj;
-            if (useOptimisticAssumptions != that.useOptimisticAssumptions || count != that.count) {
+            if (allowOptimisticAssumptions != that.allowOptimisticAssumptions || count != that.count) {
                 return false;
             }
             for (int i = 0; i < count; i++) {
@@ -338,7 +375,6 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
      * @param receiverType the type that is assumed to have no finalizable subclasses
      */
     public void recordNoFinalizableSubclassAssumption(ResolvedJavaType receiverType) {
-        assert useOptimisticAssumptions;
         record(new NoFinalizableSubclass(receiverType));
     }
 
@@ -350,7 +386,6 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
      * @param subtype the one concrete subtype
      */
     public void recordConcreteSubtype(ResolvedJavaType context, ResolvedJavaType subtype) {
-        assert useOptimisticAssumptions;
         record(new ConcreteSubtype(context, subtype));
     }
 
@@ -363,7 +398,6 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
      * @param impl the concrete method that is the only possible target for the virtual call
      */
     public void recordConcreteMethod(ResolvedJavaMethod method, ResolvedJavaType context, ResolvedJavaMethod impl) {
-        assert useOptimisticAssumptions;
         record(new ConcreteMethod(method, context, impl));
     }
 
@@ -377,6 +411,7 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
     }
 
     public void record(Assumption assumption) {
+        assert allowOptimisticAssumptions || !(assumption instanceof OptimisticAssumption) : "cannot make optimistic assumption: " + assumption;
         if (list == null) {
             list = new Assumption[4];
         } else {
