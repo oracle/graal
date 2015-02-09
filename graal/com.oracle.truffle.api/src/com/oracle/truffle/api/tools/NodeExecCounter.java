@@ -36,9 +36,10 @@ import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.nodes.Node.Child;
 
 /**
- * A {@link InstrumentationTool} that counts interpreter <em>execution calls</em> to AST nodes, tabulated by
- * the type of called nodes; counting can be enabled <em>all</em> nodes or restricted to nodes with
- * a specified {@linkplain SyntaxTag tag} that is presumed to be applied external to the tool.
+ * An {@link InstrumentationTool} that counts interpreter <em>execution calls</em> to AST nodes,
+ * tabulated by the type of called nodes; counting can be enabled <em>all</em> nodes or restricted
+ * to nodes with a specified {@linkplain SyntaxTag tag} that is presumed to be applied external to
+ * the tool.
  * <p>
  * <b>Tool Life Cycle</b>
  * <p>

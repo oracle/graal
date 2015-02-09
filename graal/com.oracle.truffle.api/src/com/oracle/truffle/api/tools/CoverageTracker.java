@@ -38,9 +38,9 @@ import com.oracle.truffle.api.nodes.Node.Child;
 import com.oracle.truffle.api.source.*;
 
 /**
- * A {@link InstrumentationTool} that counts interpreter <em>execution calls</em> to AST nodes that hold a
- * specified {@linkplain SyntaxTag tag}, tabulated by source and line number associated with each
- * node. Tags are presumed to be applied external to the tool. If no tag is specified,
+ * An {@link InstrumentationTool} that counts interpreter <em>execution calls</em> to AST nodes that
+ * hold a specified {@linkplain SyntaxTag tag}, tabulated by source and line number associated with
+ * each node. Tags are presumed to be applied external to the tool. If no tag is specified,
  * {@linkplain StandardSyntaxTag#STATEMENT STATEMENT} is used, corresponding to conventional
  * behavior for code coverage tools.
  * <p>
