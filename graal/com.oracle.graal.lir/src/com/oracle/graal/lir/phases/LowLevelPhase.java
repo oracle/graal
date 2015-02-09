@@ -36,6 +36,10 @@ import com.oracle.graal.lir.gen.*;
  */
 public abstract class LowLevelPhase<C> {
 
+    private static final int PHASE_DUMP_LEVEL = 2;
+
+    private CharSequence name;
+
     /**
      * Records time spent within {@link #apply}.
      */
@@ -47,17 +51,41 @@ public abstract class LowLevelPhase<C> {
     private final DebugMemUseTracker memUseTracker;
 
     public LowLevelPhase() {
-        timer = Debug.timer("LowLevelPhaseTime_%s", getClass());
-        memUseTracker = Debug.memUseTracker("LowLevelPhaseMemUse_%s", getClass());
+        timer = Debug.timer("LowLevelPhaseTime_%s", getName());
+        memUseTracker = Debug.memUseTracker("LowLevelPhaseMemUse_%s", getName());
     }
 
-    public void apply(TargetDescription target, LIRGenerationResult lirGenRes, C context) {
-        try (TimerCloseable a = timer.start(); Scope s = Debug.scope(getClass(), this); Closeable c = memUseTracker.start()) {
+    public final void apply(TargetDescription target, LIRGenerationResult lirGenRes, C context) {
+        apply(target, lirGenRes, context, true);
+    }
+
+    public final void apply(TargetDescription target, LIRGenerationResult lirGenRes, C context, boolean dumpLIR) {
+        try (TimerCloseable a = timer.start(); Scope s = Debug.scope(getName(), this); Closeable c = memUseTracker.start()) {
             run(target, lirGenRes, context);
+            if (dumpLIR && Debug.isDumpEnabled(PHASE_DUMP_LEVEL)) {
+                Debug.dump(PHASE_DUMP_LEVEL, lirGenRes.getLIR(), "After phase %s", getName());
+            }
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
     }
 
     protected abstract void run(TargetDescription target, LIRGenerationResult lirGenRes, C context);
+
+    protected CharSequence createName() {
+        String className = LowLevelPhase.this.getClass().getName();
+        String s = className.substring(className.lastIndexOf(".") + 1); // strip the package name
+        if (s.endsWith("Phase")) {
+            s = s.substring(0, s.length() - "Phase".length());
+        }
+        return s;
+    }
+
+    public final CharSequence getName() {
+        if (name == null) {
+            name = createName();
+        }
+        return name;
+    }
+
 }

@@ -352,37 +352,25 @@ public class GraalCompiler {
         try (Scope s0 = Debug.scope("LowLevelHighTier")) {
             LowLevelHighTierPhase.Context c = new LowLevelHighTierPhase.Context(lirGen);
             if (ConstantLoadOptimization.Options.ConstantLoadOptimization.getValue()) {
-                try (Scope s = Debug.scope("ConstantLoadOptimization", lir)) {
-                    new ConstantLoadOptimization().apply(target, lirGenRes, c);
-                    Debug.dump(lir, "After constant load optimization");
-                } catch (Throwable e) {
-                    throw Debug.handle(e);
-                }
+                new ConstantLoadOptimization().apply(target, lirGenRes, c);
             }
         }
 
         try (Scope s0 = Debug.scope("LowLevelMidTier")) {
             LowLevelMidTierPhase.Context<T> c = new LowLevelMidTierPhase.Context<>(codeEmittingOrder, linearScanOrder);
-            try (Scope s = Debug.scope("Allocator")) {
-                if (backend.shouldAllocateRegisters()) {
-                    new LinearScanPhase<T>().apply(target, lirGenRes, c);
-                }
+            if (backend.shouldAllocateRegisters()) {
+                new LinearScanPhase<T>().apply(target, lirGenRes, c);
             }
 
-            try (Scope s1 = Debug.scope("BuildFrameMap")) {
-                // build frame map
-                if (LSStackSlotAllocator.Options.LSStackSlotAllocation.getValue()) {
-                    new LSStackSlotAllocator<T>().apply(target, lirGenRes, c);
-                } else {
-                    new SimpleStackSlotAllocator<T>().apply(target, lirGenRes, c);
-                }
-                Debug.dump(lir, "After FrameMap building");
+            // build frame map
+            if (LSStackSlotAllocator.Options.LSStackSlotAllocation.getValue()) {
+                new LSStackSlotAllocator<T>().apply(target, lirGenRes, c);
+            } else {
+                new SimpleStackSlotAllocator<T>().apply(target, lirGenRes, c);
             }
-            try (Scope s1 = Debug.scope("MarkLocations")) {
-                if (backend.shouldAllocateRegisters()) {
-                    // currently we mark locations only if we do register allocation
-                    new LocationMarker<T>().apply(target, lirGenRes, c);
-                }
+            if (backend.shouldAllocateRegisters()) {
+                // currently we mark locations only if we do register allocation
+                new LocationMarker<T>().apply(target, lirGenRes, c);
             }
         }
 
@@ -395,8 +383,6 @@ public class GraalCompiler {
                 new RedundantMoveElimination<T>().apply(target, lirGenRes, c);
             }
             new NullCheckOptimizer<T>().apply(target, lirGenRes, c);
-
-            Debug.dump(lir, "After control flow optimization");
         }
 
         return lirGenRes;
