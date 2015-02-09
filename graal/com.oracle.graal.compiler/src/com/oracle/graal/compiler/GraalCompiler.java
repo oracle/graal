@@ -371,13 +371,11 @@ public class GraalCompiler {
 
             try (Scope s1 = Debug.scope("BuildFrameMap")) {
                 // build frame map
-                final StackSlotAllocator allocator;
                 if (LSStackSlotAllocator.Options.LSStackSlotAllocation.getValue()) {
-                    allocator = new LSStackSlotAllocator();
+                    new LSStackSlotAllocator<T>().apply(target, lirGenRes, c);
                 } else {
-                    allocator = new SimpleStackSlotAllocator();
+                    new SimpleStackSlotAllocator<T>().apply(target, lirGenRes, c);
                 }
-                lirGenRes.buildFrameMap(allocator);
                 Debug.dump(lir, "After FrameMap building");
             }
             try (Scope s1 = Debug.scope("MarkLocations")) {
