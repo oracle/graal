@@ -335,7 +335,8 @@ public class GraalCompiler {
             }
 
             try (Scope s = Debug.scope("LowLevelTier", nodeLirGen)) {
-                return emitLowLevel(backend, target, codeEmittingOrder, linearScanOrder, lirGenRes, lirGen);
+                LowLevelCompilerConfiguration config = backend.getLowLevelCompilerConfiguration();
+                return emitLowLevel(target, codeEmittingOrder, linearScanOrder, lirGenRes, lirGen, config);
             } catch (Throwable e) {
                 throw Debug.handle(e);
             }
@@ -344,9 +345,8 @@ public class GraalCompiler {
         }
     }
 
-    public static <T extends AbstractBlock<T>> LIRGenerationResult emitLowLevel(Backend backend, TargetDescription target, List<T> codeEmittingOrder, List<T> linearScanOrder,
-                    LIRGenerationResult lirGenRes, LIRGeneratorTool lirGen) {
-        LowLevelCompilerConfiguration config = backend.getLowLevelCompilerConfiguration();
+    public static <T extends AbstractBlock<T>> LIRGenerationResult emitLowLevel(TargetDescription target, List<T> codeEmittingOrder, List<T> linearScanOrder, LIRGenerationResult lirGenRes,
+                    LIRGeneratorTool lirGen, LowLevelCompilerConfiguration config) {
         try (Scope s0 = Debug.scope("LowLevelHighTier")) {
             LowLevelHighTierPhase.Context c = new LowLevelHighTierPhase.Context(lirGen);
             config.<T> createHighTier().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, c);

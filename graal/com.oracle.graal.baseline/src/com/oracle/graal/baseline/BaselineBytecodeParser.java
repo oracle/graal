@@ -43,6 +43,7 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.lir.gen.*;
+import com.oracle.graal.lir.phases.*;
 import com.oracle.graal.phases.*;
 
 public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, BaselineFrameStateBuilder> implements BytecodeParserTool {
@@ -145,7 +146,8 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, Baseli
                 }
 
                 try (Scope s = Debug.scope("LowLevelTier", this)) {
-                    return GraalCompiler.emitLowLevel(backend, target, codeEmittingOrder, linearScanOrder, lirGenRes, gen);
+                    LowLevelCompilerConfiguration config = backend.getLowLevelCompilerConfiguration();
+                    return GraalCompiler.emitLowLevel(target, codeEmittingOrder, linearScanOrder, lirGenRes, gen, config);
                 } catch (Throwable e) {
                     throw Debug.handle(e);
                 }
