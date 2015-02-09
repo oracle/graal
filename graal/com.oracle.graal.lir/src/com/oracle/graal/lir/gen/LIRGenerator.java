@@ -71,14 +71,6 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
         this.cc = cc;
     }
 
-    /**
-     * Returns true if the redundant move elimination optimization should be done after register
-     * allocation.
-     */
-    public boolean canEliminateRedundantMoves() {
-        return true;
-    }
-
     @Override
     public TargetDescription target() {
         return getCodeCache().getTarget();
