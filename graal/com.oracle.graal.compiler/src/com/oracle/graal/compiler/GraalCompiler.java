@@ -358,9 +358,7 @@ public class GraalCompiler {
 
         try (Scope s0 = Debug.scope("LowLevelMidTier")) {
             LowLevelMidTierPhase.Context c = new LowLevelMidTierPhase.Context();
-            if (backend.shouldAllocateRegisters()) {
-                new LinearScanPhase<T>().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, c);
-            }
+            new LinearScanPhase<T>().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, c);
 
             // build frame map
             if (LSStackSlotAllocator.Options.LSStackSlotAllocation.getValue()) {
@@ -368,10 +366,8 @@ public class GraalCompiler {
             } else {
                 new SimpleStackSlotAllocator<T>().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, c);
             }
-            if (backend.shouldAllocateRegisters()) {
-                // currently we mark locations only if we do register allocation
-                new LocationMarker<T>().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, c);
-            }
+            // currently we mark locations only if we do register allocation
+            new LocationMarker<T>().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, c);
         }
 
         try (Scope s = Debug.scope("LowLevelLowTier")) {
