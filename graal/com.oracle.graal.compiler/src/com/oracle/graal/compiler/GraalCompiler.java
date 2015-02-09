@@ -41,13 +41,10 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.alloc.lsra.*;
 import com.oracle.graal.lir.asm.*;
-import com.oracle.graal.lir.constopt.*;
 import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.phases.*;
-import com.oracle.graal.lir.stackslotalloc.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.spi.*;
@@ -349,34 +346,20 @@ public class GraalCompiler {
 
     public static <T extends AbstractBlock<T>> LIRGenerationResult emitLowLevel(Backend backend, TargetDescription target, List<T> codeEmittingOrder, List<T> linearScanOrder,
                     LIRGenerationResult lirGenRes, LIRGeneratorTool lirGen) {
+        LowLevelCompilerConfiguration config = backend.getLowLevelCompilerConfiguration();
         try (Scope s0 = Debug.scope("LowLevelHighTier")) {
             LowLevelHighTierPhase.Context c = new LowLevelHighTierPhase.Context(lirGen);
-            if (ConstantLoadOptimization.Options.ConstantLoadOptimization.getValue()) {
-                new ConstantLoadOptimization<T>().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, c);
-            }
+            config.<T> createHighTier().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, c);
         }
 
         try (Scope s0 = Debug.scope("LowLevelMidTier")) {
             LowLevelMidTierPhase.Context c = new LowLevelMidTierPhase.Context();
-            new LinearScanPhase<T>().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, c);
-
-            // build frame map
-            if (LSStackSlotAllocator.Options.LSStackSlotAllocation.getValue()) {
-                new LSStackSlotAllocator<T>().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, c);
-            } else {
-                new SimpleStackSlotAllocator<T>().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, c);
-            }
-            // currently we mark locations only if we do register allocation
-            new LocationMarker<T>().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, c);
+            config.<T> createMidTier().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, c);
         }
 
         try (Scope s = Debug.scope("LowLevelLowTier")) {
             LowLevelLowTierPhase.Context c = new LowLevelLowTierPhase.Context();
-            new EdgeMoveOptimizer<T>().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, c);
-            new ControlFlowOptimizer<T>().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, c);
-
-            new RedundantMoveElimination<T>().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, c);
-            new NullCheckOptimizer<T>().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, c);
+            config.<T> createLowTier().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, c);
         }
 
         return lirGenRes;
