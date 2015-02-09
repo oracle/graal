@@ -327,10 +327,10 @@ public class HotSpotCodeCacheProvider implements CodeCacheProvider {
             boolean compressed = COMPRESSED_NULL.equals(constant);
             size = target.getSizeInBytes(compressed ? Kind.Int : target.wordKind);
             builder = DataBuilder.zero(size);
-        } else if (constant instanceof PrimitiveConstant) {
-            PrimitiveConstant prim = (PrimitiveConstant) constant;
-            size = target.getSizeInBytes(prim.getKind());
-            builder = DataBuilder.primitive(prim);
+        } else if (constant instanceof SerializableConstant) {
+            SerializableConstant s = (SerializableConstant) constant;
+            size = s.getSerializedSize();
+            builder = DataBuilder.serializable(s);
         } else {
             throw GraalInternalError.shouldNotReachHere();
         }
