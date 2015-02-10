@@ -41,28 +41,42 @@ import com.oracle.graal.phases.tiers.*;
 /**
  * HotSpot implementation of {@link SuitesProvider}.
  */
-public class HotSpotSuitesProvider implements SuitesProvider, OptionSupplier<Suites> {
-
-    private static final long serialVersionUID = -5755004498526945687L;
+public class HotSpotSuitesProvider implements SuitesProvider {
 
     protected final DerivedOptionValue<Suites> defaultSuites;
     protected final PhaseSuite<HighTierContext> defaultGraphBuilderSuite;
     private final DerivedOptionValue<LowLevelSuites> defaultLowLevelSuites;
     protected final HotSpotGraalRuntimeProvider runtime;
 
+    private class SuitesSupplier implements OptionSupplier<Suites> {
+
+        private static final long serialVersionUID = -3444304453553320390L;
+
+        public Suites get() {
+            return createSuites();
+        }
+
+    }
+
+    private class LowLevelSuitesSupplier implements OptionSupplier<LowLevelSuites> {
+
+        private static final long serialVersionUID = -1558586374095874299L;
+
+        public LowLevelSuites get() {
+            return createLowLevelSuites();
+        }
+
+    }
+
     public HotSpotSuitesProvider(HotSpotGraalRuntimeProvider runtime) {
         this.runtime = runtime;
         this.defaultGraphBuilderSuite = createGraphBuilderSuite();
-        this.defaultSuites = new DerivedOptionValue<>(this::get);
-        this.defaultLowLevelSuites = new DerivedOptionValue<>(this::createLowLevelSuites);
+        this.defaultSuites = new DerivedOptionValue<>(new SuitesSupplier());
+        this.defaultLowLevelSuites = new DerivedOptionValue<>(new LowLevelSuitesSupplier());
     }
 
     public Suites getDefaultSuites() {
         return defaultSuites.getValue();
-    }
-
-    public Suites get() {
-        return createSuites();
     }
 
     public PhaseSuite<HighTierContext> getDefaultGraphBuilderSuite() {

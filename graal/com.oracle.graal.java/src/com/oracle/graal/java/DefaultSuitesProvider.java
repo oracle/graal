@@ -22,31 +22,46 @@
  */
 package com.oracle.graal.java;
 
-import java.util.function.*;
-
 import com.oracle.graal.lir.phases.*;
 import com.oracle.graal.options.*;
+import com.oracle.graal.options.DerivedOptionValue.OptionSupplier;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.tiers.*;
 
-public class DefaultSuitesProvider implements SuitesProvider, Supplier<Suites> {
+public class DefaultSuitesProvider implements SuitesProvider {
 
     private final DerivedOptionValue<Suites> defaultSuites;
     private final PhaseSuite<HighTierContext> defaultGraphBuilderSuite;
     private final DerivedOptionValue<LowLevelSuites> defaultLowLevelSuites;
 
+    private class SuitesSupplier implements OptionSupplier<Suites> {
+
+        private static final long serialVersionUID = 2677805381215454728L;
+
+        public Suites get() {
+            return createSuites();
+        }
+
+    }
+
+    private class LowLevelSuitesSupplier implements OptionSupplier<LowLevelSuites> {
+
+        private static final long serialVersionUID = 312070237227476252L;
+
+        public LowLevelSuites get() {
+            return createLowLevelSuites();
+        }
+
+    }
+
     public DefaultSuitesProvider() {
         this.defaultGraphBuilderSuite = createGraphBuilderSuite();
-        this.defaultSuites = new DerivedOptionValue<>(this::createSuites);
-        this.defaultLowLevelSuites = new DerivedOptionValue<>(this::createLowLevelSuites);
+        this.defaultSuites = new DerivedOptionValue<>(new SuitesSupplier());
+        this.defaultLowLevelSuites = new DerivedOptionValue<>(new LowLevelSuitesSupplier());
     }
 
     public Suites getDefaultSuites() {
         return defaultSuites.getValue();
-    }
-
-    public Suites get() {
-        return createSuites();
     }
 
     public Suites createSuites() {
