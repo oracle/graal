@@ -22,6 +22,9 @@
  */
 package com.oracle.graal.lir.phases;
 
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.phases.LowLevelHighTierPhase.LowLevelHighTierContext;
 import com.oracle.graal.lir.phases.LowLevelLowTierPhase.LowLevelLowTierContext;
 import com.oracle.graal.lir.phases.LowLevelMidTierPhase.LowLevelMidTierContext;
@@ -38,14 +41,36 @@ public class LowLevelSuites {
         this.lowTier = lowTier;
     }
 
+    /**
+     * {@link LowLevelHighTierPhase}s are executed between {@link LIR} generation and register
+     * allocation.
+     * <p>
+     * {@link LowLevelHighTierPhase Implementers} can create new
+     * {@link LIRGeneratorTool#newVariable variables}, {@link LIRGenerationResult#getFrameMap stack
+     * slots} and {@link LIRGenerationResult#getFrameMapBuilder virtual stack slots}.
+     */
     public LowLevelPhaseSuite<LowLevelHighTierContext> getHighTier() {
         return highTier;
     }
 
+    /**
+     * {@link LowLevelMidTierPhase}s are responsible for register allocation and translating
+     * {@link VirtualStackSlot}s into {@link StackSlot}s.
+     * <p>
+     * After the {@link LowLevelMidTier} there should be no more {@link Variable}s and
+     * {@link VirtualStackSlot}s.
+     */
     public LowLevelPhaseSuite<LowLevelMidTierContext> getMidTier() {
         return midTier;
     }
 
+    /**
+     * {@link LowLevelLowTierPhase}s are executed after register allocation and before machine code
+     * generation.
+     * <p>
+     * A {@link LowLevelLowTierPhase} must not introduce new {@link Variable}s,
+     * {@link VirtualStackSlot}s or {@link StackSlot}s.
+     */
     public LowLevelPhaseSuite<LowLevelLowTierContext> getLowTier() {
         return lowTier;
     }
