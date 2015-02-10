@@ -276,7 +276,7 @@ public class GraalCompiler {
         try (TimerCloseable a = BackEnd.start()) {
             LIRGenerationResult lirGen = null;
             lirGen = emitLIR(backend, target, schedule, graph, stub, cc, registerConfig);
-            try (Scope s = Debug.scope("CodeGen", new Object[]{lirGen, lirGen.getLIR()})) {
+            try (Scope s = Debug.scope("CodeGen", lirGen, lirGen.getLIR())) {
                 emitCode(backend, assumptions, lirGen, compilationResult, installedCodeOwner, factory);
             } catch (Throwable e) {
                 throw Debug.handle(e);
