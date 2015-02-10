@@ -56,7 +56,7 @@ public final class LSStackSlotAllocator extends LowLevelMidTierPhase implements 
     public static class Options {
         // @formatter:off
         @Option(help = "Use linear scan stack slot allocation.", type = OptionType.Debug)
-        public static final OptionValue<Boolean> LSStackSlotAllocation = new OptionValue<>(true);
+        public static final OptionValue<Boolean> LowLevelOptLSStackSlotAllocator = new OptionValue<>(true);
         // @formatter:on
     }
 

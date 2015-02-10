@@ -31,7 +31,7 @@ public class LowLevelMidTier extends LowLevelPhaseSuite<LowLevelMidTierContext> 
         appendPhase(new LinearScanPhase());
 
         // build frame map
-        if (LSStackSlotAllocator.Options.LSStackSlotAllocation.getValue()) {
+        if (LSStackSlotAllocator.Options.LowLevelOptLSStackSlotAllocator.getValue()) {
             appendPhase(new LSStackSlotAllocator());
         } else {
             appendPhase(new SimpleStackSlotAllocator());
