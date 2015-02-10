@@ -28,10 +28,10 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.alloc.*;
 import com.oracle.graal.compiler.common.calc.*;
-import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
@@ -41,10 +41,9 @@ import com.oracle.graal.java.BciBlockMapping.BciBlock;
 import com.oracle.graal.java.BciBlockMapping.LocalLiveness;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
-import com.oracle.graal.lir.alloc.lsra.*;
 import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.lir.gen.*;
-import com.oracle.graal.lir.stackslotalloc.*;
+import com.oracle.graal.lir.phases.*;
 import com.oracle.graal.phases.*;
 
 public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, BaselineFrameStateBuilder> implements BytecodeParserTool {
@@ -80,11 +79,7 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, Baseli
         this.setCurrentFrameState(frameState);
     }
 
-    public LIRGenerationResult getLIRGenerationResult() {
-        return lirGenRes;
-    }
-
-    protected void build() {
+    protected LIRGenerationResult build() {
         if (PrintProfilingInformation.getValue()) {
             TTY.println("Profiling info for " + method.format("%H.%n(%p)"));
             TTY.println(MetaUtil.indent(profilingInfo.toString(method, CodeUtil.NEW_LINE), "  "));
@@ -123,8 +118,8 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, Baseli
             BaselineControlFlowGraph cfg = BaselineControlFlowGraph.compute(blockMap);
 
             // create the LIR
-            List<? extends AbstractBlock<?>> linearScanOrder = ComputeBlockOrder.computeLinearScanOrder(blockMap.getBlocks().length, blockMap.startBlock);
-            List<? extends AbstractBlock<?>> codeEmittingOrder = ComputeBlockOrder.computeCodeEmittingOrder(blockMap.getBlocks().length, blockMap.startBlock);
+            List<BciBlock> linearScanOrder = ComputeBlockOrder.computeLinearScanOrder(blockMap.getBlocks().length, blockMap.startBlock);
+            List<BciBlock> codeEmittingOrder = ComputeBlockOrder.computeCodeEmittingOrder(blockMap.getBlocks().length, blockMap.startBlock);
             LIR lir = new LIR(cfg, linearScanOrder, codeEmittingOrder);
 
             RegisterConfig registerConfig = null;
@@ -150,21 +145,11 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, Baseli
                     throw Debug.handle(e);
                 }
 
-                try (Scope s = Debug.scope("Allocator")) {
-                    if (backend.shouldAllocateRegisters()) {
-                        LinearScan.allocate(target, lirGenRes);
-                    }
-                }
-                try (Scope s1 = Debug.scope("BuildFrameMap")) {
-                    // build frame map
-                    lirGenRes.buildFrameMap(new SimpleStackSlotAllocator());
-                    Debug.dump(lir, "After FrameMap building");
-                }
-                try (Scope s1 = Debug.scope("MarkLocations")) {
-                    if (backend.shouldAllocateRegisters()) {
-                        // currently we mark locations only if we do register allocation
-                        LocationMarker.markLocations(lir, lirGenRes.getFrameMap());
-                    }
+                try (Scope s = Debug.scope("LowLevelTier", this)) {
+                    LowLevelSuites lowLevelSuites = backend.getSuites().getDefaultLowLevelSuites();
+                    return GraalCompiler.emitLowLevel(target, codeEmittingOrder, linearScanOrder, lirGenRes, gen, lowLevelSuites);
+                } catch (Throwable e) {
+                    throw Debug.handle(e);
                 }
 
             } catch (Throwable e) {

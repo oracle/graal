@@ -50,6 +50,7 @@ import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.lir.phases.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
@@ -89,6 +90,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     private final Providers providers;
     private final Backend backend;
     private final DerivedOptionValue<Suites> suites;
+    private final DerivedOptionValue<LowLevelSuites> lowLevelSuites;
 
     /**
      * Can be overridden by unit tests to verify properties of the graph.
@@ -164,10 +166,16 @@ public abstract class GraalCompilerTest extends GraalTest {
         return ret;
     }
 
+    protected LowLevelSuites createLowLevelSuites() {
+        LowLevelSuites ret = backend.getSuites().createLowLevelSuites();
+        return ret;
+    }
+
     public GraalCompilerTest() {
         this.backend = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend();
         this.providers = getBackend().getProviders();
         this.suites = new DerivedOptionValue<>(this::createSuites);
+        this.lowLevelSuites = new DerivedOptionValue<>(this::createLowLevelSuites);
         installSubstitutions();
     }
 
@@ -188,6 +196,7 @@ public abstract class GraalCompilerTest extends GraalTest {
         }
         this.providers = backend.getProviders();
         this.suites = new DerivedOptionValue<>(this::createSuites);
+        this.lowLevelSuites = new DerivedOptionValue<>(this::createLowLevelSuites);
         installSubstitutions();
     }
 
@@ -353,6 +362,10 @@ public abstract class GraalCompilerTest extends GraalTest {
 
     protected Suites getSuites() {
         return suites.getValue();
+    }
+
+    protected LowLevelSuites getLowLevelSuites() {
+        return lowLevelSuites.getValue();
     }
 
     protected Providers getProviders() {
@@ -741,7 +754,8 @@ public abstract class GraalCompilerTest extends GraalTest {
         lastCompiledGraph = graphToCompile;
         CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graphToCompile.method(), false);
         Request<CompilationResult> request = new Request<>(graphToCompile, cc, installedCodeOwner, getProviders(), getBackend(), getCodeCache().getTarget(), null, getDefaultGraphBuilderSuite(),
-                        OptimisticOptimizations.ALL, getProfilingInfo(graphToCompile), getSpeculationLog(), getSuites(), new CompilationResult(), CompilationResultBuilderFactory.Default);
+                        OptimisticOptimizations.ALL, getProfilingInfo(graphToCompile), getSpeculationLog(), getSuites(), getLowLevelSuites(), new CompilationResult(),
+                        CompilationResultBuilderFactory.Default);
         return GraalCompiler.compile(request);
     }
 

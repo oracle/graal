@@ -39,6 +39,7 @@ import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.type.*;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.lir.phases.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.options.*;
@@ -209,9 +210,12 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         try (OverrideScope s = OptionValue.override(ImmutableCode, compileAOT)) {
             CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graph.method(), false);
             // create suites everytime, as we modify options for the compiler
-            final Suites suitesLocal = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getSuites().createSuites();
+            SuitesProvider suitesProvider = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getSuites();
+            final Suites suitesLocal = suitesProvider.createSuites();
+            final LowLevelSuites lowLevelSuitesLocal = suitesProvider.createLowLevelSuites();
             final CompilationResult compResult = compileGraph(graph, cc, method, getProviders(), getBackend(), getCodeCache().getTarget(), null, getDefaultGraphBuilderSuite(),
-                            OptimisticOptimizations.ALL, getProfilingInfo(graph), getSpeculationLog(), suitesLocal, new CompilationResult(), CompilationResultBuilderFactory.Default);
+                            OptimisticOptimizations.ALL, getProfilingInfo(graph), getSpeculationLog(), suitesLocal, lowLevelSuitesLocal, new CompilationResult(),
+                            CompilationResultBuilderFactory.Default);
             addMethod(method, compResult);
         }
 

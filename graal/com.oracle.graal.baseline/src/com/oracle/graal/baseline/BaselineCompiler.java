@@ -26,19 +26,18 @@ import static com.oracle.graal.compiler.common.GraalOptions.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.bytecode.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
 
 /**
  * The {@code GraphBuilder} class parses the bytecode of a method and builds the IR graph.
  */
-@SuppressWarnings("all")
 public class BaselineCompiler {
 
     public BaselineCompiler(GraphBuilderConfiguration graphBuilderConfig, MetaAccessProvider metaAccess) {
@@ -50,8 +49,8 @@ public class BaselineCompiler {
 
     private final GraphBuilderConfiguration graphBuilderConfig;
 
-    public CompilationResult generate(ResolvedJavaMethod method, int entryBCI, Backend backend, CompilationResult compilationResult, ResolvedJavaMethod installedCodeOwner,
-                    CompilationResultBuilderFactory factory, OptimisticOptimizations optimisticOpts, Replacements replacements) {
+    public CompilationResult generate(ResolvedJavaMethod method, @SuppressWarnings("unused") int entryBCI, Backend backend, CompilationResult compilationResult, ResolvedJavaMethod installedCodeOwner,
+                    CompilationResultBuilderFactory factory, OptimisticOptimizations optimisticOpts, @SuppressWarnings("unused") Replacements replacements) {
         assert method.getCode() != null : "method must contain bytecodes: " + method;
         TTY.Filter filter = new TTY.Filter(PrintFilter.getValue(), method);
 
@@ -60,15 +59,16 @@ public class BaselineCompiler {
         BaselineBytecodeParser parser = new BaselineBytecodeParser(metaAccess, method, graphBuilderConfig, optimisticOpts, frameState, backend);
 
         // build blocks and LIR instructions
+        final LIRGenerationResult res;
         try {
-            parser.build();
+            res = parser.build();
         } finally {
             filter.remove();
         }
 
         // emitCode
         Assumptions assumptions = new Assumptions(OptAssumptions.getValue());
-        GraalCompiler.emitCode(backend, assumptions, parser.getLIRGenerationResult(), compilationResult, installedCodeOwner, factory);
+        GraalCompiler.emitCode(backend, assumptions, res, compilationResult, installedCodeOwner, factory);
 
         return compilationResult;
     }

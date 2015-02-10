@@ -56,7 +56,7 @@ import com.oracle.graal.options.*;
  * >"Optimized Interval Splitting in a Linear Scan Register Allocator"</a> by Christian Wimmer and
  * Hanspeter Moessenboeck.
  */
-public final class LinearScan {
+final class LinearScan {
 
     final TargetDescription target;
     final LIRGenerationResult res;
@@ -109,7 +109,7 @@ public final class LinearScan {
         public BitSet liveKill;
     }
 
-    public final BlockMap<BlockData> blockData;
+    final BlockMap<BlockData> blockData;
 
     /**
      * List of blocks in linear-scan order. This is only correct as long as the CFG does not change.
@@ -161,7 +161,7 @@ public final class LinearScan {
      */
     private final int firstVariableNumber;
 
-    public LinearScan(TargetDescription target, LIRGenerationResult res) {
+    LinearScan(TargetDescription target, LIRGenerationResult res) {
         this.target = target;
         this.res = res;
         this.ir = res.getLIR();
@@ -178,13 +178,13 @@ public final class LinearScan {
         this.callKillsRegisters = this.frameMapBuilder.getRegisterConfig().areAllAllocatableRegistersCallerSaved();
     }
 
-    public int getFirstLirInstructionId(AbstractBlock<?> block) {
+    int getFirstLirInstructionId(AbstractBlock<?> block) {
         int result = ir.getLIRforBlock(block).get(0).id();
         assert result >= 0;
         return result;
     }
 
-    public int getLastLirInstructionId(AbstractBlock<?> block) {
+    int getLastLirInstructionId(AbstractBlock<?> block) {
         List<LIRInstruction> instructions = ir.getLIRforBlock(block);
         int result = instructions.get(instructions.size() - 1).id();
         assert result >= 0;
@@ -220,7 +220,7 @@ public final class LinearScan {
     /**
      * Gets the highest operand number for a register operand. This value will never change.
      */
-    public int maxRegisterNumber() {
+    int maxRegisterNumber() {
         return firstVariableNumber - 1;
     }
 
@@ -1374,7 +1374,7 @@ public final class LinearScan {
         sortedIntervals = combinedList;
     }
 
-    public void allocateRegisters() {
+    void allocateRegisters() {
         try (Indent indent = Debug.logAndIndent("allocate registers")) {
             Interval precoloredIntervals;
             Interval notPrecoloredIntervals;
@@ -1731,11 +1731,7 @@ public final class LinearScan {
         }
     }
 
-    public static void allocate(TargetDescription target, LIRGenerationResult res) {
-        new LinearScan(target, res).allocate();
-    }
-
-    private void allocate() {
+    void allocate() {
 
         /*
          * This is the point to enable debug logging for the whole register allocation.
