@@ -376,7 +376,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
             FixedNode lastSucc = successors[concretes.size()];
             for (int i = concretes.size() - 1; i >= 0; --i) {
                 LoadMethodNode method = graph.add(new LoadMethodNode(stampProvider.createMethodStamp(), concretes.get(i), receiverType, hub));
-                CompareNode methodCheck = CompareNode.createCompareNode(graph, Condition.EQ, method, constantMethods[i]);
+                LogicNode methodCheck = CompareNode.createCompareNode(graph, Condition.EQ, method, constantMethods[i], null);
                 IfNode ifNode = graph.add(new IfNode(methodCheck, successors[i], lastSucc, probability[i]));
                 method.setNext(ifNode);
                 lastSucc = method;

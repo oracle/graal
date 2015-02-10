@@ -219,8 +219,10 @@ public class PartialEvaluator {
             p.registerPlugins(providers.getMetaAccess(), plugins);
         }
         TruffleGraphBuilderPlugins.registerPlugins(providers.getMetaAccess(), plugins);
-        new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), new Assumptions(false), providers.getConstantReflection(), newConfig, plugins,
+        long ms = System.currentTimeMillis();
+        new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), new Assumptions(true), this.snippetReflection, providers.getConstantReflection(), newConfig, plugins,
                         TruffleCompilerImpl.Optimizations).apply(graph);
+        System.out.println("# ms: " + (System.currentTimeMillis() - ms));
         Debug.dump(graph, "After FastPE");
 
         // Do single partial escape and canonicalization pass.

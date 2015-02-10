@@ -64,7 +64,7 @@ public class UnsafeTypeCastMacroNode extends NeverPartOfCompilationNode implemen
             } else {
                 Stamp piStamp = StampFactory.declaredTrusted(lookupJavaType, nonNullArgument.asJavaConstant().asInt() != 0);
                 ConditionAnchorNode valueAnchorNode = graph().add(
-                                new ConditionAnchorNode(CompareNode.createCompareNode(graph(), Condition.EQ, conditionArgument, ConstantNode.forBoolean(true, graph()))));
+                                new ConditionAnchorNode(CompareNode.createCompareNode(graph(), Condition.EQ, conditionArgument, ConstantNode.forBoolean(true, graph()), tool.getConstantReflection())));
                 PiNode piCast = graph().unique(new PiNode(objectArgument, piStamp, valueAnchorNode));
                 replaceAtUsages(piCast);
                 graph().replaceFixedWithFixed(this, valueAnchorNode);

@@ -88,7 +88,8 @@ public class StandardGraphBuilderPluginsProvider implements GraphBuilderPluginsP
         }
 
         public boolean apply(GraphBuilderContext builder, ValueNode value) {
-            builder.push(kind.getStackKind(), builder.append(new UnboxNode(nullCheckedValue(builder, value), kind)));
+            ValueNode valueNode = UnboxNode.create(builder.getMetaAccess(), builder.getConstantReflection(), nullCheckedValue(builder, value), kind);
+            builder.push(kind.getStackKind(), builder.append(valueNode));
             return true;
         }
 

@@ -31,13 +31,21 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo
-public class UnboxNode extends UnaryNode implements Virtualizable, Lowerable {
+public final class UnboxNode extends UnaryNode implements Virtualizable, Lowerable {
 
     protected final Kind boxingKind;
 
-    public UnboxNode(ValueNode value, Kind boxingKind) {
+    protected UnboxNode(ValueNode value, Kind boxingKind) {
         super(StampFactory.forKind(boxingKind.getStackKind()), value);
         this.boxingKind = boxingKind;
+    }
+
+    public static ValueNode create(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, ValueNode value, Kind boxingKind) {
+        ValueNode synonym = findSynonym(metaAccess, constantReflection, value, boxingKind);
+        if (synonym != null) {
+            return synonym;
+        }
+        return new UnboxNode(value, boxingKind);
     }
 
     public Kind getBoxingKind() {
@@ -63,11 +71,19 @@ public class UnboxNode extends UnaryNode implements Virtualizable, Lowerable {
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
+        ValueNode synonym = findSynonym(tool.getMetaAccess(), tool.getConstantReflection(), forValue, boxingKind);
+        if (synonym != null) {
+            return synonym;
+        }
+        return this;
+    }
+
+    private static ValueNode findSynonym(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, ValueNode forValue, Kind boxingKind) {
         if (forValue.isConstant()) {
             JavaConstant constant = forValue.asJavaConstant();
-            JavaConstant unboxed = tool.getConstantReflection().unboxPrimitive(constant);
+            JavaConstant unboxed = constantReflection.unboxPrimitive(constant);
             if (unboxed != null && unboxed.getKind() == boxingKind) {
-                return ConstantNode.forConstant(unboxed, tool.getMetaAccess());
+                return ConstantNode.forConstant(unboxed, metaAccess);
             }
         } else if (forValue instanceof BoxNode) {
             BoxNode box = (BoxNode) forValue;
@@ -75,7 +91,7 @@ public class UnboxNode extends UnaryNode implements Virtualizable, Lowerable {
                 return box.getValue();
             }
         }
-        return this;
+        return null;
     }
 
     @NodeIntrinsic

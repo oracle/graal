@@ -165,32 +165,32 @@ public abstract class CompareNode extends BinaryOpLogicNode {
         return null;
     }
 
-    public static CompareNode createCompareNode(StructuredGraph graph, Condition condition, ValueNode x, ValueNode y) {
-        return graph.unique(createCompareNode(condition, x, y));
+    public static LogicNode createCompareNode(StructuredGraph graph, Condition condition, ValueNode x, ValueNode y, ConstantReflectionProvider constantReflection) {
+        return graph.unique(createCompareNode(condition, x, y, constantReflection));
     }
 
-    public static CompareNode createCompareNode(Condition condition, ValueNode x, ValueNode y) {
+    public static LogicNode createCompareNode(Condition condition, ValueNode x, ValueNode y, ConstantReflectionProvider constantReflection) {
         assert x.getKind() == y.getKind();
         assert condition.isCanonical() : "condition is not canonical: " + condition;
         assert !x.getKind().isNumericFloat();
 
-        CompareNode comparison;
+        LogicNode comparison;
         if (condition == Condition.EQ) {
             if (x.stamp() instanceof AbstractObjectStamp) {
-                comparison = new ObjectEqualsNode(x, y);
+                comparison = ObjectEqualsNode.create(x, y, constantReflection);
             } else if (x.stamp() instanceof AbstractPointerStamp) {
                 comparison = new PointerEqualsNode(x, y);
             } else {
                 assert x.getKind().isNumericInteger();
-                comparison = new IntegerEqualsNode(x, y);
+                comparison = IntegerEqualsNode.create(x, y, constantReflection);
             }
         } else if (condition == Condition.LT) {
             assert x.getKind().isNumericInteger();
-            comparison = new IntegerLessThanNode(x, y);
+            comparison = IntegerLessThanNode.create(x, y, constantReflection);
         } else {
             assert condition == Condition.BT;
             assert x.getKind().isNumericInteger();
-            comparison = new IntegerBelowNode(x, y);
+            comparison = IntegerBelowNode.create(x, y, constantReflection);
         }
 
         return comparison;

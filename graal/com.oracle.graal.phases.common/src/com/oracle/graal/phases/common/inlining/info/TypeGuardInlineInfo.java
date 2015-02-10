@@ -106,7 +106,7 @@ public class TypeGuardInlineInfo extends AbstractInlineInfo {
         LoadHubNode receiverHub = graph.unique(new LoadHubNode(providers.getStampProvider(), nonNullReceiver));
         ConstantNode typeHub = ConstantNode.forConstant(receiverHub.stamp(), type.getObjectHub(), providers.getMetaAccess(), graph);
 
-        CompareNode typeCheck = CompareNode.createCompareNode(graph, Condition.EQ, receiverHub, typeHub);
+        LogicNode typeCheck = CompareNode.createCompareNode(graph, Condition.EQ, receiverHub, typeHub, providers.getConstantReflection());
         FixedGuardNode guard = graph.add(new FixedGuardNode(typeCheck, DeoptimizationReason.TypeCheckedInliningViolated, DeoptimizationAction.InvalidateReprofile));
         assert invoke.predecessor() != null;
 

@@ -63,7 +63,7 @@ public final class CustomizedUnsafeLoadMacroNode extends NeverPartOfCompilationN
             } else {
                 locationIdentity = ObjectLocationIdentity.create(locationArgument.asJavaConstant());
             }
-            CompareNode compare = CompareNode.createCompareNode(Condition.EQ, conditionArgument, ConstantNode.forBoolean(true));
+            LogicNode compare = CompareNode.createCompareNode(Condition.EQ, conditionArgument, ConstantNode.forBoolean(true), tool.getConstantReflection());
             Kind returnKind = this.getTargetMethod().getSignature().getReturnKind();
             return new UnsafeLoadNode(objectArgument, offsetArgument, returnKind, locationIdentity, compare);
         }

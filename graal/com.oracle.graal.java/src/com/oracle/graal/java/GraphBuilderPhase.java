@@ -32,6 +32,7 @@ import java.util.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.ProfilingInfo.TriState;
+import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.bytecode.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
@@ -77,7 +78,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
     @Override
     protected void run(StructuredGraph graph, HighTierContext context) {
-        new Instance(context.getMetaAccess(), context.getStampProvider(), context.getAssumptions(), context.getConstantReflection(), graphBuilderConfig, graphBuilderPlugins,
+        new Instance(context.getMetaAccess(), context.getStampProvider(), context.getAssumptions(), null, context.getConstantReflection(), graphBuilderConfig, graphBuilderPlugins,
                         context.getOptimisticOptimizations()).run(graph);
     }
 
@@ -103,6 +104,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
         private final StampProvider stampProvider;
         private final Assumptions assumptions;
         private final ConstantReflectionProvider constantReflection;
+        private final SnippetReflectionProvider snippetReflectionProvider;
 
         /**
          * Gets the graph being processed by this builder.
@@ -111,8 +113,8 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             return currentGraph;
         }
 
-        public Instance(MetaAccessProvider metaAccess, StampProvider stampProvider, Assumptions assumptions, ConstantReflectionProvider constantReflection,
-                        GraphBuilderConfiguration graphBuilderConfig, GraphBuilderPlugins graphBuilderPlugins, OptimisticOptimizations optimisticOpts) {
+        public Instance(MetaAccessProvider metaAccess, StampProvider stampProvider, Assumptions assumptions, SnippetReflectionProvider snippetReflectionProvider,
+                        ConstantReflectionProvider constantReflection, GraphBuilderConfiguration graphBuilderConfig, GraphBuilderPlugins graphBuilderPlugins, OptimisticOptimizations optimisticOpts) {
             this.graphBuilderConfig = graphBuilderConfig;
             this.optimisticOpts = optimisticOpts;
             this.metaAccess = metaAccess;
@@ -120,12 +122,13 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             this.assumptions = assumptions;
             this.graphBuilderPlugins = graphBuilderPlugins;
             this.constantReflection = constantReflection;
+            this.snippetReflectionProvider = snippetReflectionProvider;
             assert metaAccess != null;
         }
 
         public Instance(MetaAccessProvider metaAccess, StampProvider stampProvider, Assumptions assumptions, ConstantReflectionProvider constantReflection,
                         GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts) {
-            this(metaAccess, stampProvider, assumptions, constantReflection, graphBuilderConfig, null, optimisticOpts);
+            this(metaAccess, stampProvider, assumptions, null, constantReflection, graphBuilderConfig, null, optimisticOpts);
         }
 
         @Override
@@ -1091,8 +1094,9 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 return ConstantNode.forConstant(constant, metaAccess, currentGraph);
             }
 
+            @SuppressWarnings("unchecked")
             @Override
-            protected ValueNode append(ValueNode v) {
+            public ValueNode append(ValueNode v) {
                 if (v.graph() != null) {
                     // This node was already appended to the graph.
                     return v;
@@ -1705,6 +1709,10 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             public ConstantReflectionProvider getConstantReflection() {
                 return constantReflection;
+            }
+
+            public SnippetReflectionProvider getSnippetReflection() {
+                return snippetReflectionProvider;
             }
 
         }
