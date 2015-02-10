@@ -189,7 +189,16 @@ public class TruffleGraphBuilderPlugins {
                 throw GraalInternalError.shouldNotReachHere("unsafeCast arguments could not reduce to a constant: " + clazz + ", " + nonNull);
             }
         });
-        for (Kind kind : new Kind[]{Kind.Boolean, Kind.Byte, Kind.Int, Kind.Long, Kind.Float, Kind.Double, Kind.Object}) {
+
+        registerUnsafeLoadStorePlugins(r, Kind.Boolean, Kind.Byte, Kind.Int, Kind.Long, Kind.Float, Kind.Double, Kind.Object);
+
+        // CompilerDirectives.class
+        r = new Registration(plugins, metaAccess, CompilerDirectives.class);
+        registerUnsafeLoadStorePlugins(r, Kind.Boolean, Kind.Byte, Kind.Int, Kind.Short, Kind.Long, Kind.Float, Kind.Double, Kind.Object);
+    }
+
+    protected static void registerUnsafeLoadStorePlugins(Registration r, Kind... kinds) {
+        for (Kind kind : kinds) {
             String kindName = kind.getJavaName();
             kindName = toUpperCase(kindName.charAt(0)) + kindName.substring(1);
             String getName = "unsafeGet" + kindName;
