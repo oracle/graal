@@ -61,6 +61,20 @@ public class HotSpotGraphBuilderPluginsProvider implements GraphBuilderPluginsPr
             }
         });
 
+        // Class.class
+        r = new Registration(plugins, metaAccess, Class.class);
+        r.register2("cast", Receiver.class, Object.class, new InvocationPlugin() {
+            public boolean apply(GraphBuilderContext builder, ValueNode rcvr, ValueNode object) {
+                if (rcvr.isConstant() && !rcvr.isNullConstant() && object.isConstant()) {
+                    ResolvedJavaType type = builder.getConstantReflection().asJavaType(rcvr.asConstant());
+                    if (type != null && !type.isPrimitive() && type.isInstance(object.asJavaConstant())) {
+                        builder.push(Kind.Object, object);
+                        return true;
+                    }
+                }
+                return false;
+            }
+        });
         // StableOptionValue.class
         r = new Registration(plugins, metaAccess, StableOptionValue.class);
         r.register1("getValue", Receiver.class, new InvocationPlugin() {
