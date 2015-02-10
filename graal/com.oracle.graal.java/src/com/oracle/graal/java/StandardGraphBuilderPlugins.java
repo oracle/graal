@@ -53,8 +53,6 @@ public class StandardGraphBuilderPlugins {
                 new UnboxPlugin(kind).register(metaAccess, plugins);
             }
         }
-
-        GraalDirectivePlugins.registerPlugins(metaAccess, plugins);
     }
 
     static class BoxPlugin implements InvocationPlugin {
