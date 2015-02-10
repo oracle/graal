@@ -55,6 +55,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.virtual.*;
+import com.oracle.graal.options.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.schedule.*;
@@ -87,7 +88,7 @@ public abstract class GraalCompilerTest extends GraalTest {
 
     private final Providers providers;
     private final Backend backend;
-    private final Suites suites;
+    private final DerivedOptionValue<Suites> suites;
 
     /**
      * Can be overridden by unit tests to verify properties of the graph.
@@ -166,7 +167,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     public GraalCompilerTest() {
         this.backend = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend();
         this.providers = getBackend().getProviders();
-        this.suites = createSuites();
+        this.suites = new DerivedOptionValue<>(this::createSuites);
         installSubstitutions();
     }
 
@@ -186,7 +187,7 @@ public abstract class GraalCompilerTest extends GraalTest {
             this.backend = runtime.getHostBackend();
         }
         this.providers = backend.getProviders();
-        this.suites = createSuites();
+        this.suites = new DerivedOptionValue<>(this::createSuites);
         installSubstitutions();
     }
 
@@ -351,7 +352,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     protected Suites getSuites() {
-        return suites;
+        return suites.getValue();
     }
 
     protected Providers getProviders() {
