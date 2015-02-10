@@ -146,8 +146,8 @@ public class BaselineBytecodeParser extends AbstractBytecodeParser<Value, Baseli
                 }
 
                 try (Scope s = Debug.scope("LowLevelTier", this)) {
-                    LowLevelCompilerConfiguration config = backend.getLowLevelCompilerConfiguration();
-                    return GraalCompiler.emitLowLevel(target, codeEmittingOrder, linearScanOrder, lirGenRes, gen, config);
+                    LowLevelSuites lowLevelSuites = backend.getSuites().getDefaultLowLevelSuites();
+                    return GraalCompiler.emitLowLevel(target, codeEmittingOrder, linearScanOrder, lirGenRes, gen, lowLevelSuites);
                 } catch (Throwable e) {
                     throw Debug.handle(e);
                 }

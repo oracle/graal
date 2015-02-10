@@ -52,7 +52,7 @@ public class HotSpotSuitesProvider implements SuitesProvider, Supplier<Suites> {
     public HotSpotSuitesProvider(HotSpotGraalRuntimeProvider runtime) {
         this.runtime = runtime;
         this.defaultGraphBuilderSuite = createGraphBuilderSuite();
-        this.defaultSuites = new DerivedOptionValue<>(this);
+        this.defaultSuites = new DerivedOptionValue<>(this::get);
         this.defaultLowLevelSuites = new DerivedOptionValue<>(this::createLowLevelSuites);
     }
 

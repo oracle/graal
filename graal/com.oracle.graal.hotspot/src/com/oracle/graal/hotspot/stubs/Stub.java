@@ -40,6 +40,7 @@ import com.oracle.graal.hotspot.bridge.CompilerToVM.CodeInstallResult;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.lir.phases.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.schedule.*;
@@ -175,7 +176,9 @@ public abstract class Stub {
                     Suites suites = new Suites(new PhaseSuite<>(), defaultSuites.getMidTier(), defaultSuites.getLowTier());
                     SchedulePhase schedule = emitFrontEnd(providers, target, graph, assumptions, null, providers.getSuites().getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL,
                                     getProfilingInfo(graph), null, suites);
-                    emitBackEnd(graph, Stub.this, incomingCc, getInstalledCodeOwner(), backend, target, compResult, CompilationResultBuilderFactory.Default, assumptions, schedule, getRegisterConfig());
+                    LowLevelSuites lowLevelSuites = providers.getSuites().getDefaultLowLevelSuites();
+                    emitBackEnd(graph, Stub.this, incomingCc, getInstalledCodeOwner(), backend, target, compResult, CompilationResultBuilderFactory.Default, assumptions, schedule,
+                                    getRegisterConfig(), lowLevelSuites);
                 } catch (Throwable e) {
                     throw Debug.handle(e);
                 }

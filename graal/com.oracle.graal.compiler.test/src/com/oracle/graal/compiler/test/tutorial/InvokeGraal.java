@@ -35,6 +35,7 @@ import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.lir.phases.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.tiers.*;
@@ -94,6 +95,11 @@ public class InvokeGraal {
             Suites suites = backend.getSuites().createSuites();
 
             /*
+             * The low-level phases that are applied to the low-level representation.
+             */
+            LowLevelSuites lowLevelSuites = backend.getSuites().createLowLevelSuites();
+
+            /*
              * The calling convention for the machine code. You should have a very good reason
              * before you switch to a different calling convention than the one that the VM provides
              * by default.
@@ -117,7 +123,7 @@ public class InvokeGraal {
             SpeculationLog speculationLog = null;
 
             /* Invoke the whole Graal compilation pipeline. */
-            GraalCompiler.compileGraph(graph, callingConvention, method, providers, backend, target, cache, graphBuilderSuite, optimisticOpts, profilingInfo, speculationLog, suites,
+            GraalCompiler.compileGraph(graph, callingConvention, method, providers, backend, target, cache, graphBuilderSuite, optimisticOpts, profilingInfo, speculationLog, suites, lowLevelSuites,
                             compilationResult, factory);
 
             /*

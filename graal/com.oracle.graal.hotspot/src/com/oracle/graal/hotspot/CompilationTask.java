@@ -55,6 +55,7 @@ import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.phases.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.lir.phases.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
@@ -136,6 +137,10 @@ public class CompilationTask {
 
     protected Suites getSuites(HotSpotProviders providers) {
         return providers.getSuites().getDefaultSuites();
+    }
+
+    protected LowLevelSuites getLowLevelSuites(HotSpotProviders providers) {
+        return providers.getSuites().getDefaultLowLevelSuites();
     }
 
     protected PhaseSuite<HighTierContext> getGraphBuilderSuite(HotSpotProviders providers) {
@@ -223,6 +228,7 @@ public class CompilationTask {
                         cc = new CallingConvention(cc.getStackSize(), cc.getReturn(), tmp.getArgument(0));
                     }
                     Suites suites = getSuites(providers);
+                    LowLevelSuites lowLevelSuites = getLowLevelSuites(providers);
                     ProfilingInfo profilingInfo = getProfilingInfo();
                     OptimisticOptimizations optimisticOpts = getOptimisticOpts(profilingInfo);
                     if (isOSR) {
@@ -231,7 +237,7 @@ public class CompilationTask {
                         optimisticOpts.remove(Optimization.RemoveNeverExecutedCode);
                     }
                     result = compileGraph(graph, cc, method, providers, backend, backend.getTarget(), graphCache, getGraphBuilderSuite(providers), optimisticOpts, profilingInfo,
-                                    method.getSpeculationLog(), suites, new CompilationResult(), CompilationResultBuilderFactory.Default);
+                                    method.getSpeculationLog(), suites, lowLevelSuites, new CompilationResult(), CompilationResultBuilderFactory.Default);
                 }
                 result.setId(getId());
                 result.setEntryBCI(entryBCI);
