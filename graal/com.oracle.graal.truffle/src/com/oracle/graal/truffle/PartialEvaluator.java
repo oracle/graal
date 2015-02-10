@@ -215,7 +215,6 @@ public class PartialEvaluator {
         newConfig.setLoopExplosionPlugin(new LoopExplosionPlugin());
         DefaultGraphBuilderPlugins plugins = graalPlugins == null ? new DefaultGraphBuilderPlugins() : graalPlugins.copy();
         TruffleGraphBuilderPlugins.registerPlugins(providers.getMetaAccess(), plugins);
-        GraalDirectivePlugins.registerPlugins(providers.getMetaAccess(), plugins);
         long ms = System.currentTimeMillis();
         new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), new Assumptions(true), this.snippetReflection, providers.getConstantReflection(), newConfig, plugins,
                         TruffleCompilerImpl.Optimizations).apply(graph);
