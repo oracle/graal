@@ -47,27 +47,8 @@ public final class DataSection implements Serializable, Iterable<Data> {
             return (buffer, patch) -> buffer.put(data);
         }
 
-        static DataBuilder primitive(PrimitiveConstant c) {
-            switch (c.getKind()) {
-                case Boolean:
-                    return (buffer, patch) -> buffer.put(c.asBoolean() ? (byte) 1 : (byte) 0);
-                case Byte:
-                    return (buffer, patch) -> buffer.put((byte) c.asInt());
-                case Char:
-                    return (buffer, patch) -> buffer.putChar((char) c.asInt());
-                case Short:
-                    return (buffer, patch) -> buffer.putShort((short) c.asInt());
-                case Int:
-                    return (buffer, patch) -> buffer.putInt(c.asInt());
-                case Long:
-                    return (buffer, patch) -> buffer.putLong(c.asLong());
-                case Float:
-                    return (buffer, patch) -> buffer.putFloat(c.asFloat());
-                case Double:
-                    return (buffer, patch) -> buffer.putDouble(c.asDouble());
-                default:
-                    throw new IllegalArgumentException();
-            }
+        static DataBuilder serializable(SerializableConstant c) {
+            return (buffer, patch) -> c.serialize(buffer);
         }
 
         static DataBuilder zero(int size) {

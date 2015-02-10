@@ -633,9 +633,9 @@ public class ReplacementsImpl implements Replacements {
             return graph;
         }
 
-        protected Instance createGraphBuilder(MetaAccessProvider metaAccess, StampProvider stampProvider, Assumptions assumptions, ConstantReflectionProvider constantReflectionProvider,
+        protected Instance createGraphBuilder(MetaAccessProvider metaAccess, StampProvider stampProvider, Assumptions assumptions, ConstantReflectionProvider constantReflection,
                         GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts) {
-            return new GraphBuilderPhase.Instance(metaAccess, stampProvider, assumptions, constantReflectionProvider, graphBuilderConfig, optimisticOpts);
+            return new GraphBuilderPhase.Instance(metaAccess, stampProvider, assumptions, constantReflection, graphBuilderConfig, optimisticOpts);
         }
 
         protected void afterParsing(StructuredGraph graph) {

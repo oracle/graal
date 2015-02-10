@@ -383,5 +383,11 @@ public class CompilationResultBuilder {
     public void reset() {
         asm.reset();
         compilationResult.reset();
+        if (exceptionInfoList != null) {
+            exceptionInfoList.clear();
+        }
+        if (dataCache != null) {
+            dataCache.clear();
+        }
     }
 }

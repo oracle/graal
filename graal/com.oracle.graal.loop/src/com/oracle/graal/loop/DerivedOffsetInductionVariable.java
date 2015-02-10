@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,35 +22,26 @@
  */
 package com.oracle.graal.loop;
 
+import static com.oracle.graal.loop.MathUtil.*;
+
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 
-public class DerivedOffsetInductionVariable extends InductionVariable {
+public class DerivedOffsetInductionVariable extends DerivedInductionVariable {
 
-    private InductionVariable base;
-    private ValueNode offset;
-    private BinaryArithmeticNode<?> value;
+    private final ValueNode offset;
+    private final BinaryArithmeticNode<?> value;
 
     public DerivedOffsetInductionVariable(LoopEx loop, InductionVariable base, ValueNode offset, BinaryArithmeticNode<?> value) {
-        super(loop);
-        this.base = base;
+        super(loop, base);
         this.offset = offset;
         this.value = value;
     }
 
-    public InductionVariable getBase() {
-        return base;
-    }
-
     public ValueNode getOffset() {
         return offset;
-    }
-
-    @Override
-    public StructuredGraph graph() {
-        return base.graph();
     }
 
     @Override
@@ -136,14 +127,14 @@ public class DerivedOffsetInductionVariable extends InductionVariable {
 
     private ValueNode op(ValueNode b, ValueNode o) {
         if (value instanceof AddNode) {
-            return BinaryArithmeticNode.add(graph(), b, o);
+            return add(graph(), b, o);
         }
         if (value instanceof SubNode) {
             if (base.valueNode() == value.getX()) {
-                return BinaryArithmeticNode.sub(graph(), b, o);
+                return sub(graph(), b, o);
             } else {
                 assert base.valueNode() == value.getY();
-                return BinaryArithmeticNode.sub(graph(), o, b);
+                return sub(graph(), o, b);
             }
         }
         throw GraalInternalError.shouldNotReachHere();

@@ -24,8 +24,6 @@ package com.oracle.graal.hotspot.meta;
 
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 
-import java.util.function.*;
-
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.hotspot.*;
@@ -35,13 +33,16 @@ import com.oracle.graal.java.*;
 import com.oracle.graal.java.GraphBuilderConfiguration.DebugInfoMode;
 import com.oracle.graal.java.GraphBuilderPlugins.InlineInvokePlugin;
 import com.oracle.graal.options.*;
+import com.oracle.graal.options.DerivedOptionValue.OptionSupplier;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.tiers.*;
 
 /**
  * HotSpot implementation of {@link SuitesProvider}.
  */
-public class HotSpotSuitesProvider implements SuitesProvider, Supplier<Suites> {
+public class HotSpotSuitesProvider implements SuitesProvider, OptionSupplier<Suites> {
+
+    private static final long serialVersionUID = -5755004498526945687L;
 
     protected final DerivedOptionValue<Suites> defaultSuites;
     protected final PhaseSuite<HighTierContext> defaultGraphBuilderSuite;

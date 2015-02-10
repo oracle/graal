@@ -37,8 +37,8 @@ import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.debug.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Graph.Mark;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node.ValueNumberable;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.java.BciBlockMapping.BciBlock;
@@ -102,7 +102,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
         private final OptimisticOptimizations optimisticOpts;
         private final StampProvider stampProvider;
         private final Assumptions assumptions;
-        private final ConstantReflectionProvider constantReflectionProvider;
+        private final ConstantReflectionProvider constantReflection;
 
         /**
          * Gets the graph being processed by this builder.
@@ -111,7 +111,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             return currentGraph;
         }
 
-        public Instance(MetaAccessProvider metaAccess, StampProvider stampProvider, Assumptions assumptions, ConstantReflectionProvider constantReflectionProvider,
+        public Instance(MetaAccessProvider metaAccess, StampProvider stampProvider, Assumptions assumptions, ConstantReflectionProvider constantReflection,
                         GraphBuilderConfiguration graphBuilderConfig, GraphBuilderPlugins graphBuilderPlugins, OptimisticOptimizations optimisticOpts) {
             this.graphBuilderConfig = graphBuilderConfig;
             this.optimisticOpts = optimisticOpts;
@@ -119,13 +119,13 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             this.stampProvider = stampProvider;
             this.assumptions = assumptions;
             this.graphBuilderPlugins = graphBuilderPlugins;
-            this.constantReflectionProvider = constantReflectionProvider;
+            this.constantReflection = constantReflection;
             assert metaAccess != null;
         }
 
-        public Instance(MetaAccessProvider metaAccess, StampProvider stampProvider, Assumptions assumptions, ConstantReflectionProvider constantReflectionProvider,
+        public Instance(MetaAccessProvider metaAccess, StampProvider stampProvider, Assumptions assumptions, ConstantReflectionProvider constantReflection,
                         GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts) {
-            this(metaAccess, stampProvider, assumptions, constantReflectionProvider, graphBuilderConfig, null, optimisticOpts);
+            this(metaAccess, stampProvider, assumptions, constantReflection, graphBuilderConfig, null, optimisticOpts);
         }
 
         @Override
@@ -508,7 +508,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             @Override
             protected ValueNode genLoadIndexed(ValueNode array, ValueNode index, Kind kind) {
-                return LoadIndexedNode.create(array, index, kind, metaAccess, constantReflectionProvider);
+                return LoadIndexedNode.create(array, index, kind, metaAccess, constantReflection);
             }
 
             @Override
@@ -634,17 +634,17 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             @Override
             protected ValueNode genObjectEquals(ValueNode x, ValueNode y) {
-                return ObjectEqualsNode.create(x, y, constantReflectionProvider);
+                return ObjectEqualsNode.create(x, y, constantReflection);
             }
 
             @Override
             protected ValueNode genIntegerEquals(ValueNode x, ValueNode y) {
-                return IntegerEqualsNode.create(x, y, constantReflectionProvider);
+                return IntegerEqualsNode.create(x, y, constantReflection);
             }
 
             @Override
             protected ValueNode genIntegerLessThan(ValueNode x, ValueNode y) {
-                return IntegerLessThanNode.create(x, y, constantReflectionProvider);
+                return IntegerLessThanNode.create(x, y, constantReflection);
             }
 
             @Override
@@ -716,7 +716,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             protected void emitBoundsCheck(ValueNode index, ValueNode length) {
                 AbstractBeginNode trueSucc = currentGraph.add(new BeginNode());
                 BytecodeExceptionNode exception = currentGraph.add(new BytecodeExceptionNode(metaAccess, ArrayIndexOutOfBoundsException.class, index));
-                append(new IfNode(currentGraph.unique(IntegerBelowNode.create(index, length, constantReflectionProvider)), trueSucc, exception, 0.99));
+                append(new IfNode(currentGraph.unique(IntegerBelowNode.create(index, length, constantReflection)), trueSucc, exception, 0.99));
                 lastInstr = trueSucc;
 
                 exception.setStateAfter(frameState.create(bci()));
@@ -725,7 +725,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             @Override
             protected ValueNode genArrayLength(ValueNode x) {
-                return ArrayLengthNode.create(x, constantReflectionProvider);
+                return ArrayLengthNode.create(x, constantReflection);
             }
 
             @Override
@@ -1060,7 +1060,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 JsrScope scope = currentBlock.getJsrScope();
                 int retAddress = scope.nextReturnAddress();
                 ConstantNode returnBciNode = getJsrConstant(retAddress);
-                LogicNode guard = IntegerEqualsNode.create(local, returnBciNode, constantReflectionProvider);
+                LogicNode guard = IntegerEqualsNode.create(local, returnBciNode, constantReflection);
                 guard = currentGraph.unique(guard);
                 append(new FixedGuardNode(guard, JavaSubroutineMismatch, InvalidateReprofile));
                 if (!successor.getJsrScope().equals(scope.pop())) {
@@ -1691,6 +1691,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             }
 
             public void push(Kind kind, ValueNode value) {
+                assert kind == kind.getStackKind();
                 frameState.push(kind, value);
             }
 
@@ -1701,6 +1702,11 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     return this.explodeLoopsContext.peek().peelIteration;
                 }
             }
+
+            public ConstantReflectionProvider getConstantReflection() {
+                return constantReflection;
+            }
+
         }
     }
 }

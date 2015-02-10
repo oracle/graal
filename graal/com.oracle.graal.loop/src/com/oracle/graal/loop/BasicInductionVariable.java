@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.loop;
 
+import static com.oracle.graal.loop.MathUtil.*;
+
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.nodes.*;
@@ -29,10 +31,10 @@ import com.oracle.graal.nodes.calc.*;
 
 public class BasicInductionVariable extends InductionVariable {
 
-    private ValuePhiNode phi;
-    private ValueNode init;
-    private ValueNode rawStride;
-    private BinaryArithmeticNode<?> op;
+    private final ValuePhiNode phi;
+    private final ValueNode init;
+    private final ValueNode rawStride;
+    private final BinaryArithmeticNode<?> op;
 
     public BasicInductionVariable(LoopEx loop, ValuePhiNode phi, ValueNode init, ValueNode rawStride, BinaryArithmeticNode<?> op) {
         super(loop);
@@ -135,7 +137,7 @@ public class BasicInductionVariable extends InductionVariable {
         if (!maxTripCount.stamp().isCompatible(stamp)) {
             maxTripCount = IntegerConvertNode.convert(maxTripCount, stamp, graph());
         }
-        return BinaryArithmeticNode.add(graph, BinaryArithmeticNode.mul(graph, stride, BinaryArithmeticNode.sub(graph, maxTripCount, ConstantNode.forIntegerStamp(stamp, 1, graph))), initNode);
+        return add(graph, mul(graph, stride, sub(graph, maxTripCount, ConstantNode.forIntegerStamp(stamp, 1, graph))), initNode);
     }
 
     @Override
@@ -145,7 +147,7 @@ public class BasicInductionVariable extends InductionVariable {
         if (!maxTripCount.stamp().isCompatible(stamp)) {
             maxTripCount = IntegerConvertNode.convert(maxTripCount, stamp, graph());
         }
-        return BinaryArithmeticNode.add(graph(), BinaryArithmeticNode.mul(graph(), strideNode(), maxTripCount), initNode());
+        return add(graph(), mul(graph(), strideNode(), maxTripCount), initNode());
     }
 
     @Override

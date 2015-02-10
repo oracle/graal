@@ -68,7 +68,7 @@ public class SimpleAssemblerTest extends AssemblerTest {
             public byte[] generateCode(CompilationResult compResult, TargetDescription target, RegisterConfig registerConfig, CallingConvention cc) {
                 AMD64MacroAssembler asm = new AMD64MacroAssembler(target, registerConfig);
                 Register ret = registerConfig.getReturnRegister(Kind.Double);
-                Data data = new Data(8, 8, DataBuilder.primitive(JavaConstant.forDouble(84.72)));
+                Data data = new Data(8, 8, DataBuilder.serializable(JavaConstant.forDouble(84.72)));
                 DataSectionReference ref = compResult.getDataSection().insertData(data);
                 compResult.recordDataPatch(asm.position(), ref);
                 asm.movdbl(ret, asm.getPlaceholder());

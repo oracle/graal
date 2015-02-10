@@ -20,45 +20,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.java;
+package com.oracle.graal.loop;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.spi.*;
 
 /**
- * Used by a {@link GraphBuilderPlugin} to interface with a graph builder object.
+ * Base class of the derived induction variables.
  */
-public interface GraphBuilderContext {
+public abstract class DerivedInductionVariable extends InductionVariable {
 
-    <T extends ControlSinkNode> T append(T fixed);
+    protected final InductionVariable base;
 
-    <T extends ControlSplitNode> T append(T fixed);
+    public DerivedInductionVariable(LoopEx loop, InductionVariable base) {
+        super(loop);
+        this.base = base;
+    }
 
-    <T extends FixedWithNextNode> T append(T fixed);
+    @Override
+    public StructuredGraph graph() {
+        return base.graph();
+    }
 
-    <T extends FloatingNode> T append(T value);
-
-    StampProvider getStampProvider();
-
-    MetaAccessProvider getMetaAccess();
-
-    Assumptions getAssumptions();
-
-    ConstantReflectionProvider getConstantReflection();
-
-    void push(Kind kind, ValueNode value);
-
-    /**
-     * @see GuardingPiNode#nullCheckedValue(ValueNode)
-     */
-    static ValueNode nullCheckedValue(GraphBuilderContext builder, ValueNode value) {
-        ValueNode nonNullValue = GuardingPiNode.nullCheckedValue(value);
-        if (nonNullValue != value) {
-            builder.append((FixedWithNextNode) nonNullValue);
-        }
-        return nonNullValue;
+    public InductionVariable getBase() {
+        return base;
     }
 }
