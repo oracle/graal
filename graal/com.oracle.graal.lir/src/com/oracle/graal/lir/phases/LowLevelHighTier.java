@@ -27,7 +27,7 @@ import com.oracle.graal.lir.phases.LowLevelHighTierPhase.*;
 
 public class LowLevelHighTier extends LowLevelPhaseSuite<LowLevelHighTierContext> {
     public LowLevelHighTier() {
-        if (ConstantLoadOptimization.Options.ConstantLoadOptimization.getValue()) {
+        if (ConstantLoadOptimization.Options.LowLevelOptConstantLoadOptimization.getValue()) {
             appendPhase(new ConstantLoadOptimization());
         }
     }
