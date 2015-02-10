@@ -32,6 +32,7 @@ import com.oracle.graal.hotspot.phases.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.java.GraphBuilderConfiguration.DebugInfoMode;
 import com.oracle.graal.java.GraphBuilderPlugins.InlineInvokePlugin;
+import com.oracle.graal.lir.phases.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.options.DerivedOptionValue.OptionSupplier;
 import com.oracle.graal.phases.*;
@@ -46,12 +47,14 @@ public class HotSpotSuitesProvider implements SuitesProvider, OptionSupplier<Sui
 
     protected final DerivedOptionValue<Suites> defaultSuites;
     protected final PhaseSuite<HighTierContext> defaultGraphBuilderSuite;
+    private final DerivedOptionValue<LowLevelSuites> defaultLowLevelSuites;
     protected final HotSpotGraalRuntimeProvider runtime;
 
     public HotSpotSuitesProvider(HotSpotGraalRuntimeProvider runtime) {
         this.runtime = runtime;
         this.defaultGraphBuilderSuite = createGraphBuilderSuite();
-        this.defaultSuites = new DerivedOptionValue<>(this);
+        this.defaultSuites = new DerivedOptionValue<>(this::get);
+        this.defaultLowLevelSuites = new DerivedOptionValue<>(this::createLowLevelSuites);
     }
 
     public Suites getDefaultSuites() {
@@ -116,6 +119,14 @@ public class HotSpotSuitesProvider implements SuitesProvider, OptionSupplier<Sui
             return newGbs;
         }
         return gbs;
+    }
+
+    public LowLevelSuites getDefaultLowLevelSuites() {
+        return defaultLowLevelSuites.getValue();
+    }
+
+    public LowLevelSuites createLowLevelSuites() {
+        return Suites.createDefaultLowLevelSuites();
     }
 
 }

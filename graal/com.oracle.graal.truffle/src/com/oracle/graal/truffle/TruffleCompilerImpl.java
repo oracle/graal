@@ -40,6 +40,7 @@ import com.oracle.graal.debug.DebugMemUseTracker.Closeable;
 import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.lir.phases.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
@@ -59,6 +60,7 @@ public class TruffleCompilerImpl {
 
     private final Providers providers;
     private final Suites suites;
+    private final LowLevelSuites lowLevelSuites;
     private final PartialEvaluator partialEvaluator;
     private final Backend backend;
     private final GraphBuilderConfiguration config;
@@ -80,6 +82,7 @@ public class TruffleCompilerImpl {
         ConstantReflectionProvider constantReflection = new TruffleConstantReflectionProvider(backend.getProviders().getConstantReflection(), backend.getProviders().getMetaAccess());
         this.providers = backend.getProviders().copyWith(truffleReplacements).copyWith(constantReflection);
         this.suites = backend.getSuites().getDefaultSuites();
+        this.lowLevelSuites = backend.getSuites().getDefaultLowLevelSuites();
 
         ResolvedJavaType[] skippedExceptionTypes = getSkippedExceptionTypes(providers.getMetaAccess());
         GraphBuilderConfiguration eagerConfig = GraphBuilderConfiguration.getEagerDefault().withSkippedExceptionTypes(skippedExceptionTypes);
@@ -154,7 +157,7 @@ public class TruffleCompilerImpl {
             CallingConvention cc = getCallingConvention(codeCache, Type.JavaCallee, graph.method(), false);
             CompilationResult compilationResult = new CompilationResult(name);
             result = compileGraph(graph, cc, graph.method(), providers, backend, codeCache.getTarget(), null, createGraphBuilderSuite(), Optimizations, getProfilingInfo(graph), speculationLog,
-                            suites, compilationResult, CompilationResultBuilderFactory.Default);
+                            suites, lowLevelSuites, compilationResult, CompilationResultBuilderFactory.Default);
         } catch (Throwable e) {
             throw Debug.handle(e);
         }

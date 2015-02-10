@@ -41,12 +41,13 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.alloc.lsra.*;
 import com.oracle.graal.lir.asm.*;
-import com.oracle.graal.lir.constopt.*;
 import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.lir.gen.*;
-import com.oracle.graal.lir.stackslotalloc.*;
+import com.oracle.graal.lir.phases.*;
+import com.oracle.graal.lir.phases.LowLevelHighTierPhase.LowLevelHighTierContext;
+import com.oracle.graal.lir.phases.LowLevelLowTierPhase.LowLevelLowTierContext;
+import com.oracle.graal.lir.phases.LowLevelMidTierPhase.LowLevelMidTierContext;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.spi.*;
@@ -143,6 +144,7 @@ public class GraalCompiler {
         public final ProfilingInfo profilingInfo;
         public final SpeculationLog speculationLog;
         public final Suites suites;
+        public final LowLevelSuites lowLevelSuites;
         public final T compilationResult;
         public final CompilationResultBuilderFactory factory;
 
@@ -160,12 +162,13 @@ public class GraalCompiler {
          * @param profilingInfo
          * @param speculationLog
          * @param suites
+         * @param lowLevelSuites
          * @param compilationResult
          * @param factory
          */
         public Request(StructuredGraph graph, CallingConvention cc, ResolvedJavaMethod installedCodeOwner, Providers providers, Backend backend, TargetDescription target,
                         Map<ResolvedJavaMethod, StructuredGraph> cache, PhaseSuite<HighTierContext> graphBuilderSuite, OptimisticOptimizations optimisticOpts, ProfilingInfo profilingInfo,
-                        SpeculationLog speculationLog, Suites suites, T compilationResult, CompilationResultBuilderFactory factory) {
+                        SpeculationLog speculationLog, Suites suites, LowLevelSuites lowLevelSuites, T compilationResult, CompilationResultBuilderFactory factory) {
             this.graph = graph;
             this.cc = cc;
             this.installedCodeOwner = installedCodeOwner;
@@ -178,6 +181,7 @@ public class GraalCompiler {
             this.profilingInfo = profilingInfo;
             this.speculationLog = speculationLog;
             this.suites = suites;
+            this.lowLevelSuites = lowLevelSuites;
             this.compilationResult = compilationResult;
             this.factory = factory;
         }
@@ -203,9 +207,9 @@ public class GraalCompiler {
      */
     public static <T extends CompilationResult> T compileGraph(StructuredGraph graph, CallingConvention cc, ResolvedJavaMethod installedCodeOwner, Providers providers, Backend backend,
                     TargetDescription target, Map<ResolvedJavaMethod, StructuredGraph> cache, PhaseSuite<HighTierContext> graphBuilderSuite, OptimisticOptimizations optimisticOpts,
-                    ProfilingInfo profilingInfo, SpeculationLog speculationLog, Suites suites, T compilationResult, CompilationResultBuilderFactory factory) {
-        return compile(new Request<>(graph, cc, installedCodeOwner, providers, backend, target, cache, graphBuilderSuite, optimisticOpts, profilingInfo, speculationLog, suites, compilationResult,
-                        factory));
+                    ProfilingInfo profilingInfo, SpeculationLog speculationLog, Suites suites, LowLevelSuites lowLevelSuites, T compilationResult, CompilationResultBuilderFactory factory) {
+        return compile(new Request<>(graph, cc, installedCodeOwner, providers, backend, target, cache, graphBuilderSuite, optimisticOpts, profilingInfo, speculationLog, suites, lowLevelSuites,
+                        compilationResult, factory));
     }
 
     /**
@@ -218,7 +222,7 @@ public class GraalCompiler {
         try (Scope s0 = Debug.scope("GraalCompiler", r.graph, r.providers.getCodeCache())) {
             Assumptions assumptions = new Assumptions(OptAssumptions.getValue());
             SchedulePhase schedule = emitFrontEnd(r.providers, r.target, r.graph, assumptions, r.cache, r.graphBuilderSuite, r.optimisticOpts, r.profilingInfo, r.speculationLog, r.suites);
-            emitBackEnd(r.graph, null, r.cc, r.installedCodeOwner, r.backend, r.target, r.compilationResult, r.factory, assumptions, schedule, null);
+            emitBackEnd(r.graph, null, r.cc, r.installedCodeOwner, r.backend, r.target, r.compilationResult, r.factory, assumptions, schedule, null, r.lowLevelSuites);
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
@@ -272,10 +276,11 @@ public class GraalCompiler {
     }
 
     public static <T extends CompilationResult> void emitBackEnd(StructuredGraph graph, Object stub, CallingConvention cc, ResolvedJavaMethod installedCodeOwner, Backend backend,
-                    TargetDescription target, T compilationResult, CompilationResultBuilderFactory factory, Assumptions assumptions, SchedulePhase schedule, RegisterConfig registerConfig) {
+                    TargetDescription target, T compilationResult, CompilationResultBuilderFactory factory, Assumptions assumptions, SchedulePhase schedule, RegisterConfig registerConfig,
+                    LowLevelSuites lowLevelSuites) {
         try (TimerCloseable a = BackEnd.start()) {
             LIRGenerationResult lirGen = null;
-            lirGen = emitLIR(backend, target, schedule, graph, stub, cc, registerConfig);
+            lirGen = emitLIR(backend, target, schedule, graph, stub, cc, registerConfig, lowLevelSuites);
             try (Scope s = Debug.scope("CodeGen", lirGen, lirGen.getLIR())) {
                 emitCode(backend, assumptions, lirGen, compilationResult, installedCodeOwner, factory);
             } catch (Throwable e) {
@@ -297,7 +302,8 @@ public class GraalCompiler {
         }
     }
 
-    public static LIRGenerationResult emitLIR(Backend backend, TargetDescription target, SchedulePhase schedule, StructuredGraph graph, Object stub, CallingConvention cc, RegisterConfig registerConfig) {
+    public static LIRGenerationResult emitLIR(Backend backend, TargetDescription target, SchedulePhase schedule, StructuredGraph graph, Object stub, CallingConvention cc,
+                    RegisterConfig registerConfig, LowLevelSuites lowLevelSuites) {
         List<Block> blocks = schedule.getCFG().getBlocks();
         Block startBlock = schedule.getCFG().getStartBlock();
         assert startBlock != null;
@@ -336,57 +342,28 @@ public class GraalCompiler {
                 throw Debug.handle(e);
             }
 
-            if (ConstantLoadOptimization.Options.ConstantLoadOptimization.getValue()) {
-                try (Scope s = Debug.scope("ConstantLoadOptimization", lir)) {
-                    ConstantLoadOptimization.optimize(lirGenRes.getLIR(), lirGen);
-                    Debug.dump(lir, "After constant load optimization");
-                } catch (Throwable e) {
-                    throw Debug.handle(e);
-                }
-            }
-
-            try (Scope s = Debug.scope("Allocator", nodeLirGen)) {
-                if (backend.shouldAllocateRegisters()) {
-                    LinearScan.allocate(target, lirGenRes);
-                }
+            try (Scope s = Debug.scope("LowLevelTier", nodeLirGen)) {
+                return emitLowLevel(target, codeEmittingOrder, linearScanOrder, lirGenRes, lirGen, lowLevelSuites);
             } catch (Throwable e) {
                 throw Debug.handle(e);
             }
-
-            try (Scope s1 = Debug.scope("BuildFrameMap")) {
-                // build frame map
-                final StackSlotAllocator allocator;
-                if (LSStackSlotAllocator.Options.LSStackSlotAllocation.getValue()) {
-                    allocator = new LSStackSlotAllocator();
-                } else {
-                    allocator = new SimpleStackSlotAllocator();
-                }
-                lirGenRes.buildFrameMap(allocator);
-                Debug.dump(lir, "After FrameMap building");
-            }
-            try (Scope s1 = Debug.scope("MarkLocations")) {
-                if (backend.shouldAllocateRegisters()) {
-                    // currently we mark locations only if we do register allocation
-                    LocationMarker.markLocations(lir, lirGenRes.getFrameMap());
-                }
-            }
-
-            try (Scope s = Debug.scope("ControlFlowOptimizations")) {
-                EdgeMoveOptimizer.optimize(lir);
-                ControlFlowOptimizer.optimize(lir, codeEmittingOrder);
-                if (lirGen.canEliminateRedundantMoves()) {
-                    RedundantMoveElimination.optimize(lir, frameMapBuilder);
-                }
-                NullCheckOptimizer.optimize(lir, target.implicitNullCheckLimit);
-
-                Debug.dump(lir, "After control flow optimization");
-            } catch (Throwable e) {
-                throw Debug.handle(e);
-            }
-            return lirGenRes;
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
+    }
+
+    public static <T extends AbstractBlock<T>> LIRGenerationResult emitLowLevel(TargetDescription target, List<T> codeEmittingOrder, List<T> linearScanOrder, LIRGenerationResult lirGenRes,
+                    LIRGeneratorTool lirGen, LowLevelSuites lowLevelSuites) {
+        LowLevelHighTierContext highTierContext = new LowLevelHighTierContext(lirGen);
+        lowLevelSuites.getHighTier().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, highTierContext);
+
+        LowLevelMidTierContext midTierContext = new LowLevelMidTierContext();
+        lowLevelSuites.getMidTier().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, midTierContext);
+
+        LowLevelLowTierContext lowTierContext = new LowLevelLowTierContext();
+        lowLevelSuites.getLowTier().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, lowTierContext);
+
+        return lirGenRes;
     }
 
     public static void emitCode(Backend backend, Assumptions assumptions, LIRGenerationResult lirGenRes, CompilationResult compilationResult, ResolvedJavaMethod installedCodeOwner,

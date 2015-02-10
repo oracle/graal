@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,38 +20,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.tiers;
+package com.oracle.graal.lir.alloc.lsra;
 
+import java.util.*;
+
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.compiler.common.cfg.*;
+import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.phases.*;
-import com.oracle.graal.phases.*;
 
-public interface SuitesProvider {
+public final class LinearScanPhase extends LowLevelMidTierPhase {
 
-    /**
-     * Get the default phase suites of this compiler.
-     */
-    Suites getDefaultSuites();
-
-    /**
-     * Create a new set of phase suites. Initially, the suites are the same as the
-     * {@link #getDefaultSuites default} suites.
-     */
-    Suites createSuites();
-
-    /**
-     * Get the default phase suite for creating new graphs.
-     */
-    PhaseSuite<HighTierContext> getDefaultGraphBuilderSuite();
-
-    /**
-     * Get the default phase suites of this compiler.
-     */
-    LowLevelSuites getDefaultLowLevelSuites();
-
-    /**
-     * Create a new set of low-level phase suites. Initially, the suites are the same as the
-     * {@link #getDefaultLowLevelSuites default} suites.
-     */
-    LowLevelSuites createLowLevelSuites();
+    @Override
+    protected <B extends AbstractBlock<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder) {
+        new LinearScan(target, lirGenRes).allocate();
+    }
 
 }

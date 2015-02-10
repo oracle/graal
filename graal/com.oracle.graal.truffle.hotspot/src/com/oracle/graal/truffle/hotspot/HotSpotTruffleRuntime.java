@@ -45,6 +45,7 @@ import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.lir.phases.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
@@ -175,6 +176,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
         MetaAccessProvider metaAccess = providers.getMetaAccess();
         SuitesProvider suitesProvider = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getSuites();
         Suites suites = suitesProvider.createSuites();
+        LowLevelSuites lowLevelSuites = suitesProvider.createLowLevelSuites();
         removeInliningPhase(suites);
         StructuredGraph graph = new StructuredGraph(javaMethod);
         new GraphBuilderPhase.Instance(metaAccess, providers.getStampProvider(), new Assumptions(false), providers.getConstantReflection(), GraphBuilderConfiguration.getEagerDefault(),
@@ -184,7 +186,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
         Backend backend = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend();
         CompilationResultBuilderFactory factory = getOptimizedCallTargetInstrumentationFactory(backend.getTarget().arch.getName(), javaMethod);
         return compileGraph(graph, cc, javaMethod, providers, backend, providers.getCodeCache().getTarget(), null, graphBuilderSuite, OptimisticOptimizations.ALL, getProfilingInfo(graph), null,
-                        suites, new CompilationResult(), factory);
+                        suites, lowLevelSuites, new CompilationResult(), factory);
     }
 
     private static Providers getGraalProviders() {

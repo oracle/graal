@@ -23,6 +23,10 @@
 package com.oracle.graal.phases.tiers;
 
 import com.oracle.graal.api.runtime.*;
+import com.oracle.graal.lir.phases.*;
+import com.oracle.graal.lir.phases.LowLevelHighTierPhase.*;
+import com.oracle.graal.lir.phases.LowLevelLowTierPhase.*;
+import com.oracle.graal.lir.phases.LowLevelMidTierPhase.*;
 import com.oracle.graal.phases.*;
 
 public interface CompilerConfiguration extends Service {
@@ -32,4 +36,10 @@ public interface CompilerConfiguration extends Service {
     PhaseSuite<MidTierContext> createMidTier();
 
     PhaseSuite<LowTierContext> createLowTier();
+
+    LowLevelPhaseSuite<LowLevelHighTierContext> createLowLevelHighTier();
+
+    LowLevelPhaseSuite<LowLevelMidTierContext> createLowLevelMidTier();
+
+    LowLevelPhaseSuite<LowLevelLowTierContext> createLowLevelLowTier();
 }

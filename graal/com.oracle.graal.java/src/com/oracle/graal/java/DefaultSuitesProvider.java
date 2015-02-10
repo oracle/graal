@@ -24,6 +24,7 @@ package com.oracle.graal.java;
 
 import java.util.function.*;
 
+import com.oracle.graal.lir.phases.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.tiers.*;
@@ -32,10 +33,12 @@ public class DefaultSuitesProvider implements SuitesProvider, Supplier<Suites> {
 
     private final DerivedOptionValue<Suites> defaultSuites;
     private final PhaseSuite<HighTierContext> defaultGraphBuilderSuite;
+    private final DerivedOptionValue<LowLevelSuites> defaultLowLevelSuites;
 
     public DefaultSuitesProvider() {
         this.defaultGraphBuilderSuite = createGraphBuilderSuite();
         this.defaultSuites = new DerivedOptionValue<>(this::createSuites);
+        this.defaultLowLevelSuites = new DerivedOptionValue<>(this::createLowLevelSuites);
     }
 
     public Suites getDefaultSuites() {
@@ -58,6 +61,14 @@ public class DefaultSuitesProvider implements SuitesProvider, Supplier<Suites> {
         PhaseSuite<HighTierContext> suite = new PhaseSuite<>();
         suite.appendPhase(new GraphBuilderPhase(GraphBuilderConfiguration.getDefault()));
         return suite;
+    }
+
+    public LowLevelSuites getDefaultLowLevelSuites() {
+        return defaultLowLevelSuites.getValue();
+    }
+
+    public LowLevelSuites createLowLevelSuites() {
+        return Suites.createDefaultLowLevelSuites();
     }
 
 }

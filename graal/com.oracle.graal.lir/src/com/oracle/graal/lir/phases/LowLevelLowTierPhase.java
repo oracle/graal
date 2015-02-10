@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,38 +20,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.tiers;
+package com.oracle.graal.lir.phases;
 
-import com.oracle.graal.lir.phases.*;
-import com.oracle.graal.phases.*;
+import java.util.*;
 
-public interface SuitesProvider {
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.compiler.common.cfg.*;
+import com.oracle.graal.lir.gen.*;
 
-    /**
-     * Get the default phase suites of this compiler.
-     */
-    Suites getDefaultSuites();
+public abstract class LowLevelLowTierPhase extends LowLevelPhase<LowLevelLowTierPhase.LowLevelLowTierContext> {
 
-    /**
-     * Create a new set of phase suites. Initially, the suites are the same as the
-     * {@link #getDefaultSuites default} suites.
-     */
-    Suites createSuites();
+    public static final class LowLevelLowTierContext {
+    }
 
-    /**
-     * Get the default phase suite for creating new graphs.
-     */
-    PhaseSuite<HighTierContext> getDefaultGraphBuilderSuite();
+    @Override
+    protected final <B extends AbstractBlock<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, LowLevelLowTierContext context) {
+        run(target, lirGenRes, codeEmittingOrder, linearScanOrder);
+    }
 
-    /**
-     * Get the default phase suites of this compiler.
-     */
-    LowLevelSuites getDefaultLowLevelSuites();
-
-    /**
-     * Create a new set of low-level phase suites. Initially, the suites are the same as the
-     * {@link #getDefaultLowLevelSuites default} suites.
-     */
-    LowLevelSuites createLowLevelSuites();
+    protected abstract <B extends AbstractBlock<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder);
 
 }
