@@ -233,26 +233,23 @@ public class LoopEx {
         return data;
     }
 
-    public NodeBitMap nodesInLoopFrom(AbstractBeginNode point, AbstractBeginNode until) {
+    public NodeBitMap nodesInLoopBranch(AbstractBeginNode branch) {
         Collection<AbstractBeginNode> blocks = new LinkedList<>();
         Collection<LoopExitNode> exits = new LinkedList<>();
         Queue<Block> work = new LinkedList<>();
         ControlFlowGraph cfg = loopsData().controlFlowGraph();
-        work.add(cfg.blockFor(point));
-        Block untilBlock = until != null ? cfg.blockFor(until) : null;
+        work.add(cfg.blockFor(branch));
         while (!work.isEmpty()) {
             Block b = work.remove();
-            if (b == untilBlock) {
-                continue;
-            }
             if (loop().getExits().contains(b)) {
                 exits.add((LoopExitNode) b.getBeginNode());
-            } else if (loop().getBlocks().contains(b)) {
+            } else {
+                assert loop().getBlocks().contains(b);
                 blocks.add(b.getBeginNode());
                 work.addAll(b.getDominated());
             }
         }
-        return LoopFragment.computeNodes(point.graph(), blocks, exits);
+        return LoopFragment.computeNodes(branch.graph(), blocks, exits);
     }
 
     public Map<Node, InductionVariable> getInductionVariables() {
