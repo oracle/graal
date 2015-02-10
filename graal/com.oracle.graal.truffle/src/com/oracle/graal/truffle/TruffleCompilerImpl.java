@@ -120,9 +120,10 @@ public class TruffleCompilerImpl {
 
         try {
             Assumptions assumptions = new Assumptions(true);
+            GraphBuilderSuiteInfo info = createGraphBuilderSuite();
 
             try (TimerCloseable a = PartialEvaluationTime.start(); Closeable c = PartialEvaluationMemUse.start()) {
-                graph = partialEvaluator.createGraph(compilable, assumptions);
+                graph = partialEvaluator.createGraph(compilable, assumptions, info.plugins);
             }
 
             if (Thread.currentThread().isInterrupted()) {
@@ -137,7 +138,7 @@ public class TruffleCompilerImpl {
             }
 
             compilationNotify.notifyCompilationTruffleTierFinished(compilable, graph);
-            CompilationResult compilationResult = compileMethodHelper(graph, assumptions, compilable.toString(), compilable.getSpeculationLog(), compilable);
+            CompilationResult compilationResult = compileMethodHelper(graph, assumptions, compilable.toString(), info.suite, compilable.getSpeculationLog(), compilable);
             compilationNotify.notifyCompilationSuccess(compilable, graph, compilationResult);
         } catch (Throwable t) {
             compilationNotify.notifyCompilationFailed(compilable, graph, t);
@@ -145,7 +146,8 @@ public class TruffleCompilerImpl {
         }
     }
 
-    public CompilationResult compileMethodHelper(StructuredGraph graph, Assumptions assumptions, String name, SpeculationLog speculationLog, InstalledCode predefinedInstalledCode) {
+    public CompilationResult compileMethodHelper(StructuredGraph graph, Assumptions assumptions, String name, PhaseSuite<HighTierContext> graphBuilderSuite, SpeculationLog speculationLog,
+                    InstalledCode predefinedInstalledCode) {
         try (Scope s = Debug.scope("TruffleFinal")) {
             Debug.dump(1, graph, "After TruffleTier");
         } catch (Throwable e) {
@@ -157,8 +159,8 @@ public class TruffleCompilerImpl {
             CodeCacheProvider codeCache = providers.getCodeCache();
             CallingConvention cc = getCallingConvention(codeCache, Type.JavaCallee, graph.method(), false);
             CompilationResult compilationResult = new CompilationResult(name);
-            result = compileGraph(graph, cc, graph.method(), providers, backend, codeCache.getTarget(), null, createGraphBuilderSuite(), Optimizations, getProfilingInfo(graph), speculationLog,
-                            suites, lowLevelSuites, compilationResult, CompilationResultBuilderFactory.Default);
+            result = compileGraph(graph, cc, graph.method(), providers, backend, codeCache.getTarget(), null, graphBuilderSuite == null ? createGraphBuilderSuite().suite : graphBuilderSuite,
+                            Optimizations, getProfilingInfo(graph), speculationLog, suites, lowLevelSuites, compilationResult, CompilationResultBuilderFactory.Default);
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
@@ -198,13 +200,24 @@ public class TruffleCompilerImpl {
         return result;
     }
 
-    private PhaseSuite<HighTierContext> createGraphBuilderSuite() {
+    static class GraphBuilderSuiteInfo {
+        final PhaseSuite<HighTierContext> suite;
+        final GraphBuilderPlugins plugins;
+
+        public GraphBuilderSuiteInfo(PhaseSuite<HighTierContext> suite, GraphBuilderPlugins plugins) {
+            this.suite = suite;
+            this.plugins = plugins;
+        }
+    }
+
+    private GraphBuilderSuiteInfo createGraphBuilderSuite() {
         PhaseSuite<HighTierContext> suite = backend.getSuites().getDefaultGraphBuilderSuite().copy();
         ListIterator<BasePhase<? super HighTierContext>> iterator = suite.findPhase(GraphBuilderPhase.class);
         GraphBuilderPhase graphBuilderPhase = (GraphBuilderPhase) iterator.previous();
         iterator.remove();
-        iterator.add(new GraphBuilderPhase(config, graphBuilderPhase.getGraphBuilderPlugins()));
-        return suite;
+        GraphBuilderPlugins plugins = graphBuilderPhase.getGraphBuilderPlugins();
+        iterator.add(new GraphBuilderPhase(config, plugins));
+        return new GraphBuilderSuiteInfo(suite, plugins);
     }
 
     public void processAssumption(Assumptions newAssumptions, Assumption assumption, List<AssumptionValidAssumption> manual) {

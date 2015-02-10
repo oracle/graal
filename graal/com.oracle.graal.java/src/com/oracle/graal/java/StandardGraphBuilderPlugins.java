@@ -25,7 +25,6 @@ package com.oracle.graal.java;
 import static com.oracle.graal.java.GraphBuilderContext.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.java.GraphBuilderPlugins.InvocationPlugin;
 import com.oracle.graal.java.GraphBuilderPlugins.Registration;
 import com.oracle.graal.java.GraphBuilderPlugins.Registration.Receiver;
@@ -36,9 +35,8 @@ import com.oracle.graal.nodes.java.*;
 /**
  * Provider of non-runtime specific {@link GraphBuilderPlugin}s.
  */
-@ServiceProvider(GraphBuilderPluginsProvider.class)
-public class StandardGraphBuilderPluginsProvider implements GraphBuilderPluginsProvider {
-    public void registerPlugins(MetaAccessProvider metaAccess, GraphBuilderPlugins plugins) {
+public class StandardGraphBuilderPlugins {
+    public static void registerPlugins(MetaAccessProvider metaAccess, GraphBuilderPlugins plugins) {
         Registration r = new Registration(plugins, metaAccess, Object.class);
         r.register1("<init>", Receiver.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext builder, ValueNode object) {

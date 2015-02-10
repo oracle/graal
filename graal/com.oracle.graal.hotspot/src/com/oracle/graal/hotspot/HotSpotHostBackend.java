@@ -69,10 +69,7 @@ public abstract class HotSpotHostBackend extends HotSpotBackend {
         try (InitTimer st = timer("graphBuilderPlugins.initialize")) {
             GraphBuilderPhase phase = (GraphBuilderPhase) providers.getSuites().getDefaultGraphBuilderSuite().findPhase(GraphBuilderPhase.class).previous();
             GraphBuilderPlugins plugins = phase.getGraphBuilderPlugins();
-            Iterable<GraphBuilderPluginsProvider> sl = Services.load(GraphBuilderPluginsProvider.class);
-            for (GraphBuilderPluginsProvider p : sl) {
-                p.registerPlugins(providers.getMetaAccess(), plugins);
-            }
+            registerGraphBuilderPlugins(providers.getMetaAccess(), plugins);
         }
 
         try (InitTimer st = timer("foreignCalls.initialize")) {
@@ -102,5 +99,10 @@ public abstract class HotSpotHostBackend extends HotSpotBackend {
                 throw Debug.handle(e);
             }
         }
+    }
+
+    protected void registerGraphBuilderPlugins(MetaAccessProvider metaAccess, GraphBuilderPlugins plugins) {
+        StandardGraphBuilderPlugins.registerPlugins(metaAccess, plugins);
+        HotSpotGraphBuilderPlugins.registerPlugins(metaAccess, plugins);
     }
 }

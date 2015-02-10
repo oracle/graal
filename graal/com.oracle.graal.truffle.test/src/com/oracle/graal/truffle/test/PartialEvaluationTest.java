@@ -56,7 +56,7 @@ public class PartialEvaluationTest extends GraalCompilerTest {
         Assumptions assumptions = new Assumptions(true);
         final OptimizedCallTarget compilable = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(root);
         StructuredGraph actual = partialEval(compilable, arguments, assumptions);
-        truffleCompiler.compileMethodHelper(actual, assumptions, methodName, getSpeculationLog(), compilable);
+        truffleCompiler.compileMethodHelper(actual, assumptions, methodName, null, getSpeculationLog(), compilable);
         return compilable;
     }
 
@@ -64,7 +64,7 @@ public class PartialEvaluationTest extends GraalCompilerTest {
         Assumptions assumptions = new Assumptions(true);
         final OptimizedCallTarget compilable = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(root);
         StructuredGraph actual = partialEval(compilable, arguments, assumptions);
-        truffleCompiler.compileMethodHelper(actual, assumptions, methodName, getSpeculationLog(), compilable);
+        truffleCompiler.compileMethodHelper(actual, assumptions, methodName, null, getSpeculationLog(), compilable);
         removeFrameStates(actual);
         StructuredGraph expected = parseForComparison(methodName);
         Assert.assertEquals(getCanonicalGraphString(expected, true, true), getCanonicalGraphString(actual, true, true));
@@ -92,7 +92,7 @@ public class PartialEvaluationTest extends GraalCompilerTest {
         compilable.call(arguments);
 
         try (Scope s = Debug.scope("TruffleCompilation", new TruffleDebugJavaMethod(compilable))) {
-            return truffleCompiler.getPartialEvaluator().createGraph(compilable, assumptions);
+            return truffleCompiler.getPartialEvaluator().createGraph(compilable, assumptions, null);
         } catch (Throwable e) {
             throw Debug.handle(e);
         }

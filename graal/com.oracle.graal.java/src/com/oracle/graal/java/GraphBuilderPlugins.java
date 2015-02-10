@@ -296,4 +296,6 @@ public interface GraphBuilderPlugins {
      * @return the plugin associated with {@code method} or {@code null} if none exists
      */
     InvocationPlugin lookupInvocation(ResolvedJavaMethod method);
+
+    DefaultGraphBuilderPlugins copy();
 }

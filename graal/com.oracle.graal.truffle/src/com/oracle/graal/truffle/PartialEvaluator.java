@@ -30,7 +30,6 @@ import java.util.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.internal.*;
@@ -97,7 +96,7 @@ public class PartialEvaluator {
         }
     }
 
-    public StructuredGraph createGraph(final OptimizedCallTarget callTarget, final Assumptions assumptions) {
+    public StructuredGraph createGraph(final OptimizedCallTarget callTarget, final Assumptions assumptions, GraphBuilderPlugins graalPlugins) {
         if (TraceTruffleCompilationHistogram.getValue() || TraceTruffleCompilationDetails.getValue()) {
             constantReceivers = new HashSet<>();
         }
@@ -121,7 +120,7 @@ public class PartialEvaluator {
             HighTierContext tierContext = new HighTierContext(providers, assumptions, graphCache, new PhaseSuite<HighTierContext>(), OptimisticOptimizations.NONE);
 
             if (TruffleCompilerOptions.FastPE.getValue()) {
-                fastPartialEvaluation(callTarget, assumptions, graph, baseContext, tierContext);
+                fastPartialEvaluation(callTarget, assumptions, graph, baseContext, tierContext, graalPlugins);
             } else {
                 createRootGraph(graph);
                 partialEvaluation(callTarget, assumptions, graph, baseContext, tierContext);
@@ -207,17 +206,14 @@ public class PartialEvaluator {
     }
 
     @SuppressWarnings("unused")
-    private void fastPartialEvaluation(OptimizedCallTarget callTarget, Assumptions assumptions, StructuredGraph graph, PhaseContext baseContext, HighTierContext tierContext) {
+    private void fastPartialEvaluation(OptimizedCallTarget callTarget, Assumptions assumptions, StructuredGraph graph, PhaseContext baseContext, HighTierContext tierContext,
+                    GraphBuilderPlugins graalPlugins) {
         GraphBuilderConfiguration newConfig = configForRoot.copy();
         newConfig.setLoadFieldPlugin(new InterceptLoadFieldPlugin());
         newConfig.setParameterPlugin(new InterceptReceiverPlugin(callTarget));
         newConfig.setInlineInvokePlugin(new InlineInvokePlugin());
         newConfig.setLoopExplosionPlugin(new LoopExplosionPlugin());
-        DefaultGraphBuilderPlugins plugins = new DefaultGraphBuilderPlugins();
-        Iterable<GraphBuilderPluginsProvider> sl = Services.load(GraphBuilderPluginsProvider.class);
-        for (GraphBuilderPluginsProvider p : sl) {
-            p.registerPlugins(providers.getMetaAccess(), plugins);
-        }
+        DefaultGraphBuilderPlugins plugins = graalPlugins == null ? new DefaultGraphBuilderPlugins() : graalPlugins.copy();
         TruffleGraphBuilderPlugins.registerPlugins(providers.getMetaAccess(), plugins);
         long ms = System.currentTimeMillis();
         new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), new Assumptions(true), this.snippetReflection, providers.getConstantReflection(), newConfig, plugins,
