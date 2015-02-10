@@ -122,22 +122,10 @@ public final class GraalOptions {
     public static final OptionValue<Boolean> LoopUnswitch = new OptionValue<>(true);
 
     @Option(help = "", type = OptionType.Expert)
-    public static final OptionValue<Integer> FullUnrollMaxNodes = new OptionValue<>(300);
-
-    @Option(help = "", type = OptionType.Expert)
-    public static final OptionValue<Integer> ExactFullUnrollMaxNodes = new OptionValue<>(1200);
-
-    @Option(help = "", type = OptionType.Expert)
     public static final OptionValue<Float> MinimumPeelProbability = new OptionValue<>(0.35f);
 
     @Option(help = "", type = OptionType.Expert)
     public static final OptionValue<Integer> LoopMaxUnswitch = new OptionValue<>(3);
-
-    @Option(help = "", type = OptionType.Expert)
-    public static final OptionValue<Integer> LoopUnswitchMaxIncrease = new OptionValue<>(50);
-
-    @Option(help = "", type = OptionType.Expert)
-    public static final OptionValue<Integer> LoopUnswitchUncertaintyBoost = new OptionValue<>(5);
 
     @Option(help = "", type = OptionType.Debug)
     public static final OptionValue<Boolean> UseLoopLimitChecks = new OptionValue<>(true);

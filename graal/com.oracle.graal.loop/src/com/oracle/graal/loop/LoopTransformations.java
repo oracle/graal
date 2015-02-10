@@ -37,8 +37,6 @@ import com.oracle.graal.phases.tiers.*;
 
 public abstract class LoopTransformations {
 
-    private static final int UNROLL_LIMIT = FullUnrollMaxNodes.getValue() * 2;
-
     private LoopTransformations() {
         // does not need to be instantiated
     }
@@ -59,7 +57,7 @@ public abstract class LoopTransformations {
             canonicalizer.applyIncremental(graph, context, mark);
             loopBegin.removeDeadPhis();
             loop.invalidateFragments();
-            if (iterations++ > UNROLL_LIMIT || graph.getNodeCount() > MaximumDesiredSize.getValue() * 3) {
+            if (iterations++ > LoopPolicies.FullUnrollMaxIterations.getValue() || graph.getNodeCount() > MaximumDesiredSize.getValue() * 3) {
                 throw new BailoutException("FullUnroll : Graph seems to grow out of proportion");
             }
         }
