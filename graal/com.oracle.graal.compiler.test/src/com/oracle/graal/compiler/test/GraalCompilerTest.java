@@ -90,7 +90,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     private final Providers providers;
     private final Backend backend;
     private final DerivedOptionValue<Suites> suites;
-    private final LowLevelSuites lowLevelSuites;
+    private final DerivedOptionValue<LowLevelSuites> lowLevelSuites;
 
     /**
      * Can be overridden by unit tests to verify properties of the graph.
@@ -175,7 +175,7 @@ public abstract class GraalCompilerTest extends GraalTest {
         this.backend = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend();
         this.providers = getBackend().getProviders();
         this.suites = new DerivedOptionValue<>(this::createSuites);
-        this.lowLevelSuites = createLowLevelSuites();
+        this.lowLevelSuites = new DerivedOptionValue<>(this::createLowLevelSuites);
         installSubstitutions();
     }
 
@@ -196,7 +196,7 @@ public abstract class GraalCompilerTest extends GraalTest {
         }
         this.providers = backend.getProviders();
         this.suites = new DerivedOptionValue<>(this::createSuites);
-        this.lowLevelSuites = createLowLevelSuites();
+        this.lowLevelSuites = new DerivedOptionValue<>(this::createLowLevelSuites);
         installSubstitutions();
     }
 
@@ -365,7 +365,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     protected LowLevelSuites getLowLevelSuites() {
-        return lowLevelSuites;
+        return lowLevelSuites.getValue();
     }
 
     protected Providers getProviders() {
