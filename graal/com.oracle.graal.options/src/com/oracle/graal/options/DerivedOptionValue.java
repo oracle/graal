@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.options;
 
+import java.io.*;
 import java.util.function.*;
 
 import com.oracle.graal.options.OptionValue.OverrideScope;
@@ -31,10 +32,13 @@ import com.oracle.graal.options.OptionValue.OverrideScope;
  */
 public class DerivedOptionValue<T> {
 
-    private final T initialValue;
-    private final Supplier<T> supplier;
+    public interface OptionSupplier<T> extends Supplier<T>, Serializable {
+    }
 
-    public DerivedOptionValue(Supplier<T> supplier) {
+    private final T initialValue;
+    private final OptionSupplier<T> supplier;
+
+    public DerivedOptionValue(OptionSupplier<T> supplier) {
         this.supplier = supplier;
         assert OptionValue.getOverrideScope() == null : "derived option value should be initialized outside any override scope";
         this.initialValue = createValue();
