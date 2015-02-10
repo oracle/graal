@@ -24,6 +24,7 @@
 package com.oracle.graal.java;
 
 import static com.oracle.graal.api.code.TypeCheckHints.*;
+import static com.oracle.graal.api.meta.DeoptimizationReason.*;
 import static com.oracle.graal.bytecode.Bytecodes.*;
 
 import java.util.*;
@@ -604,9 +605,19 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
 
     protected abstract T createNewInstance(ResolvedJavaType type, boolean fillContents);
 
+    @SuppressWarnings("unchecked")
     void genNewInstance(int cpi) {
         JavaType type = lookupType(cpi, NEW);
         if (type instanceof ResolvedJavaType && ((ResolvedJavaType) type).isInitialized()) {
+            ResolvedJavaType[] skippedExceptionTypes = this.graphBuilderConfig.getSkippedExceptionTypes();
+            if (skippedExceptionTypes != null) {
+                for (ResolvedJavaType exceptionType : skippedExceptionTypes) {
+                    if (exceptionType.isAssignableFrom((ResolvedJavaType) type)) {
+                        append((T) new DeoptimizeNode(DeoptimizationAction.None, TransferToInterpreter));
+                        return;
+                    }
+                }
+            }
             frameState.apush(append(createNewInstance((ResolvedJavaType) type, true)));
         } else {
             handleUnresolvedNewInstance(type);

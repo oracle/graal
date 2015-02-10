@@ -88,7 +88,7 @@ public class TruffleGraphBuilderPluginsProvider implements GraphBuilderPluginsPr
         });
         r.register2("injectBranchProbability", double.class, boolean.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext builder, ValueNode probability, ValueNode condition) {
-                builder.append(new BranchProbabilityNode(probability, condition));
+                builder.push(Kind.Boolean.getStackKind(), builder.append(new BranchProbabilityNode(probability, condition)));
                 return true;
             }
         });

@@ -65,6 +65,8 @@ public class GraalDebugConfig implements DebugConfig {
     public static final OptionValue<Boolean> SuppressZeroDebugValues = new OptionValue<>(false);
     @Option(help = "Send Graal IR to dump handlers on error", type = OptionType.Debug)
     public static final OptionValue<Boolean> DumpOnError = new OptionValue<>(false);
+    @Option(help = "Intercept also bailout exceptions", type = OptionType.Debug)
+    public static final OptionValue<Boolean> InterceptBailout = new OptionValue<>(false);
     @Option(help = "Enable more verbose log output when available", type = OptionType.Debug)
     public static final OptionValue<Boolean> LogVerbose = new OptionValue<>(false);
     // @formatter:on
@@ -254,7 +256,7 @@ public class GraalDebugConfig implements DebugConfig {
 
     @Override
     public RuntimeException interceptException(Throwable e) {
-        if (e instanceof BailoutException) {
+        if (e instanceof BailoutException && !InterceptBailout.getValue()) {
             return null;
         }
         Debug.setConfig(Debug.fixedConfig(Debug.DEFAULT_LOG_LEVEL, Debug.DEFAULT_LOG_LEVEL, false, false, false, false, dumpHandlers, verifyHandlers, output));

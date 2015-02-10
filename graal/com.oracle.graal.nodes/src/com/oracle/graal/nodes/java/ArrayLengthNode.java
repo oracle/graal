@@ -52,6 +52,11 @@ public final class ArrayLengthNode extends FixedWithNextNode implements Canonica
     }
 
     public static ValueNode create(ValueNode forValue, ConstantReflectionProvider constantReflection) {
+        if (forValue instanceof NewArrayNode) {
+            NewArrayNode newArray = (NewArrayNode) forValue;
+            return newArray.length();
+        }
+
         ValueNode length = readArrayLengthConstant(forValue, constantReflection);
         if (length != null) {
             return length;
