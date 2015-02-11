@@ -38,7 +38,7 @@ import com.oracle.graal.lir.gen.*;
  * Base class for all {@link LIR low-level} phases. Subclasses should be stateless. There will be
  * one global instance for each phase that is shared for all compilations.
  */
-public abstract class LowLevelPhase<C> {
+public abstract class LIRPhase<C> {
 
     private static final int PHASE_DUMP_LEVEL = 2;
 
@@ -61,12 +61,12 @@ public abstract class LowLevelPhase<C> {
         return true;
     }
 
-    public LowLevelPhase() {
+    public LIRPhase() {
         timer = Debug.timer("LowLevelPhaseTime_%s", getClass());
         memUseTracker = Debug.memUseTracker("LowLevelPhaseMemUse_%s", getClass());
     }
 
-    protected LowLevelPhase(String name) {
+    protected LIRPhase(String name) {
         assert checkName(name);
         this.name = name;
         timer = Debug.timer("LowLevelPhaseTime_%s", getClass());
@@ -91,7 +91,7 @@ public abstract class LowLevelPhase<C> {
     protected abstract <B extends AbstractBlock<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, C context);
 
     protected CharSequence createName() {
-        String className = LowLevelPhase.this.getClass().getName();
+        String className = LIRPhase.this.getClass().getName();
         String s = className.substring(className.lastIndexOf(".") + 1); // strip the package name
         if (s.endsWith("Phase")) {
             s = s.substring(0, s.length() - "Phase".length());

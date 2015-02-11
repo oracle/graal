@@ -28,7 +28,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.lir.gen.*;
 
-public abstract class LowLevelMidTierPhase extends LowLevelPhase<LowLevelMidTierPhase.LowLevelMidTierContext> {
+public abstract class LowLevelMidTierPhase extends LIRPhase<LowLevelMidTierPhase.LowLevelMidTierContext> {
 
     public static final class LowLevelMidTierContext {
     }

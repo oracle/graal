@@ -28,8 +28,8 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.lir.gen.*;
 
-public abstract class LowLevelPhaseSuite<C> extends LowLevelPhase<C> {
-    private final List<LowLevelPhase<C>> phases;
+public abstract class LowLevelPhaseSuite<C> extends LIRPhase<C> {
+    private final List<LIRPhase<C>> phases;
 
     public LowLevelPhaseSuite() {
         phases = new ArrayList<>();
@@ -38,19 +38,19 @@ public abstract class LowLevelPhaseSuite<C> extends LowLevelPhase<C> {
     /**
      * Add a new phase at the beginning of this suite.
      */
-    public final void prependPhase(LowLevelPhase<C> phase) {
+    public final void prependPhase(LIRPhase<C> phase) {
         phases.add(0, phase);
     }
 
     /**
      * Add a new phase at the end of this suite.
      */
-    public final void appendPhase(LowLevelPhase<C> phase) {
+    public final void appendPhase(LIRPhase<C> phase) {
         phases.add(phase);
     }
 
-    public final ListIterator<LowLevelPhase<C>> findPhase(Class<? extends LowLevelPhase<C>> phaseClass) {
-        ListIterator<LowLevelPhase<C>> it = phases.listIterator();
+    public final ListIterator<LIRPhase<C>> findPhase(Class<? extends LIRPhase<C>> phaseClass) {
+        ListIterator<LIRPhase<C>> it = phases.listIterator();
         if (findNextPhase(it, phaseClass)) {
             return it;
         } else {
@@ -58,9 +58,9 @@ public abstract class LowLevelPhaseSuite<C> extends LowLevelPhase<C> {
         }
     }
 
-    public static <C> boolean findNextPhase(ListIterator<LowLevelPhase<C>> it, Class<? extends LowLevelPhase<C>> phaseClass) {
+    public static <C> boolean findNextPhase(ListIterator<LIRPhase<C>> it, Class<? extends LIRPhase<C>> phaseClass) {
         while (it.hasNext()) {
-            LowLevelPhase<C> phase = it.next();
+            LIRPhase<C> phase = it.next();
             if (phaseClass.isInstance(phase)) {
                 return true;
             }
@@ -70,7 +70,7 @@ public abstract class LowLevelPhaseSuite<C> extends LowLevelPhase<C> {
 
     @Override
     protected <B extends AbstractBlock<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, C context) {
-        for (LowLevelPhase<C> phase : phases) {
+        for (LIRPhase<C> phase : phases) {
             phase.apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context);
         }
     }

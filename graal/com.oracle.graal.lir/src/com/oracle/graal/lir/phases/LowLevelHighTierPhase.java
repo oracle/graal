@@ -28,7 +28,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.lir.gen.*;
 
-public abstract class LowLevelHighTierPhase extends LowLevelPhase<LowLevelHighTierPhase.LowLevelHighTierContext> {
+public abstract class LowLevelHighTierPhase extends LIRPhase<LowLevelHighTierPhase.LowLevelHighTierContext> {
 
     public static final class LowLevelHighTierContext {
         private final LIRGeneratorTool lirGen;
