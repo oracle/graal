@@ -40,7 +40,7 @@ import com.oracle.truffle.api.utilities.*;
  * is intended to persist at the location, even if the specific node instance is
  * {@linkplain Node#replace(Node) replaced}.
  * <p>
- * The effect of a binding is to intercept {@linkplain TruffleEventReceiver execution events}
+ * The effect of a binding is to intercept {@linkplain TruffleEventListener execution events}
  * arriving at the node and notify each attached {@link Instrument} before execution is allowed to
  * proceed to the child.
  * <p>

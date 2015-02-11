@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -218,8 +218,8 @@ public final class SLInstrumentTestRunner extends ParentRunner<InstrumentTestCas
 
                 // Attach an instrument to every probe tagged as an assignment
                 for (Probe probe : Probe.findProbesTaggedAs(StandardSyntaxTag.ASSIGNMENT)) {
-                    SLPrintAssigmentValueReciever slPrintAssigmentValueReceiver = new SLPrintAssigmentValueReciever(printer);
-                    probe.attach(Instrument.create(slPrintAssigmentValueReceiver, "SL print assignment value"));
+                    SLPrintAssigmentValueListener slPrintAssigmentValueListener = new SLPrintAssigmentValueListener(printer);
+                    probe.attach(Instrument.create(slPrintAssigmentValueListener, "SL print assignment value"));
                 }
 
                 SLFunction main = slContext.getFunctionRegistry().lookup("main");
@@ -271,16 +271,16 @@ public final class SLInstrumentTestRunner extends ParentRunner<InstrumentTestCas
     }
 
     /**
-     * This sample instrument receiver provides prints the value of an assignment (after the
+     * This sample instrument listener provides prints the value of an assignment (after the
      * assignment is complete) to the {@link PrintStream} specified in the constructor. This
      * instrument can only be attached to a wrapped {@link SLWriteLocalVariableNode}, but provides
      * no guards to protect it from being attached elsewhere.
      */
-    public final class SLPrintAssigmentValueReciever extends DefaultEventReceiver {
+    public final class SLPrintAssigmentValueListener extends DefaultEventListener {
 
         private PrintStream output;
 
-        public SLPrintAssigmentValueReciever(PrintStream output) {
+        public SLPrintAssigmentValueListener(PrintStream output) {
             this.output = output;
         }
 

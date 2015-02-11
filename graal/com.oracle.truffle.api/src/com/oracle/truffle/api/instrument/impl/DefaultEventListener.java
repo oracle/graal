@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,10 +29,10 @@ import com.oracle.truffle.api.instrument.*;
 import com.oracle.truffle.api.nodes.*;
 
 /**
- * A receiver for AST {@linkplain TruffleEventReceiver execution events} that provides a no-op
+ * A listener for AST {@linkplain TruffleEventListener execution events} that provides a no-op
  * implementation of every event.
  */
-public class DefaultEventReceiver implements TruffleEventReceiver {
+public class DefaultEventListener implements TruffleEventListener {
 
     public void enter(Node node, VirtualFrame frame) {
     }

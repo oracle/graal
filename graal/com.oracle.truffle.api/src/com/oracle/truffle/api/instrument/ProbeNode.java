@@ -35,7 +35,7 @@ import com.oracle.truffle.api.source.*;
 /**
  * Implementation interfaces and classes for attaching {@link Probe}s to {@link WrapperNode}s.
  */
-public abstract class ProbeNode extends Node implements TruffleEventReceiver, InstrumentationNode {
+public abstract class ProbeNode extends Node implements TruffleEventListener, InstrumentationNode {
 
     /**
      * A node that can be inserted into a Truffle AST, and which enables {@linkplain Instrument
@@ -85,14 +85,14 @@ public abstract class ProbeNode extends Node implements TruffleEventReceiver, In
 
         /**
          * Gets the node being "wrapped", i.e. the AST node for which
-         * {@linkplain TruffleEventReceiver execution events} will be reported through the
+         * {@linkplain TruffleEventListener execution events} will be reported through the
          * Instrumentation Framework.
          */
         Node getChild();
 
         /**
          * Gets the {@link Probe} responsible for installing this wrapper; none if the wrapper
-         * installed via {@linkplain Node#probeLite(TruffleEventReceiver) "lite-Probing"}.
+         * installed via {@linkplain Node#probeLite(TruffleEventListener) "lite-Probing"}.
          */
         Probe getProbe();
 
@@ -120,8 +120,8 @@ public abstract class ProbeNode extends Node implements TruffleEventReceiver, In
      * Creates a new {@link ProbeLiteNode} associated with, and attached to, a Guest Language
      * specific instance of {@link WrapperNode}.
      */
-    public static void insertProbeLite(WrapperNode wrapper, TruffleEventReceiver eventReceiver) {
-        final ProbeLiteNode probeLiteNode = new ProbeLiteNode(eventReceiver);
+    public static void insertProbeLite(WrapperNode wrapper, TruffleEventListener eventListener) {
+        final ProbeLiteNode probeLiteNode = new ProbeLiteNode(eventListener);
         wrapper.insertProbe(probeLiteNode);
     }
 
@@ -277,15 +277,15 @@ public abstract class ProbeNode extends Node implements TruffleEventReceiver, In
     /**
      * Implementation of a probe that only ever has a single "instrument" associated with it. No
      * {@link Instrument} is ever created; instead this method simply delegates the various enter
-     * and return events to a {@link TruffleEventReceiver} passed in during construction.
+     * and return events to a {@link TruffleEventListener} passed in during construction.
      */
     @NodeInfo(cost = NodeCost.NONE)
     private static final class ProbeLiteNode extends ProbeNode {
 
-        private final TruffleEventReceiver eventReceiver;
+        private final TruffleEventListener eventListener;
 
-        private ProbeLiteNode(TruffleEventReceiver eventReceiver) {
-            this.eventReceiver = eventReceiver;
+        private ProbeLiteNode(TruffleEventListener eventListener) {
+            this.eventListener = eventListener;
         }
 
         @Override
@@ -306,19 +306,19 @@ public abstract class ProbeNode extends Node implements TruffleEventReceiver, In
         }
 
         public void enter(Node node, VirtualFrame frame) {
-            eventReceiver.enter(node, frame);
+            eventListener.enter(node, frame);
         }
 
         public void returnVoid(Node node, VirtualFrame frame) {
-            eventReceiver.returnVoid(node, frame);
+            eventListener.returnVoid(node, frame);
         }
 
         public void returnValue(Node node, VirtualFrame frame, Object result) {
-            eventReceiver.returnValue(node, frame, result);
+            eventListener.returnValue(node, frame, result);
         }
 
         public void returnExceptional(Node node, VirtualFrame frame, Exception exception) {
-            eventReceiver.returnExceptional(node, frame, exception);
+            eventListener.returnExceptional(node, frame, exception);
         }
 
         public String instrumentationInfo() {

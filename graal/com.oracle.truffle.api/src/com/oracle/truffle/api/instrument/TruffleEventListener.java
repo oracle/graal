@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,10 +28,10 @@ import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 
 /**
- * A receiver of Truffle AST runtime execution events that can collect information and possibly
+ * A listener of Truffle AST runtime execution events that can collect information and possibly
  * intervene on behalf of an external tool.
  */
-public interface TruffleEventReceiver {
+public interface TruffleEventListener {
 
     /**
      * Receive notification that an AST node's execute method is about to be called.

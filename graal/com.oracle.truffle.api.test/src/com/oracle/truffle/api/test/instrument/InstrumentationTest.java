@@ -318,11 +318,11 @@ public class InstrumentationTest {
 
         // Use the "lite-probing" option, limited to a single pass of
         // probing and a single Instrument at each probed node. This
-        // particular test uses a shared event receiver at every
+        // particular test uses a shared event listener at every
         // lite-probed node.
-        final TestEventReceiver receiver = new TestEventReceiver();
+        final TestEventListener listener = new TestEventListener();
 
-        TestASTLiteProber astLiteProber = new TestASTLiteProber(receiver);
+        TestASTLiteProber astLiteProber = new TestASTLiteProber(listener);
         Probe.registerASTProber(astLiteProber);
 
         // Create a simple addition AST
@@ -337,9 +337,9 @@ public class InstrumentationTest {
         final CallTarget callTarget = runtime.createCallTarget(rootNode);
 
         // Check that the instrument is working as expected.
-        assertEquals(0, receiver.counter);
+        assertEquals(0, listener.counter);
         callTarget.call();
-        assertEquals(2, receiver.counter);
+        assertEquals(2, listener.counter);
 
         // Check that you can't probe a node that's already received a probeLite() call
         try {
@@ -409,7 +409,7 @@ public class InstrumentationTest {
         }
 
         // Use reflection to check that each WrapperNode has a ProbeLiteNode with a
-        // SimpleEventReceiver
+        // SimpleEventListener
         try {
             java.lang.reflect.Field probeNodeField = leftWrapper.getClass().getDeclaredField("probeNode");
 
@@ -420,15 +420,15 @@ public class InstrumentationTest {
             // hack: Since ProbeLiteNode is not visible, we do a string compare here
             assertTrue(probeNode.getClass().toString().endsWith("ProbeLiteNode"));
 
-            // Now we do the same to check the type of the eventReceiver in ProbeLiteNode
-            java.lang.reflect.Field eventReceiverField = probeNode.getClass().getDeclaredField("eventReceiver");
-            eventReceiverField.setAccessible(true);
-            TruffleEventReceiver eventReceiver = (TruffleEventReceiver) eventReceiverField.get(probeNode);
-            assertTrue(eventReceiver instanceof SimpleEventReceiver);
+            // Now we do the same to check the type of the eventListener in ProbeLiteNode
+            java.lang.reflect.Field eventListenerField = probeNode.getClass().getDeclaredField("eventListener");
+            eventListenerField.setAccessible(true);
+            TruffleEventListener eventListener = (TruffleEventListener) eventListenerField.get(probeNode);
+            assertTrue(eventListener instanceof SimpleEventListener);
 
             // Reset accessibility
             probeNodeField.setAccessible(false);
-            eventReceiverField.setAccessible(false);
+            eventListenerField.setAccessible(false);
 
         } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException e) {
             fail();
@@ -588,7 +588,7 @@ public class InstrumentationTest {
         public final Instrument instrument;
 
         public TestCounter() {
-            instrument = Instrument.create(new SimpleEventReceiver() {
+            instrument = Instrument.create(new SimpleEventListener() {
 
                 @Override
                 public void enter(Node node, VirtualFrame frame) {
@@ -641,19 +641,19 @@ public class InstrumentationTest {
     }
 
     /**
-     * "lite-probes" every value node with a shared event receiver.
+     * "lite-probes" every value node with a shared event listener.
      */
     private static final class TestASTLiteProber implements NodeVisitor, ASTProber {
-        private final TruffleEventReceiver eventReceiver;
+        private final TruffleEventListener eventListener;
 
-        public TestASTLiteProber(SimpleEventReceiver simpleEventReceiver) {
-            this.eventReceiver = simpleEventReceiver;
+        public TestASTLiteProber(SimpleEventListener simpleEventListener) {
+            this.eventListener = simpleEventListener;
         }
 
         public boolean visit(Node node) {
             if (node instanceof TestValueNode) {
                 final TestLanguageNode testNode = (TestValueNode) node;
-                testNode.probeLite(eventReceiver);
+                testNode.probeLite(eventListener);
             }
             return true;
         }
@@ -667,7 +667,7 @@ public class InstrumentationTest {
      * Counts the number of "enter" events at probed nodes.
      *
      */
-    static final class TestEventReceiver extends SimpleEventReceiver {
+    static final class TestEventListener extends SimpleEventListener {
 
         public int counter = 0;
 
@@ -692,7 +692,7 @@ public class InstrumentationTest {
             // where we want to count executions.
             // it will get copied when ASTs cloned, so
             // keep the count in this outer class.
-            probe.attach(Instrument.create(new SimpleEventReceiver() {
+            probe.attach(Instrument.create(new SimpleEventListener() {
 
                 @Override
                 public void enter(Node node, VirtualFrame frame) {
