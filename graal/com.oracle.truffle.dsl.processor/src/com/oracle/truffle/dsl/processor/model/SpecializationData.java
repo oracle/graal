@@ -67,6 +67,30 @@ public final class SpecializationData extends TemplateMethod {
         }
     }
 
+    public boolean isCacheBoundByGuard(CacheExpression cacheExpression) {
+        for (GuardExpression expression : getGuards()) {
+            if (expression.getExpression().findBoundVariableElements().contains(cacheExpression.getParameter().getVariableElement())) {
+                return true;
+            }
+        }
+
+        // check all next binding caches if they are bound by guard
+        Set<VariableElement> boundVariables = cacheExpression.getExpression().findBoundVariableElements();
+        boolean found = false;
+        for (CacheExpression expression : getCaches()) {
+            if (cacheExpression == expression) {
+                found = true;
+            } else if (found) {
+                if (boundVariables.contains(expression.getParameter().getVariableElement())) {
+                    if (isCacheBoundByGuard(expression)) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
     public boolean isDynamicParameterBound(DSLExpression expression) {
         Set<VariableElement> boundVariables = expression.findBoundVariableElements();
         for (Parameter parameter : getDynamicParameters()) {

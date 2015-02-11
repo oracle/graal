@@ -1037,8 +1037,15 @@ public class NodeGenFactory {
             builder.tree(createTransferToInterpreterAndInvalidate());
         }
 
+        // caches unbound to guards are invoked after all guards
+        for (CacheExpression cache : specialization.getCaches()) {
+            if (!specialization.isCacheBoundByGuard(cache)) {
+                initializeCache(builder, specialization, cache, currentValues);
+            }
+        }
         boolean hasAssumptions = !specialization.getAssumptionExpressions().isEmpty();
         if (hasAssumptions) {
+
             for (AssumptionExpression assumption : specialization.getAssumptionExpressions()) {
                 CodeTree assumptions = DSLExpressionGenerator.write(assumption.getExpression(), accessParent(null),
                                 castBoundTypes(bindExpressionValues(assumption.getExpression(), specialization, currentValues)));
@@ -1327,7 +1334,8 @@ public class NodeGenFactory {
             for (AssumptionExpression assumption : specialization.getAssumptionExpressions()) {
                 String name = assumptionName(assumption);
                 TypeMirror type = assumption.getExpression().getResolvedType();
-                clazz.add(new CodeVariableElement(modifiers(PRIVATE, FINAL), type, name));
+                CodeVariableElement field = clazz.add(new CodeVariableElement(modifiers(PRIVATE, FINAL), type, name));
+                field.addAnnotationMirror(new CodeAnnotationMirror(context.getDeclaredType(CompilationFinal.class)));
                 constructor.addParameter(new CodeVariableElement(type, name));
                 builder.startStatement().string("this.").string(name).string(" = ").string(name).end();
             }
@@ -2229,18 +2237,23 @@ public class NodeGenFactory {
 
         if (specialization != null && !specializationExecution.isFastPath()) {
             for (CacheExpression cache : specialization.getCaches()) {
-                CodeTree initializer = DSLExpressionGenerator.write(cache.getExpression(), accessParent(null),
-                                castBoundTypes(bindExpressionValues(cache.getExpression(), specialization, currentValues)));
-                String name = cache.getParameter().getLocalName();
-                // multiple specializations might use the same name
-                String varName = name + specialization.getIndex();
-                TypeMirror type = cache.getParameter().getType();
-                localsBuilder.declaration(type, varName, initializer);
-                currentValues.set(name, new LocalVariable(null, type, varName, null));
+                if (specialization.isCacheBoundByGuard(cache)) {
+                    initializeCache(localsBuilder, specialization, cache, currentValues);
+                }
             }
         }
 
         return new CodeTree[]{checksBuilder.build(), localsBuilder.build()};
+    }
+
+    private void initializeCache(CodeTreeBuilder builder, SpecializationData specialization, CacheExpression cache, LocalContext currentValues) {
+        CodeTree initializer = DSLExpressionGenerator.write(cache.getExpression(), accessParent(null), castBoundTypes(bindExpressionValues(cache.getExpression(), specialization, currentValues)));
+        String name = cache.getParameter().getLocalName();
+        // multiple specializations might use the same name
+        String varName = name + specialization.getIndex();
+        TypeMirror type = cache.getParameter().getType();
+        builder.declaration(type, varName, initializer);
+        currentValues.set(name, new LocalVariable(null, type, varName, null));
     }
 
     public static final class LocalContext {
