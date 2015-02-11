@@ -89,9 +89,9 @@ public class PartialEscapePhase extends EffectsPhase<PhaseContext> {
     protected Closure<?> createEffectsClosure(PhaseContext context, SchedulePhase schedule, ControlFlowGraph cfg) {
         assert schedule != null;
         if (readElimination) {
-            return new PEReadEliminationClosure(schedule, context.getMetaAccess(), context.getConstantReflection(), context.getAssumptions());
+            return new PEReadEliminationClosure(schedule, context.getMetaAccess(), context.getConstantReflection());
         } else {
-            return new PartialEscapeClosure.Final(schedule, context.getMetaAccess(), context.getConstantReflection(), context.getAssumptions());
+            return new PartialEscapeClosure.Final(schedule, context.getMetaAccess(), context.getConstantReflection());
         }
     }
 

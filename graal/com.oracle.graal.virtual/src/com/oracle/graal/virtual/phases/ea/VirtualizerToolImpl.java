@@ -26,7 +26,6 @@ import static com.oracle.graal.compiler.common.GraalOptions.*;
 
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
@@ -41,13 +40,11 @@ class VirtualizerToolImpl implements VirtualizerTool {
 
     private final MetaAccessProvider metaAccess;
     private final ConstantReflectionProvider constantReflection;
-    private final Assumptions assumptions;
     private final PartialEscapeClosure<?> closure;
 
-    VirtualizerToolImpl(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, Assumptions assumptions, PartialEscapeClosure<?> closure) {
+    VirtualizerToolImpl(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, PartialEscapeClosure<?> closure) {
         this.metaAccess = metaAccess;
         this.constantReflection = constantReflection;
-        this.assumptions = assumptions;
         this.closure = closure;
     }
 
@@ -64,11 +61,6 @@ class VirtualizerToolImpl implements VirtualizerTool {
 
     public ConstantReflectionProvider getConstantReflectionProvider() {
         return constantReflection;
-    }
-
-    @Override
-    public Assumptions getAssumptions() {
-        return assumptions;
     }
 
     public void reset(PartialEscapeBlockState<?> newState, ValueNode newCurrent, FixedNode newPosition, GraphEffectList newEffects) {

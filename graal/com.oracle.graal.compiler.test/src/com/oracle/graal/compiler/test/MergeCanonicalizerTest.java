@@ -22,9 +22,10 @@
  */
 package com.oracle.graal.compiler.test;
 
+import static com.oracle.graal.api.code.Assumptions.*;
+
 import org.junit.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.common.*;
@@ -57,9 +58,9 @@ public class MergeCanonicalizerTest extends GraalCompilerTest {
     }
 
     private void testReturnCount(String snippet, int returnCount) {
-        StructuredGraph graph = parseEager(snippet);
-        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders(), new Assumptions(false)));
-        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders(), new Assumptions(false)));
+        StructuredGraph graph = parseEager(snippet, ALLOW_OPTIMISTIC_ASSUMPTIONS);
+        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders()));
+        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders()));
         Debug.dump(graph, "Graph");
         assertDeepEquals(returnCount, graph.getNodes(ReturnNode.class).count());
     }

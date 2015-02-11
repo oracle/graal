@@ -49,7 +49,7 @@ import com.oracle.graal.phases.*;
  *
  */
 public class ConvertDeoptimizeToGuardPhase extends Phase {
-    private SimplifierTool simplifierTool = GraphUtil.getDefaultSimplifier(null, null, null, false);
+    private SimplifierTool simplifierTool = GraphUtil.getDefaultSimplifier(null, null, false);
 
     private static AbstractBeginNode findBeginNode(FixedNode startNode) {
         return GraphUtil.predecessorIterable(startNode).filter(AbstractBeginNode.class).first();

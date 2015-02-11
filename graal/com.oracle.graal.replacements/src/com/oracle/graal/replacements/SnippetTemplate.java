@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.replacements;
 
+import static com.oracle.graal.api.code.Assumptions.*;
 import static com.oracle.graal.api.meta.LocationIdentity.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.debug.Debug.*;
@@ -561,10 +562,10 @@ public class SnippetTemplate {
         ResolvedJavaMethod method = snippetGraph.method();
         Signature signature = method.getSignature();
 
-        PhaseContext phaseContext = new PhaseContext(providers, new Assumptions(false));
+        PhaseContext phaseContext = new PhaseContext(providers);
 
         // Copy snippet graph, replacing constant parameters with given arguments
-        final StructuredGraph snippetCopy = new StructuredGraph(snippetGraph.name, snippetGraph.method());
+        final StructuredGraph snippetCopy = new StructuredGraph(snippetGraph.name, snippetGraph.method(), DONT_ALLOW_OPTIMISTIC_ASSUMPTIONS);
         Map<Node, Node> nodeReplacements = Node.newIdentityMap();
         nodeReplacements.put(snippetGraph.start(), snippetCopy.start());
 
@@ -1245,7 +1246,7 @@ public class SnippetTemplate {
 
             // Inline the snippet nodes, replacing parameters with the given args in the process
             String name = snippet.name == null ? "{copy}" : snippet.name + "{copy}";
-            StructuredGraph snippetCopy = new StructuredGraph(name, snippet.method());
+            StructuredGraph snippetCopy = new StructuredGraph(name, snippet.method(), DONT_ALLOW_OPTIMISTIC_ASSUMPTIONS);
             StartNode entryPointNode = snippet.start();
             FixedNode firstCFGNode = entryPointNode.next();
             StructuredGraph replaceeGraph = replacee.graph();

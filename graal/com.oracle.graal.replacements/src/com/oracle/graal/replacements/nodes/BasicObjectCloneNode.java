@@ -61,7 +61,7 @@ public class BasicObjectCloneNode extends MacroStateSplitNode implements Virtual
     /*
      * Looks at the given stamp and determines if it is an exact type (or can be assumed to be an
      * exact type) and if it is a cloneable type.
-     * 
+     *
      * If yes, then the exact type is returned, otherwise it returns null.
      */
     protected static ResolvedJavaType getConcreteType(Stamp stamp, Assumptions assumptions, MetaAccessProvider metaAccess) {
@@ -105,7 +105,7 @@ public class BasicObjectCloneNode extends MacroStateSplitNode implements Virtual
             } else {
                 obj = tool.getReplacedValue(getObject());
             }
-            ResolvedJavaType type = getConcreteType(obj.stamp(), tool.getAssumptions(), tool.getMetaAccessProvider());
+            ResolvedJavaType type = getConcreteType(obj.stamp(), graph().getAssumptions(), tool.getMetaAccessProvider());
             if (type != null && !type.isArray()) {
                 VirtualInstanceNode newVirtual = createVirtualInstanceNode(type, true);
                 ResolvedJavaField[] fields = newVirtual.getFields();

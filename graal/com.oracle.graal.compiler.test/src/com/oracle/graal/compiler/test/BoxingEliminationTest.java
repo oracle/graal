@@ -22,9 +22,10 @@
  */
 package com.oracle.graal.compiler.test;
 
+import static com.oracle.graal.api.code.Assumptions.*;
+
 import org.junit.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.loop.phases.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
@@ -305,9 +306,8 @@ public class BoxingEliminationTest extends GraalCompilerTest {
     }
 
     private void processMethod(final String snippet) {
-        graph = parseEager(snippet);
-        Assumptions assumptions = new Assumptions(false);
-        HighTierContext context = new HighTierContext(getProviders(), assumptions, null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
+        graph = parseEager(snippet, DONT_ALLOW_OPTIMISTIC_ASSUMPTIONS);
+        HighTierContext context = new HighTierContext(getProviders(), null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
         new InliningPhase(new CanonicalizerPhase(true)).apply(graph, context);
         new PartialEscapePhase(false, new CanonicalizerPhase(true)).apply(graph, context);
     }
@@ -317,10 +317,8 @@ public class BoxingEliminationTest extends GraalCompilerTest {
     }
 
     private void compareGraphs(final String snippet, final String referenceSnippet, final boolean loopPeeling, final boolean excludeVirtual) {
-        graph = parseEager(snippet);
-
-        Assumptions assumptions = new Assumptions(false);
-        HighTierContext context = new HighTierContext(getProviders(), assumptions, null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
+        graph = parseEager(snippet, DONT_ALLOW_OPTIMISTIC_ASSUMPTIONS);
+        HighTierContext context = new HighTierContext(getProviders(), null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
         CanonicalizerPhase canonicalizer = new CanonicalizerPhase(true);
         canonicalizer.apply(graph, context);
         new InliningPhase(new CanonicalizerPhase(true)).apply(graph, context);
@@ -334,7 +332,7 @@ public class BoxingEliminationTest extends GraalCompilerTest {
         new DeadCodeEliminationPhase().apply(graph);
         canonicalizer.apply(graph, context);
 
-        StructuredGraph referenceGraph = parseEager(referenceSnippet);
+        StructuredGraph referenceGraph = parseEager(referenceSnippet, ALLOW_OPTIMISTIC_ASSUMPTIONS);
         new InliningPhase(new CanonicalizerPhase(true)).apply(referenceGraph, context);
         new DeadCodeEliminationPhase().apply(referenceGraph);
         new CanonicalizerPhase(true).apply(referenceGraph, context);

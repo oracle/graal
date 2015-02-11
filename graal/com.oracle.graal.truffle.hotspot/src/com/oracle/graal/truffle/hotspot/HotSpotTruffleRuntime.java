@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.truffle.hotspot;
 
+import static com.oracle.graal.api.code.Assumptions.*;
 import static com.oracle.graal.api.code.CodeUtil.*;
 import static com.oracle.graal.compiler.GraalCompiler.*;
 import static com.oracle.graal.graph.util.CollectionsAccess.*;
@@ -178,9 +179,8 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
         Suites suites = suitesProvider.createSuites();
         LowLevelSuites lowLevelSuites = suitesProvider.createLowLevelSuites();
         removeInliningPhase(suites);
-        StructuredGraph graph = new StructuredGraph(javaMethod);
-        new GraphBuilderPhase.Instance(metaAccess, providers.getStampProvider(), new Assumptions(false), providers.getConstantReflection(), GraphBuilderConfiguration.getEagerDefault(),
-                        OptimisticOptimizations.ALL).apply(graph);
+        StructuredGraph graph = new StructuredGraph(javaMethod, DONT_ALLOW_OPTIMISTIC_ASSUMPTIONS);
+        new GraphBuilderPhase.Instance(metaAccess, providers.getStampProvider(), providers.getConstantReflection(), GraphBuilderConfiguration.getEagerDefault(), OptimisticOptimizations.ALL).apply(graph);
         PhaseSuite<HighTierContext> graphBuilderSuite = getGraphBuilderSuite(suitesProvider);
         CallingConvention cc = getCallingConvention(providers.getCodeCache(), Type.JavaCallee, graph.method(), false);
         Backend backend = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend();

@@ -22,9 +22,10 @@
  */
 package com.oracle.graal.compiler.test;
 
+import static com.oracle.graal.api.code.Assumptions.*;
+
 import org.junit.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.nodes.*;
@@ -81,12 +82,12 @@ public class DegeneratedLoopsTest extends GraalCompilerTest {
 
     private void test(final String snippet) {
         try (Scope s = Debug.scope("DegeneratedLoopsTest", new DebugDumpScope(snippet))) {
-            StructuredGraph graph = parseEager(snippet);
-            HighTierContext context = new HighTierContext(getProviders(), new Assumptions(false), null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
+            StructuredGraph graph = parseEager(snippet, ALLOW_OPTIMISTIC_ASSUMPTIONS);
+            HighTierContext context = new HighTierContext(getProviders(), null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
             new InliningPhase(new CanonicalizerPhase(true)).apply(graph, context);
             new CanonicalizerPhase(true).apply(graph, context);
             Debug.dump(graph, "Graph");
-            StructuredGraph referenceGraph = parseEager(REFERENCE_SNIPPET);
+            StructuredGraph referenceGraph = parseEager(REFERENCE_SNIPPET, ALLOW_OPTIMISTIC_ASSUMPTIONS);
             Debug.dump(referenceGraph, "ReferenceGraph");
             assertEquals(referenceGraph, graph);
         } catch (Throwable e) {

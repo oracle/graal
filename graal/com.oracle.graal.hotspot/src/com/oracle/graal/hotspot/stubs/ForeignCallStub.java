@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.hotspot.stubs;
 
+import static com.oracle.graal.api.code.Assumptions.*;
 import static com.oracle.graal.api.code.CallingConvention.Type.*;
 import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.RegisterEffect.*;
 
@@ -190,7 +191,7 @@ public class ForeignCallStub extends Stub {
         Class<?>[] args = linkage.getDescriptor().getArgumentTypes();
         boolean isObjectResult = linkage.getOutgoingCallingConvention().getReturn().getKind() == Kind.Object;
 
-        StructuredGraph graph = new StructuredGraph(toString(), null);
+        StructuredGraph graph = new StructuredGraph(toString(), null, DONT_ALLOW_OPTIMISTIC_ASSUMPTIONS);
 
         GraphKit kit = new HotSpotGraphKit(graph, providers);
         ParameterNode[] params = createParameters(kit, args);

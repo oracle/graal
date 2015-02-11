@@ -73,7 +73,7 @@ public final class ArrayCopyNode extends BasicArrayCopyNode implements Virtualiz
         }
         // the canonicalization before loop unrolling is needed to propagate the length into
         // additions, etc.
-        PhaseContext context = new PhaseContext(tool.getMetaAccess(), tool.getConstantReflection(), tool.getLowerer(), tool.getReplacements(), tool.assumptions(), tool.getStampProvider());
+        PhaseContext context = new PhaseContext(tool.getMetaAccess(), tool.getConstantReflection(), tool.getLowerer(), tool.getReplacements(), tool.getStampProvider());
         new CanonicalizerPhase(true).apply(snippetGraph, context);
         new LoopFullUnrollPhase(new CanonicalizerPhase(true)).apply(snippetGraph, context);
         new CanonicalizerPhase(true).apply(snippetGraph, context);

@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.hotspot.test;
 
+import static com.oracle.graal.api.code.Assumptions.*;
+
 import org.junit.*;
 
 import com.oracle.graal.graph.*;
@@ -35,7 +37,7 @@ public class HotSpotNodeSubstitutionsTest extends MethodSubstitutionTest {
 
     @Test
     public void test() {
-        StructuredGraph graph = new StructuredGraph();
+        StructuredGraph graph = new StructuredGraph(ALLOW_OPTIMISTIC_ASSUMPTIONS);
         test("getNodeClass", ConstantNode.forInt(42, graph));
     }
 

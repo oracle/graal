@@ -26,6 +26,7 @@ import static com.oracle.graal.compiler.GraalCompiler.*;
 
 import java.lang.reflect.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
@@ -68,9 +69,10 @@ public class ObjectCloneNode extends BasicObjectCloneNode implements Virtualizab
                 }
                 assert false : "unhandled array type " + type.getComponentType().getKind();
             } else {
-                type = getConcreteType(getObject().stamp(), tool.assumptions(), tool.getMetaAccess());
+                Assumptions assumptions = graph().getAssumptions();
+                type = getConcreteType(getObject().stamp(), assumptions, tool.getMetaAccess());
                 if (type != null) {
-                    StructuredGraph newGraph = new StructuredGraph();
+                    StructuredGraph newGraph = new StructuredGraph(assumptions.useOptimisticAssumptions());
                     ParameterNode param = newGraph.unique(new ParameterNode(0, getObject().stamp()));
                     NewInstanceNode newInstance = newGraph.add(new NewInstanceNode(type, true));
                     newGraph.addAfterFixed(newGraph.start(), newInstance);

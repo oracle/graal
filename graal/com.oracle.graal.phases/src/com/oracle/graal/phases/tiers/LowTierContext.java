@@ -29,8 +29,8 @@ public class LowTierContext extends PhaseContext {
 
     private final TargetDescription target;
 
-    public LowTierContext(Providers copyFrom, Assumptions assumptions, TargetDescription target) {
-        super(copyFrom, assumptions);
+    public LowTierContext(Providers copyFrom, TargetDescription target) {
+        super(copyFrom);
         this.target = target;
     }
 

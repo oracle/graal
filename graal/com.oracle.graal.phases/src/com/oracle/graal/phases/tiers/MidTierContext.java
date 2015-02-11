@@ -34,8 +34,8 @@ public class MidTierContext extends PhaseContext {
     private final ProfilingInfo profilingInfo;
     private final SpeculationLog log;
 
-    public MidTierContext(Providers copyFrom, Assumptions assumptions, TargetDescription target, OptimisticOptimizations optimisticOpts, ProfilingInfo profilingInfo, SpeculationLog log) {
-        super(copyFrom, assumptions);
+    public MidTierContext(Providers copyFrom, TargetDescription target, OptimisticOptimizations optimisticOpts, ProfilingInfo profilingInfo, SpeculationLog log) {
+        super(copyFrom);
         this.target = target;
         this.optimisticOpts = optimisticOpts;
         this.profilingInfo = profilingInfo;

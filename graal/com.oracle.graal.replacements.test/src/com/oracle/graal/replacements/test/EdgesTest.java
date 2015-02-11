@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.replacements.test;
 
+import static com.oracle.graal.api.code.Assumptions.*;
+
 import java.lang.reflect.*;
 
 import org.junit.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.graph.*;
@@ -54,7 +55,7 @@ public class EdgesTest extends GraalCompilerTest {
 
     }
 
-    StructuredGraph graph = new StructuredGraph();
+    StructuredGraph graph = new StructuredGraph(DONT_ALLOW_OPTIMISTIC_ASSUMPTIONS);
     TestNode node;
     ConstantNode i1;
     ConstantNode i2;
@@ -113,9 +114,8 @@ public class EdgesTest extends GraalCompilerTest {
         }
 
         ResolvedJavaMethod javaMethod = getMetaAccess().lookupJavaMethod(method);
-        StructuredGraph g = parseProfiled(javaMethod);
-        Assumptions assumptions = new Assumptions(false);
-        HighTierContext context = new HighTierContext(getProviders(), assumptions, null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
+        StructuredGraph g = parseProfiled(javaMethod, DONT_ALLOW_OPTIMISTIC_ASSUMPTIONS);
+        HighTierContext context = new HighTierContext(getProviders(), null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
         new InliningPhase(new InlineMethodSubstitutionsPolicy(), new CanonicalizerPhase(true)).apply(g, context);
         new CanonicalizerPhase(false).apply(g, context);
         Assert.assertTrue(g.getNodes().filter(CheckCastNode.class).isEmpty());

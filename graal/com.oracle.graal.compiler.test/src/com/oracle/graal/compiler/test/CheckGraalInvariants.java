@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.compiler.test;
 
+import static com.oracle.graal.api.code.Assumptions.*;
 import static com.oracle.graal.debug.DelegatingDebugConfig.Feature.*;
 
 import java.io.*;
@@ -69,7 +70,7 @@ public class CheckGraalInvariants extends GraalTest {
 
         PhaseSuite<HighTierContext> graphBuilderSuite = new PhaseSuite<>();
         graphBuilderSuite.appendPhase(new GraphBuilderPhase(GraphBuilderConfiguration.getEagerDefault()));
-        HighTierContext context = new HighTierContext(providers, new Assumptions(false), null, graphBuilderSuite, OptimisticOptimizations.NONE);
+        HighTierContext context = new HighTierContext(providers, null, graphBuilderSuite, OptimisticOptimizations.NONE);
 
         Assume.assumeTrue(VerifyPhase.class.desiredAssertionStatus());
 
@@ -138,7 +139,7 @@ public class CheckGraalInvariants extends GraalTest {
                         if (matches(filters, methodName)) {
                             executor.execute(() -> {
                                 ResolvedJavaMethod method = metaAccess.lookupJavaMethod(m);
-                                StructuredGraph graph = new StructuredGraph(method);
+                                StructuredGraph graph = new StructuredGraph(method, DONT_ALLOW_OPTIMISTIC_ASSUMPTIONS);
                                 try (DebugConfigScope s = Debug.setConfig(new DelegatingDebugConfig().disable(INTERCEPT)); Debug.Scope ds = Debug.scope("CheckingGraph", graph, method)) {
                                     graphBuilderSuite.apply(graph, context);
                                     // update phi stamps

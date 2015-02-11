@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.api.code;
 
-import static com.oracle.graal.api.meta.MetaUtil.*;
-
 import java.io.*;
 import java.lang.invoke.*;
 import java.util.*;
@@ -193,7 +191,7 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
 
         @Override
         public String toString() {
-            return "ConcreteMethod[method=" + method.format("%H.%n(%p)") + ", context=" + context.toJavaName() + ", impl=" + impl.format("%H.%n(%p)") + "]";
+            return "ConcreteMethod[method=" + method.format("%H.%n(%p)%r") + ", context=" + context.toJavaName() + ", impl=" + impl.format("%H.%n(%p)%r") + "]";
         }
     }
 
@@ -233,7 +231,7 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
 
         @Override
         public String toString() {
-            return "MethodContents[method=" + method.format("%H.%n(%p)") + "]";
+            return "MethodContents[method=" + method.format("%H.%n(%p)%r") + "]";
         }
     }
 
@@ -288,9 +286,14 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
      */
     private boolean allowOptimisticAssumptions;
 
+    public static final boolean ALLOW_OPTIMISTIC_ASSUMPTIONS = true;
+    public static final boolean DONT_ALLOW_OPTIMISTIC_ASSUMPTIONS = false;
+
     /**
+     * Creates an object for recording assumptions.
      *
-     * @param allowOptimisticAssumptions
+     * @param allowOptimisticAssumptions specifies whether {@link OptimisticAssumption}s can be
+     *            recorded in this object
      */
     public Assumptions(boolean allowOptimisticAssumptions) {
         this.allowOptimisticAssumptions = allowOptimisticAssumptions;
@@ -316,11 +319,6 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
     @Override
     public int hashCode() {
         throw new UnsupportedOperationException("hashCode");
-    }
-
-    @Override
-    public String toString() {
-        return identityHashCodeString(this);
     }
 
     @Override
@@ -432,30 +430,35 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
         count++;
     }
 
-    public Assumption[] getAssumptions() {
-        return list;
+    public Collection<Assumption> getAssumptions() {
+        return Arrays.asList(list).subList(0, count);
     }
 
+    private Assumptions(Assumptions other) {
+        allowOptimisticAssumptions = other.allowOptimisticAssumptions;
+        list = other.list.clone();
+        count = other.count;
+    }
+
+    /**
+     * Gets a deep copy of this object.
+     */
+    public Assumptions copy() {
+        return new Assumptions(this);
+    }
+
+    /**
+     * Copies assumptions recorded by another {@link Assumptions} object into this object.
+     */
     public void record(Assumptions assumptions) {
+        assert assumptions != this;
         for (int i = 0; i < assumptions.count; i++) {
             record(assumptions.list[i]);
         }
     }
 
-    public void print(PrintStream out) {
-        List<Assumption> nonNullList = new ArrayList<>();
-        if (list != null) {
-            for (int i = 0; i < list.length; ++i) {
-                Assumption a = list[i];
-                if (a != null) {
-                    nonNullList.add(a);
-                }
-            }
-        }
-
-        out.printf("%d assumptions:%n", nonNullList.size());
-        for (Assumption a : nonNullList) {
-            out.println(a.toString());
-        }
+    @Override
+    public String toString() {
+        return "Assumptions{optimistic=" + allowOptimisticAssumptions + ", assumptions=" + Arrays.asList(list).subList(0, count) + "}";
     }
 }

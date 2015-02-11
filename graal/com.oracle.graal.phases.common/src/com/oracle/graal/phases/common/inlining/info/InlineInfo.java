@@ -24,7 +24,6 @@ package com.oracle.graal.phases.common.inlining.info;
 
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
@@ -74,16 +73,16 @@ public interface InlineInfo {
      *
      * @return a collection of nodes that need to be canonicalized after the inlining
      */
-    Collection<Node> inline(Providers providers, Assumptions assumptions);
+    Collection<Node> inline(Providers providers);
 
     /**
      * Try to make the call static bindable to avoid interface and virtual method calls.
      */
-    void tryToDevirtualizeInvoke(Providers providers, Assumptions assumptions);
+    void tryToDevirtualizeInvoke(Providers providers);
 
     boolean shouldInline();
 
-    void populateInlinableElements(HighTierContext context, Assumptions calleeAssumptions, CanonicalizerPhase canonicalizer);
+    void populateInlinableElements(HighTierContext context, StructuredGraph caller, CanonicalizerPhase canonicalizer);
 
     int determineNodeCount();
 }

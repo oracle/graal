@@ -22,9 +22,10 @@
  */
 package com.oracle.graal.compiler.test;
 
+import static com.oracle.graal.api.code.Assumptions.*;
+
 import org.junit.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.common.*;
@@ -109,8 +110,8 @@ public class StampCanonicalizerTest extends GraalCompilerTest {
     }
 
     private void testZeroReturn(String methodName) {
-        StructuredGraph graph = parseEager(methodName);
-        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders(), new Assumptions(false)));
+        StructuredGraph graph = parseEager(methodName, ALLOW_OPTIMISTIC_ASSUMPTIONS);
+        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders()));
         new DeadCodeEliminationPhase().apply(graph);
         assertConstantReturn(graph, 0);
     }

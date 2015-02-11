@@ -47,7 +47,7 @@ public class WordTest extends GraalCompilerTest implements Snippets {
     private static final ThreadLocal<SnippetInliningPolicy> inliningPolicy = new ThreadLocal<>();
 
     @Override
-    protected StructuredGraph parseEager(ResolvedJavaMethod m) {
+    protected StructuredGraph parseEager(ResolvedJavaMethod m, boolean allowOptimisticAssumptions) {
         return installer.makeGraph(m, null, inliningPolicy.get(), FrameStateProcessing.CollapseFrameForSingleSideEffect);
     }
 

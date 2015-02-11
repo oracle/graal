@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.hotspot.test;
 
+import static com.oracle.graal.api.code.Assumptions.*;
 import static com.oracle.graal.api.code.CodeUtil.*;
 import static com.oracle.graal.compiler.GraalCompiler.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
@@ -204,7 +205,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
     }
 
     private StructuredGraph compile(String test, boolean compileAOT) {
-        StructuredGraph graph = parseEager(test);
+        StructuredGraph graph = parseEager(test, ALLOW_OPTIMISTIC_ASSUMPTIONS);
         ResolvedJavaMethod method = graph.method();
 
         try (OverrideScope s = OptionValue.override(ImmutableCode, compileAOT)) {

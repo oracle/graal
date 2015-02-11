@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.compiler.test.tutorial;
 
+import static com.oracle.graal.api.code.Assumptions.*;
+
 import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.atomic.*;
@@ -78,9 +80,11 @@ public class InvokeGraal {
 
             /*
              * The graph that is compiled. We leave it empty (no nodes added yet). This means that
-             * it will be filled according to the graphBuilderSuite defined below.
+             * it will be filled according to the graphBuilderSuite defined below. We also specify
+             * that we want the compilation to make optimistic assumptions about runtime state such
+             * as the loaded class hierarchy.
              */
-            StructuredGraph graph = new StructuredGraph(method);
+            StructuredGraph graph = new StructuredGraph(method, ALLOW_OPTIMISTIC_ASSUMPTIONS);
 
             /*
              * The phases used to build the graph. Usually this is just the GraphBuilderPhase. If

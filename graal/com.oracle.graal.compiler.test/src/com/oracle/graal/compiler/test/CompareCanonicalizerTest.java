@@ -22,11 +22,11 @@
  */
 package com.oracle.graal.compiler.test;
 
+import static com.oracle.graal.api.code.Assumptions.*;
 import static org.junit.Assert.*;
 
 import org.junit.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.phases.common.*;
@@ -35,8 +35,8 @@ import com.oracle.graal.phases.tiers.*;
 public class CompareCanonicalizerTest extends GraalCompilerTest {
 
     private StructuredGraph getCanonicalizedGraph(String name) {
-        StructuredGraph graph = parseEager(name);
-        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders(), null));
+        StructuredGraph graph = parseEager(name, ALLOW_OPTIMISTIC_ASSUMPTIONS);
+        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders()));
         return graph;
     }
 
@@ -48,13 +48,12 @@ public class CompareCanonicalizerTest extends GraalCompilerTest {
 
     @Test
     public void testCanonicalComparison() {
-        StructuredGraph referenceGraph = parseEager("referenceCanonicalComparison");
+        StructuredGraph referenceGraph = parseEager("referenceCanonicalComparison", DONT_ALLOW_OPTIMISTIC_ASSUMPTIONS);
         for (int i = 1; i < 4; i++) {
-            StructuredGraph graph = parseEager("canonicalCompare" + i);
+            StructuredGraph graph = parseEager("canonicalCompare" + i, DONT_ALLOW_OPTIMISTIC_ASSUMPTIONS);
             assertEquals(referenceGraph, graph);
         }
-        Assumptions assumptions = new Assumptions(false);
-        new CanonicalizerPhase(true).apply(referenceGraph, new PhaseContext(getProviders(), assumptions));
+        new CanonicalizerPhase(true).apply(referenceGraph, new PhaseContext(getProviders()));
         for (int i = 1; i < 4; i++) {
             StructuredGraph graph = getCanonicalizedGraph("canonicalCompare" + i);
             assertEquals(referenceGraph, graph);

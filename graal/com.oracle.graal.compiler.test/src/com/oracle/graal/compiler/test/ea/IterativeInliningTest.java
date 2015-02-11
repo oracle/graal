@@ -22,13 +22,13 @@
  */
 package com.oracle.graal.compiler.test.ea;
 
+import static com.oracle.graal.api.code.Assumptions.*;
 import static org.junit.Assert.*;
 
 import java.util.concurrent.*;
 
 import org.junit.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.compiler.test.ea.EATestBase.TestClassInt;
 import com.oracle.graal.nodes.*;
@@ -84,8 +84,8 @@ public class IterativeInliningTest extends GraalCompilerTest {
     }
 
     private void processMethod(final String snippet) {
-        graph = parseEager(snippet);
-        HighTierContext context = new HighTierContext(getProviders(), new Assumptions(false), null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
+        graph = parseEager(snippet, ALLOW_OPTIMISTIC_ASSUMPTIONS);
+        HighTierContext context = new HighTierContext(getProviders(), null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
         new IterativeInliningPhase(new CanonicalizerPhase(true)).apply(graph, context);
     }
 }

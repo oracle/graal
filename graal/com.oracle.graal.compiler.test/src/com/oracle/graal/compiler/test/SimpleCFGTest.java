@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.compiler.test;
 
+import static com.oracle.graal.api.code.Assumptions.*;
 import static org.junit.Assert.*;
 
 import java.util.*;
@@ -40,7 +41,7 @@ public class SimpleCFGTest extends GraalCompilerTest {
 
     @Test
     public void testImplies() {
-        StructuredGraph graph = new StructuredGraph();
+        StructuredGraph graph = new StructuredGraph(ALLOW_OPTIMISTIC_ASSUMPTIONS);
 
         AbstractEndNode trueEnd = graph.add(new EndNode());
         AbstractEndNode falseEnd = graph.add(new EndNode());

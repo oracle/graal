@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.compiler.test;
 
+import static com.oracle.graal.api.code.Assumptions.*;
+
 import java.io.*;
 
 import org.junit.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
@@ -170,20 +171,19 @@ public class TypeSystemTest extends GraalCompilerTest {
     }
 
     private void test(String snippet, String referenceSnippet) {
-        StructuredGraph graph = parseEager(snippet);
+        StructuredGraph graph = parseEager(snippet, DONT_ALLOW_OPTIMISTIC_ASSUMPTIONS);
         Debug.dump(graph, "Graph");
-        Assumptions assumptions = new Assumptions(false);
         /*
          * When using FlowSensitiveReductionPhase instead of ConditionalEliminationPhase,
          * tail-duplication gets activated thus resulting in a graph with more nodes than the
          * reference graph.
          */
-        new ConditionalEliminationPhase().apply(graph, new PhaseContext(getProviders(), assumptions));
-        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders(), assumptions));
+        new ConditionalEliminationPhase().apply(graph, new PhaseContext(getProviders()));
+        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders()));
         // a second canonicalizer is needed to process nested MaterializeNodes
-        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders(), assumptions));
-        StructuredGraph referenceGraph = parseEager(referenceSnippet);
-        new CanonicalizerPhase(true).apply(referenceGraph, new PhaseContext(getProviders(), assumptions));
+        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders()));
+        StructuredGraph referenceGraph = parseEager(referenceSnippet, DONT_ALLOW_OPTIMISTIC_ASSUMPTIONS);
+        new CanonicalizerPhase(true).apply(referenceGraph, new PhaseContext(getProviders()));
         assertEquals(referenceGraph, graph);
     }
 
@@ -230,10 +230,9 @@ public class TypeSystemTest extends GraalCompilerTest {
     }
 
     private <T extends Node> void testHelper(String snippet, Class<T> clazz) {
-        StructuredGraph graph = parseEager(snippet);
-        Assumptions assumptions = new Assumptions(false);
-        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders(), assumptions));
-        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders(), assumptions));
+        StructuredGraph graph = parseEager(snippet, DONT_ALLOW_OPTIMISTIC_ASSUMPTIONS);
+        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders()));
+        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders()));
         Debug.dump(graph, "Graph " + snippet);
         Assert.assertFalse("shouldn't have nodes of type " + clazz, graph.getNodes().filter(clazz).iterator().hasNext());
     }

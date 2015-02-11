@@ -23,8 +23,6 @@
 package com.oracle.graal.compiler.test.backend;
 
 import static com.oracle.graal.api.code.CodeUtil.*;
-import static com.oracle.graal.compiler.common.GraalOptions.*;
-
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.compiler.*;
@@ -47,11 +45,9 @@ public abstract class BackendTest extends GraalCompilerTest {
     }
 
     protected LIRGenerationResult getLIRGenerationResult(final StructuredGraph graph) {
-        final Assumptions assumptions = new Assumptions(OptAssumptions.getValue());
-
         SchedulePhase schedule = null;
         try (Scope s = Debug.scope("FrontEnd")) {
-            schedule = GraalCompiler.emitFrontEnd(getProviders(), getBackend().getTarget(), graph, assumptions, null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.NONE,
+            schedule = GraalCompiler.emitFrontEnd(getProviders(), getBackend().getTarget(), graph, null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.NONE,
                             graph.method().getProfilingInfo(), null, getSuites());
         } catch (Throwable e) {
             throw Debug.handle(e);

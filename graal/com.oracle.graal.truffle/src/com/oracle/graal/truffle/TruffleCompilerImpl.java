@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.truffle;
 
+import static com.oracle.graal.api.code.Assumptions.*;
 import static com.oracle.graal.api.code.CodeUtil.*;
 import static com.oracle.graal.compiler.GraalCompiler.*;
 
@@ -119,11 +120,10 @@ public class TruffleCompilerImpl {
         compilationNotify.notifyCompilationStarted(compilable);
 
         try {
-            Assumptions assumptions = new Assumptions(true);
             GraphBuilderSuiteInfo info = createGraphBuilderSuite();
 
             try (TimerCloseable a = PartialEvaluationTime.start(); Closeable c = PartialEvaluationMemUse.start()) {
-                graph = partialEvaluator.createGraph(compilable, assumptions, info.plugins);
+                graph = partialEvaluator.createGraph(compilable, info.plugins);
             }
 
             if (Thread.currentThread().isInterrupted()) {
@@ -138,7 +138,7 @@ public class TruffleCompilerImpl {
             }
 
             compilationNotify.notifyCompilationTruffleTierFinished(compilable, graph);
-            CompilationResult compilationResult = compileMethodHelper(graph, assumptions, compilable.toString(), info.suite, compilable.getSpeculationLog(), compilable);
+            CompilationResult compilationResult = compileMethodHelper(graph, compilable.toString(), info.suite, compilable.getSpeculationLog(), compilable);
             compilationNotify.notifyCompilationSuccess(compilable, graph, compilationResult);
         } catch (Throwable t) {
             compilationNotify.notifyCompilationFailed(compilable, graph, t);
@@ -146,7 +146,7 @@ public class TruffleCompilerImpl {
         }
     }
 
-    public CompilationResult compileMethodHelper(StructuredGraph graph, Assumptions assumptions, String name, PhaseSuite<HighTierContext> graphBuilderSuite, SpeculationLog speculationLog,
+    public CompilationResult compileMethodHelper(StructuredGraph graph, String name, PhaseSuite<HighTierContext> graphBuilderSuite, SpeculationLog speculationLog,
                     InstalledCode predefinedInstalledCode) {
         try (Scope s = Debug.scope("TruffleFinal")) {
             Debug.dump(1, graph, "After TruffleTier");
@@ -169,10 +169,8 @@ public class TruffleCompilerImpl {
 
         List<AssumptionValidAssumption> validAssumptions = new ArrayList<>();
         Assumptions newAssumptions = new Assumptions(true);
-        if (assumptions != null) {
-            for (Assumption assumption : assumptions.getAssumptions()) {
-                processAssumption(newAssumptions, assumption, validAssumptions);
-            }
+        for (Assumption assumption : graph.getAssumptions().getAssumptions()) {
+            processAssumption(newAssumptions, assumption, validAssumptions);
         }
 
         if (result.getAssumptions() != null) {

@@ -58,7 +58,7 @@ public class InlineableGraph implements Inlineable {
     private FixedNodeProbabilityCache probabilites = new FixedNodeProbabilityCache();
 
     public InlineableGraph(final ResolvedJavaMethod method, final Invoke invoke, final HighTierContext context, CanonicalizerPhase canonicalizer) {
-        StructuredGraph original = getOriginalGraph(method, context, canonicalizer);
+        StructuredGraph original = getOriginalGraph(method, context, canonicalizer, invoke.asNode().graph());
         // TODO copying the graph is only necessary if it is modified or if it contains any invokes
         this.graph = original.copy();
         specializeGraphToArguments(invoke, context, canonicalizer);
@@ -69,7 +69,7 @@ public class InlineableGraph implements Inlineable {
      * The graph thus obtained is returned, ie the caller is responsible for cloning before
      * modification.
      */
-    private static StructuredGraph getOriginalGraph(final ResolvedJavaMethod method, final HighTierContext context, CanonicalizerPhase canonicalizer) {
+    private static StructuredGraph getOriginalGraph(final ResolvedJavaMethod method, final HighTierContext context, CanonicalizerPhase canonicalizer, StructuredGraph caller) {
         StructuredGraph result = InliningUtil.getIntrinsicGraph(context.getReplacements(), method);
         if (result != null) {
             return result;
@@ -78,7 +78,7 @@ public class InlineableGraph implements Inlineable {
         if (result != null) {
             return result;
         }
-        return parseBytecodes(method, context, canonicalizer);
+        return parseBytecodes(method, context, canonicalizer, caller);
     }
 
     /**
@@ -184,6 +184,7 @@ public class InlineableGraph implements Inlineable {
         if (context.getGraphCache() != null) {
             StructuredGraph cachedGraph = context.getGraphCache().get(method);
             if (cachedGraph != null) {
+                assert false;
                 return cachedGraph;
             }
         }
@@ -195,8 +196,8 @@ public class InlineableGraph implements Inlineable {
      * Provided profiling info is mature, the resulting graph is cached. The caller is responsible
      * for cloning before modification.</p>
      */
-    private static StructuredGraph parseBytecodes(ResolvedJavaMethod method, HighTierContext context, CanonicalizerPhase canonicalizer) {
-        StructuredGraph newGraph = new StructuredGraph(method);
+    private static StructuredGraph parseBytecodes(ResolvedJavaMethod method, HighTierContext context, CanonicalizerPhase canonicalizer, StructuredGraph caller) {
+        StructuredGraph newGraph = new StructuredGraph(method, caller.getAssumptions().useOptimisticAssumptions());
         try (Debug.Scope s = Debug.scope("InlineGraph", newGraph)) {
             if (context.getGraphBuilderSuite() != null) {
                 context.getGraphBuilderSuite().apply(newGraph, context);

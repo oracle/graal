@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes.test;
 
+import static com.oracle.graal.api.code.Assumptions.*;
 import static org.junit.Assert.*;
 
 import org.junit.*;
@@ -45,7 +46,7 @@ public class IntegerStampTest {
 
     @Before
     public void before() {
-        graph = new StructuredGraph();
+        graph = new StructuredGraph(ALLOW_OPTIMISTIC_ASSUMPTIONS);
     }
 
     @Test

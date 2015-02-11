@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.compiler.test;
 
+import static com.oracle.graal.api.code.Assumptions.*;
 import static org.junit.Assert.*;
 
 import java.util.*;
@@ -51,7 +52,7 @@ public class SchedulingTest extends GraphScheduleTest {
 
     @Test
     public void testValueProxyInputs() {
-        StructuredGraph graph = parseEager("testValueProxyInputsSnippet");
+        StructuredGraph graph = parseEager("testValueProxyInputsSnippet", ALLOW_OPTIMISTIC_ASSUMPTIONS);
         for (FrameState fs : graph.getNodes().filter(FrameState.class).snapshot()) {
             fs.replaceAtUsages(null);
             GraphUtil.killWithUnusedFloatingInputs(fs);
