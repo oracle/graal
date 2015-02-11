@@ -7,6 +7,7 @@ This changelog summarizes major changes between Graal versions relevant to langu
 ### Graal
 * Add utilities ModifiersProvider#isConcrete, ResolvedJavaMethod#hasBytecodes, ResolvedJavaMethod#hasReceiver to Graal API.
 * Add `GraalDirectives` API, containing methods to influence compiler behavior for unittests and microbenchmarks.
+* Introduce `LIRSuites`, an extensible configuration for the low-level compiler pipeline.
 * ...
 
 ### Truffle
