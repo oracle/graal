@@ -45,15 +45,15 @@ public class BasicCompilerConfiguration implements CompilerConfiguration {
         return new LowTier();
     }
 
-    public LIRPhaseSuite<LIRHighTierContext> createLowLevelHighTier() {
+    public LIRPhaseSuite<LIRHighTierContext> createLIRHighTier() {
         return new LIRHighTier();
     }
 
-    public LIRPhaseSuite<LIRMidTierContext> createLowLevelMidTier() {
+    public LIRPhaseSuite<LIRMidTierContext> createLIRMidTier() {
         return new LIRMidTier();
     }
 
-    public LIRPhaseSuite<LIRLowTierContext> createLowLevelLowTier() {
+    public LIRPhaseSuite<LIRLowTierContext> createLIRLowTier() {
         return new LIRLowTier();
     }
 

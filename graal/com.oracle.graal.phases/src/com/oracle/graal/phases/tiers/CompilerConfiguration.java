@@ -37,9 +37,9 @@ public interface CompilerConfiguration extends Service {
 
     PhaseSuite<LowTierContext> createLowTier();
 
-    LIRPhaseSuite<LIRHighTierContext> createLowLevelHighTier();
+    LIRPhaseSuite<LIRHighTierContext> createLIRHighTier();
 
-    LIRPhaseSuite<LIRMidTierContext> createLowLevelMidTier();
+    LIRPhaseSuite<LIRMidTierContext> createLIRMidTier();
 
-    LIRPhaseSuite<LIRLowTierContext> createLowLevelLowTier();
+    LIRPhaseSuite<LIRLowTierContext> createLIRLowTier();
 }

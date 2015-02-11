@@ -56,7 +56,7 @@ public final class LSStackSlotAllocator extends LIRMidTierPhase implements Stack
     public static class Options {
         // @formatter:off
         @Option(help = "Use linear scan stack slot allocation.", type = OptionType.Debug)
-        public static final OptionValue<Boolean> LowLevelOptLSStackSlotAllocator = new OptionValue<>(true);
+        public static final OptionValue<Boolean> LIROptLSStackSlotAllocator = new OptionValue<>(true);
         // @formatter:on
     }
 

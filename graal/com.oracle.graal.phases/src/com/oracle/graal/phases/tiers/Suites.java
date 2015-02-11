@@ -133,7 +133,7 @@ public final class Suites {
     public static LIRSuites createDefaultLIRSuites() {
         String selected = CompilerConfiguration.getValue();
         if (selected.equals("")) {
-            return new LIRSuites(defaultConfiguration.createLowLevelHighTier(), defaultConfiguration.createLowLevelMidTier(), defaultConfiguration.createLowLevelLowTier());
+            return new LIRSuites(defaultConfiguration.createLIRHighTier(), defaultConfiguration.createLIRMidTier(), defaultConfiguration.createLIRLowTier());
         } else {
             return createLIRSuites(selected);
         }
@@ -144,7 +144,7 @@ public final class Suites {
         if (config == null) {
             throw new GraalInternalError("unknown compiler configuration: " + name);
         }
-        return new LIRSuites(config.createLowLevelHighTier(), config.createLowLevelMidTier(), config.createLowLevelLowTier());
+        return new LIRSuites(config.createLIRHighTier(), config.createLIRMidTier(), config.createLIRLowTier());
     }
 
 }

@@ -31,7 +31,7 @@ public class LIRMidTier extends LIRPhaseSuite<LIRMidTierContext> {
         appendPhase(new LinearScanPhase());
 
         // build frame map
-        if (LSStackSlotAllocator.Options.LowLevelOptLSStackSlotAllocator.getValue()) {
+        if (LSStackSlotAllocator.Options.LIROptLSStackSlotAllocator.getValue()) {
             appendPhase(new LSStackSlotAllocator());
         } else {
             appendPhase(new SimpleStackSlotAllocator());

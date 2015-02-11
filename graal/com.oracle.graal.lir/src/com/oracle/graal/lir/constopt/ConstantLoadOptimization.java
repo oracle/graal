@@ -52,7 +52,7 @@ public final class ConstantLoadOptimization extends LIRHighTierPhase {
     public static class Options {
         // @formatter:off
         @Option(help = "Enable constant load optimization.", type = OptionType.Debug)
-        public static final OptionValue<Boolean> LowLevelOptConstantLoadOptimization = new OptionValue<>(true);
+        public static final OptionValue<Boolean> LIROptConstantLoadOptimization = new OptionValue<>(true);
         // @formatter:on
     }
 

@@ -62,15 +62,15 @@ public abstract class LIRPhase<C> {
     }
 
     public LIRPhase() {
-        timer = Debug.timer("LowLevelPhaseTime_%s", getClass());
-        memUseTracker = Debug.memUseTracker("LowLevelPhaseMemUse_%s", getClass());
+        timer = Debug.timer("LIRPhaseTime_%s", getClass());
+        memUseTracker = Debug.memUseTracker("LIRPhaseMemUse_%s", getClass());
     }
 
     protected LIRPhase(String name) {
         assert checkName(name);
         this.name = name;
-        timer = Debug.timer("LowLevelPhaseTime_%s", getClass());
-        memUseTracker = Debug.memUseTracker("LowLevelPhaseMemUse_%s", getClass());
+        timer = Debug.timer("LIRPhaseTime_%s", getClass());
+        memUseTracker = Debug.memUseTracker("LIRPhaseMemUse_%s", getClass());
     }
 
     public final <B extends AbstractBlock<B>> void apply(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, C context) {
