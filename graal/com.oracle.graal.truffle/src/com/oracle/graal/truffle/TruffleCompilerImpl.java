@@ -167,7 +167,7 @@ public class TruffleCompilerImpl {
         compilationNotify.notifyCompilationGraalTierFinished((OptimizedCallTarget) predefinedInstalledCode, graph);
 
         List<AssumptionValidAssumption> validAssumptions = new ArrayList<>();
-        Assumptions newAssumptions = new Assumptions(true);
+        Set<Assumption> newAssumptions = new HashSet<>();
         for (Assumption assumption : graph.getAssumptions()) {
             processAssumption(newAssumptions, assumption, validAssumptions);
         }
@@ -178,7 +178,7 @@ public class TruffleCompilerImpl {
             }
         }
 
-        result.setAssumptions(newAssumptions);
+        result.setAssumptions(newAssumptions.toArray(new Assumption[newAssumptions.size()]));
 
         InstalledCode installedCode;
         try (Scope s = Debug.scope("CodeInstall", providers.getCodeCache()); TimerCloseable a = CodeInstallationTime.start(); Closeable c = CodeInstallationMemUse.start()) {
@@ -217,13 +217,13 @@ public class TruffleCompilerImpl {
         return new GraphBuilderSuiteInfo(suite, plugins);
     }
 
-    public void processAssumption(Assumptions newAssumptions, Assumption assumption, List<AssumptionValidAssumption> manual) {
+    public void processAssumption(Set<Assumption> newAssumptions, Assumption assumption, List<AssumptionValidAssumption> manual) {
         if (assumption != null) {
             if (assumption instanceof AssumptionValidAssumption) {
                 AssumptionValidAssumption assumptionValidAssumption = (AssumptionValidAssumption) assumption;
                 manual.add(assumptionValidAssumption);
             } else {
-                newAssumptions.record(assumption);
+                newAssumptions.add(assumption);
             }
         }
     }

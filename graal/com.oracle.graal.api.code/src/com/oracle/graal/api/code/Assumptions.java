@@ -385,7 +385,7 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
     /**
      * Gets a copy of the assumptions recorded in this object as an array.
      */
-    public Assumption[] getAssumptionsCopy() {
+    public Assumption[] toArray() {
         return assumptions.toArray(new Assumption[assumptions.size()]);
     }
 

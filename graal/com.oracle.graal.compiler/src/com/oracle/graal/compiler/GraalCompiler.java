@@ -370,7 +370,7 @@ public class GraalCompiler {
         backend.emitCode(crb, lirGenRes.getLIR(), installedCodeOwner);
         crb.finish();
         if (!assumptions.isEmpty()) {
-            compilationResult.setAssumptions(assumptions);
+            compilationResult.setAssumptions(assumptions.toArray());
         }
 
         if (Debug.isMeterEnabled()) {

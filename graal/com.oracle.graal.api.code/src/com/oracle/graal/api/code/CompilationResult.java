@@ -607,8 +607,8 @@ public class CompilationResult implements Serializable {
         this.entryBCI = entryBCI;
     }
 
-    public void setAssumptions(Assumptions assumptions) {
-        this.assumptions = assumptions.getAssumptionsCopy();
+    public void setAssumptions(Assumption[] assumptions) {
+        this.assumptions = assumptions;
     }
 
     /**
