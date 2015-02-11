@@ -206,7 +206,7 @@ public class GraphKit {
      */
     public void inline(InvokeNode invoke, SnippetReflectionProvider snippetReflection) {
         ResolvedJavaMethod method = ((MethodCallTargetNode) invoke.callTarget()).targetMethod();
-        ReplacementsImpl repl = new ReplacementsImpl(providers, snippetReflection, new Assumptions(false), providers.getCodeCache().getTarget());
+        ReplacementsImpl repl = new ReplacementsImpl(providers, snippetReflection, providers.getCodeCache().getTarget());
         StructuredGraph calleeGraph = repl.makeGraph(method, null, null, FrameStateProcessing.CollapseFrameForSingleSideEffect);
         InliningUtil.inline(invoke, calleeGraph, false, null);
     }

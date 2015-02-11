@@ -42,7 +42,7 @@ public abstract class TruffleReplacements extends ReplacementsImpl {
     private final Replacements graalReplacements;
 
     protected TruffleReplacements(Providers providers, SnippetReflectionProvider snippetReflection) {
-        super(providers, snippetReflection, providers.getReplacements().getAssumptions(), providers.getCodeCache().getTarget());
+        super(providers, snippetReflection, providers.getCodeCache().getTarget());
         this.graalReplacements = providers.getReplacements();
 
         registerTruffleSubstitutions();

@@ -64,7 +64,6 @@ public class ReplacementsImpl implements Replacements {
     public final Providers providers;
     public final SnippetReflectionProvider snippetReflection;
     public final TargetDescription target;
-    public final Assumptions assumptions;
 
     /**
      * The preprocessed replacement graphs.
@@ -220,13 +219,12 @@ public class ReplacementsImpl implements Replacements {
     // it is stable across VM executions (in support of replay compilation).
     private final Map<String, SnippetTemplateCache> snippetTemplateCache;
 
-    public ReplacementsImpl(Providers providers, SnippetReflectionProvider snippetReflection, Assumptions assumptions, TargetDescription target) {
+    public ReplacementsImpl(Providers providers, SnippetReflectionProvider snippetReflection, TargetDescription target) {
         this.providers = providers.copyWith(this);
         this.classReplacements = CollectionsFactory.newMap();
         this.internalNameToSubstitutionClasses = CollectionsFactory.newMap();
         this.snippetReflection = snippetReflection;
         this.target = target;
-        this.assumptions = assumptions;
         this.graphs = new ConcurrentHashMap<>();
         this.snippetTemplateCache = CollectionsFactory.newMap();
     }
@@ -318,10 +316,6 @@ public class ReplacementsImpl implements Replacements {
     public Class<? extends FixedWithNextNode> getMacroSubstitution(ResolvedJavaMethod method) {
         ClassReplacements cr = getClassReplacements(method.getDeclaringClass().getName());
         return cr == null ? null : cr.macroSubstitutions.get(method);
-    }
-
-    public Assumptions getAssumptions() {
-        return assumptions;
     }
 
     private SubstitutionGuard getGuard(Class<? extends SubstitutionGuard> guardClass) {

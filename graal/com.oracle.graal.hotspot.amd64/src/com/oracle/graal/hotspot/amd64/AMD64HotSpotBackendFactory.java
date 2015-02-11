@@ -152,15 +152,12 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
             try (InitTimer rt = timer("create Lowerer provider")) {
                 lowerer = createLowerer(runtime, metaAccess, foreignCalls, registers, target);
             }
-            // Replacements cannot have speculative optimizations since they have
-            // to be valid for the entire run of the VM.
-            Assumptions assumptions = new Assumptions(false);
             Providers p = new Providers(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, null, new HotSpotStampProvider());
             try (InitTimer rt = timer("create SnippetReflection provider")) {
                 snippetReflection = createSnippetReflection(runtime);
             }
             try (InitTimer rt = timer("create Replacements provider")) {
-                replacements = createReplacements(runtime, assumptions, p, snippetReflection);
+                replacements = createReplacements(runtime, p, snippetReflection);
             }
             try (InitTimer rt = timer("create Disassembler provider")) {
                 disassembler = createDisassembler(runtime);
@@ -187,8 +184,8 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
         return new HotSpotDisassemblerProvider(runtime);
     }
 
-    protected Replacements createReplacements(HotSpotGraalRuntimeProvider runtime, Assumptions assumptions, Providers p, SnippetReflectionProvider snippetReflection) {
-        return new HotSpotReplacementsImpl(p, snippetReflection, runtime.getConfig(), assumptions, p.getCodeCache().getTarget());
+    protected Replacements createReplacements(HotSpotGraalRuntimeProvider runtime, Providers p, SnippetReflectionProvider snippetReflection) {
+        return new HotSpotReplacementsImpl(p, snippetReflection, runtime.getConfig(), p.getCodeCache().getTarget());
     }
 
     protected AMD64HotSpotForeignCallsProvider createForeignCalls(HotSpotGraalRuntimeProvider runtime, HotSpotMetaAccessProvider metaAccess, HotSpotCodeCacheProvider codeCache,
@@ -251,15 +248,15 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
         } else {
             /*
              * System V Application Binary Interface, AMD64 Architecture Processor Supplement
-             *
+             * 
              * Draft Version 0.96
-             *
+             * 
              * http://www.uclibc.org/docs/psABI-x86_64.pdf
-             *
+             * 
              * 3.2.1
-             *
+             * 
              * ...
-             *
+             * 
              * This subsection discusses usage of each register. Registers %rbp, %rbx and %r12
              * through %r15 "belong" to the calling function and the called function is required to
              * preserve their values. In other words, a called function must preserve these
