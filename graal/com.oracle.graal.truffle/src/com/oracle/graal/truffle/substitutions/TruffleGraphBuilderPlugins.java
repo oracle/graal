@@ -42,6 +42,7 @@ import com.oracle.graal.truffle.*;
 import com.oracle.graal.truffle.nodes.*;
 import com.oracle.graal.truffle.nodes.arithmetic.*;
 import com.oracle.graal.truffle.nodes.frame.*;
+import com.oracle.graal.truffle.unsafe.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
 
@@ -193,7 +194,7 @@ public class TruffleGraphBuilderPlugins {
         registerUnsafeLoadStorePlugins(r, Kind.Int, Kind.Long, Kind.Float, Kind.Double, Kind.Object);
 
         // CompilerDirectives.class
-        r = new Registration(plugins, metaAccess, CompilerDirectives.class);
+        r = new Registration(plugins, metaAccess, UnsafeAccessImpl.class);
         registerUnsafeLoadStorePlugins(r, Kind.Boolean, Kind.Byte, Kind.Int, Kind.Short, Kind.Long, Kind.Float, Kind.Double, Kind.Object);
     }
 

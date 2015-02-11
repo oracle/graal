@@ -32,6 +32,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.truffle.substitutions.*;
+import com.oracle.graal.truffle.unsafe.*;
 import com.oracle.truffle.api.*;
 
 /**
@@ -55,6 +56,7 @@ public abstract class TruffleReplacements extends ReplacementsImpl {
         registerSubstitutions(OptimizedAssumption.class, OptimizedAssumptionSubstitutions.class);
         registerSubstitutions(OptimizedCallTarget.class, OptimizedCallTargetSubstitutions.class);
         registerSubstitutions(FrameWithoutBoxing.class, FrameWithoutBoxingSubstitutions.class);
+        registerSubstitutions(UnsafeAccessImpl.class, UnsafeAccessSubstitutions.class);
     }
 
     @Override
