@@ -74,11 +74,11 @@ public class NodeExecutionData {
         return shortCircuit;
     }
 
-    public String getShortCircuitId() {
-        return createShortCircuitId(child, index);
+    public String getIndexedName() {
+        return createIndexedName(child, index);
     }
 
-    public static String createShortCircuitId(NodeChildData child, int varArgsIndex) {
+    public static String createIndexedName(NodeChildData child, int varArgsIndex) {
         String shortCircuitName = child.getName();
         if (child.getCardinality().isMany()) {
             shortCircuitName = shortCircuitName + "[" + varArgsIndex + "]";

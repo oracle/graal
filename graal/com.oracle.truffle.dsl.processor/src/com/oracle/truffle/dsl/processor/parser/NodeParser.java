@@ -145,7 +145,7 @@ public class NodeParser extends AbstractParser<NodeData> {
         node.getFields().addAll(parseFields(lookupTypes, members));
         node.getChildren().addAll(parseChildren(lookupTypes, members));
         node.getChildExecutions().addAll(parseExecutions(node.getChildren(), members));
-        node.setExecutableTypes(groupExecutableTypes(new ExecutableTypeMethodParser(context, node, context.getFrameTypes()).parse(members)));
+        node.setExecutableTypes(groupExecutableTypes(new ExecutableTypeMethodParser(context, node, null, context.getFrameTypes()).parse(members)));
 
         initializeExecutableTypes(node);
         initializeImportGuards(node, lookupTypes, members);
@@ -402,46 +402,6 @@ public class NodeParser extends AbstractParser<NodeData> {
             }
         }
 
-        for (NodeChildData child : filteredChildren) {
-            List<String> executeWithStrings = ElementUtils.getAnnotationValueList(String.class, child.getMessageAnnotation(), "executeWith");
-            AnnotationValue executeWithValue = ElementUtils.getAnnotationValue(child.getMessageAnnotation(), "executeWith");
-            List<NodeChildData> executeWith = new ArrayList<>();
-            for (String executeWithString : executeWithStrings) {
-
-                if (child.getName().equals(executeWithString)) {
-                    child.addError(executeWithValue, "The child node '%s' cannot be executed with itself.", executeWithString);
-                    continue;
-                }
-
-                NodeChildData found = null;
-                boolean before = true;
-                for (NodeChildData resolveChild : filteredChildren) {
-                    if (resolveChild == child) {
-                        before = false;
-                        continue;
-                    }
-                    if (resolveChild.getName().equals(executeWithString)) {
-                        found = resolveChild;
-                        break;
-                    }
-                }
-
-                if (found == null) {
-                    child.addError(executeWithValue, "The child node '%s' cannot be executed with '%s'. The child node was not found.", child.getName(), executeWithString);
-                    continue;
-                } else if (!before) {
-                    child.addError(executeWithValue, "The child node '%s' cannot be executed with '%s'. The node %s is executed after the current node.", child.getName(), executeWithString,
-                                    executeWithString);
-                    continue;
-                }
-                executeWith.add(found);
-            }
-            child.setExecuteWith(executeWith);
-            if (child.getNodeData() == null) {
-                continue;
-            }
-        }
-
         return filteredChildren;
     }
 
@@ -504,7 +464,7 @@ public class NodeParser extends AbstractParser<NodeData> {
                 }
                 if (!skipShortCircuit) {
                     NodeChildData child = children.get(childIndex);
-                    if (shortCircuits.contains(NodeExecutionData.createShortCircuitId(child, currentArgumentIndex - childIndex))) {
+                    if (shortCircuits.contains(NodeExecutionData.createIndexedName(child, currentArgumentIndex - childIndex))) {
                         skipShortCircuit = true;
                         continue;
                     }
@@ -531,7 +491,7 @@ public class NodeParser extends AbstractParser<NodeData> {
             }
             int varArgsIndex = varArg ? Math.abs(childIndex - i) : -1;
             NodeChildData child = children.get(childIndex);
-            boolean shortCircuit = shortCircuits.contains(NodeExecutionData.createShortCircuitId(child, varArgsIndex));
+            boolean shortCircuit = shortCircuits.contains(NodeExecutionData.createIndexedName(child, varArgsIndex));
             executions.add(new NodeExecutionData(child, varArgsIndex, shortCircuit));
         }
         return executions;
@@ -638,9 +598,11 @@ public class NodeParser extends AbstractParser<NodeData> {
     }
 
     private void initializeChildren(NodeData node) {
+        initializeExecuteWith(node);
+
         for (NodeChildData child : node.getChildren()) {
             TypeMirror nodeType = child.getNodeType();
-            NodeData fieldNodeData = parseChildNodeData(node, ElementUtils.fromTypeMirror(nodeType));
+            NodeData fieldNodeData = parseChildNodeData(node, child, ElementUtils.fromTypeMirror(nodeType));
 
             child.setNode(fieldNodeData);
             if (fieldNodeData == null || fieldNodeData.hasErrors()) {
@@ -660,7 +622,44 @@ public class NodeParser extends AbstractParser<NodeData> {
         }
     }
 
-    private NodeData parseChildNodeData(NodeData parentNode, TypeElement originalTemplateType) {
+    private static void initializeExecuteWith(NodeData node) {
+        for (NodeChildData child : node.getChildren()) {
+            List<String> executeWithStrings = ElementUtils.getAnnotationValueList(String.class, child.getMessageAnnotation(), "executeWith");
+            AnnotationValue executeWithValue = ElementUtils.getAnnotationValue(child.getMessageAnnotation(), "executeWith");
+            List<NodeExecutionData> executeWith = new ArrayList<>();
+            for (String executeWithString : executeWithStrings) {
+                if (child.getName().equals(executeWithString)) {
+                    child.addError(executeWithValue, "The child node '%s' cannot be executed with itself.", executeWithString);
+                    continue;
+                }
+                NodeExecutionData found = null;
+                boolean before = true;
+                for (NodeExecutionData resolveChild : node.getChildExecutions()) {
+                    if (resolveChild.getChild() == child) {
+                        before = false;
+                        continue;
+                    }
+                    if (resolveChild.getIndexedName().equals(executeWithString)) {
+                        found = resolveChild;
+                        break;
+                    }
+                }
+
+                if (found == null) {
+                    child.addError(executeWithValue, "The child node '%s' cannot be executed with '%s'. The child node was not found.", child.getName(), executeWithString);
+                    continue;
+                } else if (!before) {
+                    child.addError(executeWithValue, "The child node '%s' cannot be executed with '%s'. The node %s is executed after the current node.", child.getName(), executeWithString,
+                                    executeWithString);
+                    continue;
+                }
+                executeWith.add(found);
+            }
+            child.setExecuteWith(executeWith);
+        }
+    }
+
+    private NodeData parseChildNodeData(NodeData parentNode, NodeChildData child, TypeElement originalTemplateType) {
         TypeElement templateType = ElementUtils.fromTypeMirror(context.reloadTypeElement(originalTemplateType));
 
         if (ElementUtils.findAnnotationMirror(processingEnv, originalTemplateType, GeneratedBy.class) != null) {
@@ -680,7 +679,7 @@ public class NodeParser extends AbstractParser<NodeData> {
         if (node.hasErrors()) {
             return node;
         }
-        node.setExecutableTypes(groupExecutableTypes(new ExecutableTypeMethodParser(context, node, createAllowedChildFrameTypes(parentNode)).parse(members)));
+        node.setExecutableTypes(groupExecutableTypes(new ExecutableTypeMethodParser(context, node, child, createAllowedChildFrameTypes(parentNode)).parse(members)));
         node.setFrameType(parentNode.getFrameType());
         return node;
     }
@@ -1288,7 +1287,7 @@ public class NodeParser extends AbstractParser<NodeData> {
                 continue;
             }
             shortCircuitExecutions.add(execution);
-            String valueName = execution.getShortCircuitId();
+            String valueName = execution.getIndexedName();
             List<ShortCircuitData> availableCircuits = groupedShortCircuits.get(valueName);
 
             if (availableCircuits == null || availableCircuits.isEmpty()) {
@@ -1344,7 +1343,7 @@ public class NodeParser extends AbstractParser<NodeData> {
             List<ShortCircuitData> assignedShortCuts = new ArrayList<>(shortCircuitExecutions.size());
 
             for (NodeExecutionData shortCircuit : shortCircuitExecutions) {
-                List<ShortCircuitData> availableShortCuts = groupedShortCircuits.get(shortCircuit.getShortCircuitId());
+                List<ShortCircuitData> availableShortCuts = groupedShortCircuits.get(shortCircuit.getIndexedName());
 
                 ShortCircuitData genericShortCircuit = null;
                 ShortCircuitData compatibleShortCircuit = null;

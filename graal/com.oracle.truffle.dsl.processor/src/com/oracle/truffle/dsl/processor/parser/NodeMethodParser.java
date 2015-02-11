@@ -89,7 +89,7 @@ public abstract class NodeMethodParser<E extends TemplateMethod> extends Templat
         }
 
         for (NodeExecutionData execution : getNode().getChildExecutions()) {
-            if (breakName != null && execution.getShortCircuitId().equals(breakName)) {
+            if (breakName != null && execution.getIndexedName().equals(breakName)) {
                 break;
             }
 

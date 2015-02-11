@@ -42,7 +42,7 @@ public class ShortCircuitParser extends NodeMethodParser<ShortCircuitData> {
         shortCircuitValues = new HashSet<>();
         for (NodeExecutionData execution : node.getChildExecutions()) {
             if (execution.isShortCircuit()) {
-                shortCircuitValues.add(execution.getShortCircuitId());
+                shortCircuitValues.add(execution.getIndexedName());
             }
         }
     }

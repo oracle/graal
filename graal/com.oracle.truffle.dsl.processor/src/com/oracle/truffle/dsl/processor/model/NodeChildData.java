@@ -52,7 +52,7 @@ public class NodeChildData extends MessageContainer {
     private final Element accessElement;
     private final Cardinality cardinality;
 
-    private List<NodeChildData> executeWith = Collections.emptyList();
+    private List<NodeExecutionData> executeWith = Collections.emptyList();
 
     private NodeData childNode;
 
@@ -66,11 +66,11 @@ public class NodeChildData extends MessageContainer {
         this.cardinality = cardinality;
     }
 
-    public List<NodeChildData> getExecuteWith() {
+    public List<NodeExecutionData> getExecuteWith() {
         return executeWith;
     }
 
-    public void setExecuteWith(List<NodeChildData> executeWith) {
+    public void setExecuteWith(List<NodeExecutionData> executeWith) {
         this.executeWith = executeWith;
     }
 

@@ -35,7 +35,8 @@ import com.oracle.truffle.api.dsl.test.ExecuteEvaluatedTestFactory.TestEvaluated
 import com.oracle.truffle.api.dsl.test.ExecuteEvaluatedTestFactory.TestEvaluatedVarArgs3Factory;
 import com.oracle.truffle.api.dsl.test.ExecuteEvaluatedTestFactory.TestEvaluatedVarArgs4Factory;
 import com.oracle.truffle.api.dsl.test.ExecuteEvaluatedTestFactory.TestEvaluatedVarArgs5Factory;
-import com.oracle.truffle.api.dsl.test.ExecuteEvaluatedTestFactory.UseDoubleEvaluatedNodeFactory;
+import com.oracle.truffle.api.dsl.test.ExecuteEvaluatedTestFactory.UseDoubleEvaluated1NodeFactory;
+import com.oracle.truffle.api.dsl.test.ExecuteEvaluatedTestFactory.UseDoubleEvaluated2NodeFactory;
 import com.oracle.truffle.api.dsl.test.ExecuteEvaluatedTestFactory.UseEvaluatedNodeFactory;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ArgumentNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ChildrenNode;
@@ -79,12 +80,12 @@ public class ExecuteEvaluatedTest {
     }
 
     @Test
-    public void testDoubleEvaluated() {
+    public void testDoubleEvaluated1() {
         ArgumentNode arg0 = new ArgumentNode(0);
         ArgumentNode arg1 = new ArgumentNode(1);
-        CallTarget callTarget = TestHelper.createCallTarget(UseDoubleEvaluatedNodeFactory.create(arg0, arg1, DoubleEvaluatedNodeFactory.create(null, null)));
+        CallTarget callTarget = TestHelper.createCallTarget(UseDoubleEvaluated1NodeFactory.create(arg0, arg1, DoubleEvaluatedNodeFactory.create(null, null)));
 
-        Assert.assertEquals(85, callTarget.call(new Object[]{42, 43}));
+        Assert.assertEquals(42, callTarget.call(new Object[]{43, 1}));
         Assert.assertEquals(1, arg0.getInvocationCount());
         Assert.assertEquals(1, arg1.getInvocationCount());
     }
@@ -94,7 +95,7 @@ public class ExecuteEvaluatedTest {
 
         @Specialization
         int doExecuteWith(int exp0, int exp1) {
-            return exp0 + exp1;
+            return exp0 - exp1;
         }
 
         public abstract Object executeEvaluated(VirtualFrame frame, Object exp0, Object exp1);
@@ -103,11 +104,32 @@ public class ExecuteEvaluatedTest {
     }
 
     @NodeChildren({@NodeChild("exp0"), @NodeChild("exp1"), @NodeChild(value = "exp2", type = DoubleEvaluatedNode.class, executeWith = {"exp0", "exp1"})})
-    abstract static class UseDoubleEvaluatedNode extends ValueNode {
+    abstract static class UseDoubleEvaluated1Node extends ValueNode {
 
         @Specialization
         int call(int exp0, int exp1, int exp2) {
-            Assert.assertEquals(exp0 + exp1, exp2);
+            Assert.assertEquals(exp0 - exp1, exp2);
+            return exp2;
+        }
+    }
+
+    @Test
+    public void testDoubleEvaluated2() {
+        ArgumentNode arg0 = new ArgumentNode(0);
+        ArgumentNode arg1 = new ArgumentNode(1);
+        CallTarget callTarget = TestHelper.createCallTarget(UseDoubleEvaluated2NodeFactory.create(arg0, arg1, DoubleEvaluatedNodeFactory.create(null, null)));
+
+        Assert.assertEquals(42, callTarget.call(new Object[]{1, 43}));
+        Assert.assertEquals(1, arg0.getInvocationCount());
+        Assert.assertEquals(1, arg1.getInvocationCount());
+    }
+
+    @NodeChildren({@NodeChild("exp0"), @NodeChild("exp1"), @NodeChild(value = "exp2", type = DoubleEvaluatedNode.class, executeWith = {"exp1", "exp0"})})
+    abstract static class UseDoubleEvaluated2Node extends ValueNode {
+
+        @Specialization
+        int call(int exp0, int exp1, int exp2) {
+            Assert.assertEquals(exp1 - exp0, exp2);
             return exp2;
         }
     }
