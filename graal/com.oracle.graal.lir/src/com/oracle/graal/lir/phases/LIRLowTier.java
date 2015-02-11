@@ -26,7 +26,7 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.phases.LowLevelLowTierPhase.*;
 import com.oracle.graal.options.*;
 
-public class LowLevelLowTier extends LowLevelPhaseSuite<LowLevelLowTierContext> {
+public class LIRLowTier extends LowLevelPhaseSuite<LowLevelLowTierContext> {
     public static class Options {
         // @formatter:off
         @Option(help = "", type = OptionType.Debug)
@@ -40,7 +40,7 @@ public class LowLevelLowTier extends LowLevelPhaseSuite<LowLevelLowTierContext> 
         // @formatter:on
     }
 
-    public LowLevelLowTier() {
+    public LIRLowTier() {
         if (Options.LowLevelOptEdgeMoveOptimizer.getValue()) {
             appendPhase(new EdgeMoveOptimizer());
         }

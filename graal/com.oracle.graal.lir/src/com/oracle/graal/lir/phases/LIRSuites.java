@@ -57,7 +57,7 @@ public class LIRSuites {
      * {@link LowLevelMidTierPhase}s are responsible for register allocation and translating
      * {@link VirtualStackSlot}s into {@link StackSlot}s.
      * <p>
-     * After the {@link LowLevelMidTier} there should be no more {@link Variable}s and
+     * After the {@link LIRMidTier} there should be no more {@link Variable}s and
      * {@link VirtualStackSlot}s.
      */
     public LowLevelPhaseSuite<LowLevelMidTierContext> getMidTier() {
