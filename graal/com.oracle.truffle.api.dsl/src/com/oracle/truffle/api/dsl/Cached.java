@@ -90,7 +90,7 @@ import com.oracle.truffle.api.utilities.*;
  *      CompilerAsserts.compilationConstant(cachedOperand);
  *      ...
  *  }
- * 
+ *
  *  Example executions:
  *  execute(1) => doCached(1, 1) // new instantiation, localOperand is bound to 1
  *  execute(0) => doCached(0, 1)
@@ -138,16 +138,16 @@ import com.oracle.truffle.api.utilities.*;
  * instantiated. Alternatively if the <code>contains</code> relation is omitted then all
  * <code>doCached</code> instances remain but no new instances are created.
  *
- * <pre>
+ * <code>
  * &#064;Specialization(guards = &quot;==(operand, cachedOperand)&quot;)
  * void doCached(int operand, @Cached(&quot;operand&quot;) int cachedOperand) {
  *    CompilerAsserts.compilationConstant(cachedOperand);
  *    ...
  * }
- * 
+ *
  * &#064;Specialization(contains = &quot;doCached&quot;)
  * void doNormal(int operand) {...}
- * 
+ *
  * Example executions with contains = &quot;doCached&quot;:
  * execute(0) => doCached(0, 0) // new instantiation, cachedOperand is bound to 0
  * execute(1) => doCached(1, 1) // new instantiation, cachedOperand is bound to 1
@@ -155,7 +155,7 @@ import com.oracle.truffle.api.utilities.*;
  * execute(2) => doCached(2, 2) // new instantiation, cachedOperand is bound to 2
  * execute(3) => doNormal(3)    // new instantiation of doNormal due to limit overflow; doCached gets removed.
  * execute(1) => doNormal(1)
- * 
+ *
  * Example executions without contains = &quot;doCached&quot;:
  * execute(0) => doCached(0, 0) // new instantiation, cachedOperand is bound to 0
  * execute(1) => doCached(1, 1) // new instantiation, cachedOperand is bound to 1
@@ -164,7 +164,7 @@ import com.oracle.truffle.api.utilities.*;
  * execute(3) => doNormal(3)    // new instantiation of doNormal due to limit overflow
  * execute(1) => doCached(1, 1)
  *
- * </pre>
+ * </code>
  *
  * </li>
  * <li>
@@ -175,7 +175,7 @@ import com.oracle.truffle.api.utilities.*;
  * &#064;Specialization
  * void s(int operand, @Cached(&quot;transformLocal(operand)&quot;) int cachedOperand) {
  * }
- * 
+ *
  * int transformLocal(int operand) {
  *     return operand & 0x42;
  * }
@@ -191,9 +191,9 @@ import com.oracle.truffle.api.utilities.*;
  * void s(Object operand, @Cached(&quot;new()&quot;) OtherNode someNode) {
  *     someNode.execute(operand);
  * }
- * 
+ *
  * static class OtherNode extends Node {
- * 
+ *
  *     public String execute(Object value) {
  *         throw new UnsupportedOperationException();
  *     }

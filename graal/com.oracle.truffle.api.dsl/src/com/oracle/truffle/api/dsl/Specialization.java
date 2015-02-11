@@ -158,13 +158,11 @@ public @interface Specialization {
      * int doAddNoOverflow(int a, int b) {
      *     return ExactMath.addExact(a, b);
      * }
-     * 
      * &#064;Specialization
      * long doAddWithOverflow(int a, int b) {
      *     return a + b;
      * }
      * ...
-     * 
      * Example executions:
      *   execute(Integer.MAX_VALUE - 1, 1) => doAddNoOverflow(Integer.MAX_VALUE - 1, 1)
      *   execute(Integer.MAX_VALUE, 1)     => doAddNoOverflow(Integer.MAX_VALUE, 1)
@@ -196,18 +194,15 @@ public @interface Specialization {
      * void doDivPowerTwo(int a, int b) {
      *     return a >> 1;
      * }
-     * 
      * &#064;Specialization(contains ="doDivPowerTwo", guards = "b > 0")
      * void doDivPositive(int a, int b) {
      *     return a / b;
      * }
      * ...
-     * 
      * Example executions with contains="doDivPowerTwo":
      *   execute(4, 2) => doDivPowerTwo(4, 2)
      *   execute(9, 3) => doDivPositive(9, 3) // doDivPowerTwo instances get removed
      *   execute(4, 2) => doDivPositive(4, 2)
-     * 
      * Same executions without contains="doDivPowerTwo"
      *   execute(4, 2) => doDivPowerTwo(4, 2)
      *   execute(9, 3) => doDivPositive(9, 3)
@@ -253,7 +248,6 @@ public @interface Specialization {
      *     assert operand <= 42;
      *     return operand & 1 == 1;
      * }
-     * 
      * &#064;Specialization(guards = {"operand <= 42", "acceptOperand(operand)"})
      * void doSpecialization(int operand) {...}
      * </pre>
@@ -301,7 +295,6 @@ public @interface Specialization {
      *      abstract Assumption getUnmodifiedAssuption();
      *      ...
      * }
-     * 
      * &#064;Specialization(guards = "operand.getShape() == cachedShape", assumptions = "cachedShape.getUnmodifiedAssumption()")
      * void doAssumeUnmodifiedShape(DynamicObject operand, @Cached("operand.getShape()") Shape cachedShape) {...}
      * </pre>
@@ -345,7 +338,6 @@ public @interface Specialization {
      * static int getCacheLimit() {
      *     return Integer.parseInt(System.getProperty("language.cacheLimit"));
      * }
-     * 
      * &#064;Specialization(guards = "operand == cachedOperand", limit = "getCacheLimit()")
      * void doCached(Object operand, @Cached("operand") Object cachedOperand) {...}
      * </pre>
