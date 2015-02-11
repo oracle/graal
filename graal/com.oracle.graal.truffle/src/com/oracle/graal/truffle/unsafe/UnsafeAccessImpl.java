@@ -102,38 +102,6 @@ public final class UnsafeAccessImpl implements UnsafeAccess {
         unsafePutObject(receiver, offset, value, locationIdentity);
     }
 
-    public boolean getFinalBoolean(Object receiver, long offset, boolean condition, Object locationIdentity) {
-        return unsafeGetFinalBoolean(receiver, offset, condition, locationIdentity);
-    }
-
-    public byte getFinalByte(Object receiver, long offset, boolean condition, Object locationIdentity) {
-        return unsafeGetFinalByte(receiver, offset, condition, locationIdentity);
-    }
-
-    public short getFinalShort(Object receiver, long offset, boolean condition, Object locationIdentity) {
-        return unsafeGetFinalShort(receiver, offset, condition, locationIdentity);
-    }
-
-    public int getFinalInt(Object receiver, long offset, boolean condition, Object locationIdentity) {
-        return unsafeGetFinalInt(receiver, offset, condition, locationIdentity);
-    }
-
-    public long getFinalLong(Object receiver, long offset, boolean condition, Object locationIdentity) {
-        return unsafeGetFinalLong(receiver, offset, condition, locationIdentity);
-    }
-
-    public float getFinalFloat(Object receiver, long offset, boolean condition, Object locationIdentity) {
-        return unsafeGetFinalFloat(receiver, offset, condition, locationIdentity);
-    }
-
-    public double getFinalDouble(Object receiver, long offset, boolean condition, Object locationIdentity) {
-        return unsafeGetFinalDouble(receiver, offset, condition, locationIdentity);
-    }
-
-    public Object getFinalObject(Object receiver, long offset, boolean condition, Object locationIdentity) {
-        return unsafeGetFinalObject(receiver, offset, condition, locationIdentity);
-    }
-
     @SuppressWarnings("unchecked")
     private static <T> T unsafeCast(Object value, Class<T> type, boolean condition, boolean nonNull) {
         return (T) value;
@@ -201,38 +169,6 @@ public final class UnsafeAccessImpl implements UnsafeAccess {
 
     private static void unsafePutObject(Object receiver, long offset, Object value, Object locationIdentity) {
         UNSAFE.putObject(receiver, offset, value);
-    }
-
-    private static boolean unsafeGetFinalBoolean(Object receiver, long offset, boolean condition, Object locationIdentity) {
-        return UNSAFE.getBoolean(receiver, offset);
-    }
-
-    private static byte unsafeGetFinalByte(Object receiver, long offset, boolean condition, Object locationIdentity) {
-        return UNSAFE.getByte(receiver, offset);
-    }
-
-    private static short unsafeGetFinalShort(Object receiver, long offset, boolean condition, Object locationIdentity) {
-        return UNSAFE.getShort(receiver, offset);
-    }
-
-    private static int unsafeGetFinalInt(Object receiver, long offset, boolean condition, Object locationIdentity) {
-        return UNSAFE.getInt(receiver, offset);
-    }
-
-    private static long unsafeGetFinalLong(Object receiver, long offset, boolean condition, Object locationIdentity) {
-        return UNSAFE.getLong(receiver, offset);
-    }
-
-    private static float unsafeGetFinalFloat(Object receiver, long offset, boolean condition, Object locationIdentity) {
-        return UNSAFE.getFloat(receiver, offset);
-    }
-
-    private static double unsafeGetFinalDouble(Object receiver, long offset, boolean condition, Object locationIdentity) {
-        return UNSAFE.getDouble(receiver, offset);
-    }
-
-    private static Object unsafeGetFinalObject(Object receiver, long offset, boolean condition, Object locationIdentity) {
-        return UNSAFE.getObject(receiver, offset);
     }
 
     private static final Unsafe UNSAFE = getUnsafe();

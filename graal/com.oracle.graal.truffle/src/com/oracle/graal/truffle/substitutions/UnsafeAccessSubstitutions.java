@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.truffle.substitutions;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.truffle.nodes.typesystem.*;
@@ -80,44 +79,4 @@ public class UnsafeAccessSubstitutions {
 
     @MacroSubstitution(macro = CustomizedUnsafeStoreMacroNode.class, isStatic = true)
     public static native void unsafePutObject(Object receiver, long offset, Object value, Object locationIdentity);
-
-    @MethodSubstitution
-    public static boolean unsafeGetFinalBoolean(Object receiver, long offset, boolean condition, Object locationIdentity) {
-        return CustomizedUnsafeLoadFinalNode.load(receiver, offset, condition, locationIdentity, Kind.Boolean);
-    }
-
-    @MethodSubstitution
-    public static byte unsafeGetFinalByte(Object receiver, long offset, boolean condition, Object locationIdentity) {
-        return CustomizedUnsafeLoadFinalNode.load(receiver, offset, condition, locationIdentity, Kind.Byte);
-    }
-
-    @MethodSubstitution
-    public static short unsafeGetFinalShort(Object receiver, long offset, boolean condition, Object locationIdentity) {
-        return CustomizedUnsafeLoadFinalNode.load(receiver, offset, condition, locationIdentity, Kind.Short);
-    }
-
-    @MethodSubstitution
-    public static int unsafeGetFinalInt(Object receiver, long offset, boolean condition, Object locationIdentity) {
-        return CustomizedUnsafeLoadFinalNode.load(receiver, offset, condition, locationIdentity, Kind.Int);
-    }
-
-    @MethodSubstitution
-    public static long unsafeGetFinalLong(Object receiver, long offset, boolean condition, Object locationIdentity) {
-        return CustomizedUnsafeLoadFinalNode.load(receiver, offset, condition, locationIdentity, Kind.Long);
-    }
-
-    @MethodSubstitution
-    public static float unsafeGetFinalFloat(Object receiver, long offset, boolean condition, Object locationIdentity) {
-        return CustomizedUnsafeLoadFinalNode.load(receiver, offset, condition, locationIdentity, Kind.Float);
-    }
-
-    @MethodSubstitution
-    public static double unsafeGetFinalDouble(Object receiver, long offset, boolean condition, Object locationIdentity) {
-        return CustomizedUnsafeLoadFinalNode.load(receiver, offset, condition, locationIdentity, Kind.Double);
-    }
-
-    @MethodSubstitution
-    public static Object unsafeGetFinalObject(Object receiver, long offset, boolean condition, Object locationIdentity) {
-        return CustomizedUnsafeLoadFinalNode.load(receiver, offset, condition, locationIdentity, Kind.Object);
-    }
 }
