@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.dsl.examples;
+package com.oracle.truffle.api.dsl.test.examples;
 
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.dsl.*;

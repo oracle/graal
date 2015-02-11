@@ -20,16 +20,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.dsl.examples;
+package com.oracle.truffle.api.dsl.test.examples;
 
-import static com.oracle.truffle.api.dsl.examples.ExampleNode.*;
+import static com.oracle.truffle.api.dsl.test.examples.ExampleNode.*;
 import static org.junit.Assert.*;
 
 import org.junit.*;
 
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.dsl.*;
-import com.oracle.truffle.api.dsl.examples.MathPowFactory.MathPowNodeGen;
+import com.oracle.truffle.api.dsl.test.examples.MathPowFactory.MathPowNodeGen;
 import com.oracle.truffle.api.nodes.*;
 
 /**

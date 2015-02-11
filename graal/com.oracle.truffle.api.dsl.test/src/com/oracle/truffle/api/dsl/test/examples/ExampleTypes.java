@@ -20,14 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.dsl.examples;
+package com.oracle.truffle.api.dsl.test.examples;
 
 import com.oracle.truffle.api.dsl.*;
-import com.oracle.truffle.api.dsl.examples.FunctionCall.Function;
-import com.oracle.truffle.api.dsl.examples.Interop.TruffleObject;
-import com.oracle.truffle.api.dsl.examples.RubyCall.InternalMethod;
-import com.oracle.truffle.api.dsl.examples.RubyCall.RubyObject;
-import com.oracle.truffle.api.dsl.examples.StableDispatch.SLFunction;
+import com.oracle.truffle.api.dsl.test.examples.FunctionCall.Function;
+import com.oracle.truffle.api.dsl.test.examples.Interop.TruffleObject;
+import com.oracle.truffle.api.dsl.test.examples.RubyCall.InternalMethod;
+import com.oracle.truffle.api.dsl.test.examples.RubyCall.RubyObject;
+import com.oracle.truffle.api.dsl.test.examples.StableDispatch.SLFunction;
 
 @TypeSystem({int.class, double.class, boolean.class, TruffleObject.class, SLFunction.class, RubyObject.class, Function.class, InternalMethod.class, int[].class, double[].class, Object[].class})
 public class ExampleTypes {
