@@ -2125,8 +2125,7 @@ public class NodeGenFactory {
         return new CodeTree[]{expressionBuilder.build(), assertionBuilder.build()};
     }
 
-    private Map<Variable, CodeTree> castBoundTypes(Map<Variable, LocalVariable> bindings) {
-
+    private static Map<Variable, CodeTree> castBoundTypes(Map<Variable, LocalVariable> bindings) {
         Map<Variable, CodeTree> resolvedBindings = new HashMap<>();
         for (Variable variable : bindings.keySet()) {
             LocalVariable localVariable = bindings.get(variable);
