@@ -45,9 +45,9 @@ public class LIRSuites {
      * {@link LIRHighTierPhase}s are executed between {@link LIR} generation and register
      * allocation.
      * <p>
-     * {@link LIRHighTierPhase Implementers} can create new
-     * {@link LIRGeneratorTool#newVariable variables}, {@link LIRGenerationResult#getFrameMap stack
-     * slots} and {@link LIRGenerationResult#getFrameMapBuilder virtual stack slots}.
+     * {@link LIRHighTierPhase Implementers} can create new {@link LIRGeneratorTool#newVariable
+     * variables}, {@link LIRGenerationResult#getFrameMap stack slots} and
+     * {@link LIRGenerationResult#getFrameMapBuilder virtual stack slots}.
      */
     public LIRPhaseSuite<LIRHighTierContext> getHighTier() {
         return highTier;
@@ -68,8 +68,8 @@ public class LIRSuites {
      * {@link LIRLowTierPhase}s are executed after register allocation and before machine code
      * generation.
      * <p>
-     * A {@link LIRLowTierPhase} must not introduce new {@link Variable}s,
-     * {@link VirtualStackSlot}s or {@link StackSlot}s.
+     * A {@link LIRLowTierPhase} must not introduce new {@link Variable}s, {@link VirtualStackSlot}s
+     * or {@link StackSlot}s.
      */
     public LIRPhaseSuite<LIRLowTierContext> getLowTier() {
         return lowTier;
