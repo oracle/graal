@@ -1623,9 +1623,6 @@ public class NodeGenFactory {
         if (!cast.isEmpty()) {
             builder.tree(cast);
         }
-        if (!guardAssertions.isEmpty()) {
-            builder.tree(guardAssertions);
-        }
         boolean elseIf = !elseGuardExpressions.isEmpty();
         if (!methodGuards.isEmpty()) {
             builder.startIf(elseIf);
@@ -1635,6 +1632,9 @@ public class NodeGenFactory {
         } else if (elseIf) {
             builder.startElseBlock();
             ifCount++;
+        }
+        if (!guardAssertions.isEmpty()) {
+            builder.tree(guardAssertions);
         }
 
         boolean reachable = isReachableGroup(group, ifCount);
