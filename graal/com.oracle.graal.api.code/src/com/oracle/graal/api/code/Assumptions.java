@@ -274,10 +274,6 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
         }
     }
 
-    /**
-     * Array with the assumptions. This field is directly accessed from C++ code in the
-     * Graal/HotSpot implementation.
-     */
     private Assumption[] list;
     private int count;
 
@@ -430,21 +426,11 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
         count++;
     }
 
-    public Collection<Assumption> getAssumptions() {
-        return Arrays.asList(list).subList(0, count);
-    }
-
-    private Assumptions(Assumptions other) {
-        allowOptimisticAssumptions = other.allowOptimisticAssumptions;
-        list = other.list.clone();
-        count = other.count;
-    }
-
     /**
-     * Gets a deep copy of this object.
+     * Gets a copy of the assumptions recorded in this object as an array.
      */
-    public Assumptions copy() {
-        return new Assumptions(this);
+    public Assumption[] getAssumptionsCopy() {
+        return Arrays.copyOf(list, count);
     }
 
     /**

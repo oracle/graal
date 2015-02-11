@@ -28,6 +28,7 @@ import static java.util.Collections.*;
 import java.io.*;
 import java.util.*;
 
+import com.oracle.graal.api.code.Assumptions.Assumption;
 import com.oracle.graal.api.code.CodeUtil.RefMapFormatter;
 import com.oracle.graal.api.meta.*;
 
@@ -528,7 +529,7 @@ public class CompilationResult implements Serializable {
 
     private ArrayList<CodeAnnotation> annotations;
 
-    private Assumptions assumptions;
+    private Assumption[] assumptions;
 
     public CompilationResult() {
         this(null);
@@ -607,11 +608,15 @@ public class CompilationResult implements Serializable {
     }
 
     public void setAssumptions(Assumptions assumptions) {
-        this.assumptions = assumptions;
+        this.assumptions = assumptions.getAssumptionsCopy();
     }
 
-    public Assumptions getAssumptions() {
-        return assumptions;
+    /**
+     * Gets a fixed-size {@linkplain Arrays#asList(Object...) view} of the assumptions recorded in
+     * this object.
+     */
+    public Collection<Assumption> getAssumptions() {
+        return assumptions == null ? Collections.emptyList() : Arrays.asList(assumptions);
     }
 
     public DataSection getDataSection() {

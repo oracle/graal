@@ -169,12 +169,12 @@ public class TruffleCompilerImpl {
 
         List<AssumptionValidAssumption> validAssumptions = new ArrayList<>();
         Assumptions newAssumptions = new Assumptions(true);
-        for (Assumption assumption : graph.getAssumptions().getAssumptions()) {
+        for (Assumption assumption : graph.getAssumptions()) {
             processAssumption(newAssumptions, assumption, validAssumptions);
         }
 
         if (result.getAssumptions() != null) {
-            for (Assumption assumption : result.getAssumptions().getAssumptions()) {
+            for (Assumption assumption : result.getAssumptions()) {
                 processAssumption(newAssumptions, assumption, validAssumptions);
             }
         }
