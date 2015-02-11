@@ -26,7 +26,7 @@ import com.oracle.graal.lir.alloc.lsra.*;
 import com.oracle.graal.lir.phases.LowLevelMidTierPhase.*;
 import com.oracle.graal.lir.stackslotalloc.*;
 
-public class LIRMidTier extends LowLevelPhaseSuite<LowLevelMidTierContext> {
+public class LIRMidTier extends LIRPhaseSuite<LowLevelMidTierContext> {
     public LIRMidTier() {
         appendPhase(new LinearScanPhase());
 

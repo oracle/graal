@@ -31,11 +31,11 @@ import com.oracle.graal.lir.phases.LowLevelMidTierPhase.LowLevelMidTierContext;
 
 public class LIRSuites {
 
-    private final LowLevelPhaseSuite<LowLevelHighTierContext> highTier;
-    private final LowLevelPhaseSuite<LowLevelMidTierContext> midTier;
-    private final LowLevelPhaseSuite<LowLevelLowTierContext> lowTier;
+    private final LIRPhaseSuite<LowLevelHighTierContext> highTier;
+    private final LIRPhaseSuite<LowLevelMidTierContext> midTier;
+    private final LIRPhaseSuite<LowLevelLowTierContext> lowTier;
 
-    public LIRSuites(LowLevelPhaseSuite<LowLevelHighTierContext> highTier, LowLevelPhaseSuite<LowLevelMidTierContext> midTier, LowLevelPhaseSuite<LowLevelLowTierContext> lowTier) {
+    public LIRSuites(LIRPhaseSuite<LowLevelHighTierContext> highTier, LIRPhaseSuite<LowLevelMidTierContext> midTier, LIRPhaseSuite<LowLevelLowTierContext> lowTier) {
         this.highTier = highTier;
         this.midTier = midTier;
         this.lowTier = lowTier;
@@ -49,7 +49,7 @@ public class LIRSuites {
      * {@link LIRGeneratorTool#newVariable variables}, {@link LIRGenerationResult#getFrameMap stack
      * slots} and {@link LIRGenerationResult#getFrameMapBuilder virtual stack slots}.
      */
-    public LowLevelPhaseSuite<LowLevelHighTierContext> getHighTier() {
+    public LIRPhaseSuite<LowLevelHighTierContext> getHighTier() {
         return highTier;
     }
 
@@ -60,7 +60,7 @@ public class LIRSuites {
      * After the {@link LIRMidTier} there should be no more {@link Variable}s and
      * {@link VirtualStackSlot}s.
      */
-    public LowLevelPhaseSuite<LowLevelMidTierContext> getMidTier() {
+    public LIRPhaseSuite<LowLevelMidTierContext> getMidTier() {
         return midTier;
     }
 
@@ -71,7 +71,7 @@ public class LIRSuites {
      * A {@link LowLevelLowTierPhase} must not introduce new {@link Variable}s,
      * {@link VirtualStackSlot}s or {@link StackSlot}s.
      */
-    public LowLevelPhaseSuite<LowLevelLowTierContext> getLowTier() {
+    public LIRPhaseSuite<LowLevelLowTierContext> getLowTier() {
         return lowTier;
     }
 

@@ -28,10 +28,10 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.lir.gen.*;
 
-public abstract class LowLevelPhaseSuite<C> extends LIRPhase<C> {
+public abstract class LIRPhaseSuite<C> extends LIRPhase<C> {
     private final List<LIRPhase<C>> phases;
 
-    public LowLevelPhaseSuite() {
+    public LIRPhaseSuite() {
         phases = new ArrayList<>();
     }
 
