@@ -565,12 +565,12 @@ public class CompilationResult implements Serializable {
                 this.targetCodeSize == that.targetCodeSize &&
                 Objects.equals(this.name, that.name) &&
                 Objects.equals(this.annotations, that.annotations) &&
-                Objects.equals(this.assumptions, that.assumptions) &&
                 Objects.equals(this.dataSection, that.dataSection) &&
                 Objects.equals(this.exceptionHandlers, that.exceptionHandlers) &&
                 Objects.equals(this.dataPatches, that.dataPatches) &&
                 Objects.equals(this.infopoints, that.infopoints) &&
                 Objects.equals(this.marks,  that.marks) &&
+                Arrays.equals(this.assumptions, that.assumptions) &&
                 Arrays.equals(targetCode, that.targetCode)) {
                 return true;
             }
