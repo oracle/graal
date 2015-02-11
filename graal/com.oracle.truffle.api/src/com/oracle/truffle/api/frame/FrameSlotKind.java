@@ -24,25 +24,13 @@
  */
 package com.oracle.truffle.api.frame;
 
-import java.nio.*;
-
 public enum FrameSlotKind {
-    Object(0),
-    Illegal(0),
-    Long(0),
-    Int(0),
-    Double(0),
-    Float(0),
-    Boolean(3),
-    Byte(3);
-
-    private final int byteOffset;
-
-    private FrameSlotKind(int bigEndianByteOffset) {
-        this.byteOffset = ByteOrder.nativeOrder() == ByteOrder.BIG_ENDIAN ? bigEndianByteOffset : 0;
-    }
-
-    public int getByteOffset() {
-        return byteOffset;
-    }
+    Object,
+    Illegal,
+    Long,
+    Int,
+    Double,
+    Float,
+    Boolean,
+    Byte;
 }
