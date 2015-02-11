@@ -86,13 +86,13 @@ public class FunctionCall {
 
         public static final int CACHE_SIZE = 2;
 
-        private CallTarget[] cachedTargets = new CallTarget[CACHE_SIZE];
+        private Function[] cachedFunctions = new Function[CACHE_SIZE];
 
         private int directCallFunctionGuard;
         private int directCall;
         private int indirectCall;
 
-        @Specialization(limit = "CACHE_SIZE", guards = {"function == cachedFunction", "!cacheFunctionTarget(cachedFunction)"})
+        @Specialization(limit = "CACHE_SIZE", guards = {"function == cachedFunction", "cacheFunctionTarget(cachedFunction)"})
         public Object directCallFunctionGuard(VirtualFrame frame, Function function, Object argument,  //
                         @Cached("function") Function cachedFunction, //
                         @Cached("create(cachedFunction.getTarget())") DirectCallNode callNode) {
@@ -102,15 +102,16 @@ public class FunctionCall {
 
         protected final boolean cacheFunctionTarget(Function function) {
             CompilerAsserts.neverPartOfCompilation();
-            if (cachedTargets != null) {
-                CallTarget target = function.getTarget();
-                for (int i = 0; i < cachedTargets.length; i++) {
-                    CallTarget cachedTarget = cachedTargets[i];
-                    if (cachedTarget == target) {
-                        cachedTargets = null;
+            if (cachedFunctions != null) {
+                for (int i = 0; i < cachedFunctions.length; i++) {
+                    Function cachedFunction = cachedFunctions[i];
+                    if (cachedFunction == null) {
+                        cachedFunctions[i] = function;
                         return true;
-                    } else if (cachedTarget == null) {
-                        cachedTargets[i] = target;
+                    } else if (cachedFunction == function) {
+                        return true;
+                    } else if (cachedFunction.getTarget() == function.getTarget()) {
+                        cachedFunctions = null;
                         return false;
                     }
                 }
