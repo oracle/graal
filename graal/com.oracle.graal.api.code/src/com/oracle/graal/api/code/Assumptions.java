@@ -274,8 +274,7 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
         }
     }
 
-    private Assumption[] list;
-    private int count;
+    private Set<Assumption> assumptions;
 
     /**
      * Specifies whether {@link OptimisticAssumption}s can be made.
@@ -293,7 +292,7 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
      */
     public Assumptions(boolean allowOptimisticAssumptions) {
         this.allowOptimisticAssumptions = allowOptimisticAssumptions;
-        list = new Assumption[4];
+        assumptions = new HashSet<>();
     }
 
     /**
@@ -302,7 +301,7 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
      * @return {@code true} if at least one assumption has been registered, {@code false} otherwise.
      */
     public boolean isEmpty() {
-        return count == 0;
+        return assumptions.isEmpty();
     }
 
     /**
@@ -324,13 +323,8 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
         }
         if (obj instanceof Assumptions) {
             Assumptions that = (Assumptions) obj;
-            if (allowOptimisticAssumptions != that.allowOptimisticAssumptions || count != that.count) {
+            if (this.allowOptimisticAssumptions != that.allowOptimisticAssumptions || !this.assumptions.equals(that.assumptions)) {
                 return false;
-            }
-            for (int i = 0; i < count; i++) {
-                if (!list[i].equals(that.list[i])) {
-                    return false;
-                }
             }
             return true;
         }
@@ -339,28 +333,7 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
 
     @Override
     public Iterator<Assumption> iterator() {
-        return new Iterator<Assumptions.Assumption>() {
-
-            int index;
-
-            @Override
-            public void remove() {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public Assumption next() {
-                if (index >= count) {
-                    throw new NoSuchElementException();
-                }
-                return list[index++];
-            }
-
-            @Override
-            public boolean hasNext() {
-                return index < count;
-            }
-        };
+        return assumptions.iterator();
     }
 
     /**
@@ -406,45 +379,26 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
 
     public void record(Assumption assumption) {
         assert allowOptimisticAssumptions || !(assumption instanceof OptimisticAssumption) : "cannot make optimistic assumption: " + assumption;
-        if (list == null) {
-            list = new Assumption[4];
-        } else {
-            for (int i = 0; i < count; ++i) {
-                if (assumption.equals(list[i])) {
-                    return;
-                }
-            }
-        }
-        if (list.length == count) {
-            Assumption[] newList = new Assumption[list.length * 2];
-            for (int i = 0; i < list.length; ++i) {
-                newList[i] = list[i];
-            }
-            list = newList;
-        }
-        list[count] = assumption;
-        count++;
+        assumptions.add(assumption);
     }
 
     /**
      * Gets a copy of the assumptions recorded in this object as an array.
      */
     public Assumption[] getAssumptionsCopy() {
-        return Arrays.copyOf(list, count);
+        return assumptions.toArray(new Assumption[assumptions.size()]);
     }
 
     /**
      * Copies assumptions recorded by another {@link Assumptions} object into this object.
      */
-    public void record(Assumptions assumptions) {
-        assert assumptions != this;
-        for (int i = 0; i < assumptions.count; i++) {
-            record(assumptions.list[i]);
-        }
+    public void record(Assumptions other) {
+        assert other != this;
+        assumptions.addAll(other.assumptions);
     }
 
     @Override
     public String toString() {
-        return "Assumptions{optimistic=" + allowOptimisticAssumptions + ", assumptions=" + Arrays.asList(list).subList(0, count) + "}";
+        return "Assumptions{optimistic=" + allowOptimisticAssumptions + ", assumptions=" + assumptions + "}";
     }
 }
