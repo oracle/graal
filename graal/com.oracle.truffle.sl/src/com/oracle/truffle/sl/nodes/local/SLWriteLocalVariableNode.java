@@ -49,15 +49,15 @@ public abstract class SLWriteLocalVariableNode extends SLExpressionNode {
     /**
      * Specialized method to write a primitive {@code long} value. This is only possible if the
      * local variable also has currently the type {@code long}, therefore a Truffle DSL
-     * {@link #isLongKind() custom guard} is specified.
+     * {@link #isLongKind(VirtualFrame) custom guard} is specified.
      */
-    @Specialization(guards = "isLongKind()")
+    @Specialization(guards = "isLongKind(frame)")
     protected long writeLong(VirtualFrame frame, long value) {
         frame.setLong(getSlot(), value);
         return value;
     }
 
-    @Specialization(guards = "isBooleanKind()")
+    @Specialization(guards = "isBooleanKind(frame)")
     protected boolean writeBoolean(VirtualFrame frame, boolean value) {
         frame.setBoolean(getSlot(), value);
         return value;
@@ -91,11 +91,13 @@ public abstract class SLWriteLocalVariableNode extends SLExpressionNode {
     /**
      * Guard function that the local variable has the type {@code long}.
      */
-    protected boolean isLongKind() {
+    @SuppressWarnings("unused")
+    protected boolean isLongKind(VirtualFrame frame) {
         return isKind(FrameSlotKind.Long);
     }
 
-    protected boolean isBooleanKind() {
+    @SuppressWarnings("unused")
+    protected boolean isBooleanKind(VirtualFrame frame) {
         return isKind(FrameSlotKind.Boolean);
     }
 
