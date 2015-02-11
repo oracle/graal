@@ -26,11 +26,14 @@ package com.oracle.truffle.api.dsl;
 
 import java.lang.annotation.*;
 
-/*
+/**
  * Experimental API.
+ * 
+ * @deprecated annotation has no effect anymore.
  */
 @Retention(RetentionPolicy.CLASS)
 @Target({ElementType.METHOD})
+@Deprecated
 public @interface Implies {
 
     String[] value();
