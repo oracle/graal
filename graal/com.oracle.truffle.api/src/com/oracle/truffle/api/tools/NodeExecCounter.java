@@ -49,7 +49,7 @@ import com.oracle.truffle.api.nodes.Node.Child;
  * <p>
  * <ul>
  * <li>"Execution call" on a node is is defined as invocation of a node method that is instrumented
- * to produce the event {@link TruffleEventReceiver#enter(Node, VirtualFrame)};</li>
+ * to produce the event {@link TruffleEventListener#enter(Node, VirtualFrame)};</li>
  * <li>Execution calls are tabulated only at <em>instrumented</em> nodes, i.e. those for which
  * {@linkplain Node#isInstrumentable() isInstrumentable() == true};</li>
  * <li>Execution calls are tabulated only at nodes present in the AST when originally created;
@@ -92,26 +92,38 @@ public final class NodeExecCounter extends InstrumentationTool {
     }
 
     /**
-     * Receiver for events at instrumented nodes. Counts are maintained in a shared table, so the
-     * receiver is stateless and can be shared by every {@link Instrument}.
+     * Listener for events at instrumented nodes. Counts are maintained in a shared table, so the
+     * listener is stateless and can be shared by every {@link Instrument}.
      */
-    private final TruffleEventReceiver eventReceiver = new DefaultEventReceiver() {
+    private final TruffleEventListener eventListener = new DefaultEventListener() {
         @Override
         public void enter(Node node, VirtualFrame frame) {
-            internalReceive(node);
-        }
-
-        @TruffleBoundary
-        private void internalReceive(Node node) {
             if (isEnabled()) {
                 final Class<?> nodeClass = node.getClass();
-                AtomicLong nodeCounter = counters.get(nodeClass);
-                if (nodeCounter == null) {
-                    nodeCounter = new AtomicLong();
-                    counters.put(nodeClass, nodeCounter);
-                }
+                /*
+                 * Everything up to here is inlined by Truffle compilation. Delegate the next part
+                 * to a method behind an inlining boundary.
+                 *
+                 * Note that it is not permitted to pass a {@link VirtualFrame} across an inlining
+                 * boundary; they are truly virtual in inlined code.
+                 */
+                AtomicLong nodeCounter = getCounter(nodeClass);
                 nodeCounter.getAndIncrement();
             }
+        }
+
+        /**
+         * Mark this method as a boundary that will stop Truffle inlining, which should not be
+         * allowed to inline the hash table method or any other complex library code.
+         */
+        @TruffleBoundary
+        private AtomicLong getCounter(Class<?> nodeClass) {
+            AtomicLong nodeCounter = counters.get(nodeClass);
+            if (nodeCounter == null) {
+                nodeCounter = new AtomicLong();
+                counters.put(nodeClass, nodeCounter);
+            }
+            return nodeCounter;
         }
     };
 
@@ -268,7 +280,7 @@ public final class NodeExecCounter extends InstrumentationTool {
 
             if (node.isInstrumentable()) {
                 try {
-                    final Instrument instrument = Instrument.create(eventReceiver, "NodeExecCounter");
+                    final Instrument instrument = Instrument.create(eventListener, "NodeExecCounter");
                     instruments.add(instrument);
                     node.probe().attach(instrument);
                 } catch (ProbeException ex) {
@@ -292,7 +304,7 @@ public final class NodeExecCounter extends InstrumentationTool {
         @Override
         public void probeTaggedAs(Probe probe, SyntaxTag tag, Object tagValue) {
             if (countingTag == tag) {
-                final Instrument instrument = Instrument.create(eventReceiver, NodeExecCounter.class.getSimpleName());
+                final Instrument instrument = Instrument.create(eventListener, NodeExecCounter.class.getSimpleName());
                 instruments.add(instrument);
                 probe.attach(instrument);
             }
