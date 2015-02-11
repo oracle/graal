@@ -123,7 +123,7 @@ public class TruffleCompilerImpl {
             GraphBuilderSuiteInfo info = createGraphBuilderSuite();
 
             try (TimerCloseable a = PartialEvaluationTime.start(); Closeable c = PartialEvaluationMemUse.start()) {
-                graph = partialEvaluator.createGraph(compilable, info.plugins);
+                graph = partialEvaluator.createGraph(compilable, ALLOW_OPTIMISTIC_ASSUMPTIONS, info.plugins);
             }
 
             if (Thread.currentThread().isInterrupted()) {
@@ -146,8 +146,7 @@ public class TruffleCompilerImpl {
         }
     }
 
-    public CompilationResult compileMethodHelper(StructuredGraph graph, String name, PhaseSuite<HighTierContext> graphBuilderSuite, SpeculationLog speculationLog,
-                    InstalledCode predefinedInstalledCode) {
+    public CompilationResult compileMethodHelper(StructuredGraph graph, String name, PhaseSuite<HighTierContext> graphBuilderSuite, SpeculationLog speculationLog, InstalledCode predefinedInstalledCode) {
         try (Scope s = Debug.scope("TruffleFinal")) {
             Debug.dump(1, graph, "After TruffleTier");
         } catch (Throwable e) {

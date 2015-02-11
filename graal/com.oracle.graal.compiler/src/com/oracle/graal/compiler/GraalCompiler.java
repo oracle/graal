@@ -221,7 +221,6 @@ public class GraalCompiler {
         try (Scope s0 = Debug.scope("GraalCompiler", r.graph, r.providers.getCodeCache())) {
             SchedulePhase schedule = emitFrontEnd(r.providers, r.target, r.graph, r.cache, r.graphBuilderSuite, r.optimisticOpts, r.profilingInfo, r.speculationLog, r.suites);
             emitBackEnd(r.graph, null, r.cc, r.installedCodeOwner, r.backend, r.target, r.compilationResult, r.factory, schedule, null, r.lowLevelSuites);
-        } catch (Throwable e) {);
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
@@ -275,13 +274,12 @@ public class GraalCompiler {
     }
 
     public static <T extends CompilationResult> void emitBackEnd(StructuredGraph graph, Object stub, CallingConvention cc, ResolvedJavaMethod installedCodeOwner, Backend backend,
-                    TargetDescription target, T compilationResult, CompilationResultBuilderFactory factory, SchedulePhase schedule, RegisterConfig registerConfig,
-                    LowLevelSuites lowLevelSuites) {
+                    TargetDescription target, T compilationResult, CompilationResultBuilderFactory factory, SchedulePhase schedule, RegisterConfig registerConfig, LowLevelSuites lowLevelSuites) {
         try (TimerCloseable a = BackEnd.start()) {
             LIRGenerationResult lirGen = null;
             lirGen = emitLIR(backend, target, schedule, graph, stub, cc, registerConfig, lowLevelSuites);
             try (Scope s = Debug.scope("CodeGen", lirGen, lirGen.getLIR())) {
-                emitCode(backend, graph.getAssumptions, lirGen, compilationResult, installedCodeOwner, factory);
+                emitCode(backend, graph.getAssumptions(), lirGen, compilationResult, installedCodeOwner, factory);
             } catch (Throwable e) {
                 throw Debug.handle(e);
             }

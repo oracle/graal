@@ -206,8 +206,7 @@ public class PartialEvaluator {
     }
 
     @SuppressWarnings("unused")
-    private void fastPartialEvaluation(OptimizedCallTarget callTarget, StructuredGraph graph, PhaseContext baseContext, HighTierContext tierContext,
-                    GraphBuilderPlugins graalPlugins) {
+    private void fastPartialEvaluation(OptimizedCallTarget callTarget, StructuredGraph graph, PhaseContext baseContext, HighTierContext tierContext, GraphBuilderPlugins graalPlugins) {
         GraphBuilderConfiguration newConfig = configForRoot.copy();
         newConfig.setLoadFieldPlugin(new InterceptLoadFieldPlugin());
         newConfig.setParameterPlugin(new InterceptReceiverPlugin(callTarget));

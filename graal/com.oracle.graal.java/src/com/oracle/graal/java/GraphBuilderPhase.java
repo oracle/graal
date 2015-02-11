@@ -78,8 +78,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
     @Override
     protected void run(StructuredGraph graph, HighTierContext context) {
-        new Instance(context.getMetaAccess(), context.getStampProvider(), null, context.getConstantReflection(), graphBuilderConfig, graphBuilderPlugins,
-                        context.getOptimisticOptimizations()).run(graph);
+        new Instance(context.getMetaAccess(), context.getStampProvider(), null, context.getConstantReflection(), graphBuilderConfig, graphBuilderPlugins, context.getOptimisticOptimizations()).run(graph);
     }
 
     public GraphBuilderConfiguration getGraphBuilderConfig() {
@@ -112,8 +111,8 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             return currentGraph;
         }
 
-        public Instance(MetaAccessProvider metaAccess, StampProvider stampProvider, SnippetReflectionProvider snippetReflectionProvider,
-                        ConstantReflectionProvider constantReflection, GraphBuilderConfiguration graphBuilderConfig, GraphBuilderPlugins graphBuilderPlugins, OptimisticOptimizations optimisticOpts) {
+        public Instance(MetaAccessProvider metaAccess, StampProvider stampProvider, SnippetReflectionProvider snippetReflectionProvider, ConstantReflectionProvider constantReflection,
+                        GraphBuilderConfiguration graphBuilderConfig, GraphBuilderPlugins graphBuilderPlugins, OptimisticOptimizations optimisticOpts) {
             this.graphBuilderConfig = graphBuilderConfig;
             this.optimisticOpts = optimisticOpts;
             this.metaAccess = metaAccess;
@@ -124,8 +123,8 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             assert metaAccess != null;
         }
 
-        public Instance(MetaAccessProvider metaAccess, StampProvider stampProvider, ConstantReflectionProvider constantReflection,
-                        GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts) {
+        public Instance(MetaAccessProvider metaAccess, StampProvider stampProvider, ConstantReflectionProvider constantReflection, GraphBuilderConfiguration graphBuilderConfig,
+                        OptimisticOptimizations optimisticOpts) {
             this(metaAccess, stampProvider, null, constantReflection, graphBuilderConfig, null, optimisticOpts);
         }
 
