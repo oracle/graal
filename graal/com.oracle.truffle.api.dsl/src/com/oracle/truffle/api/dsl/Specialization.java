@@ -264,16 +264,16 @@ public @interface Specialization {
      * Declares assumption guards that optimistically assume that the state of an {@link Assumption}
      * remains valid. Assumption expressions are cached once per specialization instantiation. If
      * one of the returned assumptions gets invalidated then the specialization instance is removed.
-     * An assumption expression may return different assumptions per specialization instance. The
-     * returned assumption instance must not be <code>null</code>.
+     * If the assumption expression returns an array of assumptions then all assumptions of the
+     * array are checked. This is limited to one-dimensional arrays.
      * </p>
      * <p>
      * Assumption expressions are defined using a subset of Java. This subset includes
      * field/parameter accesses, function calls, type exact infix comparisons (==, !=, <, <=, >,
      * >=), logical negation (!), logical disjunction (||) and integer literals. The return type of
-     * the expression must be {@link Assumption}. Assumption expressions are not allowed to bind to
-     * dynamic parameter values of the specialization. Bound elements without receivers are resolved
-     * using the following order:
+     * the expression must be {@link Assumption} or an array of {@link Assumption} instances.
+     * Assumption expressions are not allowed to bind to dynamic parameter values of the
+     * specialization. Bound elements without receivers are resolved using the following order:
      * <ol>
      * <li>Cached parameters of the enclosing specialization.</li>
      * <li>Fields defined using {@link NodeField} for the enclosing node.</li>
