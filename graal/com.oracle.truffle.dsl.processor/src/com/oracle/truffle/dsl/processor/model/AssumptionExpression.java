@@ -31,10 +31,16 @@ public final class AssumptionExpression extends MessageContainer {
 
     private final TemplateMethod source;
     private final DSLExpression expression;
+    private final String id;
 
-    public AssumptionExpression(TemplateMethod source, DSLExpression expression) {
+    public AssumptionExpression(TemplateMethod source, DSLExpression expression, String id) {
         this.source = source;
         this.expression = expression;
+        this.id = id;
+    }
+
+    public String getId() {
+        return id;
     }
 
     @Override

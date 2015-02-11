@@ -109,15 +109,6 @@ public class SpecializationMethodParser extends NodeMethodParser<SpecializationD
 
         }
 
-        List<String> assumptionDefs = ElementUtils.getAnnotationValueList(String.class, specialization.getMarkerAnnotation(), "assumptions");
-        specialization.setAssumptions(assumptionDefs);
-
-        for (String assumption : assumptionDefs) {
-            if (!getNode().getAssumptions().contains(assumption)) {
-                specialization.addError("Undeclared assumption '%s' used. Use @NodeAssumptions to declare them.", assumption);
-            }
-        }
-
         return specialization;
     }
 }

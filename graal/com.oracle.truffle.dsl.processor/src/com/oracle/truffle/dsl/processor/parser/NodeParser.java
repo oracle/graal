@@ -30,12 +30,14 @@ import javax.lang.model.type.*;
 import javax.lang.model.util.*;
 import javax.tools.Diagnostic.Kind;
 
+import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.dsl.processor.*;
 import com.oracle.truffle.dsl.processor.expression.*;
 import com.oracle.truffle.dsl.processor.java.*;
 import com.oracle.truffle.dsl.processor.java.compiler.*;
+import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.ArrayCodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.*;
 import com.oracle.truffle.dsl.processor.model.*;
 import com.oracle.truffle.dsl.processor.model.NodeChildData.Cardinality;
@@ -136,8 +138,10 @@ public class NodeParser extends AbstractParser<NodeData> {
         }
 
         NodeData node = parseNodeData(templateType, lookupTypes);
+        if (node.hasErrors()) {
+            return node;
+        }
 
-        node.getAssumptions().addAll(parseAssumptions(lookupTypes));
         node.getFields().addAll(parseFields(lookupTypes, members));
         node.getChildren().addAll(parseChildren(lookupTypes, members));
         node.getChildExecutions().addAll(parseExecutions(node.getChildren(), members));
@@ -273,24 +277,6 @@ public class NodeParser extends AbstractParser<NodeData> {
         boolean useNodeFactory = findFirstAnnotation(typeHierarchy, GenerateNodeFactory.class) != null;
         return new NodeData(context, templateType, shortName, typeSystem, useNodeFactory);
 
-    }
-
-    private List<String> parseAssumptions(List<TypeElement> typeHierarchy) {
-        List<String> assumptionsList = new ArrayList<>();
-        for (int i = typeHierarchy.size() - 1; i >= 0; i--) {
-            TypeElement type = typeHierarchy.get(i);
-            AnnotationMirror assumptions = ElementUtils.findAnnotationMirror(context.getEnvironment(), type, NodeAssumptions.class);
-            if (assumptions != null) {
-                List<String> assumptionStrings = ElementUtils.getAnnotationValueList(String.class, assumptions, "value");
-                for (String string : assumptionStrings) {
-                    if (assumptionsList.contains(string)) {
-                        assumptionsList.remove(string);
-                    }
-                    assumptionsList.add(string);
-                }
-            }
-        }
-        return assumptionsList;
     }
 
     private List<NodeFieldData> parseFields(List<TypeElement> typeHierarchy, List<? extends Element> elements) {
@@ -562,16 +548,11 @@ public class NodeParser extends AbstractParser<NodeData> {
 
             Parameter frame = execute.getFrame();
             TypeMirror resolvedFrameType;
-            if (frame == null) {
-                resolvedFrameType = node.getTypeSystem().getVoidType().getPrimitiveType();
-            } else {
+            if (frame != null) {
                 resolvedFrameType = frame.getType();
-            }
-
-            if (frameType == null) {
-                frameType = resolvedFrameType;
-            } else {
-                if (!ElementUtils.typeEquals(frameType, resolvedFrameType)) {
+                if (frameType == null) {
+                    frameType = resolvedFrameType;
+                } else if (!ElementUtils.typeEquals(frameType, resolvedFrameType)) {
                     // found inconsistent frame types
                     inconsistentFrameTypes.add(ElementUtils.getSimpleName(frameType));
                     inconsistentFrameTypes.add(ElementUtils.getSimpleName(resolvedFrameType));
@@ -584,6 +565,10 @@ public class NodeParser extends AbstractParser<NodeData> {
             Collections.sort(inconsistentFrameTypesList);
             node.addError("Invalid inconsistent frame types %s found for the declared execute methods. The frame type must be identical for all execute methods.", inconsistentFrameTypesList);
         }
+        if (frameType == null) {
+            frameType = context.getType(void.class);
+        }
+
         node.setFrameType(frameType);
 
         int totalGenericCount = 0;
@@ -979,7 +964,37 @@ public class NodeParser extends AbstractParser<NodeData> {
                 continue;
             }
             initializeLimit(specialization, resolver);
+            initializeAssumptions(specialization, resolver);
         }
+    }
+
+    private void initializeAssumptions(SpecializationData specialization, DSLExpressionResolver resolver) {
+        final DeclaredType assumptionType = context.getDeclaredType(Assumption.class);
+        final TypeMirror assumptionArrayType = new ArrayCodeTypeMirror(assumptionType);
+        final List<String> assumptionDefinitions = ElementUtils.getAnnotationValueList(String.class, specialization.getMarkerAnnotation(), "assumptions");
+        List<AssumptionExpression> assumptionExpressions = new ArrayList<>();
+        int assumptionId = 0;
+        for (String assumption : assumptionDefinitions) {
+            AssumptionExpression assumptionExpression;
+            DSLExpression expression = null;
+            try {
+                expression = DSLExpression.parse(assumption);
+                expression.accept(resolver);
+                assumptionExpression = new AssumptionExpression(specialization, expression, "assumption" + assumptionId);
+                if (!ElementUtils.isAssignable(expression.getResolvedType(), assumptionType) && !ElementUtils.isAssignable(expression.getResolvedType(), assumptionArrayType)) {
+                    assumptionExpression.addError("Incompatible return type %s. Assumptions must be assignable to %s or %s.", ElementUtils.getSimpleName(expression.getResolvedType()),
+                                    ElementUtils.getSimpleName(assumptionType), ElementUtils.getSimpleName(assumptionArrayType));
+                }
+                if (specialization.isDynamicParameterBound(expression)) {
+                    specialization.addError("Assumption expressions must not bind dynamic parameter values.");
+                }
+            } catch (InvalidExpressionException e) {
+                assumptionExpression = new AssumptionExpression(specialization, null, "assumption" + assumptionId);
+                assumptionExpression.addError("Error parsing expression '%s': %s", assumption, e.getMessage());
+            }
+            assumptionExpressions.add(assumptionExpression);
+        }
+        specialization.setAssumptionExpressions(assumptionExpressions);
     }
 
     private void initializeLimit(SpecializationData specialization, DSLExpressionResolver resolver) {

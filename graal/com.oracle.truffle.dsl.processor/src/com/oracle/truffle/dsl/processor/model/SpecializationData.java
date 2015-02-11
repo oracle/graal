@@ -46,7 +46,6 @@ public final class SpecializationData extends TemplateMethod {
     private List<CacheExpression> caches = Collections.emptyList();
     private List<AssumptionExpression> assumptionExpressions = Collections.emptyList();
     private List<ShortCircuitData> shortCircuits;
-    private List<String> assumptions = Collections.emptyList();
     private final Set<SpecializationData> contains = new TreeSet<>();
     private final Set<String> containsNames = new TreeSet<>();
     private final Set<SpecializationData> excludedBy = new TreeSet<>();
@@ -159,6 +158,9 @@ public final class SpecializationData extends TemplateMethod {
         if (caches != null) {
             sinks.addAll(caches);
         }
+        if (assumptionExpressions != null) {
+            sinks.addAll(assumptionExpressions);
+        }
         return sinks;
     }
 
@@ -169,7 +171,7 @@ public final class SpecializationData extends TemplateMethod {
         if (!getGuards().isEmpty()) {
             return true;
         }
-        if (!getAssumptions().isEmpty()) {
+        if (!getAssumptionExpressions().isEmpty()) {
             return true;
         }
 
@@ -260,14 +262,6 @@ public final class SpecializationData extends TemplateMethod {
         return shortCircuits;
     }
 
-    public List<String> getAssumptions() {
-        return assumptions;
-    }
-
-    public void setAssumptions(List<String> assumptions) {
-        this.assumptions = assumptions;
-    }
-
     public SpecializationData findNextSpecialization() {
         List<SpecializationData> specializations = node.getSpecializations();
         for (int i = 0; i < specializations.size() - 1; i++) {
@@ -317,9 +311,7 @@ public final class SpecializationData extends TemplateMethod {
                 }
             }
         }
-
         return false;
-
     }
 
     public boolean isReachableAfter(SpecializationData prev) {
@@ -349,10 +341,10 @@ public final class SpecializationData extends TemplateMethod {
             }
         }
 
-        for (String prevAssumption : prev.getAssumptions()) {
-            if (!getAssumptions().contains(prevAssumption)) {
-                return true;
-            }
+        if (!prev.getAssumptionExpressions().isEmpty()) {
+            // TODO: chumer: we could at least check reachability after trivial assumptions
+            // not sure if this is worth it.
+            return true;
         }
 
         Iterator<GuardExpression> prevGuards = prev.getGuards().iterator();

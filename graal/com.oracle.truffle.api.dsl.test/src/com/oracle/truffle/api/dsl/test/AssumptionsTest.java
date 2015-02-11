@@ -22,120 +22,236 @@
  */
 package com.oracle.truffle.api.dsl.test;
 
+import static com.oracle.truffle.api.dsl.test.TestHelper.*;
+import static org.junit.Assert.*;
+
+import java.util.*;
+
 import org.junit.*;
 
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.dsl.*;
-import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.DerivedAssumptionNodeFactory;
-import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.DerivedAssumptionRedeclaredNodeFactory;
-import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.MultipleAssumptionsNodeFactory;
-import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.SingleAssumptionNodeFactory;
-import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
+import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.AssumptionArrayTestFactory;
+import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.CacheAssumptionTestFactory;
+import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.FieldTestFactory;
+import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.MethodTestFactory;
+import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.NodeFieldTest2Factory;
+import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.StaticFieldTestFactory;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 
 public class AssumptionsTest {
 
     @Test
-    public void testSingleAssumption() {
-        Assumption assumption = Truffle.getRuntime().createAssumption();
-        TestRootNode<?> root = TestHelper.createRoot(SingleAssumptionNodeFactory.getInstance(), assumption);
-
-        Assert.assertEquals(42, TestHelper.executeWith(root));
-        assumption.invalidate();
-        Assert.assertEquals("42", TestHelper.executeWith(root));
+    public void testField() {
+        CallTarget root = createCallTarget(FieldTestFactory.getInstance());
+        FieldTest node = getNode(root);
+        assertEquals(42, root.call(42));
+        assertEquals(42, root.call(42));
+        node.field.invalidate();
+        try {
+            root.call(45);
+            fail();
+        } catch (UnsupportedSpecializationException e) {
+        }
     }
 
-    @NodeAssumptions("assumption")
-    abstract static class SingleAssumptionNode extends ValueNode {
+    @NodeChild
+    static class FieldTest extends ValueNode {
 
-        @Specialization(assumptions = "assumption")
-        int do2() {
-            return 42;
-        }
+        protected final Assumption field = Truffle.getRuntime().createAssumption();
 
-        @Fallback
-        Object doFallBack() {
-            return "42";
-        }
-
-    }
-
-    @Test
-    public void testMultipleAssumption() {
-        Assumption assumption1 = Truffle.getRuntime().createAssumption();
-        Assumption assumption2 = Truffle.getRuntime().createAssumption();
-        TestRootNode<?> root = TestHelper.createRoot(MultipleAssumptionsNodeFactory.getInstance(), assumption1, assumption2);
-
-        Assert.assertEquals(42, TestHelper.executeWith(root));
-        assumption2.invalidate();
-        Assert.assertEquals("41", TestHelper.executeWith(root));
-        assumption1.invalidate();
-        Assert.assertEquals("42", TestHelper.executeWith(root));
-    }
-
-    @NodeAssumptions({"assumption1", "assumption2"})
-    abstract static class MultipleAssumptionsNode extends ValueNode {
-
-        @Specialization(assumptions = {"assumption1", "assumption2"})
-        int doInt() {
-            return 42;
-        }
-
-        @Specialization(assumptions = "assumption1")
-        Object doObject() {
-            return "41";
-        }
-
-        @Fallback
-        Object doFallBack() {
-            return "42";
+        @Specialization(assumptions = "field")
+        static int do1(int value) {
+            return value;
         }
     }
 
     @Test
-    public void testDerivedAssumption() {
-        Assumption additionalAssumption = Truffle.getRuntime().createAssumption();
+    public void testNodeField() {
         Assumption assumption = Truffle.getRuntime().createAssumption();
-        TestRootNode<?> root = TestHelper.createRoot(DerivedAssumptionNodeFactory.getInstance(), assumption, additionalAssumption);
-
-        Assert.assertEquals(42, TestHelper.executeWith(root));
+        CallTarget root = createCallTarget(NodeFieldTest2Factory.getInstance(), assumption);
+        assertEquals(42, root.call(42));
+        assertEquals(42, root.call(42));
         assumption.invalidate();
-        Assert.assertEquals(43, TestHelper.executeWith(root));
-        additionalAssumption.invalidate();
-        Assert.assertEquals("42", TestHelper.executeWith(root));
+        try {
+            root.call(45);
+            fail();
+        } catch (UnsupportedSpecializationException e) {
+        }
     }
 
-    @NodeAssumptions({"additionalAssumption"})
-    abstract static class DerivedAssumptionNode extends SingleAssumptionNode {
+    @NodeChild
+    @NodeField(name = "field", type = Assumption.class)
+    static class NodeFieldTest2 extends ValueNode {
 
-        @Specialization(assumptions = "additionalAssumption")
-        int doIntDerived() {
-            return 43;
+        @Specialization(assumptions = "field")
+        static int do1(int value) {
+            return value;
         }
-
     }
 
     @Test
-    public void testDerivedAssumptionRedeclared() {
-        Assumption additionalAssumption = Truffle.getRuntime().createAssumption();
-        Assumption assumption = Truffle.getRuntime().createAssumption();
-        TestRootNode<?> root = TestHelper.createRoot(DerivedAssumptionRedeclaredNodeFactory.getInstance(), additionalAssumption, assumption);
-
-        Assert.assertEquals(42, TestHelper.executeWith(root));
-        assumption.invalidate();
-        Assert.assertEquals(43, TestHelper.executeWith(root));
-        additionalAssumption.invalidate();
-        Assert.assertEquals("42", TestHelper.executeWith(root));
+    public void testStaticField() {
+        CallTarget root = createCallTarget(StaticFieldTestFactory.getInstance());
+        assertEquals(42, root.call(42));
+        assertEquals(42, root.call(42));
+        StaticFieldTest.FIELD.invalidate();
+        try {
+            root.call(45);
+            fail();
+        } catch (UnsupportedSpecializationException e) {
+        }
     }
 
-    @NodeAssumptions({"additionalAssumption", "assumption"})
-    abstract static class DerivedAssumptionRedeclaredNode extends SingleAssumptionNode {
+    @NodeChild
+    static class StaticFieldTest extends ValueNode {
 
-        @Specialization(assumptions = "additionalAssumption")
-        int doIntDerived() {
-            return 43;
+        static final Assumption FIELD = Truffle.getRuntime().createAssumption();
+
+        @Specialization(assumptions = "FIELD")
+        static int do1(int value) {
+            return value;
+        }
+    }
+
+    @Test
+    public void testMethod() {
+        CallTarget root = createCallTarget(MethodTestFactory.getInstance());
+        MethodTest node = getNode(root);
+        assertEquals(42, root.call(42));
+        assertEquals(42, root.call(42));
+        node.hiddenAssumption.invalidate();
+        try {
+            root.call(45);
+            fail();
+        } catch (UnsupportedSpecializationException e) {
+        }
+    }
+
+    @NodeChild
+    static class MethodTest extends ValueNode {
+
+        private final Assumption hiddenAssumption = Truffle.getRuntime().createAssumption();
+
+        @Specialization(assumptions = "getAssumption()")
+        static int do1(int value) {
+            return value;
         }
 
+        Assumption getAssumption() {
+            return hiddenAssumption;
+        }
+    }
+
+    @Test
+    public void testCacheAssumption() {
+        CallTarget root = createCallTarget(CacheAssumptionTestFactory.getInstance());
+        CacheAssumptionTest node = getNode(root);
+        assertEquals("do1", root.call(42));
+        assertEquals("do1", root.call(43));
+        assertEquals("do1", root.call(44));
+        node.assumptions.get(42).invalidate();
+        node.assumptions.put(42, null); // clear 42
+        node.assumptions.get(43).invalidate();
+        node.assumptions.get(44).invalidate();
+        assertEquals("do1", root.call(42)); // recreates 42
+        assertEquals("do2", root.call(43)); // invalid 43 -> remove -> insert do2
+        assertEquals("do2", root.call(46)); // no more lines can be created.
+    }
+
+    @Test
+    public void testCacheAssumptionLimit() {
+        CallTarget root = createCallTarget(CacheAssumptionTestFactory.getInstance());
+        assertEquals("do1", root.call(42));
+        assertEquals("do1", root.call(43));
+        assertEquals("do1", root.call(44));
+        assertEquals("do2", root.call(45));
+        assertEquals("do1", root.call(43));
+        assertEquals("do1", root.call(44));
+    }
+
+    @NodeChild
+    @SuppressWarnings("unused")
+    static class CacheAssumptionTest extends ValueNode {
+
+        private final Map<Integer, Assumption> assumptions = new HashMap<>();
+
+        @Specialization(guards = "value == cachedValue", assumptions = "getAssumption(cachedValue)")
+        static String do1(int value, @Cached("value") int cachedValue) {
+            return "do1";
+        }
+
+        @Specialization
+        static String do2(int value) {
+            return "do2";
+        }
+
+        Assumption getAssumption(int value) {
+            Assumption assumption = assumptions.get(value);
+            if (assumption == null) {
+                assumption = Truffle.getRuntime().createAssumption();
+                assumptions.put(value, assumption);
+            }
+            return assumption;
+        }
+    }
+
+    @Test
+    public void testAssumptionArrays() {
+        CallTarget root = createCallTarget(AssumptionArrayTestFactory.getInstance());
+        AssumptionArrayTest node = getNode(root);
+
+        Assumption a1 = Truffle.getRuntime().createAssumption();
+        Assumption a2 = Truffle.getRuntime().createAssumption();
+
+        node.assumptions = new Assumption[]{a1, a2};
+
+        assertEquals("do1", root.call(42));
+
+        a2.invalidate();
+
+        assertEquals("do2", root.call(42));
+    }
+
+    @NodeChild
+    @SuppressWarnings("unused")
+    static class AssumptionArrayTest extends ValueNode {
+
+        Assumption[] assumptions;
+
+        @Specialization(assumptions = "assumptions")
+        static String do1(int value) {
+            return "do1";
+        }
+
+        @Specialization
+        static String do2(int value) {
+            return "do2";
+        }
+
+    }
+
+    @NodeChild
+    static class ErrorIncompatibleReturnType extends ValueNode {
+        @ExpectError("Incompatible return type int. Assumptions must be assignable to Assumption or Assumption[].")
+        @Specialization(assumptions = "3")
+        static int do1(int value) {
+            return value;
+        }
+    }
+
+    @NodeChild
+    static class ErrorBoundDynamicValue extends ValueNode {
+
+        @ExpectError("Assumption expressions must not bind dynamic parameter values.")
+        @Specialization(assumptions = "createAssumption(value)")
+        static int do1(int value) {
+            return value;
+        }
+
+        Assumption createAssumption(int value) {
+            return Truffle.getRuntime().createAssumption(String.valueOf(value));
+        }
     }
 
 }

@@ -142,7 +142,6 @@ public class ContainsTest {
             return a > 0;
         }
 
-        @Implies("isGreaterZero(a)")
         static boolean isOne(int a) {
             return a == 1;
         }
@@ -190,7 +189,6 @@ public class ContainsTest {
     @NodeChild("a")
     abstract static class Contains4 extends ValueNode {
 
-        @Implies("isGreaterEqualZero")
         static boolean isOne(int a) {
             return a == 1;
         }
@@ -433,7 +431,6 @@ public class ContainsTest {
 
     abstract static class ContainsGuard5 extends ValueNode {
 
-        @Implies("g2")
         boolean g1() {
             return true;
         }
@@ -455,7 +452,6 @@ public class ContainsTest {
 
     abstract static class ContainsGuard6 extends ValueNode {
 
-        @Implies("!g2")
         boolean g1() {
             return true;
         }
@@ -491,48 +487,6 @@ public class ContainsTest {
         }
 
         @Specialization(guards = "g2()", contains = "f0")
-        Object f1() {
-            return null;
-        }
-    }
-
-    @NodeAssumptions("a1")
-    abstract static class ContainsAssumption1 extends ValueNode {
-
-        @Specialization(assumptions = "a1")
-        Object f0() {
-            return null;
-        }
-
-        @Specialization(contains = "f0")
-        Object f1() {
-            return null;
-        }
-    }
-
-    @NodeAssumptions({"a1", "a2"})
-    abstract static class ContainsAssumption4 extends ValueNode {
-
-        @Specialization(assumptions = {"a1", "a2"})
-        Object f0() {
-            return null;
-        }
-
-        @Specialization(contains = "f0", assumptions = "a1")
-        Object f1() {
-            return null;
-        }
-    }
-
-    @NodeAssumptions({"a1", "a2"})
-    abstract static class ContainsAssumption5 extends ValueNode {
-
-        @Specialization(assumptions = {"a2", "a1"})
-        Object f0() {
-            return null;
-        }
-
-        @Specialization(contains = "f0", assumptions = "a1")
         Object f1() {
             return null;
         }

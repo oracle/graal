@@ -25,6 +25,7 @@
 package com.oracle.truffle.api.dsl.internal;
 
 import java.lang.reflect.*;
+import java.util.*;
 import java.util.concurrent.*;
 
 import com.oracle.truffle.api.*;
@@ -165,10 +166,43 @@ public abstract class SpecializationNode extends Node {
         return node;
     }
 
+    protected final Object removeThis(final CharSequence reason, Frame frame) {
+        return removeThisImpl(reason).acceptAndExecute(frame);
+    }
+
+    protected final Object removeThis(final CharSequence reason, Frame frame, Object o1) {
+        return removeThisImpl(reason).acceptAndExecute(frame, o1);
+    }
+
+    protected final Object removeThis(final CharSequence reason, Frame frame, Object o1, Object o2) {
+        return removeThisImpl(reason).acceptAndExecute(frame, o1, o2);
+    }
+
+    protected final Object removeThis(final CharSequence reason, Frame frame, Object o1, Object o2, Object o3) {
+        return removeThisImpl(reason).acceptAndExecute(frame, o1, o2, o3);
+    }
+
+    protected final Object removeThis(final CharSequence reason, Frame frame, Object o1, Object o2, Object o3, Object o4) {
+        return removeThisImpl(reason).acceptAndExecute(frame, o1, o2, o3, o4);
+    }
+
+    protected final Object removeThis(final CharSequence reason, Frame frame, Object o1, Object o2, Object o3, Object o4, Object o5) {
+        return removeThisImpl(reason).acceptAndExecute(frame, o1, o2, o3, o4, o5);
+    }
+
+    protected final Object removeThis(final CharSequence reason, Frame frame, Object... args) {
+        return removeThisImpl(reason).acceptAndExecute(frame, args);
+    }
+
+    private SpecializationNode removeThisImpl(final CharSequence reason) {
+        this.replace(this.next, reason);
+        return findEnd().findStart();
+    }
+
     protected final SpecializationNode removeSame(final CharSequence reason) {
         return atomic(new Callable<SpecializationNode>() {
             public SpecializationNode call() throws Exception {
-                return removeImpl(SpecializationNode.this, reason);
+                return removeSameImpl(SpecializationNode.this, reason);
             }
         });
     }
@@ -192,7 +226,7 @@ public abstract class SpecializationNode extends Node {
         return findStart().getParent();
     }
 
-    private SpecializationNode removeImpl(SpecializationNode toRemove, CharSequence reason) {
+    private SpecializationNode removeSameImpl(SpecializationNode toRemove, CharSequence reason) {
         SpecializationNode start = findStart();
         SpecializationNode current = start;
         while (current != null) {
@@ -470,7 +504,7 @@ public abstract class SpecializationNode extends Node {
 
         appendFields(b, clazz);
         if (next != null) {
-            b.append(" -> ").append(next.toString());
+            b.append("\n -> ").append(next.toString());
         }
         return b.toString();
     }
@@ -481,25 +515,69 @@ public abstract class SpecializationNode extends Node {
             return;
         }
         b.append("(");
+        String sep = "";
         for (Field field : fields) {
             if (Modifier.isStatic(field.getModifiers())) {
                 continue;
             }
+            b.append(sep);
             String name = field.getName();
             if (name.equals("root")) {
                 continue;
             }
             b.append(field.getName());
+            b.append(" = ");
             try {
                 field.setAccessible(true);
-                b.append(field.get(this));
+                Object value = field.get(this);
+                if (value instanceof Object[]) {
+                    b.append(Arrays.toString((Object[]) field.get(this)));
+                } else {
+                    b.append(field.get(this));
+                }
             } catch (IllegalArgumentException e) {
                 b.append(e.toString());
             } catch (IllegalAccessException e) {
                 b.append(e.toString());
             }
+            sep = ", ";
         }
         b.append(")");
+    }
+
+    // utilities for generated code
+    protected static void check(Assumption assumption) throws InvalidAssumptionException {
+        if (assumption != null) {
+            assumption.check();
+        }
+    }
+
+    @ExplodeLoop
+    protected static void check(Assumption[] assumptions) throws InvalidAssumptionException {
+        if (assumptions != null) {
+            CompilerAsserts.compilationConstant(assumptions.length);
+            for (Assumption assumption : assumptions) {
+                check(assumption);
+            }
+        }
+    }
+
+    protected static boolean isValid(Assumption assumption) {
+        if (assumption != null) {
+            return assumption.isValid();
+        }
+        return true;
+    }
+
+    protected static boolean isValid(Assumption[] assumptions) {
+        if (assumptions != null) {
+            for (Assumption assumption : assumptions) {
+                if (!isValid(assumption)) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
 }

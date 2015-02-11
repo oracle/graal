@@ -28,9 +28,6 @@ import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.dsl.test.SpecializationGroupingTestFactory.TestElseConnectionBug1Factory;
 import com.oracle.truffle.api.dsl.test.SpecializationGroupingTestFactory.TestElseConnectionBug2Factory;
-import com.oracle.truffle.api.dsl.test.SpecializationGroupingTestFactory.TestGroupingFactory;
-import com.oracle.truffle.api.dsl.test.TypeSystemTest.SimpleTypes;
-import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
@@ -41,119 +38,6 @@ import com.oracle.truffle.api.nodes.*;
  * generic case.
  */
 public class SpecializationGroupingTest {
-
-    @Test
-    public void testGrouping() {
-        MockAssumption a1 = new MockAssumption(true);
-        MockAssumption a3 = new MockAssumption(true);
-
-        TestRootNode<TestGrouping> root = TestHelper.createRoot(TestGroupingFactory.getInstance(), a1, a3);
-
-        SimpleTypes.intCast = 0;
-        SimpleTypes.intCheck = 0;
-        TestGrouping.true1 = 0;
-        TestGrouping.false1 = 0;
-        TestGrouping.true2 = 0;
-        TestGrouping.false2 = 0;
-        TestGrouping.true3 = 0;
-
-        Assert.assertEquals(42, TestHelper.executeWith(root, 21, 21));
-        Assert.assertEquals(5, TestGrouping.true1);
-        Assert.assertEquals(0, TestGrouping.false1);
-        Assert.assertEquals(5, TestGrouping.true2);
-        Assert.assertEquals(5, TestGrouping.false2);
-        Assert.assertEquals(5, TestGrouping.true3);
-        Assert.assertEquals(10, SimpleTypes.intCheck);
-        Assert.assertEquals(8, SimpleTypes.intCast);
-        Assert.assertEquals(4, a1.checked);
-        Assert.assertEquals(4, a3.checked);
-
-        Assert.assertEquals(42, TestHelper.executeWith(root, 21, 21));
-        Assert.assertEquals(6, TestGrouping.true1);
-        Assert.assertEquals(0, TestGrouping.false1);
-        Assert.assertEquals(6, TestGrouping.true2);
-        Assert.assertEquals(6, TestGrouping.false2);
-        Assert.assertEquals(6, TestGrouping.true3);
-
-        Assert.assertEquals(5, a1.checked);
-        Assert.assertEquals(5, a3.checked);
-        Assert.assertEquals(10, SimpleTypes.intCheck);
-        Assert.assertEquals(8, SimpleTypes.intCast);
-
-    }
-
-    @SuppressWarnings("unused")
-    @NodeChildren({@NodeChild, @NodeChild})
-    @NodeAssumptions({"a1", "a3"})
-    public abstract static class TestGrouping extends ValueNode {
-
-        private static int true1;
-        private static int false1;
-        private static int true2;
-        private static int false2;
-        private static int true3;
-
-        protected boolean true1(int value) {
-            true1++;
-            return true;
-        }
-
-        protected boolean false1(int value, int value2) {
-            false1++;
-            return false;
-        }
-
-        protected boolean true2(int value) {
-            true2++;
-            return true;
-        }
-
-        protected boolean false2(int value) {
-            false2++;
-            return false;
-        }
-
-        protected boolean true3(int value) {
-            true3++;
-            return true;
-        }
-
-        @Specialization
-        public int fail(int value1, String value2) {
-            throw new AssertionError();
-        }
-
-        @Specialization(guards = {"true1(value1)", "true2(value1)", "!false2(value1)", "true3(value1)"}, assumptions = {"a1", "a3"}, rewriteOn = RuntimeException.class)
-        public int throwRewrite(int value1, int value2) {
-            throw new RuntimeException();
-        }
-
-        @Specialization(guards = {"true1(value1)", "true2(value1)", "!false2(value1)", "true3(value1)"}, contains = "throwRewrite", assumptions = {"a1", "a3"})
-        public int success(int value1, int value2) {
-            return value1 + value2;
-        }
-
-        @Specialization(guards = {"true1(value1)", "true2(value1)", "!false2(value1)", "!true3(value1)"}, assumptions = {"a1", "a3"})
-        public int fail5(int value1, int value2) {
-            throw new AssertionError();
-        }
-
-        @Specialization(guards = {"true1(value1)", "true2(value1)", "false2(value1)"}, assumptions = {"a1", "a3"})
-        public int fail4(int value1, int value2) {
-            throw new AssertionError();
-        }
-
-        @Specialization(guards = {"true1(value1)", "true2(value1)"}, assumptions = {"a1", "a3"})
-        public int fail2break(int value1, int value2) {
-            throw new AssertionError();
-        }
-
-        @Specialization(guards = {"true1(value1)", "false1(value1, value2)"})
-        public int fail1(int value1, int value2) {
-            throw new AssertionError();
-        }
-
-    }
 
     @Test
     public void testElseConnectionBug1() {
@@ -230,38 +114,6 @@ public class SpecializationGroupingTest {
         boolean guard1(int value) {
             return false;
         }
-    }
-
-    private static class MockAssumption implements Assumption {
-
-        int checked;
-
-        private final boolean valid;
-
-        public MockAssumption(boolean valid) {
-            this.valid = valid;
-        }
-
-        public void check() throws InvalidAssumptionException {
-            checked++;
-            if (!valid) {
-                throw new InvalidAssumptionException();
-            }
-        }
-
-        public boolean isValid() {
-            checked++;
-            return valid;
-        }
-
-        public void invalidate() {
-            throw new UnsupportedOperationException();
-        }
-
-        public String getName() {
-            throw new UnsupportedOperationException();
-        }
-
     }
 
 }

@@ -33,7 +33,6 @@ import com.oracle.truffle.dsl.processor.model.TemplateMethod.TypeSignature;
  */
 public final class SpecializationGroup {
 
-    private final List<String> assumptions;
     private final List<TypeGuard> typeGuards;
     private final List<GuardExpression> guards;
 
@@ -45,12 +44,10 @@ public final class SpecializationGroup {
 
     private SpecializationGroup(SpecializationData data) {
         this.node = data.getNode();
-        this.assumptions = new ArrayList<>();
         this.typeGuards = new ArrayList<>();
         this.guards = new ArrayList<>();
         this.specialization = data;
 
-        this.assumptions.addAll(data.getAssumptions());
         TypeSignature sig = data.getTypeSignature();
         for (int i = 1; i < sig.size(); i++) {
             typeGuards.add(new TypeGuard(sig.get(i), i - 1));
@@ -58,9 +55,8 @@ public final class SpecializationGroup {
         this.guards.addAll(data.getGuards());
     }
 
-    public SpecializationGroup(List<SpecializationGroup> children, List<String> assumptionMatches, List<TypeGuard> typeGuardsMatches, List<GuardExpression> guardMatches) {
+    public SpecializationGroup(List<SpecializationGroup> children, List<TypeGuard> typeGuardsMatches, List<GuardExpression> guardMatches) {
         assert !children.isEmpty() : "children must not be empty";
-        this.assumptions = assumptionMatches;
         this.typeGuards = typeGuardsMatches;
         this.guards = guardMatches;
         this.node = children.get(0).node;
@@ -78,7 +74,7 @@ public final class SpecializationGroup {
     }
 
     public List<GuardExpression> findElseConnectableGuards() {
-        if (!getTypeGuards().isEmpty() || !getAssumptions().isEmpty()) {
+        if (!getTypeGuards().isEmpty()) {
             return Collections.emptyList();
         }
 
@@ -133,10 +129,6 @@ public final class SpecializationGroup {
         return parent;
     }
 
-    public List<String> getAssumptions() {
-        return assumptions;
-    }
-
     public List<TypeGuard> getTypeGuards() {
         return typeGuards;
     }
@@ -161,22 +153,11 @@ public final class SpecializationGroup {
             return null;
         }
 
-        List<String> assumptionMatches = new ArrayList<>();
         List<TypeGuard> typeGuardsMatches = new ArrayList<>();
         List<GuardExpression> guardMatches = new ArrayList<>();
 
         SpecializationGroup first = groups.get(0);
         List<SpecializationGroup> others = groups.subList(1, groups.size());
-
-        outer: for (String assumption : first.assumptions) {
-            for (SpecializationGroup other : others) {
-                if (!other.assumptions.contains(assumption)) {
-                    // assumptions can be combined unordered
-                    continue outer;
-                }
-            }
-            assumptionMatches.add(assumption);
-        }
 
         outer: for (TypeGuard typeGuard : first.typeGuards) {
             for (SpecializationGroup other : others) {
@@ -207,18 +188,17 @@ public final class SpecializationGroup {
             // TODO we need to be smarter here with bound parameters.
         }
 
-        if (assumptionMatches.isEmpty() && typeGuardsMatches.isEmpty() && guardMatches.isEmpty()) {
+        if (typeGuardsMatches.isEmpty() && guardMatches.isEmpty()) {
             return null;
         }
 
         for (SpecializationGroup group : groups) {
-            group.assumptions.removeAll(assumptionMatches);
             group.typeGuards.removeAll(typeGuardsMatches);
             group.guards.removeAll(guardMatches);
         }
 
         List<SpecializationGroup> newChildren = new ArrayList<>(groups);
-        return new SpecializationGroup(newChildren, assumptionMatches, typeGuardsMatches, guardMatches);
+        return new SpecializationGroup(newChildren, typeGuardsMatches, guardMatches);
     }
 
     public static SpecializationGroup create(SpecializationData specialization) {
@@ -230,12 +210,12 @@ public final class SpecializationGroup {
         for (SpecializationData specialization : specializations) {
             groups.add(new SpecializationGroup(specialization));
         }
-        return new SpecializationGroup(createCombinationalGroups(groups), Collections.<String> emptyList(), Collections.<TypeGuard> emptyList(), Collections.<GuardExpression> emptyList());
+        return new SpecializationGroup(createCombinationalGroups(groups), Collections.<TypeGuard> emptyList(), Collections.<GuardExpression> emptyList());
     }
 
     @Override
     public String toString() {
-        return "SpecializationGroup [assumptions=" + assumptions + ", typeGuards=" + typeGuards + ", guards=" + guards + "]";
+        return "SpecializationGroup [typeGuards=" + typeGuards + ", guards=" + guards + "]";
     }
 
     private static List<SpecializationGroup> createCombinationalGroups(List<SpecializationGroup> groups) {

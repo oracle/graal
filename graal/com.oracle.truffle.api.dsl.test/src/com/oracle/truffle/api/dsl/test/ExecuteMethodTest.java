@@ -319,7 +319,6 @@ public class ExecuteMethodTest {
 
     @TypeSystemReference(ExecuteMethodTypes.class)
     @NodeChild(value = "a", type = ChildNoFrame.class)
-    @ExpectError("Invalid inconsistent frame types [MaterializedFrame, void] found for the declared execute methods.%")
     abstract static class ExecuteWithFrameError5 extends Node {
 
         abstract Object execute();
