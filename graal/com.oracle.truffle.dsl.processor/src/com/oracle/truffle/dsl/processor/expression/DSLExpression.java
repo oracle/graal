@@ -233,10 +233,13 @@ public abstract class DSLExpression {
 
         @Override
         public TypeMirror getResolvedType() {
+            if (resolvedMethod == null) {
+                return null;
+            }
             if (resolvedMethod.getKind() == ElementKind.CONSTRUCTOR) {
                 return resolvedMethod.getEnclosingElement().asType();
             } else {
-                return resolvedMethod != null ? resolvedMethod.getReturnType() : null;
+                return resolvedMethod.getReturnType();
             }
         }
 
