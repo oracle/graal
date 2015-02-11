@@ -23,10 +23,10 @@
 package com.oracle.graal.lir.phases;
 
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.phases.LowLevelLowTierPhase.*;
+import com.oracle.graal.lir.phases.LIRLowTierPhase.*;
 import com.oracle.graal.options.*;
 
-public class LIRLowTier extends LIRPhaseSuite<LowLevelLowTierContext> {
+public class LIRLowTier extends LIRPhaseSuite<LIRLowTierContext> {
     public static class Options {
         // @formatter:off
         @Option(help = "", type = OptionType.Debug)

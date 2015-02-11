@@ -47,7 +47,7 @@ import com.oracle.graal.options.*;
  * a constant, which is potentially scheduled into a block with high probability, with one or more
  * definitions in blocks with a lower probability.
  */
-public final class ConstantLoadOptimization extends LowLevelHighTierPhase {
+public final class ConstantLoadOptimization extends LIRHighTierPhase {
 
     public static class Options {
         // @formatter:off

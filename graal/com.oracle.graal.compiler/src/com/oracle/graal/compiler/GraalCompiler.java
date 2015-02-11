@@ -45,9 +45,9 @@ import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.phases.*;
-import com.oracle.graal.lir.phases.LowLevelHighTierPhase.LowLevelHighTierContext;
-import com.oracle.graal.lir.phases.LowLevelLowTierPhase.LowLevelLowTierContext;
-import com.oracle.graal.lir.phases.LowLevelMidTierPhase.LowLevelMidTierContext;
+import com.oracle.graal.lir.phases.LIRHighTierPhase.LIRHighTierContext;
+import com.oracle.graal.lir.phases.LIRLowTierPhase.LIRLowTierContext;
+import com.oracle.graal.lir.phases.LIRMidTierPhase.LIRMidTierContext;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.spi.*;
@@ -354,13 +354,13 @@ public class GraalCompiler {
 
     public static <T extends AbstractBlock<T>> LIRGenerationResult emitLowLevel(TargetDescription target, List<T> codeEmittingOrder, List<T> linearScanOrder, LIRGenerationResult lirGenRes,
                     LIRGeneratorTool lirGen, LIRSuites lirSuites) {
-        LowLevelHighTierContext highTierContext = new LowLevelHighTierContext(lirGen);
+        LIRHighTierContext highTierContext = new LIRHighTierContext(lirGen);
         lirSuites.getHighTier().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, highTierContext);
 
-        LowLevelMidTierContext midTierContext = new LowLevelMidTierContext();
+        LIRMidTierContext midTierContext = new LIRMidTierContext();
         lirSuites.getMidTier().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, midTierContext);
 
-        LowLevelLowTierContext lowTierContext = new LowLevelLowTierContext();
+        LIRLowTierContext lowTierContext = new LIRLowTierContext();
         lirSuites.getLowTier().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, lowTierContext);
 
         return lirGenRes;

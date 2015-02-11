@@ -28,16 +28,22 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.lir.gen.*;
 
-public abstract class LowLevelLowTierPhase extends LIRPhase<LowLevelLowTierPhase.LowLevelLowTierContext> {
+public abstract class LIRHighTierPhase extends LIRPhase<LIRHighTierPhase.LIRHighTierContext> {
 
-    public static final class LowLevelLowTierContext {
+    public static final class LIRHighTierContext {
+        private final LIRGeneratorTool lirGen;
+
+        public LIRHighTierContext(LIRGeneratorTool lirGen) {
+            this.lirGen = lirGen;
+        }
+
     }
 
     @Override
-    protected final <B extends AbstractBlock<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, LowLevelLowTierContext context) {
-        run(target, lirGenRes, codeEmittingOrder, linearScanOrder);
+    protected final <B extends AbstractBlock<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, LIRHighTierContext context) {
+        run(target, lirGenRes, codeEmittingOrder, linearScanOrder, context.lirGen);
     }
 
-    protected abstract <B extends AbstractBlock<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder);
+    protected abstract <B extends AbstractBlock<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, LIRGeneratorTool lirGen);
 
 }

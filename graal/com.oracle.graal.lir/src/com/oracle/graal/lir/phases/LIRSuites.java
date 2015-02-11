@@ -25,53 +25,53 @@ package com.oracle.graal.lir.phases;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.gen.*;
-import com.oracle.graal.lir.phases.LowLevelHighTierPhase.LowLevelHighTierContext;
-import com.oracle.graal.lir.phases.LowLevelLowTierPhase.LowLevelLowTierContext;
-import com.oracle.graal.lir.phases.LowLevelMidTierPhase.LowLevelMidTierContext;
+import com.oracle.graal.lir.phases.LIRHighTierPhase.LIRHighTierContext;
+import com.oracle.graal.lir.phases.LIRLowTierPhase.LIRLowTierContext;
+import com.oracle.graal.lir.phases.LIRMidTierPhase.LIRMidTierContext;
 
 public class LIRSuites {
 
-    private final LIRPhaseSuite<LowLevelHighTierContext> highTier;
-    private final LIRPhaseSuite<LowLevelMidTierContext> midTier;
-    private final LIRPhaseSuite<LowLevelLowTierContext> lowTier;
+    private final LIRPhaseSuite<LIRHighTierContext> highTier;
+    private final LIRPhaseSuite<LIRMidTierContext> midTier;
+    private final LIRPhaseSuite<LIRLowTierContext> lowTier;
 
-    public LIRSuites(LIRPhaseSuite<LowLevelHighTierContext> highTier, LIRPhaseSuite<LowLevelMidTierContext> midTier, LIRPhaseSuite<LowLevelLowTierContext> lowTier) {
+    public LIRSuites(LIRPhaseSuite<LIRHighTierContext> highTier, LIRPhaseSuite<LIRMidTierContext> midTier, LIRPhaseSuite<LIRLowTierContext> lowTier) {
         this.highTier = highTier;
         this.midTier = midTier;
         this.lowTier = lowTier;
     }
 
     /**
-     * {@link LowLevelHighTierPhase}s are executed between {@link LIR} generation and register
+     * {@link LIRHighTierPhase}s are executed between {@link LIR} generation and register
      * allocation.
      * <p>
-     * {@link LowLevelHighTierPhase Implementers} can create new
+     * {@link LIRHighTierPhase Implementers} can create new
      * {@link LIRGeneratorTool#newVariable variables}, {@link LIRGenerationResult#getFrameMap stack
      * slots} and {@link LIRGenerationResult#getFrameMapBuilder virtual stack slots}.
      */
-    public LIRPhaseSuite<LowLevelHighTierContext> getHighTier() {
+    public LIRPhaseSuite<LIRHighTierContext> getHighTier() {
         return highTier;
     }
 
     /**
-     * {@link LowLevelMidTierPhase}s are responsible for register allocation and translating
+     * {@link LIRMidTierPhase}s are responsible for register allocation and translating
      * {@link VirtualStackSlot}s into {@link StackSlot}s.
      * <p>
      * After the {@link LIRMidTier} there should be no more {@link Variable}s and
      * {@link VirtualStackSlot}s.
      */
-    public LIRPhaseSuite<LowLevelMidTierContext> getMidTier() {
+    public LIRPhaseSuite<LIRMidTierContext> getMidTier() {
         return midTier;
     }
 
     /**
-     * {@link LowLevelLowTierPhase}s are executed after register allocation and before machine code
+     * {@link LIRLowTierPhase}s are executed after register allocation and before machine code
      * generation.
      * <p>
-     * A {@link LowLevelLowTierPhase} must not introduce new {@link Variable}s,
+     * A {@link LIRLowTierPhase} must not introduce new {@link Variable}s,
      * {@link VirtualStackSlot}s or {@link StackSlot}s.
      */
-    public LIRPhaseSuite<LowLevelLowTierContext> getLowTier() {
+    public LIRPhaseSuite<LIRLowTierContext> getLowTier() {
         return lowTier;
     }
 
