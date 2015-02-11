@@ -176,9 +176,9 @@ public abstract class Stub {
                     Suites suites = new Suites(new PhaseSuite<>(), defaultSuites.getMidTier(), defaultSuites.getLowTier());
                     SchedulePhase schedule = emitFrontEnd(providers, target, graph, assumptions, null, providers.getSuites().getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL,
                                     getProfilingInfo(graph), null, suites);
-                    LowLevelSuites lowLevelSuites = providers.getSuites().getDefaultLowLevelSuites();
+                    LIRSuites lirSuites = providers.getSuites().getDefaultLIRSuites();
                     emitBackEnd(graph, Stub.this, incomingCc, getInstalledCodeOwner(), backend, target, compResult, CompilationResultBuilderFactory.Default, assumptions, schedule,
-                                    getRegisterConfig(), lowLevelSuites);
+                                    getRegisterConfig(), lirSuites);
                 } catch (Throwable e) {
                     throw Debug.handle(e);
                 }

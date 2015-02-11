@@ -144,7 +144,7 @@ public class GraalCompiler {
         public final ProfilingInfo profilingInfo;
         public final SpeculationLog speculationLog;
         public final Suites suites;
-        public final LowLevelSuites lowLevelSuites;
+        public final LIRSuites lirSuites;
         public final T compilationResult;
         public final CompilationResultBuilderFactory factory;
 
@@ -162,13 +162,13 @@ public class GraalCompiler {
          * @param profilingInfo
          * @param speculationLog
          * @param suites
-         * @param lowLevelSuites
+         * @param lirSuites
          * @param compilationResult
          * @param factory
          */
         public Request(StructuredGraph graph, CallingConvention cc, ResolvedJavaMethod installedCodeOwner, Providers providers, Backend backend, TargetDescription target,
                         Map<ResolvedJavaMethod, StructuredGraph> cache, PhaseSuite<HighTierContext> graphBuilderSuite, OptimisticOptimizations optimisticOpts, ProfilingInfo profilingInfo,
-                        SpeculationLog speculationLog, Suites suites, LowLevelSuites lowLevelSuites, T compilationResult, CompilationResultBuilderFactory factory) {
+                        SpeculationLog speculationLog, Suites suites, LIRSuites lirSuites, T compilationResult, CompilationResultBuilderFactory factory) {
             this.graph = graph;
             this.cc = cc;
             this.installedCodeOwner = installedCodeOwner;
@@ -181,7 +181,7 @@ public class GraalCompiler {
             this.profilingInfo = profilingInfo;
             this.speculationLog = speculationLog;
             this.suites = suites;
-            this.lowLevelSuites = lowLevelSuites;
+            this.lirSuites = lirSuites;
             this.compilationResult = compilationResult;
             this.factory = factory;
         }
@@ -207,8 +207,8 @@ public class GraalCompiler {
      */
     public static <T extends CompilationResult> T compileGraph(StructuredGraph graph, CallingConvention cc, ResolvedJavaMethod installedCodeOwner, Providers providers, Backend backend,
                     TargetDescription target, Map<ResolvedJavaMethod, StructuredGraph> cache, PhaseSuite<HighTierContext> graphBuilderSuite, OptimisticOptimizations optimisticOpts,
-                    ProfilingInfo profilingInfo, SpeculationLog speculationLog, Suites suites, LowLevelSuites lowLevelSuites, T compilationResult, CompilationResultBuilderFactory factory) {
-        return compile(new Request<>(graph, cc, installedCodeOwner, providers, backend, target, cache, graphBuilderSuite, optimisticOpts, profilingInfo, speculationLog, suites, lowLevelSuites,
+                    ProfilingInfo profilingInfo, SpeculationLog speculationLog, Suites suites, LIRSuites lirSuites, T compilationResult, CompilationResultBuilderFactory factory) {
+        return compile(new Request<>(graph, cc, installedCodeOwner, providers, backend, target, cache, graphBuilderSuite, optimisticOpts, profilingInfo, speculationLog, suites, lirSuites,
                         compilationResult, factory));
     }
 
@@ -222,7 +222,7 @@ public class GraalCompiler {
         try (Scope s0 = Debug.scope("GraalCompiler", r.graph, r.providers.getCodeCache())) {
             Assumptions assumptions = new Assumptions(OptAssumptions.getValue());
             SchedulePhase schedule = emitFrontEnd(r.providers, r.target, r.graph, assumptions, r.cache, r.graphBuilderSuite, r.optimisticOpts, r.profilingInfo, r.speculationLog, r.suites);
-            emitBackEnd(r.graph, null, r.cc, r.installedCodeOwner, r.backend, r.target, r.compilationResult, r.factory, assumptions, schedule, null, r.lowLevelSuites);
+            emitBackEnd(r.graph, null, r.cc, r.installedCodeOwner, r.backend, r.target, r.compilationResult, r.factory, assumptions, schedule, null, r.lirSuites);
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
@@ -277,10 +277,10 @@ public class GraalCompiler {
 
     public static <T extends CompilationResult> void emitBackEnd(StructuredGraph graph, Object stub, CallingConvention cc, ResolvedJavaMethod installedCodeOwner, Backend backend,
                     TargetDescription target, T compilationResult, CompilationResultBuilderFactory factory, Assumptions assumptions, SchedulePhase schedule, RegisterConfig registerConfig,
-                    LowLevelSuites lowLevelSuites) {
+                    LIRSuites lirSuites) {
         try (TimerCloseable a = BackEnd.start()) {
             LIRGenerationResult lirGen = null;
-            lirGen = emitLIR(backend, target, schedule, graph, stub, cc, registerConfig, lowLevelSuites);
+            lirGen = emitLIR(backend, target, schedule, graph, stub, cc, registerConfig, lirSuites);
             try (Scope s = Debug.scope("CodeGen", lirGen, lirGen.getLIR())) {
                 emitCode(backend, assumptions, lirGen, compilationResult, installedCodeOwner, factory);
             } catch (Throwable e) {
@@ -303,7 +303,7 @@ public class GraalCompiler {
     }
 
     public static LIRGenerationResult emitLIR(Backend backend, TargetDescription target, SchedulePhase schedule, StructuredGraph graph, Object stub, CallingConvention cc,
-                    RegisterConfig registerConfig, LowLevelSuites lowLevelSuites) {
+                    RegisterConfig registerConfig, LIRSuites lirSuites) {
         List<Block> blocks = schedule.getCFG().getBlocks();
         Block startBlock = schedule.getCFG().getStartBlock();
         assert startBlock != null;
@@ -343,7 +343,7 @@ public class GraalCompiler {
             }
 
             try (Scope s = Debug.scope("LowLevelTier", nodeLirGen)) {
-                return emitLowLevel(target, codeEmittingOrder, linearScanOrder, lirGenRes, lirGen, lowLevelSuites);
+                return emitLowLevel(target, codeEmittingOrder, linearScanOrder, lirGenRes, lirGen, lirSuites);
             } catch (Throwable e) {
                 throw Debug.handle(e);
             }
@@ -353,15 +353,15 @@ public class GraalCompiler {
     }
 
     public static <T extends AbstractBlock<T>> LIRGenerationResult emitLowLevel(TargetDescription target, List<T> codeEmittingOrder, List<T> linearScanOrder, LIRGenerationResult lirGenRes,
-                    LIRGeneratorTool lirGen, LowLevelSuites lowLevelSuites) {
+                    LIRGeneratorTool lirGen, LIRSuites lirSuites) {
         LowLevelHighTierContext highTierContext = new LowLevelHighTierContext(lirGen);
-        lowLevelSuites.getHighTier().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, highTierContext);
+        lirSuites.getHighTier().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, highTierContext);
 
         LowLevelMidTierContext midTierContext = new LowLevelMidTierContext();
-        lowLevelSuites.getMidTier().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, midTierContext);
+        lirSuites.getMidTier().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, midTierContext);
 
         LowLevelLowTierContext lowTierContext = new LowLevelLowTierContext();
-        lowLevelSuites.getLowTier().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, lowTierContext);
+        lirSuites.getLowTier().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, lowTierContext);
 
         return lirGenRes;
     }

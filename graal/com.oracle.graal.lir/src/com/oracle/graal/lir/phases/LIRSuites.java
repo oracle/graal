@@ -29,13 +29,13 @@ import com.oracle.graal.lir.phases.LowLevelHighTierPhase.LowLevelHighTierContext
 import com.oracle.graal.lir.phases.LowLevelLowTierPhase.LowLevelLowTierContext;
 import com.oracle.graal.lir.phases.LowLevelMidTierPhase.LowLevelMidTierContext;
 
-public class LowLevelSuites {
+public class LIRSuites {
 
     private final LowLevelPhaseSuite<LowLevelHighTierContext> highTier;
     private final LowLevelPhaseSuite<LowLevelMidTierContext> midTier;
     private final LowLevelPhaseSuite<LowLevelLowTierContext> lowTier;
 
-    public LowLevelSuites(LowLevelPhaseSuite<LowLevelHighTierContext> highTier, LowLevelPhaseSuite<LowLevelMidTierContext> midTier, LowLevelPhaseSuite<LowLevelLowTierContext> lowTier) {
+    public LIRSuites(LowLevelPhaseSuite<LowLevelHighTierContext> highTier, LowLevelPhaseSuite<LowLevelMidTierContext> midTier, LowLevelPhaseSuite<LowLevelLowTierContext> lowTier) {
         this.highTier = highTier;
         this.midTier = midTier;
         this.lowTier = lowTier;

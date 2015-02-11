@@ -97,7 +97,7 @@ public class InvokeGraal {
             /*
              * The low-level phases that are applied to the low-level representation.
              */
-            LowLevelSuites lowLevelSuites = backend.getSuites().createLowLevelSuites();
+            LIRSuites lirSuites = backend.getSuites().createLIRSuites();
 
             /*
              * The calling convention for the machine code. You should have a very good reason
@@ -123,7 +123,7 @@ public class InvokeGraal {
             SpeculationLog speculationLog = null;
 
             /* Invoke the whole Graal compilation pipeline. */
-            GraalCompiler.compileGraph(graph, callingConvention, method, providers, backend, target, cache, graphBuilderSuite, optimisticOpts, profilingInfo, speculationLog, suites, lowLevelSuites,
+            GraalCompiler.compileGraph(graph, callingConvention, method, providers, backend, target, cache, graphBuilderSuite, optimisticOpts, profilingInfo, speculationLog, suites, lirSuites,
                             compilationResult, factory);
 
             /*

@@ -139,8 +139,8 @@ public class CompilationTask {
         return providers.getSuites().getDefaultSuites();
     }
 
-    protected LowLevelSuites getLowLevelSuites(HotSpotProviders providers) {
-        return providers.getSuites().getDefaultLowLevelSuites();
+    protected LIRSuites getLIRSuites(HotSpotProviders providers) {
+        return providers.getSuites().getDefaultLIRSuites();
     }
 
     protected PhaseSuite<HighTierContext> getGraphBuilderSuite(HotSpotProviders providers) {
@@ -228,7 +228,7 @@ public class CompilationTask {
                         cc = new CallingConvention(cc.getStackSize(), cc.getReturn(), tmp.getArgument(0));
                     }
                     Suites suites = getSuites(providers);
-                    LowLevelSuites lowLevelSuites = getLowLevelSuites(providers);
+                    LIRSuites lirSuites = getLIRSuites(providers);
                     ProfilingInfo profilingInfo = getProfilingInfo();
                     OptimisticOptimizations optimisticOpts = getOptimisticOpts(profilingInfo);
                     if (isOSR) {
@@ -237,7 +237,7 @@ public class CompilationTask {
                         optimisticOpts.remove(Optimization.RemoveNeverExecutedCode);
                     }
                     result = compileGraph(graph, cc, method, providers, backend, backend.getTarget(), graphCache, getGraphBuilderSuite(providers), optimisticOpts, profilingInfo,
-                                    method.getSpeculationLog(), suites, lowLevelSuites, new CompilationResult(), CompilationResultBuilderFactory.Default);
+                                    method.getSpeculationLog(), suites, lirSuites, new CompilationResult(), CompilationResultBuilderFactory.Default);
                 }
                 result.setId(getId());
                 result.setEntryBCI(entryBCI);

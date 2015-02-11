@@ -90,7 +90,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     private final Providers providers;
     private final Backend backend;
     private final DerivedOptionValue<Suites> suites;
-    private final DerivedOptionValue<LowLevelSuites> lowLevelSuites;
+    private final DerivedOptionValue<LIRSuites> lirSuites;
 
     /**
      * Can be overridden by unit tests to verify properties of the graph.
@@ -166,8 +166,8 @@ public abstract class GraalCompilerTest extends GraalTest {
         return ret;
     }
 
-    protected LowLevelSuites createLowLevelSuites() {
-        LowLevelSuites ret = backend.getSuites().createLowLevelSuites();
+    protected LIRSuites createLIRSuites() {
+        LIRSuites ret = backend.getSuites().createLIRSuites();
         return ret;
     }
 
@@ -175,7 +175,7 @@ public abstract class GraalCompilerTest extends GraalTest {
         this.backend = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend();
         this.providers = getBackend().getProviders();
         this.suites = new DerivedOptionValue<>(this::createSuites);
-        this.lowLevelSuites = new DerivedOptionValue<>(this::createLowLevelSuites);
+        this.lirSuites = new DerivedOptionValue<>(this::createLIRSuites);
         installSubstitutions();
     }
 
@@ -196,7 +196,7 @@ public abstract class GraalCompilerTest extends GraalTest {
         }
         this.providers = backend.getProviders();
         this.suites = new DerivedOptionValue<>(this::createSuites);
-        this.lowLevelSuites = new DerivedOptionValue<>(this::createLowLevelSuites);
+        this.lirSuites = new DerivedOptionValue<>(this::createLIRSuites);
         installSubstitutions();
     }
 
@@ -364,8 +364,8 @@ public abstract class GraalCompilerTest extends GraalTest {
         return suites.getValue();
     }
 
-    protected LowLevelSuites getLowLevelSuites() {
-        return lowLevelSuites.getValue();
+    protected LIRSuites getLIRSuites() {
+        return lirSuites.getValue();
     }
 
     protected Providers getProviders() {
@@ -754,7 +754,7 @@ public abstract class GraalCompilerTest extends GraalTest {
         lastCompiledGraph = graphToCompile;
         CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graphToCompile.method(), false);
         Request<CompilationResult> request = new Request<>(graphToCompile, cc, installedCodeOwner, getProviders(), getBackend(), getCodeCache().getTarget(), null, getDefaultGraphBuilderSuite(),
-                        OptimisticOptimizations.ALL, getProfilingInfo(graphToCompile), getSpeculationLog(), getSuites(), getLowLevelSuites(), new CompilationResult(),
+                        OptimisticOptimizations.ALL, getProfilingInfo(graphToCompile), getSpeculationLog(), getSuites(), getLIRSuites(), new CompilationResult(),
                         CompilationResultBuilderFactory.Default);
         return GraalCompiler.compile(request);
     }

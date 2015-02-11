@@ -58,7 +58,7 @@ public abstract class BackendTest extends GraalCompilerTest {
         }
 
         CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graph.method(), false);
-        LIRGenerationResult lirGen = GraalCompiler.emitLIR(getBackend(), getBackend().getTarget(), schedule, graph, null, cc, null, getLowLevelSuites());
+        LIRGenerationResult lirGen = GraalCompiler.emitLIR(getBackend(), getBackend().getTarget(), schedule, graph, null, cc, null, getLIRSuites());
         return lirGen;
     }
 
