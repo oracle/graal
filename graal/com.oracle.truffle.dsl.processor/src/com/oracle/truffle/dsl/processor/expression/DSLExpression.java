@@ -29,6 +29,8 @@ import javax.lang.model.type.*;
 
 public abstract class DSLExpression {
 
+    private TypeMirror resolvedTargetType;
+
     private DSLExpression() {
     }
 
@@ -64,6 +66,14 @@ public abstract class DSLExpression {
 
         });
         return variables;
+    }
+
+    public void setResolvedTargetType(TypeMirror resolvedTargetType) {
+        this.resolvedTargetType = resolvedTargetType;
+    }
+
+    public TypeMirror getResolvedTargetType() {
+        return resolvedTargetType;
     }
 
     public final boolean isVariableBound(VariableElement variableElement) {

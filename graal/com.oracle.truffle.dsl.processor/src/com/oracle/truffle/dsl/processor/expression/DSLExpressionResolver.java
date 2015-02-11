@@ -167,8 +167,10 @@ public class DSLExpressionResolver implements DSLExpressionVisitor {
                     if (!ElementUtils.isAssignable(sourceType, targetType)) {
                         continue outer;
                     }
+                    expression.setResolvedTargetType(targetType);
                     parameterIndex++;
                 }
+
                 call.setResolvedMethod(method);
                 break;
             }

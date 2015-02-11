@@ -119,6 +119,7 @@ public final class Parameter {
 
     @Override
     public String toString() {
-        return variableElement.getSimpleName().toString();
+        return "Parameter [localName=" + localName + ", type=" + getType() + ", variableElement=" + variableElement + "]";
     }
+
 }

@@ -85,6 +85,11 @@ public final class CodeVariableElement extends CodeElement<Element> implements V
     }
 
     @Override
+    public String toString() {
+        return super.toString() + "/* " + ElementUtils.getSimpleName(type) + "*/";
+    }
+
+    @Override
     public ElementKind getKind() {
         if (getEnclosingElement() instanceof ExecutableElement) {
             return ElementKind.PARAMETER;
