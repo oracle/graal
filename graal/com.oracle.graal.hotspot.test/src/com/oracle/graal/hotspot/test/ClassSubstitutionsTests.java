@@ -23,6 +23,7 @@
 
 package com.oracle.graal.hotspot.test;
 
+import static com.oracle.graal.api.code.Assumptions.*;
 import static org.junit.Assert.*;
 
 import org.junit.*;
@@ -43,7 +44,7 @@ public class ClassSubstitutionsTests extends GraalCompilerTest {
 
     protected StructuredGraph test(final String snippet) {
         try (Scope s = Debug.scope("ClassSubstitutionsTest", getMetaAccess().lookupJavaMethod(getMethod(snippet)))) {
-            StructuredGraph graph = parseEager(snippet);
+            StructuredGraph graph = parseEager(snippet, ALLOW_OPTIMISTIC_ASSUMPTIONS);
             compile(graph.method(), graph);
             assertNotInGraph(graph, Invoke.class);
             Debug.dump(graph, snippet);

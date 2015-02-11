@@ -22,9 +22,10 @@
  */
 package com.oracle.graal.compiler.test.ea;
 
+import static com.oracle.graal.api.code.Assumptions.*;
+
 import org.junit.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
@@ -39,7 +40,7 @@ import com.oracle.graal.phases.tiers.*;
 
 /**
  * Tests {@link AbstractNewObjectNode#simplify(com.oracle.graal.graph.spi.SimplifierTool)}.
- * 
+ *
  */
 public class PoorMansEATest extends GraalCompilerTest {
     public static class A {
@@ -59,11 +60,10 @@ public class PoorMansEATest extends GraalCompilerTest {
 
     private void test(final String snippet) {
         try (Scope s = Debug.scope("PoorMansEATest", new DebugDumpScope(snippet))) {
-            StructuredGraph graph = parseEager(snippet);
-            Assumptions assumptions = new Assumptions(false);
-            HighTierContext highTierContext = new HighTierContext(getProviders(), assumptions, null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
+            StructuredGraph graph = parseEager(snippet, DONT_ALLOW_OPTIMISTIC_ASSUMPTIONS);
+            HighTierContext highTierContext = new HighTierContext(getProviders(), null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
             new InliningPhase(new CanonicalizerPhase(true)).apply(graph, highTierContext);
-            PhaseContext context = new PhaseContext(getProviders(), assumptions);
+            PhaseContext context = new PhaseContext(getProviders());
             new LoweringPhase(new CanonicalizerPhase(true), LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
 
             // remove framestates in order to trigger the simplification.

@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.compiler.test.backend;
 
+import static com.oracle.graal.api.code.Assumptions.*;
+
 import java.util.*;
 
 import org.junit.*;
@@ -38,7 +40,7 @@ import com.oracle.graal.nodes.*;
 public class AllocatorTest extends BackendTest {
 
     protected void testAllocation(String snippet, final int expectedRegisters, final int expectedRegRegMoves, final int expectedSpillMoves) {
-        final StructuredGraph graph = parseEager(snippet);
+        final StructuredGraph graph = parseEager(snippet, ALLOW_OPTIMISTIC_ASSUMPTIONS);
         try (Scope s = Debug.scope("AllocatorTest", graph, graph.method(), getCodeCache())) {
             final RegisterStats stats = new RegisterStats(getLIRGenerationResult(graph).getLIR());
             try (Scope s2 = Debug.scope("Assertions", stats.lir)) {

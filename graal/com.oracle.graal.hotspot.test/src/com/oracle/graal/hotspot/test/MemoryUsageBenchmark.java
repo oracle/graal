@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.hotspot.test;
 
+import static com.oracle.graal.api.code.Assumptions.*;
 import static com.oracle.graal.debug.internal.MemUseTrackerImpl.*;
 import static com.oracle.graal.hotspot.CompileTheWorld.*;
 import static com.oracle.graal.hotspot.CompileTheWorld.Options.*;
@@ -164,7 +165,7 @@ public class MemoryUsageBenchmark extends HotSpotGraalCompilerTest {
     private void compileAndTime(String methodName) {
 
         // Parse in eager mode to resolve methods/fields/classes
-        parseEager(methodName);
+        parseEager(methodName, ALLOW_OPTIMISTIC_ASSUMPTIONS);
 
         // Warm up and initialize compiler phases used by this compilation
         for (int i = 0; i < 10; i++) {

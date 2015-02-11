@@ -32,6 +32,7 @@ import java.util.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.ProfilingInfo.TriState;
+import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.bytecode.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
@@ -77,8 +78,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
     @Override
     protected void run(StructuredGraph graph, HighTierContext context) {
-        new Instance(context.getMetaAccess(), context.getStampProvider(), context.getAssumptions(), context.getConstantReflection(), graphBuilderConfig, graphBuilderPlugins,
-                        context.getOptimisticOptimizations()).run(graph);
+        new Instance(context.getMetaAccess(), context.getStampProvider(), null, context.getConstantReflection(), graphBuilderConfig, graphBuilderPlugins, context.getOptimisticOptimizations()).run(graph);
     }
 
     public GraphBuilderConfiguration getGraphBuilderConfig() {
@@ -101,8 +101,8 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
         private final GraphBuilderPlugins graphBuilderPlugins;
         private final OptimisticOptimizations optimisticOpts;
         private final StampProvider stampProvider;
-        private final Assumptions assumptions;
         private final ConstantReflectionProvider constantReflection;
+        private final SnippetReflectionProvider snippetReflectionProvider;
 
         /**
          * Gets the graph being processed by this builder.
@@ -111,21 +111,21 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             return currentGraph;
         }
 
-        public Instance(MetaAccessProvider metaAccess, StampProvider stampProvider, Assumptions assumptions, ConstantReflectionProvider constantReflection,
+        public Instance(MetaAccessProvider metaAccess, StampProvider stampProvider, SnippetReflectionProvider snippetReflectionProvider, ConstantReflectionProvider constantReflection,
                         GraphBuilderConfiguration graphBuilderConfig, GraphBuilderPlugins graphBuilderPlugins, OptimisticOptimizations optimisticOpts) {
             this.graphBuilderConfig = graphBuilderConfig;
             this.optimisticOpts = optimisticOpts;
             this.metaAccess = metaAccess;
             this.stampProvider = stampProvider;
-            this.assumptions = assumptions;
             this.graphBuilderPlugins = graphBuilderPlugins;
             this.constantReflection = constantReflection;
+            this.snippetReflectionProvider = snippetReflectionProvider;
             assert metaAccess != null;
         }
 
-        public Instance(MetaAccessProvider metaAccess, StampProvider stampProvider, Assumptions assumptions, ConstantReflectionProvider constantReflection,
-                        GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts) {
-            this(metaAccess, stampProvider, assumptions, constantReflection, graphBuilderConfig, null, optimisticOpts);
+        public Instance(MetaAccessProvider metaAccess, StampProvider stampProvider, ConstantReflectionProvider constantReflection, GraphBuilderConfiguration graphBuilderConfig,
+                        OptimisticOptimizations optimisticOpts) {
+            this(metaAccess, stampProvider, null, constantReflection, graphBuilderConfig, null, optimisticOpts);
         }
 
         @Override
@@ -296,8 +296,9 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     processBlock(this, returnBlock);
                     processBlock(this, unwindBlock);
 
-                    Debug.dump(currentGraph, "After bytecode parsing");
-
+                    if (Debug.isDumpEnabled()) {
+                        Debug.dump(currentGraph, "Bytecodes parsed: " + method.getDeclaringClass().getUnqualifiedName() + "." + method.getName());
+                    }
                 }
             }
 
@@ -522,7 +523,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             @Override
             protected ValueNode genIntegerSub(Kind kind, ValueNode x, ValueNode y) {
-                return new SubNode(x, y);
+                return SubNode.create(x, y);
             }
 
             @Override
@@ -532,12 +533,12 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             @Override
             protected ValueNode genFloatAdd(Kind kind, ValueNode x, ValueNode y, boolean isStrictFP) {
-                return new AddNode(x, y);
+                return AddNode.create(x, y);
             }
 
             @Override
             protected ValueNode genFloatSub(Kind kind, ValueNode x, ValueNode y, boolean isStrictFP) {
-                return new SubNode(x, y);
+                return SubNode.create(x, y);
             }
 
             @Override
@@ -664,12 +665,12 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             @Override
             protected ValueNode createCheckCast(ResolvedJavaType type, ValueNode object, JavaTypeProfile profileForTypeCheck, boolean forStoreCheck) {
-                return new CheckCastNode(type, object, profileForTypeCheck, forStoreCheck);
+                return CheckCastNode.create(type, object, profileForTypeCheck, forStoreCheck);
             }
 
             @Override
             protected ValueNode createInstanceOf(ResolvedJavaType type, ValueNode object, JavaTypeProfile profileForTypeCheck) {
-                return new InstanceOfNode(type, object, profileForTypeCheck);
+                return InstanceOfNode.create(type, object, profileForTypeCheck);
             }
 
             @Override
@@ -832,7 +833,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 InvokeKind invokeKind = initialInvokeKind;
                 if (initialInvokeKind.isIndirect()) {
                     ResolvedJavaType contextType = this.frameState.method.getDeclaringClass();
-                    ResolvedJavaMethod specialCallTarget = MethodCallTargetNode.findSpecialCallTarget(initialInvokeKind, args[0], initialTargetMethod, assumptions, contextType);
+                    ResolvedJavaMethod specialCallTarget = MethodCallTargetNode.findSpecialCallTarget(initialInvokeKind, args[0], initialTargetMethod, contextType);
                     if (specialCallTarget != null) {
                         invokeKind = InvokeKind.Special;
                         targetMethod = specialCallTarget;
@@ -860,6 +861,12 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
                 if (graphBuilderPlugins != null) {
                     if (tryUsingInvocationPlugin(args, targetMethod, resultType)) {
+                        if (GraalOptions.TraceInlineDuringParsing.getValue()) {
+                            for (int i = 0; i < this.currentDepth; ++i) {
+                                TTY.print(' ');
+                            }
+                            TTY.println("Used invocation plugin for " + targetMethod);
+                        }
                         return;
                     }
                 }
@@ -867,8 +874,20 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 InlineInvokePlugin inlineInvokePlugin = graphBuilderConfig.getInlineInvokePlugin();
                 if (inlineInvokePlugin != null && invokeKind.isDirect() && targetMethod.canBeInlined() && targetMethod.hasBytecodes() &&
                                 inlineInvokePlugin.shouldInlineInvoke(targetMethod, currentDepth)) {
+                    if (GraalOptions.TraceInlineDuringParsing.getValue()) {
+                        int bci = this.bci();
+                        for (int i = 0; i < this.currentDepth; ++i) {
+                            TTY.print(' ');
+                        }
+                        StackTraceElement stackTraceElement = this.method.asStackTraceElement(bci);
+                        String s = String.format("%s (%s:%d)", method.getName(), stackTraceElement.getFileName(), stackTraceElement.getLineNumber());
+                        TTY.print(s);
+                        TTY.println(" inlining call " + targetMethod.getName());
+                    }
                     parseAndInlineCallee(targetMethod, args);
                     return;
+                } else {
+                    // System.out.println("Could not inline invoke " + targetMethod);
                 }
 
                 MethodCallTargetNode callTarget = currentGraph.add(createMethodCallTarget(invokeKind, targetMethod, args, returnType));
@@ -940,6 +959,15 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 if (calleeBeforeUnwindNode != null) {
                     ValueNode calleeUnwindValue = parser.getUnwindValue();
                     assert calleeUnwindValue != null;
+                    if (calleeBeforeUnwindNode instanceof AbstractMergeNode) {
+                        AbstractMergeNode mergeNode = (AbstractMergeNode) calleeBeforeUnwindNode;
+                        HIRFrameStateBuilder dispatchState = frameState.copy();
+                        dispatchState.clearStack();
+                        dispatchState.apush(calleeUnwindValue);
+                        dispatchState.setRethrowException(true);
+                        mergeNode.setStateAfter(dispatchState.create(bci()));
+
+                    }
                     calleeBeforeUnwindNode.setNext(handleException(calleeUnwindValue, bci()));
                 }
             }
@@ -1063,8 +1091,13 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 return ConstantNode.forConstant(constant, metaAccess, currentGraph);
             }
 
+            @SuppressWarnings("unchecked")
             @Override
-            protected ValueNode append(ValueNode v) {
+            public ValueNode append(ValueNode v) {
+                if (v.graph() != null) {
+                    // This node was already appended to the graph.
+                    return v;
+                }
                 if (v instanceof ControlSinkNode) {
                     return append((ControlSinkNode) v);
                 }
@@ -1655,7 +1688,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             }
 
             public Assumptions getAssumptions() {
-                return assumptions;
+                return currentGraph.getAssumptions();
             }
 
             public void push(Kind kind, ValueNode value) {
@@ -1673,6 +1706,10 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             public ConstantReflectionProvider getConstantReflection() {
                 return constantReflection;
+            }
+
+            public SnippetReflectionProvider getSnippetReflection() {
+                return snippetReflectionProvider;
             }
 
         }

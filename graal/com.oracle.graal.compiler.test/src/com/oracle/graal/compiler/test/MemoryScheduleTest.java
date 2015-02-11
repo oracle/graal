@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.compiler.test;
 
+import static com.oracle.graal.api.code.Assumptions.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static org.junit.Assert.*;
 
@@ -29,7 +30,6 @@ import java.util.*;
 
 import org.junit.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.*;
@@ -596,11 +596,10 @@ public class MemoryScheduleTest extends GraphScheduleTest {
     }
 
     private SchedulePhase getFinalSchedule(final String snippet, final TestMode mode, final SchedulingStrategy schedulingStrategy) {
-        final StructuredGraph graph = parseEager(snippet);
+        final StructuredGraph graph = parseEager(snippet, DONT_ALLOW_OPTIMISTIC_ASSUMPTIONS);
         try (Scope d = Debug.scope("FloatingReadTest", graph)) {
             try (OverrideScope s = OptionValue.override(OptScheduleOutOfLoops, schedulingStrategy == SchedulingStrategy.LATEST_OUT_OF_LOOPS, OptImplicitNullChecks, false)) {
-                Assumptions assumptions = new Assumptions(false);
-                HighTierContext context = new HighTierContext(getProviders(), assumptions, null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
+                HighTierContext context = new HighTierContext(getProviders(), null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
                 CanonicalizerPhase canonicalizer = new CanonicalizerPhase(true);
                 canonicalizer.apply(graph, context);
                 if (mode == TestMode.INLINED_WITHOUT_FRAMESTATES) {
@@ -623,7 +622,7 @@ public class MemoryScheduleTest extends GraphScheduleTest {
                 new FloatingReadPhase().apply(graph);
                 new RemoveValueProxyPhase().apply(graph);
 
-                MidTierContext midContext = new MidTierContext(getProviders(), assumptions, getCodeCache().getTarget(), OptimisticOptimizations.ALL, graph.method().getProfilingInfo(), null);
+                MidTierContext midContext = new MidTierContext(getProviders(), getCodeCache().getTarget(), OptimisticOptimizations.ALL, graph.method().getProfilingInfo(), null);
                 new GuardLoweringPhase().apply(graph, midContext);
                 new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.MID_TIER).apply(graph, midContext);
                 new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.LOW_TIER).apply(graph, midContext);

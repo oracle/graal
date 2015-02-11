@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.compiler.test;
 
+import static com.oracle.graal.api.code.Assumptions.*;
+
 import org.junit.*;
 
 import com.oracle.graal.nodes.*;
@@ -112,8 +114,8 @@ public class IntegerEqualsCanonicalizerTest extends GraalCompilerTest {
     }
 
     private StructuredGraph getCanonicalizedGraph(String snippet) {
-        StructuredGraph graph = parseEager(snippet);
-        new CanonicalizerPhase(false).apply(graph, new PhaseContext(getProviders(), null));
+        StructuredGraph graph = parseEager(snippet, ALLOW_OPTIMISTIC_ASSUMPTIONS);
+        new CanonicalizerPhase(false).apply(graph, new PhaseContext(getProviders()));
         for (FrameState state : graph.getNodes(FrameState.class).snapshot()) {
             state.replaceAtUsages(null);
             state.safeDelete();

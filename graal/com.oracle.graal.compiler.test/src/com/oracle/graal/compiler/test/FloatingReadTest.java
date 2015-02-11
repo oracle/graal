@@ -22,9 +22,10 @@
  */
 package com.oracle.graal.compiler.test;
 
+import static com.oracle.graal.api.code.Assumptions.*;
+
 import org.junit.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.*;
@@ -58,8 +59,8 @@ public class FloatingReadTest extends GraphScheduleTest {
     private void test(final String snippet) {
         try (Scope s = Debug.scope("FloatingReadTest", new DebugDumpScope(snippet))) {
 
-            StructuredGraph graph = parseEager(snippet);
-            PhaseContext context = new PhaseContext(getProviders(), new Assumptions(false));
+            StructuredGraph graph = parseEager(snippet, ALLOW_OPTIMISTIC_ASSUMPTIONS);
+            PhaseContext context = new PhaseContext(getProviders());
             new LoweringPhase(new CanonicalizerPhase(true), LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
             new FloatingReadPhase().apply(graph);
 

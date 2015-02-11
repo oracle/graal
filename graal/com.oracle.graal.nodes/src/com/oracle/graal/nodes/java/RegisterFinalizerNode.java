@@ -80,7 +80,7 @@ public class RegisterFinalizerNode extends AbstractStateSplit implements Canonic
         if (!(forValue.stamp() instanceof ObjectStamp)) {
             return this;
         }
-        if (!mayHaveFinalizer(forValue, tool.assumptions())) {
+        if (!mayHaveFinalizer(forValue, graph().getAssumptions())) {
             return null;
         }
 

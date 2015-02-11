@@ -22,12 +22,9 @@
  */
 package com.oracle.graal.graph.spi;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 
 public interface CanonicalizerTool {
-
-    Assumptions assumptions();
 
     MetaAccessProvider getMetaAccess();
 

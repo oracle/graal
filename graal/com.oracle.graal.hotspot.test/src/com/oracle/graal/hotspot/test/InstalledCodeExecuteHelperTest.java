@@ -68,8 +68,8 @@ public class InstalledCodeExecuteHelperTest extends GraalCompilerTest {
     }
 
     @Override
-    protected StructuredGraph parseEager(ResolvedJavaMethod m) {
-        StructuredGraph graph = super.parseEager(m);
+    protected StructuredGraph parseEager(ResolvedJavaMethod m, boolean allowOptimisticAssumptions) {
+        StructuredGraph graph = super.parseEager(m, allowOptimisticAssumptions);
         if (argsToBind != null) {
             Object receiver = isStatic(m.getModifiers()) ? null : this;
             Object[] args = argsWithReceiver(receiver, argsToBind);

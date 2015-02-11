@@ -28,6 +28,7 @@ import java.util.concurrent.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.java.*;
@@ -39,6 +40,7 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.truffle.*;
 import com.oracle.graal.truffle.nodes.*;
+import com.oracle.graal.truffle.nodes.arithmetic.*;
 import com.oracle.graal.truffle.nodes.frame.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
@@ -49,8 +51,33 @@ import com.oracle.truffle.api.frame.*;
 public class TruffleGraphBuilderPlugins {
     public static void registerPlugins(MetaAccessProvider metaAccess, GraphBuilderPlugins plugins) {
 
+        // OptimizedAssumption.class
+        Registration r = new Registration(plugins, metaAccess, OptimizedAssumption.class);
+        r.register1("isValid", Receiver.class, new InvocationPlugin() {
+            public boolean apply(GraphBuilderContext builder, ValueNode arg) {
+                if (arg.isConstant()) {
+                    Constant constant = arg.asConstant();
+                    OptimizedAssumption assumption = builder.getSnippetReflection().asObject(OptimizedAssumption.class, (JavaConstant) constant);
+                    builder.push(Kind.Boolean.getStackKind(), builder.append(ConstantNode.forBoolean(assumption.isValid())));
+                    builder.getAssumptions().record(new AssumptionValidAssumption(assumption));
+                } else {
+                    throw new BailoutException("assumption could not be reduced to a constant");
+                }
+                return true;
+            }
+        });
+
+        // ExactMath.class
+        r = new Registration(plugins, metaAccess, ExactMath.class);
+        r.register2("addExact", Integer.TYPE, Integer.TYPE, new InvocationPlugin() {
+            public boolean apply(GraphBuilderContext builder, ValueNode x, ValueNode y) {
+                builder.push(Kind.Int.getStackKind(), builder.append(new IntegerAddExactNode(x, y)));
+                return true;
+            }
+        });
+
         // CompilerDirectives.class
-        Registration r = new Registration(plugins, metaAccess, CompilerDirectives.class);
+        r = new Registration(plugins, metaAccess, CompilerDirectives.class);
         r.register0("inInterpreter", new InvocationPlugin() {
             public boolean apply(GraphBuilderContext builder) {
                 builder.push(Kind.Boolean.getStackKind(), builder.append(ConstantNode.forBoolean(false)));
@@ -87,7 +114,7 @@ public class TruffleGraphBuilderPlugins {
         });
         r.register2("injectBranchProbability", double.class, boolean.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext builder, ValueNode probability, ValueNode condition) {
-                builder.append(new BranchProbabilityNode(probability, condition));
+                builder.push(Kind.Boolean.getStackKind(), builder.append(new BranchProbabilityNode(probability, condition)));
                 return true;
             }
         });
@@ -134,6 +161,7 @@ public class TruffleGraphBuilderPlugins {
         });
         r.register4("unsafeCast", Object.class, Class.class, boolean.class, boolean.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext builder, ValueNode object, ValueNode clazz, ValueNode condition, ValueNode nonNull) {
+                System.out.println("unsafe cast with cond: " + condition + " clazz: " + clazz + " nonNull: " + nonNull);
                 if (clazz.isConstant() && nonNull.isConstant()) {
                     ConstantReflectionProvider constantReflection = builder.getConstantReflection();
                     ResolvedJavaType javaType = constantReflection.asJavaType(clazz.asConstant());
@@ -141,18 +169,36 @@ public class TruffleGraphBuilderPlugins {
                         builder.push(Kind.Object, object);
                     } else {
                         Stamp piStamp = StampFactory.declaredTrusted(javaType, nonNull.asJavaConstant().asInt() != 0);
-                        ConditionAnchorNode valueAnchorNode = builder.append(new ConditionAnchorNode(CompareNode.createCompareNode(object.graph(), Condition.EQ, condition,
-                                        ConstantNode.forBoolean(true, object.graph()))));
+                        LogicNode compareNode = CompareNode.createCompareNode(object.graph(), Condition.EQ, condition, ConstantNode.forBoolean(true, object.graph()), constantReflection);
+                        boolean skipAnchor = false;
+                        if (compareNode instanceof LogicConstantNode) {
+                            LogicConstantNode logicConstantNode = (LogicConstantNode) compareNode;
+                            if (logicConstantNode.getValue()) {
+                                skipAnchor = true;
+                            }
+                        }
+                        ConditionAnchorNode valueAnchorNode = null;
+                        if (!skipAnchor) {
+                            valueAnchorNode = builder.append(new ConditionAnchorNode(compareNode));
+                        }
                         PiNode piCast = builder.append(new PiNode(object, piStamp, valueAnchorNode));
                         builder.push(Kind.Object, piCast);
                     }
                     return true;
                 }
-                // TODO: should we throw GraalInternalError.shouldNotReachHere() here?
-                return false;
+                throw GraalInternalError.shouldNotReachHere("unsafeCast arguments could not reduce to a constant: " + clazz + ", " + nonNull);
             }
         });
-        for (Kind kind : new Kind[]{Kind.Boolean, Kind.Byte, Kind.Int, Kind.Long, Kind.Float, Kind.Double, Kind.Object}) {
+
+        registerUnsafeLoadStorePlugins(r, Kind.Boolean, Kind.Byte, Kind.Int, Kind.Long, Kind.Float, Kind.Double, Kind.Object);
+
+        // CompilerDirectives.class
+        r = new Registration(plugins, metaAccess, CompilerDirectives.class);
+        registerUnsafeLoadStorePlugins(r, Kind.Boolean, Kind.Byte, Kind.Int, Kind.Short, Kind.Long, Kind.Float, Kind.Double, Kind.Object);
+    }
+
+    protected static void registerUnsafeLoadStorePlugins(Registration r, Kind... kinds) {
+        for (Kind kind : kinds) {
             String kindName = kind.getJavaName();
             kindName = toUpperCase(kindName.charAt(0)) + kindName.substring(1);
             String getName = "unsafeGet" + kindName;
@@ -178,7 +224,7 @@ public class TruffleGraphBuilderPlugins {
                 } else {
                     locationIdentity = ObjectLocationIdentity.create(location.asJavaConstant());
                 }
-                CompareNode compare = builder.append(CompareNode.createCompareNode(Condition.EQ, condition, ConstantNode.forBoolean(true, object.graph())));
+                LogicNode compare = builder.append(CompareNode.createCompareNode(Condition.EQ, condition, ConstantNode.forBoolean(true, object.graph()), builder.getConstantReflection()));
                 builder.push(returnKind.getStackKind(), builder.append(new UnsafeLoadNode(object, offset, returnKind, locationIdentity, compare)));
                 return true;
             }

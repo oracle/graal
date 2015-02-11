@@ -22,9 +22,10 @@
  */
 package com.oracle.graal.compiler.test;
 
+import static com.oracle.graal.api.code.Assumptions.*;
+
 import org.junit.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.common.*;
@@ -87,10 +88,10 @@ public class StraighteningTest extends GraalCompilerTest {
 
     private void test(final String snippet) {
         // No debug scope to reduce console noise for @Test(expected = ...) tests
-        StructuredGraph graph = parseEager(snippet);
+        StructuredGraph graph = parseEager(snippet, ALLOW_OPTIMISTIC_ASSUMPTIONS);
         Debug.dump(graph, "Graph");
-        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders(), new Assumptions(false)));
-        StructuredGraph referenceGraph = parseEager(REFERENCE_SNIPPET);
+        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders()));
+        StructuredGraph referenceGraph = parseEager(REFERENCE_SNIPPET, ALLOW_OPTIMISTIC_ASSUMPTIONS);
         assertEquals(referenceGraph, graph);
     }
 }

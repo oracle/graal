@@ -24,7 +24,6 @@ package com.oracle.graal.phases.common.inlining.info;
 
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.graph.*;
@@ -90,13 +89,13 @@ public class TypeGuardInlineInfo extends AbstractInlineInfo {
     }
 
     @Override
-    public Collection<Node> inline(Providers providers, Assumptions assumptions) {
+    public Collection<Node> inline(Providers providers) {
         createGuard(graph(), providers);
-        return inline(invoke, concrete, inlineableElement, assumptions, false);
+        return inline(invoke, concrete, inlineableElement, false);
     }
 
     @Override
-    public void tryToDevirtualizeInvoke(Providers providers, Assumptions assumptions) {
+    public void tryToDevirtualizeInvoke(Providers providers) {
         createGuard(graph(), providers);
         InliningUtil.replaceInvokeCallTarget(invoke, graph(), InvokeKind.Special, concrete);
     }
@@ -106,7 +105,7 @@ public class TypeGuardInlineInfo extends AbstractInlineInfo {
         LoadHubNode receiverHub = graph.unique(new LoadHubNode(providers.getStampProvider(), nonNullReceiver));
         ConstantNode typeHub = ConstantNode.forConstant(receiverHub.stamp(), type.getObjectHub(), providers.getMetaAccess(), graph);
 
-        CompareNode typeCheck = CompareNode.createCompareNode(graph, Condition.EQ, receiverHub, typeHub);
+        LogicNode typeCheck = CompareNode.createCompareNode(graph, Condition.EQ, receiverHub, typeHub, providers.getConstantReflection());
         FixedGuardNode guard = graph.add(new FixedGuardNode(typeCheck, DeoptimizationReason.TypeCheckedInliningViolated, DeoptimizationAction.InvalidateReprofile));
         assert invoke.predecessor() != null;
 

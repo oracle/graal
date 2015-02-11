@@ -26,7 +26,6 @@ import static com.oracle.graal.compiler.common.GraalOptions.*;
 
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.Graph.Mark;
@@ -118,11 +117,6 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
         @Override
         public GuardingNode createGuard(FixedNode before, LogicNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action) {
             return createGuard(before, condition, deoptReason, action, false);
-        }
-
-        @Override
-        public Assumptions assumptions() {
-            return context.getAssumptions();
         }
 
         public StampProvider getStampProvider() {

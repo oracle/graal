@@ -22,12 +22,13 @@
  */
 package com.oracle.graal.phases.common;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.graph.Graph.*;
+import com.oracle.graal.graph.Graph.Mark;
+import com.oracle.graal.graph.Graph.NodeEventListener;
+import com.oracle.graal.graph.Graph.NodeEventScope;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
@@ -392,15 +393,6 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
             public void deleteBranch(Node branch) {
                 branch.predecessor().replaceFirstSuccessor(branch, null);
                 GraphUtil.killCFG(branch, this);
-            }
-
-            /**
-             * @return an object that can be used for recording assumptions or {@code null} if
-             *         assumptions are not allowed in the current context.
-             */
-            @Override
-            public Assumptions assumptions() {
-                return context.getAssumptions();
             }
 
             @Override

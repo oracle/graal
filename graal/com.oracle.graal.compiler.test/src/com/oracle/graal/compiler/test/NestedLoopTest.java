@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.compiler.test;
 
+import static com.oracle.graal.api.code.Assumptions.*;
+
 import org.junit.*;
 
 import com.oracle.graal.compiler.common.cfg.*;
@@ -145,7 +147,7 @@ public class NestedLoopTest extends GraalCompilerTest {
     }
 
     private void test(String snippet, int rootExits, int nestedExits, int innerExits) {
-        StructuredGraph graph = parseEager(snippet);
+        StructuredGraph graph = parseEager(snippet, ALLOW_OPTIMISTIC_ASSUMPTIONS);
         Debug.dump(graph, "Graph");
         ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, true, true, true);
 

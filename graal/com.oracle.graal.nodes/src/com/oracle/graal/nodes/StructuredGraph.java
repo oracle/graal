@@ -25,6 +25,8 @@ package com.oracle.graal.nodes;
 import java.util.*;
 import java.util.concurrent.atomic.*;
 
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.Assumptions.OptimisticAssumption;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
@@ -94,35 +96,55 @@ public class StructuredGraph extends Graph {
     private boolean hasValueProxies = true;
 
     /**
+     * The assumptions made while constructing and transforming this graph.
+     */
+    private final Assumptions assumptions;
+
+    /**
      * Creates a new Graph containing a single {@link AbstractBeginNode} as the {@link #start()
      * start} node.
+     *
+     * @param allowOptimisticAssumptions specifies whether {@link OptimisticAssumption}s can be made
+     *            while processing the graph
      */
-    public StructuredGraph() {
-        this(null, null);
+    public StructuredGraph(boolean allowOptimisticAssumptions) {
+        this(null, null, allowOptimisticAssumptions);
     }
 
     /**
      * Creates a new Graph containing a single {@link AbstractBeginNode} as the {@link #start()
      * start} node.
+     *
+     * @param allowOptimisticAssumptions specifies whether {@link OptimisticAssumption}s can be made
+     *            while processing the graph
      */
-    public StructuredGraph(String name, ResolvedJavaMethod method) {
-        this(name, method, uniqueGraphIds.incrementAndGet(), INVOCATION_ENTRY_BCI);
+    public StructuredGraph(String name, ResolvedJavaMethod method, boolean allowOptimisticAssumptions) {
+        this(name, method, uniqueGraphIds.incrementAndGet(), INVOCATION_ENTRY_BCI, null, allowOptimisticAssumptions);
     }
 
-    public StructuredGraph(ResolvedJavaMethod method) {
-        this(null, method, uniqueGraphIds.incrementAndGet(), INVOCATION_ENTRY_BCI);
+    /**
+     * @param allowOptimisticAssumptions specifies whether {@link OptimisticAssumption}s can be made
+     *            while processing the graph
+     */
+    public StructuredGraph(ResolvedJavaMethod method, boolean allowOptimisticAssumptions) {
+        this(null, method, uniqueGraphIds.incrementAndGet(), INVOCATION_ENTRY_BCI, null, allowOptimisticAssumptions);
     }
 
-    public StructuredGraph(ResolvedJavaMethod method, int entryBCI) {
-        this(null, method, uniqueGraphIds.incrementAndGet(), entryBCI);
+    /**
+     * @param allowOptimisticAssumptions specifies whether {@link OptimisticAssumption}s can be made
+     *            while processing the graph
+     */
+    public StructuredGraph(ResolvedJavaMethod method, int entryBCI, boolean allowOptimisticAssumptions) {
+        this(null, method, uniqueGraphIds.incrementAndGet(), entryBCI, null, allowOptimisticAssumptions);
     }
 
-    private StructuredGraph(String name, ResolvedJavaMethod method, long graphId, int entryBCI) {
+    private StructuredGraph(String name, ResolvedJavaMethod method, long graphId, int entryBCI, Assumptions assumptions, boolean allowOptimisticAssumptions) {
         super(name);
         this.setStart(add(new StartNode()));
         this.method = method;
         this.graphId = graphId;
         this.entryBCI = entryBCI;
+        this.assumptions = assumptions == null ? new Assumptions(allowOptimisticAssumptions) : assumptions;
     }
 
     public Stamp getReturnStamp() {
@@ -196,7 +218,9 @@ public class StructuredGraph extends Graph {
     }
 
     public StructuredGraph copy(String newName, ResolvedJavaMethod newMethod) {
-        StructuredGraph copy = new StructuredGraph(newName, newMethod, graphId, entryBCI);
+        final boolean ignored = true;
+        StructuredGraph copy = new StructuredGraph(newName, newMethod, graphId, entryBCI, assumptions, ignored);
+        assert copy.assumptions.equals(assumptions);
         copy.setGuardsStage(getGuardsStage());
         copy.isAfterFloatingReadPhase = isAfterFloatingReadPhase;
         copy.hasValueProxies = hasValueProxies;
@@ -466,5 +490,9 @@ public class StructuredGraph extends Graph {
     public void setHasValueProxies(boolean state) {
         assert !state : "cannot 'unapply' value proxy removal on graph";
         hasValueProxies = state;
+    }
+
+    public Assumptions getAssumptions() {
+        return assumptions;
     }
 }

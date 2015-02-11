@@ -22,13 +22,13 @@
  */
 package com.oracle.graal.compiler.test.ea;
 
+import static com.oracle.graal.api.code.Assumptions.*;
 import static org.junit.Assert.*;
 
 import java.util.*;
 
 import org.junit.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
@@ -244,9 +244,8 @@ public class PEAReadEliminationTest extends GraalCompilerTest {
     }
 
     protected void processMethod(final String snippet) {
-        graph = parseEager(snippet);
-        Assumptions assumptions = new Assumptions(false);
-        HighTierContext context = new HighTierContext(getProviders(), assumptions, null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
+        graph = parseEager(snippet, DONT_ALLOW_OPTIMISTIC_ASSUMPTIONS);
+        HighTierContext context = new HighTierContext(getProviders(), null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
         new InliningPhase(new CanonicalizerPhase(true)).apply(graph, context);
         new PartialEscapePhase(false, true, new CanonicalizerPhase(true), null).apply(graph, context);
     }

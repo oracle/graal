@@ -24,7 +24,6 @@ package com.oracle.graal.virtual.phases.ea;
 
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
@@ -94,8 +93,8 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
      */
     public static final class Final extends PartialEscapeClosure<PartialEscapeBlockState.Final> {
 
-        public Final(SchedulePhase schedule, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, Assumptions assumptions) {
-            super(schedule, metaAccess, constantReflection, assumptions);
+        public Final(SchedulePhase schedule, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection) {
+            super(schedule, metaAccess, constantReflection);
         }
 
         @Override
@@ -109,10 +108,10 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
         }
     }
 
-    public PartialEscapeClosure(SchedulePhase schedule, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, Assumptions assumptions) {
+    public PartialEscapeClosure(SchedulePhase schedule, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection) {
         super(schedule, schedule.getCFG());
         this.usages = schedule.getCFG().graph.createNodeBitMap();
-        this.tool = new VirtualizerToolImpl(metaAccess, constantReflection, assumptions, this);
+        this.tool = new VirtualizerToolImpl(metaAccess, constantReflection, this);
     }
 
     /**

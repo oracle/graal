@@ -22,9 +22,10 @@
  */
 package com.oracle.graal.replacements.test;
 
+import static com.oracle.graal.api.code.Assumptions.*;
+
 import org.junit.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.compiler.test.*;
@@ -247,8 +248,8 @@ public class BitOpNodesTest extends GraalCompilerTest {
      * @return the returned value or null if {@code expectedClass} is not found in the graph.
      */
     private ValueNode parseAndInline(String name, Class<? extends ValueNode> expectedClass) {
-        StructuredGraph graph = parseEager(name);
-        HighTierContext context = new HighTierContext(getProviders(), new Assumptions(false), null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.NONE);
+        StructuredGraph graph = parseEager(name, ALLOW_OPTIMISTIC_ASSUMPTIONS);
+        HighTierContext context = new HighTierContext(getProviders(), null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.NONE);
         CanonicalizerPhase canonicalizer = new CanonicalizerPhase(true);
         canonicalizer.apply(graph, context);
         new InliningPhase(canonicalizer).apply(graph, context);

@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.truffle;
 
+import static com.oracle.graal.api.code.Assumptions.*;
 import static com.oracle.graal.api.code.CodeUtil.*;
 import static com.oracle.graal.compiler.GraalCompiler.*;
 
@@ -68,7 +69,8 @@ public class TruffleCompilerImpl {
     private final TruffleCache truffleCache;
     private final GraalTruffleCompilationListener compilationNotify;
 
-    private static final Class<?>[] SKIPPED_EXCEPTION_CLASSES = new Class[]{UnexpectedResultException.class, SlowPathException.class, ArithmeticException.class, IllegalArgumentException.class};
+    private static final Class<?>[] SKIPPED_EXCEPTION_CLASSES = new Class[]{UnexpectedResultException.class, SlowPathException.class, ArithmeticException.class, IllegalArgumentException.class,
+                    VirtualMachineError.class, ClassCastException.class};
 
     public static final OptimisticOptimizations Optimizations = OptimisticOptimizations.ALL.remove(OptimisticOptimizations.Optimization.UseExceptionProbability,
                     OptimisticOptimizations.Optimization.RemoveNeverExecutedCode, OptimisticOptimizations.Optimization.UseTypeCheckedInlining, OptimisticOptimizations.Optimization.UseTypeCheckHints);
@@ -118,10 +120,10 @@ public class TruffleCompilerImpl {
         compilationNotify.notifyCompilationStarted(compilable);
 
         try {
-            Assumptions assumptions = new Assumptions(true);
+            GraphBuilderSuiteInfo info = createGraphBuilderSuite();
 
             try (TimerCloseable a = PartialEvaluationTime.start(); Closeable c = PartialEvaluationMemUse.start()) {
-                graph = partialEvaluator.createGraph(compilable, assumptions);
+                graph = partialEvaluator.createGraph(compilable, ALLOW_OPTIMISTIC_ASSUMPTIONS, info.plugins);
             }
 
             if (Thread.currentThread().isInterrupted()) {
@@ -136,7 +138,7 @@ public class TruffleCompilerImpl {
             }
 
             compilationNotify.notifyCompilationTruffleTierFinished(compilable, graph);
-            CompilationResult compilationResult = compileMethodHelper(graph, assumptions, compilable.toString(), compilable.getSpeculationLog(), compilable);
+            CompilationResult compilationResult = compileMethodHelper(graph, compilable.toString(), info.suite, compilable.getSpeculationLog(), compilable);
             compilationNotify.notifyCompilationSuccess(compilable, graph, compilationResult);
         } catch (Throwable t) {
             compilationNotify.notifyCompilationFailed(compilable, graph, t);
@@ -144,7 +146,7 @@ public class TruffleCompilerImpl {
         }
     }
 
-    public CompilationResult compileMethodHelper(StructuredGraph graph, Assumptions assumptions, String name, SpeculationLog speculationLog, InstalledCode predefinedInstalledCode) {
+    public CompilationResult compileMethodHelper(StructuredGraph graph, String name, PhaseSuite<HighTierContext> graphBuilderSuite, SpeculationLog speculationLog, InstalledCode predefinedInstalledCode) {
         try (Scope s = Debug.scope("TruffleFinal")) {
             Debug.dump(1, graph, "After TruffleTier");
         } catch (Throwable e) {
@@ -156,8 +158,8 @@ public class TruffleCompilerImpl {
             CodeCacheProvider codeCache = providers.getCodeCache();
             CallingConvention cc = getCallingConvention(codeCache, Type.JavaCallee, graph.method(), false);
             CompilationResult compilationResult = new CompilationResult(name);
-            result = compileGraph(graph, cc, graph.method(), providers, backend, codeCache.getTarget(), null, createGraphBuilderSuite(), Optimizations, getProfilingInfo(graph), speculationLog,
-                            suites, lirSuites, compilationResult, CompilationResultBuilderFactory.Default);
+            result = compileGraph(graph, cc, graph.method(), providers, backend, codeCache.getTarget(), null, graphBuilderSuite == null ? createGraphBuilderSuite().suite : graphBuilderSuite,
+                            Optimizations, getProfilingInfo(graph), speculationLog, suites, lirSuites, compilationResult, CompilationResultBuilderFactory.Default);
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
@@ -165,20 +167,18 @@ public class TruffleCompilerImpl {
         compilationNotify.notifyCompilationGraalTierFinished((OptimizedCallTarget) predefinedInstalledCode, graph);
 
         List<AssumptionValidAssumption> validAssumptions = new ArrayList<>();
-        Assumptions newAssumptions = new Assumptions(true);
-        if (assumptions != null) {
-            for (Assumption assumption : assumptions.getAssumptions()) {
-                processAssumption(newAssumptions, assumption, validAssumptions);
-            }
+        Set<Assumption> newAssumptions = new HashSet<>();
+        for (Assumption assumption : graph.getAssumptions()) {
+            processAssumption(newAssumptions, assumption, validAssumptions);
         }
 
         if (result.getAssumptions() != null) {
-            for (Assumption assumption : result.getAssumptions().getAssumptions()) {
+            for (Assumption assumption : result.getAssumptions()) {
                 processAssumption(newAssumptions, assumption, validAssumptions);
             }
         }
 
-        result.setAssumptions(newAssumptions);
+        result.setAssumptions(newAssumptions.toArray(new Assumption[newAssumptions.size()]));
 
         InstalledCode installedCode;
         try (Scope s = Debug.scope("CodeInstall", providers.getCodeCache()); TimerCloseable a = CodeInstallationTime.start(); Closeable c = CodeInstallationMemUse.start()) {
@@ -197,22 +197,33 @@ public class TruffleCompilerImpl {
         return result;
     }
 
-    private PhaseSuite<HighTierContext> createGraphBuilderSuite() {
+    static class GraphBuilderSuiteInfo {
+        final PhaseSuite<HighTierContext> suite;
+        final GraphBuilderPlugins plugins;
+
+        public GraphBuilderSuiteInfo(PhaseSuite<HighTierContext> suite, GraphBuilderPlugins plugins) {
+            this.suite = suite;
+            this.plugins = plugins;
+        }
+    }
+
+    private GraphBuilderSuiteInfo createGraphBuilderSuite() {
         PhaseSuite<HighTierContext> suite = backend.getSuites().getDefaultGraphBuilderSuite().copy();
         ListIterator<BasePhase<? super HighTierContext>> iterator = suite.findPhase(GraphBuilderPhase.class);
         GraphBuilderPhase graphBuilderPhase = (GraphBuilderPhase) iterator.previous();
         iterator.remove();
-        iterator.add(new GraphBuilderPhase(config, graphBuilderPhase.getGraphBuilderPlugins()));
-        return suite;
+        GraphBuilderPlugins plugins = graphBuilderPhase.getGraphBuilderPlugins();
+        iterator.add(new GraphBuilderPhase(config, plugins));
+        return new GraphBuilderSuiteInfo(suite, plugins);
     }
 
-    public void processAssumption(Assumptions newAssumptions, Assumption assumption, List<AssumptionValidAssumption> manual) {
+    public void processAssumption(Set<Assumption> newAssumptions, Assumption assumption, List<AssumptionValidAssumption> manual) {
         if (assumption != null) {
             if (assumption instanceof AssumptionValidAssumption) {
                 AssumptionValidAssumption assumptionValidAssumption = (AssumptionValidAssumption) assumption;
                 manual.add(assumptionValidAssumption);
             } else {
-                newAssumptions.record(assumption);
+                newAssumptions.add(assumption);
             }
         }
     }

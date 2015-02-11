@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.replacements.test;
 
+import static com.oracle.graal.api.code.Assumptions.*;
+
 import org.junit.*;
 
 import com.oracle.graal.api.code.*;
@@ -51,55 +53,55 @@ public class PointerTest extends GraalCompilerTest implements Snippets {
 
     public PointerTest() {
         target = getCodeCache().getTarget();
-        installer = new ReplacementsImpl(getProviders(), getSnippetReflection(), new Assumptions(false), getTarget());
+        installer = new ReplacementsImpl(getProviders(), getSnippetReflection(), getTarget());
     }
 
     private static final ThreadLocal<SnippetInliningPolicy> inliningPolicy = new ThreadLocal<>();
 
     @Override
-    protected StructuredGraph parseEager(ResolvedJavaMethod m) {
+    protected StructuredGraph parseEager(ResolvedJavaMethod m, boolean allowOptimisticAssumptions) {
         return installer.makeGraph(m, null, inliningPolicy.get(), FrameStateProcessing.CollapseFrameForSingleSideEffect);
     }
 
     @Test
     public void testRead1() {
         for (Kind kind : KINDS) {
-            assertRead(parseEager("read" + kind.name() + "1"), kind, true, ID);
+            assertRead(parseEager("read" + kind.name() + "1", ALLOW_OPTIMISTIC_ASSUMPTIONS), kind, true, ID);
         }
     }
 
     @Test
     public void testRead2() {
         for (Kind kind : KINDS) {
-            assertRead(parseEager("read" + kind.name() + "2"), kind, true, ID);
+            assertRead(parseEager("read" + kind.name() + "2", ALLOW_OPTIMISTIC_ASSUMPTIONS), kind, true, ID);
         }
     }
 
     @Test
     public void testRead3() {
         for (Kind kind : KINDS) {
-            assertRead(parseEager("read" + kind.name() + "3"), kind, true, LocationIdentity.ANY_LOCATION);
+            assertRead(parseEager("read" + kind.name() + "3", ALLOW_OPTIMISTIC_ASSUMPTIONS), kind, true, LocationIdentity.ANY_LOCATION);
         }
     }
 
     @Test
     public void testWrite1() {
         for (Kind kind : KINDS) {
-            assertWrite(parseEager("write" + kind.name() + "1"), true, ID);
+            assertWrite(parseEager("write" + kind.name() + "1", ALLOW_OPTIMISTIC_ASSUMPTIONS), true, ID);
         }
     }
 
     @Test
     public void testWrite2() {
         for (Kind kind : KINDS) {
-            assertWrite(parseEager("write" + kind.name() + "2"), true, ID);
+            assertWrite(parseEager("write" + kind.name() + "2", ALLOW_OPTIMISTIC_ASSUMPTIONS), true, ID);
         }
     }
 
     @Test
     public void testWrite3() {
         for (Kind kind : KINDS) {
-            assertWrite(parseEager("write" + kind.name() + "3"), true, LocationIdentity.ANY_LOCATION);
+            assertWrite(parseEager("write" + kind.name() + "3", ALLOW_OPTIMISTIC_ASSUMPTIONS), true, LocationIdentity.ANY_LOCATION);
         }
     }
 
@@ -399,10 +401,9 @@ public class PointerTest extends GraalCompilerTest implements Snippets {
     }
 
     private void assertNumWordCasts(String snippetName, int expectedWordCasts) {
-        Assumptions assumptions = new Assumptions(true);
-        HighTierContext context = new HighTierContext(getProviders(), assumptions, null, null, OptimisticOptimizations.ALL);
+        HighTierContext context = new HighTierContext(getProviders(), null, null, OptimisticOptimizations.ALL);
 
-        StructuredGraph graph = parseEager(snippetName);
+        StructuredGraph graph = parseEager(snippetName, ALLOW_OPTIMISTIC_ASSUMPTIONS);
         new CanonicalizerPhase(false).apply(graph, context);
         Assert.assertEquals(expectedWordCasts, graph.getNodes().filter(WordCastNode.class).count());
     }

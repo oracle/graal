@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.phases.tiers;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.util.*;
@@ -33,21 +32,18 @@ public class PhaseContext {
     private final ConstantReflectionProvider constantReflection;
     private final LoweringProvider lowerer;
     private final Replacements replacements;
-    private final Assumptions assumptions;
     private final StampProvider stampProvider;
 
-    public PhaseContext(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, LoweringProvider lowerer, Replacements replacements, Assumptions assumptions,
-                    StampProvider stampProvider) {
+    public PhaseContext(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, LoweringProvider lowerer, Replacements replacements, StampProvider stampProvider) {
         this.metaAccess = metaAccess;
         this.constantReflection = constantReflection;
         this.lowerer = lowerer;
         this.replacements = replacements;
-        this.assumptions = assumptions;
         this.stampProvider = stampProvider;
     }
 
-    public PhaseContext(Providers providers, Assumptions assumptions) {
-        this(providers.getMetaAccess(), providers.getConstantReflection(), providers.getLowerer(), providers.getReplacements(), assumptions, providers.getStampProvider());
+    public PhaseContext(Providers providers) {
+        this(providers.getMetaAccess(), providers.getConstantReflection(), providers.getLowerer(), providers.getReplacements(), providers.getStampProvider());
     }
 
     public MetaAccessProvider getMetaAccess() {
@@ -64,10 +60,6 @@ public class PhaseContext {
 
     public Replacements getReplacements() {
         return replacements;
-    }
-
-    public Assumptions getAssumptions() {
-        return assumptions;
     }
 
     public StampProvider getStampProvider() {

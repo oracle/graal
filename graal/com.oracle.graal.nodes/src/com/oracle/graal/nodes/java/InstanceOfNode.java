@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes.java;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.spi.*;
@@ -46,6 +47,16 @@ public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable, Virtu
         assert type != null;
     }
 
+    public static LogicNode create(ResolvedJavaType type, ValueNode object, JavaTypeProfile profile) {
+        ObjectStamp objectStamp = (ObjectStamp) object.stamp();
+        LogicNode constantValue = findSynonym(type, objectStamp.type(), objectStamp.nonNull(), objectStamp.isExactType());
+        if (constantValue != null) {
+            return constantValue;
+        } else {
+            return new InstanceOfNode(type, object, profile);
+        }
+    }
+
     @Override
     public void lower(LoweringTool tool) {
         tool.getLowerer().lower(this, tool);
@@ -67,12 +78,13 @@ public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable, Virtu
             if (result != null) {
                 return result;
             }
-            if (tool.assumptions() != null && tool.assumptions().useOptimisticAssumptions()) {
+            Assumptions assumptions = graph().getAssumptions();
+            if (assumptions.useOptimisticAssumptions()) {
                 ResolvedJavaType exact = stampType.findUniqueConcreteSubtype();
                 if (exact != null) {
                     result = checkInstanceOf(forValue, exact, objectStamp.nonNull(), true);
                     if (result != null) {
-                        tool.assumptions().recordConcreteSubtype(stampType, exact);
+                        assumptions.recordConcreteSubtype(stampType, exact);
                         return result;
                     }
                 }
@@ -82,7 +94,25 @@ public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable, Virtu
     }
 
     private ValueNode checkInstanceOf(ValueNode forValue, ResolvedJavaType inputType, boolean nonNull, boolean exactType) {
-        boolean subType = type().isAssignableFrom(inputType);
+        ValueNode result = findSynonym(type(), inputType, nonNull, exactType);
+        if (result != null) {
+            return result;
+        }
+        if (type().isAssignableFrom(inputType)) {
+            if (!nonNull) {
+                // the instanceof matches if the object is non-null, so return true
+                // depending on the null-ness.
+                return new LogicNegationNode(new IsNullNode(forValue));
+            }
+        }
+        return null;
+    }
+
+    public static LogicNode findSynonym(ResolvedJavaType type, ResolvedJavaType inputType, boolean nonNull, boolean exactType) {
+        if (inputType == null) {
+            return null;
+        }
+        boolean subType = type.isAssignableFrom(inputType);
         if (subType) {
             if (nonNull) {
                 // the instanceOf matches, so return true
@@ -95,19 +125,12 @@ public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable, Virtu
                 // also make the check fail.
                 return LogicConstantNode.contradiction();
             } else {
-                boolean superType = inputType.isAssignableFrom(type());
-                if (!superType && !inputType.isInterface() && !type().isInterface()) {
+                boolean superType = inputType.isAssignableFrom(type);
+                if (!superType && !inputType.isInterface() && !type.isInterface()) {
                     return LogicConstantNode.contradiction();
                 }
                 // since the subtype comparison was only performed on a declared type we don't
                 // really know if it might be true at run time...
-            }
-        }
-        if (type().isAssignableFrom(inputType)) {
-            if (!nonNull) {
-                // the instanceof matches if the object is non-null, so return true
-                // depending on the null-ness.
-                return new LogicNegationNode(new IsNullNode(forValue));
             }
         }
         return null;

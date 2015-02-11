@@ -112,7 +112,7 @@ public abstract class InstanceOfSnippetsTemplates extends AbstractTemplates {
     public static final class Instantiation {
 
         private ValueNode result;
-        private CompareNode condition;
+        private LogicNode condition;
         private ValueNode trueValue;
         private ValueNode falseValue;
 
@@ -141,9 +141,9 @@ public abstract class InstanceOfSnippetsTemplates extends AbstractTemplates {
                 assert testValue.isConstant();
                 return LogicConstantNode.forBoolean(result.asConstant().equals(testValue.asConstant()), result.graph());
             }
-            if (condition == null || condition.getY() != testValue) {
+            if (condition == null || (!(condition instanceof CompareNode)) || ((CompareNode) condition).getY() != testValue) {
                 // Re-use previously generated condition if the trueValue for the test is the same
-                condition = createCompareNode(result.graph(), Condition.EQ, result, testValue);
+                condition = createCompareNode(result.graph(), Condition.EQ, result, testValue, null);
             }
             return condition;
         }

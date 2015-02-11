@@ -55,6 +55,12 @@ public class DefaultGraphBuilderPlugins implements GraphBuilderPlugins {
         return plugins.get(method);
     }
 
+    public DefaultGraphBuilderPlugins copy() {
+        DefaultGraphBuilderPlugins result = new DefaultGraphBuilderPlugins();
+        result.plugins.putAll(plugins);
+        return result;
+    }
+
     @Override
     public String toString() {
         return plugins.keySet().stream().map(m -> m.format("%H.%n(%p)")).collect(Collectors.joining(", "));

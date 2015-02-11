@@ -24,6 +24,8 @@
  */
 package com.oracle.graal.compiler.test.deopt;
 
+import static com.oracle.graal.api.code.Assumptions.*;
+
 import org.junit.*;
 
 import com.oracle.graal.api.code.*;
@@ -134,7 +136,7 @@ public final class MonitorDeoptTest extends GraalCompilerTest {
     public void run0() throws Throwable {
         ResolvedJavaMethod javaMethod = getResolvedJavaMethod("test");
 
-        StructuredGraph graph = parseEager(javaMethod);
+        StructuredGraph graph = parseEager(javaMethod, ALLOW_OPTIMISTIC_ASSUMPTIONS);
         removeLoopSafepoint(graph);
 
         CompilationResult compilationResult = compile(javaMethod, graph);

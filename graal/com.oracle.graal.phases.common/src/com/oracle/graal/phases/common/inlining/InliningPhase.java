@@ -27,9 +27,8 @@ import java.util.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.phases.common.*;
-import com.oracle.graal.phases.common.inlining.policy.GreedyInliningPolicy;
-import com.oracle.graal.phases.common.inlining.policy.InliningPolicy;
-import com.oracle.graal.phases.common.inlining.walker.InliningData;
+import com.oracle.graal.phases.common.inlining.policy.*;
+import com.oracle.graal.phases.common.inlining.walker.*;
 import com.oracle.graal.phases.tiers.*;
 
 public class InliningPhase extends AbstractInliningPhase {
@@ -93,5 +92,4 @@ public class InliningPhase extends AbstractInliningPhase {
         assert data.inliningDepth() == 0;
         assert data.graphCount() == 0;
     }
-
 }

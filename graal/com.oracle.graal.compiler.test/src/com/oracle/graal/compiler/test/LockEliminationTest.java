@@ -22,9 +22,10 @@
  */
 package com.oracle.graal.compiler.test;
 
+import static com.oracle.graal.api.code.Assumptions.*;
+
 import org.junit.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
@@ -62,7 +63,7 @@ public class LockEliminationTest extends GraalCompilerTest {
         test("testSynchronizedSnippet", new A(), new A());
 
         StructuredGraph graph = getGraph("testSynchronizedSnippet");
-        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders(), null));
+        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders()));
         new LockEliminationPhase().apply(graph);
         assertDeepEquals(1, graph.getNodes().filter(MonitorEnterNode.class).count());
         assertDeepEquals(1, graph.getNodes().filter(MonitorExitNode.class).count());
@@ -80,7 +81,7 @@ public class LockEliminationTest extends GraalCompilerTest {
         test("testSynchronizedMethodSnippet", new A());
 
         StructuredGraph graph = getGraph("testSynchronizedMethodSnippet");
-        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders(), null));
+        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders()));
         new LockEliminationPhase().apply(graph);
         assertDeepEquals(1, graph.getNodes().filter(MonitorEnterNode.class).count());
         assertDeepEquals(1, graph.getNodes().filter(MonitorExitNode.class).count());
@@ -88,9 +89,8 @@ public class LockEliminationTest extends GraalCompilerTest {
 
     private StructuredGraph getGraph(String snippet) {
         ResolvedJavaMethod method = getResolvedJavaMethod(snippet);
-        StructuredGraph graph = parseEager(method);
-        Assumptions assumptions = new Assumptions(true);
-        HighTierContext context = new HighTierContext(getProviders(), assumptions, null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
+        StructuredGraph graph = parseEager(method, ALLOW_OPTIMISTIC_ASSUMPTIONS);
+        HighTierContext context = new HighTierContext(getProviders(), null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
         new CanonicalizerPhase(true).apply(graph, context);
         new InliningPhase(new CanonicalizerPhase(true)).apply(graph, context);
         new CanonicalizerPhase(true).apply(graph, context);

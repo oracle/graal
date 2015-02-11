@@ -52,9 +52,7 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
     }
 
     public PiNode(ValueNode object, Stamp stamp) {
-        super(stamp);
-        this.piStamp = stamp;
-        this.object = object;
+        this(object, stamp, null);
     }
 
     public PiNode(ValueNode object, Stamp stamp, ValueNode anchor) {

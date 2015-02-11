@@ -114,7 +114,15 @@ public class InliningUtil {
 
     public static void logNotInlinedMethod(Invoke invoke, String msg) {
         if (shouldLogInliningDecision()) {
-            String methodString = invoke.toString() + (invoke.callTarget() == null ? " callTarget=null" : invoke.callTarget().targetName());
+            String methodString = invoke.toString();
+            if (invoke.callTarget() == null) {
+                methodString += " callTarget=null";
+            } else {
+                String targetName = invoke.callTarget().targetName();
+                if (!methodString.endsWith(targetName)) {
+                    methodString += " " + targetName;
+                }
+            }
             logInliningDecision(methodString, false, msg, new Object[0]);
         }
     }
@@ -354,6 +362,9 @@ public class InliningUtil {
 
         invokeNode.replaceAtUsages(null);
         GraphUtil.killCFG(invokeNode);
+
+        // Copy assumptions from inlinee to caller
+        graph.getAssumptions().record(inlineGraph.getAssumptions());
 
         return duplicates;
     }

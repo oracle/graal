@@ -24,7 +24,6 @@ package com.oracle.graal.phases.common.inlining.info;
 
 import java.util.*;
 
-import com.oracle.graal.api.code.Assumptions;
 import com.oracle.graal.api.meta.ResolvedJavaMethod;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
@@ -53,7 +52,7 @@ public abstract class AbstractInlineInfo implements InlineInfo {
         return invoke;
     }
 
-    protected static Collection<Node> inline(Invoke invoke, ResolvedJavaMethod concrete, Inlineable inlineable, Assumptions assumptions, boolean receiverNullCheck) {
+    protected static Collection<Node> inline(Invoke invoke, ResolvedJavaMethod concrete, Inlineable inlineable, boolean receiverNullCheck) {
         List<Node> canonicalizeNodes = new ArrayList<>();
         if (inlineable instanceof InlineableGraph) {
             StructuredGraph calleeGraph = ((InlineableGraph) inlineable).getGraph();
@@ -68,7 +67,7 @@ public abstract class AbstractInlineInfo implements InlineInfo {
         }
 
         InliningUtil.InlinedBytecodes.add(concrete.getCodeSize());
-        assumptions.recordMethodContents(concrete);
+        invoke.asNode().graph().getAssumptions().recordMethodContents(concrete);
         return canonicalizeNodes;
     }
 
@@ -83,9 +82,9 @@ public abstract class AbstractInlineInfo implements InlineInfo {
         }
     }
 
-    public final void populateInlinableElements(HighTierContext context, Assumptions calleeAssumptions, CanonicalizerPhase canonicalizer) {
+    public final void populateInlinableElements(HighTierContext context, StructuredGraph caller, CanonicalizerPhase canonicalizer) {
         for (int i = 0; i < numberOfMethods(); i++) {
-            Inlineable elem = Inlineable.getInlineableElement(methodAt(i), invoke, context.replaceAssumptions(calleeAssumptions), canonicalizer);
+            Inlineable elem = Inlineable.getInlineableElement(methodAt(i), invoke, context, canonicalizer);
             setInlinableElement(i, elem);
         }
     }

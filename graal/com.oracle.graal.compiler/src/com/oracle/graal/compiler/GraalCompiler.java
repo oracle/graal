@@ -24,7 +24,6 @@ package com.oracle.graal.compiler;
 
 import static com.oracle.graal.compiler.GraalCompiler.Options.*;
 import static com.oracle.graal.compiler.MethodFilter.*;
-import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionality.*;
 
 import java.util.*;
@@ -220,9 +219,8 @@ public class GraalCompiler {
     public static <T extends CompilationResult> T compile(Request<T> r) {
         assert !r.graph.isFrozen();
         try (Scope s0 = Debug.scope("GraalCompiler", r.graph, r.providers.getCodeCache())) {
-            Assumptions assumptions = new Assumptions(OptAssumptions.getValue());
-            SchedulePhase schedule = emitFrontEnd(r.providers, r.target, r.graph, assumptions, r.cache, r.graphBuilderSuite, r.optimisticOpts, r.profilingInfo, r.speculationLog, r.suites);
-            emitBackEnd(r.graph, null, r.cc, r.installedCodeOwner, r.backend, r.target, r.compilationResult, r.factory, assumptions, schedule, null, r.lirSuites);
+            SchedulePhase schedule = emitFrontEnd(r.providers, r.target, r.graph, r.cache, r.graphBuilderSuite, r.optimisticOpts, r.profilingInfo, r.speculationLog, r.suites);
+            emitBackEnd(r.graph, null, r.cc, r.installedCodeOwner, r.backend, r.target, r.compilationResult, r.factory, schedule, null, r.lirSuites);
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
@@ -240,14 +238,14 @@ public class GraalCompiler {
     /**
      * Builds the graph, optimizes it.
      */
-    public static SchedulePhase emitFrontEnd(Providers providers, TargetDescription target, StructuredGraph graph, Assumptions assumptions, Map<ResolvedJavaMethod, StructuredGraph> cache,
+    public static SchedulePhase emitFrontEnd(Providers providers, TargetDescription target, StructuredGraph graph, Map<ResolvedJavaMethod, StructuredGraph> cache,
                     PhaseSuite<HighTierContext> graphBuilderSuite, OptimisticOptimizations optimisticOpts, ProfilingInfo profilingInfo, SpeculationLog speculationLog, Suites suites) {
         try (Scope s = Debug.scope("FrontEnd"); TimerCloseable a = FrontEnd.start()) {
             if (speculationLog != null) {
                 speculationLog.collectFailedSpeculations();
             }
 
-            HighTierContext highTierContext = new HighTierContext(providers, assumptions, cache, graphBuilderSuite, optimisticOpts);
+            HighTierContext highTierContext = new HighTierContext(providers, cache, graphBuilderSuite, optimisticOpts);
             if (graph.start().next() == null) {
                 graphBuilderSuite.apply(graph, highTierContext);
                 new DeadCodeEliminationPhase(Optional).apply(graph);
@@ -258,11 +256,11 @@ public class GraalCompiler {
             suites.getHighTier().apply(graph, highTierContext);
             graph.maybeCompress();
 
-            MidTierContext midTierContext = new MidTierContext(providers, assumptions, target, optimisticOpts, profilingInfo, speculationLog);
+            MidTierContext midTierContext = new MidTierContext(providers, target, optimisticOpts, profilingInfo, speculationLog);
             suites.getMidTier().apply(graph, midTierContext);
             graph.maybeCompress();
 
-            LowTierContext lowTierContext = new LowTierContext(providers, assumptions, target);
+            LowTierContext lowTierContext = new LowTierContext(providers, target);
             suites.getLowTier().apply(graph, lowTierContext);
             graph.maybeCompress();
 
@@ -276,13 +274,12 @@ public class GraalCompiler {
     }
 
     public static <T extends CompilationResult> void emitBackEnd(StructuredGraph graph, Object stub, CallingConvention cc, ResolvedJavaMethod installedCodeOwner, Backend backend,
-                    TargetDescription target, T compilationResult, CompilationResultBuilderFactory factory, Assumptions assumptions, SchedulePhase schedule, RegisterConfig registerConfig,
-                    LIRSuites lirSuites) {
+                    TargetDescription target, T compilationResult, CompilationResultBuilderFactory factory, SchedulePhase schedule, RegisterConfig registerConfig, LIRSuites lirSuites) {
         try (TimerCloseable a = BackEnd.start()) {
             LIRGenerationResult lirGen = null;
             lirGen = emitLIR(backend, target, schedule, graph, stub, cc, registerConfig, lirSuites);
             try (Scope s = Debug.scope("CodeGen", lirGen, lirGen.getLIR())) {
-                emitCode(backend, assumptions, lirGen, compilationResult, installedCodeOwner, factory);
+                emitCode(backend, graph.getAssumptions(), lirGen, compilationResult, installedCodeOwner, factory);
             } catch (Throwable e) {
                 throw Debug.handle(e);
             }
@@ -373,7 +370,7 @@ public class GraalCompiler {
         backend.emitCode(crb, lirGenRes.getLIR(), installedCodeOwner);
         crb.finish();
         if (!assumptions.isEmpty()) {
-            compilationResult.setAssumptions(assumptions);
+            compilationResult.setAssumptions(assumptions.toArray());
         }
 
         if (Debug.isMeterEnabled()) {

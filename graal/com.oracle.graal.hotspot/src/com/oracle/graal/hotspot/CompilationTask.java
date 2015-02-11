@@ -213,7 +213,7 @@ public class CompilationTask {
                     Replacements replacements = providers.getReplacements();
                     graph = replacements.getMethodSubstitution(method);
                     if (graph == null || entryBCI != INVOCATION_ENTRY_BCI) {
-                        graph = new StructuredGraph(method, entryBCI);
+                        graph = new StructuredGraph(method, entryBCI, OptAssumptions.getValue());
                     } else {
                         // Compiling method substitution - must clone the graph
                         graph = graph.copy();

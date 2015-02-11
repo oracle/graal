@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.truffle.nodes;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.api.runtime.*;
@@ -62,14 +63,15 @@ public final class AssumptionNode extends MacroNode implements Simplifiable {
     @Override
     public void simplify(SimplifierTool tool) {
         ValueNode assumption = getAssumption();
-        if (tool.assumptions() != null && assumption.isConstant()) {
+        Assumptions assumptions = graph().getAssumptions();
+        if (assumption.isConstant()) {
             JavaConstant c = assumption.asJavaConstant();
             assert c.getKind() == Kind.Object;
             Object object = getSnippetReflection().asObject(Object.class, c);
             OptimizedAssumption assumptionObject = (OptimizedAssumption) object;
             StructuredGraph graph = graph();
             if (assumptionObject.isValid()) {
-                tool.assumptions().record(new AssumptionValidAssumption(assumptionObject));
+                assumptions.record(new AssumptionValidAssumption(assumptionObject));
                 if (super.getReturnType().getKind() == Kind.Boolean) {
                     graph.replaceFixedWithFloating(this, ConstantNode.forBoolean(true, graph()));
                 } else {

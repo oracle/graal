@@ -24,7 +24,6 @@ package com.oracle.graal.replacements.test;
 
 import org.junit.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.nodes.*;
@@ -41,13 +40,13 @@ public class WordTest extends GraalCompilerTest implements Snippets {
     private final ReplacementsImpl installer;
 
     public WordTest() {
-        installer = new ReplacementsImpl(getProviders(), getSnippetReflection(), new Assumptions(false), getTarget());
+        installer = new ReplacementsImpl(getProviders(), getSnippetReflection(), getTarget());
     }
 
     private static final ThreadLocal<SnippetInliningPolicy> inliningPolicy = new ThreadLocal<>();
 
     @Override
-    protected StructuredGraph parseEager(ResolvedJavaMethod m) {
+    protected StructuredGraph parseEager(ResolvedJavaMethod m, boolean allowOptimisticAssumptions) {
         return installer.makeGraph(m, null, inliningPolicy.get(), FrameStateProcessing.CollapseFrameForSingleSideEffect);
     }
 

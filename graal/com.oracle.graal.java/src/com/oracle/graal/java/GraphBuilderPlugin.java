@@ -27,7 +27,6 @@ package com.oracle.graal.java;
  *
  * Concrete plugins implement one of the sub-interfaces of this interface.
  *
- * @see GraphBuilderPluginsProvider
  * @see GraphBuilderPlugins
  * @see GraphBuilderPlugins.Registration
  */

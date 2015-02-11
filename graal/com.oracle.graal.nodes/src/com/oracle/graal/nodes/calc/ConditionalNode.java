@@ -120,7 +120,7 @@ public final class ConditionalNode extends FloatingNode implements Canonicalizab
     }
 
     public ConditionalNode(@InjectedNodeParameter StructuredGraph graph, Condition condition, ValueNode x, ValueNode y) {
-        this(createCompareNode(graph, condition, x, y));
+        this(createCompareNode(graph, condition, x, y, null));
     }
 
     public ConditionalNode(ValueNode type, ValueNode object) {
