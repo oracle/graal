@@ -34,7 +34,7 @@ public abstract class LowLevelMidTierPhase extends LowLevelPhase<LowLevelMidTier
     }
 
     @Override
-    protected <B extends AbstractBlock<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, LowLevelMidTierContext context) {
+    protected final <B extends AbstractBlock<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, LowLevelMidTierContext context) {
         run(target, lirGenRes, codeEmittingOrder, linearScanOrder);
     }
 
