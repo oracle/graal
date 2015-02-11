@@ -184,7 +184,8 @@ public class InlineableGraph implements Inlineable {
         if (context.getGraphCache() != null) {
             StructuredGraph cachedGraph = context.getGraphCache().get(method);
             if (cachedGraph != null) {
-                assert false;
+                // TODO: check that cachedGraph.getAssumptions() are still valid
+                // instead of waiting for code installation to do it.
                 return cachedGraph;
             }
         }
