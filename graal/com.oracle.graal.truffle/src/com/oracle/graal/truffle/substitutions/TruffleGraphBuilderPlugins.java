@@ -190,7 +190,7 @@ public class TruffleGraphBuilderPlugins {
             }
         });
 
-        registerUnsafeLoadStorePlugins(r, Kind.Boolean, Kind.Byte, Kind.Int, Kind.Long, Kind.Float, Kind.Double, Kind.Object);
+        registerUnsafeLoadStorePlugins(r, Kind.Int, Kind.Long, Kind.Float, Kind.Double, Kind.Object);
 
         // CompilerDirectives.class
         r = new Registration(plugins, metaAccess, CompilerDirectives.class);

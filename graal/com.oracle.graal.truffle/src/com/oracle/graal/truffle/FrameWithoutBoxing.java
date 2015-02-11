@@ -105,9 +105,9 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     }
 
     private byte getByteUnsafe(FrameSlot slot) {
-        long offset = getPrimitiveOffset(slot, FrameSlotKind.Byte);
+        long offset = getPrimitiveOffset(slot);
         boolean condition = this.getTags()[slot.getIndex()] == FrameSlotKind.Byte.ordinal();
-        return unsafeGetByte(getPrimitiveLocals(), offset, condition, slot);
+        return (byte) unsafeGetInt(getPrimitiveLocals(), offset, condition, slot);
     }
 
     @Override
@@ -117,8 +117,8 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     }
 
     private void setByteUnsafe(FrameSlot slot, byte value) {
-        long offset = getPrimitiveOffset(slot, FrameSlotKind.Boolean);
-        unsafePutByte(getPrimitiveLocals(), offset, value, slot);
+        long offset = getPrimitiveOffset(slot);
+        unsafePutInt(getPrimitiveLocals(), offset, value, slot);
     }
 
     @Override
@@ -128,9 +128,9 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     }
 
     private boolean getBooleanUnsafe(FrameSlot slot) {
-        long offset = getPrimitiveOffset(slot, FrameSlotKind.Boolean);
+        long offset = getPrimitiveOffset(slot);
         boolean condition = this.getTags()[slot.getIndex()] == FrameSlotKind.Boolean.ordinal();
-        return unsafeGetBoolean(getPrimitiveLocals(), offset, condition, slot);
+        return unsafeGetInt(getPrimitiveLocals(), offset, condition, slot) != 0;
     }
 
     @Override
@@ -140,8 +140,8 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     }
 
     private void setBooleanUnsafe(FrameSlot slot, boolean value) {
-        long offset = getPrimitiveOffset(slot, FrameSlotKind.Boolean);
-        unsafePutBoolean(getPrimitiveLocals(), offset, value, slot);
+        long offset = getPrimitiveOffset(slot);
+        unsafePutInt(getPrimitiveLocals(), offset, value ? 1 : 0, slot);
     }
 
     @Override
@@ -151,7 +151,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     }
 
     private float getFloatUnsafe(FrameSlot slot) {
-        long offset = getPrimitiveOffset(slot, FrameSlotKind.Float);
+        long offset = getPrimitiveOffset(slot);
         boolean condition = this.getTags()[slot.getIndex()] == FrameSlotKind.Float.ordinal();
         return unsafeGetFloat(getPrimitiveLocals(), offset, condition, slot);
     }
@@ -163,7 +163,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     }
 
     private void setFloatUnsafe(FrameSlot slot, float value) {
-        long offset = getPrimitiveOffset(slot, FrameSlotKind.Float);
+        long offset = getPrimitiveOffset(slot);
         unsafePutFloat(getPrimitiveLocals(), offset, value, slot);
     }
 
@@ -174,7 +174,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     }
 
     private long getLongUnsafe(FrameSlot slot) {
-        long offset = getPrimitiveOffset(slot, FrameSlotKind.Long);
+        long offset = getPrimitiveOffset(slot);
         boolean condition = this.getTags()[slot.getIndex()] == FrameSlotKind.Long.ordinal();
         return unsafeGetLong(getPrimitiveLocals(), offset, condition, slot);
     }
@@ -186,7 +186,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     }
 
     private void setLongUnsafe(FrameSlot slot, long value) {
-        long offset = getPrimitiveOffset(slot, FrameSlotKind.Long);
+        long offset = getPrimitiveOffset(slot);
         unsafePutLong(getPrimitiveLocals(), offset, value, slot);
     }
 
@@ -197,7 +197,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     }
 
     private int getIntUnsafe(FrameSlot slot) {
-        long offset = getPrimitiveOffset(slot, FrameSlotKind.Int);
+        long offset = getPrimitiveOffset(slot);
         boolean condition = this.getTags()[slot.getIndex()] == FrameSlotKind.Int.ordinal();
         return unsafeGetInt(getPrimitiveLocals(), offset, condition, slot);
     }
@@ -209,7 +209,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     }
 
     private void setIntUnsafe(FrameSlot slot, int value) {
-        long offset = getPrimitiveOffset(slot, FrameSlotKind.Int);
+        long offset = getPrimitiveOffset(slot);
         unsafePutInt(getPrimitiveLocals(), offset, value, slot);
     }
 
@@ -220,7 +220,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     }
 
     private double getDoubleUnsafe(FrameSlot slot) {
-        long offset = getPrimitiveOffset(slot, FrameSlotKind.Double);
+        long offset = getPrimitiveOffset(slot);
         boolean condition = this.getTags()[slot.getIndex()] == FrameSlotKind.Double.ordinal();
         return unsafeGetDouble(getPrimitiveLocals(), offset, condition, slot);
     }
@@ -232,7 +232,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     }
 
     private void setDoubleUnsafe(FrameSlot slot, double value) {
-        long offset = getPrimitiveOffset(slot, FrameSlotKind.Double);
+        long offset = getPrimitiveOffset(slot);
         unsafePutDouble(getPrimitiveLocals(), offset, value, slot);
     }
 
@@ -269,8 +269,8 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         }
     }
 
-    private static long getPrimitiveOffset(FrameSlot slot, FrameSlotKind forKind) {
-        return Unsafe.ARRAY_LONG_BASE_OFFSET + slot.getIndex() * (long) Unsafe.ARRAY_LONG_INDEX_SCALE + forKind.getByteOffset();
+    private static long getPrimitiveOffset(FrameSlot slot) {
+        return Unsafe.ARRAY_LONG_BASE_OFFSET + slot.getIndex() * (long) Unsafe.ARRAY_LONG_INDEX_SCALE;
     }
 
     @Override
@@ -362,16 +362,6 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     }
 
     @SuppressWarnings("unused")
-    static boolean unsafeGetBoolean(Object receiver, long offset, boolean condition, Object locationIdentity) {
-        return UNSAFE.getBoolean(receiver, offset);
-    }
-
-    @SuppressWarnings("unused")
-    static byte unsafeGetByte(Object receiver, long offset, boolean condition, Object locationIdentity) {
-        return UNSAFE.getByte(receiver, offset);
-    }
-
-    @SuppressWarnings("unused")
     static int unsafeGetInt(Object receiver, long offset, boolean condition, Object locationIdentity) {
         return UNSAFE.getInt(receiver, offset);
     }
@@ -394,16 +384,6 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     @SuppressWarnings("unused")
     static Object unsafeGetObject(Object receiver, long offset, boolean condition, Object locationIdentity) {
         return UNSAFE.getObject(receiver, offset);
-    }
-
-    @SuppressWarnings("unused")
-    static void unsafePutBoolean(Object receiver, long offset, boolean value, Object locationIdentity) {
-        UNSAFE.putBoolean(receiver, offset, value);
-    }
-
-    @SuppressWarnings("unused")
-    static void unsafePutByte(Object receiver, long offset, byte value, Object locationIdentity) {
-        UNSAFE.putByte(receiver, offset, value);
     }
 
     @SuppressWarnings("unused")

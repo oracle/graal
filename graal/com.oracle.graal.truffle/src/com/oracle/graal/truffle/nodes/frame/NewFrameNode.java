@@ -195,11 +195,7 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
         Kind graalKind = null;
         switch (kind) {
             case Boolean:
-                graalKind = Kind.Boolean;
-                break;
             case Byte:
-                graalKind = Kind.Byte;
-                break;
             case Int:
                 graalKind = Kind.Int;
                 break;
