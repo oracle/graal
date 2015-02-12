@@ -42,7 +42,6 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.runtime.*;
-import com.oracle.graal.baseline.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
@@ -53,7 +52,6 @@ import com.oracle.graal.hotspot.events.EventProvider.CompilationEvent;
 import com.oracle.graal.hotspot.events.EventProvider.CompilerFailureEvent;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.phases.*;
-import com.oracle.graal.java.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.phases.*;
 import com.oracle.graal.nodes.*;
@@ -197,52 +195,45 @@ public class CompilationTask {
                 // Begin the compilation event.
                 compilationEvent.begin();
 
-                if (UseBaselineCompiler.getValue() == true) {
-                    HotSpotProviders providers = backend.getProviders();
-                    BaselineCompiler baselineCompiler = new BaselineCompiler(GraphBuilderConfiguration.getDefault(), providers.getMetaAccess());
-                    OptimisticOptimizations optimisticOpts = OptimisticOptimizations.ALL;
-                    result = baselineCompiler.generate(method, -1, backend, new CompilationResult(), method, CompilationResultBuilderFactory.Default, optimisticOpts, providers.getReplacements());
-                } else {
-                    Map<ResolvedJavaMethod, StructuredGraph> graphCache = null;
-                    if (GraalOptions.CacheGraphs.getValue()) {
-                        graphCache = new HashMap<>();
-                    }
-
-                    boolean recordEvolMethodDeps = graalEnv == 0 || unsafe.getByte(graalEnv + config.graalEnvJvmtiCanHotswapOrPostBreakpointOffset) != 0;
-
-                    HotSpotProviders providers = backend.getProviders();
-                    Replacements replacements = providers.getReplacements();
-                    graph = replacements.getMethodSubstitution(method);
-                    if (graph == null || entryBCI != INVOCATION_ENTRY_BCI) {
-                        graph = new StructuredGraph(method, entryBCI, AllowAssumptions.from(OptAssumptions.getValue()));
-                        if (!recordEvolMethodDeps) {
-                            graph.disableMethodRecording();
-                        }
-                    } else {
-                        // Compiling method substitution - must clone the graph
-                        graph = graph.copy(graph.name, method, AllowAssumptions.from(OptAssumptions.getValue()), recordEvolMethodDeps);
-                    }
-                    InlinedBytecodes.add(method.getCodeSize());
-                    CallingConvention cc = getCallingConvention(providers.getCodeCache(), Type.JavaCallee, graph.method(), false);
-                    if (graph.getEntryBCI() != StructuredGraph.INVOCATION_ENTRY_BCI) {
-                        // for OSR, only a pointer is passed to the method.
-                        JavaType[] parameterTypes = new JavaType[]{providers.getMetaAccess().lookupJavaType(long.class)};
-                        CallingConvention tmp = providers.getCodeCache().getRegisterConfig().getCallingConvention(JavaCallee, providers.getMetaAccess().lookupJavaType(void.class), parameterTypes,
-                                        backend.getTarget(), false);
-                        cc = new CallingConvention(cc.getStackSize(), cc.getReturn(), tmp.getArgument(0));
-                    }
-                    Suites suites = getSuites(providers);
-                    LIRSuites lirSuites = getLIRSuites(providers);
-                    ProfilingInfo profilingInfo = getProfilingInfo();
-                    OptimisticOptimizations optimisticOpts = getOptimisticOpts(profilingInfo);
-                    if (isOSR) {
-                        // In OSR compiles, we cannot rely on never executed code profiles, because
-                        // all code after the OSR loop is never executed.
-                        optimisticOpts.remove(Optimization.RemoveNeverExecutedCode);
-                    }
-                    result = compileGraph(graph, cc, method, providers, backend, backend.getTarget(), graphCache, getGraphBuilderSuite(providers), optimisticOpts, profilingInfo,
-                                    method.getSpeculationLog(), suites, lirSuites, new CompilationResult(), CompilationResultBuilderFactory.Default);
+                Map<ResolvedJavaMethod, StructuredGraph> graphCache = null;
+                if (GraalOptions.CacheGraphs.getValue()) {
+                    graphCache = new HashMap<>();
                 }
+
+                boolean recordEvolMethodDeps = graalEnv == 0 || unsafe.getByte(graalEnv + config.graalEnvJvmtiCanHotswapOrPostBreakpointOffset) != 0;
+
+                HotSpotProviders providers = backend.getProviders();
+                Replacements replacements = providers.getReplacements();
+                graph = replacements.getMethodSubstitution(method);
+                if (graph == null || entryBCI != INVOCATION_ENTRY_BCI) {
+                    graph = new StructuredGraph(method, entryBCI, AllowAssumptions.from(OptAssumptions.getValue()));
+                    if (!recordEvolMethodDeps) {
+                        graph.disableMethodRecording();
+                    }
+                } else {
+                    // Compiling method substitution - must clone the graph
+                    graph = graph.copy(graph.name, method, AllowAssumptions.from(OptAssumptions.getValue()), recordEvolMethodDeps);
+                }
+                InlinedBytecodes.add(method.getCodeSize());
+                CallingConvention cc = getCallingConvention(providers.getCodeCache(), Type.JavaCallee, graph.method(), false);
+                if (graph.getEntryBCI() != StructuredGraph.INVOCATION_ENTRY_BCI) {
+                    // for OSR, only a pointer is passed to the method.
+                    JavaType[] parameterTypes = new JavaType[]{providers.getMetaAccess().lookupJavaType(long.class)};
+                    CallingConvention tmp = providers.getCodeCache().getRegisterConfig().getCallingConvention(JavaCallee, providers.getMetaAccess().lookupJavaType(void.class), parameterTypes,
+                                    backend.getTarget(), false);
+                    cc = new CallingConvention(cc.getStackSize(), cc.getReturn(), tmp.getArgument(0));
+                }
+                Suites suites = getSuites(providers);
+                LIRSuites lirSuites = getLIRSuites(providers);
+                ProfilingInfo profilingInfo = getProfilingInfo();
+                OptimisticOptimizations optimisticOpts = getOptimisticOpts(profilingInfo);
+                if (isOSR) {
+                    // In OSR compiles, we cannot rely on never executed code profiles, because
+                    // all code after the OSR loop is never executed.
+                    optimisticOpts.remove(Optimization.RemoveNeverExecutedCode);
+                }
+                result = compileGraph(graph, cc, method, providers, backend, backend.getTarget(), graphCache, getGraphBuilderSuite(providers), optimisticOpts, profilingInfo,
+                                method.getSpeculationLog(), suites, lirSuites, new CompilationResult(), CompilationResultBuilderFactory.Default);
                 result.setId(getId());
                 result.setEntryBCI(entryBCI);
             } catch (Throwable e) {
