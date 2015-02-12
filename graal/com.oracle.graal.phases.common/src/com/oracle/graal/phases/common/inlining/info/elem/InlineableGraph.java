@@ -201,6 +201,13 @@ public class InlineableGraph implements Inlineable {
     private static StructuredGraph parseBytecodes(ResolvedJavaMethod method, HighTierContext context, CanonicalizerPhase canonicalizer, StructuredGraph caller) {
         StructuredGraph newGraph = new StructuredGraph(method, AllowAssumptions.from(caller.getAssumptions() != null));
         try (Debug.Scope s = Debug.scope("InlineGraph", newGraph)) {
+            if (!caller.isMethodRecordingEnabled()) {
+                // Don't record method dependencies in the inlinee if
+                // the caller doesn't want them. This decision is
+                // preserved in the graph cache (if used) which is
+                // ok since the graph cache is compilation local.
+                newGraph.disableMethodRecording();
+            }
             if (context.getGraphBuilderSuite() != null) {
                 context.getGraphBuilderSuite().apply(newGraph, context);
             }
