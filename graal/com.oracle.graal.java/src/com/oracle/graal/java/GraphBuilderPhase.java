@@ -970,6 +970,11 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     }
                     calleeBeforeUnwindNode.setNext(handleException(calleeUnwindValue, bci()));
                 }
+
+                // Record method dependency in the graph
+                if (currentGraph.isMethodRecordingEnabled()) {
+                    currentGraph.getMethods().add(targetMethod);
+                }
             }
 
             protected MethodCallTargetNode createMethodCallTarget(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, JavaType returnType) {
