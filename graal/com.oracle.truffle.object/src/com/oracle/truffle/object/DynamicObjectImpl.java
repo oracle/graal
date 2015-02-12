@@ -30,7 +30,7 @@ import com.oracle.truffle.api.object.*;
 import com.oracle.truffle.object.Locations.ValueLocation;
 import com.oracle.truffle.object.debug.*;
 
-public abstract class DynamicObjectImpl implements DynamicObject, Cloneable {
+public abstract class DynamicObjectImpl extends DynamicObject implements Cloneable {
     private ShapeImpl shape;
 
     public static final DebugCounter reshapeCount = DebugCounter.create("Reshape count");
@@ -49,6 +49,7 @@ public abstract class DynamicObjectImpl implements DynamicObject, Cloneable {
         return getShape();
     }
 
+    @Override
     public ShapeImpl getShape() {
         return shape;
     }
@@ -64,6 +65,7 @@ public abstract class DynamicObjectImpl implements DynamicObject, Cloneable {
         setShapeAndResize(getShape(), newShape);
     }
 
+    @Override
     public final void setShapeAndResize(Shape oldShape, Shape newShape) {
         assert getShape() == oldShape : "wrong old shape";
         if (oldShape != newShape) {
@@ -81,6 +83,7 @@ public abstract class DynamicObjectImpl implements DynamicObject, Cloneable {
      *
      * @see #setShapeAndResize(Shape, Shape)
      */
+    @Override
     public final void setShapeAndGrow(Shape oldShape, Shape newShape) {
         assert getShape() == oldShape : "wrong old shape";
         if (oldShape != newShape) {
@@ -183,6 +186,7 @@ public abstract class DynamicObjectImpl implements DynamicObject, Cloneable {
         }
     }
 
+    @Override
     @TruffleBoundary
     public boolean changeFlags(Object id, int newFlags) {
         Shape oldShape = getShape();
@@ -199,6 +203,7 @@ public abstract class DynamicObjectImpl implements DynamicObject, Cloneable {
         }
     }
 
+    @Override
     @TruffleBoundary
     public boolean changeFlags(Object id, FlagsFunction updateFunction) {
         Shape oldShape = getShape();
@@ -271,6 +276,7 @@ public abstract class DynamicObjectImpl implements DynamicObject, Cloneable {
         return getShape().getObjectType().hashCode(this);
     }
 
+    @Override
     @TruffleBoundary
     public Object get(Object id, Object defaultValue) {
         Property existing = getShape().getProperty(id);
@@ -281,6 +287,7 @@ public abstract class DynamicObjectImpl implements DynamicObject, Cloneable {
         }
     }
 
+    @Override
     @TruffleBoundary
     public boolean set(Object id, Object value) {
         Property existing = getShape().getProperty(id);
@@ -292,6 +299,7 @@ public abstract class DynamicObjectImpl implements DynamicObject, Cloneable {
         }
     }
 
+    @Override
     @TruffleBoundary
     public void define(Object id, Object value, int flags) {
         ShapeImpl oldShape = getShape();
@@ -318,6 +326,7 @@ public abstract class DynamicObjectImpl implements DynamicObject, Cloneable {
         }
     }
 
+    @Override
     @TruffleBoundary
     public void define(Object id, Object value, int flags, LocationFactory locationFactory) {
         ShapeImpl oldShape = getShape();
@@ -333,6 +342,7 @@ public abstract class DynamicObjectImpl implements DynamicObject, Cloneable {
         }
     }
 
+    @Override
     @TruffleBoundary
     public boolean delete(Object id) {
         ShapeImpl oldShape = getShape();
@@ -347,14 +357,17 @@ public abstract class DynamicObjectImpl implements DynamicObject, Cloneable {
         }
     }
 
+    @Override
     public int size() {
         return getShape().getPropertyCount();
     }
 
+    @Override
     public boolean isEmpty() {
         return size() == 0;
     }
 
+    @Override
     public final boolean updateShape() {
         return getShape().getLayout().getStrategy().updateShape(this);
     }

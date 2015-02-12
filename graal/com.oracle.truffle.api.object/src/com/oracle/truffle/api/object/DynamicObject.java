@@ -27,11 +27,11 @@ package com.oracle.truffle.api.object;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.interop.*;
 
-public interface DynamicObject extends TypedObject, TruffleObject {
+public abstract class DynamicObject implements TypedObject, TruffleObject {
     /**
      * Get the object's current shape.
      */
-    Shape getShape();
+    public abstract Shape getShape();
 
     /**
      * Get property value.
@@ -40,7 +40,7 @@ public interface DynamicObject extends TypedObject, TruffleObject {
      * @param defaultValue return value if property is not found
      * @return property value or defaultValue if object has no such property
      */
-    Object get(Object key, Object defaultValue);
+    public abstract Object get(Object key, Object defaultValue);
 
     /**
      * Set value of existing property.
@@ -49,7 +49,7 @@ public interface DynamicObject extends TypedObject, TruffleObject {
      * @param value value to be set
      * @return {@code true} if successful or {@code false} if property not found
      */
-    boolean set(Object key, Object value);
+    public abstract boolean set(Object key, Object value);
 
     /**
      * Define new property or redefine existing property.
@@ -58,7 +58,7 @@ public interface DynamicObject extends TypedObject, TruffleObject {
      * @param value value to be set
      * @param flags flags to be set
      */
-    void define(Object key, Object value, int flags);
+    public abstract void define(Object key, Object value, int flags);
 
     /**
      * Define new property with a static location or change existing property.
@@ -68,7 +68,7 @@ public interface DynamicObject extends TypedObject, TruffleObject {
      * @param flags flags to be set
      * @param locationFactory factory function that creates a location for a given shape and value
      */
-    void define(Object key, Object value, int flags, LocationFactory locationFactory);
+    public abstract void define(Object key, Object value, int flags, LocationFactory locationFactory);
 
     /**
      * Change property flags.
@@ -77,7 +77,7 @@ public interface DynamicObject extends TypedObject, TruffleObject {
      * @param newFlags flags to be set
      * @return {@code true} if successful or {@code false} if property not found
      */
-    boolean changeFlags(Object key, int newFlags);
+    public abstract boolean changeFlags(Object key, int newFlags);
 
     /**
      * Change property flags.
@@ -86,7 +86,7 @@ public interface DynamicObject extends TypedObject, TruffleObject {
      * @param flagsUpdateFunction function updating old flags to new flags
      * @return {@code true} if successful or {@code false} if property not found
      */
-    boolean changeFlags(Object key, FlagsFunction flagsUpdateFunction);
+    public abstract boolean changeFlags(Object key, FlagsFunction flagsUpdateFunction);
 
     /**
      * Delete property.
@@ -94,17 +94,17 @@ public interface DynamicObject extends TypedObject, TruffleObject {
      * @param key property identifier
      * @return {@code true} if successful or {@code false} if property not found
      */
-    boolean delete(Object key);
+    public abstract boolean delete(Object key);
 
     /**
      * Returns the number of properties in this object.
      */
-    int size();
+    public abstract int size();
 
     /**
      * Returns {@code true} if this object contains no properties.
      */
-    boolean isEmpty();
+    public abstract boolean isEmpty();
 
     /**
      * Set object shape and grow storage if necessary.
@@ -112,7 +112,7 @@ public interface DynamicObject extends TypedObject, TruffleObject {
      * @param oldShape the object's current shape (must equal {@link #getShape()})
      * @param newShape the new shape to be set
      */
-    void setShapeAndGrow(Shape oldShape, Shape newShape);
+    public abstract void setShapeAndGrow(Shape oldShape, Shape newShape);
 
     /**
      * Set object shape and resize storage if necessary.
@@ -120,14 +120,14 @@ public interface DynamicObject extends TypedObject, TruffleObject {
      * @param oldShape the object's current shape (must equal {@link #getShape()})
      * @param newShape the new shape to be set
      */
-    void setShapeAndResize(Shape oldShape, Shape newShape);
+    public abstract void setShapeAndResize(Shape oldShape, Shape newShape);
 
     /**
      * Ensure object shape is up-to-date.
      *
      * @return {@code true} if shape has changed
      */
-    boolean updateShape();
+    public abstract boolean updateShape();
 
     public interface FlagsFunction {
         int apply(int t);
