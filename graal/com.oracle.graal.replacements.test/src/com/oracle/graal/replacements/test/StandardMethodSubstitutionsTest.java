@@ -177,4 +177,25 @@ public class StandardMethodSubstitutionsTest extends MethodSubstitutionTest {
     public static double longBitsToDouble(long value) {
         return Double.longBitsToDouble(value);
     }
+
+    @SuppressWarnings("all")
+    public static boolean isInstance(Class<?> clazz) {
+        return clazz.isInstance(Number.class);
+    }
+
+    @SuppressWarnings("all")
+    public static boolean isAssignableFrom(Class<?> clazz) {
+        return clazz.isInstance(Number.class);
+    }
+
+    @Test
+    public void testClassSubstitutions() {
+        test("isInstance");
+        for (Class<?> c : new Class[]{getClass(), Cloneable.class, int[].class, String[][].class}) {
+            for (Object o : new Object[]{this, new int[5], new String[2][], new Object()}) {
+                assertDeepEquals(c.isInstance(o), ClassSubstitutions.isInstance(c, o));
+                assertDeepEquals(c.isAssignableFrom(o.getClass()), ClassSubstitutions.isAssignableFrom(c, o.getClass()));
+            }
+        }
+    }
 }

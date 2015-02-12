@@ -67,7 +67,6 @@ public class HotSpotMethodSubstitutionTest extends MethodSubstitutionTest {
     @Test
     public void testClassSubstitutions() {
         test("getModifiers");
-        test("isInstance");
         test("isInterface");
         test("isArray");
         test("isPrimitive");
@@ -81,20 +80,12 @@ public class HotSpotMethodSubstitutionTest extends MethodSubstitutionTest {
             assertDeepEquals(c.isPrimitive(), HotSpotClassSubstitutions.isPrimitive(c));
             assertDeepEquals(c.getSuperclass(), HotSpotClassSubstitutions.getSuperclass(c));
             assertDeepEquals(c.getComponentType(), HotSpotClassSubstitutions.getComponentType(c));
-            for (Object o : new Object[]{this, new int[5], new String[2][], new Object()}) {
-                assertDeepEquals(c.isInstance(o), HotSpotClassSubstitutions.isInstance(c, o));
-            }
         }
     }
 
     @SuppressWarnings("all")
     public static int getModifiers(Class<?> clazz) {
         return clazz.getModifiers();
-    }
-
-    @SuppressWarnings("all")
-    public static boolean isInstance(Class<?> clazz) {
-        return clazz.isInstance(Number.class);
     }
 
     @SuppressWarnings("all")

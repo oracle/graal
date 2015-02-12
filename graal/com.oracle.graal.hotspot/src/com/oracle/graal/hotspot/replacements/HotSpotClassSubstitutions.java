@@ -27,13 +27,9 @@ import static com.oracle.graal.nodes.PiNode.*;
 
 import java.lang.reflect.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.word.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.word.*;
 
@@ -127,32 +123,6 @@ public class HotSpotClassSubstitutions {
             }
         }
         return null;
-    }
-
-    @MacroSubstitution(macro = ClassIsInstanceNode.class, isStatic = false)
-    @MethodSubstitution(isStatic = false)
-    public static boolean isInstance(Class<?> thisObj, Object obj) {
-        return ConditionalNode.materializeIsInstance(thisObj, obj);
-    }
-
-    @MacroSubstitution(macro = ClassIsAssignableFromNode.class, isStatic = false)
-    @MethodSubstitution(isStatic = false)
-    public static boolean isAssignableFrom(Class<?> thisClass, Class<?> otherClass) {
-        if (BranchProbabilityNode.probability(BranchProbabilityNode.NOT_LIKELY_PROBABILITY, otherClass == null)) {
-            DeoptimizeNode.deopt(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.NullCheckException);
-            return false;
-        }
-        GuardingNode anchorNode = SnippetAnchorNode.anchor();
-        KlassPointer thisHub = ClassGetHubNode.readClass(thisClass, anchorNode);
-        KlassPointer otherHub = ClassGetHubNode.readClass(otherClass, anchorNode);
-        if (thisHub.isNull() || otherHub.isNull()) {
-            // primitive types, only true if equal.
-            return thisClass == otherClass;
-        }
-        if (!TypeCheckSnippetUtils.checkUnknownSubType(thisHub, otherHub)) {
-            return false;
-        }
-        return true;
     }
 
     @MacroSubstitution(macro = ClassCastNode.class, isStatic = false)
