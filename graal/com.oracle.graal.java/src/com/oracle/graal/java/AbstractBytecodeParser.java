@@ -842,9 +842,9 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
 
         Map<Integer, SuccessorInfo> bciToBlockSuccessorIndex = new HashMap<>();
         for (int i = 0; i < currentBlock.getSuccessorCount(); i++) {
-            assert !bciToBlockSuccessorIndex.containsKey(currentBlock.getSuccessors().get(i).startBci);
-            if (!bciToBlockSuccessorIndex.containsKey(currentBlock.getSuccessors().get(i).startBci)) {
-                bciToBlockSuccessorIndex.put(currentBlock.getSuccessors().get(i).startBci, new SuccessorInfo(i));
+            assert !bciToBlockSuccessorIndex.containsKey(currentBlock.getSuccessor(i).startBci);
+            if (!bciToBlockSuccessorIndex.containsKey(currentBlock.getSuccessor(i).startBci)) {
+                bciToBlockSuccessorIndex.put(currentBlock.getSuccessor(i).startBci, new SuccessorInfo(i));
             }
         }
 
@@ -869,7 +869,7 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
                 SuccessorInfo info = bciToBlockSuccessorIndex.get(targetBci);
                 if (info.actualIndex < 0) {
                     info.actualIndex = nextSuccessorIndex++;
-                    actualSuccessors.add(currentBlock.getSuccessors().get(info.blockIndex));
+                    actualSuccessors.add(currentBlock.getSuccessor(info.blockIndex));
                 }
                 keySuccessors[i] = info.actualIndex;
             }
