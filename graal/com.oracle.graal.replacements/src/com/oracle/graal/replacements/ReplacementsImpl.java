@@ -610,6 +610,10 @@ public class ReplacementsImpl implements Replacements {
             // Replacements cannot have optimistic assumptions since they have
             // to be valid for the entire run of the VM.
             final StructuredGraph graph = new StructuredGraph(methodToParse, AllowAssumptions.NO);
+
+            // They will also never be never be evolved or have breakpoints set in them
+            graph.disableMethodRecording();
+
             try (Scope s = Debug.scope("buildInitialGraph", graph)) {
                 MetaAccessProvider metaAccess = replacements.providers.getMetaAccess();
 

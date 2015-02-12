@@ -157,7 +157,12 @@ public abstract class Stub {
         if (code == null) {
             try (Scope d = Debug.sandbox("CompilingStub", DebugScope.getConfig(), providers.getCodeCache(), debugScopeContext())) {
                 final StructuredGraph graph = getGraph();
+
+                // Stubs cannot be recompiled so they cannot be compiled with
+                // assumptions and there is no point in recording evol_method dependencies
                 assert graph.getAssumptions() == null;
+                assert !graph.isMethodRecordingEnabled() : graph;
+
                 if (!(graph.start() instanceof StubStartNode)) {
                     StubStartNode newStart = graph.add(new StubStartNode(Stub.this));
                     newStart.setStateAfter(graph.start().stateAfter());

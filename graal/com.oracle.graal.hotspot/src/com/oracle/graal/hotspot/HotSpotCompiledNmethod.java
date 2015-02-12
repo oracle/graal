@@ -47,4 +47,9 @@ public final class HotSpotCompiledNmethod extends HotSpotCompiledCode {
         this.id = compResult.getId();
         this.ctask = ctask;
     }
+
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + "[" + id + ":" + method.format("%H.%n(%p)%r@") + entryBCI + "]";
+    }
 }
