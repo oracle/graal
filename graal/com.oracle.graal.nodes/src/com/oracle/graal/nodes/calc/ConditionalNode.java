@@ -118,7 +118,7 @@ public final class ConditionalNode extends FloatingNode implements Canonicalizab
         return this;
     }
 
-    private static ValueNode findSynonym(ValueNode condition, ValueNode falseValue, ValueNode trueValue) {
+    private static ValueNode findSynonym(ValueNode condition, ValueNode trueValue, ValueNode falseValue) {
         if (condition instanceof LogicNegationNode) {
             LogicNegationNode negated = (LogicNegationNode) condition;
             return ConditionalNode.create(negated.getValue(), falseValue, trueValue);
