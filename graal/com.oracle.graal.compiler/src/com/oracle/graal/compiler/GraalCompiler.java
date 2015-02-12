@@ -267,6 +267,7 @@ public class GraalCompiler {
             graph.maybeCompress();
 
             SchedulePhase schedule = new SchedulePhase();
+            schedule.setScheduleConstants(true);
             schedule.apply(graph);
             Debug.dump(schedule, "Final HIR schedule");
             return schedule;

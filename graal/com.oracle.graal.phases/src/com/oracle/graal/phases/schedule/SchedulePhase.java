@@ -305,6 +305,7 @@ public final class SchedulePhase extends Phase {
     private BlockMap<List<ValueNode>> blockToNodesMap;
     private BlockMap<LocationSet> blockToKillSet;
     private final SchedulingStrategy selectedStrategy;
+    private boolean scheduleConstants;
 
     public SchedulePhase() {
         this(OptScheduleOutOfLoops.getValue() ? SchedulingStrategy.LATEST_OUT_OF_LOOPS : SchedulingStrategy.LATEST);
@@ -312,6 +313,10 @@ public final class SchedulePhase extends Phase {
 
     public SchedulePhase(SchedulingStrategy strategy) {
         this.selectedStrategy = strategy;
+    }
+
+    public void setScheduleConstants(boolean value) {
+        scheduleConstants = value;
     }
 
     @Override
@@ -447,6 +452,9 @@ public final class SchedulePhase extends Phase {
         assert !node.isDeleted();
 
         if (cfg.getNodeToBlock().containsKey(node)) {
+            return;
+        }
+        if (!scheduleConstants && node instanceof ConstantNode) {
             return;
         }
         if (node instanceof VirtualObjectNode) {
