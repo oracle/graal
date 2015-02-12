@@ -569,7 +569,7 @@ public class ElementUtils {
     public static TypeElement findNearestEnclosingType(Element element) {
         List<Element> elements = getElementHierarchy(element);
         for (Element e : elements) {
-            if (e.getKind().isClass()) {
+            if (e.getKind().isClass() || e.getKind().isInterface()) {
                 return (TypeElement) e;
             }
         }
