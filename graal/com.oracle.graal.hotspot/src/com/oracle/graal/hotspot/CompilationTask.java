@@ -97,17 +97,16 @@ public class CompilationTask {
     private static final com.sun.management.ThreadMXBean threadMXBean = (com.sun.management.ThreadMXBean) ManagementFactory.getThreadMXBean();
 
     /**
-     * The address of the native CompileTask associated with this compilation or 0L if no such
-     * association exists.
+     * The address of the GraalEnv associated with this compilation or 0L if no such object exists.
      */
-    private final long ctask;
+    private final long graalEnv;
 
-    public CompilationTask(HotSpotBackend backend, HotSpotResolvedJavaMethod method, int entryBCI, long ctask, int id, boolean installAsDefault) {
+    public CompilationTask(HotSpotBackend backend, HotSpotResolvedJavaMethod method, int entryBCI, long graalEnv, int id, boolean installAsDefault) {
         this.backend = backend;
         this.method = method;
         this.entryBCI = entryBCI;
         this.id = id;
-        this.ctask = ctask;
+        this.graalEnv = graalEnv;
         this.installAsDefault = installAsDefault;
     }
 
@@ -209,14 +208,19 @@ public class CompilationTask {
                         graphCache = new HashMap<>();
                     }
 
+                    boolean recordEvolMethodDeps = graalEnv == 0 || unsafe.getByte(graalEnv + config.graalEnvJvmtiCanHotswapOrPostBreakpointOffset) != 0;
+
                     HotSpotProviders providers = backend.getProviders();
                     Replacements replacements = providers.getReplacements();
                     graph = replacements.getMethodSubstitution(method);
                     if (graph == null || entryBCI != INVOCATION_ENTRY_BCI) {
                         graph = new StructuredGraph(method, entryBCI, AllowAssumptions.from(OptAssumptions.getValue()));
+                        if (!recordEvolMethodDeps) {
+                            graph.disableMethodRecording();
+                        }
                     } else {
                         // Compiling method substitution - must clone the graph
-                        graph = graph.copy(graph.name, method, AllowAssumptions.from(OptAssumptions.getValue()));
+                        graph = graph.copy(graph.name, method, AllowAssumptions.from(OptAssumptions.getValue()), recordEvolMethodDeps);
                     }
                     InlinedBytecodes.add(method.getCodeSize());
                     CallingConvention cc = getCallingConvention(providers.getCodeCache(), Type.JavaCallee, graph.method(), false);
@@ -313,7 +317,9 @@ public class CompilationTask {
                 compilationEvent.commit();
             }
 
-            if (ctask != 0) {
+            if (graalEnv != 0) {
+                long ctask = unsafe.getAddress(graalEnv + config.graalEnvTaskOffset);
+                assert ctask != 0L;
                 unsafe.putInt(ctask + config.compileTaskNumInlinedBytecodesOffset, processedBytes);
             }
             if ((config.ciTime || config.ciTimeEach) && installedCode != null) {
@@ -335,7 +341,7 @@ public class CompilationTask {
         final HotSpotCodeCacheProvider codeCache = backend.getProviders().getCodeCache();
         InstalledCode installedCode = null;
         try (Scope s = Debug.scope("CodeInstall", new DebugDumpScope(String.valueOf(id), true), codeCache, method)) {
-            installedCode = codeCache.installMethod(method, compResult, ctask, installAsDefault);
+            installedCode = codeCache.installMethod(method, compResult, graalEnv, installAsDefault);
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
@@ -354,11 +360,11 @@ public class CompilationTask {
      *
      * @param metaspaceMethod
      * @param entryBCI
-     * @param ctask address of native CompileTask object
+     * @param graalEnv address of native GraalEnv object
      * @param id CompileTask::_compile_id
      */
     @SuppressWarnings("unused")
-    private static void compileMetaspaceMethod(long metaspaceMethod, int entryBCI, long ctask, int id) {
+    private static void compileMetaspaceMethod(long metaspaceMethod, int entryBCI, long graalEnv, int id) {
         // Ensure a Graal runtime is initialized prior to Debug being initialized as the former
         // may include processing command line options used by the latter.
         Graal.getRuntime();
@@ -369,15 +375,15 @@ public class CompilationTask {
         }
 
         HotSpotResolvedJavaMethod method = HotSpotResolvedJavaMethodImpl.fromMetaspace(metaspaceMethod);
-        compileMethod(method, entryBCI, ctask, id);
+        compileMethod(method, entryBCI, graalEnv, id);
     }
 
     /**
      * Compiles a method to machine code.
      */
-    static void compileMethod(HotSpotResolvedJavaMethod method, int entryBCI, long ctask, int id) {
+    static void compileMethod(HotSpotResolvedJavaMethod method, int entryBCI, long graalEnv, int id) {
         HotSpotBackend backend = runtime().getHostBackend();
-        CompilationTask task = new CompilationTask(backend, method, entryBCI, ctask, id, true);
+        CompilationTask task = new CompilationTask(backend, method, entryBCI, graalEnv, id, true);
         try (DebugConfigScope dcs = setConfig(new TopLevelDebugConfig())) {
             task.runCompilation();
         }

@@ -1082,6 +1082,8 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMConstant(name = "JVM_ACC_MONITOR_MATCH") @Stable public int jvmAccMonitorMatch;
     @HotSpotVMConstant(name = "JVM_ACC_HAS_MONITOR_BYTECODES") @Stable public int jvmAccHasMonitorBytecodes;
 
+    @HotSpotVMField(name = "GraalEnv::_task", type = "CompileTask*", get = HotSpotVMField.Type.OFFSET) @Stable public int graalEnvTaskOffset;
+    @HotSpotVMField(name = "GraalEnv::_jvmti_can_hotswap_or_post_breakpoint", type = "bool", get = HotSpotVMField.Type.OFFSET) @Stable public int graalEnvJvmtiCanHotswapOrPostBreakpointOffset;
     @HotSpotVMField(name = "CompileTask::_num_inlined_bytecodes", type = "int", get = HotSpotVMField.Type.OFFSET) @Stable public int compileTaskNumInlinedBytecodesOffset;
 
     /**
