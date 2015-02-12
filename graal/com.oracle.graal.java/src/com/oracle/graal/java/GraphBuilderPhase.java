@@ -665,7 +665,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             @Override
             protected ValueNode createCheckCast(ResolvedJavaType type, ValueNode object, JavaTypeProfile profileForTypeCheck, boolean forStoreCheck) {
-                return CheckCastNode.create(type, object, profileForTypeCheck, forStoreCheck);
+                return CheckCastNode.create(type, object, profileForTypeCheck, forStoreCheck, currentGraph.getAssumptions());
             }
 
             @Override
