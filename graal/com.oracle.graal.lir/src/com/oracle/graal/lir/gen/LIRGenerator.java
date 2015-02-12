@@ -226,7 +226,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     }
 
     public void emitIncomingValues(Value[] params) {
-        ((LabelOp) res.getLIR().getLIRforBlock(currentBlock).get(0)).setIncomingValues(params);
+        ((LabelOp) res.getLIR().getLIRforBlock(getCurrentBlock()).get(0)).setIncomingValues(params);
     }
 
     public abstract void emitJump(LabelRef label);
@@ -381,10 +381,6 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
 
     public AbstractBlock<?> getCurrentBlock() {
         return currentBlock;
-    }
-
-    void setCurrentBlock(AbstractBlock<?> block) {
-        currentBlock = block;
     }
 
     public LIRGenerationResult getResult() {
