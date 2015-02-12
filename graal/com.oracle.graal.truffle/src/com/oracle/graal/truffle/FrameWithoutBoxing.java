@@ -243,26 +243,24 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
 
     private void verifySet(FrameSlot slot, FrameSlotKind accessKind) {
         int slotIndex = slot.getIndex();
-        byte[] tagsArray = getTags();
-        if (slotIndex >= tagsArray.length) {
+        if (slotIndex >= getTags().length) {
             CompilerDirectives.transferToInterpreter();
             if (!resize()) {
                 throw new IllegalArgumentException(String.format("The frame slot '%s' is not known by the frame descriptor.", slot));
             }
         }
-        tagsArray[slotIndex] = (byte) accessKind.ordinal();
+        getTags()[slotIndex] = (byte) accessKind.ordinal();
     }
 
     private void verifyGet(FrameSlot slot, FrameSlotKind accessKind) throws FrameSlotTypeException {
         int slotIndex = slot.getIndex();
-        byte[] tagsArray = getTags();
-        if (slotIndex >= tagsArray.length) {
+        if (slotIndex >= getTags().length) {
             CompilerDirectives.transferToInterpreter();
             if (!resize()) {
                 throw new IllegalArgumentException(String.format("The frame slot '%s' is not known by the frame descriptor.", slot));
             }
         }
-        byte tag = tagsArray[slotIndex];
+        byte tag = this.getTags()[slotIndex];
         if (tag != accessKind.ordinal()) {
             CompilerDirectives.transferToInterpreter();
             throw new FrameSlotTypeException();
