@@ -32,6 +32,11 @@ import com.oracle.graal.lir.*;
 
 public interface LIRGeneratorTool extends ArithmeticLIRGenerator {
 
+    public interface SpillMoveFactory {
+
+        LIRInstruction createMove(AllocatableValue result, Value input);
+    }
+
     CodeGenProviders getProviders();
 
     TargetDescription target();
@@ -45,6 +50,8 @@ public interface LIRGeneratorTool extends ArithmeticLIRGenerator {
     AbstractBlock<?> getCurrentBlock();
 
     LIRGenerationResult getResult();
+
+    SpillMoveFactory getSpillMoveFactory();
 
     boolean hasBlockEnd(AbstractBlock<?> block);
 
