@@ -43,7 +43,7 @@ public class LoopUnswitchingPhase extends Phase {
             do {
                 unswitched = false;
                 final LoopsData dataUnswitch = new LoopsData(graph);
-                for (LoopEx loop : dataUnswitch.loops()) {
+                for (LoopEx loop : dataUnswitch.outerFirst()) {
                     if (LoopPolicies.shouldTryUnswitch(loop)) {
                         List<ControlSplitNode> controlSplits = LoopTransformations.findUnswitchable(loop);
                         if (controlSplits != null) {
