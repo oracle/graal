@@ -28,6 +28,7 @@ import static java.util.Collections.*;
 import java.io.*;
 import java.util.*;
 
+import com.oracle.graal.api.code.Assumptions.Assumption;
 import com.oracle.graal.api.code.CodeUtil.RefMapFormatter;
 import com.oracle.graal.api.meta.*;
 
@@ -528,7 +529,12 @@ public class CompilationResult implements Serializable {
 
     private ArrayList<CodeAnnotation> annotations;
 
-    private Assumptions assumptions;
+    private Assumption[] assumptions;
+
+    /**
+     * The list of the methods whose bytecodes were used as input to the compilation.
+     */
+    private ResolvedJavaMethod[] methods;
 
     public CompilationResult() {
         this(null);
@@ -564,12 +570,12 @@ public class CompilationResult implements Serializable {
                 this.targetCodeSize == that.targetCodeSize &&
                 Objects.equals(this.name, that.name) &&
                 Objects.equals(this.annotations, that.annotations) &&
-                Objects.equals(this.assumptions, that.assumptions) &&
                 Objects.equals(this.dataSection, that.dataSection) &&
                 Objects.equals(this.exceptionHandlers, that.exceptionHandlers) &&
                 Objects.equals(this.dataPatches, that.dataPatches) &&
                 Objects.equals(this.infopoints, that.infopoints) &&
                 Objects.equals(this.marks,  that.marks) &&
+                Arrays.equals(this.assumptions, that.assumptions) &&
                 Arrays.equals(targetCode, that.targetCode)) {
                 return true;
             }
@@ -606,12 +612,34 @@ public class CompilationResult implements Serializable {
         this.entryBCI = entryBCI;
     }
 
-    public void setAssumptions(Assumptions assumptions) {
+    /**
+     * Sets the assumptions made during compilation.
+     */
+    public void setAssumptions(Assumption[] assumptions) {
         this.assumptions = assumptions;
     }
 
-    public Assumptions getAssumptions() {
-        return assumptions;
+    /**
+     * Gets a fixed-size {@linkplain Arrays#asList(Object...) view} of the assumptions made during
+     * compilation.
+     */
+    public Collection<Assumption> getAssumptions() {
+        return assumptions == null ? Collections.emptyList() : Arrays.asList(assumptions);
+    }
+
+    /**
+     * Sets the methods whose bytecodes were used as input to the compilation.
+     */
+    public void setMethods(ResolvedJavaMethod[] methods) {
+        this.methods = methods;
+    }
+
+    /**
+     * Gets a fixed-size {@linkplain Arrays#asList(Object...) view} of the methods whose bytecodes
+     * were used as input to the compilation.
+     */
+    public Collection<ResolvedJavaMethod> getMethods() {
+        return methods == null ? Collections.emptyList() : Arrays.asList(methods);
     }
 
     public DataSection getDataSection() {

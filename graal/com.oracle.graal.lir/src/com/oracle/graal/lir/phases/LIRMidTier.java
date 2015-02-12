@@ -22,14 +22,21 @@
  */
 package com.oracle.graal.lir.phases;
 
-import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.phases.LowLevelLowTierPhase.*;
+import com.oracle.graal.lir.alloc.lsra.*;
+import com.oracle.graal.lir.phases.LIRMidTierPhase.*;
+import com.oracle.graal.lir.stackslotalloc.*;
 
-public class LowLevelLowTier extends LowLevelPhaseSuite<LowLevelLowTierContext> {
-    public LowLevelLowTier() {
-        appendPhase(new EdgeMoveOptimizer());
-        appendPhase(new ControlFlowOptimizer());
-        appendPhase(new RedundantMoveElimination());
-        appendPhase(new NullCheckOptimizer());
+public class LIRMidTier extends LIRPhaseSuite<LIRMidTierContext> {
+    public LIRMidTier() {
+        appendPhase(new LinearScanPhase());
+
+        // build frame map
+        if (LSStackSlotAllocator.Options.LIROptLSStackSlotAllocator.getValue()) {
+            appendPhase(new LSStackSlotAllocator());
+        } else {
+            appendPhase(new SimpleStackSlotAllocator());
+        }
+        // currently we mark locations only if we do register allocation
+        appendPhase(new LocationMarker());
     }
 }

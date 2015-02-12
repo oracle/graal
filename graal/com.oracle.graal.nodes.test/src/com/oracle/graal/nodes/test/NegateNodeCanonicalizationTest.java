@@ -29,6 +29,7 @@ import org.junit.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 
 /**
  * This class tests that the canonicalization for constant negate nodes cover all cases.
@@ -39,7 +40,7 @@ public class NegateNodeCanonicalizationTest {
 
     @Before
     public void before() {
-        graph = new StructuredGraph();
+        graph = new StructuredGraph(AllowAssumptions.YES);
     }
 
     @Test

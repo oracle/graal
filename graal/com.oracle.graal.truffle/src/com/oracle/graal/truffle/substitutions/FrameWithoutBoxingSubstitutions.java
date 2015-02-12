@@ -41,12 +41,6 @@ public class FrameWithoutBoxingSubstitutions {
     public static native Object unsafeCast(Object value, Class<?> clazz, boolean condition, boolean nonNull);
 
     @MacroSubstitution(macro = CustomizedUnsafeLoadMacroNode.class, isStatic = true)
-    public static native boolean unsafeGetBoolean(Object receiver, long offset, boolean condition, Object locationIdentity);
-
-    @MacroSubstitution(macro = CustomizedUnsafeLoadMacroNode.class, isStatic = true)
-    public static native byte unsafeGetByte(Object receiver, long offset, boolean condition, Object locationIdentity);
-
-    @MacroSubstitution(macro = CustomizedUnsafeLoadMacroNode.class, isStatic = true)
     public static native int unsafeGetInt(Object receiver, long offset, boolean condition, Object locationIdentity);
 
     @MacroSubstitution(macro = CustomizedUnsafeLoadMacroNode.class, isStatic = true)
@@ -60,12 +54,6 @@ public class FrameWithoutBoxingSubstitutions {
 
     @MacroSubstitution(macro = CustomizedUnsafeLoadMacroNode.class, isStatic = true)
     public static native Object unsafeGetObject(Object receiver, long offset, boolean condition, Object locationIdentity);
-
-    @MacroSubstitution(macro = CustomizedUnsafeStoreMacroNode.class, isStatic = true)
-    public static native void unsafePutBoolean(Object receiver, long offset, boolean value, Object locationIdentity);
-
-    @MacroSubstitution(macro = CustomizedUnsafeStoreMacroNode.class, isStatic = true)
-    public static native void unsafePutByte(Object receiver, long offset, byte value, Object locationIdentity);
 
     @MacroSubstitution(macro = CustomizedUnsafeStoreMacroNode.class, isStatic = true)
     public static native void unsafePutInt(Object receiver, long offset, int value, Object locationIdentity);

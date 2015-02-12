@@ -97,7 +97,7 @@ public class TypeCheckHints {
         } else {
             ResolvedJavaType uniqueSubtype = targetType == null ? null : targetType.findUniqueConcreteSubtype();
             if (uniqueSubtype != null) {
-                if (assumptions.useOptimisticAssumptions()) {
+                if (assumptions != null) {
                     assumptions.recordConcreteSubtype(targetType, uniqueSubtype);
                     exact = uniqueSubtype;
                 } else {

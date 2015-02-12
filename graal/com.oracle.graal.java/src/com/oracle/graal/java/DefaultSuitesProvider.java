@@ -32,7 +32,7 @@ public class DefaultSuitesProvider implements SuitesProvider {
 
     private final DerivedOptionValue<Suites> defaultSuites;
     private final PhaseSuite<HighTierContext> defaultGraphBuilderSuite;
-    private final DerivedOptionValue<LowLevelSuites> defaultLowLevelSuites;
+    private final DerivedOptionValue<LIRSuites> defaultLIRSuites;
 
     private class SuitesSupplier implements OptionSupplier<Suites> {
 
@@ -44,12 +44,12 @@ public class DefaultSuitesProvider implements SuitesProvider {
 
     }
 
-    private class LowLevelSuitesSupplier implements OptionSupplier<LowLevelSuites> {
+    private class LIRSuitesSupplier implements OptionSupplier<LIRSuites> {
 
         private static final long serialVersionUID = 312070237227476252L;
 
-        public LowLevelSuites get() {
-            return createLowLevelSuites();
+        public LIRSuites get() {
+            return createLIRSuites();
         }
 
     }
@@ -57,7 +57,7 @@ public class DefaultSuitesProvider implements SuitesProvider {
     public DefaultSuitesProvider() {
         this.defaultGraphBuilderSuite = createGraphBuilderSuite();
         this.defaultSuites = new DerivedOptionValue<>(new SuitesSupplier());
-        this.defaultLowLevelSuites = new DerivedOptionValue<>(new LowLevelSuitesSupplier());
+        this.defaultLIRSuites = new DerivedOptionValue<>(new LIRSuitesSupplier());
     }
 
     public Suites getDefaultSuites() {
@@ -78,12 +78,12 @@ public class DefaultSuitesProvider implements SuitesProvider {
         return suite;
     }
 
-    public LowLevelSuites getDefaultLowLevelSuites() {
-        return defaultLowLevelSuites.getValue();
+    public LIRSuites getDefaultLIRSuites() {
+        return defaultLIRSuites.getValue();
     }
 
-    public LowLevelSuites createLowLevelSuites() {
-        return Suites.createDefaultLowLevelSuites();
+    public LIRSuites createLIRSuites() {
+        return Suites.createDefaultLIRSuites();
     }
 
 }

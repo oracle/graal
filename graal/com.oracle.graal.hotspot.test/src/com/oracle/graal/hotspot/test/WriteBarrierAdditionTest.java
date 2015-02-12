@@ -26,7 +26,6 @@ import java.lang.ref.*;
 
 import org.junit.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.test.*;
@@ -39,6 +38,7 @@ import com.oracle.graal.hotspot.phases.*;
 import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.nodes.HeapAccess.BarrierType;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
@@ -244,9 +244,9 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
     private void testHelper(final String snippetName, final int expectedBarriers) throws Exception, SecurityException {
         ResolvedJavaMethod snippet = getResolvedJavaMethod(snippetName);
         try (Scope s = Debug.scope("WriteBarrierAdditionTest", snippet)) {
-            StructuredGraph graph = parseEager(snippet);
-            HighTierContext highContext = new HighTierContext(getProviders(), new Assumptions(false), null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
-            MidTierContext midContext = new MidTierContext(getProviders(), new Assumptions(false), getCodeCache().getTarget(), OptimisticOptimizations.ALL, graph.method().getProfilingInfo(), null);
+            StructuredGraph graph = parseEager(snippet, AllowAssumptions.NO);
+            HighTierContext highContext = new HighTierContext(getProviders(), null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
+            MidTierContext midContext = new MidTierContext(getProviders(), getCodeCache().getTarget(), OptimisticOptimizations.ALL, graph.method().getProfilingInfo(), null);
             new NodeIntrinsificationPhase(getProviders(), getSnippetReflection()).apply(graph);
             new InliningPhase(new InlineEverythingPolicy(), new CanonicalizerPhase(true)).apply(graph, highContext);
             new LoweringPhase(new CanonicalizerPhase(true), LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, highContext);

@@ -53,6 +53,7 @@ import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.phases.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.virtual.*;
@@ -71,7 +72,7 @@ import com.oracle.graal.test.*;
  * <p>
  * White box tests for Graal compiler transformations use this pattern:
  * <ol>
- * <li>Create a graph by {@linkplain #parseEager(String) parsing} a method.</li>
+ * <li>Create a graph by {@linkplain #parseEager(String, AllowAssumptions) parsing} a method.</li>
  * <li>Manually modify the graph (e.g. replace a parameter node with a constant).</li>
  * <li>Apply a transformation to the graph.</li>
  * <li>Assert that the transformed graph is equal to an expected graph.</li>
@@ -90,7 +91,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     private final Providers providers;
     private final Backend backend;
     private final DerivedOptionValue<Suites> suites;
-    private final DerivedOptionValue<LowLevelSuites> lowLevelSuites;
+    private final DerivedOptionValue<LIRSuites> lirSuites;
 
     /**
      * Can be overridden by unit tests to verify properties of the graph.
@@ -166,8 +167,8 @@ public abstract class GraalCompilerTest extends GraalTest {
         return ret;
     }
 
-    protected LowLevelSuites createLowLevelSuites() {
-        LowLevelSuites ret = backend.getSuites().createLowLevelSuites();
+    protected LIRSuites createLIRSuites() {
+        LIRSuites ret = backend.getSuites().createLIRSuites();
         return ret;
     }
 
@@ -175,7 +176,7 @@ public abstract class GraalCompilerTest extends GraalTest {
         this.backend = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend();
         this.providers = getBackend().getProviders();
         this.suites = new DerivedOptionValue<>(this::createSuites);
-        this.lowLevelSuites = new DerivedOptionValue<>(this::createLowLevelSuites);
+        this.lirSuites = new DerivedOptionValue<>(this::createLIRSuites);
         installSubstitutions();
     }
 
@@ -196,7 +197,7 @@ public abstract class GraalCompilerTest extends GraalTest {
         }
         this.providers = backend.getProviders();
         this.suites = new DerivedOptionValue<>(this::createSuites);
-        this.lowLevelSuites = new DerivedOptionValue<>(this::createLowLevelSuites);
+        this.lirSuites = new DerivedOptionValue<>(this::createLIRSuites);
         installSubstitutions();
     }
 
@@ -364,8 +365,8 @@ public abstract class GraalCompilerTest extends GraalTest {
         return suites.getValue();
     }
 
-    protected LowLevelSuites getLowLevelSuites() {
-        return lowLevelSuites.getValue();
+    protected LIRSuites getLIRSuites() {
+        return lirSuites.getValue();
     }
 
     protected Providers getProviders() {
@@ -661,7 +662,7 @@ public abstract class GraalCompilerTest extends GraalTest {
 
     /**
      * Gets installed code for a given method, compiling it first if necessary. The graph is parsed
-     * {@link #parseEager(ResolvedJavaMethod) eagerly}.
+     * {@link #parseEager(ResolvedJavaMethod, AllowAssumptions) eagerly}.
      */
     protected InstalledCode getCode(ResolvedJavaMethod method) {
         return getCode(method, null);
@@ -735,10 +736,10 @@ public abstract class GraalCompilerTest extends GraalTest {
      * is null.
      *
      * The default implementation in {@link GraalCompilerTest} is to call
-     * {@link #parseEager(ResolvedJavaMethod)}.
+     * {@link #parseEager(ResolvedJavaMethod, AllowAssumptions)}.
      */
     protected StructuredGraph parseForCompile(ResolvedJavaMethod method) {
-        return parseEager(method);
+        return parseEager(method, AllowAssumptions.YES);
     }
 
     /**
@@ -754,7 +755,7 @@ public abstract class GraalCompilerTest extends GraalTest {
         lastCompiledGraph = graphToCompile;
         CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graphToCompile.method(), false);
         Request<CompilationResult> request = new Request<>(graphToCompile, cc, installedCodeOwner, getProviders(), getBackend(), getCodeCache().getTarget(), null, getDefaultGraphBuilderSuite(),
-                        OptimisticOptimizations.ALL, getProfilingInfo(graphToCompile), getSpeculationLog(), getSuites(), getLowLevelSuites(), new CompilationResult(),
+                        OptimisticOptimizations.ALL, getProfilingInfo(graphToCompile), getSpeculationLog(), getSuites(), getLIRSuites(), new CompilationResult(),
                         CompilationResultBuilderFactory.Default);
         return GraalCompiler.compile(request);
     }
@@ -815,16 +816,16 @@ public abstract class GraalCompilerTest extends GraalTest {
      *
      * @param methodName the name of the method in {@code this.getClass()} to be parsed
      */
-    protected StructuredGraph parseProfiled(String methodName) {
-        return parseProfiled(getResolvedJavaMethod(methodName));
+    protected StructuredGraph parseProfiled(String methodName, AllowAssumptions allowAssumptions) {
+        return parseProfiled(getResolvedJavaMethod(methodName), allowAssumptions);
     }
 
     /**
      * Parses a Java method in {@linkplain GraphBuilderConfiguration#getDefault() default} mode to
      * produce a graph.
      */
-    protected StructuredGraph parseProfiled(ResolvedJavaMethod m) {
-        return parse1(m, getDefaultGraphBuilderSuite());
+    protected StructuredGraph parseProfiled(ResolvedJavaMethod m, AllowAssumptions allowAssumptions) {
+        return parse1(m, getDefaultGraphBuilderSuite(), allowAssumptions);
     }
 
     /**
@@ -833,31 +834,31 @@ public abstract class GraalCompilerTest extends GraalTest {
      *
      * @param methodName the name of the method in {@code this.getClass()} to be parsed
      */
-    protected StructuredGraph parseEager(String methodName) {
-        return parseEager(getResolvedJavaMethod(methodName));
+    protected StructuredGraph parseEager(String methodName, AllowAssumptions allowAssumptions) {
+        return parseEager(getResolvedJavaMethod(methodName), allowAssumptions);
     }
 
     /**
      * Parses a Java method in {@linkplain GraphBuilderConfiguration#getEagerDefault() eager} mode
      * to produce a graph.
      */
-    protected StructuredGraph parseEager(ResolvedJavaMethod m) {
-        return parse1(m, getCustomGraphBuilderSuite(GraphBuilderConfiguration.getEagerDefault()));
+    protected StructuredGraph parseEager(ResolvedJavaMethod m, AllowAssumptions allowAssumptions) {
+        return parse1(m, getCustomGraphBuilderSuite(GraphBuilderConfiguration.getEagerDefault()), allowAssumptions);
     }
 
     /**
      * Parses a Java method in {@linkplain GraphBuilderConfiguration#getFullDebugDefault() full
      * debug} mode to produce a graph.
      */
-    protected StructuredGraph parseDebug(ResolvedJavaMethod m) {
-        return parse1(m, getCustomGraphBuilderSuite(GraphBuilderConfiguration.getFullDebugDefault()));
+    protected StructuredGraph parseDebug(ResolvedJavaMethod m, AllowAssumptions allowAssumptions) {
+        return parse1(m, getCustomGraphBuilderSuite(GraphBuilderConfiguration.getFullDebugDefault()), allowAssumptions);
     }
 
-    private StructuredGraph parse1(ResolvedJavaMethod javaMethod, PhaseSuite<HighTierContext> graphBuilderSuite) {
+    private StructuredGraph parse1(ResolvedJavaMethod javaMethod, PhaseSuite<HighTierContext> graphBuilderSuite, AllowAssumptions allowAssumptions) {
         assert javaMethod.getAnnotation(Test.class) == null : "shouldn't parse method with @Test annotation: " + javaMethod;
         try (Scope ds = Debug.scope("Parsing", javaMethod)) {
-            StructuredGraph graph = new StructuredGraph(javaMethod);
-            graphBuilderSuite.apply(graph, new HighTierContext(providers, null, null, graphBuilderSuite, OptimisticOptimizations.ALL));
+            StructuredGraph graph = new StructuredGraph(javaMethod, allowAssumptions);
+            graphBuilderSuite.apply(graph, new HighTierContext(providers, null, graphBuilderSuite, OptimisticOptimizations.ALL));
             return graph;
         } catch (Throwable e) {
             throw Debug.handle(e);

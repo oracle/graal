@@ -24,7 +24,6 @@ package com.oracle.graal.nodes.util;
 
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
@@ -473,20 +472,14 @@ public class GraphUtil {
     }
 
     private static final class DefaultSimplifierTool implements SimplifierTool {
-        private final Assumptions assumptions;
         private final MetaAccessProvider metaAccess;
         private final ConstantReflectionProvider constantReflection;
         private final boolean canonicalizeReads;
 
-        public DefaultSimplifierTool(Assumptions assumptions, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, boolean canonicalizeReads) {
-            this.assumptions = assumptions;
+        public DefaultSimplifierTool(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, boolean canonicalizeReads) {
             this.metaAccess = metaAccess;
             this.constantReflection = constantReflection;
             this.canonicalizeReads = canonicalizeReads;
-        }
-
-        public Assumptions assumptions() {
-            return assumptions;
         }
 
         public MetaAccessProvider getMetaAccess() {
@@ -517,7 +510,7 @@ public class GraphUtil {
         }
     }
 
-    public static SimplifierTool getDefaultSimplifier(Assumptions assumptions, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, boolean canonicalizeReads) {
-        return new DefaultSimplifierTool(assumptions, metaAccess, constantReflection, canonicalizeReads);
+    public static SimplifierTool getDefaultSimplifier(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, boolean canonicalizeReads) {
+        return new DefaultSimplifierTool(metaAccess, constantReflection, canonicalizeReads);
     }
 }

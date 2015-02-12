@@ -94,7 +94,7 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
         }
     }
 
-    public static ResolvedJavaMethod findSpecialCallTarget(InvokeKind invokeKind, ValueNode receiver, ResolvedJavaMethod targetMethod, Assumptions assumptions, ResolvedJavaType contextType) {
+    public static ResolvedJavaMethod findSpecialCallTarget(InvokeKind invokeKind, ValueNode receiver, ResolvedJavaMethod targetMethod, ResolvedJavaType contextType) {
         if (invokeKind.isDirect()) {
             return null;
         }
@@ -119,7 +119,8 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
             if (resolvedMethod != null && (resolvedMethod.canBeStaticallyBound() || StampTool.isExactType(receiver) || type.isArray())) {
                 return resolvedMethod;
             }
-            if (assumptions != null && assumptions.useOptimisticAssumptions()) {
+            Assumptions assumptions = receiver.graph().getAssumptions();
+            if (assumptions != null) {
                 ResolvedJavaType uniqueConcreteType = type.findUniqueConcreteSubtype();
                 if (uniqueConcreteType != null) {
                     ResolvedJavaMethod methodFromUniqueType = uniqueConcreteType.resolveConcreteMethod(targetMethod, contextType);
@@ -144,7 +145,7 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
     public void simplify(SimplifierTool tool) {
         // attempt to devirtualize the call
         ResolvedJavaType contextType = (invoke().stateAfter() == null && invoke().stateDuring() == null) ? null : invoke().getContextType();
-        ResolvedJavaMethod specialCallTarget = findSpecialCallTarget(invokeKind, receiver(), targetMethod, tool.assumptions(), contextType);
+        ResolvedJavaMethod specialCallTarget = findSpecialCallTarget(invokeKind, receiver(), targetMethod, contextType);
         if (specialCallTarget != null) {
             this.setTargetMethod(specialCallTarget);
             setInvokeKind(InvokeKind.Special);

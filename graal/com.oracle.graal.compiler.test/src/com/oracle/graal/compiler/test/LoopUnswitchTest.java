@@ -24,12 +24,12 @@ package com.oracle.graal.compiler.test;
 
 import org.junit.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.loop.phases.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
 
@@ -121,8 +121,8 @@ public class LoopUnswitchTest extends GraalCompilerTest {
     }
 
     private void test(String snippet, String referenceSnippet) {
-        final StructuredGraph graph = parseEager(snippet);
-        final StructuredGraph referenceGraph = parseEager(referenceSnippet);
+        final StructuredGraph graph = parseEager(snippet, AllowAssumptions.NO);
+        final StructuredGraph referenceGraph = parseEager(referenceSnippet, AllowAssumptions.NO);
 
         new LoopUnswitchingPhase().apply(graph);
 
@@ -134,9 +134,8 @@ public class LoopUnswitchTest extends GraalCompilerTest {
             ((StateSplit) stateSplit).setStateAfter(null);
         }
 
-        Assumptions assumptions = new Assumptions(false);
-        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders(), assumptions));
-        new CanonicalizerPhase(true).apply(referenceGraph, new PhaseContext(getProviders(), assumptions));
+        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders()));
+        new CanonicalizerPhase(true).apply(referenceGraph, new PhaseContext(getProviders()));
         try (Scope s = Debug.scope("Test", new DebugDumpScope("Test:" + snippet))) {
             assertEquals(referenceGraph, graph);
         } catch (Throwable e) {

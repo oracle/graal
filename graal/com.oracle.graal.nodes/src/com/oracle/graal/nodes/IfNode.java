@@ -189,6 +189,10 @@ public class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerab
             return;
         }
 
+        if (splitIfAtPhi(tool)) {
+            return;
+        }
+
         if (falseSuccessor().hasNoUsages() && (!(falseSuccessor() instanceof LoopExitNode)) && falseSuccessor().next() instanceof IfNode) {
             AbstractBeginNode intermediateBegin = falseSuccessor();
             IfNode nextIf = (IfNode) intermediateBegin.next();
@@ -599,6 +603,137 @@ public class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerab
             }
         }
         return null;
+    }
+
+    /**
+     * Take an if that is immediately dominated by a merge with a single phi and split off any paths
+     * where the test would be statically decidable creating a new merge below the approriate side
+     * of the IfNode. Any undecidable tests will continue to use the original IfNode.
+     *
+     * @param tool
+     */
+    @SuppressWarnings("unchecked")
+    private boolean splitIfAtPhi(SimplifierTool tool) {
+        if (!(predecessor() instanceof MergeNode)) {
+            return false;
+        }
+        MergeNode merge = (MergeNode) predecessor();
+        if (merge.forwardEndCount() == 1) {
+            // Don't bother.
+            return false;
+        }
+        if (merge.usages().count() != 1 || merge.phis().count() != 1) {
+            return false;
+        }
+        if (merge.stateAfter() != null) {
+            /* We'll get the chance to simplify this after frame state assignment. */
+            return false;
+        }
+        PhiNode phi = merge.phis().first();
+        if (phi.usages().count() != 1 || condition().usages().count() != 1) {
+            /*
+             * For simplicity the below code assumes assumes the phi goes dead at the end so skip
+             * this case.
+             */
+            return false;
+        }
+
+        if (condition() instanceof Canonicalizable.Unary<?>) {
+            Canonicalizable.Unary<?> unary = (Canonicalizable.Unary<?>) condition();
+            if (unary.getValue() != phi) {
+                return false;
+            }
+        } else if (condition() instanceof Canonicalizable.Binary<?>) {
+            Canonicalizable.Binary<?> binary = (Canonicalizable.Binary<?>) condition();
+            if (binary.getX() != phi && binary.getY() != phi) {
+                return false;
+            }
+        } else {
+            return false;
+        }
+
+        /*
+         * We could additionally filter for the case that at least some of the Phi inputs or one of
+         * the condition inputs are constants but there are cases where a non-constant is
+         * simplifiable, usually where the stamp allows the question to be answered.
+         */
+
+        /* Each successor of the if gets a new merge if needed. */
+        MergeNode trueMerge = null;
+        MergeNode falseMerge = null;
+        assert merge.stateAfter() == null;
+
+        for (AbstractEndNode end : merge.forwardEnds().snapshot()) {
+            Node value = phi.valueAt(end);
+            Node result = null;
+            if (condition() instanceof Canonicalizable.Binary<?>) {
+                Canonicalizable.Binary<Node> compare = (Canonicalizable.Binary<Node>) condition;
+                if (compare.getX() == phi) {
+                    result = compare.canonical(tool, value, compare.getY());
+                } else {
+                    result = compare.canonical(tool, compare.getX(), value);
+                }
+            } else {
+                assert condition() instanceof Canonicalizable.Unary<?>;
+                Canonicalizable.Unary<Node> compare = (Canonicalizable.Unary<Node>) condition;
+                result = compare.canonical(tool, value);
+            }
+            if (result instanceof LogicConstantNode) {
+                merge.removeEnd(end);
+                if (((LogicConstantNode) result).getValue()) {
+                    if (trueMerge == null) {
+                        trueMerge = insertMerge(trueSuccessor());
+                    }
+                    trueMerge.addForwardEnd(end);
+                } else {
+                    if (falseMerge == null) {
+                        falseMerge = insertMerge(falseSuccessor());
+                    }
+                    falseMerge.addForwardEnd(end);
+                }
+            }
+        }
+
+        cleanupMerge(tool, merge);
+        cleanupMerge(tool, trueMerge);
+        cleanupMerge(tool, falseMerge);
+
+        return true;
+    }
+
+    private void cleanupMerge(SimplifierTool tool, MergeNode merge) {
+        if (merge != null && merge.isAlive()) {
+            if (merge.forwardEndCount() == 0) {
+                GraphUtil.killCFG(merge, tool);
+            } else if (merge.forwardEndCount() == 1) {
+                graph().reduceTrivialMerge(merge);
+            }
+        }
+    }
+
+    private MergeNode insertMerge(AbstractBeginNode begin) {
+        MergeNode merge = graph().add(new MergeNode());
+        if (!begin.anchored().isEmpty()) {
+            Object before = null;
+            before = begin.anchored().snapshot();
+            begin.replaceAtUsages(InputType.Guard, merge);
+            begin.replaceAtUsages(InputType.Anchor, merge);
+            assert begin.anchored().isEmpty() : before + " " + begin.anchored().snapshot();
+        }
+
+        AbstractBeginNode theBegin = begin;
+        if (begin instanceof LoopExitNode) {
+            // Insert an extra begin to make it easier.
+            theBegin = graph().add(new BeginNode());
+            begin.replaceAtPredecessor(theBegin);
+            theBegin.setNext(begin);
+        }
+        FixedNode next = theBegin.next();
+        next.replaceAtPredecessor(merge);
+        theBegin.setNext(graph().add(new EndNode()));
+        merge.addForwardEnd((EndNode) theBegin.next());
+        merge.setNext(next);
+        return merge;
     }
 
     /**

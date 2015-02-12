@@ -78,8 +78,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
     @Override
     protected void run(StructuredGraph graph, HighTierContext context) {
-        new Instance(context.getMetaAccess(), context.getStampProvider(), context.getAssumptions(), null, context.getConstantReflection(), graphBuilderConfig, graphBuilderPlugins,
-                        context.getOptimisticOptimizations()).run(graph);
+        new Instance(context.getMetaAccess(), context.getStampProvider(), null, context.getConstantReflection(), graphBuilderConfig, graphBuilderPlugins, context.getOptimisticOptimizations()).run(graph);
     }
 
     public GraphBuilderConfiguration getGraphBuilderConfig() {
@@ -102,7 +101,6 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
         private final GraphBuilderPlugins graphBuilderPlugins;
         private final OptimisticOptimizations optimisticOpts;
         private final StampProvider stampProvider;
-        private final Assumptions assumptions;
         private final ConstantReflectionProvider constantReflection;
         private final SnippetReflectionProvider snippetReflectionProvider;
 
@@ -113,22 +111,21 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             return currentGraph;
         }
 
-        public Instance(MetaAccessProvider metaAccess, StampProvider stampProvider, Assumptions assumptions, SnippetReflectionProvider snippetReflectionProvider,
-                        ConstantReflectionProvider constantReflection, GraphBuilderConfiguration graphBuilderConfig, GraphBuilderPlugins graphBuilderPlugins, OptimisticOptimizations optimisticOpts) {
+        public Instance(MetaAccessProvider metaAccess, StampProvider stampProvider, SnippetReflectionProvider snippetReflectionProvider, ConstantReflectionProvider constantReflection,
+                        GraphBuilderConfiguration graphBuilderConfig, GraphBuilderPlugins graphBuilderPlugins, OptimisticOptimizations optimisticOpts) {
             this.graphBuilderConfig = graphBuilderConfig;
             this.optimisticOpts = optimisticOpts;
             this.metaAccess = metaAccess;
             this.stampProvider = stampProvider;
-            this.assumptions = assumptions;
             this.graphBuilderPlugins = graphBuilderPlugins;
             this.constantReflection = constantReflection;
             this.snippetReflectionProvider = snippetReflectionProvider;
             assert metaAccess != null;
         }
 
-        public Instance(MetaAccessProvider metaAccess, StampProvider stampProvider, Assumptions assumptions, ConstantReflectionProvider constantReflection,
-                        GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts) {
-            this(metaAccess, stampProvider, assumptions, null, constantReflection, graphBuilderConfig, null, optimisticOpts);
+        public Instance(MetaAccessProvider metaAccess, StampProvider stampProvider, ConstantReflectionProvider constantReflection, GraphBuilderConfiguration graphBuilderConfig,
+                        OptimisticOptimizations optimisticOpts) {
+            this(metaAccess, stampProvider, null, constantReflection, graphBuilderConfig, null, optimisticOpts);
         }
 
         @Override
@@ -836,7 +833,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 InvokeKind invokeKind = initialInvokeKind;
                 if (initialInvokeKind.isIndirect()) {
                     ResolvedJavaType contextType = this.frameState.method.getDeclaringClass();
-                    ResolvedJavaMethod specialCallTarget = MethodCallTargetNode.findSpecialCallTarget(initialInvokeKind, args[0], initialTargetMethod, assumptions, contextType);
+                    ResolvedJavaMethod specialCallTarget = MethodCallTargetNode.findSpecialCallTarget(initialInvokeKind, args[0], initialTargetMethod, contextType);
                     if (specialCallTarget != null) {
                         invokeKind = InvokeKind.Special;
                         targetMethod = specialCallTarget;
@@ -972,6 +969,11 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
                     }
                     calleeBeforeUnwindNode.setNext(handleException(calleeUnwindValue, bci()));
+                }
+
+                // Record method dependency in the graph
+                if (currentGraph.isMethodRecordingEnabled()) {
+                    currentGraph.getMethods().add(targetMethod);
                 }
             }
 
@@ -1691,7 +1693,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             }
 
             public Assumptions getAssumptions() {
-                return assumptions;
+                return currentGraph.getAssumptions();
             }
 
             public void push(Kind kind, ValueNode value) {

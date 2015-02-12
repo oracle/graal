@@ -130,21 +130,21 @@ public final class Suites {
         return new Suites(config);
     }
 
-    public static LowLevelSuites createDefaultLowLevelSuites() {
+    public static LIRSuites createDefaultLIRSuites() {
         String selected = CompilerConfiguration.getValue();
         if (selected.equals("")) {
-            return new LowLevelSuites(defaultConfiguration.createLowLevelHighTier(), defaultConfiguration.createLowLevelMidTier(), defaultConfiguration.createLowLevelLowTier());
+            return new LIRSuites(defaultConfiguration.createLIRHighTier(), defaultConfiguration.createLIRMidTier(), defaultConfiguration.createLIRLowTier());
         } else {
-            return createLowLevelSuites(selected);
+            return createLIRSuites(selected);
         }
     }
 
-    public static LowLevelSuites createLowLevelSuites(String name) {
+    public static LIRSuites createLIRSuites(String name) {
         CompilerConfiguration config = configurations.get(name);
         if (config == null) {
             throw new GraalInternalError("unknown compiler configuration: " + name);
         }
-        return new LowLevelSuites(config.createLowLevelHighTier(), config.createLowLevelMidTier(), config.createLowLevelLowTier());
+        return new LIRSuites(config.createLIRHighTier(), config.createLIRMidTier(), config.createLIRLowTier());
     }
 
 }

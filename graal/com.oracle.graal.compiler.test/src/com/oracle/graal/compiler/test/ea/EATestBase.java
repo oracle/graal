@@ -26,13 +26,13 @@ import java.util.*;
 
 import org.junit.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.phases.*;
@@ -149,12 +149,11 @@ public class EATestBase extends GraalCompilerTest {
 
     protected void prepareGraph(String snippet, final boolean iterativeEscapeAnalysis) {
         ResolvedJavaMethod method = getResolvedJavaMethod(snippet);
-        graph = new StructuredGraph(method);
+        graph = new StructuredGraph(method, AllowAssumptions.NO);
         try (Scope s = Debug.scope(getClass(), graph, method, getCodeCache())) {
-            Assumptions assumptions = new Assumptions(false);
-            new GraphBuilderPhase.Instance(getMetaAccess(), getProviders().getStampProvider(), assumptions, getProviders().getConstantReflection(), GraphBuilderConfiguration.getEagerDefault(),
+            new GraphBuilderPhase.Instance(getMetaAccess(), getProviders().getStampProvider(), getProviders().getConstantReflection(), GraphBuilderConfiguration.getEagerDefault(),
                             OptimisticOptimizations.ALL).apply(graph);
-            context = new HighTierContext(getProviders(), assumptions, null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
+            context = new HighTierContext(getProviders(), null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
             new InliningPhase(new CanonicalizerPhase(true)).apply(graph, context);
             new DeadCodeEliminationPhase().apply(graph);
             new CanonicalizerPhase(true).apply(graph, context);

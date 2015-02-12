@@ -226,7 +226,8 @@ public class InstanceOfSnippets implements Snippets {
             if (replacer.instanceOf instanceof InstanceOfNode) {
                 InstanceOfNode instanceOf = (InstanceOfNode) replacer.instanceOf;
                 ValueNode object = instanceOf.getValue();
-                TypeCheckHints hintInfo = new TypeCheckHints(instanceOf.type(), instanceOf.profile(), tool.assumptions(), TypeCheckMinProfileHitProbability.getValue(), TypeCheckMaxHints.getValue());
+                Assumptions assumptions = instanceOf.graph().getAssumptions();
+                TypeCheckHints hintInfo = new TypeCheckHints(instanceOf.type(), instanceOf.profile(), assumptions, TypeCheckMinProfileHitProbability.getValue(), TypeCheckMaxHints.getValue());
                 final HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) instanceOf.type();
                 ConstantNode hub = ConstantNode.forConstant(KlassPointerStamp.klassNonNull(), type.klass(), providers.getMetaAccess(), instanceOf.graph());
 

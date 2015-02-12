@@ -172,7 +172,7 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
             for (int i = 0; i < frameSize; i++) {
                 primitiveArrayEntryState[i] = initialPrimitiveValue(frameDescriptor.getSlots().get(i).getKind());
             }
-            tool.getAssumptions().record(new AssumptionValidAssumption((OptimizedAssumption) frameDescriptor.getVersion()));
+            graph().getAssumptions().record(new AssumptionValidAssumption((OptimizedAssumption) frameDescriptor.getVersion()));
         }
 
         tool.createVirtualObject(virtualFrameObjectArray, objectArrayEntryState, Collections.<MonitorIdNode> emptyList());
@@ -195,11 +195,7 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
         Kind graalKind = null;
         switch (kind) {
             case Boolean:
-                graalKind = Kind.Boolean;
-                break;
             case Byte:
-                graalKind = Kind.Byte;
-                break;
             case Int:
                 graalKind = Kind.Int;
                 break;

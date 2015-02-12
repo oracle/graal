@@ -35,6 +35,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
@@ -60,28 +61,30 @@ public class FinalizableSubclassTest extends GraalCompilerTest {
         }
     }
 
-    private StructuredGraph parseAndProcess(Class<?> cl, Assumptions assumptions) {
+    private StructuredGraph parseAndProcess(Class<?> cl, AllowAssumptions allowAssumptions) {
         Constructor<?>[] constructors = cl.getConstructors();
         Assert.assertTrue(constructors.length == 1);
         final ResolvedJavaMethod javaMethod = getMetaAccess().lookupJavaMethod(constructors[0]);
-        StructuredGraph graph = new StructuredGraph(javaMethod);
+        StructuredGraph graph = new StructuredGraph(javaMethod, allowAssumptions);
 
         GraphBuilderConfiguration conf = GraphBuilderConfiguration.getSnippetDefault();
-        new GraphBuilderPhase.Instance(getMetaAccess(), getProviders().getStampProvider(), assumptions, getProviders().getConstantReflection(), conf, OptimisticOptimizations.ALL).apply(graph);
-        HighTierContext context = new HighTierContext(getProviders(), assumptions, null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
+        new GraphBuilderPhase.Instance(getMetaAccess(), getProviders().getStampProvider(), getProviders().getConstantReflection(), conf, OptimisticOptimizations.ALL).apply(graph);
+        HighTierContext context = new HighTierContext(getProviders(), null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
         new InliningPhase(new CanonicalizerPhase(true)).apply(graph, context);
         new CanonicalizerPhase(true).apply(graph, context);
         return graph;
     }
 
-    private void checkForRegisterFinalizeNode(Class<?> cl, boolean shouldContainFinalizer, boolean optimistic) {
-        Assumptions assumptions = new Assumptions(optimistic);
-        StructuredGraph graph = parseAndProcess(cl, assumptions);
+    private void checkForRegisterFinalizeNode(Class<?> cl, boolean shouldContainFinalizer, AllowAssumptions allowAssumptions) {
+        StructuredGraph graph = parseAndProcess(cl, allowAssumptions);
         Assert.assertTrue(graph.getNodes().filter(RegisterFinalizerNode.class).count() == (shouldContainFinalizer ? 1 : 0));
         int noFinalizerAssumption = 0;
-        for (Assumption a : assumptions) {
-            if (a instanceof NoFinalizableSubclass) {
-                noFinalizerAssumption++;
+        Assumptions assumptions = graph.getAssumptions();
+        if (assumptions != null) {
+            for (Assumption a : assumptions) {
+                if (a instanceof NoFinalizableSubclass) {
+                    noFinalizerAssumption++;
+                }
             }
         }
         Assert.assertTrue(noFinalizerAssumption == (shouldContainFinalizer ? 0 : 1));
@@ -95,13 +98,13 @@ public class FinalizableSubclassTest extends GraalCompilerTest {
     public void test1() throws ClassNotFoundException {
         for (int i = 0; i < 2; i++) {
             ClassTemplateLoader loader = new ClassTemplateLoader();
-            checkForRegisterFinalizeNode(loader.findClass("NoFinalizerEverAAAA"), true, false);
-            checkForRegisterFinalizeNode(loader.findClass("NoFinalizerEverAAAA"), false, true);
+            checkForRegisterFinalizeNode(loader.findClass("NoFinalizerEverAAAA"), true, AllowAssumptions.NO);
+            checkForRegisterFinalizeNode(loader.findClass("NoFinalizerEverAAAA"), false, AllowAssumptions.YES);
 
-            checkForRegisterFinalizeNode(loader.findClass("NoFinalizerYetAAAA"), false, true);
+            checkForRegisterFinalizeNode(loader.findClass("NoFinalizerYetAAAA"), false, AllowAssumptions.YES);
 
-            checkForRegisterFinalizeNode(loader.findClass("WithFinalizerAAAA"), true, true);
-            checkForRegisterFinalizeNode(loader.findClass("NoFinalizerYetAAAA"), true, true);
+            checkForRegisterFinalizeNode(loader.findClass("WithFinalizerAAAA"), true, AllowAssumptions.YES);
+            checkForRegisterFinalizeNode(loader.findClass("NoFinalizerYetAAAA"), true, AllowAssumptions.YES);
         }
     }
 

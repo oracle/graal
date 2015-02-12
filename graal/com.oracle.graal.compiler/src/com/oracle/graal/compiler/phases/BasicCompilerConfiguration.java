@@ -24,9 +24,9 @@ package com.oracle.graal.compiler.phases;
 
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.lir.phases.*;
-import com.oracle.graal.lir.phases.LowLevelHighTierPhase.*;
-import com.oracle.graal.lir.phases.LowLevelLowTierPhase.*;
-import com.oracle.graal.lir.phases.LowLevelMidTierPhase.*;
+import com.oracle.graal.lir.phases.LIRHighTierPhase.*;
+import com.oracle.graal.lir.phases.LIRLowTierPhase.*;
+import com.oracle.graal.lir.phases.LIRMidTierPhase.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.tiers.*;
 
@@ -45,16 +45,16 @@ public class BasicCompilerConfiguration implements CompilerConfiguration {
         return new LowTier();
     }
 
-    public LowLevelPhaseSuite<LowLevelHighTierContext> createLowLevelHighTier() {
-        return new LowLevelHighTier();
+    public LIRPhaseSuite<LIRHighTierContext> createLIRHighTier() {
+        return new LIRHighTier();
     }
 
-    public LowLevelPhaseSuite<LowLevelMidTierContext> createLowLevelMidTier() {
-        return new LowLevelMidTier();
+    public LIRPhaseSuite<LIRMidTierContext> createLIRMidTier() {
+        return new LIRMidTier();
     }
 
-    public LowLevelPhaseSuite<LowLevelLowTierContext> createLowLevelLowTier() {
-        return new LowLevelLowTier();
+    public LIRPhaseSuite<LIRLowTierContext> createLIRLowTier() {
+        return new LIRLowTier();
     }
 
 }

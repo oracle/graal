@@ -30,6 +30,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 
 public final class MonitorDeoptTest extends GraalCompilerTest {
 
@@ -134,7 +135,7 @@ public final class MonitorDeoptTest extends GraalCompilerTest {
     public void run0() throws Throwable {
         ResolvedJavaMethod javaMethod = getResolvedJavaMethod("test");
 
-        StructuredGraph graph = parseEager(javaMethod);
+        StructuredGraph graph = parseEager(javaMethod, AllowAssumptions.YES);
         removeLoopSafepoint(graph);
 
         CompilationResult compilationResult = compile(javaMethod, graph);

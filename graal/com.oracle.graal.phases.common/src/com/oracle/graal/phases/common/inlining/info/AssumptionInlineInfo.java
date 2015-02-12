@@ -24,7 +24,6 @@ package com.oracle.graal.phases.common.inlining.info;
 
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.Assumptions.Assumption;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
@@ -47,14 +46,14 @@ public class AssumptionInlineInfo extends ExactInlineInfo {
     }
 
     @Override
-    public Collection<Node> inline(Providers providers, Assumptions assumptions) {
-        assumptions.record(takenAssumption);
-        return super.inline(providers, assumptions);
+    public Collection<Node> inline(Providers providers) {
+        invoke.asNode().graph().getAssumptions().record(takenAssumption);
+        return super.inline(providers);
     }
 
     @Override
-    public void tryToDevirtualizeInvoke(Providers providers, Assumptions assumptions) {
-        assumptions.record(takenAssumption);
+    public void tryToDevirtualizeInvoke(Providers providers) {
+        invoke.asNode().graph().getAssumptions().record(takenAssumption);
         InliningUtil.replaceInvokeCallTarget(invoke, graph(), InvokeKind.Special, concrete);
     }
 

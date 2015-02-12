@@ -51,12 +51,12 @@ import com.oracle.graal.options.*;
  * {@link OperandFlag#UNINITIALIZED}. Otherwise the stack slot might be reused and its content
  * destroyed.
  */
-public final class LSStackSlotAllocator extends LowLevelMidTierPhase implements StackSlotAllocator {
+public final class LSStackSlotAllocator extends LIRMidTierPhase implements StackSlotAllocator {
 
     public static class Options {
         // @formatter:off
         @Option(help = "Use linear scan stack slot allocation.", type = OptionType.Debug)
-        public static final OptionValue<Boolean> LSStackSlotAllocation = new OptionValue<>(true);
+        public static final OptionValue<Boolean> LIROptLSStackSlotAllocator = new OptionValue<>(true);
         // @formatter:on
     }
 

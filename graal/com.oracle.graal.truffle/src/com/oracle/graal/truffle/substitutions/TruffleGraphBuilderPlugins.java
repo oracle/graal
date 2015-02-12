@@ -42,6 +42,7 @@ import com.oracle.graal.truffle.*;
 import com.oracle.graal.truffle.nodes.*;
 import com.oracle.graal.truffle.nodes.arithmetic.*;
 import com.oracle.graal.truffle.nodes.frame.*;
+import com.oracle.graal.truffle.unsafe.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
 
@@ -189,7 +190,16 @@ public class TruffleGraphBuilderPlugins {
                 throw GraalInternalError.shouldNotReachHere("unsafeCast arguments could not reduce to a constant: " + clazz + ", " + nonNull);
             }
         });
-        for (Kind kind : new Kind[]{Kind.Boolean, Kind.Byte, Kind.Int, Kind.Long, Kind.Float, Kind.Double, Kind.Object}) {
+
+        registerUnsafeLoadStorePlugins(r, Kind.Int, Kind.Long, Kind.Float, Kind.Double, Kind.Object);
+
+        // CompilerDirectives.class
+        r = new Registration(plugins, metaAccess, UnsafeAccessImpl.class);
+        registerUnsafeLoadStorePlugins(r, Kind.Boolean, Kind.Byte, Kind.Int, Kind.Short, Kind.Long, Kind.Float, Kind.Double, Kind.Object);
+    }
+
+    protected static void registerUnsafeLoadStorePlugins(Registration r, Kind... kinds) {
+        for (Kind kind : kinds) {
             String kindName = kind.getJavaName();
             kindName = toUpperCase(kindName.charAt(0)) + kindName.substring(1);
             String getName = "unsafeGet" + kindName;

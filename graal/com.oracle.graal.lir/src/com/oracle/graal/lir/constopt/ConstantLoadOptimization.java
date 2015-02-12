@@ -47,12 +47,12 @@ import com.oracle.graal.options.*;
  * a constant, which is potentially scheduled into a block with high probability, with one or more
  * definitions in blocks with a lower probability.
  */
-public final class ConstantLoadOptimization extends LowLevelHighTierPhase {
+public final class ConstantLoadOptimization extends LIRHighTierPhase {
 
     public static class Options {
         // @formatter:off
         @Option(help = "Enable constant load optimization.", type = OptionType.Debug)
-        public static final OptionValue<Boolean> ConstantLoadOptimization = new OptionValue<>(true);
+        public static final OptionValue<Boolean> LIROptConstantLoadOptimization = new OptionValue<>(true);
         // @formatter:on
     }
 

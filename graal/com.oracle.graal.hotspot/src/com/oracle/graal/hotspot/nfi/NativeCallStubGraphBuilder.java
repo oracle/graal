@@ -32,6 +32,7 @@ import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.word.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.virtual.*;
@@ -52,7 +53,7 @@ public class NativeCallStubGraphBuilder {
     public static StructuredGraph getGraph(HotSpotProviders providers, RawNativeCallNodeFactory factory, long functionPointer, Class<?> returnType, Class<?>... argumentTypes) {
         try {
             ResolvedJavaMethod method = providers.getMetaAccess().lookupJavaMethod(NativeCallStubGraphBuilder.class.getMethod("libCall", Object.class, Object.class, Object.class));
-            StructuredGraph g = new StructuredGraph(method);
+            StructuredGraph g = new StructuredGraph(method, AllowAssumptions.NO);
             ParameterNode arg0 = g.unique(new ParameterNode(0, StampFactory.forKind(Kind.Object)));
             ParameterNode arg1 = g.unique(new ParameterNode(1, StampFactory.forKind(Kind.Object)));
             ParameterNode arg2 = g.unique(new ParameterNode(2, StampFactory.forKind(Kind.Object)));

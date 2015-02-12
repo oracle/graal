@@ -24,10 +24,10 @@ package com.oracle.graal.compiler.test;
 
 import org.junit.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
@@ -106,11 +106,11 @@ public class EliminateNestedCheckCastsTest extends GraalCompilerTest {
     }
 
     private StructuredGraph compileSnippet(final String snippet, final int checkcasts, final int afterCanon) {
-        final StructuredGraph graph = parseEager(snippet);
+        final StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES);
         try (Scope s = Debug.scope("NestedCheckCastsTest", graph)) {
             Debug.dump(graph, "After parsing: " + snippet);
             Assert.assertEquals(checkcasts, graph.getNodes().filter(CheckCastNode.class).count());
-            new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders(), new Assumptions(false)));
+            new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders()));
             Assert.assertEquals(afterCanon, graph.getNodes().filter(CheckCastNode.class).count());
             return graph;
         } catch (Throwable e) {

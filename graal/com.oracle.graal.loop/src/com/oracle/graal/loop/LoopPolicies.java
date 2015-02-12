@@ -30,10 +30,19 @@ import java.util.function.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.VirtualState.VirtualClosure;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.debug.*;
+import com.oracle.graal.options.*;
 
 public abstract class LoopPolicies {
+    @Option(help = "", type = OptionType.Expert) public static final OptionValue<Integer> LoopUnswitchMaxIncrease = new OptionValue<>(500);
+    @Option(help = "", type = OptionType.Expert) public static final OptionValue<Integer> LoopUnswitchTrivial = new OptionValue<>(10);
+    @Option(help = "", type = OptionType.Expert) public static final OptionValue<Double> LoopUnswitchFrequencyBoost = new OptionValue<>(10.0);
+
+    @Option(help = "", type = OptionType.Expert) public static final OptionValue<Integer> FullUnrollMaxNodes = new OptionValue<>(300);
+    @Option(help = "", type = OptionType.Expert) public static final OptionValue<Integer> FullUnrollMaxIterations = new OptionValue<>(600);
+    @Option(help = "", type = OptionType.Expert) public static final OptionValue<Integer> ExactFullUnrollMaxNodes = new OptionValue<>(1200);
 
     private LoopPolicies() {
         // does not need to be instantiated
@@ -82,31 +91,57 @@ public abstract class LoopPolicies {
     }
 
     public static boolean shouldTryUnswitch(LoopEx loop) {
-        return loop.loopBegin().unswitches() <= LoopMaxUnswitch.getValue();
+        LoopBeginNode loopBegin = loop.loopBegin();
+        double loopFrequency = loopBegin.loopFrequency();
+        if (loopFrequency <= 1.0) {
+            return false;
+        }
+        return loopBegin.unswitches() <= LoopMaxUnswitch.getValue();
+    }
+
+    private static final class CountingClosure implements VirtualClosure {
+        int count;
+
+        public void apply(VirtualState node) {
+            count++;
+        }
+    }
+
+    private static class IsolatedInitialization {
+        static final DebugMetric UNSWITCH_SPLIT_WITH_PHIS = Debug.metric("UnswitchSplitWithPhis");
     }
 
     public static boolean shouldUnswitch(LoopEx loop, List<ControlSplitNode> controlSplits) {
-        int loopTotal = loop.size();
         int inBranchTotal = 0;
-        double maxProbability = 0;
+        int phis = 0;
         for (ControlSplitNode controlSplit : controlSplits) {
-            Block postDomBlock = loop.loopsData().controlFlowGraph().blockFor(controlSplit).getPostdominator();
-            AbstractBeginNode postDom = postDomBlock != null ? postDomBlock.getBeginNode() : null;
             for (Node successor : controlSplit.successors()) {
                 AbstractBeginNode branch = (AbstractBeginNode) successor;
                 // this may count twice because of fall-through in switches
-                inBranchTotal += loop.nodesInLoopFrom(branch, postDom).count();
-                double probability = controlSplit.probability(branch);
-                if (probability > maxProbability) {
-                    maxProbability = probability;
-                }
+                inBranchTotal += loop.nodesInLoopBranch(branch).count();
+            }
+            Block postDomBlock = loop.loopsData().controlFlowGraph().blockFor(controlSplit).getPostdominator();
+            if (postDomBlock != null) {
+                IsolatedInitialization.UNSWITCH_SPLIT_WITH_PHIS.increment();
+                phis += ((MergeNode) postDomBlock.getBeginNode()).phis().count();
             }
         }
-        int netDiff = loopTotal - (inBranchTotal);
-        double uncertainty = 1 - maxProbability;
-        int maxDiff = LoopUnswitchMaxIncrease.getValue() + (int) (LoopUnswitchUncertaintyBoost.getValue() * loop.loopBegin().loopFrequency() * uncertainty);
-        Debug.log("shouldUnswitch(%s, %s) : delta=%d, max=%d, %.2f%% inside of branches", loop, controlSplits, netDiff, maxDiff, (double) (inBranchTotal) / loopTotal * 100);
-        return netDiff <= maxDiff;
+
+        CountingClosure stateNodesCount = new CountingClosure();
+        double loopFrequency = loop.loopBegin().loopFrequency();
+        int maxDiff = LoopUnswitchTrivial.getValue() + (int) (LoopUnswitchFrequencyBoost.getValue() * (loopFrequency - 1.0 + phis));
+
+        maxDiff = Math.min(maxDiff, LoopUnswitchMaxIncrease.getValue());
+        int remainingGraphSpace = MaximumDesiredSize.getValue() - loop.loopBegin().graph().getNodeCount();
+        maxDiff = Math.min(maxDiff, remainingGraphSpace);
+
+        loop.loopBegin().stateAfter().applyToVirtual(stateNodesCount);
+        int loopTotal = loop.size() - loop.loopBegin().phis().count() - stateNodesCount.count - 1;
+        int actualDiff = loopTotal - inBranchTotal;
+
+        Debug.log("shouldUnswitch(%s, %s) : delta=%d (%.2f%% inside of branches), max=%d, f=%.2f, phis=%d -> %b", loop, controlSplits, actualDiff, (double) (inBranchTotal) / loopTotal * 100, maxDiff,
+                        loopFrequency, phis, actualDiff <= maxDiff);
+        return actualDiff <= maxDiff;
     }
 
 }

@@ -275,7 +275,7 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
                         if (sux.loop != loop) {
                             AbstractBeginNode begin = sux.getBeginNode();
                             if (!(begin instanceof LoopExitNode && ((LoopExitNode) begin).loopBegin() == loopBegin)) {
-                                Debug.log("Unexpected loop exit with %s, including whole branch in the loop", sux);
+                                Debug.log(3, "Unexpected loop exit with %s, including whole branch in the loop", sux);
                                 unexpected.add(sux);
                             }
                         }

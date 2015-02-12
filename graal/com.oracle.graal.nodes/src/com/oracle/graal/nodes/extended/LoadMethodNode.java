@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes.extended;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
@@ -68,10 +69,11 @@ public class LoadMethodNode extends FixedWithNextNode implements Lowerable, Cano
             if (StampTool.isExactType(object)) {
                 return resolveExactMethod(tool, type);
             }
-            if (type != null && tool.assumptions().useOptimisticAssumptions()) {
+            Assumptions assumptions = graph().getAssumptions();
+            if (type != null && assumptions != null) {
                 ResolvedJavaMethod resolvedMethod = type.findUniqueConcreteMethod(method);
                 if (resolvedMethod != null && !type.isInterface() && method.getDeclaringClass().isAssignableFrom(type)) {
-                    tool.assumptions().recordConcreteMethod(method, type, resolvedMethod);
+                    assumptions.recordConcreteMethod(method, type, resolvedMethod);
                     return ConstantNode.forConstant(stamp(), resolvedMethod.getEncoding(), tool.getMetaAccess());
                 }
             }

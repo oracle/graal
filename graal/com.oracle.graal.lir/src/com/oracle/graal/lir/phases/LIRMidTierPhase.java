@@ -22,13 +22,22 @@
  */
 package com.oracle.graal.lir.phases;
 
-import com.oracle.graal.lir.constopt.*;
-import com.oracle.graal.lir.phases.LowLevelHighTierPhase.*;
+import java.util.*;
 
-public class LowLevelHighTier extends LowLevelPhaseSuite<LowLevelHighTierContext> {
-    public LowLevelHighTier() {
-        if (ConstantLoadOptimization.Options.ConstantLoadOptimization.getValue()) {
-            appendPhase(new ConstantLoadOptimization());
-        }
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.compiler.common.cfg.*;
+import com.oracle.graal.lir.gen.*;
+
+public abstract class LIRMidTierPhase extends LIRPhase<LIRMidTierPhase.LIRMidTierContext> {
+
+    public static final class LIRMidTierContext {
     }
+
+    @Override
+    protected final <B extends AbstractBlock<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, LIRMidTierContext context) {
+        run(target, lirGenRes, codeEmittingOrder, linearScanOrder);
+    }
+
+    protected abstract <B extends AbstractBlock<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder);
+
 }

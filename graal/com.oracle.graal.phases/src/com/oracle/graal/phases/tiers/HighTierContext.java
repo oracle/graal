@@ -24,7 +24,6 @@ package com.oracle.graal.phases.tiers;
 
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
@@ -37,9 +36,8 @@ public class HighTierContext extends PhaseContext {
     private final Map<ResolvedJavaMethod, StructuredGraph> cache;
     private final OptimisticOptimizations optimisticOpts;
 
-    public HighTierContext(Providers providers, Assumptions assumptions, Map<ResolvedJavaMethod, StructuredGraph> cache, PhaseSuite<HighTierContext> graphBuilderSuite,
-                    OptimisticOptimizations optimisticOpts) {
-        super(providers, assumptions);
+    public HighTierContext(Providers providers, Map<ResolvedJavaMethod, StructuredGraph> cache, PhaseSuite<HighTierContext> graphBuilderSuite, OptimisticOptimizations optimisticOpts) {
+        super(providers);
         this.cache = cache;
         this.graphBuilderSuite = graphBuilderSuite;
         this.optimisticOpts = optimisticOpts;
@@ -55,9 +53,5 @@ public class HighTierContext extends PhaseContext {
 
     public OptimisticOptimizations getOptimisticOptimizations() {
         return optimisticOpts;
-    }
-
-    public HighTierContext replaceAssumptions(Assumptions newAssumptions) {
-        return new HighTierContext(new Providers(this), newAssumptions, cache, graphBuilderSuite, optimisticOpts);
     }
 }

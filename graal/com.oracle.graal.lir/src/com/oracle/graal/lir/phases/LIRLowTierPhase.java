@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,17 +20,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.java;
+package com.oracle.graal.lir.phases;
 
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.runtime.*;
+import java.util.*;
 
-/**
- * Interface for providers of {@link GraphBuilderPlugin}s.
- */
-public interface GraphBuilderPluginsProvider extends Service {
-    /**
-     * Registers the plugins provided by this object.
-     */
-    void registerPlugins(MetaAccessProvider metaAccess, GraphBuilderPlugins plugins);
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.compiler.common.cfg.*;
+import com.oracle.graal.lir.gen.*;
+
+public abstract class LIRLowTierPhase extends LIRPhase<LIRLowTierPhase.LIRLowTierContext> {
+
+    public static final class LIRLowTierContext {
+    }
+
+    @Override
+    protected final <B extends AbstractBlock<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, LIRLowTierContext context) {
+        run(target, lirGenRes, codeEmittingOrder, linearScanOrder);
+    }
+
+    protected abstract <B extends AbstractBlock<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder);
+
 }

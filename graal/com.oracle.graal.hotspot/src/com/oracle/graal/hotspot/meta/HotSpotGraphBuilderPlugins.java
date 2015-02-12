@@ -25,7 +25,6 @@ package com.oracle.graal.hotspot.meta;
 import static com.oracle.graal.java.GraphBuilderContext.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.java.*;
@@ -40,9 +39,8 @@ import com.oracle.graal.options.*;
 /**
  * Provider of HotSpot specific {@link GraphBuilderPlugin}s.
  */
-@ServiceProvider(GraphBuilderPluginsProvider.class)
-public class HotSpotGraphBuilderPluginsProvider implements GraphBuilderPluginsProvider {
-    public void registerPlugins(MetaAccessProvider metaAccess, GraphBuilderPlugins plugins) {
+public class HotSpotGraphBuilderPlugins {
+    public static void registerPlugins(MetaAccessProvider metaAccess, GraphBuilderPlugins plugins) {
         // Object.class
         Registration r = new Registration(plugins, metaAccess, Object.class);
         r.register1("getClass", Receiver.class, new InvocationPlugin() {

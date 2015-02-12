@@ -24,10 +24,10 @@ package com.oracle.graal.compiler.test;
 
 import org.junit.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.common.*;
@@ -81,8 +81,8 @@ public class ReadAfterCheckCastTest extends GraphScheduleTest {
         try (Scope s = Debug.scope("ReadAfterCheckCastTest", new DebugDumpScope(snippet))) {
             // check shape of graph, with lots of assumptions. will probably fail if graph
             // structure changes significantly
-            StructuredGraph graph = parseEager(snippet);
-            PhaseContext context = new PhaseContext(getProviders(), new Assumptions(false));
+            StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES);
+            PhaseContext context = new PhaseContext(getProviders());
             CanonicalizerPhase canonicalizer = new CanonicalizerPhase(true);
             new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
             new FloatingReadPhase().apply(graph);

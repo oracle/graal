@@ -24,7 +24,6 @@ package com.oracle.graal.phases.common.inlining.info;
 
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.graph.*;
@@ -90,13 +89,13 @@ public class TypeGuardInlineInfo extends AbstractInlineInfo {
     }
 
     @Override
-    public Collection<Node> inline(Providers providers, Assumptions assumptions) {
+    public Collection<Node> inline(Providers providers) {
         createGuard(graph(), providers);
-        return inline(invoke, concrete, inlineableElement, assumptions, false);
+        return inline(invoke, concrete, inlineableElement, false);
     }
 
     @Override
-    public void tryToDevirtualizeInvoke(Providers providers, Assumptions assumptions) {
+    public void tryToDevirtualizeInvoke(Providers providers) {
         createGuard(graph(), providers);
         InliningUtil.replaceInvokeCallTarget(invoke, graph(), InvokeKind.Special, concrete);
     }

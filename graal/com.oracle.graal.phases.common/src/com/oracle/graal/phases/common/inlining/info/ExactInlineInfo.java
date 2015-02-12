@@ -24,7 +24,6 @@ package com.oracle.graal.phases.common.inlining.info;
 
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
@@ -52,12 +51,12 @@ public class ExactInlineInfo extends AbstractInlineInfo {
     }
 
     @Override
-    public Collection<Node> inline(Providers providers, Assumptions assumptions) {
-        return inline(invoke, concrete, inlineableElement, assumptions, !suppressNullCheck);
+    public Collection<Node> inline(Providers providers) {
+        return inline(invoke, concrete, inlineableElement, !suppressNullCheck);
     }
 
     @Override
-    public void tryToDevirtualizeInvoke(Providers providers, Assumptions assumptions) {
+    public void tryToDevirtualizeInvoke(Providers providers) {
         // nothing todo, can already be bound statically
     }
 

@@ -28,6 +28,7 @@ import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.java.*;
 
@@ -145,7 +146,7 @@ public class NestedLoopTest extends GraalCompilerTest {
     }
 
     private void test(String snippet, int rootExits, int nestedExits, int innerExits) {
-        StructuredGraph graph = parseEager(snippet);
+        StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES);
         Debug.dump(graph, "Graph");
         ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, true, true, true);
 

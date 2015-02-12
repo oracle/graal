@@ -26,6 +26,7 @@ import static com.oracle.graal.api.meta.DeoptimizationAction.*;
 import static com.oracle.graal.api.meta.DeoptimizationReason.*;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.ProfilingInfo.TriState;
 import com.oracle.graal.compiler.common.type.*;
@@ -157,11 +158,12 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
             return synonym;
         }
 
-        if (tool.assumptions() != null && tool.assumptions().useOptimisticAssumptions()) {
+        Assumptions assumptions = graph().getAssumptions();
+        if (assumptions != null) {
             ResolvedJavaType exactType = type.findUniqueConcreteSubtype();
             if (exactType != null && !exactType.equals(type)) {
                 // Propagate more precise type information to usages of the checkcast.
-                tool.assumptions().recordConcreteSubtype(type, exactType);
+                assumptions.recordConcreteSubtype(type, exactType);
                 return new CheckCastNode(exactType, object, profile, forStoreCheck);
             }
         }

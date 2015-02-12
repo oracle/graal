@@ -46,12 +46,12 @@ public interface SuitesProvider {
     /**
      * Get the default phase suites of this compiler.
      */
-    LowLevelSuites getDefaultLowLevelSuites();
+    LIRSuites getDefaultLIRSuites();
 
     /**
      * Create a new set of low-level phase suites. Initially, the suites are the same as the
-     * {@link #getDefaultLowLevelSuites default} suites.
+     * {@link #getDefaultLIRSuites default} suites.
      */
-    LowLevelSuites createLowLevelSuites();
+    LIRSuites createLIRSuites();
 
 }

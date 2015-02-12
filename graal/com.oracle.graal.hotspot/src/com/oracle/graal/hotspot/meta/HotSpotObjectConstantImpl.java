@@ -183,7 +183,7 @@ public final class HotSpotObjectConstantImpl extends AbstractValue implements Ho
             CallSite callSite = (CallSite) object;
             MethodHandle target = callSite.getTarget();
             if (!(callSite instanceof ConstantCallSite)) {
-                if (assumptions == null || !assumptions.useOptimisticAssumptions()) {
+                if (assumptions == null) {
                     return null;
                 }
                 assumptions.record(new Assumptions.CallSiteTargetValue(callSite, target));

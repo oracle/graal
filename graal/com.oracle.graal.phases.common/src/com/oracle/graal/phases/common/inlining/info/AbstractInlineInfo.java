@@ -24,16 +24,13 @@ package com.oracle.graal.phases.common.inlining.info;
 
 import java.util.*;
 
-import com.oracle.graal.api.code.Assumptions;
-import com.oracle.graal.api.meta.ResolvedJavaMethod;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.phases.common.CanonicalizerPhase;
-import com.oracle.graal.phases.common.inlining.InliningUtil;
-import com.oracle.graal.phases.common.inlining.info.elem.Inlineable;
-import com.oracle.graal.phases.common.inlining.info.elem.InlineableMacroNode;
-import com.oracle.graal.phases.common.inlining.info.elem.InlineableGraph;
-import com.oracle.graal.phases.tiers.HighTierContext;
+import com.oracle.graal.phases.common.*;
+import com.oracle.graal.phases.common.inlining.*;
+import com.oracle.graal.phases.common.inlining.info.elem.*;
+import com.oracle.graal.phases.tiers.*;
 
 public abstract class AbstractInlineInfo implements InlineInfo {
 
@@ -53,7 +50,7 @@ public abstract class AbstractInlineInfo implements InlineInfo {
         return invoke;
     }
 
-    protected static Collection<Node> inline(Invoke invoke, ResolvedJavaMethod concrete, Inlineable inlineable, Assumptions assumptions, boolean receiverNullCheck) {
+    protected static Collection<Node> inline(Invoke invoke, ResolvedJavaMethod concrete, Inlineable inlineable, boolean receiverNullCheck) {
         List<Node> canonicalizeNodes = new ArrayList<>();
         if (inlineable instanceof InlineableGraph) {
             StructuredGraph calleeGraph = ((InlineableGraph) inlineable).getGraph();
@@ -68,7 +65,10 @@ public abstract class AbstractInlineInfo implements InlineInfo {
         }
 
         InliningUtil.InlinedBytecodes.add(concrete.getCodeSize());
-        assumptions.recordMethodContents(concrete);
+        StructuredGraph graph = invoke.asNode().graph();
+        if (graph.isMethodRecordingEnabled()) {
+            graph.getMethods().add(concrete);
+        }
         return canonicalizeNodes;
     }
 
@@ -83,9 +83,9 @@ public abstract class AbstractInlineInfo implements InlineInfo {
         }
     }
 
-    public final void populateInlinableElements(HighTierContext context, Assumptions calleeAssumptions, CanonicalizerPhase canonicalizer) {
+    public final void populateInlinableElements(HighTierContext context, StructuredGraph caller, CanonicalizerPhase canonicalizer) {
         for (int i = 0; i < numberOfMethods(); i++) {
-            Inlineable elem = Inlineable.getInlineableElement(methodAt(i), invoke, context.replaceAssumptions(calleeAssumptions), canonicalizer);
+            Inlineable elem = Inlineable.getInlineableElement(methodAt(i), invoke, context, canonicalizer);
             setInlinableElement(i, elem);
         }
     }
