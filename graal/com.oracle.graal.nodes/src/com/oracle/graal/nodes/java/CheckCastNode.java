@@ -71,7 +71,7 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
         }
         if (assumptions != null) {
             ResolvedJavaType uniqueConcreteType = type.findUniqueConcreteSubtype();
-            if (uniqueConcreteType != null) {
+            if (uniqueConcreteType != null && !uniqueConcreteType.equals(type)) {
                 assumptions.recordConcreteSubtype(type, uniqueConcreteType);
                 type = uniqueConcreteType;
             }
