@@ -162,7 +162,6 @@ public class TruffleGraphBuilderPlugins {
         });
         r.register4("unsafeCast", Object.class, Class.class, boolean.class, boolean.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext builder, ValueNode object, ValueNode clazz, ValueNode condition, ValueNode nonNull) {
-                System.out.println("unsafe cast with cond: " + condition + " clazz: " + clazz + " nonNull: " + nonNull);
                 if (clazz.isConstant() && nonNull.isConstant()) {
                     ConstantReflectionProvider constantReflection = builder.getConstantReflection();
                     ResolvedJavaType javaType = constantReflection.asJavaType(clazz.asConstant());
