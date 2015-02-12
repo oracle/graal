@@ -33,7 +33,7 @@ import com.oracle.graal.replacements.nodes.*;
 /**
  * {@link MacroNode Macro node} for {@link Class#isPrimitive()}.
  *
- * @see ClassSubstitutions#isPrimitive(Class)
+ * @see HotSpotClassSubstitutions#isPrimitive(Class)
  */
 @NodeInfo
 public final class ClassIsPrimitiveNode extends MacroNode implements Canonicalizable {

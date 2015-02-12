@@ -33,7 +33,7 @@ import com.oracle.graal.replacements.nodes.*;
 /**
  * {@link MacroNode Macro node} for {@link Class#isAssignableFrom(Class)}.
  *
- * @see ClassSubstitutions#isAssignableFrom(Class, Class)
+ * @see HotSpotClassSubstitutions#isAssignableFrom(Class, Class)
  */
 @NodeInfo
 public final class ClassIsAssignableFromNode extends MacroStateSplitNode implements Canonicalizable {

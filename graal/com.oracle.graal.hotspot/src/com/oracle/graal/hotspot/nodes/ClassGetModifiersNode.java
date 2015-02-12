@@ -33,7 +33,7 @@ import com.oracle.graal.replacements.nodes.*;
 /**
  * {@link MacroNode Macro node} for {@link Class#getModifiers()}.
  *
- * @see ClassSubstitutions#getModifiers(Class)
+ * @see HotSpotClassSubstitutions#getModifiers(Class)
  */
 @NodeInfo
 public final class ClassGetModifiersNode extends MacroNode implements Canonicalizable {

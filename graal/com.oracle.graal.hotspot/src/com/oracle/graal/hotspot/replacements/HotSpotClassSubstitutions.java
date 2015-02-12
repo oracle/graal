@@ -41,7 +41,7 @@ import com.oracle.graal.word.*;
  * Substitutions for {@link java.lang.Class} methods.
  */
 @ClassSubstitution(java.lang.Class.class)
-public class ClassSubstitutions {
+public class HotSpotClassSubstitutions {
 
     @MacroSubstitution(macro = ClassGetModifiersNode.class, isStatic = false)
     @MethodSubstitution(isStatic = false, forced = true)

@@ -60,7 +60,7 @@ public class HotSpotSubstitutions implements ReplacementsProvider {
         replacements.registerSubstitutions(System.class, SystemSubstitutions.class);
         replacements.registerSubstitutions(Thread.class, ThreadSubstitutions.class);
         replacements.registerSubstitutions(Unsafe.class, UnsafeSubstitutions.class);
-        replacements.registerSubstitutions(Class.class, ClassSubstitutions.class);
+        replacements.registerSubstitutions(Class.class, HotSpotClassSubstitutions.class);
         replacements.registerSubstitutions(CRC32.class, CRC32Substitutions.class);
         replacements.registerSubstitutions(Reflection.class, ReflectionSubstitutions.class);
         replacements.registerSubstitutions(NodeClass.class, HotSpotNodeClassSubstitutions.class);

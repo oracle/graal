@@ -35,7 +35,7 @@ import com.oracle.graal.replacements.nodes.*;
 /**
  * {@link MacroNode Macro node} for {@link Class#isInstance(Object)}.
  *
- * @see ClassSubstitutions#isInstance(Class, Object)
+ * @see HotSpotClassSubstitutions#isInstance(Class, Object)
  */
 @NodeInfo
 public final class ClassIsInstanceNode extends MacroNode implements Canonicalizable {
