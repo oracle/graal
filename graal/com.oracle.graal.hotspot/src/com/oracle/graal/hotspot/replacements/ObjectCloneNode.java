@@ -32,6 +32,7 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
@@ -72,7 +73,7 @@ public class ObjectCloneNode extends BasicObjectCloneNode implements Virtualizab
                 Assumptions assumptions = graph().getAssumptions();
                 type = getConcreteType(getObject().stamp(), assumptions, tool.getMetaAccess());
                 if (type != null) {
-                    StructuredGraph newGraph = new StructuredGraph(assumptions.useOptimisticAssumptions());
+                    StructuredGraph newGraph = new StructuredGraph(AllowAssumptions.from(assumptions != null));
                     ParameterNode param = newGraph.unique(new ParameterNode(0, getObject().stamp()));
                     NewInstanceNode newInstance = newGraph.add(new NewInstanceNode(type, true));
                     newGraph.addAfterFixed(newGraph.start(), newInstance);

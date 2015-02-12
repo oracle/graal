@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.compiler.test.inlining;
 
-import static com.oracle.graal.api.code.Assumptions.*;
 import static org.junit.Assert.*;
 
 import org.junit.*;
@@ -35,6 +34,7 @@ import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.common.inlining.*;
@@ -232,7 +232,7 @@ public class InliningTest extends GraalCompilerTest {
     private StructuredGraph getGraph(final String snippet, final boolean eagerInfopointMode) {
         try (Scope s = Debug.scope("InliningTest", new DebugDumpScope(snippet))) {
             ResolvedJavaMethod method = getResolvedJavaMethod(snippet);
-            StructuredGraph graph = eagerInfopointMode ? parseDebug(method, ALLOW_OPTIMISTIC_ASSUMPTIONS) : parseEager(method, ALLOW_OPTIMISTIC_ASSUMPTIONS);
+            StructuredGraph graph = eagerInfopointMode ? parseDebug(method, AllowAssumptions.YES) : parseEager(method, AllowAssumptions.YES);
             PhaseSuite<HighTierContext> graphBuilderSuite = eagerInfopointMode ? getCustomGraphBuilderSuite(GraphBuilderConfiguration.getFullDebugDefault()) : getDefaultGraphBuilderSuite();
             HighTierContext context = new HighTierContext(getProviders(), null, graphBuilderSuite, OptimisticOptimizations.ALL);
             Debug.dump(graph, "Graph");

@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.compiler.test.tutorial;
 
-import static com.oracle.graal.api.code.Assumptions.*;
-
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
@@ -34,6 +32,7 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.util.*;
@@ -211,7 +210,7 @@ public class StaticAnalysis {
                  * Build the Graal graph for the method using the bytecode parser provided by Graal.
                  */
 
-                StructuredGraph graph = new StructuredGraph(method, DONT_ALLOW_OPTIMISTIC_ASSUMPTIONS);
+                StructuredGraph graph = new StructuredGraph(method, AllowAssumptions.NO);
                 /*
                  * Support for graph dumping, IGV uses this information to show the method name of a
                  * graph.

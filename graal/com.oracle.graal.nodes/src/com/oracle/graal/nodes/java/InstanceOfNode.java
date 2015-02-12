@@ -79,7 +79,7 @@ public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable, Virtu
                 return result;
             }
             Assumptions assumptions = graph().getAssumptions();
-            if (assumptions.useOptimisticAssumptions()) {
+            if (assumptions != null) {
                 ResolvedJavaType exact = stampType.findUniqueConcreteSubtype();
                 if (exact != null) {
                     result = checkInstanceOf(forValue, exact, objectStamp.nonNull(), true);

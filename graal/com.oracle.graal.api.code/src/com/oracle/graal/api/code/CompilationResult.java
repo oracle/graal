@@ -531,6 +531,11 @@ public class CompilationResult implements Serializable {
 
     private Assumption[] assumptions;
 
+    /**
+     * The list of the methods whose bytecodes were used as input to the compilation.
+     */
+    private ResolvedJavaMethod[] methods;
+
     public CompilationResult() {
         this(null);
     }
@@ -607,16 +612,34 @@ public class CompilationResult implements Serializable {
         this.entryBCI = entryBCI;
     }
 
+    /**
+     * Sets the assumptions made during compilation.
+     */
     public void setAssumptions(Assumption[] assumptions) {
         this.assumptions = assumptions;
     }
 
     /**
-     * Gets a fixed-size {@linkplain Arrays#asList(Object...) view} of the assumptions recorded in
-     * this object.
+     * Gets a fixed-size {@linkplain Arrays#asList(Object...) view} of the assumptions made during
+     * compilation.
      */
     public Collection<Assumption> getAssumptions() {
         return assumptions == null ? Collections.emptyList() : Arrays.asList(assumptions);
+    }
+
+    /**
+     * Sets the methods whose bytecodes were used as input to the compilation.
+     */
+    public void setMethods(ResolvedJavaMethod[] methods) {
+        this.methods = methods;
+    }
+
+    /**
+     * Gets a fixed-size {@linkplain Arrays#asList(Object...) view} of the methods whose bytecodes
+     * were used as input to the compilation.
+     */
+    public Collection<ResolvedJavaMethod> getMethods() {
+        return methods == null ? Collections.emptyList() : Arrays.asList(methods);
     }
 
     public DataSection getDataSection() {

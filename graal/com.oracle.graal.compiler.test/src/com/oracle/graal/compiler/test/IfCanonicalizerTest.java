@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.compiler.test;
 
-import static com.oracle.graal.api.code.Assumptions.*;
 import static com.oracle.graal.graph.iterators.NodePredicates.*;
 
 import org.junit.*;
@@ -30,6 +29,7 @@ import org.junit.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
@@ -180,7 +180,7 @@ public class IfCanonicalizerTest extends GraalCompilerTest {
     }
 
     private void testCombinedIf(String snippet, int count) {
-        StructuredGraph graph = parseEager(snippet, ALLOW_OPTIMISTIC_ASSUMPTIONS);
+        StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES);
         PhaseContext context = new PhaseContext(getProviders());
         new LoweringPhase(new CanonicalizerPhase(true), LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
         new FloatingReadPhase().apply(graph);
@@ -193,7 +193,7 @@ public class IfCanonicalizerTest extends GraalCompilerTest {
     }
 
     private void test(String snippet) {
-        StructuredGraph graph = parseEager(snippet, ALLOW_OPTIMISTIC_ASSUMPTIONS);
+        StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES);
         ParameterNode param = graph.getNodes(ParameterNode.class).iterator().next();
         ConstantNode constant = ConstantNode.forInt(0, graph);
         for (Node n : param.usages().filter(isNotA(FrameState.class)).snapshot()) {
@@ -205,7 +205,7 @@ public class IfCanonicalizerTest extends GraalCompilerTest {
             fs.replaceFirstInput(param, null);
             param.safeDelete();
         }
-        StructuredGraph referenceGraph = parseEager(REFERENCE_SNIPPET, ALLOW_OPTIMISTIC_ASSUMPTIONS);
+        StructuredGraph referenceGraph = parseEager(REFERENCE_SNIPPET, AllowAssumptions.YES);
         assertEquals(referenceGraph, graph);
     }
 }

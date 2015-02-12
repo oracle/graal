@@ -73,7 +73,7 @@ public final class LoadHubNode extends FloatingGuardedNode implements Lowerable,
             ResolvedJavaType exactType;
             if (objectStamp.isExactType()) {
                 exactType = objectStamp.type();
-            } else if (objectStamp.type() != null && graph().getAssumptions().useOptimisticAssumptions()) {
+            } else if (objectStamp.type() != null && graph().getAssumptions() != null) {
                 exactType = objectStamp.type().findUniqueConcreteSubtype();
                 if (exactType != null) {
                     graph().getAssumptions().recordConcreteSubtype(objectStamp.type(), exactType);

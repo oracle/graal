@@ -22,12 +22,11 @@
  */
 package com.oracle.graal.compiler.test;
 
-import static com.oracle.graal.api.code.Assumptions.*;
-
 import org.junit.*;
 
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
 
@@ -244,9 +243,9 @@ public class ReassociateAndCanonicalTest extends GraalCompilerTest {
     }
 
     private <T extends Node & IterableNodeType> void test(String test, String ref) {
-        StructuredGraph testGraph = parseEager(test, DONT_ALLOW_OPTIMISTIC_ASSUMPTIONS);
+        StructuredGraph testGraph = parseEager(test, AllowAssumptions.NO);
         new CanonicalizerPhase(true).apply(testGraph, new PhaseContext(getProviders()));
-        StructuredGraph refGraph = parseEager(ref, DONT_ALLOW_OPTIMISTIC_ASSUMPTIONS);
+        StructuredGraph refGraph = parseEager(ref, AllowAssumptions.NO);
         new CanonicalizerPhase(true).apply(refGraph, new PhaseContext(getProviders()));
         assertEquals(testGraph, refGraph);
     }

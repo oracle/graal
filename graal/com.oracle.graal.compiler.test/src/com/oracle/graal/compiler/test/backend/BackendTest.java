@@ -23,6 +23,7 @@
 package com.oracle.graal.compiler.test.backend;
 
 import static com.oracle.graal.api.code.CodeUtil.*;
+
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.compiler.*;

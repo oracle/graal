@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.hotspot.test;
 
-import static com.oracle.graal.api.code.Assumptions.*;
-
 import java.lang.ref.*;
 
 import org.junit.*;
@@ -40,6 +38,7 @@ import com.oracle.graal.hotspot.phases.*;
 import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.nodes.HeapAccess.BarrierType;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
@@ -245,7 +244,7 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
     private void testHelper(final String snippetName, final int expectedBarriers) throws Exception, SecurityException {
         ResolvedJavaMethod snippet = getResolvedJavaMethod(snippetName);
         try (Scope s = Debug.scope("WriteBarrierAdditionTest", snippet)) {
-            StructuredGraph graph = parseEager(snippet, DONT_ALLOW_OPTIMISTIC_ASSUMPTIONS);
+            StructuredGraph graph = parseEager(snippet, AllowAssumptions.NO);
             HighTierContext highContext = new HighTierContext(getProviders(), null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
             MidTierContext midContext = new MidTierContext(getProviders(), getCodeCache().getTarget(), OptimisticOptimizations.ALL, graph.method().getProfilingInfo(), null);
             new NodeIntrinsificationPhase(getProviders(), getSnippetReflection()).apply(graph);

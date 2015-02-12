@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.replacements.test;
 
-import static com.oracle.graal.api.code.Assumptions.*;
 import static org.junit.Assert.*;
 
 import java.lang.reflect.*;
@@ -35,6 +34,7 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.common.inlining.*;
@@ -49,7 +49,7 @@ public abstract class MethodSubstitutionTest extends GraalCompilerTest {
 
     protected StructuredGraph test(final String snippet) {
         try (Scope s = Debug.scope("MethodSubstitutionTest", getResolvedJavaMethod(snippet))) {
-            StructuredGraph graph = parseEager(snippet, ALLOW_OPTIMISTIC_ASSUMPTIONS);
+            StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES);
             HighTierContext context = new HighTierContext(getProviders(), null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
             Debug.dump(graph, "Graph");
             new InliningPhase(new CanonicalizerPhase(true)).apply(graph, context);

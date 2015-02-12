@@ -22,12 +22,11 @@
  */
 package com.oracle.graal.compiler.test;
 
-import static com.oracle.graal.api.code.Assumptions.*;
-
 import org.junit.*;
 
 import com.oracle.graal.debug.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
@@ -58,7 +57,7 @@ public class PushThroughIfTest extends GraalCompilerTest {
     }
 
     private void test(String snippet, String reference) {
-        StructuredGraph graph = parseEager(snippet, ALLOW_OPTIMISTIC_ASSUMPTIONS);
+        StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES);
         Debug.dump(graph, "Graph");
         for (FrameState fs : graph.getNodes(FrameState.class).snapshot()) {
             fs.replaceAtUsages(null);
@@ -67,7 +66,7 @@ public class PushThroughIfTest extends GraalCompilerTest {
         new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders()));
         new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders()));
 
-        StructuredGraph referenceGraph = parseEager(reference, ALLOW_OPTIMISTIC_ASSUMPTIONS);
+        StructuredGraph referenceGraph = parseEager(reference, AllowAssumptions.YES);
         for (FrameState fs : referenceGraph.getNodes(FrameState.class).snapshot()) {
             fs.replaceAtUsages(null);
             GraphUtil.killWithUnusedFloatingInputs(fs);

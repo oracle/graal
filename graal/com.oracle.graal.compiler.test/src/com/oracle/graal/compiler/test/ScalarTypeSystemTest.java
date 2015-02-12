@@ -22,12 +22,11 @@
  */
 package com.oracle.graal.compiler.test;
 
-import static com.oracle.graal.api.code.Assumptions.*;
-
 import org.junit.*;
 
 import com.oracle.graal.debug.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
 
@@ -131,11 +130,11 @@ public class ScalarTypeSystemTest extends GraalCompilerTest {
 
     private void test(final String snippet, final String referenceSnippet) {
         // No debug scope to reduce console noise for @Test(expected = ...) tests
-        StructuredGraph graph = parseEager(snippet, DONT_ALLOW_OPTIMISTIC_ASSUMPTIONS);
+        StructuredGraph graph = parseEager(snippet, AllowAssumptions.NO);
         Debug.dump(graph, "Graph");
         PhaseContext context = new PhaseContext(getProviders());
         new CanonicalizerPhase(true).apply(graph, context);
-        StructuredGraph referenceGraph = parseEager(referenceSnippet, DONT_ALLOW_OPTIMISTIC_ASSUMPTIONS);
+        StructuredGraph referenceGraph = parseEager(referenceSnippet, AllowAssumptions.NO);
         assertEquals(referenceGraph, graph);
     }
 }

@@ -364,7 +364,14 @@ public class InliningUtil {
         GraphUtil.killCFG(invokeNode);
 
         // Copy assumptions from inlinee to caller
-        graph.getAssumptions().record(inlineGraph.getAssumptions());
+        Assumptions assumptions = graph.getAssumptions();
+        if (assumptions != null) {
+            if (inlineGraph.getAssumptions() != null) {
+                assumptions.record(inlineGraph.getAssumptions());
+            }
+        } else {
+            assert inlineGraph.getAssumptions() == null : "cannot inline graph which makes assumptions into a graph that doesn't: " + inlineGraph + " -> " + graph;
+        }
 
         return duplicates;
     }

@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.compiler.test;
 
-import static com.oracle.graal.api.code.Assumptions.*;
-
 import org.junit.*;
 
 import com.oracle.graal.debug.*;
@@ -31,6 +29,7 @@ import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.loop.phases.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
 
@@ -122,8 +121,8 @@ public class LoopUnswitchTest extends GraalCompilerTest {
     }
 
     private void test(String snippet, String referenceSnippet) {
-        final StructuredGraph graph = parseEager(snippet, DONT_ALLOW_OPTIMISTIC_ASSUMPTIONS);
-        final StructuredGraph referenceGraph = parseEager(referenceSnippet, DONT_ALLOW_OPTIMISTIC_ASSUMPTIONS);
+        final StructuredGraph graph = parseEager(snippet, AllowAssumptions.NO);
+        final StructuredGraph referenceGraph = parseEager(referenceSnippet, AllowAssumptions.NO);
 
         new LoopUnswitchingPhase().apply(graph);
 

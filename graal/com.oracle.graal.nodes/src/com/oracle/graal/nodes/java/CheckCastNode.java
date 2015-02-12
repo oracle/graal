@@ -159,7 +159,7 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
         }
 
         Assumptions assumptions = graph().getAssumptions();
-        if (assumptions.useOptimisticAssumptions()) {
+        if (assumptions != null) {
             ResolvedJavaType exactType = type.findUniqueConcreteSubtype();
             if (exactType != null && !exactType.equals(type)) {
                 // Propagate more precise type information to usages of the checkcast.

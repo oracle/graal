@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.truffle.hotspot;
 
-import static com.oracle.graal.api.code.Assumptions.*;
 import static com.oracle.graal.api.code.CodeUtil.*;
 import static com.oracle.graal.compiler.GraalCompiler.*;
 import static com.oracle.graal.graph.util.CollectionsAccess.*;
@@ -48,6 +47,7 @@ import com.oracle.graal.java.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.phases.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.inlining.*;
@@ -179,7 +179,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
         Suites suites = suitesProvider.createSuites();
         LIRSuites lirSuites = suitesProvider.createLIRSuites();
         removeInliningPhase(suites);
-        StructuredGraph graph = new StructuredGraph(javaMethod, DONT_ALLOW_OPTIMISTIC_ASSUMPTIONS);
+        StructuredGraph graph = new StructuredGraph(javaMethod, AllowAssumptions.NO);
         new GraphBuilderPhase.Instance(metaAccess, providers.getStampProvider(), providers.getConstantReflection(), GraphBuilderConfiguration.getEagerDefault(), OptimisticOptimizations.ALL).apply(graph);
         PhaseSuite<HighTierContext> graphBuilderSuite = getGraphBuilderSuite(suitesProvider);
         CallingConvention cc = getCallingConvention(providers.getCodeCache(), Type.JavaCallee, graph.method(), false);

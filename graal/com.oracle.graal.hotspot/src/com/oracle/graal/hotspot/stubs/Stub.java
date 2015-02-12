@@ -157,7 +157,7 @@ public abstract class Stub {
         if (code == null) {
             try (Scope d = Debug.sandbox("CompilingStub", DebugScope.getConfig(), providers.getCodeCache(), debugScopeContext())) {
                 final StructuredGraph graph = getGraph();
-                assert !graph.getAssumptions().useOptimisticAssumptions();
+                assert graph.getAssumptions() == null;
                 if (!(graph.start() instanceof StubStartNode)) {
                     StubStartNode newStart = graph.add(new StubStartNode(Stub.this));
                     newStart.setStateAfter(graph.start().stateAfter());

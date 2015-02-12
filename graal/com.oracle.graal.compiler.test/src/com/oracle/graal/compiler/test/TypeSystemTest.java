@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.compiler.test;
 
-import static com.oracle.graal.api.code.Assumptions.*;
-
 import java.io.*;
 
 import org.junit.*;
@@ -32,6 +30,7 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.phases.common.*;
@@ -171,7 +170,7 @@ public class TypeSystemTest extends GraalCompilerTest {
     }
 
     private void test(String snippet, String referenceSnippet) {
-        StructuredGraph graph = parseEager(snippet, DONT_ALLOW_OPTIMISTIC_ASSUMPTIONS);
+        StructuredGraph graph = parseEager(snippet, AllowAssumptions.NO);
         Debug.dump(graph, "Graph");
         /*
          * When using FlowSensitiveReductionPhase instead of ConditionalEliminationPhase,
@@ -182,7 +181,7 @@ public class TypeSystemTest extends GraalCompilerTest {
         new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders()));
         // a second canonicalizer is needed to process nested MaterializeNodes
         new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders()));
-        StructuredGraph referenceGraph = parseEager(referenceSnippet, DONT_ALLOW_OPTIMISTIC_ASSUMPTIONS);
+        StructuredGraph referenceGraph = parseEager(referenceSnippet, AllowAssumptions.NO);
         new CanonicalizerPhase(true).apply(referenceGraph, new PhaseContext(getProviders()));
         assertEquals(referenceGraph, graph);
     }
@@ -230,7 +229,7 @@ public class TypeSystemTest extends GraalCompilerTest {
     }
 
     private <T extends Node> void testHelper(String snippet, Class<T> clazz) {
-        StructuredGraph graph = parseEager(snippet, DONT_ALLOW_OPTIMISTIC_ASSUMPTIONS);
+        StructuredGraph graph = parseEager(snippet, AllowAssumptions.NO);
         new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders()));
         new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders()));
         Debug.dump(graph, "Graph " + snippet);

@@ -22,13 +22,12 @@
  */
 package com.oracle.graal.nodes.test;
 
-import static com.oracle.graal.api.code.Assumptions.*;
-
 import org.junit.*;
 
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
 
@@ -58,7 +57,7 @@ public class LoopPhiCanonicalizerTest extends GraalCompilerTest {
 
     @Test
     public void test() {
-        StructuredGraph graph = parseEager("loopSnippet", ALLOW_OPTIMISTIC_ASSUMPTIONS);
+        StructuredGraph graph = parseEager("loopSnippet", AllowAssumptions.YES);
         NodePredicate loopPhis = node -> node instanceof PhiNode && ((PhiNode) node).merge() instanceof LoopBeginNode;
 
         PhaseContext context = new PhaseContext(getProviders());

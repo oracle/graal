@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.compiler.test.tutorial;
 
-import static com.oracle.graal.api.code.Assumptions.*;
-
 import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.atomic.*;
@@ -39,6 +37,7 @@ import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.phases.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.phases.util.*;
@@ -84,7 +83,7 @@ public class InvokeGraal {
              * that we want the compilation to make optimistic assumptions about runtime state such
              * as the loaded class hierarchy.
              */
-            StructuredGraph graph = new StructuredGraph(method, ALLOW_OPTIMISTIC_ASSUMPTIONS);
+            StructuredGraph graph = new StructuredGraph(method, AllowAssumptions.YES);
 
             /*
              * The phases used to build the graph. Usually this is just the GraphBuilderPhase. If

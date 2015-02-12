@@ -124,7 +124,7 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
                 return resolvedMethod;
             }
             Assumptions assumptions = receiver.graph().getAssumptions();
-            if (assumptions.useOptimisticAssumptions()) {
+            if (assumptions != null) {
                 ResolvedJavaType uniqueConcreteType = type.findUniqueConcreteSubtype();
                 if (uniqueConcreteType != null) {
                     ResolvedJavaMethod methodFromUniqueType = uniqueConcreteType.resolveConcreteMethod(targetMethod, contextType);

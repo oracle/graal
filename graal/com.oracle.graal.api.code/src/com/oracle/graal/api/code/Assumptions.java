@@ -29,16 +29,16 @@ import java.util.*;
 import com.oracle.graal.api.meta.*;
 
 /**
- * Class for recording assumptions made during compilation. {@link OptimisticAssumption}s can only
- * be recorded in an {@link Assumptions} object if it {@linkplain #useOptimisticAssumptions()
- * allows} them.
+ * Class for recording assumptions made during compilation.
  */
 public final class Assumptions implements Serializable, Iterable<Assumptions.Assumption> {
 
     private static final long serialVersionUID = 5152062717588239131L;
 
     /**
-     * Abstract base class for assumptions.
+     * Abstract base class for assumptions. An assumption assumes a property of the runtime that may
+     * be invalidated by subsequent execution (e.g., that a class has no subclasses implementing
+     * {@link NoFinalizableSubclass Object.finalize()}).
      */
     public abstract static class Assumption implements Serializable {
 
@@ -46,23 +46,9 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
     }
 
     /**
-     * Abstract base class for optimistic assumptions. An optimistic assumption assumes a property
-     * of the runtime that may be invalidated by subsequent execution (e.g., that a class has no
-     * subclasses implementing {@link NoFinalizableSubclass Object.finalize()}). A non-optimistic
-     * assumption assumes a property that will most likely only be invalidated by an external
-     * interface to the runtime (e.g., a {@linkplain MethodContents breakpoint is set or a class is
-     * redefined}).
+     * An assumption that a given class has no subclasses implementing {@link Object#finalize()}).
      */
-    public abstract static class OptimisticAssumption extends Assumption {
-
-        private static final long serialVersionUID = -1936652569665112932L;
-    }
-
-    /**
-     * An optimistic assumption that a given class has no subclasses implementing
-     * {@link Object#finalize()}).
-     */
-    public static final class NoFinalizableSubclass extends OptimisticAssumption {
+    public static final class NoFinalizableSubclass extends Assumption {
 
         private static final long serialVersionUID = 6451169735564055081L;
 
@@ -94,9 +80,9 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
     }
 
     /**
-     * An optimistic assumption that a given type has a given unique subtype.
+     * An assumption that a given type has a given unique subtype.
      */
-    public static final class ConcreteSubtype extends OptimisticAssumption {
+    public static final class ConcreteSubtype extends Assumption {
 
         private static final long serialVersionUID = -1457173265437676252L;
 
@@ -142,9 +128,9 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
     }
 
     /**
-     * An optimistic assumption that a given virtual method has a given unique implementation.
+     * An assumption that a given virtual method has a given unique implementation.
      */
-    public static final class ConcreteMethod extends OptimisticAssumption {
+    public static final class ConcreteMethod extends Assumption {
 
         private static final long serialVersionUID = -7636746737947390059L;
 
@@ -196,49 +182,9 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
     }
 
     /**
-     * An non-optimistic assumption that the bytecodes of a given method used during compilation
-     * will not change. This kind of dependency may be used to invalidate and deoptimize compiled
-     * code when:
-     * <ul>
-     * <li>one of its constituent methods is redefined or</li>
-     * <li>a breakpoint is set in one of its constituent methods and the runtime only implements
-     * breakpoint support in non-compiled code.
-     * </ul>
+     * An assumption that a given call site's method handle did not change.
      */
-    public static final class MethodContents extends Assumption {
-
-        private static final long serialVersionUID = -4821594103928571659L;
-
-        public final ResolvedJavaMethod method;
-
-        public MethodContents(ResolvedJavaMethod method) {
-            this.method = method;
-        }
-
-        @Override
-        public int hashCode() {
-            return 31 + method.hashCode();
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (obj instanceof MethodContents) {
-                MethodContents other = (MethodContents) obj;
-                return other.method.equals(method);
-            }
-            return false;
-        }
-
-        @Override
-        public String toString() {
-            return "MethodContents[method=" + method.format("%H.%n(%p)%r") + "]";
-        }
-    }
-
-    /**
-     * An optimistic assumption that a given call site's method handle did not change.
-     */
-    public static final class CallSiteTargetValue extends OptimisticAssumption {
+    public static final class CallSiteTargetValue extends Assumption {
 
         private static final long serialVersionUID = 1732459941784550371L;
 
@@ -274,26 +220,7 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
         }
     }
 
-    private Set<Assumption> assumptions;
-
-    /**
-     * Specifies whether {@link OptimisticAssumption}s can be made.
-     */
-    private boolean allowOptimisticAssumptions;
-
-    public static final boolean ALLOW_OPTIMISTIC_ASSUMPTIONS = true;
-    public static final boolean DONT_ALLOW_OPTIMISTIC_ASSUMPTIONS = false;
-
-    /**
-     * Creates an object for recording assumptions.
-     *
-     * @param allowOptimisticAssumptions specifies whether {@link OptimisticAssumption}s can be
-     *            recorded in this object
-     */
-    public Assumptions(boolean allowOptimisticAssumptions) {
-        this.allowOptimisticAssumptions = allowOptimisticAssumptions;
-        assumptions = new HashSet<>();
-    }
+    private final Set<Assumption> assumptions = new HashSet<>();
 
     /**
      * Returns whether any assumptions have been registered.
@@ -302,13 +229,6 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
      */
     public boolean isEmpty() {
         return assumptions.isEmpty();
-    }
-
-    /**
-     * Determines whether {@link OptimisticAssumption}s can be made.
-     */
-    public boolean useOptimisticAssumptions() {
-        return allowOptimisticAssumptions;
     }
 
     @Override
@@ -323,7 +243,7 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
         }
         if (obj instanceof Assumptions) {
             Assumptions that = (Assumptions) obj;
-            if (this.allowOptimisticAssumptions != that.allowOptimisticAssumptions || !this.assumptions.equals(that.assumptions)) {
+            if (!this.assumptions.equals(that.assumptions)) {
                 return false;
             }
             return true;
@@ -368,17 +288,7 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
         record(new ConcreteMethod(method, context, impl));
     }
 
-    /**
-     * Records that {@code method} was used during the compilation.
-     *
-     * @param method a method whose contents were used
-     */
-    public void recordMethodContents(ResolvedJavaMethod method) {
-        record(new MethodContents(method));
-    }
-
     public void record(Assumption assumption) {
-        assert allowOptimisticAssumptions || !(assumption instanceof OptimisticAssumption) : "cannot make optimistic assumption: " + assumption;
         assumptions.add(assumption);
     }
 
@@ -399,6 +309,6 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
 
     @Override
     public String toString() {
-        return "Assumptions{optimistic=" + allowOptimisticAssumptions + ", assumptions=" + assumptions + "}";
+        return "Assumptions[" + assumptions + "]";
     }
 }

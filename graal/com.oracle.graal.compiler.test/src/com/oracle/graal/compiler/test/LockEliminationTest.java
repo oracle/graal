@@ -22,12 +22,11 @@
  */
 package com.oracle.graal.compiler.test;
 
-import static com.oracle.graal.api.code.Assumptions.*;
-
 import org.junit.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
@@ -89,7 +88,7 @@ public class LockEliminationTest extends GraalCompilerTest {
 
     private StructuredGraph getGraph(String snippet) {
         ResolvedJavaMethod method = getResolvedJavaMethod(snippet);
-        StructuredGraph graph = parseEager(method, ALLOW_OPTIMISTIC_ASSUMPTIONS);
+        StructuredGraph graph = parseEager(method, AllowAssumptions.YES);
         HighTierContext context = new HighTierContext(getProviders(), null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
         new CanonicalizerPhase(true).apply(graph, context);
         new InliningPhase(new CanonicalizerPhase(true)).apply(graph, context);

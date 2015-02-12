@@ -22,14 +22,13 @@
  */
 package com.oracle.graal.compiler.test.deopt;
 
-import static com.oracle.graal.api.code.Assumptions.*;
-
 import org.junit.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
 
@@ -53,7 +52,7 @@ public class CompiledMethodTest extends GraalCompilerTest {
     @Test
     public void test1() {
         final ResolvedJavaMethod javaMethod = getResolvedJavaMethod("testMethod");
-        final StructuredGraph graph = parseEager(javaMethod, DONT_ALLOW_OPTIMISTIC_ASSUMPTIONS);
+        final StructuredGraph graph = parseEager(javaMethod, AllowAssumptions.NO);
         new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders()));
         new DeadCodeEliminationPhase().apply(graph);
 

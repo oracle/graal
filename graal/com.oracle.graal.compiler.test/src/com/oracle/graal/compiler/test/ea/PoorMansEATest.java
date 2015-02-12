@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.compiler.test.ea;
 
-import static com.oracle.graal.api.code.Assumptions.*;
-
 import org.junit.*;
 
 import com.oracle.graal.compiler.test.*;
@@ -31,6 +29,7 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
@@ -60,7 +59,7 @@ public class PoorMansEATest extends GraalCompilerTest {
 
     private void test(final String snippet) {
         try (Scope s = Debug.scope("PoorMansEATest", new DebugDumpScope(snippet))) {
-            StructuredGraph graph = parseEager(snippet, DONT_ALLOW_OPTIMISTIC_ASSUMPTIONS);
+            StructuredGraph graph = parseEager(snippet, AllowAssumptions.NO);
             HighTierContext highTierContext = new HighTierContext(getProviders(), null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
             new InliningPhase(new CanonicalizerPhase(true)).apply(graph, highTierContext);
             PhaseContext context = new PhaseContext(getProviders());

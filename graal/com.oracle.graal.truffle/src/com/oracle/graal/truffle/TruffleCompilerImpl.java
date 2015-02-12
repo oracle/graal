@@ -22,14 +22,13 @@
  */
 package com.oracle.graal.truffle;
 
-import static com.oracle.graal.api.code.Assumptions.*;
 import static com.oracle.graal.api.code.CodeUtil.*;
 import static com.oracle.graal.compiler.GraalCompiler.*;
 
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.Assumptions.Assumption;
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
@@ -43,6 +42,7 @@ import com.oracle.graal.java.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.phases.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
@@ -123,7 +123,7 @@ public class TruffleCompilerImpl {
             GraphBuilderSuiteInfo info = createGraphBuilderSuite();
 
             try (TimerCloseable a = PartialEvaluationTime.start(); Closeable c = PartialEvaluationMemUse.start()) {
-                graph = partialEvaluator.createGraph(compilable, ALLOW_OPTIMISTIC_ASSUMPTIONS, info.plugins);
+                graph = partialEvaluator.createGraph(compilable, AllowAssumptions.YES, info.plugins);
             }
 
             if (Thread.currentThread().isInterrupted()) {
@@ -165,6 +165,13 @@ public class TruffleCompilerImpl {
         }
 
         compilationNotify.notifyCompilationGraalTierFinished((OptimizedCallTarget) predefinedInstalledCode, graph);
+
+        if (graph.isMethodRecordingEnabled()) {
+            Set<ResolvedJavaMethod> methods = graph.getMethods();
+            result.setMethods(methods.toArray(new ResolvedJavaMethod[methods.size()]));
+        } else {
+            assert result.getMethods() == null;
+        }
 
         List<AssumptionValidAssumption> validAssumptions = new ArrayList<>();
         Set<Assumption> newAssumptions = new HashSet<>();

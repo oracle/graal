@@ -24,6 +24,8 @@ package com.oracle.graal.baseline;
 
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 
+import java.util.*;
+
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
@@ -67,8 +69,8 @@ public class BaselineCompiler {
         }
 
         // emitCode
-        Assumptions assumptions = new Assumptions(OptAssumptions.getValue());
-        GraalCompiler.emitCode(backend, assumptions, res, compilationResult, installedCodeOwner, factory);
+        Assumptions assumptions = OptAssumptions.getValue() ? new Assumptions() : null;
+        GraalCompiler.emitCode(backend, assumptions, Collections.emptySet(), res, compilationResult, installedCodeOwner, factory);
 
         return compilationResult;
     }

@@ -24,15 +24,13 @@ package com.oracle.graal.phases.common.inlining.info;
 
 import java.util.*;
 
-import com.oracle.graal.api.meta.ResolvedJavaMethod;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.phases.common.CanonicalizerPhase;
-import com.oracle.graal.phases.common.inlining.InliningUtil;
-import com.oracle.graal.phases.common.inlining.info.elem.Inlineable;
-import com.oracle.graal.phases.common.inlining.info.elem.InlineableMacroNode;
-import com.oracle.graal.phases.common.inlining.info.elem.InlineableGraph;
-import com.oracle.graal.phases.tiers.HighTierContext;
+import com.oracle.graal.phases.common.*;
+import com.oracle.graal.phases.common.inlining.*;
+import com.oracle.graal.phases.common.inlining.info.elem.*;
+import com.oracle.graal.phases.tiers.*;
 
 public abstract class AbstractInlineInfo implements InlineInfo {
 
@@ -67,7 +65,10 @@ public abstract class AbstractInlineInfo implements InlineInfo {
         }
 
         InliningUtil.InlinedBytecodes.add(concrete.getCodeSize());
-        invoke.asNode().graph().getAssumptions().recordMethodContents(concrete);
+        StructuredGraph graph = invoke.asNode().graph();
+        if (graph.isMethodRecordingEnabled()) {
+            graph.getMethods().add(concrete);
+        }
         return canonicalizeNodes;
     }
 

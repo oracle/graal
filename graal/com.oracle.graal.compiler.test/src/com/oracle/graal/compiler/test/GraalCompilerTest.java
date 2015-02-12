@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.compiler.test;
 
-import static com.oracle.graal.api.code.Assumptions.*;
 import static com.oracle.graal.api.code.CodeUtil.*;
 import static com.oracle.graal.compiler.GraalCompiler.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
@@ -54,6 +53,7 @@ import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.phases.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.virtual.*;
@@ -72,7 +72,7 @@ import com.oracle.graal.test.*;
  * <p>
  * White box tests for Graal compiler transformations use this pattern:
  * <ol>
- * <li>Create a graph by {@linkplain #parseEager(String, boolean) parsing} a method.</li>
+ * <li>Create a graph by {@linkplain #parseEager(String, AllowAssumptions) parsing} a method.</li>
  * <li>Manually modify the graph (e.g. replace a parameter node with a constant).</li>
  * <li>Apply a transformation to the graph.</li>
  * <li>Assert that the transformed graph is equal to an expected graph.</li>
@@ -662,7 +662,7 @@ public abstract class GraalCompilerTest extends GraalTest {
 
     /**
      * Gets installed code for a given method, compiling it first if necessary. The graph is parsed
-     * {@link #parseEager(ResolvedJavaMethod, boolean) eagerly}.
+     * {@link #parseEager(ResolvedJavaMethod, AllowAssumptions) eagerly}.
      */
     protected InstalledCode getCode(ResolvedJavaMethod method) {
         return getCode(method, null);
@@ -736,10 +736,10 @@ public abstract class GraalCompilerTest extends GraalTest {
      * is null.
      *
      * The default implementation in {@link GraalCompilerTest} is to call
-     * {@link #parseEager(ResolvedJavaMethod, boolean)}.
+     * {@link #parseEager(ResolvedJavaMethod, AllowAssumptions)}.
      */
     protected StructuredGraph parseForCompile(ResolvedJavaMethod method) {
-        return parseEager(method, ALLOW_OPTIMISTIC_ASSUMPTIONS);
+        return parseEager(method, AllowAssumptions.YES);
     }
 
     /**
@@ -816,16 +816,16 @@ public abstract class GraalCompilerTest extends GraalTest {
      *
      * @param methodName the name of the method in {@code this.getClass()} to be parsed
      */
-    protected StructuredGraph parseProfiled(String methodName, boolean allowOptimisticAssumptions) {
-        return parseProfiled(getResolvedJavaMethod(methodName), allowOptimisticAssumptions);
+    protected StructuredGraph parseProfiled(String methodName, AllowAssumptions allowAssumptions) {
+        return parseProfiled(getResolvedJavaMethod(methodName), allowAssumptions);
     }
 
     /**
      * Parses a Java method in {@linkplain GraphBuilderConfiguration#getDefault() default} mode to
      * produce a graph.
      */
-    protected StructuredGraph parseProfiled(ResolvedJavaMethod m, boolean allowOptimisticAssumptions) {
-        return parse1(m, getDefaultGraphBuilderSuite(), allowOptimisticAssumptions);
+    protected StructuredGraph parseProfiled(ResolvedJavaMethod m, AllowAssumptions allowAssumptions) {
+        return parse1(m, getDefaultGraphBuilderSuite(), allowAssumptions);
     }
 
     /**
@@ -834,30 +834,30 @@ public abstract class GraalCompilerTest extends GraalTest {
      *
      * @param methodName the name of the method in {@code this.getClass()} to be parsed
      */
-    protected StructuredGraph parseEager(String methodName, boolean allowOptimisticAssumptions) {
-        return parseEager(getResolvedJavaMethod(methodName), allowOptimisticAssumptions);
+    protected StructuredGraph parseEager(String methodName, AllowAssumptions allowAssumptions) {
+        return parseEager(getResolvedJavaMethod(methodName), allowAssumptions);
     }
 
     /**
      * Parses a Java method in {@linkplain GraphBuilderConfiguration#getEagerDefault() eager} mode
      * to produce a graph.
      */
-    protected StructuredGraph parseEager(ResolvedJavaMethod m, boolean allowOptimisticAssumptions) {
-        return parse1(m, getCustomGraphBuilderSuite(GraphBuilderConfiguration.getEagerDefault()), allowOptimisticAssumptions);
+    protected StructuredGraph parseEager(ResolvedJavaMethod m, AllowAssumptions allowAssumptions) {
+        return parse1(m, getCustomGraphBuilderSuite(GraphBuilderConfiguration.getEagerDefault()), allowAssumptions);
     }
 
     /**
      * Parses a Java method in {@linkplain GraphBuilderConfiguration#getFullDebugDefault() full
      * debug} mode to produce a graph.
      */
-    protected StructuredGraph parseDebug(ResolvedJavaMethod m, boolean allowOptimisticAssumptions) {
-        return parse1(m, getCustomGraphBuilderSuite(GraphBuilderConfiguration.getFullDebugDefault()), allowOptimisticAssumptions);
+    protected StructuredGraph parseDebug(ResolvedJavaMethod m, AllowAssumptions allowAssumptions) {
+        return parse1(m, getCustomGraphBuilderSuite(GraphBuilderConfiguration.getFullDebugDefault()), allowAssumptions);
     }
 
-    private StructuredGraph parse1(ResolvedJavaMethod javaMethod, PhaseSuite<HighTierContext> graphBuilderSuite, boolean allowOptimisticAssumptions) {
+    private StructuredGraph parse1(ResolvedJavaMethod javaMethod, PhaseSuite<HighTierContext> graphBuilderSuite, AllowAssumptions allowAssumptions) {
         assert javaMethod.getAnnotation(Test.class) == null : "shouldn't parse method with @Test annotation: " + javaMethod;
         try (Scope ds = Debug.scope("Parsing", javaMethod)) {
-            StructuredGraph graph = new StructuredGraph(javaMethod, allowOptimisticAssumptions);
+            StructuredGraph graph = new StructuredGraph(javaMethod, allowAssumptions);
             graphBuilderSuite.apply(graph, new HighTierContext(providers, null, graphBuilderSuite, OptimisticOptimizations.ALL));
             return graph;
         } catch (Throwable e) {

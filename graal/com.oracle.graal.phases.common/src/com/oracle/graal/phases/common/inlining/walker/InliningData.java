@@ -193,7 +193,7 @@ public class InliningData {
             }
         }
 
-        if (callTarget.graph().getAssumptions().useOptimisticAssumptions()) {
+        if (callTarget.graph().getAssumptions() != null) {
             ResolvedJavaType uniqueSubtype = holder.findUniqueConcreteSubtype();
             if (uniqueSubtype != null) {
                 ResolvedJavaMethod resolvedMethod = uniqueSubtype.resolveConcreteMethod(targetMethod, contextType);

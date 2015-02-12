@@ -67,7 +67,7 @@ public class RegisterFinalizerNode extends AbstractStateSplit implements Canonic
         } else if (objectStamp.type() != null && !objectStamp.type().hasFinalizableSubclass()) {
             // if either the declared type of receiver or the holder
             // can be assumed to have no finalizers
-            if (assumptions.useOptimisticAssumptions()) {
+            if (assumptions != null) {
                 assumptions.recordNoFinalizableSubclassAssumption(objectStamp.type());
                 return false;
             }

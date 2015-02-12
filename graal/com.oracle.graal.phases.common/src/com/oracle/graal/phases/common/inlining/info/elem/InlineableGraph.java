@@ -32,6 +32,7 @@ import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.common.inlining.*;
 import com.oracle.graal.phases.graph.*;
@@ -198,7 +199,7 @@ public class InlineableGraph implements Inlineable {
      * for cloning before modification.</p>
      */
     private static StructuredGraph parseBytecodes(ResolvedJavaMethod method, HighTierContext context, CanonicalizerPhase canonicalizer, StructuredGraph caller) {
-        StructuredGraph newGraph = new StructuredGraph(method, caller.getAssumptions().useOptimisticAssumptions());
+        StructuredGraph newGraph = new StructuredGraph(method, AllowAssumptions.from(caller.getAssumptions() != null));
         try (Debug.Scope s = Debug.scope("InlineGraph", newGraph)) {
             if (context.getGraphBuilderSuite() != null) {
                 context.getGraphBuilderSuite().apply(newGraph, context);

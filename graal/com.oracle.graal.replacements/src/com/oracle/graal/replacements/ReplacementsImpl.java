@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.replacements;
 
-import static com.oracle.graal.api.code.Assumptions.*;
 import static com.oracle.graal.api.meta.MetaUtil.*;
 import static com.oracle.graal.compiler.GraalCompiler.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
@@ -48,6 +47,7 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.java.GraphBuilderPhase.Instance;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
@@ -609,7 +609,7 @@ public class ReplacementsImpl implements Replacements {
         protected StructuredGraph buildInitialGraph(final ResolvedJavaMethod methodToParse) {
             // Replacements cannot have optimistic assumptions since they have
             // to be valid for the entire run of the VM.
-            final StructuredGraph graph = new StructuredGraph(methodToParse, DONT_ALLOW_OPTIMISTIC_ASSUMPTIONS);
+            final StructuredGraph graph = new StructuredGraph(methodToParse, AllowAssumptions.NO);
             try (Scope s = Debug.scope("buildInitialGraph", graph)) {
                 MetaAccessProvider metaAccess = replacements.providers.getMetaAccess();
 

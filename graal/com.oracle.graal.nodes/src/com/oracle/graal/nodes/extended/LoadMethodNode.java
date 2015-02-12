@@ -70,7 +70,7 @@ public class LoadMethodNode extends FixedWithNextNode implements Lowerable, Cano
                 return resolveExactMethod(tool, type);
             }
             Assumptions assumptions = graph().getAssumptions();
-            if (type != null && assumptions.useOptimisticAssumptions()) {
+            if (type != null && assumptions != null) {
                 ResolvedJavaMethod resolvedMethod = type.findUniqueConcreteMethod(method);
                 if (resolvedMethod != null && !type.isInterface() && method.getDeclaringClass().isAssignableFrom(type)) {
                     assumptions.recordConcreteMethod(method, type, resolvedMethod);

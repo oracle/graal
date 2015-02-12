@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.compiler.test;
 
-import static com.oracle.graal.api.code.Assumptions.*;
 import static com.oracle.graal.api.code.CodeUtil.*;
 import static com.oracle.graal.compiler.GraalCompiler.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
@@ -38,6 +37,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.tiers.*;
 
@@ -60,7 +60,7 @@ public class InfopointReasonTest extends GraalCompilerTest {
     @Test
     public void callInfopoints() {
         final ResolvedJavaMethod method = getResolvedJavaMethod("testMethod");
-        final StructuredGraph graph = parseEager(method, ALLOW_OPTIMISTIC_ASSUMPTIONS);
+        final StructuredGraph graph = parseEager(method, AllowAssumptions.YES);
         CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graph.method(), false);
         final CompilationResult cr = compileGraph(graph, cc, graph.method(), getProviders(), getBackend(), getCodeCache().getTarget(), null, getDefaultGraphBuilderSuite(),
                         OptimisticOptimizations.ALL, getProfilingInfo(graph), null, getSuites(), getLIRSuites(), new CompilationResult(), CompilationResultBuilderFactory.Default);
@@ -75,7 +75,7 @@ public class InfopointReasonTest extends GraalCompilerTest {
     @Test
     public void lineInfopoints() {
         final ResolvedJavaMethod method = getResolvedJavaMethod("testMethod");
-        final StructuredGraph graph = parseDebug(method, OptAssumptions.getValue());
+        final StructuredGraph graph = parseDebug(method, AllowAssumptions.from(OptAssumptions.getValue()));
         int graphLineSPs = 0;
         for (FullInfopointNode ipn : graph.getNodes().filter(FullInfopointNode.class)) {
             if (ipn.getReason() == InfopointReason.LINE_NUMBER) {

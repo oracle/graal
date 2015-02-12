@@ -40,6 +40,7 @@ import com.oracle.graal.java.*;
 import com.oracle.graal.loop.*;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
@@ -96,7 +97,7 @@ public class PartialEvaluator {
         }
     }
 
-    public StructuredGraph createGraph(final OptimizedCallTarget callTarget, boolean allowOptimisticAssumptions, GraphBuilderPlugins graalPlugins) {
+    public StructuredGraph createGraph(final OptimizedCallTarget callTarget, AllowAssumptions allowAssumptions, GraphBuilderPlugins graalPlugins) {
         if (TraceTruffleCompilationHistogram.getValue() || TraceTruffleCompilationDetails.getValue()) {
             constantReceivers = new HashSet<>();
         }
@@ -107,7 +108,7 @@ public class PartialEvaluator {
             throw Debug.handle(e);
         }
 
-        final StructuredGraph graph = new StructuredGraph(callTarget.toString(), callRootMethod, allowOptimisticAssumptions);
+        final StructuredGraph graph = new StructuredGraph(callTarget.toString(), callRootMethod, allowAssumptions);
         assert graph != null : "no graph for root method";
 
         try (Scope s = Debug.scope("CreateGraph", graph); Indent indent = Debug.logAndIndent("createGraph %s", graph)) {
@@ -277,7 +278,7 @@ public class PartialEvaluator {
     }
 
     public StructuredGraph createInlineGraph(String name, StructuredGraph caller) {
-        StructuredGraph graph = new StructuredGraph(name, callInlinedMethod, caller.getAssumptions().useOptimisticAssumptions());
+        StructuredGraph graph = new StructuredGraph(name, callInlinedMethod, AllowAssumptions.from(caller.getAssumptions() != null));
         new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), providers.getConstantReflection(), configForRoot, TruffleCompilerImpl.Optimizations).apply(graph);
         return graph;
     }

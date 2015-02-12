@@ -26,7 +26,7 @@ import java.util.*;
 import java.util.concurrent.atomic.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.Assumptions.OptimisticAssumption;
+import com.oracle.graal.api.code.Assumptions.Assumption;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
@@ -82,6 +82,17 @@ public class StructuredGraph extends Graph {
         }
     }
 
+    /**
+     * Constants denoting whether or not {@link Assumption}s can be made while processing a graph.
+     */
+    public enum AllowAssumptions {
+        YES,
+        NO;
+        public static AllowAssumptions from(boolean flag) {
+            return flag ? YES : NO;
+        }
+    }
+
     public static final int INVOCATION_ENTRY_BCI = -1;
     public static final long INVALID_GRAPH_ID = -1;
 
@@ -101,50 +112,41 @@ public class StructuredGraph extends Graph {
     private final Assumptions assumptions;
 
     /**
-     * Creates a new Graph containing a single {@link AbstractBeginNode} as the {@link #start()
-     * start} node.
-     *
-     * @param allowOptimisticAssumptions specifies whether {@link OptimisticAssumption}s can be made
-     *            while processing the graph
+     * The methods whose bytecodes are used while constructing this graph.
      */
-    public StructuredGraph(boolean allowOptimisticAssumptions) {
-        this(null, null, allowOptimisticAssumptions);
-    }
+    private Set<ResolvedJavaMethod> methods = new HashSet<>();
 
     /**
      * Creates a new Graph containing a single {@link AbstractBeginNode} as the {@link #start()
      * start} node.
-     *
-     * @param allowOptimisticAssumptions specifies whether {@link OptimisticAssumption}s can be made
-     *            while processing the graph
      */
-    public StructuredGraph(String name, ResolvedJavaMethod method, boolean allowOptimisticAssumptions) {
-        this(name, method, uniqueGraphIds.incrementAndGet(), INVOCATION_ENTRY_BCI, null, allowOptimisticAssumptions);
+    public StructuredGraph(AllowAssumptions allowAssumptions) {
+        this(null, null, allowAssumptions);
     }
 
     /**
-     * @param allowOptimisticAssumptions specifies whether {@link OptimisticAssumption}s can be made
-     *            while processing the graph
+     * Creates a new Graph containing a single {@link AbstractBeginNode} as the {@link #start()
+     * start} node.
      */
-    public StructuredGraph(ResolvedJavaMethod method, boolean allowOptimisticAssumptions) {
-        this(null, method, uniqueGraphIds.incrementAndGet(), INVOCATION_ENTRY_BCI, null, allowOptimisticAssumptions);
+    public StructuredGraph(String name, ResolvedJavaMethod method, AllowAssumptions allowAssumptions) {
+        this(name, method, uniqueGraphIds.incrementAndGet(), INVOCATION_ENTRY_BCI, allowAssumptions);
     }
 
-    /**
-     * @param allowOptimisticAssumptions specifies whether {@link OptimisticAssumption}s can be made
-     *            while processing the graph
-     */
-    public StructuredGraph(ResolvedJavaMethod method, int entryBCI, boolean allowOptimisticAssumptions) {
-        this(null, method, uniqueGraphIds.incrementAndGet(), entryBCI, null, allowOptimisticAssumptions);
+    public StructuredGraph(ResolvedJavaMethod method, AllowAssumptions allowAssumptions) {
+        this(null, method, uniqueGraphIds.incrementAndGet(), INVOCATION_ENTRY_BCI, allowAssumptions);
     }
 
-    private StructuredGraph(String name, ResolvedJavaMethod method, long graphId, int entryBCI, Assumptions assumptions, boolean allowOptimisticAssumptions) {
+    public StructuredGraph(ResolvedJavaMethod method, int entryBCI, AllowAssumptions allowAssumptions) {
+        this(null, method, uniqueGraphIds.incrementAndGet(), entryBCI, allowAssumptions);
+    }
+
+    private StructuredGraph(String name, ResolvedJavaMethod method, long graphId, int entryBCI, AllowAssumptions allowAssumptions) {
         super(name);
         this.setStart(add(new StartNode()));
         this.method = method;
         this.graphId = graphId;
         this.entryBCI = entryBCI;
-        this.assumptions = assumptions == null ? new Assumptions(allowOptimisticAssumptions) : assumptions;
+        this.assumptions = allowAssumptions == AllowAssumptions.YES ? new Assumptions() : null;
     }
 
     public Stamp getReturnStamp() {
@@ -218,9 +220,17 @@ public class StructuredGraph extends Graph {
     }
 
     public StructuredGraph copy(String newName, ResolvedJavaMethod newMethod) {
-        final boolean ignored = true;
-        StructuredGraph copy = new StructuredGraph(newName, newMethod, graphId, entryBCI, assumptions, ignored);
-        assert copy.assumptions.equals(assumptions);
+        return copy(newName, newMethod, AllowAssumptions.from(assumptions != null));
+    }
+
+    public StructuredGraph copy(String newName, ResolvedJavaMethod newMethod, AllowAssumptions allowAssumptions) {
+        StructuredGraph copy = new StructuredGraph(newName, newMethod, graphId, entryBCI, allowAssumptions);
+        if (allowAssumptions == AllowAssumptions.YES && assumptions != null) {
+            copy.assumptions.record(assumptions);
+        }
+        if (!isMethodRecordingEnabled()) {
+            copy.disableMethodRecording();
+        }
         copy.setGuardsStage(getGuardsStage());
         copy.isAfterFloatingReadPhase = isAfterFloatingReadPhase;
         copy.hasValueProxies = hasValueProxies;
@@ -492,7 +502,36 @@ public class StructuredGraph extends Graph {
         hasValueProxies = state;
     }
 
+    /**
+     * Gets the object for recording assumptions while constructing of this graph.
+     *
+     * @return {@code null} if assumptions cannot be made for this graph
+     */
     public Assumptions getAssumptions() {
         return assumptions;
+    }
+
+    /**
+     * Disables recording of method used while constructing this graph. This can be done at most
+     * once and must be done before any methods are recorded.
+     */
+    public void disableMethodRecording() {
+        assert methods != null : "cannot disable method recording more than once";
+        assert methods.isEmpty() : "cannot disable method recording once methods have been recorded";
+        methods = null;
+    }
+
+    public boolean isMethodRecordingEnabled() {
+        return methods != null;
+    }
+
+    /**
+     * Gets the methods whose bytecodes are used while constructing this graph.
+     *
+     * @return {@code null} if method recording has been {@linkplain #disableMethodRecording()
+     *         disabled}
+     */
+    public Set<ResolvedJavaMethod> getMethods() {
+        return methods;
     }
 }

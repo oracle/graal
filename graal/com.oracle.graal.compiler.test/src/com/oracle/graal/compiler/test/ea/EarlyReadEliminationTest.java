@@ -22,10 +22,9 @@
  */
 package com.oracle.graal.compiler.test.ea;
 
-import static com.oracle.graal.api.code.Assumptions.*;
-
 import org.junit.*;
 
+import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.common.inlining.*;
@@ -41,7 +40,7 @@ public class EarlyReadEliminationTest extends PEAReadEliminationTest {
 
     @Override
     protected void processMethod(final String snippet) {
-        graph = parseEager(getResolvedJavaMethod(snippet), DONT_ALLOW_OPTIMISTIC_ASSUMPTIONS);
+        graph = parseEager(getResolvedJavaMethod(snippet), AllowAssumptions.NO);
         HighTierContext context = new HighTierContext(getProviders(), null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
         new InliningPhase(new CanonicalizerPhase(true)).apply(graph, context);
         new EarlyReadEliminationPhase(new CanonicalizerPhase(true)).apply(graph, context);

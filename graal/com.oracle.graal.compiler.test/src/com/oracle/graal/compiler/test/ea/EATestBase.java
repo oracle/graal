@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.compiler.test.ea;
 
-import static com.oracle.graal.api.code.Assumptions.*;
-
 import java.util.*;
 
 import org.junit.*;
@@ -34,6 +32,7 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.phases.*;
@@ -150,7 +149,7 @@ public class EATestBase extends GraalCompilerTest {
 
     protected void prepareGraph(String snippet, final boolean iterativeEscapeAnalysis) {
         ResolvedJavaMethod method = getResolvedJavaMethod(snippet);
-        graph = new StructuredGraph(method, DONT_ALLOW_OPTIMISTIC_ASSUMPTIONS);
+        graph = new StructuredGraph(method, AllowAssumptions.NO);
         try (Scope s = Debug.scope(getClass(), graph, method, getCodeCache())) {
             new GraphBuilderPhase.Instance(getMetaAccess(), getProviders().getStampProvider(), getProviders().getConstantReflection(), GraphBuilderConfiguration.getEagerDefault(),
                             OptimisticOptimizations.ALL).apply(graph);

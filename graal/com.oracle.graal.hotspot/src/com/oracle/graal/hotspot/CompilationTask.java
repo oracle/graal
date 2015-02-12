@@ -213,10 +213,10 @@ public class CompilationTask {
                     Replacements replacements = providers.getReplacements();
                     graph = replacements.getMethodSubstitution(method);
                     if (graph == null || entryBCI != INVOCATION_ENTRY_BCI) {
-                        graph = new StructuredGraph(method, entryBCI, OptAssumptions.getValue());
+                        graph = new StructuredGraph(method, entryBCI, AllowAssumptions.from(OptAssumptions.getValue()));
                     } else {
                         // Compiling method substitution - must clone the graph
-                        graph = graph.copy();
+                        graph = graph.copy(graph.name, method, AllowAssumptions.from(OptAssumptions.getValue()));
                     }
                     InlinedBytecodes.add(method.getCodeSize());
                     CallingConvention cc = getCallingConvention(providers.getCodeCache(), Type.JavaCallee, graph.method(), false);
