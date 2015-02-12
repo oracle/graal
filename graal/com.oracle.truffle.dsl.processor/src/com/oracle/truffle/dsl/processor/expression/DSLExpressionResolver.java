@@ -60,7 +60,7 @@ public class DSLExpressionResolver implements DSLExpressionVisitor {
 
     public DSLExpressionResolver copy(List<? extends Element> prefixElements) {
         DSLExpressionResolver resolver = new DSLExpressionResolver(context);
-        lookup(prefixElements);
+        resolver.lookup(prefixElements);
         resolver.variables.addAll(variables);
         resolver.methods.addAll(methods);
         return resolver;
