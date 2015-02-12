@@ -60,6 +60,18 @@ public final class ConditionalNode extends FloatingNode implements Canonicalizab
         this.falseValue = falseValue;
     }
 
+    public static ValueNode create(LogicNode condition) {
+        return create(condition, ConstantNode.forInt(1, condition.graph()), ConstantNode.forInt(0, condition.graph()));
+    }
+
+    public static ValueNode create(LogicNode condition, ValueNode trueValue, ValueNode falseValue) {
+        ValueNode synonym = findSynonym(condition, trueValue, falseValue);
+        if (synonym != null) {
+            return synonym;
+        }
+        return new ConditionalNode(condition, trueValue, falseValue);
+    }
+
     @Override
     public boolean inferStamp() {
         return updateStamp(trueValue.stamp().meet(falseValue.stamp()));
@@ -75,9 +87,9 @@ public final class ConditionalNode extends FloatingNode implements Canonicalizab
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
-        if (condition instanceof LogicNegationNode) {
-            LogicNegationNode negated = (LogicNegationNode) condition;
-            return new ConditionalNode(negated.getValue(), falseValue(), trueValue());
+        ValueNode synonym = findSynonym(condition, trueValue(), falseValue());
+        if (synonym != null) {
+            return synonym;
         }
 
         // this optimizes the case where a value that can only be 0 or 1 is materialized to 0 or 1
@@ -92,14 +104,6 @@ public final class ConditionalNode extends FloatingNode implements Canonicalizab
                 }
             }
         }
-        if (condition instanceof LogicConstantNode) {
-            LogicConstantNode c = (LogicConstantNode) condition;
-            if (c.getValue()) {
-                return trueValue();
-            } else {
-                return falseValue();
-            }
-        }
         if (condition instanceof CompareNode && ((CompareNode) condition).condition() == Condition.EQ) {
             // optimize the pattern (x == y) ? x : y
             CompareNode compare = (CompareNode) condition;
@@ -112,6 +116,22 @@ public final class ConditionalNode extends FloatingNode implements Canonicalizab
         }
 
         return this;
+    }
+
+    private static ValueNode findSynonym(ValueNode condition, ValueNode falseValue, ValueNode trueValue) {
+        if (condition instanceof LogicNegationNode) {
+            LogicNegationNode negated = (LogicNegationNode) condition;
+            return ConditionalNode.create(negated.getValue(), falseValue, trueValue);
+        }
+        if (condition instanceof LogicConstantNode) {
+            LogicConstantNode c = (LogicConstantNode) condition;
+            if (c.getValue()) {
+                return trueValue;
+            } else {
+                return falseValue;
+            }
+        }
+        return null;
     }
 
     @Override
