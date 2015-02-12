@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,21 +24,22 @@ package com.oracle.graal.truffle.substitutions;
 
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.truffle.*;
-import com.oracle.graal.truffle.nodes.frame.*;
 import com.oracle.graal.truffle.nodes.typesystem.*;
-import com.oracle.truffle.api.frame.*;
+import com.oracle.graal.truffle.unsafe.*;
 
-@ClassSubstitution(FrameWithoutBoxing.class)
-public class FrameWithoutBoxingSubstitutions {
-
-    @MethodSubstitution(isStatic = false)
-    public static MaterializedFrame materialize(FrameWithoutBoxing frame) {
-        return MaterializeFrameNode.materialize(frame);
-    }
-
+@ClassSubstitution(UnsafeAccessImpl.class)
+public class UnsafeAccessSubstitutions {
     @MacroSubstitution(macro = UnsafeTypeCastMacroNode.class, isStatic = true)
     public static native Object unsafeCast(Object value, Class<?> clazz, boolean condition, boolean nonNull);
+
+    @MacroSubstitution(macro = CustomizedUnsafeLoadMacroNode.class, isStatic = true)
+    public static native boolean unsafeGetBoolean(Object receiver, long offset, boolean condition, Object locationIdentity);
+
+    @MacroSubstitution(macro = CustomizedUnsafeLoadMacroNode.class, isStatic = true)
+    public static native byte unsafeGetByte(Object receiver, long offset, boolean condition, Object locationIdentity);
+
+    @MacroSubstitution(macro = CustomizedUnsafeLoadMacroNode.class, isStatic = true)
+    public static native short unsafeGetShort(Object receiver, long offset, boolean condition, Object locationIdentity);
 
     @MacroSubstitution(macro = CustomizedUnsafeLoadMacroNode.class, isStatic = true)
     public static native int unsafeGetInt(Object receiver, long offset, boolean condition, Object locationIdentity);
@@ -54,6 +55,15 @@ public class FrameWithoutBoxingSubstitutions {
 
     @MacroSubstitution(macro = CustomizedUnsafeLoadMacroNode.class, isStatic = true)
     public static native Object unsafeGetObject(Object receiver, long offset, boolean condition, Object locationIdentity);
+
+    @MacroSubstitution(macro = CustomizedUnsafeStoreMacroNode.class, isStatic = true)
+    public static native void unsafePutBoolean(Object receiver, long offset, boolean value, Object locationIdentity);
+
+    @MacroSubstitution(macro = CustomizedUnsafeStoreMacroNode.class, isStatic = true)
+    public static native void unsafePutByte(Object receiver, long offset, byte value, Object locationIdentity);
+
+    @MacroSubstitution(macro = CustomizedUnsafeStoreMacroNode.class, isStatic = true)
+    public static native void unsafePutShort(Object receiver, long offset, short value, Object locationIdentity);
 
     @MacroSubstitution(macro = CustomizedUnsafeStoreMacroNode.class, isStatic = true)
     public static native void unsafePutInt(Object receiver, long offset, int value, Object locationIdentity);
