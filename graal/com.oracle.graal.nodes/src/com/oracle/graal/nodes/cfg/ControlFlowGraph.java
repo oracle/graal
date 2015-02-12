@@ -118,42 +118,39 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
         return loops;
     }
 
-    public void clearNodeToBlock() {
-        nodeToBlock.clear();
-        for (Block block : reversePostOrder) {
-            identifyBlock(block);
-        }
-    }
-
     private void identifyBlock(Block block) {
-        Node cur = block.getBeginNode();
-        Node last;
+        AbstractBeginNode start = block.getBeginNode();
 
         // assign proxies of a loop exit to this block
-        if (cur instanceof AbstractBeginNode) {
-            for (Node usage : cur.usages()) {
+        if (start instanceof LoopExitNode) {
+            for (Node usage : start.usages()) {
                 if (usage instanceof ProxyNode) {
                     nodeToBlock.set(usage, block);
                 }
             }
+        } else if (start instanceof AbstractMergeNode) {
+            for (PhiNode phi : ((AbstractMergeNode) start).phis()) {
+                nodeToBlock.set(phi, block);
+            }
         }
 
-        do {
+        FixedWithNextNode cur = start;
+        while (true) {
             assert !cur.isDeleted();
-
             assert nodeToBlock.get(cur) == null;
             nodeToBlock.set(cur, block);
-            if (cur instanceof AbstractMergeNode) {
-                for (PhiNode phi : ((AbstractMergeNode) cur).phis()) {
-                    nodeToBlock.set(phi, block);
-                }
+            FixedNode next = cur.next();
+            if (next instanceof AbstractBeginNode) {
+                block.endNode = cur;
+                return;
+            } else if (next instanceof FixedWithNextNode) {
+                cur = (FixedWithNextNode) next;
+            } else {
+                nodeToBlock.set(next, block);
+                block.endNode = next;
+                return;
             }
-
-            last = cur;
-            cur = cur.successors().first();
-        } while (cur != null && !(cur instanceof AbstractBeginNode));
-
-        block.endNode = (FixedNode) last;
+        }
     }
 
     private void identifyBlocks() {
