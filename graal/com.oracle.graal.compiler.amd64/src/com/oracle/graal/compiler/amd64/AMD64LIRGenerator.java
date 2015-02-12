@@ -89,15 +89,12 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         }
     }
 
-    private final SpillMoveFactory spillMoveFactory;
-
     public AMD64LIRGenerator(LIRKindTool lirKindTool, Providers providers, CallingConvention cc, LIRGenerationResult lirGenRes) {
         super(lirKindTool, providers, cc, lirGenRes);
-        spillMoveFactory = new AMD64SpillMoveFactory();
     }
 
     public SpillMoveFactory getSpillMoveFactory() {
-        return spillMoveFactory;
+        return new AMD64SpillMoveFactory();
     }
 
     @Override
