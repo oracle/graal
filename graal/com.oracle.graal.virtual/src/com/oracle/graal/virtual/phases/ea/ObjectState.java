@@ -24,11 +24,13 @@ package com.oracle.graal.virtual.phases.ea;
 
 import java.util.*;
 
+import com.oracle.graal.debug.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.spi.Virtualizable.EscapeState;
 import com.oracle.graal.nodes.virtual.*;
+import com.oracle.graal.virtual.nodes.*;
 
 /**
  * This class describes the state of a virtual object while iterating over the graph. It describes
@@ -37,12 +39,17 @@ import com.oracle.graal.nodes.virtual.*;
  */
 public class ObjectState extends Virtualizable.State {
 
+    public static final DebugMetric CREATE_ESCAPED_OBJECT_STATE = Debug.metric("CreateEscapeObjectState");
+    public static final DebugMetric GET_ESCAPED_OBJECT_STATE = Debug.metric("GetEscapeObjectState");
+
     final VirtualObjectNode virtual;
 
     private EscapeState state;
     private ValueNode[] entries;
     private ValueNode materializedValue;
     private LockState locks;
+
+    private EscapeObjectState cachedState;
 
     public ObjectState(VirtualObjectNode virtual, ValueNode[] entries, EscapeState state, List<MonitorIdNode> locks) {
         this(virtual, entries, state, (LockState) null);
@@ -71,10 +78,21 @@ public class ObjectState extends Virtualizable.State {
         materializedValue = other.materializedValue;
         locks = other.locks;
         state = other.state;
+        cachedState = other.cachedState;
     }
 
     public ObjectState cloneState() {
         return new ObjectState(this);
+    }
+
+    public EscapeObjectState createEscapeObjectState() {
+        GET_ESCAPED_OBJECT_STATE.increment();
+        if (cachedState == null) {
+            CREATE_ESCAPED_OBJECT_STATE.increment();
+            cachedState = isVirtual() ? new VirtualObjectState(virtual, entries) : new MaterializedObjectState(virtual, materializedValue);
+        }
+        return cachedState;
+
     }
 
     @Override
@@ -104,7 +122,10 @@ public class ObjectState extends Virtualizable.State {
 
     public void setEntry(int index, ValueNode value) {
         assert isVirtual();
-        entries[index] = value;
+        if (entries[index] != value) {
+            cachedState = null;
+            entries[index] = value;
+        }
     }
 
     public void escape(ValueNode materialized, EscapeState newState) {
@@ -112,6 +133,7 @@ public class ObjectState extends Virtualizable.State {
         state = newState;
         materializedValue = materialized;
         entries = null;
+        cachedState = null;
         assert !isVirtual();
     }
 
@@ -123,7 +145,10 @@ public class ObjectState extends Virtualizable.State {
 
     public void updateMaterializedValue(ValueNode value) {
         assert !isVirtual();
-        materializedValue = value;
+        if (value != materializedValue) {
+            cachedState = null;
+            materializedValue = value;
+        }
     }
 
     @Override

@@ -108,14 +108,14 @@ public class GraphEffectList extends EffectList {
         add("add virtual mapping", new Effect() {
             @Override
             public void apply(StructuredGraph graph, ArrayList<Node> obsoleteNodes) {
-                assert node.isAlive() && !state.isAlive() && !state.isDeleted();
+                assert node.isAlive() && !state.isDeleted();
                 FrameState stateAfter = node;
                 for (int i = 0; i < stateAfter.virtualObjectMappingCount(); i++) {
                     if (stateAfter.virtualObjectMappingAt(i).object() == state.object()) {
                         stateAfter.virtualObjectMappings().remove(i);
                     }
                 }
-                stateAfter.addVirtualObjectMapping(graph.unique(state));
+                stateAfter.addVirtualObjectMapping(state.isAlive() ? state : graph.unique(state));
             }
 
             @Override
