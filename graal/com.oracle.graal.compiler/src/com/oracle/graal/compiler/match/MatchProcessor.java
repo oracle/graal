@@ -74,7 +74,7 @@ public class MatchProcessor extends AbstractProcessor {
         }
     }
 
-    private static Pattern tokenizer = Pattern.compile("\\s*([()=]|[A-Za-z][A-Za-z0-9]*)\\s*");
+    private static final Pattern tokenizer = Pattern.compile("\\s*([()=]|[A-Za-z][A-Za-z0-9]*)\\s*");
 
     private class RuleParser {
         private ArrayList<TypeDescriptor> capturedTypes = new ArrayList<>();

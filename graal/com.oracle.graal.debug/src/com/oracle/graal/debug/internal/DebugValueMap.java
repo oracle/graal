@@ -29,7 +29,7 @@ import java.util.*;
  */
 public class DebugValueMap {
 
-    private static List<DebugValueMap> topLevelMaps = new ArrayList<>();
+    private static final List<DebugValueMap> topLevelMaps = new ArrayList<>();
 
     private long[] values;
     private List<DebugValueMap> children;
