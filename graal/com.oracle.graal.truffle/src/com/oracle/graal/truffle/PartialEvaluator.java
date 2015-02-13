@@ -549,7 +549,6 @@ public class PartialEvaluator {
             } else {
                 graph = inliningCache.getCachedGraph(phaseContext, caller, decision);
             }
-            decision.getProfile().setGraalDeepNodeCount(graph.getNodeCount());
             caller.getAssumptions().record(new AssumptionValidAssumption((OptimizedAssumption) decision.getTarget().getNodeRewritingAssumption()));
         } else {
             // we continue expansion of callDirect until we reach the callBoundary.
