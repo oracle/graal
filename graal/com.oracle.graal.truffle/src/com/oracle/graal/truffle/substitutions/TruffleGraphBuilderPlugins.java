@@ -160,6 +160,17 @@ public class TruffleGraphBuilderPlugins {
                 return true;
             }
         });
+        registerUnsafeCast(r);
+
+        registerUnsafeLoadStorePlugins(r, Kind.Int, Kind.Long, Kind.Float, Kind.Double, Kind.Object);
+
+        // CompilerDirectives.class
+        r = new Registration(plugins, metaAccess, UnsafeAccessImpl.class);
+        registerUnsafeCast(r);
+        registerUnsafeLoadStorePlugins(r, Kind.Boolean, Kind.Byte, Kind.Int, Kind.Short, Kind.Long, Kind.Float, Kind.Double, Kind.Object);
+    }
+
+    private static void registerUnsafeCast(Registration r) {
         r.register4("unsafeCast", Object.class, Class.class, boolean.class, boolean.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext builder, ValueNode object, ValueNode clazz, ValueNode condition, ValueNode nonNull) {
                 if (clazz.isConstant() && nonNull.isConstant()) {
@@ -189,12 +200,6 @@ public class TruffleGraphBuilderPlugins {
                 throw GraalInternalError.shouldNotReachHere("unsafeCast arguments could not reduce to a constant: " + clazz + ", " + nonNull);
             }
         });
-
-        registerUnsafeLoadStorePlugins(r, Kind.Int, Kind.Long, Kind.Float, Kind.Double, Kind.Object);
-
-        // CompilerDirectives.class
-        r = new Registration(plugins, metaAccess, UnsafeAccessImpl.class);
-        registerUnsafeLoadStorePlugins(r, Kind.Boolean, Kind.Byte, Kind.Int, Kind.Short, Kind.Long, Kind.Float, Kind.Double, Kind.Object);
     }
 
     protected static void registerUnsafeLoadStorePlugins(Registration r, Kind... kinds) {
