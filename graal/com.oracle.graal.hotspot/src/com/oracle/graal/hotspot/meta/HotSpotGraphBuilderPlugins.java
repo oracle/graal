@@ -65,11 +65,10 @@ public class HotSpotGraphBuilderPlugins {
         r = new Registration(plugins, metaAccess, Class.class);
         r.register2("cast", Receiver.class, Object.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext builder, ValueNode rcvr, ValueNode object) {
-                if (rcvr.isConstant() && !rcvr.isNullConstant() && object.isConstant()) {
+                if (rcvr.isConstant() && !rcvr.isNullConstant()) {
                     ResolvedJavaType type = builder.getConstantReflection().asJavaType(rcvr.asConstant());
-                    if (type != null && !type.isPrimitive() && type.isInstance(object.asJavaConstant())) {
-                        builder.push(Kind.Object, object);
-                        return true;
+                    if (type != null && !type.isPrimitive()) {
+                        builder.push(Kind.Object, CheckCastNode.create(type, object, null, false, builder.getAssumptions()));
                     }
                 }
                 return false;
