@@ -284,7 +284,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     currentBlock = blockMap.startBlock;
                     blockMap.startBlock.setEntryState(0, frameState);
                     if (blockMap.startBlock.isLoopHeader && !explodeLoops) {
-                        appendGoto(createTarget(blockMap.startBlock, frameState));
+                        appendGoto(blockMap.startBlock);
                     } else {
                         blockMap.startBlock.setFirstInstruction(0, lastInstr);
                     }
@@ -630,7 +630,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             @Override
             protected void genGoto() {
-                appendGoto(createTarget(currentBlock.getSuccessor(0), frameState));
+                appendGoto(currentBlock.getSuccessor(0));
                 assert currentBlock.numNormalSuccessors() == 1;
             }
 
@@ -1015,7 +1015,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                             frameState.push(x.getKind(), x);
                         }
                         assert returnCount > 1;
-                        appendGoto(createTarget(returnBlock(bci()), frameState));
+                        appendGoto(returnBlock(bci()));
                     }
                 }
             }
@@ -1064,7 +1064,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 }
                 ConstantNode nextBciNode = getJsrConstant(nextBci);
                 frameState.push(Kind.Int, nextBciNode);
-                appendGoto(createTarget(successor, frameState));
+                appendGoto(successor);
             }
 
             @Override
@@ -1080,7 +1080,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 if (!successor.getJsrScope().equals(scope.pop())) {
                     throw new JsrNotSupportedBailout("unstructured control flow (ret leaves more than one scope)");
                 }
-                appendGoto(createTarget(successor, frameState));
+                appendGoto(successor);
             }
 
             private ConstantNode getJsrConstant(long bci) {
@@ -1200,7 +1200,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                                 firstLoopExit = loopExit;
                             }
                             lastLoopExit = loopExit;
-                            Debug.log("Target %s (%s) Exits %s, scanning framestates...", targetBlock, target, loop);
+                            Debug.log("Target %s Exits %s, scanning framestates...", targetBlock, loop);
                             newState.insertLoopProxies(loopExit, (HIRFrameStateBuilder) loop.getEntryState(this.getCurrentDimension()));
                             loopExit.setStateAfter(newState.create(bci));
                         }
@@ -1271,8 +1271,9 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                      * this block again.
                      */
                     FixedNode targetNode;
-                    if (isGoto && block.getPredecessorCount() == 1) {
+                    if (isGoto && block.getPredecessorCount() == 1 && !block.isLoopHeader && (currentBlock.loops & ~block.loops) == 0 && !(lastInstr instanceof AbstractMergeNode)) {
                         block.setFirstInstruction(operatingDimension, lastInstr);
+                        lastInstr = null;
                     } else {
                         block.setFirstInstruction(operatingDimension, currentGraph.add(new BeginNode()));
                     }
@@ -1462,7 +1463,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 assert frameState.stackSize() == 1 : frameState;
                 if (block.handler.isCatchAll()) {
                     assert block.getSuccessorCount() == 1;
-                    appendGoto(createTarget(block.getSuccessor(0), frameState));
+                    appendGoto(block.getSuccessor(0));
                     return;
                 }
 
@@ -1502,9 +1503,10 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 }
             }
 
-            private void appendGoto(FixedNode target) {
-                if (lastInstr != null) {
-                    lastInstr.setNext(target);
+            private void appendGoto(BciBlock successor) {
+                FixedNode targetInstr = createTarget(successor, frameState, true);
+                if (lastInstr != null && lastInstr != targetInstr) {
+                    lastInstr.setNext(targetInstr);
                 }
             }
 
@@ -1602,7 +1604,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                             assert !block.getSuccessor(0).isExceptionEntry;
                             assert block.numNormalSuccessors() == 1;
                             // we fell through to the next block, add a goto and break
-                            appendGoto(createTarget(block.getSuccessor(0), frameState));
+                            appendGoto(block.getSuccessor(0));
                             break;
                         }
                     }
@@ -1654,7 +1656,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 BciBlock trueBlock = currentBlock.getSuccessor(0);
                 BciBlock falseBlock = currentBlock.getSuccessor(1);
                 if (trueBlock == falseBlock) {
-                    appendGoto(createTarget(trueBlock, frameState));
+                    appendGoto(trueBlock);
                     return;
                 }
 
@@ -1691,7 +1693,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     if (value) {
                         nextBlock = trueBlock;
                     }
-                    appendGoto(createTarget(nextBlock, frameState));
+                    appendGoto(nextBlock);
                 } else {
                     ValueNode trueSuccessor = createBlockTarget(probability, trueBlock, frameState);
                     ValueNode falseSuccessor = createBlockTarget(1 - probability, falseBlock, frameState);
