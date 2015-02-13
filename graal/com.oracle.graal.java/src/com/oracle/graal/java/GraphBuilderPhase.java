@@ -205,6 +205,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             private Stack<ExplodedLoopContext> explodeLoopsContext;
             private int nextPeelIteration = 1;
             private int returnCount;
+            private boolean controlFlowSplit;
 
             public BytecodeParser(MetaAccessProvider metaAccess, ResolvedJavaMethod method, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, int entryBCI) {
                 super(metaAccess, method, graphBuilderConfig, optimisticOpts);
@@ -502,6 +503,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     dispatchBegin.setStateAfter(dispatchState.create(bci));
                     dispatchState.setRethrowException(true);
                 }
+                this.controlFlowSplit = true;
                 FixedNode target = createTarget(dispatchBlock, dispatchState);
                 FixedWithNextNode finishedDispatch = finishInstruction(dispatchBegin, dispatchState);
                 finishedDispatch.setNext(target);
@@ -1005,7 +1007,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     beforeReturn(x);
                     append(new ReturnNode(x));
                 } else {
-                    if (returnCount == 1) {
+                    if (returnCount == 1 || !controlFlowSplit) {
                         // There is only a single return.
                         this.returnValue = x;
                         this.beforeReturnNode = this.lastInstr;
@@ -1092,6 +1094,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             @Override
             protected void genIntegerSwitch(ValueNode value, ArrayList<BciBlock> actualSuccessors, int[] keys, double[] keyProbabilities, int[] keySuccessors) {
+                this.controlFlowSplit = true;
                 double[] successorProbabilities = successorProbabilites(actualSuccessors.size(), keySuccessors, keyProbabilities);
                 IntegerSwitchNode switchNode = append(new IntegerSwitchNode(value, actualSuccessors.size(), keys, keyProbabilities, keySuccessors));
                 for (int i = 0; i < actualSuccessors.size(); i++) {
@@ -1271,7 +1274,8 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                      * this block again.
                      */
                     FixedNode targetNode;
-                    if (isGoto && block.getPredecessorCount() == 1 && !block.isLoopHeader && (currentBlock.loops & ~block.loops) == 0 && !(lastInstr instanceof AbstractMergeNode)) {
+                    if (isGoto && (block.getPredecessorCount() == 1 || !controlFlowSplit) && !block.isLoopHeader && (currentBlock.loops & ~block.loops) == 0 &&
+                                    !(lastInstr instanceof AbstractMergeNode)) {
                         block.setFirstInstruction(operatingDimension, lastInstr);
                         lastInstr = null;
                     } else {
@@ -1519,6 +1523,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 if (block.isLoopHeader && !explodeLoops) {
                     // Create the loop header block, which later will merge the backward branches of
                     // the loop.
+                    controlFlowSplit = true;
                     AbstractEndNode preLoopEnd = currentGraph.add(new EndNode());
                     LoopBeginNode loopBegin = currentGraph.add(new LoopBeginNode());
                     lastInstr.setNext(preLoopEnd);
@@ -1695,6 +1700,8 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     }
                     appendGoto(nextBlock);
                 } else {
+
+                    this.controlFlowSplit = true;
                     ValueNode trueSuccessor = createBlockTarget(probability, trueBlock, frameState);
                     ValueNode falseSuccessor = createBlockTarget(1 - probability, falseBlock, frameState);
 
