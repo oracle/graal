@@ -65,6 +65,17 @@ public class WordCastNode extends FixedWithNextNode implements LIRLowerable, Can
             /* If the cast is unused, it can be eliminated. */
             return input;
         }
+
+        assert !stamp().isCompatible(input.stamp());
+        if (input.isConstant()) {
+            /* Null pointers are uncritical for GC, so they can be constant folded. */
+            if (input.asJavaConstant().isNull()) {
+                return ConstantNode.forIntegerStamp(stamp(), 0);
+            } else if (input.asJavaConstant().getKind().isNumericInteger() && input.asJavaConstant().asLong() == 0) {
+                return ConstantNode.forConstant(stamp(), JavaConstant.NULL_POINTER, tool.getMetaAccess());
+            }
+        }
+
         return this;
     }
 
