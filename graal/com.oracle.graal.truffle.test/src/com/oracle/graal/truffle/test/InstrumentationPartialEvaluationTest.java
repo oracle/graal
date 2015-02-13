@@ -35,6 +35,10 @@ import com.oracle.truffle.api.instrument.impl.*;
  */
 public class InstrumentationPartialEvaluationTest extends PartialEvaluationTest {
 
+    public static Object constant42() {
+        return 42;
+    }
+
     @Test
     public void constantValueUninstrumented() {
         FrameDescriptor fd = new FrameDescriptor();
