@@ -38,14 +38,14 @@ public class TruffleOptions {
      * <p>
      * Can be set with {@code -Dtruffle.ForceInterpreter=true}.
      */
-    public static boolean ForceInterpreter = Boolean.getBoolean("truffle.ForceInterpreter");
+    public static final boolean ForceInterpreter = Boolean.getBoolean("truffle.ForceInterpreter");
 
     /**
      * Enables/disables the rewriting of traces in the Truffle runtime to stdout.
      * <p>
      * Can be set with {@code -Dtruffle.TraceRewrites=true}.
      */
-    public static boolean TraceRewrites;
+    public static final boolean TraceRewrites;
 
     /**
      * Enables the generation of detailed rewrite reasons. Enabling this may introduce some overhead
@@ -97,20 +97,20 @@ public class TruffleOptions {
     }
 
     static {
-        final boolean[] values = {false, false};
+        final boolean[] values = new boolean[3];
         AccessController.doPrivileged(new PrivilegedAction<Void>() {
             public Void run() {
-                TraceRewrites = Boolean.getBoolean("truffle.TraceRewrites");
+                values[0] = Boolean.getBoolean("truffle.TraceRewrites");
                 TraceRewritesFilterClass = System.getProperty("truffle.TraceRewritesFilterClass");
                 TraceRewritesFilterFromCost = parseNodeInfoKind(System.getProperty("truffle.TraceRewritesFilterFromCost"));
                 TraceRewritesFilterToCost = parseNodeInfoKind(System.getProperty("truffle.TraceRewritesFilterToCost"));
-                values[0] = Boolean.getBoolean("truffle.DetailedRewriteReasons");
-                values[1] = Boolean.getBoolean("truffle.TraceASTJSON");
+                values[1] = Boolean.getBoolean("truffle.DetailedRewriteReasons");
+                values[2] = Boolean.getBoolean("truffle.TraceASTJSON");
                 return null;
             }
         });
-
-        DetailedRewriteReasons = values[0];
-        TraceASTJSON = values[1];
+        TraceRewrites = values[0];
+        DetailedRewriteReasons = values[1];
+        TraceASTJSON = values[2];
     }
 }
