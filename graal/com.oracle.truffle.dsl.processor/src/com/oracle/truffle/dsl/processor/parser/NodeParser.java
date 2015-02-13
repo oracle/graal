@@ -1126,10 +1126,6 @@ public class NodeParser extends AbstractParser<NodeData> {
     }
 
     private void initializeGeneric(final NodeData node) {
-        if (!node.needsRewrites(context)) {
-            return;
-        }
-
         List<SpecializationData> generics = new ArrayList<>();
         for (SpecializationData spec : node.getSpecializations()) {
             if (spec.isFallback()) {
