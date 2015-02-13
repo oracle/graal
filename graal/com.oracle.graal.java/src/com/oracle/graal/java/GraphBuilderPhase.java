@@ -613,17 +613,17 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             @Override
             protected ValueNode genNarrow(ValueNode input, int bitCount) {
-                return new NarrowNode(input, bitCount);
+                return NarrowNode.create(input, bitCount);
             }
 
             @Override
             protected ValueNode genSignExtend(ValueNode input, int bitCount) {
-                return new SignExtendNode(input, bitCount);
+                return SignExtendNode.create(input, bitCount);
             }
 
             @Override
             protected ValueNode genZeroExtend(ValueNode input, int bitCount) {
-                return new ZeroExtendNode(input, bitCount);
+                return ZeroExtendNode.create(input, bitCount);
             }
 
             @Override

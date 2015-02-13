@@ -25,8 +25,8 @@ package com.oracle.graal.nodes.calc;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.compiler.common.type.ArithmeticOpTable.IntegerConvertOp.Narrow;
-import com.oracle.graal.compiler.common.type.ArithmeticOpTable.IntegerConvertOp.ZeroExtend;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.*;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.IntegerConvertOp.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodeinfo.*;
@@ -46,6 +46,20 @@ public class ZeroExtendNode extends IntegerConvertNode<ZeroExtend, Narrow> {
 
     public ZeroExtendNode(ValueNode input, int inputBits, int resultBits) {
         super(ArithmeticOpTable::getZeroExtend, ArithmeticOpTable::getNarrow, inputBits, resultBits, input);
+    }
+
+    public static ValueNode create(ValueNode input, int resultBits) {
+        return create(input, PrimitiveStamp.getBits(input.stamp()), resultBits);
+    }
+
+    public static ValueNode create(ValueNode input, int inputBits, int resultBits) {
+        IntegerConvertOp<ZeroExtend> signExtend = ArithmeticOpTable.forStamp(input.stamp()).getZeroExtend();
+        ValueNode synonym = findSynonym(signExtend, input, inputBits, resultBits, signExtend.foldStamp(inputBits, resultBits, input.stamp()));
+        if (synonym != null) {
+            return synonym;
+        } else {
+            return new ZeroExtendNode(input, inputBits, resultBits);
+        }
     }
 
     @Override

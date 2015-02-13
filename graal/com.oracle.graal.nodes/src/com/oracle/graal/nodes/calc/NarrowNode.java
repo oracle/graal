@@ -23,6 +23,7 @@
 package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.*;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.IntegerConvertOp.Narrow;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.IntegerConvertOp.SignExtend;
 import com.oracle.graal.graph.spi.*;
@@ -44,6 +45,20 @@ public final class NarrowNode extends IntegerConvertNode<Narrow, SignExtend> {
 
     public NarrowNode(ValueNode input, int inputBits, int resultBits) {
         super(ArithmeticOpTable::getNarrow, ArithmeticOpTable::getSignExtend, inputBits, resultBits, input);
+    }
+
+    public static ValueNode create(ValueNode input, int resultBits) {
+        return create(input, PrimitiveStamp.getBits(input.stamp()), resultBits);
+    }
+
+    public static ValueNode create(ValueNode input, int inputBits, int resultBits) {
+        IntegerConvertOp<Narrow> signExtend = ArithmeticOpTable.forStamp(input.stamp()).getNarrow();
+        ValueNode synonym = findSynonym(signExtend, input, inputBits, resultBits, signExtend.foldStamp(inputBits, resultBits, input.stamp()));
+        if (synonym != null) {
+            return synonym;
+        } else {
+            return new NarrowNode(input, inputBits, resultBits);
+        }
     }
 
     @Override

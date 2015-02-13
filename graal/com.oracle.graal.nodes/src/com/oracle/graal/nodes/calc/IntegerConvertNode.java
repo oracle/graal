@@ -86,13 +86,20 @@ public abstract class IntegerConvertNode<OP, REV> extends UnaryNode implements C
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
+        ValueNode synonym = findSynonym(getOp(forValue), forValue, inputBits, resultBits, stamp());
+        if (synonym != null) {
+            return synonym;
+        }
+        return this;
+    }
+
+    protected static <T> ValueNode findSynonym(IntegerConvertOp<T> operation, ValueNode value, int inputBits, int resultBits, Stamp stamp) {
         if (inputBits == resultBits) {
             return value;
         } else if (value.isConstant()) {
-            return ConstantNode.forPrimitive(stamp(), convert(forValue.asConstant(), tool.getConstantReflection()));
-        } else {
-            return this;
+            return ConstantNode.forPrimitive(stamp, operation.foldConstant(inputBits, resultBits, value.asConstant()));
         }
+        return null;
     }
 
     public static ValueNode convert(ValueNode input, Stamp stamp) {
