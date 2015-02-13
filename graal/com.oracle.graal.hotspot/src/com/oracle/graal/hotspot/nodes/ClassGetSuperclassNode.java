@@ -34,7 +34,7 @@ import com.oracle.graal.replacements.nodes.*;
 /**
  * {@link MacroNode Macro node} for {@link Class#getSuperclass()}.
  *
- * @see ClassSubstitutions#getSuperclass(Class)
+ * @see HotSpotClassSubstitutions#getSuperclass(Class)
  */
 @NodeInfo
 public final class ClassGetSuperclassNode extends MacroNode implements Canonicalizable {

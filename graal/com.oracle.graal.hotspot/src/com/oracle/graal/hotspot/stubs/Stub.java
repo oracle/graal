@@ -161,7 +161,7 @@ public abstract class Stub {
                 // Stubs cannot be recompiled so they cannot be compiled with
                 // assumptions and there is no point in recording evol_method dependencies
                 assert graph.getAssumptions() == null;
-                assert !graph.isMethodRecordingEnabled() : graph;
+                assert !graph.isInlinedMethodRecordingEnabled() : graph;
 
                 if (!(graph.start() instanceof StubStartNode)) {
                     StubStartNode newStart = graph.add(new StubStartNode(Stub.this));

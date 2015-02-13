@@ -192,7 +192,7 @@ public class ForeignCallStub extends Stub {
         boolean isObjectResult = linkage.getOutgoingCallingConvention().getReturn().getKind() == Kind.Object;
 
         StructuredGraph graph = new StructuredGraph(toString(), null, AllowAssumptions.NO);
-        graph.disableMethodRecording();
+        graph.disableInlinedMethodRecording();
 
         GraphKit kit = new HotSpotGraphKit(graph, providers);
         ParameterNode[] params = createParameters(kit, args);

@@ -56,7 +56,7 @@ public final class HotSpotCompiledRuntimeStub extends HotSpotCompiledCode {
         // Stubs cannot be recompiled so they cannot be compiled with
         // assumptions and there is no point in recording evol_method dependencies
         assert compResult.getAssumptions().isEmpty() : "stubs should not use assumptions: " + this;
-        assert compResult.getMethods().isEmpty() : "stubs should not record evol_method dependencies: " + this;
+        assert compResult.getMethods() == null : "stubs should not record evol_method dependencies: " + this;
 
         for (DataPatch data : compResult.getDataPatches()) {
             if (data.reference instanceof ConstantReference) {

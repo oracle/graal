@@ -34,7 +34,7 @@ import com.oracle.graal.replacements.nodes.*;
 /**
  * {@link MacroNode Macro node} for {@link Class#getClassLoader0()}.
  *
- * @see ClassSubstitutions#getClassLoader0(Class)
+ * @see HotSpotClassSubstitutions#getClassLoader0(Class)
  */
 @SuppressWarnings("javadoc")
 @NodeInfo

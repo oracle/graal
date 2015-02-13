@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,24 +23,58 @@
 package com.oracle.graal.truffle.test.nodes;
 
 import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.instrument.*;
 import com.oracle.truffle.api.instrument.ProbeNode.WrapperNode;
 import com.oracle.truffle.api.nodes.*;
 
-public abstract class AbstractTestNode extends Node {
+/**
+ * Support for PE testing instrumentation.
+ */
+public final class WrapperTestNode extends AbstractTestNode implements WrapperNode {
 
-    protected AbstractTestNode() {
-        super(null);
+    @Child private AbstractTestNode child;
+    @Child private ProbeNode probeNode;
+
+    public WrapperTestNode(AbstractTestNode child) {
+        this.child = child;
+    }
+
+    public String instrumentationInfo() {
+        return "Wrapper for PE test nodes";
     }
 
     @Override
     public boolean isInstrumentable() {
-        return true;
+        return false;
+    }
+
+    public void insertProbe(ProbeNode newProbeNode) {
+        this.probeNode = newProbeNode;
+    }
+
+    public Probe getProbe() {
+        return probeNode.getProbe();
     }
 
     @Override
-    public WrapperNode createWrapperNode() {
-        return new WrapperTestNode(this);
+    public Node getChild() {
+        return child;
     }
 
-    public abstract int execute(VirtualFrame frame);
+    @Override
+    public int execute(VirtualFrame frame) {
+        probeNode.enter(child, frame);
+        try {
+            final int result = child.execute(frame);
+            probeNode.returnValue(child, frame, result);
+            return result;
+        } catch (KillException e) {
+            throw (e);
+        } catch (Exception e) {
+            probeNode.returnExceptional(child, frame, e);
+            throw (e);
+        }
+
+    }
+
 }

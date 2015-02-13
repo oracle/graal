@@ -20,20 +20,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.replacements;
+package com.oracle.graal.replacements;
 
 import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.hotspot.bridge.*;
-import com.oracle.graal.word.*;
+import com.oracle.graal.nodes.calc.*;
 
 /**
- * Substitutions for {@link CompilerToVMImpl} methods.
+ * Substitutions for {@link java.lang.Class} methods.
  */
-@ClassSubstitution(com.oracle.graal.hotspot.bridge.CompilerToVMImpl.class)
-public class CompilerToVMImplSubstitutions {
+@ClassSubstitution(java.lang.Class.class)
+public class ClassSubstitutions {
 
     @MethodSubstitution(isStatic = false)
-    public static Class<?> getJavaMirror(@SuppressWarnings("unused") CompilerToVMImpl impl, long metaspaceklass) {
-        return HotSpotClassSubstitutions.readJavaMirror(Word.unsigned(metaspaceklass));
+    public static boolean isInstance(Class<?> thisObj, Object obj) {
+        return ConditionalNode.materializeIsInstance(thisObj, obj);
+    }
+
+    @MethodSubstitution(isStatic = false)
+    public static boolean isAssignableFrom(Class<?> thisClass, Class<?> otherClass) {
+        return ConditionalNode.materializeIsAssignableFrom(thisClass, otherClass);
     }
 }

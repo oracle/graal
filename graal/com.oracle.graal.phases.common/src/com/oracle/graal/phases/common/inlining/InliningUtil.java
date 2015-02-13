@@ -373,9 +373,9 @@ public class InliningUtil {
             assert inlineGraph.getAssumptions() == null : "cannot inline graph which makes assumptions into a graph that doesn't: " + inlineGraph + " -> " + graph;
         }
 
-        // Copy method dependencies from inlinee to caller
-        if (inlineGraph.isMethodRecordingEnabled() && graph.isMethodRecordingEnabled()) {
-            graph.getMethods().addAll(inlineGraph.getMethods());
+        // Copy inlined methods from inlinee to caller
+        if (inlineGraph.isInlinedMethodRecordingEnabled() && graph.isInlinedMethodRecordingEnabled()) {
+            graph.getInlinedMethods().addAll(inlineGraph.getInlinedMethods());
         }
 
         return duplicates;

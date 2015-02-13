@@ -157,4 +157,24 @@ public final class ConditionalNode extends FloatingNode implements Canonicalizab
     public static boolean materializeIsInstance(Class<?> mirror, Object object) {
         return mirror.isInstance(object);
     }
+
+    /**
+     * @param thisClass
+     * @param otherClass
+     * @param dummy a marker to make this constructor unique for the
+     *            {@link #materializeIsAssignableFrom(Class, Class, int)} NodeIntrinsic
+     */
+    public ConditionalNode(ValueNode thisClass, ValueNode otherClass, int dummy) {
+        this(thisClass.graph().unique(new ClassIsAssignableFromNode(thisClass, otherClass)));
+    }
+
+    @SuppressWarnings("unused")
+    @NodeIntrinsic
+    private static boolean materializeIsAssignableFrom(Class<?> thisClass, Class<?> otherClass, @ConstantNodeParameter int dummy) {
+        return thisClass.isAssignableFrom(otherClass);
+    }
+
+    public static boolean materializeIsAssignableFrom(Class<?> thisClass, Class<?> otherClass) {
+        return materializeIsAssignableFrom(thisClass, otherClass, 0);
+    }
 }
