@@ -870,7 +870,6 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                         return;
                     }
                 }
-
                 InlineInvokePlugin inlineInvokePlugin = graphBuilderConfig.getInlineInvokePlugin();
                 if (inlineInvokePlugin != null && invokeKind.isDirect() && targetMethod.canBeInlined() && targetMethod.hasBytecodes() &&
                                 inlineInvokePlugin.shouldInlineInvoke(targetMethod, currentDepth)) {
@@ -888,8 +887,6 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     ResolvedJavaMethod inlinedTargetMethod = inlineInvokePlugin.inlinedMethod(this, targetMethod, args);
                     parseAndInlineCallee(inlinedTargetMethod, args);
                     return;
-                } else {
-                    // System.out.println("Could not inline invoke " + targetMethod);
                 }
 
                 MethodCallTargetNode callTarget = currentGraph.add(createMethodCallTarget(invokeKind, targetMethod, args, returnType));

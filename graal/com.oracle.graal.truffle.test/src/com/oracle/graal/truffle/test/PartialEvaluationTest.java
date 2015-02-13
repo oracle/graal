@@ -89,7 +89,7 @@ public class PartialEvaluationTest extends GraalCompilerTest {
         compilable.call(arguments);
 
         try (Scope s = Debug.scope("TruffleCompilation", new TruffleDebugJavaMethod(compilable))) {
-            return truffleCompiler.getPartialEvaluator().createGraph(compilable, allowAssumptions, null);
+            return truffleCompiler.getPartialEvaluator().createGraph(compilable, allowAssumptions, truffleCompiler.createGraphBuilderSuitePlugins());
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
