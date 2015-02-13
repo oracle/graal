@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,22 +20,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.graal.replacements;
 
-package com.oracle.graal.baseline;
+import com.oracle.graal.api.replacements.*;
+import com.oracle.graal.nodes.calc.*;
 
-import com.oracle.graal.compiler.common.cfg.*;
-import com.oracle.graal.java.BciBlockMapping.BciBlock;
+/**
+ * Substitutions for {@link java.lang.Class} methods.
+ */
+@ClassSubstitution(java.lang.Class.class)
+public class ClassSubstitutions {
 
-public class BaselineLoop extends Loop<BciBlock> {
-
-    protected BaselineLoop(Loop<BciBlock> parent, int index, BciBlock header) {
-        super(parent, index, header);
+    @MethodSubstitution(isStatic = false)
+    public static boolean isInstance(Class<?> thisObj, Object obj) {
+        return ConditionalNode.materializeIsInstance(thisObj, obj);
     }
 
-    @Override
-    public long numBackedges() {
-        // currently only loops with one backedge are supported
-        return 1;
+    @MethodSubstitution(isStatic = false)
+    public static boolean isAssignableFrom(Class<?> thisClass, Class<?> otherClass) {
+        return ConditionalNode.materializeIsAssignableFrom(thisClass, otherClass);
     }
-
 }

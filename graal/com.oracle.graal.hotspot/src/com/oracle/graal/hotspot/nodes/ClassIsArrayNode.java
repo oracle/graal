@@ -33,7 +33,7 @@ import com.oracle.graal.replacements.nodes.*;
 /**
  * {@link MacroNode Macro node} for {@link Class#isArray()}.
  *
- * @see ClassSubstitutions#isArray(Class)
+ * @see HotSpotClassSubstitutions#isArray(Class)
  */
 @NodeInfo
 public final class ClassIsArrayNode extends MacroNode implements Canonicalizable {

@@ -33,7 +33,7 @@ import com.oracle.graal.replacements.nodes.*;
 /**
  * {@link MacroNode Macro node} for {@link Class#cast(Object)}.
  *
- * @see ClassSubstitutions#cast(Class, Object)
+ * @see HotSpotClassSubstitutions#cast(Class, Object)
  */
 @NodeInfo
 public final class ClassCastNode extends MacroStateSplitNode implements Canonicalizable.Binary<ValueNode> {

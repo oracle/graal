@@ -32,7 +32,9 @@ import com.oracle.graal.java.GraphBuilderPlugins.InvocationPlugin;
 import com.oracle.graal.java.GraphBuilderPlugins.Registration;
 import com.oracle.graal.java.GraphBuilderPlugins.Registration.Receiver;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.options.*;
 
@@ -73,6 +75,20 @@ public class HotSpotGraphBuilderPlugins {
                 return false;
             }
         });
+        r.register2("isInstance", Receiver.class, Object.class, new InvocationPlugin() {
+            public boolean apply(GraphBuilderContext builder, ValueNode rcvr, ValueNode object) {
+                if (rcvr.isConstant() && !rcvr.isNullConstant()) {
+                    ResolvedJavaType type = builder.getConstantReflection().asJavaType(rcvr.asConstant());
+                    if (type != null && !type.isPrimitive()) {
+                        LogicNode node = builder.append(InstanceOfNode.create(type, object, null));
+                        builder.push(Kind.Boolean.getStackKind(), builder.append(ConditionalNode.create(node)));
+                        return true;
+                    }
+                }
+                return false;
+            }
+        });
+
         // StableOptionValue.class
         r = new Registration(plugins, metaAccess, StableOptionValue.class);
         r.register1("getValue", Receiver.class, new InvocationPlugin() {

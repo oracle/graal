@@ -32,6 +32,7 @@ import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.ProfilingInfo.TriState;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
@@ -194,6 +195,25 @@ public class InstanceOfSnippets implements Snippets {
         return trueValue;
     }
 
+    @Snippet
+    public static Object isAssignableFrom(Class<?> thisClass, Class<?> otherClass, Object trueValue, Object falseValue) {
+        if (BranchProbabilityNode.probability(BranchProbabilityNode.NOT_FREQUENT_PROBABILITY, otherClass == null)) {
+            DeoptimizeNode.deopt(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.NullCheckException);
+            return false;
+        }
+        GuardingNode anchorNode = SnippetAnchorNode.anchor();
+        KlassPointer thisHub = ClassGetHubNode.readClass(thisClass, anchorNode);
+        KlassPointer otherHub = ClassGetHubNode.readClass(otherClass, anchorNode);
+        if (thisHub.isNull() || otherHub.isNull()) {
+            // primitive types, only true if equal.
+            return thisClass == otherClass ? trueValue : falseValue;
+        }
+        if (!TypeCheckSnippetUtils.checkUnknownSubType(thisHub, otherHub)) {
+            return falseValue;
+        }
+        return trueValue;
+    }
+
     static class Options {
 
         // @formatter:off
@@ -214,6 +234,7 @@ public class InstanceOfSnippets implements Snippets {
         private final SnippetInfo instanceofPrimary = snippet(InstanceOfSnippets.class, "instanceofPrimary");
         private final SnippetInfo instanceofSecondary = snippet(InstanceOfSnippets.class, "instanceofSecondary");
         private final SnippetInfo instanceofDynamic = snippet(InstanceOfSnippets.class, "instanceofDynamic");
+        private final SnippetInfo isAssignableFrom = snippet(InstanceOfSnippets.class, "isAssignableFrom");
         private final long compilationThreshold;
 
         public Templates(HotSpotProviders providers, TargetDescription target, long compilationThreshold) {
@@ -264,8 +285,7 @@ public class InstanceOfSnippets implements Snippets {
                 }
                 return args;
 
-            } else {
-                assert replacer.instanceOf instanceof InstanceOfDynamicNode;
+            } else if (replacer.instanceOf instanceof InstanceOfDynamicNode) {
                 InstanceOfDynamicNode instanceOf = (InstanceOfDynamicNode) replacer.instanceOf;
                 ValueNode object = instanceOf.object();
 
@@ -275,6 +295,16 @@ public class InstanceOfSnippets implements Snippets {
                 args.add("trueValue", replacer.trueValue);
                 args.add("falseValue", replacer.falseValue);
                 return args;
+            } else if (replacer.instanceOf instanceof ClassIsAssignableFromNode) {
+                ClassIsAssignableFromNode isAssignable = (ClassIsAssignableFromNode) replacer.instanceOf;
+                Arguments args = new Arguments(isAssignableFrom, isAssignable.graph().getGuardsStage(), tool.getLoweringStage());
+                args.add("thisClass", isAssignable.getThisClass());
+                args.add("otherClass", isAssignable.getOtherClass());
+                args.add("trueValue", replacer.trueValue);
+                args.add("falseValue", replacer.falseValue);
+                return args;
+            } else {
+                throw GraalInternalError.shouldNotReachHere();
             }
         }
     }

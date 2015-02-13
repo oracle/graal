@@ -63,10 +63,18 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
         this.forStoreCheck = forStoreCheck;
     }
 
-    public static ValueNode create(ResolvedJavaType type, ValueNode object, JavaTypeProfile profile, boolean forStoreCheck) {
+    public static ValueNode create(ResolvedJavaType inputType, ValueNode object, JavaTypeProfile profile, boolean forStoreCheck, Assumptions assumptions) {
+        ResolvedJavaType type = inputType;
         ValueNode synonym = findSynonym(type, object);
         if (synonym != null) {
             return synonym;
+        }
+        if (assumptions != null) {
+            ResolvedJavaType uniqueConcreteType = type.findUniqueConcreteSubtype();
+            if (uniqueConcreteType != null && !uniqueConcreteType.equals(type)) {
+                assumptions.recordConcreteSubtype(type, uniqueConcreteType);
+                type = uniqueConcreteType;
+            }
         }
         return new CheckCastNode(type, object, profile, forStoreCheck);
     }

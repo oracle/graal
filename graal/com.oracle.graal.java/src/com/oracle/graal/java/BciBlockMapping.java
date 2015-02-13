@@ -31,7 +31,6 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.bytecode.*;
 import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.nodes.*;
@@ -75,20 +74,16 @@ import com.oracle.graal.nodes.*;
  */
 public final class BciBlockMapping {
 
-    public static class BciBlock extends AbstractBlockBase<BciBlock> implements Cloneable {
+    public static class BciBlock implements Cloneable {
 
+        protected int id;
         public int startBci;
         public int endBci;
         public boolean isExceptionEntry;
         public boolean isLoopHeader;
         public int loopId;
         public int loopEnd;
-
-        /**
-         * XXX to be removed - currently only used by baseline compiler.
-         */
-        public Loop<BciBlock> loop;
-        public boolean isLoopEnd;
+        protected List<BciBlock> successors;
 
         private FixedWithNextNode firstInstruction;
         private AbstractFrameStateBuilder<?, ?> entryState;
@@ -128,6 +123,10 @@ public final class BciBlockMapping {
             return null;
         }
 
+        public int getId() {
+            return id;
+        }
+
         public int numNormalSuccessors() {
             if (exceptionDispatchBlock() != null) {
                 return successors.size() - 1;
@@ -165,24 +164,12 @@ public final class BciBlockMapping {
             return sb.toString();
         }
 
-        public Loop<BciBlock> getLoop() {
-            return loop;
-        }
-
-        public void setLoop(Loop<BciBlock> loop) {
-            this.loop = loop;
-        }
-
         public int getLoopDepth() {
             return Long.bitCount(loops);
         }
 
         public boolean isLoopHeader() {
             return isLoopHeader;
-        }
-
-        public boolean isLoopEnd() {
-            return isLoopEnd;
         }
 
         public boolean isExceptionEntry() {
@@ -391,6 +378,18 @@ public final class BciBlockMapping {
 
                 entryStateArray[dimension - 1] = entryState;
             }
+        }
+
+        public int getSuccessorCount() {
+            return successors.size();
+        }
+
+        public List<BciBlock> getSuccessors() {
+            return successors;
+        }
+
+        public void setId(int i) {
+            this.id = i;
         }
     }
 
@@ -976,7 +975,6 @@ public final class BciBlockMapping {
             loops |= computeBlockOrder(successor);
             if (successor.active) {
                 // Reached block via backward branch.
-                block.isLoopEnd = true;
                 loops |= (1L << successor.loopId);
             }
         }

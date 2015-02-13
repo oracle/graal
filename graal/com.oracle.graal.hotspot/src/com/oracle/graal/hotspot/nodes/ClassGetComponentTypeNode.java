@@ -34,7 +34,7 @@ import com.oracle.graal.replacements.nodes.*;
 /**
  * {@link MacroNode Macro node} for {@link Class#getComponentType()}.
  *
- * @see ClassSubstitutions#getComponentType(Class)
+ * @see HotSpotClassSubstitutions#getComponentType(Class)
  */
 @NodeInfo
 public final class ClassGetComponentTypeNode extends MacroNode implements Canonicalizable {

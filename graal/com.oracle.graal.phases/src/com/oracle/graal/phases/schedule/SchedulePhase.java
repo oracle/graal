@@ -33,7 +33,6 @@ import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.extended.*;
@@ -306,6 +305,7 @@ public final class SchedulePhase extends Phase {
     private BlockMap<List<ValueNode>> blockToNodesMap;
     private BlockMap<LocationSet> blockToKillSet;
     private final SchedulingStrategy selectedStrategy;
+    private boolean scheduleConstants;
 
     public SchedulePhase() {
         this(OptScheduleOutOfLoops.getValue() ? SchedulingStrategy.LATEST_OUT_OF_LOOPS : SchedulingStrategy.LATEST);
@@ -313,6 +313,10 @@ public final class SchedulePhase extends Phase {
 
     public SchedulePhase(SchedulingStrategy strategy) {
         this.selectedStrategy = strategy;
+    }
+
+    public void setScheduleConstants(boolean value) {
+        scheduleConstants = value;
     }
 
     @Override
@@ -450,6 +454,12 @@ public final class SchedulePhase extends Phase {
         if (cfg.getNodeToBlock().containsKey(node)) {
             return;
         }
+        if (!scheduleConstants && node instanceof ConstantNode) {
+            return;
+        }
+        if (node instanceof VirtualObjectNode) {
+            return;
+        }
         // PhiNodes, ProxyNodes and FixedNodes should already have been placed in blocks by
         // ControlFlowGraph.identifyBlocks
         if (node instanceof PhiNode || node instanceof ProxyNode || node instanceof FixedNode) {
@@ -473,7 +483,7 @@ public final class SchedulePhase extends Phase {
                     assert dominates(earliestBlock, block) : String.format("%s (%s) cannot be scheduled before earliest schedule (%s). location: %s", read, block, earliestBlock,
                                     read.getLocationIdentity());
                 } else {
-                    block = latestBlock(node, strategy);
+                    block = latestBlock(node, strategy, earliestBlock);
                 }
                 if (block == null) {
                     // handle nodes without usages
@@ -484,16 +494,7 @@ public final class SchedulePhase extends Phase {
                     block = scheduleOutOfLoops(node, block, earliestBlock);
                 }
 
-                if (assertionEnabled()) {
-                    if (scheduleRead) {
-                        FloatingReadNode read = (FloatingReadNode) node;
-                        MemoryNode lastLocationAccess = read.getLastLocationAccess();
-                        Block upperBound = blockForMemoryNode(lastLocationAccess);
-                        assert dominates(upperBound, block) : String.format(
-                                        "out of loop movement voilated memory semantics for %s (location %s). moved to %s but upper bound is %s (earliest: %s, latest: %s)", read,
-                                        read.getLocationIdentity(), block, upperBound, earliestBlock, latest);
-                    }
-                }
+                assert assertReadSchedule(node, earliestBlock, block, latest, scheduleRead);
                 break;
             default:
                 throw new GraalInternalError("unknown scheduling strategy");
@@ -505,11 +506,15 @@ public final class SchedulePhase extends Phase {
         blockToNodesMap.get(block).add(node);
     }
 
-    @SuppressWarnings("all")
-    private static boolean assertionEnabled() {
-        boolean enabled = false;
-        assert enabled = true;
-        return enabled;
+    private boolean assertReadSchedule(ValueNode node, Block earliestBlock, Block block, Block latest, boolean scheduleRead) {
+        if (scheduleRead) {
+            FloatingReadNode read = (FloatingReadNode) node;
+            MemoryNode lastLocationAccess = read.getLastLocationAccess();
+            Block upperBound = blockForMemoryNode(lastLocationAccess);
+            assert dominates(upperBound, block) : String.format("out of loop movement voilated memory semantics for %s (location %s). moved to %s but upper bound is %s (earliest: %s, latest: %s)",
+                            read, read.getLocationIdentity(), block, upperBound, earliestBlock, latest);
+        }
+        return true;
     }
 
     /**
@@ -540,7 +545,7 @@ public final class SchedulePhase extends Phase {
         Block earliestBlock = earliestBlock(n);
         assert dominates(upperBoundBlock, earliestBlock) : "upper bound (" + upperBoundBlock + ") should dominate earliest (" + earliestBlock + ")";
 
-        Block latestBlock = latestBlock(n, strategy);
+        Block latestBlock = latestBlock(n, strategy, earliestBlock);
         assert latestBlock != null && dominates(earliestBlock, latestBlock) : "earliest (" + earliestBlock + ") should dominate latest block (" + latestBlock + ")";
 
         Debug.log("processing %s (accessing %s): latest %s, earliest %s, upper bound %s (%s)", n, locid, latestBlock, earliestBlock, upperBoundBlock, n.getLastLocationAccess());
@@ -613,26 +618,27 @@ public final class SchedulePhase extends Phase {
      * dominator of all usages. To do so all usages are also assigned to blocks.
      *
      * @param strategy
+     * @param earliestBlock
      */
-    private Block latestBlock(ValueNode node, SchedulingStrategy strategy) {
+    private Block latestBlock(ValueNode node, SchedulingStrategy strategy, Block earliestBlock) {
         CommonDominatorBlockClosure cdbc = new CommonDominatorBlockClosure(null);
-        for (Node succ : node.successors().nonNull()) {
-            if (cfg.getNodeToBlock().get(succ) == null) {
-                throw new SchedulingError();
-            }
-            cdbc.apply(cfg.getNodeToBlock().get(succ));
-        }
         ensureScheduledUsages(node, strategy);
         for (Node usage : node.usages()) {
             blocksForUsage(node, usage, cdbc, strategy);
-        }
-
-        if (assertionEnabled()) {
-            if (cdbc.block != null && !dominates(earliestBlock(node), cdbc.block)) {
-                throw new SchedulingError("failed to find correct latest schedule for %s. cdbc: %s, earliest: %s", node, cdbc.block, earliestBlock(node));
+            if (cdbc.block == earliestBlock) {
+                break;
             }
         }
+
+        assert assertLatestBlockResult(node, cdbc);
         return cdbc.block;
+    }
+
+    private boolean assertLatestBlockResult(ValueNode node, CommonDominatorBlockClosure cdbc) throws SchedulingError {
+        if (cdbc.block != null && !dominates(earliestBlock(node), cdbc.block)) {
+            throw new SchedulingError("failed to find correct latest schedule for %s. cdbc: %s, earliest: %s", node, cdbc.block, earliestBlock(node));
+        }
+        return true;
     }
 
     /**
@@ -744,10 +750,8 @@ public final class SchedulePhase extends Phase {
      * @param usage the usage whose blocks need to be considered
      * @param closure the closure that will be called for each block
      */
-    private void blocksForUsage(ValueNode node, Node usage, BlockClosure closure, SchedulingStrategy strategy) {
-        if (node instanceof PhiNode) {
-            throw new SchedulingError(node.toString());
-        }
+    private void blocksForUsage(ValueNode node, Node usage, CommonDominatorBlockClosure closure, SchedulingStrategy strategy) {
+        assert !(node instanceof PhiNode);
 
         if (usage instanceof PhiNode) {
             // An input to a PhiNode is used at the end of the predecessor block that corresponds to
@@ -757,19 +761,8 @@ public final class SchedulePhase extends Phase {
             PhiNode phi = (PhiNode) usage;
             AbstractMergeNode merge = phi.merge();
             Block mergeBlock = cfg.getNodeToBlock().get(merge);
-            if (mergeBlock == null) {
-                throw new SchedulingError("no block for merge %s", merge.toString(Verbosity.Id));
-            }
             for (int i = 0; i < phi.valueCount(); ++i) {
                 if (phi.valueAt(i) == node) {
-                    if (mergeBlock.getPredecessorCount() <= i) {
-                        TTY.println(merge.toString());
-                        TTY.println(phi.toString());
-                        TTY.println(merge.cfgPredecessors().toString());
-                        TTY.println(mergeBlock.getPredecessors().toString());
-                        TTY.println(phi.inputs().toString());
-                        TTY.println("value count: " + phi.valueCount());
-                    }
                     closure.apply(mergeBlock.getPredecessors().get(i));
                 }
             }

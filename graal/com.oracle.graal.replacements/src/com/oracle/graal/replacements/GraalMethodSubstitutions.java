@@ -62,6 +62,7 @@ public class GraalMethodSubstitutions implements ReplacementsProvider {
             replacements.registerSubstitutions(Short.class, ShortSubstitutions.class);
             replacements.registerSubstitutions(UnsignedMath.class, UnsignedMathSubstitutions.class);
             replacements.registerSubstitutions(Edges.class, EdgesSubstitutions.class);
+            replacements.registerSubstitutions(Class.class, ClassSubstitutions.class);
         }
         if (Options.UseBlackholeSubstitution.getValue()) {
             replacements.registerSubstitutions(new Type() {
