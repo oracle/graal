@@ -84,6 +84,7 @@ public final class BciBlockMapping {
         public int loopId;
         public int loopEnd;
         protected List<BciBlock> successors;
+        private int predecessorCount;
 
         private FixedWithNextNode firstInstruction;
         private AbstractFrameStateBuilder<?, ?> entryState;
@@ -125,6 +126,10 @@ public final class BciBlockMapping {
 
         public int getId() {
             return id;
+        }
+
+        public int getPredecessorCount() {
+            return this.predecessorCount;
         }
 
         public int numNormalSuccessors() {
@@ -391,6 +396,18 @@ public final class BciBlockMapping {
         public void setId(int i) {
             this.id = i;
         }
+
+        public void addSuccessor(BciBlock sux) {
+            successors.add(sux);
+            sux.predecessorCount++;
+        }
+
+        public void clearSucccessors() {
+            for (BciBlock sux : successors) {
+                sux.predecessorCount--;
+            }
+            successors.clear();
+        }
     }
 
     public static class ExceptionDispatchBlock extends BciBlock {
@@ -421,6 +438,7 @@ public final class BciBlockMapping {
     public LocalLiveness liveness;
     private int blocksNotYetAssignedId;
     private final boolean consecutiveLoopBlocks;
+    public int returnCount;
 
     /**
      * Creates a new BlockMap instance from bytecode of the given method .
@@ -439,6 +457,10 @@ public final class BciBlockMapping {
 
     public BciBlock[] getBlocks() {
         return this.blocks;
+    }
+
+    public int getReturnCount() {
+        return this.returnCount;
     }
 
     /**
@@ -527,6 +549,7 @@ public final class BciBlockMapping {
                 case DRETURN: // fall through
                 case ARETURN: // fall through
                 case RETURN: {
+                    returnCount++;
                     current = null;
                     break;
                 }
@@ -653,11 +676,13 @@ public final class BciBlockMapping {
             blocksNotYetAssignedId++;
             newBlock.startBci = startBci;
             newBlock.endBci = oldBlock.endBci;
-            newBlock.getSuccessors().addAll(oldBlock.getSuccessors());
+            for (BciBlock oldSuccessor : oldBlock.getSuccessors()) {
+                newBlock.addSuccessor(oldSuccessor);
+            }
 
             oldBlock.endBci = startBci - 1;
-            oldBlock.getSuccessors().clear();
-            oldBlock.getSuccessors().add(newBlock);
+            oldBlock.clearSucccessors();
+            oldBlock.addSuccessor(newBlock);
 
             for (int i = startBci; i <= newBlock.endBci; i++) {
                 blockMap[i] = newBlock;
@@ -686,7 +711,7 @@ public final class BciBlockMapping {
         if (sux.isExceptionEntry) {
             throw new BailoutException("Exception handler can be reached by both normal and exceptional control flow");
         }
-        predecessor.getSuccessors().add(sux);
+        predecessor.addSuccessor(sux);
     }
 
     private final ArrayList<BciBlock> jsrVisited = new ArrayList<>();
@@ -697,7 +722,7 @@ public final class BciBlockMapping {
 
         if (block.endsWithRet()) {
             block.setRetSuccessor(blockMap[scope.nextReturnAddress()]);
-            block.getSuccessors().add(block.getRetSuccessor());
+            block.addSuccessor(block.getRetSuccessor());
             assert block.getRetSuccessor() != block.getJsrSuccessor();
         }
         Debug.log("JSR alternatives block %s  sux %s  jsrSux %s  retSux %s  jsrScope %s", block, block.getSuccessors(), block.getJsrSuccessor(), block.getRetSuccessor(), block.getJsrScope());
@@ -766,9 +791,9 @@ public final class BciBlockMapping {
                     curHandler.endBci = -1;
                     curHandler.deoptBci = bci;
                     curHandler.handler = h;
-                    curHandler.getSuccessors().add(blockMap[h.getHandlerBCI()]);
+                    curHandler.addSuccessor(blockMap[h.getHandlerBCI()]);
                     if (lastHandler != null) {
-                        curHandler.getSuccessors().add(lastHandler);
+                        curHandler.addSuccessor(lastHandler);
                     }
                     exceptionDispatch.put(h, curHandler);
                 }
