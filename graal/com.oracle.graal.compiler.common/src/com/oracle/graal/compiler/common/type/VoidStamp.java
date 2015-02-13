@@ -112,7 +112,7 @@ public final class VoidStamp extends Stamp {
         throw GraalInternalError.shouldNotReachHere("void stamp has no value");
     }
 
-    private static VoidStamp instance = new VoidStamp();
+    private static final VoidStamp instance = new VoidStamp();
 
     static VoidStamp getInstance() {
         return instance;

@@ -29,12 +29,12 @@ import java.util.*;
  */
 public class KeyRegistry {
 
-    private static Map<String, Integer> keyMap = new HashMap<>();
-    private static List<DebugValue> debugValues = new ArrayList<>();
+    private static final Map<String, Integer> keyMap = new HashMap<>();
+    private static final List<DebugValue> debugValues = new ArrayList<>();
 
     /**
      * Ensures a given debug value is registered.
-     * 
+     *
      * @return the globally unique id for {@code value}
      */
     public static synchronized int register(DebugValue value) {
@@ -48,7 +48,7 @@ public class KeyRegistry {
 
     /**
      * Gets a immutable view of the registered debug values.
-     * 
+     *
      * @return a list where {@code get(i).getIndex() == i}
      */
     public static synchronized List<DebugValue> getDebugValues() {

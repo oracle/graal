@@ -94,7 +94,7 @@ public final class IllegalStamp extends Stamp {
         throw GraalInternalError.shouldNotReachHere("can't read values of illegal stamp");
     }
 
-    private static IllegalStamp instance = new IllegalStamp();
+    private static final IllegalStamp instance = new IllegalStamp();
 
     static IllegalStamp getInstance() {
         return instance;
