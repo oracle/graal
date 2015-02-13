@@ -66,8 +66,8 @@ public abstract class AbstractInlineInfo implements InlineInfo {
 
         InliningUtil.InlinedBytecodes.add(concrete.getCodeSize());
         StructuredGraph graph = invoke.asNode().graph();
-        if (graph.isMethodRecordingEnabled()) {
-            graph.getMethods().add(concrete);
+        if (graph.isInlinedMethodRecordingEnabled()) {
+            graph.getInlinedMethods().add(concrete);
         }
         return canonicalizeNodes;
     }

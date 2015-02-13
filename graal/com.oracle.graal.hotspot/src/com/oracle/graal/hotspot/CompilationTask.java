@@ -208,7 +208,7 @@ public class CompilationTask {
                 if (graph == null || entryBCI != INVOCATION_ENTRY_BCI) {
                     graph = new StructuredGraph(method, entryBCI, AllowAssumptions.from(OptAssumptions.getValue()));
                     if (!recordEvolMethodDeps) {
-                        graph.disableMethodRecording();
+                        graph.disableInlinedMethodRecording();
                     }
                 } else {
                     // Compiling method substitution - must clone the graph

@@ -166,9 +166,8 @@ public class TruffleCompilerImpl {
 
         compilationNotify.notifyCompilationGraalTierFinished((OptimizedCallTarget) predefinedInstalledCode, graph);
 
-        if (graph.isMethodRecordingEnabled()) {
-            Set<ResolvedJavaMethod> methods = graph.getMethods();
-            result.setMethods(methods.toArray(new ResolvedJavaMethod[methods.size()]));
+        if (graph.isInlinedMethodRecordingEnabled()) {
+            result.setMethods(graph.method(), graph.getInlinedMethods());
         } else {
             assert result.getMethods() == null;
         }

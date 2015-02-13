@@ -532,7 +532,9 @@ public class CompilationResult implements Serializable {
     private Assumption[] assumptions;
 
     /**
-     * The list of the methods whose bytecodes were used as input to the compilation.
+     * The list of the methods whose bytecodes were used as input to the compilation. If
+     * {@code null}, then the compilation did not record method dependencies. Otherwise, the first
+     * element of this array is the root method of the compilation.
      */
     private ResolvedJavaMethod[] methods;
 
@@ -552,6 +554,9 @@ public class CompilationResult implements Serializable {
 
     @Override
     public String toString() {
+        if (methods != null) {
+            return getClass().getName() + "[" + methods[0].format("%H.%n(%p)%r") + "]";
+        }
         return identityHashCodeString(this);
     }
 
@@ -629,17 +634,45 @@ public class CompilationResult implements Serializable {
 
     /**
      * Sets the methods whose bytecodes were used as input to the compilation.
+     *
+     * @param rootMethod the root method of the compilation
+     * @param inlinedMethods the methods inlined during compilation
      */
-    public void setMethods(ResolvedJavaMethod[] methods) {
-        this.methods = methods;
+    public void setMethods(ResolvedJavaMethod rootMethod, Collection<ResolvedJavaMethod> inlinedMethods) {
+        assert rootMethod != null;
+        assert inlinedMethods != null;
+        if (inlinedMethods.contains(rootMethod)) {
+            methods = inlinedMethods.toArray(new ResolvedJavaMethod[inlinedMethods.size()]);
+            for (int i = 0; i < methods.length; i++) {
+                if (methods[i].equals(rootMethod)) {
+                    if (i != 0) {
+                        ResolvedJavaMethod tmp = methods[0];
+                        methods[0] = methods[i];
+                        methods[i] = tmp;
+                    }
+                    break;
+                }
+            }
+        } else {
+            methods = new ResolvedJavaMethod[1 + inlinedMethods.size()];
+            methods[0] = rootMethod;
+            int i = 1;
+            for (ResolvedJavaMethod m : inlinedMethods) {
+                methods[i++] = m;
+            }
+        }
     }
 
     /**
      * Gets a fixed-size {@linkplain Arrays#asList(Object...) view} of the methods whose bytecodes
      * were used as input to the compilation.
+     *
+     * @return {@code null} if the compilation did not record method dependencies otherwise the
+     *         methods whose bytecodes were used as input to the compilation with the first element
+     *         being the root method of the compilation
      */
     public Collection<ResolvedJavaMethod> getMethods() {
-        return methods == null ? Collections.emptyList() : Arrays.asList(methods);
+        return methods == null ? null : Arrays.asList(methods);
     }
 
     public DataSection getDataSection() {

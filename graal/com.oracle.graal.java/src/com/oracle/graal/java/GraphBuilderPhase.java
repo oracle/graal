@@ -971,9 +971,9 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     calleeBeforeUnwindNode.setNext(handleException(calleeUnwindValue, bci()));
                 }
 
-                // Record method dependency in the graph
-                if (currentGraph.isMethodRecordingEnabled()) {
-                    currentGraph.getMethods().add(targetMethod);
+                // Record inlined method dependency in the graph
+                if (currentGraph.isInlinedMethodRecordingEnabled()) {
+                    currentGraph.getInlinedMethods().add(targetMethod);
                 }
             }
 
