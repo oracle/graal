@@ -68,7 +68,7 @@ public class HotSpotGraphBuilderPlugins {
                 if (rcvr.isConstant() && !rcvr.isNullConstant()) {
                     ResolvedJavaType type = builder.getConstantReflection().asJavaType(rcvr.asConstant());
                     if (type != null && !type.isPrimitive()) {
-                        builder.push(Kind.Object, CheckCastNode.create(type, object, null, false, builder.getAssumptions()));
+                        builder.push(Kind.Object, builder.append(CheckCastNode.create(type, object, null, false, builder.getAssumptions())));
                         return true;
                     }
                 }
