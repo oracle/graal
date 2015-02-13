@@ -1274,8 +1274,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                      * this block again.
                      */
                     FixedNode targetNode;
-                    if (isGoto && (block.getPredecessorCount() == 1 || !controlFlowSplit) && !block.isLoopHeader && (currentBlock.loops & ~block.loops) == 0 &&
-                                    !(lastInstr instanceof AbstractMergeNode)) {
+                    if (isGoto && (block.getPredecessorCount() == 1 || !controlFlowSplit) && !block.isLoopHeader && (currentBlock.loops & ~block.loops) == 0) {
                         block.setFirstInstruction(operatingDimension, lastInstr);
                         lastInstr = null;
                     } else {
@@ -1389,11 +1388,15 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     currentBlock = block;
 
                     if (lastInstr instanceof AbstractMergeNode) {
-                        int bci = block.startBci;
-                        if (block instanceof ExceptionDispatchBlock) {
-                            bci = ((ExceptionDispatchBlock) block).deoptBci;
+
+                        AbstractMergeNode abstractMergeNode = (AbstractMergeNode) lastInstr;
+                        if (abstractMergeNode.stateAfter() == null) {
+                            int bci = block.startBci;
+                            if (block instanceof ExceptionDispatchBlock) {
+                                bci = ((ExceptionDispatchBlock) block).deoptBci;
+                            }
+                            abstractMergeNode.setStateAfter(frameState.create(bci));
                         }
-                        ((AbstractMergeNode) lastInstr).setStateAfter(frameState.create(bci));
                     }
 
                     if (block == returnBlock) {
