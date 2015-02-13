@@ -54,6 +54,10 @@ public interface GraphBuilderPlugins {
     }
 
     public interface InlineInvokePlugin extends GraphBuilderPlugin {
+        default ResolvedJavaMethod inlinedMethod(@SuppressWarnings("unused") GraphBuilderContext builder, ResolvedJavaMethod original, @SuppressWarnings("unused") ValueNode[] arguments) {
+            return original;
+        }
+
         boolean shouldInlineInvoke(ResolvedJavaMethod method, int depth);
     }
 

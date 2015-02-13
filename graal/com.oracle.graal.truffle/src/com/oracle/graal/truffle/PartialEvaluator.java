@@ -30,6 +30,7 @@ import java.util.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.internal.*;
@@ -192,6 +193,36 @@ public class PartialEvaluator {
 
     private class InlineInvokePlugin implements GraphBuilderPlugins.InlineInvokePlugin {
 
+        private final TruffleInlining inlining;
+        private OptimizedDirectCallNode lastDirectCallNode;
+
+        public InlineInvokePlugin(TruffleInlining inlining) {
+            this.inlining = inlining;
+        }
+
+        public ResolvedJavaMethod inlinedMethod(GraphBuilderContext builder, ResolvedJavaMethod original, ValueNode[] arguments) {
+            if (original.equals(callSiteProxyMethod)) {
+                ValueNode arg1 = arguments[0];
+                if (!arg1.isConstant()) {
+                    GraalInternalError.shouldNotReachHere("The direct call node does not resolve to a constant!");
+                }
+
+                Object callNode = builder.getSnippetReflection().asObject(Object.class, (JavaConstant) arg1.asConstant());
+                if (callNode instanceof OptimizedDirectCallNode) {
+                    OptimizedDirectCallNode directCallNode = (OptimizedDirectCallNode) callNode;
+                    lastDirectCallNode = directCallNode;
+                }
+            } else if (original.equals(callDirectMethod)) {
+                TruffleInliningDecision decision = getDecision(inlining, lastDirectCallNode);
+                lastDirectCallNode = null;
+                if (decision != null && decision.isInline()) {
+                    builder.getAssumptions().record(new AssumptionValidAssumption((OptimizedAssumption) decision.getTarget().getNodeRewritingAssumption()));
+                    return callInlinedMethod;
+                }
+            }
+            return original;
+        }
+
         public boolean shouldInlineInvoke(ResolvedJavaMethod method, int depth) {
             return method.getAnnotation(TruffleBoundary.class) == null;
         }
@@ -211,7 +242,8 @@ public class PartialEvaluator {
         GraphBuilderConfiguration newConfig = configForRoot.copy();
         newConfig.setLoadFieldPlugin(new InterceptLoadFieldPlugin());
         newConfig.setParameterPlugin(new InterceptReceiverPlugin(callTarget));
-        newConfig.setInlineInvokePlugin(new InlineInvokePlugin());
+        callTarget.setInlining(new TruffleInlining(callTarget, new DefaultInliningPolicy()));
+        newConfig.setInlineInvokePlugin(new InlineInvokePlugin(callTarget.getInlining()));
         newConfig.setLoopExplosionPlugin(new LoopExplosionPlugin());
         DefaultGraphBuilderPlugins plugins = graalPlugins == null ? new DefaultGraphBuilderPlugins() : graalPlugins.copy();
         TruffleGraphBuilderPlugins.registerPlugins(providers.getMetaAccess(), plugins);
@@ -508,6 +540,26 @@ public class PartialEvaluator {
             return null;
         }
 
+        TruffleInliningDecision decision = getDecision(inlining, callNode);
+
+        StructuredGraph graph;
+        if (decision != null && decision.isInline()) {
+            if (inliningCache == null) {
+                graph = createInlineGraph(phaseContext, caller, null, decision);
+            } else {
+                graph = inliningCache.getCachedGraph(phaseContext, caller, decision);
+            }
+            decision.getProfile().setGraalDeepNodeCount(graph.getNodeCount());
+            caller.getAssumptions().record(new AssumptionValidAssumption((OptimizedAssumption) decision.getTarget().getNodeRewritingAssumption()));
+        } else {
+            // we continue expansion of callDirect until we reach the callBoundary.
+            graph = parseGraph(methodCallTargetNode.targetMethod(), methodCallTargetNode.arguments(), phaseContext);
+        }
+
+        return graph;
+    }
+
+    private static TruffleInliningDecision getDecision(TruffleInlining inlining, OptimizedDirectCallNode callNode) {
         TruffleInliningDecision decision = inlining.findByCall(callNode);
         if (decision == null) {
             if (TruffleCompilerOptions.TraceTrufflePerformanceWarnings.getValue()) {
@@ -524,25 +576,9 @@ public class PartialEvaluator {
                 properties.put("callNode", callNode);
                 TracePerformanceWarningsListener.logPerformanceWarning(String.format("CallTarget changed during compilation. Call node could not be inlined."), properties);
             }
-            decision = null;
+            return null;
         }
-
-        StructuredGraph graph;
-        if (decision != null && decision.isInline()) {
-            if (inliningCache == null) {
-                graph = createInlineGraph(phaseContext, caller, null, decision);
-            } else {
-                graph = inliningCache.getCachedGraph(phaseContext, caller, decision);
-            }
-            decision.getProfile().setGraalDeepNodeCount(graph.getNodeCount());
-
-            caller.getAssumptions().record(new AssumptionValidAssumption((OptimizedAssumption) decision.getTarget().getNodeRewritingAssumption()));
-        } else {
-            // we continue expansion of callDirect until we reach the callBoundary.
-            graph = parseGraph(methodCallTargetNode.targetMethod(), methodCallTargetNode.arguments(), phaseContext);
-        }
-
-        return graph;
+        return decision;
     }
 
     private OptimizedDirectCallNode resolveConstantCallNode(MethodCallTargetNode methodCallTargetNode) {
