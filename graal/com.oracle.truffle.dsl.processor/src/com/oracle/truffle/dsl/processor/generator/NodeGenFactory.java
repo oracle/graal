@@ -213,6 +213,8 @@ public class NodeGenFactory {
         }
         clazz.add(createGetCostMethod());
 
+        avoidFindbugsProblems(clazz);
+
         if (singleSpecializable) {
             if (node.needsRewrites(context)) {
                 clazz.add(createUnsupportedMethod());
@@ -234,6 +236,28 @@ public class NodeGenFactory {
         }
 
         return clazz;
+    }
+
+    private void avoidFindbugsProblems(CodeTypeElement clazz) {
+        TypeElement type = context.getEnvironment().getElementUtils().getTypeElement("edu.umd.cs.findbugs.annotations.SuppressFBWarnings");
+        if (type == null) {
+            return;
+        }
+        boolean foundComparison = false;
+        outer: for (SpecializationData specialization : node.getSpecializations()) {
+            for (GuardExpression guard : specialization.getGuards()) {
+                if (guard.getExpression().containsComparisons()) {
+                    foundComparison = true;
+                    break outer;
+                }
+            }
+        }
+
+        if (foundComparison) {
+            CodeAnnotationMirror annotation = new CodeAnnotationMirror((DeclaredType) type.asType());
+            annotation.setElementValue(annotation.findExecutableElement("value"), new CodeAnnotationValue("SA_LOCAL_SELF_COMPARISON"));
+            clazz.addAnnotationMirror(annotation);
+        }
     }
 
     private Element createUnsupportedMethod() {

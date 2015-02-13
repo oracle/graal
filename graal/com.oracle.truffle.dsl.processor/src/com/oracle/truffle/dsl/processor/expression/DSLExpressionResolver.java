@@ -41,8 +41,8 @@ import com.oracle.truffle.dsl.processor.java.model.*;
 public class DSLExpressionResolver implements DSLExpressionVisitor {
 
     private static final List<String> LOGIC_OPERATORS = Arrays.asList("||");
-    private static final List<String> COMPARABLE_OPERATORS = Arrays.asList("<", "<=", ">", ">=");
-    private static final List<String> IDENTITY_OPERATORS = Arrays.asList("==", "!=");
+    public static final List<String> COMPARABLE_OPERATORS = Arrays.asList("<", "<=", ">", ">=");
+    public static final List<String> IDENTITY_OPERATORS = Arrays.asList("==", "!=");
     private static final String CONSTRUCTOR_KEYWORD = "new";
 
     private final List<VariableElement> variables = new ArrayList<>();
