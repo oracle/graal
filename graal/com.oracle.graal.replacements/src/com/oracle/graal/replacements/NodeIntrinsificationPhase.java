@@ -171,34 +171,41 @@ public class NodeIntrinsificationPhase extends Phase {
                 }
                 ConstantNode constantNode = (ConstantNode) argument;
                 Constant constant = constantNode.asConstant();
-                ResolvedJavaType type = providers.getConstantReflection().asJavaType(constant);
+                /*
+                 * For intrinsification (but not for folding) if we have a Class<?> object we want
+                 * the corresponding ResolvedJavaType.
+                 */
+                ResolvedJavaType type = folding ? null : providers.getConstantReflection().asJavaType(constant);
+                Object arg;
                 if (type != null) {
-                    reflectionCallArguments[i] = type;
+                    /* If we found such a type then it's our arg */
+                    arg = type;
                     parameterTypes[i] = providers.getMetaAccess().lookupJavaType(ResolvedJavaType.class);
                 } else {
                     JavaConstant javaConstant = (JavaConstant) constant;
-                    if (parameterTypes[i].getKind() == Kind.Boolean) {
-                        reflectionCallArguments[i] = Boolean.valueOf(javaConstant.asInt() != 0);
-                    } else if (parameterTypes[i].getKind() == Kind.Byte) {
-                        reflectionCallArguments[i] = Byte.valueOf((byte) javaConstant.asInt());
-                    } else if (parameterTypes[i].getKind() == Kind.Short) {
-                        reflectionCallArguments[i] = Short.valueOf((short) javaConstant.asInt());
-                    } else if (parameterTypes[i].getKind() == Kind.Char) {
-                        reflectionCallArguments[i] = Character.valueOf((char) javaConstant.asInt());
-                    } else if (parameterTypes[i].getKind() == Kind.Object) {
-                        if (!folding) {
-                            reflectionCallArguments[i] = snippetReflection.asObject(parameterTypes[i], javaConstant);
-                        } else {
-                            reflectionCallArguments[i] = javaConstant;
-                        }
+                    if (folding) {
+                        /* For folding we want JavaConstants */
+                        arg = javaConstant;
                     } else {
-                        reflectionCallArguments[i] = javaConstant.asBoxedPrimitive();
+                        /* For intrinsification we want want corresponding objects */
+                        if (parameterTypes[i].getKind() == Kind.Boolean) {
+                            arg = Boolean.valueOf(javaConstant.asInt() != 0);
+                        } else if (parameterTypes[i].getKind() == Kind.Byte) {
+                            arg = Byte.valueOf((byte) javaConstant.asInt());
+                        } else if (parameterTypes[i].getKind() == Kind.Short) {
+                            arg = Short.valueOf((short) javaConstant.asInt());
+                        } else if (parameterTypes[i].getKind() == Kind.Char) {
+                            arg = Character.valueOf((char) javaConstant.asInt());
+                        } else if (parameterTypes[i].getKind() == Kind.Object) {
+                            arg = snippetReflection.asObject(parameterTypes[i], javaConstant);
+                        } else {
+                            arg = javaConstant.asBoxedPrimitive();
+                        }
                     }
                 }
-                if (folding && reflectionCallArguments[i] != constant) {
-                    assert !(reflectionCallArguments[i] instanceof JavaConstant);
-                    reflectionCallArguments[i] = snippetReflection.forObject(reflectionCallArguments[i]);
-                }
+
+                assert folding || !(arg instanceof JavaConstant);
+                reflectionCallArguments[i] = arg;
             } else {
                 reflectionCallArguments[i] = argument;
                 parameterTypes[i] = providers.getMetaAccess().lookupJavaType(ValueNode.class);
@@ -241,7 +248,7 @@ public class NodeIntrinsificationPhase extends Phase {
         }
 
         try {
-            ValueNode intrinsicNode = (ValueNode) snippetReflection.invoke(constructor, null, arguments);
+            ValueNode intrinsicNode = (ValueNode) invokeConstructor(constructor, arguments);
 
             if (setStampFromReturnType) {
                 intrinsicNode.setStamp(invokeStamp);
@@ -250,6 +257,10 @@ public class NodeIntrinsificationPhase extends Phase {
         } catch (Exception e) {
             throw new RuntimeException(constructor + Arrays.toString(nodeConstructorArguments), e);
         }
+    }
+
+    protected Object invokeConstructor(ResolvedJavaMethod constructor, Object[] arguments) {
+        return snippetReflection.invoke(constructor, null, arguments);
     }
 
     private static String sigString(ResolvedJavaType[] types) {
