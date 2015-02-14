@@ -166,7 +166,8 @@ public abstract class CompareNode extends BinaryOpLogicNode {
     }
 
     public static LogicNode createCompareNode(StructuredGraph graph, Condition condition, ValueNode x, ValueNode y, ConstantReflectionProvider constantReflection) {
-        return graph.unique(createCompareNode(condition, x, y, constantReflection));
+        LogicNode result = createCompareNode(condition, x, y, constantReflection);
+        return (result.graph() == null ? graph.unique(result) : result);
     }
 
     public static LogicNode createCompareNode(Condition condition, ValueNode x, ValueNode y, ConstantReflectionProvider constantReflection) {
