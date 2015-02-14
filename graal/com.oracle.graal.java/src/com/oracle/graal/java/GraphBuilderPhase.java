@@ -890,6 +890,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
                     ResolvedJavaMethod inlinedTargetMethod = inlineInvokePlugin.inlinedMethod(this, targetMethod, args);
                     parseAndInlineCallee(inlinedTargetMethod, args);
+                    inlineInvokePlugin.postInline(inlinedTargetMethod);
                     return;
                 }
 

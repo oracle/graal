@@ -59,6 +59,10 @@ public interface GraphBuilderPlugins {
         }
 
         boolean shouldInlineInvoke(ResolvedJavaMethod method, int depth);
+
+        default void postInline(@SuppressWarnings("unused") ResolvedJavaMethod inlinedTargetMethod) {
+
+        }
     }
 
     public interface LoopExplosionPlugin extends GraphBuilderPlugin {

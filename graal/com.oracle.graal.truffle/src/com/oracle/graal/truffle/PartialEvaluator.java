@@ -193,11 +193,12 @@ public class PartialEvaluator {
 
     private class InlineInvokePlugin implements GraphBuilderPlugins.InlineInvokePlugin {
 
-        private final TruffleInlining inlining;
+        private Stack<TruffleInlining> inlining;
         private OptimizedDirectCallNode lastDirectCallNode;
 
         public InlineInvokePlugin(TruffleInlining inlining) {
-            this.inlining = inlining;
+            this.inlining = new Stack<>();
+            this.inlining.push(inlining);
         }
 
         public ResolvedJavaMethod inlinedMethod(GraphBuilderContext builder, ResolvedJavaMethod original, ValueNode[] arguments) {
@@ -213,9 +214,10 @@ public class PartialEvaluator {
                     lastDirectCallNode = directCallNode;
                 }
             } else if (original.equals(callDirectMethod)) {
-                TruffleInliningDecision decision = getDecision(inlining, lastDirectCallNode);
+                TruffleInliningDecision decision = getDecision(inlining.peek(), lastDirectCallNode);
                 lastDirectCallNode = null;
                 if (decision != null && decision.isInline()) {
+                    inlining.push(decision);
                     builder.getAssumptions().record(new AssumptionValidAssumption((OptimizedAssumption) decision.getTarget().getNodeRewritingAssumption()));
                     return callInlinedMethod;
                 }
@@ -225,6 +227,12 @@ public class PartialEvaluator {
 
         public boolean shouldInlineInvoke(ResolvedJavaMethod method, int depth) {
             return method.getAnnotation(TruffleBoundary.class) == null;
+        }
+
+        public void postInline(ResolvedJavaMethod inlinedTargetMethod) {
+            if (inlinedTargetMethod.equals(callInlinedMethod)) {
+                inlining.pop();
+            }
         }
 
     }
