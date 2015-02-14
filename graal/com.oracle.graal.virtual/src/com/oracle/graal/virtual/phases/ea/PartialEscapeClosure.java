@@ -224,7 +224,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
         }
     }
 
-    private static void updateStatesForMaterialized(PartialEscapeBlockState<?> state, ObjectState obj) {
+    public static void updateStatesForMaterialized(PartialEscapeBlockState<?> state, ObjectState obj) {
         // update all existing states with the newly materialized object
         for (ObjectState objState : state.objectStates.values()) {
             if (objState.isVirtual()) {

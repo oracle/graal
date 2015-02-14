@@ -120,6 +120,7 @@ public abstract class PartialEscapeBlockState<T extends PartialEscapeBlockState<
         ValueNode[] entries = obj.getEntries();
         ValueNode representation = virtual.getMaterializedRepresentation(fixed, entries, obj.getLocks());
         obj.escape(representation, state);
+        PartialEscapeClosure.updateStatesForMaterialized(this, obj);
         if (representation instanceof AllocatedObjectNode) {
             objects.add((AllocatedObjectNode) representation);
             locks.add(LockState.asList(obj.getLocks()));
