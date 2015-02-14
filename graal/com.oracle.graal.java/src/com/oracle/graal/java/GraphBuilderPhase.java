@@ -637,17 +637,17 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             }
 
             @Override
-            protected ValueNode genObjectEquals(ValueNode x, ValueNode y) {
+            protected LogicNode genObjectEquals(ValueNode x, ValueNode y) {
                 return ObjectEqualsNode.create(x, y, constantReflection);
             }
 
             @Override
-            protected ValueNode genIntegerEquals(ValueNode x, ValueNode y) {
+            protected LogicNode genIntegerEquals(ValueNode x, ValueNode y) {
                 return IntegerEqualsNode.create(x, y, constantReflection);
             }
 
             @Override
-            protected ValueNode genIntegerLessThan(ValueNode x, ValueNode y) {
+            protected LogicNode genIntegerLessThan(ValueNode x, ValueNode y) {
                 return IntegerLessThanNode.create(x, y, constantReflection);
             }
 
@@ -1677,7 +1677,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 ValueNode a = mirror ? y : x;
                 ValueNode b = mirror ? x : y;
 
-                ValueNode condition;
+                LogicNode condition;
                 assert !a.getKind().isNumericFloat();
                 if (cond == Condition.EQ || cond == Condition.NE) {
                     if (a.getKind() == Kind.Object) {
@@ -1689,7 +1689,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     assert a.getKind() != Kind.Object && !cond.isUnsigned();
                     condition = genIntegerLessThan(a, b);
                 }
-                condition = genUnique(condition);
+                condition = currentGraph.unique(condition);
 
                 if (condition instanceof LogicConstantNode) {
                     LogicConstantNode constantLogicNode = (LogicConstantNode) condition;
@@ -1704,6 +1704,29 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     appendGoto(nextBlock);
                 } else {
 
+                    if (trueBlock.getSuccessorCount() == 1 && falseBlock.getSuccessorCount() == 1 && trueBlock.getSuccessor(0) == falseBlock.getSuccessor(0)) {
+                        int trueBlockInt = checkPositiveIntConstantPushed(trueBlock);
+                        if (trueBlockInt != -1) {
+                            int falseBlockInt = checkPositiveIntConstantPushed(falseBlock);
+                            if (falseBlockInt != -1) {
+                                ConstantNode trueValue = currentGraph.unique(ConstantNode.forInt(trueBlockInt));
+                                ConstantNode falseValue = currentGraph.unique(ConstantNode.forInt(falseBlockInt));
+                                if (negate) {
+                                    ConstantNode tmp = falseValue;
+                                    falseValue = trueValue;
+                                    trueValue = tmp;
+                                }
+                                ValueNode conditionalNode = ConditionalNode.create(condition, trueValue, falseValue);
+                                if (conditionalNode.graph() == null) {
+                                    conditionalNode = currentGraph.addOrUnique(conditionalNode);
+                                }
+                                frameState.push(Kind.Int, conditionalNode);
+                                appendGoto(trueBlock.getSuccessor(0));
+                                return;
+                            }
+                        }
+                    }
+
                     this.controlFlowSplit = true;
                     ValueNode trueSuccessor = createBlockTarget(probability, trueBlock, frameState);
                     ValueNode falseSuccessor = createBlockTarget(1 - probability, falseBlock, frameState);
@@ -1711,6 +1734,18 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     ValueNode ifNode = negate ? genIfNode(condition, falseSuccessor, trueSuccessor, 1 - probability) : genIfNode(condition, trueSuccessor, falseSuccessor, probability);
                     append(ifNode);
                 }
+            }
+
+            private int checkPositiveIntConstantPushed(BciBlock block) {
+                stream.setBCI(block.startBci);
+                int currentBC = stream.currentBC();
+                if (currentBC >= Bytecodes.ICONST_0 && currentBC <= Bytecodes.ICONST_5) {
+                    stream.nextBCI();
+                    if (stream.currentBCI() <= block.endBci || currentBC == Bytecodes.GOTO || currentBC == Bytecodes.GOTO_W) {
+                        return currentBC - Bytecodes.ICONST_0;
+                    }
+                }
+                return -1;
             }
 
             public StampProvider getStampProvider() {
