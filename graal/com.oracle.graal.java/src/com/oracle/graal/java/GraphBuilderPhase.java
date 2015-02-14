@@ -1158,6 +1158,9 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             }
 
             public <T extends FloatingNode> T append(T v) {
+                if (v.graph() != null) {
+                    return v;
+                }
                 T added = currentGraph.unique(v);
                 return added;
             }
@@ -1696,10 +1699,6 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     condition = logicNegationNode.getValue();
                 }
 
-                if (condition.graph() == null) {
-                    condition = currentGraph.unique(condition);
-                }
-
                 if (condition instanceof LogicConstantNode) {
                     LogicConstantNode constantLogicNode = (LogicConstantNode) condition;
                     boolean value = constantLogicNode.getValue();
@@ -1713,7 +1712,12 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     appendGoto(nextBlock);
                 } else {
 
+                    if (condition.graph() == null) {
+                        condition = currentGraph.unique(condition);
+                    }
+
                     if (trueBlock.getSuccessorCount() == 1 && falseBlock.getSuccessorCount() == 1 && trueBlock.getSuccessor(0) == falseBlock.getSuccessor(0)) {
+                        int oldBci = stream.currentBCI();
                         int trueBlockInt = checkPositiveIntConstantPushed(trueBlock);
                         if (trueBlockInt != -1) {
                             int falseBlockInt = checkPositiveIntConstantPushed(falseBlock);
@@ -1731,6 +1735,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                                 }
                                 frameState.push(Kind.Int, conditionalNode);
                                 appendGoto(trueBlock.getSuccessor(0));
+                                stream.setBCI(oldBci);
                                 return;
                             }
                         }
@@ -1749,9 +1754,12 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 stream.setBCI(block.startBci);
                 int currentBC = stream.currentBC();
                 if (currentBC >= Bytecodes.ICONST_0 && currentBC <= Bytecodes.ICONST_5) {
-                    stream.nextBCI();
-                    if (stream.currentBCI() <= block.endBci || currentBC == Bytecodes.GOTO || currentBC == Bytecodes.GOTO_W) {
-                        return currentBC - Bytecodes.ICONST_0;
+                    int constValue = currentBC - Bytecodes.ICONST_0;
+                    int currentBCI = stream.nextBCI();
+                    stream.setBCI(currentBCI);
+                    currentBC = stream.currentBC();
+                    if (stream.currentBCI() > block.endBci || currentBC == Bytecodes.GOTO || currentBC == Bytecodes.GOTO_W) {
+                        return constValue;
                     }
                 }
                 return -1;
