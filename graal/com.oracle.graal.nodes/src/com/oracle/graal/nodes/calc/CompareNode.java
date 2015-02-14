@@ -88,7 +88,7 @@ public abstract class CompareNode extends BinaryOpLogicNode {
                     return conditionalNode.condition();
                 } else {
                     assert falseResult == true;
-                    return new LogicNegationNode(conditionalNode.condition());
+                    return LogicNegationNode.create(conditionalNode.condition());
 
                 }
             }

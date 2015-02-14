@@ -45,6 +45,24 @@ public final class IntegerEqualsNode extends CompareNode {
         if (result != null) {
             return result;
         } else {
+            if (x instanceof ConditionalNode) {
+                ConditionalNode conditionalNode = (ConditionalNode) x;
+                if (conditionalNode.trueValue() == y) {
+                    return conditionalNode.condition();
+                }
+                if (conditionalNode.falseValue() == y) {
+                    return LogicNegationNode.create(conditionalNode.condition());
+                }
+            } else if (y instanceof ConditionalNode) {
+                ConditionalNode conditionalNode = (ConditionalNode) y;
+                if (conditionalNode.trueValue() == x) {
+                    return conditionalNode.condition();
+                }
+                if (conditionalNode.falseValue() == x) {
+                    return LogicNegationNode.create(conditionalNode.condition());
+                }
+            }
+
             return new IntegerEqualsNode(x, y);
         }
     }

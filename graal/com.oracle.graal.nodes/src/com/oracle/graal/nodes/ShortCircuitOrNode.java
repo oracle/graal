@@ -105,7 +105,7 @@ public class ShortCircuitOrNode extends LogicNode implements IterableNodeType, C
             if (isXNegated()) {
                 if (isYNegated()) {
                     // !a || !a = !a
-                    return new LogicNegationNode(forX);
+                    return LogicNegationNode.create(forX);
                 } else {
                     // !a || a = true
                     return LogicConstantNode.tautology();

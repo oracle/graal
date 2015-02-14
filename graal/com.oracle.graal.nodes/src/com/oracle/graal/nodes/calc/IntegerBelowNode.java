@@ -64,7 +64,7 @@ public class IntegerBelowNode extends CompareNode {
         }
         if (forX.isConstant() && forX.asJavaConstant().asLong() == 0) {
             // 0 |<| y is the same as 0 != y
-            return new LogicNegationNode(CompareNode.createCompareNode(Condition.EQ, forX, forY, tool.getConstantReflection()));
+            return LogicNegationNode.create(CompareNode.createCompareNode(Condition.EQ, forX, forY, tool.getConstantReflection()));
         }
         return this;
     }

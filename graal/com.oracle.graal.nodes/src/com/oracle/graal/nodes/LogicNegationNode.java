@@ -37,17 +37,35 @@ public class LogicNegationNode extends LogicNode implements Canonicalizable.Unar
         this.value = value;
     }
 
+    public static LogicNode create(LogicNode value) {
+        LogicNode synonym = findSynonym(value);
+        if (synonym != null) {
+            return synonym;
+        }
+        return new LogicNegationNode(value);
+    }
+
+    private static LogicNode findSynonym(LogicNode value) {
+        if (value instanceof LogicConstantNode) {
+            LogicConstantNode logicConstantNode = (LogicConstantNode) value;
+            return LogicConstantNode.forBoolean(!logicConstantNode.getValue());
+        } else if (value instanceof LogicNegationNode) {
+            return ((LogicNegationNode) value).getValue();
+        }
+        return null;
+    }
+
     public LogicNode getValue() {
         return value;
     }
 
     @Override
     public LogicNode canonical(CanonicalizerTool tool, LogicNode forValue) {
-        if (forValue instanceof LogicNegationNode) {
-            return ((LogicNegationNode) forValue).getValue();
-        } else {
-            return this;
+        LogicNode synonym = findSynonym(forValue);
+        if (synonym != null) {
+            return synonym;
         }
+        return this;
     }
 
 }

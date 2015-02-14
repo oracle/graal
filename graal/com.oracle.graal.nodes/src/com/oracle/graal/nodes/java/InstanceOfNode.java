@@ -102,7 +102,7 @@ public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable, Virtu
             if (!nonNull) {
                 // the instanceof matches if the object is non-null, so return true
                 // depending on the null-ness.
-                return new LogicNegationNode(new IsNullNode(forValue));
+                return LogicNegationNode.create(new IsNullNode(forValue));
             }
         }
         return null;

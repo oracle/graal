@@ -1689,7 +1689,16 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     assert a.getKind() != Kind.Object && !cond.isUnsigned();
                     condition = genIntegerLessThan(a, b);
                 }
-                condition = currentGraph.unique(condition);
+
+                if (condition instanceof LogicNegationNode) {
+                    LogicNegationNode logicNegationNode = (LogicNegationNode) condition;
+                    negate = !negate;
+                    condition = logicNegationNode.getValue();
+                }
+
+                if (condition.graph() == null) {
+                    condition = currentGraph.unique(condition);
+                }
 
                 if (condition instanceof LogicConstantNode) {
                     LogicConstantNode constantLogicNode = (LogicConstantNode) condition;
