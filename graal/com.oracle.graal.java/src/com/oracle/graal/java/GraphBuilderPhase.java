@@ -532,7 +532,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             @Override
             protected ValueNode genIntegerMul(Kind kind, ValueNode x, ValueNode y) {
-                return new MulNode(x, y);
+                return MulNode.create(x, y);
             }
 
             @Override
@@ -547,7 +547,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             @Override
             protected ValueNode genFloatMul(Kind kind, ValueNode x, ValueNode y, boolean isStrictFP) {
-                return new MulNode(x, y);
+                return MulNode.create(x, y);
             }
 
             @Override
@@ -592,17 +592,17 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             @Override
             protected ValueNode genAnd(Kind kind, ValueNode x, ValueNode y) {
-                return new AndNode(x, y);
+                return AndNode.create(x, y);
             }
 
             @Override
             protected ValueNode genOr(Kind kind, ValueNode x, ValueNode y) {
-                return new OrNode(x, y);
+                return OrNode.create(x, y);
             }
 
             @Override
             protected ValueNode genXor(Kind kind, ValueNode x, ValueNode y) {
-                return new XorNode(x, y);
+                return XorNode.create(x, y);
             }
 
             @Override

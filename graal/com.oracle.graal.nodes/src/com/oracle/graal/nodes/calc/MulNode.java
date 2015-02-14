@@ -26,7 +26,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp;
-import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp.Mul;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodeinfo.*;
@@ -38,6 +38,17 @@ public class MulNode extends BinaryArithmeticNode<Mul> implements NarrowableArit
 
     public MulNode(ValueNode x, ValueNode y) {
         super(ArithmeticOpTable::getMul, x, y);
+    }
+
+    public static ValueNode create(ValueNode x, ValueNode y) {
+        BinaryOp<Mul> op = ArithmeticOpTable.forStamp(x.stamp()).getMul();
+        Stamp stamp = op.foldStamp(x.stamp(), y.stamp());
+        ConstantNode tryConstantFold = tryConstantFold(op, x, y, stamp);
+        if (tryConstantFold != null) {
+            return tryConstantFold;
+        } else {
+            return new MulNode(x, y);
+        }
     }
 
     @Override

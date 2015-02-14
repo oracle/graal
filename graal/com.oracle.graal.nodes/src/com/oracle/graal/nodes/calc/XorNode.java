@@ -25,7 +25,8 @@ package com.oracle.graal.nodes.calc;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp.Xor;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.*;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodeinfo.*;
@@ -39,6 +40,17 @@ public class XorNode extends BinaryArithmeticNode<Xor> {
     public XorNode(ValueNode x, ValueNode y) {
         super(ArithmeticOpTable::getXor, x, y);
         assert x.stamp().isCompatible(y.stamp());
+    }
+
+    public static ValueNode create(ValueNode x, ValueNode y) {
+        BinaryOp<Xor> op = ArithmeticOpTable.forStamp(x.stamp()).getXor();
+        Stamp stamp = op.foldStamp(x.stamp(), y.stamp());
+        ConstantNode tryConstantFold = tryConstantFold(op, x, y, stamp);
+        if (tryConstantFold != null) {
+            return tryConstantFold;
+        } else {
+            return new XorNode(x, y);
+        }
     }
 
     @Override
