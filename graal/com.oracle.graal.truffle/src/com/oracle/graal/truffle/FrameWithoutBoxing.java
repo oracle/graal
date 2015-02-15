@@ -66,7 +66,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         int index = slot.getIndex();
         Object[] curLocals = this.getLocals();
         if (CompilerDirectives.inInterpreter() && index >= curLocals.length) {
-            resizeAndCheck(slot);
+            curLocals = resizeAndCheck(slot);
         }
         return curLocals[index];
     }
@@ -80,7 +80,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         int index = slot.getIndex();
         Object[] curLocals = this.getLocals();
         if (CompilerDirectives.inInterpreter() && index >= curLocals.length) {
-            resizeAndCheck(slot);
+            curLocals = resizeAndCheck(slot);
         }
         curLocals[index] = value;
     }
@@ -174,10 +174,11 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         return this.descriptor;
     }
 
-    private void resizeAndCheck(FrameSlot slot) {
+    private Object[] resizeAndCheck(FrameSlot slot) {
         if (!resize()) {
             throw new IllegalArgumentException(String.format("The frame slot '%s' is not known by the frame descriptor.", slot));
         }
+        return locals;
     }
 
     @Override
