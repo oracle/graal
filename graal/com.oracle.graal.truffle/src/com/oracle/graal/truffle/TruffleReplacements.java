@@ -50,13 +50,15 @@ public abstract class TruffleReplacements extends ReplacementsImpl {
     }
 
     protected void registerTruffleSubstitutions() {
-        registerSubstitutions(CompilerAsserts.class, CompilerAssertsSubstitutions.class);
-        registerSubstitutions(CompilerDirectives.class, CompilerDirectivesSubstitutions.class);
-        registerSubstitutions(ExactMath.class, ExactMathSubstitutions.class);
-        registerSubstitutions(OptimizedAssumption.class, OptimizedAssumptionSubstitutions.class);
-        registerSubstitutions(OptimizedCallTarget.class, OptimizedCallTargetSubstitutions.class);
-        registerSubstitutions(FrameWithoutBoxing.class, FrameWithoutBoxingSubstitutions.class);
-        registerSubstitutions(UnsafeAccessImpl.class, UnsafeAccessSubstitutions.class);
+        if (!TruffleCompilerOptions.FastPE.getValue()) {
+            registerSubstitutions(CompilerAsserts.class, CompilerAssertsSubstitutions.class);
+            registerSubstitutions(CompilerDirectives.class, CompilerDirectivesSubstitutions.class);
+            registerSubstitutions(ExactMath.class, ExactMathSubstitutions.class);
+            registerSubstitutions(OptimizedAssumption.class, OptimizedAssumptionSubstitutions.class);
+            registerSubstitutions(OptimizedCallTarget.class, OptimizedCallTargetSubstitutions.class);
+            registerSubstitutions(FrameWithoutBoxing.class, FrameWithoutBoxingSubstitutions.class);
+            registerSubstitutions(UnsafeAccessImpl.class, UnsafeAccessSubstitutions.class);
+        }
     }
 
     @Override

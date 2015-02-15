@@ -256,8 +256,8 @@ public class PartialEvaluator {
         DefaultGraphBuilderPlugins plugins = graalPlugins == null ? new DefaultGraphBuilderPlugins() : graalPlugins.copy();
         TruffleGraphBuilderPlugins.registerPlugins(providers.getMetaAccess(), plugins);
         long ms = System.currentTimeMillis();
-        new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), this.snippetReflection, providers.getConstantReflection(), newConfig, plugins,
-                        TruffleCompilerImpl.Optimizations).apply(graph);
+        new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), this.snippetReflection, providers.getReplacements(), providers.getConstantReflection(), newConfig,
+                        plugins, TruffleCompilerImpl.Optimizations).apply(graph);
         System.out.println("# ms: " + (System.currentTimeMillis() - ms));
         Debug.dump(graph, "After FastPE");
 

@@ -78,7 +78,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
     @Override
     protected void run(StructuredGraph graph, HighTierContext context) {
-        new Instance(context.getMetaAccess(), context.getStampProvider(), null, context.getConstantReflection(), graphBuilderConfig, graphBuilderPlugins, context.getOptimisticOptimizations()).run(graph);
+        new Instance(context.getMetaAccess(), context.getStampProvider(), null, null, context.getConstantReflection(), graphBuilderConfig, graphBuilderPlugins, context.getOptimisticOptimizations()).run(graph);
     }
 
     public GraphBuilderConfiguration getGraphBuilderConfig() {
@@ -104,6 +104,8 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
         private final ConstantReflectionProvider constantReflection;
         private final SnippetReflectionProvider snippetReflectionProvider;
 
+        private final Replacements replacements;
+
         /**
          * Gets the graph being processed by this builder.
          */
@@ -111,8 +113,8 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             return currentGraph;
         }
 
-        public Instance(MetaAccessProvider metaAccess, StampProvider stampProvider, SnippetReflectionProvider snippetReflectionProvider, ConstantReflectionProvider constantReflection,
-                        GraphBuilderConfiguration graphBuilderConfig, GraphBuilderPlugins graphBuilderPlugins, OptimisticOptimizations optimisticOpts) {
+        public Instance(MetaAccessProvider metaAccess, StampProvider stampProvider, SnippetReflectionProvider snippetReflectionProvider, Replacements replacements,
+                        ConstantReflectionProvider constantReflection, GraphBuilderConfiguration graphBuilderConfig, GraphBuilderPlugins graphBuilderPlugins, OptimisticOptimizations optimisticOpts) {
             this.graphBuilderConfig = graphBuilderConfig;
             this.optimisticOpts = optimisticOpts;
             this.metaAccess = metaAccess;
@@ -120,12 +122,13 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             this.graphBuilderPlugins = graphBuilderPlugins;
             this.constantReflection = constantReflection;
             this.snippetReflectionProvider = snippetReflectionProvider;
+            this.replacements = replacements;
             assert metaAccess != null;
         }
 
         public Instance(MetaAccessProvider metaAccess, StampProvider stampProvider, ConstantReflectionProvider constantReflection, GraphBuilderConfiguration graphBuilderConfig,
                         OptimisticOptimizations optimisticOpts) {
-            this(metaAccess, stampProvider, null, constantReflection, graphBuilderConfig, null, optimisticOpts);
+            this(metaAccess, stampProvider, null, null, constantReflection, graphBuilderConfig, null, optimisticOpts);
         }
 
         @Override
@@ -876,6 +879,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 }
                 InlineInvokePlugin inlineInvokePlugin = graphBuilderConfig.getInlineInvokePlugin();
                 if (inlineInvokePlugin != null && invokeKind.isDirect() && targetMethod.canBeInlined() && targetMethod.hasBytecodes() &&
+                                (replacements == null || (replacements.getMethodSubstitution(targetMethod) == null && replacements.getMacroSubstitution(targetMethod) == null)) &&
                                 inlineInvokePlugin.shouldInlineInvoke(targetMethod, currentDepth)) {
                     if (GraalOptions.TraceInlineDuringParsing.getValue()) {
                         int bci = this.bci();
