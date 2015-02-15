@@ -138,7 +138,7 @@ public class TruffleGraphBuilderPlugins {
         });
         r.register1("materialize", Object.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext builder, ValueNode value) {
-                builder.append(new ForceMaterializeNode(value));
+                builder.push(Kind.Object, builder.append(new ForceMaterializeNode(value)));
                 return true;
             }
         });
@@ -156,7 +156,7 @@ public class TruffleGraphBuilderPlugins {
         r = new Registration(plugins, metaAccess, FrameWithoutBoxing.class);
         r.register1("materialize", Receiver.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext builder, ValueNode frame) {
-                builder.append(new MaterializeFrameNode(frame));
+                builder.push(Kind.Object, builder.append(new MaterializeFrameNode(frame)));
                 return true;
             }
         });
