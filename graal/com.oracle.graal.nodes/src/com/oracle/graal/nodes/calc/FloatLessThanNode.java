@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes.calc;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
@@ -37,6 +38,15 @@ public class FloatLessThanNode extends CompareNode {
         super(Condition.LT, unorderedIsTrue, x, y);
         assert x.stamp() instanceof FloatStamp && y.stamp() instanceof FloatStamp;
         assert x.stamp().isCompatible(y.stamp());
+    }
+
+    public static LogicNode create(ValueNode x, ValueNode y, boolean unorderedIsTrue, ConstantReflectionProvider constantReflection) {
+        LogicNode result = CompareNode.tryConstantFold(Condition.LT, x, y, constantReflection, unorderedIsTrue);
+        if (result != null) {
+            return result;
+        } else {
+            return new FloatLessThanNode(x, y, unorderedIsTrue);
+        }
     }
 
     @Override

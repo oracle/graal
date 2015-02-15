@@ -607,7 +607,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             @Override
             protected ValueNode genNormalizeCompare(ValueNode x, ValueNode y, boolean isUnorderedLess) {
-                return new NormalizeCompareNode(x, y, isUnorderedLess);
+                return NormalizeCompareNode.create(x, y, isUnorderedLess, constantReflection);
             }
 
             @Override
@@ -916,7 +916,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     int nodeCount = currentGraph.getNodeCount();
                     Mark mark = needsNullCheck ? currentGraph.getMark() : null;
                     if (InvocationPlugin.execute(this, plugin, args)) {
-                        assert beforeStackSize + resultType.getSlotCount() == frameState.stackSize : "plugin manipulated the stack incorrectly";
+                        assert beforeStackSize + resultType.getSlotCount() == frameState.stackSize : "plugin manipulated the stack incorrectly " + targetMethod;
                         assert !needsNullCheck || containsNullCheckOf(currentGraph.getNewNodes(mark), args[0]) : "plugin needs to null check the receiver of " + targetMethod + ": " + args[0];
                         return true;
                     }
