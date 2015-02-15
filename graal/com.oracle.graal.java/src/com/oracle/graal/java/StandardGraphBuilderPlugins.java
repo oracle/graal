@@ -25,10 +25,12 @@ package com.oracle.graal.java;
 import static com.oracle.graal.java.GraphBuilderContext.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.java.GraphBuilderPlugins.InvocationPlugin;
 import com.oracle.graal.java.GraphBuilderPlugins.Registration;
 import com.oracle.graal.java.GraphBuilderPlugins.Registration.Receiver;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 
@@ -43,6 +45,26 @@ public class StandardGraphBuilderPlugins {
                 if (RegisterFinalizerNode.mayHaveFinalizer(object, builder.getAssumptions())) {
                     builder.append(new RegisterFinalizerNode(object));
                 }
+                return true;
+            }
+        });
+
+        r = new Registration(plugins, metaAccess, Math.class);
+        r.register1("abs", Float.TYPE, new InvocationPlugin() {
+            public boolean apply(GraphBuilderContext builder, ValueNode value) {
+                builder.push(Kind.Float, builder.append(new AbsNode(value)));
+                return true;
+            }
+        });
+        r.register1("abs", Double.TYPE, new InvocationPlugin() {
+            public boolean apply(GraphBuilderContext builder, ValueNode value) {
+                builder.push(Kind.Double, builder.append(new AbsNode(value)));
+                return true;
+            }
+        });
+        r.register1("sqrt", Double.TYPE, new InvocationPlugin() {
+            public boolean apply(GraphBuilderContext builder, ValueNode value) {
+                builder.push(Kind.Double, builder.append(new SqrtNode(value)));
                 return true;
             }
         });
