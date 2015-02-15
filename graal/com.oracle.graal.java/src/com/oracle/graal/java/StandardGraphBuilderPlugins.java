@@ -25,7 +25,6 @@ package com.oracle.graal.java;
 import static com.oracle.graal.java.GraphBuilderContext.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.java.GraphBuilderPlugins.InvocationPlugin;
 import com.oracle.graal.java.GraphBuilderPlugins.Registration;
 import com.oracle.graal.java.GraphBuilderPlugins.Registration.Receiver;
