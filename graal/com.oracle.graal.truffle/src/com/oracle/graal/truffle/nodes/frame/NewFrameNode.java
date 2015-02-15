@@ -92,7 +92,7 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
                 return field;
             }
         }
-        throw new RuntimeException("Frame field not found: " + fieldName);
+        return null;
     }
 
     @NodeInfo
@@ -156,8 +156,8 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
 
         VirtualObjectNode virtualFrame = new VirtualOnlyInstanceNode(frameType, frameFields);
         VirtualObjectNode virtualFrameObjectArray = new VirtualArrayNode((ResolvedJavaType) localsField.getType().getComponentType(), frameSize);
-        VirtualObjectNode virtualFramePrimitiveArray = new VirtualArrayNode((ResolvedJavaType) primitiveLocalsField.getType().getComponentType(), frameSize);
-        VirtualObjectNode virtualFrameTagArray = new VirtualArrayNode((ResolvedJavaType) tagsField.getType().getComponentType(), frameSize);
+        VirtualObjectNode virtualFramePrimitiveArray = (primitiveLocalsField == null ? null : new VirtualArrayNode((ResolvedJavaType) primitiveLocalsField.getType().getComponentType(), frameSize));
+        VirtualObjectNode virtualFrameTagArray = (primitiveLocalsField == null ? null : new VirtualArrayNode((ResolvedJavaType) tagsField.getType().getComponentType(), frameSize));
 
         ValueNode[] objectArrayEntryState = new ValueNode[frameSize];
         ValueNode[] primitiveArrayEntryState = new ValueNode[frameSize];
@@ -168,25 +168,37 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
             ConstantNode objectDefault = ConstantNode.forConstant(getSnippetReflection().forObject(frameDescriptor.getDefaultValue()), tool.getMetaAccessProvider(), graph());
             ConstantNode tagDefault = ConstantNode.forByte((byte) 0, graph());
             Arrays.fill(objectArrayEntryState, objectDefault);
-            Arrays.fill(tagArrayEntryState, tagDefault);
-            for (int i = 0; i < frameSize; i++) {
-                primitiveArrayEntryState[i] = initialPrimitiveValue(frameDescriptor.getSlots().get(i).getKind());
+            if (virtualFrameTagArray != null) {
+                Arrays.fill(tagArrayEntryState, tagDefault);
+            }
+            if (virtualFramePrimitiveArray != null) {
+                for (int i = 0; i < frameSize; i++) {
+                    primitiveArrayEntryState[i] = initialPrimitiveValue(frameDescriptor.getSlots().get(i).getKind());
+                }
             }
             graph().getAssumptions().record(new AssumptionValidAssumption((OptimizedAssumption) frameDescriptor.getVersion()));
         }
 
         tool.createVirtualObject(virtualFrameObjectArray, objectArrayEntryState, Collections.<MonitorIdNode> emptyList());
-        tool.createVirtualObject(virtualFramePrimitiveArray, primitiveArrayEntryState, Collections.<MonitorIdNode> emptyList());
-        tool.createVirtualObject(virtualFrameTagArray, tagArrayEntryState, Collections.<MonitorIdNode> emptyList());
+        if (virtualFramePrimitiveArray != null) {
+            tool.createVirtualObject(virtualFramePrimitiveArray, primitiveArrayEntryState, Collections.<MonitorIdNode> emptyList());
+        }
+        if (virtualFrameTagArray != null) {
+            tool.createVirtualObject(virtualFrameTagArray, tagArrayEntryState, Collections.<MonitorIdNode> emptyList());
+        }
 
-        assert frameFields.length == 5;
+        assert frameFields.length == 5 || frameFields.length == 3;
         ValueNode[] frameEntryState = new ValueNode[frameFields.length];
         List<ResolvedJavaField> frameFieldList = Arrays.asList(frameFields);
         frameEntryState[frameFieldList.indexOf(descriptorField)] = getDescriptor();
         frameEntryState[frameFieldList.indexOf(argumentsField)] = getArguments();
         frameEntryState[frameFieldList.indexOf(localsField)] = virtualFrameObjectArray;
-        frameEntryState[frameFieldList.indexOf(primitiveLocalsField)] = virtualFramePrimitiveArray;
-        frameEntryState[frameFieldList.indexOf(tagsField)] = virtualFrameTagArray;
+        if (primitiveLocalsField != null) {
+            frameEntryState[frameFieldList.indexOf(primitiveLocalsField)] = virtualFramePrimitiveArray;
+        }
+        if (tagsField != null) {
+            frameEntryState[frameFieldList.indexOf(tagsField)] = virtualFrameTagArray;
+        }
         tool.createVirtualObject(virtualFrame, frameEntryState, Collections.<MonitorIdNode> emptyList());
         tool.replaceWithVirtual(virtualFrame);
     }
