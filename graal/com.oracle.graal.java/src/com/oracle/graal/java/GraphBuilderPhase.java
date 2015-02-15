@@ -1001,10 +1001,10 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             @Override
             protected void genReturn(ValueNode x) {
-                frameState.setRethrowException(false);
-                frameState.clearStack();
 
                 if (this.currentDepth == 0) {
+                    frameState.setRethrowException(false);
+                    frameState.clearStack();
                     beforeReturn(x);
                     append(new ReturnNode(x));
                 } else {
@@ -1014,6 +1014,8 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                         this.beforeReturnNode = this.lastInstr;
                         this.lastInstr = null;
                     } else {
+                        frameState.setRethrowException(false);
+                        frameState.clearStack();
                         if (x != null) {
                             frameState.push(x.getKind(), x);
                         }
@@ -1717,12 +1719,22 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                         condition = currentGraph.unique(condition);
                     }
 
-                    if (trueBlock.getSuccessorCount() == 1 && falseBlock.getSuccessorCount() == 1 && trueBlock.getSuccessor(0) == falseBlock.getSuccessor(0)) {
-                        int oldBci = stream.currentBCI();
-                        int trueBlockInt = checkPositiveIntConstantPushed(trueBlock);
-                        if (trueBlockInt != -1) {
-                            int falseBlockInt = checkPositiveIntConstantPushed(falseBlock);
-                            if (falseBlockInt != -1) {
+                    int oldBci = stream.currentBCI();
+                    int trueBlockInt = checkPositiveIntConstantPushed(trueBlock);
+                    if (trueBlockInt != -1) {
+                        int falseBlockInt = checkPositiveIntConstantPushed(falseBlock);
+                        if (falseBlockInt != -1) {
+
+                            boolean genReturn = false;
+                            boolean genConditional = false;
+                            if (gotoOrFallThroughAfterConstant(trueBlock) && gotoOrFallThroughAfterConstant(falseBlock) && trueBlock.getSuccessor(0) == falseBlock.getSuccessor(0)) {
+                                genConditional = true;
+                            } else if (this.currentDepth != 0 && returnAfterConstant(trueBlock) && returnAfterConstant(falseBlock)) {
+                                genReturn = true;
+                                genConditional = true;
+                            }
+
+                            if (genConditional) {
                                 ConstantNode trueValue = currentGraph.unique(ConstantNode.forInt(trueBlockInt));
                                 ConstantNode falseValue = currentGraph.unique(ConstantNode.forInt(falseBlockInt));
                                 if (negate) {
@@ -1734,9 +1746,13 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                                 if (conditionalNode.graph() == null) {
                                     conditionalNode = currentGraph.addOrUnique(conditionalNode);
                                 }
-                                frameState.push(Kind.Int, conditionalNode);
-                                appendGoto(trueBlock.getSuccessor(0));
-                                stream.setBCI(oldBci);
+                                if (genReturn) {
+                                    this.genReturn(conditionalNode);
+                                } else {
+                                    frameState.push(Kind.Int, conditionalNode);
+                                    appendGoto(trueBlock.getSuccessor(0));
+                                    stream.setBCI(oldBci);
+                                }
                                 return;
                             }
                         }
@@ -1756,14 +1772,25 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 int currentBC = stream.currentBC();
                 if (currentBC >= Bytecodes.ICONST_0 && currentBC <= Bytecodes.ICONST_5) {
                     int constValue = currentBC - Bytecodes.ICONST_0;
-                    int currentBCI = stream.nextBCI();
-                    stream.setBCI(currentBCI);
-                    currentBC = stream.currentBC();
-                    if (stream.currentBCI() > block.endBci || currentBC == Bytecodes.GOTO || currentBC == Bytecodes.GOTO_W) {
-                        return constValue;
-                    }
+                    return constValue;
                 }
                 return -1;
+            }
+
+            private boolean gotoOrFallThroughAfterConstant(BciBlock block) {
+                stream.setBCI(block.startBci);
+                int currentBCI = stream.nextBCI();
+                stream.setBCI(currentBCI);
+                int currentBC = stream.currentBC();
+                return stream.currentBCI() > block.endBci || currentBC == Bytecodes.GOTO || currentBC == Bytecodes.GOTO_W;
+            }
+
+            private boolean returnAfterConstant(BciBlock block) {
+                stream.setBCI(block.startBci);
+                int currentBCI = stream.nextBCI();
+                stream.setBCI(currentBCI);
+                int currentBC = stream.currentBC();
+                return currentBC == Bytecodes.IRETURN;
             }
 
             public StampProvider getStampProvider() {
