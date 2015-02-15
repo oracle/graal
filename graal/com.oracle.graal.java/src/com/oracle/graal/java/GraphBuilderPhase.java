@@ -299,7 +299,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     processBlock(this, returnBlock);
                     processBlock(this, unwindBlock);
 
-                    if (Debug.isDumpEnabled()) {
+                    if (Debug.isDumpEnabled() && this.beforeReturnNode != startInstruction) {
                         Debug.dump(currentGraph, "Bytecodes parsed: " + method.getDeclaringClass().getUnqualifiedName() + "." + method.getName());
                     }
                 }
@@ -552,7 +552,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             @Override
             protected ValueNode genFloatDiv(Kind kind, ValueNode x, ValueNode y, boolean isStrictFP) {
-                return new DivNode(x, y);
+                return DivNode.create(x, y);
             }
 
             @Override
@@ -612,7 +612,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             @Override
             protected ValueNode genFloatConvert(FloatConvert op, ValueNode input) {
-                return new FloatConvertNode(op, input);
+                return FloatConvertNode.create(op, input);
             }
 
             @Override

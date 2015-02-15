@@ -46,6 +46,14 @@ public final class FloatConvertNode extends UnaryArithmeticNode<FloatConvertOp> 
         this.op = op;
     }
 
+    public static ValueNode create(FloatConvert op, ValueNode input) {
+        ValueNode synonym = findSynonym(input, ArithmeticOpTable.forStamp(input.stamp()).getFloatConvert(op));
+        if (synonym != null) {
+            return synonym;
+        }
+        return new FloatConvertNode(op, input);
+    }
+
     public FloatConvert getFloatConvert() {
         return op;
     }
