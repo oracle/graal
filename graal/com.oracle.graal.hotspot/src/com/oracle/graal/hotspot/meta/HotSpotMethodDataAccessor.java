@@ -26,7 +26,6 @@ import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.ProfilingInfo.TriState;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.hotspot.*;
 
 /**
@@ -70,12 +69,9 @@ public interface HotSpotMethodDataAccessor {
         }
 
         public static Tag getEnum(int value) {
-            for (Tag e : values()) {
-                if (e.value == value) {
-                    return e;
-                }
-            }
-            throw GraalInternalError.shouldNotReachHere("unknown enum value " + value);
+            Tag result = values()[value];
+            assert value == result.value;
+            return result;
         }
     }
 
