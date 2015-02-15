@@ -60,7 +60,9 @@ public class TruffleGraphBuilderPlugins {
                     Constant constant = arg.asConstant();
                     OptimizedAssumption assumption = builder.getSnippetReflection().asObject(OptimizedAssumption.class, (JavaConstant) constant);
                     builder.push(Kind.Boolean.getStackKind(), builder.append(ConstantNode.forBoolean(assumption.isValid())));
-                    builder.getAssumptions().record(new AssumptionValidAssumption(assumption));
+                    if (assumption.isValid()) {
+                        builder.getAssumptions().record(new AssumptionValidAssumption(assumption));
+                    }
                 } else {
                     throw new BailoutException("assumption could not be reduced to a constant");
                 }
