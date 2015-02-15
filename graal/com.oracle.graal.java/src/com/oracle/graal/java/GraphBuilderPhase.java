@@ -1584,8 +1584,8 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
                     // read the opcode
                     int opcode = stream.currentBC();
-                    traceState();
-                    traceInstruction(bci, opcode, bci == block.startBci);
+                    assert traceState();
+                    assert traceInstruction(bci, opcode, bci == block.startBci);
                     if (currentDepth == 0 && bci == entryBCI) {
                         if (block.getJsrScope() != JsrScope.EMPTY_SCOPE) {
                             throw new BailoutException("OSR into a JSR scope is not supported");
@@ -1648,10 +1648,11 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 }
             }
 
-            private void traceState() {
+            private boolean traceState() {
                 if (Debug.isEnabled() && Options.TraceBytecodeParserLevel.getValue() >= TRACELEVEL_STATE && Debug.isLogEnabled()) {
                     traceStateHelper();
                 }
+                return true;
             }
 
             private void traceStateHelper() {

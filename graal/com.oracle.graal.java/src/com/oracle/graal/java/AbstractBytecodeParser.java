@@ -1148,10 +1148,11 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
         return frameState;
     }
 
-    protected void traceInstruction(int bci, int opcode, boolean blockStart) {
+    protected boolean traceInstruction(int bci, int opcode, boolean blockStart) {
         if (Debug.isEnabled() && Options.TraceBytecodeParserLevel.getValue() >= TRACELEVEL_INSTRUCTIONS && Debug.isLogEnabled()) {
             traceInstructionHelper(bci, opcode, blockStart);
         }
+        return true;
     }
 
     private void traceInstructionHelper(int bci, int opcode, boolean blockStart) {
