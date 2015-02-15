@@ -70,14 +70,14 @@ public class HIRFrameStateBuilder extends AbstractFrameStateBuilder<ValueNode, H
         int index = 0;
         if (!method.isStatic()) {
             // set the receiver
-            storeLocal(javaIndex, arguments[index]);
+            locals[javaIndex] = arguments[index];
             javaIndex = 1;
             index = 1;
         }
         Signature sig = method.getSignature();
         int max = sig.getParameterCount(false);
         for (int i = 0; i < max; i++) {
-            storeLocal(javaIndex, arguments[index]);
+            locals[javaIndex] = arguments[index];
             javaIndex += arguments[index].getKind().getSlotCount();
             index++;
         }
@@ -96,7 +96,7 @@ public class HIRFrameStateBuilder extends AbstractFrameStateBuilder<ValueNode, H
             if (receiver == null) {
                 receiver = new ParameterNode(javaIndex, StampFactory.declaredNonNull(method.getDeclaringClass()));
             }
-            storeLocal(javaIndex, graph.unique(receiver));
+            locals[javaIndex] = graph.unique(receiver);
             javaIndex = 1;
             index = 1;
         }
@@ -122,7 +122,7 @@ public class HIRFrameStateBuilder extends AbstractFrameStateBuilder<ValueNode, H
             if (param == null) {
                 param = new ParameterNode(index, stamp);
             }
-            storeLocal(javaIndex, graph.unique(param));
+            locals[javaIndex] = graph.unique(param);
             javaIndex += kind.getSlotCount();
             index++;
         }
