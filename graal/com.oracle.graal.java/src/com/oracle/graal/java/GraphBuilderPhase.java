@@ -860,7 +860,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 }
 
                 if (tryInvocationPlugin(args, targetMethod, resultType)) {
-                    if (GraalOptions.TraceInlineDuringParsing.getValue()) {
+                    if (TraceInlineDuringParsing.getValue()) {
                         for (int i = 0; i < this.currentDepth; ++i) {
                             TTY.print(' ');
                         }
@@ -926,12 +926,12 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 if (inlinedMethod != null) {
                     if (inlinedMethod != null) {
                         assert inlinedMethod.hasBytecodes();
-                        if (GraalOptions.TraceInlineDuringParsing.getValue()) {
+                        if (TraceInlineDuringParsing.getValue()) {
                             int bci = this.bci();
                             StackTraceElement ste = this.method.asStackTraceElement(bci);
                             TTY.println(format("%s%s (%s:%d) inlining call to %s", nSpaces(currentDepth), method.getName(), ste.getFileName(), ste.getLineNumber(), inlinedMethod.format("%h.%n(%p)")));
                         }
-                        parseAndInlineCallee(inlinedMethod, args, parsingReplacement || inlinedMethod != targetMethod);
+                        parseAndInlineCallee(inlinedMethod, args, parsingReplacement || !inlinedMethod.equals(targetMethod));
                         plugin.postInline(inlinedMethod);
                     }
                     return true;
@@ -1254,7 +1254,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                                 // time mark the context loop begin as hit during the current
                                 // iteration.
                                 context.targetPeelIteration = nextPeelIteration++;
-                                if (nextPeelIteration > GraalOptions.MaximumLoopExplosionCount.getValue()) {
+                                if (nextPeelIteration > MaximumLoopExplosionCount.getValue()) {
                                     throw new BailoutException("too many loop explosion interations - does the explosion not terminate?");
                                 }
                             }
