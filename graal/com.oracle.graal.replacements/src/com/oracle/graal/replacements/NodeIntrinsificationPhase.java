@@ -95,7 +95,7 @@ public class NodeIntrinsificationPhase extends Phase {
         } else if (isFoldable(target)) {
             ResolvedJavaType[] parameterTypes = resolveJavaTypes(target.toParameterTypes(), declaringClass);
             JavaConstant constant = tryFold(methodCallTargetNode.arguments(), parameterTypes, target);
-            if (constant == COULD_NOT_FOLD) {
+            if (constant != null && constant.equals(COULD_NOT_FOLD)) {
                 return false;
             }
 
@@ -115,6 +115,10 @@ public class NodeIntrinsificationPhase extends Phase {
     }
 
     @SuppressWarnings("serial") private static final JavaConstant COULD_NOT_FOLD = new PrimitiveConstant(Kind.Illegal, 100) {
+        @Override
+        public boolean equals(Object o) {
+            return this == o;
+        }
     };
 
     public JavaConstant tryFold(List<ValueNode> args, ResolvedJavaType[] parameterTypes, ResolvedJavaMethod target) {
@@ -160,7 +164,7 @@ public class NodeIntrinsificationPhase extends Phase {
 
         if (intrinsic.foldable() && areAllConstant(arguments)) {
             JavaConstant res = tryFold(arguments, parameterTypes, method);
-            if (res != COULD_NOT_FOLD) {
+            if (!res.equals(COULD_NOT_FOLD)) {
                 assert res != null;
                 return ConstantNode.forConstant(res, providers.getMetaAccess());
             }
