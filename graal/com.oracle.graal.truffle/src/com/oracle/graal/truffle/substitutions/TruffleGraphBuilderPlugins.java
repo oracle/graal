@@ -78,6 +78,36 @@ public class TruffleGraphBuilderPlugins {
                 return true;
             }
         });
+        r.register2("addExact", Long.TYPE, Long.TYPE, new InvocationPlugin() {
+            public boolean apply(GraphBuilderContext builder, ValueNode x, ValueNode y) {
+                builder.push(Kind.Long, builder.append(new IntegerAddExactNode(x, y)));
+                return true;
+            }
+        });
+        r.register2("subtractExact", Integer.TYPE, Integer.TYPE, new InvocationPlugin() {
+            public boolean apply(GraphBuilderContext builder, ValueNode x, ValueNode y) {
+                builder.push(Kind.Int.getStackKind(), builder.append(new IntegerSubExactNode(x, y)));
+                return true;
+            }
+        });
+        r.register2("subtractExact", Long.TYPE, Long.TYPE, new InvocationPlugin() {
+            public boolean apply(GraphBuilderContext builder, ValueNode x, ValueNode y) {
+                builder.push(Kind.Long, builder.append(new IntegerSubExactNode(x, y)));
+                return true;
+            }
+        });
+        r.register2("multiplyExact", Integer.TYPE, Integer.TYPE, new InvocationPlugin() {
+            public boolean apply(GraphBuilderContext builder, ValueNode x, ValueNode y) {
+                builder.push(Kind.Int.getStackKind(), builder.append(new IntegerMulExactNode(x, y)));
+                return true;
+            }
+        });
+        r.register2("multiplyExact", Long.TYPE, Long.TYPE, new InvocationPlugin() {
+            public boolean apply(GraphBuilderContext builder, ValueNode x, ValueNode y) {
+                builder.push(Kind.Long, builder.append(new IntegerMulExactNode(x, y)));
+                return true;
+            }
+        });
 
         // CompilerDirectives.class
         r = new Registration(plugins, metaAccess, CompilerDirectives.class);
