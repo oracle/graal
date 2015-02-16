@@ -33,4 +33,10 @@ public enum FrameSlotKind {
     Float,
     Boolean,
     Byte;
+
+    public final byte tag;
+
+    private FrameSlotKind() {
+        this.tag = (byte) ordinal();
+    }
 }
