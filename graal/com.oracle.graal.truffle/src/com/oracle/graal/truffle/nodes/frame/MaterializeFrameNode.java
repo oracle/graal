@@ -25,7 +25,7 @@ package com.oracle.graal.truffle.nodes.frame;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.truffle.*;
+import com.oracle.truffle.api.frame.*;
 
 /**
  * Intrinsic node for materializing a Truffle frame.
@@ -46,5 +46,5 @@ public final class MaterializeFrameNode extends FixedWithNextNode implements Ite
     }
 
     @NodeIntrinsic
-    public static native <T> T materialize(FrameWithoutBoxing frame);
+    public static native <T> T materialize(VirtualFrame frame);
 }

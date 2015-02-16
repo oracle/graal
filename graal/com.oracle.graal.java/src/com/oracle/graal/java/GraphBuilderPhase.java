@@ -291,7 +291,8 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     processBlock(this, unwindBlock);
 
                     if (Debug.isDumpEnabled() && this.beforeReturnNode != startInstruction) {
-                        Debug.dump(currentGraph, "Bytecodes parsed: " + method.getDeclaringClass().getUnqualifiedName() + "." + method.getName());
+                        // Debug.dump(currentGraph, "Bytecodes parsed: " +
+// method.getDeclaringClass().getUnqualifiedName() + "." + method.getName());
                     }
                 }
             }
@@ -315,7 +316,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 context.peelIteration = this.getCurrentDimension();
                 context.targetPeelIteration = -1;
                 explodeLoopsContext.push(context);
-                Debug.dump(currentGraph, "before loop explosion " + context.peelIteration);
+                // Debug.dump(currentGraph, "before loop explosion " + context.peelIteration);
 
                 while (true) {
 
@@ -327,12 +328,14 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
                     if (context.targetPeelIteration != -1) {
                         // We were reaching the backedge during explosion. Explode further.
-                        Debug.dump(currentGraph, "Before loop explosion " + context.targetPeelIteration);
+                        // Debug.dump(currentGraph, "Before loop explosion " +
+// context.targetPeelIteration);
                         context.peelIteration = context.targetPeelIteration;
                         context.targetPeelIteration = -1;
                     } else {
                         // We did not reach the backedge. Exit.
-                        Debug.dump(currentGraph, "after loop explosion " + context.peelIteration);
+                        // Debug.dump(currentGraph, "after loop explosion " +
+// context.peelIteration);
                         break;
                     }
                 }

@@ -119,6 +119,9 @@ public class TruffleCompilerOptions {
     @Option(help = "", type = OptionType.Debug)
     public static final OptionValue<Boolean> TruffleArgumentTypeSpeculation = new StableOptionValue<>(true);
 
+    @Option(help = "", type = OptionType.Debug)
+    public static final StableOptionValue<Boolean> TruffleUseFrameWithoutBoxing = new StableOptionValue<>(true);
+
     // tracing
     @Option(help = "Print potential performance problems", type = OptionType.Debug)
     public static final OptionValue<Boolean> TraceTrufflePerformanceWarnings = new OptionValue<>(false);

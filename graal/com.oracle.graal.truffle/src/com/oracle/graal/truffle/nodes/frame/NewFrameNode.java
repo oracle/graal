@@ -244,5 +244,5 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
     }
 
     @NodeIntrinsic
-    public static native FrameWithoutBoxing allocate(@ConstantNodeParameter Class<? extends VirtualFrame> frameType, FrameDescriptor descriptor, Object[] args);
+    public static native VirtualFrame allocate(@ConstantNodeParameter Class<? extends VirtualFrame> frameType, FrameDescriptor descriptor, Object[] args);
 }
