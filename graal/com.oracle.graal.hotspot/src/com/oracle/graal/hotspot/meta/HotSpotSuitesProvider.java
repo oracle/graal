@@ -32,6 +32,7 @@ import com.oracle.graal.hotspot.phases.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.java.GraphBuilderConfiguration.DebugInfoMode;
 import com.oracle.graal.java.GraphBuilderPlugin.InlineInvokePlugin;
+import com.oracle.graal.java.GraphBuilderPlugin.LoadFieldPlugin;
 import com.oracle.graal.lir.phases.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.options.*;
@@ -114,6 +115,20 @@ public class HotSpotSuitesProvider implements SuitesProvider {
                 }
                 return null;
             }
+        });
+        config.setLoadFieldPlugin(new LoadFieldPlugin() {
+            public boolean apply(GraphBuilderContext builder, ValueNode receiver, ResolvedJavaField field) {
+                if (receiver.isConstant()) {
+                    JavaConstant asJavaConstant = receiver.asJavaConstant();
+                    return tryConstantFold(builder, runtime.getHostProviders().getMetaAccess(), runtime.getHostProviders().getConstantReflection(), field, asJavaConstant);
+                }
+                return false;
+            }
+
+            public boolean apply(GraphBuilderContext builder, ResolvedJavaField staticField) {
+                return tryConstantFold(builder, runtime.getHostProviders().getMetaAccess(), runtime.getHostProviders().getConstantReflection(), staticField, null);
+            }
+
         });
         suite.appendPhase(new GraphBuilderPhase(config));
         return suite;
