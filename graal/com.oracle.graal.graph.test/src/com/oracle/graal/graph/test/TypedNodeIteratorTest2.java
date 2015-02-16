@@ -38,7 +38,11 @@ public class TypedNodeIteratorTest2 {
         protected final String name;
 
         public NodeA(String name) {
-            super(TYPE);
+            this(TYPE, name);
+        }
+
+        protected NodeA(NodeClass c, String name) {
+            super(c);
             this.name = name;
         }
 
@@ -52,7 +56,11 @@ public class TypedNodeIteratorTest2 {
         public static final NodeClass TYPE = NodeClass.get(NodeB.class);
 
         public NodeB(String name) {
-            super(name);
+            this(TYPE, name);
+        }
+
+        protected NodeB(NodeClass c, String name) {
+            super(c, name);
         }
 
     }
@@ -62,7 +70,11 @@ public class TypedNodeIteratorTest2 {
         public static final NodeClass TYPE = NodeClass.get(NodeC.class);
 
         public NodeC(String name) {
-            super(name);
+            this(TYPE, name);
+        }
+
+        protected NodeC(NodeClass c, String name) {
+            super(c, name);
         }
 
     }
@@ -72,7 +84,7 @@ public class TypedNodeIteratorTest2 {
         public static final NodeClass TYPE = NodeClass.get(NodeD.class);
 
         public NodeD(String name) {
-            super(name);
+            super(TYPE, name);
         }
 
     }
