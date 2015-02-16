@@ -31,7 +31,7 @@ public class G1ArrayRangePostWriteBarrier extends ArrayRangeWriteBarrier {
     public static final NodeClass TYPE = NodeClass.get(G1ArrayRangePostWriteBarrier.class);
 
     public G1ArrayRangePostWriteBarrier(ValueNode object, ValueNode startIndex, ValueNode length) {
-        super(object, startIndex, length);
+        super(TYPE, object, startIndex, length);
     }
 
 }
