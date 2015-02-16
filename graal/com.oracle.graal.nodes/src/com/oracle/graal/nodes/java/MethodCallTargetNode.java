@@ -34,14 +34,14 @@ import com.oracle.graal.nodes.type.*;
 
 @NodeInfo
 public class MethodCallTargetNode extends CallTargetNode implements IterableNodeType, Simplifiable {
-    public static final NodeClass TYPE = NodeClass.get(MethodCallTargetNode.class);
+    public static final NodeClass<MethodCallTargetNode> TYPE = NodeClass.get(MethodCallTargetNode.class);
     protected final JavaType returnType;
 
     public MethodCallTargetNode(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, JavaType returnType) {
         this(TYPE, invokeKind, targetMethod, arguments, returnType);
     }
 
-    protected MethodCallTargetNode(NodeClass c, InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, JavaType returnType) {
+    protected MethodCallTargetNode(NodeClass<?> c, InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, JavaType returnType) {
         super(c, arguments, targetMethod, invokeKind);
         this.returnType = returnType;
     }
@@ -248,7 +248,7 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
     }
 
     public static MethodCallTargetNode find(StructuredGraph graph, ResolvedJavaMethod method) {
-        for (MethodCallTargetNode target : graph.getNodes(MethodCallTargetNode.class)) {
+        for (MethodCallTargetNode target : graph.getNodes(MethodCallTargetNode.TYPE)) {
             if (target.targetMethod().equals(method)) {
                 return target;
             }

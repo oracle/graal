@@ -39,7 +39,7 @@ import com.oracle.graal.nodes.spi.*;
  */
 @NodeInfo
 public abstract class IntegerConvertNode<OP, REV> extends UnaryNode implements ConvertNode, ArithmeticLIRLowerable {
-    public static final NodeClass TYPE = NodeClass.get(IntegerConvertNode.class);
+    @SuppressWarnings("rawtypes") public static final NodeClass<IntegerConvertNode> TYPE = NodeClass.get(IntegerConvertNode.class);
 
     protected final SerializableIntegerConvertFunction<OP> getOp;
     protected final SerializableIntegerConvertFunction<REV> getReverseOp;
@@ -50,7 +50,7 @@ public abstract class IntegerConvertNode<OP, REV> extends UnaryNode implements C
     protected interface SerializableIntegerConvertFunction<T> extends Function<ArithmeticOpTable, IntegerConvertOp<T>>, Serializable {
     }
 
-    protected IntegerConvertNode(NodeClass c, SerializableIntegerConvertFunction<OP> getOp, SerializableIntegerConvertFunction<REV> getReverseOp, int inputBits, int resultBits, ValueNode input) {
+    protected IntegerConvertNode(NodeClass<?> c, SerializableIntegerConvertFunction<OP> getOp, SerializableIntegerConvertFunction<REV> getReverseOp, int inputBits, int resultBits, ValueNode input) {
         super(c, getOp.apply(ArithmeticOpTable.forStamp(input.stamp())).foldStamp(inputBits, resultBits, input.stamp()), input);
         this.getOp = getOp;
         this.getReverseOp = getReverseOp;

@@ -390,7 +390,7 @@ public class BenchmarkCounters {
     @NodeInfo(nameTemplate = "CounterIndex")
     private static final class CounterIndexNode extends FloatingNode implements LIRLowerable {
 
-        public static final NodeClass TYPE = NodeClass.get(CounterIndexNode.class);
+        public static final NodeClass<CounterIndexNode> TYPE = NodeClass.get(CounterIndexNode.class);
         protected final Object counter;
         protected final int countersSize;
 

@@ -35,7 +35,7 @@ import com.oracle.graal.word.*;
 @NodeInfo
 public final class CStringNode extends FloatingNode implements LIRLowerable {
 
-    public static final NodeClass TYPE = NodeClass.get(CStringNode.class);
+    public static final NodeClass<CStringNode> TYPE = NodeClass.get(CStringNode.class);
     protected final String string;
 
     public CStringNode(String string) {

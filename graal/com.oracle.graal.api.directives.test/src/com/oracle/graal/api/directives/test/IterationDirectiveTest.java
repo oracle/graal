@@ -51,7 +51,7 @@ public class IterationDirectiveTest extends GraalCompilerTest {
 
     @Override
     protected boolean checkLowTierGraph(StructuredGraph graph) {
-        NodeIterable<LoopBeginNode> loopBeginNodes = graph.getNodes(LoopBeginNode.class);
+        NodeIterable<LoopBeginNode> loopBeginNodes = graph.getNodes(LoopBeginNode.TYPE);
         Assert.assertEquals("LoopBeginNode count", 1, loopBeginNodes.count());
 
         LoopBeginNode loopBeginNode = loopBeginNodes.first();

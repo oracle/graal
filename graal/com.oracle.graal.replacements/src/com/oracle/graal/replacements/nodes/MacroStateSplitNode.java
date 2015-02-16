@@ -38,10 +38,10 @@ import com.oracle.graal.nodes.java.*;
 @NodeInfo
 public abstract class MacroStateSplitNode extends MacroNode implements StateSplit, MemoryCheckpoint.Single {
 
-    public static final NodeClass TYPE = NodeClass.get(MacroStateSplitNode.class);
+    public static final NodeClass<MacroStateSplitNode> TYPE = NodeClass.get(MacroStateSplitNode.class);
     @OptionalInput(InputType.State) protected FrameState stateAfter;
 
-    public MacroStateSplitNode(NodeClass c, Invoke invoke) {
+    public MacroStateSplitNode(NodeClass<?> c, Invoke invoke) {
         super(c, invoke);
         this.stateAfter = invoke.stateAfter();
     }
@@ -66,7 +66,7 @@ public abstract class MacroStateSplitNode extends MacroNode implements StateSpli
     }
 
     protected void replaceSnippetInvokes(StructuredGraph snippetGraph) {
-        for (MethodCallTargetNode call : snippetGraph.getNodes(MethodCallTargetNode.class)) {
+        for (MethodCallTargetNode call : snippetGraph.getNodes(MethodCallTargetNode.TYPE)) {
             Invoke invoke = call.invoke();
             if (!call.targetMethod().equals(getTargetMethod())) {
                 throw new GraalInternalError("unexpected invoke %s in snippet", getClass().getSimpleName());

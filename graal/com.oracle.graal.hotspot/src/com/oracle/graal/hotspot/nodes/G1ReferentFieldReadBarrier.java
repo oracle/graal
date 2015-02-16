@@ -35,7 +35,7 @@ import com.oracle.graal.nodes.extended.*;
  */
 @NodeInfo
 public final class G1ReferentFieldReadBarrier extends WriteBarrier {
-    public static final NodeClass TYPE = NodeClass.get(G1ReferentFieldReadBarrier.class);
+    public static final NodeClass<G1ReferentFieldReadBarrier> TYPE = NodeClass.get(G1ReferentFieldReadBarrier.class);
 
     protected final boolean doLoad;
 

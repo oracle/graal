@@ -32,7 +32,7 @@ import com.oracle.graal.nodes.java.*;
 @NodeInfo
 public final class LoadIndexedPointerNode extends LoadIndexedNode {
 
-    public static final NodeClass TYPE = NodeClass.get(LoadIndexedPointerNode.class);
+    public static final NodeClass<LoadIndexedPointerNode> TYPE = NodeClass.get(LoadIndexedPointerNode.class);
 
     public LoadIndexedPointerNode(Stamp stamp, ValueNode array, ValueNode index) {
         super(TYPE, stamp, array, index, Kind.Illegal);

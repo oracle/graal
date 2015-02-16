@@ -30,7 +30,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public final class ValueProxyNode extends ProxyNode implements Canonicalizable, Virtualizable, ValueProxy {
 
-    public static final NodeClass TYPE = NodeClass.get(ValueProxyNode.class);
+    public static final NodeClass<ValueProxyNode> TYPE = NodeClass.get(ValueProxyNode.class);
     @Input ValueNode value;
 
     public ValueProxyNode(ValueNode value, AbstractBeginNode proxyPoint) {

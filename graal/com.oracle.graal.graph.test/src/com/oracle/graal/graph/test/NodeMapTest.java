@@ -34,7 +34,7 @@ public class NodeMapTest {
 
     @NodeInfo
     static final class TestNode extends Node {
-        public static final NodeClass TYPE = NodeClass.get(TestNode.class);
+        public static final NodeClass<TestNode> TYPE = NodeClass.get(TestNode.class);
 
         protected TestNode() {
             super(TYPE);

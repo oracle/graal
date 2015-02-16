@@ -40,7 +40,7 @@ import com.oracle.graal.nodes.type.*;
 @NodeInfo
 public final class UnsafeCastNode extends FloatingGuardedNode implements LIRLowerable, Virtualizable, GuardingNode, IterableNodeType, Canonicalizable, ValueProxy {
 
-    public static final NodeClass TYPE = NodeClass.get(UnsafeCastNode.class);
+    public static final NodeClass<UnsafeCastNode> TYPE = NodeClass.get(UnsafeCastNode.class);
     @Input ValueNode object;
 
     public UnsafeCastNode(ValueNode object, Stamp stamp) {

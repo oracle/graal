@@ -29,10 +29,10 @@ import com.oracle.graal.nodeinfo.*;
 
 @NodeInfo
 public abstract class InfopointNode extends FixedWithNextNode {
-    public static final NodeClass TYPE = NodeClass.get(InfopointNode.class);
+    public static final NodeClass<InfopointNode> TYPE = NodeClass.get(InfopointNode.class);
     protected final InfopointReason reason;
 
-    public InfopointNode(NodeClass c, InfopointReason reason) {
+    public InfopointNode(NodeClass<?> c, InfopointReason reason) {
         super(c, StampFactory.forVoid());
         this.reason = reason;
     }

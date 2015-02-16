@@ -31,7 +31,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public final class StoreHubNode extends FixedWithNextNode implements Lowerable {
 
-    public static final NodeClass TYPE = NodeClass.get(StoreHubNode.class);
+    public static final NodeClass<StoreHubNode> TYPE = NodeClass.get(StoreHubNode.class);
     @Input ValueNode value;
     @Input ValueNode object;
 

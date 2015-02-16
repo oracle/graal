@@ -40,7 +40,7 @@ public class DeoptimizationGroupingPhase extends BasePhase<MidTierContext> {
     @Override
     protected void run(StructuredGraph graph, MidTierContext context) {
         ControlFlowGraph cfg = null;
-        for (FrameState fs : graph.getNodes(FrameState.class)) {
+        for (FrameState fs : graph.getNodes(FrameState.TYPE)) {
             FixedNode target = null;
             PhiNode reasonActionPhi = null;
             PhiNode speculationPhi = null;

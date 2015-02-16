@@ -37,7 +37,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public final class JavaReadNode extends FixedAccessNode implements Lowerable, GuardingNode, Canonicalizable {
 
-    public static final NodeClass TYPE = NodeClass.get(JavaReadNode.class);
+    public static final NodeClass<JavaReadNode> TYPE = NodeClass.get(JavaReadNode.class);
     protected final Kind readKind;
     protected final boolean compressible;
 

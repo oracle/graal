@@ -36,7 +36,7 @@ import com.oracle.graal.word.*;
  */
 @NodeInfo
 public final class CurrentLockNode extends FixedWithNextNode implements LIRLowerable {
-    public static final NodeClass TYPE = NodeClass.get(CurrentLockNode.class);
+    public static final NodeClass<CurrentLockNode> TYPE = NodeClass.get(CurrentLockNode.class);
 
     protected int lockDepth;
 

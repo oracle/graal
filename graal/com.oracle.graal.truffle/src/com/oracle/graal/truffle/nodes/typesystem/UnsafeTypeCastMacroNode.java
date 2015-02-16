@@ -39,7 +39,7 @@ import com.oracle.graal.truffle.nodes.asserts.*;
 @NodeInfo
 public final class UnsafeTypeCastMacroNode extends NeverPartOfCompilationNode implements Simplifiable {
 
-    public static final NodeClass TYPE = NodeClass.get(UnsafeTypeCastMacroNode.class);
+    public static final NodeClass<UnsafeTypeCastMacroNode> TYPE = NodeClass.get(UnsafeTypeCastMacroNode.class);
     private static final int OBJECT_ARGUMENT_INDEX = 0;
     private static final int CLASS_ARGUMENT_INDEX = 1;
     private static final int CONDITION_ARGUMENT_INDEX = 2;

@@ -32,9 +32,9 @@ import com.oracle.graal.nodes.extended.*;
  */
 @NodeInfo(allowedUsageTypes = {InputType.Memory})
 public class StartNode extends BeginStateSplitNode implements MemoryCheckpoint.Single {
-    public static final NodeClass TYPE = NodeClass.get(StartNode.class);
+    public static final NodeClass<StartNode> TYPE = NodeClass.get(StartNode.class);
 
-    protected StartNode(NodeClass c) {
+    protected StartNode(NodeClass<?> c) {
         super(c);
     }
 

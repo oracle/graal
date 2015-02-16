@@ -31,7 +31,7 @@ import com.oracle.graal.nodes.extended.*;
 @NodeInfo
 public final class VirtualBoxingNode extends VirtualInstanceNode {
 
-    public static final NodeClass TYPE = NodeClass.get(VirtualBoxingNode.class);
+    public static final NodeClass<VirtualBoxingNode> TYPE = NodeClass.get(VirtualBoxingNode.class);
     protected final Kind boxingKind;
 
     public VirtualBoxingNode(ResolvedJavaType type, Kind boxingKind) {

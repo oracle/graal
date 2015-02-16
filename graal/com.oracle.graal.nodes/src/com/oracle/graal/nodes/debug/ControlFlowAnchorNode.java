@@ -35,7 +35,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public final class ControlFlowAnchorNode extends FixedWithNextNode implements LIRLowerable {
 
-    public static final NodeClass TYPE = NodeClass.get(ControlFlowAnchorNode.class);
+    public static final NodeClass<ControlFlowAnchorNode> TYPE = NodeClass.get(ControlFlowAnchorNode.class);
 
     private static class Unique {
     }

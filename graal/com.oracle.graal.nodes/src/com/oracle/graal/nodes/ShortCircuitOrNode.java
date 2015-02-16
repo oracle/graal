@@ -29,7 +29,7 @@ import com.oracle.graal.nodeinfo.*;
 @NodeInfo
 public final class ShortCircuitOrNode extends LogicNode implements IterableNodeType, Canonicalizable.Binary<LogicNode> {
 
-    public static final NodeClass TYPE = NodeClass.get(ShortCircuitOrNode.class);
+    public static final NodeClass<ShortCircuitOrNode> TYPE = NodeClass.get(ShortCircuitOrNode.class);
     @Input(InputType.Condition) LogicNode x;
     @Input(InputType.Condition) LogicNode y;
     protected boolean xNegated;

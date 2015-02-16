@@ -155,7 +155,7 @@ public class DataPatchInConstantsTest extends HotSpotGraalCompilerTest {
 
     @NodeInfo
     private static final class LoadThroughPatchNode extends FixedWithNextNode implements LIRLowerable {
-        public static final NodeClass TYPE = NodeClass.get(LoadThroughPatchNode.class);
+        public static final NodeClass<LoadThroughPatchNode> TYPE = NodeClass.get(LoadThroughPatchNode.class);
 
         @Input protected ValueNode input;
 

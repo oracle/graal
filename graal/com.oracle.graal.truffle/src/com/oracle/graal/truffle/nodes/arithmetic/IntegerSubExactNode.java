@@ -39,7 +39,7 @@ import com.oracle.truffle.api.*;
  */
 @NodeInfo
 public final class IntegerSubExactNode extends SubNode implements IntegerExactArithmeticNode {
-    public static final NodeClass TYPE = NodeClass.get(IntegerSubExactNode.class);
+    public static final NodeClass<IntegerSubExactNode> TYPE = NodeClass.get(IntegerSubExactNode.class);
 
     public IntegerSubExactNode(ValueNode x, ValueNode y) {
         super(TYPE, x, y);

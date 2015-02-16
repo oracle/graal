@@ -40,7 +40,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(nameTemplate = "StubForeignCall#{p#descriptor/s}", allowedUsageTypes = {InputType.Memory})
 public final class StubForeignCallNode extends FixedWithNextNode implements LIRLowerable, MemoryCheckpoint.Multi {
 
-    public static final NodeClass TYPE = NodeClass.get(StubForeignCallNode.class);
+    public static final NodeClass<StubForeignCallNode> TYPE = NodeClass.get(StubForeignCallNode.class);
     @Input NodeInputList<ValueNode> arguments;
     protected final ForeignCallsProvider foreignCalls;
 

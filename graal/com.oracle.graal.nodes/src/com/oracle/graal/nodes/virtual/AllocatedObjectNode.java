@@ -36,7 +36,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public final class AllocatedObjectNode extends FloatingNode implements Virtualizable, ArrayLengthProvider {
 
-    public static final NodeClass TYPE = NodeClass.get(AllocatedObjectNode.class);
+    public static final NodeClass<AllocatedObjectNode> TYPE = NodeClass.get(AllocatedObjectNode.class);
     @Input VirtualObjectNode virtualObject;
     @Input(InputType.Extension) CommitAllocationNode commit;
 

@@ -151,7 +151,7 @@ public class StructuredGraph extends Graph {
 
     public Stamp getReturnStamp() {
         Stamp returnStamp = null;
-        for (ReturnNode returnNode : getNodes(ReturnNode.class)) {
+        for (ReturnNode returnNode : getNodes(ReturnNode.TYPE)) {
             ValueNode result = returnNode.result();
             if (result != null) {
                 if (returnStamp == null) {
@@ -246,7 +246,7 @@ public class StructuredGraph extends Graph {
     }
 
     public ParameterNode getParameter(int index) {
-        for (ParameterNode param : getNodes(ParameterNode.class)) {
+        for (ParameterNode param : getNodes(ParameterNode.TYPE)) {
             if (param.index() == index) {
                 return param;
             }
@@ -255,7 +255,7 @@ public class StructuredGraph extends Graph {
     }
 
     public Iterable<Invoke> getInvokes() {
-        final Iterator<MethodCallTargetNode> callTargets = getNodes(MethodCallTargetNode.class).iterator();
+        final Iterator<MethodCallTargetNode> callTargets = getNodes(MethodCallTargetNode.TYPE).iterator();
         return new Iterable<Invoke>() {
 
             private Invoke next;
@@ -299,7 +299,7 @@ public class StructuredGraph extends Graph {
     }
 
     public boolean hasLoops() {
-        return hasNode(LoopBeginNode.class);
+        return hasNode(LoopBeginNode.TYPE);
     }
 
     public void removeFloating(FloatingNode node) {

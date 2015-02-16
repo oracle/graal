@@ -40,7 +40,7 @@ import com.oracle.graal.word.*;
  */
 @NodeInfo
 public final class CurrentJavaThreadNode extends FloatingNode implements LIRLowerable {
-    public static final NodeClass TYPE = NodeClass.get(CurrentJavaThreadNode.class);
+    public static final NodeClass<CurrentJavaThreadNode> TYPE = NodeClass.get(CurrentJavaThreadNode.class);
 
     protected LIRKind wordKind;
 

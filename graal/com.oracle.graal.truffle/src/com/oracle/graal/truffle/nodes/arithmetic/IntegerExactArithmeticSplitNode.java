@@ -32,14 +32,14 @@ import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo
 public abstract class IntegerExactArithmeticSplitNode extends ControlSplitNode implements LIRLowerable {
-    public static final NodeClass TYPE = NodeClass.get(IntegerExactArithmeticSplitNode.class);
+    public static final NodeClass<IntegerExactArithmeticSplitNode> TYPE = NodeClass.get(IntegerExactArithmeticSplitNode.class);
 
     @Successor AbstractBeginNode overflowSuccessor;
     @Successor AbstractBeginNode next;
     @Input ValueNode x;
     @Input ValueNode y;
 
-    protected IntegerExactArithmeticSplitNode(NodeClass c, Stamp stamp, ValueNode x, ValueNode y, AbstractBeginNode next, AbstractBeginNode overflowSuccessor) {
+    protected IntegerExactArithmeticSplitNode(NodeClass<?> c, Stamp stamp, ValueNode x, ValueNode y, AbstractBeginNode next, AbstractBeginNode overflowSuccessor) {
         super(c, stamp);
         this.x = x;
         this.y = y;

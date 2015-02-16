@@ -73,7 +73,7 @@ public abstract class AbstractInlineInfo implements InlineInfo {
     }
 
     public static void getInlinedParameterUsages(Collection<Node> parameterUsages, StructuredGraph calleeGraph, Map<Node, Node> duplicateMap) {
-        for (ParameterNode parameter : calleeGraph.getNodes(ParameterNode.class)) {
+        for (ParameterNode parameter : calleeGraph.getNodes(ParameterNode.TYPE)) {
             for (Node usage : parameter.usages()) {
                 Node node = duplicateMap.get(usage);
                 if (node != null && node.isAlive()) {

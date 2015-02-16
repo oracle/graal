@@ -30,7 +30,7 @@ import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo
 public final class FixedValueAnchorNode extends FixedWithNextNode implements LIRLowerable, ValueProxy {
-    public static final NodeClass TYPE = NodeClass.get(FixedValueAnchorNode.class);
+    public static final NodeClass<FixedValueAnchorNode> TYPE = NodeClass.get(FixedValueAnchorNode.class);
 
     @Input ValueNode object;
 

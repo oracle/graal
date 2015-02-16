@@ -37,7 +37,7 @@ import com.oracle.graal.word.*;
 @NodeInfo
 public final class PushInterpreterFrameNode extends FixedWithNextNode implements LIRLowerable {
 
-    public static final NodeClass TYPE = NodeClass.get(PushInterpreterFrameNode.class);
+    public static final NodeClass<PushInterpreterFrameNode> TYPE = NodeClass.get(PushInterpreterFrameNode.class);
     @Input ValueNode framePc;
     @Input ValueNode frameSize;
     @Input ValueNode senderSp;

@@ -44,11 +44,11 @@ public class MatchRuleRegistry {
      * level of indirection.
      */
     public interface NodeClassLookup {
-        NodeClass get(Class<?> theClass);
+        NodeClass<?> get(Class<?> theClass);
     }
 
     static class DefaultNodeClassLookup implements NodeClassLookup {
-        public NodeClass get(Class<?> theClass) {
+        public NodeClass<?> get(Class<?> theClass) {
             return NodeClass.get(theClass);
         }
     }
@@ -64,7 +64,7 @@ public class MatchRuleRegistry {
      */
     public static Position[] findPositions(NodeClassLookup lookup, Class<? extends ValueNode> theClass, String[] names) {
         Position[] result = new Position[names.length];
-        NodeClass nodeClass = lookup.get(theClass);
+        NodeClass<?> nodeClass = lookup.get(theClass);
         for (int i = 0; i < names.length; i++) {
             Edges edges = nodeClass.getEdges(Inputs);
             for (int e = 0; e < edges.getDirectCount(); e++) {

@@ -35,7 +35,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public final class ReverseBytesNode extends UnaryNode implements LIRLowerable {
 
-    public static final NodeClass TYPE = NodeClass.get(ReverseBytesNode.class);
+    public static final NodeClass<ReverseBytesNode> TYPE = NodeClass.get(ReverseBytesNode.class);
 
     public ReverseBytesNode(ValueNode value) {
         super(TYPE, StampFactory.forKind(value.getKind()), value);

@@ -40,7 +40,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public final class ZeroExtendNode extends IntegerConvertNode<ZeroExtend, Narrow> {
 
-    public static final NodeClass TYPE = NodeClass.get(ZeroExtendNode.class);
+    public static final NodeClass<ZeroExtendNode> TYPE = NodeClass.get(ZeroExtendNode.class);
 
     public ZeroExtendNode(ValueNode input, int resultBits) {
         this(input, PrimitiveStamp.getBits(input.stamp()), resultBits);

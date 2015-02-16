@@ -37,7 +37,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public final class WriteNode extends AbstractWriteNode implements LIRLowerable, Simplifiable, Virtualizable {
 
-    public static final NodeClass TYPE = NodeClass.get(WriteNode.class);
+    public static final NodeClass<WriteNode> TYPE = NodeClass.get(WriteNode.class);
 
     public WriteNode(ValueNode object, ValueNode value, ValueNode location, BarrierType barrierType) {
         super(TYPE, object, value, location, barrierType);

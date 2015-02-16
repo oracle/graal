@@ -28,7 +28,7 @@ import com.oracle.graal.nodes.*;
 
 @NodeInfo
 public final class G1ArrayRangePreWriteBarrier extends ArrayRangeWriteBarrier {
-    public static final NodeClass TYPE = NodeClass.get(G1ArrayRangePreWriteBarrier.class);
+    public static final NodeClass<G1ArrayRangePreWriteBarrier> TYPE = NodeClass.get(G1ArrayRangePreWriteBarrier.class);
 
     public G1ArrayRangePreWriteBarrier(ValueNode object, ValueNode startIndex, ValueNode length) {
         super(TYPE, object, startIndex, length);

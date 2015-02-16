@@ -39,7 +39,7 @@ import com.oracle.graal.nodes.spi.*;
  */
 @NodeInfo
 public final class FloatConvertNode extends UnaryArithmeticNode<FloatConvertOp> implements ConvertNode, Lowerable, ArithmeticLIRLowerable {
-    public static final NodeClass TYPE = NodeClass.get(FloatConvertNode.class);
+    public static final NodeClass<FloatConvertNode> TYPE = NodeClass.get(FloatConvertNode.class);
 
     protected final FloatConvert op;
 

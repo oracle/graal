@@ -35,7 +35,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public final class BitCountNode extends UnaryNode implements LIRLowerable {
 
-    public static final NodeClass TYPE = NodeClass.get(BitCountNode.class);
+    public static final NodeClass<BitCountNode> TYPE = NodeClass.get(BitCountNode.class);
 
     public BitCountNode(ValueNode value) {
         super(TYPE, StampFactory.forInteger(Kind.Int, 0, ((PrimitiveStamp) value.stamp()).getBits()), value);

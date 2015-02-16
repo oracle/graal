@@ -44,7 +44,7 @@ import com.oracle.graal.nodes.type.*;
 @NodeInfo
 public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtualizable, IterableNodeType, Canonicalizable, ValueProxy {
 
-    public static final NodeClass TYPE = NodeClass.get(PiNode.class);
+    public static final NodeClass<PiNode> TYPE = NodeClass.get(PiNode.class);
     @Input ValueNode object;
     protected final Stamp piStamp;
 
@@ -52,7 +52,7 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
         return object;
     }
 
-    protected PiNode(NodeClass c, ValueNode object, Stamp stamp) {
+    protected PiNode(NodeClass<?> c, ValueNode object, Stamp stamp) {
         super(c, stamp, null);
         this.object = object;
         this.piStamp = stamp;

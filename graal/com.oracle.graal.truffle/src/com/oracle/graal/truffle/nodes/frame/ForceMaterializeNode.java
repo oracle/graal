@@ -30,7 +30,7 @@ import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo
 public final class ForceMaterializeNode extends FixedWithNextNode implements LIRLowerable {
-    public static final NodeClass TYPE = NodeClass.get(ForceMaterializeNode.class);
+    public static final NodeClass<ForceMaterializeNode> TYPE = NodeClass.get(ForceMaterializeNode.class);
 
     @Input ValueNode object;
 

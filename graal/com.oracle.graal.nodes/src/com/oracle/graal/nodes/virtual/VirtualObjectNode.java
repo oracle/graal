@@ -32,10 +32,10 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public abstract class VirtualObjectNode extends ValueNode implements LIRLowerable, IterableNodeType {
 
-    public static final NodeClass TYPE = NodeClass.get(VirtualObjectNode.class);
+    public static final NodeClass<VirtualObjectNode> TYPE = NodeClass.get(VirtualObjectNode.class);
     protected boolean hasIdentity;
 
-    protected VirtualObjectNode(NodeClass c, ResolvedJavaType type, boolean hasIdentity) {
+    protected VirtualObjectNode(NodeClass<?> c, ResolvedJavaType type, boolean hasIdentity) {
         super(c, StampFactory.exactNonNull(type));
         this.hasIdentity = hasIdentity;
     }

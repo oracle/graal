@@ -33,14 +33,14 @@ import com.oracle.graal.nodes.type.*;
 @NodeInfo(nameTemplate = "ValuePhi({i#values})")
 public class ValuePhiNode extends PhiNode {
 
-    public static final NodeClass TYPE = NodeClass.get(ValuePhiNode.class);
+    public static final NodeClass<ValuePhiNode> TYPE = NodeClass.get(ValuePhiNode.class);
     @Input protected NodeInputList<ValueNode> values;
 
     public ValuePhiNode(Stamp stamp, AbstractMergeNode merge) {
         this(TYPE, stamp, merge);
     }
 
-    protected ValuePhiNode(NodeClass c, Stamp stamp, AbstractMergeNode merge) {
+    protected ValuePhiNode(NodeClass<?> c, Stamp stamp, AbstractMergeNode merge) {
         super(c, stamp, merge);
         assert stamp != StampFactory.forVoid();
         values = new NodeInputList<>(this);

@@ -36,7 +36,7 @@ public class TypedNodeIteratorTest {
     @NodeInfo
     static final class TestNode extends Node implements IterableNodeType, TestNodeInterface {
 
-        public static final NodeClass TYPE = NodeClass.get(TestNode.class);
+        public static final NodeClass<TestNode> TYPE = NodeClass.get(TestNode.class);
         protected final String name;
 
         public TestNode(String name) {
@@ -53,8 +53,8 @@ public class TypedNodeIteratorTest {
     public void singleNodeTest() {
         Graph graph = new Graph();
         graph.add(new TestNode("a"));
-        assertTrue(graph.hasNode(TestNode.class));
-        assertEquals("a", toString(graph.getNodes(TestNode.class)));
+        assertTrue(graph.hasNode(TestNode.TYPE));
+        assertEquals("a", toString(graph.getNodes(TestNode.TYPE)));
     }
 
     @Test
@@ -63,7 +63,7 @@ public class TypedNodeIteratorTest {
         Graph graph = new Graph();
         graph.add(testNode);
         testNode.safeDelete();
-        assertEquals("", toString(graph.getNodes(TestNode.class)));
+        assertEquals("", toString(graph.getNodes(TestNode.TYPE)));
     }
 
     @Test
@@ -73,16 +73,16 @@ public class TypedNodeIteratorTest {
         graph.add(new TestNode("a"));
         graph.add(testNode);
         testNode.safeDelete();
-        assertEquals("a", toString(graph.getNodes(TestNode.class)));
+        assertEquals("a", toString(graph.getNodes(TestNode.TYPE)));
         graph.add(new TestNode("c"));
-        assertEquals("ac", toString(graph.getNodes(TestNode.class)));
+        assertEquals("ac", toString(graph.getNodes(TestNode.TYPE)));
     }
 
     @Test
     public void iteratorBehaviorTest() {
         Graph graph = new Graph();
         graph.add(new TestNode("a"));
-        Iterator<TestNode> iterator = graph.getNodes(TestNode.class).iterator();
+        Iterator<TestNode> iterator = graph.getNodes(TestNode.TYPE).iterator();
         assertTrue(iterator.hasNext());
         assertEquals("a", iterator.next().getName());
         assertFalse(iterator.hasNext());
@@ -101,7 +101,7 @@ public class TypedNodeIteratorTest {
     public void complicatedIterationTest() {
         Graph graph = new Graph();
         graph.add(new TestNode("a"));
-        for (TestNode tn : graph.getNodes(TestNode.class)) {
+        for (TestNode tn : graph.getNodes(TestNode.TYPE)) {
             String name = tn.getName();
             for (int i = 0; i < name.length(); ++i) {
                 char c = name.charAt(i);
@@ -121,7 +121,7 @@ public class TypedNodeIteratorTest {
                     graph.add(new TestNode("e"));
                     graph.add(new TestNode("d"));
                 } else if (c == 'd') {
-                    for (TestNode tn2 : graph.getNodes(TestNode.class)) {
+                    for (TestNode tn2 : graph.getNodes(TestNode.TYPE)) {
                         if (tn2.getName().equals("e")) {
                             tn2.safeDelete();
                         } else if (tn2.getName().equals("c")) {
@@ -133,7 +133,7 @@ public class TypedNodeIteratorTest {
                 }
             }
         }
-        assertEquals("dddd", toString(graph.getNodes(TestNode.class)));
+        assertEquals("dddd", toString(graph.getNodes(TestNode.TYPE)));
     }
 
     @Test
@@ -142,7 +142,7 @@ public class TypedNodeIteratorTest {
         graph.add(new TestNode("a"));
         StringBuilder sb = new StringBuilder();
         int z = 0;
-        for (TestNode tn : graph.getNodes(TestNode.class)) {
+        for (TestNode tn : graph.getNodes(TestNode.TYPE)) {
             if (z == 0) {
                 graph.add(new TestNode("b"));
             }
@@ -152,7 +152,7 @@ public class TypedNodeIteratorTest {
         assertEquals(2, z);
         assertEquals("ab", sb.toString());
         z = 0;
-        for (TestNode tn : graph.getNodes(TestNode.class)) {
+        for (TestNode tn : graph.getNodes(TestNode.TYPE)) {
             if (z == 0) {
                 graph.add(new TestNode("c"));
             }

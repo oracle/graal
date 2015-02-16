@@ -33,7 +33,7 @@ import com.oracle.graal.replacements.nodes.*;
 @NodeInfo
 public final class IsCompilationConstantNode extends MacroStateSplitNode implements Canonicalizable {
 
-    public static final NodeClass TYPE = NodeClass.get(IsCompilationConstantNode.class);
+    public static final NodeClass<IsCompilationConstantNode> TYPE = NodeClass.get(IsCompilationConstantNode.class);
 
     public IsCompilationConstantNode(Invoke invoke) {
         super(TYPE, invoke);

@@ -30,7 +30,7 @@ import com.oracle.graal.nodes.*;
 @NodeInfo(nameTemplate = "VirtualInstance {p#type/s}")
 public class VirtualInstanceNode extends VirtualObjectNode {
 
-    public static final NodeClass TYPE = NodeClass.get(VirtualInstanceNode.class);
+    public static final NodeClass<VirtualInstanceNode> TYPE = NodeClass.get(VirtualInstanceNode.class);
     protected final ResolvedJavaType type;
     protected final ResolvedJavaField[] fields;
 
@@ -42,11 +42,11 @@ public class VirtualInstanceNode extends VirtualObjectNode {
         this(TYPE, type, fields, hasIdentity);
     }
 
-    protected VirtualInstanceNode(NodeClass c, ResolvedJavaType type, boolean hasIdentity) {
+    protected VirtualInstanceNode(NodeClass<?> c, ResolvedJavaType type, boolean hasIdentity) {
         this(c, type, type.getInstanceFields(true), hasIdentity);
     }
 
-    protected VirtualInstanceNode(NodeClass c, ResolvedJavaType type, ResolvedJavaField[] fields, boolean hasIdentity) {
+    protected VirtualInstanceNode(NodeClass<?> c, ResolvedJavaType type, ResolvedJavaField[] fields, boolean hasIdentity) {
         super(c, type, hasIdentity);
         this.type = type;
         this.fields = fields;

@@ -42,7 +42,7 @@ import com.oracle.graal.word.*;
 @NodeInfo
 public final class DimensionsNode extends FixedWithNextNode implements LIRLowerable {
 
-    public static final NodeClass TYPE = NodeClass.get(DimensionsNode.class);
+    public static final NodeClass<DimensionsNode> TYPE = NodeClass.get(DimensionsNode.class);
     protected final int rank;
 
     public DimensionsNode(int rank) {

@@ -38,7 +38,7 @@ import com.oracle.graal.nodes.util.*;
  */
 @NodeInfo(nameTemplate = "Invoke#{p#targetMethod/s}", allowedUsageTypes = {InputType.Memory})
 public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke, LIRLowerable, MemoryCheckpoint.Single {
-    public static final NodeClass TYPE = NodeClass.get(InvokeNode.class);
+    public static final NodeClass<InvokeNode> TYPE = NodeClass.get(InvokeNode.class);
 
     @Input(InputType.Extension) CallTargetNode callTarget;
     @OptionalInput(InputType.State) FrameState stateDuring;

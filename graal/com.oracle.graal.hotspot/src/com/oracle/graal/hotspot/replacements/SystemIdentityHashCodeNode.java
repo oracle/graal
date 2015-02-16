@@ -34,7 +34,7 @@ import com.oracle.graal.replacements.nodes.*;
 @NodeInfo
 public final class SystemIdentityHashCodeNode extends PureFunctionMacroNode {
 
-    public static final NodeClass TYPE = NodeClass.get(SystemIdentityHashCodeNode.class);
+    public static final NodeClass<SystemIdentityHashCodeNode> TYPE = NodeClass.get(SystemIdentityHashCodeNode.class);
 
     public SystemIdentityHashCodeNode(Invoke invoke) {
         super(TYPE, invoke);

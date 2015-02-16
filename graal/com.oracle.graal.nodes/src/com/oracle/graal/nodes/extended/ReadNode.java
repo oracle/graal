@@ -39,7 +39,7 @@ import com.oracle.graal.nodes.util.*;
 @NodeInfo
 public final class ReadNode extends FloatableAccessNode implements LIRLowerable, Canonicalizable, PiPushable, Virtualizable, GuardingNode {
 
-    public static final NodeClass TYPE = NodeClass.get(ReadNode.class);
+    public static final NodeClass<ReadNode> TYPE = NodeClass.get(ReadNode.class);
 
     public ReadNode(ValueNode object, ValueNode location, Stamp stamp, BarrierType barrierType) {
         super(TYPE, object, location, stamp, null, barrierType);

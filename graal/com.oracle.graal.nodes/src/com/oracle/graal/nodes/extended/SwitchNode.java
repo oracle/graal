@@ -37,7 +37,7 @@ import com.oracle.graal.nodes.*;
 @NodeInfo
 public abstract class SwitchNode extends ControlSplitNode {
 
-    public static final NodeClass TYPE = NodeClass.get(SwitchNode.class);
+    public static final NodeClass<SwitchNode> TYPE = NodeClass.get(SwitchNode.class);
     @Successor protected NodeSuccessorList<AbstractBeginNode> successors;
     @Input protected ValueNode value;
 
@@ -51,7 +51,7 @@ public abstract class SwitchNode extends ControlSplitNode {
      * @param value the instruction that provides the value to be switched over
      * @param successors the list of successors of this switch
      */
-    protected SwitchNode(NodeClass c, ValueNode value, AbstractBeginNode[] successors, int[] keySuccessors, double[] keyProbabilities) {
+    protected SwitchNode(NodeClass<?> c, ValueNode value, AbstractBeginNode[] successors, int[] keySuccessors, double[] keyProbabilities) {
         super(c, StampFactory.forVoid());
         assert value.stamp().getStackKind().isNumericInteger() || value.stamp() instanceof AbstractPointerStamp : value.stamp() + " key not supported by SwitchNode";
         assert keySuccessors.length == keyProbabilities.length;

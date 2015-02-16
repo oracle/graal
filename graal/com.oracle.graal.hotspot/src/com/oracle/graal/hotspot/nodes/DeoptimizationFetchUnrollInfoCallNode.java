@@ -42,7 +42,7 @@ import com.oracle.graal.word.*;
 @NodeInfo(allowedUsageTypes = {InputType.Memory})
 public final class DeoptimizationFetchUnrollInfoCallNode extends FixedWithNextNode implements LIRLowerable, MemoryCheckpoint.Multi {
 
-    public static final NodeClass TYPE = NodeClass.get(DeoptimizationFetchUnrollInfoCallNode.class);
+    public static final NodeClass<DeoptimizationFetchUnrollInfoCallNode> TYPE = NodeClass.get(DeoptimizationFetchUnrollInfoCallNode.class);
     @Input SaveAllRegistersNode registerSaver;
     protected final ForeignCallsProvider foreignCalls;
 

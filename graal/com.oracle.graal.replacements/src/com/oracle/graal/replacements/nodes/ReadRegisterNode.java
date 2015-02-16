@@ -36,7 +36,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(nameTemplate = "ReadRegister %{p#register}")
 public final class ReadRegisterNode extends FixedWithNextNode implements LIRLowerable {
 
-    public static final NodeClass TYPE = NodeClass.get(ReadRegisterNode.class);
+    public static final NodeClass<ReadRegisterNode> TYPE = NodeClass.get(ReadRegisterNode.class);
     /**
      * The fixed register to access.
      */

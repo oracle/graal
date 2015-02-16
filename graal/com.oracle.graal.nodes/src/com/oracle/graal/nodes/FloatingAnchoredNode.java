@@ -30,15 +30,15 @@ import com.oracle.graal.nodes.extended.*;
 
 @NodeInfo
 public abstract class FloatingAnchoredNode extends FloatingNode {
-    public static final NodeClass TYPE = NodeClass.get(FloatingAnchoredNode.class);
+    public static final NodeClass<FloatingAnchoredNode> TYPE = NodeClass.get(FloatingAnchoredNode.class);
 
     @Input(InputType.Anchor) protected AnchoringNode anchor;
 
-    public FloatingAnchoredNode(NodeClass c, Stamp stamp) {
+    public FloatingAnchoredNode(NodeClass<?> c, Stamp stamp) {
         super(c, stamp);
     }
 
-    public FloatingAnchoredNode(NodeClass c, Stamp stamp, AnchoringNode anchor) {
+    public FloatingAnchoredNode(NodeClass<?> c, Stamp stamp, AnchoringNode anchor) {
         super(c, stamp);
         this.anchor = anchor;
     }

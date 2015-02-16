@@ -34,7 +34,7 @@ import com.oracle.graal.nodes.util.*;
 
 @NodeInfo(shortName = "==")
 public final class FloatEqualsNode extends CompareNode {
-    public static final NodeClass TYPE = NodeClass.get(FloatEqualsNode.class);
+    public static final NodeClass<FloatEqualsNode> TYPE = NodeClass.get(FloatEqualsNode.class);
 
     public FloatEqualsNode(ValueNode x, ValueNode y) {
         super(TYPE, Condition.EQ, false, x, y);

@@ -63,7 +63,7 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
 
     @NodeInfo(allowedUsageTypes = {InputType.Guard, InputType.Anchor})
     static final class DummyAnchorNode extends FixedWithNextNode implements GuardingNode, AnchoringNode {
-        public static final NodeClass TYPE = NodeClass.get(DummyAnchorNode.class);
+        public static final NodeClass<DummyAnchorNode> TYPE = NodeClass.get(DummyAnchorNode.class);
 
         public DummyAnchorNode() {
             super(TYPE, StampFactory.forVoid());
@@ -158,12 +158,12 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
 
     @Override
     protected void run(StructuredGraph graph, PhaseContext phaseContext) {
-        if (graph.hasNode(AbstractMergeNode.class)) {
+        if (graph.hasNode(AbstractMergeNode.TYPE)) {
             ToDoubleFunction<FixedNode> nodeProbabilities = new FixedNodeProbabilityCache();
 
             // A snapshot is taken here, so that new MergeNode instances aren't considered for tail
             // duplication.
-            for (AbstractMergeNode merge : graph.getNodes(AbstractMergeNode.class).snapshot()) {
+            for (AbstractMergeNode merge : graph.getNodes(AbstractMergeNode.TYPE).snapshot()) {
                 if (!(merge instanceof LoopBeginNode) && nodeProbabilities.applyAsDouble(merge) >= TailDuplicationProbability.getValue()) {
                     tailDuplicate(merge, DEFAULT_DECISION, null, phaseContext, canonicalizer);
                 }

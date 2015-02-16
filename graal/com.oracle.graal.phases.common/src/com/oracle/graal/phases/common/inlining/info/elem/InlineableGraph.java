@@ -143,7 +143,7 @@ public class InlineableGraph implements Inlineable {
     private ArrayList<Node> replaceParamsWithMoreInformativeArguments(final Invoke invoke, final HighTierContext context) {
         NodeInputList<ValueNode> args = invoke.callTarget().arguments();
         ArrayList<Node> parameterUsages = null;
-        List<ParameterNode> params = graph.getNodes(ParameterNode.class).snapshot();
+        List<ParameterNode> params = graph.getNodes(ParameterNode.TYPE).snapshot();
         assert params.size() <= args.size();
         /*
          * param-nodes that aren't used (eg, as a result of canonicalization) don't occur in

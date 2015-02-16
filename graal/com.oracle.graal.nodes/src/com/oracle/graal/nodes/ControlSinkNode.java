@@ -28,9 +28,9 @@ import com.oracle.graal.nodeinfo.*;
 
 @NodeInfo
 public abstract class ControlSinkNode extends FixedNode {
-    public static final NodeClass TYPE = NodeClass.get(ControlSinkNode.class);
+    public static final NodeClass<ControlSinkNode> TYPE = NodeClass.get(ControlSinkNode.class);
 
-    protected ControlSinkNode(NodeClass c, Stamp stamp) {
+    protected ControlSinkNode(NodeClass<?> c, Stamp stamp) {
         super(c, stamp);
     }
 }

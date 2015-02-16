@@ -33,7 +33,7 @@ import com.oracle.graal.nodes.extended.*;
 @NodeInfo(nameTemplate = "GuardPhi({i#values})", allowedUsageTypes = {InputType.Guard})
 public final class GuardPhiNode extends PhiNode implements GuardingNode {
 
-    public static final NodeClass TYPE = NodeClass.get(GuardPhiNode.class);
+    public static final NodeClass<GuardPhiNode> TYPE = NodeClass.get(GuardPhiNode.class);
     @OptionalInput(InputType.Guard) NodeInputList<ValueNode> values;
 
     public GuardPhiNode(AbstractMergeNode merge) {

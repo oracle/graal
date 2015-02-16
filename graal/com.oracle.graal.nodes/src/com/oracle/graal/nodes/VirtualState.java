@@ -32,11 +32,11 @@ import com.oracle.graal.nodeinfo.*;
 @NodeInfo(allowedUsageTypes = {InputType.State})
 public abstract class VirtualState extends Node {
 
-    protected VirtualState(NodeClass c) {
+    protected VirtualState(NodeClass<?> c) {
         super(c);
     }
 
-    public static final NodeClass TYPE = NodeClass.get(VirtualState.class);
+    public static final NodeClass<VirtualState> TYPE = NodeClass.get(VirtualState.class);
 
     public abstract static class NodeClosure<T extends Node> {
 

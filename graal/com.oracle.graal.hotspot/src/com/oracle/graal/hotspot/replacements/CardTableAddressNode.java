@@ -32,7 +32,7 @@ import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo
 public final class CardTableAddressNode extends FloatingNode implements LIRLowerable {
-    public static final NodeClass TYPE = NodeClass.get(CardTableAddressNode.class);
+    public static final NodeClass<CardTableAddressNode> TYPE = NodeClass.get(CardTableAddressNode.class);
 
     public CardTableAddressNode() {
         super(TYPE, StampFactory.forKind(Kind.Long));

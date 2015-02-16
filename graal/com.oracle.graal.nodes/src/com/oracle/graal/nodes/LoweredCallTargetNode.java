@@ -33,12 +33,12 @@ import com.oracle.graal.nodeinfo.*;
 @NodeInfo
 public abstract class LoweredCallTargetNode extends CallTargetNode {
 
-    public static final NodeClass TYPE = NodeClass.get(LoweredCallTargetNode.class);
+    public static final NodeClass<LoweredCallTargetNode> TYPE = NodeClass.get(LoweredCallTargetNode.class);
     protected final Stamp returnStamp;
     protected final JavaType[] signature;
     protected final CallingConvention.Type callType;
 
-    protected LoweredCallTargetNode(NodeClass c, List<ValueNode> arguments, Stamp returnStamp, JavaType[] signature, ResolvedJavaMethod target, CallingConvention.Type callType, InvokeKind invokeKind) {
+    protected LoweredCallTargetNode(NodeClass<?> c, List<ValueNode> arguments, Stamp returnStamp, JavaType[] signature, ResolvedJavaMethod target, CallingConvention.Type callType, InvokeKind invokeKind) {
         super(c, arguments, target, invokeKind);
         this.returnStamp = returnStamp;
         this.signature = signature;

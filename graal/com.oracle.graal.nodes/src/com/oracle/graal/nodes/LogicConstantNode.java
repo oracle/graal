@@ -32,7 +32,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(nameTemplate = "{p#value}")
 public final class LogicConstantNode extends LogicNode implements LIRLowerable {
 
-    public static final NodeClass TYPE = NodeClass.get(LogicConstantNode.class);
+    public static final NodeClass<LogicConstantNode> TYPE = NodeClass.get(LogicConstantNode.class);
     protected final boolean value;
 
     public LogicConstantNode(boolean value) {

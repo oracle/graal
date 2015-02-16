@@ -35,14 +35,14 @@ import com.oracle.graal.nodeinfo.*;
 @NodeInfo
 public abstract class ValueNode extends com.oracle.graal.graph.Node implements KindProvider {
 
-    public static final NodeClass TYPE = NodeClass.get(ValueNode.class);
+    public static final NodeClass<ValueNode> TYPE = NodeClass.get(ValueNode.class);
     /**
      * The kind of this value. This is {@link Kind#Void} for instructions that produce no value.
      * This kind is guaranteed to be a {@linkplain Kind#getStackKind() stack kind}.
      */
     protected Stamp stamp;
 
-    public ValueNode(NodeClass c, Stamp stamp) {
+    public ValueNode(NodeClass<?> c, Stamp stamp) {
         super(c);
         this.stamp = stamp;
     }

@@ -37,13 +37,13 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(shortName = "*")
 public class MulNode extends BinaryArithmeticNode<Mul> implements NarrowableArithmeticNode {
 
-    public static final NodeClass TYPE = NodeClass.get(MulNode.class);
+    public static final NodeClass<MulNode> TYPE = NodeClass.get(MulNode.class);
 
     public MulNode(ValueNode x, ValueNode y) {
         this(TYPE, x, y);
     }
 
-    protected MulNode(NodeClass c, ValueNode x, ValueNode y) {
+    protected MulNode(NodeClass<?> c, ValueNode x, ValueNode y) {
         super(c, ArithmeticOpTable::getMul, x, y);
     }
 

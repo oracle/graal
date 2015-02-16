@@ -35,9 +35,9 @@ import com.oracle.graal.nodes.*;
 @NodeInfo
 public abstract class PureFunctionMacroNode extends MacroStateSplitNode implements Canonicalizable {
 
-    public static final NodeClass TYPE = NodeClass.get(PureFunctionMacroNode.class);
+    public static final NodeClass<PureFunctionMacroNode> TYPE = NodeClass.get(PureFunctionMacroNode.class);
 
-    protected PureFunctionMacroNode(NodeClass c, Invoke invoke) {
+    protected PureFunctionMacroNode(NodeClass<?> c, Invoke invoke) {
         super(c, invoke);
     }
 

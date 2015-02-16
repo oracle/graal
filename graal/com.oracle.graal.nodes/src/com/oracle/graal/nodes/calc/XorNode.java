@@ -38,7 +38,7 @@ import com.oracle.graal.nodes.util.*;
 @NodeInfo(shortName = "^")
 public final class XorNode extends BinaryArithmeticNode<Xor> {
 
-    public static final NodeClass TYPE = NodeClass.get(XorNode.class);
+    public static final NodeClass<XorNode> TYPE = NodeClass.get(XorNode.class);
 
     public XorNode(ValueNode x, ValueNode y) {
         super(TYPE, ArithmeticOpTable::getXor, x, y);

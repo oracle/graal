@@ -28,9 +28,9 @@ import com.oracle.graal.nodeinfo.*;
 
 @NodeInfo
 public abstract class FixedNode extends ValueNode {
-    public static final NodeClass TYPE = NodeClass.get(FixedNode.class);
+    public static final NodeClass<FixedNode> TYPE = NodeClass.get(FixedNode.class);
 
-    protected FixedNode(NodeClass c, Stamp stamp) {
+    protected FixedNode(NodeClass<?> c, Stamp stamp) {
         super(c, stamp);
     }
 

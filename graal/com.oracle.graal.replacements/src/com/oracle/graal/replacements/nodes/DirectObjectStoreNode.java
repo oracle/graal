@@ -38,7 +38,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public final class DirectObjectStoreNode extends FixedWithNextNode implements Lowerable {
 
-    public static final NodeClass TYPE = NodeClass.get(DirectObjectStoreNode.class);
+    public static final NodeClass<DirectObjectStoreNode> TYPE = NodeClass.get(DirectObjectStoreNode.class);
     @Input ValueNode object;
     @Input ValueNode value;
     @Input ValueNode offset;

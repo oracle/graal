@@ -64,7 +64,7 @@ public class NodeIntrinsificationPhase extends Phase {
     @Override
     protected void run(StructuredGraph graph) {
         ArrayList<Node> cleanUpReturnList = new ArrayList<>();
-        for (MethodCallTargetNode node : graph.getNodes(MethodCallTargetNode.class)) {
+        for (MethodCallTargetNode node : graph.getNodes(MethodCallTargetNode.TYPE)) {
             tryIntrinsify(node, cleanUpReturnList);
         }
 

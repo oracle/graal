@@ -39,7 +39,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(allowedUsageTypes = {InputType.Association})
 public abstract class LocationNode extends FloatingNode implements LIRLowerable, ValueNumberable {
 
-    public static final NodeClass TYPE = NodeClass.get(LocationNode.class);
+    public static final NodeClass<LocationNode> TYPE = NodeClass.get(LocationNode.class);
 
     /**
      * Marker interface for locations in snippets.
@@ -47,7 +47,7 @@ public abstract class LocationNode extends FloatingNode implements LIRLowerable,
     public interface Location {
     }
 
-    protected LocationNode(NodeClass c, Stamp stamp) {
+    protected LocationNode(NodeClass<?> c, Stamp stamp) {
         super(c, stamp);
     }
 

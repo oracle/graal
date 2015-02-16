@@ -30,14 +30,14 @@ import com.oracle.graal.nodes.extended.*;
 @NodeInfo
 public class SerialWriteBarrier extends WriteBarrier {
 
-    public static final NodeClass TYPE = NodeClass.get(SerialWriteBarrier.class);
+    public static final NodeClass<SerialWriteBarrier> TYPE = NodeClass.get(SerialWriteBarrier.class);
     protected final boolean alwaysNull;
 
     public SerialWriteBarrier(ValueNode object, LocationNode location, boolean precise, boolean alwaysNull) {
         this(TYPE, object, location, precise, alwaysNull);
     }
 
-    protected SerialWriteBarrier(NodeClass c, ValueNode object, LocationNode location, boolean precise, boolean alwaysNull) {
+    protected SerialWriteBarrier(NodeClass<?> c, ValueNode object, LocationNode location, boolean precise, boolean alwaysNull) {
         super(c, object, null, location, precise);
         this.alwaysNull = alwaysNull;
     }

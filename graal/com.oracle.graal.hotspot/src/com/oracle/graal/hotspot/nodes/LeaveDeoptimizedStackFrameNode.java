@@ -39,7 +39,7 @@ import com.oracle.graal.word.*;
 @NodeInfo
 public final class LeaveDeoptimizedStackFrameNode extends FixedWithNextNode implements LIRLowerable {
 
-    public static final NodeClass TYPE = NodeClass.get(LeaveDeoptimizedStackFrameNode.class);
+    public static final NodeClass<LeaveDeoptimizedStackFrameNode> TYPE = NodeClass.get(LeaveDeoptimizedStackFrameNode.class);
     @Input ValueNode frameSize;
     @Input ValueNode initialInfo;
 

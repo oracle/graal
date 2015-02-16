@@ -32,9 +32,9 @@ import com.oracle.graal.nodeinfo.*;
  */
 @NodeInfo
 public abstract class ControlSplitNode extends FixedNode implements IterableNodeType {
-    public static final NodeClass TYPE = NodeClass.get(ControlSplitNode.class);
+    public static final NodeClass<ControlSplitNode> TYPE = NodeClass.get(ControlSplitNode.class);
 
-    protected ControlSplitNode(NodeClass c, Stamp stamp) {
+    protected ControlSplitNode(NodeClass<?> c, Stamp stamp) {
         super(c, stamp);
     }
 

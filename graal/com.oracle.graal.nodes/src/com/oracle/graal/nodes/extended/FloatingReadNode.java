@@ -36,7 +36,7 @@ import com.oracle.graal.nodes.spi.*;
  */
 @NodeInfo
 public final class FloatingReadNode extends FloatingAccessNode implements LIRLowerable, Canonicalizable {
-    public static final NodeClass TYPE = NodeClass.get(FloatingReadNode.class);
+    public static final NodeClass<FloatingReadNode> TYPE = NodeClass.get(FloatingReadNode.class);
 
     @OptionalInput(InputType.Memory) MemoryNode lastLocationAccess;
 

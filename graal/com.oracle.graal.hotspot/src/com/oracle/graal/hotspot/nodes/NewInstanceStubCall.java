@@ -41,7 +41,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public final class NewInstanceStubCall extends DeoptimizingStubCall implements LIRLowerable {
 
-    public static final NodeClass TYPE = NodeClass.get(NewInstanceStubCall.class);
+    public static final NodeClass<NewInstanceStubCall> TYPE = NodeClass.get(NewInstanceStubCall.class);
     private static final Stamp defaultStamp = StampFactory.objectNonNull();
 
     @Input ValueNode hub;

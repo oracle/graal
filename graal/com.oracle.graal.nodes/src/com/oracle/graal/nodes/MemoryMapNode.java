@@ -38,7 +38,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(allowedUsageTypes = {InputType.Extension})
 public final class MemoryMapNode extends FloatingNode implements MemoryMap, LIRLowerable {
 
-    public static final NodeClass TYPE = NodeClass.get(MemoryMapNode.class);
+    public static final NodeClass<MemoryMapNode> TYPE = NodeClass.get(MemoryMapNode.class);
     protected final List<LocationIdentity> locationIdentities;
     @Input(InputType.Memory) NodeInputList<ValueNode> nodes;
 

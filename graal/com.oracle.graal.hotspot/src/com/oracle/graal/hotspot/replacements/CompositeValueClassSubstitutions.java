@@ -48,7 +48,7 @@ public class CompositeValueClassSubstitutions {
     @NodeInfo
     public static final class CompositeValueClassGetNode extends PureFunctionMacroNode {
 
-        public static final NodeClass TYPE = NodeClass.get(CompositeValueClassGetNode.class);
+        public static final NodeClass<CompositeValueClassGetNode> TYPE = NodeClass.get(CompositeValueClassGetNode.class);
 
         public CompositeValueClassGetNode(Invoke invoke) {
             super(TYPE, invoke);

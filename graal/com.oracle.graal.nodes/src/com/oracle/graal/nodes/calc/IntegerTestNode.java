@@ -35,7 +35,7 @@ import com.oracle.graal.nodes.*;
  */
 @NodeInfo
 public final class IntegerTestNode extends BinaryOpLogicNode {
-    public static final NodeClass TYPE = NodeClass.get(IntegerTestNode.class);
+    public static final NodeClass<IntegerTestNode> TYPE = NodeClass.get(IntegerTestNode.class);
 
     public IntegerTestNode(ValueNode x, ValueNode y) {
         super(TYPE, x, y);

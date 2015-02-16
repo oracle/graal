@@ -39,14 +39,14 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements ArithmeticLIRLowerable {
 
-    public static final NodeClass TYPE = NodeClass.get(BinaryArithmeticNode.class);
+    @SuppressWarnings("rawtypes") public static final NodeClass<BinaryArithmeticNode> TYPE = NodeClass.get(BinaryArithmeticNode.class);
 
     protected interface SerializableBinaryFunction<T> extends Function<ArithmeticOpTable, BinaryOp<T>>, Serializable {
     }
 
     protected final SerializableBinaryFunction<OP> getOp;
 
-    protected BinaryArithmeticNode(NodeClass c, SerializableBinaryFunction<OP> getOp, ValueNode x, ValueNode y) {
+    protected BinaryArithmeticNode(NodeClass<?> c, SerializableBinaryFunction<OP> getOp, ValueNode x, ValueNode y) {
         super(c, getOp.apply(ArithmeticOpTable.forStamp(x.stamp())).foldStamp(x.stamp(), y.stamp()), x, y);
         this.getOp = getOp;
     }

@@ -38,7 +38,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(allowedUsageTypes = {InputType.Memory})
 public final class SaveAllRegistersNode extends FixedWithNextNode implements LIRLowerable, MemoryCheckpoint.Single {
 
-    public static final NodeClass TYPE = NodeClass.get(SaveAllRegistersNode.class);
+    public static final NodeClass<SaveAllRegistersNode> TYPE = NodeClass.get(SaveAllRegistersNode.class);
     protected SaveRegistersOp saveRegistersOp;
 
     public SaveAllRegistersNode() {

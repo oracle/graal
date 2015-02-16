@@ -33,7 +33,7 @@ import com.oracle.graal.nodes.virtual.*;
 @NodeInfo
 public final class MaterializedObjectState extends EscapeObjectState implements Node.ValueNumberable {
 
-    public static final NodeClass TYPE = NodeClass.get(MaterializedObjectState.class);
+    public static final NodeClass<MaterializedObjectState> TYPE = NodeClass.get(MaterializedObjectState.class);
     @Input ValueNode materializedValue;
 
     public ValueNode materializedValue() {

@@ -33,13 +33,13 @@ import com.oracle.graal.nodes.util.*;
 @NodeInfo(shortName = "==")
 public class PointerEqualsNode extends CompareNode {
 
-    public static final NodeClass TYPE = NodeClass.get(PointerEqualsNode.class);
+    public static final NodeClass<PointerEqualsNode> TYPE = NodeClass.get(PointerEqualsNode.class);
 
     public PointerEqualsNode(ValueNode x, ValueNode y) {
         this(TYPE, x, y);
     }
 
-    protected PointerEqualsNode(NodeClass c, ValueNode x, ValueNode y) {
+    protected PointerEqualsNode(NodeClass<?> c, ValueNode x, ValueNode y) {
         super(c, Condition.EQ, false, x, y);
         assert x.stamp() instanceof AbstractPointerStamp;
         assert y.stamp() instanceof AbstractPointerStamp;

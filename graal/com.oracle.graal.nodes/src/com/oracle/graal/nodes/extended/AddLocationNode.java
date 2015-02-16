@@ -39,7 +39,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(nameTemplate = "AddLoc {p#locationIdentity/s}")
 public final class AddLocationNode extends LocationNode implements Canonicalizable.Binary<LocationNode> {
 
-    public static final NodeClass TYPE = NodeClass.get(AddLocationNode.class);
+    public static final NodeClass<AddLocationNode> TYPE = NodeClass.get(AddLocationNode.class);
     @Input(InputType.Association) ValueNode x;
     @Input(InputType.Association) ValueNode y;
 

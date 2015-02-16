@@ -34,14 +34,14 @@ public class TypedNodeIteratorTest2 {
     @NodeInfo
     static class NodeA extends Node implements TestNodeInterface {
 
-        public static final NodeClass TYPE = NodeClass.get(NodeA.class);
+        public static final NodeClass<NodeA> TYPE = NodeClass.get(NodeA.class);
         protected final String name;
 
         public NodeA(String name) {
             this(TYPE, name);
         }
 
-        protected NodeA(NodeClass c, String name) {
+        protected NodeA(NodeClass<?> c, String name) {
             super(c);
             this.name = name;
         }
@@ -53,13 +53,13 @@ public class TypedNodeIteratorTest2 {
 
     @NodeInfo
     static class NodeB extends NodeA implements IterableNodeType {
-        public static final NodeClass TYPE = NodeClass.get(NodeB.class);
+        public static final NodeClass<NodeB> TYPE = NodeClass.get(NodeB.class);
 
         public NodeB(String name) {
             this(TYPE, name);
         }
 
-        protected NodeB(NodeClass c, String name) {
+        protected NodeB(NodeClass<?> c, String name) {
             super(c, name);
         }
 
@@ -67,13 +67,13 @@ public class TypedNodeIteratorTest2 {
 
     @NodeInfo
     static class NodeC extends NodeB {
-        public static final NodeClass TYPE = NodeClass.get(NodeC.class);
+        public static final NodeClass<NodeC> TYPE = NodeClass.get(NodeC.class);
 
         public NodeC(String name) {
             this(TYPE, name);
         }
 
-        protected NodeC(NodeClass c, String name) {
+        protected NodeC(NodeClass<?> c, String name) {
             super(c, name);
         }
 
@@ -81,7 +81,7 @@ public class TypedNodeIteratorTest2 {
 
     @NodeInfo
     static final class NodeD extends NodeC {
-        public static final NodeClass TYPE = NodeClass.get(NodeD.class);
+        public static final NodeClass<NodeD> TYPE = NodeClass.get(NodeD.class);
 
         public NodeD(String name) {
             super(TYPE, name);
@@ -95,8 +95,8 @@ public class TypedNodeIteratorTest2 {
         graph.add(new NodeB("b"));
         graph.add(new NodeD("d"));
 
-        Assert.assertEquals("bd", TypedNodeIteratorTest.toString(graph.getNodes(NodeB.class)));
-        Assert.assertEquals("d", TypedNodeIteratorTest.toString(graph.getNodes(NodeD.class)));
+        Assert.assertEquals("bd", TypedNodeIteratorTest.toString(graph.getNodes(NodeB.TYPE)));
+        Assert.assertEquals("d", TypedNodeIteratorTest.toString(graph.getNodes(NodeD.TYPE)));
     }
 
     @Test
@@ -105,21 +105,21 @@ public class TypedNodeIteratorTest2 {
         graph.add(new NodeB("b1"));
         NodeD d1 = graph.add(new NodeD("d1"));
         StringBuilder sb = new StringBuilder();
-        for (NodeB tn : graph.getNodes(NodeB.class)) {
+        for (NodeB tn : graph.getNodes(NodeB.TYPE)) {
             if (tn == d1) {
                 graph.add(new NodeB("b2"));
             }
             sb.append(tn.getName());
         }
         assertEquals("b1d1b2", sb.toString());
-        for (NodeB tn : graph.getNodes(NodeB.class)) {
+        for (NodeB tn : graph.getNodes(NodeB.TYPE)) {
             if (tn == d1) {
                 graph.add(new NodeB("b3"));
             }
             assertNotNull(tn);
         }
-        assertEquals(4, graph.getNodes(NodeB.class).count());
-        assertEquals(1, graph.getNodes(NodeD.class).count());
+        assertEquals(4, graph.getNodes(NodeB.TYPE).count());
+        assertEquals(1, graph.getNodes(NodeD.TYPE).count());
     }
 
 }

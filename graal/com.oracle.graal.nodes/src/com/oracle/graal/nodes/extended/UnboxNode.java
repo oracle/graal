@@ -34,7 +34,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public final class UnboxNode extends UnaryNode implements Virtualizable, Lowerable {
 
-    public static final NodeClass TYPE = NodeClass.get(UnboxNode.class);
+    public static final NodeClass<UnboxNode> TYPE = NodeClass.get(UnboxNode.class);
     protected final Kind boxingKind;
 
     protected UnboxNode(ValueNode value, Kind boxingKind) {

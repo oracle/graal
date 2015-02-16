@@ -40,13 +40,13 @@ public class CleanTypeProfileProxyPhase extends BasePhase<PhaseContext> {
     protected void run(StructuredGraph graph, PhaseContext context) {
         HashSetNodeEventListener listener = new HashSetNodeEventListener();
         try (NodeEventScope s = graph.trackNodeEvents(listener)) {
-            for (TypeProfileProxyNode proxy : graph.getNodes(TypeProfileProxyNode.class)) {
+            for (TypeProfileProxyNode proxy : graph.getNodes(TypeProfileProxyNode.TYPE)) {
                 graph.replaceFloating(proxy, proxy.getValue());
             }
         }
         if (!listener.getNodes().isEmpty()) {
             canonicalizer.applyIncremental(graph, context, listener.getNodes());
         }
-        assert graph.getNodes(TypeProfileProxyNode.class).count() == 0;
+        assert graph.getNodes(TypeProfileProxyNode.TYPE).count() == 0;
     }
 }

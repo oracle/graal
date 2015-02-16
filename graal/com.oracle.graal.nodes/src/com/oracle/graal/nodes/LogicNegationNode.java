@@ -32,7 +32,7 @@ import com.oracle.graal.nodeinfo.*;
 @NodeInfo
 public final class LogicNegationNode extends LogicNode implements Canonicalizable.Unary<LogicNode> {
 
-    public static final NodeClass TYPE = NodeClass.get(LogicNegationNode.class);
+    public static final NodeClass<LogicNegationNode> TYPE = NodeClass.get(LogicNegationNode.class);
     @Input(InputType.Condition) LogicNode value;
 
     public LogicNegationNode(LogicNode value) {

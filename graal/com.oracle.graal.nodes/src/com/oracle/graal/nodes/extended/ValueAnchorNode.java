@@ -37,7 +37,7 @@ import com.oracle.graal.nodes.util.*;
 @NodeInfo(allowedUsageTypes = {InputType.Anchor, InputType.Guard})
 public final class ValueAnchorNode extends FixedWithNextNode implements LIRLowerable, Simplifiable, Virtualizable, AnchoringNode, GuardingNode {
 
-    public static final NodeClass TYPE = NodeClass.get(ValueAnchorNode.class);
+    public static final NodeClass<ValueAnchorNode> TYPE = NodeClass.get(ValueAnchorNode.class);
     @OptionalInput(InputType.Guard) ValueNode anchored;
 
     public ValueAnchorNode(ValueNode value) {

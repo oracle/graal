@@ -35,7 +35,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public final class JavaWriteNode extends AbstractWriteNode implements Lowerable, StateSplit, MemoryAccess, MemoryCheckpoint.Single {
 
-    public static final NodeClass TYPE = NodeClass.get(JavaWriteNode.class);
+    public static final NodeClass<JavaWriteNode> TYPE = NodeClass.get(JavaWriteNode.class);
     protected final Kind writeKind;
     protected final boolean compressible;
 

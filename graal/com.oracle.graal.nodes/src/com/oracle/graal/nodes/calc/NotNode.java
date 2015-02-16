@@ -37,7 +37,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public final class NotNode extends UnaryArithmeticNode<Not> implements ArithmeticLIRLowerable, NarrowableArithmeticNode {
 
-    public static final NodeClass TYPE = NodeClass.get(NotNode.class);
+    public static final NodeClass<NotNode> TYPE = NodeClass.get(NotNode.class);
 
     public NotNode(ValueNode x) {
         super(TYPE, ArithmeticOpTable::getNot, x);

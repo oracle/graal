@@ -37,13 +37,13 @@ import com.oracle.graal.nodes.util.*;
 @NodeInfo(shortName = "-")
 public class SubNode extends BinaryArithmeticNode<Sub> implements NarrowableArithmeticNode {
 
-    public static final NodeClass TYPE = NodeClass.get(SubNode.class);
+    public static final NodeClass<SubNode> TYPE = NodeClass.get(SubNode.class);
 
     public SubNode(ValueNode x, ValueNode y) {
         this(TYPE, x, y);
     }
 
-    protected SubNode(NodeClass c, ValueNode x, ValueNode y) {
+    protected SubNode(NodeClass<?> c, ValueNode x, ValueNode y) {
         super(c, ArithmeticOpTable::getSub, x, y);
     }
 

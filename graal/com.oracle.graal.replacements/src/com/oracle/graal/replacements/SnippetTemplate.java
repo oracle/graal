@@ -395,7 +395,7 @@ public class SnippetTemplate {
     @NodeInfo
     static final class VarargsPlaceholderNode extends FloatingNode implements ArrayLengthProvider {
 
-        public static final NodeClass TYPE = NodeClass.get(VarargsPlaceholderNode.class);
+        public static final NodeClass<VarargsPlaceholderNode> TYPE = NodeClass.get(VarargsPlaceholderNode.class);
         protected final Varargs varargs;
 
         public VarargsPlaceholderNode(Varargs varargs, MetaAccessProvider metaAccess) {
@@ -738,7 +738,7 @@ public class SnippetTemplate {
         } else {
             snippetCopy.addAfterFixed(snippetCopy.start(), memoryAnchor);
         }
-        List<ReturnNode> returnNodes = snippet.getNodes(ReturnNode.class).snapshot();
+        List<ReturnNode> returnNodes = snippet.getNodes(ReturnNode.TYPE).snapshot();
         if (returnNodes.isEmpty()) {
             this.returnNode = null;
         } else if (returnNodes.size() == 1) {
@@ -1221,7 +1221,7 @@ public class SnippetTemplate {
             Node stampDup = duplicates.get(stampNode);
             ((ValueNode) stampDup).setStamp(replacee.stamp());
         }
-        for (ParameterNode paramNode : snippet.getNodes(ParameterNode.class)) {
+        for (ParameterNode paramNode : snippet.getNodes(ParameterNode.TYPE)) {
             for (Node usage : paramNode.usages()) {
                 Node usageDup = duplicates.get(usage);
                 propagateStamp(usageDup);

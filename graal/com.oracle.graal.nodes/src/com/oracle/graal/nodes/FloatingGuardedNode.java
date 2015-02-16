@@ -30,15 +30,15 @@ import com.oracle.graal.nodes.extended.*;
 
 @NodeInfo
 public abstract class FloatingGuardedNode extends FloatingNode implements GuardedNode {
-    public static final NodeClass TYPE = NodeClass.get(FloatingGuardedNode.class);
+    public static final NodeClass<FloatingGuardedNode> TYPE = NodeClass.get(FloatingGuardedNode.class);
 
     @OptionalInput(InputType.Guard) protected GuardingNode guard;
 
-    protected FloatingGuardedNode(NodeClass c, Stamp stamp) {
+    protected FloatingGuardedNode(NodeClass<?> c, Stamp stamp) {
         super(c, stamp);
     }
 
-    protected FloatingGuardedNode(NodeClass c, Stamp stamp, GuardingNode guard) {
+    protected FloatingGuardedNode(NodeClass<?> c, Stamp stamp, GuardingNode guard) {
         super(c, stamp);
         this.guard = guard;
     }

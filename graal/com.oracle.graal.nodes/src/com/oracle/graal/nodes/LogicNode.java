@@ -32,9 +32,9 @@ import com.oracle.graal.nodes.calc.*;
 @NodeInfo(allowedUsageTypes = {Condition})
 public abstract class LogicNode extends FloatingNode {
 
-    public static final NodeClass TYPE = NodeClass.get(LogicNode.class);
+    public static final NodeClass<LogicNode> TYPE = NodeClass.get(LogicNode.class);
 
-    public LogicNode(NodeClass c) {
+    public LogicNode(NodeClass<?> c) {
         super(c, StampFactory.forVoid());
     }
 

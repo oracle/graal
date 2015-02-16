@@ -31,14 +31,14 @@ import com.oracle.graal.replacements.nodes.*;
 @NodeInfo
 public class NeverPartOfCompilationNode extends MacroStateSplitNode implements IterableNodeType {
 
-    public static final NodeClass TYPE = NodeClass.get(NeverPartOfCompilationNode.class);
+    public static final NodeClass<NeverPartOfCompilationNode> TYPE = NodeClass.get(NeverPartOfCompilationNode.class);
     protected final String message;
 
     public NeverPartOfCompilationNode(Invoke invoke) {
         this(TYPE, invoke, "This code path should never be part of a compilation.");
     }
 
-    protected NeverPartOfCompilationNode(NodeClass c, Invoke invoke, String message) {
+    protected NeverPartOfCompilationNode(NodeClass<?> c, Invoke invoke, String message) {
         super(c, invoke);
         this.message = message;
     }
@@ -48,7 +48,7 @@ public class NeverPartOfCompilationNode extends MacroStateSplitNode implements I
     }
 
     public static void verifyNotFoundIn(final StructuredGraph graph) {
-        for (NeverPartOfCompilationNode neverPartOfCompilationNode : graph.getNodes(NeverPartOfCompilationNode.class)) {
+        for (NeverPartOfCompilationNode neverPartOfCompilationNode : graph.getNodes(NeverPartOfCompilationNode.TYPE)) {
             Throwable exception = new VerificationError(neverPartOfCompilationNode.getMessage());
             throw GraphUtil.approxSourceException(neverPartOfCompilationNode, exception);
         }

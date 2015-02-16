@@ -39,7 +39,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public final class GuardedValueNode extends FloatingGuardedNode implements LIRLowerable, Virtualizable, IterableNodeType, Canonicalizable, ValueProxy {
 
-    public static final NodeClass TYPE = NodeClass.get(GuardedValueNode.class);
+    public static final NodeClass<GuardedValueNode> TYPE = NodeClass.get(GuardedValueNode.class);
     @Input ValueNode object;
     protected final Stamp piStamp;
 

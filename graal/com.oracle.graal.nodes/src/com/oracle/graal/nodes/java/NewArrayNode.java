@@ -41,13 +41,13 @@ import com.oracle.graal.nodes.virtual.*;
 @NodeInfo
 public class NewArrayNode extends AbstractNewArrayNode implements VirtualizableAllocation {
 
-    public static final NodeClass TYPE = NodeClass.get(NewArrayNode.class);
+    public static final NodeClass<NewArrayNode> TYPE = NodeClass.get(NewArrayNode.class);
 
     public NewArrayNode(ResolvedJavaType elementType, ValueNode length, boolean fillContents) {
         super(TYPE, StampFactory.exactNonNull(elementType.getArrayClass()), length, fillContents);
     }
 
-    protected NewArrayNode(NodeClass c, ResolvedJavaType elementType, ValueNode length, boolean fillContents) {
+    protected NewArrayNode(NodeClass<?> c, ResolvedJavaType elementType, ValueNode length, boolean fillContents) {
         super(c, StampFactory.exactNonNull(elementType.getArrayClass()), length, fillContents);
     }
 

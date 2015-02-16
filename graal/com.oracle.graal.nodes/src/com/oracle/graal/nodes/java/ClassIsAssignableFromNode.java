@@ -37,7 +37,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public final class ClassIsAssignableFromNode extends LogicNode implements Canonicalizable.Binary<ValueNode>, Lowerable {
 
-    public static final NodeClass TYPE = NodeClass.get(ClassIsAssignableFromNode.class);
+    public static final NodeClass<ClassIsAssignableFromNode> TYPE = NodeClass.get(ClassIsAssignableFromNode.class);
     @Input ValueNode thisClass;
     @Input ValueNode otherClass;
 

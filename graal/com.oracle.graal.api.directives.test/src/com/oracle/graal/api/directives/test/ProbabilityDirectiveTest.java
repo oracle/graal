@@ -48,7 +48,7 @@ public class ProbabilityDirectiveTest extends GraalCompilerTest {
 
     @Override
     protected boolean checkLowTierGraph(StructuredGraph graph) {
-        NodeIterable<IfNode> ifNodes = graph.getNodes(IfNode.class);
+        NodeIterable<IfNode> ifNodes = graph.getNodes(IfNode.TYPE);
         Assert.assertEquals("IfNode count", 1, ifNodes.count());
 
         IfNode ifNode = ifNodes.first();

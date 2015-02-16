@@ -36,14 +36,14 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public abstract class UnaryArithmeticNode<OP> extends UnaryNode implements ArithmeticLIRLowerable {
 
-    public static final NodeClass TYPE = NodeClass.get(UnaryArithmeticNode.class);
+    @SuppressWarnings("rawtypes") public static final NodeClass<UnaryArithmeticNode> TYPE = NodeClass.get(UnaryArithmeticNode.class);
 
     protected interface SerializableUnaryFunction<T> extends Function<ArithmeticOpTable, UnaryOp<T>>, Serializable {
     }
 
     protected final SerializableUnaryFunction<OP> getOp;
 
-    protected UnaryArithmeticNode(NodeClass c, SerializableUnaryFunction<OP> getOp, ValueNode value) {
+    protected UnaryArithmeticNode(NodeClass<?> c, SerializableUnaryFunction<OP> getOp, ValueNode value) {
         super(c, getOp.apply(ArithmeticOpTable.forStamp(value.stamp())).foldStamp(value.stamp()), value);
         this.getOp = getOp;
     }

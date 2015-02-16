@@ -38,7 +38,7 @@ import com.oracle.graal.nodes.spi.*;
  */
 @NodeInfo
 public final class UnsafeLoadNode extends UnsafeAccessNode implements Lowerable, Virtualizable {
-    public static final NodeClass TYPE = NodeClass.get(UnsafeLoadNode.class);
+    public static final NodeClass<UnsafeLoadNode> TYPE = NodeClass.get(UnsafeLoadNode.class);
     @OptionalInput(InputType.Condition) LogicNode guardingCondition;
 
     public UnsafeLoadNode(ValueNode object, ValueNode offset, Kind accessKind, LocationIdentity locationIdentity) {

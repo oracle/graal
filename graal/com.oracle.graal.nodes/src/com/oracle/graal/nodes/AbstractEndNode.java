@@ -32,9 +32,9 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public abstract class AbstractEndNode extends FixedNode implements IterableNodeType, LIRLowerable {
 
-    public static final NodeClass TYPE = NodeClass.get(AbstractEndNode.class);
+    public static final NodeClass<AbstractEndNode> TYPE = NodeClass.get(AbstractEndNode.class);
 
-    protected AbstractEndNode(NodeClass c) {
+    protected AbstractEndNode(NodeClass<?> c) {
         super(c, StampFactory.forVoid());
     }
 

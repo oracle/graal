@@ -46,7 +46,7 @@ public class HotSpotNodeClassSubstitutions {
      */
     @NodeInfo
     public static final class NodeClassGetNode extends PureFunctionMacroNode {
-        public static final NodeClass TYPE = NodeClass.get(NodeClassGetNode.class);
+        public static final NodeClass<NodeClassGetNode> TYPE = NodeClass.get(NodeClassGetNode.class);
 
         public NodeClassGetNode(Invoke invoke) {
             super(TYPE, invoke);
@@ -69,5 +69,5 @@ public class HotSpotNodeClassSubstitutions {
      * initialization barrier).
      */
     @MacroSubstitution(isStatic = true, forced = true, macro = NodeClassGetNode.class)
-    public static native NodeClass get(Class<?> c);
+    public static native NodeClass<?> get(Class<?> c);
 }

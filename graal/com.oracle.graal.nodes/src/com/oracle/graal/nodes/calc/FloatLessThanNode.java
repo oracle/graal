@@ -34,7 +34,7 @@ import com.oracle.graal.nodes.util.*;
 
 @NodeInfo(shortName = "<")
 public final class FloatLessThanNode extends CompareNode {
-    public static final NodeClass TYPE = NodeClass.get(FloatLessThanNode.class);
+    public static final NodeClass<FloatLessThanNode> TYPE = NodeClass.get(FloatLessThanNode.class);
 
     public FloatLessThanNode(ValueNode x, ValueNode y, boolean unorderedIsTrue) {
         super(TYPE, Condition.LT, unorderedIsTrue, x, y);

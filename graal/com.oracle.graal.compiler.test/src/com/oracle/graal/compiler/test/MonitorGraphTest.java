@@ -69,7 +69,7 @@ public class MonitorGraphTest extends GraalCompilerTest {
     @Test
     public void test2() {
         StructuredGraph graph = parseAndProcess("test2Snippet");
-        NodeIterable<MonitorExitNode> monitors = graph.getNodes(MonitorExitNode.class);
+        NodeIterable<MonitorExitNode> monitors = graph.getNodes(MonitorExitNode.TYPE);
         Assert.assertEquals(1, monitors.count());
         Assert.assertEquals(monitors.first().stateAfter().bci, 3);
     }
@@ -85,7 +85,7 @@ public class MonitorGraphTest extends GraalCompilerTest {
 
     private StructuredGraph parseAndProcess(String snippet) {
         StructuredGraph graph = parseEager(snippet, AllowAssumptions.NO);
-        ParameterNode param = graph.getNodes(ParameterNode.class).first();
+        ParameterNode param = graph.getNodes(ParameterNode.TYPE).first();
         if (param != null) {
             ConstantNode constant = ConstantNode.forInt(0, graph);
             for (Node n : param.usages().filter(isNotA(FrameState.class)).snapshot()) {

@@ -41,7 +41,7 @@ import com.oracle.graal.word.*;
 @NodeInfo
 public final class NewMultiArrayStubCall extends ForeignCallNode {
 
-    public static final NodeClass TYPE = NodeClass.get(NewMultiArrayStubCall.class);
+    public static final NodeClass<NewMultiArrayStubCall> TYPE = NodeClass.get(NewMultiArrayStubCall.class);
     private static final Stamp defaultStamp = StampFactory.objectNonNull();
 
     @Input ValueNode hub;

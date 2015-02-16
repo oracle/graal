@@ -29,7 +29,7 @@ import com.oracle.graal.nodeinfo.*;
 @NodeInfo
 public final class BeginNode extends AbstractBeginNode {
 
-    public static final NodeClass TYPE = NodeClass.get(BeginNode.class);
+    public static final NodeClass<BeginNode> TYPE = NodeClass.get(BeginNode.class);
 
     public BeginNode() {
         super(TYPE, StampFactory.forVoid());

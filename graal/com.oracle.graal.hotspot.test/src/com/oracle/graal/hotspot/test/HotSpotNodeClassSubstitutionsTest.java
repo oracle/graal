@@ -38,7 +38,7 @@ public class HotSpotNodeClassSubstitutionsTest extends MethodSubstitutionTest {
         test("get", ValueNode.class);
     }
 
-    public static NodeClass get(Class<?> c) {
+    public static NodeClass<?> get(Class<?> c) {
         return NodeClass.get(c);
     }
 }

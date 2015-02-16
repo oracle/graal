@@ -33,7 +33,7 @@ import com.oracle.graal.nodes.*;
  */
 @NodeInfo
 public abstract class FixedAccessNode extends DeoptimizingFixedWithNextNode implements Access {
-    public static final NodeClass TYPE = NodeClass.get(FixedAccessNode.class);
+    public static final NodeClass<FixedAccessNode> TYPE = NodeClass.get(FixedAccessNode.class);
 
     @OptionalInput(InputType.Guard) protected GuardingNode guard;
     @Input protected ValueNode object;
@@ -66,15 +66,15 @@ public abstract class FixedAccessNode extends DeoptimizingFixedWithNextNode impl
         this.nullCheck = check;
     }
 
-    protected FixedAccessNode(NodeClass c, ValueNode object, ValueNode location, Stamp stamp) {
+    protected FixedAccessNode(NodeClass<?> c, ValueNode object, ValueNode location, Stamp stamp) {
         this(c, object, location, stamp, BarrierType.NONE);
     }
 
-    protected FixedAccessNode(NodeClass c, ValueNode object, ValueNode location, Stamp stamp, BarrierType barrierType) {
+    protected FixedAccessNode(NodeClass<?> c, ValueNode object, ValueNode location, Stamp stamp, BarrierType barrierType) {
         this(c, object, location, stamp, null, barrierType, false, null);
     }
 
-    protected FixedAccessNode(NodeClass c, ValueNode object, ValueNode location, Stamp stamp, GuardingNode guard, BarrierType barrierType, boolean nullCheck, FrameState stateBefore) {
+    protected FixedAccessNode(NodeClass<?> c, ValueNode object, ValueNode location, Stamp stamp, GuardingNode guard, BarrierType barrierType, boolean nullCheck, FrameState stateBefore) {
         super(c, stamp, stateBefore);
         this.object = object;
         this.location = location;

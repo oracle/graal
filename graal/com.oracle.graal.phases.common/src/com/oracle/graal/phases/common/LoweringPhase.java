@@ -48,7 +48,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
 
     @NodeInfo
     static final class DummyGuardHandle extends ValueNode implements GuardedNode {
-        public static final NodeClass TYPE = NodeClass.get(DummyGuardHandle.class);
+        public static final NodeClass<DummyGuardHandle> TYPE = NodeClass.get(DummyGuardHandle.class);
         @Input(InputType.Guard) GuardingNode guard;
 
         public DummyGuardHandle(GuardingNode guard) {

@@ -55,7 +55,7 @@ public class OptimizeGuardAnchorsPhase extends Phase {
     @Override
     protected void run(StructuredGraph graph) {
         LazyCFG cfg = new LazyCFG(graph);
-        for (AbstractBeginNode begin : graph.getNodes(AbstractBeginNode.class)) {
+        for (AbstractBeginNode begin : graph.getNodes(AbstractBeginNode.TYPE)) {
             if (!(begin instanceof StartNode || begin.predecessor() instanceof ControlSplitNode)) {
                 NodeIterable<GuardNode> guards = begin.guards();
                 if (guards.isNotEmpty()) {
@@ -71,7 +71,7 @@ public class OptimizeGuardAnchorsPhase extends Phase {
                 }
             }
         }
-        for (ControlSplitNode controlSplit : graph.getNodes(ControlSplitNode.class)) {
+        for (ControlSplitNode controlSplit : graph.getNodes(ControlSplitNode.TYPE)) {
             optimizeAtControlSplit(controlSplit, cfg);
         }
     }

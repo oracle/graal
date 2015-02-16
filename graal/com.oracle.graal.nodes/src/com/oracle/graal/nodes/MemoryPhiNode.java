@@ -34,7 +34,7 @@ import com.oracle.graal.nodes.extended.*;
 @NodeInfo(nameTemplate = "MemoryPhi({i#values}) {p#locationIdentity/s}", allowedUsageTypes = {InputType.Memory})
 public final class MemoryPhiNode extends PhiNode implements MemoryNode {
 
-    public static final NodeClass TYPE = NodeClass.get(MemoryPhiNode.class);
+    public static final NodeClass<MemoryPhiNode> TYPE = NodeClass.get(MemoryPhiNode.class);
     @Input(InputType.Memory) NodeInputList<ValueNode> values;
     protected final LocationIdentity locationIdentity;
 
