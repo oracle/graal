@@ -45,9 +45,9 @@ import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.java.BciBlockMapping.BciBlock;
 import com.oracle.graal.java.BciBlockMapping.ExceptionDispatchBlock;
 import com.oracle.graal.java.BciBlockMapping.LocalLiveness;
-import com.oracle.graal.java.GraphBuilderPlugins.InlineInvokePlugin;
-import com.oracle.graal.java.GraphBuilderPlugins.InvocationPlugin;
-import com.oracle.graal.java.GraphBuilderPlugins.LoopExplosionPlugin;
+import com.oracle.graal.java.GraphBuilderPlugin.InlineInvokePlugin;
+import com.oracle.graal.java.GraphBuilderPlugin.InvocationPlugin;
+import com.oracle.graal.java.GraphBuilderPlugin.LoopExplosionPlugin;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.calc.*;
@@ -65,28 +65,18 @@ import com.oracle.graal.phases.tiers.*;
 public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
     private final GraphBuilderConfiguration graphBuilderConfig;
-    private final GraphBuilderPlugins graphBuilderPlugins;
 
     public GraphBuilderPhase(GraphBuilderConfiguration config) {
-        this(config, new DefaultGraphBuilderPlugins());
-    }
-
-    public GraphBuilderPhase(GraphBuilderConfiguration config, GraphBuilderPlugins graphBuilderPlugins) {
         this.graphBuilderConfig = config;
-        this.graphBuilderPlugins = graphBuilderPlugins;
     }
 
     @Override
     protected void run(StructuredGraph graph, HighTierContext context) {
-        new Instance(context.getMetaAccess(), context.getStampProvider(), null, null, context.getConstantReflection(), graphBuilderConfig, graphBuilderPlugins, context.getOptimisticOptimizations()).run(graph);
+        new Instance(context.getMetaAccess(), context.getStampProvider(), null, null, context.getConstantReflection(), graphBuilderConfig, context.getOptimisticOptimizations()).run(graph);
     }
 
     public GraphBuilderConfiguration getGraphBuilderConfig() {
         return graphBuilderConfig;
-    }
-
-    public GraphBuilderPlugins getGraphBuilderPlugins() {
-        return graphBuilderPlugins;
     }
 
     public static class Instance extends Phase {
@@ -98,7 +88,6 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
         private ResolvedJavaMethod rootMethod;
 
         private final GraphBuilderConfiguration graphBuilderConfig;
-        private final GraphBuilderPlugins graphBuilderPlugins;
         private final OptimisticOptimizations optimisticOpts;
         private final StampProvider stampProvider;
         private final ConstantReflectionProvider constantReflection;
@@ -114,12 +103,11 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
         }
 
         public Instance(MetaAccessProvider metaAccess, StampProvider stampProvider, SnippetReflectionProvider snippetReflectionProvider, Replacements replacements,
-                        ConstantReflectionProvider constantReflection, GraphBuilderConfiguration graphBuilderConfig, GraphBuilderPlugins graphBuilderPlugins, OptimisticOptimizations optimisticOpts) {
+                        ConstantReflectionProvider constantReflection, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts) {
             this.graphBuilderConfig = graphBuilderConfig;
             this.optimisticOpts = optimisticOpts;
             this.metaAccess = metaAccess;
             this.stampProvider = stampProvider;
-            this.graphBuilderPlugins = graphBuilderPlugins;
             this.constantReflection = constantReflection;
             this.snippetReflectionProvider = snippetReflectionProvider;
             this.replacements = replacements;
@@ -128,7 +116,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
         public Instance(MetaAccessProvider metaAccess, StampProvider stampProvider, ConstantReflectionProvider constantReflection, GraphBuilderConfiguration graphBuilderConfig,
                         OptimisticOptimizations optimisticOpts) {
-            this(metaAccess, stampProvider, null, null, constantReflection, graphBuilderConfig, null, optimisticOpts);
+            this(metaAccess, stampProvider, null, null, constantReflection, graphBuilderConfig, optimisticOpts);
         }
 
         @Override
@@ -866,36 +854,38 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     }
                 }
 
-                if (graphBuilderPlugins != null) {
-                    if (tryUsingInvocationPlugin(args, targetMethod, resultType)) {
-                        if (GraalOptions.TraceInlineDuringParsing.getValue()) {
-                            for (int i = 0; i < this.currentDepth; ++i) {
-                                TTY.print(' ');
-                            }
-                            TTY.println("Used invocation plugin for " + targetMethod);
-                        }
-                        return;
-                    }
-                }
-                InlineInvokePlugin inlineInvokePlugin = graphBuilderConfig.getInlineInvokePlugin();
-                if (inlineInvokePlugin != null && invokeKind.isDirect() && targetMethod.canBeInlined() && targetMethod.hasBytecodes() &&
-                                (replacements == null || (replacements.getMethodSubstitution(targetMethod) == null && replacements.getMacroSubstitution(targetMethod) == null)) &&
-                                inlineInvokePlugin.shouldInlineInvoke(targetMethod, currentDepth)) {
+                if (tryUsingInvocationPlugin(args, targetMethod, resultType)) {
                     if (GraalOptions.TraceInlineDuringParsing.getValue()) {
-                        int bci = this.bci();
                         for (int i = 0; i < this.currentDepth; ++i) {
                             TTY.print(' ');
                         }
-                        StackTraceElement stackTraceElement = this.method.asStackTraceElement(bci);
-                        String s = String.format("%s (%s:%d)", method.getName(), stackTraceElement.getFileName(), stackTraceElement.getLineNumber());
-                        TTY.print(s);
-                        TTY.println(" inlining call " + targetMethod.getName());
+                        TTY.println("Used invocation plugin for " + targetMethod);
                     }
-
-                    ResolvedJavaMethod inlinedTargetMethod = inlineInvokePlugin.inlinedMethod(this, targetMethod, args);
-                    parseAndInlineCallee(inlinedTargetMethod, args);
-                    inlineInvokePlugin.postInline(inlinedTargetMethod);
                     return;
+                }
+
+                InlineInvokePlugin inlineInvokePlugin = graphBuilderConfig.getInlineInvokePlugin();
+                if (inlineInvokePlugin != null && invokeKind.isDirect() && targetMethod.canBeInlined() && targetMethod.hasBytecodes() &&
+                                (replacements == null || (replacements.getMethodSubstitution(targetMethod) == null && replacements.getMacroSubstitution(targetMethod) == null))) {
+
+                    ResolvedJavaMethod inlinedMethod = inlineInvokePlugin.getInlinedMethod(this, targetMethod, args, returnType, currentDepth);
+                    if (inlinedMethod != null) {
+                        if (GraalOptions.TraceInlineDuringParsing.getValue()) {
+                            int bci = this.bci();
+                            for (int i = 0; i < this.currentDepth; ++i) {
+                                TTY.print(' ');
+                            }
+                            StackTraceElement stackTraceElement = this.method.asStackTraceElement(bci);
+                            String s = String.format("%s (%s:%d)", method.getName(), stackTraceElement.getFileName(), stackTraceElement.getLineNumber());
+                            TTY.print(s);
+                            TTY.println(" inlining call " + targetMethod.getName());
+                        }
+
+                        ResolvedJavaMethod inlinedTargetMethod = inlinedMethod;
+                        parseAndInlineCallee(inlinedTargetMethod, args);
+                        inlineInvokePlugin.postInline(inlinedTargetMethod);
+                        return;
+                    }
                 }
 
                 MethodCallTargetNode callTarget = currentGraph.add(createMethodCallTarget(invokeKind, targetMethod, args, returnType));
@@ -913,7 +903,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             }
 
             private boolean tryUsingInvocationPlugin(ValueNode[] args, ResolvedJavaMethod targetMethod, Kind resultType) {
-                InvocationPlugin plugin = graphBuilderPlugins.lookupInvocation(targetMethod);
+                InvocationPlugin plugin = graphBuilderConfig.getInvocationPlugins().lookupInvocation(targetMethod);
                 if (plugin != null) {
                     int beforeStackSize = frameState.stackSize;
                     boolean needsNullCheck = !targetMethod.isStatic() && !StampTool.isPointerNonNull(args[0].stamp());

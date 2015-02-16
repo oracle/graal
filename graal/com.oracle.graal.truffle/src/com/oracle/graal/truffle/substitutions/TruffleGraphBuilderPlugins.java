@@ -32,9 +32,9 @@ import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.java.*;
-import com.oracle.graal.java.GraphBuilderPlugins.InvocationPlugin;
-import com.oracle.graal.java.GraphBuilderPlugins.Registration;
-import com.oracle.graal.java.GraphBuilderPlugins.Registration.Receiver;
+import com.oracle.graal.java.GraphBuilderPlugin.InvocationPlugin;
+import com.oracle.graal.java.InvocationPlugins.Registration;
+import com.oracle.graal.java.InvocationPlugins.Registration.Receiver;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
@@ -50,7 +50,7 @@ import com.oracle.truffle.api.frame.*;
  * Provider of {@link GraphBuilderPlugin}s for Truffle classes.
  */
 public class TruffleGraphBuilderPlugins {
-    public static void registerPlugins(MetaAccessProvider metaAccess, GraphBuilderPlugins plugins) {
+    public static void registerPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
 
         // OptimizedAssumption.class
         Registration r = new Registration(plugins, metaAccess, OptimizedAssumption.class);
