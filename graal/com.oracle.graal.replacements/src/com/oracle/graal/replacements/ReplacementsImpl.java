@@ -828,6 +828,12 @@ public class ReplacementsImpl implements Replacements {
     }
 
     @Override
+    public ResolvedJavaMethod getMethodSubstitutionMethod(ResolvedJavaMethod original) {
+        ClassReplacements cr = getClassReplacements(original.getDeclaringClass().getName());
+        return cr == null ? null : cr.methodSubstitutions.get(original);
+    }
+
+    @Override
     public void registerSnippetTemplateCache(SnippetTemplateCache templates) {
         assert snippetTemplateCache.get(templates.getClass().getName()) == null;
         snippetTemplateCache.put(templates.getClass().getName(), templates);

@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot.meta;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.bridge.*;
@@ -35,6 +36,7 @@ import com.oracle.graal.java.GraphBuilderPlugin.InlineInvokePlugin;
 import com.oracle.graal.java.GraphBuilderPlugin.LoadFieldPlugin;
 import com.oracle.graal.lir.phases.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.options.DerivedOptionValue.OptionSupplier;
 import com.oracle.graal.phases.*;
@@ -128,7 +130,26 @@ public class HotSpotSuitesProvider implements SuitesProvider {
             public boolean apply(GraphBuilderContext builder, ResolvedJavaField staticField) {
                 return tryConstantFold(builder, runtime.getHostProviders().getMetaAccess(), runtime.getHostProviders().getConstantReflection(), staticField, null);
             }
-
+        });
+        config.setInlineInvokePlugin(new InlineInvokePlugin() {
+            public ResolvedJavaMethod getInlinedMethod(GraphBuilderContext builder, ResolvedJavaMethod method, ValueNode[] args, JavaType returnType, int depth) {
+                if (GraalOptions.InlineDuringParsing.getValue()) {
+                    if (builder.parsingReplacement()) {
+                        if (method.getAnnotation(MethodSubstitution.class) != null) {
+                            HotSpotProviders providers = runtime.getHostProviders();
+                            Replacements replacements = providers.getReplacements();
+                            ResolvedJavaMethod subst = replacements.getMethodSubstitutionMethod(method);
+                            if (subst != null) {
+                                return subst;
+                            }
+                        }
+                    }
+                    if (method.hasBytecodes() && method.getCode().length <= GraalOptions.TrivialInliningSize.getValue() && depth < GraalOptions.InlineDuringParsingMaxDepth.getValue()) {
+                        return method;
+                    }
+                }
+                return null;
+            }
         });
         suite.appendPhase(new GraphBuilderPhase(config));
         return suite;
