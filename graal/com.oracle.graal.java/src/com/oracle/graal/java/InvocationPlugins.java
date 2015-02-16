@@ -181,6 +181,13 @@ public class InvocationPlugins {
         return old;
     }
 
+    /**
+     * Adds all the plugins from {@code other} to this object.
+     */
+    public void updateFrom(InvocationPlugins other) {
+        this.plugins.putAll(other.plugins);
+    }
+
     @Override
     public String toString() {
         return plugins.keySet().stream().map(m -> m.format("%H.%n(%p)")).collect(Collectors.joining(", "));

@@ -80,7 +80,7 @@ public class GraphBuilderConfiguration {
 
     public GraphBuilderConfiguration copy() {
         GraphBuilderConfiguration result = new GraphBuilderConfiguration(eagerResolving, omitAllExceptionEdges, debugInfoMode, skippedExceptionTypes, doLivenessAnalysis);
-        result.loadFieldPlugin = loadFieldPlugin;
+        result.copyPluginsFrom(this);
         return result;
     }
 
@@ -184,5 +184,14 @@ public class GraphBuilderConfiguration {
 
     public void setLoopExplosionPlugin(LoopExplosionPlugin loopExplosionPlugin) {
         this.loopExplosionPlugin = loopExplosionPlugin;
+    }
+
+    public GraphBuilderConfiguration copyPluginsFrom(GraphBuilderConfiguration other) {
+        this.invocationPlugins.updateFrom(other.getInvocationPlugins());
+        this.parameterPlugin = other.parameterPlugin;
+        this.loadFieldPlugin = other.loadFieldPlugin;
+        this.inlineInvokePlugin = other.inlineInvokePlugin;
+        this.loopExplosionPlugin = other.loopExplosionPlugin;
+        return this;
     }
 }
