@@ -26,6 +26,10 @@ import java.util.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.java.GraphBuilderPlugin.InlineInvokePlugin;
+import com.oracle.graal.java.GraphBuilderPlugin.LoadFieldPlugin;
+import com.oracle.graal.java.GraphBuilderPlugin.LoopExplosionPlugin;
+import com.oracle.graal.java.GraphBuilderPlugin.ParameterPlugin;
 import com.oracle.graal.nodes.*;
 
 public class GraphBuilderConfiguration {
@@ -36,10 +40,11 @@ public class GraphBuilderConfiguration {
     private final ResolvedJavaType[] skippedExceptionTypes;
     private final DebugInfoMode debugInfoMode;
     private final boolean doLivenessAnalysis;
-    private GraphBuilderPlugins.LoadFieldPlugin loadFieldPlugin;
-    private GraphBuilderPlugins.ParameterPlugin parameterPlugin;
-    private GraphBuilderPlugins.InlineInvokePlugin inlineInvokePlugin;
-    private GraphBuilderPlugins.LoopExplosionPlugin loopExplosionPlugin;
+    private final InvocationPlugins invocationPlugins = new InvocationPlugins();
+    private LoadFieldPlugin loadFieldPlugin;
+    private ParameterPlugin parameterPlugin;
+    private InlineInvokePlugin inlineInvokePlugin;
+    private LoopExplosionPlugin loopExplosionPlugin;
 
     public static enum DebugInfoMode {
         SafePointsOnly,
@@ -96,11 +101,15 @@ public class GraphBuilderConfiguration {
         return new GraphBuilderConfiguration(eagerResolving, omitAllExceptionEdges, debugInfoMode, skippedExceptionTypes, newLivenessAnalysis);
     }
 
-    public GraphBuilderPlugins.LoadFieldPlugin getLoadFieldPlugin() {
+    public InvocationPlugins getInvocationPlugins() {
+        return invocationPlugins;
+    }
+
+    public LoadFieldPlugin getLoadFieldPlugin() {
         return loadFieldPlugin;
     }
 
-    public void setLoadFieldPlugin(GraphBuilderPlugins.LoadFieldPlugin loadFieldPlugin) {
+    public void setLoadFieldPlugin(LoadFieldPlugin loadFieldPlugin) {
         this.loadFieldPlugin = loadFieldPlugin;
     }
 
@@ -153,27 +162,27 @@ public class GraphBuilderConfiguration {
         return eagerResolving;
     }
 
-    public GraphBuilderPlugins.ParameterPlugin getParameterPlugin() {
+    public ParameterPlugin getParameterPlugin() {
         return parameterPlugin;
     }
 
-    public void setParameterPlugin(GraphBuilderPlugins.ParameterPlugin parameterPlugin) {
+    public void setParameterPlugin(ParameterPlugin parameterPlugin) {
         this.parameterPlugin = parameterPlugin;
     }
 
-    public GraphBuilderPlugins.InlineInvokePlugin getInlineInvokePlugin() {
+    public InlineInvokePlugin getInlineInvokePlugin() {
         return inlineInvokePlugin;
     }
 
-    public void setInlineInvokePlugin(GraphBuilderPlugins.InlineInvokePlugin inlineInvokePlugin) {
+    public void setInlineInvokePlugin(InlineInvokePlugin inlineInvokePlugin) {
         this.inlineInvokePlugin = inlineInvokePlugin;
     }
 
-    public GraphBuilderPlugins.LoopExplosionPlugin getLoopExplosionPlugin() {
+    public LoopExplosionPlugin getLoopExplosionPlugin() {
         return loopExplosionPlugin;
     }
 
-    public void setLoopExplosionPlugin(GraphBuilderPlugins.LoopExplosionPlugin loopExplosionPlugin) {
+    public void setLoopExplosionPlugin(LoopExplosionPlugin loopExplosionPlugin) {
         this.loopExplosionPlugin = loopExplosionPlugin;
     }
 }

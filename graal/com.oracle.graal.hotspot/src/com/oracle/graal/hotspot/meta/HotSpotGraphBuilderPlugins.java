@@ -28,9 +28,9 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.java.*;
-import com.oracle.graal.java.GraphBuilderPlugins.InvocationPlugin;
-import com.oracle.graal.java.GraphBuilderPlugins.Registration;
-import com.oracle.graal.java.GraphBuilderPlugins.Registration.Receiver;
+import com.oracle.graal.java.GraphBuilderPlugin.InvocationPlugin;
+import com.oracle.graal.java.InvocationPlugins.Registration;
+import com.oracle.graal.java.InvocationPlugins.Registration.Receiver;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
@@ -42,7 +42,7 @@ import com.oracle.graal.options.*;
  * Provider of HotSpot specific {@link GraphBuilderPlugin}s.
  */
 public class HotSpotGraphBuilderPlugins {
-    public static void registerPlugins(MetaAccessProvider metaAccess, GraphBuilderPlugins plugins) {
+    public static void registerPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
         // Object.class
         Registration r = new Registration(plugins, metaAccess, Object.class);
         r.register1("getClass", Receiver.class, new InvocationPlugin() {

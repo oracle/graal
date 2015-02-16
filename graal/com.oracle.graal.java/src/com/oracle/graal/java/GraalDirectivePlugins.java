@@ -24,15 +24,15 @@ package com.oracle.graal.java;
 
 import com.oracle.graal.api.directives.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.java.GraphBuilderPlugins.InvocationPlugin;
-import com.oracle.graal.java.GraphBuilderPlugins.Registration;
+import com.oracle.graal.java.GraphBuilderPlugin.InvocationPlugin;
+import com.oracle.graal.java.InvocationPlugins.Registration;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.debug.*;
 import com.oracle.graal.nodes.extended.*;
 
 public class GraalDirectivePlugins {
 
-    public static void registerPlugins(MetaAccessProvider metaAccess, GraphBuilderPlugins plugins) {
+    public static void registerPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
         Registration r = new Registration(plugins, metaAccess, GraalDirectives.class);
         r.register0("deoptimize", new InvocationPlugin() {
             public boolean apply(GraphBuilderContext builder) {

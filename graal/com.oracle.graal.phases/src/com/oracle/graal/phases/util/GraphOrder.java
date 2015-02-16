@@ -165,8 +165,8 @@ public final class GraphOrder {
                             pendingStateAfter.applyToNonVirtual(new NodeClosure<Node>() {
                                 @Override
                                 public void apply(Node usage, Node nonVirtualNode) {
-                                    assert currentState.isMarked(nonVirtualNode) || nonVirtualNode instanceof VirtualObjectNode : nonVirtualNode + " not available at virtualstate " + usage +
-                                                    " before " + node + " in block " + block + " \n" + list;
+                                    assert currentState.isMarked(nonVirtualNode) || nonVirtualNode instanceof VirtualObjectNode || nonVirtualNode instanceof ConstantNode : nonVirtualNode +
+                                                    " not available at virtualstate " + usage + " before " + node + " in block " + block + " \n" + list;
                                 }
                             });
                             pendingStateAfter = null;
@@ -208,7 +208,8 @@ public final class GraphOrder {
                                             }
                                         });
                                     } else {
-                                        assert currentState.isMarked(input) || input instanceof VirtualObjectNode : input + " not available at " + node + " in block " + block + "\n" + list;
+                                        assert currentState.isMarked(input) || input instanceof VirtualObjectNode || input instanceof ConstantNode : input + " not available at " + node +
+                                                        " in block " + block + "\n" + list;
                                     }
                                 }
                             }
@@ -217,7 +218,8 @@ public final class GraphOrder {
                             AbstractMergeNode merge = ((AbstractEndNode) node).merge();
                             for (PhiNode phi : merge.phis()) {
                                 ValueNode phiValue = phi.valueAt((AbstractEndNode) node);
-                                assert phiValue == null || currentState.isMarked(phiValue) : phiValue + " not available at phi " + phi + " / end " + node + " in block " + block;
+                                assert phiValue == null || currentState.isMarked(phiValue) || phiValue instanceof ConstantNode : phiValue + " not available at phi " + phi + " / end " + node +
+                                                " in block " + block;
                             }
                         }
                         if (stateAfter != null) {
@@ -230,8 +232,8 @@ public final class GraphOrder {
                         pendingStateAfter.applyToNonVirtual(new NodeClosure<Node>() {
                             @Override
                             public void apply(Node usage, Node nonVirtualNode) {
-                                assert currentState.isMarked(nonVirtualNode) || nonVirtualNode instanceof VirtualObjectNode : nonVirtualNode + " not available at virtualstate " + usage +
-                                                " at end of block " + block + " \n" + list;
+                                assert currentState.isMarked(nonVirtualNode) || nonVirtualNode instanceof VirtualObjectNode || nonVirtualNode instanceof ConstantNode : nonVirtualNode +
+                                                " not available at virtualstate " + usage + " at end of block " + block + " \n" + list;
                             }
                         });
                     }

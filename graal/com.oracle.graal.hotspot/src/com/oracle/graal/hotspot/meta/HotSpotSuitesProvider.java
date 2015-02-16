@@ -31,8 +31,9 @@ import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.phases.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.java.GraphBuilderConfiguration.DebugInfoMode;
-import com.oracle.graal.java.GraphBuilderPlugins.InlineInvokePlugin;
+import com.oracle.graal.java.GraphBuilderPlugin.InlineInvokePlugin;
 import com.oracle.graal.lir.phases.*;
+import com.oracle.graal.nodes.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.options.DerivedOptionValue.OptionSupplier;
 import com.oracle.graal.phases.*;
@@ -106,9 +107,12 @@ public class HotSpotSuitesProvider implements SuitesProvider {
         PhaseSuite<HighTierContext> suite = new PhaseSuite<>();
         GraphBuilderConfiguration config = GraphBuilderConfiguration.getDefault();
         config.setInlineInvokePlugin(new InlineInvokePlugin() {
-            public boolean shouldInlineInvoke(ResolvedJavaMethod method, int depth) {
-                return GraalOptions.InlineDuringParsing.getValue() && method.getCode().length <= GraalOptions.TrivialInliningSize.getValue() &&
-                                depth < GraalOptions.InlineDuringParsingMaxDepth.getValue();
+            public ResolvedJavaMethod getInlinedMethod(GraphBuilderContext builder, ResolvedJavaMethod method, ValueNode[] args, JavaType returnType, int depth) {
+                if (GraalOptions.InlineDuringParsing.getValue() && method.getCode().length <= GraalOptions.TrivialInliningSize.getValue() &&
+                                depth < GraalOptions.InlineDuringParsingMaxDepth.getValue()) {
+                    return method;
+                }
+                return null;
             }
         });
         suite.appendPhase(new GraphBuilderPhase(config));
