@@ -203,16 +203,6 @@ public class TruffleCompilerImpl {
         return result;
     }
 
-    static class GraphBuilderSuiteInfo {
-        final PhaseSuite<HighTierContext> suite;
-        final InvocationPlugins plugins;
-
-        public GraphBuilderSuiteInfo(PhaseSuite<HighTierContext> suite, InvocationPlugins plugins) {
-            this.suite = suite;
-            this.plugins = plugins;
-        }
-    }
-
     private PhaseSuite<HighTierContext> createGraphBuilderSuite() {
         PhaseSuite<HighTierContext> suite = backend.getSuites().getDefaultGraphBuilderSuite().copy();
         ListIterator<BasePhase<? super HighTierContext>> iterator = suite.findPhase(GraphBuilderPhase.class);
