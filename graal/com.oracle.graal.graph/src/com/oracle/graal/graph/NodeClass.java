@@ -82,7 +82,7 @@ public final class NodeClass<T> extends FieldIntrospection {
     }
 
     @SuppressWarnings("rawtypes")
-    private static NodeClass<?> getNodeClassViaReflection(Class<?> superclass) {
+    public static NodeClass<?> getNodeClassViaReflection(Class<?> superclass) {
         try {
             Field field = superclass.getDeclaredField("TYPE");
             field.setAccessible(true);
