@@ -187,7 +187,7 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
         return unswitches;
     }
 
-    public void incUnswitches() {
+    public void incrementUnswitches() {
         unswitches++;
     }
 
