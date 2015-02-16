@@ -27,7 +27,6 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 
 /**
@@ -60,14 +59,6 @@ public interface HotSpotObjectConstant extends JavaConstant, HotSpotConstant, VM
      * represented by this constant.
      */
     int getIdentityHashCode();
-
-    /**
-     * Gets the result of {@link NodeClass#get(Class)} for the {@link Class} object represented by
-     * this constant.
-     *
-     * @return {@code null} if this constant does not represent a {@link Class} object
-     */
-    JavaConstant getNodeClass();
 
     /**
      * Gets the result of {@link Class#getComponentType()} for the {@link Class} object represented

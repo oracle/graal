@@ -26,7 +26,6 @@ import static com.oracle.graal.compiler.common.UnsafeAccess.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.HotSpotVMConfig.CompressEncoding;
 
@@ -107,8 +106,6 @@ public class HotSpotMemoryAccessProviderImpl implements HotSpotMemoryAccessProvi
                     assert expected == ((HotSpotResolvedObjectTypeImpl) metaspaceObject).mirror();
                 } else if (displacement == runtime.getConfig().arrayKlassComponentMirrorOffset) {
                     assert expected == ((HotSpotResolvedObjectTypeImpl) metaspaceObject).mirror().getComponentType();
-                } else if (displacement == runtime.getConfig().instanceKlassNodeClassOffset) {
-                    assert expected == NodeClass.get(((HotSpotResolvedObjectTypeImpl) metaspaceObject).mirror());
                 }
             }
         }

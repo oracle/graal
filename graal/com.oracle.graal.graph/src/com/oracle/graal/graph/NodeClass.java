@@ -52,10 +52,7 @@ import com.oracle.graal.nodeinfo.*;
  */
 public final class NodeClass<T> extends FieldIntrospection {
 
-    private static final Object GetNodeClassLock = new Object();
-
     // Timers for creation of a NodeClass instance
-    private static final DebugTimer Init = Debug.timer("NodeClass.Init");
     private static final DebugTimer Init_FieldScanning = Debug.timer("NodeClass.Init.FieldScanning");
     private static final DebugTimer Init_FieldScanningInner = Debug.timer("NodeClass.Init.FieldScanning.Inner");
     private static final DebugTimer Init_AnnotationParsing = Debug.timer("NodeClass.Init.AnnotationParsing");
@@ -75,32 +72,24 @@ public final class NodeClass<T> extends FieldIntrospection {
      */
     @SuppressWarnings({"unchecked", "rawtypes"})
     public static <T> NodeClass<T> get(Class<T> c) {
-        Class<? extends Node> key = (Class<? extends Node>) c;
-
-        NodeClass<?> value = (NodeClass<?>) allClasses.get(key);
-        // The fact that {@link ConcurrentHashMap#put} and {@link ConcurrentHashMap#get}
-        // are used makes the double-checked locking idiom work.
-        if (value == null) {
-            // The creation of a NodeClass must be serialized as the NodeClass constructor accesses
-            // both FieldIntrospection.allClasses and NodeClass.nextIterableId.
-            synchronized (GetNodeClassLock) {
-                try (TimerCloseable t = Init.start()) {
-                    value = (NodeClass<?>) allClasses.get(key);
-                    if (value == null) {
-                        Class<?> superclass = c.getSuperclass();
-                        NodeClass<?> superNodeClass = null;
-                        if (superclass != NODE_CLASS) {
-                            // Ensure NodeClass for superclass exists
-                            superNodeClass = get(superclass);
-                        }
-                        value = new NodeClass(key, superNodeClass);
-                        Object old = allClasses.putIfAbsent(key, value);
-                        assert old == null : old + "   " + key;
-                    }
-                }
-            }
+        assert getNodeClassViaReflection(c) == null;
+        Class<?> superclass = c.getSuperclass();
+        NodeClass nodeSuperclass = null;
+        if (superclass != NODE_CLASS) {
+            nodeSuperclass = getNodeClassViaReflection(superclass);
         }
-        return (NodeClass<T>) value;
+        return new NodeClass(c, nodeSuperclass);
+    }
+
+    @SuppressWarnings("rawtypes")
+    private static NodeClass<?> getNodeClassViaReflection(Class<?> superclass) {
+        try {
+            Field field = superclass.getDeclaredField("TYPE");
+            field.setAccessible(true);
+            return (NodeClass) field.get(null);
+        } catch (IllegalArgumentException | IllegalAccessException | NoSuchFieldException | SecurityException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private static final Class<?> NODE_CLASS = Node.class;

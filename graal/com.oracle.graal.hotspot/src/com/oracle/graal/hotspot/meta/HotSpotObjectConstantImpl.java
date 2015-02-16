@@ -28,7 +28,6 @@ import java.lang.invoke.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.lir.*;
 
@@ -155,13 +154,6 @@ public final class HotSpotObjectConstantImpl extends AbstractValue implements Ho
 
     public int getIdentityHashCode() {
         return System.identityHashCode(object);
-    }
-
-    public JavaConstant getNodeClass() {
-        if (object instanceof Class) {
-            return HotSpotObjectConstantImpl.forObject(NodeClass.get((Class<?>) object));
-        }
-        return null;
     }
 
     public JavaConstant getComponentType() {

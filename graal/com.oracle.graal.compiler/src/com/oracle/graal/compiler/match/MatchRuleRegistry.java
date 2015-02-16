@@ -39,32 +39,16 @@ import com.oracle.graal.nodes.*;
 public class MatchRuleRegistry {
 
     /**
-     * Helper interface for mapping between Class and NodeClass. In static compilation environments,
-     * the current NodeClass might not be the same NodeClass used in the target so this provides a
-     * level of indirection.
-     */
-    public interface NodeClassLookup {
-        NodeClass<?> get(Class<?> theClass);
-    }
-
-    static class DefaultNodeClassLookup implements NodeClassLookup {
-        public NodeClass<?> get(Class<?> theClass) {
-            return NodeClass.get(theClass);
-        }
-    }
-
-    /**
      * Convert a list of field names into {@link com.oracle.graal.graph.Position} objects that can
      * be used to read them during a match. The names should already have been confirmed to exist in
      * the type.
      *
-     * @param theClass
+     * @param nodeClass
      * @param names
      * @return an array of Position objects corresponding to the named fields.
      */
-    public static Position[] findPositions(NodeClassLookup lookup, Class<? extends ValueNode> theClass, String[] names) {
+    public static Position[] findPositions(NodeClass<? extends ValueNode> nodeClass, String[] names) {
         Position[] result = new Position[names.length];
-        NodeClass<?> nodeClass = lookup.get(theClass);
         for (int i = 0; i < names.length; i++) {
             Edges edges = nodeClass.getEdges(Inputs);
             for (int e = 0; e < edges.getDirectCount(); e++) {
@@ -73,7 +57,7 @@ public class MatchRuleRegistry {
                 }
             }
             if (result[i] == null) {
-                throw new GraalInternalError("unknown field \"%s\" in class %s", names[i], theClass);
+                throw new GraalInternalError("unknown field \"%s\" in class %s", names[i], nodeClass);
             }
         }
         return result;
@@ -91,8 +75,7 @@ public class MatchRuleRegistry {
         Map<Class<? extends ValueNode>, List<MatchStatement>> result = registry.get(theClass);
 
         if (result == null) {
-            NodeClassLookup lookup = new DefaultNodeClassLookup();
-            Map<Class<? extends ValueNode>, List<MatchStatement>> rules = createRules(theClass, lookup);
+            Map<Class<? extends ValueNode>, List<MatchStatement>> rules = createRules(theClass);
             registry.put(theClass, rules);
             assert registry.get(theClass) == rules;
             result = rules;
@@ -120,7 +103,7 @@ public class MatchRuleRegistry {
      * This is a separate, public method so that external clients can create rules with a custom
      * lookup and without the default caching behavior.
      */
-    public static Map<Class<? extends ValueNode>, List<MatchStatement>> createRules(Class<? extends NodeLIRBuilder> theClass, NodeClassLookup lookup) {
+    public static Map<Class<? extends ValueNode>, List<MatchStatement>> createRules(Class<? extends NodeLIRBuilder> theClass) {
         HashMap<Class<? extends NodeLIRBuilder>, MatchStatementSet> matchSets = new HashMap<>();
         Iterable<MatchStatementSet> sl = Services.load(MatchStatementSet.class);
         for (MatchStatementSet rules : sl) {
@@ -134,7 +117,7 @@ public class MatchRuleRegistry {
         do {
             MatchStatementSet matchSet = matchSets.get(currentClass);
             if (matchSet != null) {
-                List<MatchStatement> statements = matchSet.statements(lookup);
+                List<MatchStatement> statements = matchSet.statements();
                 for (MatchStatement statement : statements) {
                     Class<? extends ValueNode> nodeClass = statement.getPattern().nodeClass();
                     List<MatchStatement> current = rules.get(nodeClass);
