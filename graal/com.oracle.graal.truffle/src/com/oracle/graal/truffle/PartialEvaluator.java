@@ -248,7 +248,6 @@ public class PartialEvaluator {
     @SuppressWarnings("unused")
     private void fastPartialEvaluation(OptimizedCallTarget callTarget, StructuredGraph graph, PhaseContext baseContext, HighTierContext tierContext) {
         GraphBuilderConfiguration newConfig = configForRoot.copy();
-        newConfig.getInvocationPlugins().setDefaults(configForRoot.getInvocationPlugins());
         newConfig.setLoadFieldPlugin(new InterceptLoadFieldPlugin());
         newConfig.setParameterPlugin(new InterceptReceiverPlugin(callTarget));
         callTarget.setInlining(new TruffleInlining(callTarget, new DefaultInliningPolicy()));
@@ -275,6 +274,7 @@ public class PartialEvaluator {
 
         // Do single partial escape and canonicalization pass.
         try (Scope pe = Debug.scope("TrufflePartialEscape", graph)) {
+            new PartialEscapePhase(true, canonicalizer).apply(graph, tierContext);
             new PartialEscapePhase(true, canonicalizer).apply(graph, tierContext);
             new IncrementalCanonicalizerPhase<>(canonicalizer, new ConditionalEliminationPhase()).apply(graph, tierContext);
         } catch (Throwable t) {

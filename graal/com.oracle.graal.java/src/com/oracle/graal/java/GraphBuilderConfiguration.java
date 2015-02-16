@@ -40,7 +40,7 @@ public class GraphBuilderConfiguration {
     private final ResolvedJavaType[] skippedExceptionTypes;
     private final DebugInfoMode debugInfoMode;
     private final boolean doLivenessAnalysis;
-    private final InvocationPlugins invocationPlugins = new InvocationPlugins();
+    private InvocationPlugins invocationPlugins = new InvocationPlugins();
     private LoadFieldPlugin loadFieldPlugin;
     private ParameterPlugin parameterPlugin;
     private InlineInvokePlugin inlineInvokePlugin;
@@ -81,6 +81,9 @@ public class GraphBuilderConfiguration {
     public GraphBuilderConfiguration copy() {
         GraphBuilderConfiguration result = new GraphBuilderConfiguration(eagerResolving, omitAllExceptionEdges, debugInfoMode, skippedExceptionTypes, doLivenessAnalysis);
         result.loadFieldPlugin = loadFieldPlugin;
+        result.invocationPlugins = invocationPlugins;
+        result.loopExplosionPlugin = loopExplosionPlugin;
+        result.inlineInvokePlugin = inlineInvokePlugin;
         return result;
     }
 
