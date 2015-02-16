@@ -34,10 +34,10 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 
 /**
- * Provider of non-runtime specific {@link GraphBuilderPlugin}s.
+ * Provides non-runtime specific {@link InvocationPlugin}s.
  */
 public class StandardGraphBuilderPlugins {
-    public static void registerPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
+    public static void registerInvocationPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
         Registration r = new Registration(plugins, metaAccess, Object.class);
         r.register1("<init>", Receiver.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext builder, ValueNode object) {
@@ -75,7 +75,7 @@ public class StandardGraphBuilderPlugins {
             }
         }
 
-        GraalDirectivePlugins.registerPlugins(metaAccess, plugins);
+        GraalDirectivePlugins.registerInvocationPlugins(metaAccess, plugins);
     }
 
     static class BoxPlugin implements InvocationPlugin {

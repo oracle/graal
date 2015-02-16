@@ -254,7 +254,7 @@ public class PartialEvaluator {
         callTarget.setInlining(new TruffleInlining(callTarget, new DefaultInliningPolicy()));
         newConfig.setInlineInvokePlugin(new InlineInvokePlugin(callTarget.getInlining()));
         newConfig.setLoopExplosionPlugin(new LoopExplosionPlugin());
-        TruffleGraphBuilderPlugins.registerPlugins(providers.getMetaAccess(), newConfig.getInvocationPlugins());
+        TruffleGraphBuilderPlugins.registerInvocationPlugins(providers.getMetaAccess(), newConfig.getInvocationPlugins());
         long ms = System.currentTimeMillis();
         new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), this.snippetReflection, providers.getReplacements(), providers.getConstantReflection(), newConfig,
                         TruffleCompilerImpl.Optimizations).apply(graph);
