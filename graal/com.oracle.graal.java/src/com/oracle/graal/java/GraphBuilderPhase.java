@@ -26,6 +26,7 @@ import static com.oracle.graal.api.meta.DeoptimizationAction.*;
 import static com.oracle.graal.api.meta.DeoptimizationReason.*;
 import static com.oracle.graal.bytecode.Bytecodes.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
+import static com.oracle.graal.nodes.StructuredGraph.*;
 
 import java.util.*;
 
@@ -130,7 +131,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             frameState.initializeForMethodStart(graphBuilderConfig.eagerResolving(), this.graphBuilderConfig.getParameterPlugin());
             TTY.Filter filter = new TTY.Filter(PrintFilter.getValue(), method);
             try {
-                BytecodeParser parser = new BytecodeParser(metaAccess, method, graphBuilderConfig, optimisticOpts, entryBCI);
+                BytecodeParser parser = new BytecodeParser(metaAccess, method, graphBuilderConfig, optimisticOpts, entryBCI, false);
                 parser.build(0, graph.start(), frameState);
 
                 parser.connectLoopEndToBegin();
@@ -198,8 +199,14 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             private int returnCount;
             private boolean controlFlowSplit;
 
-            public BytecodeParser(MetaAccessProvider metaAccess, ResolvedJavaMethod method, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, int entryBCI) {
-                super(metaAccess, method, graphBuilderConfig, optimisticOpts);
+            /**
+             * @param isReplacement specifies if this object is being used to parse a method that
+             *            implements the semantics of another method (i.e., an intrinsic) or
+             *            bytecode instruction (i.e., a snippet)
+             */
+            public BytecodeParser(MetaAccessProvider metaAccess, ResolvedJavaMethod method, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, int entryBCI,
+                            boolean isReplacement) {
+                super(metaAccess, method, graphBuilderConfig, optimisticOpts, isReplacement);
                 this.entryBCI = entryBCI;
 
                 if (graphBuilderConfig.insertNonSafepointDebugInfo()) {
@@ -882,7 +889,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                         }
 
                         ResolvedJavaMethod inlinedTargetMethod = inlinedMethod;
-                        parseAndInlineCallee(inlinedTargetMethod, args);
+                        parseAndInlineCallee(inlinedTargetMethod, args, parsingReplacement || inlinedMethod != targetMethod);
                         inlineInvokePlugin.postInline(inlinedTargetMethod);
                         return;
                     }
@@ -932,8 +939,8 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 return false;
             }
 
-            private void parseAndInlineCallee(ResolvedJavaMethod targetMethod, ValueNode[] args) {
-                BytecodeParser parser = new BytecodeParser(metaAccess, targetMethod, graphBuilderConfig, optimisticOpts, StructuredGraph.INVOCATION_ENTRY_BCI);
+            private void parseAndInlineCallee(ResolvedJavaMethod targetMethod, ValueNode[] args, boolean isReplacement) {
+                BytecodeParser parser = new BytecodeParser(metaAccess, targetMethod, graphBuilderConfig, optimisticOpts, INVOCATION_ENTRY_BCI, isReplacement);
                 final FrameState[] lazyFrameState = new FrameState[1];
                 HIRFrameStateBuilder startFrameState = new HIRFrameStateBuilder(targetMethod, currentGraph, () -> {
                     if (lazyFrameState[0] == null) {
@@ -1821,6 +1828,9 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 return snippetReflectionProvider;
             }
 
+            public boolean parsingReplacement() {
+                return parsingReplacement;
+            }
         }
     }
 }

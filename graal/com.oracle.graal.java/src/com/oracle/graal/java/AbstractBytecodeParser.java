@@ -76,11 +76,17 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
     protected final MetaAccessProvider metaAccess;
 
     /**
+     * Specifies if the {@linkplain #getMethod() method} being parsed implements the semantics of
+     * another method (i.e., an intrinsic) or bytecode instruction (i.e., a snippet). substitution.
+     */
+    protected final boolean parsingReplacement;
+
+    /**
      * Meters the number of actual bytecodes parsed.
      */
     public static final DebugMetric BytecodesParsed = Debug.metric("BytecodesParsed");
 
-    public AbstractBytecodeParser(MetaAccessProvider metaAccess, ResolvedJavaMethod method, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts) {
+    public AbstractBytecodeParser(MetaAccessProvider metaAccess, ResolvedJavaMethod method, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, boolean isReplacement) {
         this.graphBuilderConfig = graphBuilderConfig;
         this.optimisticOpts = optimisticOpts;
         this.metaAccess = metaAccess;
@@ -88,6 +94,7 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
         this.profilingInfo = method.getProfilingInfo();
         this.constantPool = method.getConstantPool();
         this.method = method;
+        this.parsingReplacement = isReplacement;
         assert metaAccess != null;
     }
 
