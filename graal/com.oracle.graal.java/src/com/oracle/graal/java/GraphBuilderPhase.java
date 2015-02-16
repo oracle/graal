@@ -859,7 +859,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     }
                 }
 
-                if (tryUsingInvocationPlugin(args, targetMethod, resultType)) {
+                if (tryInvocationPlugin(args, targetMethod, resultType)) {
                     if (GraalOptions.TraceInlineDuringParsing.getValue()) {
                         for (int i = 0; i < this.currentDepth; ++i) {
                             TTY.print(' ');
@@ -887,7 +887,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 }
             }
 
-            private boolean tryUsingInvocationPlugin(ValueNode[] args, ResolvedJavaMethod targetMethod, Kind resultType) {
+            private boolean tryInvocationPlugin(ValueNode[] args, ResolvedJavaMethod targetMethod, Kind resultType) {
                 InvocationPlugin plugin = graphBuilderConfig.getInvocationPlugins().lookupInvocation(targetMethod);
                 if (plugin != null) {
                     int beforeStackSize = frameState.stackSize;
@@ -935,8 +935,6 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                         plugin.postInline(inlinedMethod);
                     }
                     return true;
-                } else {
-                    System.out.println("Could not inline invoke " + targetMethod.format("%H.%n(%p)"));
                 }
 
                 return false;
