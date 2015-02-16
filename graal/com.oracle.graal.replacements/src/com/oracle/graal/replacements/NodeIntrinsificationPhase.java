@@ -165,7 +165,6 @@ public class NodeIntrinsificationPhase extends Phase {
         if (intrinsic.foldable() && areAllConstant(arguments)) {
             JavaConstant res = tryFold(arguments, parameterTypes, method);
             if (!res.equals(COULD_NOT_FOLD)) {
-                assert res != null;
                 return ConstantNode.forConstant(res, providers.getMetaAccess());
             }
         }
