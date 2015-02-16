@@ -45,6 +45,7 @@ public class GraphBuilderConfiguration {
     private ParameterPlugin parameterPlugin;
     private InlineInvokePlugin inlineInvokePlugin;
     private LoopExplosionPlugin loopExplosionPlugin;
+    private boolean useProfiling;
 
     public static enum DebugInfoMode {
         SafePointsOnly,
@@ -76,6 +77,7 @@ public class GraphBuilderConfiguration {
         this.debugInfoMode = debugInfoMode;
         this.skippedExceptionTypes = skippedExceptionTypes;
         this.doLivenessAnalysis = doLivenessAnalysis;
+        this.useProfiling = true;
     }
 
     public GraphBuilderConfiguration copy() {
@@ -84,7 +86,16 @@ public class GraphBuilderConfiguration {
         result.invocationPlugins = invocationPlugins;
         result.loopExplosionPlugin = loopExplosionPlugin;
         result.inlineInvokePlugin = inlineInvokePlugin;
+        result.useProfiling = useProfiling;
         return result;
+    }
+
+    public boolean getUseProfiling() {
+        return useProfiling;
+    }
+
+    public void setUseProfiling(boolean b) {
+        this.useProfiling = b;
     }
 
     public GraphBuilderConfiguration withSkippedExceptionTypes(ResolvedJavaType[] newSkippedExceptionTypes) {

@@ -233,7 +233,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             protected void build(int depth, FixedWithNextNode startInstruction, HIRFrameStateBuilder startFrameState) {
                 this.currentDepth = depth;
-                if (PrintProfilingInformation.getValue()) {
+                if (PrintProfilingInformation.getValue() && profilingInfo != null) {
                     TTY.println("Profiling info for " + method.format("%H.%n(%p)"));
                     TTY.println(MetaUtil.indent(profilingInfo.toString(method, CodeUtil.NEW_LINE), "  "));
                 }
@@ -470,7 +470,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             private DispatchBeginNode handleException(ValueNode exceptionObject, int bci) {
                 assert bci == BytecodeFrame.BEFORE_BCI || bci == bci() : "invalid bci";
-                Debug.log("Creating exception dispatch edges at %d, exception object=%s, exception seen=%s", bci, exceptionObject, profilingInfo.getExceptionSeen(bci));
+                Debug.log("Creating exception dispatch edges at %d, exception object=%s, exception seen=%s", bci, exceptionObject, (profilingInfo == null ? "" : profilingInfo.getExceptionSeen(bci)));
 
                 BciBlock dispatchBlock = currentBlock.exceptionDispatchBlock();
                 /*
@@ -851,7 +851,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 }
                 if (invokeKind.hasReceiver()) {
                     emitExplicitExceptions(args[0], null);
-                    if (invokeKind.isIndirect() && this.optimisticOpts.useTypeCheckHints()) {
+                    if (invokeKind.isIndirect() && profilingInfo != null && this.optimisticOpts.useTypeCheckHints()) {
                         JavaTypeProfile profile = profilingInfo.getTypeProfile(bci());
                         args[0] = TypeProfileProxyNode.proxify(args[0], profile);
                     }
@@ -1672,8 +1672,6 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     return;
                 }
 
-                double probability = branchProbability();
-
                 // the mirroring and negation operations get the condition into canonical form
                 boolean mirror = cond.canonicalMirror();
                 boolean negate = cond.canonicalNegate();
@@ -1757,6 +1755,8 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     }
 
                     this.controlFlowSplit = true;
+
+                    double probability = branchProbability();
                     ValueNode trueSuccessor = createBlockTarget(probability, trueBlock, frameState);
                     ValueNode falseSuccessor = createBlockTarget(1 - probability, falseBlock, frameState);
 
