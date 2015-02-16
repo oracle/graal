@@ -211,7 +211,16 @@ public class TruffleGraphBuilderPlugins {
                     if (javaType == null) {
                         builder.push(Kind.Object, object);
                     } else {
-                        Stamp piStamp = StampFactory.declaredTrusted(javaType, nonNull.asJavaConstant().asInt() != 0);
+                        Stamp piStamp = null;
+                        if (javaType.isArray()) {
+                            if (nonNull.asJavaConstant().asInt() != 0) {
+                                piStamp = StampFactory.exactNonNull(javaType);
+                            } else {
+                                piStamp = StampFactory.exact(javaType);
+                            }
+                        } else {
+                            piStamp = StampFactory.declaredTrusted(javaType, nonNull.asJavaConstant().asInt() != 0);
+                        }
                         LogicNode compareNode = CompareNode.createCompareNode(object.graph(), Condition.EQ, condition, ConstantNode.forBoolean(true, object.graph()), constantReflection);
                         boolean skipAnchor = false;
                         if (compareNode instanceof LogicConstantNode) {
