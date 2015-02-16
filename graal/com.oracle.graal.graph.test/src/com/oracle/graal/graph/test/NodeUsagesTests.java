@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,17 +35,22 @@ public class NodeUsagesTests {
 
     @NodeInfo
     static final class Def extends Node {
+        public static final NodeClass TYPE = NodeClass.get(Def.class);
+
         protected Def() {
+            super(TYPE);
         }
     }
 
     @NodeInfo
     static final class Use extends Node {
+        public static final NodeClass TYPE = NodeClass.get(Use.class);
         @Input Def in0;
         @Input Def in1;
         @Input Def in2;
 
         public Use(Def in0, Def in1, Def in2) {
+            super(TYPE);
             this.in0 = in0;
             this.in1 = in1;
             this.in2 = in2;

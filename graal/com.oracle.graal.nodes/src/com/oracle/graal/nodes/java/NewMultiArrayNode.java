@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,6 +35,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public final class NewMultiArrayNode extends DeoptimizingFixedWithNextNode implements Lowerable, ArrayLengthProvider {
 
+    public static final NodeClass TYPE = NodeClass.get(NewMultiArrayNode.class);
     @Input protected NodeInputList<ValueNode> dimensions;
     protected final ResolvedJavaType type;
 
@@ -51,7 +52,7 @@ public final class NewMultiArrayNode extends DeoptimizingFixedWithNextNode imple
     }
 
     public NewMultiArrayNode(ResolvedJavaType type, ValueNode[] dimensions) {
-        super(StampFactory.exactNonNull(type));
+        super(TYPE, StampFactory.exactNonNull(type));
         this.type = type;
         this.dimensions = new NodeInputList<>(this, dimensions);
         assert dimensions.length > 0 && type.isArray();

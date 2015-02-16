@@ -38,7 +38,8 @@ import com.oracle.graal.nodes.spi.*;
  * constants.
  */
 @NodeInfo(nameTemplate = "IdxLoc {p#locationIdentity/s}")
-public class IndexedLocationNode extends LocationNode implements Canonicalizable {
+public final class IndexedLocationNode extends LocationNode implements Canonicalizable {
+    public static final NodeClass TYPE = NodeClass.get(IndexedLocationNode.class);
 
     protected final LocationIdentity locationIdentity;
     protected final long displacement;
@@ -64,7 +65,7 @@ public class IndexedLocationNode extends LocationNode implements Canonicalizable
     }
 
     public IndexedLocationNode(LocationIdentity identity, long displacement, ValueNode index, int indexScaling) {
-        super(StampFactory.forVoid());
+        super(TYPE, StampFactory.forVoid());
         assert index != null;
         assert indexScaling != 0;
         this.locationIdentity = identity;

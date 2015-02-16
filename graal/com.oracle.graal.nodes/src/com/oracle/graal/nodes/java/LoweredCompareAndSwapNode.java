@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@ package com.oracle.graal.nodes.java;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
@@ -33,8 +34,9 @@ import com.oracle.graal.nodes.spi.*;
  * Represents the lowered version of an atomic compare-and-swap operation{@code CompareAndSwapNode}.
  */
 @NodeInfo(allowedUsageTypes = {InputType.Value, InputType.Memory})
-public class LoweredCompareAndSwapNode extends FixedAccessNode implements StateSplit, LIRLowerable, MemoryCheckpoint.Single {
+public final class LoweredCompareAndSwapNode extends FixedAccessNode implements StateSplit, LIRLowerable, MemoryCheckpoint.Single {
 
+    public static final NodeClass TYPE = NodeClass.get(LoweredCompareAndSwapNode.class);
     @Input ValueNode expectedValue;
     @Input ValueNode newValue;
     @OptionalInput(InputType.State) FrameState stateAfter;
@@ -62,7 +64,7 @@ public class LoweredCompareAndSwapNode extends FixedAccessNode implements StateS
     }
 
     public LoweredCompareAndSwapNode(ValueNode object, LocationNode location, ValueNode expectedValue, ValueNode newValue, BarrierType barrierType) {
-        super(object, location, StampFactory.forKind(Kind.Boolean.getStackKind()), barrierType);
+        super(TYPE, object, location, StampFactory.forKind(Kind.Boolean.getStackKind()), barrierType);
         assert expectedValue.getKind() == newValue.getKind();
         this.expectedValue = expectedValue;
         this.newValue = newValue;

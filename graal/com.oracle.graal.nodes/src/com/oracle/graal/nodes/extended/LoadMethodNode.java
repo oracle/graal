@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,8 +36,9 @@ import com.oracle.graal.nodes.type.*;
  * Loads a method from the virtual method table of a given hub.
  */
 @NodeInfo
-public class LoadMethodNode extends FixedWithNextNode implements Lowerable, Canonicalizable {
+public final class LoadMethodNode extends FixedWithNextNode implements Lowerable, Canonicalizable {
 
+    public static final NodeClass TYPE = NodeClass.get(LoadMethodNode.class);
     @Input ValueNode hub;
     protected final ResolvedJavaMethod method;
     protected final ResolvedJavaType receiverType;
@@ -47,7 +48,7 @@ public class LoadMethodNode extends FixedWithNextNode implements Lowerable, Cano
     }
 
     public LoadMethodNode(@InjectedNodeParameter Stamp stamp, ResolvedJavaMethod method, ResolvedJavaType receiverType, ValueNode hub) {
-        super(stamp);
+        super(TYPE, stamp);
         this.receiverType = receiverType;
         this.hub = hub;
         this.method = method;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@ package com.oracle.graal.nodes;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.spi.*;
 
@@ -31,8 +32,9 @@ import com.oracle.graal.nodes.spi.*;
  * Unwinds the current frame to an exception handler in the caller frame.
  */
 @NodeInfo
-public class UnwindNode extends ControlSinkNode implements Lowerable, LIRLowerable {
+public final class UnwindNode extends ControlSinkNode implements Lowerable, LIRLowerable {
 
+    public static final NodeClass TYPE = NodeClass.get(UnwindNode.class);
     @Input ValueNode exception;
 
     public ValueNode exception() {
@@ -40,7 +42,7 @@ public class UnwindNode extends ControlSinkNode implements Lowerable, LIRLowerab
     }
 
     public UnwindNode(ValueNode exception) {
-        super(StampFactory.forVoid());
+        super(TYPE, StampFactory.forVoid());
         assert exception == null || exception.getKind() == Kind.Object;
         this.exception = exception;
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,17 +27,19 @@ import java.util.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 
 @NodeInfo
 public abstract class LoweredCallTargetNode extends CallTargetNode {
 
+    public static final NodeClass TYPE = NodeClass.get(LoweredCallTargetNode.class);
     protected final Stamp returnStamp;
     protected final JavaType[] signature;
     protected final CallingConvention.Type callType;
 
-    public LoweredCallTargetNode(List<ValueNode> arguments, Stamp returnStamp, JavaType[] signature, ResolvedJavaMethod target, CallingConvention.Type callType, InvokeKind invokeKind) {
-        super(arguments, target, invokeKind);
+    protected LoweredCallTargetNode(NodeClass c, List<ValueNode> arguments, Stamp returnStamp, JavaType[] signature, ResolvedJavaMethod target, CallingConvention.Type callType, InvokeKind invokeKind) {
+        super(c, arguments, target, invokeKind);
         this.returnStamp = returnStamp;
         this.signature = signature;
         this.callType = callType;

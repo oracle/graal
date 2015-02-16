@@ -26,6 +26,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
@@ -39,6 +40,7 @@ import com.oracle.graal.nodes.*;
 @NodeInfo
 public abstract class CompareNode extends BinaryOpLogicNode {
 
+    public static final NodeClass TYPE = NodeClass.get(CompareNode.class);
     protected final Condition condition;
     protected final boolean unorderedIsTrue;
 
@@ -48,8 +50,8 @@ public abstract class CompareNode extends BinaryOpLogicNode {
      * @param x the instruction producing the first input to the instruction
      * @param y the instruction that produces the second input to this instruction
      */
-    public CompareNode(Condition condition, boolean unorderedIsTrue, ValueNode x, ValueNode y) {
-        super(x, y);
+    protected CompareNode(NodeClass c, Condition condition, boolean unorderedIsTrue, ValueNode x, ValueNode y) {
+        super(c, x, y);
         this.condition = condition;
         this.unorderedIsTrue = unorderedIsTrue;
     }

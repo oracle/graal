@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,13 +23,15 @@
 package com.oracle.graal.nodes.extended;
 
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo
-public class StoreHubNode extends FixedWithNextNode implements Lowerable {
+public final class StoreHubNode extends FixedWithNextNode implements Lowerable {
 
+    public static final NodeClass TYPE = NodeClass.get(StoreHubNode.class);
     @Input ValueNode value;
     @Input ValueNode object;
 
@@ -42,7 +44,7 @@ public class StoreHubNode extends FixedWithNextNode implements Lowerable {
     }
 
     public StoreHubNode(ValueNode object, ValueNode value) {
-        super(StampFactory.forVoid());
+        super(TYPE, StampFactory.forVoid());
         this.value = value;
         this.object = object;
     }

@@ -34,11 +34,13 @@ import com.oracle.graal.nodeinfo.*;
 public class TypedNodeIteratorTest {
 
     @NodeInfo
-    static class TestNode extends Node implements IterableNodeType, TestNodeInterface {
+    static final class TestNode extends Node implements IterableNodeType, TestNodeInterface {
 
+        public static final NodeClass TYPE = NodeClass.get(TestNode.class);
         protected final String name;
 
         public TestNode(String name) {
+            super(TYPE);
             this.name = name;
         }
 

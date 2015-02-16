@@ -24,6 +24,7 @@ package com.oracle.graal.replacements.nodes;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.HeapAccess.BarrierType;
@@ -37,6 +38,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public final class DirectObjectStoreNode extends FixedWithNextNode implements Lowerable {
 
+    public static final NodeClass TYPE = NodeClass.get(DirectObjectStoreNode.class);
     @Input ValueNode object;
     @Input ValueNode value;
     @Input ValueNode offset;
@@ -45,7 +47,7 @@ public final class DirectObjectStoreNode extends FixedWithNextNode implements Lo
     protected final Kind storeKind;
 
     public DirectObjectStoreNode(ValueNode object, int displacement, ValueNode offset, ValueNode value, LocationIdentity locationIdentity, Kind storeKind) {
-        super(StampFactory.forVoid());
+        super(TYPE, StampFactory.forVoid());
         this.object = object;
         this.value = value;
         this.offset = offset;

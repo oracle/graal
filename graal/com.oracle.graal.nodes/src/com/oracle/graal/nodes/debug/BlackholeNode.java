@@ -23,6 +23,7 @@
 package com.oracle.graal.nodes.debug;
 
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -30,10 +31,11 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public final class BlackholeNode extends FixedWithNextNode implements LIRLowerable {
 
+    public static final NodeClass TYPE = NodeClass.get(BlackholeNode.class);
     @Input ValueNode value;
 
     public BlackholeNode(ValueNode value) {
-        super(StampFactory.forVoid());
+        super(TYPE, StampFactory.forVoid());
         this.value = value;
     }
 

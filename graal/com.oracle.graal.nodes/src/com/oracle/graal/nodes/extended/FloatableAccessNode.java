@@ -24,6 +24,7 @@ package com.oracle.graal.nodes.extended;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 
@@ -32,17 +33,18 @@ import com.oracle.graal.nodes.*;
  */
 @NodeInfo
 public abstract class FloatableAccessNode extends FixedAccessNode {
+    public static final NodeClass TYPE = NodeClass.get(FloatableAccessNode.class);
 
-    public FloatableAccessNode(ValueNode object, ValueNode location, Stamp stamp) {
-        super(object, location, stamp);
+    protected FloatableAccessNode(NodeClass c, ValueNode object, ValueNode location, Stamp stamp) {
+        super(c, object, location, stamp);
     }
 
-    public FloatableAccessNode(ValueNode object, ValueNode location, Stamp stamp, GuardingNode guard, BarrierType barrierType) {
-        super(object, location, stamp, guard, barrierType, false, null);
+    protected FloatableAccessNode(NodeClass c, ValueNode object, ValueNode location, Stamp stamp, GuardingNode guard, BarrierType barrierType) {
+        super(c, object, location, stamp, guard, barrierType, false, null);
     }
 
-    public FloatableAccessNode(ValueNode object, ValueNode location, Stamp stamp, GuardingNode guard, BarrierType barrierType, boolean nullCheck, FrameState stateBefore) {
-        super(object, location, stamp, guard, barrierType, nullCheck, stateBefore);
+    protected FloatableAccessNode(NodeClass c, ValueNode object, ValueNode location, Stamp stamp, GuardingNode guard, BarrierType barrierType, boolean nullCheck, FrameState stateBefore) {
+        super(c, object, location, stamp, guard, barrierType, nullCheck, stateBefore);
     }
 
     public abstract FloatingAccessNode asFloatingNode(MemoryNode lastLocationAccess);

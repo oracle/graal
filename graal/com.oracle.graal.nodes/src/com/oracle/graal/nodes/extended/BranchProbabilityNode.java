@@ -24,6 +24,7 @@ package com.oracle.graal.nodes.extended;
 
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
@@ -38,6 +39,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public final class BranchProbabilityNode extends FloatingNode implements Simplifiable, Lowerable {
 
+    public static final NodeClass TYPE = NodeClass.get(BranchProbabilityNode.class);
     public static final double LIKELY_PROBABILITY = 0.6;
     public static final double NOT_LIKELY_PROBABILITY = 1 - LIKELY_PROBABILITY;
 
@@ -54,7 +56,7 @@ public final class BranchProbabilityNode extends FloatingNode implements Simplif
     @Input ValueNode condition;
 
     public BranchProbabilityNode(ValueNode probability, ValueNode condition) {
-        super(condition.stamp());
+        super(TYPE, condition.stamp());
         this.probability = probability;
         this.condition = condition;
     }

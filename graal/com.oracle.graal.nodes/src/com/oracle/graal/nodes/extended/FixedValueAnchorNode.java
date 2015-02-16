@@ -23,12 +23,14 @@
 package com.oracle.graal.nodes.extended;
 
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo
 public final class FixedValueAnchorNode extends FixedWithNextNode implements LIRLowerable, ValueProxy {
+    public static final NodeClass TYPE = NodeClass.get(FixedValueAnchorNode.class);
 
     @Input ValueNode object;
 
@@ -37,7 +39,7 @@ public final class FixedValueAnchorNode extends FixedWithNextNode implements LIR
     }
 
     public FixedValueAnchorNode(ValueNode object) {
-        super(StampFactory.forNodeIntrinsic());
+        super(TYPE, StampFactory.forNodeIntrinsic());
         this.object = object;
     }
 

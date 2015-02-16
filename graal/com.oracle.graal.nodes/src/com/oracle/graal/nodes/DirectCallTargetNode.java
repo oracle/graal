@@ -27,13 +27,16 @@ import java.util.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 
 @NodeInfo
-public class DirectCallTargetNode extends LoweredCallTargetNode {
+public abstract class DirectCallTargetNode extends LoweredCallTargetNode {
 
-    public DirectCallTargetNode(List<ValueNode> arguments, Stamp returnStamp, JavaType[] signature, ResolvedJavaMethod target, CallingConvention.Type callType, InvokeKind invokeKind) {
-        super(arguments, returnStamp, signature, target, callType, invokeKind);
+    public static final NodeClass TYPE = NodeClass.get(DirectCallTargetNode.class);
+
+    protected DirectCallTargetNode(NodeClass c, List<ValueNode> arguments, Stamp returnStamp, JavaType[] signature, ResolvedJavaMethod target, CallingConvention.Type callType, InvokeKind invokeKind) {
+        super(c, arguments, returnStamp, signature, target, callType, invokeKind);
     }
 
     @Override

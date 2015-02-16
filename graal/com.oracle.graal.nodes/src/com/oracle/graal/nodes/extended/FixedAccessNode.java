@@ -23,6 +23,7 @@
 package com.oracle.graal.nodes.extended;
 
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 
@@ -32,6 +33,7 @@ import com.oracle.graal.nodes.*;
  */
 @NodeInfo
 public abstract class FixedAccessNode extends DeoptimizingFixedWithNextNode implements Access {
+    public static final NodeClass TYPE = NodeClass.get(FixedAccessNode.class);
 
     @OptionalInput(InputType.Guard) protected GuardingNode guard;
     @Input protected ValueNode object;
@@ -64,16 +66,16 @@ public abstract class FixedAccessNode extends DeoptimizingFixedWithNextNode impl
         this.nullCheck = check;
     }
 
-    public FixedAccessNode(ValueNode object, ValueNode location, Stamp stamp) {
-        this(object, location, stamp, BarrierType.NONE);
+    protected FixedAccessNode(NodeClass c, ValueNode object, ValueNode location, Stamp stamp) {
+        this(c, object, location, stamp, BarrierType.NONE);
     }
 
-    public FixedAccessNode(ValueNode object, ValueNode location, Stamp stamp, BarrierType barrierType) {
-        this(object, location, stamp, null, barrierType, false, null);
+    protected FixedAccessNode(NodeClass c, ValueNode object, ValueNode location, Stamp stamp, BarrierType barrierType) {
+        this(c, object, location, stamp, null, barrierType, false, null);
     }
 
-    public FixedAccessNode(ValueNode object, ValueNode location, Stamp stamp, GuardingNode guard, BarrierType barrierType, boolean nullCheck, FrameState stateBefore) {
-        super(stamp, stateBefore);
+    protected FixedAccessNode(NodeClass c, ValueNode object, ValueNode location, Stamp stamp, GuardingNode guard, BarrierType barrierType, boolean nullCheck, FrameState stateBefore) {
+        super(c, stamp, stateBefore);
         this.object = object;
         this.location = location;
         this.guard = guard;

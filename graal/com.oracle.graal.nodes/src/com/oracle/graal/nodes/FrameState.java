@@ -41,7 +41,8 @@ import com.oracle.graal.nodes.virtual.*;
  * This can be used as debug or deoptimization information.
  */
 @NodeInfo(nameTemplate = "FrameState@{p#method/s}:{p#bci}")
-public class FrameState extends VirtualState implements IterableNodeType {
+public final class FrameState extends VirtualState implements IterableNodeType {
+    public static final NodeClass TYPE = NodeClass.get(FrameState.class);
 
     private static final DebugMetric METRIC_FRAMESTATE_COUNT = Debug.metric("FrameStateCount");
 
@@ -76,6 +77,7 @@ public class FrameState extends VirtualState implements IterableNodeType {
 
     public FrameState(FrameState outerFrameState, ResolvedJavaMethod method, int bci, int localsSize, int stackSize, int lockSize, boolean rethrowException, boolean duringCall,
                     List<MonitorIdNode> monitorIds, List<EscapeObjectState> virtualObjectMappings) {
+        super(TYPE);
         assert stackSize >= 0;
         this.outerFrameState = outerFrameState;
         this.method = method;

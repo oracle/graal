@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,10 +32,12 @@ import com.oracle.graal.nodes.spi.*;
  * The {@code Parameter} instruction is a placeholder for an incoming argument to a function call.
  */
 @NodeInfo(nameTemplate = "Param({p#index})")
-public class ParameterNode extends AbstractLocalNode implements IterableNodeType, UncheckedInterfaceProvider {
+public final class ParameterNode extends AbstractLocalNode implements IterableNodeType, UncheckedInterfaceProvider {
+
+    public static final NodeClass TYPE = NodeClass.get(ParameterNode.class);
 
     public ParameterNode(int index, Stamp stamp) {
-        super(index, stamp);
+        super(TYPE, index, stamp);
     }
 
     public Stamp uncheckedStamp() {

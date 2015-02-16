@@ -76,6 +76,7 @@ import com.oracle.graal.nodeinfo.*;
 @NodeInfo
 public abstract class Node implements Cloneable, Formattable {
 
+    public static final NodeClass TYPE = null;
     public static final boolean USE_UNSAFE_TO_CLONE = Boolean.parseBoolean(System.getProperty("graal.node.useUnsafeToClone", "true"));
 
     static final int DELETED_ID_START = -1000000000;
@@ -198,9 +199,10 @@ public abstract class Node implements Cloneable, Formattable {
     public static final int NODE_LIST = -2;
     public static final int NOT_ITERABLE = -1;
 
-    public Node() {
+    public Node(NodeClass c) {
         init();
-        this.nodeClass = NodeClass.get(this.getClass());
+        assert c.getJavaClass() == this.getClass();
+        this.nodeClass = c;
     }
 
     final void init() {

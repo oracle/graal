@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@ import java.util.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
@@ -42,10 +43,11 @@ import com.oracle.graal.nodes.virtual.*;
 @NodeInfo
 public final class BoxNode extends UnaryNode implements VirtualizableAllocation, Lowerable {
 
+    public static final NodeClass TYPE = NodeClass.get(BoxNode.class);
     protected final Kind boxingKind;
 
     public BoxNode(ValueNode value, ResolvedJavaType resultType, Kind boxingKind) {
-        super(StampFactory.exactNonNull(resultType), value);
+        super(TYPE, StampFactory.exactNonNull(resultType), value);
         this.boxingKind = boxingKind;
     }
 

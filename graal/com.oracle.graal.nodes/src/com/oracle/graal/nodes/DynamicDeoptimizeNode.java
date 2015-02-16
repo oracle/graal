@@ -30,10 +30,12 @@ import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo
 public final class DynamicDeoptimizeNode extends AbstractDeoptimizeNode implements LIRLowerable, Lowerable, Canonicalizable {
+    public static final NodeClass TYPE = NodeClass.get(DynamicDeoptimizeNode.class);
     @Input ValueNode actionAndReason;
     @Input ValueNode speculation;
 
     public DynamicDeoptimizeNode(ValueNode actionAndReason, ValueNode speculation) {
+        super(TYPE, null);
         this.actionAndReason = actionAndReason;
         this.speculation = speculation;
     }

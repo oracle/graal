@@ -24,6 +24,7 @@ package com.oracle.graal.nodes.java;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
@@ -36,6 +37,7 @@ import com.oracle.graal.nodes.util.*;
 @NodeInfo
 public final class ArrayLengthNode extends FixedWithNextNode implements Canonicalizable.Unary<ValueNode>, Lowerable, Virtualizable {
 
+    public static final NodeClass TYPE = NodeClass.get(ArrayLengthNode.class);
     @Input ValueNode array;
 
     public ValueNode array() {
@@ -47,7 +49,7 @@ public final class ArrayLengthNode extends FixedWithNextNode implements Canonica
     }
 
     public ArrayLengthNode(ValueNode array) {
-        super(StampFactory.positiveInt());
+        super(TYPE, StampFactory.positiveInt());
         this.array = array;
     }
 

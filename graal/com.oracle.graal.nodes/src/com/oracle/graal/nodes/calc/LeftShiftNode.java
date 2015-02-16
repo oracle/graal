@@ -25,6 +25,7 @@ package com.oracle.graal.nodes.calc;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.ShiftOp.Shl;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodeinfo.*;
@@ -32,10 +33,12 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo(shortName = "<<")
-public class LeftShiftNode extends ShiftNode<Shl> {
+public final class LeftShiftNode extends ShiftNode<Shl> {
+
+    public static final NodeClass TYPE = NodeClass.get(LeftShiftNode.class);
 
     public LeftShiftNode(ValueNode x, ValueNode y) {
-        super(ArithmeticOpTable::getShl, x, y);
+        super(TYPE, ArithmeticOpTable::getShl, x, y);
     }
 
     @Override

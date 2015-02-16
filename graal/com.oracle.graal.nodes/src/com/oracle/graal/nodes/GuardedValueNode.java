@@ -37,13 +37,14 @@ import com.oracle.graal.nodes.spi.*;
  * A GuardedValueNode will only go away if its guard is null or {@link StructuredGraph#start()}.
  */
 @NodeInfo
-public class GuardedValueNode extends FloatingGuardedNode implements LIRLowerable, Virtualizable, IterableNodeType, Canonicalizable, ValueProxy {
+public final class GuardedValueNode extends FloatingGuardedNode implements LIRLowerable, Virtualizable, IterableNodeType, Canonicalizable, ValueProxy {
 
+    public static final NodeClass TYPE = NodeClass.get(GuardedValueNode.class);
     @Input ValueNode object;
     protected final Stamp piStamp;
 
     public GuardedValueNode(ValueNode object, GuardingNode guard, Stamp stamp) {
-        super(stamp, guard);
+        super(TYPE, stamp, guard);
         this.object = object;
         this.piStamp = stamp;
     }

@@ -27,17 +27,19 @@ import java.util.*;
 import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 
 @NodeInfo
 public final class HotSpotIndirectCallTargetNode extends IndirectCallTargetNode {
+    public static final NodeClass TYPE = NodeClass.get(HotSpotIndirectCallTargetNode.class);
 
     @Input ValueNode metaspaceMethod;
 
     public HotSpotIndirectCallTargetNode(ValueNode metaspaceMethod, ValueNode computedAddress, List<ValueNode> arguments, Stamp returnStamp, JavaType[] signature, ResolvedJavaMethod target,
                     Type callType, InvokeKind invokeKind) {
-        super(computedAddress, arguments, returnStamp, signature, target, callType, invokeKind);
+        super(TYPE, computedAddress, arguments, returnStamp, signature, target, callType, invokeKind);
         this.metaspaceMethod = metaspaceMethod;
     }
 

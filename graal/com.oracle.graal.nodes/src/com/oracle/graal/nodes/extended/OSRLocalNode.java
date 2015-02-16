@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,10 +28,12 @@ import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 
 @NodeInfo(nameTemplate = "OSRLocal({p#index})")
-public class OSRLocalNode extends AbstractLocalNode implements IterableNodeType {
+public final class OSRLocalNode extends AbstractLocalNode implements IterableNodeType {
+
+    public static final NodeClass TYPE = NodeClass.get(OSRLocalNode.class);
 
     public OSRLocalNode(int index, Stamp stamp) {
-        super(index, stamp);
+        super(TYPE, index, stamp);
     }
 
 }

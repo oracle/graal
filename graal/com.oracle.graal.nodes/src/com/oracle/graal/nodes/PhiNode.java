@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,10 +41,11 @@ import com.oracle.graal.nodes.calc.*;
 @NodeInfo
 public abstract class PhiNode extends FloatingNode implements Simplifiable {
 
+    public static final NodeClass TYPE = NodeClass.get(PhiNode.class);
     @Input(InputType.Association) protected AbstractMergeNode merge;
 
-    protected PhiNode(Stamp stamp, AbstractMergeNode merge) {
-        super(stamp);
+    protected PhiNode(NodeClass c, Stamp stamp, AbstractMergeNode merge) {
+        super(c, stamp);
         this.merge = merge;
     }
 
@@ -142,10 +143,12 @@ public abstract class PhiNode extends FloatingNode implements Simplifiable {
     }
 
     @NodeInfo
-    static class MultipleValuesNode extends ValueNode {
+    static final class MultipleValuesNode extends ValueNode {
+
+        public static final NodeClass TYPE = NodeClass.get(MultipleValuesNode.class);
 
         public MultipleValuesNode() {
-            super(null);
+            super(TYPE, null);
         }
 
     }

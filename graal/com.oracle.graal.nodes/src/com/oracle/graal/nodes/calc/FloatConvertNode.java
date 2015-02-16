@@ -26,6 +26,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.FloatConvertOp;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodeinfo.*;
@@ -38,11 +39,12 @@ import com.oracle.graal.nodes.spi.*;
  */
 @NodeInfo
 public final class FloatConvertNode extends UnaryArithmeticNode<FloatConvertOp> implements ConvertNode, Lowerable, ArithmeticLIRLowerable {
+    public static final NodeClass TYPE = NodeClass.get(FloatConvertNode.class);
 
     protected final FloatConvert op;
 
     public FloatConvertNode(FloatConvert op, ValueNode input) {
-        super(table -> table.getFloatConvert(op), input);
+        super(TYPE, table -> table.getFloatConvert(op), input);
         this.op = op;
     }
 

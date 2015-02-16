@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@ import java.util.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
@@ -37,12 +38,13 @@ import com.oracle.graal.nodes.util.*;
  * values. The actual implementation of the switch will be decided by the backend.
  */
 @NodeInfo
-public class IntegerSwitchNode extends SwitchNode implements LIRLowerable, Simplifiable {
+public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable, Simplifiable {
+    public static final NodeClass TYPE = NodeClass.get(IntegerSwitchNode.class);
 
     protected final int[] keys;
 
     public IntegerSwitchNode(ValueNode value, AbstractBeginNode[] successors, int[] keys, double[] keyProbabilities, int[] keySuccessors) {
-        super(value, successors, keySuccessors, keyProbabilities);
+        super(TYPE, value, successors, keySuccessors, keyProbabilities);
         assert keySuccessors.length == keys.length + 1;
         assert keySuccessors.length == keyProbabilities.length;
         this.keys = keys;

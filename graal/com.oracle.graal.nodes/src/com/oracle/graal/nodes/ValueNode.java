@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@ package com.oracle.graal.nodes;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.nodeinfo.*;
 
@@ -34,13 +35,15 @@ import com.oracle.graal.nodeinfo.*;
 @NodeInfo
 public abstract class ValueNode extends com.oracle.graal.graph.Node implements KindProvider {
 
+    public static final NodeClass TYPE = NodeClass.get(ValueNode.class);
     /**
      * The kind of this value. This is {@link Kind#Void} for instructions that produce no value.
      * This kind is guaranteed to be a {@linkplain Kind#getStackKind() stack kind}.
      */
     protected Stamp stamp;
 
-    public ValueNode(Stamp stamp) {
+    public ValueNode(NodeClass c, Stamp stamp) {
+        super(c);
         this.stamp = stamp;
     }
 

@@ -625,7 +625,11 @@ public class Graph {
     // Fully qualified annotation name is required to satisfy javac
     @com.oracle.graal.nodeinfo.NodeInfo
     static final class PlaceHolderNode extends Node {
+
+        public static final NodeClass TYPE = NodeClass.get(PlaceHolderNode.class);
+
         public PlaceHolderNode() {
+            super(TYPE);
         }
 
     }

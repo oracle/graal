@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -48,11 +48,12 @@ import com.oracle.truffle.api.frame.*;
 @NodeInfo
 public final class NewFrameNode extends FixedWithNextNode implements IterableNodeType, VirtualizableAllocation, Canonicalizable {
 
+    public static final NodeClass TYPE = NodeClass.get(NewFrameNode.class);
     @Input ValueNode descriptor;
     @Input ValueNode arguments;
 
     public NewFrameNode(Stamp stamp, ValueNode descriptor, ValueNode arguments) {
-        super(stamp);
+        super(TYPE, stamp);
         this.descriptor = descriptor;
         this.arguments = arguments;
     }
@@ -98,10 +99,11 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
     @NodeInfo
     public static final class VirtualOnlyInstanceNode extends VirtualInstanceNode {
 
+        public static final NodeClass TYPE = NodeClass.get(VirtualOnlyInstanceNode.class);
         protected boolean allowMaterialization;
 
         public VirtualOnlyInstanceNode(ResolvedJavaType type, ResolvedJavaField[] fields) {
-            super(type, fields, true);
+            super(TYPE, type, fields, true);
         }
 
         @Override

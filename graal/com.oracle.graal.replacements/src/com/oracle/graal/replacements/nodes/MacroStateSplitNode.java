@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@ package com.oracle.graal.replacements.nodes;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
@@ -35,12 +36,13 @@ import com.oracle.graal.nodes.java.*;
  * {@link MemoryCheckpoint}.
  */
 @NodeInfo
-public class MacroStateSplitNode extends MacroNode implements StateSplit, MemoryCheckpoint.Single {
+public abstract class MacroStateSplitNode extends MacroNode implements StateSplit, MemoryCheckpoint.Single {
 
+    public static final NodeClass TYPE = NodeClass.get(MacroStateSplitNode.class);
     @OptionalInput(InputType.State) protected FrameState stateAfter;
 
-    public MacroStateSplitNode(Invoke invoke) {
-        super(invoke);
+    public MacroStateSplitNode(NodeClass c, Invoke invoke) {
+        super(c, invoke);
         this.stateAfter = invoke.stateAfter();
     }
 

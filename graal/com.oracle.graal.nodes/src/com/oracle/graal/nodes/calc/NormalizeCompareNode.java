@@ -25,6 +25,7 @@ package com.oracle.graal.nodes.calc;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
@@ -36,12 +37,13 @@ import com.oracle.graal.nodes.spi.*;
  * true.
  */
 @NodeInfo
-public class NormalizeCompareNode extends BinaryNode implements Lowerable {
+public final class NormalizeCompareNode extends BinaryNode implements Lowerable {
 
+    public static final NodeClass TYPE = NodeClass.get(NormalizeCompareNode.class);
     protected final boolean isUnorderedLess;
 
     public NormalizeCompareNode(ValueNode x, ValueNode y, boolean isUnorderedLess) {
-        super(StampFactory.forKind(Kind.Int), x, y);
+        super(TYPE, StampFactory.forKind(Kind.Int), x, y);
         this.isUnorderedLess = isUnorderedLess;
     }
 

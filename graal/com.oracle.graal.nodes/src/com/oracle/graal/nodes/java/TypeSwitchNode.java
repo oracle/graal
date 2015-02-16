@@ -26,6 +26,7 @@ import java.util.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
@@ -38,12 +39,13 @@ import com.oracle.graal.nodes.util.*;
  * comparison is an exact type comparison, not an instanceof.
  */
 @NodeInfo
-public class TypeSwitchNode extends SwitchNode implements LIRLowerable, Simplifiable {
+public final class TypeSwitchNode extends SwitchNode implements LIRLowerable, Simplifiable {
 
+    public static final NodeClass TYPE = NodeClass.get(TypeSwitchNode.class);
     protected final ResolvedJavaType[] keys;
 
     public TypeSwitchNode(ValueNode value, AbstractBeginNode[] successors, ResolvedJavaType[] keys, double[] keyProbabilities, int[] keySuccessors) {
-        super(value, successors, keySuccessors, keyProbabilities);
+        super(TYPE, value, successors, keySuccessors, keyProbabilities);
         assert successors.length <= keys.length + 1;
         assert keySuccessors.length == keyProbabilities.length;
         this.keys = keys;

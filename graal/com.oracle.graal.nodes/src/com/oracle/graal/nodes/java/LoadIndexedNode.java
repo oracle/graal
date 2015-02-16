@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,6 +37,8 @@ import com.oracle.graal.nodes.type.*;
 @NodeInfo
 public class LoadIndexedNode extends AccessIndexedNode implements Virtualizable, Canonicalizable {
 
+    public static final NodeClass TYPE = NodeClass.get(LoadIndexedNode.class);
+
     /**
      * Creates a new LoadIndexedNode.
      *
@@ -45,7 +47,7 @@ public class LoadIndexedNode extends AccessIndexedNode implements Virtualizable,
      * @param elementKind the element type
      */
     public LoadIndexedNode(ValueNode array, ValueNode index, Kind elementKind) {
-        this(createStamp(array, elementKind), array, index, elementKind);
+        this(TYPE, createStamp(array, elementKind), array, index, elementKind);
     }
 
     public static ValueNode create(ValueNode array, ValueNode index, Kind elementKind, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection) {
@@ -56,8 +58,8 @@ public class LoadIndexedNode extends AccessIndexedNode implements Virtualizable,
         return new LoadIndexedNode(array, index, elementKind);
     }
 
-    protected LoadIndexedNode(Stamp stamp, ValueNode array, ValueNode index, Kind elementKind) {
-        super(stamp, array, index, elementKind);
+    protected LoadIndexedNode(NodeClass c, Stamp stamp, ValueNode array, ValueNode index, Kind elementKind) {
+        super(c, stamp, array, index, elementKind);
     }
 
     private static Stamp createStamp(ValueNode array, Kind kind) {

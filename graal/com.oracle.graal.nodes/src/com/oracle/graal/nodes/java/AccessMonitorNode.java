@@ -24,6 +24,7 @@ package com.oracle.graal.nodes.java;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
@@ -37,6 +38,7 @@ import com.oracle.graal.nodes.extended.*;
 @NodeInfo(allowedUsageTypes = {InputType.Memory})
 public abstract class AccessMonitorNode extends AbstractMemoryCheckpoint implements MemoryCheckpoint, DeoptimizingNode.DeoptBefore, DeoptimizingNode.DeoptAfter {
 
+    public static final NodeClass TYPE = NodeClass.get(AccessMonitorNode.class);
     @OptionalInput(InputType.State) FrameState stateBefore;
     @Input ValueNode object;
     @Input(InputType.Association) MonitorIdNode monitorId;
@@ -69,8 +71,8 @@ public abstract class AccessMonitorNode extends AbstractMemoryCheckpoint impleme
      *
      * @param object the instruction producing the object
      */
-    public AccessMonitorNode(ValueNode object, MonitorIdNode monitorId) {
-        super(StampFactory.forVoid());
+    protected AccessMonitorNode(NodeClass c, ValueNode object, MonitorIdNode monitorId) {
+        super(c, StampFactory.forVoid());
         this.object = object;
         this.monitorId = monitorId;
     }

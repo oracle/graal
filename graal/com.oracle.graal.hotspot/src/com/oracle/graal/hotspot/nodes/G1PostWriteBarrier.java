@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
@@ -29,10 +30,15 @@ import com.oracle.graal.nodes.extended.*;
 @NodeInfo
 public class G1PostWriteBarrier extends WriteBarrier {
 
+    public static final NodeClass TYPE = NodeClass.get(G1PostWriteBarrier.class);
     protected final boolean alwaysNull;
 
     public G1PostWriteBarrier(ValueNode object, ValueNode value, LocationNode location, boolean precise, boolean alwaysNull) {
-        super(object, value, location, precise);
+        this(TYPE, object, value, location, precise, alwaysNull);
+    }
+
+    protected G1PostWriteBarrier(NodeClass c, ValueNode object, ValueNode value, LocationNode location, boolean precise, boolean alwaysNull) {
+        super(c, object, value, location, precise);
         this.alwaysNull = alwaysNull;
     }
 

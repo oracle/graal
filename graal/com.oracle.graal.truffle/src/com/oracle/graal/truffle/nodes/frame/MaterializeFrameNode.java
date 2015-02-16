@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,12 +31,13 @@ import com.oracle.graal.truffle.*;
  * Intrinsic node for materializing a Truffle frame.
  */
 @NodeInfo(nameTemplate = "MaterializeFrame{p#frame/s}")
-public class MaterializeFrameNode extends FixedWithNextNode implements IterableNodeType {
+public final class MaterializeFrameNode extends FixedWithNextNode implements IterableNodeType {
 
+    public static final NodeClass TYPE = NodeClass.get(MaterializeFrameNode.class);
     @Input ValueNode frame;
 
     public MaterializeFrameNode(ValueNode frame) {
-        super(frame.stamp());
+        super(TYPE, frame.stamp());
         this.frame = frame;
     }
 
