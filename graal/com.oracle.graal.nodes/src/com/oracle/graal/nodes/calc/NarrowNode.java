@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@ import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.*;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.IntegerConvertOp.Narrow;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.IntegerConvertOp.SignExtend;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodeinfo.*;
@@ -38,13 +39,15 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public final class NarrowNode extends IntegerConvertNode<Narrow, SignExtend> {
 
+    public static final NodeClass<NarrowNode> TYPE = NodeClass.get(NarrowNode.class);
+
     public NarrowNode(ValueNode input, int resultBits) {
         this(input, PrimitiveStamp.getBits(input.stamp()), resultBits);
         assert 0 < resultBits && resultBits <= PrimitiveStamp.getBits(input.stamp());
     }
 
     public NarrowNode(ValueNode input, int inputBits, int resultBits) {
-        super(ArithmeticOpTable::getNarrow, ArithmeticOpTable::getSignExtend, inputBits, resultBits, input);
+        super(TYPE, ArithmeticOpTable::getNarrow, ArithmeticOpTable::getSignExtend, inputBits, resultBits, input);
     }
 
     public static ValueNode create(ValueNode input, int resultBits) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,11 +38,12 @@ import com.oracle.graal.nodes.spi.*;
  * also used by {@link ClassGetHubNode} to eliminate chains of {@code klass._java_mirror._klass}.
  */
 @NodeInfo
-public class HubGetClassNode extends FloatingGuardedNode implements Lowerable, Canonicalizable, ConvertNode {
+public final class HubGetClassNode extends FloatingGuardedNode implements Lowerable, Canonicalizable, ConvertNode {
+    public static final NodeClass<HubGetClassNode> TYPE = NodeClass.get(HubGetClassNode.class);
     @Input protected ValueNode hub;
 
     public HubGetClassNode(@InjectedNodeParameter MetaAccessProvider metaAccess, ValueNode hub) {
-        super(StampFactory.declaredNonNull(metaAccess.lookupJavaType(Class.class)), null);
+        super(TYPE, StampFactory.declaredNonNull(metaAccess.lookupJavaType(Class.class)), null);
         this.hub = hub;
     }
 

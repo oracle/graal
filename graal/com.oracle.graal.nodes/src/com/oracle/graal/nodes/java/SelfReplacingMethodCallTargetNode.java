@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,8 +37,9 @@ import com.oracle.graal.nodes.spi.*;
  * inlined.
  */
 @NodeInfo
-public class SelfReplacingMethodCallTargetNode extends MethodCallTargetNode implements Lowerable {
+public final class SelfReplacingMethodCallTargetNode extends MethodCallTargetNode implements Lowerable {
 
+    public static final NodeClass<SelfReplacingMethodCallTargetNode> TYPE = NodeClass.get(SelfReplacingMethodCallTargetNode.class);
     // Replacement method data
     protected final ResolvedJavaMethod replacementTargetMethod;
     protected final JavaType replacementReturnType;
@@ -46,7 +47,7 @@ public class SelfReplacingMethodCallTargetNode extends MethodCallTargetNode impl
 
     public SelfReplacingMethodCallTargetNode(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, JavaType returnType, ResolvedJavaMethod replacementTargetMethod,
                     ValueNode[] replacementArguments, JavaType replacementReturnType) {
-        super(invokeKind, targetMethod, arguments, returnType);
+        super(TYPE, invokeKind, targetMethod, arguments, returnType);
         this.replacementTargetMethod = replacementTargetMethod;
         this.replacementReturnType = replacementReturnType;
         this.replacementArguments = new NodeInputList<>(this, replacementArguments);

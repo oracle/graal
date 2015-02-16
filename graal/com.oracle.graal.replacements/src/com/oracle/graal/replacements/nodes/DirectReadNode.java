@@ -26,6 +26,7 @@ import static com.oracle.graal.compiler.common.UnsafeAccess.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
@@ -36,13 +37,14 @@ import com.oracle.graal.nodes.spi.*;
  * {@link StateSplit} and takes a computed address instead of an object.
  */
 @NodeInfo
-public class DirectReadNode extends FixedWithNextNode implements LIRLowerable {
+public final class DirectReadNode extends FixedWithNextNode implements LIRLowerable {
 
+    public static final NodeClass<DirectReadNode> TYPE = NodeClass.get(DirectReadNode.class);
     @Input protected ValueNode address;
     protected final Kind readKind;
 
     public DirectReadNode(ValueNode address, Kind readKind) {
-        super(StampFactory.forKind(readKind.getStackKind()));
+        super(TYPE, StampFactory.forKind(readKind.getStackKind()));
         this.address = address;
         this.readKind = readKind;
     }

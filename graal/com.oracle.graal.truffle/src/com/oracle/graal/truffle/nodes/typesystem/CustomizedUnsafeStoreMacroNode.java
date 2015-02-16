@@ -36,6 +36,7 @@ import com.oracle.graal.truffle.nodes.asserts.*;
  */
 @NodeInfo
 public final class CustomizedUnsafeStoreMacroNode extends NeverPartOfCompilationNode implements Canonicalizable, StateSplit {
+    public static final NodeClass<CustomizedUnsafeStoreMacroNode> TYPE = NodeClass.get(CustomizedUnsafeStoreMacroNode.class);
     private static final int ARGUMENT_COUNT = 4;
     private static final int OBJECT_ARGUMENT_INDEX = 0;
     private static final int OFFSET_ARGUMENT_INDEX = 1;
@@ -43,7 +44,7 @@ public final class CustomizedUnsafeStoreMacroNode extends NeverPartOfCompilation
     private static final int LOCATION_ARGUMENT_INDEX = 3;
 
     public CustomizedUnsafeStoreMacroNode(Invoke invoke) {
-        super(invoke, "The location argument could not be resolved to a constant.");
+        super(TYPE, invoke, "The location argument could not be resolved to a constant.");
         assert arguments.size() == ARGUMENT_COUNT;
     }
 

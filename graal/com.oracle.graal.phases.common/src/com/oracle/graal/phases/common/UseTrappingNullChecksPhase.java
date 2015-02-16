@@ -48,10 +48,10 @@ public class UseTrappingNullChecksPhase extends BasePhase<LowTierContext> {
         }
         assert graph.getGuardsStage().areFrameStatesAtDeopts();
 
-        for (DeoptimizeNode deopt : graph.getNodes(DeoptimizeNode.class)) {
+        for (DeoptimizeNode deopt : graph.getNodes(DeoptimizeNode.TYPE)) {
             tryUseTrappingNullCheck(deopt, deopt.predecessor(), deopt.reason(), deopt.getSpeculation());
         }
-        for (DynamicDeoptimizeNode deopt : graph.getNodes(DynamicDeoptimizeNode.class)) {
+        for (DynamicDeoptimizeNode deopt : graph.getNodes(DynamicDeoptimizeNode.TYPE)) {
             tryUseTrappingNullCheck(context.getMetaAccess(), deopt);
         }
     }

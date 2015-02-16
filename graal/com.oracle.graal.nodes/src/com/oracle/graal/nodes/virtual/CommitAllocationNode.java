@@ -35,13 +35,14 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(nameTemplate = "Alloc {i#virtualObjects}", allowedUsageTypes = {InputType.Extension})
 public final class CommitAllocationNode extends FixedWithNextNode implements VirtualizableAllocation, Lowerable, Simplifiable {
 
+    public static final NodeClass<CommitAllocationNode> TYPE = NodeClass.get(CommitAllocationNode.class);
     @Input NodeInputList<VirtualObjectNode> virtualObjects = new NodeInputList<>(this);
     @Input NodeInputList<ValueNode> values = new NodeInputList<>(this);
     @Input(InputType.Association) NodeInputList<MonitorIdNode> locks = new NodeInputList<>(this);
     protected ArrayList<Integer> lockIndexes = new ArrayList<>(Arrays.asList(0));
 
     public CommitAllocationNode() {
-        super(StampFactory.forVoid());
+        super(TYPE, StampFactory.forVoid());
     }
 
     public List<VirtualObjectNode> getVirtualObjects() {

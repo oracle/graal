@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@ package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.UnaryOp.Neg;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodeinfo.*;
@@ -36,8 +37,10 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public final class NegateNode extends UnaryArithmeticNode<Neg> implements NarrowableArithmeticNode {
 
+    public static final NodeClass<NegateNode> TYPE = NodeClass.get(NegateNode.class);
+
     public NegateNode(ValueNode value) {
-        super(ArithmeticOpTable::getNeg, value);
+        super(TYPE, ArithmeticOpTable::getNeg, value);
     }
 
     @Override

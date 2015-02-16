@@ -26,6 +26,7 @@ package com.oracle.graal.hotspot.replacements.arraycopy;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
@@ -40,6 +41,7 @@ import com.oracle.graal.word.*;
 @NodeInfo(allowedUsageTypes = {InputType.Memory, InputType.Value})
 public final class CheckcastArrayCopyCallNode extends AbstractMemoryCheckpoint implements Lowerable, MemoryCheckpoint.Single {
 
+    public static final NodeClass<CheckcastArrayCopyCallNode> TYPE = NodeClass.get(CheckcastArrayCopyCallNode.class);
     @Input ValueNode src;
     @Input ValueNode srcPos;
     @Input ValueNode dest;
@@ -54,7 +56,7 @@ public final class CheckcastArrayCopyCallNode extends AbstractMemoryCheckpoint i
 
     protected CheckcastArrayCopyCallNode(@InjectedNodeParameter HotSpotGraalRuntimeProvider runtime, ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length,
                     ValueNode superCheckOffset, ValueNode destElemKlass, boolean uninit) {
-        super(StampFactory.forKind(Kind.Int));
+        super(TYPE, StampFactory.forKind(Kind.Int));
         this.src = src;
         this.srcPos = srcPos;
         this.dest = dest;

@@ -35,7 +35,8 @@ import com.oracle.graal.nodes.spi.*;
  * relative location. This node does not null check the object.
  */
 @NodeInfo
-public class FloatingReadNode extends FloatingAccessNode implements LIRLowerable, Canonicalizable {
+public final class FloatingReadNode extends FloatingAccessNode implements LIRLowerable, Canonicalizable {
+    public static final NodeClass<FloatingReadNode> TYPE = NodeClass.get(FloatingReadNode.class);
 
     @OptionalInput(InputType.Memory) MemoryNode lastLocationAccess;
 
@@ -48,7 +49,7 @@ public class FloatingReadNode extends FloatingAccessNode implements LIRLowerable
     }
 
     public FloatingReadNode(ValueNode object, LocationNode location, MemoryNode lastLocationAccess, Stamp stamp, GuardingNode guard, BarrierType barrierType) {
-        super(object, location, stamp, guard, barrierType);
+        super(TYPE, object, location, stamp, guard, barrierType);
         this.lastLocationAccess = lastLocationAccess;
     }
 

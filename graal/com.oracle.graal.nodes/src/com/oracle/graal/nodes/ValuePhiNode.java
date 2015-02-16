@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,16 +33,21 @@ import com.oracle.graal.nodes.type.*;
 @NodeInfo(nameTemplate = "ValuePhi({i#values})")
 public class ValuePhiNode extends PhiNode {
 
+    public static final NodeClass<ValuePhiNode> TYPE = NodeClass.get(ValuePhiNode.class);
     @Input protected NodeInputList<ValueNode> values;
 
     public ValuePhiNode(Stamp stamp, AbstractMergeNode merge) {
-        super(stamp, merge);
+        this(TYPE, stamp, merge);
+    }
+
+    protected ValuePhiNode(NodeClass<?> c, Stamp stamp, AbstractMergeNode merge) {
+        super(c, stamp, merge);
         assert stamp != StampFactory.forVoid();
         values = new NodeInputList<>(this);
     }
 
     public ValuePhiNode(Stamp stamp, AbstractMergeNode merge, ValueNode[] values) {
-        super(stamp, merge);
+        super(TYPE, stamp, merge);
         assert stamp != StampFactory.forVoid();
         this.values = new NodeInputList<>(this, values);
     }

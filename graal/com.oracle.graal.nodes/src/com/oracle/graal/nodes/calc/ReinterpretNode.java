@@ -26,6 +26,7 @@ import java.nio.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodeinfo.*;
@@ -38,14 +39,16 @@ import com.oracle.graal.nodes.spi.*;
  * the old stamp.
  */
 @NodeInfo
-public class ReinterpretNode extends UnaryNode implements ArithmeticLIRLowerable {
+public final class ReinterpretNode extends UnaryNode implements ArithmeticLIRLowerable {
+
+    public static final NodeClass<ReinterpretNode> TYPE = NodeClass.get(ReinterpretNode.class);
 
     public ReinterpretNode(Kind to, ValueNode value) {
         this(StampFactory.forKind(to), value);
     }
 
     public ReinterpretNode(Stamp to, ValueNode value) {
-        super(to, value);
+        super(TYPE, to, value);
         assert to instanceof ArithmeticStamp;
     }
 

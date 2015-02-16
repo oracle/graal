@@ -681,7 +681,7 @@ public class ReplacementsImpl implements Replacements {
             final StructuredGraph graph = buildInitialGraph(methodToParse);
             try (Scope s = Debug.scope("buildGraph", graph)) {
                 Set<MethodCallTargetNode> doNotInline = null;
-                for (MethodCallTargetNode callTarget : graph.getNodes(MethodCallTargetNode.class)) {
+                for (MethodCallTargetNode callTarget : graph.getNodes(MethodCallTargetNode.TYPE)) {
                     if (doNotInline != null && doNotInline.contains(callTarget)) {
                         continue;
                     }
@@ -737,7 +737,7 @@ public class ReplacementsImpl implements Replacements {
 
                 afterInlining(graph);
 
-                for (LoopEndNode end : graph.getNodes(LoopEndNode.class)) {
+                for (LoopEndNode end : graph.getNodes(LoopEndNode.TYPE)) {
                     end.disableSafepoint();
                 }
 

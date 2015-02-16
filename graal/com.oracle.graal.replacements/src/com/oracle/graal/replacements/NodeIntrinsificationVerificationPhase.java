@@ -43,7 +43,7 @@ public class NodeIntrinsificationVerificationPhase extends Phase {
 
     @Override
     protected void run(StructuredGraph graph) {
-        for (MethodCallTargetNode n : graph.getNodes(MethodCallTargetNode.class)) {
+        for (MethodCallTargetNode n : graph.getNodes(MethodCallTargetNode.TYPE)) {
             checkInvoke(n);
         }
     }

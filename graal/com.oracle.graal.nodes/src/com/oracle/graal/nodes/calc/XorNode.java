@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.*;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodeinfo.*;
@@ -35,10 +36,12 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.util.*;
 
 @NodeInfo(shortName = "^")
-public class XorNode extends BinaryArithmeticNode<Xor> {
+public final class XorNode extends BinaryArithmeticNode<Xor> {
+
+    public static final NodeClass<XorNode> TYPE = NodeClass.get(XorNode.class);
 
     public XorNode(ValueNode x, ValueNode y) {
-        super(ArithmeticOpTable::getXor, x, y);
+        super(TYPE, ArithmeticOpTable::getXor, x, y);
         assert x.stamp().isCompatible(y.stamp());
     }
 

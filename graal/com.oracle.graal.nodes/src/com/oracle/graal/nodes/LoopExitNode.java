@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,11 +27,13 @@ import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 
 @NodeInfo(allowedUsageTypes = {InputType.Association})
-public class LoopExitNode extends BeginStateSplitNode implements IterableNodeType {
+public final class LoopExitNode extends BeginStateSplitNode implements IterableNodeType {
 
+    public static final NodeClass<LoopExitNode> TYPE = NodeClass.get(LoopExitNode.class);
     @Input(InputType.Association) LoopBeginNode loopBegin;
 
     public LoopExitNode(LoopBeginNode loop) {
+        super(TYPE);
         assert loop != null;
         loopBegin = loop;
     }

@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
@@ -34,10 +35,11 @@ import com.oracle.graal.word.*;
 @NodeInfo
 public final class CStringNode extends FloatingNode implements LIRLowerable {
 
+    public static final NodeClass<CStringNode> TYPE = NodeClass.get(CStringNode.class);
     protected final String string;
 
     public CStringNode(String string) {
-        super(null);
+        super(TYPE, null);
         this.string = string;
     }
 

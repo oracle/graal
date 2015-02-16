@@ -27,6 +27,7 @@ import java.util.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -38,10 +39,11 @@ import com.oracle.graal.nodes.virtual.*;
 @NodeInfo(nameTemplate = "New {p#instanceClass/s}")
 public final class NewInstanceNode extends AbstractNewObjectNode implements VirtualizableAllocation {
 
+    public static final NodeClass<NewInstanceNode> TYPE = NodeClass.get(NewInstanceNode.class);
     protected final ResolvedJavaType instanceClass;
 
     public NewInstanceNode(ResolvedJavaType type, boolean fillContents) {
-        super(StampFactory.exactNonNull(type), fillContents);
+        super(TYPE, StampFactory.exactNonNull(type), fillContents);
         assert !type.isArray() && !type.isInterface() && !type.isPrimitive();
         this.instanceClass = type;
     }

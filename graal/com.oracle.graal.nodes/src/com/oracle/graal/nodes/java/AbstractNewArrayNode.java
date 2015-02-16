@@ -23,6 +23,7 @@
 package com.oracle.graal.nodes.java;
 
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
@@ -34,6 +35,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public abstract class AbstractNewArrayNode extends AbstractNewObjectNode implements ArrayLengthProvider {
 
+    public static final NodeClass<AbstractNewArrayNode> TYPE = NodeClass.get(AbstractNewArrayNode.class);
     @Input protected ValueNode length;
 
     @Override
@@ -41,8 +43,8 @@ public abstract class AbstractNewArrayNode extends AbstractNewObjectNode impleme
         return length;
     }
 
-    public AbstractNewArrayNode(Stamp stamp, ValueNode length, boolean fillContents) {
-        super(stamp, fillContents);
+    public AbstractNewArrayNode(NodeClass<?> c, Stamp stamp, ValueNode length, boolean fillContents) {
+        super(c, stamp, fillContents);
         this.length = length;
     }
 

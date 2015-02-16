@@ -23,6 +23,7 @@
 package com.oracle.graal.nodes;
 
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 
 /**
@@ -31,6 +32,7 @@ import com.oracle.graal.nodeinfo.*;
  */
 @NodeInfo
 public abstract class FixedWithNextNode extends FixedNode {
+    public static final NodeClass<FixedWithNextNode> TYPE = NodeClass.get(FixedWithNextNode.class);
 
     @Successor protected FixedNode next;
 
@@ -43,8 +45,8 @@ public abstract class FixedWithNextNode extends FixedNode {
         next = x;
     }
 
-    public FixedWithNextNode(Stamp stamp) {
-        super(stamp);
+    public FixedWithNextNode(NodeClass<?> c, Stamp stamp) {
+        super(c, stamp);
     }
 
     @Override

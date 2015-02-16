@@ -44,6 +44,7 @@ import com.oracle.graal.nodes.type.*;
 @NodeInfo
 public final class CheckCastNode extends FixedWithNextNode implements Canonicalizable, Simplifiable, Lowerable, Virtualizable, ValueProxy {
 
+    public static final NodeClass<CheckCastNode> TYPE = NodeClass.get(CheckCastNode.class);
     @Input protected ValueNode object;
     protected final ResolvedJavaType type;
     protected final JavaTypeProfile profile;
@@ -55,7 +56,7 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
     protected final boolean forStoreCheck;
 
     public CheckCastNode(ResolvedJavaType type, ValueNode object, JavaTypeProfile profile, boolean forStoreCheck) {
-        super(StampFactory.declaredTrusted(type));
+        super(TYPE, StampFactory.declaredTrusted(type));
         assert type != null;
         this.type = type;
         this.object = object;

@@ -134,7 +134,7 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
         setSaveRbp(((AMD64HotSpotLIRGenerator) gen).new SaveRbp(new NoOp(gen.getCurrentBlock(), gen.getResult().getLIR().getLIRforBlock(gen.getCurrentBlock()).size())));
         append(getSaveRbp().placeholder);
 
-        for (ParameterNode param : graph.getNodes(ParameterNode.class)) {
+        for (ParameterNode param : graph.getNodes(ParameterNode.TYPE)) {
             Value paramValue = params[param.index()];
             assert paramValue.getLIRKind().equals(getLIRGeneratorTool().getLIRKind(param.stamp()));
             setResult(param, gen.emitMove(paramValue));

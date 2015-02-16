@@ -32,10 +32,10 @@ public class ExpandLogicPhase extends Phase {
 
     @Override
     protected void run(StructuredGraph graph) {
-        for (ShortCircuitOrNode logic : graph.getNodes(ShortCircuitOrNode.class)) {
+        for (ShortCircuitOrNode logic : graph.getNodes(ShortCircuitOrNode.TYPE)) {
             processBinary(logic);
         }
-        assert graph.getNodes(ShortCircuitOrNode.class).isEmpty();
+        assert graph.getNodes(ShortCircuitOrNode.TYPE).isEmpty();
     }
 
     private static void processBinary(ShortCircuitOrNode binary) {
@@ -60,9 +60,9 @@ public class ExpandLogicPhase extends Phase {
         double firstIfProbability = shortCircuitProbability;
         /*
          * P(Y | not(X)) = P(Y inter not(X)) / P(not(X)) = (P(X union Y) - P(X)) / (1 - P(X))
-         *
+         * 
          * P(X) = shortCircuitProbability
-         *
+         * 
          * P(X union Y) = ifNode.probability(trueTarget)
          */
         double secondIfProbability = (ifNode.probability(trueTarget) - shortCircuitProbability) / (1 - shortCircuitProbability);

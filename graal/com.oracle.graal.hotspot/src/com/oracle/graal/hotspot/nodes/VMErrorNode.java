@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@ import static com.oracle.graal.hotspot.nodes.CStringNode.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -38,13 +39,14 @@ import com.oracle.graal.replacements.*;
  * {@linkplain Log#printf(String, long) formatted} error message specified.
  */
 @NodeInfo
-public class VMErrorNode extends DeoptimizingStubCall implements LIRLowerable {
+public final class VMErrorNode extends DeoptimizingStubCall implements LIRLowerable {
 
+    public static final NodeClass<VMErrorNode> TYPE = NodeClass.get(VMErrorNode.class);
     protected final String format;
     @Input ValueNode value;
 
     public VMErrorNode(String format, ValueNode value) {
-        super(StampFactory.forVoid());
+        super(TYPE, StampFactory.forVoid());
         this.format = format;
         this.value = value;
     }

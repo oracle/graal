@@ -455,7 +455,7 @@ public class MatchProcessor extends AbstractProcessor {
         }
 
         String generatePositionDeclaration() {
-            return String.format("Position[] %s_positions = MatchRuleRegistry.findPositions(lookup, %s.class, new String[]{\"%s\"});", nodeType.nodeClass, nodeType.nodeClass,
+            return String.format("Position[] %s_positions = MatchRuleRegistry.findPositions(%s.TYPE, new String[]{\"%s\"});", nodeType.nodeClass, nodeType.nodeClass,
                             String.join("\", \"", nodeType.inputs));
         }
     }
@@ -535,7 +535,7 @@ public class MatchProcessor extends AbstractProcessor {
             out.println("    }");
             out.println();
             out.println("    @Override");
-            out.println("    public List<" + desc + "> statements(MatchRuleRegistry.NodeClassLookup lookup) {");
+            out.println("    public List<" + desc + "> statements() {");
             out.println("        // Checkstyle: stop ");
 
             for (String positionDeclaration : info.positionDeclarations) {

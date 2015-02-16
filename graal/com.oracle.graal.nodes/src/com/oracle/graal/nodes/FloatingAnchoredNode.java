@@ -23,21 +23,23 @@
 package com.oracle.graal.nodes;
 
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 
 @NodeInfo
 public abstract class FloatingAnchoredNode extends FloatingNode {
+    public static final NodeClass<FloatingAnchoredNode> TYPE = NodeClass.get(FloatingAnchoredNode.class);
 
     @Input(InputType.Anchor) protected AnchoringNode anchor;
 
-    public FloatingAnchoredNode(Stamp stamp) {
-        super(stamp);
+    public FloatingAnchoredNode(NodeClass<?> c, Stamp stamp) {
+        super(c, stamp);
     }
 
-    public FloatingAnchoredNode(Stamp stamp, AnchoringNode anchor) {
-        super(stamp);
+    public FloatingAnchoredNode(NodeClass<?> c, Stamp stamp, AnchoringNode anchor) {
+        super(c, stamp);
         this.anchor = anchor;
     }
 

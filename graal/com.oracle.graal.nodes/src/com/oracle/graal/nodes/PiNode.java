@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,6 +44,7 @@ import com.oracle.graal.nodes.type.*;
 @NodeInfo
 public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtualizable, IterableNodeType, Canonicalizable, ValueProxy {
 
+    public static final NodeClass<PiNode> TYPE = NodeClass.get(PiNode.class);
     @Input ValueNode object;
     protected final Stamp piStamp;
 
@@ -51,12 +52,18 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
         return object;
     }
 
+    protected PiNode(NodeClass<?> c, ValueNode object, Stamp stamp) {
+        super(c, stamp, null);
+        this.object = object;
+        this.piStamp = stamp;
+    }
+
     public PiNode(ValueNode object, Stamp stamp) {
         this(object, stamp, null);
     }
 
     public PiNode(ValueNode object, Stamp stamp, ValueNode anchor) {
-        super(stamp, (GuardingNode) anchor);
+        super(TYPE, stamp, (GuardingNode) anchor);
         this.object = object;
         this.piStamp = stamp;
     }

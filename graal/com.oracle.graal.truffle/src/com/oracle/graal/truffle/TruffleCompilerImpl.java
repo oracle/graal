@@ -132,7 +132,7 @@ public class TruffleCompilerImpl {
 
             if (!TruffleCompilerOptions.TruffleInlineAcrossTruffleBoundary.getValue()) {
                 // Do not inline across Truffle boundaries.
-                for (MethodCallTargetNode mct : graph.getNodes(MethodCallTargetNode.class)) {
+                for (MethodCallTargetNode mct : graph.getNodes(MethodCallTargetNode.TYPE)) {
                     mct.invoke().setUseForInlining(false);
                 }
             }

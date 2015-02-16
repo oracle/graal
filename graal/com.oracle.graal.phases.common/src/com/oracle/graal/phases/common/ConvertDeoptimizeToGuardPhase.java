@@ -58,15 +58,15 @@ public class ConvertDeoptimizeToGuardPhase extends Phase {
     @Override
     protected void run(final StructuredGraph graph) {
         assert graph.hasValueProxies() : "ConvertDeoptimizeToGuardPhase always creates proxies";
-        if (graph.getNodes(DeoptimizeNode.class).isEmpty()) {
+        if (graph.getNodes(DeoptimizeNode.TYPE).isEmpty()) {
             return;
         }
-        for (DeoptimizeNode d : graph.getNodes(DeoptimizeNode.class)) {
+        for (DeoptimizeNode d : graph.getNodes(DeoptimizeNode.TYPE)) {
             assert d.isAlive();
             visitDeoptBegin(AbstractBeginNode.prevBegin(d), d.action(), d.reason(), graph);
         }
 
-        for (FixedGuardNode fixedGuard : graph.getNodes(FixedGuardNode.class)) {
+        for (FixedGuardNode fixedGuard : graph.getNodes(FixedGuardNode.TYPE)) {
 
             AbstractBeginNode pred = AbstractBeginNode.prevBegin(fixedGuard);
             if (pred instanceof AbstractMergeNode) {

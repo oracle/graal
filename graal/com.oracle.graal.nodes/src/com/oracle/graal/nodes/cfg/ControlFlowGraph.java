@@ -156,7 +156,7 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
     private void identifyBlocks() {
         // Find all block headers
         int numBlocks = 0;
-        for (AbstractBeginNode begin : graph.getNodes(AbstractBeginNode.class)) {
+        for (AbstractBeginNode begin : graph.getNodes(AbstractBeginNode.TYPE)) {
             Block block = new Block(begin);
             numBlocks++;
             identifyBlock(block);

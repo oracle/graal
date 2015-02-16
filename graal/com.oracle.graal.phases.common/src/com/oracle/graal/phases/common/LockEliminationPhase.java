@@ -31,7 +31,7 @@ public class LockEliminationPhase extends Phase {
 
     @Override
     protected void run(StructuredGraph graph) {
-        for (MonitorExitNode node : graph.getNodes(MonitorExitNode.class)) {
+        for (MonitorExitNode node : graph.getNodes(MonitorExitNode.TYPE)) {
             FixedNode next = node.next();
             if (next instanceof MonitorEnterNode) {
                 MonitorEnterNode monitorEnterNode = (MonitorEnterNode) next;

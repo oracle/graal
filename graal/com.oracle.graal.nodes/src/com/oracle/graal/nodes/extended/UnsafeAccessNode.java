@@ -33,13 +33,14 @@ import com.oracle.graal.nodes.type.*;
 @NodeInfo
 public abstract class UnsafeAccessNode extends FixedWithNextNode implements Canonicalizable {
 
+    public static final NodeClass<UnsafeAccessNode> TYPE = NodeClass.get(UnsafeAccessNode.class);
     @Input ValueNode object;
     @Input ValueNode offset;
     protected final Kind accessKind;
     protected final LocationIdentity locationIdentity;
 
-    public UnsafeAccessNode(Stamp stamp, ValueNode object, ValueNode offset, Kind accessKind, LocationIdentity locationIdentity) {
-        super(stamp);
+    protected UnsafeAccessNode(NodeClass<?> c, Stamp stamp, ValueNode object, ValueNode offset, Kind accessKind, LocationIdentity locationIdentity) {
+        super(c, stamp);
         assert accessKind != null;
         this.object = object;
         this.offset = offset;

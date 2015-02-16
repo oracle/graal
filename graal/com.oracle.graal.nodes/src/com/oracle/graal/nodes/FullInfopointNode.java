@@ -23,6 +23,7 @@
 package com.oracle.graal.nodes;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.spi.*;
 
@@ -30,11 +31,12 @@ import com.oracle.graal.nodes.spi.*;
  * Nodes of this type are inserted into the graph to denote points of interest to debugging.
  */
 @NodeInfo
-public class FullInfopointNode extends InfopointNode implements LIRLowerable, NodeWithState {
+public final class FullInfopointNode extends InfopointNode implements LIRLowerable, NodeWithState {
+    public static final NodeClass<FullInfopointNode> TYPE = NodeClass.get(FullInfopointNode.class);
     @Input(InputType.State) FrameState state;
 
     public FullInfopointNode(InfopointReason reason, FrameState state) {
-        super(reason);
+        super(TYPE, reason);
         this.state = state;
     }
 

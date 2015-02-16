@@ -133,6 +133,18 @@ public class GraphNodeProcessor extends AbstractProcessor {
                     // NodeInfo.class.getSimpleName());
                     // continue;
                 }
+                boolean found = false;
+                for (Element e : typeElement.getEnclosedElements()) {
+                    if (e.getKind() == ElementKind.FIELD) {
+                        if (e.getSimpleName().toString().equals("TYPE")) {
+                            found = true;
+                            break;
+                        }
+                    }
+                }
+                if (!found) {
+                    errorMessage(element, "%s annotated class must have a field named TYPE", NodeInfo.class.getSimpleName());
+                }
 
                 if (!typeElement.equals(verifier.Node) && !modifiers.contains(Modifier.ABSTRACT)) {
                     verifier.verify(typeElement);

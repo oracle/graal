@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,10 +39,11 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public final class MonitorExitNode extends AccessMonitorNode implements Virtualizable, Simplifiable, Lowerable, IterableNodeType, MonitorExit, MemoryCheckpoint.Single {
 
+    public static final NodeClass<MonitorExitNode> TYPE = NodeClass.get(MonitorExitNode.class);
     @OptionalInput ValueNode escapedReturnValue;
 
     public MonitorExitNode(ValueNode object, MonitorIdNode monitorId, ValueNode escapedReturnValue) {
-        super(object, monitorId);
+        super(TYPE, object, monitorId);
         this.escapedReturnValue = escapedReturnValue;
     }
 

@@ -31,6 +31,7 @@ import com.oracle.graal.nodes.*;
 @NodeInfo(allowedUsageTypes = {InputType.Memory})
 public abstract class AbstractWriteNode extends FixedAccessNode implements StateSplit, MemoryCheckpoint.Single, MemoryAccess, GuardingNode {
 
+    public static final NodeClass<AbstractWriteNode> TYPE = NodeClass.get(AbstractWriteNode.class);
     @Input ValueNode value;
     @OptionalInput(InputType.State) FrameState stateAfter;
     @OptionalInput(InputType.Memory) Node lastLocationAccess;
@@ -64,18 +65,18 @@ public abstract class AbstractWriteNode extends FixedAccessNode implements State
         return initialization;
     }
 
-    public AbstractWriteNode(ValueNode object, ValueNode value, ValueNode location, BarrierType barrierType) {
-        this(object, value, location, barrierType, false);
+    protected AbstractWriteNode(NodeClass<?> c, ValueNode object, ValueNode value, ValueNode location, BarrierType barrierType) {
+        this(c, object, value, location, barrierType, false);
     }
 
-    public AbstractWriteNode(ValueNode object, ValueNode value, ValueNode location, BarrierType barrierType, boolean initialization) {
-        super(object, location, StampFactory.forVoid(), barrierType);
+    protected AbstractWriteNode(NodeClass<?> c, ValueNode object, ValueNode value, ValueNode location, BarrierType barrierType, boolean initialization) {
+        super(c, object, location, StampFactory.forVoid(), barrierType);
         this.value = value;
         this.initialization = initialization;
     }
 
-    public AbstractWriteNode(ValueNode object, ValueNode value, ValueNode location, BarrierType barrierType, GuardingNode guard, boolean initialization) {
-        super(object, location, StampFactory.forVoid(), guard, barrierType, false, null);
+    protected AbstractWriteNode(NodeClass<?> c, ValueNode object, ValueNode value, ValueNode location, BarrierType barrierType, GuardingNode guard, boolean initialization) {
+        super(c, object, location, StampFactory.forVoid(), guard, barrierType, false, null);
         this.value = value;
         this.initialization = initialization;
     }

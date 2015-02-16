@@ -45,11 +45,13 @@ public class EdgesTest extends GraalCompilerTest {
 
     @NodeInfo
     static final class TestNode extends Node {
+        public static final NodeClass<TestNode> TYPE = NodeClass.get(TestNode.class);
         @Input NodeInputList<ValueNode> itail;
         @Input ConstantNode i1;
         @Input FloatingNode i2;
 
         public TestNode() {
+            super(TYPE);
         }
 
     }

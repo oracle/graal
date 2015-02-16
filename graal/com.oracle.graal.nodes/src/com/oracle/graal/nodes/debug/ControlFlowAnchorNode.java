@@ -33,7 +33,9 @@ import com.oracle.graal.nodes.spi.*;
  * control flow anchors.
  */
 @NodeInfo
-public class ControlFlowAnchorNode extends FixedWithNextNode implements LIRLowerable {
+public final class ControlFlowAnchorNode extends FixedWithNextNode implements LIRLowerable {
+
+    public static final NodeClass<ControlFlowAnchorNode> TYPE = NodeClass.get(ControlFlowAnchorNode.class);
 
     private static class Unique {
     }
@@ -41,7 +43,7 @@ public class ControlFlowAnchorNode extends FixedWithNextNode implements LIRLower
     protected Unique unique;
 
     public ControlFlowAnchorNode() {
-        super(StampFactory.forVoid());
+        super(TYPE, StampFactory.forVoid());
         this.unique = new Unique();
     }
 

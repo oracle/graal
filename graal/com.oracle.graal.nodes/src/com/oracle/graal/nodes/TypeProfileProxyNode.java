@@ -37,8 +37,9 @@ import com.oracle.graal.nodes.type.*;
  * A node that attaches a type profile to a proxied input node.
  */
 @NodeInfo
-public class TypeProfileProxyNode extends UnaryNode implements IterableNodeType, ValueProxy {
+public final class TypeProfileProxyNode extends UnaryNode implements IterableNodeType, ValueProxy {
 
+    public static final NodeClass<TypeProfileProxyNode> TYPE = NodeClass.get(TypeProfileProxyNode.class);
     protected final JavaTypeProfile profile;
     protected transient ResolvedJavaType lastCheckedType;
     protected transient JavaTypeProfile lastCheckedProfile;
@@ -59,7 +60,7 @@ public class TypeProfileProxyNode extends UnaryNode implements IterableNodeType,
     }
 
     protected TypeProfileProxyNode(ValueNode value, JavaTypeProfile profile) {
-        super(value.stamp(), value);
+        super(TYPE, value.stamp(), value);
         this.profile = profile;
     }
 

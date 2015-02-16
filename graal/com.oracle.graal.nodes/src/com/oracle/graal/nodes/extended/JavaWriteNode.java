@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,6 +23,7 @@
 package com.oracle.graal.nodes.extended;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -32,13 +33,14 @@ import com.oracle.graal.nodes.spi.*;
  * write barriers, implicit conversions and optionally oop compression.
  */
 @NodeInfo
-public class JavaWriteNode extends AbstractWriteNode implements Lowerable, StateSplit, MemoryAccess, MemoryCheckpoint.Single {
+public final class JavaWriteNode extends AbstractWriteNode implements Lowerable, StateSplit, MemoryAccess, MemoryCheckpoint.Single {
 
+    public static final NodeClass<JavaWriteNode> TYPE = NodeClass.get(JavaWriteNode.class);
     protected final Kind writeKind;
     protected final boolean compressible;
 
     public JavaWriteNode(Kind writeKind, ValueNode object, ValueNode value, ValueNode location, BarrierType barrierType, boolean compressible, boolean initialization) {
-        super(object, value, location, barrierType, initialization);
+        super(TYPE, object, value, location, barrierType, initialization);
         this.writeKind = writeKind;
         this.compressible = compressible;
     }

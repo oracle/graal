@@ -45,6 +45,7 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.graph.Graph.Mark;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.loop.*;
 import com.oracle.graal.nodeinfo.*;
@@ -392,12 +393,13 @@ public class SnippetTemplate {
     }
 
     @NodeInfo
-    static class VarargsPlaceholderNode extends FloatingNode implements ArrayLengthProvider {
+    static final class VarargsPlaceholderNode extends FloatingNode implements ArrayLengthProvider {
 
+        public static final NodeClass<VarargsPlaceholderNode> TYPE = NodeClass.get(VarargsPlaceholderNode.class);
         protected final Varargs varargs;
 
         public VarargsPlaceholderNode(Varargs varargs, MetaAccessProvider metaAccess) {
-            super(StampFactory.exactNonNull(metaAccess.lookupJavaType(varargs.componentType).getArrayClass()));
+            super(TYPE, StampFactory.exactNonNull(metaAccess.lookupJavaType(varargs.componentType).getArrayClass()));
             this.varargs = varargs;
         }
 
@@ -736,7 +738,7 @@ public class SnippetTemplate {
         } else {
             snippetCopy.addAfterFixed(snippetCopy.start(), memoryAnchor);
         }
-        List<ReturnNode> returnNodes = snippet.getNodes(ReturnNode.class).snapshot();
+        List<ReturnNode> returnNodes = snippet.getNodes(ReturnNode.TYPE).snapshot();
         if (returnNodes.isEmpty()) {
             this.returnNode = null;
         } else if (returnNodes.size() == 1) {
@@ -1219,7 +1221,7 @@ public class SnippetTemplate {
             Node stampDup = duplicates.get(stampNode);
             ((ValueNode) stampDup).setStamp(replacee.stamp());
         }
-        for (ParameterNode paramNode : snippet.getNodes(ParameterNode.class)) {
+        for (ParameterNode paramNode : snippet.getNodes(ParameterNode.TYPE)) {
             for (Node usage : paramNode.usages()) {
                 Node usageDup = duplicates.get(usage);
                 propagateStamp(usageDup);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,8 +38,10 @@ import com.oracle.graal.replacements.nodes.*;
 @NodeInfo
 public final class ClassIsPrimitiveNode extends MacroNode implements Canonicalizable {
 
+    public static final NodeClass<ClassIsPrimitiveNode> TYPE = NodeClass.get(ClassIsPrimitiveNode.class);
+
     public ClassIsPrimitiveNode(Invoke invoke) {
-        super(invoke);
+        super(TYPE, invoke);
     }
 
     private ValueNode getJavaClass() {

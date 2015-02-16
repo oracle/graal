@@ -49,7 +49,7 @@ public class OnStackReplacementPhase extends Phase {
         Debug.dump(graph, "OnStackReplacement initial");
         EntryMarkerNode osr;
         do {
-            NodeIterable<EntryMarkerNode> osrNodes = graph.getNodes(EntryMarkerNode.class);
+            NodeIterable<EntryMarkerNode> osrNodes = graph.getNodes(EntryMarkerNode.TYPE);
             osr = osrNodes.first();
             if (osr == null) {
                 throw new BailoutException("No OnStackReplacementNode generated");

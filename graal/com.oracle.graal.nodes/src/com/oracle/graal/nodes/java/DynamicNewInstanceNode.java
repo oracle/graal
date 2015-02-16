@@ -31,11 +31,12 @@ import com.oracle.graal.nodes.*;
 
 @NodeInfo
 public final class DynamicNewInstanceNode extends AbstractNewObjectNode implements Canonicalizable {
+    public static final NodeClass<DynamicNewInstanceNode> TYPE = NodeClass.get(DynamicNewInstanceNode.class);
 
     @Input ValueNode clazz;
 
     public DynamicNewInstanceNode(ValueNode clazz, boolean fillContents) {
-        super(StampFactory.objectNonNull(), fillContents);
+        super(TYPE, StampFactory.objectNonNull(), fillContents);
         this.clazz = clazz;
     }
 

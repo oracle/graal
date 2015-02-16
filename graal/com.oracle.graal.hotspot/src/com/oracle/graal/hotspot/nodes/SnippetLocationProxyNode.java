@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,12 +31,13 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 
 @NodeInfo(allowedUsageTypes = {InputType.Association, InputType.Value})
-public class SnippetLocationProxyNode extends FloatingNode implements Canonicalizable {
+public final class SnippetLocationProxyNode extends FloatingNode implements Canonicalizable {
 
+    public static final NodeClass<SnippetLocationProxyNode> TYPE = NodeClass.get(SnippetLocationProxyNode.class);
     @Input(InputType.Unchecked) ValueNode location;
 
     public SnippetLocationProxyNode(ValueNode location) {
-        super(StampFactory.object());
+        super(TYPE, StampFactory.object());
         this.location = location;
     }
 

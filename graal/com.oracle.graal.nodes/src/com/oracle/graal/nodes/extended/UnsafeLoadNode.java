@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@ import static com.oracle.graal.compiler.common.UnsafeAccess.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
@@ -36,7 +37,8 @@ import com.oracle.graal.nodes.spi.*;
  * performed before the load.
  */
 @NodeInfo
-public class UnsafeLoadNode extends UnsafeAccessNode implements Lowerable, Virtualizable {
+public final class UnsafeLoadNode extends UnsafeAccessNode implements Lowerable, Virtualizable {
+    public static final NodeClass<UnsafeLoadNode> TYPE = NodeClass.get(UnsafeLoadNode.class);
     @OptionalInput(InputType.Condition) LogicNode guardingCondition;
 
     public UnsafeLoadNode(ValueNode object, ValueNode offset, Kind accessKind, LocationIdentity locationIdentity) {
@@ -44,7 +46,7 @@ public class UnsafeLoadNode extends UnsafeAccessNode implements Lowerable, Virtu
     }
 
     public UnsafeLoadNode(ValueNode object, ValueNode offset, Kind accessKind, LocationIdentity locationIdentity, LogicNode condition) {
-        super(StampFactory.forKind(accessKind.getStackKind()), object, offset, accessKind, locationIdentity);
+        super(TYPE, StampFactory.forKind(accessKind.getStackKind()), object, offset, accessKind, locationIdentity);
         this.guardingCondition = condition;
     }
 

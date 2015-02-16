@@ -33,6 +33,7 @@ public class NodePosIteratorTest extends GraalCompilerTest {
 
     @NodeInfo
     static final class TestNode extends Node {
+        public static final NodeClass<TestNode> TYPE = NodeClass.get(TestNode.class);
         @Successor Node s1;
         @Successor Node s2;
         @Successor NodeSuccessorList<Node> stail;
@@ -42,6 +43,7 @@ public class NodePosIteratorTest extends GraalCompilerTest {
         @Input FloatingNode i2;
 
         public TestNode() {
+            super(TYPE);
         }
 
     }

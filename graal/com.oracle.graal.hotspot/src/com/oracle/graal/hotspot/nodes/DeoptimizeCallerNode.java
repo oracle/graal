@@ -24,6 +24,7 @@ package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
@@ -35,11 +36,12 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(shortName = "DeoptCaller", nameTemplate = "DeoptCaller {p#reason/s}")
 public final class DeoptimizeCallerNode extends ControlSinkNode implements LIRLowerable {
 
+    public static final NodeClass<DeoptimizeCallerNode> TYPE = NodeClass.get(DeoptimizeCallerNode.class);
     protected final DeoptimizationAction action;
     protected final DeoptimizationReason reason;
 
     public DeoptimizeCallerNode(DeoptimizationAction action, DeoptimizationReason reason) {
-        super(StampFactory.forVoid());
+        super(TYPE, StampFactory.forVoid());
         this.action = action;
         this.reason = reason;
     }

@@ -264,8 +264,8 @@ public class MemoryScheduleTest extends GraphScheduleTest {
     public void testArrayCopy() {
         SchedulePhase schedule = getFinalSchedule("testArrayCopySnippet", TestMode.INLINED_WITHOUT_FRAMESTATES);
         StructuredGraph graph = schedule.getCFG().getStartBlock().getBeginNode().graph();
-        assertDeepEquals(1, graph.getNodes(ReturnNode.class).count());
-        ReturnNode ret = graph.getNodes(ReturnNode.class).first();
+        assertDeepEquals(1, graph.getNodes(ReturnNode.TYPE).count());
+        ReturnNode ret = graph.getNodes(ReturnNode.TYPE).first();
         assertTrue(ret.result() + " should be a FloatingReadNode", ret.result() instanceof FloatingReadNode);
         assertDeepEquals(schedule.getCFG().blockFor(ret), schedule.getCFG().blockFor(ret.result()));
         assertReadWithinAllReturnBlocks(schedule, true);
@@ -543,11 +543,11 @@ public class MemoryScheduleTest extends GraphScheduleTest {
 
     private void assertReadWithinAllReturnBlocks(SchedulePhase schedule, boolean withinReturnBlock) {
         StructuredGraph graph = schedule.getCFG().graph;
-        assertTrue(graph.getNodes(ReturnNode.class).isNotEmpty());
+        assertTrue(graph.getNodes(ReturnNode.TYPE).isNotEmpty());
 
         int withRead = 0;
         int returnBlocks = 0;
-        for (ReturnNode returnNode : graph.getNodes(ReturnNode.class)) {
+        for (ReturnNode returnNode : graph.getNodes(ReturnNode.TYPE)) {
             Block block = schedule.getCFG().getNodeToBlock().get(returnNode);
             for (Node node : schedule.getBlockToNodesMap().get(block)) {
                 if (node instanceof FloatingReadNode) {

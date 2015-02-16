@@ -37,6 +37,7 @@ import com.oracle.graal.nodes.spi.*;
  */
 @NodeInfo(nameTemplate = "ForeignCall#{p#descriptor/s}", allowedUsageTypes = {InputType.Memory})
 public class ForeignCallNode extends AbstractMemoryCheckpoint implements LIRLowerable, DeoptimizingNode.DeoptDuring, MemoryCheckpoint.Multi {
+    public static final NodeClass<ForeignCallNode> TYPE = NodeClass.get(ForeignCallNode.class);
 
     @Input protected NodeInputList<ValueNode> arguments;
     @OptionalInput(InputType.State) protected FrameState stateDuring;
@@ -46,7 +47,7 @@ public class ForeignCallNode extends AbstractMemoryCheckpoint implements LIRLowe
     protected int bci = BytecodeFrame.UNKNOWN_BCI;
 
     public ForeignCallNode(@InjectedNodeParameter ForeignCallsProvider foreignCalls, ForeignCallDescriptor descriptor, ValueNode... arguments) {
-        super(StampFactory.forKind(Kind.fromJavaClass(descriptor.getResultType())));
+        super(TYPE, StampFactory.forKind(Kind.fromJavaClass(descriptor.getResultType())));
         this.arguments = new NodeInputList<>(this, arguments);
         this.descriptor = descriptor;
         this.foreignCalls = foreignCalls;
@@ -57,14 +58,21 @@ public class ForeignCallNode extends AbstractMemoryCheckpoint implements LIRLowe
     }
 
     public ForeignCallNode(@InjectedNodeParameter ForeignCallsProvider foreignCalls, ForeignCallDescriptor descriptor, Stamp stamp, List<ValueNode> arguments) {
-        super(stamp);
+        super(TYPE, stamp);
         this.arguments = new NodeInputList<>(this, arguments);
         this.descriptor = descriptor;
         this.foreignCalls = foreignCalls;
     }
 
+    protected ForeignCallNode(NodeClass<?> c, ForeignCallsProvider foreignCalls, ForeignCallDescriptor descriptor, Stamp stamp) {
+        super(c, stamp);
+        this.arguments = new NodeInputList<>(this);
+        this.descriptor = descriptor;
+        this.foreignCalls = foreignCalls;
+    }
+
     public ForeignCallNode(@InjectedNodeParameter ForeignCallsProvider foreignCalls, ForeignCallDescriptor descriptor, Stamp stamp) {
-        super(stamp);
+        super(TYPE, stamp);
         this.arguments = new NodeInputList<>(this);
         this.descriptor = descriptor;
         this.foreignCalls = foreignCalls;

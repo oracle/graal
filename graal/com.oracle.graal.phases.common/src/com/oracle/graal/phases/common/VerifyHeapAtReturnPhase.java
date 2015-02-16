@@ -30,7 +30,7 @@ public class VerifyHeapAtReturnPhase extends Phase {
 
     @Override
     protected void run(StructuredGraph graph) {
-        for (ReturnNode returnNode : graph.getNodes(ReturnNode.class)) {
+        for (ReturnNode returnNode : graph.getNodes(ReturnNode.TYPE)) {
             VerifyHeapNode.addBefore(returnNode);
         }
     }

@@ -47,7 +47,8 @@ import com.oracle.graal.nodes.util.*;
  * of a comparison.
  */
 @NodeInfo
-public class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerable {
+public final class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerable {
+    public static final NodeClass<IfNode> TYPE = NodeClass.get(IfNode.class);
 
     private static final DebugMetric CORRECTED_PROBABILITIES = Debug.metric("CorrectedProbabilities");
 
@@ -70,7 +71,7 @@ public class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerab
     }
 
     public IfNode(LogicNode condition, AbstractBeginNode trueSuccessor, AbstractBeginNode falseSuccessor, double trueSuccessorProbability) {
-        super(StampFactory.forVoid());
+        super(TYPE, StampFactory.forVoid());
         this.condition = condition;
         this.falseSuccessor = falseSuccessor;
         this.trueSuccessor = trueSuccessor;
@@ -234,7 +235,7 @@ public class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerab
             if (trueSucc instanceof BeginNode && falseSucc instanceof BeginNode && trueSucc.next() instanceof FixedWithNextNode && falseSucc.next() instanceof FixedWithNextNode) {
                 FixedWithNextNode trueNext = (FixedWithNextNode) trueSucc.next();
                 FixedWithNextNode falseNext = (FixedWithNextNode) falseSucc.next();
-                NodeClass nodeClass = trueNext.getNodeClass();
+                NodeClass<?> nodeClass = trueNext.getNodeClass();
                 if (trueNext.getClass() == falseNext.getClass()) {
                     if (nodeClass.getEdges(Inputs).areEqualIn(trueNext, falseNext) && trueNext.valueEquals(falseNext)) {
                         falseNext.replaceAtUsages(trueNext);
@@ -243,7 +244,7 @@ public class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerab
                         graph().addBeforeFixed(this, trueNext);
                         for (Node usage : trueNext.usages().snapshot()) {
                             if (usage.isAlive()) {
-                                NodeClass usageNodeClass = usage.getNodeClass();
+                                NodeClass<?> usageNodeClass = usage.getNodeClass();
                                 if (usageNodeClass.valueNumberable() && !usageNodeClass.isLeafNode()) {
                                     Node newNode = graph().findDuplicate(usage);
                                     if (newNode != null) {

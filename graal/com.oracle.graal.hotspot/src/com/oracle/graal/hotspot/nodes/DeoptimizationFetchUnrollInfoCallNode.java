@@ -27,6 +27,7 @@ import static com.oracle.graal.hotspot.HotSpotBackend.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 import com.oracle.graal.nodeinfo.*;
@@ -41,11 +42,12 @@ import com.oracle.graal.word.*;
 @NodeInfo(allowedUsageTypes = {InputType.Memory})
 public final class DeoptimizationFetchUnrollInfoCallNode extends FixedWithNextNode implements LIRLowerable, MemoryCheckpoint.Multi {
 
+    public static final NodeClass<DeoptimizationFetchUnrollInfoCallNode> TYPE = NodeClass.get(DeoptimizationFetchUnrollInfoCallNode.class);
     @Input SaveAllRegistersNode registerSaver;
     protected final ForeignCallsProvider foreignCalls;
 
     public DeoptimizationFetchUnrollInfoCallNode(@InjectedNodeParameter ForeignCallsProvider foreignCalls, ValueNode registerSaver) {
-        super(StampFactory.forKind(Kind.fromJavaClass(FETCH_UNROLL_INFO.getResultType())));
+        super(TYPE, StampFactory.forKind(Kind.fromJavaClass(FETCH_UNROLL_INFO.getResultType())));
         this.registerSaver = (SaveAllRegistersNode) registerSaver;
         this.foreignCalls = foreignCalls;
     }

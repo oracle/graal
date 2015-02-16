@@ -255,7 +255,7 @@ public class PartialEvaluator {
         System.out.println("# ms: " + (System.currentTimeMillis() - ms));
         Debug.dump(graph, "After FastPE");
 
-        for (MethodCallTargetNode methodCallTargetNode : graph.getNodes(MethodCallTargetNode.class)) {
+        for (MethodCallTargetNode methodCallTargetNode : graph.getNodes(MethodCallTargetNode.TYPE)) {
             Class<? extends FixedWithNextNode> macroSubstitution = providers.getReplacements().getMacroSubstitution(methodCallTargetNode.targetMethod());
             if (macroSubstitution != null) {
                 InliningUtil.inlineMacroNode(methodCallTargetNode.invoke(), methodCallTargetNode.targetMethod(), macroSubstitution);
@@ -331,11 +331,11 @@ public class PartialEvaluator {
 
     private static void postPartialEvaluation(final StructuredGraph graph) {
         NeverPartOfCompilationNode.verifyNotFoundIn(graph);
-        for (MaterializeFrameNode materializeNode : graph.getNodes(MaterializeFrameNode.class).snapshot()) {
+        for (MaterializeFrameNode materializeNode : graph.getNodes(MaterializeFrameNode.TYPE).snapshot()) {
             materializeNode.replaceAtUsages(materializeNode.getFrame());
             graph.removeFixed(materializeNode);
         }
-        for (VirtualObjectNode virtualObjectNode : graph.getNodes(VirtualObjectNode.class)) {
+        for (VirtualObjectNode virtualObjectNode : graph.getNodes(VirtualObjectNode.TYPE)) {
             if (virtualObjectNode instanceof VirtualOnlyInstanceNode) {
                 VirtualOnlyInstanceNode virtualOnlyInstanceNode = (VirtualOnlyInstanceNode) virtualObjectNode;
                 virtualOnlyInstanceNode.setAllowMaterialization(true);
@@ -479,7 +479,7 @@ public class PartialEvaluator {
             assert graph.hasLoops() : graph + " does not contain a loop";
             final StructuredGraph graphCopy = graph.copy();
             final List<Node> modifiedNodes = new ArrayList<>();
-            for (ParameterNode param : graphCopy.getNodes(ParameterNode.class).snapshot()) {
+            for (ParameterNode param : graphCopy.getNodes(ParameterNode.TYPE).snapshot()) {
                 ValueNode arg = arguments.get(param.index());
                 if (arg.isConstant()) {
                     Constant constant = arg.asConstant();
@@ -526,7 +526,7 @@ public class PartialEvaluator {
     private void expandDirectCalls(StructuredGraph graph, TruffleExpansionLogger expansionLogger, TruffleInlining inlining, TruffleInliningCache inliningCache) {
         PhaseContext phaseContext = new PhaseContext(providers);
 
-        for (MethodCallTargetNode methodCallTargetNode : graph.getNodes(MethodCallTargetNode.class).snapshot()) {
+        for (MethodCallTargetNode methodCallTargetNode : graph.getNodes(MethodCallTargetNode.TYPE).snapshot()) {
             StructuredGraph inlineGraph = parseDirectCallGraph(phaseContext, graph, inlining, inliningCache, methodCallTargetNode);
 
             if (inlineGraph != null) {
@@ -539,7 +539,7 @@ public class PartialEvaluator {
     }
 
     private boolean noDirectCallsLeft(StructuredGraph graph) {
-        for (MethodCallTargetNode methodCallTargetNode : graph.getNodes(MethodCallTargetNode.class).snapshot()) {
+        for (MethodCallTargetNode methodCallTargetNode : graph.getNodes(MethodCallTargetNode.TYPE).snapshot()) {
             if (methodCallTargetNode.targetMethod().equals(callDirectMethod)) {
                 return false;
             }

@@ -24,6 +24,7 @@ package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 import com.oracle.graal.nodeinfo.*;
@@ -36,7 +37,8 @@ import com.oracle.graal.word.*;
  * {@link HotSpotBackend#UNPACK_FRAMES Deoptimization::unpack_frames}.
  */
 @NodeInfo
-public class EnterUnpackFramesStackFrameNode extends FixedWithNextNode implements LIRLowerable {
+public final class EnterUnpackFramesStackFrameNode extends FixedWithNextNode implements LIRLowerable {
+    public static final NodeClass<EnterUnpackFramesStackFrameNode> TYPE = NodeClass.get(EnterUnpackFramesStackFrameNode.class);
 
     @Input ValueNode framePc;
     @Input ValueNode senderSp;
@@ -44,7 +46,7 @@ public class EnterUnpackFramesStackFrameNode extends FixedWithNextNode implement
     @Input SaveAllRegistersNode registerSaver;
 
     public EnterUnpackFramesStackFrameNode(ValueNode framePc, ValueNode senderSp, ValueNode senderFp, ValueNode registerSaver) {
-        super(StampFactory.forVoid());
+        super(TYPE, StampFactory.forVoid());
         this.framePc = framePc;
         this.senderSp = senderSp;
         this.senderFp = senderFp;

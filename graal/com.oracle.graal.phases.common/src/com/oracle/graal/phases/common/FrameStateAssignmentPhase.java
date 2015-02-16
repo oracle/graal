@@ -110,7 +110,7 @@ public class FrameStateAssignmentPhase extends Phase {
         if (graph.getGuardsStage().areFrameStatesAtSideEffects()) {
             ReentrantNodeIterator.apply(new FrameStateAssignmentClosure(), graph.start(), null);
             graph.setGuardsStage(GuardsStage.AFTER_FSA);
-            graph.getNodes(FrameState.class).filter(state -> state.hasNoUsages()).forEach(GraphUtil::killWithUnusedFloatingInputs);
+            graph.getNodes(FrameState.TYPE).filter(state -> state.hasNoUsages()).forEach(GraphUtil::killWithUnusedFloatingInputs);
         }
     }
 

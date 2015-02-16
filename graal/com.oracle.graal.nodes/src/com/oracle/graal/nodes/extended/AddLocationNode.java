@@ -24,6 +24,7 @@ package com.oracle.graal.nodes.extended;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodeinfo.*;
@@ -38,6 +39,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(nameTemplate = "AddLoc {p#locationIdentity/s}")
 public final class AddLocationNode extends LocationNode implements Canonicalizable.Binary<LocationNode> {
 
+    public static final NodeClass<AddLocationNode> TYPE = NodeClass.get(AddLocationNode.class);
     @Input(InputType.Association) ValueNode x;
     @Input(InputType.Association) ValueNode y;
 
@@ -50,7 +52,7 @@ public final class AddLocationNode extends LocationNode implements Canonicalizab
     }
 
     public AddLocationNode(LocationNode x, LocationNode y) {
-        super(StampFactory.forVoid());
+        super(TYPE, StampFactory.forVoid());
         assert x.getLocationIdentity().equals(y.getLocationIdentity());
         this.x = x;
         this.y = y;

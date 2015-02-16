@@ -39,7 +39,7 @@ public class VerifyDebugUsage extends VerifyPhase<PhaseContext> {
 
     @Override
     protected boolean verify(StructuredGraph graph, PhaseContext context) {
-        for (MethodCallTargetNode t : graph.getNodes(MethodCallTargetNode.class)) {
+        for (MethodCallTargetNode t : graph.getNodes(MethodCallTargetNode.TYPE)) {
             ResolvedJavaMethod callee = t.targetMethod();
             ResolvedJavaType debugType = context.getMetaAccess().lookupJavaType(Debug.class);
             if (callee.getDeclaringClass().equals(debugType)) {

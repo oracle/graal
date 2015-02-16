@@ -136,7 +136,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 parser.connectLoopEndToBegin();
 
                 // remove dead parameters
-                for (ParameterNode param : currentGraph.getNodes(ParameterNode.class)) {
+                for (ParameterNode param : currentGraph.getNodes(ParameterNode.TYPE)) {
                     if (param.hasNoUsages()) {
                         assert param.inputs().isEmpty();
                         param.safeDelete();
@@ -1456,7 +1456,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
              * </pre>
              */
             private void connectLoopEndToBegin() {
-                for (LoopBeginNode begin : currentGraph.getNodes(LoopBeginNode.class)) {
+                for (LoopBeginNode begin : currentGraph.getNodes(LoopBeginNode.TYPE)) {
                     if (begin.loopEnds().isEmpty()) {
                         assert begin.forwardEndCount() == 1;
                         currentGraph.reduceDegenerateLoopBegin(begin);

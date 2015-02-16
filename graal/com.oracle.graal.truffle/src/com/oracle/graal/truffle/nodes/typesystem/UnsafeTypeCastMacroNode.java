@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@ package com.oracle.graal.truffle.nodes.typesystem;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
@@ -36,8 +37,9 @@ import com.oracle.graal.truffle.nodes.asserts.*;
  * Macro node for method CompilerDirectives#unsafeCast.
  */
 @NodeInfo
-public class UnsafeTypeCastMacroNode extends NeverPartOfCompilationNode implements Simplifiable {
+public final class UnsafeTypeCastMacroNode extends NeverPartOfCompilationNode implements Simplifiable {
 
+    public static final NodeClass<UnsafeTypeCastMacroNode> TYPE = NodeClass.get(UnsafeTypeCastMacroNode.class);
     private static final int OBJECT_ARGUMENT_INDEX = 0;
     private static final int CLASS_ARGUMENT_INDEX = 1;
     private static final int CONDITION_ARGUMENT_INDEX = 2;
@@ -45,7 +47,7 @@ public class UnsafeTypeCastMacroNode extends NeverPartOfCompilationNode implemen
     private static final int ARGUMENT_COUNT = 4;
 
     public UnsafeTypeCastMacroNode(Invoke invoke) {
-        super(invoke, "The class of the unsafe cast could not be reduced to a compile time constant.");
+        super(TYPE, invoke, "The class of the unsafe cast could not be reduced to a compile time constant.");
         assert arguments.size() == ARGUMENT_COUNT;
     }
 

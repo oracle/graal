@@ -37,7 +37,7 @@ public class VerifyFrameDoesNotEscapePhase extends Phase {
 
     @Override
     protected void run(StructuredGraph graph) {
-        for (NewFrameNode virtualFrame : graph.getNodes(NewFrameNode.class)) {
+        for (NewFrameNode virtualFrame : graph.getNodes(NewFrameNode.TYPE)) {
             for (MethodCallTargetNode callTarget : virtualFrame.usages().filter(MethodCallTargetNode.class)) {
                 if (callTarget.invoke() != null) {
                     String properties = callTarget.getDebugProperties().toString();

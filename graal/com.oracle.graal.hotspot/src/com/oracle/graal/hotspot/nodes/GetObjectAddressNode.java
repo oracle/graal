@@ -24,6 +24,7 @@ package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -35,11 +36,12 @@ import com.oracle.graal.nodes.spi.*;
  */
 @NodeInfo
 public final class GetObjectAddressNode extends FixedWithNextNode implements LIRLowerable {
+    public static final NodeClass<GetObjectAddressNode> TYPE = NodeClass.get(GetObjectAddressNode.class);
 
     @Input ValueNode object;
 
     public GetObjectAddressNode(ValueNode obj) {
-        super(StampFactory.forKind(Kind.Long));
+        super(TYPE, StampFactory.forKind(Kind.Long));
         this.object = obj;
     }
 

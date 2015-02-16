@@ -50,12 +50,9 @@ import com.oracle.graal.nodeinfo.*;
  * <li>The identifier for an {@link IterableNodeType} class.</li>
  * </ul>
  */
-public final class NodeClass extends FieldIntrospection {
-
-    private static final Object GetNodeClassLock = new Object();
+public final class NodeClass<T> extends FieldIntrospection {
 
     // Timers for creation of a NodeClass instance
-    private static final DebugTimer Init = Debug.timer("NodeClass.Init");
     private static final DebugTimer Init_FieldScanning = Debug.timer("NodeClass.Init.FieldScanning");
     private static final DebugTimer Init_FieldScanningInner = Debug.timer("NodeClass.Init.FieldScanning.Inner");
     private static final DebugTimer Init_AnnotationParsing = Debug.timer("NodeClass.Init.AnnotationParsing");
@@ -73,34 +70,26 @@ public final class NodeClass extends FieldIntrospection {
     /**
      * Gets the {@link NodeClass} associated with a given {@link Class}.
      */
-    @SuppressWarnings("unchecked")
-    public static NodeClass get(Class<?> c) {
-        Class<? extends Node> key = (Class<? extends Node>) c;
-
-        NodeClass value = (NodeClass) allClasses.get(key);
-        // The fact that {@link ConcurrentHashMap#put} and {@link ConcurrentHashMap#get}
-        // are used makes the double-checked locking idiom work.
-        if (value == null) {
-            // The creation of a NodeClass must be serialized as the NodeClass constructor accesses
-            // both FieldIntrospection.allClasses and NodeClass.nextIterableId.
-            synchronized (GetNodeClassLock) {
-                try (TimerCloseable t = Init.start()) {
-                    value = (NodeClass) allClasses.get(key);
-                    if (value == null) {
-                        Class<?> superclass = c.getSuperclass();
-                        NodeClass superNodeClass = null;
-                        if (superclass != NODE_CLASS) {
-                            // Ensure NodeClass for superclass exists
-                            superNodeClass = get(superclass);
-                        }
-                        value = new NodeClass(key, superNodeClass);
-                        Object old = allClasses.putIfAbsent(key, value);
-                        assert old == null : old + "   " + key;
-                    }
-                }
-            }
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public static <T> NodeClass<T> get(Class<T> c) {
+        assert getNodeClassViaReflection(c) == null;
+        Class<?> superclass = c.getSuperclass();
+        NodeClass nodeSuperclass = null;
+        if (superclass != NODE_CLASS) {
+            nodeSuperclass = getNodeClassViaReflection(superclass);
         }
-        return value;
+        return new NodeClass(c, nodeSuperclass);
+    }
+
+    @SuppressWarnings("rawtypes")
+    private static NodeClass<?> getNodeClassViaReflection(Class<?> superclass) {
+        try {
+            Field field = superclass.getDeclaredField("TYPE");
+            field.setAccessible(true);
+            return (NodeClass) field.get(null);
+        } catch (IllegalArgumentException | IllegalAccessException | NoSuchFieldException | SecurityException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private static final Class<?> NODE_CLASS = Node.class;
@@ -111,7 +100,7 @@ public final class NodeClass extends FieldIntrospection {
 
     private final InputEdges inputs;
     private final SuccessorEdges successors;
-    private final NodeClass superNodeClass;
+    private final NodeClass<?> superNodeClass;
 
     private final boolean canGVN;
     private final int startGVNNumber;
@@ -134,11 +123,11 @@ public final class NodeClass extends FieldIntrospection {
     private final boolean isSimplifiable;
     private final boolean isLeafNode;
 
-    public NodeClass(Class<?> clazz, NodeClass superNodeClass) {
+    public NodeClass(Class<?> clazz, NodeClass<?> superNodeClass) {
         this(clazz, superNodeClass, new FieldsScanner.DefaultCalcOffset(), null, 0);
     }
 
-    public NodeClass(Class<?> clazz, NodeClass superNodeClass, FieldsScanner.CalcOffset calcOffset, int[] presetIterableIds, int presetIterableId) {
+    public NodeClass(Class<?> clazz, NodeClass<?> superNodeClass, FieldsScanner.CalcOffset calcOffset, int[] presetIterableIds, int presetIterableId) {
         super(clazz);
         this.superNodeClass = superNodeClass;
         assert NODE_CLASS.isAssignableFrom(clazz);
@@ -185,7 +174,7 @@ public final class NodeClass extends FieldIntrospection {
             try (TimerCloseable t1 = Init_IterableIds.start()) {
                 this.iterableId = nextIterableId++;
 
-                NodeClass snc = superNodeClass;
+                NodeClass<?> snc = superNodeClass;
                 while (snc != null && IterableNodeType.class.isAssignableFrom(snc.getClazz())) {
                     assert !containsId(this.iterableId, snc.iterableIds);
                     snc.iterableIds = Arrays.copyOf(snc.iterableIds, snc.iterableIds.length + 1);
@@ -316,7 +305,7 @@ public final class NodeClass extends FieldIntrospection {
         int directInputs;
         int directSuccessors;
 
-        protected NodeFieldsScanner(FieldsScanner.CalcOffset calc, NodeClass superNodeClass) {
+        protected NodeFieldsScanner(FieldsScanner.CalcOffset calc, NodeClass<?> superNodeClass) {
             super(calc);
             if (superNodeClass != null) {
                 translateInto(superNodeClass.inputs, inputs);
@@ -564,7 +553,7 @@ public final class NodeClass extends FieldIntrospection {
         return true;
     }
 
-    public boolean isValid(Position pos, NodeClass from, Edges fromEdges) {
+    public boolean isValid(Position pos, NodeClass<?> from, Edges fromEdges) {
         if (this == from) {
             return true;
         }
@@ -702,7 +691,7 @@ public final class NodeClass extends FieldIntrospection {
         // re-wire inputs
         for (Node oldNode : nodes) {
             Node node = newNodes.get(oldNode);
-            NodeClass nodeClass = node.getNodeClass();
+            NodeClass<?> nodeClass = node.getNodeClass();
             if (replacements == null || replacements.replacement(oldNode) == oldNode) {
                 nodeClass.updateInputSuccInPlace(node, replacementClosure);
             } else {
@@ -746,8 +735,8 @@ public final class NodeClass extends FieldIntrospection {
     }
 
     private static void transferEdges(final Graph graph, final DuplicationReplacement replacements, final Map<Node, Node> newNodes, Node oldNode, Node node, Edges.Type type) {
-        NodeClass nodeClass = node.getNodeClass();
-        NodeClass oldNodeClass = oldNode.getNodeClass();
+        NodeClass<?> nodeClass = node.getNodeClass();
+        NodeClass<?> oldNodeClass = oldNode.getNodeClass();
         Edges oldEdges = oldNodeClass.getEdges(type);
         for (NodePosIterator oldIter = oldEdges.getIterable(oldNode).iterator(); oldIter.hasNext();) {
             Position pos = oldIter.nextPosition();

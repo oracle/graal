@@ -24,6 +24,7 @@ package com.oracle.graal.nodes.java;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -34,6 +35,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public abstract class AccessFieldNode extends FixedWithNextNode implements Lowerable {
 
+    public static final NodeClass<AccessFieldNode> TYPE = NodeClass.get(AccessFieldNode.class);
     @OptionalInput ValueNode object;
 
     protected final ResolvedJavaField field;
@@ -48,8 +50,8 @@ public abstract class AccessFieldNode extends FixedWithNextNode implements Lower
      * @param object the instruction producing the receiver object
      * @param field the compiler interface representation of the field
      */
-    public AccessFieldNode(Stamp stamp, ValueNode object, ResolvedJavaField field) {
-        super(stamp);
+    public AccessFieldNode(NodeClass<?> c, Stamp stamp, ValueNode object, ResolvedJavaField field) {
+        super(c, stamp);
         this.object = object;
         this.field = field;
         assert field.getDeclaringClass().isInitialized();

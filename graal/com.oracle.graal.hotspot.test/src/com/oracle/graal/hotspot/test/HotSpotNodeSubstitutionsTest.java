@@ -40,7 +40,7 @@ public class HotSpotNodeSubstitutionsTest extends MethodSubstitutionTest {
         test("getNodeClass", ConstantNode.forInt(42, graph));
     }
 
-    public static NodeClass getNodeClass(Node n) {
+    public static NodeClass<?> getNodeClass(Node n) {
         return n.getNodeClass();
     }
 }

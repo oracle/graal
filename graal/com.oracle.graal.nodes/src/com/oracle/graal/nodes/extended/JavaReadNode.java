@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,13 +35,14 @@ import com.oracle.graal.nodes.spi.*;
  * barriers, implicit conversions and optionally oop uncompression.
  */
 @NodeInfo
-public class JavaReadNode extends FixedAccessNode implements Lowerable, GuardingNode, Canonicalizable {
+public final class JavaReadNode extends FixedAccessNode implements Lowerable, GuardingNode, Canonicalizable {
 
+    public static final NodeClass<JavaReadNode> TYPE = NodeClass.get(JavaReadNode.class);
     protected final Kind readKind;
     protected final boolean compressible;
 
     public JavaReadNode(Kind readKind, ValueNode object, LocationNode location, BarrierType barrierType, boolean compressible) {
-        super(object, location, StampFactory.forKind(readKind), barrierType);
+        super(TYPE, object, location, StampFactory.forKind(readKind), barrierType);
         this.readKind = readKind;
         this.compressible = compressible;
     }

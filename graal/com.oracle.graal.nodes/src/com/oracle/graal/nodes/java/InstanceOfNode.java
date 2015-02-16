@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@ package com.oracle.graal.nodes.java;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
@@ -35,13 +36,14 @@ import com.oracle.graal.nodes.spi.*;
  * The {@code InstanceOfNode} represents an instanceof test.
  */
 @NodeInfo
-public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable, Virtualizable {
+public final class InstanceOfNode extends UnaryOpLogicNode implements Lowerable, Virtualizable {
+    public static final NodeClass<InstanceOfNode> TYPE = NodeClass.get(InstanceOfNode.class);
 
     protected final ResolvedJavaType type;
     protected JavaTypeProfile profile;
 
     public InstanceOfNode(ResolvedJavaType type, ValueNode object, JavaTypeProfile profile) {
-        super(object);
+        super(TYPE, object);
         this.type = type;
         this.profile = profile;
         assert type != null;
