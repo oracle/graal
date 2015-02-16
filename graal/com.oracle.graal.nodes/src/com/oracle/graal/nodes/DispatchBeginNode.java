@@ -38,8 +38,8 @@ public class DispatchBeginNode extends BeginStateSplitNode {
         super(TYPE);
     }
 
-    public DispatchBeginNode(Stamp stamp) {
-        super(TYPE, stamp);
+    protected DispatchBeginNode(NodeClass c, Stamp stamp) {
+        super(c, stamp);
     }
 
 }

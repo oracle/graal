@@ -39,7 +39,7 @@ public final class ExceptionObjectNode extends DispatchBeginNode implements Lowe
     public static final NodeClass TYPE = NodeClass.get(ExceptionObjectNode.class);
 
     public ExceptionObjectNode(MetaAccessProvider metaAccess) {
-        super(StampFactory.declaredNonNull(metaAccess.lookupJavaType(Throwable.class)));
+        super(TYPE, StampFactory.declaredNonNull(metaAccess.lookupJavaType(Throwable.class)));
     }
 
     @Override
