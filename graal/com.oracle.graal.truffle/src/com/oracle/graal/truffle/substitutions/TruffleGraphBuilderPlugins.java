@@ -163,9 +163,10 @@ public class TruffleGraphBuilderPlugins {
             public boolean apply(GraphBuilderContext builder, ValueNode value) {
                 if ((value instanceof BoxNode ? ((BoxNode) value).getValue() : value).isConstant()) {
                     builder.push(Kind.Boolean.getStackKind(), builder.append(ConstantNode.forBoolean(true)));
-                    return true;
+                } else {
+                    builder.push(Kind.Boolean.getStackKind(), builder.append(new IsCompilationConstantNode(value)));
                 }
-                return false;
+                return true;
             }
         });
         r.register1("materialize", Object.class, new InvocationPlugin() {
@@ -179,27 +180,36 @@ public class TruffleGraphBuilderPlugins {
         r = new Registration(plugins, metaAccess, OptimizedCallTarget.class);
         r.register2("createFrame", FrameDescriptor.class, Object[].class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext builder, ValueNode arg1, ValueNode arg2) {
-                builder.push(Kind.Object, builder.append(new NewFrameNode(StampFactory.exactNonNull(metaAccess.lookupJavaType(FrameWithoutBoxing.class)), arg1, arg2)));
+                Class<?> frameClass = TruffleCompilerOptions.TruffleUseFrameWithoutBoxing.getValue() ? FrameWithoutBoxing.class : FrameWithBoxing.class;
+                builder.push(Kind.Object, builder.append(new NewFrameNode(StampFactory.exactNonNull(metaAccess.lookupJavaType(frameClass)), arg1, arg2)));
                 return true;
             }
         });
 
         // FrameWithoutBoxing.class
         r = new Registration(plugins, metaAccess, FrameWithoutBoxing.class);
+        registerMaterialize(r);
+        registerUnsafeCast(r);
+        registerUnsafeLoadStorePlugins(r, Kind.Int, Kind.Long, Kind.Float, Kind.Double, Kind.Object);
+
+        // FrameWithBoxing.class
+        r = new Registration(plugins, metaAccess, FrameWithBoxing.class);
+        registerMaterialize(r);
+        registerUnsafeCast(r);
+
+        // CompilerDirectives.class
+        r = new Registration(plugins, metaAccess, UnsafeAccessImpl.class);
+        registerUnsafeCast(r);
+        registerUnsafeLoadStorePlugins(r, Kind.Boolean, Kind.Byte, Kind.Int, Kind.Short, Kind.Long, Kind.Float, Kind.Double, Kind.Object);
+    }
+
+    private static void registerMaterialize(Registration r) {
         r.register1("materialize", Receiver.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext builder, ValueNode frame) {
                 builder.push(Kind.Object, builder.append(new MaterializeFrameNode(frame)));
                 return true;
             }
         });
-        registerUnsafeCast(r);
-
-        registerUnsafeLoadStorePlugins(r, Kind.Int, Kind.Long, Kind.Float, Kind.Double, Kind.Object);
-
-        // CompilerDirectives.class
-        r = new Registration(plugins, metaAccess, UnsafeAccessImpl.class);
-        registerUnsafeCast(r);
-        registerUnsafeLoadStorePlugins(r, Kind.Boolean, Kind.Byte, Kind.Int, Kind.Short, Kind.Long, Kind.Float, Kind.Double, Kind.Object);
     }
 
     private static void registerUnsafeCast(Registration r) {
@@ -211,7 +221,16 @@ public class TruffleGraphBuilderPlugins {
                     if (javaType == null) {
                         builder.push(Kind.Object, object);
                     } else {
-                        Stamp piStamp = StampFactory.declaredTrusted(javaType, nonNull.asJavaConstant().asInt() != 0);
+                        Stamp piStamp = null;
+                        if (javaType.isArray()) {
+                            if (nonNull.asJavaConstant().asInt() != 0) {
+                                piStamp = StampFactory.exactNonNull(javaType);
+                            } else {
+                                piStamp = StampFactory.exact(javaType);
+                            }
+                        } else {
+                            piStamp = StampFactory.declaredTrusted(javaType, nonNull.asJavaConstant().asInt() != 0);
+                        }
                         LogicNode compareNode = CompareNode.createCompareNode(object.graph(), Condition.EQ, condition, ConstantNode.forBoolean(true, object.graph()), constantReflection);
                         boolean skipAnchor = false;
                         if (compareNode instanceof LogicConstantNode) {

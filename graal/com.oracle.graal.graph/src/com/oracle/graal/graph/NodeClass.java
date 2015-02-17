@@ -30,6 +30,7 @@ import static com.oracle.graal.graph.Node.*;
 import java.lang.annotation.*;
 import java.lang.reflect.*;
 import java.util.*;
+import java.util.concurrent.atomic.*;
 
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.debug.*;
@@ -82,7 +83,7 @@ public final class NodeClass<T> extends FieldIntrospection {
     }
 
     @SuppressWarnings("rawtypes")
-    private static NodeClass<?> getNodeClassViaReflection(Class<?> superclass) {
+    public static NodeClass<?> getNodeClassViaReflection(Class<?> superclass) {
         try {
             Field field = superclass.getDeclaredField("TYPE");
             field.setAccessible(true);
@@ -96,7 +97,7 @@ public final class NodeClass<T> extends FieldIntrospection {
     private static final Class<?> INPUT_LIST_CLASS = NodeInputList.class;
     private static final Class<?> SUCCESSOR_LIST_CLASS = NodeSuccessorList.class;
 
-    private static int nextIterableId = 0;
+    private static AtomicInteger nextIterableId = new AtomicInteger();
 
     private final InputEdges inputs;
     private final SuccessorEdges successors;
@@ -172,7 +173,7 @@ public final class NodeClass<T> extends FieldIntrospection {
         } else if (IterableNodeType.class.isAssignableFrom(clazz)) {
             ITERABLE_NODE_TYPES.increment();
             try (TimerCloseable t1 = Init_IterableIds.start()) {
-                this.iterableId = nextIterableId++;
+                this.iterableId = nextIterableId.getAndIncrement();
 
                 NodeClass<?> snc = superNodeClass;
                 while (snc != null && IterableNodeType.class.isAssignableFrom(snc.getClazz())) {
@@ -245,7 +246,7 @@ public final class NodeClass<T> extends FieldIntrospection {
     }
 
     static int allocatedNodeIterabledIds() {
-        return nextIterableId;
+        return nextIterableId.get();
     }
 
     public EnumSet<InputType> getAllowedUsageTypes() {

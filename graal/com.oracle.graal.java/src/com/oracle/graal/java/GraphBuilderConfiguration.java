@@ -41,12 +41,13 @@ public class GraphBuilderConfiguration {
     private final ResolvedJavaType[] skippedExceptionTypes;
     private final DebugInfoMode debugInfoMode;
     private final boolean doLivenessAnalysis;
-    private final InvocationPlugins invocationPlugins = new InvocationPlugins();
+    private InvocationPlugins invocationPlugins = new InvocationPlugins();
     private LoadFieldPlugin loadFieldPlugin;
     private ParameterPlugin parameterPlugin;
     private InlineInvokePlugin inlineInvokePlugin;
     private AnnotatedInvocationPlugin annotatedInvocationPlugin;
     private LoopExplosionPlugin loopExplosionPlugin;
+    private boolean useProfiling;
 
     public static enum DebugInfoMode {
         SafePointsOnly,
@@ -78,12 +79,22 @@ public class GraphBuilderConfiguration {
         this.debugInfoMode = debugInfoMode;
         this.skippedExceptionTypes = skippedExceptionTypes;
         this.doLivenessAnalysis = doLivenessAnalysis;
+        this.useProfiling = true;
     }
 
     public GraphBuilderConfiguration copy() {
         GraphBuilderConfiguration result = new GraphBuilderConfiguration(eagerResolving, omitAllExceptionEdges, debugInfoMode, skippedExceptionTypes, doLivenessAnalysis);
+        result.useProfiling = useProfiling;
         result.copyPluginsFrom(this);
         return result;
+    }
+
+    public boolean getUseProfiling() {
+        return useProfiling;
+    }
+
+    public void setUseProfiling(boolean b) {
+        this.useProfiling = b;
     }
 
     public GraphBuilderConfiguration withSkippedExceptionTypes(ResolvedJavaType[] newSkippedExceptionTypes) {

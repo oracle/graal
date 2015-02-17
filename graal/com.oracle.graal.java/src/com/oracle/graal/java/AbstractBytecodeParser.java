@@ -91,7 +91,7 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
         this.optimisticOpts = optimisticOpts;
         this.metaAccess = metaAccess;
         this.stream = new BytecodeStream(method.getCode());
-        this.profilingInfo = method.getProfilingInfo();
+        this.profilingInfo = (graphBuilderConfig.getUseProfiling() ? method.getProfilingInfo() : null);
         this.constantPool = method.getConstantPool();
         this.method = method;
         this.parsingReplacement = isReplacement;
@@ -573,7 +573,7 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
     }
 
     private JavaTypeProfile getProfileForTypeCheck(ResolvedJavaType type) {
-        if (!optimisticOpts.useTypeCheckHints() || !canHaveSubtype(type)) {
+        if (profilingInfo == null || !optimisticOpts.useTypeCheckHints() || !canHaveSubtype(type)) {
             return null;
         } else {
             return profilingInfo.getTypeProfile(bci());
@@ -727,7 +727,7 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
 
     protected void emitExplicitExceptions(T receiver, T outOfBoundsIndex) {
         assert receiver != null;
-        if (graphBuilderConfig.omitAllExceptionEdges() ||
+        if (graphBuilderConfig.omitAllExceptionEdges() || profilingInfo == null ||
                         (optimisticOpts.useExceptionProbabilityForOperations() && profilingInfo.getExceptionSeen(bci()) == TriState.FALSE && !GraalOptions.StressExplicitExceptionCode.getValue())) {
             return;
         }
@@ -806,7 +806,7 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
     protected abstract void genRet(int localIndex);
 
     private double[] switchProbability(int numberOfCases, int bci) {
-        double[] prob = profilingInfo.getSwitchProbabilities(bci);
+        double[] prob = (profilingInfo == null ? null : profilingInfo.getSwitchProbabilities(bci));
         if (prob != null) {
             assert prob.length == numberOfCases;
         } else {
@@ -910,6 +910,10 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
     }
 
     protected double branchProbability() {
+        if (profilingInfo == null) {
+            return 0.5;
+        }
+        assert assertAtIfBytecode();
         double probability = profilingInfo.getBranchTakenProbability(bci());
         if (probability < 0) {
             assert probability == -1 : "invalid probability";
@@ -925,6 +929,31 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
             }
         }
         return probability;
+    }
+
+    private boolean assertAtIfBytecode() {
+        int bytecode = stream.currentBC();
+        switch (bytecode) {
+            case IFEQ:
+            case IFNE:
+            case IFLT:
+            case IFGE:
+            case IFGT:
+            case IFLE:
+            case IF_ICMPEQ:
+            case IF_ICMPNE:
+            case IF_ICMPLT:
+            case IF_ICMPGE:
+            case IF_ICMPGT:
+            case IF_ICMPLE:
+            case IF_ACMPEQ:
+            case IF_ACMPNE:
+            case IFNULL:
+            case IFNONNULL:
+                return true;
+        }
+        assert false : String.format("%x is not an if bytecode", bytecode);
+        return true;
     }
 
     protected abstract void iterateBytecodesForBlock(BciBlock block);

@@ -186,11 +186,14 @@ public class InvocationPlugins {
      */
     public void updateFrom(InvocationPlugins other) {
         this.plugins.putAll(other.plugins);
+        if (other.defaults != null) {
+            updateFrom(other.defaults);
+        }
     }
 
     @Override
     public String toString() {
-        return plugins.keySet().stream().map(m -> m.format("%H.%n(%p)")).collect(Collectors.joining(", "));
+        return plugins.keySet().stream().map(m -> m.format("%H.%n(%p)")).collect(Collectors.joining(", ")) + " / defaults: " + this.defaults;
     }
 
     private static class Checker {

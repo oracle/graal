@@ -243,16 +243,14 @@ public class PartialEvaluator {
     @SuppressWarnings("unused")
     private void fastPartialEvaluation(OptimizedCallTarget callTarget, StructuredGraph graph, PhaseContext baseContext, HighTierContext tierContext) {
         GraphBuilderConfiguration newConfig = configForRoot.copy();
-        newConfig.getInvocationPlugins().setDefaults(configForRoot.getInvocationPlugins());
+        newConfig.setUseProfiling(false);
         newConfig.setLoadFieldPlugin(new InterceptLoadFieldPlugin());
         newConfig.setParameterPlugin(new InterceptReceiverPlugin(callTarget));
         callTarget.setInlining(new TruffleInlining(callTarget, new DefaultInliningPolicy()));
         newConfig.setInlineInvokePlugin(new InlineInvokePlugin(callTarget.getInlining(), providers.getReplacements()));
         newConfig.setLoopExplosionPlugin(new LoopExplosionPlugin());
         TruffleGraphBuilderPlugins.registerInvocationPlugins(providers.getMetaAccess(), newConfig.getInvocationPlugins());
-        long ms = System.currentTimeMillis();
         new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), this.snippetReflection, providers.getConstantReflection(), newConfig, TruffleCompilerImpl.Optimizations).apply(graph);
-        System.out.println("# ms: " + (System.currentTimeMillis() - ms));
         Debug.dump(graph, "After FastPE");
 
         for (MethodCallTargetNode methodCallTargetNode : graph.getNodes(MethodCallTargetNode.TYPE)) {
@@ -269,6 +267,7 @@ public class PartialEvaluator {
 
         // Do single partial escape and canonicalization pass.
         try (Scope pe = Debug.scope("TrufflePartialEscape", graph)) {
+            new PartialEscapePhase(true, canonicalizer).apply(graph, tierContext);
             new PartialEscapePhase(true, canonicalizer).apply(graph, tierContext);
             new IncrementalCanonicalizerPhase<>(canonicalizer, new ConditionalEliminationPhase()).apply(graph, tierContext);
         } catch (Throwable t) {

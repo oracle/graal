@@ -239,7 +239,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             protected void build(int depth, FixedWithNextNode startInstruction, HIRFrameStateBuilder startFrameState) {
                 this.currentDepth = depth;
-                if (PrintProfilingInformation.getValue()) {
+                if (PrintProfilingInformation.getValue() && profilingInfo != null) {
                     TTY.println("Profiling info for " + method.format("%H.%n(%p)"));
                     TTY.println(MetaUtil.indent(profilingInfo.toString(method, CodeUtil.NEW_LINE), "  "));
                 }
@@ -333,12 +333,10 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
                     if (context.targetPeelIteration != -1) {
                         // We were reaching the backedge during explosion. Explode further.
-                        Debug.dump(currentGraph, "Before loop explosion " + context.targetPeelIteration);
                         context.peelIteration = context.targetPeelIteration;
                         context.targetPeelIteration = -1;
                     } else {
                         // We did not reach the backedge. Exit.
-                        Debug.dump(currentGraph, "after loop explosion " + context.peelIteration);
                         break;
                     }
                 }
@@ -473,7 +471,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             private DispatchBeginNode handleException(ValueNode exceptionObject, int bci) {
                 assert bci == BytecodeFrame.BEFORE_BCI || bci == bci() : "invalid bci";
-                Debug.log("Creating exception dispatch edges at %d, exception object=%s, exception seen=%s", bci, exceptionObject, profilingInfo.getExceptionSeen(bci));
+                Debug.log("Creating exception dispatch edges at %d, exception object=%s, exception seen=%s", bci, exceptionObject, (profilingInfo == null ? "" : profilingInfo.getExceptionSeen(bci)));
 
                 BciBlock dispatchBlock = currentBlock.exceptionDispatchBlock();
                 /*
@@ -854,7 +852,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 }
                 if (invokeKind.hasReceiver()) {
                     emitExplicitExceptions(args[0], null);
-                    if (invokeKind.isIndirect() && this.optimisticOpts.useTypeCheckHints()) {
+                    if (invokeKind.isIndirect() && profilingInfo != null && this.optimisticOpts.useTypeCheckHints()) {
                         JavaTypeProfile profile = profilingInfo.getTypeProfile(bci());
                         args[0] = TypeProfileProxyNode.proxify(args[0], profile);
                     }
@@ -882,7 +880,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
                 // be conservative if information was not recorded (could result in endless
                 // recompiles otherwise)
-                if (graphBuilderConfig.omitAllExceptionEdges() || (optimisticOpts.useExceptionProbability() && profilingInfo.getExceptionSeen(bci()) == TriState.FALSE)) {
+                if (graphBuilderConfig.omitAllExceptionEdges() || (optimisticOpts.useExceptionProbability() && profilingInfo != null && profilingInfo.getExceptionSeen(bci()) == TriState.FALSE)) {
                     createInvoke(callTarget, resultType);
                 } else {
                     InvokeWithExceptionNode invoke = createInvokeWithException(callTarget, resultType);
@@ -933,17 +931,14 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     return false;
                 }
                 ResolvedJavaMethod inlinedMethod = plugin.getInlinedMethod(this, targetMethod, args, returnType, currentDepth);
-                if (inlinedMethod != null) {
-                    if (inlinedMethod != null) {
-                        assert inlinedMethod.hasBytecodes();
-                        if (TraceInlineDuringParsing.getValue()) {
-                            int bci = this.bci();
-                            StackTraceElement ste = this.method.asStackTraceElement(bci);
-                            TTY.println(format("%s%s (%s:%d) inlining call to %s", nSpaces(currentDepth), method.getName(), ste.getFileName(), ste.getLineNumber(), inlinedMethod.format("%h.%n(%p)")));
-                        }
-                        parseAndInlineCallee(inlinedMethod, args, parsingReplacement || !inlinedMethod.equals(targetMethod));
-                        plugin.postInline(inlinedMethod);
+                if (inlinedMethod != null && inlinedMethod.hasBytecodes()) {
+                    if (TraceInlineDuringParsing.getValue()) {
+                        int bci = this.bci();
+                        StackTraceElement ste = this.method.asStackTraceElement(bci);
+                        TTY.println(format("%s%s (%s:%d) inlining call to %s", nSpaces(currentDepth), method.getName(), ste.getFileName(), ste.getLineNumber(), inlinedMethod.format("%h.%n(%p)")));
                     }
+                    parseAndInlineCallee(inlinedMethod, args, parsingReplacement || !inlinedMethod.equals(targetMethod));
+                    plugin.postInline(inlinedMethod);
                     return true;
                 }
 
@@ -1677,8 +1672,6 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             @Override
             protected void genIf(ValueNode x, Condition cond, ValueNode y) {
-                // assert !x.isDeleted() && !y.isDeleted();
-                // assert currentBlock.numNormalSuccessors() == 2;
                 assert currentBlock.getSuccessorCount() == 2;
                 BciBlock trueBlock = currentBlock.getSuccessor(0);
                 BciBlock falseBlock = currentBlock.getSuccessor(1);
@@ -1686,8 +1679,6 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     appendGoto(trueBlock);
                     return;
                 }
-
-                double probability = branchProbability();
 
                 // the mirroring and negation operations get the condition into canonical form
                 boolean mirror = cond.canonicalMirror();
@@ -1732,6 +1723,9 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                         condition = currentGraph.unique(condition);
                     }
 
+                    // Need to get probability based on current bci.
+                    double probability = branchProbability();
+
                     int oldBci = stream.currentBCI();
                     int trueBlockInt = checkPositiveIntConstantPushed(trueBlock);
                     if (trueBlockInt != -1) {
@@ -1772,6 +1766,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     }
 
                     this.controlFlowSplit = true;
+
                     ValueNode trueSuccessor = createBlockTarget(probability, trueBlock, frameState);
                     ValueNode falseSuccessor = createBlockTarget(1 - probability, falseBlock, frameState);
 
