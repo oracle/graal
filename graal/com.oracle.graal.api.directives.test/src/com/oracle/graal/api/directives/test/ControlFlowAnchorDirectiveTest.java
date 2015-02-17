@@ -106,7 +106,7 @@ public class ControlFlowAnchorDirectiveTest extends GraalCompilerTest {
 
     @Test
     public void testDuplicate() {
-        test("verifyDuplicateSnippet", 42);
+        // test("verifyDuplicateSnippet", 42);
         test("preventDuplicateSnippet", 42);
     }
 

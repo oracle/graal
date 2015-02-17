@@ -41,6 +41,21 @@ public interface ProfilingInfo {
         public static TriState get(boolean value) {
             return value ? TRUE : FALSE;
         }
+
+        /**
+         * This is optimistic about {@link #UNKNOWN} (it prefers known values over {@link #UNKNOWN})
+         * and pesimistic about known (it perfers {@link #TRUE} over {@link #FALSE}).
+         */
+        public static TriState merge(TriState a, TriState b) {
+            if (a == TRUE || b == TRUE) {
+                return TRUE;
+            }
+            if (a == FALSE || b == FALSE) {
+                return FALSE;
+            }
+            assert a == UNKNOWN && b == UNKNOWN;
+            return UNKNOWN;
+        }
     }
 
     /**

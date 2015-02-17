@@ -307,7 +307,7 @@ public final class GraalOptions {
     public static final OptionValue<Boolean> OptFloatingReads = new OptionValue<>(true);
 
     @Option(help = "", type = OptionType.Debug)
-    public static final OptionValue<Boolean> OptTailDuplication = new OptionValue<>(true);
+    public static final OptionValue<Boolean> OptTailDuplication = new OptionValue<>(false);
 
     @Option(help = "", type = OptionType.Debug)
     public static final OptionValue<Boolean> OptEliminatePartiallyRedundantGuards = new OptionValue<>(true);

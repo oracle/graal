@@ -366,6 +366,16 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         return false;
     }
 
+    private static final class MutableProfiledType {
+        final ResolvedJavaType type;
+        double probability;
+
+        public MutableProfiledType(ResolvedJavaType type, double probability) {
+            this.type = type;
+            this.probability = probability;
+        }
+    }
+
     private static boolean prepareForSwap(ConstantReflectionProvider constantReflection, LogicNode a, LogicNode b, double probabilityA, double probabilityB) {
         if (a instanceof InstanceOfNode) {
             InstanceOfNode instanceOfA = (InstanceOfNode) a;
@@ -383,44 +393,8 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 if (instanceOfA.getValue() == instanceOfB.getValue() && !instanceOfA.type().isInterface() && !instanceOfB.type().isInterface() &&
                                 !instanceOfA.type().isAssignableFrom(instanceOfB.type()) && !instanceOfB.type().isAssignableFrom(instanceOfA.type())) {
                     // Two instanceof on the same value with mutually exclusive types.
-                    JavaTypeProfile profileA = instanceOfA.profile();
-                    JavaTypeProfile profileB = instanceOfB.profile();
-
                     Debug.log("Can swap instanceof for types %s and %s", instanceOfA.type(), instanceOfB.type());
-                    JavaTypeProfile newProfile = null;
-                    if (profileA != null && profileB != null) {
-                        double remainder = 1.0;
-                        ArrayList<ProfiledType> profiledTypes = new ArrayList<>();
-                        for (ProfiledType type : profileB.getTypes()) {
-                            if (instanceOfB.type().isAssignableFrom(type.getType())) {
-                                // Do not add to profile.
-                            } else {
-                                ProfiledType newType = new ProfiledType(type.getType(), Math.min(1.0, type.getProbability() * (1.0 - probabilityA) / (1.0 - probabilityB)));
-                                profiledTypes.add(newType);
-                                remainder -= newType.getProbability();
-                            }
-                        }
-
-                        for (ProfiledType type : profileA.getTypes()) {
-                            if (instanceOfA.type().isAssignableFrom(type.getType())) {
-                                ProfiledType newType = new ProfiledType(type.getType(), Math.min(1.0, type.getProbability() / (1.0 - probabilityB)));
-                                profiledTypes.add(newType);
-                                remainder -= newType.getProbability();
-                            }
-                        }
-                        Collections.sort(profiledTypes);
-
-                        if (remainder < 0.0) {
-                            // Can happen due to round-off errors.
-                            remainder = 0.0;
-                        }
-                        newProfile = new JavaTypeProfile(profileB.getNullSeen(), remainder, profiledTypes.toArray(new ProfiledType[profiledTypes.size()]));
-                        Debug.log("First profile: %s", profileA);
-                        Debug.log("Original second profile: %s", profileB);
-                        Debug.log("New second profile: %s", newProfile);
-                    }
-                    instanceOfB.setProfile(profileA);
-                    instanceOfA.setProfile(newProfile);
+                    swapInstanceOfProfiles(probabilityA, probabilityB, instanceOfA, instanceOfB);
                     return true;
                 }
             }
@@ -475,6 +449,116 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         }
 
         return false;
+    }
+
+    /**
+     * Arbitrary fraction of not recorded types that we'll guess are sub-types of B.
+     *
+     * This is is used because we can not check if the unrecorded types are sub-types of B or not.
+     */
+    private static final double NOT_RECORDED_SUBTYPE_B = 0.5;
+
+    /**
+     * If the not-recorded fraction of types for the new profile of <code>instanceOfA</code> is
+     * above this threshold, no profile is used for this <code>instanceof</code> after the swap.
+     *
+     * The idea is that the reconstructed profile would contain too much unknowns to be of any use.
+     */
+    private static final double NOT_RECORDED_CUTOFF = 0.4;
+
+    /**
+     * Tries to reconstruct profiles for the swapped <code>instanceof</code> checks.
+     *
+     * The tested types must be mutually exclusive.
+     */
+    private static void swapInstanceOfProfiles(double probabilityA, double probabilityB, InstanceOfNode instanceOfA, InstanceOfNode instanceOfB) {
+        JavaTypeProfile profileA = instanceOfA.profile();
+        JavaTypeProfile profileB = instanceOfB.profile();
+
+        JavaTypeProfile newProfileA = null;
+        JavaTypeProfile newProfileB = null;
+        if (profileA != null || profileB != null) {
+            List<MutableProfiledType> newProfiledTypesA = new ArrayList<>();
+            List<MutableProfiledType> newProfiledTypesB = new ArrayList<>();
+            double totalProbabilityA = 0.0;
+            double totalProbabilityB = 0.0;
+            double newNotRecordedA = 0.0;
+            double newNotRecordedB = 0.0;
+            TriState nullSeen = TriState.UNKNOWN;
+            if (profileA != null) {
+                for (ProfiledType profiledType : profileA.getTypes()) {
+                    newProfiledTypesB.add(new MutableProfiledType(profiledType.getType(), profiledType.getProbability()));
+                    totalProbabilityB += profiledType.getProbability();
+                    if (!instanceOfB.type().isAssignableFrom(profiledType.getType())) {
+                        double typeProbabilityA = profiledType.getProbability() / (1 - probabilityB);
+                        newProfiledTypesA.add(new MutableProfiledType(profiledType.getType(), typeProbabilityA));
+                        totalProbabilityA += typeProbabilityA;
+                    }
+                }
+                newNotRecordedB += profileA.getNotRecordedProbability();
+                newNotRecordedA += NOT_RECORDED_SUBTYPE_B * profileA.getNotRecordedProbability() / (1 - probabilityB);
+                nullSeen = profileA.getNullSeen();
+            }
+            int searchA = newProfiledTypesA.size();
+            int searchB = newProfiledTypesB.size();
+            if (profileB != null) {
+                for (ProfiledType profiledType : profileB.getTypes()) {
+                    double typeProbabilityB = profiledType.getProbability() * (1 - probabilityA);
+                    appendOrMerge(profiledType.getType(), typeProbabilityB, searchB, newProfiledTypesB);
+                    totalProbabilityB += typeProbabilityB;
+                    if (!instanceOfB.type().isAssignableFrom(profiledType.getType())) {
+                        double typeProbabilityA = typeProbabilityB / (1 - probabilityB);
+                        appendOrMerge(profiledType.getType(), typeProbabilityA, searchA, newProfiledTypesA);
+                        totalProbabilityA += typeProbabilityA;
+                    }
+                }
+                newNotRecordedB += profileB.getNotRecordedProbability() * (1 - probabilityA);
+                newNotRecordedA += NOT_RECORDED_SUBTYPE_B * profileB.getNotRecordedProbability() * (1 - probabilityA) / (1 - probabilityB);
+                nullSeen = TriState.merge(nullSeen, profileB.getNullSeen());
+            }
+            totalProbabilityA += newNotRecordedA;
+            totalProbabilityB += newNotRecordedB;
+
+            if (newNotRecordedA / NOT_RECORDED_SUBTYPE_B > NOT_RECORDED_CUTOFF) {
+                // too much unknown
+                newProfileA = null;
+            } else {
+                newProfileA = makeProfile(totalProbabilityA, newNotRecordedA, newProfiledTypesA, nullSeen);
+            }
+            newProfileB = makeProfile(totalProbabilityB, newNotRecordedB, newProfiledTypesB, nullSeen);
+        }
+
+        instanceOfB.setProfile(newProfileB);
+        instanceOfA.setProfile(newProfileA);
+    }
+
+    private static JavaTypeProfile makeProfile(double totalProbability, double notRecorded, List<MutableProfiledType> profiledTypes, TriState nullSeen) {
+        // protect against NaNs and empty profiles
+        if (totalProbability > 0.0) {
+            // normalize
+            ProfiledType[] profiledTypesArray = new ProfiledType[profiledTypes.size()];
+            int i = 0;
+            for (MutableProfiledType profiledType : profiledTypes) {
+                profiledTypesArray[i++] = new ProfiledType(profiledType.type, profiledType.probability / totalProbability);
+            }
+
+            // sort
+            Arrays.sort(profiledTypesArray);
+
+            return new JavaTypeProfile(nullSeen, notRecorded / totalProbability, profiledTypesArray);
+        }
+        return null;
+    }
+
+    private static void appendOrMerge(ResolvedJavaType type, double probability, int searchUntil, List<MutableProfiledType> list) {
+        for (int i = 0; i < searchUntil; i++) {
+            MutableProfiledType profiledType = list.get(i);
+            if (profiledType.type.equals(type)) {
+                profiledType.probability += probability;
+                return;
+            }
+        }
+        list.add(new MutableProfiledType(type, probability));
     }
 
     private static boolean valuesDistinct(ConstantReflectionProvider constantReflection, ValueNode a, ValueNode b) {
