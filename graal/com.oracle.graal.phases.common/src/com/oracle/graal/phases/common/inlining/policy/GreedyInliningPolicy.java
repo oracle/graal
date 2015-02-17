@@ -102,6 +102,11 @@ public class GreedyInliningPolicy extends AbstractInliningPolicy {
             return false;
         }
 
+        if (probability <= 0.00001 && nodes >= TrivialInliningSize.getValue() * 2) {
+            InliningUtil.logNotInlinedMethod(info, inliningDepth, "probability-based (relevance=%f, probability=%f, bonus=%f, nodes=%d > %f)", relevance, probability, inliningBonus, nodes);
+            return false;
+        }
+
         double maximumNodes = computeMaximumSize(relevance, (int) (MaximumInliningSize.getValue() * inliningBonus));
         if (nodes <= maximumNodes) {
             InliningUtil.logInlinedMethod(info, inliningDepth, fullyProcessed, "relevance-based (relevance=%f, probability=%f, bonus=%f, nodes=%d <= %f)", relevance, probability, inliningBonus,
