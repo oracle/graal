@@ -32,7 +32,7 @@ import com.oracle.graal.nodes.extended.*;
 
 public class GraalDirectivePlugins {
 
-    public static void registerPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
+    public static void registerInvocationPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
         Registration r = new Registration(plugins, metaAccess, GraalDirectives.class);
         r.register0("deoptimize", new InvocationPlugin() {
             public boolean apply(GraphBuilderContext builder) {

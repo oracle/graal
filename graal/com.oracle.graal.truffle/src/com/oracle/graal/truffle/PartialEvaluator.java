@@ -152,17 +152,7 @@ public class PartialEvaluator {
         public boolean apply(GraphBuilderContext builder, ValueNode receiver, ResolvedJavaField field) {
             if (receiver.isConstant()) {
                 JavaConstant asJavaConstant = receiver.asJavaConstant();
-                return tryConstantFold(builder, field, asJavaConstant);
-            }
-            return false;
-        }
-
-        private boolean tryConstantFold(GraphBuilderContext builder, ResolvedJavaField field, JavaConstant asJavaConstant) {
-            JavaConstant result = providers.getConstantReflection().readConstantFieldValue(field, asJavaConstant);
-            if (result != null) {
-                ConstantNode constantNode = builder.append(ConstantNode.forConstant(result, providers.getMetaAccess()));
-                builder.push(constantNode.getKind().getStackKind(), constantNode);
-                return true;
+                return tryConstantFold(builder, providers.getMetaAccess(), providers.getConstantReflection(), field, asJavaConstant);
             }
             return false;
         }
@@ -173,7 +163,7 @@ public class PartialEvaluator {
                 builder.push(trueNode.getKind().getStackKind(), trueNode);
                 return true;
             }
-            return tryConstantFold(builder, staticField, null);
+            return tryConstantFold(builder, providers.getMetaAccess(), providers.getConstantReflection(), staticField, null);
         }
     }
 
@@ -197,14 +187,19 @@ public class PartialEvaluator {
 
         private Stack<TruffleInlining> inlining;
         private OptimizedDirectCallNode lastDirectCallNode;
+        private final Replacements replacements;
 
-        public InlineInvokePlugin(TruffleInlining inlining) {
+        public InlineInvokePlugin(TruffleInlining inlining, Replacements replacements) {
             this.inlining = new Stack<>();
             this.inlining.push(inlining);
+            this.replacements = replacements;
         }
 
         public ResolvedJavaMethod getInlinedMethod(GraphBuilderContext builder, ResolvedJavaMethod original, ValueNode[] arguments, JavaType returnType, int depth) {
             if (original.getAnnotation(TruffleBoundary.class) != null) {
+                return null;
+            }
+            if (replacements != null && (replacements.getMethodSubstitutionMethod(original) != null || replacements.getMacroSubstitution(original) != null)) {
                 return null;
             }
             if (original.equals(callSiteProxyMethod)) {
@@ -252,12 +247,11 @@ public class PartialEvaluator {
         newConfig.setLoadFieldPlugin(new InterceptLoadFieldPlugin());
         newConfig.setParameterPlugin(new InterceptReceiverPlugin(callTarget));
         callTarget.setInlining(new TruffleInlining(callTarget, new DefaultInliningPolicy()));
-        newConfig.setInlineInvokePlugin(new InlineInvokePlugin(callTarget.getInlining()));
+        newConfig.setInlineInvokePlugin(new InlineInvokePlugin(callTarget.getInlining(), providers.getReplacements()));
         newConfig.setLoopExplosionPlugin(new LoopExplosionPlugin());
-        TruffleGraphBuilderPlugins.registerPlugins(providers.getMetaAccess(), newConfig.getInvocationPlugins());
+        TruffleGraphBuilderPlugins.registerInvocationPlugins(providers.getMetaAccess(), newConfig.getInvocationPlugins());
         long ms = System.currentTimeMillis();
-        new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), this.snippetReflection, providers.getReplacements(), providers.getConstantReflection(), newConfig,
-                        TruffleCompilerImpl.Optimizations).apply(graph);
+        new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), this.snippetReflection, providers.getConstantReflection(), newConfig, TruffleCompilerImpl.Optimizations).apply(graph);
         System.out.println("# ms: " + (System.currentTimeMillis() - ms));
         Debug.dump(graph, "After FastPE");
 

@@ -47,10 +47,10 @@ import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
 
 /**
- * Provider of {@link GraphBuilderPlugin}s for Truffle classes.
+ * Provides {@link InvocationPlugin}s for Truffle classes.
  */
 public class TruffleGraphBuilderPlugins {
-    public static void registerPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
+    public static void registerInvocationPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
 
         // OptimizedAssumption.class
         Registration r = new Registration(plugins, metaAccess, OptimizedAssumption.class);

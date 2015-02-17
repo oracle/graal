@@ -81,8 +81,12 @@ public class TruffleCompilerImpl {
         this.compilationNotify = graalTruffleRuntime.getCompilationNotify();
         this.backend = runtime.getHostBackend();
         Replacements truffleReplacements = graalTruffleRuntime.getReplacements();
-        ConstantReflectionProvider constantReflection = new TruffleConstantReflectionProvider(backend.getProviders().getConstantReflection(), backend.getProviders().getMetaAccess());
-        this.providers = backend.getProviders().copyWith(truffleReplacements).copyWith(constantReflection);
+        Providers backendProviders = backend.getProviders();
+        ConstantReflectionProvider constantReflection = new TruffleConstantReflectionProvider(backendProviders.getConstantReflection(), backendProviders.getMetaAccess());
+        if (!TruffleCompilerOptions.FastPE.getValue()) {
+            backendProviders = backendProviders.copyWith(truffleReplacements);
+        }
+        this.providers = backendProviders.copyWith(constantReflection);
         this.suites = backend.getSuites().getDefaultSuites();
         this.lirSuites = backend.getSuites().getDefaultLIRSuites();
 
@@ -93,6 +97,7 @@ public class TruffleCompilerImpl {
         if (TruffleCompilerOptions.FastPE.getValue()) {
             GraphBuilderPhase phase = (GraphBuilderPhase) backend.getSuites().getDefaultGraphBuilderSuite().findPhase(GraphBuilderPhase.class).previous();
             this.config.getInvocationPlugins().setDefaults(phase.getGraphBuilderConfig().getInvocationPlugins());
+            System.out.println("!!" + config.getInvocationPlugins());
         }
 
         this.truffleCache = new TruffleCacheImpl(providers, eagerConfig, TruffleCompilerImpl.Optimizations);
@@ -207,16 +212,6 @@ public class TruffleCompilerImpl {
             Debug.log(providers.getCodeCache().disassemble(result, installedCode));
         }
         return result;
-    }
-
-    static class GraphBuilderSuiteInfo {
-        final PhaseSuite<HighTierContext> suite;
-        final InvocationPlugins plugins;
-
-        public GraphBuilderSuiteInfo(PhaseSuite<HighTierContext> suite, InvocationPlugins plugins) {
-            this.suite = suite;
-            this.plugins = plugins;
-        }
     }
 
     private PhaseSuite<HighTierContext> createGraphBuilderSuite() {

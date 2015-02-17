@@ -64,6 +64,7 @@ public class ReplacementsImpl implements Replacements {
     public final Providers providers;
     public final SnippetReflectionProvider snippetReflection;
     public final TargetDescription target;
+    public final NodeIntrinsificationPhase nodeIntrinsificationPhase;
 
     /**
      * The preprocessed replacement graphs.
@@ -227,6 +228,7 @@ public class ReplacementsImpl implements Replacements {
         this.target = target;
         this.graphs = new ConcurrentHashMap<>();
         this.snippetTemplateCache = CollectionsFactory.newMap();
+        this.nodeIntrinsificationPhase = createNodeIntrinsificationPhase();
     }
 
     private static final boolean UseSnippetGraphCache = Boolean.parseBoolean(System.getProperty("graal.useSnippetGraphCache", "true"));
@@ -285,7 +287,7 @@ public class ReplacementsImpl implements Replacements {
 
         // Do deferred intrinsification of node intrinsics
 
-        createNodeIntrinsificationPhase().apply(specializedSnippet);
+        nodeIntrinsificationPhase.apply(specializedSnippet);
         new CanonicalizerPhase(true).apply(specializedSnippet, new PhaseContext(providers));
         NodeIntrinsificationVerificationPhase.verify(specializedSnippet);
     }
@@ -531,7 +533,7 @@ public class ReplacementsImpl implements Replacements {
          * Does final processing of a snippet graph.
          */
         protected void finalizeGraph(StructuredGraph graph) {
-            replacements.createNodeIntrinsificationPhase().apply(graph);
+            replacements.nodeIntrinsificationPhase.apply(graph);
             if (!SnippetTemplate.hasConstantParameter(method)) {
                 NodeIntrinsificationVerificationPhase.verify(graph);
             }
@@ -666,7 +668,7 @@ public class ReplacementsImpl implements Replacements {
          * Called after all inlining for a given graph is complete.
          */
         protected void afterInlining(StructuredGraph graph) {
-            replacements.createNodeIntrinsificationPhase().apply(graph);
+            replacements.nodeIntrinsificationPhase.apply(graph);
             new DeadCodeEliminationPhase(Optional).apply(graph);
             if (OptCanonicalizer.getValue()) {
                 new CanonicalizerPhase(true).apply(graph, new PhaseContext(replacements.providers));
@@ -825,6 +827,12 @@ public class ReplacementsImpl implements Replacements {
     public boolean isForcedSubstitution(ResolvedJavaMethod method) {
         ClassReplacements cr = getClassReplacements(method.getDeclaringClass().getName());
         return cr != null && cr.forcedSubstitutions.contains(method);
+    }
+
+    @Override
+    public ResolvedJavaMethod getMethodSubstitutionMethod(ResolvedJavaMethod original) {
+        ClassReplacements cr = getClassReplacements(original.getDeclaringClass().getName());
+        return cr == null ? null : cr.methodSubstitutions.get(original);
     }
 
     @Override

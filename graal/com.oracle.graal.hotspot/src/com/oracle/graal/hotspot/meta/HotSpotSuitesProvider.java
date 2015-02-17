@@ -25,15 +25,17 @@ package com.oracle.graal.hotspot.meta;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.phases.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.java.GraphBuilderConfiguration.DebugInfoMode;
 import com.oracle.graal.java.GraphBuilderPlugin.InlineInvokePlugin;
+import com.oracle.graal.java.GraphBuilderPlugin.LoadFieldPlugin;
 import com.oracle.graal.lir.phases.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.options.DerivedOptionValue.OptionSupplier;
 import com.oracle.graal.phases.*;
@@ -69,9 +71,9 @@ public class HotSpotSuitesProvider implements SuitesProvider {
 
     }
 
-    public HotSpotSuitesProvider(HotSpotGraalRuntimeProvider runtime) {
+    public HotSpotSuitesProvider(HotSpotGraalRuntimeProvider runtime, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, Replacements replacements) {
         this.runtime = runtime;
-        this.defaultGraphBuilderSuite = createGraphBuilderSuite();
+        this.defaultGraphBuilderSuite = createGraphBuilderSuite(metaAccess, constantReflection, replacements);
         this.defaultSuites = new DerivedOptionValue<>(new SuitesSupplier());
         this.defaultLIRSuites = new DerivedOptionValue<>(new LIRSuitesSupplier());
     }
@@ -103,18 +105,40 @@ public class HotSpotSuitesProvider implements SuitesProvider {
         return ret;
     }
 
-    protected PhaseSuite<HighTierContext> createGraphBuilderSuite() {
+    protected PhaseSuite<HighTierContext> createGraphBuilderSuite(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, Replacements replacements) {
         PhaseSuite<HighTierContext> suite = new PhaseSuite<>();
         GraphBuilderConfiguration config = GraphBuilderConfiguration.getDefault();
-        config.setInlineInvokePlugin(new InlineInvokePlugin() {
-            public ResolvedJavaMethod getInlinedMethod(GraphBuilderContext builder, ResolvedJavaMethod method, ValueNode[] args, JavaType returnType, int depth) {
-                if (GraalOptions.InlineDuringParsing.getValue() && method.getCode().length <= GraalOptions.TrivialInliningSize.getValue() &&
-                                depth < GraalOptions.InlineDuringParsingMaxDepth.getValue()) {
-                    return method;
+        if (InlineDuringParsing.getValue()) {
+            config.setLoadFieldPlugin(new LoadFieldPlugin() {
+                public boolean apply(GraphBuilderContext builder, ValueNode receiver, ResolvedJavaField field) {
+                    if (receiver.isConstant()) {
+                        JavaConstant asJavaConstant = receiver.asJavaConstant();
+                        return tryConstantFold(builder, metaAccess, constantReflection, field, asJavaConstant);
+                    }
+                    return false;
                 }
-                return null;
-            }
-        });
+
+                public boolean apply(GraphBuilderContext builder, ResolvedJavaField staticField) {
+                    return tryConstantFold(builder, metaAccess, constantReflection, staticField, null);
+                }
+            });
+            config.setInlineInvokePlugin(new InlineInvokePlugin() {
+                public ResolvedJavaMethod getInlinedMethod(GraphBuilderContext builder, ResolvedJavaMethod method, ValueNode[] args, JavaType returnType, int depth) {
+                    if (builder.parsingReplacement()) {
+                        if (method.getAnnotation(MethodSubstitution.class) != null) {
+                            ResolvedJavaMethod subst = replacements.getMethodSubstitutionMethod(method);
+                            if (subst != null) {
+                                return subst;
+                            }
+                        }
+                    }
+                    if (method.hasBytecodes() && method.getCode().length <= TrivialInliningSize.getValue() && depth < InlineDuringParsingMaxDepth.getValue()) {
+                        return method;
+                    }
+                    return null;
+                }
+            });
+        }
         suite.appendPhase(new GraphBuilderPhase(config));
         return suite;
     }

@@ -39,10 +39,10 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.options.*;
 
 /**
- * Provider of HotSpot specific {@link GraphBuilderPlugin}s.
+ * Provides HotSpot specific {@link InvocationPlugin}s.
  */
 public class HotSpotGraphBuilderPlugins {
-    public static void registerPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
+    public static void registerInvocationPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
         // Object.class
         Registration r = new Registration(plugins, metaAccess, Object.class);
         r.register1("getClass", Receiver.class, new InvocationPlugin() {

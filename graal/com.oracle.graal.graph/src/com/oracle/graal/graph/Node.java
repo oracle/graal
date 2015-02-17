@@ -161,6 +161,14 @@ public abstract class Node implements Cloneable, Formattable {
          * ignored and can therefore safely be {@code null}.
          */
         boolean setStampFromReturnType() default false;
+
+        /**
+         * Determines if this intrinsic can be compile-time executed. An attempt to execute a call
+         * (via reflection) to this intrinsic at compile-time will be made if all of its arguments
+         * are compile-time constant. If the execution succeeds without an exception, the result is
+         * inserted as a constant node in the graph.
+         */
+        boolean foldable() default false;
     }
 
     /**

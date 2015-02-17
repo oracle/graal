@@ -800,8 +800,10 @@ public abstract class GraalCompilerTest extends GraalTest {
     protected PhaseSuite<HighTierContext> getCustomGraphBuilderSuite(GraphBuilderConfiguration gbConf) {
         PhaseSuite<HighTierContext> suite = getDefaultGraphBuilderSuite().copy();
         ListIterator<BasePhase<? super HighTierContext>> iterator = suite.findPhase(GraphBuilderPhase.class);
+        GraphBuilderPhase graphBuilderPhase = (GraphBuilderPhase) iterator.previous();
+        GraphBuilderConfiguration gbConfCopy = gbConf.copy().copyPluginsFrom(graphBuilderPhase.getGraphBuilderConfig());
         iterator.remove();
-        iterator.add(new GraphBuilderPhase(gbConf));
+        iterator.add(new GraphBuilderPhase(gbConfCopy));
         return suite;
     }
 
