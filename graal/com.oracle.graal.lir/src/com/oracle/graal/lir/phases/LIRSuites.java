@@ -25,32 +25,32 @@ package com.oracle.graal.lir.phases;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.gen.*;
-import com.oracle.graal.lir.phases.LIRHighTierPhase.LIRHighTierContext;
+import com.oracle.graal.lir.phases.PreAllocationOptimizationPhase.PreAllocationOptimizationContext;
 import com.oracle.graal.lir.phases.LIRLowTierPhase.LIRLowTierContext;
 import com.oracle.graal.lir.phases.LIRMidTierPhase.LIRMidTierContext;
 
 public class LIRSuites {
 
-    private final LIRPhaseSuite<LIRHighTierContext> highTier;
+    private final LIRPhaseSuite<PreAllocationOptimizationContext> preAllocOptStage;
     private final LIRPhaseSuite<LIRMidTierContext> midTier;
     private final LIRPhaseSuite<LIRLowTierContext> lowTier;
 
-    public LIRSuites(LIRPhaseSuite<LIRHighTierContext> highTier, LIRPhaseSuite<LIRMidTierContext> midTier, LIRPhaseSuite<LIRLowTierContext> lowTier) {
-        this.highTier = highTier;
+    public LIRSuites(LIRPhaseSuite<PreAllocationOptimizationContext> preAllocOptStage, LIRPhaseSuite<LIRMidTierContext> midTier, LIRPhaseSuite<LIRLowTierContext> lowTier) {
+        this.preAllocOptStage = preAllocOptStage;
         this.midTier = midTier;
         this.lowTier = lowTier;
     }
 
     /**
-     * {@link LIRHighTierPhase}s are executed between {@link LIR} generation and register
+     * {@link PreAllocationOptimizationPhase}s are executed between {@link LIR} generation and register
      * allocation.
      * <p>
-     * {@link LIRHighTierPhase Implementers} can create new {@link LIRGeneratorTool#newVariable
+     * {@link PreAllocationOptimizationPhase Implementers} can create new {@link LIRGeneratorTool#newVariable
      * variables}, {@link LIRGenerationResult#getFrameMap stack slots} and
      * {@link LIRGenerationResult#getFrameMapBuilder virtual stack slots}.
      */
-    public LIRPhaseSuite<LIRHighTierContext> getHighTier() {
-        return highTier;
+    public LIRPhaseSuite<PreAllocationOptimizationContext> getPreAllocationOptimizationStage() {
+        return preAllocOptStage;
     }
 
     /**

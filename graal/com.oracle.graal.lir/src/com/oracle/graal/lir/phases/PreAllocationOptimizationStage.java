@@ -23,10 +23,10 @@
 package com.oracle.graal.lir.phases;
 
 import com.oracle.graal.lir.constopt.*;
-import com.oracle.graal.lir.phases.LIRHighTierPhase.*;
+import com.oracle.graal.lir.phases.PreAllocationOptimizationPhase.*;
 
-public class LIRHighTier extends LIRPhaseSuite<LIRHighTierContext> {
-    public LIRHighTier() {
+public class PreAllocationOptimizationStage extends LIRPhaseSuite<PreAllocationOptimizationContext> {
+    public PreAllocationOptimizationStage() {
         if (ConstantLoadOptimization.Options.LIROptConstantLoadOptimization.getValue()) {
             appendPhase(new ConstantLoadOptimization());
         }

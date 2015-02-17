@@ -28,19 +28,19 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.lir.gen.*;
 
-public abstract class LIRHighTierPhase extends LIRPhase<LIRHighTierPhase.LIRHighTierContext> {
+public abstract class PreAllocationOptimizationPhase extends LIRPhase<PreAllocationOptimizationPhase.PreAllocationOptimizationContext> {
 
-    public static final class LIRHighTierContext {
+    public static final class PreAllocationOptimizationContext {
         private final LIRGeneratorTool lirGen;
 
-        public LIRHighTierContext(LIRGeneratorTool lirGen) {
+        public PreAllocationOptimizationContext(LIRGeneratorTool lirGen) {
             this.lirGen = lirGen;
         }
 
     }
 
     @Override
-    protected final <B extends AbstractBlock<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, LIRHighTierContext context) {
+    protected final <B extends AbstractBlock<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, PreAllocationOptimizationContext context) {
         run(target, lirGenRes, codeEmittingOrder, linearScanOrder, context.lirGen);
     }
 
