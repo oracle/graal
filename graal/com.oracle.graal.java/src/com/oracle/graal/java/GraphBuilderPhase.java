@@ -896,7 +896,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 InvocationPlugin plugin = graphBuilderConfig.getInvocationPlugins().lookupInvocation(targetMethod);
                 if (plugin != null) {
                     int beforeStackSize = frameState.stackSize;
-                    boolean needsNullCheck = !targetMethod.isStatic() && !StampTool.isPointerNonNull(args[0].stamp());
+                    boolean needsNullCheck = !targetMethod.isStatic() && args[0].getKind() == Kind.Object && !StampTool.isPointerNonNull(args[0].stamp());
                     int nodeCount = currentGraph.getNodeCount();
                     Mark mark = needsNullCheck ? currentGraph.getMark() : null;
                     if (InvocationPlugin.execute(this, plugin, args)) {
