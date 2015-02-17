@@ -36,7 +36,7 @@ import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.phases.*;
 
-public class SimpleStackSlotAllocator extends LIRMidTierPhase implements StackSlotAllocator {
+public class SimpleStackSlotAllocator extends AllocationPhase implements StackSlotAllocator {
 
     @Override
     protected <B extends AbstractBlock<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder) {

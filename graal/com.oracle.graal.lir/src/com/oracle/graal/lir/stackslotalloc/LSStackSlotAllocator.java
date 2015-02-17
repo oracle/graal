@@ -51,7 +51,7 @@ import com.oracle.graal.options.*;
  * {@link OperandFlag#UNINITIALIZED}. Otherwise the stack slot might be reused and its content
  * destroyed.
  */
-public final class LSStackSlotAllocator extends LIRMidTierPhase implements StackSlotAllocator {
+public final class LSStackSlotAllocator extends AllocationPhase implements StackSlotAllocator {
 
     public static class Options {
         // @formatter:off

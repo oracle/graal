@@ -27,17 +27,17 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.phases.PreAllocationOptimizationPhase.PreAllocationOptimizationContext;
 import com.oracle.graal.lir.phases.LIRLowTierPhase.LIRLowTierContext;
-import com.oracle.graal.lir.phases.LIRMidTierPhase.LIRMidTierContext;
+import com.oracle.graal.lir.phases.AllocationPhase.AllocationContext;
 
 public class LIRSuites {
 
     private final LIRPhaseSuite<PreAllocationOptimizationContext> preAllocOptStage;
-    private final LIRPhaseSuite<LIRMidTierContext> midTier;
+    private final LIRPhaseSuite<AllocationContext> allocStage;
     private final LIRPhaseSuite<LIRLowTierContext> lowTier;
 
-    public LIRSuites(LIRPhaseSuite<PreAllocationOptimizationContext> preAllocOptStage, LIRPhaseSuite<LIRMidTierContext> midTier, LIRPhaseSuite<LIRLowTierContext> lowTier) {
+    public LIRSuites(LIRPhaseSuite<PreAllocationOptimizationContext> preAllocOptStage, LIRPhaseSuite<AllocationContext> allocStage, LIRPhaseSuite<LIRLowTierContext> lowTier) {
         this.preAllocOptStage = preAllocOptStage;
-        this.midTier = midTier;
+        this.allocStage = allocStage;
         this.lowTier = lowTier;
     }
 
@@ -54,14 +54,14 @@ public class LIRSuites {
     }
 
     /**
-     * {@link LIRMidTierPhase}s are responsible for register allocation and translating
+     * {@link AllocationPhase}s are responsible for register allocation and translating
      * {@link VirtualStackSlot}s into {@link StackSlot}s.
      * <p>
-     * After the {@link LIRMidTier} there should be no more {@link Variable}s and
+     * After the {@link AllocationStage} there should be no more {@link Variable}s and
      * {@link VirtualStackSlot}s.
      */
-    public LIRPhaseSuite<LIRMidTierContext> getMidTier() {
-        return midTier;
+    public LIRPhaseSuite<AllocationContext> getAllocationStage() {
+        return allocStage;
     }
 
     /**

@@ -42,7 +42,7 @@ import com.oracle.graal.options.*;
  * Mark all live references for a frame state. The frame state use this information to build the OOP
  * maps.
  */
-public final class LocationMarker extends LIRMidTierPhase {
+public final class LocationMarker extends AllocationPhase {
 
     public static class Options {
         // @formatter:off
