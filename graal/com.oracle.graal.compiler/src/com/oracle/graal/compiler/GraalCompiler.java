@@ -340,7 +340,7 @@ public class GraalCompiler {
                 throw Debug.handle(e);
             }
 
-            try (Scope s = Debug.scope("LIRTier", nodeLirGen)) {
+            try (Scope s = Debug.scope("LIRStages", nodeLirGen)) {
                 return emitLowLevel(target, codeEmittingOrder, linearScanOrder, lirGenRes, lirGen, lirSuites);
             } catch (Throwable e) {
                 throw Debug.handle(e);
@@ -352,14 +352,14 @@ public class GraalCompiler {
 
     public static <T extends AbstractBlock<T>> LIRGenerationResult emitLowLevel(TargetDescription target, List<T> codeEmittingOrder, List<T> linearScanOrder, LIRGenerationResult lirGenRes,
                     LIRGeneratorTool lirGen, LIRSuites lirSuites) {
-        PreAllocationOptimizationContext highTierContext = new PreAllocationOptimizationContext(lirGen);
-        lirSuites.getPreAllocationOptimizationStage().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, highTierContext);
+        PreAllocationOptimizationContext preAllocOptContext = new PreAllocationOptimizationContext(lirGen);
+        lirSuites.getPreAllocationOptimizationStage().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, preAllocOptContext);
 
-        AllocationContext midTierContext = new AllocationContext();
-        lirSuites.getAllocationStage().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, midTierContext);
+        AllocationContext allocContext = new AllocationContext();
+        lirSuites.getAllocationStage().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, allocContext);
 
-        PostAllocationOptimizationContext lowTierContext = new PostAllocationOptimizationContext();
-        lirSuites.getPostAllocationOptimizationStage().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, lowTierContext);
+        PostAllocationOptimizationContext postAllocOptContext = new PostAllocationOptimizationContext();
+        lirSuites.getPostAllocationOptimizationStage().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, postAllocOptContext);
 
         return lirGenRes;
     }
