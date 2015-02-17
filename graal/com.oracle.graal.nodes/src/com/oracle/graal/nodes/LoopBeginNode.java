@@ -43,6 +43,8 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
     protected double loopFrequency;
     protected int nextEndIndex;
     protected int unswitches;
+    protected int inversionCount;
+
     @OptionalInput(InputType.Guard) GuardingNode overflowGuard;
 
     public LoopBeginNode() {
@@ -185,8 +187,16 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
         return unswitches;
     }
 
-    public void incUnswitches() {
+    public void incrementUnswitches() {
         unswitches++;
+    }
+
+    public int getInversionCount() {
+        return inversionCount;
+    }
+
+    public void setInversionCount(int count) {
+        inversionCount = count;
     }
 
     @Override
