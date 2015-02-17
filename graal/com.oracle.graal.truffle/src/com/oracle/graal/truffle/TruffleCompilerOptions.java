@@ -104,6 +104,9 @@ public class TruffleCompilerOptions {
     @Option(help = "Enable asynchronous truffle compilation in background thread", type = OptionType.Expert)
     public static final OptionValue<Boolean> TruffleBackgroundCompilation = new OptionValue<>(true);
 
+    @Option(help = "Manually set the number of compiler threads", type = OptionType.Expert)
+    public static final StableOptionValue<Integer> TruffleCompilerThreads = new StableOptionValue<>(0);
+
     @Option(help = "Enable inlining across Truffle boundary", type = OptionType.Expert)
     public static final OptionValue<Boolean> TruffleInlineAcrossTruffleBoundary = new OptionValue<>(false);
 
