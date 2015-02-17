@@ -26,19 +26,19 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.phases.PreAllocationOptimizationPhase.PreAllocationOptimizationContext;
-import com.oracle.graal.lir.phases.LIRLowTierPhase.LIRLowTierContext;
+import com.oracle.graal.lir.phases.PostAllocationOptimizationPhase.PostAllocationOptimizationContext;
 import com.oracle.graal.lir.phases.AllocationPhase.AllocationContext;
 
 public class LIRSuites {
 
     private final LIRPhaseSuite<PreAllocationOptimizationContext> preAllocOptStage;
     private final LIRPhaseSuite<AllocationContext> allocStage;
-    private final LIRPhaseSuite<LIRLowTierContext> lowTier;
+    private final LIRPhaseSuite<PostAllocationOptimizationContext> postAllocStage;
 
-    public LIRSuites(LIRPhaseSuite<PreAllocationOptimizationContext> preAllocOptStage, LIRPhaseSuite<AllocationContext> allocStage, LIRPhaseSuite<LIRLowTierContext> lowTier) {
+    public LIRSuites(LIRPhaseSuite<PreAllocationOptimizationContext> preAllocOptStage, LIRPhaseSuite<AllocationContext> allocStage, LIRPhaseSuite<PostAllocationOptimizationContext> postAllocStage) {
         this.preAllocOptStage = preAllocOptStage;
         this.allocStage = allocStage;
-        this.lowTier = lowTier;
+        this.postAllocStage = postAllocStage;
     }
 
     /**
@@ -65,14 +65,14 @@ public class LIRSuites {
     }
 
     /**
-     * {@link LIRLowTierPhase}s are executed after register allocation and before machine code
+     * {@link PostAllocationOptimizationPhase}s are executed after register allocation and before machine code
      * generation.
      * <p>
-     * A {@link LIRLowTierPhase} must not introduce new {@link Variable}s, {@link VirtualStackSlot}s
+     * A {@link PostAllocationOptimizationPhase} must not introduce new {@link Variable}s, {@link VirtualStackSlot}s
      * or {@link StackSlot}s.
      */
-    public LIRPhaseSuite<LIRLowTierContext> getLowTier() {
-        return lowTier;
+    public LIRPhaseSuite<PostAllocationOptimizationContext> getPostAllocationOptimizationStage() {
+        return postAllocStage;
     }
 
 }

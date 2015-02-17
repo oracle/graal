@@ -35,7 +35,7 @@ import com.oracle.graal.lir.phases.*;
 /**
  * This class performs basic optimizations on the control flow graph after LIR generation.
  */
-public final class ControlFlowOptimizer extends LIRLowTierPhase {
+public final class ControlFlowOptimizer extends PostAllocationOptimizationPhase {
 
     /**
      * Performs control flow optimizations on the given LIR graph.

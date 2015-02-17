@@ -31,7 +31,7 @@ import com.oracle.graal.lir.StandardOp.NullCheck;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.phases.*;
 
-public final class NullCheckOptimizer extends LIRLowTierPhase {
+public final class NullCheckOptimizer extends PostAllocationOptimizationPhase {
 
     @Override
     protected <B extends AbstractBlock<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder) {

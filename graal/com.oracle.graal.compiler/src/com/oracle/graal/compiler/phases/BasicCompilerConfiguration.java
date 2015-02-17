@@ -25,7 +25,7 @@ package com.oracle.graal.compiler.phases;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.lir.phases.*;
 import com.oracle.graal.lir.phases.PreAllocationOptimizationPhase.*;
-import com.oracle.graal.lir.phases.LIRLowTierPhase.*;
+import com.oracle.graal.lir.phases.PostAllocationOptimizationPhase.*;
 import com.oracle.graal.lir.phases.AllocationPhase.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.tiers.*;
@@ -53,8 +53,8 @@ public class BasicCompilerConfiguration implements CompilerConfiguration {
         return new AllocationStage();
     }
 
-    public LIRPhaseSuite<LIRLowTierContext> createLIRLowTier() {
-        return new LIRLowTier();
+    public LIRPhaseSuite<PostAllocationOptimizationContext> createPostAllocationOptimizationStage() {
+        return new PostAllocationOptimizationStage();
     }
 
 }

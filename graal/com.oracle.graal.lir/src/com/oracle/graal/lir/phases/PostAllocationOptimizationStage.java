@@ -23,10 +23,10 @@
 package com.oracle.graal.lir.phases;
 
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.phases.LIRLowTierPhase.*;
+import com.oracle.graal.lir.phases.PostAllocationOptimizationPhase.*;
 import com.oracle.graal.options.*;
 
-public class LIRLowTier extends LIRPhaseSuite<LIRLowTierContext> {
+public class PostAllocationOptimizationStage extends LIRPhaseSuite<PostAllocationOptimizationContext> {
     public static class Options {
         // @formatter:off
         @Option(help = "", type = OptionType.Debug)
@@ -40,7 +40,7 @@ public class LIRLowTier extends LIRPhaseSuite<LIRLowTierContext> {
         // @formatter:on
     }
 
-    public LIRLowTier() {
+    public PostAllocationOptimizationStage() {
         if (Options.LIROptEdgeMoveOptimizer.getValue()) {
             appendPhase(new EdgeMoveOptimizer());
         }

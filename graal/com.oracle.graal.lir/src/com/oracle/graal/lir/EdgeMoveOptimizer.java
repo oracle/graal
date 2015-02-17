@@ -48,7 +48,7 @@ import com.oracle.graal.lir.phases.*;
  * Because this optimization works best when a block contains only a few moves, it has a huge impact
  * on the number of blocks that are totally empty.
  */
-public final class EdgeMoveOptimizer extends LIRLowTierPhase {
+public final class EdgeMoveOptimizer extends PostAllocationOptimizationPhase {
 
     @Override
     protected <B extends AbstractBlock<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder) {

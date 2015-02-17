@@ -45,7 +45,7 @@ import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.phases.*;
 import com.oracle.graal.lir.phases.PreAllocationOptimizationPhase.PreAllocationOptimizationContext;
-import com.oracle.graal.lir.phases.LIRLowTierPhase.LIRLowTierContext;
+import com.oracle.graal.lir.phases.PostAllocationOptimizationPhase.PostAllocationOptimizationContext;
 import com.oracle.graal.lir.phases.AllocationPhase.AllocationContext;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
@@ -358,8 +358,8 @@ public class GraalCompiler {
         AllocationContext midTierContext = new AllocationContext();
         lirSuites.getAllocationStage().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, midTierContext);
 
-        LIRLowTierContext lowTierContext = new LIRLowTierContext();
-        lirSuites.getLowTier().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, lowTierContext);
+        PostAllocationOptimizationContext lowTierContext = new PostAllocationOptimizationContext();
+        lirSuites.getPostAllocationOptimizationStage().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, lowTierContext);
 
         return lirGenRes;
     }

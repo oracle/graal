@@ -28,13 +28,13 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.lir.gen.*;
 
-public abstract class LIRLowTierPhase extends LIRPhase<LIRLowTierPhase.LIRLowTierContext> {
+public abstract class PostAllocationOptimizationPhase extends LIRPhase<PostAllocationOptimizationPhase.PostAllocationOptimizationContext> {
 
-    public static final class LIRLowTierContext {
+    public static final class PostAllocationOptimizationContext {
     }
 
     @Override
-    protected final <B extends AbstractBlock<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, LIRLowTierContext context) {
+    protected final <B extends AbstractBlock<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, PostAllocationOptimizationContext context) {
         run(target, lirGenRes, codeEmittingOrder, linearScanOrder);
     }
 
