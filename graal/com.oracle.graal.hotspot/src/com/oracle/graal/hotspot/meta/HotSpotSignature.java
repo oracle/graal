@@ -118,13 +118,11 @@ public class HotSpotSignature extends CompilerObject implements Signature {
         return Kind.fromTypeString(parameters.get(index));
     }
 
-    private static boolean checkValidCache(JavaType type, ResolvedJavaType accessingClass) {
+    private static boolean checkValidCache(ResolvedJavaType type, ResolvedJavaType accessingClass) {
         assert accessingClass != null;
-        if (!(type instanceof ResolvedJavaType)) {
+        if (type == null) {
             return false;
-        }
-
-        if (type instanceof HotSpotResolvedObjectTypeImpl) {
+        } else if (type instanceof HotSpotResolvedObjectTypeImpl) {
             return ((HotSpotResolvedObjectTypeImpl) type).isDefinitelyResolvedWithRespectTo(accessingClass);
         }
         return true;
@@ -151,8 +149,13 @@ public class HotSpotSignature extends CompilerObject implements Signature {
 
         ResolvedJavaType type = parameterTypes[index];
         if (!checkValidCache(type, accessingClass)) {
-            type = (ResolvedJavaType) runtime.lookupType(parameters.get(index), (HotSpotResolvedObjectType) accessingClass, false);
-            parameterTypes[index] = type;
+            JavaType result = runtime.lookupType(parameters.get(index), (HotSpotResolvedObjectType) accessingClass, false);
+            if (result instanceof ResolvedJavaType) {
+                type = (ResolvedJavaType) result;
+                parameterTypes[index] = type;
+            } else {
+                return result;
+            }
         }
         return type;
     }
@@ -176,7 +179,12 @@ public class HotSpotSignature extends CompilerObject implements Signature {
             return getUnresolvedOrPrimitiveType(runtime, returnType);
         }
         if (!checkValidCache(returnTypeCache, accessingClass)) {
-            returnTypeCache = (ResolvedJavaType) runtime.lookupType(returnType, (HotSpotResolvedObjectType) accessingClass, false);
+            JavaType result = runtime.lookupType(returnType, (HotSpotResolvedObjectType) accessingClass, false);
+            if (result instanceof ResolvedJavaType) {
+                returnTypeCache = (ResolvedJavaType) result;
+            } else {
+                return result;
+            }
         }
         return returnTypeCache;
     }
