@@ -163,9 +163,10 @@ public class TruffleGraphBuilderPlugins {
             public boolean apply(GraphBuilderContext builder, ValueNode value) {
                 if ((value instanceof BoxNode ? ((BoxNode) value).getValue() : value).isConstant()) {
                     builder.push(Kind.Boolean.getStackKind(), builder.append(ConstantNode.forBoolean(true)));
-                    return true;
+                } else {
+                    builder.push(Kind.Boolean.getStackKind(), builder.append(new IsCompilationConstantNode(value)));
                 }
-                return false;
+                return true;
             }
         });
         r.register1("materialize", Object.class, new InvocationPlugin() {

@@ -866,7 +866,6 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 }
 
                 if (tryAnnotatedInvocationPlugin(args, targetMethod)) {
-                    System.out.println("plugin used for : " + targetMethod);
                     if (GraalOptions.TraceInlineDuringParsing.getValue()) {
                         TTY.println(format("%sUsed annotated invocation plugin for %s", nSpaces(currentDepth), targetMethod));
                     }
