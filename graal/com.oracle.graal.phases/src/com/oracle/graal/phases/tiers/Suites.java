@@ -133,7 +133,8 @@ public final class Suites {
     public static LIRSuites createDefaultLIRSuites() {
         String selected = CompilerConfiguration.getValue();
         if (selected.equals("")) {
-            return new LIRSuites(defaultConfiguration.createPreAllocationOptimizationStage(), defaultConfiguration.createAllocationStage(), defaultConfiguration.createPostAllocationOptimizationStage());
+            return new LIRSuites(defaultConfiguration.createPreAllocationOptimizationStage(), defaultConfiguration.createAllocationStage(),
+                            defaultConfiguration.createPostAllocationOptimizationStage());
         } else {
             return createLIRSuites(selected);
         }

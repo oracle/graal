@@ -40,7 +40,8 @@ public abstract class PreAllocationOptimizationPhase extends LIRPhase<PreAllocat
     }
 
     @Override
-    protected final <B extends AbstractBlock<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, PreAllocationOptimizationContext context) {
+    protected final <B extends AbstractBlock<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
+                    PreAllocationOptimizationContext context) {
         run(target, lirGenRes, codeEmittingOrder, linearScanOrder, context.lirGen);
     }
 

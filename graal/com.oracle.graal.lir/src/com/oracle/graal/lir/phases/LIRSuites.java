@@ -42,12 +42,12 @@ public class LIRSuites {
     }
 
     /**
-     * {@link PreAllocationOptimizationPhase}s are executed between {@link LIR} generation and register
-     * allocation.
+     * {@link PreAllocationOptimizationPhase}s are executed between {@link LIR} generation and
+     * register allocation.
      * <p>
-     * {@link PreAllocationOptimizationPhase Implementers} can create new {@link LIRGeneratorTool#newVariable
-     * variables}, {@link LIRGenerationResult#getFrameMap stack slots} and
-     * {@link LIRGenerationResult#getFrameMapBuilder virtual stack slots}.
+     * {@link PreAllocationOptimizationPhase Implementers} can create new
+     * {@link LIRGeneratorTool#newVariable variables}, {@link LIRGenerationResult#getFrameMap stack
+     * slots} and {@link LIRGenerationResult#getFrameMapBuilder virtual stack slots}.
      */
     public LIRPhaseSuite<PreAllocationOptimizationContext> getPreAllocationOptimizationStage() {
         return preAllocOptStage;
@@ -65,11 +65,11 @@ public class LIRSuites {
     }
 
     /**
-     * {@link PostAllocationOptimizationPhase}s are executed after register allocation and before machine code
-     * generation.
+     * {@link PostAllocationOptimizationPhase}s are executed after register allocation and before
+     * machine code generation.
      * <p>
-     * A {@link PostAllocationOptimizationPhase} must not introduce new {@link Variable}s, {@link VirtualStackSlot}s
-     * or {@link StackSlot}s.
+     * A {@link PostAllocationOptimizationPhase} must not introduce new {@link Variable}s,
+     * {@link VirtualStackSlot}s or {@link StackSlot}s.
      */
     public LIRPhaseSuite<PostAllocationOptimizationContext> getPostAllocationOptimizationStage() {
         return postAllocStage;
