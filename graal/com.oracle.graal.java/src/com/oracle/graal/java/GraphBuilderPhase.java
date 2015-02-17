@@ -1672,8 +1672,6 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             @Override
             protected void genIf(ValueNode x, Condition cond, ValueNode y) {
-                // assert !x.isDeleted() && !y.isDeleted();
-                // assert currentBlock.numNormalSuccessors() == 2;
                 assert currentBlock.getSuccessorCount() == 2;
                 BciBlock trueBlock = currentBlock.getSuccessor(0);
                 BciBlock falseBlock = currentBlock.getSuccessor(1);
@@ -1725,6 +1723,9 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                         condition = currentGraph.unique(condition);
                     }
 
+                    // Need to get probability based on current bci.
+                    double probability = branchProbability();
+
                     int oldBci = stream.currentBCI();
                     int trueBlockInt = checkPositiveIntConstantPushed(trueBlock);
                     if (trueBlockInt != -1) {
@@ -1766,7 +1767,6 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
                     this.controlFlowSplit = true;
 
-                    double probability = branchProbability();
                     ValueNode trueSuccessor = createBlockTarget(probability, trueBlock, frameState);
                     ValueNode falseSuccessor = createBlockTarget(1 - probability, falseBlock, frameState);
 
