@@ -25,7 +25,6 @@ package com.oracle.graal.hotspot.meta;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.phases.*;
@@ -124,13 +123,9 @@ public class HotSpotSuitesProvider implements SuitesProvider {
             });
             config.setInlineInvokePlugin(new InlineInvokePlugin() {
                 public ResolvedJavaMethod getInlinedMethod(GraphBuilderContext builder, ResolvedJavaMethod method, ValueNode[] args, JavaType returnType, int depth) {
-                    if (builder.parsingReplacement()) {
-                        if (method.getAnnotation(MethodSubstitution.class) != null) {
-                            ResolvedJavaMethod subst = replacements.getMethodSubstitutionMethod(method);
-                            if (subst != null) {
-                                return subst;
-                            }
-                        }
+                    ResolvedJavaMethod subst = replacements.getMethodSubstitutionMethod(method);
+                    if (subst != null) {
+                        return subst;
                     }
                     if (method.hasBytecodes() && method.getCode().length <= TrivialInliningSize.getValue() && depth < InlineDuringParsingMaxDepth.getValue()) {
                         return method;
