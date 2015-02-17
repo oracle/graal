@@ -184,6 +184,6 @@ public class TruffleCompilerOptions {
     public static final OptionValue<Boolean> TruffleCompilationStatisticDetails = new OptionValue<>(false);
 
     @Option(help = "Experimental new version of the partial evaluator.", type = OptionType.Debug)
-    public static final OptionValue<Boolean> FastPE = new OptionValue<>(false);
+    public static final OptionValue<Boolean> FastPE = new OptionValue<>(true);
     // @formatter:on
 }
