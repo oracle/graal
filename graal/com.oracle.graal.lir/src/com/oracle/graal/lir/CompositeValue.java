@@ -44,7 +44,7 @@ public abstract class CompositeValue extends AbstractValue implements Cloneable 
         OperandFlag[] value() default OperandFlag.REG;
     }
 
-    private final CompositeValueClass valueClass;
+    private final CompositeValueClass<?> valueClass;
 
     private static final DebugMetric COMPOSITE_VALUE_COUNT = Debug.metric("CompositeValues");
 
@@ -81,7 +81,7 @@ public abstract class CompositeValue extends AbstractValue implements Cloneable 
         return false;
     }
 
-    CompositeValueClass getValueClass() {
+    CompositeValueClass<?> getValueClass() {
         return valueClass;
     }
 

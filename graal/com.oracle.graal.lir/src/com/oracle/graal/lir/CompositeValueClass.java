@@ -38,18 +38,19 @@ import com.oracle.graal.lir.LIRInstruction.OperandMode;
  * such fields.</li>
  * </ul>
  */
-public class CompositeValueClass extends LIRIntrospection {
+public class CompositeValueClass<T> extends LIRIntrospection<T> {
 
-    public static final CompositeValueClass get(Class<? extends CompositeValue> c) {
-        CompositeValueClass clazz = (CompositeValueClass) allClasses.get(c);
+    @SuppressWarnings("unchecked")
+    public static final <T extends CompositeValue> CompositeValueClass<T> get(Class<T> c) {
+        CompositeValueClass<T> clazz = (CompositeValueClass<T>) allClasses.get(c);
         if (clazz != null) {
             return clazz;
         }
 
         // We can have a race of multiple threads creating the LIRInstructionClass at the same time.
         // However, only one will be put into the map, and this is the one returned by all threads.
-        clazz = new CompositeValueClass(c);
-        CompositeValueClass oldClazz = (CompositeValueClass) allClasses.putIfAbsent(c, clazz);
+        clazz = new CompositeValueClass<>(c);
+        CompositeValueClass<T> oldClazz = (CompositeValueClass<T>) allClasses.putIfAbsent(c, clazz);
         if (oldClazz != null) {
             return oldClazz;
         } else {
@@ -57,11 +58,11 @@ public class CompositeValueClass extends LIRIntrospection {
         }
     }
 
-    public CompositeValueClass(Class<? extends CompositeValue> clazz) {
+    public CompositeValueClass(Class<T> clazz) {
         this(clazz, new FieldsScanner.DefaultCalcOffset());
     }
 
-    public CompositeValueClass(Class<? extends CompositeValue> clazz, FieldsScanner.CalcOffset calcOffset) {
+    public CompositeValueClass(Class<T> clazz, FieldsScanner.CalcOffset calcOffset) {
         super(clazz);
 
         CompositeValueFieldsScanner vfs = new CompositeValueFieldsScanner(calcOffset);

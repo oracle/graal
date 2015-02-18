@@ -35,7 +35,7 @@ import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 
-abstract class LIRIntrospection extends FieldIntrospection {
+abstract class LIRIntrospection<T> extends FieldIntrospection<T> {
 
     private static final Class<Value> VALUE_CLASS = Value.class;
     private static final Class<JavaConstant> CONSTANT_CLASS = JavaConstant.class;
@@ -44,7 +44,7 @@ abstract class LIRIntrospection extends FieldIntrospection {
     private static final Class<StackSlot> STACK_SLOT_CLASS = StackSlot.class;
     private static final Class<Value[]> VALUE_ARRAY_CLASS = Value[].class;
 
-    public LIRIntrospection(Class<?> clazz) {
+    public LIRIntrospection(Class<T> clazz) {
         super(clazz);
     }
 

@@ -65,5 +65,5 @@ public class CompositeValueClassSubstitutions {
     }
 
     @MacroSubstitution(isStatic = true, forced = true, macro = CompositeValueClassGetNode.class)
-    private static native CompositeValueClass get(Class<?> c);
+    private static native CompositeValueClass<?> get(Class<?> c);
 }

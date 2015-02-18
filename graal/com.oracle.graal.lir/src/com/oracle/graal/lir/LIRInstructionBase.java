@@ -54,7 +54,7 @@ public abstract class LIRInstructionBase implements LIRInstruction {
      */
     protected static final EnumSet<OperandFlag> ADDRESS_FLAGS = EnumSet.of(REG, ILLEGAL);
 
-    private final LIRInstructionClass instructionClass;
+    private final LIRInstructionClass<?> instructionClass;
 
     /**
      * Instruction id for register allocation.
@@ -231,7 +231,7 @@ public abstract class LIRInstructionBase implements LIRInstruction {
         return instructionClass.toString(this);
     }
 
-    public LIRInstructionClass getLIRInstructionClass() {
+    public LIRInstructionClass<?> getLIRInstructionClass() {
         return instructionClass;
     }
 }

@@ -24,22 +24,22 @@ package com.oracle.graal.compiler.common;
 
 import java.util.concurrent.*;
 
-public abstract class FieldIntrospection extends UnsafeAccess {
+public abstract class FieldIntrospection<T> extends UnsafeAccess {
 
-    protected static final ConcurrentHashMap<Class<?>, FieldIntrospection> allClasses = new ConcurrentHashMap<>();
+    protected static final ConcurrentHashMap<Class<?>, FieldIntrospection<?>> allClasses = new ConcurrentHashMap<>();
 
-    private final Class<?> clazz;
+    private final Class<T> clazz;
 
     /**
      * The set of fields in {@link #clazz} that do long belong to a more specific category.
      */
     protected Fields data;
 
-    public FieldIntrospection(Class<?> clazz) {
+    public FieldIntrospection(Class<T> clazz) {
         this.clazz = clazz;
     }
 
-    public Class<?> getClazz() {
+    public Class<T> getClazz() {
         return clazz;
     }
 

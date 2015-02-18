@@ -51,7 +51,7 @@ import com.oracle.graal.nodeinfo.*;
  * <li>The identifier for an {@link IterableNodeType} class.</li>
  * </ul>
  */
-public final class NodeClass<T> extends FieldIntrospection {
+public final class NodeClass<T> extends FieldIntrospection<T> {
 
     // Timers for creation of a NodeClass instance
     private static final DebugTimer Init_FieldScanning = Debug.timer("NodeClass.Init.FieldScanning");
@@ -71,23 +71,22 @@ public final class NodeClass<T> extends FieldIntrospection {
     /**
      * Gets the {@link NodeClass} associated with a given {@link Class}.
      */
-    @SuppressWarnings({"unchecked", "rawtypes"})
     public static <T> NodeClass<T> get(Class<T> c) {
         assert getNodeClassViaReflection(c) == null;
-        Class<?> superclass = c.getSuperclass();
-        NodeClass nodeSuperclass = null;
+        Class<? super T> superclass = c.getSuperclass();
+        NodeClass<? super T> nodeSuperclass = null;
         if (superclass != NODE_CLASS) {
             nodeSuperclass = getNodeClassViaReflection(superclass);
         }
-        return new NodeClass(c, nodeSuperclass);
+        return new NodeClass<>(c, nodeSuperclass);
     }
 
-    @SuppressWarnings("rawtypes")
-    public static NodeClass<?> getNodeClassViaReflection(Class<?> superclass) {
+    @SuppressWarnings("unchecked")
+    public static <T> NodeClass<T> getNodeClassViaReflection(Class<T> superclass) {
         try {
             Field field = superclass.getDeclaredField("TYPE");
             field.setAccessible(true);
-            return (NodeClass) field.get(null);
+            return (NodeClass<T>) field.get(null);
         } catch (IllegalArgumentException | IllegalAccessException | NoSuchFieldException | SecurityException e) {
             throw new RuntimeException(e);
         }
@@ -101,7 +100,7 @@ public final class NodeClass<T> extends FieldIntrospection {
 
     private final InputEdges inputs;
     private final SuccessorEdges successors;
-    private final NodeClass<?> superNodeClass;
+    private final NodeClass<? super T> superNodeClass;
 
     private final boolean canGVN;
     private final int startGVNNumber;
@@ -124,11 +123,11 @@ public final class NodeClass<T> extends FieldIntrospection {
     private final boolean isSimplifiable;
     private final boolean isLeafNode;
 
-    public NodeClass(Class<?> clazz, NodeClass<?> superNodeClass) {
+    public NodeClass(Class<T> clazz, NodeClass<? super T> superNodeClass) {
         this(clazz, superNodeClass, new FieldsScanner.DefaultCalcOffset(), null, 0);
     }
 
-    public NodeClass(Class<?> clazz, NodeClass<?> superNodeClass, FieldsScanner.CalcOffset calcOffset, int[] presetIterableIds, int presetIterableId) {
+    public NodeClass(Class<T> clazz, NodeClass<? super T> superNodeClass, FieldsScanner.CalcOffset calcOffset, int[] presetIterableIds, int presetIterableId) {
         super(clazz);
         this.superNodeClass = superNodeClass;
         assert NODE_CLASS.isAssignableFrom(clazz);
@@ -638,7 +637,7 @@ public final class NodeClass<T> extends FieldIntrospection {
         }
     }
 
-    public Class<?> getJavaClass() {
+    public Class<T> getJavaClass() {
         return getClazz();
     }
 

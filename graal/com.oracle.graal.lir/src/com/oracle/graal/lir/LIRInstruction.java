@@ -255,5 +255,5 @@ public interface LIRInstruction {
 
     void verify();
 
-    LIRInstructionClass getLIRInstructionClass();
+    LIRInstructionClass<?> getLIRInstructionClass();
 }
