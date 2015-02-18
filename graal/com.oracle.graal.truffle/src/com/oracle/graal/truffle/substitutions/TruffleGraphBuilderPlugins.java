@@ -186,16 +186,18 @@ public class TruffleGraphBuilderPlugins {
             }
         });
 
-        // FrameWithoutBoxing.class
-        r = new Registration(plugins, metaAccess, FrameWithoutBoxing.class);
-        registerMaterialize(r);
-        registerUnsafeCast(r);
-        registerUnsafeLoadStorePlugins(r, Kind.Int, Kind.Long, Kind.Float, Kind.Double, Kind.Object);
-
-        // FrameWithBoxing.class
-        r = new Registration(plugins, metaAccess, FrameWithBoxing.class);
-        registerMaterialize(r);
-        registerUnsafeCast(r);
+        if (TruffleCompilerOptions.TruffleUseFrameWithoutBoxing.getValue()) {
+            // FrameWithoutBoxing.class
+            r = new Registration(plugins, metaAccess, FrameWithoutBoxing.class);
+            registerMaterialize(r);
+            registerUnsafeCast(r);
+            registerUnsafeLoadStorePlugins(r, Kind.Int, Kind.Long, Kind.Float, Kind.Double, Kind.Object);
+        } else {
+            // FrameWithBoxing.class
+            r = new Registration(plugins, metaAccess, FrameWithBoxing.class);
+            registerMaterialize(r);
+            registerUnsafeCast(r);
+        }
 
         // CompilerDirectives.class
         r = new Registration(plugins, metaAccess, UnsafeAccessImpl.class);
