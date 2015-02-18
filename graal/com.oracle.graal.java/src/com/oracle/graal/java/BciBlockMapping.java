@@ -367,6 +367,7 @@ public final class BciBlockMapping {
 
     private int blocksNotYetAssignedId;
     public int returnCount;
+    private int returnBci;
 
     /**
      * Creates a new BlockMap instance from bytecode of the given method .
@@ -465,6 +466,7 @@ public final class BciBlockMapping {
                 case RETURN: {
                     returnCount++;
                     current = null;
+                    returnBci = bci;
                     break;
                 }
                 case ATHROW: {
@@ -769,11 +771,15 @@ public final class BciBlockMapping {
 
         // Add return block.
         BciBlock returnBlock = new BciBlock();
+        returnBlock.startBci = returnBci;
+        returnBlock.endBci = returnBci;
         returnBlock.setId(newBlocks.length - 2);
         newBlocks[newBlocks.length - 2] = returnBlock;
 
         // Add unwind block.
         ExceptionDispatchBlock unwindBlock = new ExceptionDispatchBlock();
+        unwindBlock.startBci = -1;
+        unwindBlock.endBci = -1;
         unwindBlock.deoptBci = method.isSynchronized() ? BytecodeFrame.UNWIND_BCI : BytecodeFrame.AFTER_EXCEPTION_BCI;
         unwindBlock.setId(newBlocks.length - 1);
         newBlocks[newBlocks.length - 1] = unwindBlock;
