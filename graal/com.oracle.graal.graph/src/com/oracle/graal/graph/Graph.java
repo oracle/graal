@@ -452,18 +452,17 @@ public class Graph {
         return uniqueHelper(node, true);
     }
 
-    @SuppressWarnings("unchecked")
     <T extends Node> T uniqueHelper(T node, boolean addIfMissing) {
         assert node.getNodeClass().valueNumberable();
-        Node other = this.findDuplicate(node);
+        T other = this.findDuplicate(node);
         if (other != null) {
-            return (T) other;
+            return other;
         } else {
-            Node result = addIfMissing ? addHelper(node) : node;
+            T result = addIfMissing ? addHelper(node) : node;
             if (node.getNodeClass().isLeafNode()) {
                 putNodeIntoCache(result);
             }
-            return (T) result;
+            return result;
         }
     }
 
@@ -484,14 +483,15 @@ public class Graph {
         return result;
     }
 
-    public Node findDuplicate(Node node) {
+    @SuppressWarnings("unchecked")
+    public <T extends Node> T findDuplicate(T node) {
         NodeClass<?> nodeClass = node.getNodeClass();
         assert nodeClass.valueNumberable();
         if (nodeClass.isLeafNode()) {
             // Leaf node: look up in cache
             Node cachedNode = findNodeInCache(node);
             if (cachedNode != null) {
-                return cachedNode;
+                return (T) cachedNode;
             } else {
                 return null;
             }
@@ -518,7 +518,7 @@ public class Graph {
                 for (Node usage : minCountNode.usages()) {
                     if (usage != node && nodeClass == usage.getNodeClass() && node.valueEquals(usage) && nodeClass.getEdges(Inputs).areEqualIn(node, usage) &&
                                     nodeClass.getEdges(Successors).areEqualIn(node, usage)) {
-                        return usage;
+                        return (T) usage;
                     }
                 }
                 return null;
