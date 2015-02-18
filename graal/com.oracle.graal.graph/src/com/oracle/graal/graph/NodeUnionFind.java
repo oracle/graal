@@ -73,12 +73,14 @@ public class NodeUnionFind extends NodeIdAccessor {
     private void union(int a, int b) {
         int aRoot = find(a);
         int bRoot = find(b);
-        if (rank[aRoot] < rank[bRoot]) {
-            parent[aRoot] = bRoot;
-        } else {
-            parent[bRoot] = aRoot;
-            if (rank[aRoot] == rank[bRoot]) {
-                rank[aRoot]++;
+        if (aRoot != bRoot) {
+            if (rank[aRoot] < rank[bRoot]) {
+                parent[aRoot] = bRoot;
+            } else {
+                parent[bRoot] = aRoot;
+                if (rank[aRoot] == rank[bRoot]) {
+                    rank[aRoot]++;
+                }
             }
         }
     }
