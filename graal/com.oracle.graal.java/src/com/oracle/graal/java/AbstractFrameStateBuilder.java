@@ -26,7 +26,6 @@ package com.oracle.graal.java;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.java.BciBlockMapping.BciBlock;
-import com.oracle.graal.java.BciBlockMapping.LocalLiveness;
 
 public abstract class AbstractFrameStateBuilder<T extends KindProvider, S extends AbstractFrameStateBuilder<T, S>> {
 

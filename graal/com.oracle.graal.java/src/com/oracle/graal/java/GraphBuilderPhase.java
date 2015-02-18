@@ -40,13 +40,13 @@ import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug.*;
 import com.oracle.graal.graph.Graph.Mark;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node.ValueNumberable;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.java.BciBlockMapping.BciBlock;
 import com.oracle.graal.java.BciBlockMapping.ExceptionDispatchBlock;
-import com.oracle.graal.java.BciBlockMapping.LocalLiveness;
 import com.oracle.graal.java.GraphBuilderPlugin.AnnotatedInvocationPlugin;
 import com.oracle.graal.java.GraphBuilderPlugin.InlineInvokePlugin;
 import com.oracle.graal.java.GraphBuilderPlugin.InvocationPlugin;
@@ -247,20 +247,30 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 try (Indent indent = Debug.logAndIndent("build graph for %s", method)) {
 
                     // compute the block map, setup exception handlers and get the entrypoint(s)
-                    BciBlockMapping blockMap = BciBlockMapping.create(method, graphBuilderConfig.doLivenessAnalysis(), explodeLoops);
+                    BciBlockMapping blockMap = BciBlockMapping.create(stream, method);
                     loopHeaders = blockMap.getLoopHeaders();
-                    liveness = blockMap.liveness;
+
+                    if (graphBuilderConfig.doLivenessAnalysis()) {
+                        try (Scope s = Debug.scope("LivenessAnalysis")) {
+                            int maxLocals = method.getMaxLocals();
+                            liveness = LocalLiveness.compute(stream, blockMap.getBlocks(), maxLocals, blockMap.getLoopCount());
+                        } catch (Throwable e) {
+                            throw Debug.handle(e);
+                        }
+                    }
                     returnCount = blockMap.getReturnCount();
 
                     lastInstr = startInstruction;
                     this.setCurrentFrameState(startFrameState);
+                    stream.setBCI(0);
 
+                    BciBlock startBlock = blockMap.getStartBlock();
                     if (startInstruction == currentGraph.start()) {
                         StartNode startNode = currentGraph.start();
                         if (method.isSynchronized()) {
                             startNode.setStateAfter(frameState.create(BytecodeFrame.BEFORE_BCI));
                         } else {
-                            frameState.clearNonLiveLocals(blockMap.startBlock, liveness, true);
+                            frameState.clearNonLiveLocals(startBlock, liveness, true);
                             assert bci() == 0;
                             startNode.setStateAfter(frameState.create(bci()));
                         }
@@ -270,7 +280,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                         // add a monitor enter to the start block
                         methodSynchronizedObject = synchronizedObject(frameState, method);
                         MonitorEnterNode monitorEnter = genMonitorEnter(methodSynchronizedObject);
-                        frameState.clearNonLiveLocals(blockMap.startBlock, liveness, true);
+                        frameState.clearNonLiveLocals(startBlock, liveness, true);
                         assert bci() == 0;
                         monitorEnter.setStateAfter(frameState.create(bci()));
                     }
@@ -279,12 +289,12 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                         append(createInfoPointNode(InfopointReason.METHOD_START));
                     }
 
-                    currentBlock = blockMap.startBlock;
-                    blockMap.startBlock.setEntryState(0, frameState);
-                    if (blockMap.startBlock.isLoopHeader && !explodeLoops) {
-                        appendGoto(blockMap.startBlock);
+                    currentBlock = blockMap.getStartBlock();
+                    startBlock.setEntryState(0, frameState);
+                    if (startBlock.isLoopHeader && !explodeLoops) {
+                        appendGoto(startBlock);
                     } else {
-                        blockMap.startBlock.setFirstInstruction(0, lastInstr);
+                        startBlock.setFirstInstruction(0, lastInstr);
                     }
 
                     int index = 0;

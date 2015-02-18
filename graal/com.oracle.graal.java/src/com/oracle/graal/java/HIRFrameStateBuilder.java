@@ -31,7 +31,6 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.debug.*;
-import com.oracle.graal.java.BciBlockMapping.LocalLiveness;
 import com.oracle.graal.java.GraphBuilderPlugin.ParameterPlugin;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
