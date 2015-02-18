@@ -113,7 +113,11 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
 
     @Override
     public MaterializedFrame createMaterializedFrame(Object[] arguments, FrameDescriptor frameDescriptor) {
-        return new FrameWithBoxing(frameDescriptor, arguments);
+        if (TruffleCompilerOptions.TruffleUseFrameWithoutBoxing.getValue()) {
+            return new FrameWithoutBoxing(frameDescriptor, arguments);
+        } else {
+            return new FrameWithBoxing(frameDescriptor, arguments);
+        }
     }
 
     @Override
