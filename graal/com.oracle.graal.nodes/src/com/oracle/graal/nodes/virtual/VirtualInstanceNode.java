@@ -42,11 +42,11 @@ public class VirtualInstanceNode extends VirtualObjectNode {
         this(TYPE, type, fields, hasIdentity);
     }
 
-    protected VirtualInstanceNode(NodeClass<?> c, ResolvedJavaType type, boolean hasIdentity) {
+    protected VirtualInstanceNode(NodeClass<? extends VirtualInstanceNode> c, ResolvedJavaType type, boolean hasIdentity) {
         this(c, type, type.getInstanceFields(true), hasIdentity);
     }
 
-    protected VirtualInstanceNode(NodeClass<?> c, ResolvedJavaType type, ResolvedJavaField[] fields, boolean hasIdentity) {
+    protected VirtualInstanceNode(NodeClass<? extends VirtualInstanceNode> c, ResolvedJavaType type, ResolvedJavaField[] fields, boolean hasIdentity) {
         super(c, type, hasIdentity);
         this.type = type;
         this.fields = fields;

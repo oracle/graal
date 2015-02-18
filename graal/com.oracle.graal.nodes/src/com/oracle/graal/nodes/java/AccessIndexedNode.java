@@ -52,7 +52,7 @@ public abstract class AccessIndexedNode extends AccessArrayNode implements Lower
      * @param index the instruction producing the index
      * @param elementKind the kind of the elements of the array
      */
-    protected AccessIndexedNode(NodeClass<?> c, Stamp stamp, ValueNode array, ValueNode index, Kind elementKind) {
+    protected AccessIndexedNode(NodeClass<? extends AccessIndexedNode> c, Stamp stamp, ValueNode array, ValueNode index, Kind elementKind) {
         super(c, stamp, array);
         this.index = index;
         this.elementKind = elementKind;

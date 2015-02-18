@@ -39,7 +39,7 @@ public class PointerEqualsNode extends CompareNode {
         this(TYPE, x, y);
     }
 
-    protected PointerEqualsNode(NodeClass<?> c, ValueNode x, ValueNode y) {
+    protected PointerEqualsNode(NodeClass<? extends PointerEqualsNode> c, ValueNode x, ValueNode y) {
         super(c, Condition.EQ, false, x, y);
         assert x.stamp() instanceof AbstractPointerStamp;
         assert y.stamp() instanceof AbstractPointerStamp;

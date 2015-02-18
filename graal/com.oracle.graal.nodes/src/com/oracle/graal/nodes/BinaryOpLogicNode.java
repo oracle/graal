@@ -42,7 +42,7 @@ public abstract class BinaryOpLogicNode extends LogicNode implements LIRLowerabl
         return y;
     }
 
-    public BinaryOpLogicNode(NodeClass<?> c, ValueNode x, ValueNode y) {
+    public BinaryOpLogicNode(NodeClass<? extends BinaryOpLogicNode> c, ValueNode x, ValueNode y) {
         super(c);
         assert x != null && y != null && x.getKind() == y.getKind();
         this.x = x;

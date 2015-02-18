@@ -40,11 +40,11 @@ public abstract class AbstractBeginNode extends FixedWithNextNode implements LIR
 
     public static final NodeClass<AbstractBeginNode> TYPE = NodeClass.get(AbstractBeginNode.class);
 
-    protected AbstractBeginNode(NodeClass<?> c) {
+    protected AbstractBeginNode(NodeClass<? extends AbstractBeginNode> c) {
         this(c, StampFactory.forVoid());
     }
 
-    protected AbstractBeginNode(NodeClass<?> c, Stamp stamp) {
+    protected AbstractBeginNode(NodeClass<? extends AbstractBeginNode> c, Stamp stamp) {
         super(c, stamp);
     }
 

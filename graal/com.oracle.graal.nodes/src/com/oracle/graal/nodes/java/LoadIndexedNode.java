@@ -58,7 +58,7 @@ public class LoadIndexedNode extends AccessIndexedNode implements Virtualizable,
         return new LoadIndexedNode(array, index, elementKind);
     }
 
-    protected LoadIndexedNode(NodeClass<?> c, Stamp stamp, ValueNode array, ValueNode index, Kind elementKind) {
+    protected LoadIndexedNode(NodeClass<? extends LoadIndexedNode> c, Stamp stamp, ValueNode array, ValueNode index, Kind elementKind) {
         super(c, stamp, array, index, elementKind);
     }
 

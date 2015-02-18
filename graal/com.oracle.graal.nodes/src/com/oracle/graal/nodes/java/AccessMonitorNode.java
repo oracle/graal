@@ -71,7 +71,7 @@ public abstract class AccessMonitorNode extends AbstractMemoryCheckpoint impleme
      *
      * @param object the instruction producing the object
      */
-    protected AccessMonitorNode(NodeClass<?> c, ValueNode object, MonitorIdNode monitorId) {
+    protected AccessMonitorNode(NodeClass<? extends AccessMonitorNode> c, ValueNode object, MonitorIdNode monitorId) {
         super(c, StampFactory.forVoid());
         this.object = object;
         this.monitorId = monitorId;

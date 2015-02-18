@@ -43,7 +43,7 @@ public abstract class AbstractNewArrayNode extends AbstractNewObjectNode impleme
         return length;
     }
 
-    public AbstractNewArrayNode(NodeClass<?> c, Stamp stamp, ValueNode length, boolean fillContents) {
+    public AbstractNewArrayNode(NodeClass<? extends AbstractNewArrayNode> c, Stamp stamp, ValueNode length, boolean fillContents) {
         super(c, stamp, fillContents);
         this.length = length;
     }

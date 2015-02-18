@@ -39,11 +39,11 @@ public abstract class BeginStateSplitNode extends AbstractBeginNode implements S
     public static final NodeClass<BeginStateSplitNode> TYPE = NodeClass.get(BeginStateSplitNode.class);
     @OptionalInput(InputType.State) protected FrameState stateAfter;
 
-    protected BeginStateSplitNode(NodeClass<?> c) {
+    protected BeginStateSplitNode(NodeClass<? extends BeginStateSplitNode> c) {
         super(c);
     }
 
-    protected BeginStateSplitNode(NodeClass<?> c, Stamp stamp) {
+    protected BeginStateSplitNode(NodeClass<? extends BeginStateSplitNode> c, Stamp stamp) {
         super(c, stamp);
     }
 

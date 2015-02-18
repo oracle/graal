@@ -49,11 +49,11 @@ public abstract class AbstractStateSplit extends FixedWithNextNode implements St
         return true;
     }
 
-    protected AbstractStateSplit(NodeClass<?> c, Stamp stamp) {
+    protected AbstractStateSplit(NodeClass<? extends AbstractStateSplit> c, Stamp stamp) {
         this(c, stamp, null);
     }
 
-    protected AbstractStateSplit(NodeClass<?> c, Stamp stamp, FrameState stateAfter) {
+    protected AbstractStateSplit(NodeClass<? extends AbstractStateSplit> c, Stamp stamp, FrameState stateAfter) {
         super(c, stamp);
         this.stateAfter = stateAfter;
     }

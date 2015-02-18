@@ -57,7 +57,7 @@ public class DynamicNewArrayNode extends AbstractNewArrayNode {
         this(TYPE, elementType, length, fillContents, knownElementKind);
     }
 
-    protected DynamicNewArrayNode(NodeClass<?> c, ValueNode elementType, ValueNode length, boolean fillContents, Kind knownElementKind) {
+    protected DynamicNewArrayNode(NodeClass<? extends DynamicNewArrayNode> c, ValueNode elementType, ValueNode length, boolean fillContents, Kind knownElementKind) {
         super(c, StampFactory.objectNonNull(), length, fillContents);
         this.elementType = elementType;
         this.knownElementKind = knownElementKind;

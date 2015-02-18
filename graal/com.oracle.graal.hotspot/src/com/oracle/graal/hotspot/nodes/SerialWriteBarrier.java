@@ -37,7 +37,7 @@ public class SerialWriteBarrier extends WriteBarrier {
         this(TYPE, object, location, precise, alwaysNull);
     }
 
-    protected SerialWriteBarrier(NodeClass<?> c, ValueNode object, LocationNode location, boolean precise, boolean alwaysNull) {
+    protected SerialWriteBarrier(NodeClass<? extends SerialWriteBarrier> c, ValueNode object, LocationNode location, boolean precise, boolean alwaysNull) {
         super(c, object, null, location, precise);
         this.alwaysNull = alwaysNull;
     }

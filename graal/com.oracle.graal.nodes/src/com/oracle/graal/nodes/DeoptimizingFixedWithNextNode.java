@@ -32,11 +32,11 @@ public abstract class DeoptimizingFixedWithNextNode extends FixedWithNextNode im
     public static final NodeClass<DeoptimizingFixedWithNextNode> TYPE = NodeClass.get(DeoptimizingFixedWithNextNode.class);
     @OptionalInput(InputType.State) protected FrameState stateBefore;
 
-    protected DeoptimizingFixedWithNextNode(NodeClass<?> c, Stamp stamp) {
+    protected DeoptimizingFixedWithNextNode(NodeClass<? extends DeoptimizingFixedWithNextNode> c, Stamp stamp) {
         super(c, stamp);
     }
 
-    protected DeoptimizingFixedWithNextNode(NodeClass<?> c, Stamp stamp, FrameState stateBefore) {
+    protected DeoptimizingFixedWithNextNode(NodeClass<? extends DeoptimizingFixedWithNextNode> c, Stamp stamp, FrameState stateBefore) {
         super(c, stamp);
         this.stateBefore = stateBefore;
     }

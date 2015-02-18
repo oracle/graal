@@ -43,7 +43,7 @@ public abstract class UnaryArithmeticNode<OP> extends UnaryNode implements Arith
 
     protected final SerializableUnaryFunction<OP> getOp;
 
-    protected UnaryArithmeticNode(NodeClass<?> c, SerializableUnaryFunction<OP> getOp, ValueNode value) {
+    protected UnaryArithmeticNode(NodeClass<? extends UnaryArithmeticNode<OP>> c, SerializableUnaryFunction<OP> getOp, ValueNode value) {
         super(c, getOp.apply(ArithmeticOpTable.forStamp(value.stamp())).foldStamp(value.stamp()), value);
         this.getOp = getOp;
     }

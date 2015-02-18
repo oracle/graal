@@ -34,7 +34,7 @@ import com.oracle.graal.nodes.extended.*;
 public class StartNode extends BeginStateSplitNode implements MemoryCheckpoint.Single {
     public static final NodeClass<StartNode> TYPE = NodeClass.get(StartNode.class);
 
-    protected StartNode(NodeClass<?> c) {
+    protected StartNode(NodeClass<? extends StartNode> c) {
         super(c);
     }
 

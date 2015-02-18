@@ -37,7 +37,7 @@ public abstract class PureFunctionMacroNode extends MacroStateSplitNode implemen
 
     public static final NodeClass<PureFunctionMacroNode> TYPE = NodeClass.get(PureFunctionMacroNode.class);
 
-    protected PureFunctionMacroNode(NodeClass<?> c, Invoke invoke) {
+    protected PureFunctionMacroNode(NodeClass<? extends PureFunctionMacroNode> c, Invoke invoke) {
         super(c, invoke);
     }
 

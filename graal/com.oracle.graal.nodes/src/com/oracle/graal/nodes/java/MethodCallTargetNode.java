@@ -41,7 +41,7 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
         this(TYPE, invokeKind, targetMethod, arguments, returnType);
     }
 
-    protected MethodCallTargetNode(NodeClass<?> c, InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, JavaType returnType) {
+    protected MethodCallTargetNode(NodeClass<? extends MethodCallTargetNode> c, InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, JavaType returnType) {
         super(c, arguments, targetMethod, invokeKind);
         this.returnType = returnType;
     }

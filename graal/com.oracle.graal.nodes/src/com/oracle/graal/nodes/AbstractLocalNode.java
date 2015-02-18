@@ -33,7 +33,7 @@ public abstract class AbstractLocalNode extends FloatingNode {
     public static final NodeClass<AbstractLocalNode> TYPE = NodeClass.get(AbstractLocalNode.class);
     protected final int index;
 
-    protected AbstractLocalNode(NodeClass<?> c, int index, Stamp stamp) {
+    protected AbstractLocalNode(NodeClass<? extends AbstractLocalNode> c, int index, Stamp stamp) {
         super(c, stamp);
         this.index = index;
     }

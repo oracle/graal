@@ -41,7 +41,7 @@ public abstract class MacroStateSplitNode extends MacroNode implements StateSpli
     public static final NodeClass<MacroStateSplitNode> TYPE = NodeClass.get(MacroStateSplitNode.class);
     @OptionalInput(InputType.State) protected FrameState stateAfter;
 
-    public MacroStateSplitNode(NodeClass<?> c, Invoke invoke) {
+    public MacroStateSplitNode(NodeClass<? extends MacroStateSplitNode> c, Invoke invoke) {
         super(c, invoke);
         this.stateAfter = invoke.stateAfter();
     }

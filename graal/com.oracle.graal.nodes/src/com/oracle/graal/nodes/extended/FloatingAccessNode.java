@@ -52,13 +52,13 @@ public abstract class FloatingAccessNode extends FloatingGuardedNode implements 
         return location.getLocationIdentity();
     }
 
-    protected FloatingAccessNode(NodeClass<?> c, ValueNode object, LocationNode location, Stamp stamp) {
+    protected FloatingAccessNode(NodeClass<? extends FloatingAccessNode> c, ValueNode object, LocationNode location, Stamp stamp) {
         super(c, stamp);
         this.object = object;
         this.location = location;
     }
 
-    protected FloatingAccessNode(NodeClass<?> c, ValueNode object, LocationNode location, Stamp stamp, GuardingNode guard, BarrierType barrierType) {
+    protected FloatingAccessNode(NodeClass<? extends FloatingAccessNode> c, ValueNode object, LocationNode location, Stamp stamp, GuardingNode guard, BarrierType barrierType) {
         super(c, stamp, guard);
         this.object = object;
         this.location = location;

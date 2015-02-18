@@ -43,7 +43,7 @@ public class MulNode extends BinaryArithmeticNode<Mul> implements NarrowableArit
         this(TYPE, x, y);
     }
 
-    protected MulNode(NodeClass<?> c, ValueNode x, ValueNode y) {
+    protected MulNode(NodeClass<? extends MulNode> c, ValueNode x, ValueNode y) {
         super(c, ArithmeticOpTable::getMul, x, y);
     }
 

@@ -40,7 +40,7 @@ public class ValuePhiNode extends PhiNode {
         this(TYPE, stamp, merge);
     }
 
-    protected ValuePhiNode(NodeClass<?> c, Stamp stamp, AbstractMergeNode merge) {
+    protected ValuePhiNode(NodeClass<? extends ValuePhiNode> c, Stamp stamp, AbstractMergeNode merge) {
         super(c, stamp, merge);
         assert stamp != StampFactory.forVoid();
         values = new NodeInputList<>(this);

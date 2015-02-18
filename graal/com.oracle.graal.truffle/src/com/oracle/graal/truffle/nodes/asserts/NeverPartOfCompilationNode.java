@@ -38,7 +38,7 @@ public class NeverPartOfCompilationNode extends MacroStateSplitNode implements I
         this(TYPE, invoke, "This code path should never be part of a compilation.");
     }
 
-    protected NeverPartOfCompilationNode(NodeClass<?> c, Invoke invoke, String message) {
+    protected NeverPartOfCompilationNode(NodeClass<? extends NeverPartOfCompilationNode> c, Invoke invoke, String message) {
         super(c, invoke);
         this.message = message;
     }

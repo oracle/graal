@@ -37,7 +37,7 @@ public abstract class EscapeObjectState extends VirtualState implements ValueNum
         return object;
     }
 
-    public EscapeObjectState(NodeClass<?> c, VirtualObjectNode object) {
+    public EscapeObjectState(NodeClass<? extends EscapeObjectState> c, VirtualObjectNode object) {
         super(c);
         this.object = object;
     }

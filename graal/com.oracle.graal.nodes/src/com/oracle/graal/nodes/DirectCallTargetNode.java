@@ -35,7 +35,8 @@ public abstract class DirectCallTargetNode extends LoweredCallTargetNode {
 
     public static final NodeClass<DirectCallTargetNode> TYPE = NodeClass.get(DirectCallTargetNode.class);
 
-    protected DirectCallTargetNode(NodeClass<?> c, List<ValueNode> arguments, Stamp returnStamp, JavaType[] signature, ResolvedJavaMethod target, CallingConvention.Type callType, InvokeKind invokeKind) {
+    protected DirectCallTargetNode(NodeClass<? extends DirectCallTargetNode> c, List<ValueNode> arguments, Stamp returnStamp, JavaType[] signature, ResolvedJavaMethod target,
+                    CallingConvention.Type callType, InvokeKind invokeKind) {
         super(c, arguments, returnStamp, signature, target, callType, invokeKind);
     }
 

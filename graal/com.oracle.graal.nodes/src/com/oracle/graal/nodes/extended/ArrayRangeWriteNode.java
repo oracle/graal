@@ -35,7 +35,7 @@ public abstract class ArrayRangeWriteNode extends AbstractMemoryCheckpoint {
 
     public static final NodeClass<ArrayRangeWriteNode> TYPE = NodeClass.get(ArrayRangeWriteNode.class);
 
-    protected ArrayRangeWriteNode(NodeClass<?> c, Stamp stamp) {
+    protected ArrayRangeWriteNode(NodeClass<? extends ArrayRangeWriteNode> c, Stamp stamp) {
         super(c, stamp);
     }
 

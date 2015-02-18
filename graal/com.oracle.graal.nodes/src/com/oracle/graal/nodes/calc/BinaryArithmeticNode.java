@@ -46,7 +46,7 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
 
     protected final SerializableBinaryFunction<OP> getOp;
 
-    protected BinaryArithmeticNode(NodeClass<?> c, SerializableBinaryFunction<OP> getOp, ValueNode x, ValueNode y) {
+    protected BinaryArithmeticNode(NodeClass<? extends BinaryArithmeticNode<OP>> c, SerializableBinaryFunction<OP> getOp, ValueNode x, ValueNode y) {
         super(c, getOp.apply(ArithmeticOpTable.forStamp(x.stamp())).foldStamp(x.stamp(), y.stamp()), x, y);
         this.getOp = getOp;
     }

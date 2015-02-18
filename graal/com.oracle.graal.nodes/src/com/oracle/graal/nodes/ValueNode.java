@@ -42,7 +42,7 @@ public abstract class ValueNode extends com.oracle.graal.graph.Node implements K
      */
     protected Stamp stamp;
 
-    public ValueNode(NodeClass<?> c, Stamp stamp) {
+    public ValueNode(NodeClass<? extends ValueNode> c, Stamp stamp) {
         super(c);
         this.stamp = stamp;
     }

@@ -43,7 +43,7 @@ public class MonitorIdNode extends ValueNode implements IterableNodeType, LIRLow
         this(TYPE, lockDepth);
     }
 
-    protected MonitorIdNode(NodeClass<?> c, int lockDepth) {
+    protected MonitorIdNode(NodeClass<? extends MonitorIdNode> c, int lockDepth) {
         super(c, StampFactory.forVoid());
         this.lockDepth = lockDepth;
     }

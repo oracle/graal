@@ -32,7 +32,7 @@ public abstract class InfopointNode extends FixedWithNextNode {
     public static final NodeClass<InfopointNode> TYPE = NodeClass.get(InfopointNode.class);
     protected final InfopointReason reason;
 
-    public InfopointNode(NodeClass<?> c, InfopointReason reason) {
+    public InfopointNode(NodeClass<? extends InfopointNode> c, InfopointReason reason) {
         super(c, StampFactory.forVoid());
         this.reason = reason;
     }

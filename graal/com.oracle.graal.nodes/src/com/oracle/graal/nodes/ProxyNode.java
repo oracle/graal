@@ -39,7 +39,7 @@ public abstract class ProxyNode extends FloatingNode implements IterableNodeType
     public static final NodeClass<ProxyNode> TYPE = NodeClass.get(ProxyNode.class);
     @Input(InputType.Association) AbstractBeginNode proxyPoint;
 
-    protected ProxyNode(NodeClass<?> c, Stamp stamp, AbstractBeginNode proxyPoint) {
+    protected ProxyNode(NodeClass<? extends ProxyNode> c, Stamp stamp, AbstractBeginNode proxyPoint) {
         super(c, stamp);
         assert proxyPoint != null;
         this.proxyPoint = proxyPoint;

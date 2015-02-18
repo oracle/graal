@@ -48,7 +48,7 @@ public abstract class UnaryNode extends FloatingNode implements Canonicalizable.
      * @param stamp the result type of this instruction
      * @param value the input instruction
      */
-    protected UnaryNode(NodeClass<?> c, Stamp stamp, ValueNode value) {
+    protected UnaryNode(NodeClass<? extends UnaryNode> c, Stamp stamp, ValueNode value) {
         super(c, stamp);
         this.value = value;
     }

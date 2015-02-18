@@ -41,7 +41,7 @@ import com.oracle.graal.nodes.util.*;
 public abstract class AbstractMergeNode extends BeginStateSplitNode implements IterableNodeType, LIRLowerable {
     public static final NodeClass<AbstractMergeNode> TYPE = NodeClass.get(AbstractMergeNode.class);
 
-    protected AbstractMergeNode(NodeClass<?> c) {
+    protected AbstractMergeNode(NodeClass<? extends AbstractMergeNode> c) {
         super(c);
     }
 

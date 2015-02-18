@@ -36,8 +36,8 @@ public abstract class IndirectCallTargetNode extends LoweredCallTargetNode {
 
     @Input protected ValueNode computedAddress;
 
-    protected IndirectCallTargetNode(NodeClass<?> c, ValueNode computedAddress, List<ValueNode> arguments, Stamp returnStamp, JavaType[] signature, ResolvedJavaMethod target,
-                    CallingConvention.Type callType, InvokeKind invokeKind) {
+    protected IndirectCallTargetNode(NodeClass<? extends IndirectCallTargetNode> c, ValueNode computedAddress, List<ValueNode> arguments, Stamp returnStamp, JavaType[] signature,
+                    ResolvedJavaMethod target, CallingConvention.Type callType, InvokeKind invokeKind) {
         super(c, arguments, returnStamp, signature, target, callType, invokeKind);
         this.computedAddress = computedAddress;
     }

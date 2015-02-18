@@ -39,7 +39,7 @@ public abstract class AbstractDeoptimizeNode extends ControlSinkNode implements 
     public static final NodeClass<AbstractDeoptimizeNode> TYPE = NodeClass.get(AbstractDeoptimizeNode.class);
     @OptionalInput(InputType.State) FrameState stateBefore;
 
-    protected AbstractDeoptimizeNode(NodeClass<?> c, FrameState stateBefore) {
+    protected AbstractDeoptimizeNode(NodeClass<? extends AbstractDeoptimizeNode> c, FrameState stateBefore) {
         super(c, StampFactory.forVoid());
         this.stateBefore = stateBefore;
     }

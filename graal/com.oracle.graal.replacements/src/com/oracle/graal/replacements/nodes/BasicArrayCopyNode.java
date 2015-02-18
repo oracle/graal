@@ -36,7 +36,7 @@ public abstract class BasicArrayCopyNode extends MacroStateSplitNode implements 
 
     public static final NodeClass<BasicArrayCopyNode> TYPE = NodeClass.get(BasicArrayCopyNode.class);
 
-    public BasicArrayCopyNode(NodeClass<?> c, Invoke invoke) {
+    public BasicArrayCopyNode(NodeClass<? extends BasicArrayCopyNode> c, Invoke invoke) {
         super(c, invoke);
     }
 

@@ -63,7 +63,7 @@ public abstract class BinaryNode extends FloatingNode implements Canonicalizable
      * @param x the first input instruction
      * @param y the second input instruction
      */
-    protected BinaryNode(NodeClass<?> c, Stamp stamp, ValueNode x, ValueNode y) {
+    protected BinaryNode(NodeClass<? extends BinaryNode> c, Stamp stamp, ValueNode x, ValueNode y) {
         super(c, stamp);
         this.x = x;
         this.y = y;

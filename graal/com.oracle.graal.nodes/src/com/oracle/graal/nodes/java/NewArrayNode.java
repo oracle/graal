@@ -47,7 +47,7 @@ public class NewArrayNode extends AbstractNewArrayNode implements VirtualizableA
         super(TYPE, StampFactory.exactNonNull(elementType.getArrayClass()), length, fillContents);
     }
 
-    protected NewArrayNode(NodeClass<?> c, ResolvedJavaType elementType, ValueNode length, boolean fillContents) {
+    protected NewArrayNode(NodeClass<? extends NewArrayNode> c, ResolvedJavaType elementType, ValueNode length, boolean fillContents) {
         super(c, StampFactory.exactNonNull(elementType.getArrayClass()), length, fillContents);
     }
 

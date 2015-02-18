@@ -37,7 +37,7 @@ public class G1PostWriteBarrier extends WriteBarrier {
         this(TYPE, object, value, location, precise, alwaysNull);
     }
 
-    protected G1PostWriteBarrier(NodeClass<?> c, ValueNode object, ValueNode value, LocationNode location, boolean precise, boolean alwaysNull) {
+    protected G1PostWriteBarrier(NodeClass<? extends G1PostWriteBarrier> c, ValueNode object, ValueNode value, LocationNode location, boolean precise, boolean alwaysNull) {
         super(c, object, value, location, precise);
         this.alwaysNull = alwaysNull;
     }

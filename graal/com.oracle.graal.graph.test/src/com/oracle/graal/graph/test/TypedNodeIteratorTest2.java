@@ -41,7 +41,7 @@ public class TypedNodeIteratorTest2 {
             this(TYPE, name);
         }
 
-        protected NodeA(NodeClass<?> c, String name) {
+        protected NodeA(NodeClass<? extends NodeA> c, String name) {
             super(c);
             this.name = name;
         }
@@ -59,7 +59,7 @@ public class TypedNodeIteratorTest2 {
             this(TYPE, name);
         }
 
-        protected NodeB(NodeClass<?> c, String name) {
+        protected NodeB(NodeClass<? extends NodeB> c, String name) {
             super(c, name);
         }
 
@@ -73,7 +73,7 @@ public class TypedNodeIteratorTest2 {
             this(TYPE, name);
         }
 
-        protected NodeC(NodeClass<?> c, String name) {
+        protected NodeC(NodeClass<? extends NodeC> c, String name) {
             super(c, name);
         }
 

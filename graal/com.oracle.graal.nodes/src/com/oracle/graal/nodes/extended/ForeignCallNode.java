@@ -64,7 +64,7 @@ public class ForeignCallNode extends AbstractMemoryCheckpoint implements LIRLowe
         this.foreignCalls = foreignCalls;
     }
 
-    protected ForeignCallNode(NodeClass<?> c, ForeignCallsProvider foreignCalls, ForeignCallDescriptor descriptor, Stamp stamp) {
+    protected ForeignCallNode(NodeClass<? extends ForeignCallNode> c, ForeignCallsProvider foreignCalls, ForeignCallDescriptor descriptor, Stamp stamp) {
         super(c, stamp);
         this.arguments = new NodeInputList<>(this);
         this.descriptor = descriptor;

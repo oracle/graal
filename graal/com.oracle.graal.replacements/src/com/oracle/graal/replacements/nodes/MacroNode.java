@@ -67,7 +67,7 @@ public abstract class MacroNode extends FixedWithNextNode implements Lowerable {
     protected final JavaType returnType;
     protected final InvokeKind invokeKind;
 
-    protected MacroNode(NodeClass<?> c, Invoke invoke) {
+    protected MacroNode(NodeClass<? extends MacroNode> c, Invoke invoke) {
         super(c, StampFactory.forKind(((MethodCallTargetNode) invoke.callTarget()).targetMethod().getSignature().getReturnKind()));
         MethodCallTargetNode methodCallTarget = (MethodCallTargetNode) invoke.callTarget();
         this.arguments = new NodeInputList<>(this, methodCallTarget.arguments());

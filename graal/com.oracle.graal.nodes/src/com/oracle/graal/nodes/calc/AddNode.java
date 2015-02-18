@@ -42,7 +42,7 @@ public class AddNode extends BinaryArithmeticNode<Add> implements NarrowableArit
         this(TYPE, x, y);
     }
 
-    protected AddNode(NodeClass<?> c, ValueNode x, ValueNode y) {
+    protected AddNode(NodeClass<? extends AddNode> c, ValueNode x, ValueNode y) {
         super(c, ArithmeticOpTable::getAdd, x, y);
     }
 

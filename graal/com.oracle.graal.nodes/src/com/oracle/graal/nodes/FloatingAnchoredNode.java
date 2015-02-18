@@ -34,11 +34,11 @@ public abstract class FloatingAnchoredNode extends FloatingNode {
 
     @Input(InputType.Anchor) protected AnchoringNode anchor;
 
-    public FloatingAnchoredNode(NodeClass<?> c, Stamp stamp) {
+    public FloatingAnchoredNode(NodeClass<? extends FloatingAnchoredNode> c, Stamp stamp) {
         super(c, stamp);
     }
 
-    public FloatingAnchoredNode(NodeClass<?> c, Stamp stamp, AnchoringNode anchor) {
+    public FloatingAnchoredNode(NodeClass<? extends FloatingAnchoredNode> c, Stamp stamp, AnchoringNode anchor) {
         super(c, stamp);
         this.anchor = anchor;
     }

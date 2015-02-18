@@ -43,7 +43,7 @@ public class SubNode extends BinaryArithmeticNode<Sub> implements NarrowableArit
         this(TYPE, x, y);
     }
 
-    protected SubNode(NodeClass<?> c, ValueNode x, ValueNode y) {
+    protected SubNode(NodeClass<? extends SubNode> c, ValueNode x, ValueNode y) {
         super(c, ArithmeticOpTable::getSub, x, y);
     }
 

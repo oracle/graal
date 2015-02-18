@@ -47,7 +47,7 @@ public abstract class LocationNode extends FloatingNode implements LIRLowerable,
     public interface Location {
     }
 
-    protected LocationNode(NodeClass<?> c, Stamp stamp) {
+    protected LocationNode(NodeClass<? extends LocationNode> c, Stamp stamp) {
         super(c, stamp);
     }
 

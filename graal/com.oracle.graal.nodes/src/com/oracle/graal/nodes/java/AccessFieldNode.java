@@ -50,7 +50,7 @@ public abstract class AccessFieldNode extends FixedWithNextNode implements Lower
      * @param object the instruction producing the receiver object
      * @param field the compiler interface representation of the field
      */
-    public AccessFieldNode(NodeClass<?> c, Stamp stamp, ValueNode object, ResolvedJavaField field) {
+    public AccessFieldNode(NodeClass<? extends AccessFieldNode> c, Stamp stamp, ValueNode object, ResolvedJavaField field) {
         super(c, stamp);
         this.object = object;
         this.field = field;

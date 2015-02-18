@@ -51,7 +51,7 @@ public abstract class SwitchNode extends ControlSplitNode {
      * @param value the instruction that provides the value to be switched over
      * @param successors the list of successors of this switch
      */
-    protected SwitchNode(NodeClass<?> c, ValueNode value, AbstractBeginNode[] successors, int[] keySuccessors, double[] keyProbabilities) {
+    protected SwitchNode(NodeClass<? extends SwitchNode> c, ValueNode value, AbstractBeginNode[] successors, int[] keySuccessors, double[] keyProbabilities) {
         super(c, StampFactory.forVoid());
         assert value.stamp().getStackKind().isNumericInteger() || value.stamp() instanceof AbstractPointerStamp : value.stamp() + " key not supported by SwitchNode";
         assert keySuccessors.length == keyProbabilities.length;

@@ -31,7 +31,7 @@ import com.oracle.graal.nodes.*;
 public abstract class FloatingNode extends ValueNode implements Node.ValueNumberable {
     public static final NodeClass<FloatingNode> TYPE = NodeClass.get(FloatingNode.class);
 
-    public FloatingNode(NodeClass<?> c, Stamp stamp) {
+    public FloatingNode(NodeClass<? extends FloatingNode> c, Stamp stamp) {
         super(c, stamp);
     }
 

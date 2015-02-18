@@ -33,7 +33,7 @@ public abstract class ArrayRangeWriteBarrier extends WriteBarrier {
     @Input ValueNode startIndex;
     @Input ValueNode length;
 
-    protected ArrayRangeWriteBarrier(NodeClass<?> c, ValueNode object, ValueNode startIndex, ValueNode length) {
+    protected ArrayRangeWriteBarrier(NodeClass<? extends ArrayRangeWriteBarrier> c, ValueNode object, ValueNode startIndex, ValueNode length) {
         super(c, object, null, null, true);
         this.startIndex = startIndex;
         this.length = length;

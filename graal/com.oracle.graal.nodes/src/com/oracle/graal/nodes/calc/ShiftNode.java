@@ -53,7 +53,7 @@ public abstract class ShiftNode<OP> extends BinaryNode implements ArithmeticLIRL
      * @param x the first input value
      * @param s the second input value
      */
-    protected ShiftNode(NodeClass<?> c, SerializableShiftFunction<OP> getOp, ValueNode x, ValueNode s) {
+    protected ShiftNode(NodeClass<? extends ShiftNode<OP>> c, SerializableShiftFunction<OP> getOp, ValueNode x, ValueNode s) {
         super(c, getOp.apply(ArithmeticOpTable.forStamp(x.stamp())).foldStamp(x.stamp(), (IntegerStamp) s.stamp()), x, s);
         assert ((IntegerStamp) s.stamp()).getBits() == 32;
         this.getOp = getOp;

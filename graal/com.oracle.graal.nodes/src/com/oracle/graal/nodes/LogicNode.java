@@ -34,7 +34,7 @@ public abstract class LogicNode extends FloatingNode {
 
     public static final NodeClass<LogicNode> TYPE = NodeClass.get(LogicNode.class);
 
-    public LogicNode(NodeClass<?> c) {
+    public LogicNode(NodeClass<? extends LogicNode> c) {
         super(c, StampFactory.forVoid());
     }
 

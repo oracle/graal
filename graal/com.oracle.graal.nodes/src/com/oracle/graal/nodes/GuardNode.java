@@ -55,7 +55,7 @@ public class GuardNode extends FloatingAnchoredNode implements Canonicalizable, 
         this(TYPE, condition, anchor, reason, action, negated, speculation);
     }
 
-    protected GuardNode(NodeClass<?> c, LogicNode condition, AnchoringNode anchor, DeoptimizationReason reason, DeoptimizationAction action, boolean negated, JavaConstant speculation) {
+    protected GuardNode(NodeClass<? extends GuardNode> c, LogicNode condition, AnchoringNode anchor, DeoptimizationReason reason, DeoptimizationAction action, boolean negated, JavaConstant speculation) {
         super(c, StampFactory.forVoid(), anchor);
         this.condition = condition;
         this.reason = reason;

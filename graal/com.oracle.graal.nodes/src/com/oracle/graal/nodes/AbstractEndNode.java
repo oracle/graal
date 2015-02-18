@@ -34,7 +34,7 @@ public abstract class AbstractEndNode extends FixedNode implements IterableNodeT
 
     public static final NodeClass<AbstractEndNode> TYPE = NodeClass.get(AbstractEndNode.class);
 
-    protected AbstractEndNode(NodeClass<?> c) {
+    protected AbstractEndNode(NodeClass<? extends AbstractEndNode> c) {
         super(c, StampFactory.forVoid());
     }
 

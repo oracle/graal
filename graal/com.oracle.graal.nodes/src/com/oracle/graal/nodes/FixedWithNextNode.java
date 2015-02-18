@@ -45,7 +45,7 @@ public abstract class FixedWithNextNode extends FixedNode {
         next = x;
     }
 
-    public FixedWithNextNode(NodeClass<?> c, Stamp stamp) {
+    public FixedWithNextNode(NodeClass<? extends FixedWithNextNode> c, Stamp stamp) {
         super(c, stamp);
     }
 

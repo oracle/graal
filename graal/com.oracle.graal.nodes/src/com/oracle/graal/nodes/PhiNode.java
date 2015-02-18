@@ -44,7 +44,7 @@ public abstract class PhiNode extends FloatingNode implements Simplifiable {
     public static final NodeClass<PhiNode> TYPE = NodeClass.get(PhiNode.class);
     @Input(InputType.Association) protected AbstractMergeNode merge;
 
-    protected PhiNode(NodeClass<?> c, Stamp stamp, AbstractMergeNode merge) {
+    protected PhiNode(NodeClass<? extends PhiNode> c, Stamp stamp, AbstractMergeNode merge) {
         super(c, stamp);
         this.merge = merge;
     }

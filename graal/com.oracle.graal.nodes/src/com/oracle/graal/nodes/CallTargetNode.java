@@ -67,14 +67,14 @@ public abstract class CallTargetNode extends ValueNode implements LIRLowerable {
     protected ResolvedJavaMethod targetMethod;
     protected InvokeKind invokeKind;
 
-    protected CallTargetNode(NodeClass<?> c, ValueNode[] arguments, ResolvedJavaMethod targetMethod, InvokeKind invokeKind) {
+    protected CallTargetNode(NodeClass<? extends CallTargetNode> c, ValueNode[] arguments, ResolvedJavaMethod targetMethod, InvokeKind invokeKind) {
         super(c, StampFactory.forVoid());
         this.targetMethod = targetMethod;
         this.invokeKind = invokeKind;
         this.arguments = new NodeInputList<>(this, arguments);
     }
 
-    protected CallTargetNode(NodeClass<?> c, List<ValueNode> arguments, ResolvedJavaMethod targetMethod, InvokeKind invokeKind) {
+    protected CallTargetNode(NodeClass<? extends CallTargetNode> c, List<ValueNode> arguments, ResolvedJavaMethod targetMethod, InvokeKind invokeKind) {
         super(c, StampFactory.forVoid());
         this.targetMethod = targetMethod;
         this.invokeKind = invokeKind;

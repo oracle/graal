@@ -202,12 +202,12 @@ public abstract class Node implements Cloneable, Formattable {
     int extraUsagesCount;
 
     private Node predecessor;
-    private NodeClass<?> nodeClass;
+    private NodeClass<? extends Node> nodeClass;
 
     public static final int NODE_LIST = -2;
     public static final int NOT_ITERABLE = -1;
 
-    public Node(NodeClass<?> c) {
+    public Node(NodeClass<? extends Node> c) {
         init();
         assert c.getJavaClass() == this.getClass();
         this.nodeClass = c;
@@ -507,7 +507,7 @@ public abstract class Node implements Cloneable, Formattable {
         }
     }
 
-    public final NodeClass<?> getNodeClass() {
+    public final NodeClass<? extends Node> getNodeClass() {
         return nodeClass;
     }
 
@@ -749,7 +749,7 @@ public abstract class Node implements Cloneable, Formattable {
      * @return the copy of this node
      */
     final Node clone(Graph into, EnumSet<Edges.Type> edgesToCopy) {
-        final NodeClass<?> nodeClassTmp = getNodeClass();
+        final NodeClass<? extends Node> nodeClassTmp = getNodeClass();
         boolean useIntoLeafNodeCache = false;
         if (into != null) {
             if (nodeClassTmp.valueNumberable() && nodeClassTmp.isLeafNode()) {

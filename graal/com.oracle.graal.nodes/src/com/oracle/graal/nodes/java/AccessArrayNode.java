@@ -45,7 +45,7 @@ public abstract class AccessArrayNode extends FixedWithNextNode {
      *
      * @param array the instruction that produces the array object value
      */
-    public AccessArrayNode(NodeClass<?> c, Stamp stamp, ValueNode array) {
+    public AccessArrayNode(NodeClass<? extends AccessArrayNode> c, Stamp stamp, ValueNode array) {
         super(c, stamp);
         this.array = array;
     }
