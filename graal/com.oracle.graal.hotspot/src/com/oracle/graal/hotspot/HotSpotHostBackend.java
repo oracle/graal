@@ -40,12 +40,16 @@ import com.oracle.graal.nodes.spi.*;
 public abstract class HotSpotHostBackend extends HotSpotBackend {
 
     /**
-     * Descriptor for {@link DeoptimizationStub#deoptimizationHandler}.
+     * Descriptor for {@code SharedRuntime::deopt_blob()->unpack()} or
+     * {@link DeoptimizationStub#deoptimizationHandler} depending on
+     * {@link HotSpotBackend.Options#PreferGraalStubs}.
      */
-    public static final ForeignCallDescriptor DEOPTIMIZATION_HANDLER = new ForeignCallDescriptor("deoptimizationHandler", void.class);
+    public static final ForeignCallDescriptor DEOPTIMIZATION_HANDLER = new ForeignCallDescriptor("deoptHandler", void.class);
 
     /**
-     * Descriptor for {@link UncommonTrapStub#uncommonTrapHandler}.
+     * Descriptor for {@code SharedRuntime::deopt_blob()->uncommon_trap()} or
+     * {@link UncommonTrapStub#uncommonTrapHandler} depending on
+     * {@link HotSpotBackend.Options#PreferGraalStubs}.
      */
     public static final ForeignCallDescriptor UNCOMMON_TRAP_HANDLER = new ForeignCallDescriptor("uncommonTrapHandler", void.class);
 

@@ -1345,6 +1345,9 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMField(name = "CodeBlob::_code_offset", type = "int", get = HotSpotVMField.Type.OFFSET) @Stable private int codeBlobCodeOffsetOffset;
     @HotSpotVMField(name = "SharedRuntime::_ic_miss_blob", type = "RuntimeStub*", get = HotSpotVMField.Type.VALUE) @Stable private long inlineCacheMissBlob;
 
+    @HotSpotVMValue(expression = "SharedRuntime::deopt_blob()->unpack()", get = HotSpotVMValue.Type.ADDRESS) @Stable public long handleDeoptStub;
+    @HotSpotVMValue(expression = "SharedRuntime::deopt_blob()->uncommon_trap()", get = HotSpotVMValue.Type.ADDRESS) @Stable public long uncommonTrapStub;
+
     private final long inlineCacheMissStub;
 
     public long inlineCacheMissStub() {

@@ -22,8 +22,9 @@
  */
 package com.oracle.graal.hotspot.stubs;
 
+import static com.oracle.graal.hotspot.HotSpotBackend.*;
+import static com.oracle.graal.hotspot.HotSpotBackend.Options.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
-import static com.oracle.graal.hotspot.stubs.StubUtil.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
@@ -85,6 +86,7 @@ public class UncommonTrapStub extends SnippetStub {
     public UncommonTrapStub(HotSpotProviders providers, TargetDescription target, HotSpotForeignCallLinkage linkage) {
         super(UncommonTrapStub.class, "uncommonTrapHandler", providers, target, linkage);
         this.target = target;
+        assert PreferGraalStubs.getValue();
     }
 
     @Override
@@ -283,8 +285,6 @@ public class UncommonTrapStub extends SnippetStub {
     private static int deoptimizationUnpackUncommonTrap() {
         return config().deoptimizationUnpackUncommonTrap;
     }
-
-    public static final ForeignCallDescriptor UNPACK_FRAMES = newDescriptor(UncommonTrapStub.class, "unpackFrames", int.class, Word.class, int.class);
 
     @NodeIntrinsic(value = StubForeignCallNode.class, setStampFromReturnType = true)
     public static native int unpackFrames(@ConstantNodeParameter ForeignCallDescriptor unpackFrames, Word thread, int mode);

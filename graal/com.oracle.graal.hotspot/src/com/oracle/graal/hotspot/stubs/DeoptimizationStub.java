@@ -23,8 +23,10 @@
 package com.oracle.graal.hotspot.stubs;
 
 import static com.oracle.graal.hotspot.HotSpotBackend.*;
+import static com.oracle.graal.hotspot.HotSpotBackend.Options.*;
 import static com.oracle.graal.hotspot.nodes.DeoptimizationFetchUnrollInfoCallNode.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
+import static com.oracle.graal.hotspot.stubs.UncommonTrapStub.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
@@ -84,6 +86,7 @@ public class DeoptimizationStub extends SnippetStub {
     public DeoptimizationStub(HotSpotProviders providers, TargetDescription target, HotSpotForeignCallLinkage linkage) {
         super(DeoptimizationStub.class, "deoptimizationHandler", providers, target, linkage);
         this.target = target;
+        assert PreferGraalStubs.getValue();
     }
 
     @Override
@@ -143,7 +146,7 @@ public class DeoptimizationStub extends SnippetStub {
         Word stackPointer = readRegister(stackPointerRegister);
 
         for (int i = 1; i < bangPages; i++) {
-            stackPointer.writeInt((-i * pageSize()) + stackBias(), 0, UncommonTrapStub.STACK_BANG_LOCATION);
+            stackPointer.writeInt((-i * pageSize()) + stackBias(), 0, STACK_BANG_LOCATION);
         }
 
         // Load number of interpreter frames.
