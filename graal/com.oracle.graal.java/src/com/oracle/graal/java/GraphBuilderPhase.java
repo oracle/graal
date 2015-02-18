@@ -195,10 +195,10 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             private int nextPeelIteration = 1;
             private boolean controlFlowSplit;
 
-            private FixedWithNextNode[] firstInstruction;
-            private AbstractFrameStateBuilder<?, ?>[] entryState;
-            private FixedWithNextNode[][] firstInstructionArray;
-            private AbstractFrameStateBuilder<?, ?>[][] entryStateArray;
+            private FixedWithNextNode[] firstInstructionArray;
+            private AbstractFrameStateBuilder<?, ?>[] entryStateArray;
+            private FixedWithNextNode[][] firstInstructionMatrix;
+            private AbstractFrameStateBuilder<?, ?>[][] entryStateMatrix;
 
             /**
              * @param isReplacement specifies if this object is being used to parse a method that
@@ -249,9 +249,10 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 try (Indent indent = Debug.logAndIndent("build graph for %s", method)) {
 
                     // compute the block map, setup exception handlers and get the entrypoint(s)
-                    this.blockMap = BciBlockMapping.create(stream, method);
-                    this.firstInstruction = new FixedWithNextNode[blockMap.getBlockCount()];
-                    this.entryState = new AbstractFrameStateBuilder<?, ?>[blockMap.getBlockCount()];
+                    BciBlockMapping newMapping = BciBlockMapping.create(stream, method);
+                    this.blockMap = newMapping;
+                    this.firstInstructionArray = new FixedWithNextNode[blockMap.getBlockCount()];
+                    this.entryStateArray = new AbstractFrameStateBuilder<?, ?>[blockMap.getBlockCount()];
 
                     if (graphBuilderConfig.doLivenessAnalysis()) {
                         try (Scope s = Debug.scope("LivenessAnalysis")) {
@@ -1221,76 +1222,92 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             private AbstractFrameStateBuilder<?, ?> getEntryState(BciBlock block, int dimension) {
                 int id = block.id;
                 if (dimension == 0) {
-                    return entryState[id];
+                    return entryStateArray[id];
                 } else {
-                    if (entryStateArray != null && dimension - 1 < entryStateArray.length) {
-                        AbstractFrameStateBuilder<?, ?>[] entryStateArrayEntry = entryStateArray[dimension - 1];
-                        if (entryStateArrayEntry == null) {
-                            return null;
-                        }
-                        return entryStateArrayEntry[id];
-                    } else {
+                    return getEntryStateMultiDimension(dimension, id);
+                }
+            }
+
+            private AbstractFrameStateBuilder<?, ?> getEntryStateMultiDimension(int dimension, int id) {
+                if (entryStateMatrix != null && dimension - 1 < entryStateMatrix.length) {
+                    AbstractFrameStateBuilder<?, ?>[] entryStateArrayEntry = entryStateMatrix[dimension - 1];
+                    if (entryStateArrayEntry == null) {
                         return null;
                     }
+                    return entryStateArrayEntry[id];
+                } else {
+                    return null;
                 }
             }
 
             private void setEntryState(BciBlock block, int dimension, AbstractFrameStateBuilder<?, ?> entryState) {
                 int id = block.id;
                 if (dimension == 0) {
-                    this.entryState[id] = entryState;
+                    this.entryStateArray[id] = entryState;
                 } else {
-                    if (entryStateArray == null) {
-                        entryStateArray = new AbstractFrameStateBuilder<?, ?>[4][];
-                    }
-                    if (dimension - 1 < entryStateArray.length) {
-                        // We are within bounds.
-                    } else {
-                        // We are out of bounds.
-                        entryStateArray = Arrays.copyOf(entryStateArray, Math.max(entryStateArray.length * 2, dimension));
-                    }
-                    if (entryStateArray[dimension - 1] == null) {
-                        entryStateArray[dimension - 1] = new AbstractFrameStateBuilder<?, ?>[blockMap.getBlockCount()];
-                    }
-                    entryStateArray[dimension - 1][id] = entryState;
+                    setEntryStateMultiDimension(dimension, entryState, id);
                 }
+            }
+
+            private void setEntryStateMultiDimension(int dimension, AbstractFrameStateBuilder<?, ?> entryState, int id) {
+                if (entryStateMatrix == null) {
+                    entryStateMatrix = new AbstractFrameStateBuilder<?, ?>[4][];
+                }
+                if (dimension - 1 < entryStateMatrix.length) {
+                    // We are within bounds.
+                } else {
+                    // We are out of bounds.
+                    entryStateMatrix = Arrays.copyOf(entryStateMatrix, Math.max(entryStateMatrix.length * 2, dimension));
+                }
+                if (entryStateMatrix[dimension - 1] == null) {
+                    entryStateMatrix[dimension - 1] = new AbstractFrameStateBuilder<?, ?>[blockMap.getBlockCount()];
+                }
+                entryStateMatrix[dimension - 1][id] = entryState;
             }
 
             private void setFirstInstruction(BciBlock block, int dimension, FixedWithNextNode firstInstruction) {
                 int id = block.id;
                 if (dimension == 0) {
-                    this.firstInstruction[id] = firstInstruction;
+                    this.firstInstructionArray[id] = firstInstruction;
                 } else {
-                    if (firstInstructionArray == null) {
-                        firstInstructionArray = new FixedWithNextNode[4][];
-                    }
-                    if (dimension - 1 < firstInstructionArray.length) {
-                        // We are within bounds.
-                    } else {
-                        // We are out of bounds.
-                        firstInstructionArray = Arrays.copyOf(firstInstructionArray, Math.max(firstInstructionArray.length * 2, dimension));
-                    }
-                    if (firstInstructionArray[dimension - 1] == null) {
-                        firstInstructionArray[dimension - 1] = new FixedWithNextNode[blockMap.getBlockCount()];
-                    }
-                    firstInstructionArray[dimension - 1][id] = firstInstruction;
+                    setFirstInstructionMultiDimension(dimension, firstInstruction, id);
                 }
+            }
+
+            private void setFirstInstructionMultiDimension(int dimension, FixedWithNextNode firstInstruction, int id) {
+                if (firstInstructionMatrix == null) {
+                    firstInstructionMatrix = new FixedWithNextNode[4][];
+                }
+                if (dimension - 1 < firstInstructionMatrix.length) {
+                    // We are within bounds.
+                } else {
+                    // We are out of bounds.
+                    firstInstructionMatrix = Arrays.copyOf(firstInstructionMatrix, Math.max(firstInstructionMatrix.length * 2, dimension));
+                }
+                if (firstInstructionMatrix[dimension - 1] == null) {
+                    firstInstructionMatrix[dimension - 1] = new FixedWithNextNode[blockMap.getBlockCount()];
+                }
+                firstInstructionMatrix[dimension - 1][id] = firstInstruction;
             }
 
             private FixedWithNextNode getFirstInstruction(BciBlock block, int dimension) {
                 int id = block.id;
                 if (dimension == 0) {
-                    return firstInstruction[id];
+                    return firstInstructionArray[id];
                 } else {
-                    if (firstInstructionArray != null && dimension - 1 < firstInstructionArray.length) {
-                        FixedWithNextNode[] firstInstructionArrayEntry = firstInstructionArray[dimension - 1];
-                        if (firstInstructionArrayEntry == null) {
-                            return null;
-                        }
-                        return firstInstructionArrayEntry[id];
-                    } else {
+                    return getFirstInstructionMultiDimension(dimension, id);
+                }
+            }
+
+            private FixedWithNextNode getFirstInstructionMultiDimension(int dimension, int id) {
+                if (firstInstructionMatrix != null && dimension - 1 < firstInstructionMatrix.length) {
+                    FixedWithNextNode[] firstInstructionArrayEntry = firstInstructionMatrix[dimension - 1];
+                    if (firstInstructionArrayEntry == null) {
                         return null;
                     }
+                    return firstInstructionArrayEntry[id];
+                } else {
+                    return null;
                 }
             }
 
