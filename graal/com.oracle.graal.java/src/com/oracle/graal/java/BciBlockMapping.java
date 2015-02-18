@@ -474,9 +474,7 @@ public final class BciBlockMapping {
 
         assert verify();
 
-        // Discard big arrays so that they can be GCed
         startBlock = blockMap[0];
-        blockMap = null;
         if (Debug.isLogEnabled()) {
             this.log(blockMap, "Before LivenessAnalysis");
         }
@@ -819,17 +817,9 @@ public final class BciBlockMapping {
             throw new BailoutException("Non-reducible loop");
         }
 
-        if (blocks[0] != null && this.nextLoop == 0) {
-            // No unreached blocks and no loops
-            for (int i = 0; i < blocks.length; ++i) {
-                blocks[i].setId(i);
-            }
-            return;
-        }
-
         // Purge null entries for unreached blocks and sort blocks such that loop bodies are always
         // consecutively in the array.
-        int blockCount = maxBlocks - blocksNotYetAssignedId;
+        int blockCount = maxBlocks - blocksNotYetAssignedId + 2;
         BciBlock[] newBlocks = new BciBlock[blockCount];
         int next = 0;
         for (int i = 0; i < blocks.length; ++i) {
@@ -842,6 +832,18 @@ public final class BciBlockMapping {
                 }
             }
         }
+
+        // Add return block.
+        BciBlock returnBlock = new BciBlock();
+        returnBlock.setId(newBlocks.length - 2);
+        newBlocks[newBlocks.length - 2] = returnBlock;
+
+        // Add unwind block.
+        ExceptionDispatchBlock unwindBlock = new ExceptionDispatchBlock();
+        unwindBlock.deoptBci = method.isSynchronized() ? BytecodeFrame.UNWIND_BCI : BytecodeFrame.AFTER_EXCEPTION_BCI;
+        unwindBlock.setId(newBlocks.length - 1);
+        newBlocks[newBlocks.length - 1] = unwindBlock;
+
         blocks = newBlocks;
     }
 
@@ -1045,6 +1047,14 @@ public final class BciBlockMapping {
 
     public BciBlock getStartBlock() {
         return startBlock;
+    }
+
+    public BciBlock getReturnBlock() {
+        return blocks[blocks.length - 2];
+    }
+
+    public ExceptionDispatchBlock getUnwindBlock() {
+        return (ExceptionDispatchBlock) blocks[blocks.length - 1];
     }
 
     public int getLoopCount() {

@@ -299,12 +299,12 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
                     int index = 0;
                     BciBlock[] blocks = blockMap.getBlocks();
+                    this.returnBlock = blockMap.getReturnBlock();
+                    this.unwindBlock = blockMap.getUnwindBlock();
                     while (index < blocks.length) {
                         BciBlock block = blocks[index];
                         index = iterateBlock(blocks, block);
                     }
-                    processBlock(this, returnBlock);
-                    processBlock(this, unwindBlock);
 
                     if (Debug.isDumpEnabled() && this.beforeReturnNode != startInstruction) {
                         Debug.dump(currentGraph, "Bytecodes parsed: " + method.getDeclaringClass().getUnqualifiedName() + "." + method.getName());
@@ -355,19 +355,10 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             }
 
             private BciBlock returnBlock() {
-                if (returnBlock == null) {
-                    returnBlock = new BciBlock();
-                    returnBlock.setId(Integer.MAX_VALUE);
-                }
                 return returnBlock;
             }
 
             private BciBlock unwindBlock() {
-                if (unwindBlock == null) {
-                    unwindBlock = new ExceptionDispatchBlock();
-                    unwindBlock.deoptBci = method.isSynchronized() ? BytecodeFrame.UNWIND_BCI : BytecodeFrame.AFTER_EXCEPTION_BCI;
-                    unwindBlock.setId(Integer.MAX_VALUE);
-                }
                 return unwindBlock;
             }
 
