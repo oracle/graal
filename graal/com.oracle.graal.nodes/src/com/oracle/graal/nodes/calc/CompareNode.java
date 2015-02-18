@@ -125,6 +125,9 @@ public abstract class CompareNode extends BinaryOpLogicNode {
                 return duplicateModified(convertX.getValue(), convertY.getValue());
             }
         }
+        if (condition.isCommutative()) {
+            return this.maybeCommuteInputs();
+        }
         return this;
     }
 

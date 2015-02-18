@@ -55,6 +55,6 @@ public final class IntegerTestNode extends BinaryOpLogicNode {
                 return LogicConstantNode.contradiction();
             }
         }
-        return this;
+        return this.maybeCommuteInputs();
     }
 }

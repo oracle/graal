@@ -51,7 +51,7 @@ public final class OrNode extends BinaryArithmeticNode<Or> {
         if (tryConstantFold != null) {
             return tryConstantFold;
         } else {
-            return new OrNode(x, y);
+            return new OrNode(x, y).maybeCommuteInputs();
         }
     }
 
@@ -83,7 +83,7 @@ public final class OrNode extends BinaryArithmeticNode<Or> {
             }
             return reassociate(this, ValueNode.isConstantPredicate(), forX, forY);
         }
-        return this;
+        return this.maybeCommuteInputs();
     }
 
     @Override

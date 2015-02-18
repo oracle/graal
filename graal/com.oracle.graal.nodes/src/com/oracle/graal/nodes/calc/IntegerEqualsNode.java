@@ -65,7 +65,7 @@ public final class IntegerEqualsNode extends CompareNode {
                 }
             }
 
-            return new IntegerEqualsNode(x, y);
+            return new IntegerEqualsNode(x, y).maybeCommuteInputs();
         }
     }
 

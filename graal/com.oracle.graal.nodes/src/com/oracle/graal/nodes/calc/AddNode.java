@@ -53,7 +53,7 @@ public class AddNode extends BinaryArithmeticNode<Add> implements NarrowableArit
         if (tryConstantFold != null) {
             return tryConstantFold;
         } else {
-            return new AddNode(x, y);
+            return new AddNode(x, y).maybeCommuteInputs();
         }
     }
 
@@ -103,7 +103,7 @@ public class AddNode extends BinaryArithmeticNode<Add> implements NarrowableArit
         } else if (forY instanceof NegateNode) {
             return BinaryArithmeticNode.sub(forX, ((NegateNode) forY).getValue());
         }
-        return this;
+        return this.maybeCommuteInputs();
     }
 
     @Override

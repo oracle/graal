@@ -51,7 +51,7 @@ public final class AndNode extends BinaryArithmeticNode<And> implements Narrowab
         if (tryConstantFold != null) {
             return tryConstantFold;
         } else {
-            return new AndNode(x, y);
+            return new AndNode(x, y).maybeCommuteInputs();
         }
     }
 
@@ -95,7 +95,7 @@ public final class AndNode extends BinaryArithmeticNode<And> implements Narrowab
 
             return reassociate(this, ValueNode.isConstantPredicate(), forX, forY);
         }
-        return this;
+        return this.maybeCommuteInputs();
     }
 
     @Override

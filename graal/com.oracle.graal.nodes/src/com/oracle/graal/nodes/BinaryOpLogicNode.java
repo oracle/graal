@@ -58,4 +58,28 @@ public abstract class BinaryOpLogicNode extends LogicNode implements LIRLowerabl
     @Override
     public void generate(NodeLIRBuilderTool gen) {
     }
+
+    /**
+     * Ensure a canonical ordering of inputs for commutative nodes to improve GVN results. Order the
+     * inputs by increasing {@link Node#id} and call {@link Graph#findDuplicate(Node)} on the node
+     * if it's currently in a graph.
+     *
+     * @return the original node or another node with the same input ordering
+     */
+    @SuppressWarnings("deprecation")
+    public LogicNode maybeCommuteInputs() {
+        if (x.getId() > y.getId()) {
+            ValueNode tmp = x;
+            x = y;
+            y = tmp;
+            if (graph() != null) {
+                // See if this node already exists
+                LogicNode duplicate = graph().findDuplicate(this);
+                if (duplicate != null) {
+                    return duplicate;
+                }
+            }
+        }
+        return this;
+    }
 }
