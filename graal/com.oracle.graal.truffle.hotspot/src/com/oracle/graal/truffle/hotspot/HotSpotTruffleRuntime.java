@@ -109,7 +109,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
             }
         }
         selectedProcessors = Math.max(1, selectedProcessors);
-        compileQueue = new ThreadPoolExecutor(2, 2, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(), factory);
+        compileQueue = new ThreadPoolExecutor(selectedProcessors, selectedProcessors, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(), factory);
 
     }
 
