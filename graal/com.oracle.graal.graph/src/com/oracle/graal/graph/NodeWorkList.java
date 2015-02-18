@@ -157,7 +157,7 @@ public abstract class NodeWorkList implements Iterable<Node> {
         }
 
         private boolean checkInfiniteWork(Node node) {
-            if (lastPull == node) {
+            if (lastPull == node && !node.hasNoUsages()) {
                 if (firstNoChange == null) {
                     firstNoChange = node;
                     lastChain = node;
