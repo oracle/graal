@@ -171,7 +171,7 @@ public class TruffleGraphBuilderPlugins {
         });
         r.register1("materialize", Object.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext builder, ValueNode value) {
-                builder.push(Kind.Object, builder.append(new ForceMaterializeNode(value)));
+                builder.append(new ForceMaterializeNode(value));
                 return true;
             }
         });
