@@ -32,7 +32,6 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.bytecode.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.debug.*;
-import com.oracle.graal.nodes.*;
 
 /**
  * Builds a mapping between bytecodes and basic blocks and builds a conservative control flow graph
@@ -84,11 +83,6 @@ public final class BciBlockMapping {
         public int loopEnd;
         protected List<BciBlock> successors;
         private int predecessorCount;
-
-        private FixedWithNextNode firstInstruction;
-        private AbstractFrameStateBuilder<?, ?> entryState;
-        private FixedWithNextNode[] firstInstructionArray;
-        private AbstractFrameStateBuilder<?, ?>[] entryStateArray;
 
         private boolean visited;
         private boolean active;
@@ -322,66 +316,6 @@ public final class BciBlockMapping {
 
         public void setJsrReturnBci(int bci) {
             this.getOrCreateJSRData().jsrReturnBci = bci;
-        }
-
-        public FixedWithNextNode getFirstInstruction(int dimension) {
-            if (dimension == 0) {
-                return firstInstruction;
-            } else {
-                if (firstInstructionArray != null && dimension - 1 < firstInstructionArray.length) {
-                    return firstInstructionArray[dimension - 1];
-                } else {
-                    return null;
-                }
-            }
-        }
-
-        public void setFirstInstruction(int dimension, FixedWithNextNode firstInstruction) {
-            if (dimension == 0) {
-                this.firstInstruction = firstInstruction;
-            } else {
-                if (firstInstructionArray == null) {
-                    firstInstructionArray = new FixedWithNextNode[4];
-                }
-                if (dimension - 1 < firstInstructionArray.length) {
-                    // We are within bounds.
-                } else {
-                    // We are out of bounds.
-                    firstInstructionArray = Arrays.copyOf(firstInstructionArray, Math.max(firstInstructionArray.length * 2, dimension));
-                }
-
-                firstInstructionArray[dimension - 1] = firstInstruction;
-            }
-        }
-
-        public AbstractFrameStateBuilder<?, ?> getEntryState(int dimension) {
-            if (dimension == 0) {
-                return entryState;
-            } else {
-                if (entryStateArray != null && dimension - 1 < entryStateArray.length) {
-                    return entryStateArray[dimension - 1];
-                } else {
-                    return null;
-                }
-            }
-        }
-
-        public void setEntryState(int dimension, AbstractFrameStateBuilder<?, ?> entryState) {
-            if (dimension == 0) {
-                this.entryState = entryState;
-            } else {
-                if (entryStateArray == null) {
-                    entryStateArray = new AbstractFrameStateBuilder<?, ?>[4];
-                }
-                if (dimension - 1 < entryStateArray.length) {
-                    // We are within bounds.
-                } else {
-                    // We are out of bounds.
-                    entryStateArray = Arrays.copyOf(entryStateArray, Math.max(entryStateArray.length * 2, dimension));
-                }
-
-                entryStateArray[dimension - 1] = entryState;
-            }
         }
 
         public int getSuccessorCount() {
@@ -1059,5 +993,9 @@ public final class BciBlockMapping {
 
     public int getLoopCount() {
         return nextLoop;
+    }
+
+    public int getBlockCount() {
+        return blocks.length;
     }
 }

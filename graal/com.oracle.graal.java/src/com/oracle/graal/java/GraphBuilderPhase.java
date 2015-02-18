@@ -195,6 +195,11 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             private int nextPeelIteration = 1;
             private boolean controlFlowSplit;
 
+            private FixedWithNextNode[] firstInstruction;
+            private AbstractFrameStateBuilder<?, ?>[] entryState;
+            private FixedWithNextNode[][] firstInstructionArray;
+            private AbstractFrameStateBuilder<?, ?>[][] entryStateArray;
+
             /**
              * @param isReplacement specifies if this object is being used to parse a method that
              *            implements the semantics of another method (i.e., an intrinsic) or
@@ -245,6 +250,8 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
                     // compute the block map, setup exception handlers and get the entrypoint(s)
                     this.blockMap = BciBlockMapping.create(stream, method);
+                    this.firstInstruction = new FixedWithNextNode[blockMap.getBlockCount()];
+                    this.entryState = new AbstractFrameStateBuilder<?, ?>[blockMap.getBlockCount()];
 
                     if (graphBuilderConfig.doLivenessAnalysis()) {
                         try (Scope s = Debug.scope("LivenessAnalysis")) {
@@ -1211,16 +1218,80 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 return new Target(target, state);
             }
 
-            private void setEntryState(BciBlock block, int operatingDimension, AbstractFrameStateBuilder<?, ?> entryState) {
-                block.setEntryState(operatingDimension, entryState);
+            private AbstractFrameStateBuilder<?, ?> getEntryState(BciBlock block, int dimension) {
+                int id = block.id;
+                if (dimension == 0) {
+                    return entryState[id];
+                } else {
+                    if (entryStateArray != null && dimension - 1 < entryStateArray.length) {
+                        AbstractFrameStateBuilder<?, ?>[] entryStateArrayEntry = entryStateArray[dimension - 1];
+                        if (entryStateArrayEntry == null) {
+                            return null;
+                        }
+                        return entryStateArrayEntry[id];
+                    } else {
+                        return null;
+                    }
+                }
             }
 
-            private void setFirstInstruction(BciBlock block, int operatingDimension, FixedWithNextNode firstInstruction) {
-                block.setFirstInstruction(operatingDimension, firstInstruction);
+            private void setEntryState(BciBlock block, int dimension, AbstractFrameStateBuilder<?, ?> entryState) {
+                int id = block.id;
+                if (dimension == 0) {
+                    this.entryState[id] = entryState;
+                } else {
+                    if (entryStateArray == null) {
+                        entryStateArray = new AbstractFrameStateBuilder<?, ?>[4][];
+                    }
+                    if (dimension - 1 < entryStateArray.length) {
+                        // We are within bounds.
+                    } else {
+                        // We are out of bounds.
+                        entryStateArray = Arrays.copyOf(entryStateArray, Math.max(entryStateArray.length * 2, dimension));
+                    }
+                    if (entryStateArray[dimension - 1] == null) {
+                        entryStateArray[dimension - 1] = new AbstractFrameStateBuilder<?, ?>[blockMap.getBlockCount()];
+                    }
+                    entryStateArray[dimension - 1][id] = entryState;
+                }
+            }
+
+            private void setFirstInstruction(BciBlock block, int dimension, FixedWithNextNode firstInstruction) {
+                int id = block.id;
+                if (dimension == 0) {
+                    this.firstInstruction[id] = firstInstruction;
+                } else {
+                    if (firstInstructionArray == null) {
+                        firstInstructionArray = new FixedWithNextNode[4][];
+                    }
+                    if (dimension - 1 < firstInstructionArray.length) {
+                        // We are within bounds.
+                    } else {
+                        // We are out of bounds.
+                        firstInstructionArray = Arrays.copyOf(firstInstructionArray, Math.max(firstInstructionArray.length * 2, dimension));
+                    }
+                    if (firstInstructionArray[dimension - 1] == null) {
+                        firstInstructionArray[dimension - 1] = new FixedWithNextNode[blockMap.getBlockCount()];
+                    }
+                    firstInstructionArray[dimension - 1][id] = firstInstruction;
+                }
             }
 
             private FixedWithNextNode getFirstInstruction(BciBlock block, int dimension) {
-                return block.getFirstInstruction(dimension);
+                int id = block.id;
+                if (dimension == 0) {
+                    return firstInstruction[id];
+                } else {
+                    if (firstInstructionArray != null && dimension - 1 < firstInstructionArray.length) {
+                        FixedWithNextNode[] firstInstructionArrayEntry = firstInstructionArray[dimension - 1];
+                        if (firstInstructionArrayEntry == null) {
+                            return null;
+                        }
+                        return firstInstructionArrayEntry[id];
+                    } else {
+                        return null;
+                    }
+                }
             }
 
             private FixedNode createTarget(double probability, BciBlock block, HIRFrameStateBuilder stateAfter) {
@@ -1259,9 +1330,9 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     targetNode = getFirstInstruction(block, operatingDimension);
                     Target target = checkLoopExit(targetNode, block, state);
                     FixedNode result = target.fixed;
-                    AbstractFrameStateBuilder<?, ?> entryState = target.state == state ? state.copy() : target.state;
-                    setEntryState(block, operatingDimension, entryState);
-                    entryState.clearNonLiveLocals(block, liveness, true);
+                    AbstractFrameStateBuilder<?, ?> currentEntryState = target.state == state ? state.copy() : target.state;
+                    setEntryState(block, operatingDimension, currentEntryState);
+                    currentEntryState.clearNonLiveLocals(block, liveness, true);
 
                     Debug.log("createTarget %s: first visit, result: %s", block, targetNode);
                     return result;
@@ -1329,10 +1400,6 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 return result;
             }
 
-            private AbstractFrameStateBuilder<?, ?> getEntryState(BciBlock block, int operatingDimension) {
-                return block.getEntryState(operatingDimension);
-            }
-
             private int findOperatingDimension(BciBlock block) {
                 if (this.explodeLoops && this.explodeLoopsContext != null && !this.explodeLoopsContext.isEmpty()) {
                     return findOperatingDimensionWithLoopExplosion(block);
@@ -1396,7 +1463,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     Debug.log("Ignoring block %s", block);
                     return;
                 }
-                try (Indent indent = Debug.logAndIndent("Parsing block %s  firstInstruction: %s  loopHeader: %b", block, block.getFirstInstruction(this.getCurrentDimension()), block.isLoopHeader)) {
+                try (Indent indent = Debug.logAndIndent("Parsing block %s  firstInstruction: %s  loopHeader: %b", block, getFirstInstruction(block, this.getCurrentDimension()), block.isLoopHeader)) {
 
                     lastInstr = getFirstInstruction(block, this.getCurrentDimension());
                     frameState = (HIRFrameStateBuilder) getEntryState(block, this.getCurrentDimension());
