@@ -601,7 +601,6 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                      * Multiple phis but merging same values for true and false, so simply delete
                      * the path
                      */
-                    tool.addToWorkList(condition());
                     removeThroughFalseBranch(tool);
                     return true;
                 } else if (distinct == 1) {
@@ -644,6 +643,9 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         AbstractBeginNode trueBegin = trueSuccessor();
         graph().removeSplitPropagate(this, trueBegin, tool);
         tool.addToWorkList(trueBegin);
+        if (condition().isAlive() && condition().hasNoUsages()) {
+            GraphUtil.killWithUnusedFloatingInputs(condition());
+        }
     }
 
     private ConditionalNode canonicalizeConditionalCascade(ValueNode trueValue, ValueNode falseValue) {
