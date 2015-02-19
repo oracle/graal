@@ -269,7 +269,7 @@ public class TruffleCacheImpl implements TruffleCache {
     }
 
     protected StructuredGraph parseGraph(StructuredGraph graph, final PhaseContext phaseContext) {
-        new GraphBuilderPhase.Instance(phaseContext.getMetaAccess(), phaseContext.getStampProvider(), null, config, optimisticOptimizations).apply(graph);
+        new GraphBuilderPhase.Instance(phaseContext.getMetaAccess(), phaseContext.getStampProvider(), null, config, optimisticOptimizations, false).apply(graph);
         return graph;
     }
 

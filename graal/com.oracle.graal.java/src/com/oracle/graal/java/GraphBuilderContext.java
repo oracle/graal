@@ -60,6 +60,16 @@ public interface GraphBuilderContext {
     StructuredGraph getGraph();
 
     /**
+     * Gets the parsing context for the method that inlines the method being parsed by this context.
+     */
+    GraphBuilderContext getParent();
+
+    /**
+     * Gets the inline depth of this context. 0 implies this is the context for the root method.
+     */
+    int getDepth();
+
+    /**
      * Determines if the graph builder is parsing a snippet or method substitution.
      */
     boolean parsingReplacement();

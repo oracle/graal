@@ -55,20 +55,27 @@ public interface GraphBuilderPlugin {
     }
 
     /**
-     * Plugin for customizing how the graph builder handles a CHECKCAST instruction in the context
-     * of the instruction that consumes it from the stack.
+     * Plugin for specifying what is inlined during graph parsing.
      */
-    public interface CheckCastPlugin extends GraphBuilderPlugin {
-        boolean apply(GraphBuilderContext builder, ResolvedJavaType type, ValueNode object, JavaTypeProfile profileForTypeCheck);
-    }
-
     public interface InlineInvokePlugin extends GraphBuilderPlugin {
+
+        /**
+         * Gets the method to be inlined for a call to a given method. A non-null return value other
+         * than {@code method} is interpreted as a
+         * {@linkplain GraphBuilderContext#parsingReplacement() replacement} by the graph builder
+         * context used for inlining it.
+         *
+         * @param method the target method of an invoke
+         * @param args the arguments to the invoke
+         * @param returnType the return type derived from {@code method}'s signature
+         * @return the method to inline for a call to {@code method} or null if the call should not
+         *         be inlined
+         */
+        ResolvedJavaMethod getInlinedMethod(GraphBuilderContext builder, ResolvedJavaMethod method, ValueNode[] args, JavaType returnType);
 
         default void postInline(@SuppressWarnings("unused") ResolvedJavaMethod inlinedTargetMethod) {
 
         }
-
-        ResolvedJavaMethod getInlinedMethod(GraphBuilderContext builder, ResolvedJavaMethod method, ValueNode[] args, JavaType returnType, int depth);
     }
 
     public interface LoopExplosionPlugin extends GraphBuilderPlugin {

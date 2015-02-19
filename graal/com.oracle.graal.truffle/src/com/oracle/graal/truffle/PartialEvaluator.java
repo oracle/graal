@@ -195,7 +195,7 @@ public class PartialEvaluator {
             this.replacements = replacements;
         }
 
-        public ResolvedJavaMethod getInlinedMethod(GraphBuilderContext builder, ResolvedJavaMethod original, ValueNode[] arguments, JavaType returnType, int depth) {
+        public ResolvedJavaMethod getInlinedMethod(GraphBuilderContext builder, ResolvedJavaMethod original, ValueNode[] arguments, JavaType returnType) {
             if (original.getAnnotation(TruffleBoundary.class) != null) {
                 return null;
             }
@@ -250,7 +250,8 @@ public class PartialEvaluator {
         newConfig.setInlineInvokePlugin(new InlineInvokePlugin(callTarget.getInlining(), providers.getReplacements()));
         newConfig.setLoopExplosionPlugin(new LoopExplosionPlugin());
         TruffleGraphBuilderPlugins.registerInvocationPlugins(providers.getMetaAccess(), newConfig.getInvocationPlugins());
-        new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), this.snippetReflection, providers.getConstantReflection(), newConfig, TruffleCompilerImpl.Optimizations).apply(graph);
+        new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), this.snippetReflection, providers.getConstantReflection(), newConfig,
+                        TruffleCompilerImpl.Optimizations, false).apply(graph);
         Debug.dump(graph, "After FastPE");
 
         for (MethodCallTargetNode methodCallTargetNode : graph.getNodes(MethodCallTargetNode.TYPE)) {
@@ -320,13 +321,13 @@ public class PartialEvaluator {
     }
 
     public StructuredGraph createRootGraph(StructuredGraph graph) {
-        new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), providers.getConstantReflection(), configForRoot, TruffleCompilerImpl.Optimizations).apply(graph);
+        new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), providers.getConstantReflection(), configForRoot, TruffleCompilerImpl.Optimizations, false).apply(graph);
         return graph;
     }
 
     public StructuredGraph createInlineGraph(String name, StructuredGraph caller) {
         StructuredGraph graph = new StructuredGraph(name, callInlinedMethod, AllowAssumptions.from(caller.getAssumptions() != null));
-        new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), providers.getConstantReflection(), configForRoot, TruffleCompilerImpl.Optimizations).apply(graph);
+        new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), providers.getConstantReflection(), configForRoot, TruffleCompilerImpl.Optimizations, false).apply(graph);
         return graph;
     }
 
