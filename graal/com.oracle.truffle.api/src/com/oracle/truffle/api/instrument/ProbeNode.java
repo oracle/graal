@@ -181,7 +181,7 @@ public abstract class ProbeNode extends Node implements TruffleEventListener, In
          * not changed since the last time checking such an assumption failed and a reference to a
          * new assumption (associated with a new state of the {@link Probe} was retrieved.
          */
-        private Assumption probeUnchangedAssumption;
+        @CompilationFinal private Assumption probeUnchangedAssumption;
 
         private ProbeFullNode() {
             this.firstInstrument = null;

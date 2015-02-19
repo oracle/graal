@@ -28,6 +28,7 @@ import java.lang.ref.*;
 import java.util.*;
 
 import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.api.utilities.*;
@@ -108,7 +109,7 @@ public final class Probe implements SyntaxTagged {
      * The tag trap is a global setting; it only affects {@linkplain Probe probes} with the
      * {@linkplain SyntaxTag tag} specified .
      */
-    private static SyntaxTagTrap globalTagTrap = null;
+    @CompilationFinal private static SyntaxTagTrap globalTagTrap = null;
 
     /**
      * Enables instrumentation at selected nodes in all subsequently constructed ASTs.
