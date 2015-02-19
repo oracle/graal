@@ -45,18 +45,18 @@ public abstract class AbstractMergeNode extends BeginStateSplitNode implements I
         super(c);
     }
 
-    @Input(InputType.Association) protected NodeInputList<AbstractEndNode> ends = new NodeInputList<>(this);
+    @Input(InputType.Association) protected NodeInputList<EndNode> ends = new NodeInputList<>(this);
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
         gen.visitMerge(this);
     }
 
-    public int forwardEndIndex(AbstractEndNode end) {
+    public int forwardEndIndex(EndNode end) {
         return ends.indexOf(end);
     }
 
-    public void addForwardEnd(AbstractEndNode end) {
+    public void addForwardEnd(EndNode end) {
         ends.add(end);
     }
 
@@ -64,12 +64,12 @@ public abstract class AbstractMergeNode extends BeginStateSplitNode implements I
         return ends.size();
     }
 
-    public AbstractEndNode forwardEndAt(int index) {
+    public EndNode forwardEndAt(int index) {
         return ends.get(index);
     }
 
     @Override
-    public NodeIterable<AbstractEndNode> cfgPredecessors() {
+    public NodeIterable<EndNode> cfgPredecessors() {
         return ends;
     }
 
@@ -113,7 +113,7 @@ public abstract class AbstractMergeNode extends BeginStateSplitNode implements I
         ends.clear();
     }
 
-    public NodeInputList<AbstractEndNode> forwardEnds() {
+    public NodeInputList<EndNode> forwardEnds() {
         return ends;
     }
 
@@ -122,7 +122,7 @@ public abstract class AbstractMergeNode extends BeginStateSplitNode implements I
     }
 
     public int phiPredecessorIndex(AbstractEndNode pred) {
-        return forwardEndIndex(pred);
+        return forwardEndIndex((EndNode) pred);
     }
 
     public AbstractEndNode phiPredecessorAt(int index) {
@@ -176,8 +176,9 @@ public abstract class AbstractMergeNode extends BeginStateSplitNode implements I
                 if (merge instanceof LoopBeginNode) {
                     newEnd = graph().add(new LoopEndNode((LoopBeginNode) merge));
                 } else {
-                    newEnd = graph().add(new EndNode());
-                    merge.addForwardEnd(newEnd);
+                    EndNode tmpEnd = graph().add(new EndNode());
+                    merge.addForwardEnd(tmpEnd);
+                    newEnd = tmpEnd;
                 }
                 for (PhiNode phi : merge.phis()) {
                     ValueNode v = phi.valueAt(origLoopEnd);
@@ -213,8 +214,8 @@ public abstract class AbstractMergeNode extends BeginStateSplitNode implements I
             }
 
             ValuePhiNode returnValuePhi = returnNode.result() == null || !isPhiAtMerge(returnNode.result()) ? null : (ValuePhiNode) returnNode.result();
-            List<AbstractEndNode> endNodes = forwardEnds().snapshot();
-            for (AbstractEndNode end : endNodes) {
+            List<EndNode> endNodes = forwardEnds().snapshot();
+            for (EndNode end : endNodes) {
                 ReturnNode newReturn = graph().add(new ReturnNode(returnValuePhi == null ? returnNode.result() : returnValuePhi.valueAt(end)));
                 if (tool != null) {
                     tool.addToWorkList(end.predecessor());
@@ -222,7 +223,7 @@ public abstract class AbstractMergeNode extends BeginStateSplitNode implements I
                 end.replaceAtPredecessor(newReturn);
             }
             GraphUtil.killCFG(this);
-            for (AbstractEndNode end : endNodes) {
+            for (EndNode end : endNodes) {
                 end.safeDelete();
             }
             for (PhiNode phi : phis) {

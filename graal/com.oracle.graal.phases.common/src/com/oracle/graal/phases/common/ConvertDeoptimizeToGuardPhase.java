@@ -73,7 +73,7 @@ public class ConvertDeoptimizeToGuardPhase extends Phase {
                 AbstractMergeNode merge = (AbstractMergeNode) pred;
                 if (fixedGuard.condition() instanceof CompareNode) {
                     CompareNode compare = (CompareNode) fixedGuard.condition();
-                    List<AbstractEndNode> mergePredecessors = merge.cfgPredecessors().snapshot();
+                    List<EndNode> mergePredecessors = merge.cfgPredecessors().snapshot();
 
                     Constant[] xs = IfNode.constantValues(compare.getX(), merge, true);
                     if (xs == null) {

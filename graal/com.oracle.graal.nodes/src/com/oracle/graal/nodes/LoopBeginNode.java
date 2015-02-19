@@ -153,7 +153,7 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
                 return loopEnd.endIndex() + forwardEndCount();
             }
         } else {
-            return super.forwardEndIndex(pred);
+            return super.forwardEndIndex((EndNode) pred);
         }
         throw ValueNodeUtil.shouldNotReachHere("unknown pred : " + pred);
     }

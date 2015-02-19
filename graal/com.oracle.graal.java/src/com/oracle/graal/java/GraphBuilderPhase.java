@@ -1394,7 +1394,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     AbstractBeginNode placeholder = (AbstractBeginNode) getFirstInstruction(block, operatingDimension);
 
                     // The EndNode for the already existing edge.
-                    AbstractEndNode end = currentGraph.add(new EndNode());
+                    EndNode end = currentGraph.add(new EndNode());
                     // The MergeNode that replaces the placeholder.
                     AbstractMergeNode mergeNode = currentGraph.add(new MergeNode());
                     FixedNode next = placeholder.next();
@@ -1415,7 +1415,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 AbstractMergeNode mergeNode = (AbstractMergeNode) getFirstInstruction(block, operatingDimension);
 
                 // The EndNode for the newly merged edge.
-                AbstractEndNode newEnd = currentGraph.add(new EndNode());
+                EndNode newEnd = currentGraph.add(new EndNode());
                 Target target = checkLoopExit(newEnd, block, state);
                 FixedNode result = target.fixed;
                 ((HIRFrameStateBuilder) getEntryState(block, operatingDimension)).merge(mergeNode, target.state);
@@ -1635,7 +1635,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     // Create the loop header block, which later will merge the backward branches of
                     // the loop.
                     controlFlowSplit = true;
-                    AbstractEndNode preLoopEnd = currentGraph.add(new EndNode());
+                    EndNode preLoopEnd = currentGraph.add(new EndNode());
                     LoopBeginNode loopBegin = currentGraph.add(new LoopBeginNode());
                     lastInstr.setNext(preLoopEnd);
                     // Add the single non-loop predecessor of the loop header.
