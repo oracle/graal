@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,25 +22,15 @@
  */
 package com.oracle.graal.hotspot.meta;
 
-import static com.oracle.graal.api.meta.MetaUtil.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
-import static com.oracle.graal.replacements.NodeIntrinsificationPhase.*;
-
-import java.util.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.phases.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.java.GraphBuilderConfiguration.DebugInfoMode;
-import com.oracle.graal.java.GraphBuilderPlugin.AnnotatedInvocationPlugin;
-import com.oracle.graal.java.GraphBuilderPlugin.InlineInvokePlugin;
-import com.oracle.graal.java.GraphBuilderPlugin.LoadFieldPlugin;
 import com.oracle.graal.lir.phases.*;
-import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.options.DerivedOptionValue.OptionSupplier;
@@ -114,7 +104,7 @@ public class HotSpotSuitesProvider implements SuitesProvider {
 
     NodeIntrinsificationPhase intrinsifier;
 
-    NodeIntrinsificationPhase getIntrinsifier() {
+    NodeIntrinsificationPhase getNodeIntrinsification() {
         if (intrinsifier == null) {
             HotSpotProviders providers = runtime.getHostProviders();
             intrinsifier = new NodeIntrinsificationPhase(providers, providers.getSnippetReflection());
@@ -129,88 +119,9 @@ public class HotSpotSuitesProvider implements SuitesProvider {
     protected PhaseSuite<HighTierContext> createGraphBuilderSuite(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, Replacements replacements) {
         PhaseSuite<HighTierContext> suite = new PhaseSuite<>();
         GraphBuilderConfiguration config = GraphBuilderConfiguration.getDefault();
-        config.setLoadFieldPlugin(new LoadFieldPlugin() {
-            public boolean apply(GraphBuilderContext builder, ValueNode receiver, ResolvedJavaField field) {
-                if (InlineDuringParsing.getValue() || builder.parsingReplacement()) {
-                    if (receiver.isConstant()) {
-                        JavaConstant asJavaConstant = receiver.asJavaConstant();
-                        return tryConstantFold(builder, metaAccess, constantReflection, field, asJavaConstant);
-                    }
-                }
-                return false;
-            }
-
-            public boolean apply(GraphBuilderContext builder, ResolvedJavaField staticField) {
-                return tryConstantFold(builder, metaAccess, constantReflection, staticField, null);
-            }
-        });
-        config.setInlineInvokePlugin(new InlineInvokePlugin() {
-            public ResolvedJavaMethod getInlinedMethod(GraphBuilderContext builder, ResolvedJavaMethod method, ValueNode[] args, JavaType returnType) {
-                ResolvedJavaMethod subst = replacements.getMethodSubstitutionMethod(method);
-                if (subst != null) {
-                    // Forced inlining of intrinsics
-                    return subst;
-                }
-                if (builder.parsingReplacement()) {
-                    if (getIntrinsifier().getIntrinsic(method) != null) {
-                        // @NodeIntrinsic methods are handled by the AnnotatedInvocationPlugin
-                        // registered below
-                        return null;
-                    }
-                    // Force inlining when parsing replacements
-                    return method;
-                } else {
-                    assert getIntrinsifier().getIntrinsic(method) == null : String.format("@%s method %s must only be called from within a replacement%n%s", NodeIntrinsic.class.getSimpleName(),
-                                    method.format("%h.%n"), builder);
-                    if (InlineDuringParsing.getValue() && method.hasBytecodes() && method.getCode().length <= TrivialInliningSize.getValue() &&
-                                    builder.getDepth() < InlineDuringParsingMaxDepth.getValue()) {
-                        return method;
-                    }
-                }
-                return null;
-            }
-        });
-        config.setAnnotatedInvocationPlugin(new AnnotatedInvocationPlugin() {
-            public boolean apply(GraphBuilderContext builder, ResolvedJavaMethod method, ValueNode[] args) {
-                if (builder.parsingReplacement()) {
-                    NodeIntrinsificationPhase intrins = getIntrinsifier();
-                    NodeIntrinsic intrinsic = intrins.getIntrinsic(method);
-                    if (intrinsic != null) {
-                        Signature sig = method.getSignature();
-                        Kind returnKind = sig.getReturnKind();
-                        Stamp stamp = StampFactory.forKind(returnKind);
-                        if (returnKind == Kind.Object) {
-                            JavaType returnType = sig.getReturnType(method.getDeclaringClass());
-                            if (returnType instanceof ResolvedJavaType) {
-                                stamp = StampFactory.declared((ResolvedJavaType) returnType);
-                            }
-                        }
-
-                        ValueNode res = intrins.createIntrinsicNode(Arrays.asList(args), stamp, method, builder.getGraph(), intrinsic);
-                        res = builder.append(res);
-                        if (res.getKind().getStackKind() != Kind.Void) {
-                            builder.push(returnKind.getStackKind(), res);
-                        }
-                        return true;
-                    } else if (intrins.isFoldable(method)) {
-                        ResolvedJavaType[] parameterTypes = resolveJavaTypes(method.toParameterTypes(), method.getDeclaringClass());
-                        JavaConstant constant = intrins.tryFold(Arrays.asList(args), parameterTypes, method);
-                        if (!COULD_NOT_FOLD.equals(constant)) {
-                            if (constant != null) {
-                                // Replace the invoke with the result of the call
-                                ConstantNode res = builder.append(ConstantNode.forConstant(constant, getMetaAccess()));
-                                builder.push(res.getKind().getStackKind(), builder.append(res));
-                            } else {
-                                // This must be a void invoke
-                                assert method.getSignature().getReturnKind() == Kind.Void;
-                            }
-                            return true;
-                        }
-                    }
-                }
-                return false;
-            }
-        });
+        config.setLoadFieldPlugin(new HotSpotLoadFieldPlugin(metaAccess, constantReflection));
+        config.setInlineInvokePlugin(new HotSpotInlineInvokePlugin(this, replacements));
+        config.setAnnotatedInvocationPlugin(new HotSpotAnnotatedInvocationPlugin(this));
         suite.appendPhase(new GraphBuilderPhase(config));
         return suite;
     }
