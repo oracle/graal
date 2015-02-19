@@ -22,14 +22,21 @@
  */
 package com.oracle.graal.hotspot.meta;
 
+import static com.oracle.graal.api.meta.MetaUtil.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
+import static com.oracle.graal.replacements.NodeIntrinsificationPhase.*;
+
+import java.util.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.phases.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.java.GraphBuilderConfiguration.DebugInfoMode;
+import com.oracle.graal.java.GraphBuilderPlugin.AnnotatedInvocationPlugin;
 import com.oracle.graal.java.GraphBuilderPlugin.InlineInvokePlugin;
 import com.oracle.graal.java.GraphBuilderPlugin.LoadFieldPlugin;
 import com.oracle.graal.lir.phases.*;
@@ -39,6 +46,7 @@ import com.oracle.graal.options.*;
 import com.oracle.graal.options.DerivedOptionValue.OptionSupplier;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.tiers.*;
+import com.oracle.graal.replacements.*;
 
 /**
  * HotSpot implementation of {@link SuitesProvider}.
@@ -104,6 +112,20 @@ public class HotSpotSuitesProvider implements SuitesProvider {
         return ret;
     }
 
+    NodeIntrinsificationPhase intrinsifier;
+
+    NodeIntrinsificationPhase getIntrinsifier() {
+        if (intrinsifier == null) {
+            HotSpotProviders providers = runtime.getHostProviders();
+            intrinsifier = new NodeIntrinsificationPhase(providers, providers.getSnippetReflection());
+        }
+        return intrinsifier;
+    }
+
+    MetaAccessProvider getMetaAccess() {
+        return runtime.getHostProviders().getMetaAccess();
+    }
+
     protected PhaseSuite<HighTierContext> createGraphBuilderSuite(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, Replacements replacements) {
         PhaseSuite<HighTierContext> suite = new PhaseSuite<>();
         GraphBuilderConfiguration config = GraphBuilderConfiguration.getDefault();
@@ -127,10 +149,55 @@ public class HotSpotSuitesProvider implements SuitesProvider {
                     if (subst != null) {
                         return subst;
                     }
+                    if (builder.parsingReplacement() && method.getAnnotation(NodeIntrinsic.class) == null) {
+                        return method;
+                    }
                     if (method.hasBytecodes() && method.getCode().length <= TrivialInliningSize.getValue() && depth < InlineDuringParsingMaxDepth.getValue()) {
                         return method;
                     }
                     return null;
+                }
+            });
+            config.setAnnotatedInvocationPlugin(new AnnotatedInvocationPlugin() {
+                public boolean apply(GraphBuilderContext builder, ResolvedJavaMethod method, ValueNode[] args) {
+                    if (builder.parsingReplacement()) {
+                        @SuppressWarnings("hiding")
+                        NodeIntrinsificationPhase intrinsifier = getIntrinsifier();
+                        NodeIntrinsic intrinsic = intrinsifier.getIntrinsic(method);
+                        if (intrinsic != null) {
+                            Signature sig = method.getSignature();
+                            Kind returnKind = sig.getReturnKind();
+                            Stamp stamp = StampFactory.forKind(returnKind);
+                            if (returnKind == Kind.Object) {
+                                JavaType returnType = sig.getReturnType(method.getDeclaringClass());
+                                if (returnType instanceof ResolvedJavaType) {
+                                    stamp = StampFactory.declared((ResolvedJavaType) returnType);
+                                }
+                            }
+
+                            ValueNode res = intrinsifier.createIntrinsicNode(Arrays.asList(args), stamp, method, builder.getGraph(), intrinsic);
+                            res = builder.append(res);
+                            if (res.getKind().getStackKind() != Kind.Void) {
+                                builder.push(returnKind.getStackKind(), res);
+                            }
+                            return true;
+                        } else if (intrinsifier.isFoldable(method)) {
+                            ResolvedJavaType[] parameterTypes = resolveJavaTypes(method.toParameterTypes(), method.getDeclaringClass());
+                            JavaConstant constant = intrinsifier.tryFold(Arrays.asList(args), parameterTypes, method);
+                            if (!COULD_NOT_FOLD.equals(constant)) {
+                                if (constant != null) {
+                                    // Replace the invoke with the result of the call
+                                    ConstantNode res = builder.append(ConstantNode.forConstant(constant, getMetaAccess()));
+                                    builder.push(res.getKind().getStackKind(), builder.append(res));
+                                } else {
+                                    // This must be a void invoke
+                                    assert method.getSignature().getReturnKind() == Kind.Void;
+                                }
+                                return true;
+                            }
+                        }
+                    }
+                    return false;
                 }
             });
         }

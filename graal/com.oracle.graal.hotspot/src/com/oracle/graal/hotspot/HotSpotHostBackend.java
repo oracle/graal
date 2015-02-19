@@ -33,6 +33,7 @@ import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.replacements.*;
 
 /**
  * Common functionality of HotSpot host backends.
@@ -73,7 +74,7 @@ public abstract class HotSpotHostBackend extends HotSpotBackend {
         try (InitTimer st = timer("graphBuilderPlugins.initialize")) {
             GraphBuilderPhase phase = (GraphBuilderPhase) providers.getSuites().getDefaultGraphBuilderSuite().findPhase(GraphBuilderPhase.class).previous();
             InvocationPlugins plugins = phase.getGraphBuilderConfig().getInvocationPlugins();
-            registerInvocationPlugins(providers.getMetaAccess(), plugins);
+            registerInvocationPlugins(providers, plugins);
         }
 
         try (InitTimer st = timer("foreignCalls.initialize")) {
@@ -105,8 +106,8 @@ public abstract class HotSpotHostBackend extends HotSpotBackend {
         }
     }
 
-    protected void registerInvocationPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
-        StandardGraphBuilderPlugins.registerInvocationPlugins(metaAccess, plugins);
-        HotSpotGraphBuilderPlugins.registerInvocationPlugins(metaAccess, plugins);
+    protected void registerInvocationPlugins(HotSpotProviders providers, InvocationPlugins plugins) {
+        StandardGraphBuilderPlugins.registerInvocationPlugins(providers.getMetaAccess(), plugins);
+        HotSpotGraphBuilderPlugins.registerInvocationPlugins(providers, plugins);
     }
 }
