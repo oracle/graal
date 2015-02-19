@@ -27,6 +27,7 @@ import static com.oracle.graal.java.GraphBuilderContext.*;
 import static java.lang.Character.*;
 import sun.misc.*;
 
+import com.oracle.graal.api.directives.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.java.GraphBuilderPlugin.InvocationPlugin;
@@ -34,6 +35,7 @@ import com.oracle.graal.java.InvocationPlugins.Registration;
 import com.oracle.graal.java.InvocationPlugins.Registration.Receiver;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.debug.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.replacements.nodes.*;
@@ -42,18 +44,36 @@ import com.oracle.graal.replacements.nodes.*;
  * Provides non-runtime specific {@link InvocationPlugin}s.
  */
 public class StandardGraphBuilderPlugins {
-    public static void registerInvocationPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
-        Registration r = new Registration(plugins, metaAccess, Object.class);
-        r.register1("<init>", Receiver.class, new InvocationPlugin() {
-            public boolean apply(GraphBuilderContext builder, ValueNode object) {
-                if (RegisterFinalizerNode.mayHaveFinalizer(object, builder.getAssumptions())) {
-                    builder.append(new RegisterFinalizerNode(object));
-                }
-                return true;
-            }
-        });
 
-        r = new Registration(plugins, metaAccess, Math.class);
+    public static void registerInvocationPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
+        registerObjectPlugins(metaAccess, plugins);
+        registerMathPlugins(metaAccess, plugins);
+        registerUnsafePlugins(metaAccess, plugins);
+        registerGraalDirectivesPlugins(metaAccess, plugins);
+    }
+
+    public static void registerUnsafePlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, metaAccess, Unsafe.class);
+        for (Kind kind : Kind.values()) {
+            if ((kind.isPrimitive() && kind != Kind.Void) || kind == Kind.Object) {
+                String kindName = kind.getJavaName();
+                kindName = toUpperCase(kindName.charAt(0)) + kindName.substring(1);
+                String getName = "get" + kindName;
+                String putName = "put" + kindName;
+                r.register3(getName, Receiver.class, Object.class, long.class, new UnsafeGetPlugin(kind, false));
+                r.register4(putName, Receiver.class, Object.class, long.class, kind == Kind.Object ? Object.class : kind.toJavaClass(), new UnsafePutPlugin(kind, false));
+                r.register3(getName + "Volatile", Receiver.class, Object.class, long.class, new UnsafeGetPlugin(kind, true));
+                r.register4(putName + "Volatile", Receiver.class, Object.class, long.class, kind == Kind.Object ? Object.class : kind.toJavaClass(), new UnsafePutPlugin(kind, true));
+                if (kind != Kind.Boolean && kind != Kind.Object) {
+                    r.register2(getName, Receiver.class, long.class, new UnsafeGetPlugin(kind, false));
+                    r.register3(putName, Receiver.class, long.class, kind.toJavaClass(), new UnsafePutPlugin(kind, false));
+                }
+            }
+        }
+    }
+
+    public static void registerMathPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, metaAccess, Math.class);
         r.register1("abs", Float.TYPE, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext builder, ValueNode value) {
                 builder.push(Kind.Float, builder.append(new AbsNode(value)));
@@ -79,25 +99,18 @@ public class StandardGraphBuilderPlugins {
                 new UnboxPlugin(kind).register(metaAccess, plugins);
             }
         }
+    }
 
-        r = new Registration(plugins, metaAccess, Unsafe.class);
-        for (Kind kind : Kind.values()) {
-            if ((kind.isPrimitive() && kind != Kind.Void) || kind == Kind.Object) {
-                String kindName = kind.getJavaName();
-                kindName = toUpperCase(kindName.charAt(0)) + kindName.substring(1);
-                String getName = "get" + kindName;
-                String putName = "put" + kindName;
-                r.register3(getName, Receiver.class, Object.class, long.class, new UnsafeGetPlugin(kind, false));
-                r.register4(putName, Receiver.class, Object.class, long.class, kind == Kind.Object ? Object.class : kind.toJavaClass(), new UnsafePutPlugin(kind, false));
-                r.register3(getName + "Volatile", Receiver.class, Object.class, long.class, new UnsafeGetPlugin(kind, true));
-                r.register4(putName + "Volatile", Receiver.class, Object.class, long.class, kind == Kind.Object ? Object.class : kind.toJavaClass(), new UnsafePutPlugin(kind, true));
-                if (kind != Kind.Boolean && kind != Kind.Object) {
-                    r.register2(getName, Receiver.class, long.class, new UnsafeGetPlugin(kind, false));
-                    r.register3(putName, Receiver.class, long.class, kind.toJavaClass(), new UnsafePutPlugin(kind, false));
+    public static void registerObjectPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, metaAccess, Object.class);
+        r.register1("<init>", Receiver.class, new InvocationPlugin() {
+            public boolean apply(GraphBuilderContext builder, ValueNode object) {
+                if (RegisterFinalizerNode.mayHaveFinalizer(object, builder.getAssumptions())) {
+                    builder.append(new RegisterFinalizerNode(object));
                 }
+                return true;
             }
-        }
-        GraalDirectivePlugins.registerInvocationPlugins(metaAccess, plugins);
+        });
     }
 
     static class BoxPlugin implements InvocationPlugin {
@@ -193,6 +206,75 @@ public class StandardGraphBuilderPlugins {
             }
             return true;
         }
-
     }
+
+    public static void registerGraalDirectivesPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, metaAccess, GraalDirectives.class);
+        r.register0("deoptimize", new InvocationPlugin() {
+            public boolean apply(GraphBuilderContext builder) {
+                builder.append(new DeoptimizeNode(DeoptimizationAction.None, DeoptimizationReason.TransferToInterpreter));
+                return true;
+            }
+        });
+
+        r.register0("deoptimizeAndInvalidate", new InvocationPlugin() {
+            public boolean apply(GraphBuilderContext builder) {
+                builder.append(new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.TransferToInterpreter));
+                return true;
+            }
+        });
+
+        r.register0("inCompiledCode", new InvocationPlugin() {
+            public boolean apply(GraphBuilderContext builder) {
+                builder.push(Kind.Int, builder.append(ConstantNode.forInt(1)));
+                return true;
+            }
+        });
+
+        r.register0("controlFlowAnchor", new InvocationPlugin() {
+            public boolean apply(GraphBuilderContext builder) {
+                builder.append(new ControlFlowAnchorNode());
+                return true;
+            }
+        });
+
+        r.register2("injectBranchProbability", double.class, boolean.class, new InvocationPlugin() {
+            public boolean apply(GraphBuilderContext builder, ValueNode probability, ValueNode condition) {
+                builder.push(Kind.Int, builder.append(new BranchProbabilityNode(probability, condition)));
+                return true;
+            }
+        });
+
+        InvocationPlugin blackholePlugin = new InvocationPlugin() {
+            public boolean apply(GraphBuilderContext builder, ValueNode value) {
+                builder.append(new BlackholeNode(value));
+                return true;
+            }
+        };
+
+        for (Kind kind : Kind.values()) {
+            Class<?> cls = null;
+            switch (kind) {
+                case Object:
+                    cls = Object.class;
+                    break;
+                case Void:
+                case Illegal:
+                    continue;
+                default:
+                    cls = kind.toJavaClass();
+            }
+
+            r.register1("blackhole", cls, blackholePlugin);
+
+            final Kind stackKind = kind.getStackKind();
+            r.register1("opaque", cls, new InvocationPlugin() {
+                public boolean apply(GraphBuilderContext builder, ValueNode value) {
+                    builder.push(stackKind, builder.append(new OpaqueNode(value)));
+                    return true;
+                }
+            });
+        }
+    }
+
 }

@@ -55,7 +55,13 @@ public class HotSpotGraphBuilderPlugins {
         SnippetReflectionProvider snippetReflection = providers.getSnippetReflection();
         Kind wordKind = providers.getCodeCache().getTarget().wordKind;
 
-        // Object.class
+        registerObjectPlugins(plugins, metaAccess);
+        registerClassPlugins(plugins, metaAccess);
+        registerStableOptionPlugins(plugins, metaAccess);
+        registerMetaspacePointerPlugins(plugins, metaAccess, snippetReflection, wordKind);
+    }
+
+    private static void registerObjectPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess) {
         Registration r = new Registration(plugins, metaAccess, Object.class);
         r.register1("getClass", Receiver.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext builder, ValueNode rcvr) {
@@ -72,9 +78,10 @@ public class HotSpotGraphBuilderPlugins {
                 return true;
             }
         });
+    }
 
-        // Class.class
-        r = new Registration(plugins, metaAccess, Class.class);
+    private static void registerClassPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess) {
+        Registration r = new Registration(plugins, metaAccess, Class.class);
         r.register2("cast", Receiver.class, Object.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext builder, ValueNode rcvr, ValueNode object) {
                 if (rcvr.isConstant() && !rcvr.isNullConstant()) {
@@ -100,9 +107,10 @@ public class HotSpotGraphBuilderPlugins {
                 return false;
             }
         });
+    }
 
-        // StableOptionValue.class
-        r = new Registration(plugins, metaAccess, StableOptionValue.class);
+    private static void registerStableOptionPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess) {
+        Registration r = new Registration(plugins, metaAccess, StableOptionValue.class);
         r.register1("getValue", Receiver.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext builder, ValueNode rcvr) {
                 if (rcvr.isConstant() && !rcvr.isNullConstant()) {
@@ -115,9 +123,10 @@ public class HotSpotGraphBuilderPlugins {
                 return false;
             }
         });
+    }
 
-        // MetaspacePointer.class
-        r = new Registration(plugins, metaAccess, MetaspacePointer.class);
+    private static void registerMetaspacePointerPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflection, Kind wordKind) {
+        Registration r = new Registration(plugins, metaAccess, MetaspacePointer.class);
         r.register1("isNull", Receiver.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext builder, ValueNode pointer) {
                 assert pointer.stamp() instanceof MetaspacePointerStamp;
@@ -144,7 +153,7 @@ public class HotSpotGraphBuilderPlugins {
         registerWordOpPlugins(r, snippetReflection, wordKind, Kind.Byte, Kind.Short, Kind.Char, Kind.Int, Kind.Float, Kind.Long, Kind.Double);
     }
 
-    protected static void registerWordOpPlugins(Registration r, SnippetReflectionProvider snippetReflection, Kind wordKind, Kind... kinds) {
+    private static void registerWordOpPlugins(Registration r, SnippetReflectionProvider snippetReflection, Kind wordKind, Kind... kinds) {
         for (Kind kind : kinds) {
             String kindName = kind.getJavaName();
             kindName = toUpperCase(kindName.charAt(0)) + kindName.substring(1);

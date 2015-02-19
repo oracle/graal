@@ -52,7 +52,21 @@ import com.oracle.truffle.api.frame.*;
 public class TruffleGraphBuilderPlugins {
     public static void registerInvocationPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
 
-        // OptimizedAssumption.class
+        registerOptimizedAssumptionPlugins(metaAccess, plugins);
+        registerExactMathPlugins(metaAccess, plugins);
+        registerCompilerDirectivesPlugins(metaAccess, plugins);
+        registerOptimizedCallTargetPlugins(metaAccess, plugins);
+        registerUnsafeAccessImplPlugins(metaAccess, plugins);
+
+        if (TruffleCompilerOptions.TruffleUseFrameWithoutBoxing.getValue()) {
+            registerFrameWithoutBoxingPlugins(metaAccess, plugins);
+        } else {
+            registerFrameWithBoxingPlugins(metaAccess, plugins);
+        }
+
+    }
+
+    public static void registerOptimizedAssumptionPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
         Registration r = new Registration(plugins, metaAccess, OptimizedAssumption.class);
         r.register1("isValid", Receiver.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext builder, ValueNode arg) {
@@ -69,9 +83,10 @@ public class TruffleGraphBuilderPlugins {
                 return true;
             }
         });
+    }
 
-        // ExactMath.class
-        r = new Registration(plugins, metaAccess, ExactMath.class);
+    public static void registerExactMathPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, metaAccess, ExactMath.class);
         r.register2("addExact", Integer.TYPE, Integer.TYPE, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext builder, ValueNode x, ValueNode y) {
                 builder.push(Kind.Int.getStackKind(), builder.append(new IntegerAddExactNode(x, y)));
@@ -108,9 +123,10 @@ public class TruffleGraphBuilderPlugins {
                 return true;
             }
         });
+    }
 
-        // CompilerDirectives.class
-        r = new Registration(plugins, metaAccess, CompilerDirectives.class);
+    public static void registerCompilerDirectivesPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, metaAccess, CompilerDirectives.class);
         r.register0("inInterpreter", new InvocationPlugin() {
             public boolean apply(GraphBuilderContext builder) {
                 builder.push(Kind.Boolean.getStackKind(), builder.append(ConstantNode.forBoolean(false)));
@@ -175,9 +191,10 @@ public class TruffleGraphBuilderPlugins {
                 return true;
             }
         });
+    }
 
-        // OptimizedCallTarget.class
-        r = new Registration(plugins, metaAccess, OptimizedCallTarget.class);
+    public static void registerOptimizedCallTargetPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, metaAccess, OptimizedCallTarget.class);
         r.register2("createFrame", FrameDescriptor.class, Object[].class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext builder, ValueNode arg1, ValueNode arg2) {
                 Class<?> frameClass = TruffleCompilerOptions.TruffleUseFrameWithoutBoxing.getValue() ? FrameWithoutBoxing.class : FrameWithBoxing.class;
@@ -185,22 +202,23 @@ public class TruffleGraphBuilderPlugins {
                 return true;
             }
         });
+    }
 
-        if (TruffleCompilerOptions.TruffleUseFrameWithoutBoxing.getValue()) {
-            // FrameWithoutBoxing.class
-            r = new Registration(plugins, metaAccess, FrameWithoutBoxing.class);
-            registerMaterialize(r);
-            registerUnsafeCast(r);
-            registerUnsafeLoadStorePlugins(r, Kind.Int, Kind.Long, Kind.Float, Kind.Double, Kind.Object);
-        } else {
-            // FrameWithBoxing.class
-            r = new Registration(plugins, metaAccess, FrameWithBoxing.class);
-            registerMaterialize(r);
-            registerUnsafeCast(r);
-        }
+    public static void registerFrameWithoutBoxingPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, metaAccess, FrameWithoutBoxing.class);
+        registerMaterialize(r);
+        registerUnsafeCast(r);
+        registerUnsafeLoadStorePlugins(r, Kind.Int, Kind.Long, Kind.Float, Kind.Double, Kind.Object);
+    }
 
-        // CompilerDirectives.class
-        r = new Registration(plugins, metaAccess, UnsafeAccessImpl.class);
+    public static void registerFrameWithBoxingPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, metaAccess, FrameWithBoxing.class);
+        registerMaterialize(r);
+        registerUnsafeCast(r);
+    }
+
+    public static void registerUnsafeAccessImplPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, metaAccess, UnsafeAccessImpl.class);
         registerUnsafeCast(r);
         registerUnsafeLoadStorePlugins(r, Kind.Boolean, Kind.Byte, Kind.Int, Kind.Short, Kind.Long, Kind.Float, Kind.Double, Kind.Object);
     }
