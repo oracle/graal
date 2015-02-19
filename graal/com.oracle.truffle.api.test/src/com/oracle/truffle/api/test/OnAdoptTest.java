@@ -30,13 +30,13 @@ import com.oracle.truffle.api.nodes.*;
 
 /**
  * <h3>Inserting Extra Nodes into the AST Transparently</h3>
- * 
+ *
  * <p>
  * The {@link Node} class provides a callback that is invoked whenever a node is adopted in an AST
  * by insertion or replacement. Node classes can override the {@code onAdopt()} method to run extra
  * functionality upon adoption.
  * </p>
- * 
+ *
  * <p>
  * This test demonstrates how node instances of a specific class can be automatically wrapped in
  * extra nodes when they are inserted into the AST.

@@ -26,18 +26,18 @@ package com.oracle.truffle.api.utilities;
 
 /**
  * Utility class to speculate on certain properties of values.
- * 
+ *
  * Example usage:
- * 
+ *
  * <pre>
  * private final ValueProfile classProfile = ValueProfile.createClassProfile();
- * 
+ *
  * return classProfile.profile(value);
  * </pre>
- * 
+ *
  * All instances of {@code ValueProfile} (and subclasses) must be held in {@code final} fields for
  * compiler optimizations to take effect.
- * 
+ *
  * @see #createPrimitiveProfile()
  * @see #createIdentityProfile()
  * @see #createClassProfile()

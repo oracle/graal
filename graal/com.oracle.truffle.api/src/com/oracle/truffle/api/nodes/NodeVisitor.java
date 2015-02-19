@@ -32,7 +32,7 @@ public interface NodeVisitor {
     /**
      * This visitor method is called for every node in the tree. Its return value determines if the
      * children of this node should be excluded in the iteration.
-     * 
+     *
      * @param node the node that is currently visited
      * @return {@code true} if the children should be visited too, {@code false} otherwise
      */

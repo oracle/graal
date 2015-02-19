@@ -39,7 +39,7 @@ public interface SerializerConstantPool {
      * additional types that are necessary to serialize a truffle AST for a specific truffle
      * implementation. If a type is not supported by this constant pool implementation a
      * {@link UnsupportedConstantPoolTypeException} should be thrown.
-     * 
+     *
      * @param clazz the {@link Class} of the value
      * @param value the value to be stored. Must be at least a subclass of the given clazz.
      * @return the constant pool index
@@ -54,7 +54,7 @@ public interface SerializerConstantPool {
      * are necessary to serialize a truffle AST for a specific truffle implementation. If a type is
      * not supported by this constant pool implementation a
      * {@link UnsupportedConstantPoolTypeException} should be thrown.
-     * 
+     *
      * @param clazz the {@link Class} of the value in the constant pool.
      * @param cpi the previously returned index
      * @return the value stored inside the constant pool
@@ -66,7 +66,7 @@ public interface SerializerConstantPool {
 
     /**
      * Stores a Class instance in the constant pool and returns the constant pool index.
-     * 
+     *
      * @param value the class to store
      * @return the new or existing constant pool index of the Class
      */
@@ -74,7 +74,7 @@ public interface SerializerConstantPool {
 
     /**
      * Returns the {@link Class} instance to the given constant pool index.
-     * 
+     *
      * @param cpi the constant pool index
      * @return stored value
      * @throws IllegalArgumentException if the constant pool indes is invalid.
@@ -83,7 +83,7 @@ public interface SerializerConstantPool {
 
     /**
      * Stores an int value in the constant pool and returns the constant pool index.
-     * 
+     *
      * @param value the value to store
      * @return the new or existing constant pool index of the value
      */
@@ -91,7 +91,7 @@ public interface SerializerConstantPool {
 
     /**
      * Returns the stored int value to the given constant pool index from the constant pool.
-     * 
+     *
      * @param cpi the constant pool index
      * @return stored value
      * @throws IllegalArgumentException if the constant pool index is invalid.
@@ -100,7 +100,7 @@ public interface SerializerConstantPool {
 
     /**
      * Stores a long value in the constant pool and returns the constant pool index.
-     * 
+     *
      * @param value the value to store
      * @return the new or existing constant pool index of the value
      */
@@ -108,7 +108,7 @@ public interface SerializerConstantPool {
 
     /**
      * Returns the stored long value to the given constant pool index from the constant pool.
-     * 
+     *
      * @param cpi the constant pool index
      * @return the stored value
      * @throws IllegalArgumentException if the constant pool index is invalid.
@@ -117,7 +117,7 @@ public interface SerializerConstantPool {
 
     /**
      * Stores a double value in the constant pool and returns the constant pool index.
-     * 
+     *
      * @param value the value to store
      * @return the new or existing constant pool index of the value
      */
@@ -125,7 +125,7 @@ public interface SerializerConstantPool {
 
     /**
      * Returns the stored double value to the given constant pool index from the constant pool.
-     * 
+     *
      * @param cpi the constant pool index
      * @return the stored value
      * @throws IllegalArgumentException if the constant pool index is invalid.
@@ -134,7 +134,7 @@ public interface SerializerConstantPool {
 
     /**
      * Stores a float value in the constant pool and returns the constant pool index.
-     * 
+     *
      * @param value the value to store
      * @return the new or existing constant pool index of the value
      */
@@ -142,7 +142,7 @@ public interface SerializerConstantPool {
 
     /**
      * Returns the stored float value to the given constant pool index from the constant pool.
-     * 
+     *
      * @param cpi the constant pool index
      * @return the stored value
      * @throws IllegalArgumentException if the constant pool index is invalid.

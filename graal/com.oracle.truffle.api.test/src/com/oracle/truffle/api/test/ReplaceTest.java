@@ -34,19 +34,19 @@ import com.oracle.truffle.api.nodes.*;
 
 /**
  * <h3>Replacing Nodes at Run Time</h3>
- * 
+ *
  * <p>
  * The structure of the Truffle tree can be changed at run time by replacing nodes using the
  * {@link Node#replace(Node)} method. This method will automatically change the child pointer in the
  * parent of the node and replace it with a pointer to the new node.
  * </p>
- * 
+ *
  * <p>
  * Replacing nodes is a costly operation, so it should not happen too often. The convention is that
  * the implementation of the Truffle nodes should ensure that there are maximal a small (and
  * constant) number of node replacements per Truffle node.
  * </p>
- * 
+ *
  * <p>
  * The next part of the Truffle API introduction is at {@link com.oracle.truffle.api.test.CallTest}.
  * </p>
