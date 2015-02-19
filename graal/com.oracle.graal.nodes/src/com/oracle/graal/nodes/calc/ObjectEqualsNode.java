@@ -92,7 +92,7 @@ public final class ObjectEqualsNode extends PointerEqualsNode implements Virtual
                 /*
                  * One of the two objects has identity, the other doesn't. In code, this looks like
                  * "Integer.valueOf(a) == new Integer(b)", which is always false.
-                 * 
+                 *
                  * In other words: an object created via valueOf can never be equal to one created
                  * by new in the same compilation unit.
                  */

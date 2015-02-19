@@ -64,7 +64,7 @@ public class CalleeSaveLayout {
 
     /**
      * Creates a CSA layout.
-     * 
+     *
      * @param size size (in bytes) of the CSA. If this is {@code -1}, then the CSA size will be
      *            computed from {@code registers}.
      * @param slotSize the size (in bytes) of an {@linkplain #registerAt(int) indexable} slot in the
@@ -113,7 +113,7 @@ public class CalleeSaveLayout {
 
     /**
      * Gets the offset of a given register in the CSA.
-     * 
+     *
      * @return the offset (in bytes) of {@code reg} in the CSA
      * @throws IllegalArgumentException if {@code reg} does not have a slot in the CSA
      */
@@ -123,7 +123,7 @@ public class CalleeSaveLayout {
 
     /**
      * Gets the index of a given register in the CSA.
-     * 
+     *
      * @return the index of {@code reg} in the CSA
      * @throws IllegalArgumentException if {@code reg} does not have a slot in the CSA
      */
@@ -136,7 +136,7 @@ public class CalleeSaveLayout {
 
     /**
      * Gets the offset of a given register in the CSA.
-     * 
+     *
      * @return the offset (in bytes) of {@code reg} in the CSA
      * @throws IllegalArgumentException if {@code reg} does not have a slot in the CSA
      */
@@ -146,7 +146,7 @@ public class CalleeSaveLayout {
 
     /**
      * Determines if the CSA includes a slot for a given register.
-     * 
+     *
      * @param reg the register to test
      * @return true if the CSA contains a slot for {@code reg}
      */
@@ -156,7 +156,7 @@ public class CalleeSaveLayout {
 
     /**
      * Gets the register whose slot in the CSA is at a given index.
-     * 
+     *
      * @param index an index of a slot in the CSA
      * @return the register whose slot in the CSA is at {@code index} or {@code null} if
      *         {@code index} does not denote a slot in the CSA aligned with a register

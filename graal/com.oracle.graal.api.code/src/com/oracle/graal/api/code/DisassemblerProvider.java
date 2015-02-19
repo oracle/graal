@@ -29,7 +29,7 @@ public interface DisassemblerProvider {
 
     /**
      * Gets a textual disassembly of some given installed code.
-     * 
+     *
      * @return a non-zero length string containing a disassembly of {@code code} or null if
      *         {@code code} is {@link InstalledCode#isValid() invalid} or it could not be
      *         disassembled for some other reason

@@ -149,7 +149,7 @@ final class APHotSpotSignature {
 
     /**
      * Returns the kind from the character describing a primitive or void.
-     * 
+     *
      * @param ch the character
      * @return the kind
      */

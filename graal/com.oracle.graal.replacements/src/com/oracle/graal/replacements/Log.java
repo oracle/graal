@@ -80,7 +80,7 @@ public final class Log {
 
     /**
      * Prints a formatted string to the log stream.
-     * 
+     *
      * @param format a C style printf format value that can contain at most one conversion specifier
      *            (i.e., a sequence of characters starting with '%').
      * @param value the value associated with the conversion specifier

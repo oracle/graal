@@ -29,7 +29,7 @@ import com.oracle.graal.api.meta.*;
 
 /**
  * Manages a list of unique deoptimization reasons.
- * 
+ *
  */
 public abstract class SpeculationLog {
     private volatile Object lastFailed;

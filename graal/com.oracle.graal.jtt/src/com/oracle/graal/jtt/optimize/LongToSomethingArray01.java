@@ -28,7 +28,7 @@ import com.oracle.graal.jtt.*;
 
 /**
  * inspired by java.security.SecureRandom.longToByteArray(long).
- * 
+ *
  */
 public class LongToSomethingArray01 extends JTTTest {
 

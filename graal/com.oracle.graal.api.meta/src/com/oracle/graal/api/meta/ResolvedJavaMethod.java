@@ -282,7 +282,7 @@ public interface ResolvedJavaMethod extends JavaMethod, InvokeTarget, ModifiersP
 
     /**
      * Checks whether the method has a receiver parameter - i.e., whether it is not static.
-     * 
+     *
      * @return whether the method has a receiver parameter
      */
     default boolean hasReceiver() {
