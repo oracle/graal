@@ -197,9 +197,9 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             private boolean controlFlowSplit;
 
             private FixedWithNextNode[] firstInstructionArray;
-            private AbstractFrameStateBuilder<?, ?>[] entryStateArray;
+            private HIRFrameStateBuilder[] entryStateArray;
             private FixedWithNextNode[][] firstInstructionMatrix;
-            private AbstractFrameStateBuilder<?, ?>[][] entryStateMatrix;
+            private HIRFrameStateBuilder[][] entryStateMatrix;
 
             /**
              * @param isReplacement specifies if this object is being used to parse a method that
@@ -253,7 +253,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     BciBlockMapping newMapping = BciBlockMapping.create(stream, method);
                     this.blockMap = newMapping;
                     this.firstInstructionArray = new FixedWithNextNode[blockMap.getBlockCount()];
-                    this.entryStateArray = new AbstractFrameStateBuilder<?, ?>[blockMap.getBlockCount()];
+                    this.entryStateArray = new HIRFrameStateBuilder[blockMap.getBlockCount()];
 
                     if (graphBuilderConfig.doLivenessAnalysis()) {
                         try (Scope s = Debug.scope("LivenessAnalysis")) {
@@ -1260,7 +1260,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 }
             }
 
-            private void setEntryState(BciBlock block, int dimension, AbstractFrameStateBuilder<?, ?> entryState) {
+            private void setEntryState(BciBlock block, int dimension, HIRFrameStateBuilder entryState) {
                 int id = block.id;
                 if (dimension == 0) {
                     this.entryStateArray[id] = entryState;
@@ -1269,9 +1269,9 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 }
             }
 
-            private void setEntryStateMultiDimension(int dimension, AbstractFrameStateBuilder<?, ?> entryState, int id) {
+            private void setEntryStateMultiDimension(int dimension, HIRFrameStateBuilder entryState, int id) {
                 if (entryStateMatrix == null) {
-                    entryStateMatrix = new AbstractFrameStateBuilder<?, ?>[4][];
+                    entryStateMatrix = new HIRFrameStateBuilder[4][];
                 }
                 if (dimension - 1 < entryStateMatrix.length) {
                     // We are within bounds.
@@ -1280,7 +1280,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     entryStateMatrix = Arrays.copyOf(entryStateMatrix, Math.max(entryStateMatrix.length * 2, dimension));
                 }
                 if (entryStateMatrix[dimension - 1] == null) {
-                    entryStateMatrix[dimension - 1] = new AbstractFrameStateBuilder<?, ?>[blockMap.getBlockCount()];
+                    entryStateMatrix[dimension - 1] = new HIRFrameStateBuilder[blockMap.getBlockCount()];
                 }
                 entryStateMatrix[dimension - 1][id] = entryState;
             }
@@ -1367,7 +1367,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     targetNode = getFirstInstruction(block, operatingDimension);
                     Target target = checkLoopExit(targetNode, block, state);
                     FixedNode result = target.fixed;
-                    AbstractFrameStateBuilder<?, ?> currentEntryState = target.state == state ? state.copy() : target.state;
+                    HIRFrameStateBuilder currentEntryState = target.state == state ? state.copy() : target.state;
                     setEntryState(block, operatingDimension, currentEntryState);
                     currentEntryState.clearNonLiveLocals(block, liveness, true);
 
