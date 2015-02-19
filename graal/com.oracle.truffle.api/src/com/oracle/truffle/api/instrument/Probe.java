@@ -338,11 +338,7 @@ public final class Probe implements SyntaxTagged {
     }
 
     private void notifyTrapSet() {
-        if (tagTrap == null && !isTrapActive) {
-            // Special case, could be common, where we don't need to do anything.
-            return;
-        }
-        this.isTrapActive = this.isTaggedAs(tagTrap.getTag());
+        this.isTrapActive = tagTrap != null && this.isTaggedAs(tagTrap.getTag());
         invalidateProbeUnchanged();
     }
 
