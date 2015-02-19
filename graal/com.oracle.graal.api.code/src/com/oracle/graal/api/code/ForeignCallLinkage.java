@@ -57,7 +57,7 @@ public interface ForeignCallLinkage extends InvokeTarget {
 
     /**
      * Determines if the foreign call target destroys all registers.
-     * 
+     *
      * @return {@code true} if the register allocator must save all live registers around a call to
      *         this target
      */

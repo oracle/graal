@@ -26,7 +26,7 @@ public interface Unsigned extends ComparableWord {
 
     /**
      * Returns a Unsigned whose value is {@code (this + val)}.
-     * 
+     *
      * @param val value to be added to this Unsigned.
      * @return {@code this + val}
      */
@@ -34,7 +34,7 @@ public interface Unsigned extends ComparableWord {
 
     /**
      * Returns a Unsigned whose value is {@code (this - val)}.
-     * 
+     *
      * @param val value to be subtracted from this Unsigned.
      * @return {@code this - val}
      */
@@ -42,7 +42,7 @@ public interface Unsigned extends ComparableWord {
 
     /**
      * Returns a Unsigned whose value is {@code (this * val)}.
-     * 
+     *
      * @param val value to be multiplied by this Unsigned.
      * @return {@code this * val}
      */
@@ -50,7 +50,7 @@ public interface Unsigned extends ComparableWord {
 
     /**
      * Returns a Unsigned whose value is {@code (this / val)}.
-     * 
+     *
      * @param val value by which this Unsigned is to be divided.
      * @return {@code this / val}
      */
@@ -58,7 +58,7 @@ public interface Unsigned extends ComparableWord {
 
     /**
      * Returns a Unsigned whose value is {@code (this % val)}.
-     * 
+     *
      * @param val value by which this Unsigned is to be divided, and the remainder computed.
      * @return {@code this % val}
      */
@@ -66,7 +66,7 @@ public interface Unsigned extends ComparableWord {
 
     /**
      * Returns a Unsigned whose value is {@code (this << n)}.
-     * 
+     *
      * @param n shift distance, in bits.
      * @return {@code this << n}
      */
@@ -74,7 +74,7 @@ public interface Unsigned extends ComparableWord {
 
     /**
      * Returns a Unsigned whose value is {@code (this >>> n)}. No sign extension is performed.
-     * 
+     *
      * @param n shift distance, in bits.
      * @return {@code this >> n}
      */
@@ -82,7 +82,7 @@ public interface Unsigned extends ComparableWord {
 
     /**
      * Returns a Unsigned whose value is {@code (this & val)}.
-     * 
+     *
      * @param val value to be AND'ed with this Unsigned.
      * @return {@code this & val}
      */
@@ -90,7 +90,7 @@ public interface Unsigned extends ComparableWord {
 
     /**
      * Returns a Unsigned whose value is {@code (this | val)}.
-     * 
+     *
      * @param val value to be OR'ed with this Unsigned.
      * @return {@code this | val}
      */
@@ -98,7 +98,7 @@ public interface Unsigned extends ComparableWord {
 
     /**
      * Returns a Unsigned whose value is {@code (this ^ val)}.
-     * 
+     *
      * @param val value to be XOR'ed with this Unsigned.
      * @return {@code this ^ val}
      */
@@ -106,14 +106,14 @@ public interface Unsigned extends ComparableWord {
 
     /**
      * Returns a Unsigned whose value is {@code (~this)}.
-     * 
+     *
      * @return {@code ~this}
      */
     Unsigned not();
 
     /**
      * Compares this Unsigned with the specified value.
-     * 
+     *
      * @param val value to which this Unsigned is to be compared.
      * @return {@code this == val}
      */
@@ -121,7 +121,7 @@ public interface Unsigned extends ComparableWord {
 
     /**
      * Compares this Unsigned with the specified value.
-     * 
+     *
      * @param val value to which this Unsigned is to be compared.
      * @return {@code this != val}
      */
@@ -129,7 +129,7 @@ public interface Unsigned extends ComparableWord {
 
     /**
      * Compares this Unsigned with the specified value.
-     * 
+     *
      * @param val value to which this Unsigned is to be compared.
      * @return {@code this < val}
      */
@@ -137,7 +137,7 @@ public interface Unsigned extends ComparableWord {
 
     /**
      * Compares this Unsigned with the specified value.
-     * 
+     *
      * @param val value to which this Unsigned is to be compared.
      * @return {@code this <= val}
      */
@@ -145,7 +145,7 @@ public interface Unsigned extends ComparableWord {
 
     /**
      * Compares this Unsigned with the specified value.
-     * 
+     *
      * @param val value to which this Unsigned is to be compared.
      * @return {@code this > val}
      */
@@ -153,7 +153,7 @@ public interface Unsigned extends ComparableWord {
 
     /**
      * Compares this Unsigned with the specified value.
-     * 
+     *
      * @param val value to which this Unsigned is to be compared.
      * @return {@code this >= val}
      */
@@ -164,7 +164,7 @@ public interface Unsigned extends ComparableWord {
      * <p>
      * Note that the right operand is a signed value, while the operation is performed unsigned.
      * Therefore, the result is only well-defined for positive right operands.
-     * 
+     *
      * @param val value to be added to this Unsigned.
      * @return {@code this + val}
      */
@@ -175,7 +175,7 @@ public interface Unsigned extends ComparableWord {
      * <p>
      * Note that the right operand is a signed value, while the operation is performed unsigned.
      * Therefore, the result is only well-defined for positive right operands.
-     * 
+     *
      * @param val value to be subtracted from this Unsigned.
      * @return {@code this - val}
      */
@@ -186,7 +186,7 @@ public interface Unsigned extends ComparableWord {
      * <p>
      * Note that the right operand is a signed value, while the operation is performed unsigned.
      * Therefore, the result is only well-defined for positive right operands.
-     * 
+     *
      * @param val value to be multiplied by this Unsigned.
      * @return {@code this * val}
      */
@@ -197,7 +197,7 @@ public interface Unsigned extends ComparableWord {
      * <p>
      * Note that the right operand is a signed value, while the operation is performed unsigned.
      * Therefore, the result is only well-defined for positive right operands.
-     * 
+     *
      * @param val value by which this Unsigned is to be divided.
      * @return {@code this / val}
      */
@@ -208,7 +208,7 @@ public interface Unsigned extends ComparableWord {
      * <p>
      * Note that the right operand is a signed value, while the operation is performed unsigned.
      * Therefore, the result is only well-defined for positive right operands.
-     * 
+     *
      * @param val value by which this Unsigned is to be divided, and the remainder computed.
      * @return {@code this % val}
      */
@@ -219,7 +219,7 @@ public interface Unsigned extends ComparableWord {
      * <p>
      * Note that the right operand is a signed value, while the operation is performed unsigned.
      * Therefore, the result is only well-defined for positive right operands.
-     * 
+     *
      * @param n shift distance, in bits.
      * @return {@code this << n}
      */
@@ -230,7 +230,7 @@ public interface Unsigned extends ComparableWord {
      * <p>
      * Note that the right operand is a signed value, while the operation is performed unsigned.
      * Therefore, the result is only well-defined for positive right operands.
-     * 
+     *
      * @param n shift distance, in bits.
      * @return {@code this >> n}
      */
@@ -241,7 +241,7 @@ public interface Unsigned extends ComparableWord {
      * <p>
      * Note that the right operand is a signed value, while the operation is performed unsigned.
      * Therefore, the result is only well-defined for positive right operands.
-     * 
+     *
      * @param val value to be AND'ed with this Unsigned.
      * @return {@code this & val}
      */
@@ -252,7 +252,7 @@ public interface Unsigned extends ComparableWord {
      * <p>
      * Note that the right operand is a signed value, while the operation is performed unsigned.
      * Therefore, the result is only well-defined for positive right operands.
-     * 
+     *
      * @param val value to be OR'ed with this Unsigned.
      * @return {@code this | val}
      */
@@ -263,7 +263,7 @@ public interface Unsigned extends ComparableWord {
      * <p>
      * Note that the right operand is a signed value, while the operation is performed unsigned.
      * Therefore, the result is only well-defined for positive right operands.
-     * 
+     *
      * @param val value to be XOR'ed with this Unsigned.
      * @return {@code this ^ val}
      */
@@ -274,7 +274,7 @@ public interface Unsigned extends ComparableWord {
      * <p>
      * Note that the right operand is a signed value, while the operation is performed unsigned.
      * Therefore, the result is only well-defined for positive right operands.
-     * 
+     *
      * @param val value to which this Unsigned is to be compared.
      * @return {@code this == val}
      */
@@ -285,7 +285,7 @@ public interface Unsigned extends ComparableWord {
      * <p>
      * Note that the right operand is a signed value, while the operation is performed unsigned.
      * Therefore, the result is only well-defined for positive right operands.
-     * 
+     *
      * @param val value to which this Unsigned is to be compared.
      * @return {@code this != val}
      */
@@ -296,7 +296,7 @@ public interface Unsigned extends ComparableWord {
      * <p>
      * Note that the right operand is a signed value, while the operation is performed unsigned.
      * Therefore, the result is only well-defined for positive right operands.
-     * 
+     *
      * @param val value to which this Unsigned is to be compared.
      * @return {@code this < val}
      */
@@ -307,7 +307,7 @@ public interface Unsigned extends ComparableWord {
      * <p>
      * Note that the right operand is a signed value, while the operation is performed unsigned.
      * Therefore, the result is only well-defined for positive right operands.
-     * 
+     *
      * @param val value to which this Unsigned is to be compared.
      * @return {@code this <= val}
      */
@@ -318,7 +318,7 @@ public interface Unsigned extends ComparableWord {
      * <p>
      * Note that the right operand is a signed value, while the operation is performed unsigned.
      * Therefore, the result is only well-defined for positive right operands.
-     * 
+     *
      * @param val value to which this Unsigned is to be compared.
      * @return {@code this > val}
      */
@@ -329,7 +329,7 @@ public interface Unsigned extends ComparableWord {
      * <p>
      * Note that the right operand is a signed value, while the operation is performed unsigned.
      * Therefore, the result is only well-defined for positive right operands.
-     * 
+     *
      * @param val value to which this Unsigned is to be compared.
      * @return {@code this >= val}
      */

@@ -40,7 +40,7 @@ class NodeIdAccessor {
 
     /**
      * Verifies that node identifiers have not changed since this object was created.
-     * 
+     *
      * @return true if the check succeeds
      * @throws VerificationError if the check fails
      */

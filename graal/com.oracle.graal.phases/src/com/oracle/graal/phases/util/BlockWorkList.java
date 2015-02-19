@@ -37,7 +37,7 @@ public class BlockWorkList {
 
     /**
      * Adds a block to this list in an unsorted fashion, like a stack.
-     * 
+     *
      * @param block the block to add
      */
     public void add(AbstractMergeNode block) {
@@ -55,7 +55,7 @@ public class BlockWorkList {
     /**
      * Adds a block to this list, sorted by the supplied number. The block with the lowest number is
      * returned upon subsequent removes.
-     * 
+     *
      * @param block the block to add
      * @param number the number used to sort the block
      */
@@ -89,7 +89,7 @@ public class BlockWorkList {
      * Removes the next block from this work list. If the blocks have been added in a sorted order,
      * then the block with the lowest number is returned. Otherwise, the last block added is
      * returned.
-     * 
+     *
      * @return the next block in the list
      */
     public AbstractMergeNode removeFromWorkList() {
@@ -101,7 +101,7 @@ public class BlockWorkList {
 
     /**
      * Checks whether the list is empty.
-     * 
+     *
      * @return {@code true} if this list is empty
      */
     public boolean isEmpty() {

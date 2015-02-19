@@ -50,7 +50,7 @@ public final class Range {
 
     /**
      * Creates a new range.
-     * 
+     *
      * @param from the start of the range, inclusive
      * @param to the end of the range, exclusive
      * @param next link to the next range in a linked list

@@ -32,7 +32,7 @@ import com.oracle.graal.phases.schedule.*;
 /**
  * Iterates over a list of nodes, which usually comes from
  * {@link SchedulePhase#getBlockToNodesMap()}.
- * 
+ *
  * While iterating, it is possible to {@link #insert(FixedNode, FixedWithNextNode) insert} and
  * {@link #replaceCurrent(FixedWithNextNode) replace} nodes.
  */

@@ -37,7 +37,7 @@ public final class ExceptionHandler {
 
     /**
      * Creates a new exception handler with the specified ranges.
-     * 
+     *
      * @param startBCI the start index of the protected range
      * @param endBCI the end index of the protected range
      * @param catchBCI the index of the handler
@@ -83,7 +83,7 @@ public final class ExceptionHandler {
 
     /**
      * Checks whether this handler catches all exceptions.
-     * 
+     *
      * @return {@code true} if this handler catches all exceptions
      */
     public boolean isCatchAll() {
