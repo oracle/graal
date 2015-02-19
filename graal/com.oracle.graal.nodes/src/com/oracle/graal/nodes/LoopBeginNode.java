@@ -98,16 +98,12 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
      *
      * @return the set of {@code LoopEndNode} that correspond to back-edges for this loop
      */
-    public List<LoopEndNode> orderedLoopEnds() {
-        List<LoopEndNode> snapshot = loopEnds().snapshot();
-        Collections.sort(snapshot, new Comparator<LoopEndNode>() {
-
-            @Override
-            public int compare(LoopEndNode o1, LoopEndNode o2) {
-                return o1.endIndex() - o2.endIndex();
-            }
-        });
-        return snapshot;
+    public LoopEndNode[] orderedLoopEnds() {
+        LoopEndNode[] result = new LoopEndNode[this.getLoopEndCount()];
+        for (LoopEndNode end : loopEnds()) {
+            result[end.endIndex()] = end;
+        }
+        return result;
     }
 
     public AbstractEndNode forwardEnd() {
@@ -181,6 +177,10 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
 
     int nextEndIndex() {
         return nextEndIndex++;
+    }
+
+    public int getLoopEndCount() {
+        return nextEndIndex;
     }
 
     public int unswitches() {
