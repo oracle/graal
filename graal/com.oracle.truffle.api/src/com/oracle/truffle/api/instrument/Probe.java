@@ -183,6 +183,7 @@ public final class Probe implements SyntaxTagged {
      * @param newTagTrap The {@link SyntaxTagTrap} to set.
      */
     public static void setTagTrap(SyntaxTagTrap newTagTrap) {
+        tagTrap = newTagTrap;
         for (WeakReference<Probe> ref : probes) {
             final Probe probe = ref.get();
             if (probe != null) {
