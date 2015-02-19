@@ -114,7 +114,7 @@ public class NodeIntrinsificationPhase extends Phase {
         return true;
     }
 
-    @SuppressWarnings("serial") private static final JavaConstant COULD_NOT_FOLD = new PrimitiveConstant(Kind.Illegal, 100) {
+    @SuppressWarnings("serial") public static final JavaConstant COULD_NOT_FOLD = new PrimitiveConstant(Kind.Illegal, 100) {
         @Override
         public boolean equals(Object o) {
             return this == o;
@@ -183,14 +183,14 @@ public class NodeIntrinsificationPhase extends Phase {
     /**
      * Permits a subclass to override the default definition of "intrinsic".
      */
-    protected NodeIntrinsic getIntrinsic(ResolvedJavaMethod method) {
+    public NodeIntrinsic getIntrinsic(ResolvedJavaMethod method) {
         return method.getAnnotation(Node.NodeIntrinsic.class);
     }
 
     /**
      * Permits a subclass to override the default definition of "foldable".
      */
-    protected boolean isFoldable(ResolvedJavaMethod method) {
+    public boolean isFoldable(ResolvedJavaMethod method) {
         return method.getAnnotation(Fold.class) != null;
     }
 
