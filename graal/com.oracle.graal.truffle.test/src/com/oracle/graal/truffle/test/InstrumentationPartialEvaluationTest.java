@@ -25,9 +25,11 @@ package com.oracle.graal.truffle.test;
 import org.junit.*;
 
 import com.oracle.graal.truffle.test.nodes.*;
+import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.instrument.*;
 import com.oracle.truffle.api.instrument.impl.*;
+import com.oracle.truffle.api.nodes.*;
 
 /**
  * Tests for a single simple PE test with various combinations of instrumentation attached. None of
@@ -128,5 +130,58 @@ public class InstrumentationPartialEvaluationTest extends PartialEvaluationTest 
         probe.attach(instrument3);
         instrument2.dispose();
         assertPartialEvalEquals("constant42", root);
+    }
+
+    @Test
+    public void instrumentDeopt() {
+        final FrameDescriptor fd = new FrameDescriptor();
+        final AbstractTestNode result = new ConstantTestNode(42);
+        final RootTestNode root = new RootTestNode(fd, "constantValue", result);
+        final Probe[] probe = new Probe[1];
+        final int[] count = {1};
+        count[0] = 0;
+        // Register a "prober" that will get applied when CallTarget gets created.
+        Probe.registerASTProber(new ASTProber() {
+
+            @Override
+            public void probeAST(Node node) {
+                node.accept(new NodeVisitor() {
+
+                    @Override
+                    public boolean visit(Node visitedNode) {
+                        if (visitedNode instanceof ConstantTestNode) {
+                            probe[0] = visitedNode.probe();
+                        }
+                        return true;
+                    }
+
+                });
+            }
+        });
+        final RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(root);
+
+        // The CallTarget has one Probe, attached to the ConstantTestNode, ready to run
+        Assert.assertEquals(42, callTarget.call()); // Correct result
+        Assert.assertEquals(0, count[0]);           // Didn't count anything
+
+        // Add a counting instrument; this changes the "Probe state" and should cause a deopt
+        final Instrument countingInstrument = Instrument.create(new DefaultEventListener() {
+
+            @Override
+            public void enter(Node node, VirtualFrame frame) {
+                count[0] = count[0] + 1;
+            }
+        });
+        probe[0].attach(countingInstrument);
+
+        Assert.assertEquals(42, callTarget.call()); // Correct result
+        Assert.assertEquals(1, count[0]);           // Counted the first call
+
+        // Remove the counting instrument; this changes the "Probe state" and should cause a deopt
+        countingInstrument.dispose();
+
+        Assert.assertEquals(42, callTarget.call()); // Correct result
+        Assert.assertEquals(1, count[0]);           // Didn't count this time
+
     }
 }
