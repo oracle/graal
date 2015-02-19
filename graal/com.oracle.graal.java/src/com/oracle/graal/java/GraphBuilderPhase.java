@@ -1103,11 +1103,23 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             @Override
             protected void genIntegerSwitch(ValueNode value, ArrayList<BciBlock> actualSuccessors, int[] keys, double[] keyProbabilities, int[] keySuccessors) {
-                this.controlFlowSplit = true;
-                double[] successorProbabilities = successorProbabilites(actualSuccessors.size(), keySuccessors, keyProbabilities);
-                IntegerSwitchNode switchNode = append(new IntegerSwitchNode(value, actualSuccessors.size(), keys, keyProbabilities, keySuccessors));
-                for (int i = 0; i < actualSuccessors.size(); i++) {
-                    switchNode.setBlockSuccessor(i, createBlockTarget(successorProbabilities[i], actualSuccessors.get(i), frameState));
+                if (value.isConstant()) {
+                    JavaConstant constant = (JavaConstant) value.asConstant();
+                    int constantValue = constant.asInt();
+                    for (int i = 0; i < keys.length; ++i) {
+                        if (keys[i] == constantValue) {
+                            appendGoto(actualSuccessors.get(keySuccessors[i]));
+                            return;
+                        }
+                    }
+                    appendGoto(actualSuccessors.get(keySuccessors[keys.length]));
+                } else {
+                    this.controlFlowSplit = true;
+                    double[] successorProbabilities = successorProbabilites(actualSuccessors.size(), keySuccessors, keyProbabilities);
+                    IntegerSwitchNode switchNode = append(new IntegerSwitchNode(value, actualSuccessors.size(), keys, keyProbabilities, keySuccessors));
+                    for (int i = 0; i < actualSuccessors.size(); i++) {
+                        switchNode.setBlockSuccessor(i, createBlockTarget(successorProbabilities[i], actualSuccessors.get(i), frameState));
+                    }
                 }
             }
 
@@ -1445,7 +1457,12 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                             // iteration.
                             context.targetPeelIteration = nextPeelIteration++;
                             if (nextPeelIteration > MaximumLoopExplosionCount.getValue()) {
-                                throw new BailoutException("too many loop explosion interations - does the explosion not terminate?");
+                                String message = "too many loop explosion interations - does the explosion not terminate for method " + method + "?";
+                                if (FailedLoopExplosionIsFatal.getValue()) {
+                                    throw new RuntimeException(message);
+                                } else {
+                                    throw new BailoutException(message);
+                                }
                             }
                         }
 

@@ -334,6 +334,9 @@ public final class GraalOptions {
     @Option(help = "Max number of loop explosions per method.", type = OptionType.Debug)
     public static final OptionValue<Integer> MaximumLoopExplosionCount = new OptionValue<>(10000);
 
+    @Option(help = "Do not bail out but throw an exception on failed loop explosion.", type = OptionType.Debug)
+    public static final OptionValue<Boolean> FailedLoopExplosionIsFatal = new OptionValue<>(false);
+
     /**
      * Counts the various paths taken through snippets.
      */

@@ -861,12 +861,13 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
         int[] keySuccessors = new int[nofCases + 1];
         int deoptSuccessorIndex = -1;
         int nextSuccessorIndex = 0;
+        boolean constantValue = ((ValueNode) value).isConstant();
         for (int i = 0; i < nofCases + 1; i++) {
             if (i < nofCases) {
                 keys[i] = bs.keyAt(i);
             }
 
-            if (isNeverExecutedCode(keyProbabilities[i])) {
+            if (!constantValue && isNeverExecutedCode(keyProbabilities[i])) {
                 if (deoptSuccessorIndex < 0) {
                     deoptSuccessorIndex = nextSuccessorIndex++;
                     actualSuccessors.add(null);
