@@ -741,7 +741,9 @@ public class Graph {
         assert !isFrozen();
         assert node.id() == Node.INITIAL_ID;
         if (nodes.length == nodesSize) {
-            nodes = Arrays.copyOf(nodes, (nodesSize * 2) + 1);
+            Node[] newNodes = new Node[(nodesSize * 2) + 1];
+            System.arraycopy(nodes, 0, newNodes, 0, nodesSize);
+            nodes = newNodes;
         }
         int id = nodesSize;
         nodes[id] = node;

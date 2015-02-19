@@ -143,7 +143,9 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
         if (length == 0) {
             nodes = new Node[2];
         } else if (size == length) {
-            nodes = Arrays.copyOf(nodes, nodes.length * 2 + 1);
+            Node[] newNodes = new Node[nodes.length * 2 + 1];
+            System.arraycopy(nodes, 0, newNodes, 0, length);
+            nodes = newNodes;
         }
         nodes[size++] = node;
         update(null, (T) node);
@@ -186,7 +188,9 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
     void copy(NodeList<? extends Node> other) {
         self.incModCount();
         incModCount();
-        nodes = Arrays.copyOf(other.nodes, other.size);
+        Node[] newNodes = new Node[other.size];
+        System.arraycopy(other.nodes, 0, newNodes, 0, newNodes.length);
+        nodes = newNodes;
         size = other.size;
     }
 
