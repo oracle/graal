@@ -36,15 +36,21 @@ public abstract class AbstractFrameStateBuilder<T extends KindProvider, S extend
     protected T[] lockedObjects;
 
     /**
+     * Specifies if asserting type checks are enabled.
+     */
+    protected final boolean checkTypes;
+
+    /**
      * @see BytecodeFrame#rethrowException
      */
     protected boolean rethrowException;
 
-    public AbstractFrameStateBuilder(ResolvedJavaMethod method) {
+    public AbstractFrameStateBuilder(ResolvedJavaMethod method, boolean checkTypes) {
         this.method = method;
         this.locals = allocateArray(method.getMaxLocals());
         this.stack = allocateArray(Math.max(1, method.getMaxStackSize()));
         this.lockedObjects = allocateArray(0);
+        this.checkTypes = checkTypes;
     }
 
     protected AbstractFrameStateBuilder(S other) {
@@ -54,6 +60,7 @@ public abstract class AbstractFrameStateBuilder<T extends KindProvider, S extend
         this.stack = other.stack.clone();
         this.lockedObjects = other.lockedObjects.length == 0 ? other.lockedObjects : other.lockedObjects.clone();
         this.rethrowException = other.rethrowException;
+        this.checkTypes = other.checkTypes;
 
         assert locals.length == method.getMaxLocals();
         assert stack.length == Math.max(1, method.getMaxStackSize());
@@ -171,8 +178,8 @@ public abstract class AbstractFrameStateBuilder<T extends KindProvider, S extend
     public T loadLocal(int i) {
         T x = locals[i];
         assert x != null : i;
-        assert x.getKind().getSlotCount() == 1 || locals[i + 1] == null;
-        assert i == 0 || locals[i - 1] == null || locals[i - 1].getKind().getSlotCount() == 1;
+        assert !checkTypes || (x.getKind().getSlotCount() == 1 || locals[i + 1] == null);
+        assert !checkTypes || (i == 0 || locals[i - 1] == null || locals[i - 1].getKind().getSlotCount() == 1);
         return x;
     }
 
@@ -184,7 +191,7 @@ public abstract class AbstractFrameStateBuilder<T extends KindProvider, S extend
      * @param x the instruction which produces the value for the local
      */
     public void storeLocal(int i, T x) {
-        assert x == null || x.getKind() != Kind.Void && x.getKind() != Kind.Illegal : "unexpected value: " + x;
+        assert x == null || !checkTypes || (x.getKind() != Kind.Void && x.getKind() != Kind.Illegal) : "unexpected value: " + x;
         locals[i] = x;
         if (x != null && x.getKind().needsTwoSlots()) {
             // if this is a double word, then kill i+1
@@ -211,7 +218,7 @@ public abstract class AbstractFrameStateBuilder<T extends KindProvider, S extend
      * @param x the instruction to push onto the stack
      */
     public void push(Kind kind, T x) {
-        assert x.getKind() != Kind.Void && x.getKind() != Kind.Illegal;
+        assert !checkTypes || (x.getKind() != Kind.Void && x.getKind() != Kind.Illegal) : x;
         xpush(assertKind(kind, x));
         if (kind.needsTwoSlots()) {
             xpush(null);
@@ -224,7 +231,7 @@ public abstract class AbstractFrameStateBuilder<T extends KindProvider, S extend
      * @param x the instruction to push onto the stack
      */
     public void xpush(T x) {
-        assert x == null || (x.getKind() != Kind.Void && x.getKind() != Kind.Illegal);
+        assert !checkTypes || (x == null || (x.getKind() != Kind.Void && x.getKind() != Kind.Illegal));
         stack[stackSize++] = x;
     }
 
@@ -368,7 +375,7 @@ public abstract class AbstractFrameStateBuilder<T extends KindProvider, S extend
                 newStackSize--;
                 assert stack[newStackSize].getKind().needsTwoSlots();
             } else {
-                assert stack[newStackSize].getKind().getSlotCount() == 1;
+                assert !checkTypes || (stack[newStackSize].getKind().getSlotCount() == 1);
             }
             result[i] = stack[newStackSize];
         }
@@ -404,7 +411,7 @@ public abstract class AbstractFrameStateBuilder<T extends KindProvider, S extend
     }
 
     private T assertKind(Kind kind, T x) {
-        assert x != null && x.getKind() == kind : "kind=" + kind + ", value=" + x + ((x == null) ? "" : ", value.kind=" + x.getKind());
+        assert x != null && (!checkTypes || x.getKind() == kind) : "kind=" + kind + ", value=" + x + ((x == null) ? "" : ", value.kind=" + x.getKind());
         return x;
     }
 
@@ -424,7 +431,7 @@ public abstract class AbstractFrameStateBuilder<T extends KindProvider, S extend
     }
 
     private T assertObject(T x) {
-        assert x != null && (x.getKind() == Kind.Object);
+        assert x != null && (!checkTypes || (x.getKind() == Kind.Object)) : x + ":" + x.getKind();
         return x;
     }
 

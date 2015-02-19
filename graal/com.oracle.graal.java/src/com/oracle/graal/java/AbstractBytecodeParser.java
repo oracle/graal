@@ -37,7 +37,6 @@ import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.java.BciBlockMapping.BciBlock;
-import com.oracle.graal.java.GraphBuilderPlugin.InvocationPlugin;
 import com.oracle.graal.java.GraphBuilderPlugin.LoadFieldPlugin;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.options.*;
@@ -119,7 +118,7 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
         if (kind == Kind.Object) {
             value = frameState.xpop();
             // astore and astore_<n> may be used to store a returnAddress (jsr)
-            assert value.getKind() == Kind.Object || value.getKind() == Kind.Int;
+            assert parsingReplacement || (value.getKind() == Kind.Object || value.getKind() == Kind.Int) : value + ":" + value.getKind();
         } else {
             value = frameState.pop(kind);
         }
@@ -573,7 +572,7 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
     }
 
     private JavaTypeProfile getProfileForTypeCheck(ResolvedJavaType type) {
-        if (profilingInfo == null || !optimisticOpts.useTypeCheckHints() || !canHaveSubtype(type)) {
+        if (parsingReplacement || profilingInfo == null || !optimisticOpts.useTypeCheckHints() || !canHaveSubtype(type)) {
             return null;
         } else {
             return profilingInfo.getTypeProfile(bci());
@@ -757,7 +756,7 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
     private void genGetStatic(JavaField field) {
         Kind kind = field.getKind();
         if (field instanceof ResolvedJavaField && ((ResolvedJavaType) field.getDeclaringClass()).isInitialized()) {
-            InvocationPlugin.LoadFieldPlugin loadFieldPlugin = this.graphBuilderConfig.getLoadFieldPlugin();
+            LoadFieldPlugin loadFieldPlugin = this.graphBuilderConfig.getLoadFieldPlugin();
             if (loadFieldPlugin == null || !loadFieldPlugin.apply((GraphBuilderContext) this, (ResolvedJavaField) field)) {
                 appendOptimizedLoadField(kind, genLoadField(null, (ResolvedJavaField) field));
             }

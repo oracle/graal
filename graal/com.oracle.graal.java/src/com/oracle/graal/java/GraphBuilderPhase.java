@@ -26,6 +26,7 @@ import static com.oracle.graal.api.meta.DeoptimizationAction.*;
 import static com.oracle.graal.api.meta.DeoptimizationReason.*;
 import static com.oracle.graal.bytecode.Bytecodes.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
+import static com.oracle.graal.graph.iterators.NodePredicates.*;
 import static com.oracle.graal.nodes.StructuredGraph.*;
 import static java.lang.String.*;
 
@@ -126,7 +127,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             int entryBCI = graph.getEntryBCI();
             assert method.getCode() != null : "method must contain bytecodes: " + method;
             this.currentGraph = graph;
-            HIRFrameStateBuilder frameState = new HIRFrameStateBuilder(method, graph, null);
+            HIRFrameStateBuilder frameState = new HIRFrameStateBuilder(method, graph, true, null);
             frameState.initializeForMethodStart(graphBuilderConfig.eagerResolving(), this.graphBuilderConfig.getParameterPlugin());
             TTY.Filter filter = new TTY.Filter(PrintFilter.getValue(), method);
             try {
@@ -889,7 +890,8 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     Mark mark = needsNullCheck ? currentGraph.getMark() : null;
                     if (InvocationPlugin.execute(this, plugin, args)) {
                         assert beforeStackSize + resultType.getSlotCount() == frameState.stackSize : "plugin manipulated the stack incorrectly " + targetMethod;
-                        assert !needsNullCheck || containsNullCheckOf(currentGraph.getNewNodes(mark), args[0]) : "plugin needs to null check the receiver of " + targetMethod + ": " + args[0];
+                        assert !needsNullCheck || args[0].usages().filter(isNotA(FrameState.class)).isEmpty() || containsNullCheckOf(currentGraph.getNewNodes(mark), args[0]) : "plugin needs to null check the receiver of " +
+                                        targetMethod + ": " + args[0];
                         return true;
                     }
                     assert nodeCount == currentGraph.getNodeCount() : "plugin that returns false must not create new nodes";
@@ -938,7 +940,13 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             private void parseAndInlineCallee(ResolvedJavaMethod targetMethod, ValueNode[] args, boolean isReplacement) {
                 BytecodeParser parser = new BytecodeParser(metaAccess, targetMethod, graphBuilderConfig, optimisticOpts, INVOCATION_ENTRY_BCI, isReplacement);
                 final FrameState[] lazyFrameState = new FrameState[1];
-                HIRFrameStateBuilder startFrameState = new HIRFrameStateBuilder(targetMethod, currentGraph, () -> {
+
+                // Replacements often produce nodes with an illegal kind (e.g., pointer stamps)
+                // so the frame state builder should not check the types flowing through the frame
+                // since all such assertions are in terms of Java kinds.
+                boolean checkTypes = !isReplacement;
+
+                HIRFrameStateBuilder startFrameState = new HIRFrameStateBuilder(targetMethod, currentGraph, checkTypes, () -> {
                     if (lazyFrameState[0] == null) {
                         lazyFrameState[0] = frameState.create(bci());
                     }
@@ -1923,6 +1931,19 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             public boolean parsingReplacement() {
                 return parsingReplacement;
+            }
+
+            public StructuredGraph getGraph() {
+                return currentGraph;
+            }
+
+            public GuardingNode getCurrentBlockGuard() {
+                return (GuardingNode) getFirstInstruction(currentBlock, getCurrentDimension());
+            }
+
+            @Override
+            public String toString() {
+                return method.format("%H.%n(%p)@") + bci();
             }
         }
     }

@@ -53,8 +53,8 @@ public class HIRFrameStateBuilder extends AbstractFrameStateBuilder<ValueNode, H
      * @param method the method whose frame is simulated
      * @param graph the target graph of Graal nodes created by the builder
      */
-    public HIRFrameStateBuilder(ResolvedJavaMethod method, StructuredGraph graph, Supplier<FrameState> outerFrameStateSupplier) {
-        super(method);
+    public HIRFrameStateBuilder(ResolvedJavaMethod method, StructuredGraph graph, boolean checkTypes, Supplier<FrameState> outerFrameStateSupplier) {
+        super(method, checkTypes);
 
         assert graph != null;
 
