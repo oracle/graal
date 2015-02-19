@@ -24,7 +24,6 @@
  */
 package com.oracle.truffle.api.instrument;
 
-import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.*;
@@ -176,13 +175,6 @@ public abstract class ProbeNode extends Node implements TruffleEventListener, In
         // Never changed once set.
         @CompilationFinal private Probe probe = null;
 
-        /**
-         * An assumption that the state of the {@link Probe} with which this chain is associated has
-         * not changed since the last time checking such an assumption failed and a reference to a
-         * new assumption (associated with a new state of the {@link Probe} was retrieved.
-         */
-        @CompilationFinal private Assumption probeUnchangedAssumption;
-
         private ProbeFullNode() {
             this.firstInstrument = null;
         }
@@ -201,17 +193,6 @@ public abstract class ProbeNode extends Node implements TruffleEventListener, In
 
         private void setProbe(Probe probe) {
             this.probe = probe;
-            this.probeUnchangedAssumption = probe.getUnchangedAssumption();
-        }
-
-        private void checkProbeUnchangedAssumption() {
-            try {
-                probeUnchangedAssumption.check();
-            } catch (InvalidAssumptionException ex) {
-                // Failure creates an implicit deoptimization
-                // Get the assumption associated with the new probe state
-                this.probeUnchangedAssumption = probe.getUnchangedAssumption();
-            }
         }
 
         @Override
@@ -235,43 +216,41 @@ public abstract class ProbeNode extends Node implements TruffleEventListener, In
             }
         }
 
-        public void enter(Node node, VirtualFrame frame) {
+        public void enter(Node node, VirtualFrame vFrame) {
+            this.probe.checkProbeUnchanged();
             final SyntaxTagTrap trap = probe.getTrap();
             if (trap != null) {
-                checkProbeUnchangedAssumption();
-                trap.tagTrappedAt(((WrapperNode) this.getParent()).getChild(), frame.materialize());
+                trap.tagTrappedAt(((WrapperNode) this.getParent()).getChild(), vFrame.materialize());
             }
             if (firstInstrument != null) {
-                checkProbeUnchangedAssumption();
-                firstInstrument.enter(node, frame);
+                firstInstrument.enter(node, vFrame);
             }
         }
 
-        public void returnVoid(Node node, VirtualFrame frame) {
+        public void returnVoid(Node node, VirtualFrame vFrame) {
+            this.probe.checkProbeUnchanged();
             if (firstInstrument != null) {
-                checkProbeUnchangedAssumption();
-                firstInstrument.returnVoid(node, frame);
+                firstInstrument.returnVoid(node, vFrame);
             }
         }
 
-        public void returnValue(Node node, VirtualFrame frame, Object result) {
+        public void returnValue(Node node, VirtualFrame vFrame, Object result) {
+            this.probe.checkProbeUnchanged();
             if (firstInstrument != null) {
-                checkProbeUnchangedAssumption();
-                firstInstrument.returnValue(node, frame, result);
+                firstInstrument.returnValue(node, vFrame, result);
             }
         }
 
-        public void returnExceptional(Node node, VirtualFrame frame, Exception exception) {
+        public void returnExceptional(Node node, VirtualFrame vFrame, Exception exception) {
+            this.probe.checkProbeUnchanged();
             if (firstInstrument != null) {
-                checkProbeUnchangedAssumption();
-                firstInstrument.returnExceptional(node, frame, exception);
+                firstInstrument.returnExceptional(node, vFrame, exception);
             }
         }
 
         public String instrumentationInfo() {
             return "Standard probe";
         }
-
     }
 
     /**
@@ -305,20 +284,20 @@ public abstract class ProbeNode extends Node implements TruffleEventListener, In
             throw new IllegalStateException("Instruments may not be removed at a \"lite-probed\" location");
         }
 
-        public void enter(Node node, VirtualFrame frame) {
-            eventListener.enter(node, frame);
+        public void enter(Node node, VirtualFrame vFrame) {
+            eventListener.enter(node, vFrame);
         }
 
-        public void returnVoid(Node node, VirtualFrame frame) {
-            eventListener.returnVoid(node, frame);
+        public void returnVoid(Node node, VirtualFrame vFrame) {
+            eventListener.returnVoid(node, vFrame);
         }
 
-        public void returnValue(Node node, VirtualFrame frame, Object result) {
-            eventListener.returnValue(node, frame, result);
+        public void returnValue(Node node, VirtualFrame vFrame, Object result) {
+            eventListener.returnValue(node, vFrame, result);
         }
 
-        public void returnExceptional(Node node, VirtualFrame frame, Exception exception) {
-            eventListener.returnExceptional(node, frame, exception);
+        public void returnExceptional(Node node, VirtualFrame vFrame, Exception exception) {
+            eventListener.returnExceptional(node, vFrame, exception);
         }
 
         public String instrumentationInfo() {

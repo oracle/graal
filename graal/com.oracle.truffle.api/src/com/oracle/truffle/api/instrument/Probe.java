@@ -106,12 +106,6 @@ public final class Probe implements SyntaxTagged {
     }
 
     /**
-     * The tag trap is a global setting; it only affects {@linkplain Probe probes} with the
-     * {@linkplain SyntaxTag tag} specified .
-     */
-    @CompilationFinal private static SyntaxTagTrap globalTagTrap = null;
-
-    /**
      * Enables instrumentation at selected nodes in all subsequently constructed ASTs.
      */
     public static void registerASTProber(ASTProber prober) {
@@ -157,8 +151,8 @@ public final class Probe implements SyntaxTagged {
     }
 
     /**
-     * Returns all {@link Probe}s holding a particular {@link SyntaxTag}, or the whole collection if
-     * the specified tag is {@code null}.
+     * Returns all {@link Probe}s holding a particular {@link SyntaxTag}, or the whole collection of
+     * probes if the specified tag is {@code null}.
      *
      * @return A collection of probes containing the given tag.
      */
@@ -176,46 +170,21 @@ public final class Probe implements SyntaxTagged {
     }
 
     /**
-     * Sets the current "tag trap". This causes a callback to be triggered whenever execution
-     * reaches a {@link Probe} (either existing or subsequently created) with the specified tag.
-     * There can only be one tag trap set at a time.
+     * Sets the current "tag trap"; there can be no more than one set at a time.
+     * <ul>
+     * <li>A non-null trap sets a callback to be triggered whenever execution reaches a
+     * {@link Probe} (either existing or subsequently created) with the specified tag.</li>
+     * <li>Setting the trap to null clears the existing trap.</li>
+     * <li>Setting a non-null trap when one is already set will clear the previously set trap.</li>
+     * </ul>
      *
      * @param newTagTrap The {@link SyntaxTagTrap} to set.
-     * @throws IllegalStateException if a trap is currently set.
      */
-    public static void setTagTrap(SyntaxTagTrap newTagTrap) throws IllegalStateException {
-        assert newTagTrap != null;
-        if (globalTagTrap != null) {
-            throw new IllegalStateException("trap already set");
-        }
-        globalTagTrap = newTagTrap;
-
-        final SyntaxTag newTag = newTagTrap.getTag();
+    public static void setTagTrap(SyntaxTagTrap newTagTrap) {
         for (WeakReference<Probe> ref : probes) {
             final Probe probe = ref.get();
-            if (probe != null && probe.tags.contains(newTag)) {
-                probe.trapActive = true;
-                probe.probeStateUnchanged.invalidate();
-            }
-        }
-    }
-
-    /**
-     * Clears the current {@link SyntaxTagTrap}.
-     *
-     * @throws IllegalStateException if no trap is currently set.
-     */
-    public static void clearTagTrap() {
-        if (globalTagTrap == null) {
-            throw new IllegalStateException("no trap set");
-        }
-        globalTagTrap = null;
-
-        for (WeakReference<Probe> ref : probes) {
-            final Probe probe = ref.get();
-            if (probe != null && probe.trapActive) {
-                probe.trapActive = false;
-                probe.probeStateUnchanged.invalidate();
+            if (probe != null) {
+                probe.setTrap(newTagTrap);
             }
         }
     }
@@ -223,12 +192,22 @@ public final class Probe implements SyntaxTagged {
     private final SourceSection sourceSection;
     private final ArrayList<SyntaxTag> tags = new ArrayList<>();
     private final List<WeakReference<ProbeNode>> probeNodeClones = new ArrayList<>();
-    private final CyclicAssumption probeStateUnchanged = new CyclicAssumption("Probe state unchanged");
 
-    /**
-     * {@code true} iff the global trap is set and this probe has the matching tag.
+    /*
+     * Invalidated whenever something changes in the Probe and its Instrument chain, so need deopt
      */
-    private boolean trapActive = false;
+    private final CyclicAssumption probeStateUnchangedCyclic = new CyclicAssumption("Probe state unchanged");
+
+    /*
+     * The assumption that nothing had changed in this probe, the last time anybody checked (when
+     * there may have been a deopt). Every time a check fails, gets replaced by a new unchanged
+     * assumption.
+     */
+    @CompilationFinal private Assumption probeStateUnchangedAssumption = probeStateUnchangedCyclic.getAssumption();
+
+    // Must invalidate whenever either of these these changes.
+    @CompilationFinal private SyntaxTagTrap tagTrap = null;
+    @CompilationFinal private boolean isTrapActive = false;
 
     /**
      * Intended for use only by {@link ProbeNode}.
@@ -262,10 +241,10 @@ public final class Probe implements SyntaxTagged {
             for (ProbeListener listener : probeListeners) {
                 listener.probeTaggedAs(this, tag, tagValue);
             }
-            if (globalTagTrap != null && tag == globalTagTrap.getTag()) {
-                this.trapActive = true;
+            if (tagTrap != null && tag == tagTrap.getTag()) {
+                this.isTrapActive = true;
+                invalidateProbeUnchanged();
             }
-            probeStateUnchanged.invalidate();
         }
     }
 
@@ -289,7 +268,7 @@ public final class Probe implements SyntaxTagged {
                 probeNode.addInstrument(instrument);
             }
         }
-        probeStateUnchanged.invalidate();
+        invalidateProbeUnchanged();
     }
 
     /**
@@ -303,29 +282,6 @@ public final class Probe implements SyntaxTagged {
     public String getShortDescription() {
         final String location = sourceSection == null ? "<unknown>" : sourceSection.getShortDescription();
         return "Probe@" + location + getTagsDescription();
-    }
-
-    /**
-     * Receives notification that a new clone of the instrument chain associated with this
-     * {@link Probe} has been created as a side-effect of AST cloning.
-     */
-    void registerProbeNodeClone(ProbeNode probeNode) {
-        probeNodeClones.add(new WeakReference<>(probeNode));
-    }
-
-    /**
-     * Gets the currently active {@linkplain SyntaxTagTrap tagTrap}; {@code null} if not set.
-     */
-    SyntaxTagTrap getTrap() {
-        return trapActive ? globalTagTrap : null;
-    }
-
-    /**
-     * Gets the {@link Assumption} that the instrumentation-related state of this {@link Probe} has
-     * not changed since this method was last called.
-     */
-    Assumption getUnchangedAssumption() {
-        return probeStateUnchanged.getAssumption();
     }
 
     /**
@@ -343,7 +299,58 @@ public final class Probe implements SyntaxTagged {
                 probeNode.removeInstrument(instrument);
             }
         }
-        probeStateUnchanged.invalidate();
+        invalidateProbeUnchanged();
+    }
+
+    /**
+     * Receives notification that a new clone of the instrument chain associated with this
+     * {@link Probe} has been created as a side-effect of AST cloning.
+     */
+    void registerProbeNodeClone(ProbeNode probeNode) {
+        probeNodeClones.add(new WeakReference<>(probeNode));
+    }
+
+    /**
+     * Gets the currently active {@linkplain SyntaxTagTrap tagTrap}; {@code null} if not set.
+     */
+    SyntaxTagTrap getTrap() {
+        checkProbeUnchanged();
+        return isTrapActive ? tagTrap : null;
+    }
+
+    /**
+     * To be called wherever in the Probe/Instrument chain there are dependencies on the probe
+     * state's @CompilatonFinal fields.
+     */
+    void checkProbeUnchanged() {
+        try {
+            probeStateUnchangedAssumption.check();
+        } catch (InvalidAssumptionException ex) {
+            // Failure creates an implicit deoptimization
+            // Get the assumption associated with the new probe state
+            this.probeStateUnchangedAssumption = probeStateUnchangedCyclic.getAssumption();
+        }
+    }
+
+    private void invalidateProbeUnchanged() {
+        probeStateUnchangedCyclic.invalidate();
+    }
+
+    private void setTrap(SyntaxTagTrap newTagTrap) {
+        // No-op if same trap; traps are immutable
+        if (this.tagTrap != newTagTrap) {
+            if (newTagTrap == null) {
+                this.tagTrap = null;
+                if (isTrapActive) {
+                    isTrapActive = false;
+                    invalidateProbeUnchanged();
+                }
+            } else { // new trap is non-null
+                this.tagTrap = newTagTrap;
+                this.isTrapActive = this.isTaggedAs(newTagTrap.getTag());
+                invalidateProbeUnchanged();
+            }
+        }
     }
 
     private String getTagsDescription() {
