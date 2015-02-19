@@ -81,6 +81,8 @@ public final class Probe implements SyntaxTagged {
      */
     private static final List<WeakReference<Probe>> probes = new ArrayList<>();
 
+    @CompilationFinal private static SyntaxTagTrap tagTrap = null;
+
     private static final class FindSourceVisitor implements NodeVisitor {
 
         Source source = null;
@@ -184,7 +186,7 @@ public final class Probe implements SyntaxTagged {
         for (WeakReference<Probe> ref : probes) {
             final Probe probe = ref.get();
             if (probe != null) {
-                probe.setTrap(newTagTrap);
+                probe.notifyTrapSet();
             }
         }
     }
@@ -205,8 +207,7 @@ public final class Probe implements SyntaxTagged {
      */
     @CompilationFinal private Assumption probeStateUnchangedAssumption = probeStateUnchangedCyclic.getAssumption();
 
-    // Must invalidate whenever either of these these changes.
-    @CompilationFinal private SyntaxTagTrap tagTrap = null;
+    // Must invalidate whenever this changes.
     @CompilationFinal private boolean isTrapActive = false;
 
     /**
@@ -336,21 +337,13 @@ public final class Probe implements SyntaxTagged {
         probeStateUnchangedCyclic.invalidate();
     }
 
-    private void setTrap(SyntaxTagTrap newTagTrap) {
-        // No-op if same trap; traps are immutable
-        if (this.tagTrap != newTagTrap) {
-            if (newTagTrap == null) {
-                this.tagTrap = null;
-                if (isTrapActive) {
-                    isTrapActive = false;
-                    invalidateProbeUnchanged();
-                }
-            } else { // new trap is non-null
-                this.tagTrap = newTagTrap;
-                this.isTrapActive = this.isTaggedAs(newTagTrap.getTag());
-                invalidateProbeUnchanged();
-            }
+    private void notifyTrapSet() {
+        if (tagTrap == null && !isTrapActive) {
+            // Special case, could be common, where we don't need to do anything.
+            return;
         }
+        this.isTrapActive = this.isTaggedAs(tagTrap.getTag());
+        invalidateProbeUnchanged();
     }
 
     private String getTagsDescription() {
