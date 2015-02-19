@@ -48,7 +48,6 @@ public class InstrumentationPartialEvaluationTest extends PartialEvaluationTest 
         assertPartialEvalEquals("constant42", root);
     }
 
-    @Ignore
     @Test
     public void constantValueProbedNoInstruments() {
         FrameDescriptor fd = new FrameDescriptor();
@@ -59,7 +58,6 @@ public class InstrumentationPartialEvaluationTest extends PartialEvaluationTest 
         assertPartialEvalEquals("constant42", root);
     }
 
-    @Ignore
     @Test
     public void constantValueProbedNullInstrument() {
         FrameDescriptor fd = new FrameDescriptor();
@@ -72,7 +70,6 @@ public class InstrumentationPartialEvaluationTest extends PartialEvaluationTest 
         assertPartialEvalEquals("constant42", root);
     }
 
-    @Ignore
     @Test
     public void constantValueProbedNullInstrumentDisposed() {
         FrameDescriptor fd = new FrameDescriptor();
@@ -86,7 +83,6 @@ public class InstrumentationPartialEvaluationTest extends PartialEvaluationTest 
         assertPartialEvalEquals("constant42", root);
     }
 
-    @Ignore
     @Test
     public void constantValueProbedTwoNullInstruments() {
         FrameDescriptor fd = new FrameDescriptor();
@@ -101,7 +97,6 @@ public class InstrumentationPartialEvaluationTest extends PartialEvaluationTest 
         assertPartialEvalEquals("constant42", root);
     }
 
-    @Ignore
     @Test
     public void constantValueProbedThreeNullInstruments() {
         FrameDescriptor fd = new FrameDescriptor();
@@ -118,7 +113,6 @@ public class InstrumentationPartialEvaluationTest extends PartialEvaluationTest 
         assertPartialEvalEquals("constant42", root);
     }
 
-    @Ignore
     @Test
     public void constantValueProbedThreeNullInstrumentsOneDisposed() {
         FrameDescriptor fd = new FrameDescriptor();
