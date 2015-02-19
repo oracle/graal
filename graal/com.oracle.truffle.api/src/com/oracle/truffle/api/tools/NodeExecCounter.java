@@ -97,7 +97,7 @@ public final class NodeExecCounter extends InstrumentationTool {
      */
     private final TruffleEventListener eventListener = new DefaultEventListener() {
         @Override
-        public void enter(Node node, VirtualFrame frame) {
+        public void enter(Node node, VirtualFrame vFrame) {
             if (isEnabled()) {
                 final Class<?> nodeClass = node.getClass();
                 /*

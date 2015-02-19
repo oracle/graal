@@ -38,7 +38,7 @@ import com.oracle.truffle.api.nodes.*;
  */
 public abstract class SimpleEventListener implements TruffleEventListener {
 
-    public void enter(Node node, VirtualFrame frame) {
+    public void enter(Node node, VirtualFrame vFrame) {
     }
 
     /**
@@ -46,21 +46,21 @@ public abstract class SimpleEventListener implements TruffleEventListener {
      * means: with or without a return value (ignored) or via exception (ignored).
      *
      * @param node
-     * @param frame
+     * @param vFrame
      */
-    public void returnAny(Node node, VirtualFrame frame) {
+    public void returnAny(Node node, VirtualFrame vFrame) {
     }
 
-    public final void returnVoid(Node node, VirtualFrame frame) {
-        returnAny(node, frame);
+    public final void returnVoid(Node node, VirtualFrame vFrame) {
+        returnAny(node, vFrame);
     }
 
-    public final void returnValue(Node node, VirtualFrame frame, Object result) {
-        returnAny(node, frame);
+    public final void returnValue(Node node, VirtualFrame vFrame, Object result) {
+        returnAny(node, vFrame);
     }
 
-    public final void returnExceptional(Node node, VirtualFrame frame, Exception e) {
-        returnAny(node, frame);
+    public final void returnExceptional(Node node, VirtualFrame vFrame, Exception e) {
+        returnAny(node, vFrame);
     }
 
 }

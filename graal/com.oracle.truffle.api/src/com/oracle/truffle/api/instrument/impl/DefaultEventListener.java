@@ -34,16 +34,16 @@ import com.oracle.truffle.api.nodes.*;
  */
 public class DefaultEventListener implements TruffleEventListener {
 
-    public void enter(Node node, VirtualFrame frame) {
+    public void enter(Node node, VirtualFrame vFrame) {
     }
 
-    public void returnVoid(Node node, VirtualFrame frame) {
+    public void returnVoid(Node node, VirtualFrame vFrame) {
     }
 
-    public void returnValue(Node node, VirtualFrame frame, Object result) {
+    public void returnValue(Node node, VirtualFrame vFrame, Object result) {
     }
 
-    public void returnExceptional(Node node, VirtualFrame frame, Exception exception) {
+    public void returnExceptional(Node node, VirtualFrame vFrame, Exception exception) {
     }
 
 }

@@ -36,22 +36,22 @@ public interface TruffleEventListener {
     /**
      * Receive notification that an AST node's execute method is about to be called.
      */
-    void enter(Node node, VirtualFrame frame);
+    void enter(Node node, VirtualFrame vFrame);
 
     /**
      * Receive notification that an AST Node's {@code void}-valued execute method has just returned.
      */
-    void returnVoid(Node node, VirtualFrame frame);
+    void returnVoid(Node node, VirtualFrame vFrame);
 
     /**
      * Receive notification that an AST Node'sexecute method has just returned a value (boxed if
      * primitive).
      */
-    void returnValue(Node node, VirtualFrame frame, Object result);
+    void returnValue(Node node, VirtualFrame vFrame, Object result);
 
     /**
      * Receive notification that an AST Node's execute method has just thrown an exception.
      */
-    void returnExceptional(Node node, VirtualFrame frame, Exception exception);
+    void returnExceptional(Node node, VirtualFrame vFrame, Exception exception);
 
 }

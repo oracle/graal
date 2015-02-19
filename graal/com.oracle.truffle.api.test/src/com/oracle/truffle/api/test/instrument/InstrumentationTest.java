@@ -439,7 +439,7 @@ public class InstrumentationTest {
     }
 
     private abstract class TestLanguageNode extends Node {
-        public abstract Object execute(VirtualFrame frame);
+        public abstract Object execute(VirtualFrame vFrame);
 
         @Override
         public boolean isInstrumentable() {
@@ -492,17 +492,17 @@ public class InstrumentationTest {
         }
 
         @Override
-        public Object execute(VirtualFrame frame) {
-            probeNode.enter(child, frame);
+        public Object execute(VirtualFrame vFrame) {
+            probeNode.enter(child, vFrame);
             Object result;
 
             try {
-                result = child.execute(frame);
-                probeNode.returnValue(child, frame, result);
+                result = child.execute(vFrame);
+                probeNode.returnValue(child, vFrame, result);
             } catch (KillException e) {
                 throw (e);
             } catch (Exception e) {
-                probeNode.returnExceptional(child, frame, e);
+                probeNode.returnExceptional(child, vFrame, e);
                 throw (e);
             }
 
@@ -521,7 +521,7 @@ public class InstrumentationTest {
         }
 
         @Override
-        public Object execute(VirtualFrame frame) {
+        public Object execute(VirtualFrame vFrame) {
             return new Integer(this.value);
         }
     }
@@ -539,8 +539,8 @@ public class InstrumentationTest {
         }
 
         @Override
-        public Object execute(VirtualFrame frame) {
-            return new Integer(((Integer) leftChild.execute(frame)).intValue() + ((Integer) rightChild.execute(frame)).intValue());
+        public Object execute(VirtualFrame vFrame) {
+            return new Integer(((Integer) leftChild.execute(vFrame)).intValue() + ((Integer) rightChild.execute(vFrame)).intValue());
         }
     }
 
@@ -563,8 +563,8 @@ public class InstrumentationTest {
         }
 
         @Override
-        public Object execute(VirtualFrame frame) {
-            return body.execute(frame);
+        public Object execute(VirtualFrame vFrame) {
+            return body.execute(vFrame);
         }
 
         @Override
@@ -591,12 +591,12 @@ public class InstrumentationTest {
             instrument = Instrument.create(new SimpleEventListener() {
 
                 @Override
-                public void enter(Node node, VirtualFrame frame) {
+                public void enter(Node node, VirtualFrame vFrame) {
                     enterCount++;
                 }
 
                 @Override
-                public void returnAny(Node node, VirtualFrame frame) {
+                public void returnAny(Node node, VirtualFrame vFrame) {
                     leaveCount++;
                 }
             }, "Instrumentation Test Counter");
@@ -695,7 +695,7 @@ public class InstrumentationTest {
             probe.attach(Instrument.create(new SimpleEventListener() {
 
                 @Override
-                public void enter(Node node, VirtualFrame frame) {
+                public void enter(Node node, VirtualFrame vFrame) {
                     count++;
                 }
             }, "Instrumentation Test MultiCounter"));
