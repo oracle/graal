@@ -72,7 +72,7 @@ public abstract class RootNode extends Node {
      * language specific implementations may want to return <code>true</code> here to indicate that
      * gathering call site specific profiling information might make sense for this {@link RootNode}
      * .
-     * 
+     *
      * @return <code>true</code> if cloning is allowed else <code>false</code>.
      */
     public boolean isCloningAllowed() {
@@ -91,7 +91,7 @@ public abstract class RootNode extends Node {
 
     /**
      * Executes this function using the specified frame and returns the result value.
-     * 
+     *
      * @param frame the frame of the currently executing guest language method
      * @return the value of the execution
      */
@@ -114,14 +114,14 @@ public abstract class RootNode extends Node {
      * the correct <code>ExecutionContext</code> to be determined for a <code>RootNode</code> (and
      * so also for a {@link RootCallTarget} and a {@link FrameInstance} obtained from the call
      * stack) without prior knowledge of the language it has come from.
-     * 
+     *
      * Used for instance to determine the language of a <code>RootNode<code>:
-     * 
+     *
      * <pre>
      * <code>
      * rootNode.getExecutionContext().getLanguageShortName();
      * </code> </pre>
-     * 
+     *
      * Returns <code>null</code> by default.
      */
     public ExecutionContext getExecutionContext() {
@@ -151,7 +151,7 @@ public abstract class RootNode extends Node {
      * <p>
      * Implementations should ensure that instrumentation is never applied more than once to an AST,
      * as this is not guaranteed to be error-free.
-     * 
+     *
      * @see Probe#registerASTProber(com.oracle.truffle.api.instrument.ASTProber)
      */
     public void applyInstrumentation() {

@@ -28,7 +28,7 @@ public final class FrameUtil {
     /**
      * Read a frame slot that is guaranteed to be of the desired kind (either previously checked by
      * a guard or statically known).
-     * 
+     *
      * @param frameSlot the slot of the variable
      * @throws IllegalStateException if the slot kind does not match
      * @see Frame#getObject(FrameSlot)
@@ -44,7 +44,7 @@ public final class FrameUtil {
     /**
      * Read a frame slot that is guaranteed to be of the desired kind (either previously checked by
      * a guard or statically known).
-     * 
+     *
      * @param frameSlot the slot of the variable
      * @throws IllegalStateException if the slot kind does not match
      * @see Frame#getByte(FrameSlot)
@@ -60,7 +60,7 @@ public final class FrameUtil {
     /**
      * Read a frame slot that is guaranteed to be of the desired kind (either previously checked by
      * a guard or statically known).
-     * 
+     *
      * @param frameSlot the slot of the variable
      * @throws IllegalStateException if the slot kind does not match
      * @see Frame#getBoolean(FrameSlot)
@@ -76,7 +76,7 @@ public final class FrameUtil {
     /**
      * Read a frame slot that is guaranteed to be of the desired kind (either previously checked by
      * a guard or statically known).
-     * 
+     *
      * @param frameSlot the slot of the variable
      * @throws IllegalStateException if the slot kind does not match
      * @see Frame#getInt(FrameSlot)
@@ -92,7 +92,7 @@ public final class FrameUtil {
     /**
      * Read a frame slot that is guaranteed to be of the desired kind (either previously checked by
      * a guard or statically known).
-     * 
+     *
      * @param frameSlot the slot of the variable
      * @throws IllegalStateException if the slot kind does not match
      * @see Frame#getLong(FrameSlot)
@@ -108,7 +108,7 @@ public final class FrameUtil {
     /**
      * Read a frame slot that is guaranteed to be of the desired kind (either previously checked by
      * a guard or statically known).
-     * 
+     *
      * @param frameSlot the slot of the variable
      * @throws IllegalStateException if the slot kind does not match
      * @see Frame#getDouble(FrameSlot)
@@ -124,7 +124,7 @@ public final class FrameUtil {
     /**
      * Read a frame slot that is guaranteed to be of the desired kind (either previously checked by
      * a guard or statically known).
-     * 
+     *
      * @param frameSlot the slot of the variable
      * @throws IllegalStateException if the slot kind does not match
      * @see Frame#getFloat(FrameSlot)

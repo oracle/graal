@@ -30,24 +30,24 @@ import com.oracle.truffle.api.nodes.*;
 /**
  * Abstract utility class to speculate on conditions. Condition profiles are intended to be used as
  * part of if conditions.
- * 
+ *
  * Example usage:
- * 
+ *
  * <pre>
  * private final ConditionProfile zero = ConditionProfile.createBinaryProfile();
- * 
+ *
  * int value = ...;
  * if (zero.profile(value == 0)) {
  *   return 0;
  * } else {
  *   return value;
  * }
- * 
+ *
  * </pre>
- * 
+ *
  * All instances of {@code ConditionProfile} (and subclasses) must be held in {@code final} fields
  * for compiler optimizations to take effect.
- * 
+ *
  * @see #createCountingProfile()
  * @see #createBinaryProfile()
  */
@@ -62,7 +62,7 @@ public abstract class ConditionProfile extends NodeCloneable {
      * true and false. This information is reported to the underlying optimization system using
      * {@link CompilerDirectives#injectBranchProbability(double, boolean)}. Condition profiles are
      * intended to be used as part of if conditions.
-     * 
+     *
      * @see ConditionProfile
      * @see #createBinaryProfile()
      */
@@ -73,7 +73,7 @@ public abstract class ConditionProfile extends NodeCloneable {
     /**
      * Returns a {@link ConditionProfile} that speculates on conditions to be never true or to be
      * never false. Condition profiles are intended to be used as part of if conditions.
-     * 
+     *
      * @see ConditionProfile
      * @see ConditionProfile#createCountingProfile()
      */

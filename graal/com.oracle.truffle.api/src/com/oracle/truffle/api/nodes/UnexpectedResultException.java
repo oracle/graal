@@ -39,7 +39,7 @@ public final class UnexpectedResultException extends SlowPathException {
     /**
      * Creates the exception with the alternative result that cannot be represented as a value of
      * the return type.
-     * 
+     *
      * @param result the alternative result
      */
     public UnexpectedResultException(Object result) {
