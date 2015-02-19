@@ -222,28 +222,15 @@ public class InvocationPlugins {
         public static boolean check(ResolvedJavaMethod method, InvocationPlugin plugin) {
             int arguments = method.getSignature().getParameterCount(!method.isStatic());
             assert arguments < SIGS.length : format("need to extend %s to support method with %d arguments: %s", InvocationPlugin.class.getSimpleName(), arguments, method.format("%H.%n(%p)"));
-            Method expected = null;
             for (Method m : plugin.getClass().getDeclaredMethods()) {
                 if (m.getName().equals("apply")) {
                     Class<?>[] parameterTypes = m.getParameterTypes();
-                    assert Arrays.equals(SIGS[arguments], parameterTypes) : format("graph builder plugin for %s has wrong signature%nexpected: (%s)%n  actual: (%s)", method.format("%H.%n(%p)"),
-                                    sigString(SIGS[arguments]), sigString(m.getParameterTypes()));
-                    expected = m;
+                    if (Arrays.equals(SIGS[arguments], parameterTypes)) {
+                        return true;
+                    }
                 }
             }
-            assert expected != null : format("graph builder plugin %s must define exactly one \"apply\" method, none found", plugin);
-            return true;
-        }
-
-        protected static String sigString(Class<?>... sig) {
-            StringBuilder sb = new StringBuilder();
-            for (Class<?> t : sig) {
-                if (sb.length() != 0) {
-                    sb.append(", ");
-                }
-                sb.append(t.getSimpleName());
-            }
-            return sb.toString();
+            throw new AssertionError(format("graph builder plugin for %s not found", method.format("%H.%n(%p)")));
         }
     }
 }
