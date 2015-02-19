@@ -53,7 +53,8 @@ public final class ArrayEqualsNode extends FixedWithNextNode implements LIRLower
 
     public ArrayEqualsNode(ValueNode array1, ValueNode array2, ValueNode length) {
         super(TYPE, StampFactory.forKind(Kind.Boolean));
-        assert array1.stamp().equals(array2.stamp());
+        // Ignore nullness in stamp equality test
+        assert array1.stamp().join(StampFactory.objectNonNull()).equals(array2.stamp().join(StampFactory.objectNonNull()));
         ObjectStamp array1Stamp = (ObjectStamp) array1.stamp();
         ResolvedJavaType componentType = array1Stamp.type().getComponentType();
         this.kind = componentType.getKind();
