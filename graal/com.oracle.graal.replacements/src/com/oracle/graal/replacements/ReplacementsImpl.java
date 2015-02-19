@@ -114,12 +114,14 @@ public class ReplacementsImpl implements Replacements {
                         }
                         String originalName = originalName(substituteMethod, methodSubstitution.value());
                         JavaSignature originalSignature = originalSignature(substituteMethod, methodSubstitution.signature(), methodSubstitution.isStatic());
-                        Executable[] originalMethods = originalMethods(classSubstitution, methodSubstitution.optional(), originalName, originalSignature);
-                        for (Executable originalMethod : originalMethods) {
-                            if (originalMethod != null && (guard == null || guard.execute())) {
-                                ResolvedJavaMethod original = registerMethodSubstitution(this, originalMethod, substituteMethod);
-                                if (original != null && methodSubstitution.forced() && shouldIntrinsify(original)) {
-                                    forcedSubstitutions.add(original);
+                        Executable[] originalMethods = originalMethods(classSubstitution, classSubstitution.optional(), originalName, originalSignature);
+                        if (originalMethods != null) {
+                            for (Executable originalMethod : originalMethods) {
+                                if (originalMethod != null && (guard == null || guard.execute())) {
+                                    ResolvedJavaMethod original = registerMethodSubstitution(this, originalMethod, substituteMethod);
+                                    if (original != null && methodSubstitution.forced() && shouldIntrinsify(original)) {
+                                        forcedSubstitutions.add(original);
+                                    }
                                 }
                             }
                         }
