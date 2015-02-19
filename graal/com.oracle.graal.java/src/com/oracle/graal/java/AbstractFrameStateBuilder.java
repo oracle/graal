@@ -431,7 +431,7 @@ public abstract class AbstractFrameStateBuilder<T extends KindProvider, S extend
     }
 
     private T assertObject(T x) {
-        assert x != null && (!checkTypes || (x.getKind() == Kind.Object)) : x + ":" + x.getKind();
+        assert x != null && (!checkTypes || (x.getKind() == Kind.Object));
         return x;
     }
 
