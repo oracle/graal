@@ -84,58 +84,58 @@ public final class SLExpressionWrapperNode extends SLExpressionNode implements W
     }
 
     @Override
-    public Object executeGeneric(VirtualFrame frame) {
+    public Object executeGeneric(VirtualFrame vFrame) {
 
-        probeNode.enter(child, frame);
+        probeNode.enter(child, vFrame);
         Object result;
 
         try {
-            result = child.executeGeneric(frame);
-            probeNode.returnValue(child, frame, result);
+            result = child.executeGeneric(vFrame);
+            probeNode.returnValue(child, vFrame, result);
         } catch (Exception e) {
-            probeNode.returnExceptional(child, frame, e);
+            probeNode.returnExceptional(child, vFrame, e);
             throw (e);
         }
         return result;
     }
 
     @Override
-    public long executeLong(VirtualFrame frame) throws UnexpectedResultException {
-        return SLTypesGen.expectLong(executeGeneric(frame));
+    public long executeLong(VirtualFrame vFrame) throws UnexpectedResultException {
+        return SLTypesGen.expectLong(executeGeneric(vFrame));
     }
 
     @Override
-    public BigInteger executeBigInteger(VirtualFrame frame) throws UnexpectedResultException {
-        return SLTypesGen.expectBigInteger(executeGeneric(frame));
+    public BigInteger executeBigInteger(VirtualFrame vFrame) throws UnexpectedResultException {
+        return SLTypesGen.expectBigInteger(executeGeneric(vFrame));
     }
 
     @Override
-    public boolean executeBoolean(VirtualFrame frame) throws UnexpectedResultException {
-        return SLTypesGen.expectBoolean(executeGeneric(frame));
+    public boolean executeBoolean(VirtualFrame vFrame) throws UnexpectedResultException {
+        return SLTypesGen.expectBoolean(executeGeneric(vFrame));
     }
 
     @Override
-    public String executeString(VirtualFrame frame) throws UnexpectedResultException {
-        return SLTypesGen.expectString(executeGeneric(frame));
+    public String executeString(VirtualFrame vFrame) throws UnexpectedResultException {
+        return SLTypesGen.expectString(executeGeneric(vFrame));
     }
 
     @Override
-    public SLFunction executeFunction(VirtualFrame frame) throws UnexpectedResultException {
-        probeNode.enter(child, frame);
+    public SLFunction executeFunction(VirtualFrame vFrame) throws UnexpectedResultException {
+        probeNode.enter(child, vFrame);
         SLFunction result;
 
         try {
-            result = child.executeFunction(frame);
-            probeNode.returnValue(child, frame, result);
+            result = child.executeFunction(vFrame);
+            probeNode.returnValue(child, vFrame, result);
         } catch (Exception e) {
-            probeNode.returnExceptional(child, frame, e);
+            probeNode.returnExceptional(child, vFrame, e);
             throw (e);
         }
         return result;
     }
 
     @Override
-    public SLNull executeNull(VirtualFrame frame) throws UnexpectedResultException {
-        return SLTypesGen.expectSLNull(executeGeneric(frame));
+    public SLNull executeNull(VirtualFrame vFrame) throws UnexpectedResultException {
+        return SLTypesGen.expectSLNull(executeGeneric(vFrame));
     }
 }
