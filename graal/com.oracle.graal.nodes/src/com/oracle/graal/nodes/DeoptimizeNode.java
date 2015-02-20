@@ -30,7 +30,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(shortName = "Deopt", nameTemplate = "Deopt {p#reason/s}")
 public final class DeoptimizeNode extends AbstractDeoptimizeNode implements Lowerable, LIRLowerable {
 
-    public static final NodeClass<DeoptimizeNode> TYPE = NodeClass.get(DeoptimizeNode.class);
+    public static final NodeClass<DeoptimizeNode> TYPE = NodeClass.create(DeoptimizeNode.class);
     protected final DeoptimizationAction action;
     protected final DeoptimizationReason reason;
     protected final int debugId;

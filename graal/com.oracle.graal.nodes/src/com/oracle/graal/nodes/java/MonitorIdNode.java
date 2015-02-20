@@ -36,7 +36,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(allowedUsageTypes = {InputType.Association})
 public class MonitorIdNode extends ValueNode implements IterableNodeType, LIRLowerable {
 
-    public static final NodeClass<MonitorIdNode> TYPE = NodeClass.get(MonitorIdNode.class);
+    public static final NodeClass<MonitorIdNode> TYPE = NodeClass.create(MonitorIdNode.class);
     protected int lockDepth;
 
     public MonitorIdNode(int lockDepth) {

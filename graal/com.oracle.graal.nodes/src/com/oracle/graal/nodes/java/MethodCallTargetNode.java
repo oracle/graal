@@ -34,7 +34,7 @@ import com.oracle.graal.nodes.type.*;
 
 @NodeInfo
 public class MethodCallTargetNode extends CallTargetNode implements IterableNodeType, Simplifiable {
-    public static final NodeClass<MethodCallTargetNode> TYPE = NodeClass.get(MethodCallTargetNode.class);
+    public static final NodeClass<MethodCallTargetNode> TYPE = NodeClass.create(MethodCallTargetNode.class);
     protected final JavaType returnType;
 
     public MethodCallTargetNode(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, JavaType returnType) {

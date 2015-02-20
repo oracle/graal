@@ -30,7 +30,7 @@ import com.oracle.graal.nodes.extended.*;
 
 @NodeInfo
 public abstract class FloatingAnchoredNode extends FloatingNode {
-    public static final NodeClass<FloatingAnchoredNode> TYPE = NodeClass.get(FloatingAnchoredNode.class);
+    public static final NodeClass<FloatingAnchoredNode> TYPE = NodeClass.create(FloatingAnchoredNode.class);
 
     @Input(InputType.Anchor) protected AnchoringNode anchor;
 

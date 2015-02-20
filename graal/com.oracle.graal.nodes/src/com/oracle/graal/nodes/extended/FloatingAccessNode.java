@@ -30,7 +30,7 @@ import com.oracle.graal.nodes.*;
 
 @NodeInfo
 public abstract class FloatingAccessNode extends FloatingGuardedNode implements Access, MemoryAccess {
-    public static final NodeClass<FloatingAccessNode> TYPE = NodeClass.get(FloatingAccessNode.class);
+    public static final NodeClass<FloatingAccessNode> TYPE = NodeClass.create(FloatingAccessNode.class);
 
     @Input ValueNode object;
     @Input(InputType.Association) LocationNode location;

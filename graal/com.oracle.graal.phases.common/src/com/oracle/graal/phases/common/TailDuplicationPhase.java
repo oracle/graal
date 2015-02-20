@@ -63,7 +63,7 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
 
     @NodeInfo(allowedUsageTypes = {InputType.Guard, InputType.Anchor})
     static final class DummyAnchorNode extends FixedWithNextNode implements GuardingNode, AnchoringNode {
-        public static final NodeClass<DummyAnchorNode> TYPE = NodeClass.get(DummyAnchorNode.class);
+        public static final NodeClass<DummyAnchorNode> TYPE = NodeClass.create(DummyAnchorNode.class);
 
         public DummyAnchorNode() {
             super(TYPE, StampFactory.forVoid());

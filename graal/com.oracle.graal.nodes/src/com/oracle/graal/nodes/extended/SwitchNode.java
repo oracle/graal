@@ -37,7 +37,7 @@ import com.oracle.graal.nodes.*;
 @NodeInfo
 public abstract class SwitchNode extends ControlSplitNode {
 
-    public static final NodeClass<SwitchNode> TYPE = NodeClass.get(SwitchNode.class);
+    public static final NodeClass<SwitchNode> TYPE = NodeClass.create(SwitchNode.class);
     @Successor protected NodeSuccessorList<AbstractBeginNode> successors;
     @Input protected ValueNode value;
 

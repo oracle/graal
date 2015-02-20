@@ -35,7 +35,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public abstract class AccessFieldNode extends FixedWithNextNode implements Lowerable {
 
-    public static final NodeClass<AccessFieldNode> TYPE = NodeClass.get(AccessFieldNode.class);
+    public static final NodeClass<AccessFieldNode> TYPE = NodeClass.create(AccessFieldNode.class);
     @OptionalInput ValueNode object;
 
     protected final ResolvedJavaField field;

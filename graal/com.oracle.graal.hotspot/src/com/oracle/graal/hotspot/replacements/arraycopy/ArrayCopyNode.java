@@ -41,7 +41,7 @@ import com.oracle.graal.replacements.nodes.*;
 @NodeInfo
 public final class ArrayCopyNode extends BasicArrayCopyNode implements Virtualizable, Lowerable {
 
-    public static final NodeClass<ArrayCopyNode> TYPE = NodeClass.get(ArrayCopyNode.class);
+    public static final NodeClass<ArrayCopyNode> TYPE = NodeClass.create(ArrayCopyNode.class);
 
     public ArrayCopyNode(Invoke invoke) {
         super(TYPE, invoke);

@@ -32,7 +32,7 @@ import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo(allowedUsageTypes = {InputType.Extension})
 public abstract class CallTargetNode extends ValueNode implements LIRLowerable {
-    public static final NodeClass<CallTargetNode> TYPE = NodeClass.get(CallTargetNode.class);
+    public static final NodeClass<CallTargetNode> TYPE = NodeClass.create(CallTargetNode.class);
 
     public enum InvokeKind {
         Interface(false),

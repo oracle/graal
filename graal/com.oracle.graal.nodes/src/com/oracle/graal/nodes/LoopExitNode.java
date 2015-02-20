@@ -29,7 +29,7 @@ import com.oracle.graal.nodeinfo.*;
 @NodeInfo(allowedUsageTypes = {InputType.Association})
 public final class LoopExitNode extends BeginStateSplitNode implements IterableNodeType {
 
-    public static final NodeClass<LoopExitNode> TYPE = NodeClass.get(LoopExitNode.class);
+    public static final NodeClass<LoopExitNode> TYPE = NodeClass.create(LoopExitNode.class);
     @Input(InputType.Association) LoopBeginNode loopBegin;
 
     public LoopExitNode(LoopBeginNode loop) {

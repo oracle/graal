@@ -39,7 +39,7 @@ import com.oracle.graal.nodes.util.*;
  */
 @NodeInfo
 public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable, Simplifiable {
-    public static final NodeClass<IntegerSwitchNode> TYPE = NodeClass.get(IntegerSwitchNode.class);
+    public static final NodeClass<IntegerSwitchNode> TYPE = NodeClass.create(IntegerSwitchNode.class);
 
     protected final int[] keys;
 

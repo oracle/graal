@@ -34,7 +34,7 @@ import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo(shortName = "/")
 public final class IntegerDivNode extends FixedBinaryNode implements Lowerable, LIRLowerable {
-    public static final NodeClass<IntegerDivNode> TYPE = NodeClass.get(IntegerDivNode.class);
+    public static final NodeClass<IntegerDivNode> TYPE = NodeClass.create(IntegerDivNode.class);
 
     public IntegerDivNode(ValueNode x, ValueNode y) {
         super(TYPE, IntegerStamp.OPS.getDiv().foldStamp(x.stamp(), y.stamp()), x, y);

@@ -39,6 +39,7 @@ import com.oracle.graal.lir.asm.*;
  */
 @Opcode("PUSH_INTERPRETER_FRAME")
 final class AMD64HotSpotPushInterpreterFrameOp extends AMD64LIRInstruction {
+    public static final LIRInstructionClass<AMD64HotSpotPushInterpreterFrameOp> TYPE = LIRInstructionClass.create(AMD64HotSpotPushInterpreterFrameOp.class);
 
     @Alive(REG) AllocatableValue frameSize;
     @Alive(REG) AllocatableValue framePc;
@@ -47,6 +48,7 @@ final class AMD64HotSpotPushInterpreterFrameOp extends AMD64LIRInstruction {
     private final HotSpotVMConfig config;
 
     AMD64HotSpotPushInterpreterFrameOp(AllocatableValue frameSize, AllocatableValue framePc, AllocatableValue senderSp, AllocatableValue initialInfo, HotSpotVMConfig config) {
+        super(TYPE);
         this.frameSize = frameSize;
         this.framePc = framePc;
         this.senderSp = senderSp;

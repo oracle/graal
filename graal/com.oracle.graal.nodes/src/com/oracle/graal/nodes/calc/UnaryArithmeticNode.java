@@ -36,7 +36,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public abstract class UnaryArithmeticNode<OP> extends UnaryNode implements ArithmeticLIRLowerable {
 
-    @SuppressWarnings("rawtypes") public static final NodeClass<UnaryArithmeticNode> TYPE = NodeClass.get(UnaryArithmeticNode.class);
+    @SuppressWarnings("rawtypes") public static final NodeClass<UnaryArithmeticNode> TYPE = NodeClass.create(UnaryArithmeticNode.class);
 
     protected interface SerializableUnaryFunction<T> extends Function<ArithmeticOpTable, UnaryOp<T>>, Serializable {
     }

@@ -71,18 +71,18 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
     /**
      * Gets the {@link NodeClass} associated with a given {@link Class}.
      */
-    public static <T> NodeClass<T> get(Class<T> c) {
-        assert getNodeClassViaReflection(c) == null;
+    public static <T> NodeClass<T> create(Class<T> c) {
+        assert get(c) == null;
         Class<? super T> superclass = c.getSuperclass();
         NodeClass<? super T> nodeSuperclass = null;
         if (superclass != NODE_CLASS) {
-            nodeSuperclass = getNodeClassViaReflection(superclass);
+            nodeSuperclass = get(superclass);
         }
         return new NodeClass<>(c, nodeSuperclass);
     }
 
     @SuppressWarnings("unchecked")
-    public static <T> NodeClass<T> getNodeClassViaReflection(Class<T> superclass) {
+    public static <T> NodeClass<T> get(Class<T> superclass) {
         try {
             Field field = superclass.getDeclaredField("TYPE");
             field.setAccessible(true);

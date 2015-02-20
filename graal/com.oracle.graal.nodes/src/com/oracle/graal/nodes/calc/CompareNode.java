@@ -40,7 +40,7 @@ import com.oracle.graal.nodes.*;
 @NodeInfo
 public abstract class CompareNode extends BinaryOpLogicNode {
 
-    public static final NodeClass<CompareNode> TYPE = NodeClass.get(CompareNode.class);
+    public static final NodeClass<CompareNode> TYPE = NodeClass.create(CompareNode.class);
     protected final Condition condition;
     protected final boolean unorderedIsTrue;
 

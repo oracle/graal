@@ -33,22 +33,8 @@ import com.oracle.graal.lir.LIRInstruction.OperandMode;
 
 public class LIRInstructionClass<T> extends LIRIntrospection<T> {
 
-    @SuppressWarnings("unchecked")
-    public static final <T extends LIRInstruction> LIRInstructionClass<T> get(Class<T> c) {
-        LIRInstructionClass<T> clazz = (LIRInstructionClass<T>) allClasses.get(c);
-        if (clazz != null) {
-            return clazz;
-        }
-
-        // We can have a race of multiple threads creating the LIRInstructionClass at the same time.
-        // However, only one will be put into the map, and this is the one returned by all threads.
-        clazz = new LIRInstructionClass<>(c);
-        LIRInstructionClass<T> oldClazz = (LIRInstructionClass<T>) allClasses.putIfAbsent(c, clazz);
-        if (oldClazz != null) {
-            return oldClazz;
-        } else {
-            return clazz;
-        }
+    public static final <T extends LIRInstruction> LIRInstructionClass<T> create(Class<T> c) {
+        return new LIRInstructionClass<>(c);
     }
 
     private static final Class<LIRInstruction> INSTRUCTION_CLASS = LIRInstruction.class;

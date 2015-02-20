@@ -29,7 +29,7 @@ import com.oracle.graal.nodeinfo.*;
 
 @NodeInfo
 public abstract class InfopointNode extends FixedWithNextNode {
-    public static final NodeClass<InfopointNode> TYPE = NodeClass.get(InfopointNode.class);
+    public static final NodeClass<InfopointNode> TYPE = NodeClass.create(InfopointNode.class);
     protected final InfopointReason reason;
 
     public InfopointNode(NodeClass<? extends InfopointNode> c, InfopointReason reason) {

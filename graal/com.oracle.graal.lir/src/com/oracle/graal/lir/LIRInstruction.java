@@ -178,9 +178,10 @@ public abstract class LIRInstruction {
     /**
      * Constructs a new LIR instruction.
      */
-    public LIRInstruction() {
+    public LIRInstruction(LIRInstructionClass<? extends LIRInstruction> c) {
         LIR_NODE_COUNT.increment();
-        instructionClass = LIRInstructionClass.get(getClass());
+        instructionClass = c;
+        assert c.getClazz() == this.getClass();
         id = -1;
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,7 +31,8 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 
 // @formatter:off
-public class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
+public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
+    public static final LIRInstructionClass<AMD64MathIntrinsicOp> TYPE = LIRInstructionClass.create(AMD64MathIntrinsicOp.class);
     public enum IntrinsicOpcode  {
         SIN, COS, TAN,
         LOG, LOG10
@@ -42,6 +43,7 @@ public class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
     @Use protected Value input;
 
     public AMD64MathIntrinsicOp(IntrinsicOpcode opcode, Value result, Value input) {
+        super(TYPE);
         this.opcode = opcode;
         this.result = result;
         this.input = input;

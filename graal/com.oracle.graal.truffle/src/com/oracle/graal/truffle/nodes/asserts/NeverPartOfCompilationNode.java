@@ -31,7 +31,7 @@ import com.oracle.graal.nodes.util.*;
 @NodeInfo
 public final class NeverPartOfCompilationNode extends FixedWithNextNode implements IterableNodeType {
 
-    public static final NodeClass<NeverPartOfCompilationNode> TYPE = NodeClass.get(NeverPartOfCompilationNode.class);
+    public static final NodeClass<NeverPartOfCompilationNode> TYPE = NodeClass.create(NeverPartOfCompilationNode.class);
     protected final String message;
 
     public NeverPartOfCompilationNode(String message) {

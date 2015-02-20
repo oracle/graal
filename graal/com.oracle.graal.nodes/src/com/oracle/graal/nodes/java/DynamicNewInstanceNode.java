@@ -31,7 +31,7 @@ import com.oracle.graal.nodes.*;
 
 @NodeInfo
 public final class DynamicNewInstanceNode extends AbstractNewObjectNode implements Canonicalizable {
-    public static final NodeClass<DynamicNewInstanceNode> TYPE = NodeClass.get(DynamicNewInstanceNode.class);
+    public static final NodeClass<DynamicNewInstanceNode> TYPE = NodeClass.create(DynamicNewInstanceNode.class);
 
     @Input ValueNode clazz;
 

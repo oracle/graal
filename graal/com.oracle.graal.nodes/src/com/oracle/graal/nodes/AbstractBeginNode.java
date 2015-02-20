@@ -38,7 +38,7 @@ import com.oracle.graal.nodes.util.*;
 @NodeInfo(allowedUsageTypes = {InputType.Guard, InputType.Anchor})
 public abstract class AbstractBeginNode extends FixedWithNextNode implements LIRLowerable, Simplifiable, GuardingNode, AnchoringNode, IterableNodeType {
 
-    public static final NodeClass<AbstractBeginNode> TYPE = NodeClass.get(AbstractBeginNode.class);
+    public static final NodeClass<AbstractBeginNode> TYPE = NodeClass.create(AbstractBeginNode.class);
 
     protected AbstractBeginNode(NodeClass<? extends AbstractBeginNode> c) {
         this(c, StampFactory.forVoid());

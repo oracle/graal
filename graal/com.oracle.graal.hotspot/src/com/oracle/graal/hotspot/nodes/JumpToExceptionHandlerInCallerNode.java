@@ -37,7 +37,7 @@ import com.oracle.graal.word.*;
 @NodeInfo
 public final class JumpToExceptionHandlerInCallerNode extends ControlSinkNode implements LIRLowerable {
 
-    public static final NodeClass<JumpToExceptionHandlerInCallerNode> TYPE = NodeClass.get(JumpToExceptionHandlerInCallerNode.class);
+    public static final NodeClass<JumpToExceptionHandlerInCallerNode> TYPE = NodeClass.create(JumpToExceptionHandlerInCallerNode.class);
     @Input ValueNode handlerInCallerPc;
     @Input ValueNode exception;
     @Input ValueNode exceptionPc;

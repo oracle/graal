@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,8 +35,10 @@ import com.oracle.graal.lir.sparc.*;
  */
 @Opcode("LEAVE_CURRENT_STACK_FRAME")
 final class SPARCHotSpotLeaveCurrentStackFrameOp extends SPARCLIRInstruction {
+    public static final LIRInstructionClass<SPARCHotSpotLeaveCurrentStackFrameOp> TYPE = LIRInstructionClass.create(SPARCHotSpotLeaveCurrentStackFrameOp.class);
 
     public SPARCHotSpotLeaveCurrentStackFrameOp() {
+        super(TYPE);
     }
 
     @Override

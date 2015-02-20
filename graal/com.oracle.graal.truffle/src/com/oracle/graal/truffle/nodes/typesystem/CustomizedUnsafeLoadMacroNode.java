@@ -38,7 +38,7 @@ import com.oracle.graal.truffle.nodes.*;
  */
 @NodeInfo
 public final class CustomizedUnsafeLoadMacroNode extends MacroStateSplitNode implements Canonicalizable {
-    public static final NodeClass<CustomizedUnsafeLoadMacroNode> TYPE = NodeClass.get(CustomizedUnsafeLoadMacroNode.class);
+    public static final NodeClass<CustomizedUnsafeLoadMacroNode> TYPE = NodeClass.create(CustomizedUnsafeLoadMacroNode.class);
 
     private static final int ARGUMENT_COUNT = 4;
     private static final int OBJECT_ARGUMENT_INDEX = 0;

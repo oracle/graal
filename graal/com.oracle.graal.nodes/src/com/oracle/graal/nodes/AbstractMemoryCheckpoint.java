@@ -33,7 +33,7 @@ import com.oracle.graal.nodes.extended.*;
 @NodeInfo
 public abstract class AbstractMemoryCheckpoint extends AbstractStateSplit implements MemoryCheckpoint {
 
-    public static final NodeClass<AbstractMemoryCheckpoint> TYPE = NodeClass.get(AbstractMemoryCheckpoint.class);
+    public static final NodeClass<AbstractMemoryCheckpoint> TYPE = NodeClass.create(AbstractMemoryCheckpoint.class);
 
     protected AbstractMemoryCheckpoint(NodeClass<? extends AbstractMemoryCheckpoint> c, Stamp stamp) {
         this(c, stamp, null);

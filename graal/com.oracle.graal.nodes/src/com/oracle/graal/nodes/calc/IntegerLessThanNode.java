@@ -34,7 +34,7 @@ import com.oracle.graal.nodes.util.*;
 
 @NodeInfo(shortName = "<")
 public final class IntegerLessThanNode extends CompareNode {
-    public static final NodeClass<IntegerLessThanNode> TYPE = NodeClass.get(IntegerLessThanNode.class);
+    public static final NodeClass<IntegerLessThanNode> TYPE = NodeClass.create(IntegerLessThanNode.class);
 
     public IntegerLessThanNode(ValueNode x, ValueNode y) {
         super(TYPE, Condition.LT, false, x, y);

@@ -30,7 +30,7 @@ import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo
 public final class OSRStartNode extends StartNode implements Lowerable {
-    public static final NodeClass<OSRStartNode> TYPE = NodeClass.get(OSRStartNode.class);
+    public static final NodeClass<OSRStartNode> TYPE = NodeClass.create(OSRStartNode.class);
 
     public OSRStartNode() {
         super(TYPE);

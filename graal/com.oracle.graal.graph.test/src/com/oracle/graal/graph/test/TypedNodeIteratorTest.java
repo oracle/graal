@@ -36,7 +36,7 @@ public class TypedNodeIteratorTest {
     @NodeInfo
     static final class TestNode extends Node implements IterableNodeType, TestNodeInterface {
 
-        public static final NodeClass<TestNode> TYPE = NodeClass.get(TestNode.class);
+        public static final NodeClass<TestNode> TYPE = NodeClass.create(TestNode.class);
         protected final String name;
 
         public TestNode(String name) {

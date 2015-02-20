@@ -41,6 +41,8 @@ import com.oracle.graal.lir.asm.*;
 @Opcode("JUMP_TO_EXCEPTION_HANDLER_IN_CALLER")
 final class AMD64HotSpotJumpToExceptionHandlerInCallerOp extends AMD64HotSpotEpilogueOp implements BlockEndOp {
 
+    public static final LIRInstructionClass<AMD64HotSpotJumpToExceptionHandlerInCallerOp> TYPE = LIRInstructionClass.create(AMD64HotSpotJumpToExceptionHandlerInCallerOp.class);
+
     @Use(REG) AllocatableValue handlerInCallerPc;
     @Use(REG) AllocatableValue exception;
     @Use(REG) AllocatableValue exceptionPc;
@@ -48,6 +50,7 @@ final class AMD64HotSpotJumpToExceptionHandlerInCallerOp extends AMD64HotSpotEpi
     private final int isMethodHandleReturnOffset;
 
     AMD64HotSpotJumpToExceptionHandlerInCallerOp(AllocatableValue handlerInCallerPc, AllocatableValue exception, AllocatableValue exceptionPc, int isMethodHandleReturnOffset, Register thread) {
+        super(TYPE);
         this.handlerInCallerPc = handlerInCallerPc;
         this.exception = exception;
         this.exceptionPc = exceptionPc;

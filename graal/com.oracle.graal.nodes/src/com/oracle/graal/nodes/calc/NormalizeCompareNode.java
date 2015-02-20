@@ -39,7 +39,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public final class NormalizeCompareNode extends BinaryNode implements Lowerable {
 
-    public static final NodeClass<NormalizeCompareNode> TYPE = NodeClass.get(NormalizeCompareNode.class);
+    public static final NodeClass<NormalizeCompareNode> TYPE = NodeClass.create(NormalizeCompareNode.class);
     protected final boolean isUnorderedLess;
 
     public NormalizeCompareNode(ValueNode x, ValueNode y, boolean isUnorderedLess) {

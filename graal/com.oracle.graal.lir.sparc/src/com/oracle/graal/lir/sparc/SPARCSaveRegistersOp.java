@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,6 +42,7 @@ import com.oracle.graal.sparc.*;
  */
 @Opcode("SAVE_REGISTER")
 public class SPARCSaveRegistersOp extends SPARCLIRInstruction implements SaveRegistersOp {
+    public static final LIRInstructionClass<SPARCSaveRegistersOp> TYPE = LIRInstructionClass.create(SPARCSaveRegistersOp.class);
     public static final Register RETURN_REGISTER_STORAGE = SPARC.d62;
     /**
      * The registers (potentially) saved by this operation.
@@ -66,6 +67,7 @@ public class SPARCSaveRegistersOp extends SPARCLIRInstruction implements SaveReg
      * @param supportsRemove determines if registers can be {@linkplain #remove(Set) pruned}
      */
     public SPARCSaveRegistersOp(Register[] savedRegisters, StackSlotValue[] savedRegisterLocations, boolean supportsRemove) {
+        super(TYPE);
         assert Arrays.asList(savedRegisterLocations).stream().allMatch(ValueUtil::isVirtualStackSlot);
         this.savedRegisters = savedRegisters;
         this.slots = savedRegisterLocations;

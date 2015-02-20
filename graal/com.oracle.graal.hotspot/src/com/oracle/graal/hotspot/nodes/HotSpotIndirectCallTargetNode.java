@@ -33,7 +33,7 @@ import com.oracle.graal.nodes.*;
 
 @NodeInfo
 public final class HotSpotIndirectCallTargetNode extends IndirectCallTargetNode {
-    public static final NodeClass<HotSpotIndirectCallTargetNode> TYPE = NodeClass.get(HotSpotIndirectCallTargetNode.class);
+    public static final NodeClass<HotSpotIndirectCallTargetNode> TYPE = NodeClass.create(HotSpotIndirectCallTargetNode.class);
 
     @Input ValueNode metaspaceMethod;
 

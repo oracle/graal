@@ -37,7 +37,7 @@ import com.oracle.graal.nodes.spi.*;
  */
 @NodeInfo
 public final class AMD64CountLeadingZerosNode extends UnaryNode implements LIRLowerable {
-    public static final NodeClass<AMD64CountLeadingZerosNode> TYPE = NodeClass.get(AMD64CountLeadingZerosNode.class);
+    public static final NodeClass<AMD64CountLeadingZerosNode> TYPE = NodeClass.create(AMD64CountLeadingZerosNode.class);
 
     public AMD64CountLeadingZerosNode(ValueNode value) {
         super(TYPE, StampFactory.forInteger(Kind.Int, 0, ((PrimitiveStamp) value.stamp()).getBits()), value);

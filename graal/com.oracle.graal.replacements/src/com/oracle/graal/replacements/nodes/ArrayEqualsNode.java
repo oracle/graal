@@ -38,7 +38,7 @@ import com.oracle.graal.nodes.util.*;
 @NodeInfo
 public final class ArrayEqualsNode extends FixedWithNextNode implements LIRLowerable, Canonicalizable, Virtualizable, MemoryAccess {
 
-    public static final NodeClass<ArrayEqualsNode> TYPE = NodeClass.get(ArrayEqualsNode.class);
+    public static final NodeClass<ArrayEqualsNode> TYPE = NodeClass.create(ArrayEqualsNode.class);
     /** {@link Kind} of the arrays to compare. */
     protected final Kind kind;
 

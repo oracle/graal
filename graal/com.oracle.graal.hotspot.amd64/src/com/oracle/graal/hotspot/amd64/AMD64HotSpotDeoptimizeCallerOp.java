@@ -36,6 +36,12 @@ import com.oracle.graal.lir.asm.*;
 @Opcode("DEOPT_CALLER")
 final class AMD64HotSpotDeoptimizeCallerOp extends AMD64HotSpotEpilogueOp implements BlockEndOp {
 
+    public static final LIRInstructionClass<AMD64HotSpotDeoptimizeCallerOp> TYPE = LIRInstructionClass.create(AMD64HotSpotDeoptimizeCallerOp.class);
+
+    protected AMD64HotSpotDeoptimizeCallerOp() {
+        super(TYPE);
+    }
+
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
         leaveFrameAndRestoreRbp(crb, masm);

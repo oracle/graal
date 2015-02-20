@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,10 +32,12 @@ import com.oracle.graal.lir.sparc.*;
 
 @Opcode("DEOPT")
 final class SPARCDeoptimizeOp extends SPARCLIRInstruction implements BlockEndOp {
+    public static final LIRInstructionClass<SPARCDeoptimizeOp> TYPE = LIRInstructionClass.create(SPARCDeoptimizeOp.class);
 
     @State private LIRFrameState info;
 
     SPARCDeoptimizeOp(LIRFrameState info) {
+        super(TYPE);
         this.info = info;
     }
 

@@ -36,7 +36,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(nameTemplate = "WriteRegister %{p#register}")
 public final class WriteRegisterNode extends FixedWithNextNode implements LIRLowerable {
 
-    public static final NodeClass<WriteRegisterNode> TYPE = NodeClass.get(WriteRegisterNode.class);
+    public static final NodeClass<WriteRegisterNode> TYPE = NodeClass.create(WriteRegisterNode.class);
     /**
      * The fixed register to access.
      */

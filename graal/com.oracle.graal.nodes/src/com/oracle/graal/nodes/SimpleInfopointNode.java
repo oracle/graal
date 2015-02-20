@@ -30,7 +30,7 @@ import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo
 public final class SimpleInfopointNode extends InfopointNode implements LIRLowerable, IterableNodeType, Simplifiable {
-    public static final NodeClass<SimpleInfopointNode> TYPE = NodeClass.get(SimpleInfopointNode.class);
+    public static final NodeClass<SimpleInfopointNode> TYPE = NodeClass.create(SimpleInfopointNode.class);
     protected BytecodePosition position;
 
     public SimpleInfopointNode(InfopointReason reason, BytecodePosition position) {

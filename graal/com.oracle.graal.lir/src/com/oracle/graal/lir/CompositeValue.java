@@ -48,10 +48,11 @@ public abstract class CompositeValue extends AbstractValue implements Cloneable 
 
     private static final DebugMetric COMPOSITE_VALUE_COUNT = Debug.metric("CompositeValues");
 
-    public CompositeValue(LIRKind kind) {
+    public CompositeValue(CompositeValueClass<? extends CompositeValue> c, LIRKind kind) {
         super(kind);
         COMPOSITE_VALUE_COUNT.increment();
-        valueClass = CompositeValueClass.get(getClass());
+        valueClass = c;
+        assert c.getClazz() == this.getClass();
     }
 
     final CompositeValue forEachComponent(LIRInstruction inst, OperandMode mode, InstructionValueProcedure proc) {

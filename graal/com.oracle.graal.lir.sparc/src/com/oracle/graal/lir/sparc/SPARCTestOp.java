@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,14 +30,17 @@ import static com.oracle.graal.sparc.SPARC.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 
 public class SPARCTestOp extends SPARCLIRInstruction {
+    public static final LIRInstructionClass<SPARCTestOp> TYPE = LIRInstructionClass.create(SPARCTestOp.class);
 
     @Use({REG}) protected Value x;
     @Use({REG, CONST}) protected Value y;
 
     public SPARCTestOp(Value x, Value y) {
+        super(TYPE);
         this.x = x;
         this.y = y;
     }

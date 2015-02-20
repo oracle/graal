@@ -29,7 +29,7 @@ import com.oracle.graal.nodeinfo.*;
 @NodeInfo
 public abstract class DeoptimizingFixedWithNextNode extends FixedWithNextNode implements DeoptimizingNode.DeoptBefore {
 
-    public static final NodeClass<DeoptimizingFixedWithNextNode> TYPE = NodeClass.get(DeoptimizingFixedWithNextNode.class);
+    public static final NodeClass<DeoptimizingFixedWithNextNode> TYPE = NodeClass.create(DeoptimizingFixedWithNextNode.class);
     @OptionalInput(InputType.State) protected FrameState stateBefore;
 
     protected DeoptimizingFixedWithNextNode(NodeClass<? extends DeoptimizingFixedWithNextNode> c, Stamp stamp) {

@@ -22,11 +22,7 @@
  */
 package com.oracle.graal.compiler.common;
 
-import java.util.concurrent.*;
-
 public abstract class FieldIntrospection<T> extends UnsafeAccess {
-
-    protected static final ConcurrentHashMap<Class<?>, FieldIntrospection<?>> allClasses = new ConcurrentHashMap<>();
 
     private final Class<T> clazz;
 

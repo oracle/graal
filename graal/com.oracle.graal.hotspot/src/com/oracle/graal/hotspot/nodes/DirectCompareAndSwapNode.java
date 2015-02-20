@@ -41,7 +41,7 @@ import com.oracle.graal.word.*;
 @NodeInfo(allowedUsageTypes = {InputType.Memory})
 public final class DirectCompareAndSwapNode extends FixedWithNextNode implements LIRLowerable, MemoryCheckpoint.Single {
 
-    public static final NodeClass<DirectCompareAndSwapNode> TYPE = NodeClass.get(DirectCompareAndSwapNode.class);
+    public static final NodeClass<DirectCompareAndSwapNode> TYPE = NodeClass.create(DirectCompareAndSwapNode.class);
     @Input ValueNode object;
     @Input ValueNode offset;
     @Input ValueNode expectedValue;

@@ -38,6 +38,10 @@ import com.oracle.graal.lir.asm.*;
  */
 abstract class AMD64HotSpotEpilogueOp extends AMD64LIRInstruction {
 
+    protected AMD64HotSpotEpilogueOp(LIRInstructionClass<? extends AMD64HotSpotEpilogueOp> c) {
+        super(c);
+    }
+
     /**
      * The type of location (i.e., stack or register) in which RBP is saved is not known until
      * initial LIR generation is finished. Until then, we use a placeholder variable so that LIR

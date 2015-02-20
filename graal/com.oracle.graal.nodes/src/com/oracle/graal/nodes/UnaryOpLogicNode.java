@@ -30,7 +30,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public abstract class UnaryOpLogicNode extends LogicNode implements LIRLowerable, Canonicalizable.Unary<ValueNode> {
 
-    public static final NodeClass<UnaryOpLogicNode> TYPE = NodeClass.get(UnaryOpLogicNode.class);
+    public static final NodeClass<UnaryOpLogicNode> TYPE = NodeClass.create(UnaryOpLogicNode.class);
     @Input protected ValueNode value;
 
     public ValueNode getValue() {

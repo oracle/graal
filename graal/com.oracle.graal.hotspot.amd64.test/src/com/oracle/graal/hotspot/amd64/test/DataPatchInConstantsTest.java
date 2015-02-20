@@ -155,7 +155,7 @@ public class DataPatchInConstantsTest extends HotSpotGraalCompilerTest {
 
     @NodeInfo
     private static final class LoadThroughPatchNode extends FixedWithNextNode implements LIRLowerable {
-        public static final NodeClass<LoadThroughPatchNode> TYPE = NodeClass.get(LoadThroughPatchNode.class);
+        public static final NodeClass<LoadThroughPatchNode> TYPE = NodeClass.create(LoadThroughPatchNode.class);
 
         @Input protected ValueNode input;
 
@@ -178,13 +178,15 @@ public class DataPatchInConstantsTest extends HotSpotGraalCompilerTest {
         public static native Object load(Object obj);
     }
 
-    private static class LoadThroughPatchOp extends LIRInstruction {
+    private static final class LoadThroughPatchOp extends LIRInstruction {
+        public static final LIRInstructionClass<LoadThroughPatchOp> TYPE = LIRInstructionClass.create(LoadThroughPatchOp.class);
 
         final Constant c;
         final boolean compressed;
         @Def({REG}) AllocatableValue result;
 
         LoadThroughPatchOp(Constant c, boolean compressed, AllocatableValue result) {
+            super(TYPE);
             this.c = c;
             this.compressed = compressed;
             this.result = result;

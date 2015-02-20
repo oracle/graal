@@ -48,7 +48,7 @@ import com.oracle.graal.nodes.util.*;
  */
 @NodeInfo
 public final class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerable {
-    public static final NodeClass<IfNode> TYPE = NodeClass.get(IfNode.class);
+    public static final NodeClass<IfNode> TYPE = NodeClass.create(IfNode.class);
 
     private static final DebugMetric CORRECTED_PROBABILITIES = Debug.metric("CorrectedProbabilities");
 

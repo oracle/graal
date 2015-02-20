@@ -60,7 +60,8 @@ public class StandardOp {
     /**
      * LIR operation that defines the position of a label.
      */
-    public static class LabelOp extends LIRInstruction {
+    public static final class LabelOp extends LIRInstruction {
+        public static final LIRInstructionClass<LabelOp> TYPE = LIRInstructionClass.create(LabelOp.class);
 
         private static final Value[] NO_VALUES = new Value[0];
 
@@ -78,6 +79,7 @@ public class StandardOp {
         private final boolean align;
 
         public LabelOp(Label label, boolean align) {
+            super(TYPE);
             this.label = label;
             this.align = align;
             this.incomingValues = NO_VALUES;
@@ -105,10 +107,16 @@ public class StandardOp {
      * LIR operation that is an unconditional jump to a {@link #destination()}.
      */
     public static class JumpOp extends LIRInstruction implements BlockEndOp {
+        public static final LIRInstructionClass<JumpOp> TYPE = LIRInstructionClass.create(JumpOp.class);
 
         private final LabelRef destination;
 
         public JumpOp(LabelRef destination) {
+            this(TYPE, destination);
+        }
+
+        protected JumpOp(LIRInstructionClass<? extends JumpOp> c, LabelRef destination) {
+            super(c);
             this.destination = destination;
         }
 
@@ -178,7 +186,8 @@ public class StandardOp {
      * A LIR operation that does nothing. If the operation records its position, it can be
      * subsequently {@linkplain #replace(LIR, LIRInstruction) replaced}.
      */
-    public static class NoOp extends LIRInstruction {
+    public static final class NoOp extends LIRInstruction {
+        public static final LIRInstructionClass<NoOp> TYPE = LIRInstructionClass.create(NoOp.class);
 
         /**
          * The block in which this instruction is located.
@@ -191,6 +200,7 @@ public class StandardOp {
         final int index;
 
         public NoOp(AbstractBlock<?> block, int index) {
+            super(TYPE);
             this.block = block;
             this.index = index;
         }
@@ -208,11 +218,13 @@ public class StandardOp {
     }
 
     @Opcode("BLACKHOLE")
-    public static class BlackholeOp extends LIRInstruction {
+    public static final class BlackholeOp extends LIRInstruction {
+        public static final LIRInstructionClass<BlackholeOp> TYPE = LIRInstructionClass.create(BlackholeOp.class);
 
         @Use({REG, STACK}) private Value value;
 
         public BlackholeOp(Value value) {
+            super(TYPE);
             this.value = value;
         }
 

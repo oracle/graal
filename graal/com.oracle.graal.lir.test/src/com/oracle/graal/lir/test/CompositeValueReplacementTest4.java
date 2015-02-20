@@ -40,12 +40,13 @@ import com.oracle.graal.lir.asm.*;
 public class CompositeValueReplacementTest4 {
 
     private static class NestedCompositeValue extends CompositeValue {
+        public static final CompositeValueClass<NestedCompositeValue> TYPE = CompositeValueClass.create(NestedCompositeValue.class);
 
         private static final long serialVersionUID = -8804214200173503527L;
         @Component({REG, OperandFlag.ILLEGAL}) protected Value[] values;
 
         public NestedCompositeValue(Value value) {
-            super(LIRKind.Illegal);
+            super(TYPE, LIRKind.Illegal);
             this.values = new Value[]{value};
         }
 
@@ -96,10 +97,12 @@ public class CompositeValueReplacementTest4 {
     }
 
     private static class TestOp extends LIRInstruction {
+        public static final LIRInstructionClass<TestOp> TYPE = LIRInstructionClass.create(TestOp.class);
 
         @Use({COMPOSITE}) protected NestedCompositeValue compValue;
 
         public TestOp(NestedCompositeValue compValue) {
+            super(TYPE);
             this.compValue = compValue;
         }
 

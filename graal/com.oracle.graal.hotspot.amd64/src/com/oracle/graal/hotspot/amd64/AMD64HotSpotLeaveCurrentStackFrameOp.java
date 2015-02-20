@@ -39,9 +39,12 @@ import com.oracle.graal.lir.framemap.*;
 @Opcode("LEAVE_CURRENT_STACK_FRAME")
 final class AMD64HotSpotLeaveCurrentStackFrameOp extends AMD64HotSpotEpilogueOp {
 
+    public static final LIRInstructionClass<AMD64HotSpotLeaveCurrentStackFrameOp> TYPE = LIRInstructionClass.create(AMD64HotSpotLeaveCurrentStackFrameOp.class);
+
     private final SaveRegistersOp saveRegisterOp;
 
     public AMD64HotSpotLeaveCurrentStackFrameOp(SaveRegistersOp saveRegisterOp) {
+        super(TYPE);
         this.saveRegisterOp = saveRegisterOp;
     }
 

@@ -34,7 +34,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(shortName = "==")
 public final class ObjectEqualsNode extends PointerEqualsNode implements Virtualizable {
 
-    public static final NodeClass<ObjectEqualsNode> TYPE = NodeClass.get(ObjectEqualsNode.class);
+    public static final NodeClass<ObjectEqualsNode> TYPE = NodeClass.create(ObjectEqualsNode.class);
 
     public ObjectEqualsNode(ValueNode x, ValueNode y) {
         super(TYPE, x, y);

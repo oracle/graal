@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -74,11 +74,13 @@ public class SPARCMove {
 
     @Opcode("MOVE_TOREG")
     public static class MoveToRegOp extends SPARCLIRInstruction implements MoveOp, SPARCTailDelayedLIRInstruction {
+        public static final LIRInstructionClass<MoveToRegOp> TYPE = LIRInstructionClass.create(MoveToRegOp.class);
 
         @Def({REG, HINT}) protected AllocatableValue result;
         @Use({REG, STACK, CONST}) protected Value input;
 
         public MoveToRegOp(AllocatableValue result, Value input) {
+            super(TYPE);
             this.result = result;
             this.input = input;
         }
@@ -100,12 +102,14 @@ public class SPARCMove {
     }
 
     @Opcode("MOVE_FROMREG")
-    public static class MoveFromRegOp extends SPARCLIRInstruction implements MoveOp, SPARCTailDelayedLIRInstruction {
+    public static final class MoveFromRegOp extends SPARCLIRInstruction implements MoveOp, SPARCTailDelayedLIRInstruction {
+        public static final LIRInstructionClass<MoveFromRegOp> TYPE = LIRInstructionClass.create(MoveFromRegOp.class);
 
         @Def({REG, STACK}) protected AllocatableValue result;
         @Use({REG, CONST, HINT}) protected Value input;
 
         public MoveFromRegOp(AllocatableValue result, Value input) {
+            super(TYPE);
             this.result = result;
             this.input = input;
         }
@@ -130,14 +134,15 @@ public class SPARCMove {
      * Move between floating-point and general purpose register domain (WITHOUT VIS3).
      */
     @Opcode("MOVE")
-    public static class MoveFpGp extends SPARCLIRInstruction implements MoveOp, SPARCTailDelayedLIRInstruction {
+    public static final class MoveFpGp extends SPARCLIRInstruction implements MoveOp, SPARCTailDelayedLIRInstruction {
+        public static final LIRInstructionClass<MoveFpGp> TYPE = LIRInstructionClass.create(MoveFpGp.class);
 
         @Def({REG}) protected AllocatableValue result;
         @Use({REG}) protected AllocatableValue input;
         @Use({STACK}) protected StackSlotValue temp;
 
         public MoveFpGp(AllocatableValue result, AllocatableValue input, StackSlotValue temp) {
-            super();
+            super(TYPE);
             this.result = result;
             this.input = input;
             this.temp = temp;
@@ -224,13 +229,14 @@ public class SPARCMove {
      * Move between floating-point and general purpose register domain (WITH VIS3).
      */
     @Opcode("MOVE")
-    public static class MoveFpGpVIS3 extends SPARCLIRInstruction implements MoveOp, SPARCTailDelayedLIRInstruction {
+    public static final class MoveFpGpVIS3 extends SPARCLIRInstruction implements MoveOp, SPARCTailDelayedLIRInstruction {
+        public static final LIRInstructionClass<MoveFpGpVIS3> TYPE = LIRInstructionClass.create(MoveFpGpVIS3.class);
 
         @Def({REG}) protected AllocatableValue result;
         @Use({REG}) protected AllocatableValue input;
 
         public MoveFpGpVIS3(AllocatableValue result, AllocatableValue input) {
-            super();
+            super(TYPE);
             this.result = result;
             this.input = input;
         }
@@ -277,12 +283,14 @@ public class SPARCMove {
     }
 
     public abstract static class MemOp extends SPARCLIRInstruction implements ImplicitNullCheck {
+        public static final LIRInstructionClass<MemOp> TYPE = LIRInstructionClass.create(MemOp.class);
 
         protected final Kind kind;
         @Use({COMPOSITE}) protected SPARCAddressValue address;
         @State protected LIRFrameState state;
 
-        public MemOp(Kind kind, SPARCAddressValue address, LIRFrameState state) {
+        public MemOp(LIRInstructionClass<? extends MemOp> c, Kind kind, SPARCAddressValue address, LIRFrameState state) {
+            super(c);
             this.kind = kind;
             this.address = address;
             this.state = state;
@@ -304,12 +312,13 @@ public class SPARCMove {
         }
     }
 
-    public static class LoadOp extends MemOp implements SPARCTailDelayedLIRInstruction {
+    public static final class LoadOp extends MemOp implements SPARCTailDelayedLIRInstruction {
+        public static final LIRInstructionClass<LoadOp> TYPE = LIRInstructionClass.create(LoadOp.class);
 
         @Def({REG}) protected AllocatableValue result;
 
         public LoadOp(Kind kind, AllocatableValue result, SPARCAddressValue address, LIRFrameState state) {
-            super(kind, address, state);
+            super(TYPE, kind, address, state);
             this.result = result;
         }
 
@@ -356,12 +365,14 @@ public class SPARCMove {
         }
     }
 
-    public static class LoadAddressOp extends SPARCLIRInstruction implements SPARCTailDelayedLIRInstruction {
+    public static final class LoadAddressOp extends SPARCLIRInstruction implements SPARCTailDelayedLIRInstruction {
+        public static final LIRInstructionClass<LoadAddressOp> TYPE = LIRInstructionClass.create(LoadAddressOp.class);
 
         @Def({REG}) protected AllocatableValue result;
         @Use({COMPOSITE, UNINITIALIZED}) protected SPARCAddressValue addressValue;
 
         public LoadAddressOp(AllocatableValue result, SPARCAddressValue address) {
+            super(TYPE);
             this.result = result;
             this.addressValue = address;
         }
@@ -373,12 +384,14 @@ public class SPARCMove {
         }
     }
 
-    public static class LoadDataAddressOp extends SPARCLIRInstruction {
+    public static final class LoadDataAddressOp extends SPARCLIRInstruction {
+        public static final LIRInstructionClass<LoadDataAddressOp> TYPE = LIRInstructionClass.create(LoadDataAddressOp.class);
 
         @Def({REG}) protected AllocatableValue result;
         private final byte[] data;
 
         public LoadDataAddressOp(AllocatableValue result, byte[] data) {
+            super(TYPE);
             this.result = result;
             this.data = data;
         }
@@ -393,11 +406,13 @@ public class SPARCMove {
         }
     }
 
-    public static class MembarOp extends SPARCLIRInstruction {
+    public static final class MembarOp extends SPARCLIRInstruction {
+        public static final LIRInstructionClass<MembarOp> TYPE = LIRInstructionClass.create(MembarOp.class);
 
         private final int barriers;
 
         public MembarOp(final int barriers) {
+            super(TYPE);
             this.barriers = barriers;
         }
 
@@ -407,12 +422,14 @@ public class SPARCMove {
         }
     }
 
-    public static class NullCheckOp extends SPARCLIRInstruction implements NullCheck, SPARCTailDelayedLIRInstruction {
+    public static final class NullCheckOp extends SPARCLIRInstruction implements NullCheck, SPARCTailDelayedLIRInstruction {
+        public static final LIRInstructionClass<NullCheckOp> TYPE = LIRInstructionClass.create(NullCheckOp.class);
 
         @Use({REG}) protected AllocatableValue input;
         @State protected LIRFrameState state;
 
         public NullCheckOp(Variable input, LIRFrameState state) {
+            super(TYPE);
             this.input = input;
             this.state = state;
         }
@@ -434,7 +451,8 @@ public class SPARCMove {
     }
 
     @Opcode("CAS")
-    public static class CompareAndSwapOp extends SPARCLIRInstruction {
+    public static final class CompareAndSwapOp extends SPARCLIRInstruction {
+        public static final LIRInstructionClass<CompareAndSwapOp> TYPE = LIRInstructionClass.create(CompareAndSwapOp.class);
 
         @Def({REG, HINT}) protected AllocatableValue result;
         @Alive({REG}) protected AllocatableValue address;
@@ -442,6 +460,7 @@ public class SPARCMove {
         @Use({REG}) protected AllocatableValue newValue;
 
         public CompareAndSwapOp(AllocatableValue result, AllocatableValue address, AllocatableValue cmpValue, AllocatableValue newValue) {
+            super(TYPE);
             this.result = result;
             this.address = address;
             this.cmpValue = cmpValue;
@@ -455,12 +474,14 @@ public class SPARCMove {
         }
     }
 
-    public static class StackLoadAddressOp extends SPARCLIRInstruction implements SPARCTailDelayedLIRInstruction {
+    public static final class StackLoadAddressOp extends SPARCLIRInstruction implements SPARCTailDelayedLIRInstruction {
+        public static final LIRInstructionClass<StackLoadAddressOp> TYPE = LIRInstructionClass.create(StackLoadAddressOp.class);
 
         @Def({REG}) protected AllocatableValue result;
         @Use({STACK, UNINITIALIZED}) protected StackSlotValue slot;
 
         public StackLoadAddressOp(AllocatableValue result, StackSlotValue address) {
+            super(TYPE);
             this.result = result;
             this.slot = address;
         }
@@ -491,11 +512,12 @@ public class SPARCMove {
     }
 
     public static class StoreOp extends MemOp implements SPARCTailDelayedLIRInstruction {
+        public static final LIRInstructionClass<StoreOp> TYPE = LIRInstructionClass.create(StoreOp.class);
 
         @Use({REG}) protected AllocatableValue input;
 
         public StoreOp(Kind kind, SPARCAddressValue address, AllocatableValue input, LIRFrameState state) {
-            super(kind, address, state);
+            super(TYPE, kind, address, state);
             this.input = input;
         }
 
@@ -540,12 +562,13 @@ public class SPARCMove {
         }
     }
 
-    public static class StoreConstantOp extends MemOp implements SPARCTailDelayedLIRInstruction {
+    public static final class StoreConstantOp extends MemOp implements SPARCTailDelayedLIRInstruction {
+        public static final LIRInstructionClass<StoreConstantOp> TYPE = LIRInstructionClass.create(StoreConstantOp.class);
 
         protected final JavaConstant input;
 
         public StoreConstantOp(Kind kind, SPARCAddressValue address, JavaConstant input, LIRFrameState state) {
-            super(kind, address, state);
+            super(TYPE, kind, address, state);
             this.input = input;
             if (!input.isDefaultForKind()) {
                 throw GraalInternalError.shouldNotReachHere("Can only store null constants to memory");

@@ -38,7 +38,7 @@ import com.oracle.graal.nodes.virtual.*;
 @NodeInfo
 public abstract class BasicObjectCloneNode extends MacroStateSplitNode implements VirtualizableAllocation, ArrayLengthProvider {
 
-    public static final NodeClass<BasicObjectCloneNode> TYPE = NodeClass.get(BasicObjectCloneNode.class);
+    public static final NodeClass<BasicObjectCloneNode> TYPE = NodeClass.create(BasicObjectCloneNode.class);
 
     protected BasicObjectCloneNode(NodeClass<? extends BasicObjectCloneNode> c, Invoke invoke) {
         super(c, invoke);

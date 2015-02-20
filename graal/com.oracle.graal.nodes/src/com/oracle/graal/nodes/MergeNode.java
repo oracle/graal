@@ -31,7 +31,7 @@ import com.oracle.graal.nodeinfo.*;
 @NodeInfo
 public final class MergeNode extends AbstractMergeNode {
 
-    public static final NodeClass<MergeNode> TYPE = NodeClass.get(MergeNode.class);
+    public static final NodeClass<MergeNode> TYPE = NodeClass.create(MergeNode.class);
 
     public MergeNode() {
         super(TYPE);

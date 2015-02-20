@@ -36,7 +36,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(allowedUsageTypes = {InputType.Value, InputType.Memory})
 public final class LoweredCompareAndSwapNode extends FixedAccessNode implements StateSplit, LIRLowerable, MemoryCheckpoint.Single {
 
-    public static final NodeClass<LoweredCompareAndSwapNode> TYPE = NodeClass.get(LoweredCompareAndSwapNode.class);
+    public static final NodeClass<LoweredCompareAndSwapNode> TYPE = NodeClass.create(LoweredCompareAndSwapNode.class);
     @Input ValueNode expectedValue;
     @Input ValueNode newValue;
     @OptionalInput(InputType.State) FrameState stateAfter;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,11 +26,13 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.lir.asm.*;
 
 @Opcode("SIMPLE_INFOPOINT")
-public class SimpleInfopointOp extends LIRInstruction {
+public final class SimpleInfopointOp extends LIRInstruction {
+    public static final LIRInstructionClass<SimpleInfopointOp> TYPE = LIRInstructionClass.create(SimpleInfopointOp.class);
     private final InfopointReason reason;
     private final BytecodePosition position;
 
     public SimpleInfopointOp(InfopointReason reason, BytecodePosition position) {
+        super(TYPE);
         this.reason = reason;
         this.position = position;
     }

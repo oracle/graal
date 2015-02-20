@@ -32,7 +32,7 @@ import com.oracle.graal.nodeinfo.*;
 
 @NodeInfo
 public abstract class IndirectCallTargetNode extends LoweredCallTargetNode {
-    public static final NodeClass<IndirectCallTargetNode> TYPE = NodeClass.get(IndirectCallTargetNode.class);
+    public static final NodeClass<IndirectCallTargetNode> TYPE = NodeClass.create(IndirectCallTargetNode.class);
 
     @Input protected ValueNode computedAddress;
 

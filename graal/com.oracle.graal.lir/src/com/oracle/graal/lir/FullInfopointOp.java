@@ -29,13 +29,15 @@ import com.oracle.graal.lir.asm.*;
  * Emits an infopoint (only mark the position).
  */
 @Opcode("INFOPOINT")
-public class FullInfopointOp extends LIRInstruction {
+public final class FullInfopointOp extends LIRInstruction {
+    public static final LIRInstructionClass<FullInfopointOp> TYPE = LIRInstructionClass.create(FullInfopointOp.class);
 
     @State protected LIRFrameState state;
 
     private final InfopointReason reason;
 
     public FullInfopointOp(LIRFrameState state, InfopointReason reason) {
+        super(TYPE);
         this.state = state;
         this.reason = reason;
     }

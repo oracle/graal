@@ -36,7 +36,7 @@ import com.oracle.graal.nodes.type.*;
 @NodeInfo
 public final class IsNullNode extends UnaryOpLogicNode implements LIRLowerable, Virtualizable, PiPushable {
 
-    public static final NodeClass<IsNullNode> TYPE = NodeClass.get(IsNullNode.class);
+    public static final NodeClass<IsNullNode> TYPE = NodeClass.create(IsNullNode.class);
 
     public IsNullNode(ValueNode object) {
         super(TYPE, object);

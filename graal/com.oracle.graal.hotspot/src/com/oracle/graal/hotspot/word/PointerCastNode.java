@@ -37,7 +37,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public final class PointerCastNode extends FloatingNode implements LIRLowerable {
 
-    public static final NodeClass<PointerCastNode> TYPE = NodeClass.get(PointerCastNode.class);
+    public static final NodeClass<PointerCastNode> TYPE = NodeClass.create(PointerCastNode.class);
     @Input ValueNode input;
 
     public PointerCastNode(Stamp stamp, ValueNode input) {

@@ -44,7 +44,7 @@ import com.oracle.graal.replacements.nodes.*;
  */
 @NodeInfo
 public final class MethodHandleNode extends MacroStateSplitNode implements Simplifiable {
-    public static final NodeClass<MethodHandleNode> TYPE = NodeClass.get(MethodHandleNode.class);
+    public static final NodeClass<MethodHandleNode> TYPE = NodeClass.create(MethodHandleNode.class);
 
     // Replacement method data
     protected ResolvedJavaMethod replacementTargetMethod;

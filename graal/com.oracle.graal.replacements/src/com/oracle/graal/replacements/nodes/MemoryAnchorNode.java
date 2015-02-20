@@ -33,7 +33,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(allowedUsageTypes = {InputType.Memory})
 public final class MemoryAnchorNode extends FixedWithNextNode implements LIRLowerable, MemoryNode, Canonicalizable {
 
-    public static final NodeClass<MemoryAnchorNode> TYPE = NodeClass.get(MemoryAnchorNode.class);
+    public static final NodeClass<MemoryAnchorNode> TYPE = NodeClass.create(MemoryAnchorNode.class);
 
     public MemoryAnchorNode() {
         super(TYPE, StampFactory.forVoid());

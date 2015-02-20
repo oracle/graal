@@ -626,7 +626,7 @@ public class Graph {
     @com.oracle.graal.nodeinfo.NodeInfo
     static final class PlaceHolderNode extends Node {
 
-        public static final NodeClass<PlaceHolderNode> TYPE = NodeClass.get(PlaceHolderNode.class);
+        public static final NodeClass<PlaceHolderNode> TYPE = NodeClass.create(PlaceHolderNode.class);
 
         public PlaceHolderNode() {
             super(TYPE);

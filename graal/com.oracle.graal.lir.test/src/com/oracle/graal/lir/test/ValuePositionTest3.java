@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,6 +38,7 @@ import com.oracle.graal.lir.asm.*;
 public class ValuePositionTest3 {
 
     public static final class TestAddressValue extends CompositeValue {
+        public static final CompositeValueClass<TestAddressValue> TYPE = CompositeValueClass.create(TestAddressValue.class);
 
         private static final long serialVersionUID = -2679790860680123026L;
 
@@ -49,7 +50,7 @@ public class ValuePositionTest3 {
         }
 
         public TestAddressValue(LIRKind kind, AllocatableValue base, AllocatableValue index) {
-            super(kind);
+            super(TYPE, kind);
             this.base = base;
             this.index = index;
         }
@@ -100,10 +101,12 @@ public class ValuePositionTest3 {
     }
 
     private static class TestOp extends LIRInstruction {
+        public static final LIRInstructionClass<TestOp> TYPE = LIRInstructionClass.create(TestOp.class);
 
         @Use({COMPOSITE}) protected Value value;
 
         public TestOp(Value value) {
+            super(TYPE);
             this.value = value;
         }
 

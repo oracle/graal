@@ -41,7 +41,7 @@ import com.oracle.graal.word.*;
 @NodeInfo(allowedUsageTypes = {InputType.Memory, InputType.Value})
 public final class CheckcastArrayCopyCallNode extends AbstractMemoryCheckpoint implements Lowerable, MemoryCheckpoint.Single {
 
-    public static final NodeClass<CheckcastArrayCopyCallNode> TYPE = NodeClass.get(CheckcastArrayCopyCallNode.class);
+    public static final NodeClass<CheckcastArrayCopyCallNode> TYPE = NodeClass.create(CheckcastArrayCopyCallNode.class);
     @Input ValueNode src;
     @Input ValueNode srcPos;
     @Input ValueNode dest;

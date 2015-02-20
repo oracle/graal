@@ -42,7 +42,7 @@ import com.oracle.graal.nodes.virtual.*;
  */
 @NodeInfo(nameTemplate = "FrameState@{p#method/s}:{p#bci}")
 public final class FrameState extends VirtualState implements IterableNodeType {
-    public static final NodeClass<FrameState> TYPE = NodeClass.get(FrameState.class);
+    public static final NodeClass<FrameState> TYPE = NodeClass.create(FrameState.class);
 
     private static final DebugMetric METRIC_FRAMESTATE_COUNT = Debug.metric("FrameStateCount");
 

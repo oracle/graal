@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,9 +27,11 @@ import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.amd64.*;
+import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 
-public class AMD64CCall extends AMD64LIRInstruction {
+public final class AMD64CCall extends AMD64LIRInstruction {
+    public static final LIRInstructionClass<AMD64CCall> TYPE = LIRInstructionClass.create(AMD64CCall.class);
 
     @Def({REG, ILLEGAL}) protected Value result;
     @Use({REG, STACK}) protected Value[] parameters;
@@ -37,6 +39,7 @@ public class AMD64CCall extends AMD64LIRInstruction {
     @Use({REG}) protected Value numberOfFloatingPointArguments;
 
     public AMD64CCall(Value result, Value functionPtr, Value numberOfFloatingPointArguments, Value[] parameters) {
+        super(TYPE);
         this.result = result;
         this.functionPtr = functionPtr;
         this.parameters = parameters;

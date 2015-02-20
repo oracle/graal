@@ -39,7 +39,7 @@ import com.oracle.graal.nodes.util.*;
 @NodeInfo
 public final class LoopBeginNode extends AbstractMergeNode implements IterableNodeType, LIRLowerable {
 
-    public static final NodeClass<LoopBeginNode> TYPE = NodeClass.get(LoopBeginNode.class);
+    public static final NodeClass<LoopBeginNode> TYPE = NodeClass.create(LoopBeginNode.class);
     protected double loopFrequency;
     protected int nextEndIndex;
     protected int unswitches;

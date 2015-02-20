@@ -42,7 +42,7 @@ import com.oracle.graal.word.*;
 @NodeInfo(allowedUsageTypes = {InputType.Memory})
 public final class UncommonTrapCallNode extends FixedWithNextNode implements LIRLowerable, MemoryCheckpoint.Multi {
 
-    public static final NodeClass<UncommonTrapCallNode> TYPE = NodeClass.get(UncommonTrapCallNode.class);
+    public static final NodeClass<UncommonTrapCallNode> TYPE = NodeClass.create(UncommonTrapCallNode.class);
     @Input ValueNode trapRequest;
     @Input SaveAllRegistersNode registerSaver;
     protected final ForeignCallsProvider foreignCalls;

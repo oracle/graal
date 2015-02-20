@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,6 +30,12 @@ import com.oracle.graal.lir.asm.*;
  * Convenience class to provide SPARCMacroAssembler for the {@link #emitCode} method.
  */
 public abstract class SPARCLIRInstruction extends LIRInstruction {
+    public static final LIRInstructionClass<SPARCLIRInstruction> TYPE = LIRInstructionClass.create(SPARCLIRInstruction.class);
+
+    protected SPARCLIRInstruction(LIRInstructionClass<? extends LIRInstruction> c) {
+        super(c);
+    }
+
     protected SPARCDelayedControlTransfer delayedControlTransfer = SPARCDelayedControlTransfer.DUMMY;
 
     @Override

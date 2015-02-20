@@ -39,7 +39,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public final class SignExtendNode extends IntegerConvertNode<SignExtend, Narrow> {
 
-    public static final NodeClass<SignExtendNode> TYPE = NodeClass.get(SignExtendNode.class);
+    public static final NodeClass<SignExtendNode> TYPE = NodeClass.create(SignExtendNode.class);
 
     public SignExtendNode(ValueNode input, int resultBits) {
         this(input, PrimitiveStamp.getBits(input.stamp()), resultBits);

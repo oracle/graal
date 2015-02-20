@@ -36,7 +36,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(shortName = "DeoptCaller", nameTemplate = "DeoptCaller {p#reason/s}")
 public final class DeoptimizeCallerNode extends ControlSinkNode implements LIRLowerable {
 
-    public static final NodeClass<DeoptimizeCallerNode> TYPE = NodeClass.get(DeoptimizeCallerNode.class);
+    public static final NodeClass<DeoptimizeCallerNode> TYPE = NodeClass.create(DeoptimizeCallerNode.class);
     protected final DeoptimizationAction action;
     protected final DeoptimizationReason reason;
 

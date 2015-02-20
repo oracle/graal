@@ -41,7 +41,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public final class ReinterpretNode extends UnaryNode implements ArithmeticLIRLowerable {
 
-    public static final NodeClass<ReinterpretNode> TYPE = NodeClass.get(ReinterpretNode.class);
+    public static final NodeClass<ReinterpretNode> TYPE = NodeClass.create(ReinterpretNode.class);
 
     public ReinterpretNode(Kind to, ValueNode value) {
         this(StampFactory.forKind(to), value);

@@ -29,7 +29,7 @@ import com.oracle.graal.nodes.*;
 @NodeInfo
 public abstract class ArrayRangeWriteBarrier extends WriteBarrier {
 
-    public static final NodeClass<ArrayRangeWriteBarrier> TYPE = NodeClass.get(ArrayRangeWriteBarrier.class);
+    public static final NodeClass<ArrayRangeWriteBarrier> TYPE = NodeClass.create(ArrayRangeWriteBarrier.class);
     @Input ValueNode startIndex;
     @Input ValueNode length;
 
