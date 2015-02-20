@@ -200,6 +200,7 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
     }
 
     // Connect blocks (including loop backward edges), but ignoring dead code (blocks with id < 0).
+    // Predecessors need to be in the order expected when iterating phi inputs.
     private void connectBlocks() {
         for (Block block : reversePostOrder) {
             List<Block> predecessors = new ArrayList<>(1);
@@ -221,7 +222,7 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
             if (block.getBeginNode() instanceof LoopBeginNode) {
                 LoopBeginNode loopBegin = (LoopBeginNode) block.getBeginNode();
                 probability *= loopBegin.loopFrequency();
-                for (LoopEndNode predNode : loopBegin.loopEnds()) {
+                for (LoopEndNode predNode : loopBegin.orderedLoopEnds()) {
                     Block predBlock = nodeToBlock.get(predNode);
                     assert predBlock != null : predNode;
                     if (predBlock.getId() >= 0) {
