@@ -32,7 +32,6 @@ package com.oracle.truffle.api;
  *
  */
 public class CompilerAsserts {
-
     /**
      * Assertion that this code position should never be reached during compilation. It can be used
      * for exceptional code paths or rare code paths that should never be included in a compilation
@@ -40,98 +39,29 @@ public class CompilerAsserts {
      * directive.
      */
     public static void neverPartOfCompilation() {
+        neverPartOfCompilation("");
     }
 
-    public static void neverPartOfCompilation(@SuppressWarnings("unused") String message) {
+    /**
+     * Assertion that this code position should never be reached during compilation. It can be used
+     * for exceptional code paths or rare code paths that should never be included in a compilation
+     * unit. See {@link CompilerDirectives#transferToInterpreter()} for the corresponding compiler
+     * directive.
+     *
+     * @param message text associated with the bailout exception
+     */
+    public static void neverPartOfCompilation(String message) {
+        CompilerDirectives.bailout(message);
     }
 
     /**
      * Assertion that the corresponding value is reduced to a constant during compilation.
      *
      * @param value the value that must be constant during compilation
-     * @return the value given as parameter
      */
-    public static boolean compilationConstant(boolean value) {
-        return value;
-    }
-
-    /**
-     * Assertion that the corresponding value is reduced to a constant during compilation.
-     *
-     * @param value the value that must be constant during compilation
-     * @return the value given as parameter
-     */
-    public static byte compilationConstant(byte value) {
-        return value;
-    }
-
-    /**
-     * Assertion that the corresponding value is reduced to a constant during compilation.
-     *
-     * @param value the value that must be constant during compilation
-     * @return the value given as parameter
-     */
-    public static char compilationConstant(char value) {
-        return value;
-    }
-
-    /**
-     * Assertion that the corresponding value is reduced to a constant during compilation.
-     *
-     * @param value the value that must be constant during compilation
-     * @return the value given as parameter
-     */
-    public static short compilationConstant(short value) {
-        return value;
-    }
-
-    /**
-     * Assertion that the corresponding value is reduced to a constant during compilation.
-     *
-     * @param value the value that must be constant during compilation
-     * @return the value given as parameter
-     */
-    public static int compilationConstant(int value) {
-        return value;
-    }
-
-    /**
-     * Assertion that the corresponding value is reduced to a constant during compilation.
-     *
-     * @param value the value that must be constant during compilation
-     * @return the value given as parameter
-     */
-    public static long compilationConstant(long value) {
-        return value;
-    }
-
-    /**
-     * Assertion that the corresponding value is reduced to a constant during compilation.
-     *
-     * @param value the value that must be constant during compilation
-     * @return the value given as parameter
-     */
-    public static float compilationConstant(float value) {
-        return value;
-    }
-
-    /**
-     * Assertion that the corresponding value is reduced to a constant during compilation.
-     *
-     * @param value the value that must be constant during compilation
-     * @return the value given as parameter
-     */
-    public static double compilationConstant(double value) {
-        return value;
-    }
-
-    /**
-     * Assertion that the corresponding value is reduced to a constant during compilation.
-     *
-     * @param value the value that must be constant during compilation
-     * @return the value given as parameter
-     */
-    public static Object compilationConstant(Object value) {
-        return value;
+    public static <T> void compilationConstant(Object value) {
+        if (!CompilerDirectives.isCompilationConstant(value)) {
+            neverPartOfCompilation("Value is not compilation constant");
+        }
     }
 }

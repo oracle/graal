@@ -80,33 +80,20 @@ public final class CompilerDirectives {
     /**
      * Returns a boolean indicating whether or not a given value is seen as constant in optimized
      * code. If this method is called in the interpreter this method will always return
-     * <code>false</code>. This API may be used in combination with {@link #inCompiledCode()} to
-     * implement compilation constant assertions in the following way:
-     *
-     * <pre>
-     * <code>
-     * void assertCompilationConstant(Object value) {
-     *   if (inCompiledCode()) {
-     *     if (!isCompilationConstant(value)) {
-     *       throw new AssertionError("Given value is not constant");
-     *     }
-     *   }
-     * }
-     * </code>
-     * </pre>
+     * <code>true</code>.
      *
      * Note that optimizations that a compiler will apply to code that is conditional on
      * <code>isCompilationConstant</code> may be limited. For this reason
      * <code>isCompilationConstant</code> is not recommended for use to select between alternate
      * implementations of functionality depending on whether a value is constant. Instead, it is
-     * intended for use as a diagnostic mechanism, such as illustrated above.
+     * intended for use as a diagnostic mechanism.
      *
      * @param value
      * @return {@code true} when given value is seen as compilation constant, {@code false} if not
      *         compilation constant.
      */
     public static boolean isCompilationConstant(Object value) {
-        return false;
+        return CompilerDirectives.inInterpreter();
     }
 
     /**
