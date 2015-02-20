@@ -30,14 +30,14 @@ import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.replacements.nodes.*;
 import com.oracle.graal.truffle.nodes.*;
-import com.oracle.graal.truffle.nodes.asserts.*;
 
 /**
  * Macro node for CompilerDirectives#unsafeGetInt*.
  */
 @NodeInfo
-public final class CustomizedUnsafeLoadMacroNode extends NeverPartOfCompilationNode implements Canonicalizable {
+public final class CustomizedUnsafeLoadMacroNode extends MacroStateSplitNode implements Canonicalizable {
     public static final NodeClass<CustomizedUnsafeLoadMacroNode> TYPE = NodeClass.get(CustomizedUnsafeLoadMacroNode.class);
 
     private static final int ARGUMENT_COUNT = 4;
@@ -47,7 +47,7 @@ public final class CustomizedUnsafeLoadMacroNode extends NeverPartOfCompilationN
     private static final int LOCATION_ARGUMENT_INDEX = 3;
 
     public CustomizedUnsafeLoadMacroNode(Invoke invoke) {
-        super(TYPE, invoke, "The location argument could not be resolved to a constant.");
+        super(TYPE, invoke);
         assert arguments.size() == ARGUMENT_COUNT;
     }
 

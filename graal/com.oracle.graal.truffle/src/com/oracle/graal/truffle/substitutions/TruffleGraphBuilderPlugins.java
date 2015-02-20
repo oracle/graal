@@ -26,7 +26,6 @@ import static java.lang.Character.*;
 
 import java.util.concurrent.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
@@ -78,7 +77,7 @@ public class TruffleGraphBuilderPlugins {
                         builder.getAssumptions().record(new AssumptionValidAssumption(assumption));
                     }
                 } else {
-                    throw new BailoutException("assumption could not be reduced to a constant");
+                    throw builder.bailout("assumption could not be reduced to a constant");
                 }
                 return true;
             }
@@ -170,9 +169,9 @@ public class TruffleGraphBuilderPlugins {
         r.register1("bailout", String.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext builder, ValueNode message) {
                 if (message.isConstant()) {
-                    throw new BailoutException(message.asConstant().toValueString());
+                    throw builder.bailout(message.asConstant().toValueString());
                 }
-                throw new BailoutException("bailout (message is not compile-time constant, so no additional information is available)");
+                throw builder.bailout("bailout (message is not compile-time constant, so no additional information is available)");
             }
         });
         r.register1("isCompilationConstant", Object.class, new InvocationPlugin() {

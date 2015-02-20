@@ -22,29 +22,25 @@
  */
 package com.oracle.graal.truffle.nodes.asserts;
 
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.util.*;
-import com.oracle.graal.replacements.nodes.*;
 
 @NodeInfo
-public class NeverPartOfCompilationNode extends MacroStateSplitNode implements IterableNodeType {
+public final class NeverPartOfCompilationNode extends FixedWithNextNode implements IterableNodeType {
 
     public static final NodeClass<NeverPartOfCompilationNode> TYPE = NodeClass.get(NeverPartOfCompilationNode.class);
     protected final String message;
 
-    public NeverPartOfCompilationNode(Invoke invoke) {
-        this(TYPE, invoke, "This code path should never be part of a compilation.");
-    }
-
-    protected NeverPartOfCompilationNode(NodeClass<? extends NeverPartOfCompilationNode> c, Invoke invoke, String message) {
-        super(c, invoke);
+    public NeverPartOfCompilationNode(String message) {
+        super(TYPE, StampFactory.forVoid());
         this.message = message;
     }
 
-    public final String getMessage() {
-        return message + " " + arguments.toString();
+    public String getMessage() {
+        return message;
     }
 
     public static void verifyNotFoundIn(final StructuredGraph graph) {
@@ -53,4 +49,7 @@ public class NeverPartOfCompilationNode extends MacroStateSplitNode implements I
             throw GraphUtil.approxSourceException(neverPartOfCompilationNode, exception);
         }
     }
+
+    @NodeIntrinsic
+    public static native void apply(@ConstantNodeParameter String message);
 }

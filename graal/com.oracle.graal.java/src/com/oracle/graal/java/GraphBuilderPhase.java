@@ -1038,7 +1038,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
                 synchronizedEpilogue(BytecodeFrame.AFTER_BCI, x);
                 if (frameState.lockDepth() != 0) {
-                    throw new BailoutException("unbalanced monitors");
+                    throw bailout("unbalanced monitors");
                 }
             }
 
@@ -1055,7 +1055,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 MonitorIdNode monitorId = frameState.peekMonitorId();
                 ValueNode lockedObject = frameState.popLock();
                 if (GraphUtil.originalValue(lockedObject) != GraphUtil.originalValue(x)) {
-                    throw new BailoutException("unbalanced monitors: mismatch at monitorexit, %s != %s", GraphUtil.originalValue(x), GraphUtil.originalValue(lockedObject));
+                    throw bailout(String.format("unbalanced monitors: mismatch at monitorexit, %s != %s", GraphUtil.originalValue(x), GraphUtil.originalValue(lockedObject)));
                 }
                 MonitorExitNode monitorExit = append(new MonitorExitNode(x, monitorId, escapedReturnValue));
                 return monitorExit;
@@ -1377,7 +1377,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
                 // We already saw this block before, so we have to merge states.
                 if (!((HIRFrameStateBuilder) getEntryState(block, operatingDimension)).isCompatibleWith(state)) {
-                    throw new BailoutException("stacks do not match; bytecodes would not verify");
+                    throw bailout("stacks do not match; bytecodes would not verify");
                 }
 
                 if (getFirstInstruction(block, operatingDimension) instanceof LoopBeginNode) {
@@ -1461,7 +1461,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                                 if (FailedLoopExplosionIsFatal.getValue()) {
                                     throw new RuntimeException(message);
                                 } else {
-                                    throw new BailoutException(message);
+                                    throw bailout(message);
                                 }
                             }
                         }
@@ -1961,6 +1961,13 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             @Override
             public String toString() {
                 return method.format("%H.%n(%p)@") + bci();
+            }
+
+            public BailoutException bailout(String string) {
+                FrameState currentFrameState = this.frameState.create(bci());
+                StackTraceElement[] elements = GraphUtil.approxSourceStackTraceElement(currentFrameState);
+                BailoutException bailout = new BailoutException(string);
+                throw GraphUtil.createBailoutException(string, bailout, elements);
             }
         }
     }

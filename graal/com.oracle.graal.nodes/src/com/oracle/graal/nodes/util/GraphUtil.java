@@ -24,6 +24,7 @@ package com.oracle.graal.nodes.util;
 
 import java.util.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
@@ -241,18 +242,30 @@ public class GraphUtil {
 
             if (n instanceof StateSplit) {
                 FrameState state = ((StateSplit) n).stateAfter();
-                while (state != null) {
-                    ResolvedJavaMethod method = state.method();
-                    if (method != null) {
-                        elements.add(method.asStackTraceElement(state.bci - 1));
-                    }
-                    state = state.outerFrameState();
-                }
+                elements.addAll(Arrays.asList(approxSourceStackTraceElement(state)));
                 break;
             }
             n = n.predecessor();
         }
         return elements.toArray(new StackTraceElement[elements.size()]);
+    }
+
+    /**
+     * Gets an approximate source code location for frame state.
+     *
+     * @return the StackTraceElements if an approximate source location is found, null otherwise
+     */
+    public static StackTraceElement[] approxSourceStackTraceElement(FrameState frameState) {
+        ArrayList<StackTraceElement> elements = new ArrayList<>();
+        FrameState state = frameState;
+        while (state != null) {
+            ResolvedJavaMethod method = state.method();
+            if (method != null) {
+                elements.add(method.asStackTraceElement(state.bci - 1));
+            }
+            state = state.outerFrameState();
+        }
+        return elements.toArray(new StackTraceElement[0]);
     }
 
     /**
@@ -263,7 +276,47 @@ public class GraphUtil {
     public static RuntimeException approxSourceException(Node node, Throwable cause) {
         final StackTraceElement[] elements = approxSourceStackTraceElement(node);
         @SuppressWarnings("serial")
-        RuntimeException exception = new RuntimeException((cause == null) ? null : cause.getMessage(), cause) {
+        BailoutException exception = new BailoutException((cause == null) ? null : cause.getMessage(), cause) {
+
+            @Override
+            public final synchronized Throwable fillInStackTrace() {
+                setStackTrace(elements);
+                return this;
+            }
+        };
+        return exception;
+    }
+
+    /**
+     * Creates a bailout exception with the given stack trace elements and message.
+     *
+     * @param message the message of the exception
+     * @param elements the stack trace elements
+     * @return the exception
+     */
+    public static BailoutException createBailoutException(String message, Throwable cause, StackTraceElement[] elements) {
+        @SuppressWarnings("serial")
+        BailoutException exception = new BailoutException(cause, message) {
+
+            @Override
+            public final synchronized Throwable fillInStackTrace() {
+                setStackTrace(elements);
+                return this;
+            }
+        };
+        return exception;
+    }
+
+    /**
+     * Creates a runtime exception with the given stack trace elements and message.
+     *
+     * @param message the message of the exception
+     * @param elements the stack trace elements
+     * @return the exception
+     */
+    public static RuntimeException createRuntimeException(String message, Throwable cause, StackTraceElement[] elements) {
+        @SuppressWarnings("serial")
+        RuntimeException exception = new RuntimeException(message, cause) {
 
             @Override
             public final synchronized Throwable fillInStackTrace() {

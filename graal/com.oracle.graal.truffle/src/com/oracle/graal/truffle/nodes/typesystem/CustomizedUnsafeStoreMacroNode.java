@@ -28,14 +28,14 @@ import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.replacements.nodes.*;
 import com.oracle.graal.truffle.nodes.*;
-import com.oracle.graal.truffle.nodes.asserts.*;
 
 /**
  * Macro node for method CompilerDirectives#unsafePut*.
  */
 @NodeInfo
-public final class CustomizedUnsafeStoreMacroNode extends NeverPartOfCompilationNode implements Canonicalizable, StateSplit {
+public final class CustomizedUnsafeStoreMacroNode extends MacroStateSplitNode implements Canonicalizable, StateSplit {
     public static final NodeClass<CustomizedUnsafeStoreMacroNode> TYPE = NodeClass.get(CustomizedUnsafeStoreMacroNode.class);
     private static final int ARGUMENT_COUNT = 4;
     private static final int OBJECT_ARGUMENT_INDEX = 0;
@@ -44,7 +44,7 @@ public final class CustomizedUnsafeStoreMacroNode extends NeverPartOfCompilation
     private static final int LOCATION_ARGUMENT_INDEX = 3;
 
     public CustomizedUnsafeStoreMacroNode(Invoke invoke) {
-        super(TYPE, invoke, "The location argument could not be resolved to a constant.");
+        super(TYPE, invoke);
         assert arguments.size() == ARGUMENT_COUNT;
     }
 
