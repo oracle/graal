@@ -275,16 +275,7 @@ public class GraphUtil {
      */
     public static RuntimeException approxSourceException(Node node, Throwable cause) {
         final StackTraceElement[] elements = approxSourceStackTraceElement(node);
-        @SuppressWarnings("serial")
-        BailoutException exception = new BailoutException((cause == null) ? null : cause.getMessage(), cause) {
-
-            @Override
-            public final synchronized Throwable fillInStackTrace() {
-                setStackTrace(elements);
-                return this;
-            }
-        };
-        return exception;
+        return createBailoutException(cause == null ? null : cause.getMessage(), cause, elements);
     }
 
     /**
