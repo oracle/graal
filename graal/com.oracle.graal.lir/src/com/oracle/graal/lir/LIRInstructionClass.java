@@ -135,7 +135,7 @@ public class LIRInstructionClass<T> extends LIRIntrospection<T> {
             }
             opcodeField = null;
 
-            super.scan(clazz, LIRInstructionBase.class, false);
+            super.scan(clazz, LIRInstruction.class, false);
 
             if (opcodeConstant == null && opcodeField == null) {
                 opcodeConstant = clazz.getSimpleName();

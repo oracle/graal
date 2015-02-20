@@ -29,7 +29,7 @@ import com.oracle.graal.lir.asm.*;
 /**
  * Convenience class to provide AMD64MacroAssembler for the {@link #emitCode} method.
  */
-public abstract class AMD64LIRInstruction extends LIRInstructionBase {
+public abstract class AMD64LIRInstruction extends LIRInstruction {
 
     @Override
     public final void emitCode(CompilationResultBuilder crb) {

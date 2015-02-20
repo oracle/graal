@@ -86,7 +86,7 @@ public class ValuePositionTest1 {
         }
     }
 
-    private static class TestOp extends LIRInstructionBase {
+    private static class TestOp extends LIRInstruction {
 
         @Use({COMPOSITE}) protected NestedCompositeValue compValue;
 

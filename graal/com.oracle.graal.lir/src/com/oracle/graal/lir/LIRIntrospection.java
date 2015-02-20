@@ -202,7 +202,7 @@ abstract class LIRIntrospection<T> extends FieldIntrospection<T> {
 
     protected static void forEach(LIRInstruction inst, Values values, OperandMode mode, InstructionValueProcedure proc) {
         for (int i = 0; i < values.getCount(); i++) {
-            assert LIRInstructionBase.ALLOWED_FLAGS.get(mode).containsAll(values.getFlags(i));
+            assert LIRInstruction.ALLOWED_FLAGS.get(mode).containsAll(values.getFlags(i));
 
             if (i < values.getDirectCount()) {
                 Value value = values.getValue(inst, i);
@@ -238,7 +238,7 @@ abstract class LIRIntrospection<T> extends FieldIntrospection<T> {
     protected static CompositeValue forEachComponent(LIRInstruction inst, CompositeValue obj, Values values, OperandMode mode, InstructionValueProcedure proc) {
         CompositeValue newCompValue = null;
         for (int i = 0; i < values.getCount(); i++) {
-            assert LIRInstructionBase.ALLOWED_FLAGS.get(mode).containsAll(values.getFlags(i));
+            assert LIRInstruction.ALLOWED_FLAGS.get(mode).containsAll(values.getFlags(i));
 
             if (i < values.getDirectCount()) {
                 Value value = values.getValue(obj, i);
@@ -286,7 +286,7 @@ abstract class LIRIntrospection<T> extends FieldIntrospection<T> {
 
     protected static void forEach(LIRInstruction inst, Object obj, Values values, OperandMode mode, ValuePositionProcedure proc, ValuePosition outerPosition) {
         for (int i = 0; i < values.getCount(); i++) {
-            assert LIRInstructionBase.ALLOWED_FLAGS.get(mode).containsAll(values.getFlags(i));
+            assert LIRInstruction.ALLOWED_FLAGS.get(mode).containsAll(values.getFlags(i));
 
             if (i < values.getDirectCount()) {
                 Value value = values.getValue(obj, i);

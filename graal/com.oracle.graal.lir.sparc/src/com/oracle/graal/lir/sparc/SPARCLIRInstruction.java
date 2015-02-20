@@ -29,7 +29,7 @@ import com.oracle.graal.lir.asm.*;
 /**
  * Convenience class to provide SPARCMacroAssembler for the {@link #emitCode} method.
  */
-public abstract class SPARCLIRInstruction extends LIRInstructionBase {
+public abstract class SPARCLIRInstruction extends LIRInstruction {
     protected SPARCDelayedControlTransfer delayedControlTransfer = SPARCDelayedControlTransfer.DUMMY;
 
     @Override

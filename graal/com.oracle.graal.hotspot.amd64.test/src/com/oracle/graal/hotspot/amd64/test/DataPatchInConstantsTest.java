@@ -178,7 +178,7 @@ public class DataPatchInConstantsTest extends HotSpotGraalCompilerTest {
         public static native Object load(Object obj);
     }
 
-    private static class LoadThroughPatchOp extends LIRInstructionBase {
+    private static class LoadThroughPatchOp extends LIRInstruction {
 
         final Constant c;
         final boolean compressed;
